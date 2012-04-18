@@ -24,7 +24,7 @@ typedef char bool;
 #define JS_ERROR_TOKEN_BUF_SIZE 16
 
 
-#define assert(X) if (!(X)) { printf("ASSERT FAIL AT LINE %d\n",__LINE__); exit(1); }
+#define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 
 
 typedef enum SCRIPTVAR_FLAGS {
@@ -114,5 +114,8 @@ struct JsLex;
 
 void jsError(const char *message);
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos);
+void jsWarn(const char *message);
+void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
+void jsAssertFail(const char *file, int line);
 
 #endif /* JSUTILS_H_ */

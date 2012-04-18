@@ -39,13 +39,13 @@ typedef struct JsLex
 
 } JsLex;
 
-void jslInit(JsLex *lex, JsVarRef var, int startPos, int endPos);
+void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos);
 void jslKill(JsLex *lex);
 
 void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
-void jslTokenAsString(int token, char *str, int len); ///< output the given token as a string - for debugging
-void jslGetTokenString(JsLex *lex, char *str, int len);
+void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
+void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
 
 bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on success, false on failure

@@ -47,3 +47,16 @@ void jsError(const char *message) {
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   printf("ERROR: %s at %d\n", message, tokenPos);
 }
+
+void jsWarn(const char *message) {
+  printf("WARNING: %s\n", message);
+}
+
+void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
+  printf("WARNING: %s at %d\n", message, tokenPos);
+}
+
+void jsAssertFail(const char *file, int line) {
+  printf("ASSERT FAIL AT %s:%d\n", file, line);
+  exit(1);
+}

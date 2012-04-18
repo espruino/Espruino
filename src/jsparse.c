@@ -22,7 +22,7 @@ JsVar *jspReplaceWith(JsExecInfo *execInfo, JsVar *dst, JsVar *src) {
   assert(dst && src);
   // if desination isn't there, isn't a 'name', or is used, just return source
   if (!jsvIsName(dst)) {
-    jsErrorAt("Unable to assign value to non-reference", execInfo->lex, execInfo->lex->currentPos);
+    jsErrorAt("Unable to assign value to non-reference", execInfo->lex, execInfo->lex->tokenLastEnd);
     return dst;
   }
   // all is fine, so replace the existing child...
@@ -46,19 +46,19 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     }
     if (execInfo->lex->tk==LEX_R_TRUE) {
         JSP_MATCH(LEX_R_TRUE);
-        return jsvLock(jsvNewFromBool(true));
+        return jsvNewFromBool(true);
     }
     if (execInfo->lex->tk==LEX_R_FALSE) {
         JSP_MATCH(LEX_R_FALSE);
-        return jsvLock(jsvNewFromBool(false));
+        return jsvNewFromBool(false);
     }
     if (execInfo->lex->tk==LEX_R_NULL) {
         JSP_MATCH(LEX_R_NULL);
-        return jsvLock(jsvNewWithFlags(SCRIPTVAR_NULL));
+        return jsvNewWithFlags(SCRIPTVAR_NULL);
     }
     if (execInfo->lex->tk==LEX_R_UNDEFINED) {
         JSP_MATCH(LEX_R_UNDEFINED);
-        return jsvLock(jsvNewWithFlags(SCRIPTVAR_UNDEFINED));
+        return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
     }
 #if TODO
     if (execInfo->lex->tk==LEX_ID) {
@@ -115,15 +115,17 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     }
 #endif
     if (execInfo->lex->tk==LEX_INT) {
+        long v = atol(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_INT);
-        return jsvLock(jsvNewFromInteger(atoi(jslGetTokenValueAsString(execInfo->lex))));
+        return jsvNewFromInteger(v);
     }
     if (execInfo->lex->tk==LEX_FLOAT) {
+        double v = atof(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_INT);
-        return jsvLock(jsvNewFromDouble(atof(jslGetTokenValueAsString(execInfo->lex))));
+        return jsvNewFromDouble(v);
     }
     if (execInfo->lex->tk==LEX_STR) {
-        JsVar *a = jsvLock(jsvNewFromString(jslGetTokenValueAsString(execInfo->lex)));
+        JsVar *a = jsvNewFromString(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_STR);
         return a;
     }
@@ -221,7 +223,7 @@ JsVar *jspeUnary(JsExecInfo *execInfo, JsExecFlags execute) {
         a = jspeFactor(execInfo, execute);
         if (execute) {
             JsVar *zero = jsvLock(execInfo->parse->zeroInt);
-            JsVar *res = jsvLock(jsvMathsOpPtr(a, zero, LEX_EQUAL));
+            JsVar *res = jsvMathsOpPtr(a, zero, LEX_EQUAL);
             jsvUnLockPtr(zero);
             jspClean(a); a = res;
         }
@@ -237,7 +239,7 @@ JsVar *jspeTerm(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(execInfo->lex->tk);
         JsVar *b = jspeUnary(execInfo, execute);
         if (execute) {
-          JsVar *res = jsvLock(jsvMathsOpPtr(a, b, op));
+          JsVar *res = jsvMathsOpPtr(a, b, op);
           jspClean(a); a = res;
         }
         jspClean(b);
@@ -254,7 +256,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
     JsVar *a = jspeTerm(execInfo, execute);
     if (negate) {
       JsVar *zero = jsvLock(execInfo->parse->zeroInt);
-      JsVar *res = jsvLock(jsvMathsOpPtr(zero, a, '-'));
+      JsVar *res = jsvMathsOpPtr(zero, a, '-');
       jsvUnLockPtr(zero);
       jspClean(a); a = res;
     }
@@ -266,7 +268,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
         if (op==LEX_PLUSPLUS || op==LEX_MINUSMINUS) {
             if (execute) {
                 JsVar *one = jsvLock(execInfo->parse->oneInt);
-                JsVar *res = jsvLock(jsvMathsOpPtr(a, one, op==LEX_PLUSPLUS ? '+' : '-'));
+                JsVar *res = jsvMathsOpPtr(a, one, op==LEX_PLUSPLUS ? '+' : '-');
                 jsvUnLockPtr(one);
                 JsVar *oldValue = jsvRef(a); // keep old value
                 // in-place add/subtract
@@ -279,7 +281,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
             JsVar *b = jspeTerm(execInfo, execute);
             if (execute) {
                 // not in-place, so just replace
-              JsVar *res = jsvLock(jsvMathsOpPtr(a, b, op));
+              JsVar *res = jsvMathsOpPtr(a, b, op);
               jspClean(a); a = res;
             }
             jspClean(b);
@@ -296,7 +298,7 @@ JsVar *jspeShift(JsExecInfo *execInfo, JsExecFlags execute) {
     JsVar *b = jspeBase(execInfo, execute);
     jspClean(b);
     if (execute) {
-      JsVar *res = jsvLock(jsvMathsOpPtr(a, b, op));
+      JsVar *res = jsvMathsOpPtr(a, b, op);
       jspClean(a); a = res;
     }
   }
@@ -314,7 +316,7 @@ JsVar *jspeCondition(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(execInfo->lex->tk);
         b = jspeShift(execInfo, execute);
         if (execute) {
-            JsVar *res = jsvLock(jsvMathsOpPtr(a, b, op));
+            JsVar *res = jsvMathsOpPtr(a, b, op);
             jspClean(a); a = res;
         }
         jspClean(b);
@@ -346,8 +348,8 @@ JsVar *jspeLogic(JsExecInfo *execInfo, JsExecFlags execute) {
         b = jspeCondition(execInfo, shortCircuit ? noexecute : execute);
         if (execute && !shortCircuit) {
             if (boolean) {
-              JsVar *newa = jsvLock(jsvNewFromBool(jsvGetBool(a)));
-              JsVar *newb = jsvLock(jsvNewFromBool(jsvGetBool(b)));
+              JsVar *newa = jsvNewFromBool(jsvGetBool(a));
+              JsVar *newb = jsvNewFromBool(jsvGetBool(b));
               jspClean(a); a = newa;
               jspClean(b); b = newb;
             }
@@ -389,17 +391,14 @@ JsVar *jspeTernary(JsExecInfo *execInfo, JsExecFlags execute) {
 
 JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute) {
     JsVar *lhs = jspeTernary(execInfo, execute);
-#if TODO
     if (execInfo->lex->tk=='=' || execInfo->lex->tk==LEX_PLUSEQUAL || execInfo->lex->tk==LEX_MINUSEQUAL) {
         /* If we're assigning to this and we don't have a parent,
          * add it to the symbol table root as per JavaScript. */
-        if (execute && !lhs->owned) {
-          if (lhs->name.length()>0) {
-            JsVar *realLhs = root->addChildNoDup(lhs->name, lhs->var);
-            jspClean(lhs);
-            lhs = realLhs;
-          } else
-            TRACE("Trying to assign to an un-named type\n");
+        if (execute && !lhs->refs) {
+          if (jsvIsName(lhs)/* && jsvGetStringLength(lhs)>0*/) {
+            jsvAddName(execInfo->parse->root, lhs->this);
+          } else // TODO: Why was this here? can it happen?
+            jsWarnAt("Trying to assign to an un-named type\n", execInfo->lex, execInfo->lex->tokenLastEnd);
         }
 
         int op = execInfo->lex->tk;
@@ -409,39 +408,60 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute) {
             if (op=='=') {
                 jspReplaceWith(execInfo, lhs, rhs);
             } else if (op==LEX_PLUSEQUAL) {
-                JsVar *res = jsvLock(jsvMathsOpPtr(lhs,rhs, '+'));
+                JsVar *res = jsvMathsOpPtr(lhs,rhs, '+');
                 jspReplaceWith(execInfo, lhs, res);
                 jspClean(res);
             } else if (op==LEX_MINUSEQUAL) {
-                JsVar *res = jsvLock(jsvMathsOpPtr(lhs,rhs, '-'));
+                JsVar *res = jsvMathsOpPtr(lhs,rhs, '-');
                 jspReplaceWith(execInfo, lhs, res);
                 jspClean(res);
-            } else ASSERT(0);
+            } else assert(0);
         }
         jspClean(rhs);
     }
-#endif
     return lhs;
 }
 
 // -----------------------------------------------------------------------------
 
 void jspInit(JsParse *parse) {
-  parse->root = jsvRefRef(jsvNewWithFlags(SCRIPTVAR_OBJECT));
+  parse->root = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
 
-  parse->zeroInt = jsvNewFromInteger(0);
+  parse->zeroInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(0)));
   jsvAddNamedChild(parse->root, parse->zeroInt, "__ZERO");
-  parse->oneInt = jsvNewFromInteger(1);
+  jsvUnRefRef(parse->zeroInt);
+  parse->oneInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(1)));
   jsvAddNamedChild(parse->root, parse->oneInt, "__ONE");
-  parse->stringClass = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+  jsvUnRefRef(parse->oneInt);
+  parse->stringClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
   jsvAddNamedChild(parse->root, parse->stringClass, "String");
-  parse->objectClass = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+  jsvUnRefRef(parse->stringClass);
+  parse->objectClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
   jsvAddNamedChild(parse->root, parse->objectClass, "Object");
-  parse->arrayClass = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+  jsvUnRefRef(parse->objectClass);
+  parse->arrayClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
   jsvAddNamedChild(parse->root, parse->arrayClass, "Array");
+  jsvUnRefRef(parse->arrayClass);
 }
 
 void jspKill(JsParse *parse) {
   jsvUnRefRef(parse->root);
 }
 
+JsVar *jspEvaluate(JsParse *parse, const char *str) {
+  JsVar *code = jsvNewFromString(str);
+  JsLex lex;
+  jslInit(&lex, code, 0, -1);
+  jsvUnLockPtr(code);
+
+  JsExecInfo execInfo;
+  execInfo.parse = parse;
+  execInfo.lex = &lex;
+  JsExecFlags execute = EXEC_YES;
+
+  JsVar *v = jspeBase(&execInfo, execute);
+
+  jslKill(&lex);
+
+  return v;
+}

@@ -38,15 +38,15 @@ typedef struct {
 void jsvInit();
 void jsvKill();
 
-// Note that jsvNew* don't REF a variable for you
-JsVarRef jsvNew(); ///< Create a new variable
-JsVarRef jsvNewFromString(const char *str); ///< Create a new string
-JsVarRef jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
-JsVarRef jsvNewFromInteger(int value);
-JsVarRef jsvNewFromBool(bool value);
-JsVarRef jsvNewFromDouble(double value);
+// Note that jsvNew* don't REF a variable for you, but the do LOCK it
+JsVar *jsvNew(); ///< Create a new variable
+JsVar *jsvNewFromString(const char *str); ///< Create a new string
+JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
+JsVar *jsvNewFromInteger(long value);
+JsVar *jsvNewFromBool(bool value);
+JsVar *jsvNewFromDouble(double value);
 // Creates a new Variable name that links to the given variable...
-JsVarRef jsvNewVariableName(JsVarRef variable, const char *name);
+JsVar *jsvNewVariableName(JsVarRef variable, const char *name);
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
 void jsvUnLock(JsVarRef ref); ///< Unlock this reference
@@ -71,17 +71,19 @@ bool jsvIsBasic(JsVar *v);
 bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 
 /// Save this var as a string to the given buffer
-void jsvGetString(JsVar *v, char *str, int len);
-int jsvGetInteger(JsVar *v);
+void jsvGetString(JsVar *v, char *str, size_t len);
+int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
+long jsvGetInteger(JsVar *v);
 double jsvGetDouble(JsVar *v);
 bool jsvGetBool(JsVar *v);
 
 /// MATHS!
-JsVarRef jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
-JsVarRef jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
+JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
+JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 
 /// Tree related stuff
-void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name);
+void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
+void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it
 
 /*class CScriptVarLink
 {

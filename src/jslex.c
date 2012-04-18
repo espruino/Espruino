@@ -271,8 +271,11 @@ void jslGetNextToken(JsLex *lex) {
   lex->tokenEnd = lex->currentPos-3/*because of nextCh/currCh/etc */;
 }
 
-void jslInit(JsLex *lex, JsVarRef var, int startPos, int endPos) {
-  lex->sourceVarRef = jsvRefRef(var);
+void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
+  if (endPos<0) {
+    endPos = jsvGetStringLength(var);
+  }
+  lex->sourceVarRef = jsvRef(var)->this;
   lex->sourceStartPos = startPos;
   lex->sourceEndPos = endPos;
   // reset stuff
@@ -302,7 +305,7 @@ void jslKill(JsLex *lex) {
   lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
 }
 
-void jslTokenAsString(int token, char *str, int len) {
+void jslTokenAsString(int token, char *str, size_t len) {
   if (token>32 && token<128) {
       assert(len>=4);
       str[0] = '\'';
@@ -357,15 +360,15 @@ void jslTokenAsString(int token, char *str, int len) {
   snprintf(str, len, "?[%d]",token);
 }
 
-void jslGetTokenString(JsLex *lex, char *str, int len) {
+void jslGetTokenString(JsLex *lex, char *str, size_t len) {
   if (lex->tk == LEX_ID) {
-    assert(len > lex->tokenl+1);
-    memcpy(str, lex->token, lex->tokenl);
+    assert(len > (size_t)(lex->tokenl+1));
+    memcpy(str, lex->token, (size_t)lex->tokenl);
     str[lex->tokenl] = 0;
   } else if (lex->tk == LEX_STR) {
-      assert(len > lex->tokenl+3);
+      assert(len > (size_t)(lex->tokenl+3));
       str[0] = '"';
-      memcpy(str+1, lex->token, lex->tokenl);
+      memcpy(str+1, lex->token, (size_t)lex->tokenl);
       str[lex->tokenl+1] = '"';
       str[lex->tokenl+2] = 0;
   } else
