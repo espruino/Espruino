@@ -264,7 +264,7 @@ JsVar *jspeUnary(JsExecInfo *execInfo, JsExecFlags execute) {
         a = jspeFactor(execInfo, execute);
         if (execute) {
             JsVar *zero = jsvLock(execInfo->parse->zeroInt);
-            JsVar *res = jsvMathsOpPtr(a, zero, LEX_EQUAL);
+            JsVar *res = jsvMathsOpPtrSkipNames(a, zero, LEX_EQUAL);
             jsvUnLockPtr(zero);
             jspClean(a); a = res;
         }
@@ -280,7 +280,7 @@ JsVar *jspeTerm(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(execInfo->lex->tk);
         JsVar *b = jspeUnary(execInfo, execute);
         if (execute) {
-          JsVar *res = jsvMathsOpPtr(a, b, op);
+          JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
           jspClean(a); a = res;
         }
         jspClean(b);
@@ -297,7 +297,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
     JsVar *a = jspeTerm(execInfo, execute);
     if (negate) {
       JsVar *zero = jsvLock(execInfo->parse->zeroInt);
-      JsVar *res = jsvMathsOpPtr(zero, a, '-');
+      JsVar *res = jsvMathsOpPtrSkipNames(zero, a, '-');
       jsvUnLockPtr(zero);
       jspClean(a); a = res;
     }
@@ -309,7 +309,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
         if (op==LEX_PLUSPLUS || op==LEX_MINUSMINUS) {
             if (execute) {
                 JsVar *one = jsvLock(execInfo->parse->oneInt);
-                JsVar *res = jsvMathsOpPtr(a, one, op==LEX_PLUSPLUS ? '+' : '-');
+                JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
                 jsvUnLockPtr(one);
                 JsVar *oldValue = jsvRef(a); // keep old value
                 // in-place add/subtract
@@ -322,7 +322,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
             JsVar *b = jspeTerm(execInfo, execute);
             if (execute) {
                 // not in-place, so just replace
-              JsVar *res = jsvMathsOpPtr(a, b, op);
+              JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
               jspClean(a); a = res;
             }
             jspClean(b);
@@ -339,7 +339,7 @@ JsVar *jspeShift(JsExecInfo *execInfo, JsExecFlags execute) {
     JsVar *b = jspeBase(execInfo, execute);
     jspClean(b);
     if (execute) {
-      JsVar *res = jsvMathsOpPtr(a, b, op);
+      JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
       jspClean(a); a = res;
     }
   }
@@ -357,7 +357,7 @@ JsVar *jspeCondition(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(execInfo->lex->tk);
         b = jspeShift(execInfo, execute);
         if (execute) {
-            JsVar *res = jsvMathsOpPtr(a, b, op);
+            JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
             jspClean(a); a = res;
         }
         jspClean(b);
@@ -394,7 +394,7 @@ JsVar *jspeLogic(JsExecInfo *execInfo, JsExecFlags execute) {
               jspClean(a); a = newa;
               jspClean(b); b = newb;
             }
-            JsVar *res = jsvMathsOpPtr(a, b, op);
+            JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
             jspClean(a); a = res;
         }
         jspClean(b);
@@ -449,11 +449,11 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute) {
             if (op=='=') {
                 jspReplaceWith(execInfo, lhs, rhs);
             } else if (op==LEX_PLUSEQUAL) {
-                JsVar *res = jsvMathsOpPtr(lhs,rhs, '+');
+                JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '+');
                 jspReplaceWith(execInfo, lhs, res);
                 jspClean(res);
             } else if (op==LEX_MINUSEQUAL) {
-                JsVar *res = jsvMathsOpPtr(lhs,rhs, '-');
+                JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '-');
                 jspReplaceWith(execInfo, lhs, res);
                 jspClean(res);
             } else assert(0);

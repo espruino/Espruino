@@ -79,6 +79,7 @@ bool jsvGetBool(JsVar *v);
 
 /// MATHS!
 JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
+JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op);
 JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 
 /// Tree related stuff

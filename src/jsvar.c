@@ -338,6 +338,27 @@ JsVar *jsvMathsOpError(int op, const char *datatype) {
     return 0;
 }
 
+/** Same as jsvMathsOpPtr, but if a or b are a name, skip them
+ * and go to what they point to. */
+JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
+  JsVar *pa = a;
+  JsVar *pb = b;
+  while (jsvIsName(pa)) {
+    JsVarRef n = pa->firstChild;
+    if (pa!=a) jsvUnLockPtr(pa);
+    pa = jsvLock(n);
+  }
+  while (jsvIsName(pb)) {
+    JsVarRef n = pb->firstChild;
+    if (pb!=b) jsvUnLockPtr(pb);
+    pb = jsvLock(n);
+  }
+  JsVar *res = jsvMathsOpPtr(pa,pb,op);
+  if (pa!=a) jsvUnLockPtr(pa);
+  if (pb!=b) jsvUnLockPtr(pb);
+  return res;
+}
+
 JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
     if (!a || !b) return 0;
     // Type equality check
