@@ -288,11 +288,20 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   lex->tokenLastEnd = 0;
   lex->tokenl = 0;
   // seek
-  jslSeek(lex, startPos);
+  jslSeek(lex, lex->sourceStartPos);
   // set up..
   jslGetNextCh(lex);
   jslGetNextCh(lex);
   jslGetNextToken(lex);
+}
+
+void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos) {
+  int lastCharIdx = initFrom->tokenLastEnd+1;
+  if (lastCharIdx >= initFrom->sourceEndPos)
+    lastCharIdx = initFrom->sourceEndPos;
+  JsVar *var = jsvLock(initFrom->sourceVarRef);
+  jslInit(lex, var, startPos, lastCharIdx);
+  jsvUnLockPtr(var);
 }
 
 void jslKill(JsLex *lex) {
@@ -303,6 +312,10 @@ void jslKill(JsLex *lex) {
     lex->currentVar=0;
   }
   lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
+}
+
+void jslReset(JsLex *lex) {
+  jslSeek(lex, lex->sourceStartPos);
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {

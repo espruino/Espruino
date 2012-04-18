@@ -40,7 +40,9 @@ typedef struct JsLex
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos);
+void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos);
 void jslKill(JsLex *lex);
+void jslReset(JsLex *lex);
 
 void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string

@@ -550,7 +550,6 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
             JSP_MATCH(LEX_R_ELSE);
             jspeStatement(execInfo, cond ? noexecute : execute);
         }
-#if TODO
     } else if (execInfo->lex->tk==LEX_R_WHILE) {
         // We do repetition by pulling out the string representing our statement
         // there's definitely some opportunity for optimisation here
@@ -561,28 +560,31 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         JsVar *cond = jspeBase(execInfo, execute);
         bool loopCond = execute && jsvGetBool(cond);
         jspClean(cond);
-        CScriptLex *whileCond = l->getSubLex(whileCondStart);
+        JsLex whileCond;
+        jslInitFromLex(&whileCond, execInfo->lex, whileCondStart);
         JSP_MATCH(')');
         int whileBodyStart = execInfo->lex->tokenStart;
         jspeStatement(execInfo, loopCond ? execute : noexecute);
-        CScriptLex *whileBody = l->getSubLex(whileBodyStart);
-        CScriptLex *oldLex = l;
+        JsLex whileBody;
+        jslInitFromLex(&whileBody, execInfo->lex, whileBodyStart);
+        JsLex *oldLex = execInfo->lex;
+
         int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
         while (loopCond && loopCount-->0) {
-            whileCond->reset();
-            l = whileCond;
+            jslReset(&whileCond);
+            execInfo->lex = &whileCond;
             cond = jspeBase(execInfo, execute);
             loopCond = execute && jsvGetBool(cond);
             jspClean(cond);
             if (loopCond) {
-                whileBody->reset();
-                l = whileBody;
+                jslReset(&whileBody);
+                execInfo->lex = &whileBody;
                 jspeStatement(execInfo, execute);
             }
         }
-        l = oldLex;
-        delete whileCond;
-        delete whileBody;
+        execInfo->lex = oldLex;
+        jslKill(&whileCond);
+        jslKill(&whileBody);
 
         if (loopCount<=0) {
           jsErrorAt("WHILE Loop exceeded the maximum number of iterations", execInfo->lex, execInfo->lex->tokenLastEnd);
@@ -597,46 +599,50 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         JsVar *cond = jspeBase(execInfo, execute); // condition
         bool loopCond = execute && jsvGetBool(cond);
         jspClean(cond);
-        CScriptLex *forCond = l->getSubLex(forCondStart);
+        JsLex forCond;
+        jslInitFromLex(&forCond, execInfo->lex, forCondStart);
         JSP_MATCH(';');
         int forIterStart = execInfo->lex->tokenStart;
-        jspClean(base(noexecute)); // iterator
-        CScriptLex *forIter = l->getSubLex(forIterStart);
+        jspClean(jspeBase(execInfo, noexecute)); // iterator
+        JsLex forIter;
+        jslInitFromLex(&forIter, execInfo->lex, forIterStart);
         JSP_MATCH(')');
         int forBodyStart = execInfo->lex->tokenStart;
         jspeStatement(execInfo, loopCond ? execute : noexecute);
-        CScriptLex *forBody = l->getSubLex(forBodyStart);
-        CScriptLex *oldLex = l;
+        JsLex forBody;
+        jslInitFromLex(&forBody, execInfo->lex, forBodyStart);
+        JsLex *oldLex = execInfo->lex;
         if (loopCond) {
-            forIter->reset();
-            l = forIter;
-            jspClean(base(execute));
+            jslReset(&forIter);
+            execInfo->lex = &forIter;
+            jspClean(jspeBase(execInfo, execute));
         }
         int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
         while (execute && loopCond && loopCount-->0) {
-            forCond->reset();
-            l = forCond;
+          jslReset(&forCond);
+            execInfo->lex = &forCond;
             cond = jspeBase(execInfo, execute);
             loopCond = jsvGetBool(cond);
             jspClean(cond);
             if (execute && loopCond) {
-                forBody->reset();
-                l = forBody;
+                jslReset(&forBody);
+                execInfo->lex = &forBody;
                 jspeStatement(execInfo, execute);
             }
             if (execute && loopCond) {
-                forIter->reset();
-                l = forIter;
-                jspClean(base(execute));
+                jslReset(&forIter);
+                execInfo->lex = &forIter;
+                jspClean(jspeBase(execInfo, execute));
             }
         }
-        l = oldLex;
-        delete forCond;
-        delete forIter;
-        delete forBody;
+        execInfo->lex = oldLex;
+        jslKill(&forCond);
+        jslKill(&forIter);
+        jslKill(&forBody);
         if (loopCount<=0) {
             jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo->lex, execInfo->lex->tokenLastEnd);
         }
+#if TODO
     } else if (execInfo->lex->tk==LEX_R_RETURN) {
         JSP_MATCH(LEX_R_RETURN);
         JsVar *result = 0;
