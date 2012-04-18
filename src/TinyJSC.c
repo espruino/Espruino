@@ -49,7 +49,7 @@ int main(void) {
 	JsParse p;
 	jspInit(&p);
 
-	JsVar *v = jspEvaluate(&p, "1+2");
+	JsVar *v = jspEvaluate(&p, "Z = 1+2");
 	char buf[256];
     jsvGetString(v, buf, 256);
     jsvUnLockPtr(v);

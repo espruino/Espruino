@@ -26,7 +26,11 @@ JsVar *jspReplaceWith(JsExecInfo *execInfo, JsVar *dst, JsVar *src) {
     return dst;
   }
   // all is fine, so replace the existing child...
-  jsvUnRefRef(dst->firstChild); // free existing
+  /* Existing child may be null in the case of Z = 0 where
+   * we create 'Z' and pass it down to '=' to have the value
+   * filled in.
+   */
+  if (dst->firstChild) jsvUnRefRef(dst->firstChild); // free existing
   dst->firstChild = jsvRef(src)->this;
   return dst;
 }
@@ -60,19 +64,19 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(LEX_R_UNDEFINED);
         return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
     }
-#if TODO
     if (execInfo->lex->tk==LEX_ID) {
-        JsVar *a = execute ? findInScopes(execInfo->lex->tkStr) : new JsVar(new CScriptVar());
-        //printf("0x%08X for %s at %s\n", (unsigned int)a, execInfo->lex->tkStr.c_str(), l->getPosition().c_str());
+        JsVar *a = /*execute ? findInScopes(execInfo->lex->tkStr) : */0;
         /* The parent if we're executing a method call */
-        CScriptVar *parent = 0;
+        JsVar *parent = 0;
 
         if (execute && !a) {
           /* Variable doesn't exist! JavaScript says we should create it
            * (we won't add it here. This is done in the assignment operator)*/
-          a = new JsVar(new CScriptVar(), execInfo->lex->tkStr);
+          a = jsvNewVariableName(0, jslGetTokenValueAsString(execInfo->lex));
         }
         JSP_MATCH(LEX_ID);
+#ifdef TODO
+
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
             if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
                 a = functionCall(execute, a, parent);
@@ -111,9 +115,9 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
                 jspClean(index);
             } else ASSERT(0);
         }
+#endif
         return a;
     }
-#endif
     if (execInfo->lex->tk==LEX_INT) {
         long v = atol(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_INT);

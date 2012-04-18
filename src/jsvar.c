@@ -156,7 +156,8 @@ JsVar *jsvNewFromDouble(double value) {
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
   JsVar *var = jsvNewFromString(name);
   var->flags |= SCRIPTVAR_NAME;
-  var->firstChild = jsvRefRef(variable);
+  if (variable)
+    var->firstChild = jsvRefRef(variable);
   return var;
 }
 
