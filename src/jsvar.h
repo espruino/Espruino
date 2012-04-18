@@ -15,6 +15,7 @@ typedef unsigned int JsVarRef;
 // We treat 0 as null
 
 typedef struct {
+  JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   int refs; ///< The number of references held to this - used for garbage collection
 
@@ -25,10 +26,9 @@ typedef struct {
 
   int callback; ///< Callback for native functions or 0
 
-  /// For Variable DATA
-  JsVarRef firstChild;
-  JsVarRef lastChild;
-  // For Variable NAMES
+  JsVarRef firstChild; /// For Variable DATA + NAMES
+  JsVarRef lastChild; /// For Variable DATA ONLY
+  // For Variable NAMES ONLY
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
@@ -41,11 +41,18 @@ void jsvKill();
 // Note that jsvNew* don't REF a variable for you
 JsVarRef jsvNew(); ///< Create a new variable
 JsVarRef jsvNewFromString(const char *str); ///< Create a new string
+JsVarRef jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
+JsVarRef jsvNewFromInteger(int value);
+JsVarRef jsvNewFromBool(bool value);
+JsVarRef jsvNewFromDouble(double value);
+// Creates a new Variable name that links to the given variable...
+JsVarRef jsvNewVariableName(JsVarRef variable, const char *name);
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
 void jsvUnLock(JsVarRef ref); ///< Unlock this reference
+JsVarRef jsvUnLockPtr(JsVar *var); ///< Unlock this variable (utility fn for jsvUnLock)
 
-void jsvRef(JsVar *v); ///< Reference - set this variable as used by something
+JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
 void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything
 JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set this variable as used by something
 JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
@@ -61,10 +68,20 @@ bool jsvIsNative(JsVar *v);
 bool jsvIsUndefined(JsVar *v);
 bool jsvIsNull(JsVar *v);
 bool jsvIsBasic(JsVar *v);
+bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, int len);
+int jsvGetInteger(JsVar *v);
+double jsvGetDouble(JsVar *v);
+bool jsvGetBool(JsVar *v);
 
+/// MATHS!
+JsVarRef jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
+JsVarRef jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
+
+/// Tree related stuff
+void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name);
 
 /*class CScriptVarLink
 {

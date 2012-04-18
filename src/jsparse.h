@@ -18,13 +18,15 @@ typedef struct {
   //CScriptLex *l;             /// current lexer
   //std::vector<CScriptVar*> scopes; /// stack of scopes when parsing
 
+  JsVarRef zeroInt;
+  JsVarRef oneInt;
   JsVarRef stringClass; /// Built in string class
   JsVarRef objectClass; /// Built in object class
   JsVarRef arrayClass; /// Built in array class
 } JsParse;
 
-void jspInit();
-void jspKill();
+void jspInit(JsParse *parse);
+void jspKill(JsParse *parse);
 
 #if 0
 ~CTinyJS();

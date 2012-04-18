@@ -6,6 +6,7 @@
  */
 
 #include "jsutils.h"
+#include "jslex.h"
 
 bool isWhitespace(char ch) {
     return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
@@ -37,4 +38,12 @@ bool isIDString(const char *s) {
         s++;
     }
     return true;
+}
+
+void jsError(const char *message) {
+  printf("ERROR: %s\n", message);
+}
+
+void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
+  printf("ERROR: %s at %d\n", message, tokenPos);
 }

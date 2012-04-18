@@ -18,12 +18,16 @@ typedef char bool;
 #define false (0)
 
 #define JSVAR_STRING_LEN  16
+#define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  32
+#define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
+#define JS_ERROR_TOKEN_BUF_SIZE 16
+
 
 #define assert(X) if (!(X)) { printf("ASSERT FAIL AT LINE %d\n",__LINE__); exit(1); }
 
 
-enum SCRIPTVAR_FLAGS {
+typedef enum SCRIPTVAR_FLAGS {
     SCRIPTVAR_UNDEFINED   = 0,
     SCRIPTVAR_FUNCTION    = 1,
     SCRIPTVAR_OBJECT      = 2,
@@ -33,7 +37,9 @@ enum SCRIPTVAR_FLAGS {
     SCRIPTVAR_STRING      = 32, // string
     SCRIPTVAR_NULL        = 64, // it seems null is its own data type
 
-    SCRIPTVAR_NATIVE      = 128, // to specify this is a native function
+    SCRIPTVAR_NAME      = 128, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
+    SCRIPTVAR_NATIVE      = 256, // to specify this is a native function
+    SCRIPTVAR_TEMP        = 512, // mainly for debugging so we can see if a temp var got used wrongly
     SCRIPTVAR_NUMERICMASK = SCRIPTVAR_NULL |
                             SCRIPTVAR_DOUBLE |
                             SCRIPTVAR_INTEGER,
@@ -46,9 +52,9 @@ enum SCRIPTVAR_FLAGS {
                             SCRIPTVAR_NULL,
     SCRIPTVAR_STRING_EXT  = SCRIPTVAR_STRING | // a later part of a 'large' string
                             SCRIPTVAR_ARRAY,
-};
+} SCRIPTVAR_FLAGS;
 
-enum LEX_TYPES {
+typedef enum LEX_TYPES {
     LEX_EOF = 0,
     LEX_ID = 256,
     LEX_INT,
@@ -94,7 +100,7 @@ enum LEX_TYPES {
     LEX_R_NEW,
 
     LEX_R_LIST_END /* always the last entry */
-};
+} LEX_TYPES;
 
 bool isWhitespace(char ch);
 bool isNumeric(char ch);
@@ -102,5 +108,11 @@ bool isHexadecimal(char ch);
 bool isAlpha(char ch);
 bool isIDString(const char *s);
 
+// forward decl
+struct JsLex;
+// ------------
+
+void jsError(const char *message);
+void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos);
 
 #endif /* JSUTILS_H_ */

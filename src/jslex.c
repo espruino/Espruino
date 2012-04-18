@@ -371,3 +371,25 @@ void jslGetTokenString(JsLex *lex, char *str, int len) {
   } else
     jslTokenAsString(lex->tk, str, len);
 }
+
+char *jslGetTokenValueAsString(JsLex *lex) {
+  assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
+  lex->token[lex->tokenl]  = 0; // add final null
+  return lex->token;
+}
+
+/// Match, and return true on success, false on failure
+bool jslMatch(JsLex *lex, int expected_tk) {
+  if (lex->tk!=expected_tk) {
+      char tbuf1[JS_ERROR_TOKEN_BUF_SIZE];
+      char tbuf2[JS_ERROR_TOKEN_BUF_SIZE];
+      char buf[JS_ERROR_BUF_SIZE];
+      jslGetTokenString(lex, tbuf1, JS_ERROR_TOKEN_BUF_SIZE);
+      jslTokenAsString(expected_tk, tbuf2, JS_ERROR_TOKEN_BUF_SIZE);
+      snprintf(buf,JS_ERROR_BUF_SIZE, "Got %s expected %s", tbuf1, tbuf2);
+      jsErrorAt(buf, lex, lex->tokenStart);
+      return false;
+  }
+  jslGetNextToken(lex);
+  return true;
+}

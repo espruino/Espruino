@@ -11,7 +11,7 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
-typedef struct
+typedef struct JsLex
 {
     // Actual Lexing related stuff
     char currCh, nextCh;
@@ -46,14 +46,13 @@ void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 void jslTokenAsString(int token, char *str, int len); ///< output the given token as a string - for debugging
 void jslGetTokenString(JsLex *lex, char *str, int len);
+char *jslGetTokenValueAsString(JsLex *lex);
 
-//void jslMatch(JsLex lex, int expected_tk); ///< Lexical match wotsit
-//std::string jslGetTokenStr(JsLex lex, int token); ///< Get the string representation of the given token
+bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on success, false on failure
+
 //void jslReset(JsLex lex); ///< Reset this lex so we can start again
-
 //std::string jslGetSubString(JsLex lex, int pos); ///< Return a sub-string from the given position up until right now
 //Lex *jslGetSubLex(JsLex lex, int lastPosition); ///< Return a sub-lexer from the given position up until right now
-
 //std::string jslGetPosition(JsLex lex, int pos=-1); ///< Return a string representing the position in lines and columns of the character pos given
 
 
