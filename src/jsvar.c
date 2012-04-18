@@ -59,19 +59,20 @@ void jsvUnRef(JsVar *v) {
   v->refs--;
   if (v->refs==0) {
     // free!
+    // TODO: if string, unref substrings
     printf("TODO: Free var\n");
   }
 }
 
 JsVarRef jsvRefRef(JsVarRef ref) {
   JsVar *v = jsvLock(ref);
-  jsvRef(ref);
+  jsvRef(v);
   jsvUnLock(ref);
   return ref;
 }
 JsVarRef jsvUnRefRef(JsVarRef ref) {
   JsVar *v = jsvLock(ref);
-  jsvUnRef(ref);
+  jsvUnRef(v);
   jsvUnLock(ref);
   return 0;
 }

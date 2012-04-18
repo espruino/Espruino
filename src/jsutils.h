@@ -96,5 +96,11 @@ enum LEX_TYPES {
     LEX_R_LIST_END /* always the last entry */
 };
 
+bool isWhitespace(char ch);
+bool isNumeric(char ch);
+bool isHexadecimal(char ch);
+bool isAlpha(char ch);
+bool isIDString(const char *s);
+
 
 #endif /* JSUTILS_H_ */

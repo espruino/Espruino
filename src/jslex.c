@@ -8,21 +8,53 @@
 #include "jslex.h"
 
 void jslSeek(JsLex *lex, int seekToChar) {
-  // FIXME
+  /*OPT: maybe we can seek backwards (for instance when doing
+   * small FOR loops */
+  // free previous
+  if (lex->currentVarRef) {
+    jsvUnLock(lex->currentVarRef);
+    lex->currentVar = 0;
+    lex->currentVarRef = 0;
+  }
+
+  // Set up to first string object
+  lex->currentVarPos = 0;
+  lex->currentPos = seekToChar;
+  lex->currentVarRef = lex->sourceVarRef;
+  lex->currentVar = jsvLock(lex->currentVarRef);
+  // Keep seeking until we get to the start position
+  while (lex->currentVarPos >= JSVAR_STRING_LEN) {
+    lex->currentVarPos -= JSVAR_STRING_LEN;
+    JsVarRef next = lex->currentVar->firstChild;
+    assert(next);
+    jsvUnLock(lex->currentVarRef);
+    lex->currentVarRef = next;
+    lex->currentVar = jsvLock(lex->currentVarRef);
+  }
 }
 
 void jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
   if (lex->currentPos < lex->sourceEndPos) {
-    lex->nextCh = data[lex->dataPos];
+    lex->nextCh = lex->currentVar->strData[lex->currentVarPos];
+    lex->currentVarPos++;
+    // make sure we move on to next..
+    if (lex->currentVarPos >= JSVAR_STRING_LEN) {
+      lex->currentVarPos -= JSVAR_STRING_LEN;
+      JsVarRef next = lex->currentVar->firstChild;
+      assert(next);
+      jsvUnLock(lex->currentVarRef);
+      lex->currentVarRef = next;
+      lex->currentVar = jsvLock(lex->currentVarRef);
+    }
   } else
     lex->nextCh = 0;
   lex->currentPos++;
 }
 
 void jslTokenAppendChar(JsLex *lex, char ch) {
-  assert(lex->token<JSLEX_MAX_TOKEN_LENGTH);
-  lex->token[lex->token++] = ch;
+  assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
+  lex->token[lex->tokenl++] = ch;
 }
 
 bool jslIsToken(JsLex *lex, const char *token) {
@@ -37,20 +69,20 @@ bool jslIsToken(JsLex *lex, const char *token) {
 void jslGetNextToken(JsLex *lex) {
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
-  while (lex->currCh && isWhitespace(lex->currCh)) getNextCh();
+  while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // newline comments
   if (lex->currCh=='/' && lex->nextCh=='/') {
-      while (lex->currCh && lex->currCh!='\n') getNextCh();
-      getNextCh();
-      getNextToken();
+      while (lex->currCh && lex->currCh!='\n') jslGetNextCh(lex);
+      jslGetNextCh(lex);
+      jslGetNextToken(lex);
       return;
   }
   // block comments
   if (lex->currCh=='/' && lex->nextCh=='*') {
-      while (lex->currCh && (lex->currCh!='*' || lex->nextCh!='/')) getNextCh();
-      getNextCh();
-      getNextCh();
-      getNextToken();
+      while (lex->currCh && (lex->currCh!='*' || lex->nextCh!='/')) jslGetNextCh(lex);
+      jslGetNextCh(lex);
+      jslGetNextCh(lex);
+      jslGetNextToken(lex);
       return;
   }
   // record beginning of this token
@@ -59,7 +91,7 @@ void jslGetNextToken(JsLex *lex) {
   if (isAlpha(lex->currCh)) { //  IDs
       while (isAlpha(lex->currCh) || isNumeric(lex->currCh)) {
           jslTokenAppendChar(lex, lex->currCh);
-          getNextCh();
+          jslGetNextCh(lex);
       }
       lex->tk = LEX_ID;
            //OPT: could do fancy nested IFs here to reduce number of compares
@@ -80,40 +112,40 @@ void jslGetNextToken(JsLex *lex) {
       else if (jslIsToken(lex,"new")) lex->tk = LEX_R_NEW;
   } else if (isNumeric(lex->currCh)) { // Numbers
       bool isHex = false;
-      if (lex->currCh=='0') { jslTokenAppendChar(lex, lex->currCh); getNextCh(); }
+      if (lex->currCh=='0') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
       if (lex->currCh=='x') {
         isHex = true;
-        jslTokenAppendChar(lex, lex->currCh); getNextCh();
+        jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
       }
       lex->tk = LEX_INT;
       while (isNumeric(lex->currCh) || (isHex && isHexadecimal(lex->currCh))) {
         jslTokenAppendChar(lex, lex->currCh);
-        getNextCh();
+        jslGetNextCh(lex);
       }
       if (!isHex && lex->currCh=='.') {
           lex->tk = LEX_FLOAT;
           jslTokenAppendChar(lex, '.');
-          getNextCh();
+          jslGetNextCh(lex);
           while (isNumeric(lex->currCh)) {
             jslTokenAppendChar(lex, lex->currCh);
-            getNextCh();
+            jslGetNextCh(lex);
           }
       }
       // do fancy e-style floating point
       if (!isHex && (lex->currCh=='e'||lex->currCh=='E')) {
         lex->tk = LEX_FLOAT;
-        jslTokenAppendChar(lex, lex->currCh); getNextCh();
-        if (lex->currCh=='-') { jslTokenAppendChar(lex, lex->currCh); getNextCh(); }
+        jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
+        if (lex->currCh=='-') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
         while (isNumeric(lex->currCh)) {
-          jslTokenAppendChar(lex, lex->currCh); getNextCh();
+          jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
         }
       }
   } else if (lex->currCh=='"') {
       // strings...
-      getNextCh();
+      jslGetNextCh(lex);
       while (lex->currCh && lex->currCh!='"') {
           if (lex->currCh == '\\') {
-              getNextCh();
+              jslGetNextCh(lex);
               switch (lex->currCh) {
               case 'n' : jslTokenAppendChar(lex, '\n'); break;
               case '"' : jslTokenAppendChar(lex, '"'); break;
@@ -123,16 +155,16 @@ void jslGetNextToken(JsLex *lex) {
           } else {
             jslTokenAppendChar(lex, lex->currCh);
           }
-          getNextCh();
+          jslGetNextCh(lex);
       }
-      getNextCh();
+      jslGetNextCh(lex);
       lex->tk = LEX_STR;
   } else if (lex->currCh=='\'') {
       // strings again...
-      getNextCh();
+      jslGetNextCh(lex);
       while (lex->currCh && lex->currCh!='\'') {
           if (lex->currCh == '\\') {
-              getNextCh();
+              jslGetNextCh(lex);
               switch (lex->currCh) {
               case 'n' : jslTokenAppendChar(lex, '\n'); break;
               case 'a' : jslTokenAppendChar(lex, '\a'); break;
@@ -142,16 +174,16 @@ void jslGetNextToken(JsLex *lex) {
               case '\\' : jslTokenAppendChar(lex, '\\'); break;
               case 'x' : { // hex digits
                             char buf[3] = "??";
-                            getNextCh(); buf[0] = lex->currCh;
-                            getNextCh(); buf[1] = lex->currCh;
+                            jslGetNextCh(lex); buf[0] = lex->currCh;
+                            jslGetNextCh(lex); buf[1] = lex->currCh;
                             jslTokenAppendChar(lex, (char)strtol(buf,0,16));
                          } break;
               default: if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
                          char buf[4] = "???";
                          buf[0] = lex->currCh;
-                         getNextCh(); buf[1] = lex->currCh;
-                         getNextCh(); buf[2] = lex->currCh;
+                         jslGetNextCh(lex); buf[1] = lex->currCh;
+                         jslGetNextCh(lex); buf[2] = lex->currCh;
                          jslTokenAppendChar(lex, (char)strtol(buf,0,8));
                        } else
                          jslTokenAppendChar(lex, lex->currCh);
@@ -160,78 +192,78 @@ void jslGetNextToken(JsLex *lex) {
           } else {
             jslTokenAppendChar(lex, lex->currCh);
           }
-          getNextCh();
+          jslGetNextCh(lex);
       }
-      getNextCh();
+      jslGetNextCh(lex);
       lex->tk = LEX_STR;
   } else {
       // single chars
       lex->tk = lex->currCh;
-      if (lex->currCh) getNextCh();
+      if (lex->currCh) jslGetNextCh(lex);
       if (lex->tk=='=' && lex->currCh=='=') { // ==
           lex->tk = LEX_EQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
           if (lex->currCh=='=') { // ===
             lex->tk = LEX_TYPEEQUAL;
-            getNextCh();
+            jslGetNextCh(lex);
           }
       } else if (lex->tk=='!' && lex->currCh=='=') { // !=
           lex->tk = LEX_NEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
           if (lex->currCh=='=') { // !==
             lex->tk = LEX_NTYPEEQUAL;
-            getNextCh();
+            jslGetNextCh(lex);
           }
       } else if (lex->tk=='<' && lex->currCh=='=') {
           lex->tk = LEX_LEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='<' && lex->currCh=='<') {
           lex->tk = LEX_LSHIFT;
-          getNextCh();
+          jslGetNextCh(lex);
           if (lex->currCh=='=') { // <<=
             lex->tk = LEX_LSHIFTEQUAL;
-            getNextCh();
+            jslGetNextCh(lex);
           }
       } else if (lex->tk=='>' && lex->currCh=='=') {
           lex->tk = LEX_GEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='>' && lex->currCh=='>') {
           lex->tk = LEX_RSHIFT;
-          getNextCh();
+          jslGetNextCh(lex);
           if (lex->currCh=='=') { // >>=
             lex->tk = LEX_RSHIFTEQUAL;
-            getNextCh();
+            jslGetNextCh(lex);
           } else if (lex->currCh=='>') { // >>>
             lex->tk = LEX_RSHIFTUNSIGNED;
-            getNextCh();
+            jslGetNextCh(lex);
           }
       }  else if (lex->tk=='+' && lex->currCh=='=') {
           lex->tk = LEX_PLUSEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       }  else if (lex->tk=='-' && lex->currCh=='=') {
           lex->tk = LEX_MINUSEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       }  else if (lex->tk=='+' && lex->currCh=='+') {
           lex->tk = LEX_PLUSPLUS;
-          getNextCh();
+          jslGetNextCh(lex);
       }  else if (lex->tk=='-' && lex->currCh=='-') {
           lex->tk = LEX_MINUSMINUS;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='&' && lex->currCh=='=') {
           lex->tk = LEX_ANDEQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='&' && lex->currCh=='&') {
           lex->tk = LEX_ANDAND;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='|' && lex->currCh=='=') {
           lex->tk = LEX_OREQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='|' && lex->currCh=='|') {
           lex->tk = LEX_OROR;
-          getNextCh();
+          jslGetNextCh(lex);
       } else if (lex->tk=='^' && lex->currCh=='=') {
           lex->tk = LEX_XOREQUAL;
-          getNextCh();
+          jslGetNextCh(lex);
       }
   }
   /* This isn't quite right yet */
@@ -261,10 +293,81 @@ void jslInit(JsLex *lex, JsVarRef var, int startPos, int endPos) {
 }
 
 void jslKill(JsLex *lex) {
+  lex->tk = LEX_EOF; // safety ;)
   if (lex->currentVarRef) {
     jsvUnLock(lex->currentVarRef);
     lex->currentVarRef=0;
     lex->currentVar=0;
   }
-  lex->sourceVarRef = jsvUnrefRef(lex->sourceVarRef);
+  lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
+}
+
+void jslTokenAsString(int token, char *str, int len) {
+  if (token>32 && token<128) {
+      assert(len>=4);
+      str[0] = '\'';
+      str[1] = (char)token;
+      str[2] = '\'';
+      str[3] = 0;
+  }
+  switch (token) {
+      case LEX_EOF : strncpy(str, "EOF", len); break;
+      case LEX_ID : strncpy(str, "ID", len); break;
+      case LEX_INT : strncpy(str, "INT", len); break;
+      case LEX_FLOAT : strncpy(str, "FLOAT", len); break;
+      case LEX_STR : strncpy(str, "STRING", len); break;
+      case LEX_EQUAL : strncpy(str, "==", len); break;
+      case LEX_TYPEEQUAL : strncpy(str, "===", len); break;
+      case LEX_NEQUAL : strncpy(str, "!=", len); break;
+      case LEX_NTYPEEQUAL : strncpy(str, "!==", len); break;
+      case LEX_LEQUAL : strncpy(str, "<=", len); break;
+      case LEX_LSHIFT : strncpy(str, "<<", len); break;
+      case LEX_LSHIFTEQUAL : strncpy(str, "<<=", len); break;
+      case LEX_GEQUAL : strncpy(str, ">=", len); break;
+      case LEX_RSHIFT : strncpy(str, ">>", len); break;
+      case LEX_RSHIFTUNSIGNED : strncpy(str, ">>", len); break;
+      case LEX_RSHIFTEQUAL : strncpy(str, ">>=", len); break;
+      case LEX_PLUSEQUAL : strncpy(str, "+=", len); break;
+      case LEX_MINUSEQUAL : strncpy(str, "-=", len); break;
+      case LEX_PLUSPLUS : strncpy(str, "++", len); break;
+      case LEX_MINUSMINUS : strncpy(str, "--", len); break;
+      case LEX_ANDEQUAL : strncpy(str, "&=", len); break;
+      case LEX_ANDAND : strncpy(str, "&&", len); break;
+      case LEX_OREQUAL : strncpy(str, "|=", len); break;
+      case LEX_OROR : strncpy(str, "||", len); break;
+      case LEX_XOREQUAL : strncpy(str, "^=", len); break;
+              // reserved words
+      case LEX_R_IF : strncpy(str, "if", len); break;
+      case LEX_R_ELSE : strncpy(str, "else", len); break;
+      case LEX_R_DO : strncpy(str, "do", len); break;
+      case LEX_R_WHILE : strncpy(str, "while", len); break;
+      case LEX_R_FOR : strncpy(str, "for", len); break;
+      case LEX_R_BREAK : strncpy(str, "break", len); break;
+      case LEX_R_CONTINUE : strncpy(str, "continue", len); break;
+      case LEX_R_FUNCTION : strncpy(str, "function", len); break;
+      case LEX_R_RETURN : strncpy(str, "return", len); break;
+      case LEX_R_VAR : strncpy(str, "var", len); break;
+      case LEX_R_TRUE : strncpy(str, "true", len); break;
+      case LEX_R_FALSE : strncpy(str, "false", len); break;
+      case LEX_R_NULL : strncpy(str, "null", len); break;
+      case LEX_R_UNDEFINED : strncpy(str, "undefined", len); break;
+      case LEX_R_NEW : strncpy(str, "new", len); break;
+  }
+
+  snprintf(str, len, "?[%d]",token);
+}
+
+void jslGetTokenString(JsLex *lex, char *str, int len) {
+  if (lex->tk == LEX_ID) {
+    assert(len > lex->tokenl+1);
+    memcpy(str, lex->token, lex->tokenl);
+    str[lex->tokenl] = 0;
+  } else if (lex->tk == LEX_STR) {
+      assert(len > lex->tokenl+3);
+      str[0] = '"';
+      memcpy(str+1, lex->token, lex->tokenl);
+      str[lex->tokenl+1] = '"';
+      str[lex->tokenl+2] = 0;
+  } else
+    jslTokenAsString(lex->tk, str, len);
 }

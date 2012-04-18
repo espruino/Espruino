@@ -35,12 +35,17 @@ typedef struct
     int currentPos;
     int currentVarPos; // current position in currentVar
     JsVarRef currentVarRef; // current var
-    JsVar currentVar; // current JsVar itself
+    JsVar *currentVar; // current JsVar itself
 
 } JsLex;
 
 void jslInit(JsLex *lex, JsVarRef var, int startPos, int endPos);
 void jslKill(JsLex *lex);
+
+void jslGetNextCh(JsLex *lex);
+void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
+void jslTokenAsString(int token, char *str, int len); ///< output the given token as a string - for debugging
+void jslGetTokenString(JsLex *lex, char *str, int len);
 
 //void jslMatch(JsLex lex, int expected_tk); ///< Lexical match wotsit
 //std::string jslGetTokenStr(JsLex lex, int token); ///< Get the string representation of the given token
@@ -50,8 +55,7 @@ void jslKill(JsLex *lex);
 //Lex *jslGetSubLex(JsLex lex, int lastPosition); ///< Return a sub-lexer from the given position up until right now
 
 //std::string jslGetPosition(JsLex lex, int pos=-1); ///< Return a string representing the position in lines and columns of the character pos given
-void jslGetNextCh(JsLex lex);
-void jslGetNextToken(JsLex lex); ///< Get the text token from our text string
+
 
 
 
