@@ -271,6 +271,19 @@ double jsvGetDouble(JsVar *v) {
     return 0; /* or NaN? */
 }
 
+bool jsvIsStringEqual(JsVar *var, const char *str) {
+  assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
+
+  for (int i=0;i<JSVAR_STRING_LEN;i++) {
+     if (var->strData[i] != str[i]) return false;
+     if  (str[i]==0) return true; // end of string, all great!
+  }
+
+  jsError("INTERNAL: TODO: String equality check past boundary of string");
+  return false; //
+}
+
+
 void jsvAddName(JsVarRef parent, JsVarRef namedChild) {
   namedChild = jsvRefRef(namedChild);
   JsVar *v = jsvLock(parent);
@@ -296,6 +309,24 @@ void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
   JsVar *namedChild = jsvNewVariableName(child, name);
   jsvAddName(parent, namedChild->this);
   jsvUnLockPtr(namedChild);
+}
+
+/** Non-recursive finding */
+JsVar *jsvFindChild(JsVarRef parentref, const char *name) {
+  JsVar *parent = jsvLock(parentref);
+  JsVarRef childref = parent->firstChild;
+  while (childref) {
+    JsVar *child = jsvLock(childref);
+    if (jsvIsStringEqual(child, name)) {
+      // found it! unlock parent but leave child locked
+      jsvUnLockPtr(parent);
+      return child;
+    }
+    childref = child->nextSibling;
+    jsvUnLockPtr(child);
+  }
+  jsvUnLockPtr(parent);
+  return 0;
 }
 
 JsVar *jsvMathsOpError(int op, const char *datatype) {

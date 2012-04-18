@@ -23,6 +23,8 @@ typedef char bool;
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16
 
+#define JSPARSE_MAX_SCOPES  32
+
 
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 

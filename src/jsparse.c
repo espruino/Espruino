@@ -3,6 +3,9 @@
 typedef struct {
   JsParse *parse;
   JsLex *lex;
+
+  JsVarRef scopes[JSPARSE_MAX_SCOPES];
+  int scopeCount;
 } JsExecInfo;
 
 typedef enum  {
@@ -38,6 +41,40 @@ JsVar *jspReplaceWith(JsExecInfo *execInfo, JsVar *dst, JsVar *src) {
 void jspClean(JsVar *var) {
   if (var) jsvUnLockPtr(var);
 }
+
+void jspeiInit(JsExecInfo *execInfo, JsParse *parse, JsLex *lex) {
+  execInfo->parse = parse;
+  execInfo->lex = lex;
+  execInfo->scopeCount = 0;
+}
+
+void jspeiKill(JsExecInfo *execInfo) {
+  assert(execInfo->scopeCount==0);
+}
+
+void jspeiAddScope(JsExecInfo *execInfo, JsVarRef scope) {
+  if (execInfo->scopeCount >= JSPARSE_MAX_SCOPES) {
+    jsError("Maximum number of scopes exceeded");
+    return;
+  }
+  execInfo->scopes[execInfo->scopeCount++] = jsvRefRef(scope);
+}
+
+void jspeiRemoveScope(JsExecInfo *execInfo) {
+  if (execInfo->scopeCount <= 0) {
+    jsError("INTERNAL: Too many scopes removed");
+    return;
+  }
+  jsvUnRefRef(execInfo->scopes[--execInfo->scopeCount]);
+}
+
+JsVar *jspeiFindInScopes(JsExecInfo *execInfo, const char *name) {
+  for (int i=execInfo->scopeCount-1;i>=0;i++) {
+    JsVar *ref = jsvFindChild(execInfo->scopes[i], name);
+    if (ref) return ref;
+  }
+  return jsvFindChild(execInfo->parse->root, name);
+}
 // -----------------------------------------------
 
 
@@ -65,7 +102,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
     }
     if (execInfo->lex->tk==LEX_ID) {
-        JsVar *a = /*execute ? findInScopes(execInfo->lex->tkStr) : */0;
+        JsVar *a = execute ? jspeiFindInScopes(execInfo, jslGetTokenValueAsString(execInfo->lex)) : 0;
         /* The parent if we're executing a method call */
         JsVar *parent = 0;
 
