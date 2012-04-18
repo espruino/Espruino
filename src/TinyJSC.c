@@ -51,11 +51,14 @@ int main(void) {
 	JsParse p;
 	jspInit(&p);
 
-	JsVar *v = jspEvaluate(&p, "Z = 1+2+__ONE");
-	char buf[256];
-    jsvGetString(v, buf, 256);
-    jsvUnLockPtr(v);
-    printf("RESULT : '%s'\n", buf);
+	JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1;");
+	if (v) {
+      char buf[256];
+      jsvGetString(v, buf, 256);
+      jsvUnLockPtr(v);
+      printf("RESULT : '%s'\n", buf);
+	} else
+	  printf("NO RESULT\n");
 	jspKill(&p);
 	jsvTrace(p.root, 0);
 

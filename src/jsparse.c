@@ -495,8 +495,9 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         execInfo->lex->tk==LEX_STR ||
         execInfo->lex->tk=='-') {
         /* Execute a simple statement that only contains basic arithmetic... */
-        jspClean(jspeBase(execInfo, execute));
-        JSP_MATCH(';');
+        JsVar *res = jspeBase(execInfo, execute);
+        if (execInfo->lex->tk==';') JSP_MATCH(';');
+        return res;
     } else if (execInfo->lex->tk=='{') {
         /* A block of code */
         jspeBlock(execInfo, execute);
@@ -709,7 +710,11 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   execInfo.lex = &lex;
   JsExecFlags execute = EXEC_YES;
 
-  JsVar *v = jspeBase(&execInfo, execute);
+  JsVar *v = 0;
+  while (execInfo.lex->tk != LEX_EOF) {
+    jspClean(v);
+    v = jspeStatement(&execInfo, execute);
+  }
 
   jslKill(&lex);
 

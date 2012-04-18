@@ -119,10 +119,10 @@ JsVar *jsvNewFromString(const char *str) {
     // make a new one, link it in, and unlock the old one.
     if (*str) {
       JsVar *next = jsvRef(jsvNew());
+      next->flags = SCRIPTVAR_STRING_EXT;
       var->firstChild = next->this;
       if (var!=first) jsvUnLockPtr(var);
-      jsvRef(var);
-      var->flags = SCRIPTVAR_STRING_EXT;
+      var = next;
     }
   }
   if (var!=first) jsvUnLockPtr(var);
@@ -327,8 +327,10 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound)
   }
 
   JsVar *child = 0;
-  if (createIfNotFound)
+  if (createIfNotFound) {
     child = jsvNewVariableName(0, name);
+    jsvAddName(parentref, child->this);
+  }
   jsvUnLockPtr(parent);
   return child;
 }
