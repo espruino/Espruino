@@ -18,6 +18,7 @@ typedef enum  {
 
 // ----------------------------------------------- Forward decls
 JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute);
+JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute);
 // ----------------------------------------------- Utils
 #define JSP_MATCH(TOKEN) if (!jslMatch(execInfo->lex,(TOKEN))) return 0;
 
@@ -70,10 +71,16 @@ void jspeiRemoveScope(JsExecInfo *execInfo) {
 
 JsVar *jspeiFindInScopes(JsExecInfo *execInfo, const char *name) {
   for (int i=execInfo->scopeCount-1;i>=0;i++) {
-    JsVar *ref = jsvFindChild(execInfo->scopes[i], name);
+    JsVar *ref = jsvFindChild(execInfo->scopes[i], name, false);
     if (ref) return ref;
   }
-  return jsvFindChild(execInfo->parse->root, name);
+  return jsvFindChild(execInfo->parse->root, name, false);
+}
+
+JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFound) {
+  if (execInfo->scopeCount>0)
+    return jsvFindChild(execInfo->scopes[execInfo->scopeCount-1], name, createIfNotFound);
+  return jsvFindChild(execInfo->parse->root, name, createIfNotFound);
 }
 // -----------------------------------------------
 
@@ -461,6 +468,208 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute) {
         jspClean(rhs);
     }
     return lhs;
+}
+
+JsVar *jspeBlock(JsExecInfo *execInfo, JsExecFlags execute) {
+    JSP_MATCH('{');
+    if (execute) {
+      while (execInfo->lex->tk && execInfo->lex->tk!='}')
+        jspClean(jspeStatement(execInfo, execute));
+      JSP_MATCH('}');
+    } else {
+      // fast skip of blocks
+      int brackets = 1;
+      while (execInfo->lex->tk && brackets) {
+        if (execInfo->lex->tk == '{') brackets++;
+        if (execInfo->lex->tk == '}') brackets--;
+        JSP_MATCH(execInfo->lex->tk);
+      }
+    }
+    return 0;
+}
+
+JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
+    if (execInfo->lex->tk==LEX_ID ||
+        execInfo->lex->tk==LEX_INT ||
+        execInfo->lex->tk==LEX_FLOAT ||
+        execInfo->lex->tk==LEX_STR ||
+        execInfo->lex->tk=='-') {
+        /* Execute a simple statement that only contains basic arithmetic... */
+        jspClean(jspeBase(execInfo, execute));
+        JSP_MATCH(';');
+    } else if (execInfo->lex->tk=='{') {
+        /* A block of code */
+        jspeBlock(execInfo, execute);
+    } else if (execInfo->lex->tk==';') {
+        /* Empty statement - to allow things like ;;; */
+        JSP_MATCH(';');
+    } else if (execInfo->lex->tk==LEX_R_VAR) {
+        /* variable creation. TODO - we need a better way of parsing the left
+         * hand side. Maybe just have a flag called can_create_var that we
+         * set and then we parse as if we're doing a normal equals.*/
+        JSP_MATCH(LEX_R_VAR);
+        while (execInfo->lex->tk != ';') {
+          JsVar *a = 0;
+          if (execute)
+            a = jspeiFindOnTop(execInfo, jslGetTokenValueAsString(execInfo->lex), true);
+          JSP_MATCH(LEX_ID);
+          // now do stuff defined with dots
+          while (execInfo->lex->tk == '.') {
+              JSP_MATCH('.');
+              if (execute) {
+                  JsVar *lastA = a;
+                  a = jsvFindChild(lastA->this, jslGetTokenValueAsString(execInfo->lex), true);
+                  jspClean(lastA);
+              }
+              JSP_MATCH(LEX_ID);
+          }
+          // sort out initialiser
+          if (execInfo->lex->tk == '=') {
+              JSP_MATCH('=');
+              JsVar *var = jspeBase(execInfo, execute);
+              if (execute)
+                  jspReplaceWith(execInfo, a, var);
+              jspClean(var);
+          }
+          jspClean(a);
+          if (execInfo->lex->tk != ';')
+            JSP_MATCH(',');
+        }
+        JSP_MATCH(';');
+    } else if (execInfo->lex->tk==LEX_R_IF) {
+        JSP_MATCH(LEX_R_IF);
+        JSP_MATCH('(');
+        JsVar *var = jspeBase(execInfo, execute);
+        JSP_MATCH(')');
+        bool cond = execute && jsvGetBool(var);
+        jspClean(var);
+        JsExecFlags noexecute = EXEC_NO; // because we need to be abl;e to write to it
+        jspeStatement(execInfo, cond ? execute : noexecute);
+        if (execInfo->lex->tk==LEX_R_ELSE) {
+            JSP_MATCH(LEX_R_ELSE);
+            jspeStatement(execInfo, cond ? noexecute : execute);
+        }
+#if TODO
+    } else if (execInfo->lex->tk==LEX_R_WHILE) {
+        // We do repetition by pulling out the string representing our statement
+        // there's definitely some opportunity for optimisation here
+        JSP_MATCH(LEX_R_WHILE);
+        JSP_MATCH('(');
+        int whileCondStart = execInfo->lex->tokenStart;
+        JsExecFlags noexecute = EXEC_NO;
+        JsVar *cond = jspeBase(execInfo, execute);
+        bool loopCond = execute && jsvGetBool(cond);
+        jspClean(cond);
+        CScriptLex *whileCond = l->getSubLex(whileCondStart);
+        JSP_MATCH(')');
+        int whileBodyStart = execInfo->lex->tokenStart;
+        jspeStatement(execInfo, loopCond ? execute : noexecute);
+        CScriptLex *whileBody = l->getSubLex(whileBodyStart);
+        CScriptLex *oldLex = l;
+        int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+        while (loopCond && loopCount-->0) {
+            whileCond->reset();
+            l = whileCond;
+            cond = jspeBase(execInfo, execute);
+            loopCond = execute && jsvGetBool(cond);
+            jspClean(cond);
+            if (loopCond) {
+                whileBody->reset();
+                l = whileBody;
+                jspeStatement(execInfo, execute);
+            }
+        }
+        l = oldLex;
+        delete whileCond;
+        delete whileBody;
+
+        if (loopCount<=0) {
+          jsErrorAt("WHILE Loop exceeded the maximum number of iterations", execInfo->lex, execInfo->lex->tokenLastEnd);
+        }
+    } else if (execInfo->lex->tk==LEX_R_FOR) {
+        JSP_MATCH(LEX_R_FOR);
+        JSP_MATCH('(');
+        jspeStatement(execInfo, execute); // initialisation
+        //JSP_MATCH(';');
+        int forCondStart = execInfo->lex->tokenStart;
+        JsExecFlags noexecute = EXEC_NO;
+        JsVar *cond = jspeBase(execInfo, execute); // condition
+        bool loopCond = execute && jsvGetBool(cond);
+        jspClean(cond);
+        CScriptLex *forCond = l->getSubLex(forCondStart);
+        JSP_MATCH(';');
+        int forIterStart = execInfo->lex->tokenStart;
+        jspClean(base(noexecute)); // iterator
+        CScriptLex *forIter = l->getSubLex(forIterStart);
+        JSP_MATCH(')');
+        int forBodyStart = execInfo->lex->tokenStart;
+        jspeStatement(execInfo, loopCond ? execute : noexecute);
+        CScriptLex *forBody = l->getSubLex(forBodyStart);
+        CScriptLex *oldLex = l;
+        if (loopCond) {
+            forIter->reset();
+            l = forIter;
+            jspClean(base(execute));
+        }
+        int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+        while (execute && loopCond && loopCount-->0) {
+            forCond->reset();
+            l = forCond;
+            cond = jspeBase(execInfo, execute);
+            loopCond = jsvGetBool(cond);
+            jspClean(cond);
+            if (execute && loopCond) {
+                forBody->reset();
+                l = forBody;
+                jspeStatement(execInfo, execute);
+            }
+            if (execute && loopCond) {
+                forIter->reset();
+                l = forIter;
+                jspClean(base(execute));
+            }
+        }
+        l = oldLex;
+        delete forCond;
+        delete forIter;
+        delete forBody;
+        if (loopCount<=0) {
+            jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo->lex, execInfo->lex->tokenLastEnd);
+        }
+    } else if (execInfo->lex->tk==LEX_R_RETURN) {
+        JSP_MATCH(LEX_R_RETURN);
+        JsVar *result = 0;
+        if (execInfo->lex->tk != ';')
+          result = jspeBase(execInfo, execute);
+        if (execute) {
+          JsVar *resultVar = jspeiFindOnTop(execInfo, TINYJS_RETURN_VAR, false);
+          if (resultVar) {
+            jspReplaceWith(execInfo, resultVar, result);
+            jspClean(resultVar);
+          } else
+            jsErrorAt("RETURN statement, but not in a function.\n", execInfo->lex, execInfo->lex->tokenLastEnd);
+          execute = false;
+        }
+        jspClean(result);
+        JSP_MATCH(';');
+    } else if (execInfo->lex->tk==LEX_R_FUNCTION) {
+        JsVar *funcVar = parseFunctionDefinition();
+        if (execute) {
+          if (jsvIsStringEqual(funcVar, TINYJS_TEMP_NAME))
+            jsErrorAt("Functions defined at statement-level are meant to have a name\n", execInfo->lex, execInfo->lex->tokenLastEnd);
+          else {
+            char funcName[JSLEX_MAX_TOKEN_LENGTH];
+            jsvGetString(funcVar, funcName, JSLEX_MAX_TOKEN_LENGTH);
+            JsVar *func = jspeiFindOnTop(execInfo, funcName, true);
+            jspReplaceWith(execInfo, func, funcVar); // FIXME - skip 'name' part?
+            jspClean(funcVar);
+            jspClean(func);
+          }
+        }
+        jspClean(funcVar);
+#endif
+    } else JSP_MATCH(LEX_EOF);
+    return 0;
 }
 
 // -----------------------------------------------------------------------------

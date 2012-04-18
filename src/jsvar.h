@@ -73,9 +73,13 @@ bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is n
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len);
 int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
+bool jsvIsStringEqual(JsVar *var, const char *str);
+
 long jsvGetInteger(JsVar *v);
 double jsvGetDouble(JsVar *v);
 bool jsvGetBool(JsVar *v);
+
+
 
 /// MATHS!
 JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
@@ -85,6 +89,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 /// Tree related stuff
 void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
 void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it
+JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name
 
 /*class CScriptVarLink
 {

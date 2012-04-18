@@ -10,7 +10,9 @@
 
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
- *
+ * TODO: Ensure that getBool/etc skip over refs if they find them
+ *       Tiny up TINYJS constants
+ *       See if we can remove jsvUnlock and just use UnlockPtr
  * */
 
 #include <stdio.h>

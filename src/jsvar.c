@@ -312,7 +312,7 @@ void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
 }
 
 /** Non-recursive finding */
-JsVar *jsvFindChild(JsVarRef parentref, const char *name) {
+JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound) {
   JsVar *parent = jsvLock(parentref);
   JsVarRef childref = parent->firstChild;
   while (childref) {
@@ -325,8 +325,12 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name) {
     childref = child->nextSibling;
     jsvUnLockPtr(child);
   }
+
+  JsVar *child = 0;
+  if (createIfNotFound)
+    child = jsvNewVariableName(0, name);
   jsvUnLockPtr(parent);
-  return 0;
+  return child;
 }
 
 JsVar *jsvMathsOpError(int op, const char *datatype) {
@@ -509,10 +513,14 @@ void jsvTrace(JsVarRef ref, int indent) {
       jsvUnLockPtr(childVar);
     }
 
-    for (int i=0;i<indent;i++) printf(" ");
-    if (jsvIsObject(var)) printf("}\n");
-    else if (jsvIsArray(var)) printf("]\n");
-    else if (jsvIsFunction(var)) printf("}\n");
+
+    if (jsvIsObject(var) || jsvIsFunction(var)) {
+      for (int i=0;i<indent;i++) printf(" ");
+      printf("}\n");
+    } else if (jsvIsArray(var)) {
+      for (int i=0;i<indent;i++) printf(" ");
+      printf("]\n");
+    }
 
     jsvUnLockPtr(var);
 }

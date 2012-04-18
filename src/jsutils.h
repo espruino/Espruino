@@ -24,6 +24,11 @@ typedef char bool;
 #define JS_ERROR_TOKEN_BUF_SIZE 16
 
 #define JSPARSE_MAX_SCOPES  32
+#define TINYJS_LOOP_MAX_ITERATIONS 8192
+
+#define TINYJS_RETURN_VAR "return"
+#define TINYJS_PROTOTYPE_CLASS "prototype"
+#define TINYJS_TEMP_NAME ""
 
 
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
