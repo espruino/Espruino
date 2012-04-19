@@ -26,21 +26,15 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute);
 #define JSP_MATCH(TOKEN) {if (!jslMatch(execInfo->lex,(TOKEN))) return 0;}
 #define JSP_SHOULD_EXECUTE(execute) (((*execute)&EXEC_RUN_MASK)==EXEC_YES)
 
+///< Same as jsvSetValueOfName, but nice error message
 JsVar *jspReplaceWith(JsExecInfo *execInfo, JsVar *dst, JsVar *src) {
-  assert(dst && src);
+  assert(dst);
   // if desination isn't there, isn't a 'name', or is used, just return source
   if (!jsvIsName(dst)) {
     jsErrorAt("Unable to assign value to non-reference", execInfo->lex, execInfo->lex->tokenLastEnd);
     return dst;
   }
-  // all is fine, so replace the existing child...
-  /* Existing child may be null in the case of Z = 0 where
-   * we create 'Z' and pass it down to '=' to have the value
-   * filled in.
-   */
-  if (dst->firstChild) jsvUnRefRef(dst->firstChild); // free existing
-  dst->firstChild = jsvRef(src)->this;
-  return dst;
+  return jsvSetValueOfName(dst, src);
 }
 
 void jspClean(JsVar *var) {
@@ -104,36 +98,64 @@ bool jspeFunctionArguments(JsExecInfo *execInfo, JsVar *funcVar) {
   return true;
 }
 
-#ifdef TODO
-void jspAddNativeFunction(JsParse *parse, const char *funcDesc, JSCallback ptr, void *userdata) {
-    CScriptLex *oldLex = l;
-    l = new CScriptLex(funcDesc);
-
-    CScriptVar *base = root;
-
+bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
+    JsVar *base = jsvLock(execInfo->parse->root);
     JSP_MATCH(LEX_R_FUNCTION);
-    string funcName = execInfo->lex->tkStr;
+
+    char funcName[JSLEX_MAX_TOKEN_LENGTH];
+    strncpy(funcName, jslGetTokenValueAsString(execInfo->lex), JSLEX_MAX_TOKEN_LENGTH);
     JSP_MATCH(LEX_ID);
-    /* Check for dots, we might want to do something like function String.substring ... */
+    /* Check for dots, we might want to do something like function 'String.substring' ... */
     while (execInfo->lex->tk == '.') {
       JSP_MATCH('.');
-      CScriptVarLink *link = base->findChild(funcName);
-      // if it doesn't exist, make an object class
-      if (!link) link = base->addChild(funcName, new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_OBJECT));
-      base = link->var;
-      funcName = execInfo->lex->tkStr;
+      JsVar *link = jsvFindChild(base->this, funcName, false);
+      // if it doesn't exist, make a new object class
+      if (!link) {
+        JsVar *obj = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+        link = jsvAddNamedChild(base->this, obj->this, funcName);
+        jsvUnLockPtr(obj);
+      }
+      // set base to the object (not the name)
+      jsvUnLockPtr(base);
+      base = jsvSkipName(link);
+      jsvUnLockPtr(link);
+      // Look for another name
+      strncpy(funcName, jslGetTokenValueAsString(execInfo->lex), JSLEX_MAX_TOKEN_LENGTH);
       JSP_MATCH(LEX_ID);
     }
+    // So now, base points to an object where we want our function
+    JsVar *funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION | SCRIPTVAR_NATIVE);
+    funcVar->callback = callbackPtr;
+    jspeFunctionArguments(execInfo, funcVar);
 
-    CScriptVar *funcVar = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_FUNCTION | SCRIPTVAR_NATIVE);
-    funcVar->setCallback(ptr, userdata);
-    parseFunctionArguments(funcVar);
-    delete l;
-    l = oldLex;
-
-    base->addChild(funcName, funcVar);
+    // Add the function with its name
+    jsvUnLockPtr(jsvAddNamedChild(base->this, funcVar->this, funcName));
+    jsvUnLockPtr(base);
+    jsvUnLockPtr(funcVar);
+    return true;
 }
-#endif
+
+bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr) {
+    // Set up Lexer
+    JsVar *code = jsvNewFromString(funcDesc);
+    JsLex lex;
+    jslInit(&lex, code, 0, -1);
+    jsvUnLockPtr(code);
+
+    JsExecInfo execInfo;
+    jspeiInit(&execInfo, parse, &lex);
+
+    // Parse
+    bool success = jspeParseNativeFunction(&execInfo, callbackPtr);
+    if (!success) {
+      jsError("Parsing Native Function failed!");
+    }
+
+    // cleanup
+    jslKill(&lex);
+
+    return success;
+}
 
 JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
   // actually parse a function... We assume that the LEX_FUNCTION and name
@@ -215,9 +237,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
 
     if (jsvIsNative(function)) {
         assert(function->callback);
-#ifdef TODO
-        function->var->jsCallback(functionRoot, function->var->jsCallbackUserData);
-#endif
+        function->callback(functionRoot->this);
     } else {
         /* we just want to execute the block, but something could
          * have messed up and left us with the wrong ScriptLex, so
@@ -866,7 +886,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
             jspClean(resultVar);
           } else
             jsErrorAt("RETURN statement, but not in a function.\n", execInfo->lex, execInfo->lex->tokenLastEnd);
-          *execute = (*execute & ~EXEC_RUN_MASK) | EXEC_NO;
+          *execute = (*execute & (JsExecFlags)(int)~EXEC_RUN_MASK) | EXEC_NO;
         }
         jspClean(result);
         JSP_MATCH(';');

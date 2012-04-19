@@ -17,6 +17,8 @@ typedef unsigned int JsVarRef;
 typedef long JsVarInt;
 typedef double JsVarFloat;
 
+typedef void (*JsCallback)(JsVarRef var);
+
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
@@ -27,7 +29,7 @@ typedef struct {
   JsVarFloat doubleData; ///< The contents of this variable if it is a double
   int flags; ///< the flags determine the type of the variable - int/double/string/etc
 
-  int callback; ///< Callback for native functions or 0
+  JsCallback callback; ///< Callback for native functions, or 0
 
   JsVarRef firstChild; /// For Variable DATA + NAMES
   JsVarRef lastChild; /// For Variable DATA ONLY
@@ -91,6 +93,9 @@ bool jsvGetBool(JsVar *v);
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */
 JsVar *jsvSkipName(JsVar *a);
+/** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
+ * a name, so it can be used inline */
+JsVar *jsvSkipNameAndUnlock(JsVar *a);
 JsVarInt jsvGetIntegerSkipName(JsVar *v);
 bool jsvGetBoolSkipName(JsVar *v);
 
@@ -102,6 +107,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 /// Tree related stuff
 void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var
+JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
 JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 
 int jsvGetChildren(JsVar *v);

@@ -28,6 +28,7 @@ typedef struct {
 void jspInit(JsParse *parse);
 void jspKill(JsParse *parse);
 
+bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
 
 #if 0

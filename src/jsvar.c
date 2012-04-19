@@ -426,6 +426,19 @@ JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
   return namedChild;
 }
 
+JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
+  assert(name && src);
+  assert(jsvIsName(name));
+  // all is fine, so replace the existing child...
+  /* Existing child may be null in the case of Z = 0 where
+   * we create 'Z' and pass it down to '=' to have the value
+   * filled in (or it may be undefined). */
+  if (name->firstChild) jsvUnRefRef(name->firstChild); // free existing
+  name->firstChild = jsvRef(src)->this;
+  return name;
+}
+
+
 /** Non-recursive finding */
 JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound) {
   JsVar *parent = jsvLock(parentref);
@@ -483,6 +496,14 @@ JsVar *jsvSkipName(JsVar *a) {
   }
   if (pa==a) jsvLockPtr(pa);
   return pa;
+}
+
+/** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
+ * a name, so it can be used inline */
+JsVar *jsvSkipNameAndUnlock(JsVar *a) {
+  JsVar *b = jsvSkipName(a);
+  jsvUnLockPtr(a);
+  return b;
 }
 
 /** Same as jsvMathsOpPtr, but if a or b are a name, skip them
