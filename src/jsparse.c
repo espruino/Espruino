@@ -913,10 +913,10 @@ void jspInit(JsParse *parse) {
   parse->root = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
 
   parse->zeroInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(0)));
-  jspClean(jsvAddNamedChild(parse->root, parse->zeroInt, "__ZERO"));
+  jspClean(jsvAddNamedChild(parse->root, parse->zeroInt, "#zero#"));
   jsvUnRefRef(parse->zeroInt);
   parse->oneInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(1)));
-  jspClean(jsvAddNamedChild(parse->root, parse->oneInt, "__ONE"));
+  jspClean(jsvAddNamedChild(parse->root, parse->oneInt, "#one#"));
   jsvUnRefRef(parse->oneInt);
   parse->stringClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
   jspClean(jsvAddNamedChild(parse->root, parse->stringClass, "String"));
