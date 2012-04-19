@@ -117,8 +117,7 @@ bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
       }
       // set base to the object (not the name)
       jsvUnLockPtr(base);
-      base = jsvSkipName(link);
-      jsvUnLockPtr(link);
+      base = jsvSkipNameAndUnlock(link);
       // Look for another name
       strncpy(funcName, jslGetTokenValueAsString(execInfo->lex), JSLEX_MAX_TOKEN_LENGTH);
       JSP_MATCH(LEX_ID);
@@ -245,11 +244,10 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
 
         JsVar *functionCode = jsvFindChild(function->this, TINYJS_FUNCTION_CODE_NAME, false);
         if (functionCode) {
-          JsVar* functionCodeVar = jsvSkipName(functionCode);
+          JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
           JsLex newLex;
           jslInit(&newLex, functionCodeVar, 0, -1);
           jspClean(functionCodeVar);
-          jspClean(functionCode);
 
           JsLex *oldLex = execInfo->lex;
           execInfo->lex = &newLex;
@@ -266,8 +264,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
 #endif
     jspeiRemoveScope(execInfo);
     /* get the real return var before we remove it from our function */
-    JsVar *returnVar = jsvSkipName(returnVarName);
-    jspClean(returnVarName);
+    JsVar *returnVar = jsvSkipNameAndUnlock(returnVarName);
     jsvUnLockPtr(functionRoot);
     if (returnVar)
       return returnVar;
@@ -326,8 +323,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
           if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
             JsVar *func = 0;
             if (JSP_SHOULD_EXECUTE(execute)) {
-              func = jsvSkipName(a);
-              jspClean(a);
+              func = jsvSkipNameAndUnlock(a);
             }
             a = jspeFunctionCall(execInfo, execute, func, parent);
             jspClean(func);
@@ -417,10 +413,9 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
           if (JSP_SHOULD_EXECUTE(execute)) {
             JsVar *a = jspeBase(execInfo, execute);
             assert(a);
-            JsVar *aVar = jsvSkipName(a);
+            JsVar *aVar = jsvSkipNameAndUnlock(a);
             jspClean(jsvAddNamedChild(contents->this, aVar->this, id));
             jspClean(aVar);
-            jspClean(a);
           }
           // no need to clean here, as it will definitely be used
           if (execInfo->lex->tk != '}') JSP_MATCH(',');
@@ -442,10 +437,9 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
 
             JsVar *a = jspeBase(execInfo, execute);
             assert(a);
-            JsVar *aVar = jsvSkipName(a);
+            JsVar *aVar = jsvSkipNameAndUnlock(a);
             jspClean(jsvAddNamedChild(contents->this, aVar->this, idx_str));
             jspClean(aVar);
-            jspClean(a);
           }
           // no need to clean here, as it will definitely be used
           if (execInfo->lex->tk != ']') JSP_MATCH(',');
@@ -958,9 +952,7 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
 
   // It may have returned a reference, but we just want the value...
   if (v) {
-    JsVar *nv = jsvSkipName(v);
-    jspClean(v);
-    return nv;
+    return jsvSkipNameAndUnlock(v);
   }
   // nothing returned
   return 0;

@@ -87,14 +87,14 @@ int main(void) {
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
-	JsVar *v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
+	//JsVar *v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
 	//JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//JsVar *v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;for (i=0;i<5;i++) a=a*2; a" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
     //JsVar *v = jspEvaluate(&p, "function foo(a,b) { return a+b; } var bar=function (a,b) { return a*b; };foo(1,2)" );
 	// hacky fibonnacci
-	//JsVar *v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
+	JsVar *v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
 	//JsVar *v = jspEvaluate(&p, "var Z = 1+2;function a() {};a();" ); // cope with no return
 	//JsVar *v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
 
