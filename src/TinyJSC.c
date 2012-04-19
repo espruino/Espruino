@@ -46,7 +46,7 @@ void nativeSetPin(JsVarRef var) {
 
 void nativeGetPin(JsVarRef var) {
   JsVar *pin = jsvSkipNameAndUnlock(jsvFindChild(var, "pin", false/*no create*/));
-  JsVar *returnValue = jsvFindChild(var, TINYJS_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
+  JsVar *returnValue = jsvFindChild(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
   int actualValue = 1;
   printf("Getting value of pin %d (it was %d)\n", (int)jsvGetInteger(pin), actualValue);
   JsVar *newValue = jsvNewFromInteger(actualValue);

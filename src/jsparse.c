@@ -174,7 +174,7 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE(execute)) {
     JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd+1);
-    jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
+    jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, JSPARSE_FUNCTION_CODE_NAME));
     jspClean(funcCodeVar);
   }
   return funcVar;
@@ -195,7 +195,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     // OPT: can we cache this function execution environment + param variables?
     JsVar *functionRoot = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
     if (parent)
-      jspClean(jsvAddNamedChild(functionRoot->this, parent->this, TINYJS_THIS_VAR));
+      jspClean(jsvAddNamedChild(functionRoot->this, parent->this, JSPARSE_THIS_VAR));
     // grab in all parameters
     JsVarRef v = function->firstChild;
     while (v) {
@@ -226,11 +226,11 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     }
     JSP_MATCH(')');
     // setup a return variable
-    JsVar *returnVarName = jsvAddNamedChild(functionRoot->this, 0, TINYJS_RETURN_VAR);
+    JsVar *returnVarName = jsvAddNamedChild(functionRoot->this, 0, JSPARSE_RETURN_VAR);
     // add the function's execute space to the symbol table so we can recurse
     jspeiAddScope(execInfo, functionRoot->this);
     //jsvTrace(functionRoot->this, 5); // debugging
-#ifdef TINYJS_CALL_STACK
+#ifdef JSPARSE_CALL_STACK
     call_stack.push_back(function->name + " from " + l->getPosition());
 #endif
 
@@ -242,7 +242,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
          * have messed up and left us with the wrong ScriptLex, so
          * we want to be careful here... */
 
-        JsVar *functionCode = jsvFindChild(function->this, TINYJS_FUNCTION_CODE_NAME, false);
+        JsVar *functionCode = jsvFindChild(function->this, JSPARSE_FUNCTION_CODE_NAME, false);
         if (functionCode) {
           JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
           JsLex newLex;
@@ -259,7 +259,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
           execInfo->lex = oldLex;
         }
     }
-#ifdef TINYJS_CALL_STACK
+#ifdef JSPARSE_CALL_STACK
     if (!call_stack.empty()) call_stack.pop_back();
 #endif
     jspeiRemoveScope(execInfo);
@@ -464,12 +464,12 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
           return new JsVar(new CScriptVar());
         }
         JSP_MATCH(LEX_ID);
-        CScriptVar *obj = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_OBJECT);
+        CScriptVar *obj = new CScriptVar(JSPARSE_BLANK_DATA, SCRIPTVAR_OBJECT);
         JsVar *objLink = new JsVar(obj);
         if (objClassOrFunc->var->isFunction()) {
           jspClean(functionCall(execute, objClassOrFunc, obj));
         } else {
-          obj->addChild(TINYJS_PROTOTYPE_CLASS, objClassOrFunc->var);
+          obj->addChild(JSPARSE_PROTOTYPE_CLASS, objClassOrFunc->var);
           if (execInfo->lex->tk == '(') {
             JSP_MATCH('(');
             JSP_MATCH(')');
@@ -795,7 +795,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         jslInitFromLex(&whileBody, execInfo->lex, whileBodyStart);
         JsLex *oldLex = execInfo->lex;
 
-        int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+        int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
         while (loopCond && loopCount-->0) {
             jslReset(&whileCond);
             execInfo->lex = &whileCond;
@@ -843,7 +843,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
             execInfo->lex = &forIter;
             jspClean(jspeBase(execInfo, execute));
         }
-        int loopCount = TINYJS_LOOP_MAX_ITERATIONS;
+        int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
         while (JSP_SHOULD_EXECUTE(execute) && loopCond && loopCount-->0) {
           jslReset(&forCond);
             execInfo->lex = &forCond;
@@ -874,7 +874,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         if (execInfo->lex->tk != ';')
           result = jspeBase(execInfo, execute);
         if (JSP_SHOULD_EXECUTE(execute)) {
-          JsVar *resultVar = jspeiFindOnTop(execInfo, TINYJS_RETURN_VAR, false);
+          JsVar *resultVar = jspeiFindOnTop(execInfo, JSPARSE_RETURN_VAR, false);
           if (resultVar) {
             jspReplaceWith(execInfo, resultVar, result);
             jspClean(resultVar);

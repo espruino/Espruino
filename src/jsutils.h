@@ -24,14 +24,14 @@ typedef char bool;
 #define JS_ERROR_TOKEN_BUF_SIZE 16
 
 #define JSPARSE_MAX_SCOPES  32
-#define TINYJS_LOOP_MAX_ITERATIONS 8192
+#define JSPARSE_MAX_LOOP_ITERATIONS 8192
 
 // javascript specific names
-#define TINYJS_RETURN_VAR "return"
-#define TINYJS_THIS_VAR "this"
-#define TINYJS_PROTOTYPE_CLASS "prototype"
+#define JSPARSE_RETURN_VAR "return"
+#define JSPARSE_THIS_VAR "this"
+#define JSPARSE_PROTOTYPE_CLASS "prototype"
 // internal names that hopefully nobody will be able to access
-#define TINYJS_FUNCTION_CODE_NAME "#code#"
+#define JSPARSE_FUNCTION_CODE_NAME "#code#"
 
 
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);

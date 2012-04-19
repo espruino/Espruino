@@ -54,14 +54,4 @@ void jslSeek(JsLex *lex, int seekToChar);
 void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
-
-
-//void jslReset(JsLex lex); ///< Reset this lex so we can start again
-//std::string jslGetSubString(JsLex lex, int pos); ///< Return a sub-string from the given position up until right now
-//Lex *jslGetSubLex(JsLex lex, int lastPosition); ///< Return a sub-lexer from the given position up until right now
-//std::string jslGetPosition(JsLex lex, int pos=-1); ///< Return a string representing the position in lines and columns of the character pos given
-
-
-
-
 #endif /* JSLEX_H_ */

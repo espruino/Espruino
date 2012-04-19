@@ -45,7 +45,7 @@ void jsError(const char *message) {
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
-  printf("ERROR: %s at %d\n", message, tokenPos);
+  printf("ERROR: %s at char #%d\n", message, tokenPos);
 }
 
 void jsWarn(const char *message) {
@@ -53,7 +53,7 @@ void jsWarn(const char *message) {
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
-  printf("WARNING: %s at %d\n", message, tokenPos);
+  printf("WARNING: %s at char #%d\n", message, tokenPos);
 }
 
 void jsAssertFail(const char *file, int line) {
