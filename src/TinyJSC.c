@@ -13,6 +13,11 @@
  * TODO: Ensure that getBool/etc skip over refs if they find them
  *       Tiny up TINYJS constants
  *       See if we can remove jsvUnlock and just use UnlockPtr
+ *
+ * In code:
+ * TODO - should be fixed
+ * FIXME - will probably break if used
+ * OPT - potential for speed optimisation
  * */
 
 #include <stdio.h>
@@ -51,7 +56,7 @@ int main(void) {
 	JsParse p;
 	jspInit(&p);
 
-	JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1;");
+	JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };" );
 	if (v) {
       char buf[256];
       jsvGetString(v, buf, 256);

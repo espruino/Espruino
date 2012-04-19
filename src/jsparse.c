@@ -20,7 +20,7 @@ typedef enum  {
 JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute);
 JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute);
 // ----------------------------------------------- Utils
-#define JSP_MATCH(TOKEN) if (!jslMatch(execInfo->lex,(TOKEN))) return 0;
+#define JSP_MATCH(TOKEN) {if (!jslMatch(execInfo->lex,(TOKEN))) return 0;}
 
 JsVar *jspReplaceWith(JsExecInfo *execInfo, JsVar *dst, JsVar *src) {
   assert(dst && src);
@@ -119,47 +119,64 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
           a = jsvNewVariableName(0, jslGetTokenValueAsString(execInfo->lex));
         }
         JSP_MATCH(LEX_ID);
-#ifdef TODO
-
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
-            if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
-                a = functionCall(execute, a, parent);
+
+          if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
+#ifdef TODO
+            a = functionCall(execute, a, parent);
+#endif
             } else if (execInfo->lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
-                if (execInfo, execute) {
-                  const string &name = execInfo->lex->tkStr;
-                  JsVar *child = a->var->findChild(name);
-                  if (!child) child = findInParentClasses(a->var, name);
+                if (execute) {
+                  // Note: name will go away when we oarse something else!
+                  const char *name = jslGetTokenValueAsString(execInfo->lex);
+
+                  JsVar *aVar = jsvSkipName(a);
+                  JsVar *child = jsvFindChild(aVar->this, name, false);
+#ifdef TODO
+                  if (!child) child = findInParentClasses(aVar, name);
+#endif
                   if (!child) {
                     /* if we haven't found this defined yet, use the built-in
                        'length' properly */
-                    if (a->var->isArray() && name == "length") {
-                      int l = a->var->getArrayLength();
-                      child = new JsVar(new CScriptVar(l));
-                    } else if (a->var->isString() && name == "length") {
-                      int l = a->var->getString().size();
-                      child = new JsVar(new CScriptVar(l));
+                    if (jsvIsArray(aVar) && strcmp(name,"length")==0) {
+                      int l = jsvGetArrayLength(aVar);
+                      child = jsvNewFromInteger(l);
+                    } else if (jsvIsString(aVar) && strcmp(name,"length")==0) {
+                      int l = jsvGetStringLength(aVar);
+                      child = jsvNewFromInteger(l);
                     } else {
-                      child = a->var->addChild(name);
+                      // TODO: ensure aVar is an object
+                      child = jsvAddNamedChild(aVar->this, 0, name);
                     }
                   }
-                  parent = a->var;
+                  jspClean(parent);
+                  parent = aVar;
                   a = child;
                 }
                 JSP_MATCH(LEX_ID);
             } else if (execInfo->lex->tk == '[') { // ------------------------------------- Array Access
                 JSP_MATCH('[');
-                JsVar *index = base(execInfo, execute);
+                JsVar *index = jspeBase(execInfo, execute);
                 JSP_MATCH(']');
-                if (execInfo, execute) {
-                  JsVar *child = a->var->findChildOrCreate(index->var->getString());
-                  parent = a->var;
+                if (execute) {
+                  JsVar *aVar = jsvSkipName(a);
+                  // OPT: pass variable value directly
+                  char buf[JSLEX_MAX_TOKEN_LENGTH];
+                  JsVar *indexValue = jsvSkipName(index);
+                  jsvGetString(indexValue, buf, JSLEX_MAX_TOKEN_LENGTH);
+                  jsvUnLockPtr(indexValue);
+
+                  JsVar *child = jsvFindChild(aVar->this, buf, true);
+                  jspClean(parent);
+                  parent = aVar;
+                  jspClean(a);
                   a = child;
                 }
                 jspClean(index);
-            } else ASSERT(0);
+            } else assert(0);
         }
-#endif
+        jspClean(parent);
         return a;
     }
     if (execInfo->lex->tk==LEX_INT) {
@@ -177,20 +194,26 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(LEX_STR);
         return a;
     }
-#if TODO
     if (execInfo->lex->tk=='{') {
-        CScriptVar *contents = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_OBJECT);
+        JsVar *contents = jsvNewWithFlags(SCRIPTVAR_OBJECT);
         /* JSON-style object definition */
         JSP_MATCH('{');
         while (execInfo->lex->tk != '}') {
-          string id = execInfo->lex->tkStr;
+          char id[JSLEX_MAX_TOKEN_LENGTH];
+          jslGetTokenString(execInfo->lex, id, JSLEX_MAX_TOKEN_LENGTH);
           // we only allow strings or IDs on the left hand side of an initialisation
-          if (execInfo->lex->tk==LEX_STR) JSP_MATCH(LEX_STR);
-          else JSP_MATCH(LEX_ID);
+          if (execInfo->lex->tk==LEX_STR) {
+            JSP_MATCH(LEX_STR);
+          } else {
+            JSP_MATCH(LEX_ID);
+          }
           JSP_MATCH(':');
-          if (execInfo, execute) {
-            JsVar *a = base(execInfo, execute);
-            contents->addChild(id, a->var);
+          if (execute) {
+            JsVar *a = jspeBase(execInfo, execute);
+            assert(a);
+            JsVar *aVar = jsvSkipName(a);
+            jspClean(jsvAddNamedChild(contents->this, aVar->this, id));
+            jspClean(aVar);
             jspClean(a);
           }
           // no need to clean here, as it will definitely be used
@@ -198,20 +221,24 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         }
 
         JSP_MATCH('}');
-        return new JsVar(contents);
+        return contents;
     }
     if (execInfo->lex->tk=='[') {
-        CScriptVar *contents = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_ARRAY);
+        JsVar *contents = jsvNewWithFlags(SCRIPTVAR_ARRAY);
         /* JSON-style array */
         JSP_MATCH('[');
         int idx = 0;
         while (execInfo->lex->tk != ']') {
-          if (execInfo, execute) {
+          if (execute) {
+            // OPT: Store array indices as actual ints
             char idx_str[16]; // big enough for 2^32
-            sprintf_s(idx_str, sizeof(idx_str), "%d",idx);
+            snprintf(idx_str, sizeof(idx_str), "%d",idx);
 
-            JsVar *a = base(execInfo, execute);
-            contents->addChild(idx_str, a->var);
+            JsVar *a = jspeBase(execInfo, execute);
+            assert(a);
+            JsVar *aVar = jsvSkipName(a);
+            jspClean(jsvAddNamedChild(contents->this, aVar->this, idx_str));
+            jspClean(aVar);
             jspClean(a);
           }
           // no need to clean here, as it will definitely be used
@@ -219,8 +246,9 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
           idx++;
         }
         JSP_MATCH(']');
-        return new JsVar(contents);
+        return contents;
     }
+#if TODO
     if (execInfo->lex->tk==LEX_R_FUNCTION) {
       JsVar *funcVar = parseFunctionDefinition();
         if (funcVar->name != TINYJS_TEMP_NAME)
@@ -386,18 +414,18 @@ JsVar *jspeLogic(JsExecInfo *execInfo, JsExecFlags execute) {
         // we need to tell mathsOp it's an & or |
         if (op==LEX_ANDAND) {
             op = '&';
-            shortCircuit = !jsvGetBool(a);
+            shortCircuit = !jsvGetBoolSkipName(a);
             boolean = true;
         } else if (op==LEX_OROR) {
             op = '|';
-            shortCircuit = jsvGetBool(a);
+            shortCircuit = jsvGetBoolSkipName(a);
             boolean = true;
         }
         b = jspeCondition(execInfo, shortCircuit ? noexecute : execute);
         if (execute && !shortCircuit) {
             if (boolean) {
-              JsVar *newa = jsvNewFromBool(jsvGetBool(a));
-              JsVar *newb = jsvNewFromBool(jsvGetBool(b));
+              JsVar *newa = jsvNewFromBool(jsvGetBoolSkipName(a));
+              JsVar *newb = jsvNewFromBool(jsvGetBoolSkipName(b));
               jspClean(a); a = newa;
               jspClean(b); b = newb;
             }
@@ -420,7 +448,7 @@ JsVar *jspeTernary(JsExecInfo *execInfo, JsExecFlags execute) {
       JSP_MATCH(':');
       jspClean(jspeBase(execInfo, noexecute));
     } else {
-      bool first = jsvGetBool(lhs);
+      bool first = jsvGetBoolSkipName(lhs);
       jspClean(lhs);
       if (first) {
         lhs = jspeBase(execInfo, execute);
@@ -542,7 +570,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH('(');
         JsVar *var = jspeBase(execInfo, execute);
         JSP_MATCH(')');
-        bool cond = execute && jsvGetBool(var);
+        bool cond = execute && jsvGetBoolSkipName(var);
         jspClean(var);
         JsExecFlags noexecute = EXEC_NO; // because we need to be abl;e to write to it
         jspeStatement(execInfo, cond ? execute : noexecute);
@@ -558,7 +586,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         int whileCondStart = execInfo->lex->tokenStart;
         JsExecFlags noexecute = EXEC_NO;
         JsVar *cond = jspeBase(execInfo, execute);
-        bool loopCond = execute && jsvGetBool(cond);
+        bool loopCond = execute && jsvGetBoolSkipName(cond);
         jspClean(cond);
         JsLex whileCond;
         jslInitFromLex(&whileCond, execInfo->lex, whileCondStart);
@@ -574,7 +602,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
             jslReset(&whileCond);
             execInfo->lex = &whileCond;
             cond = jspeBase(execInfo, execute);
-            loopCond = execute && jsvGetBool(cond);
+            loopCond = execute && jsvGetBoolSkipName(cond);
             jspClean(cond);
             if (loopCond) {
                 jslReset(&whileBody);
@@ -597,7 +625,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         int forCondStart = execInfo->lex->tokenStart;
         JsExecFlags noexecute = EXEC_NO;
         JsVar *cond = jspeBase(execInfo, execute); // condition
-        bool loopCond = execute && jsvGetBool(cond);
+        bool loopCond = execute && jsvGetBoolSkipName(cond);
         jspClean(cond);
         JsLex forCond;
         jslInitFromLex(&forCond, execInfo->lex, forCondStart);
@@ -622,7 +650,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
           jslReset(&forCond);
             execInfo->lex = &forCond;
             cond = jspeBase(execInfo, execute);
-            loopCond = jsvGetBool(cond);
+            loopCond = jsvGetBoolSkipName(cond);
             jspClean(cond);
             if (execute && loopCond) {
                 jslReset(&forBody);
@@ -685,19 +713,19 @@ void jspInit(JsParse *parse) {
   parse->root = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
 
   parse->zeroInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(0)));
-  jsvAddNamedChild(parse->root, parse->zeroInt, "__ZERO");
+  jspClean(jsvAddNamedChild(parse->root, parse->zeroInt, "__ZERO"));
   jsvUnRefRef(parse->zeroInt);
   parse->oneInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(1)));
-  jsvAddNamedChild(parse->root, parse->oneInt, "__ONE");
+  jspClean(jsvAddNamedChild(parse->root, parse->oneInt, "__ONE"));
   jsvUnRefRef(parse->oneInt);
   parse->stringClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
-  jsvAddNamedChild(parse->root, parse->stringClass, "String");
+  jspClean(jsvAddNamedChild(parse->root, parse->stringClass, "String"));
   jsvUnRefRef(parse->stringClass);
   parse->objectClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
-  jsvAddNamedChild(parse->root, parse->objectClass, "Object");
+  jspClean(jsvAddNamedChild(parse->root, parse->objectClass, "Object"));
   jsvUnRefRef(parse->objectClass);
   parse->arrayClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
-  jsvAddNamedChild(parse->root, parse->arrayClass, "Array");
+  jspClean(jsvAddNamedChild(parse->root, parse->arrayClass, "Array"));
   jsvUnRefRef(parse->arrayClass);
 }
 

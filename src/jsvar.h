@@ -14,14 +14,17 @@
 typedef unsigned int JsVarRef;
 // We treat 0 as null
 
+typedef long JsVarInt;
+typedef double JsVarFloat;
+
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   int refs; ///< The number of references held to this - used for garbage collection
 
   char strData[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
-  long intData; ///< The contents of this variable if it is an int
-  double doubleData; ///< The contents of this variable if it is a double
+  JsVarInt intData; ///< The contents of this variable if it is an int
+  JsVarFloat doubleData; ///< The contents of this variable if it is a double
   int flags; ///< the flags determine the type of the variable - int/double/string/etc
 
   int callback; ///< Callback for native functions or 0
@@ -42,14 +45,15 @@ void jsvKill();
 JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
-JsVar *jsvNewFromInteger(long value);
+JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
-JsVar *jsvNewFromDouble(double value);
+JsVar *jsvNewFromDouble(JsVarFloat value);
 // Creates a new Variable name that links to the given variable...
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name);
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
 void jsvUnLock(JsVarRef ref); ///< Unlock this reference
+JsVar *jsvLockPtr(JsVar *var); ///< Lock this variable again (utility fn for jsvUnLock)
 JsVarRef jsvUnLockPtr(JsVar *var); ///< Unlock this variable (utility fn for jsvUnLock)
 
 JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
@@ -75,11 +79,15 @@ void jsvGetString(JsVar *v, char *str, size_t len);
 int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 
-long jsvGetInteger(JsVar *v);
-double jsvGetDouble(JsVar *v);
+JsVarInt jsvGetInteger(JsVar *v);
+JsVarFloat jsvGetDouble(JsVar *v);
 bool jsvGetBool(JsVar *v);
 
-
+/** If a is a name skip it and go to what it points to.
+ * ALWAYS locks - so must unlock what it returns. */
+JsVar *jsvSkipName(JsVar *a);
+JsVarInt jsvGetIntegerSkipName(JsVar *v);
+bool jsvGetBoolSkipName(JsVar *v);
 
 /// MATHS!
 JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
@@ -88,8 +96,14 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 
 /// Tree related stuff
 void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
-void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it
-JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name
+JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var
+JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+
+int jsvGetChildren(JsVar *v);
+int jsvGetArrayLength(JsVar *v);
+
+/** Write debug info for this Var out to the console */
+void jsvTrace(JsVarRef ref, int indent);
 
 /*class CScriptVarLink
 {

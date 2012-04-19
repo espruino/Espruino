@@ -68,6 +68,13 @@ void jsvUnLock(JsVarRef ref) {
     jsvFreePtr(var);
 }
 
+
+JsVar *jsvLockPtr(JsVar *var) {
+  assert(var);
+  jsvLock(var->this);
+  return var;
+}
+
 JsVarRef jsvUnLockPtr(JsVar *var) {
   assert(var);
   JsVarRef ref = var->this;
@@ -135,7 +142,7 @@ JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags) {
   var->flags = flags;
   return var;
 }
-JsVar *jsvNewFromInteger(long value) {
+JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNew();
   var->flags = SCRIPTVAR_INTEGER;
   var->intData = value;
@@ -147,7 +154,7 @@ JsVar *jsvNewFromBool(bool value) {
   var->intData = value ? 1 : 0;
   return var;
 }
-JsVar *jsvNewFromDouble(double value) {
+JsVar *jsvNewFromDouble(JsVarFloat value) {
   JsVar *var = jsvNew();
   var->flags = SCRIPTVAR_DOUBLE;
   var->doubleData = value;
@@ -248,13 +255,13 @@ int jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
-long jsvGetInteger(JsVar *v) {
+JsVarInt jsvGetInteger(JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
     if (jsvIsInt(v)) return v->intData;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if (jsvIsDouble(v)) return (int)v->doubleData;
+    if (jsvIsDouble(v)) return (JsVarInt)v->doubleData;
     return 0;
 }
 
@@ -269,6 +276,17 @@ double jsvGetDouble(JsVar *v) {
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     return 0; /* or NaN? */
+}
+
+JsVarInt jsvGetIntegerSkipName(JsVar *v) {
+    JsVar *a = jsvSkipName(v);
+    JsVarInt l = jsvGetInteger(a);
+    jsvUnLockPtr(a);
+    return l;
+}
+
+bool jsvGetBoolSkipName(JsVar *v) {
+  return jsvGetIntegerSkipName(v)!=0;
 }
 
 bool jsvIsStringEqual(JsVar *var, const char *str) {
@@ -305,10 +323,10 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChild) {
   jsvUnLockPtr(v);
 }
 
-void jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
+JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
   JsVar *namedChild = jsvNewVariableName(child, name);
   jsvAddName(parent, namedChild->this);
-  jsvUnLockPtr(namedChild);
+  return namedChild;
 }
 
 /** Non-recursive finding */
@@ -335,6 +353,51 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound)
   return child;
 }
 
+int jsvGetChildren(JsVar *v) {
+  //OPT: could length be stored as the value of the array?
+  int children = 0;
+  JsVarRef childref = v->firstChild;
+  while (childref) {
+    JsVar *child = jsvLock(childref);
+    children++;
+    childref = child->nextSibling;
+    jsvUnLockPtr(child);
+  }
+  return children;
+}
+
+
+int jsvGetArrayLength(JsVar *v) {
+  // TODO: ArrayLength != children, for instance a sparse array
+  return jsvGetChildren(v);
+}
+
+
+/** If a is a name skip it and go to what it points to.
+ * ALWAYS locks - so must unlock what it returns. */
+JsVar *jsvSkipName(JsVar *a) {
+  JsVar *pa = a;
+  while (jsvIsName(pa)) {
+    JsVarRef n = pa->firstChild;
+    if (pa!=a) jsvUnLockPtr(pa);
+    pa = jsvLock(n);
+  }
+  if (pa==a) jsvLockPtr(pa);
+  return pa;
+}
+
+/** Same as jsvMathsOpPtr, but if a or b are a name, skip them
+ * and go to what they point to. */
+JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
+  JsVar *pa = jsvSkipName(a);
+  JsVar *pb = jsvSkipName(b);
+  JsVar *res = jsvMathsOpPtr(pa,pb,op);
+  jsvUnLockPtr(pa);
+  jsvUnLockPtr(pb);
+  return res;
+}
+
+
 JsVar *jsvMathsOpError(int op, const char *datatype) {
     char tbuf[JS_ERROR_TOKEN_BUF_SIZE];
     char buf[JS_ERROR_BUF_SIZE];
@@ -342,27 +405,6 @@ JsVar *jsvMathsOpError(int op, const char *datatype) {
     snprintf(buf,JS_ERROR_BUF_SIZE, "Operation %s expected not supported on the %s datatype", tbuf, datatype);
     jsError(buf);
     return 0;
-}
-
-/** Same as jsvMathsOpPtr, but if a or b are a name, skip them
- * and go to what they point to. */
-JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
-  JsVar *pa = a;
-  JsVar *pb = b;
-  while (jsvIsName(pa)) {
-    JsVarRef n = pa->firstChild;
-    if (pa!=a) jsvUnLockPtr(pa);
-    pa = jsvLock(n);
-  }
-  while (jsvIsName(pb)) {
-    JsVarRef n = pb->firstChild;
-    if (pb!=b) jsvUnLockPtr(pb);
-    pb = jsvLock(n);
-  }
-  JsVar *res = jsvMathsOpPtr(pa,pb,op);
-  if (pa!=a) jsvUnLockPtr(pa);
-  if (pb!=b) jsvUnLockPtr(pb);
-  return res;
 }
 
 JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
@@ -478,6 +520,7 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
     return res;
 }
 
+/** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent) {
     char buf[JS_ERROR_BUF_SIZE];
 
