@@ -739,8 +739,7 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   jsvUnLockPtr(code);
 
   JsExecInfo execInfo;
-  execInfo.parse = parse;
-  execInfo.lex = &lex;
+  jspeiInit(&execInfo, parse, &lex);
   JsExecFlags execute = EXEC_YES;
 
   JsVar *v = 0;
