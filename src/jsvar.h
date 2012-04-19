@@ -44,6 +44,7 @@ void jsvKill();
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
+JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);

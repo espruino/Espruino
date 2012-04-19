@@ -404,6 +404,8 @@ bool jslMatch(JsLex *lex, int expected_tk) {
       jslTokenAsString(expected_tk, tbuf2, JS_ERROR_TOKEN_BUF_SIZE);
       snprintf(buf,JS_ERROR_BUF_SIZE, "Got %s expected %s", tbuf1, tbuf2);
       jsErrorAt(buf, lex, lex->tokenStart);
+      // Sod it, skip this token anyway - stops us looping
+      jslGetNextToken(lex);
       return false;
   }
   jslGetNextToken(lex);

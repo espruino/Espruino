@@ -137,6 +137,14 @@ JsVar *jsvNewFromString(const char *str) {
   return first;
 }
 
+JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
+  // Create a new STRING from part of the lexer
+  // Set this variable's string value from part of the lexer
+  jsWarn("TODO: Set string from lex!");
+
+  return jsvNewFromString("MY CODE");
+}
+
 JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags) {
   JsVar *var = jsvNew();
   var->flags = flags;
@@ -198,6 +206,8 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       snprintf(str, len, "null");
     } else if (jsvIsUndefined(v)) {
       snprintf(str, len, "undefined");
+    } else if (jsvIsFunction(v)) {
+      snprintf(str, len, "function");
     } else { assert(jsvIsString(v));
       // print the string - we have to do it a block
       // at a time!
@@ -207,7 +217,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
         for (int i=0;i<JSVAR_STRING_LEN;i++) {
           if (len--<=0) {
             *str = 0;
-            printf("jsvGetString overflowed\n");
+            jsWarn("jsvGetString overflowed\n");
             return;
           }
           *(str++) = var->strData[i];
@@ -300,7 +310,6 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   jsError("INTERNAL: TODO: String equality check past boundary of string");
   return false; //
 }
-
 
 void jsvAddName(JsVarRef parent, JsVarRef namedChild) {
   namedChild = jsvRefRef(namedChild);
@@ -534,7 +543,12 @@ void jsvTrace(JsVarRef ref, int indent) {
       // go to what the name points to
       ref = var->firstChild;
       jsvUnLockPtr(var);
-      var = jsvLock(ref);
+      if (ref) {
+        var = jsvLock(ref);
+      } else {
+        printf("[UNSET]\n");
+        return;
+      }
     }
     assert(!jsvIsName(var));
     if (jsvIsObject(var)) printf("Object {\n");
@@ -545,7 +559,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     else if (jsvIsFunction(var)) printf("Function {\n");
     else printf("Flags %d\n", var->flags);
 
-    if (!jsvIsObject(var) && !jsvIsArray(var)) {
+    if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
       printf("%s\n", buf);
     }

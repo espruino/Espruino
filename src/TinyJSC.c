@@ -13,6 +13,8 @@
  * TODO: Ensure that getBool/etc skip over refs if they find them
  *       Tiny up TINYJS constants
  *       See if we can remove jsvUnlock and just use UnlockPtr
+ *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
+ *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
  *
  * In code:
  * TODO - should be fixed
@@ -59,7 +61,8 @@ int main(void) {
 	//JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//JsVar *v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;for (i=0;i<5;i++) a=a*2; a" );
-	JsVar *v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
+	//JsVar *v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
+    JsVar *v = jspEvaluate(&p, "function foo(a,b) { return a+b; }" );
 	if (v) {
       char buf[256];
       jsvGetString(v, buf, 256);

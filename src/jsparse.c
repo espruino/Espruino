@@ -18,6 +18,7 @@ typedef enum  {
 
 // ----------------------------------------------- Forward decls
 JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags execute);
+JsVar *jspeBlock(JsExecInfo *execInfo, JsExecFlags execute);
 JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute);
 // ----------------------------------------------- Utils
 #define JSP_MATCH(TOKEN) {if (!jslMatch(execInfo->lex,(TOKEN))) return 0;}
@@ -83,6 +84,177 @@ JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFo
   return jsvFindChild(execInfo->parse->root, name, createIfNotFound);
 }
 // -----------------------------------------------
+
+// we return a value so that JSP_MATCH can return 0 if it fails
+bool jspeFunctionArguments(JsExecInfo *execInfo, JsVar *funcVar) {
+  JSP_MATCH('(');
+  while (execInfo->lex->tk!=')') {
+      jspClean(jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex)));
+      JSP_MATCH(LEX_ID);
+      if (execInfo->lex->tk!=')') JSP_MATCH(',');
+  }
+  JSP_MATCH(')');
+  return true;
+}
+
+#ifdef TODO
+void jspAddNativeFunction(JsParse *parse, const char *funcDesc, JSCallback ptr, void *userdata) {
+    CScriptLex *oldLex = l;
+    l = new CScriptLex(funcDesc);
+
+    CScriptVar *base = root;
+
+    JSP_MATCH(LEX_R_FUNCTION);
+    string funcName = execInfo->lex->tkStr;
+    JSP_MATCH(LEX_ID);
+    /* Check for dots, we might want to do something like function String.substring ... */
+    while (execInfo->lex->tk == '.') {
+      JSP_MATCH('.');
+      CScriptVarLink *link = base->findChild(funcName);
+      // if it doesn't exist, make an object class
+      if (!link) link = base->addChild(funcName, new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_OBJECT));
+      base = link->var;
+      funcName = execInfo->lex->tkStr;
+      JSP_MATCH(LEX_ID);
+    }
+
+    CScriptVar *funcVar = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_FUNCTION | SCRIPTVAR_NATIVE);
+    funcVar->setCallback(ptr, userdata);
+    parseFunctionArguments(funcVar);
+    delete l;
+    l = oldLex;
+
+    base->addChild(funcName, funcVar);
+}
+#endif
+
+JsVar *jspeFunctionDefinition(JsExecInfo *execInfo) {
+  // actually parse a function...
+  JSP_MATCH(LEX_R_FUNCTION);
+  // OPT: can we make the jsvNewVariableName up here?
+  char funcName[JSLEX_MAX_TOKEN_LENGTH] = TINYJS_TEMP_NAME;
+  /* we can have functions without names */
+  if (execInfo->lex->tk==LEX_ID) {
+    jslGetTokenString(execInfo->lex, funcName, JSLEX_MAX_TOKEN_LENGTH);
+    JSP_MATCH(LEX_ID);
+  }
+  JsVar *funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
+  // Get arguments save them to the structure
+  if (!jspeFunctionArguments(execInfo, funcVar)) {
+    // parse failed
+    return 0;
+  }
+  // Get the code - first parse it so we know where it stops
+  int funcBegin = execInfo->lex->tokenStart;
+  JsExecFlags noexecute = EXEC_NO;
+  jspClean(jspeBlock(execInfo, noexecute));
+  // Then create var and set
+  JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd+1);
+  jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
+  JsVar *func = jsvNewVariableName(funcVar->this, funcName);
+  jspClean(funcVar);
+  return func;
+}
+
+#ifdef TODO
+/** Handle a function call (assumes we've parsed the function name and we're
+ * on the start bracket). 'parent' is the object that contains this method,
+ * if there was one (otherwise it's just a normnal function).
+ */
+JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags execute, CScriptVarLink *function, CScriptVar *parent) {
+  if (execute) {
+    if (!function->var->isFunction()) {
+        string errorMsg = "Expecting '";
+        errorMsg = errorMsg + function->name + "' to be a function";
+        throw new CScriptException(errorMsg.c_str());
+    }
+    JSP_MATCH('(');
+    // create a new symbol table entry for execution of this function
+    CScriptVar *functionRoot = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_FUNCTION);
+    if (parent)
+      functionRoot->addChildNoDup("this", parent);
+    // grab in all parameters
+    CScriptVarLink *v = function->var->firstChild;
+    while (v) {
+        CScriptVarLink *value = base(execute);
+        if (execute) {
+            if (value->var->isBasic()) {
+              // pass by value
+              functionRoot->addChild(v->name, value->var->deepCopy());
+            } else {
+              // pass by reference
+              functionRoot->addChild(v->name, value->var);
+            }
+        }
+        CLEAN(value);
+        if (execInfo->lex->tk!=')') JSP_MATCH(',');
+        v = v->nextSibling;
+    }
+    JSP_MATCH(')');
+    // setup a return variable
+    CScriptVarLink *returnVar = NULL;
+    // execute function!
+    // add the function's execute space to the symbol table so we can recurse
+    CScriptVarLink *returnVarLink = functionRoot->addChild(TINYJS_RETURN_VAR);
+    scopes.push_back(functionRoot);
+#ifdef TINYJS_CALL_STACK
+    call_stack.push_back(function->name + " from " + l->getPosition());
+#endif
+
+    if (function->var->isNative()) {
+        ASSERT(function->var->jsCallback);
+        function->var->jsCallback(functionRoot, function->var->jsCallbackUserData);
+    } else {
+        /* we just want to execute the block, but something could
+         * have messed up and left us with the wrong ScriptLex, so
+         * we want to be careful here... */
+        CScriptException *exception = 0;
+        CScriptLex *oldLex = l;
+        CScriptLex *newLex = new CScriptLex(function->var->getString());
+        l = newLex;
+        try {
+          block(execute);
+          // because return will probably have called this, and set execute to false
+          execute = true;
+        } catch (CScriptException *e) {
+          exception = e;
+        }
+        delete newLex;
+        l = oldLex;
+
+        if (exception)
+          throw exception;
+    }
+#ifdef TINYJS_CALL_STACK
+    if (!call_stack.empty()) call_stack.pop_back();
+#endif
+    scopes.pop_back();
+    /* get the real return var before we remove it from our function */
+    returnVar = new CScriptVarLink(returnVarLink->var);
+    functionRoot->removeLink(returnVarLink);
+    delete functionRoot;
+    if (returnVar)
+      return returnVar;
+    else
+      return new CScriptVarLink(new CScriptVar());
+  } else {
+    // function, but not executing - just parse args and be done
+    JSP_MATCH('(');
+    while (execInfo->lex->tk != ')') {
+      CScriptVarLink *value = base(execute);
+      CLEAN(value);
+      if (execInfo->lex->tk!=')') JSP_MATCH(',');
+    }
+    JSP_MATCH(')');
+    if (execInfo->lex->tk == '{') {
+      block(execute);
+    }
+    /* function will be a blank scriptvarlink if we're not executing,
+     * so just return it rather than an alloc/free */
+    return function;
+  }
+}
+#endif
 
 JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     if (execInfo->lex->tk=='(') {
@@ -247,13 +419,13 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(']');
         return contents;
     }
-#if TODO
     if (execInfo->lex->tk==LEX_R_FUNCTION) {
-      JsVar *funcVar = parseFunctionDefinition();
-        if (funcVar->name != TINYJS_TEMP_NAME)
-          TRACE("Functions not defined at statement-level are not meant to have a name");
-        return funcVar;
+      JsVar *func = jspeFunctionDefinition(execInfo);
+      if (jsvIsStringEqual(func, TINYJS_TEMP_NAME))
+        jsWarnAt("Functions not defined at statement-level are not meant to have a name", execInfo->lex, execInfo->lex->tokenLastEnd);
+      return func;
     }
+#if TODO
     if (execInfo->lex->tk==LEX_R_NEW) {
       // new -> create a new object
       JSP_MATCH(LEX_R_NEW);
@@ -686,22 +858,27 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         }
         jspClean(result);
         JSP_MATCH(';');
+#endif
     } else if (execInfo->lex->tk==LEX_R_FUNCTION) {
-        JsVar *funcVar = parseFunctionDefinition();
+        JsVar *func = jspeFunctionDefinition(execInfo);
         if (execute) {
-          if (jsvIsStringEqual(funcVar, TINYJS_TEMP_NAME))
+          if (jsvIsStringEqual(func, TINYJS_TEMP_NAME))
             jsErrorAt("Functions defined at statement-level are meant to have a name\n", execInfo->lex, execInfo->lex->tokenLastEnd);
           else {
             char funcName[JSLEX_MAX_TOKEN_LENGTH];
-            jsvGetString(funcVar, funcName, JSLEX_MAX_TOKEN_LENGTH);
-            JsVar *func = jspeiFindOnTop(execInfo, funcName, true);
-            jspReplaceWith(execInfo, func, funcVar); // FIXME - skip 'name' part?
+            jsvGetString(func, funcName, JSLEX_MAX_TOKEN_LENGTH);
+            // OPT: can Find* use just a JsVar that is a 'name'?
+            // find a function with the same name (or make one)
+            JsVar *existingFunc = jspeiFindOnTop(execInfo, funcName, true);
+            // replace it
+            JsVar *funcVar = jsvSkipName(func);
+            jspReplaceWith(execInfo, existingFunc, funcVar);
             jspClean(funcVar);
             jspClean(func);
+            func = existingFunc;
           }
         }
-        jspClean(funcVar);
-#endif
+        return func;
     } else JSP_MATCH(LEX_EOF);
     return 0;
 }

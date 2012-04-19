@@ -29,6 +29,7 @@ typedef char bool;
 #define TINYJS_RETURN_VAR "return"
 #define TINYJS_PROTOTYPE_CLASS "prototype"
 #define TINYJS_TEMP_NAME ""
+#define TINYJS_FUNCTION_CODE_NAME "#code#"
 
 
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
