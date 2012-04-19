@@ -345,7 +345,7 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags execute) {
                 JsVar *one = jsvLock(execInfo->parse->oneInt);
                 JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
                 jsvUnLockPtr(one);
-                JsVar *oldValue = jsvRef(a); // keep old value
+                JsVar *oldValue = jsvLockPtr(a); // keep old value
                 // in-place add/subtract
                 jspReplaceWith(execInfo, a, res);
                 jspClean(a); jspClean(res);

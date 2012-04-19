@@ -18,7 +18,7 @@ void jslSeek(JsLex *lex, int seekToChar) {
   }
 
   // Set up to first string object
-  lex->currentVarPos = 0;
+  lex->currentVarPos = seekToChar;
   lex->currentPos = seekToChar;
   lex->currentVarRef = lex->sourceVarRef;
   lex->currentVar = jsvLock(lex->currentVarRef);
@@ -287,12 +287,8 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   lex->tokenEnd = 0;
   lex->tokenLastEnd = 0;
   lex->tokenl = 0;
-  // seek
-  jslSeek(lex, lex->sourceStartPos);
-  // set up..
-  jslGetNextCh(lex);
-  jslGetNextCh(lex);
-  jslGetNextToken(lex);
+  // reset position
+  jslReset(lex);
 }
 
 void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos) {
@@ -316,6 +312,10 @@ void jslKill(JsLex *lex) {
 
 void jslReset(JsLex *lex) {
   jslSeek(lex, lex->sourceStartPos);
+  // set up..
+  jslGetNextCh(lex);
+  jslGetNextCh(lex);
+  jslGetNextToken(lex);
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {
@@ -380,15 +380,9 @@ void jslTokenAsString(int token, char *str, size_t len) {
 
 void jslGetTokenString(JsLex *lex, char *str, size_t len) {
   if (lex->tk == LEX_ID) {
-    assert(len > (size_t)(lex->tokenl+1));
-    memcpy(str, lex->token, (size_t)lex->tokenl);
-    str[lex->tokenl] = 0;
+    snprintf(str,len, "ID:%s", jslGetTokenValueAsString(lex));
   } else if (lex->tk == LEX_STR) {
-      assert(len > (size_t)(lex->tokenl+3));
-      str[0] = '"';
-      memcpy(str+1, lex->token, (size_t)lex->tokenl);
-      str[lex->tokenl+1] = '"';
-      str[lex->tokenl+2] = 0;
+    snprintf(str,len, "String:'%s'", jslGetTokenValueAsString(lex));
   } else
     jslTokenAsString(lex->tk, str, len);
 }
