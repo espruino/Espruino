@@ -50,7 +50,8 @@ JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
 // Creates a new Variable name that links to the given variable...
-JsVar *jsvNewVariableName(JsVarRef variable, const char *name);
+JsVar *jsvNewVariableName(JsVarRef variable, const char *name); // variable can be 0
+JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex); // Create a new Variable name from the lexer's last token. variable can be 0
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
 void jsvUnLock(JsVarRef ref); ///< Unlock this reference

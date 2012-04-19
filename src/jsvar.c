@@ -139,10 +139,42 @@ JsVar *jsvNewFromString(const char *str) {
 
 JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   // Create a new STRING from part of the lexer
-  // Set this variable's string value from part of the lexer
-  jsWarn("TODO: Set string from lex!");
+  // Create a new lexer to span the whole area
+  // OPT: probably not the fastest, but safe. Only done when a new function is created anyway
+  JsLex newLex;
+  jslInit(&newLex, jsvLock(lex->sourceVarRef), charFrom, charTo);
+  jsvUnLock(lex->sourceVarRef);
 
-  return jsvNewFromString("MY CODE");
+  // Create a var
+  JsVar *first = jsvNew();
+  // Now we copy the string, but keep creating new jsVars if we go
+  // over the end
+  JsVar *var = first;
+  var->flags = SCRIPTVAR_STRING;
+  var->strData[0] = 0; // in case str is empty!
+
+
+  while (newLex.currCh) {
+    // copy data in
+    for (int i=0;i<JSVAR_STRING_LEN;i++) {
+      var->strData[i] = newLex.currCh;
+      if (newLex.currCh) jslGetNextCh(&newLex);
+    }
+    // if there is still some left, it's because we filled up our var...
+    // make a new one, link it in, and unlock the old one.
+    if (newLex.currCh) {
+      JsVar *next = jsvRef(jsvNew());
+      next->flags = SCRIPTVAR_STRING_EXT;
+      var->firstChild = next->this;
+      if (var!=first) jsvUnLockPtr(var);
+      var = next;
+    }
+  }
+  // free
+  if (var!=first) jsvUnLockPtr(var);
+  jslKill(&newLex);
+  // return
+  return first;
 }
 
 JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags) {
@@ -170,6 +202,13 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
 }
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
   JsVar *var = jsvNewFromString(name);
+  var->flags |= SCRIPTVAR_NAME;
+  if (variable)
+    var->firstChild = jsvRefRef(variable);
+  return var;
+}
+JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex) {
+  JsVar *var = jsvNewFromString(jslGetTokenValueAsString(lex));
   var->flags |= SCRIPTVAR_NAME;
   if (variable)
     var->firstChild = jsvRefRef(variable);

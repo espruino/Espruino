@@ -89,7 +89,8 @@ JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFo
 bool jspeFunctionArguments(JsExecInfo *execInfo, JsVar *funcVar) {
   JSP_MATCH('(');
   while (execInfo->lex->tk!=')') {
-      jspClean(jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex)));
+      if (funcVar)
+        jspClean(jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex)));
       JSP_MATCH(LEX_ID);
       if (execInfo->lex->tk!=')') JSP_MATCH(',');
   }
@@ -128,17 +129,12 @@ void jspAddNativeFunction(JsParse *parse, const char *funcDesc, JSCallback ptr, 
 }
 #endif
 
-JsVar *jspeFunctionDefinition(JsExecInfo *execInfo) {
-  // actually parse a function...
-  JSP_MATCH(LEX_R_FUNCTION);
-  // OPT: can we make the jsvNewVariableName up here?
-  char funcName[JSLEX_MAX_TOKEN_LENGTH] = TINYJS_TEMP_NAME;
-  /* we can have functions without names */
-  if (execInfo->lex->tk==LEX_ID) {
-    jslGetTokenString(execInfo->lex, funcName, JSLEX_MAX_TOKEN_LENGTH);
-    JSP_MATCH(LEX_ID);
-  }
-  JsVar *funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
+JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags execute) {
+  // actually parse a function... We assume that the LEX_FUNCTION and name
+  // have already been parsed
+  JsVar *funcVar = 0;
+  if (execute)
+    funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
   // Get arguments save them to the structure
   if (!jspeFunctionArguments(execInfo, funcVar)) {
     // parse failed
@@ -149,11 +145,11 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo) {
   JsExecFlags noexecute = EXEC_NO;
   jspClean(jspeBlock(execInfo, noexecute));
   // Then create var and set
-  JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd+1);
-  jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
-  JsVar *func = jsvNewVariableName(funcVar->this, funcName);
-  jspClean(funcVar);
-  return func;
+  if (execute) {
+    JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd);
+    jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
+  }
+  return funcVar;
 }
 
 #ifdef TODO
@@ -287,7 +283,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         if (execute && !a) {
           /* Variable doesn't exist! JavaScript says we should create it
            * (we won't add it here. This is done in the assignment operator)*/
-          a = jsvNewVariableName(0, jslGetTokenValueAsString(execInfo->lex));
+          a = jsvNewVariableNameFromLexerToken(0, execInfo->lex);
         }
         JSP_MATCH(LEX_ID);
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
@@ -420,10 +416,8 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         return contents;
     }
     if (execInfo->lex->tk==LEX_R_FUNCTION) {
-      JsVar *func = jspeFunctionDefinition(execInfo);
-      if (jsvIsStringEqual(func, TINYJS_TEMP_NAME))
-        jsWarnAt("Functions not defined at statement-level are not meant to have a name", execInfo->lex, execInfo->lex->tokenLastEnd);
-      return func;
+      JSP_MATCH(LEX_R_FUNCTION);
+      return jspeFunctionDefinition(execInfo, execute);
     }
 #if TODO
     if (execInfo->lex->tk==LEX_R_NEW) {
@@ -860,24 +854,23 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         JSP_MATCH(';');
 #endif
     } else if (execInfo->lex->tk==LEX_R_FUNCTION) {
-        JsVar *func = jspeFunctionDefinition(execInfo);
+        JSP_MATCH(LEX_R_FUNCTION);
+        JsVar *func = 0;
+        if (execute) func = jsvNewVariableNameFromLexerToken(0, execInfo->lex);
+        JSP_MATCH(LEX_ID);
+        JsVar *funcVar = jspeFunctionDefinition(execInfo, execute);
         if (execute) {
-          if (jsvIsStringEqual(func, TINYJS_TEMP_NAME))
-            jsErrorAt("Functions defined at statement-level are meant to have a name\n", execInfo->lex, execInfo->lex->tokenLastEnd);
-          else {
-            char funcName[JSLEX_MAX_TOKEN_LENGTH];
-            jsvGetString(func, funcName, JSLEX_MAX_TOKEN_LENGTH);
-            // OPT: can Find* use just a JsVar that is a 'name'?
-            // find a function with the same name (or make one)
-            JsVar *existingFunc = jspeiFindOnTop(execInfo, funcName, true);
-            // replace it
-            JsVar *funcVar = jsvSkipName(func);
-            jspReplaceWith(execInfo, existingFunc, funcVar);
-            jspClean(funcVar);
-            jspClean(func);
-            func = existingFunc;
-          }
+          char funcName[JSLEX_MAX_TOKEN_LENGTH];
+          jsvGetString(func, funcName, JSLEX_MAX_TOKEN_LENGTH);
+          // find a function with the same name (or make one)
+          // OPT: can Find* use just a JsVar that is a 'name'?
+          JsVar *existingFunc = jspeiFindOnTop(execInfo, funcName, true);
+          // replace it
+          jspReplaceWith(execInfo, existingFunc, funcVar);
+          jspClean(func);
+          func = existingFunc;
         }
+        jspClean(funcVar);
         return func;
     } else JSP_MATCH(LEX_EOF);
     return 0;
