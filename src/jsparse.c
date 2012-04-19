@@ -185,7 +185,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     }
     if (execInfo->lex->tk==LEX_FLOAT) {
         double v = atof(jslGetTokenValueAsString(execInfo->lex));
-        JSP_MATCH(LEX_INT);
+        JSP_MATCH(LEX_FLOAT);
         return jsvNewFromFloat(v);
     }
     if (execInfo->lex->tk==LEX_STR) {

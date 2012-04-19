@@ -36,16 +36,17 @@ void jslSeek(JsLex *lex, int seekToChar) {
 void jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
   if (lex->currentPos < lex->sourceEndPos) {
-    lex->nextCh = lex->currentVar->strData[lex->currentVarPos];
+    lex->nextCh = 0;
+    if (lex->currentVar)
+      lex->nextCh = lex->currentVar->strData[lex->currentVarPos];
     lex->currentVarPos++;
     // make sure we move on to next..
     if (lex->currentVarPos >= JSVAR_STRING_LEN) {
       lex->currentVarPos -= JSVAR_STRING_LEN;
       JsVarRef next = lex->currentVar->firstChild;
-      assert(next);
       jsvUnLock(lex->currentVarRef);
       lex->currentVarRef = next;
-      lex->currentVar = jsvLock(lex->currentVarRef);
+      lex->currentVar = next ? jsvLock(lex->currentVarRef) : 0;
     }
   } else
     lex->nextCh = 0;
