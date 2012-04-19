@@ -47,7 +47,7 @@ JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
-JsVar *jsvNewFromDouble(JsVarFloat value);
+JsVar *jsvNewFromFloat(JsVarFloat value);
 // Creates a new Variable name that links to the given variable...
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name);
 

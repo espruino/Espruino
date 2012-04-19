@@ -84,7 +84,6 @@ JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFo
 }
 // -----------------------------------------------
 
-
 JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     if (execInfo->lex->tk=='(') {
         JSP_MATCH('(');
@@ -187,7 +186,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     if (execInfo->lex->tk==LEX_FLOAT) {
         double v = atof(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_INT);
-        return jsvNewFromDouble(v);
+        return jsvNewFromFloat(v);
     }
     if (execInfo->lex->tk==LEX_STR) {
         JsVar *a = jsvNewFromString(jslGetTokenValueAsString(execInfo->lex));
@@ -749,8 +748,14 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
     jspClean(v);
     v = jspeStatement(&execInfo, execute);
   }
-
   jslKill(&lex);
 
-  return v;
+  // It may have returned a reference, but we just want the value...
+  if (v) {
+    JsVar *nv = jsvSkipName(v);
+    jspClean(v);
+    return nv;
+  }
+  // nothing returned
+  return 0;
 }

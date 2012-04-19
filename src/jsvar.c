@@ -154,9 +154,9 @@ JsVar *jsvNewFromBool(bool value) {
   var->intData = value ? 1 : 0;
   return var;
 }
-JsVar *jsvNewFromDouble(JsVarFloat value) {
+JsVar *jsvNewFromFloat(JsVarFloat value) {
   JsVar *var = jsvNew();
-  var->flags = SCRIPTVAR_DOUBLE;
+  var->flags = SCRIPTVAR_FLOAT;
   var->doubleData = value;
   return var;
 }
@@ -169,7 +169,7 @@ JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
 }
 
 bool jsvIsInt(JsVar *v) { return (v->flags&SCRIPTVAR_INTEGER)!=0; }
-bool jsvIsDouble(JsVar *v) { return (v->flags&SCRIPTVAR_DOUBLE)!=0; }
+bool jsvIsFloat(JsVar *v) { return (v->flags&SCRIPTVAR_FLOAT)!=0; }
 bool jsvIsString(JsVar *v) { return (v->flags&SCRIPTVAR_STRING)!=0; }
 bool jsvIsNumeric(JsVar *v) { return (v->flags&SCRIPTVAR_NUMERICMASK)!=0; }
 bool jsvIsFunction(JsVar *v) { return (v->flags&SCRIPTVAR_FUNCTION)!=0; }
@@ -191,7 +191,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
     if (jsvIsInt(v)) {
       //OPT could use itoa
       snprintf(str, len, "%ld", v->intData);
-    } else if (jsvIsDouble(v)) {
+    } else if (jsvIsFloat(v)) {
       //OPT could use ftoa
       snprintf(str, len, "%f", v->doubleData);
     } else if (jsvIsNull(v)) {
@@ -261,7 +261,7 @@ JsVarInt jsvGetInteger(JsVar *v) {
     if (jsvIsInt(v)) return v->intData;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if (jsvIsDouble(v)) return (JsVarInt)v->doubleData;
+    if (jsvIsFloat(v)) return (JsVarInt)v->doubleData;
     return 0;
 }
 
@@ -271,7 +271,7 @@ bool jsvGetBool(JsVar *v) {
 
 double jsvGetDouble(JsVar *v) {
     if (!v) return 0;
-    if (jsvIsDouble(v)) return v->doubleData;
+    if (jsvIsFloat(v)) return v->doubleData;
     if (jsvIsInt(v)) return (double)v->intData;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
@@ -435,10 +435,10 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
         return jsvNewWithFlags(SCRIPTVAR_UNDEFINED); // undefined
     } else if ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
                (jsvIsNumeric(b) || jsvIsUndefined(b))) {
-        if (!jsvIsDouble(a) && !jsvIsDouble(b)) {
+        if (!jsvIsFloat(a) && !jsvIsFloat(b)) {
             // use ints
-            long da = jsvGetInteger(a);
-            long db = jsvGetInteger(b);
+            JsVarInt da = jsvGetInteger(a);
+            JsVarInt db = jsvGetInteger(b);
             switch (op) {
                 case '+': return jsvNewFromInteger(da+db);
                 case '-': return jsvNewFromInteger(da-db);
@@ -450,7 +450,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
                 case '%': return jsvNewFromInteger(da%db);
                 case LEX_LSHIFT: return jsvNewFromInteger(da << db);
                 case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
-                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger(((unsigned long)(long)da) >> db);
+                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger(((unsigned long)da) >> db);
                 case LEX_EQUAL:     return jsvNewFromBool(da==db);
                 case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
                 case '<':           return jsvNewFromBool(da<db);
@@ -461,13 +461,13 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
             }
         } else {
             // use doubles
-            double da = jsvGetDouble(a);
-            double db = jsvGetDouble(b);
+            JsVarFloat da = jsvGetDouble(a);
+            JsVarFloat db = jsvGetDouble(b);
             switch (op) {
-                case '+': return jsvNewFromDouble(da+db);
-                case '-': return jsvNewFromDouble(da-db);
-                case '*': return jsvNewFromDouble(da*db);
-                case '/': return jsvNewFromDouble(da/db);
+                case '+': return jsvNewFromFloat(da+db);
+                case '-': return jsvNewFromFloat(da-db);
+                case '*': return jsvNewFromFloat(da*db);
+                case '/': return jsvNewFromFloat(da/db);
                 case LEX_EQUAL:     return jsvNewFromBool(da==db);
                 case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
                 case '<':           return jsvNewFromBool(da<db);
@@ -540,7 +540,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     if (jsvIsObject(var)) printf("Object {\n");
     else if (jsvIsArray(var)) printf("Array [\n");
     else if (jsvIsInt(var)) printf("Integer ");
-    else if (jsvIsDouble(var)) printf("Double ");
+    else if (jsvIsFloat(var)) printf("Double ");
     else if (jsvIsString(var)) printf("String ");
     else if (jsvIsFunction(var)) printf("Function {\n");
     else printf("Flags %d\n", var->flags);

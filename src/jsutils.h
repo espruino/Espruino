@@ -35,11 +35,12 @@ typedef char bool;
 
 
 typedef enum SCRIPTVAR_FLAGS {
+  // OPT: These can be packed as there's no point being an array AND a float
     SCRIPTVAR_UNDEFINED   = 0,
     SCRIPTVAR_FUNCTION    = 1,
     SCRIPTVAR_OBJECT      = 2,
     SCRIPTVAR_ARRAY       = 4,
-    SCRIPTVAR_DOUBLE      = 8,  // floating point double
+    SCRIPTVAR_FLOAT       = 8,  // floating point double
     SCRIPTVAR_INTEGER     = 16, // integer number
     SCRIPTVAR_STRING      = 32, // string
     SCRIPTVAR_NULL        = 64, // it seems null is its own data type
@@ -48,9 +49,9 @@ typedef enum SCRIPTVAR_FLAGS {
     SCRIPTVAR_NATIVE      = 256, // to specify this is a native function
     SCRIPTVAR_TEMP        = 512, // mainly for debugging so we can see if a temp var got used wrongly
     SCRIPTVAR_NUMERICMASK = SCRIPTVAR_NULL |
-                            SCRIPTVAR_DOUBLE |
+                            SCRIPTVAR_FLOAT |
                             SCRIPTVAR_INTEGER,
-    SCRIPTVAR_VARTYPEMASK = SCRIPTVAR_DOUBLE |
+    SCRIPTVAR_VARTYPEMASK = SCRIPTVAR_FLOAT |
                             SCRIPTVAR_INTEGER |
                             SCRIPTVAR_STRING |
                             SCRIPTVAR_FUNCTION |
