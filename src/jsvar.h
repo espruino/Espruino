@@ -68,6 +68,7 @@ bool jsvIsDouble(JsVar *v);
 bool jsvIsString(JsVar *v);
 bool jsvIsNumeric(JsVar *v);
 bool jsvIsFunction(JsVar *v);
+bool jsvIsFunctionParameter(JsVar *v);
 bool jsvIsObject(JsVar *v);
 bool jsvIsArray(JsVar *v);
 bool jsvIsNative(JsVar *v);

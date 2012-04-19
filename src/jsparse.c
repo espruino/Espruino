@@ -71,7 +71,7 @@ void jspeiRemoveScope(JsExecInfo *execInfo) {
 }
 
 JsVar *jspeiFindInScopes(JsExecInfo *execInfo, const char *name) {
-  for (int i=execInfo->scopeCount-1;i>=0;i++) {
+  for (int i=execInfo->scopeCount-1;i>=0;i--) {
     JsVar *ref = jsvFindChild(execInfo->scopes[i], name, false);
     if (ref) return ref;
   }
@@ -89,8 +89,11 @@ JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFo
 bool jspeFunctionArguments(JsExecInfo *execInfo, JsVar *funcVar) {
   JSP_MATCH('(');
   while (execInfo->lex->tk!=')') {
-      if (funcVar)
-        jspClean(jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex)));
+      if (funcVar) {
+        JsVar *param = jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex));
+        param->flags = SCRIPTVAR_FUNCTION_PARAMETER;
+        jspClean(param);
+      }
       JSP_MATCH(LEX_ID);
       if (execInfo->lex->tk!=')') JSP_MATCH(',');
   }
@@ -146,111 +149,118 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags execute) {
   jspClean(jspeBlock(execInfo, noexecute));
   // Then create var and set
   if (execute) {
-    JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd);
+    JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd+1);
     jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
   }
   return funcVar;
 }
 
-#ifdef TODO
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'parent' is the object that contains this method,
  * if there was one (otherwise it's just a normnal function).
  */
-JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags execute, CScriptVarLink *function, CScriptVar *parent) {
+JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags execute, JsVar *function, JsVar *parent) {
   if (execute) {
-    if (!function->var->isFunction()) {
-        string errorMsg = "Expecting '";
-        errorMsg = errorMsg + function->name + "' to be a function";
-        throw new CScriptException(errorMsg.c_str());
+    if (!jsvIsFunction(function)) {
+        jsErrorAt("Expecting a function to call", execInfo->lex, execInfo->lex->tokenLastEnd );
+        return 0;
     }
     JSP_MATCH('(');
     // create a new symbol table entry for execution of this function
-    CScriptVar *functionRoot = new CScriptVar(TINYJS_BLANK_DATA, SCRIPTVAR_FUNCTION);
+    // OPT: can we cache this function execution environment + param variables?
+    JsVar *functionRoot = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
     if (parent)
-      functionRoot->addChildNoDup("this", parent);
+      jspClean(jsvAddNamedChild(functionRoot->this, parent->this, TINYJS_THIS_VAR));
     // grab in all parameters
-    CScriptVarLink *v = function->var->firstChild;
+    JsVarRef v = function->firstChild;
     while (v) {
-        CScriptVarLink *value = base(execute);
-        if (execute) {
-            if (value->var->isBasic()) {
+        JsVar *param = jsvLock(v);
+        if (jsvIsFunctionParameter(param)) {
+          JsVar *valueName = jspeBase(execInfo, execute);
+          if (execute) {
+            char paramName[JSLEX_MAX_TOKEN_LENGTH];
+            jsvGetString(param, paramName, JSLEX_MAX_TOKEN_LENGTH);
+
+            JsVar *value = jsvSkipName(valueName);
+            // TODO: deep copy required?
+            /*if (jsvIsBasic(value)) {
               // pass by value
-              functionRoot->addChild(v->name, value->var->deepCopy());
+              jsvAddNamedChild(functionRoot->this, v->name, value->var->deepCopy());
             } else {
               // pass by reference
-              functionRoot->addChild(v->name, value->var);
-            }
+              jsvAddNamedChild(functionRoot->this, v->name, value);
+            }*/
+            jspClean(jsvAddNamedChild(functionRoot->this, value->this, paramName));
+            jspClean(value);
+          }
+          jspClean(valueName);
+          if (execInfo->lex->tk!=')') JSP_MATCH(',');
         }
-        CLEAN(value);
-        if (execInfo->lex->tk!=')') JSP_MATCH(',');
-        v = v->nextSibling;
+        v = param->nextSibling;
+        jsvUnLockPtr(param);
     }
     JSP_MATCH(')');
     // setup a return variable
-    CScriptVarLink *returnVar = NULL;
-    // execute function!
+    JsVar *returnVarName = jsvAddNamedChild(functionRoot->this, 0, TINYJS_RETURN_VAR);
     // add the function's execute space to the symbol table so we can recurse
-    CScriptVarLink *returnVarLink = functionRoot->addChild(TINYJS_RETURN_VAR);
-    scopes.push_back(functionRoot);
+    jspeiAddScope(execInfo, functionRoot->this);
+    //jsvTrace(functionRoot->this, 5); // debugging
 #ifdef TINYJS_CALL_STACK
     call_stack.push_back(function->name + " from " + l->getPosition());
 #endif
 
-    if (function->var->isNative()) {
-        ASSERT(function->var->jsCallback);
+    if (jsvIsNative(function)) {
+        assert(function->callback);
+#ifdef TODO
         function->var->jsCallback(functionRoot, function->var->jsCallbackUserData);
+#endif
     } else {
         /* we just want to execute the block, but something could
          * have messed up and left us with the wrong ScriptLex, so
          * we want to be careful here... */
-        CScriptException *exception = 0;
-        CScriptLex *oldLex = l;
-        CScriptLex *newLex = new CScriptLex(function->var->getString());
-        l = newLex;
-        try {
-          block(execute);
-          // because return will probably have called this, and set execute to false
-          execute = true;
-        } catch (CScriptException *e) {
-          exception = e;
-        }
-        delete newLex;
-        l = oldLex;
 
-        if (exception)
-          throw exception;
+        JsVar *functionCode = jsvFindChild(function->this, TINYJS_FUNCTION_CODE_NAME, false);
+        if (functionCode) {
+          JsVar* functionCodeVar = jsvSkipName(functionCode);
+          JsLex newLex;
+          jslInit(&newLex, functionCodeVar, 0, -1);
+          jspClean(functionCodeVar);
+          jspClean(functionCode);
+
+          JsLex *oldLex = execInfo->lex;
+          execInfo->lex = &newLex;
+          JsExecFlags oldExecute = execute;
+          jspeBlock(execInfo, execute);
+          execute = oldExecute; // because return will probably have called this, and set execute to false
+          jslKill(&newLex);
+          execInfo->lex = oldLex;
+        }
     }
 #ifdef TINYJS_CALL_STACK
     if (!call_stack.empty()) call_stack.pop_back();
 #endif
-    scopes.pop_back();
+    jspeiRemoveScope(execInfo);
     /* get the real return var before we remove it from our function */
-    returnVar = new CScriptVarLink(returnVarLink->var);
-    functionRoot->removeLink(returnVarLink);
-    delete functionRoot;
+    JsVar *returnVar = jsvSkipName(returnVarName);
+    jsvUnLockPtr(functionRoot);
     if (returnVar)
       return returnVar;
     else
-      return new CScriptVarLink(new CScriptVar());
+      return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
   } else {
     // function, but not executing - just parse args and be done
     JSP_MATCH('(');
     while (execInfo->lex->tk != ')') {
-      CScriptVarLink *value = base(execute);
-      CLEAN(value);
+      JsVar *value = jspeBase(execInfo, execute);
+      jspClean(value);
       if (execInfo->lex->tk!=')') JSP_MATCH(',');
     }
     JSP_MATCH(')');
-    if (execInfo->lex->tk == '{') {
-      block(execute);
-    }
     /* function will be a blank scriptvarlink if we're not executing,
      * so just return it rather than an alloc/free */
     return function;
   }
 }
-#endif
 
 JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
     if (execInfo->lex->tk=='(') {
@@ -287,11 +297,11 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags execute) {
         }
         JSP_MATCH(LEX_ID);
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
-
           if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
-#ifdef TODO
-            a = functionCall(execute, a, parent);
-#endif
+            JsVar *func = jsvSkipName(a);
+            jspClean(a);
+            a = jspeFunctionCall(execInfo, execute, func, parent);
+            jspClean(func);
             } else if (execInfo->lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
                 if (execute) {
@@ -835,7 +845,6 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         if (loopCount<=0) {
             jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo->lex, execInfo->lex->tokenLastEnd);
         }
-#if TODO
     } else if (execInfo->lex->tk==LEX_R_RETURN) {
         JSP_MATCH(LEX_R_RETURN);
         JsVar *result = 0;
@@ -852,7 +861,6 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags execute) {
         }
         jspClean(result);
         JSP_MATCH(';');
-#endif
     } else if (execInfo->lex->tk==LEX_R_FUNCTION) {
         JSP_MATCH(LEX_R_FUNCTION);
         JsVar *func = 0;

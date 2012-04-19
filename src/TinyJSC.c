@@ -62,7 +62,8 @@ int main(void) {
 	//JsVar *v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;for (i=0;i<5;i++) a=a*2; a" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
-    JsVar *v = jspEvaluate(&p, "function foo(a,b) { return a+b; }" );
+    JsVar *v = jspEvaluate(&p,
+"function foo(a,b) { return a+b; } var bar=function (a,b) { return a*b; };foo(1,2)" );//
 	if (v) {
       char buf[256];
       jsvGetString(v, buf, 256);

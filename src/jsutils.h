@@ -26,9 +26,11 @@ typedef char bool;
 #define JSPARSE_MAX_SCOPES  32
 #define TINYJS_LOOP_MAX_ITERATIONS 8192
 
+// javascript specific names
 #define TINYJS_RETURN_VAR "return"
+#define TINYJS_THIS_VAR "this"
 #define TINYJS_PROTOTYPE_CLASS "prototype"
-#define TINYJS_TEMP_NAME ""
+// internal names that hopefully nobody will be able to access
 #define TINYJS_FUNCTION_CODE_NAME "#code#"
 
 
@@ -46,7 +48,7 @@ typedef enum SCRIPTVAR_FLAGS {
     SCRIPTVAR_STRING      = 32, // string
     SCRIPTVAR_NULL        = 64, // it seems null is its own data type
 
-    SCRIPTVAR_NAME      = 128, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
+    SCRIPTVAR_NAME        = 128, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
     SCRIPTVAR_NATIVE      = 256, // to specify this is a native function
     SCRIPTVAR_TEMP        = 512, // mainly for debugging so we can see if a temp var got used wrongly
     SCRIPTVAR_NUMERICMASK = SCRIPTVAR_NULL |
@@ -61,6 +63,8 @@ typedef enum SCRIPTVAR_FLAGS {
                             SCRIPTVAR_NULL,
     SCRIPTVAR_STRING_EXT  = SCRIPTVAR_STRING | // a later part of a 'large' string
                             SCRIPTVAR_ARRAY,
+    SCRIPTVAR_FUNCTION_PARAMETER = SCRIPTVAR_FUNCTION |
+                                   SCRIPTVAR_NAME, // this is inside a function, so it should be quite obvious
 } SCRIPTVAR_FLAGS;
 
 typedef enum LEX_TYPES {

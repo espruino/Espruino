@@ -144,6 +144,10 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   JsLex newLex;
   jslInit(&newLex, jsvLock(lex->sourceVarRef), charFrom, charTo);
   jsvUnLock(lex->sourceVarRef);
+  // Reset (we must do this because normally it tries to get a new token)
+  jslSeek(&newLex, newLex.sourceStartPos);
+  jslGetNextCh(&newLex);
+  jslGetNextCh(&newLex);
 
   // Create a var
   JsVar *first = jsvNew();
@@ -219,7 +223,8 @@ bool jsvIsInt(JsVar *v) { return (v->flags&SCRIPTVAR_INTEGER)!=0; }
 bool jsvIsFloat(JsVar *v) { return (v->flags&SCRIPTVAR_FLOAT)!=0; }
 bool jsvIsString(JsVar *v) { return (v->flags&SCRIPTVAR_STRING)!=0; }
 bool jsvIsNumeric(JsVar *v) { return (v->flags&SCRIPTVAR_NUMERICMASK)!=0; }
-bool jsvIsFunction(JsVar *v) { return (v->flags&SCRIPTVAR_FUNCTION)!=0; }
+bool jsvIsFunction(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_FUNCTION; }
+bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&SCRIPTVAR_FUNCTION_PARAMETER) == SCRIPTVAR_FUNCTION_PARAMETER; }
 bool jsvIsObject(JsVar *v) { return (v->flags&SCRIPTVAR_OBJECT)!=0; }
 bool jsvIsArray(JsVar *v) { return (v->flags&SCRIPTVAR_ARRAY)!=0; }
 bool jsvIsNative(JsVar *v) { return (v->flags&SCRIPTVAR_NATIVE)!=0; }
@@ -245,9 +250,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       snprintf(str, len, "null");
     } else if (jsvIsUndefined(v)) {
       snprintf(str, len, "undefined");
-    } else if (jsvIsFunction(v)) {
-      snprintf(str, len, "function");
-    } else { assert(jsvIsString(v));
+    } else if (jsvIsString(v) || jsvIsFunctionParameter(v)) {
       // print the string - we have to do it a block
       // at a time!
       JsVar *var = v;
@@ -269,7 +272,9 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
         if (ref) var = jsvLock(ref);
       }
       if (ref) jsvUnLock(ref);
-    }
+    } else if (jsvIsFunction(v)) {
+      snprintf(str, len, "function");
+    } else assert(0);
 }
 
 int jsvGetStringLength(JsVar *v) {
