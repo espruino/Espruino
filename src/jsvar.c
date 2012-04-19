@@ -31,6 +31,16 @@ int jsvGetMemoryUsage() {
   return usage;
 }
 
+// Show what is still allocated, for debugging memory problems
+void jsvShowAllocated() {
+  int usage = 0;
+  for (int i=1;i<JSVAR_CACHE_SIZE;i++)
+    if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
+      printf("USED VAR #%d:", jsVars[i].this);
+      jsvTrace(jsVars[i].this, 2);
+    }
+}
+
 JsVar *jsvNew() {
   for (int i=1;i<JSVAR_CACHE_SIZE;i++) {
     if (jsVars[i].refs == JSVAR_CACHE_UNUSED_REF) {
@@ -81,9 +91,12 @@ void jsvFreePtr(JsVar *var) {
     }
   }
 
+//int c = 0;
+
 JsVar *jsvLock(JsVarRef ref) {
   assert(ref);
   JsVar *var = &jsVars[ref-1];
+//  if (ref==29) printf("+ %d : %d\n", ++c, var->locks);
   var->locks++;
   return var;
 }
@@ -92,6 +105,7 @@ void jsvUnLock(JsVarRef ref) {
   assert(ref);
   JsVar *var = &jsVars[ref-1];
   assert(var->locks>0);
+//  if (ref==29) printf("- %d : %d\n", c, var->locks);
   var->locks--;
   if (var->locks == 0 && var->refs==0)
     jsvFreePtr(var);
@@ -289,6 +303,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           if (len--<=0) {
             *str = 0;
             jsWarn("jsvGetString overflowed\n");
+            if (ref) jsvUnLock(ref);
             return;
           }
           *(str++) = var->strData[i];
@@ -456,12 +471,14 @@ int jsvGetArrayLength(JsVar *v) {
 
 
 /** If a is a name skip it and go to what it points to.
- * ALWAYS locks - so must unlock what it returns. */
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0.  */
 JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLockPtr(pa);
+    if (!n) return 0;
     pa = jsvLock(n);
   }
   if (pa==a) jsvLockPtr(pa);
@@ -607,8 +624,11 @@ void jsvTrace(JsVarRef ref, int indent) {
     char buf[JS_ERROR_BUF_SIZE];
 
     for (int i=0;i<indent;i++) printf(" ");
-
     JsVar *var = jsvLock(ref);
+
+    printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
+
+
     if (jsvIsName(var)) {
 
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
@@ -639,10 +659,24 @@ void jsvTrace(JsVarRef ref, int indent) {
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-      printf("%s\n", buf);
+      printf("%s", buf);
     }
 
-    if (!jsvIsString(var) && !jsvIsName(var)) {
+    if (jsvIsString(var) || jsvIsName(var)) {
+      JsVarRef child = var->firstChild;
+      if (child) {
+        printf("( Multi-block string ");
+        while (child) {
+          JsVar *childVar = jsvLock(child);
+          printf("#%d[r%d,l%d] ", child, childVar->refs, childVar->locks-1);
+          child = childVar->firstChild;
+          jsvUnLockPtr(childVar);
+        }
+      }
+      printf(")\n");
+    } else {
+      printf("\n");
+      // dump children
       JsVarRef child = var->firstChild;
       while (child) {
         jsvTrace(child, indent+1);

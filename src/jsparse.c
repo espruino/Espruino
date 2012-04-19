@@ -154,6 +154,7 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
   if (JSP_SHOULD_EXECUTE(execute)) {
     JsVar *funcCodeVar = jsvNewFromLexer(execInfo->lex, funcBegin, execInfo->lex->tokenLastEnd+1);
     jspClean(jsvAddNamedChild(funcVar->this, funcCodeVar->this, TINYJS_FUNCTION_CODE_NAME));
+    jspClean(funcCodeVar);
   }
   return funcVar;
 }
@@ -246,6 +247,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     jspeiRemoveScope(execInfo);
     /* get the real return var before we remove it from our function */
     JsVar *returnVar = jsvSkipName(returnVarName);
+    jspClean(returnVarName);
     jsvUnLockPtr(functionRoot);
     if (returnVar)
       return returnVar;
@@ -802,7 +804,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
     } else if (execInfo->lex->tk==LEX_R_FOR) {
         JSP_MATCH(LEX_R_FOR);
         JSP_MATCH('(');
-        jspeStatement(execInfo, execute); // initialisation
+        jspClean(jspeStatement(execInfo, execute)); // initialisation
         //JSP_MATCH(';');
         int forCondStart = execInfo->lex->tokenStart;
         JsExecFlags noexecute = EXEC_NO;
@@ -818,7 +820,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         jslInitFromLex(&forIter, execInfo->lex, forIterStart);
         JSP_MATCH(')');
         int forBodyStart = execInfo->lex->tokenStart;
-        jspeStatement(execInfo, loopCond ? execute : &noexecute);
+        jspClean(jspeStatement(execInfo, loopCond ? execute : &noexecute));
         JsLex forBody;
         jslInitFromLex(&forBody, execInfo->lex, forBodyStart);
         JsLex *oldLex = execInfo->lex;
@@ -837,7 +839,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
             if (JSP_SHOULD_EXECUTE(execute) && loopCond) {
                 jslReset(&forBody);
                 execInfo->lex = &forBody;
-                jspeStatement(execInfo, execute);
+                jspClean(jspeStatement(execInfo, execute));
             }
             if (JSP_SHOULD_EXECUTE(execute) && loopCond) {
                 jslReset(&forIter);
