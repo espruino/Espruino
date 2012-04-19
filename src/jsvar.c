@@ -45,12 +45,31 @@ JsVar *jsvNew() {
 }
 
 void jsvFreePtr(JsVar *var) {
+    /*var->refs = 1000; // just ensure we don't get freed while tracing!
+    printf("FREEING #%d:\n", var->this);
+    jsvTrace(var->this, 4);*/
+
+    // we shouldn't be linked from anywhere!
+    assert(!var->nextSibling && !var->prevSibling);
     // free!
     var->refs = JSVAR_CACHE_UNUSED_REF;
-    // TODO: if string, unref substrings
-    // If a NAME, unref firstChild
-    // If an object/array, unref children
-    printf("TODO: Free var\n");
+
+    /* Now, unref children
+     * Note: This is a bit hacky because it works for Objects, Arrays,
+     * AND strings/names (because it uses firstChild). If String storage
+     * changes, this will have to as well. */
+    JsVarRef childref = var->firstChild;
+
+    var->firstChild = 0;
+    var->lastChild = 0;
+    while (childref) {
+      JsVar *child = jsvLock(childref);
+      childref = child->nextSibling;
+      child->prevSibling = 0;
+      child->nextSibling = 0;
+      jsvUnRef(child);
+      jsvUnLockPtr(child);
+    }
   }
 
 JsVar *jsvLock(JsVarRef ref) {
@@ -595,7 +614,12 @@ void jsvTrace(JsVarRef ref, int indent) {
         return;
       }
     }
-    assert(!jsvIsName(var));
+    if (jsvIsName(var)) {
+      printf("\n");
+      jsvTrace(var->this, indent+1);
+      jsvUnLockPtr(var);
+      return;
+    }
     if (jsvIsObject(var)) printf("Object {\n");
     else if (jsvIsArray(var)) printf("Array [\n");
     else if (jsvIsInt(var)) printf("Integer ");

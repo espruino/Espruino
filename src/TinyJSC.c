@@ -58,6 +58,7 @@ int main(void) {
 	JsParse p;
 	jspInit(&p);
 
+	//JsVar *v = jspEvaluate(&p, "1+2" );
 	//JsVar *v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//JsVar *v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
 	//JsVar *v = jspEvaluate(&p, "var a = 1;for (i=0;i<5;i++) a=a*2; a" );
@@ -73,8 +74,9 @@ int main(void) {
       printf("RESULT : '%s'\n", buf);
 	} else
 	  printf("NO RESULT\n");
-	jspKill(&p);
 	jsvTrace(p.root, 0);
+	jspKill(&p);
+
 
 	jsvKill();
 	printf("Done!\n");
