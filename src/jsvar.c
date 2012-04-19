@@ -9,7 +9,7 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF -1
-#define JSVAR_CACHE_SIZE 256
+#define JSVAR_CACHE_SIZE 2048
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
 void jsvInit() {
@@ -40,6 +40,7 @@ JsVar *jsvNew() {
       return v;
     }
   }
+  jsError("Out of Memory!");
   return 0;
 }
 
