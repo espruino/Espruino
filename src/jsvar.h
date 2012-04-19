@@ -40,6 +40,7 @@ typedef struct {
 // Init/kill vars as a whole
 void jsvInit();
 void jsvKill();
+int jsvGetMemoryUsage(); // Get number of memory records (JsVars) used
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable

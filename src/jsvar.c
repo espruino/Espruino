@@ -9,7 +9,7 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF -1
-#define JSVAR_CACHE_SIZE 2048
+#define JSVAR_CACHE_SIZE 128
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
 void jsvInit() {
@@ -20,6 +20,15 @@ void jsvInit() {
 }
 
 void jsvKill() {
+}
+
+// Get number of memory records (JsVars) used
+int jsvGetMemoryUsage() {
+  int usage = 0;
+  for (int i=1;i<JSVAR_CACHE_SIZE;i++)
+    if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF)
+      usage++;
+  return usage;
 }
 
 JsVar *jsvNew() {
@@ -633,12 +642,14 @@ void jsvTrace(JsVarRef ref, int indent) {
       printf("%s\n", buf);
     }
 
-    JsVarRef child = var->firstChild;
-    while (child) {
-      jsvTrace(child, indent+1);
-      JsVar *childVar = jsvLock(child);
-      child = childVar->nextSibling;
-      jsvUnLockPtr(childVar);
+    if (!jsvIsString(var) && !jsvIsName(var)) {
+      JsVarRef child = var->firstChild;
+      while (child) {
+        jsvTrace(child, indent+1);
+        JsVar *childVar = jsvLock(child);
+        child = childVar->nextSibling;
+        jsvUnLockPtr(childVar);
+      }
     }
 
 

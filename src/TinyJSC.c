@@ -75,6 +75,8 @@ int main(void) {
 	} else
 	  printf("NO RESULT\n");
 	jsvTrace(p.root, 0);
+
+	printf("%d Memory Records Used\n", jsvGetMemoryUsage());
 	jspKill(&p);
 
 
