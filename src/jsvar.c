@@ -283,6 +283,14 @@ JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex) {
   return var;
 }
 
+JsVar *jsvNewVariableNameFromVariable(JsVarRef variable, JsVar *name) {
+  JsVar *var = jsvCopy(name);
+  var->flags |= JSV_NAME;
+  if (variable)
+    var->firstChild = jsvRefRef(variable);
+  return var;
+}
+
 bool jsvIsInt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 bool jsvIsFloat(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 bool jsvIsString(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
@@ -295,8 +303,57 @@ bool jsvIsArray(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 bool jsvIsNative(JsVar *v) { return (v->flags&JSV_NATIVE)!=0; }
 bool jsvIsUndefined(JsVar *v) { return (v->flags & JSV_VARTYPEMASK) == JSV_UNDEFINED; }
 bool jsvIsNull(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
-bool jsvIsBasic(JsVar *v) { return v->firstChild==0; /* Fixme */ } ///< Is this *not* an array/object/etc
+bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 bool jsvIsName(JsVar *v) { return (v->flags & JSV_NAME)!=0; }
+
+bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
+  // OPT: would this be useful as compare instead?
+  assert(jsvIsBasic(a) && jsvIsBasic(b));
+  if (jsvIsNumeric(a) && jsvIsNumeric(b)) {
+    if (jsvIsInt(a)) {
+      if (jsvIsInt(b)) {
+        return a->data.integer == b->data.integer;
+      } else {
+        assert(jsvIsFloat(b));
+        return a->data.integer == b->data.floating;
+      }
+    } else {
+      assert(jsvIsFloat(a));
+      if (jsvIsInt(b)) {
+        return a->data.floating == b->data.integer;
+      } else {
+        assert(jsvIsFloat(b));
+        return a->data.floating == b->data.floating;
+      }
+    }
+  } else if (jsvIsString(a) && jsvIsString(b)) {
+    int i;
+    JsVar *va = a;
+    JsVar *vb = b;
+    while (true) {
+      JsVarRef var, vbr;
+      for (i=0;i<JSVAR_STRING_LEN;i++) {
+        if (va->data.str[i] != vb->data.str[i]) return false;
+        if (!va->data.str[i]) return true; // equal, but end of string
+      }
+      // we're at the end of this, but are still ok. Move on
+      // to STRING_EXTs
+      var = a->lastChild;
+      vbr = b->lastChild;
+      if ((var==0) && (vbr==0)) return true; // both ended
+      if ((var==0) != (vbr==0)) return false; // one longer than the other
+      if (va!=a) jsvUnLock(va);
+      if (vb!=b) jsvUnLock(vb);
+      va = jsvLock(var);
+      vb = jsvLock(vbr);
+      // all done - keep going!
+    }
+    return true; // but we never get here
+  } else {
+    //TODO: are there any other combinations we should check here?? String v int?
+    return false;
+  }
+}
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
@@ -409,6 +466,7 @@ bool jsvGetBoolSkipName(JsVar *v) {
   return jsvGetIntegerSkipName(v)!=0;
 }
 
+// Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   int i;
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
@@ -422,24 +480,36 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   return false; //
 }
 
-void jsvAddName(JsVarRef parent, JsVarRef namedChild) {
-  namedChild = jsvRefRef(namedChild);
+JsVar *jsvCopy(JsVar *src) {
+  JsVar *dst = jsvNewWithFlags(src->flags);
+  dst->data = src->data;
+
+  if (src->firstChild || src->lastChild) {
+    jsError("FIXME: deep copy!");
+    assert(0);
+  }
+
+  return dst;
+}
+
+void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
+  JsVar *namedChild = jsvRef(jsvLock(namedChildRef));
+  assert(jsvIsName(namedChild));
   JsVar *v = jsvLock(parent);
   if (v->lastChild) {
     // Link 2 children together
     JsVar *lastChild = jsvLock(v->lastChild);
-    lastChild->nextSibling = namedChild;
+    lastChild->nextSibling = namedChildRef;
     jsvUnLock(lastChild);
 
-    JsVar *thisChild = jsvLock(namedChild);
-    thisChild->prevSibling = v->lastChild;
-    jsvUnLock(thisChild);
+    namedChild->prevSibling = v->lastChild;
     // finally set the new child as the last one
-    v->lastChild = namedChild;
+    v->lastChild = namedChildRef;
   } else {
-    v->firstChild = namedChild;
-    v->lastChild = namedChild;
+    v->firstChild = namedChildRef;
+    v->lastChild = namedChildRef;
   }
+  jsvUnLock(namedChild);
   jsvUnLock(v);
 }
 
@@ -461,14 +531,39 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   return name;
 }
 
-
-/** Non-recursive finding */
-JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound) {
+JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound) {
   JsVar *parent = jsvLock(parentref);
+  JsVar *child;
   JsVarRef childref = parent->firstChild;
   while (childref) {
-    JsVar *child = jsvLock(childref);
+
+    child = jsvLock(childref);
     if (jsvIsStringEqual(child, name)) {
+       // found it! unlock parent but leave child locked
+       jsvUnLock(parent);
+       return child;
+    }
+    childref = child->nextSibling;
+    jsvUnLock(child);
+  }
+
+  child = 0;
+  if (createIfNotFound) {
+    child = jsvNewVariableName(0, name);
+    jsvAddName(parentref, child->this);
+  }
+  jsvUnLock(parent);
+  return child;
+}
+
+/** Non-recursive finding */
+JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound) {
+  JsVar *parent = jsvLock(parentref);
+  JsVar *child;
+  JsVarRef childref = parent->firstChild;
+  while (childref) {
+    child = jsvLock(childref);
+    if (jsvIsBasicVarEqual(child, childName)) {
       // found it! unlock parent but leave child locked
       jsvUnLock(parent);
       return child;
@@ -477,10 +572,18 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound)
     jsvUnLock(child);
   }
 
-  JsVar *child = 0;
-  if (createIfNotFound) {
-    child = jsvNewVariableName(0, name);
-    jsvAddName(parentref, child->this);
+  child = 0;
+  if (addIfNotFound) {
+    if (childName->refs == 0) {
+      // Not reffed - great! let's just use it
+      if (!jsvIsName(childName))
+        childName->flags |= JSV_NAME;
+      jsvAddName(parentref, childName->this);
+      child = jsvLock(childName->this);
+    } else { // it was reffed, we must add a new one
+      child = jsvNewVariableNameFromVariable(0, childName);
+      jsvAddName(parentref, child->this);
+    }
   }
   jsvUnLock(parent);
   return child;
@@ -675,9 +778,11 @@ void jsvTrace(JsVarRef ref, int indent) {
 
 
     if (jsvIsName(var)) {
-
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-      printf("Name: '%s'  ", buf);
+      if (jsvIsInt(var)) printf("Name: int %s  ", buf);
+      else if (jsvIsFloat(var)) printf("Name: flt %s  ", buf);
+      else if (jsvIsString(var) || jsvIsFunctionParameter(var)) printf("Name: '%s'  ", buf);
+      else assert(0);
       // go to what the name points to
       ref = var->firstChild;
       jsvUnLock(var);

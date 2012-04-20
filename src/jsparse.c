@@ -70,16 +70,16 @@ void jspeiRemoveScope(JsExecInfo *execInfo) {
 JsVar *jspeiFindInScopes(JsExecInfo *execInfo, const char *name) {
   int i;
   for (i=execInfo->scopeCount-1;i>=0;i--) {
-    JsVar *ref = jsvFindChild(execInfo->scopes[i], name, false);
+    JsVar *ref = jsvFindChildFromString(execInfo->scopes[i], name, false);
     if (ref) return ref;
   }
-  return jsvFindChild(execInfo->parse->root, name, false);
+  return jsvFindChildFromString(execInfo->parse->root, name, false);
 }
 
 JsVar *jspeiFindOnTop(JsExecInfo *execInfo, const char *name, bool createIfNotFound) {
   if (execInfo->scopeCount>0)
-    return jsvFindChild(execInfo->scopes[execInfo->scopeCount-1], name, createIfNotFound);
-  return jsvFindChild(execInfo->parse->root, name, createIfNotFound);
+    return jsvFindChildFromString(execInfo->scopes[execInfo->scopeCount-1], name, createIfNotFound);
+  return jsvFindChildFromString(execInfo->parse->root, name, createIfNotFound);
 }
 // -----------------------------------------------
 
@@ -109,7 +109,7 @@ bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
     /* Check for dots, we might want to do something like function 'String.substring' ... */
     while (execInfo->lex->tk == '.') {
       JSP_MATCH('.');
-      JsVar *link = jsvFindChild(base->this, funcName, false);
+      JsVar *link = jsvFindChildFromString(base->this, funcName, false);
       // if it doesn't exist, make a new object class
       if (!link) {
         JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
@@ -243,7 +243,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
          * have messed up and left us with the wrong ScriptLex, so
          * we want to be careful here... */
 
-        JsVar *functionCode = jsvFindChild(function->this, JSPARSE_FUNCTION_CODE_NAME, false);
+        JsVar *functionCode = jsvFindChildFromString(function->this, JSPARSE_FUNCTION_CODE_NAME, false);
         if (functionCode) {
           JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
           JsLex newLex;
@@ -335,7 +335,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                   const char *name = jslGetTokenValueAsString(execInfo->lex);
 
                   JsVar *aVar = jsvSkipName(a);
-                  JsVar *child = jsvFindChild(aVar->this, name, false);
+                  JsVar *child = jsvFindChildFromString(aVar->this, name, false);
 #ifdef TODO
                   if (!child) child = findInParentClasses(aVar, name);
 #endif
@@ -365,12 +365,10 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                 if (JSP_SHOULD_EXECUTE(execute)) {
                   JsVar *aVar = jsvSkipName(a);
                   // OPT: pass variable value directly
-                  char buf[JSLEX_MAX_TOKEN_LENGTH];
                   JsVar *indexValue = jsvSkipName(index);
-                  jsvGetString(indexValue, buf, JSLEX_MAX_TOKEN_LENGTH);
+                  JsVar *child = jsvFindChildFromVar(aVar->this, indexValue, true);
                   jsvUnLock(indexValue);
 
-                  JsVar *child = jsvFindChild(aVar->this, buf, true);
                   jspClean(parent);
                   parent = aVar;
                   jspClean(a);
@@ -746,7 +744,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
               JSP_MATCH('.');
               if (JSP_SHOULD_EXECUTE(execute)) {
                   JsVar *lastA = a;
-                  a = jsvFindChild(lastA->this, jslGetTokenValueAsString(execInfo->lex), true);
+                  a = jsvFindChildFromString(lastA->this, jslGetTokenValueAsString(execInfo->lex), true);
                   jspClean(lastA);
               }
               JSP_MATCH(LEX_ID);

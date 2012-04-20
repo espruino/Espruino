@@ -98,6 +98,11 @@ bool jsvIsNull(JsVar *v);
 bool jsvIsBasic(JsVar *v);
 bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 
+/** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
+ * so 'a=5'=='a=7' but 'a=5'!='b=5')
+ */
+bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
+
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len);
 int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
@@ -121,11 +126,14 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
 JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op);
 JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 
+/// Copy this variable and return the locked copy
+JsVar *jsvCopy(JsVar *src);
 /// Tree related stuff
 void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
-JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 
 int jsvGetChildren(JsVar *v);
 int jsvGetArrayLength(JsVar *v);

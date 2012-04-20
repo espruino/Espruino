@@ -30,7 +30,7 @@
 #include "jsparse.h"
 
 void nativePrint(JsVarRef var) {
-  JsVar *text = jsvSkipNameAndUnlock(jsvFindChild(var, "text", false/*no create*/));
+  JsVar *text = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "text", false/*no create*/));
   char buf[64];
   jsvGetString(text, buf, 64);
   printf("PRINT: '%s'\n", buf);
@@ -38,16 +38,16 @@ void nativePrint(JsVarRef var) {
 }
 
 void nativeSetPin(JsVarRef var) {
-  JsVar *pin = jsvSkipNameAndUnlock(jsvFindChild(var, "pin", false/*no create*/));
-  JsVar *value = jsvSkipNameAndUnlock(jsvFindChild(var, "value", false/*no create*/));
+  JsVar *pin = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "pin", false/*no create*/));
+  JsVar *value = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "value", false/*no create*/));
   printf("Setting pin %d to value %d\n", (int)jsvGetInteger(pin),  (int)jsvGetInteger(value));
   jsvUnLock(pin);
   jsvUnLock(value);
 }
 
 void nativeGetPin(JsVarRef var) {
-  JsVar *pin = jsvSkipNameAndUnlock(jsvFindChild(var, "pin", false/*no create*/));
-  JsVar *returnValue = jsvFindChild(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
+  JsVar *pin = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "pin", false/*no create*/));
+  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
   int actualValue = 1;
   JsVar *newValue;
   printf("Getting value of pin %d (it was %d)\n", (int)jsvGetInteger(pin), actualValue);
@@ -62,7 +62,7 @@ int main(void) {
     JsParse p;
     JsVar *v;
 
-    printf("Size of JsVar is now %d bytes'\n", sizeof(JsVar));
+    printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
 
     jsvInit();
 
@@ -105,6 +105,7 @@ int main(void) {
 	//v = jspEvaluate(&p, "var Z = 1+2;function a() {};a();" ); // cope with no return
 	//v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
 	//v = jspEvaluate(&p, "1+2" );
+	//v = jspEvaluate(&p, "var A=[];A[1]=2;" );
 
 	if (v) {
       char buf[256];
