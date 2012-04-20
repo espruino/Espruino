@@ -86,7 +86,7 @@ void jsvFreePtr(JsVar *var) {
         child->prevSibling = 0;
         child->nextSibling = 0;
         jsvUnRef(child);
-        jsvUnLockPtr(child);
+        jsvUnLock(child);
       }
       // Names Link to other things
       if (jsvIsName(var)) {
@@ -98,7 +98,7 @@ void jsvFreePtr(JsVar *var) {
           child->prevSibling = 0;
           child->nextSibling = 0;
           jsvUnRef(child);
-          jsvUnLockPtr(child);
+          jsvUnLock(child);
         }
       } else {
         assert(!var->firstChild);
@@ -114,7 +114,7 @@ void jsvFreePtr(JsVar *var) {
         child->prevSibling = 0;
         child->nextSibling = 0;
         jsvUnRef(child);
-        jsvUnLockPtr(child);
+        jsvUnLock(child);
       }
     } else {
       assert(!var->firstChild);
@@ -132,27 +132,14 @@ JsVar *jsvLock(JsVarRef ref) {
   return var;
 }
 
-void jsvUnLock(JsVarRef ref) {
-  assert(ref);
-  JsVar *var = &jsVars[ref-1];
+JsVarRef jsvUnLock(JsVar *var) {
+  assert(var);
+  JsVarRef ref = var->this;
   assert(var->locks>0);
 //  if (ref==29) printf("- %d : %d\n", c, var->locks);
   var->locks--;
   if (var->locks == 0 && var->refs==0)
     jsvFreePtr(var);
-}
-
-
-JsVar *jsvLockPtr(JsVar *var) {
-  assert(var);
-  jsvLock(var->this);
-  return var;
-}
-
-JsVarRef jsvUnLockPtr(JsVar *var) {
-  assert(var);
-  JsVarRef ref = var->this;
-  jsvUnLock(ref);
   return ref;
 }
 
@@ -171,13 +158,13 @@ void jsvUnRef(JsVar *var) {
 JsVarRef jsvRefRef(JsVarRef ref) {
   JsVar *v = jsvLock(ref);
   jsvRef(v);
-  jsvUnLock(ref);
+  jsvUnLock(v);
   return ref;
 }
 JsVarRef jsvUnRefRef(JsVarRef ref) {
   JsVar *v = jsvLock(ref);
   jsvUnRef(v);
-  jsvUnLock(ref);
+  jsvUnLock(v);
   return 0;
 }
 
@@ -203,11 +190,11 @@ JsVar *jsvNewFromString(const char *str) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = JSV_STRING_EXT;
       var->lastChild = next->this;
-      if (var!=first) jsvUnLockPtr(var);
+      if (var!=first) jsvUnLock(var);
       var = next;
     }
   }
-  if (var!=first) jsvUnLockPtr(var);
+  if (var!=first) jsvUnLock(var);
   // return
   return first;
 }
@@ -217,8 +204,9 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   // Create a new lexer to span the whole area
   // OPT: probably not the fastest, but safe. Only done when a new function is created anyway
   JsLex newLex;
-  jslInit(&newLex, jsvLock(lex->sourceVarRef), charFrom, charTo);
-  jsvUnLock(lex->sourceVarRef);
+  JsVar *sourceVar = jsvLock(lex->sourceVarRef);
+  jslInit(&newLex, sourceVar, charFrom, charTo);
+  jsvUnLock(sourceVar);
   // Reset (we must do this because normally it tries to get a new token)
   jslSeek(&newLex, newLex.sourceStartPos);
   jslGetNextCh(&newLex);
@@ -246,12 +234,12 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = JSV_STRING_EXT;
       var->lastChild = next->this;
-      if (var!=first) jsvUnLockPtr(var);
+      if (var!=first) jsvUnLock(var);
       var = next;
     }
   }
   // free
-  if (var!=first) jsvUnLockPtr(var);
+  if (var!=first) jsvUnLock(var);
   jslKill(&newLex);
   // return
   return first;
@@ -338,19 +326,18 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           if (len--<=0) {
             *str = 0;
             jsWarn("jsvGetString overflowed\n");
-            if (ref) jsvUnLock(ref);
+            if (ref) jsvUnLock(var); // Note use of if (ref), not var
             return;
           }
           *(str++) = var->data.str[i];
         }
         // Go to next
         JsVarRef refNext = var->firstChild;
-        if (ref) jsvUnLock(ref);
+        if (ref) jsvUnLock(var); // Note use of if (ref), not var
         ref = refNext;
-        var = 0;
-        if (ref) var = jsvLock(ref);
+        var = ref ? jsvLock(ref) : 0;
       }
-      if (ref) jsvUnLock(ref);
+      if (ref) jsvUnLock(var); // Note use of if (ref), not var
     } else if (jsvIsFunction(v)) {
       snprintf(str, len, "function");
     } else assert(0);
@@ -380,12 +367,11 @@ int jsvGetStringLength(JsVar *v) {
     }
 
     // Go to next
-    if (ref) jsvUnLock(ref);
+    if (ref) jsvUnLock(var); // note use of if (ref), not var
     ref = refNext;
-    var = 0;
-    if (ref) var = jsvLock(ref);
+    var = ref ? jsvLock(ref) : 0;
   }
-  if (ref) jsvUnLock(ref);
+  if (ref) jsvUnLock(var); // note use of if (ref), not var
   return strLength;
 }
 
@@ -415,7 +401,7 @@ double jsvGetDouble(JsVar *v) {
 JsVarInt jsvGetIntegerSkipName(JsVar *v) {
     JsVar *a = jsvSkipName(v);
     JsVarInt l = jsvGetInteger(a);
-    jsvUnLockPtr(a);
+    jsvUnLock(a);
     return l;
 }
 
@@ -443,18 +429,18 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChild) {
     // Link 2 children together
     JsVar *lastChild = jsvLock(v->lastChild);
     lastChild->nextSibling = namedChild;
-    jsvUnLockPtr(lastChild);
+    jsvUnLock(lastChild);
 
     JsVar *thisChild = jsvLock(namedChild);
     thisChild->prevSibling = v->lastChild;
-    jsvUnLockPtr(thisChild);
+    jsvUnLock(thisChild);
     // finally set the new child as the last one
     v->lastChild = namedChild;
   } else {
     v->firstChild = namedChild;
     v->lastChild = namedChild;
   }
-  jsvUnLockPtr(v);
+  jsvUnLock(v);
 }
 
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
@@ -484,11 +470,11 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound)
     JsVar *child = jsvLock(childref);
     if (jsvIsStringEqual(child, name)) {
       // found it! unlock parent but leave child locked
-      jsvUnLockPtr(parent);
+      jsvUnLock(parent);
       return child;
     }
     childref = child->nextSibling;
-    jsvUnLockPtr(child);
+    jsvUnLock(child);
   }
 
   JsVar *child = 0;
@@ -496,7 +482,7 @@ JsVar *jsvFindChild(JsVarRef parentref, const char *name, bool createIfNotFound)
     child = jsvNewVariableName(0, name);
     jsvAddName(parentref, child->this);
   }
-  jsvUnLockPtr(parent);
+  jsvUnLock(parent);
   return child;
 }
 
@@ -508,7 +494,7 @@ int jsvGetChildren(JsVar *v) {
     JsVar *child = jsvLock(childref);
     children++;
     childref = child->nextSibling;
-    jsvUnLockPtr(child);
+    jsvUnLock(child);
   }
   return children;
 }
@@ -527,11 +513,11 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
-    if (pa!=a) jsvUnLockPtr(pa);
+    if (pa!=a) jsvUnLock(pa);
     if (!n) return 0;
     pa = jsvLock(n);
   }
-  if (pa==a) jsvLockPtr(pa);
+  if (pa==a) jsvLock(pa->this);
   return pa;
 }
 
@@ -539,7 +525,7 @@ JsVar *jsvSkipName(JsVar *a) {
  * a name, so it can be used inline */
 JsVar *jsvSkipNameAndUnlock(JsVar *a) {
   JsVar *b = jsvSkipName(a);
-  jsvUnLockPtr(a);
+  jsvUnLock(a);
   return b;
 }
 
@@ -549,8 +535,8 @@ JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
   JsVar *pa = jsvSkipName(a);
   JsVar *pb = jsvSkipName(b);
   JsVar *res = jsvMathsOpPtr(pa,pb,op);
-  jsvUnLockPtr(pa);
-  jsvUnLockPtr(pb);
+  jsvUnLock(pa);
+  jsvUnLock(pb);
   return res;
 }
 
@@ -574,7 +560,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
       if (eql) {
         JsVar *contents = jsvMathsOpPtr(a,b, LEX_EQUAL);
         if (!jsvGetBool(contents)) eql = false;
-        jsvUnLockPtr(contents);
+        jsvUnLock(contents);
       }
       if (op == LEX_TYPEEQUAL)
         return jsvNewFromBool(eql);
@@ -672,8 +658,8 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
     JsVar *a = jsvLock(ar);
     JsVar *b = jsvLock(br);
     JsVar *res = jsvMathsOpPtr(a,b,op);
-    jsvUnLockPtr(a);
-    jsvUnLockPtr(b);
+    jsvUnLock(a);
+    jsvUnLock(b);
     return res;
 }
 
@@ -694,7 +680,7 @@ void jsvTrace(JsVarRef ref, int indent) {
       printf("Name: '%s'  ", buf);
       // go to what the name points to
       ref = var->firstChild;
-      jsvUnLockPtr(var);
+      jsvUnLock(var);
       if (ref) {
         var = jsvLock(ref);
       } else {
@@ -705,7 +691,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     if (jsvIsName(var)) {
       printf("\n");
       jsvTrace(var->this, indent+1);
-      jsvUnLockPtr(var);
+      jsvUnLock(var);
       return;
     }
     if (jsvIsObject(var)) printf("Object {\n");
@@ -729,7 +715,7 @@ void jsvTrace(JsVarRef ref, int indent) {
           JsVar *childVar = jsvLock(child);
           printf("#%d[r%d,l%d] ", child, childVar->refs, childVar->locks-1);
           child = childVar->firstChild;
-          jsvUnLockPtr(childVar);
+          jsvUnLock(childVar);
         }
       }
       printf(")\n");
@@ -741,7 +727,7 @@ void jsvTrace(JsVarRef ref, int indent) {
         jsvTrace(child, indent+1);
         JsVar *childVar = jsvLock(child);
         child = childVar->nextSibling;
-        jsvUnLockPtr(childVar);
+        jsvUnLock(childVar);
       }
     }
 
@@ -756,5 +742,5 @@ void jsvTrace(JsVarRef ref, int indent) {
       printf("]\n");
     }
 
-    jsvUnLockPtr(var);
+    jsvUnLock(var);
 }

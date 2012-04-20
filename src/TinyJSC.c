@@ -11,7 +11,6 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *       See if we can remove jsvUnlock and just use UnlockPtr
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
  *       Have a jsvEqual/jsvNameEqual(a,b) function to help with array/object lookups
@@ -35,15 +34,15 @@ void nativePrint(JsVarRef var) {
   char buf[64];
   jsvGetString(text, buf, 64);
   printf("PRINT: '%s'\n", buf);
-  jsvUnLockPtr(text);
+  jsvUnLock(text);
 }
 
 void nativeSetPin(JsVarRef var) {
   JsVar *pin = jsvSkipNameAndUnlock(jsvFindChild(var, "pin", false/*no create*/));
   JsVar *value = jsvSkipNameAndUnlock(jsvFindChild(var, "value", false/*no create*/));
   printf("Setting pin %d to value %d\n", (int)jsvGetInteger(pin),  (int)jsvGetInteger(value));
-  jsvUnLockPtr(pin);
-  jsvUnLockPtr(value);
+  jsvUnLock(pin);
+  jsvUnLock(value);
 }
 
 void nativeGetPin(JsVarRef var) {
@@ -53,9 +52,9 @@ void nativeGetPin(JsVarRef var) {
   JsVar *newValue;
   printf("Getting value of pin %d (it was %d)\n", (int)jsvGetInteger(pin), actualValue);
   newValue = jsvNewFromInteger(actualValue);
-  jsvUnLockPtr(jsvSetValueOfName(returnValue, newValue));
-  jsvUnLockPtr(newValue);
-  jsvUnLockPtr(pin);
+  jsvUnLock(jsvSetValueOfName(returnValue, newValue));
+  jsvUnLock(newValue);
+  jsvUnLock(pin);
 }
 
 
@@ -79,7 +78,7 @@ int main(void) {
 	JsVarRef code = jsvNewFromString(codeString);
 	JsVar *codep = jsvLock(code);
 	printf("%d vs %d\n", (int)strlen(codeString), jsvGetStringLength(codep));
-	jsvUnLockPtr(codep);*/
+	jsvUnLock(codep);*/
 
 /*	JsLex lex;
 	jslInit(&lex, code, 0, strlen(codeString));
@@ -110,7 +109,7 @@ int main(void) {
 	if (v) {
       char buf[256];
       jsvGetString(v, buf, 256);
-      jsvUnLockPtr(v);
+      jsvUnLock(v);
       printf("RESULT : '%s'\n", buf);
 	} else
 	  printf("NO RESULT\n");

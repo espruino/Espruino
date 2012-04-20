@@ -76,9 +76,7 @@ JsVar *jsvNewVariableName(JsVarRef variable, const char *name); // variable can 
 JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex); // Create a new Variable name from the lexer's last token. variable can be 0
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
-void jsvUnLock(JsVarRef ref); ///< Unlock this reference
-JsVar *jsvLockPtr(JsVar *var); ///< Lock this variable again (utility fn for jsvUnLock)
-JsVarRef jsvUnLockPtr(JsVar *var); ///< Unlock this variable (utility fn for jsvUnLock)
+JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable
 
 JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
 void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything

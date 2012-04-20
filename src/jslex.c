@@ -11,8 +11,8 @@ void jslSeek(JsLex *lex, int seekToChar) {
   /*OPT: maybe we can seek backwards (for instance when doing
    * small FOR loops */
   // free previous
-  if (lex->currentVarRef) {
-    jsvUnLock(lex->currentVarRef);
+  if (lex->currentVar) {
+    jsvUnLock(lex->currentVar);
     lex->currentVar = 0;
     lex->currentVarRef = 0;
   }
@@ -27,7 +27,7 @@ void jslSeek(JsLex *lex, int seekToChar) {
     lex->currentVarPos -= JSVAR_STRING_LEN;
     JsVarRef next = lex->currentVar->lastChild;
     assert(next);
-    jsvUnLock(lex->currentVarRef);
+    jsvUnLock(lex->currentVar);
     lex->currentVarRef = next;
     lex->currentVar = jsvLock(lex->currentVarRef);
   }
@@ -44,7 +44,7 @@ void jslGetNextCh(JsLex *lex) {
     if (lex->currentVarPos >= JSVAR_STRING_LEN) {
       lex->currentVarPos -= JSVAR_STRING_LEN;
       JsVarRef next = lex->currentVar->lastChild;
-      jsvUnLock(lex->currentVarRef);
+      jsvUnLock(lex->currentVar);
       lex->currentVarRef = next;
       lex->currentVar = next ? jsvLock(lex->currentVarRef) : 0;
     }
@@ -284,6 +284,7 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   lex->currentPos = 0;
   lex->currentVarPos = 0;
   lex->currentVarRef = 0;
+  lex->currentVar = 0;
   lex->tk = 0;
   lex->tokenStart = 0;
   lex->tokenEnd = 0;
@@ -299,13 +300,13 @@ void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos) {
     lastCharIdx = initFrom->sourceEndPos;
   JsVar *var = jsvLock(initFrom->sourceVarRef);
   jslInit(lex, var, startPos, lastCharIdx);
-  jsvUnLockPtr(var);
+  jsvUnLock(var);
 }
 
 void jslKill(JsLex *lex) {
   lex->tk = LEX_EOF; // safety ;)
   if (lex->currentVarRef) {
-    jsvUnLock(lex->currentVarRef);
+    jsvUnLock(lex->currentVar);
     lex->currentVarRef=0;
     lex->currentVar=0;
   }
