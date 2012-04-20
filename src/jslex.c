@@ -25,7 +25,7 @@ void jslSeek(JsLex *lex, int seekToChar) {
   // Keep seeking until we get to the start position
   while (lex->currentVarPos >= JSVAR_STRING_LEN) {
     lex->currentVarPos -= JSVAR_STRING_LEN;
-    JsVarRef next = lex->currentVar->firstChild;
+    JsVarRef next = lex->currentVar->lastChild;
     assert(next);
     jsvUnLock(lex->currentVarRef);
     lex->currentVarRef = next;
@@ -43,7 +43,7 @@ void jslGetNextCh(JsLex *lex) {
     // make sure we move on to next..
     if (lex->currentVarPos >= JSVAR_STRING_LEN) {
       lex->currentVarPos -= JSVAR_STRING_LEN;
-      JsVarRef next = lex->currentVar->firstChild;
+      JsVarRef next = lex->currentVar->lastChild;
       jsvUnLock(lex->currentVarRef);
       lex->currentVarRef = next;
       lex->currentVar = next ? jsvLock(lex->currentVarRef) : 0;

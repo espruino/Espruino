@@ -10,8 +10,7 @@
 
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
- * TODO: Ensure that getBool/etc skip over refs if they find them
- *       Tiny up TINYJS constants
+ * TODO:
  *       See if we can remove jsvUnlock and just use UnlockPtr
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
@@ -94,9 +93,10 @@ int main(void) {
 	//JsVar *v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
     //JsVar *v = jspEvaluate(&p, "function foo(a,b) { return a+b; } var bar=function (a,b) { return a*b; };foo(1,2)" );
 	// hacky fibonnacci
-	JsVar *v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
+	//JsVar *v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
 	//JsVar *v = jspEvaluate(&p, "var Z = 1+2;function a() {};a();" ); // cope with no return
 	//JsVar *v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
+	JsVar *v = jspEvaluate(&p, "1+2" );
 
 	if (v) {
       char buf[256];

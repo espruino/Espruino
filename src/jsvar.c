@@ -8,7 +8,7 @@
 #include "jsvar.h"
 #include "jslex.h"
 
-#define JSVAR_CACHE_UNUSED_REF -1
+#define JSVAR_CACHE_UNUSED_REF 0xFFFF
 #define JSVAR_CACHE_SIZE 128
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
@@ -33,7 +33,6 @@ int jsvGetMemoryUsage() {
 
 // Show what is still allocated, for debugging memory problems
 void jsvShowAllocated() {
-  int usage = 0;
   for (int i=1;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
       printf("USED VAR #%d:", jsVars[i].this);
@@ -73,21 +72,49 @@ void jsvFreePtr(JsVar *var) {
     // free!
     var->refs = JSVAR_CACHE_UNUSED_REF;
 
-    /* Now, unref children
-     * Note: This is a bit hacky because it works for Objects, Arrays,
-     * AND strings/names (because it uses firstChild). If String storage
-     * changes, this will have to as well. */
-    JsVarRef childref = var->firstChild;
-
-    var->firstChild = 0;
-    var->lastChild = 0;
-    while (childref) {
-      JsVar *child = jsvLock(childref);
-      childref = child->nextSibling;
-      child->prevSibling = 0;
-      child->nextSibling = 0;
-      jsvUnRef(child);
-      jsvUnLockPtr(child);
+    /* Now, unref children - see jsvar.h comments for how! */
+    if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
+      JsVarRef stringDataRef = var->lastChild;
+      var->lastChild = 0;
+      if (stringDataRef) {
+        JsVar *child = jsvLock(stringDataRef);
+        assert(jsvIsStringExt(child) && !child->prevSibling && !child->nextSibling);
+        child->prevSibling = 0;
+        child->nextSibling = 0;
+        jsvUnRef(child);
+        jsvUnLockPtr(child);
+      }
+      // Names Link to other things
+      if (jsvIsName(var)) {
+        JsVarRef childref = var->firstChild;
+        var->firstChild = 0;
+        while (childref) {
+          JsVar *child = jsvLock(childref);
+          childref = child->nextSibling;
+          child->prevSibling = 0;
+          child->nextSibling = 0;
+          jsvUnRef(child);
+          jsvUnLockPtr(child);
+        }
+      } else {
+        assert(!var->firstChild);
+      }
+    } else if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
+      JsVarRef childref = var->firstChild;
+      var->firstChild = 0;
+      var->lastChild = 0;
+      while (childref) {
+        JsVar *child = jsvLock(childref);
+        assert(jsvIsName(child));
+        childref = child->nextSibling;
+        child->prevSibling = 0;
+        child->nextSibling = 0;
+        jsvUnRef(child);
+        jsvUnLockPtr(child);
+      }
+    } else {
+      assert(!var->firstChild);
+      assert(!var->lastChild);
     }
   }
 
@@ -170,7 +197,7 @@ JsVar *jsvNewFromString(const char *str) {
     if (*str) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = SCRIPTVAR_STRING_EXT;
-      var->firstChild = next->this;
+      var->lastChild = next->this;
       if (var!=first) jsvUnLockPtr(var);
       var = next;
     }
@@ -212,7 +239,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
     if (newLex.currCh) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = SCRIPTVAR_STRING_EXT;
-      var->firstChild = next->this;
+      var->lastChild = next->this;
       if (var!=first) jsvUnLockPtr(var);
       var = next;
     }
@@ -262,18 +289,19 @@ JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex) {
   return var;
 }
 
-bool jsvIsInt(JsVar *v) { return (v->flags&SCRIPTVAR_INTEGER)!=0; }
-bool jsvIsFloat(JsVar *v) { return (v->flags&SCRIPTVAR_FLOAT)!=0; }
-bool jsvIsString(JsVar *v) { return (v->flags&SCRIPTVAR_STRING)!=0; }
+bool jsvIsInt(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_INTEGER; }
+bool jsvIsFloat(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_FLOAT; }
+bool jsvIsString(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_STRING; }
+bool jsvIsStringExt(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_STRING_EXT; }
 bool jsvIsNumeric(JsVar *v) { return (v->flags&SCRIPTVAR_NUMERICMASK)!=0; }
 bool jsvIsFunction(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_FUNCTION; }
 bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&SCRIPTVAR_FUNCTION_PARAMETER) == SCRIPTVAR_FUNCTION_PARAMETER; }
-bool jsvIsObject(JsVar *v) { return (v->flags&SCRIPTVAR_OBJECT)!=0; }
-bool jsvIsArray(JsVar *v) { return (v->flags&SCRIPTVAR_ARRAY)!=0; }
+bool jsvIsObject(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_OBJECT; }
+bool jsvIsArray(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_ARRAY; }
 bool jsvIsNative(JsVar *v) { return (v->flags&SCRIPTVAR_NATIVE)!=0; }
 bool jsvIsUndefined(JsVar *v) { return (v->flags & SCRIPTVAR_VARTYPEMASK) == SCRIPTVAR_UNDEFINED; }
-bool jsvIsNull(JsVar *v) { return (v->flags & SCRIPTVAR_NULL)!=0; }
-bool jsvIsBasic(JsVar *v) { return v->firstChild==0; } ///< Is this *not* an array/object/etc
+bool jsvIsNull(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_NULL; }
+bool jsvIsBasic(JsVar *v) { return v->firstChild==0; /* Fixme */ } ///< Is this *not* an array/object/etc
 bool jsvIsName(JsVar *v) { return (v->flags & SCRIPTVAR_NAME)!=0; }
 
 /// Save this var as a string to the given buffer
@@ -328,7 +356,7 @@ int jsvGetStringLength(JsVar *v) {
   JsVar *var = v;
   JsVarRef ref = 0;
   while (var) {
-    JsVarRef refNext = var->firstChild;
+    JsVarRef refNext = var->lastChild;
 
     if (refNext!=0) {
       // we have more, so this section MUST be full

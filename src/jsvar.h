@@ -11,7 +11,7 @@
 #include "jsutils.h"
 
 /// Reference for variables
-typedef unsigned int JsVarRef;
+typedef unsigned short JsVarRef;
 // We treat 0 as null
 
 typedef long JsVarInt;
@@ -22,22 +22,40 @@ typedef void (*JsCallback)(JsVarRef var);
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
-  int refs; ///< The number of references held to this - used for garbage collection
+  unsigned short refs; ///< The number of references held to this - used for garbage collection
+  unsigned char flags; ///< the flags determine the type of the variable - int/double/string/etc
 
-  char strData[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
-  JsVarInt intData; ///< The contents of this variable if it is an int
-  JsVarFloat doubleData; ///< The contents of this variable if it is a double
-  int flags; ///< the flags determine the type of the variable - int/double/string/etc
+//  union {
+    char strData[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
+    JsVarInt intData; ///< The contents of this variable if it is an int
+    JsVarFloat doubleData; ///< The contents of this variable if it is a double
+    JsCallback callback; ///< Callback for native functions, or 0
+//  } data;
 
-  JsCallback callback; ///< Callback for native functions, or 0
-
-  JsVarRef firstChild; /// For Variable DATA + NAMES
-  JsVarRef lastChild; /// For Variable DATA ONLY
+  /**
+   * For OBJECT/ARRAY/FUNCTION - this is the first child
+   * For NAMES ONLY - this is a link to the variable it points to
+   */
+  JsVarRef firstChild;
+  /**
+   * For OBJECT/ARRAY/FUNCTION - this is the last child
+   * For STRINGS/NAMES - this is a link to more string data if it is needed
+   */
+  JsVarRef lastChild;
   // For Variable NAMES ONLY
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
 } JsVar;
+
+/* We have a few different types:
+ *
+ *  OBJECT/ARRAY - uses firstChild/lastChild to link to NAMEs
+ *  FUNCTION - uses firstChild/lastChild to link to NAMEs, and callback is used
+ *  NAME - use nextSibling/prevSibling linking to other NAMEs, and firstChild to link to a Variable of some kind
+ *  STRING - use firstChild to link to other STRINGs if String value is too long
+ *  INT/DOUBLE - firstChild never used
+ */
 
 // Init/kill vars as a whole
 void jsvInit();
@@ -70,6 +88,7 @@ JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this varia
 bool jsvIsInt(JsVar *v);
 bool jsvIsDouble(JsVar *v);
 bool jsvIsString(JsVar *v);
+bool jsvIsStringExt(JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 bool jsvIsNumeric(JsVar *v);
 bool jsvIsFunction(JsVar *v);
 bool jsvIsFunctionParameter(JsVar *v);

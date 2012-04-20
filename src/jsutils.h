@@ -39,30 +39,23 @@ typedef char bool;
 
 typedef enum SCRIPTVAR_FLAGS {
   // OPT: These can be packed as there's no point being an array AND a float
-    SCRIPTVAR_UNDEFINED   = 0,
-    SCRIPTVAR_FUNCTION    = 1,
-    SCRIPTVAR_OBJECT      = 2,
-    SCRIPTVAR_ARRAY       = 4,
-    SCRIPTVAR_FLOAT       = 8,  // floating point double
-    SCRIPTVAR_INTEGER     = 16, // integer number
-    SCRIPTVAR_STRING      = 32, // string
-    SCRIPTVAR_NULL        = 64, // it seems null is its own data type
+    SCRIPTVAR_NUMERICMASK = 8,
+    SCRIPTVAR_VARTYPEMASK = 15,
 
-    SCRIPTVAR_NAME        = 128, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
-    SCRIPTVAR_NATIVE      = 256, // to specify this is a native function
-    SCRIPTVAR_TEMP        = 512, // mainly for debugging so we can see if a temp var got used wrongly
-    SCRIPTVAR_NUMERICMASK = SCRIPTVAR_NULL |
-                            SCRIPTVAR_FLOAT |
-                            SCRIPTVAR_INTEGER,
-    SCRIPTVAR_VARTYPEMASK = SCRIPTVAR_FLOAT |
-                            SCRIPTVAR_INTEGER |
-                            SCRIPTVAR_STRING |
-                            SCRIPTVAR_FUNCTION |
-                            SCRIPTVAR_OBJECT |
-                            SCRIPTVAR_ARRAY |
-                            SCRIPTVAR_NULL,
-    SCRIPTVAR_STRING_EXT  = SCRIPTVAR_STRING | // a later part of a 'large' string
-                            SCRIPTVAR_ARRAY,
+    SCRIPTVAR_UNDEFINED   = 0,
+    SCRIPTVAR_NULL        = 1, // it seems null is its own data type
+    SCRIPTVAR_STRING      = 2, // string
+    SCRIPTVAR_STRING_EXT  = 3,
+    SCRIPTVAR_ARRAY       = 4,
+    SCRIPTVAR_OBJECT      = 5,
+    SCRIPTVAR_FUNCTION    = 6,
+    SCRIPTVAR_INTEGER     = 8, // integer number (note SCRIPTVAR_NUMERICMASK)
+    SCRIPTVAR_FLOAT       = 9, // floating point double (note SCRIPTVAR_NUMERICMASK)
+
+    SCRIPTVAR_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
+    SCRIPTVAR_NATIVE      = 32, // to specify this is a native function
+    SCRIPTVAR_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
+
     SCRIPTVAR_FUNCTION_PARAMETER = SCRIPTVAR_FUNCTION |
                                    SCRIPTVAR_NAME, // this is inside a function, so it should be quite obvious
 } SCRIPTVAR_FLAGS;

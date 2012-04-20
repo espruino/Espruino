@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-c -g -Wall -Wextra -Wconversion -std=c99
-LDFLAGS=-g -rdynamic
+LDFLAGS=-g
 
 SOURCES=  \
 jslex.c \
