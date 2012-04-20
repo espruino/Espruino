@@ -20,6 +20,7 @@ typedef double JsVarFloat;
 
 typedef void (*JsCallback)(JsVarRef var);
 
+#pragma pack(1) // make this as small as possible
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
@@ -43,10 +44,11 @@ typedef struct {
    * For STRINGS/NAMES - this is a link to more string data if it is needed
    */
   JsVarRef lastChild;
-  // For Variable NAMES ONLY
+  // For Variable NAMES ONLY (could this be part of the union?)
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 } JsVar;
+#pragma pack() // reset packing
 
 /* We have a few different types:
  *
