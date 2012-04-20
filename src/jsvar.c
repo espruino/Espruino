@@ -183,7 +183,7 @@ JsVar *jsvNewFromString(const char *str) {
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
   JsVar *var = first;
-  var->flags = SCRIPTVAR_STRING;
+  var->flags = JSV_STRING;
   var->strData[0] = 0; // in case str is empty!
 
   while (*str) {
@@ -196,7 +196,7 @@ JsVar *jsvNewFromString(const char *str) {
     // make a new one, link it in, and unlock the old one.
     if (*str) {
       JsVar *next = jsvRef(jsvNew());
-      next->flags = SCRIPTVAR_STRING_EXT;
+      next->flags = JSV_STRING_EXT;
       var->lastChild = next->this;
       if (var!=first) jsvUnLockPtr(var);
       var = next;
@@ -224,7 +224,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
   JsVar *var = first;
-  var->flags = SCRIPTVAR_STRING;
+  var->flags = JSV_STRING;
   var->strData[0] = 0; // in case str is empty!
 
 
@@ -238,7 +238,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
     // make a new one, link it in, and unlock the old one.
     if (newLex.currCh) {
       JsVar *next = jsvRef(jsvNew());
-      next->flags = SCRIPTVAR_STRING_EXT;
+      next->flags = JSV_STRING_EXT;
       var->lastChild = next->this;
       if (var!=first) jsvUnLockPtr(var);
       var = next;
@@ -251,58 +251,58 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   return first;
 }
 
-JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags) {
+JsVar *jsvNewWithFlags(JsVarFlags flags) {
   JsVar *var = jsvNew();
   var->flags = flags;
   return var;
 }
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNew();
-  var->flags = SCRIPTVAR_INTEGER;
+  var->flags = JSV_INTEGER;
   var->intData = value;
   return var;
 }
 JsVar *jsvNewFromBool(bool value) {
   JsVar *var = jsvNew();
-  var->flags = SCRIPTVAR_INTEGER;
+  var->flags = JSV_INTEGER;
   var->intData = value ? 1 : 0;
   return var;
 }
 JsVar *jsvNewFromFloat(JsVarFloat value) {
   JsVar *var = jsvNew();
-  var->flags = SCRIPTVAR_FLOAT;
+  var->flags = JSV_FLOAT;
   var->doubleData = value;
   return var;
 }
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
   JsVar *var = jsvNewFromString(name);
-  var->flags |= SCRIPTVAR_NAME;
+  var->flags |= JSV_NAME;
   if (variable)
     var->firstChild = jsvRefRef(variable);
   return var;
 }
 JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex) {
   JsVar *var = jsvNewFromString(jslGetTokenValueAsString(lex));
-  var->flags |= SCRIPTVAR_NAME;
+  var->flags |= JSV_NAME;
   if (variable)
     var->firstChild = jsvRefRef(variable);
   return var;
 }
 
-bool jsvIsInt(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_INTEGER; }
-bool jsvIsFloat(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_FLOAT; }
-bool jsvIsString(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_STRING; }
-bool jsvIsStringExt(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_STRING_EXT; }
-bool jsvIsNumeric(JsVar *v) { return (v->flags&SCRIPTVAR_NUMERICMASK)!=0; }
-bool jsvIsFunction(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_FUNCTION; }
-bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&SCRIPTVAR_FUNCTION_PARAMETER) == SCRIPTVAR_FUNCTION_PARAMETER; }
-bool jsvIsObject(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_OBJECT; }
-bool jsvIsArray(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_ARRAY; }
-bool jsvIsNative(JsVar *v) { return (v->flags&SCRIPTVAR_NATIVE)!=0; }
-bool jsvIsUndefined(JsVar *v) { return (v->flags & SCRIPTVAR_VARTYPEMASK) == SCRIPTVAR_UNDEFINED; }
-bool jsvIsNull(JsVar *v) { return (v->flags&SCRIPTVAR_VARTYPEMASK)==SCRIPTVAR_NULL; }
+bool jsvIsInt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
+bool jsvIsFloat(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
+bool jsvIsString(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
+bool jsvIsStringExt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
+bool jsvIsNumeric(JsVar *v) { return (v->flags&JSV_NUMERICMASK)!=0; }
+bool jsvIsFunction(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
+bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+bool jsvIsObject(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
+bool jsvIsArray(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
+bool jsvIsNative(JsVar *v) { return (v->flags&JSV_NATIVE)!=0; }
+bool jsvIsUndefined(JsVar *v) { return (v->flags & JSV_VARTYPEMASK) == JSV_UNDEFINED; }
+bool jsvIsNull(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 bool jsvIsBasic(JsVar *v) { return v->firstChild==0; /* Fixme */ } ///< Is this *not* an array/object/etc
-bool jsvIsName(JsVar *v) { return (v->flags & SCRIPTVAR_NAME)!=0; }
+bool jsvIsName(JsVar *v) { return (v->flags & JSV_NAME)!=0; }
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
@@ -560,8 +560,8 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
     // Type equality check
     if (op == LEX_TYPEEQUAL || op == LEX_NTYPEEQUAL) {
       // check type first, then call again to check data
-      bool eql = ((a->flags & SCRIPTVAR_VARTYPEMASK) ==
-                  (b->flags & SCRIPTVAR_VARTYPEMASK));
+      bool eql = ((a->flags & JSV_VARTYPEMASK) ==
+                  (b->flags & JSV_VARTYPEMASK));
       if (eql) {
         JsVar *contents = jsvMathsOpPtr(a,b, LEX_EQUAL);
         if (!jsvGetBool(contents)) eql = false;
@@ -580,7 +580,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
       else if (op == LEX_NEQUAL)
         return jsvNewFromBool(false);
       else
-        return jsvNewWithFlags(SCRIPTVAR_UNDEFINED); // undefined
+        return jsvNewWithFlags(JSV_UNDEFINED); // undefined
     } else if ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
                (jsvIsNumeric(b) || jsvIsUndefined(b))) {
         if (!jsvIsFloat(a) && !jsvIsFloat(b)) {
@@ -598,7 +598,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
                 case '%': return jsvNewFromInteger(da%db);
                 case LEX_LSHIFT: return jsvNewFromInteger(da << db);
                 case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
-                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger(((unsigned long)da) >> db);
+                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger(((JsVarIntUnsigned)da) >> db);
                 case LEX_EQUAL:     return jsvNewFromBool(da==db);
                 case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
                 case '<':           return jsvNewFromBool(da<db);

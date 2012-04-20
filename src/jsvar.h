@@ -15,6 +15,7 @@ typedef unsigned short JsVarRef;
 // We treat 0 as null
 
 typedef long JsVarInt;
+typedef unsigned long JsVarIntUnsigned;
 typedef double JsVarFloat;
 
 typedef void (*JsCallback)(JsVarRef var);
@@ -23,7 +24,7 @@ typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
-  unsigned char flags; ///< the flags determine the type of the variable - int/double/string/etc
+  JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc
 
 //  union {
     char strData[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
@@ -67,7 +68,7 @@ void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory
 JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo); // Create a new STRING from part of the lexer
-JsVar *jsvNewWithFlags(SCRIPTVAR_FLAGS flags);
+JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);

@@ -88,7 +88,7 @@ bool jspeFunctionArguments(JsExecInfo *execInfo, JsVar *funcVar) {
   while (execInfo->lex->tk!=')') {
       if (funcVar) {
         JsVar *param = jsvAddNamedChild(funcVar->this, 0, jslGetTokenValueAsString(execInfo->lex));
-        param->flags = SCRIPTVAR_FUNCTION_PARAMETER;
+        param->flags = JSV_FUNCTION_PARAMETER;
         jspClean(param);
       }
       JSP_MATCH(LEX_ID);
@@ -111,7 +111,7 @@ bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
       JsVar *link = jsvFindChild(base->this, funcName, false);
       // if it doesn't exist, make a new object class
       if (!link) {
-        JsVar *obj = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+        JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
         link = jsvAddNamedChild(base->this, obj->this, funcName);
         jsvUnLockPtr(obj);
       }
@@ -123,7 +123,7 @@ bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
       JSP_MATCH(LEX_ID);
     }
     // So now, base points to an object where we want our function
-    JsVar *funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION | SCRIPTVAR_NATIVE);
+    JsVar *funcVar = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
     funcVar->callback = callbackPtr;
     jspeFunctionArguments(execInfo, funcVar);
 
@@ -161,7 +161,7 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
   // have already been parsed
   JsVar *funcVar = 0;
   if (JSP_SHOULD_EXECUTE(execute))
-    funcVar = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
+    funcVar = jsvNewWithFlags(JSV_FUNCTION);
   // Get arguments save them to the structure
   if (!jspeFunctionArguments(execInfo, funcVar)) {
     // parse failed
@@ -193,7 +193,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     JSP_MATCH('(');
     // create a new symbol table entry for execution of this function
     // OPT: can we cache this function execution environment + param variables?
-    JsVar *functionRoot = jsvNewWithFlags(SCRIPTVAR_FUNCTION);
+    JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
     if (parent)
       jspClean(jsvAddNamedChild(functionRoot->this, parent->this, JSPARSE_THIS_VAR));
     // grab in all parameters
@@ -269,7 +269,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     if (returnVar)
       return returnVar;
     else
-      return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
+      return jsvNewWithFlags(JSV_UNDEFINED);
   } else {
     // function, but not executing - just parse args and be done
     JSP_MATCH('(');
@@ -302,11 +302,11 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
     }
     if (execInfo->lex->tk==LEX_R_NULL) {
         JSP_MATCH(LEX_R_NULL);
-        return jsvNewWithFlags(SCRIPTVAR_NULL);
+        return jsvNewWithFlags(JSV_NULL);
     }
     if (execInfo->lex->tk==LEX_R_UNDEFINED) {
         JSP_MATCH(LEX_R_UNDEFINED);
-        return jsvNewWithFlags(SCRIPTVAR_UNDEFINED);
+        return jsvNewWithFlags(JSV_UNDEFINED);
     }
     if (execInfo->lex->tk==LEX_ID) {
         JsVar *a = JSP_SHOULD_EXECUTE(execute) ? jspeiFindInScopes(execInfo, jslGetTokenValueAsString(execInfo->lex)) : 0;
@@ -397,7 +397,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         return a;
     }
     if (execInfo->lex->tk=='{') {
-        JsVar *contents = jsvNewWithFlags(SCRIPTVAR_OBJECT);
+        JsVar *contents = jsvNewWithFlags(JSV_OBJECT);
         /* JSON-style object definition */
         JSP_MATCH('{');
         while (execInfo->lex->tk != '}') {
@@ -425,7 +425,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         return contents;
     }
     if (execInfo->lex->tk=='[') {
-        JsVar *contents = jsvNewWithFlags(SCRIPTVAR_ARRAY);
+        JsVar *contents = jsvNewWithFlags(JSV_ARRAY);
         /* JSON-style array */
         JSP_MATCH('[');
         int idx = 0;
@@ -464,7 +464,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
           return new JsVar(new CScriptVar());
         }
         JSP_MATCH(LEX_ID);
-        CScriptVar *obj = new CScriptVar(JSPARSE_BLANK_DATA, SCRIPTVAR_OBJECT);
+        CScriptVar *obj = new CScriptVar(JSPARSE_BLANK_DATA, JSV_OBJECT);
         JsVar *objLink = new JsVar(obj);
         if (objClassOrFunc->var->isFunction()) {
           jspClean(functionCall(execute, objClassOrFunc, obj));
@@ -910,7 +910,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
 // -----------------------------------------------------------------------------
 
 void jspInit(JsParse *parse) {
-  parse->root = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
+  parse->root = jsvUnLockPtr(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
 
   parse->zeroInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(0)));
   jspClean(jsvAddNamedChild(parse->root, parse->zeroInt, "#zero#"));
@@ -918,13 +918,13 @@ void jspInit(JsParse *parse) {
   parse->oneInt = jsvUnLockPtr(jsvRef(jsvNewFromInteger(1)));
   jspClean(jsvAddNamedChild(parse->root, parse->oneInt, "#one#"));
   jsvUnRefRef(parse->oneInt);
-  parse->stringClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
+  parse->stringClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jspClean(jsvAddNamedChild(parse->root, parse->stringClass, "String"));
   jsvUnRefRef(parse->stringClass);
-  parse->objectClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
+  parse->objectClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jspClean(jsvAddNamedChild(parse->root, parse->objectClass, "Object"));
   jsvUnRefRef(parse->objectClass);
-  parse->arrayClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(SCRIPTVAR_OBJECT)));
+  parse->arrayClass = jsvUnLockPtr(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jspClean(jsvAddNamedChild(parse->root, parse->arrayClass, "Array"));
   jsvUnRefRef(parse->arrayClass);
 }

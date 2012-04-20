@@ -37,28 +37,28 @@ typedef char bool;
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 
 
-typedef enum SCRIPTVAR_FLAGS {
+typedef enum {
   // OPT: These can be packed as there's no point being an array AND a float
-    SCRIPTVAR_NUMERICMASK = 8,
-    SCRIPTVAR_VARTYPEMASK = 15,
+    JSV_NUMERICMASK = 8,
+    JSV_VARTYPEMASK = 15,
 
-    SCRIPTVAR_UNDEFINED   = 0,
-    SCRIPTVAR_NULL        = 1, // it seems null is its own data type
-    SCRIPTVAR_STRING      = 2, // string
-    SCRIPTVAR_STRING_EXT  = 3,
-    SCRIPTVAR_ARRAY       = 4,
-    SCRIPTVAR_OBJECT      = 5,
-    SCRIPTVAR_FUNCTION    = 6,
-    SCRIPTVAR_INTEGER     = 8, // integer number (note SCRIPTVAR_NUMERICMASK)
-    SCRIPTVAR_FLOAT       = 9, // floating point double (note SCRIPTVAR_NUMERICMASK)
+    JSV_UNDEFINED   = 0,
+    JSV_NULL        = 1, // it seems null is its own data type
+    JSV_STRING      = 2, // string
+    JSV_STRING_EXT  = 3,
+    JSV_ARRAY       = 4,
+    JSV_OBJECT      = 5,
+    JSV_FUNCTION    = 6,
+    JSV_INTEGER     = 8, // integer number (note JSV_NUMERICMASK)
+    JSV_FLOAT       = 9, // floating point double (note JSV_NUMERICMASK)
 
-    SCRIPTVAR_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
-    SCRIPTVAR_NATIVE      = 32, // to specify this is a native function
-    SCRIPTVAR_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
+    JSV_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
+    JSV_NATIVE      = 32, // to specify this is a native function
+    JSV_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
 
-    SCRIPTVAR_FUNCTION_PARAMETER = SCRIPTVAR_FUNCTION |
-                                   SCRIPTVAR_NAME, // this is inside a function, so it should be quite obvious
-} SCRIPTVAR_FLAGS;
+    JSV_FUNCTION_PARAMETER = JSV_FUNCTION |
+                                   JSV_NAME, // this is inside a function, so it should be quite obvious
+} JsVarFlags;
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
