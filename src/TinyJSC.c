@@ -14,6 +14,9 @@
  *       See if we can remove jsvUnlock and just use UnlockPtr
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
+ *       Have a jsvEqual/jsvNameEqual(a,b) function to help with array/object lookups
+ *       Use the jsvNameEqual in jsvFindChild
+ *       Create a JsVar name when parsing variable IDs, to save the big buffers for variable names
  *
  * In code:
  * TODO - should be fixed
