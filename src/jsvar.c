@@ -53,7 +53,7 @@ JsVar *jsvNew() {
       v->refs = 0;
       v->locks = 1;
       v->flags = 0;
-      v->callback = 0;
+      v->data.callback = 0;
       v->firstChild = 0;
       v->lastChild = 0;
       v->prevSibling = 0;
@@ -188,13 +188,13 @@ JsVar *jsvNewFromString(const char *str) {
   // over the end
   JsVar *var = first;
   var->flags = JSV_STRING;
-  var->strData[0] = 0; // in case str is empty!
+  var->data.str[0] = 0; // in case str is empty!
 
   while (*str) {
     int i;
     // copy data in
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-      var->strData[i] = *str;
+      var->data.str[i] = *str;
       if (*str) str++;
     }
     // if there is still some left, it's because we filled up our var...
@@ -230,14 +230,14 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   // over the end
   JsVar *var = first;
   var->flags = JSV_STRING;
-  var->strData[0] = 0; // in case str is empty!
+  var->data.str[0] = 0; // in case str is empty!
 
 
   while (newLex.currCh) {
     int i;
     // copy data in
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-      var->strData[i] = newLex.currCh;
+      var->data.str[i] = newLex.currCh;
       if (newLex.currCh) jslGetNextCh(&newLex);
     }
     // if there is still some left, it's because we filled up our var...
@@ -265,19 +265,19 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNew();
   var->flags = JSV_INTEGER;
-  var->intData = value;
+  var->data.integer = value;
   return var;
 }
 JsVar *jsvNewFromBool(bool value) {
   JsVar *var = jsvNew();
   var->flags = JSV_INTEGER;
-  var->intData = value ? 1 : 0;
+  var->data.integer = value ? 1 : 0;
   return var;
 }
 JsVar *jsvNewFromFloat(JsVarFloat value) {
   JsVar *var = jsvNew();
   var->flags = JSV_FLOAT;
-  var->doubleData = value;
+  var->data.floating = value;
   return var;
 }
 JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
@@ -319,10 +319,10 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
     }
     if (jsvIsInt(v)) {
       //OPT could use itoa
-      snprintf(str, len, "%ld", v->intData);
+      snprintf(str, len, "%ld", v->data.integer);
     } else if (jsvIsFloat(v)) {
       //OPT could use ftoa
-      snprintf(str, len, "%f", v->doubleData);
+      snprintf(str, len, "%f", v->data.floating);
     } else if (jsvIsNull(v)) {
       snprintf(str, len, "null");
     } else if (jsvIsUndefined(v)) {
@@ -341,7 +341,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
             if (ref) jsvUnLock(ref);
             return;
           }
-          *(str++) = var->strData[i];
+          *(str++) = var->data.str[i];
         }
         // Go to next
         JsVarRef refNext = var->firstChild;
@@ -372,7 +372,7 @@ int jsvGetStringLength(JsVar *v) {
       int i;
       // count
       for (i=0;i<JSVAR_STRING_LEN;i++) {
-        if (var->strData[i])
+        if (var->data.str[i])
           strLength++;
         else
           break;
@@ -392,10 +392,10 @@ int jsvGetStringLength(JsVar *v) {
 JsVarInt jsvGetInteger(JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v)) return v->intData;
+    if (jsvIsInt(v)) return v->data.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if (jsvIsFloat(v)) return (JsVarInt)v->doubleData;
+    if (jsvIsFloat(v)) return (JsVarInt)v->data.floating;
     return 0;
 }
 
@@ -405,8 +405,8 @@ bool jsvGetBool(JsVar *v) {
 
 double jsvGetDouble(JsVar *v) {
     if (!v) return 0;
-    if (jsvIsFloat(v)) return v->doubleData;
-    if (jsvIsInt(v)) return (double)v->intData;
+    if (jsvIsFloat(v)) return v->data.floating;
+    if (jsvIsInt(v)) return (double)v->data.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     return 0; /* or NaN? */
@@ -428,7 +428,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
 
   for (i=0;i<JSVAR_STRING_LEN;i++) {
-     if (var->strData[i] != str[i]) return false;
+     if (var->data.str[i] != str[i]) return false;
      if  (str[i]==0) return true; // end of string, all great!
   }
 

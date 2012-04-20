@@ -36,7 +36,6 @@ typedef struct JsLex
     int currentVarPos; // current position in currentVar
     JsVarRef currentVarRef; // current var
     JsVar *currentVar; // current JsVar itself
-
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos);

@@ -60,6 +60,8 @@ int main(void) {
     JsParse p;
     JsVar *v;
 
+    printf("Size of JsVar is now %d bytes'\n", sizeof(JsVar));
+
     jsvInit();
 
 	/*JsVarRef s = jsvNewFromString("Hello. This is a test of very very very very long strings spanning over multiple JsVars");
@@ -97,10 +99,10 @@ int main(void) {
 	//v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
     //v = jspEvaluate(&p, "function foo(a,b) { return a+b; } var bar=function (a,b) { return a*b; };foo(1,2)" );
 	// hacky fibonnacci
-	//v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
+	v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
 	//v = jspEvaluate(&p, "var Z = 1+2;function a() {};a();" ); // cope with no return
 	//v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
-	v = jspEvaluate(&p, "1+2" );
+	//v = jspEvaluate(&p, "1+2" );
 
 	if (v) {
       char buf[256];

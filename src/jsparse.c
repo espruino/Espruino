@@ -125,7 +125,7 @@ bool jspeParseNativeFunction(JsExecInfo *execInfo, JsCallback callbackPtr) {
     }
     // So now, base points to an object where we want our function
     JsVar *funcVar = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
-    funcVar->callback = callbackPtr;
+    funcVar->data.callback = callbackPtr;
     jspeFunctionArguments(execInfo, funcVar);
 
     // Add the function with its name
@@ -236,8 +236,8 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
 #endif
 
     if (jsvIsNative(function)) {
-        assert(function->callback);
-        function->callback(functionRoot->this);
+        assert(function->data.callback);
+        function->data.callback(functionRoot->this);
     } else {
         /* we just want to execute the block, but something could
          * have messed up and left us with the wrong ScriptLex, so

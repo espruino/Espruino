@@ -38,7 +38,7 @@ void jslGetNextCh(JsLex *lex) {
   if (lex->currentPos < lex->sourceEndPos) {
     lex->nextCh = 0;
     if (lex->currentVar)
-      lex->nextCh = lex->currentVar->strData[lex->currentVarPos];
+      lex->nextCh = lex->currentVar->data.str[lex->currentVarPos];
     lex->currentVarPos++;
     // make sure we move on to next..
     if (lex->currentVarPos >= JSVAR_STRING_LEN) {

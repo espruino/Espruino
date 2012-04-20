@@ -26,12 +26,12 @@ typedef struct {
   unsigned short refs; ///< The number of references held to this - used for garbage collection
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc
 
-//  union {
-    char strData[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
-    JsVarInt intData; ///< The contents of this variable if it is an int
-    JsVarFloat doubleData; ///< The contents of this variable if it is a double
+  union {
+    char str[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
+    JsVarInt integer; ///< The contents of this variable if it is an int
+    JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
-//  } data;
+  } data;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
@@ -46,7 +46,6 @@ typedef struct {
   // For Variable NAMES ONLY
   JsVarRef nextSibling;
   JsVarRef prevSibling;
-
 } JsVar;
 
 /* We have a few different types:
