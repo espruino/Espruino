@@ -106,6 +106,8 @@ int main(void) {
 	//v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
 	//v = jspEvaluate(&p, "1+2" );
 	//v = jspEvaluate(&p, "var A=[];A[1]=2;" );
+	//v = jspEvaluate(&p, "function aVeryVeryVeryLongFunctionName() {}" );
+	//v = jspEvaluate(&p, "function aVeryVeryVeryLongFunctionNameThatIsFarTooLong() { print('Hello!'); };aVeryVeryVeryLongFunctionNameThatIsFarTooLong();" );
 
 	if (v) {
       char buf[256];

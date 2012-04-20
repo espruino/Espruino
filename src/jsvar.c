@@ -268,26 +268,11 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
   var->data.floating = value;
   return var;
 }
-JsVar *jsvNewVariableName(JsVarRef variable, const char *name) {
-  JsVar *var = jsvNewFromString(name);
+JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
+  assert(!jsvIsName(var) && var->refs==0); // make sure it's unused and not already a Name
   var->flags |= JSV_NAME;
-  if (variable)
-    var->firstChild = jsvRefRef(variable);
-  return var;
-}
-JsVar *jsvNewVariableNameFromLexerToken(JsVarRef variable, struct JsLex *lex) {
-  JsVar *var = jsvNewFromString(jslGetTokenValueAsString(lex));
-  var->flags |= JSV_NAME;
-  if (variable)
-    var->firstChild = jsvRefRef(variable);
-  return var;
-}
-
-JsVar *jsvNewVariableNameFromVariable(JsVarRef variable, JsVar *name) {
-  JsVar *var = jsvCopy(name);
-  var->flags |= JSV_NAME;
-  if (variable)
-    var->firstChild = jsvRefRef(variable);
+  if (valueOrZero)
+    var->firstChild = jsvRefRef(valueOrZero);
   return var;
 }
 
@@ -372,7 +357,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       snprintf(str, len, "null");
     } else if (jsvIsUndefined(v)) {
       snprintf(str, len, "undefined");
-    } else if (jsvIsString(v) || jsvIsFunctionParameter(v)) {
+    } else if (jsvIsString(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
       // print the string - we have to do it a block
       // at a time!
       JsVar *var = v;
@@ -389,7 +374,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           *(str++) = var->data.str[i];
         }
         // Go to next
-        JsVarRef refNext = var->firstChild;
+        JsVarRef refNext = var->lastChild;
         if (ref) jsvUnLock(var); // Note use of if (ref), not var
         ref = refNext;
         var = ref ? jsvLock(ref) : 0;
@@ -471,13 +456,21 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   int i;
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
 
-  for (i=0;i<JSVAR_STRING_LEN;i++) {
-     if (var->data.str[i] != str[i]) return false;
-     if  (str[i]==0) return true; // end of string, all great!
+  JsVar *v = var;
+  while (true) {
+    for (i=0;i<JSVAR_STRING_LEN;i++) {
+       if (v->data.str[i] != *str) return false;
+       if  (*str==0) return true; // end of string, all great!
+       str++;
+    }
+    // End of what is built in, but keep going!
+    JsVarRef next = v->lastChild;
+    if  (*str==0) // end of input string
+      return next==0; // if we have more data then they are not equal!
+    if  (!next) return false; // end of this string, but not the input!
+    if (v!=var) jsvUnLock(v);
+    v = jsvLock(next);
   }
-
-  jsError("INTERNAL: TODO: String equality check past boundary of string");
-  return false; //
 }
 
 JsVar *jsvCopy(JsVar *src) {
@@ -514,7 +507,7 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
 }
 
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
-  JsVar *namedChild = jsvNewVariableName(child, name);
+  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
   jsvAddName(parent, namedChild->this);
   return namedChild;
 }
@@ -549,7 +542,7 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
 
   child = 0;
   if (createIfNotFound) {
-    child = jsvNewVariableName(0, name);
+    child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
     jsvAddName(parentref, child->this);
   }
   jsvUnLock(parent);
@@ -577,11 +570,11 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
     if (childName->refs == 0) {
       // Not reffed - great! let's just use it
       if (!jsvIsName(childName))
-        childName->flags |= JSV_NAME;
+        childName = jsvMakeIntoVariableName(childName, 0);
       jsvAddName(parentref, childName->this);
       child = jsvLock(childName->this);
     } else { // it was reffed, we must add a new one
-      child = jsvNewVariableNameFromVariable(0, childName);
+      child = jsvMakeIntoVariableName(jsvCopy(childName), 0);
       jsvAddName(parentref, child->this);
     }
   }
