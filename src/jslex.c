@@ -59,7 +59,8 @@ void jslTokenAppendChar(JsLex *lex, char ch) {
 }
 
 bool jslIsToken(JsLex *lex, const char *token) {
-  for (int i=0;i<lex->tokenl;i++) {
+  int i;
+  for (i=0;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
     // if token is smaller than lex->token, there will be a null char
     // which will be different from the token

@@ -68,7 +68,8 @@ void jspeiRemoveScope(JsExecInfo *execInfo) {
 }
 
 JsVar *jspeiFindInScopes(JsExecInfo *execInfo, const char *name) {
-  for (int i=execInfo->scopeCount-1;i>=0;i--) {
+  int i;
+  for (i=execInfo->scopeCount-1;i>=0;i--) {
     JsVar *ref = jsvFindChild(execInfo->scopes[i], name, false);
     if (ref) return ref;
   }

@@ -13,7 +13,8 @@
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
 void jsvInit() {
-  for (int i=0;i<JSVAR_CACHE_SIZE;i++) {
+  int i;
+  for (i=0;i<JSVAR_CACHE_SIZE;i++) {
     jsVars[i].this = (JsVarRef)(i+1);
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
   }
@@ -25,7 +26,8 @@ void jsvKill() {
 // Get number of memory records (JsVars) used
 int jsvGetMemoryUsage() {
   int usage = 0;
-  for (int i=1;i<JSVAR_CACHE_SIZE;i++)
+  int i;
+  for (i=1;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF)
       usage++;
   return usage;
@@ -33,7 +35,8 @@ int jsvGetMemoryUsage() {
 
 // Show what is still allocated, for debugging memory problems
 void jsvShowAllocated() {
-  for (int i=1;i<JSVAR_CACHE_SIZE;i++)
+  int i;
+  for (i=1;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
       printf("USED VAR #%d:", jsVars[i].this);
       jsvTrace(jsVars[i].this, 2);
@@ -41,7 +44,8 @@ void jsvShowAllocated() {
 }
 
 JsVar *jsvNew() {
-  for (int i=1;i<JSVAR_CACHE_SIZE;i++) {
+  int i;
+  for (i=1;i<JSVAR_CACHE_SIZE;i++) {
     if (jsVars[i].refs == JSVAR_CACHE_UNUSED_REF) {
       JsVar *v = &jsVars[i];
       // this variable is empty
@@ -187,8 +191,9 @@ JsVar *jsvNewFromString(const char *str) {
   var->strData[0] = 0; // in case str is empty!
 
   while (*str) {
+    int i;
     // copy data in
-    for (int i=0;i<JSVAR_STRING_LEN;i++) {
+    for (i=0;i<JSVAR_STRING_LEN;i++) {
       var->strData[i] = *str;
       if (*str) str++;
     }
@@ -229,8 +234,9 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
 
 
   while (newLex.currCh) {
+    int i;
     // copy data in
-    for (int i=0;i<JSVAR_STRING_LEN;i++) {
+    for (i=0;i<JSVAR_STRING_LEN;i++) {
       var->strData[i] = newLex.currCh;
       if (newLex.currCh) jslGetNextCh(&newLex);
     }
@@ -327,7 +333,8 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       JsVar *var = v;
       JsVarRef ref = 0;
       while (var) {
-        for (int i=0;i<JSVAR_STRING_LEN;i++) {
+        int i;
+        for (i=0;i<JSVAR_STRING_LEN;i++) {
           if (len--<=0) {
             *str = 0;
             jsWarn("jsvGetString overflowed\n");
@@ -362,8 +369,9 @@ int jsvGetStringLength(JsVar *v) {
       // we have more, so this section MUST be full
       strLength += JSVAR_STRING_LEN;
     } else {
+      int i;
       // count
-      for (int i=0;i<JSVAR_STRING_LEN;i++) {
+      for (i=0;i<JSVAR_STRING_LEN;i++) {
         if (var->strData[i])
           strLength++;
         else
@@ -416,9 +424,10 @@ bool jsvGetBoolSkipName(JsVar *v) {
 }
 
 bool jsvIsStringEqual(JsVar *var, const char *str) {
+  int i;
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
 
-  for (int i=0;i<JSVAR_STRING_LEN;i++) {
+  for (i=0;i<JSVAR_STRING_LEN;i++) {
      if (var->strData[i] != str[i]) return false;
      if  (str[i]==0) return true; // end of string, all great!
   }
@@ -670,9 +679,10 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent) {
+    int i;
     char buf[JS_ERROR_BUF_SIZE];
 
-    for (int i=0;i<indent;i++) printf(" ");
+    for (i=0;i<indent;i++) printf(" ");
     JsVar *var = jsvLock(ref);
 
     printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
@@ -737,10 +747,12 @@ void jsvTrace(JsVarRef ref, int indent) {
 
 
     if (jsvIsObject(var) || jsvIsFunction(var)) {
-      for (int i=0;i<indent;i++) printf(" ");
+      int i;
+      for (i=0;i<indent;i++) printf(" ");
       printf("}\n");
     } else if (jsvIsArray(var)) {
-      for (int i=0;i<indent;i++) printf(" ");
+      int i;
+      for (i=0;i<indent;i++) printf(" ");
       printf("]\n");
     }
 

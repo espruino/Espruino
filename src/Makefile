@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -g -Wall -Wextra -Wconversion -std=c99
+CFLAGS=-c -g -Wall -Wextra -Wconversion
 LDFLAGS=-g
 
 SOURCES=  \
