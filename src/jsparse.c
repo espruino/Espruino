@@ -199,6 +199,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     JSP_MATCH('(');
     // create a new symbol table entry for execution of this function
     // OPT: can we cache this function execution environment + param variables?
+    // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
     JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
     if (parent)
       jspClean(jsvAddNamedChild(functionRoot->this, parent->this, JSPARSE_THIS_VAR));
@@ -209,9 +210,6 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
         if (jsvIsFunctionParameter(param)) {
           JsVar *valueName = jspeBase(execInfo, execute);
           if (JSP_SHOULD_EXECUTE(execute)) {
-            char paramName[JSLEX_MAX_TOKEN_LENGTH];
-            jsvGetString(param, paramName, JSLEX_MAX_TOKEN_LENGTH);
-
             JsVar *value = jsvSkipName(valueName);
             // TODO: deep copy required?
             /*if (jsvIsBasic(value)) {
@@ -221,7 +219,9 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
               // pass by reference
               jsvAddNamedChild(functionRoot->this, v->name, value);
             }*/
-            jspClean(jsvAddNamedChild(functionRoot->this, value->this, paramName));
+            JsVar *valueName = jsvMakeIntoVariableName(jsvCopy(param), value->this);
+            jsvAddName(functionRoot->this, valueName->this);
+            jspClean(valueName);
             jspClean(value);
           }
           jspClean(valueName);

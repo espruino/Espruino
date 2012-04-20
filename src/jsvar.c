@@ -269,7 +269,7 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
   return var;
 }
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
-  assert(!jsvIsName(var) && var->refs==0); // make sure it's unused and not already a Name
+  assert(var->refs==0); // make sure it's unused
   var->flags |= JSV_NAME;
   if (valueOrZero)
     var->firstChild = jsvRefRef(valueOrZero);
