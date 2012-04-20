@@ -13,9 +13,6 @@
  * TODO:
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
- *       Have a jsvEqual/jsvNameEqual(a,b) function to help with array/object lookups
- *       Use the jsvNameEqual in jsvFindChild
- *       Create a JsVar name when parsing variable IDs, to save the big buffers for variable names
  *
  * In code:
  * TODO - should be fixed
@@ -28,6 +25,17 @@
 #include "jslex.h"
 #include "jsvar.h"
 #include "jsparse.h"
+
+JsParse p;
+bool isRunning = true;
+
+void nativeQuit(JsVarRef var) {
+  isRunning = false;
+}
+
+void nativeTrace(JsVarRef var) {
+  jsvTrace(p.root, 0);
+}
 
 void nativePrint(JsVarRef var) {
   JsVar *text = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "text", false/*no create*/));
@@ -59,38 +67,16 @@ void nativeGetPin(JsVarRef var) {
 
 
 int main(void) {
-    JsParse p;
+
     JsVar *v;
 
     printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
 
     jsvInit();
 
-	/*JsVarRef s = jsvNewFromString("Hello. This is a test of very very very very long strings spanning over multiple JsVars");
-    char buf[256];
-	JsVar *v = jsvLock(s);
-	jsvGetString(v, buf, 256);
-	jsvUnLock(s);
-
-	puts(buf);*/
-
-	/*const char *codeString = "print('Hello World!');";
-	JsVarRef code = jsvNewFromString(codeString);
-	JsVar *codep = jsvLock(code);
-	printf("%d vs %d\n", (int)strlen(codeString), jsvGetStringLength(codep));
-	jsvUnLock(codep);*/
-
-/*	JsLex lex;
-	jslInit(&lex, code, 0, strlen(codeString));
-	while (lex.tk != LEX_EOF) {
-	  jslGetTokenString(&lex, buf, 256);
-	  jslGetNextToken(&lex);
-	  printf("TOKEN: %s\n",buf);
-	}
-    jslKill(&lex);*/
-
-
 	jspInit(&p);
+	jspAddNativeFunction(&p, "function quit()", nativeQuit);
+	jspAddNativeFunction(&p, "function trace()", nativeTrace);
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
@@ -101,7 +87,7 @@ int main(void) {
 	//v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
     //v = jspEvaluate(&p, "function foo(a,b) { return a+b; } var bar=function (a,b) { return a*b; };foo(1,2)" );
 	// hacky fibonnacci
-	v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
+	//v = jspEvaluate(&p, "function fib(a,b,cnt) { if (cnt<=0) return a; return fib(b,a+b,cnt-1); } var fibs=[]; for (i=0;i<7;i++) fibs[i] = fib(1,1,i);" );
 	//v = jspEvaluate(&p, "var Z = 1+2;function a() {};a();" ); // cope with no return
 	//v = jspEvaluate(&p, "for (i=0;i<7;i++) ;" ); // had a memory leak -> no more!
 	//v = jspEvaluate(&p, "1+2" );
@@ -110,15 +96,23 @@ int main(void) {
 	//v = jspEvaluate(&p, "function aVeryVeryVeryLongFunctionNameThatIsFarTooLong() { print('Hello!'); };aVeryVeryVeryLongFunctionNameThatIsFarTooLong();" );
 	//v = jspEvaluate(&p, "var A = {a:1};A.a;" );
 
-	if (v) {
-      char buf[256];
-      jsvGetString(v, buf, 256);
-      jsvUnLock(v);
-      printf("RESULT : '%s'\n", buf);
-	} else
-	  printf("NO RESULT\n");
+	printf("Please enter some JavaScript, or:\n");
+	printf("   quit(); to exit\n");
+	printf("   trace(); to dump contents of memory\n");
+	isRunning = true;
+	while (isRunning) {
+      printf(">");
 
-	jsvTrace(p.root, 0);
+      char javaScript[256];
+      gets(javaScript);
+      v = jspEvaluate(&p, javaScript );
+      if (v) {
+        printf("RESULT : ");
+        jsvTrace(v->this, 0);
+        jsvUnLock(v);
+      } else
+        printf("NO RESULT\n");
+	}
 
 	printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
 	jspKill(&p);
