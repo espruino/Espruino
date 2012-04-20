@@ -95,7 +95,7 @@ int main(void) {
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
-	//v = jspEvaluate(&p, "var Z = 1+2+__ONE; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
+	//v = jspEvaluate(&p, "var Z = 1+2; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
 	//v = jspEvaluate(&p, "var a = 1;for (i=0;i<5;i++) a=a*2; a" );
 	//v = jspEvaluate(&p, "var a = 1;while (a<5) a=a*1.1; a" );
@@ -108,6 +108,7 @@ int main(void) {
 	//v = jspEvaluate(&p, "var A=[];A[1]=2;" );
 	//v = jspEvaluate(&p, "function aVeryVeryVeryLongFunctionName() {}" );
 	//v = jspEvaluate(&p, "function aVeryVeryVeryLongFunctionNameThatIsFarTooLong() { print('Hello!'); };aVeryVeryVeryLongFunctionNameThatIsFarTooLong();" );
+	//v = jspEvaluate(&p, "var A = {a:1};A.a;" );
 
 	if (v) {
       char buf[256];

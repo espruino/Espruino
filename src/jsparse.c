@@ -360,6 +360,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                   }
                   jspClean(parent);
                   parent = aVar;
+                  jspClean(a);
                   a = child;
                 }
                 JSP_MATCH(LEX_ID);
@@ -405,8 +406,9 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         /* JSON-style object definition */
         JSP_MATCH('{');
         while (execInfo->lex->tk != '}') {
-          char id[JSLEX_MAX_TOKEN_LENGTH];
-          jslGetTokenString(execInfo->lex, id, JSLEX_MAX_TOKEN_LENGTH);
+          JsVar *varName = 0;
+          if (JSP_SHOULD_EXECUTE(execute))
+            varName = jsvNewFromString(jslGetTokenValueAsString(execInfo->lex));
           // we only allow strings or IDs on the left hand side of an initialisation
           if (execInfo->lex->tk==LEX_STR) {
             JSP_MATCH(LEX_STR);
@@ -415,16 +417,17 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
           }
           JSP_MATCH(':');
           if (JSP_SHOULD_EXECUTE(execute)) {
-            JsVar *a = jspeBase(execInfo, execute);
-            assert(a);
-            JsVar *aVar = jsvSkipNameAndUnlock(a);
-            jspClean(jsvAddNamedChild(contents->this, aVar->this, id));
-            jspClean(aVar);
+            JsVar *value = jspeBase(execInfo, execute);
+            assert(value);
+            JsVar *valueVar = jsvSkipNameAndUnlock(value);
+            varName = jsvMakeIntoVariableName(varName, valueVar->this);
+            jsvAddName(contents->this, varName->this);
+            jspClean(valueVar);
           }
+          jspClean(varName);
           // no need to clean here, as it will definitely be used
           if (execInfo->lex->tk != '}') JSP_MATCH(',');
         }
-
         JSP_MATCH('}');
         return contents;
     }
@@ -775,10 +778,10 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         bool cond = JSP_SHOULD_EXECUTE(execute) && jsvGetBoolSkipName(var);
         jspClean(var);
         JsExecFlags noexecute = EXEC_NO; // because we need to be abl;e to write to it
-        jspeStatement(execInfo, cond ? execute : &noexecute);
+        jspClean(jspeStatement(execInfo, cond ? execute : &noexecute));
         if (execInfo->lex->tk==LEX_R_ELSE) {
             JSP_MATCH(LEX_R_ELSE);
-            jspeStatement(execInfo, cond ? &noexecute : execute);
+            jspClean(jspeStatement(execInfo, cond ? &noexecute : execute));
         }
     } else if (execInfo->lex->tk==LEX_R_WHILE) {
         // We do repetition by pulling out the string representing our statement
@@ -794,7 +797,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         jslInitFromLex(&whileCond, execInfo->lex, whileCondStart);
         JSP_MATCH(')');
         int whileBodyStart = execInfo->lex->tokenStart;
-        jspeStatement(execInfo, loopCond ? execute : &noexecute);
+        jspClean(jspeStatement(execInfo, loopCond ? execute : &noexecute));
         JsLex whileBody;
         jslInitFromLex(&whileBody, execInfo->lex, whileBodyStart);
         JsLex *oldLex = execInfo->lex;
@@ -809,7 +812,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
             if (loopCond) {
                 jslReset(&whileBody);
                 execInfo->lex = &whileBody;
-                jspeStatement(execInfo, execute);
+                jspClean(jspeStatement(execInfo, execute));
             }
         }
         execInfo->lex = oldLex;

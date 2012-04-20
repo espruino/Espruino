@@ -781,6 +781,7 @@ void jsvTrace(JsVarRef ref, int indent) {
       jsvUnLock(var);
       if (ref) {
         var = jsvLock(ref);
+        printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
       } else {
         printf("[UNSET]\n");
         return;
