@@ -133,7 +133,7 @@ JsVar *jsvLock(JsVarRef ref) {
 }
 
 JsVarRef jsvUnLock(JsVar *var) {
-  assert(var);
+  if (!var) return;
   JsVarRef ref = var->this;
   assert(var->locks>0);
 //  if (ref==29) printf("- %d : %d\n", c, var->locks);
@@ -166,6 +166,11 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
   jsvUnRef(v);
   jsvUnLock(v);
   return 0;
+}
+
+JsVarRef jsvGetRef(JsVar *var) {
+    if (!var) return 0;
+    return var->this;
 }
 
 JsVar *jsvNewFromString(const char *str) {
@@ -286,7 +291,7 @@ bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&JSV_FUNCTION_PARAMETER)
 bool jsvIsObject(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
 bool jsvIsArray(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 bool jsvIsNative(JsVar *v) { return (v->flags&JSV_NATIVE)!=0; }
-bool jsvIsUndefined(JsVar *v) { return (v->flags & JSV_VARTYPEMASK) == JSV_UNDEFINED; }
+bool jsvIsUndefined(JsVar *v) { return !v; }
 bool jsvIsNull(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 bool jsvIsName(JsVar *v) { return (v->flags & JSV_NAME)!=0; }
@@ -342,21 +347,16 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
-    if (!v) {
-      assert(len>0);
-      str[0] = 0;
-      return;
-    }
-    if (jsvIsInt(v)) {
+    if (jsvIsUndefined(v)) {
+          strncpy(str, "undefined", len);
+    } else if (jsvIsInt(v)) {
       //OPT could use itoa
       snprintf(str, len, "%ld", v->data.integer);
     } else if (jsvIsFloat(v)) {
       //OPT could use ftoa
       snprintf(str, len, "%f", v->data.floating);
     } else if (jsvIsNull(v)) {
-      snprintf(str, len, "null");
-    } else if (jsvIsUndefined(v)) {
-      snprintf(str, len, "undefined");
+      strncpy(str, "null", len);
     } else if (jsvIsString(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
       // print the string - we have to do it a block
       // at a time!
@@ -508,7 +508,7 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
 
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
   JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
-  jsvAddName(parent, namedChild->this);
+  jsvAddName(parent, jsvGetRef(namedChild));
   return namedChild;
 }
 
@@ -522,7 +522,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   if (name->firstChild) jsvUnRefRef(name->firstChild); // free existing
   if (src) {
       assert(!jsvIsName(src)); // ensure not linking to a name!
-      name->firstChild = jsvRef(src)->this;
+      name->firstChild = jsvGetRef(jsvRef(src));
   } else
       name->firstChild = 0;
   return name;
@@ -610,6 +610,7 @@ int jsvGetArrayLength(JsVar *v) {
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
 JsVar *jsvSkipName(JsVar *a) {
+  if (!a) return a;
   JsVar *pa = a;
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
@@ -651,7 +652,7 @@ JsVar *jsvMathsOpError(int op, const char *datatype) {
 }
 
 JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
-    if (!a || !b) return 0;
+    if (!a || !b) return 0; // for undefined, return undefined
     // Type equality check
     if (op == LEX_TYPEEQUAL || op == LEX_NTYPEEQUAL) {
       // check type first, then call again to check data
@@ -675,7 +676,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
       else if (op == LEX_NEQUAL)
         return jsvNewFromBool(false);
       else
-        return jsvNewWithFlags(JSV_UNDEFINED); // undefined
+        return 0; // undefined
     } else if ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
                (jsvIsNumeric(b) || jsvIsUndefined(b))) {
         if (!jsvIsFloat(a) && !jsvIsFloat(b)) {
@@ -769,6 +770,11 @@ void jsvTrace(JsVarRef ref, int indent) {
     char buf[JS_ERROR_BUF_SIZE];
 
     for (i=0;i<indent;i++) printf(" ");
+
+    if (!ref) {
+        printf("undefined\n");
+        return;
+    }
     JsVar *var = jsvLock(ref);
 
     printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
@@ -787,7 +793,7 @@ void jsvTrace(JsVarRef ref, int indent) {
         var = jsvLock(ref);
         printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
       } else {
-        printf("[UNSET]\n");
+        printf("undefined\n");
         return;
       }
     }

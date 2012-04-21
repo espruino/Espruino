@@ -42,7 +42,8 @@ typedef enum {
     JSV_NUMERICMASK = 8,
     JSV_VARTYPEMASK = 15,
 
-    JSV_UNDEFINED   = 0,
+    JSV_UNUSED   = 0,
+    // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = 1, // it seems null is its own data type
     JSV_STRING      = 2, // string
     JSV_STRING_EXT  = 3,
