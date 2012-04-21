@@ -191,7 +191,10 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
  * if there was one (otherwise it's just a normnal function).
  */
 JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *function, JsVar *parent) {
-  if (JSP_SHOULD_EXECUTE(execute)) {
+  if (JSP_SHOULD_EXECUTE(execute) && !function)
+      jsWarnAt("Function not found! Skipping.", execInfo->lex, execInfo->lex->tokenLastEnd );
+
+  if (JSP_SHOULD_EXECUTE(execute) && function) {
     if (!jsvIsFunction(function)) {
         jsErrorAt("Expecting a function to call", execInfo->lex, execInfo->lex->tokenLastEnd );
         return 0;
@@ -370,15 +373,22 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                 JSP_MATCH(']');
                 if (JSP_SHOULD_EXECUTE(execute)) {
                   JsVar *aVar = jsvSkipName(a);
-                  // OPT: pass variable value directly
-                  JsVar *indexValue = jsvSkipName(index);
-                  JsVar *child = jsvFindChildFromVar(aVar->this, indexValue, true);
-                  jsvUnLock(indexValue);
+                  if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar))) {
+                      JsVar *indexValue = jsvSkipName(index);
+                      JsVar *child = jsvFindChildFromVar(aVar->this, indexValue, true);
+                      jsvUnLock(indexValue);
 
-                  jspClean(parent);
-                  parent = aVar;
-                  jspClean(a);
-                  a = child;
+                      jspClean(parent);
+                      parent = aVar;
+                      jspClean(a);
+                      a = child;
+                  } else {
+                      jsWarnAt("Variable is not an Array or Object", execInfo->lex, execInfo->lex->tokenLastEnd);
+                      jspClean(parent);
+                      parent = 0;
+                      jspClean(a);
+                      a = 0;
+                  }
                 }
                 jspClean(index);
             } else assert(0);
@@ -675,7 +685,7 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags *execute) {
     if (execInfo->lex->tk=='=' || execInfo->lex->tk==LEX_PLUSEQUAL || execInfo->lex->tk==LEX_MINUSEQUAL) {
         /* If we're assigning to this and we don't have a parent,
          * add it to the symbol table root as per JavaScript. */
-        if (JSP_SHOULD_EXECUTE(execute) && !lhs->refs) {
+        if (JSP_SHOULD_EXECUTE(execute) && lhs && !lhs->refs) {
           if (jsvIsName(lhs)/* && jsvGetStringLength(lhs)>0*/) {
             jsvAddName(execInfo->parse->root, lhs->this);
           } else // TODO: Why was this here? can it happen?
@@ -686,7 +696,7 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags *execute) {
         JSP_MATCH(execInfo->lex->tk);
         JsVar *rhs = jspeBase(execInfo, execute);
         rhs = jsvSkipNameAndUnlock(rhs); // ensure we get rid of any references on the RHS
-        if (JSP_SHOULD_EXECUTE(execute)) {
+        if (JSP_SHOULD_EXECUTE(execute) && lhs) {
             if (op=='=') {
                 jspReplaceWith(execInfo, lhs, rhs);
             } else if (op==LEX_PLUSEQUAL) {
