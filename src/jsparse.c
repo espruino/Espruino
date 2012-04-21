@@ -685,6 +685,7 @@ JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags *execute) {
         int op = execInfo->lex->tk;
         JSP_MATCH(execInfo->lex->tk);
         JsVar *rhs = jspeBase(execInfo, execute);
+        rhs = jsvSkipNameAndUnlock(rhs); // ensure we get rid of any references on the RHS
         if (JSP_SHOULD_EXECUTE(execute)) {
             if (op=='=') {
                 jspReplaceWith(execInfo, lhs, rhs);

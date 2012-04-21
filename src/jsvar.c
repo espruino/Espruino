@@ -514,7 +514,8 @@ JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
 
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   assert(name && src);
-  assert(jsvIsName(name));
+  assert(jsvIsName(name) && !jsvIsName(src));
+  assert(name!=src); // no infinite loops!
   // all is fine, so replace the existing child...
   /* Existing child may be null in the case of Z = 0 where
    * we create 'Z' and pass it down to '=' to have the value
