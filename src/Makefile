@@ -2,6 +2,11 @@ CC=gcc
 CFLAGS=-c -g -Wall -Wextra -Wconversion
 LDFLAGS=-g
 
+ifdef SDCC
+CC=sdcc
+CFLAGS+=-DUSE_FLOATS
+endif
+
 SOURCES=  \
 jslex.c \
 jsparse.c \

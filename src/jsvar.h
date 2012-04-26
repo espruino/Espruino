@@ -16,7 +16,11 @@ typedef unsigned short JsVarRef;
 
 typedef long JsVarInt;
 typedef unsigned long JsVarIntUnsigned;
+#ifdef USE_FLOATS
+typedef float JsVarFloat;
+#else
 typedef double JsVarFloat;
+#endif
 
 typedef void (*JsCallback)(JsVarRef var);
 

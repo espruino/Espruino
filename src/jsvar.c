@@ -133,7 +133,7 @@ JsVar *jsvLock(JsVarRef ref) {
 }
 
 JsVarRef jsvUnLock(JsVar *var) {
-  if (!var) return;
+  if (!var) return 0;
   JsVarRef ref = var->this;
   assert(var->locks>0);
 //  if (ref==29) printf("- %d : %d\n", c, var->locks);
