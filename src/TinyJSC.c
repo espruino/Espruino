@@ -19,7 +19,12 @@
  *       Memory manager to handle storing rarely used refs in flash
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
- *
+ *       Add a function to handle built-in functions without using up RAM
+ *       Add require(filename) function
+ *       Add Array.push()/indexOf/splice
+ *       Add JSON/eval
+ *       Add String builtins
+ *       Add 'delete' keyword for killing array items?
  *
  * In code:
  * TODO - should be fixed
