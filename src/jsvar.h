@@ -77,12 +77,13 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero);
 
 JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
-JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable
+JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable - this is SAFE for null variables
 
 JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
 void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything
 JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set this variable as used by something
 JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
+JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
 
 bool jsvIsInt(JsVar *v);
 bool jsvIsDouble(JsVar *v);

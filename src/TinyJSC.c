@@ -118,12 +118,9 @@ int main(void) {
       char javaScript[256];
       gets(javaScript);
       v = jspEvaluate(&p, javaScript );
-      if (v) {
-        printf("RESULT : ");
-        jsvTrace(v->this, 0);
-        jsvUnLock(v);
-      } else
-        printf("NO RESULT\n");
+      printf("RESULT : ");
+      jsvTrace(jsvGetRef(v), 0);
+      jsvUnLock(v);
 	}
 
 	printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
