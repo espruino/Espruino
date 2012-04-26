@@ -4,7 +4,7 @@ LDFLAGS=-g
 
 ifdef SDCC
 CC=sdcc
-CFLAGS+=-DUSE_FLOATS
+CFLAGS=-c --std-sdcc99 -DUSE_FLOATS
 endif
 
 SOURCES=  \
