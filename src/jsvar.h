@@ -22,7 +22,11 @@ typedef float JsVarFloat;
 typedef double JsVarFloat;
 #endif
 
-typedef void (*JsCallback)(JsVarRef var);
+typedef void (*JsCallback)(JsVarRef var) 
+#ifdef SDCC
+__reentrant
+#endif
+;
 
 #ifndef SDCC
 #pragma pack(1) // make this as small as possible

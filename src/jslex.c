@@ -337,6 +337,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
       str[1] = (char)token;
       str[2] = '\'';
       str[3] = 0;
+      return;
   }
   switch (token) {
       case LEX_EOF : strncpy(str, "EOF", len); return;
