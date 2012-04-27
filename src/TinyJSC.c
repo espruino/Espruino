@@ -79,6 +79,7 @@ void nativeGetPin(JsVarRef var) {
 
 
 int main(void) {
+    char javaScript[256];
 
     JsVar *v;
 
@@ -115,7 +116,6 @@ int main(void) {
 	while (isRunning) {
       printf(">");
 
-      char javaScript[256];
       gets(javaScript);
       v = jspEvaluate(&p, javaScript );
       printf("RESULT : ");
@@ -131,5 +131,5 @@ int main(void) {
 
 	jsvKill();
 	printf("Done!\n");
-	return EXIT_SUCCESS;
+	return 0;
 }
