@@ -9,7 +9,11 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
+#ifdef SDCC
+#define JSVAR_CACHE_SIZE 10
+#else
 #define JSVAR_CACHE_SIZE 128
+#endif
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
 void jsvInit() {

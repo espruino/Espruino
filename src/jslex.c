@@ -182,13 +182,17 @@ void jslGetNextToken(JsLex *lex) {
               case 't' : jslTokenAppendChar(lex, '\t'); break;
               case '\'' : jslTokenAppendChar(lex, '\''); break;
               case '\\' : jslTokenAppendChar(lex, '\\'); break;
+#ifndef SDCC
               case 'x' : { // hex digits
                             char buf[3] = "??";
                             jslGetNextCh(lex); buf[0] = lex->currCh;
                             jslGetNextCh(lex); buf[1] = lex->currCh;
                             jslTokenAppendChar(lex, (char)strtol(buf,0,16));
                          } break;
-              default: if (lex->currCh>='0' && lex->currCh<='7') {
+#endif
+              default: 
+#ifndef SDCC
+                       if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
                          char buf[4] = "???";
                          buf[0] = lex->currCh;
@@ -196,6 +200,7 @@ void jslGetNextToken(JsLex *lex) {
                          jslGetNextCh(lex); buf[2] = lex->currCh;
                          jslTokenAppendChar(lex, (char)strtol(buf,0,8));
                        } else
+#endif
                          jslTokenAppendChar(lex, lex->currCh);
                        break;
               }

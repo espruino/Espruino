@@ -60,3 +60,10 @@ void jsAssertFail(const char *file, int line) {
   printf("ASSERT FAIL AT %s:%d\n", file, line);
   exit(1);
 }
+
+#ifdef SDCC
+long strtol(const char*str, char **endptr, int base);
+void exit(int errcode) {
+  printf("EXIT CALLED.\n");
+}
+#endif

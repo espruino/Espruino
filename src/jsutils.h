@@ -17,7 +17,7 @@ typedef char bool;
 #define true (1)
 #define false (0)
 
-#define JSVAR_STRING_LEN  16
+#define JSVAR_STRING_LEN  8
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  32
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
@@ -33,9 +33,11 @@ typedef char bool;
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 
-
+#ifndef SDCC
 #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
-
+#else
+#define assert(X) 
+#endif
 
 typedef enum {
   // OPT: These can be packed as there's no point being an array AND a float
@@ -127,12 +129,11 @@ void jsAssertFail(const char *file, int line);
 
 #ifdef SDCC
 long strtol(const char*str, char **endptr, int base);
-void itoa(int val, char *str, int base);
-void ftoa(float val, char *str);
+//void itoa(int val, char *str, int base);
+//void ftoa(float val, char *str);
 void exit(int errcode);
-#else
+#endif
 #define itoa(val,str,base) sprintf(str,"%d",val)
 #define ftoa(val,str) sprintf(str,"%f",val)
-#endif
 
 #endif /* JSUTILS_H_ */
