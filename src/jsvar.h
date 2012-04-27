@@ -31,18 +31,21 @@ __reentrant
 #ifndef SDCC
 #pragma pack(1) // make this as small as possible
 #endif
+
+typedef union {
+    char str[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
+    JsVarInt integer; ///< The contents of this variable if it is an int
+    JsVarFloat floating; ///< The contents of this variable if it is a double
+    JsCallback callback; ///< Callback for native functions, or 0
+} JsVarData;
+
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc
 
-  union {
-    char str[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
-    JsVarInt integer; ///< The contents of this variable if it is an int
-    JsVarFloat floating; ///< The contents of this variable if it is a double
-    JsCallback callback; ///< Callback for native functions, or 0
-  } varData;
+  JsVarData varData;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
@@ -123,7 +126,7 @@ int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a s
 bool jsvIsStringEqual(JsVar *var, const char *str);
 
 JsVarInt jsvGetInteger(JsVar *v);
-JsVarFloat jsvGetDouble(JsVar *v);
+JsVarFloat jsvGetDouble(JsVar *v); // TODO: rename to jsvGetFloat
 bool jsvGetBool(JsVar *v);
 
 /** If a is a name skip it and go to what it points to.

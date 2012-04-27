@@ -125,16 +125,18 @@ void jsvFreePtr(JsVar *var) {
 //int c = 0;
 
 JsVar *jsvLock(JsVarRef ref) {
+  JsVar *var;
   assert(ref);
-  JsVar *var = &jsVars[ref-1];
+  var = &jsVars[ref-1];
 //  if (ref==29) printf("+ %d : %d\n", ++c, var->locks);
   var->locks++;
   return var;
 }
 
 JsVarRef jsvUnLock(JsVar *var) {
+  JsVarRef ref;
   if (!var) return 0;
-  JsVarRef ref = var->this;
+  ref = var->this;
   assert(var->locks>0);
 //  if (ref==29) printf("- %d : %d\n", c, var->locks);
   var->locks--;
@@ -205,6 +207,8 @@ JsVar *jsvNewFromString(const char *str) {
 }
 
 JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
+  JsVar *first;
+  JsVar *var;
   // Create a new STRING from part of the lexer
   // Create a new lexer to span the whole area
   // OPT: probably not the fastest, but safe. Only done when a new function is created anyway
@@ -218,10 +222,10 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   jslGetNextCh(&newLex);
 
   // Create a var
-  JsVar *first = jsvNew();
+  first = jsvNew();
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
-  JsVar *var = first;
+  var = first;
   var->flags = JSV_STRING;
   var->varData.str[0] = 0; // in case str is empty!
 
@@ -338,7 +342,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       vb = jsvLock(vbr);
       // all done - keep going!
     }
-    return true; // but we never get here
+    // we never get here
   } else {
     //TODO: are there any other combinations we should check here?? String v int?
     return false;
@@ -350,11 +354,9 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
     if (jsvIsUndefined(v)) {
           strncpy(str, "undefined", len);
     } else if (jsvIsInt(v)) {
-      //OPT could use itoa
-      snprintf(str, len, "%ld", v->varData.integer);
+      itoa(v->varData.integer, str, 10); 
     } else if (jsvIsFloat(v)) {
-      //OPT could use ftoa
-      snprintf(str, len, "%f", v->varData.floating);
+      ftoa(v->varData.floating, str);
     } else if (jsvIsNull(v)) {
       strncpy(str, "null", len);
     } else if (jsvIsString(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
@@ -363,6 +365,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       JsVar *var = v;
       JsVarRef ref = 0;
       while (var) {
+        JsVarRef refNext;
         int i;
         for (i=0;i<JSVAR_STRING_LEN;i++) {
           if (len--<=0) {
@@ -374,23 +377,24 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           *(str++) = var->varData.str[i];
         }
         // Go to next
-        JsVarRef refNext = var->lastChild;
+        refNext = var->lastChild;
         if (ref) jsvUnLock(var); // Note use of if (ref), not var
         ref = refNext;
         var = ref ? jsvLock(ref) : 0;
       }
       if (ref) jsvUnLock(var); // Note use of if (ref), not var
     } else if (jsvIsFunction(v)) {
-      snprintf(str, len, "function");
+      strncpy(str, "function", len);
     } else assert(0);
 }
 
 int jsvGetStringLength(JsVar *v) {
-  if (!jsvIsString(v)) return 0;
   int strLength = 0;
-
   JsVar *var = v;
   JsVarRef ref = 0;
+
+  if (!jsvIsString(v)) return 0;
+
   while (var) {
     JsVarRef refNext = var->lastChild;
 
@@ -431,10 +435,10 @@ bool jsvGetBool(JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
 
-double jsvGetDouble(JsVar *v) {
+JsVarFloat jsvGetDouble(JsVar *v) {
     if (!v) return 0;
     if (jsvIsFloat(v)) return v->varData.floating;
-    if (jsvIsInt(v)) return (double)v->varData.integer;
+    if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     return 0; /* or NaN? */
@@ -454,17 +458,18 @@ bool jsvGetBoolSkipName(JsVar *v) {
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   int i;
+  JsVar *v = var;
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
 
-  JsVar *v = var;
   while (true) {
+    JsVarRef next;
     for (i=0;i<JSVAR_STRING_LEN;i++) {
        if (v->varData.str[i] != *str) return false;
        if  (*str==0) return true; // end of string, all great!
        str++;
     }
     // End of what is built in, but keep going!
-    JsVarRef next = v->lastChild;
+    next = v->lastChild;
     if  (*str==0) // end of input string
       return next==0; // if we have more data then they are not equal!
     if  (!next) return false; // end of this string, but not the input!
@@ -475,7 +480,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
 
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
-  dst->varData = src->varData;
+  memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
 
   if (src->firstChild || src->lastChild) {
     jsError("FIXME: deep copy!");
@@ -486,9 +491,10 @@ JsVar *jsvCopy(JsVar *src) {
 }
 
 void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
+  JsVar *v;
   JsVar *namedChild = jsvRef(jsvLock(namedChildRef));
   assert(jsvIsName(namedChild));
-  JsVar *v = jsvLock(parent);
+  v = jsvLock(parent);
   if (v->lastChild) {
     // Link 2 children together
     JsVar *lastChild = jsvLock(v->lastChild);
@@ -610,8 +616,8 @@ int jsvGetArrayLength(JsVar *v) {
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
 JsVar *jsvSkipName(JsVar *a) {
-  if (!a) return a;
   JsVar *pa = a;
+  if (!a) return a;
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);
@@ -643,10 +649,17 @@ JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
 
 
 JsVar *jsvMathsOpError(int op, const char *datatype) {
-    char tbuf[JS_ERROR_TOKEN_BUF_SIZE];
     char buf[JS_ERROR_BUF_SIZE];
-    jslTokenAsString(op, tbuf, JS_ERROR_TOKEN_BUF_SIZE);
-    snprintf(buf,JS_ERROR_BUF_SIZE, "Operation %s expected not supported on the %s datatype", tbuf, datatype);
+    size_t bufpos = 0;
+    strncpy(&buf[bufpos], "Operation ", JS_ERROR_BUF_SIZE-bufpos);
+    bufpos=strlen(buf);
+    jslTokenAsString(op, &buf[bufpos], JS_ERROR_TOKEN_BUF_SIZE-bufpos);
+    bufpos=strlen(buf);
+    strncat(&buf[bufpos], " not supported on the  ", JS_ERROR_BUF_SIZE-bufpos);
+    bufpos=strlen(buf);
+    strncat(&buf[bufpos], datatype, JS_ERROR_BUF_SIZE-bufpos);
+    bufpos=strlen(buf);
+    strncat(&buf[bufpos], " datatype", JS_ERROR_BUF_SIZE-bufpos);
     jsError(buf);
     return 0;
 }
@@ -750,15 +763,16 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
            default: return jsvMathsOpError(op, "String");
        }
     }
-    assert(0);
-    return 0;
 }
 
 JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
+    JsVar *a;
+    JsVar *b;
+    JsVar *res;
     if (!ar || !br) return 0;
-    JsVar *a = jsvLock(ar);
-    JsVar *b = jsvLock(br);
-    JsVar *res = jsvMathsOpPtr(a,b,op);
+    a = jsvLock(ar);
+    b = jsvLock(br);
+    res = jsvMathsOpPtr(a,b,op);
     jsvUnLock(a);
     jsvUnLock(b);
     return res;
@@ -768,6 +782,7 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
 void jsvTrace(JsVarRef ref, int indent) {
     int i;
     char buf[JS_ERROR_BUF_SIZE];
+    JsVar *var;
 
     for (i=0;i<indent;i++) printf(" ");
 
@@ -775,7 +790,7 @@ void jsvTrace(JsVarRef ref, int indent) {
         printf("undefined\n");
         return;
     }
-    JsVar *var = jsvLock(ref);
+    var = jsvLock(ref);
 
     printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
 
@@ -829,12 +844,13 @@ void jsvTrace(JsVarRef ref, int indent) {
       }
       printf(")\n");
     } else {
+      JsVarRef child = var->firstChild;
       printf("\n");
       // dump children
-      JsVarRef child = var->firstChild;
       while (child) {
+        JsVar *childVar;
         jsvTrace(child, indent+1);
-        JsVar *childVar = jsvLock(child);
+        childVar = jsvLock(child);
         child = childVar->nextSibling;
         jsvUnLock(childVar);
       }

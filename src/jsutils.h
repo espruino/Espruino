@@ -128,9 +128,11 @@ void jsAssertFail(const char *file, int line);
 #ifdef SDCC
 long strtol(const char*str, char **endptr, int base);
 void itoa(int val, char *str, int base);
+void ftoa(float val, char *str);
 void exit(int errcode);
 #else
 #define itoa(val,str,base) sprintf(str,"%d",val)
+#define ftoa(val,str) sprintf(str,"%f",val)
 #endif
 
 #endif /* JSUTILS_H_ */
