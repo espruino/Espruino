@@ -4,7 +4,8 @@ LDFLAGS=-g
 
 ifdef SDCC
 CC=sdcc
-CFLAGS=-c --std-sdcc99 -DUSE_FLOATS
+CFLAGS=-c --std-sdcc99 -DUSE_FLOATS 
+# SDCC is defined as a compiler directive
 endif
 
 SOURCES=  \

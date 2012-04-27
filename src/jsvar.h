@@ -24,7 +24,9 @@ typedef double JsVarFloat;
 
 typedef void (*JsCallback)(JsVarRef var);
 
+#ifndef SDCC
 #pragma pack(1) // make this as small as possible
+#endif
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
@@ -36,7 +38,7 @@ typedef struct {
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
-  } data;
+  } varData;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
@@ -52,7 +54,9 @@ typedef struct {
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 } JsVar;
+#ifndef SDCC
 #pragma pack() // reset packing
+#endif
 
 /* We have a few different types:
  *

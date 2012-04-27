@@ -53,7 +53,7 @@ JsVar *jsvNew() {
       v->refs = 0;
       v->locks = 1;
       v->flags = 0;
-      v->data.callback = 0;
+      v->varData.callback = 0;
       v->firstChild = 0;
       v->lastChild = 0;
       v->prevSibling = 0;
@@ -180,13 +180,13 @@ JsVar *jsvNewFromString(const char *str) {
   // over the end
   JsVar *var = first;
   var->flags = JSV_STRING;
-  var->data.str[0] = 0; // in case str is empty!
+  var->varData.str[0] = 0; // in case str is empty!
 
   while (*str) {
     int i;
     // copy data in
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-      var->data.str[i] = *str;
+      var->varData.str[i] = *str;
       if (*str) str++;
     }
     // if there is still some left, it's because we filled up our var...
@@ -223,14 +223,14 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   // over the end
   JsVar *var = first;
   var->flags = JSV_STRING;
-  var->data.str[0] = 0; // in case str is empty!
+  var->varData.str[0] = 0; // in case str is empty!
 
 
   while (newLex.currCh) {
     int i;
     // copy data in
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-      var->data.str[i] = newLex.currCh;
+      var->varData.str[i] = newLex.currCh;
       if (newLex.currCh) jslGetNextCh(&newLex);
     }
     // if there is still some left, it's because we filled up our var...
@@ -258,19 +258,19 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNew();
   var->flags = JSV_INTEGER;
-  var->data.integer = value;
+  var->varData.integer = value;
   return var;
 }
 JsVar *jsvNewFromBool(bool value) {
   JsVar *var = jsvNew();
   var->flags = JSV_INTEGER;
-  var->data.integer = value ? 1 : 0;
+  var->varData.integer = value ? 1 : 0;
   return var;
 }
 JsVar *jsvNewFromFloat(JsVarFloat value) {
   JsVar *var = jsvNew();
   var->flags = JSV_FLOAT;
-  var->data.floating = value;
+  var->varData.floating = value;
   return var;
 }
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
@@ -302,18 +302,18 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   if (jsvIsNumeric(a) && jsvIsNumeric(b)) {
     if (jsvIsInt(a)) {
       if (jsvIsInt(b)) {
-        return a->data.integer == b->data.integer;
+        return a->varData.integer == b->varData.integer;
       } else {
         assert(jsvIsFloat(b));
-        return a->data.integer == b->data.floating;
+        return a->varData.integer == b->varData.floating;
       }
     } else {
       assert(jsvIsFloat(a));
       if (jsvIsInt(b)) {
-        return a->data.floating == b->data.integer;
+        return a->varData.floating == b->varData.integer;
       } else {
         assert(jsvIsFloat(b));
-        return a->data.floating == b->data.floating;
+        return a->varData.floating == b->varData.floating;
       }
     }
   } else if (jsvIsString(a) && jsvIsString(b)) {
@@ -323,8 +323,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
     while (true) {
       JsVarRef var, vbr;
       for (i=0;i<JSVAR_STRING_LEN;i++) {
-        if (va->data.str[i] != vb->data.str[i]) return false;
-        if (!va->data.str[i]) return true; // equal, but end of string
+        if (va->varData.str[i] != vb->varData.str[i]) return false;
+        if (!va->varData.str[i]) return true; // equal, but end of string
       }
       // we're at the end of this, but are still ok. Move on
       // to STRING_EXTs
@@ -351,10 +351,10 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           strncpy(str, "undefined", len);
     } else if (jsvIsInt(v)) {
       //OPT could use itoa
-      snprintf(str, len, "%ld", v->data.integer);
+      snprintf(str, len, "%ld", v->varData.integer);
     } else if (jsvIsFloat(v)) {
       //OPT could use ftoa
-      snprintf(str, len, "%f", v->data.floating);
+      snprintf(str, len, "%f", v->varData.floating);
     } else if (jsvIsNull(v)) {
       strncpy(str, "null", len);
     } else if (jsvIsString(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
@@ -371,7 +371,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
             if (ref) jsvUnLock(var); // Note use of if (ref), not var
             return;
           }
-          *(str++) = var->data.str[i];
+          *(str++) = var->varData.str[i];
         }
         // Go to next
         JsVarRef refNext = var->lastChild;
@@ -401,7 +401,7 @@ int jsvGetStringLength(JsVar *v) {
       int i;
       // count
       for (i=0;i<JSVAR_STRING_LEN;i++) {
-        if (var->data.str[i])
+        if (var->varData.str[i])
           strLength++;
         else
           break;
@@ -420,10 +420,10 @@ int jsvGetStringLength(JsVar *v) {
 JsVarInt jsvGetInteger(JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v)) return v->data.integer;
+    if (jsvIsInt(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if (jsvIsFloat(v)) return (JsVarInt)v->data.floating;
+    if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
     return 0;
 }
 
@@ -433,8 +433,8 @@ bool jsvGetBool(JsVar *v) {
 
 double jsvGetDouble(JsVar *v) {
     if (!v) return 0;
-    if (jsvIsFloat(v)) return v->data.floating;
-    if (jsvIsInt(v)) return (double)v->data.integer;
+    if (jsvIsFloat(v)) return v->varData.floating;
+    if (jsvIsInt(v)) return (double)v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     return 0; /* or NaN? */
@@ -459,7 +459,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   JsVar *v = var;
   while (true) {
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-       if (v->data.str[i] != *str) return false;
+       if (v->varData.str[i] != *str) return false;
        if  (*str==0) return true; // end of string, all great!
        str++;
     }
@@ -475,7 +475,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
 
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
-  dst->data = src->data;
+  dst->varData = src->varData;
 
   if (src->firstChild || src->lastChild) {
     jsError("FIXME: deep copy!");

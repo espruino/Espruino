@@ -7,6 +7,7 @@
 
 #include "jslex.h"
 
+
 void jslSeek(JsLex *lex, int seekToChar) {
   /*OPT: maybe we can seek backwards (for instance when doing
    * small FOR loops */
@@ -24,8 +25,9 @@ void jslSeek(JsLex *lex, int seekToChar) {
   lex->currentVar = jsvLock(lex->currentVarRef);
   // Keep seeking until we get to the start position
   while (lex->currentVarPos >= JSVAR_STRING_LEN) {
+    JsVarRef next;
     lex->currentVarPos -= JSVAR_STRING_LEN;
-    JsVarRef next = lex->currentVar->lastChild;
+    next = lex->currentVar->lastChild;
     assert(next);
     jsvUnLock(lex->currentVar);
     lex->currentVarRef = next;
@@ -38,12 +40,13 @@ void jslGetNextCh(JsLex *lex) {
   if (lex->currentPos < lex->sourceEndPos) {
     lex->nextCh = 0;
     if (lex->currentVar)
-      lex->nextCh = lex->currentVar->data.str[lex->currentVarPos];
+      lex->nextCh = lex->currentVar->varData.str[lex->currentVarPos];
     lex->currentVarPos++;
     // make sure we move on to next..
     if (lex->currentVarPos >= JSVAR_STRING_LEN) {
+      JsVarRef next;
       lex->currentVarPos -= JSVAR_STRING_LEN;
-      JsVarRef next = lex->currentVar->lastChild;
+      next = lex->currentVar->lastChild;
       jsvUnLock(lex->currentVar);
       lex->currentVarRef = next;
       lex->currentVar = next ? jsvLock(lex->currentVarRef) : 0;
@@ -300,10 +303,11 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
 }
 
 void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos) {
+  JsVar *var;
   int lastCharIdx = initFrom->tokenLastEnd+1;
   if (lastCharIdx >= initFrom->sourceEndPos)
     lastCharIdx = initFrom->sourceEndPos;
-  JsVar *var = jsvLock(initFrom->sourceVarRef);
+  var = jsvLock(initFrom->sourceVarRef);
   jslInit(lex, var, startPos, lastCharIdx);
   jsvUnLock(var);
 }
@@ -377,20 +381,20 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_R_UNDEFINED : strncpy(str, "undefined", len); return;
       case LEX_R_NEW : strncpy(str, "new", len); return;
   }
-
-  if (token>32 && token<128) {
-    snprintf(str, len, "'%c'",token);
-    return;
-  }
-
-  snprintf(str, len, "?[%d]",token);
+  assert(len>=10);
+  strcpy(str, "?[");
+  itoa(token, &str[2], 10);
+  strcat(str, "]");
 }
 
 void jslGetTokenString(JsLex *lex, char *str, size_t len) {
   if (lex->tk == LEX_ID) {
-    snprintf(str,len, "ID:%s", jslGetTokenValueAsString(lex));
+    strncpy(str, "ID:", len);
+    strncat(str, jslGetTokenValueAsString(lex), len);
   } else if (lex->tk == LEX_STR) {
-    snprintf(str,len, "String:'%s'", jslGetTokenValueAsString(lex));
+    strncpy(str, "String:'", len);
+    strncat(str, jslGetTokenValueAsString(lex), len);
+    strncat(str, "'", len);
   } else
     jslTokenAsString(lex->tk, str, len);
 }
@@ -404,12 +408,15 @@ char *jslGetTokenValueAsString(JsLex *lex) {
 /// Match, and return true on success, false on failure
 bool jslMatch(JsLex *lex, int expected_tk) {
   if (lex->tk!=expected_tk) {
-      char tbuf1[JS_ERROR_TOKEN_BUF_SIZE];
-      char tbuf2[JS_ERROR_TOKEN_BUF_SIZE];
       char buf[JS_ERROR_BUF_SIZE];
-      jslGetTokenString(lex, tbuf1, JS_ERROR_TOKEN_BUF_SIZE);
-      jslTokenAsString(expected_tk, tbuf2, JS_ERROR_TOKEN_BUF_SIZE);
-      snprintf(buf,JS_ERROR_BUF_SIZE, "Got %s expected %s", tbuf1, tbuf2);
+      size_t bufpos = 0;
+      strncpy(&buf[bufpos], "Got ", JS_ERROR_BUF_SIZE-bufpos);
+      bufpos = strlen(buf);
+      jslGetTokenString(lex, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
+      bufpos = strlen(buf);
+      strncpy(&buf[bufpos], " expected ", JS_ERROR_BUF_SIZE-bufpos);
+      bufpos = strlen(buf);
+      jslTokenAsString(expected_tk, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
       jsErrorAt(buf, lex, lex->tokenStart);
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);

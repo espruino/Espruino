@@ -125,4 +125,11 @@ void jsWarn(const char *message);
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsAssertFail(const char *file, int line);
 
+#ifdef SDCC
+long strtol(const char*str, char **endptr, int base);
+void itoa(int val, char *str, int base);
+#else
+#define itoa(val,str,base) sprintf(str,"%d",val)
+#endif
+
 #endif /* JSUTILS_H_ */
