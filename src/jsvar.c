@@ -4,7 +4,7 @@
  *  Created on: 1 Nov 2011
  *      Author: gw
  */
-
+//#define INLINE_FUNC inline
 #include "jsvar.h"
 #include "jslex.h"
 
@@ -289,20 +289,20 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
   return var;
 }
 
-bool jsvIsInt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
-bool jsvIsFloat(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
-bool jsvIsString(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
-bool jsvIsStringExt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
-bool jsvIsNumeric(JsVar *v) { return (v->flags&JSV_NUMERICMASK)!=0; }
-bool jsvIsFunction(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
-bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
-bool jsvIsObject(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
-bool jsvIsArray(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
-bool jsvIsNative(JsVar *v) { return (v->flags&JSV_NATIVE)!=0; }
-bool jsvIsUndefined(JsVar *v) { return !v; }
-bool jsvIsNull(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
-bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
-bool jsvIsName(JsVar *v) { return (v->flags & JSV_NAME)!=0; }
+INLINE_FUNC bool jsvIsInt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
+INLINE_FUNC bool jsvIsFloat(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
+INLINE_FUNC bool jsvIsString(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
+INLINE_FUNC bool jsvIsStringExt(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
+INLINE_FUNC bool jsvIsNumeric(JsVar *v) { return (v->flags&JSV_NUMERICMASK)!=0; }
+INLINE_FUNC bool jsvIsFunction(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
+INLINE_FUNC bool jsvIsFunctionParameter(JsVar *v) { return (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+INLINE_FUNC bool jsvIsObject(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
+INLINE_FUNC bool jsvIsArray(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
+INLINE_FUNC bool jsvIsNative(JsVar *v) { return (v->flags&JSV_NATIVE)!=0; }
+INLINE_FUNC bool jsvIsUndefined(JsVar *v) { return !v; }
+INLINE_FUNC bool jsvIsNull(JsVar *v) { return (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
+INLINE_FUNC bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
+INLINE_FUNC bool jsvIsName(JsVar *v) { return (v->flags & JSV_NAME)!=0; }
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // OPT: would this be useful as compare instead?
@@ -425,7 +425,7 @@ int jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
-JsVarInt jsvGetInteger(JsVar *v) {
+INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
     if (jsvIsInt(v)) return v->varData.integer;
@@ -435,11 +435,11 @@ JsVarInt jsvGetInteger(JsVar *v) {
     return 0;
 }
 
-bool jsvGetBool(JsVar *v) {
+INLINE_FUNC bool jsvGetBool(JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
 
-JsVarFloat jsvGetDouble(JsVar *v) {
+INLINE_FUNC JsVarFloat jsvGetDouble(JsVar *v) {
     if (!v) return 0;
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
@@ -448,14 +448,14 @@ JsVarFloat jsvGetDouble(JsVar *v) {
     return 0; /* or NaN? */
 }
 
-JsVarInt jsvGetIntegerSkipName(JsVar *v) {
+INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v) {
     JsVar *a = jsvSkipName(v);
     JsVarInt l = jsvGetInteger(a);
     jsvUnLock(a);
     return l;
 }
 
-bool jsvGetBoolSkipName(JsVar *v) {
+INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v) {
   return jsvGetIntegerSkipName(v)!=0;
 }
 
@@ -619,7 +619,7 @@ int jsvGetArrayLength(JsVar *v) {
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
-JsVar *jsvSkipName(JsVar *a) {
+INLINE_FUNC JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return a;
   while (jsvIsName(pa)) {
@@ -633,8 +633,8 @@ JsVar *jsvSkipName(JsVar *a) {
 }
 
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used inline */
-JsVar *jsvSkipNameAndUnlock(JsVar *a) {
+ * a name, so it can be used INLINE_FUNC */
+INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a) {
   JsVar *b = jsvSkipName(a);
   jsvUnLock(a);
   return b;
@@ -784,6 +784,7 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent) {
+#ifndef SDCC
     int i;
     char buf[JS_ERROR_BUF_SIZE];
     JsVar *var;
@@ -872,4 +873,5 @@ void jsvTrace(JsVarRef ref, int indent) {
     }
 
     jsvUnLock(var);
+#endif
 }

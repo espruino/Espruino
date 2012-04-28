@@ -10,6 +10,10 @@
 
 #include "jsutils.h"
 
+#ifndef INLINE_FUNC
+#define INLINE_FUNC
+#endif
+
 /// Reference for variables
 typedef unsigned short JsVarRef;
 // We treat 0 as null
@@ -91,29 +95,29 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 // Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero);
 
-JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
-JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable - this is SAFE for null variables
+INLINE_FUNC JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
+INLINE_FUNC JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable - this is SAFE for null variables
 
-JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
-void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything
-JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set this variable as used by something
-JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
-JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
+INLINE_FUNC JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
+INLINE_FUNC void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything
+INLINE_FUNC JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set this variable as used by something
+INLINE_FUNC JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
+INLINE_FUNC JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
 
-bool jsvIsInt(JsVar *v);
-bool jsvIsDouble(JsVar *v);
-bool jsvIsString(JsVar *v);
-bool jsvIsStringExt(JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
-bool jsvIsNumeric(JsVar *v);
-bool jsvIsFunction(JsVar *v);
-bool jsvIsFunctionParameter(JsVar *v);
-bool jsvIsObject(JsVar *v);
-bool jsvIsArray(JsVar *v);
-bool jsvIsNative(JsVar *v);
-bool jsvIsUndefined(JsVar *v);
-bool jsvIsNull(JsVar *v);
-bool jsvIsBasic(JsVar *v);
-bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+INLINE_FUNC bool jsvIsInt(JsVar *v);
+INLINE_FUNC bool jsvIsDouble(JsVar *v);
+INLINE_FUNC bool jsvIsString(JsVar *v);
+INLINE_FUNC bool jsvIsStringExt(JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
+INLINE_FUNC bool jsvIsNumeric(JsVar *v);
+INLINE_FUNC bool jsvIsFunction(JsVar *v);
+INLINE_FUNC bool jsvIsFunctionParameter(JsVar *v);
+INLINE_FUNC bool jsvIsObject(JsVar *v);
+INLINE_FUNC bool jsvIsArray(JsVar *v);
+INLINE_FUNC bool jsvIsNative(JsVar *v);
+INLINE_FUNC bool jsvIsUndefined(JsVar *v);
+INLINE_FUNC bool jsvIsNull(JsVar *v);
+INLINE_FUNC bool jsvIsBasic(JsVar *v);
+INLINE_FUNC bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
@@ -125,18 +129,18 @@ void jsvGetString(JsVar *v, char *str, size_t len);
 int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 
-JsVarInt jsvGetInteger(JsVar *v);
-JsVarFloat jsvGetDouble(JsVar *v); // TODO: rename to jsvGetFloat
-bool jsvGetBool(JsVar *v);
+INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v);
+INLINE_FUNC JsVarFloat jsvGetDouble(JsVar *v); // TODO: rename to jsvGetFloat
+INLINE_FUNC bool jsvGetBool(JsVar *v);
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */
-JsVar *jsvSkipName(JsVar *a);
+INLINE_FUNC JsVar *jsvSkipName(JsVar *a);
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used inline */
-JsVar *jsvSkipNameAndUnlock(JsVar *a);
-JsVarInt jsvGetIntegerSkipName(JsVar *v);
-bool jsvGetBoolSkipName(JsVar *v);
+ * a name, so it can be used INLINE_FUNC */
+INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a);
+INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
+INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
 
 /// MATHS!
 JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
