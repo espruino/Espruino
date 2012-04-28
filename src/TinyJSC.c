@@ -22,9 +22,9 @@
  *       Add a function to handle built-in functions without using up RAM
  *       Add require(filename) function
  *       Add Array.push()/indexOf/splice
- *       Add JSON/eval
  *       Add String builtins
  *       Add 'delete' keyword for killing array items?
+ *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
  *
  * In code:
  * TODO - should be fixed
@@ -37,6 +37,7 @@
 #include "jslex.h"
 #include "jsvar.h"
 #include "jsparse.h"
+#include "jsfunctions.h"
 
 JsParse p;
 bool isRunning = true;
@@ -55,6 +56,26 @@ void nativePrint(JsVarRef var) {
   jsvGetString(text, buf, 64);
   printf("PRINT: '%s'\n", buf);
   jsvUnLock(text);
+}
+
+void nativeJSONStringify(JsVarRef var) {
+  // FIXME: memory leak when calling this - one STRING_EXT block, locked too many times
+  JsVar *data = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "data", false/*no create*/));
+  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
+  JsVar *result = jsvNewFromString("");
+  jsfGetJSON(data, result);
+  jsvUnLock(jsvSetValueOfName(returnValue, result));
+  jsvUnLock(result);
+  jsvUnLock(data);
+}
+
+void nativeEval(JsVarRef var) {
+  JsVar *js = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "js", false/*no create*/));
+  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
+  JsVar *result = jspEvaluateVar(&p, js);
+  jsvUnLock(jsvSetValueOfName(returnValue, result));
+  jsvUnLock(result);
+  jsvUnLock(js);
 }
 
 void nativeSetPin(JsVarRef var) {
@@ -79,6 +100,8 @@ void nativeGetPin(JsVarRef var) {
 
 
 int main(void) {
+
+
     char javaScript[256];
 
     JsVar *v;
@@ -91,6 +114,8 @@ int main(void) {
 	jspAddNativeFunction(&p, "function quit()", nativeQuit);
 	jspAddNativeFunction(&p, "function trace()", nativeTrace);
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
+        jspAddNativeFunction(&p, "function JSON.stringify(data)", nativeJSONStringify);
+        jspAddNativeFunction(&p, "function eval(js)", nativeEval);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );

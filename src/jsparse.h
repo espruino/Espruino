@@ -29,6 +29,7 @@ void jspInit(JsParse *parse);
 void jspKill(JsParse *parse);
 
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
+JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
 
 #endif /* JSPARSE_H_ */

@@ -992,15 +992,13 @@ void jspKill(JsParse *parse) {
   jsvUnRefRef(parse->root);
 }
 
-JsVar *jspEvaluate(JsParse *parse, const char *str) {
+JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   JsExecInfo execInfo;
   JsExecFlags execute = EXEC_YES;
   JsLex lex;
   JsVar *v = 0;
 
-  JsVar *evCode = jsvNewFromString(str);
-  jslInit(&lex, evCode, 0, -1);
-  jsvUnLock(evCode);
+  jslInit(&lex, str, 0, -1);
 
   jspeiInit(&execInfo, parse, &lex);
 
@@ -1016,4 +1014,14 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   }
   // nothing returned
   return 0;
+}
+
+JsVar *jspEvaluate(JsParse *parse, const char *str) {
+  JsVar *v;
+
+  JsVar *evCode = jsvNewFromString(str);
+  v = jspEvaluateVar(parse, evCode);
+  jsvUnLock(evCode);
+
+  return v;
 }

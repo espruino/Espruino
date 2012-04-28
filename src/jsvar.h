@@ -126,8 +126,9 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len);
-int jsvGetStringLength(JsVar *v); // Get the length of this string, IF it is a string
+int jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
+void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 
 INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v);
 INLINE_FUNC JsVarFloat jsvGetDouble(JsVar *v); // TODO: rename to jsvGetFloat
@@ -157,7 +158,8 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
 JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 
 int jsvGetChildren(JsVar *v);
-int jsvGetArrayLength(JsVar *v);
+JsVarInt jsvGetArrayLength(JsVar *v); ///< Not the same as GetChildren, as it can be a sparse array
+JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

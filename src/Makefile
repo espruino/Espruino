@@ -13,6 +13,7 @@ jslex.c \
 jsparse.c \
 jsutils.c \
 jsvar.c \
+jsfunctions.c \
 TinyJSC.c
 
 

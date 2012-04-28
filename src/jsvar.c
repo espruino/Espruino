@@ -425,6 +425,42 @@ int jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
+void jsvAppendString(JsVar *var, const char *str) {
+  JsVar *block = jsvLock(jsvGetRef(var));
+  int blockChars;
+  assert(jsvIsString(var));
+  // Find the block at end of the string...
+  while (block->lastChild) {
+    JsVarRef next = block->lastChild;
+    jsvUnLock(block);
+    block = jsvLock(next);
+  }
+  // find how full the block is
+  blockChars=0;
+  while (blockChars<JSVAR_STRING_LEN && block->varData.str[blockChars]) 
+        blockChars++;
+  // now start appending
+  while (*str) {
+    int i;
+    // copy data in
+    for (i=blockChars;i<JSVAR_STRING_LEN;i++) {
+      block->varData.str[i] = *str;
+      if (*str) str++;
+    }
+    // if there is still some left, it's because we filled up our var...
+    // make a new one, link it in, and unlock the old one.
+    if (*str) {
+      JsVar *next = jsvRef(jsvNew());
+      next->flags = JSV_STRING_EXT;
+      block->lastChild = next->this;
+      jsvUnLock(block);
+      block = next;
+      blockChars=0; // it's new, so empty
+    }
+  }
+  jsvUnLock(block);
+}
+
 INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
@@ -610,9 +646,40 @@ int jsvGetChildren(JsVar *v) {
 }
 
 
-int jsvGetArrayLength(JsVar *v) {
-  // TODO: ArrayLength != children, for instance a sparse array
-  return jsvGetChildren(v);
+JsVarInt jsvGetArrayLength(JsVar *v) {
+  JsVarInt lastIdx = 0;
+  JsVarRef childref = v->firstChild;
+  while (childref) {
+    JsVarInt childIndex;
+    JsVar *child = jsvLock(childref);
+    
+    assert(jsvIsInt(child));
+    childIndex = jsvGetInteger(child);
+    if (childIndex>lastIdx) 
+        lastIdx = childIndex;
+    childref = child->nextSibling;
+    jsvUnLock(child);
+  }
+  return lastIdx+1;
+}
+
+JsVar *jsvGetArrayItem(JsVar *arr, int index) {
+  JsVarRef childref = arr->firstChild;
+  while (childref) {
+    JsVarInt childIndex;
+    JsVar *child = jsvLock(childref);
+    
+    assert(jsvIsInt(child));
+    childIndex = jsvGetInteger(child);
+    if (childIndex == index) {
+      JsVar *item = jsvLock(child->firstChild);
+      jsvUnLock(child);
+      return item;
+    }
+    childref = child->nextSibling;
+    jsvUnLock(child);
+  }
+  return 0; // undefined
 }
 
 
@@ -846,8 +913,9 @@ void jsvTrace(JsVarRef ref, int indent) {
           child = childVar->firstChild;
           jsvUnLock(childVar);
         }
-      }
-      printf(")\n");
+        printf(")\n");
+      } else
+        printf("\n");
     } else {
       JsVarRef child = var->firstChild;
       printf("\n");
