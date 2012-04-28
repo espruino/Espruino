@@ -468,13 +468,12 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
             // OPT: Store array indices as actual ints
             JsVar *a;
             JsVar *aVar;
-            char idx_str[16]; // big enough for 2^32
-            itoa(idx, idx_str, 10);
-                // FIXME: var a = [1,2,3];a[0] not working - should use ints here.
+            JsVar *indexName;
             a = jspeBase(execInfo, execute);
-            assert(a);
             aVar = jsvSkipNameAndUnlock(a);
-            jsvUnLock(jsvAddNamedChild(jsvGetRef(contents), jsvGetRef(aVar), idx_str));
+            indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  jsvGetRef(aVar));
+            jsvAddName(jsvGetRef(contents), jsvGetRef(indexName));
+            jsvUnLock(indexName);
             jsvUnLock(aVar);
           }
           // no need to clean here, as it will definitely be used
