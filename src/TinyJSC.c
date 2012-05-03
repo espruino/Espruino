@@ -98,6 +98,23 @@ void nativeGetPin(JsVarRef var) {
   jsvUnLock(pin);
 }
 
+void nativeInputA(JsVarRef var) {
+  JsVar *value = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "value", false/*no create*/));
+  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
+  static int this_is_my_pin = 1;
+  if (!jsvIsUndefined(value)) {
+     this_is_my_pin = (int)jsvGetInteger(value);
+     printf("Setting INPUTA to %d\n", this_is_my_pin);
+  }
+
+  JsVar *newValue;
+  printf("Getting INPUTA (it was %d)\n", this_is_my_pin);
+  newValue = jsvNewFromInteger(this_is_my_pin);
+  jsvUnLock(jsvSetValueOfName(returnValue, newValue));
+  jsvUnLock(newValue);
+  jsvUnLock(value);
+}
+
 
 int main(void) {
 
@@ -118,6 +135,7 @@ int main(void) {
         jspAddNativeFunction(&p, "function eval(js)", nativeEval);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
+        jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
 	//v = jspEvaluate(&p, "var Z = 1+2; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );

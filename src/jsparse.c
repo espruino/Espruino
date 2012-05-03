@@ -216,7 +216,11 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     while (v) {
         JsVar *param = jsvLock(v);
         if (jsvIsFunctionParameter(param)) {
-          JsVar *valueName = jspeBase(execInfo, execute);
+          JsVar *valueName = 0;
+          // ONLY parse this if it was supplied, otherwise leave 0 (undefined)
+          if (execInfo->lex->tk!=')') 
+            valueName = jspeBase(execInfo, execute);
+          // and if execute, copy it over
           if (JSP_SHOULD_EXECUTE(execute)) {
             JsVar *value = jsvSkipName(valueName);
             // TODO: deep copy required?
