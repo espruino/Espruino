@@ -417,7 +417,10 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         return a;
     }
     if (execInfo->lex->tk==LEX_INT) {
-        JsVarInt v = atol(jslGetTokenValueAsString(execInfo->lex));
+        // atol works only on decimals
+        // strtol handles 0x12345 as well
+        //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo->lex));
+        JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo->lex),0,0);
         JSP_MATCH(LEX_INT);
         return jsvNewFromInteger(v);
     }
@@ -613,11 +616,11 @@ JsVar *jspeShift(JsExecInfo *execInfo, JsExecFlags *execute) {
     int op = execInfo->lex->tk;
     JSP_MATCH(op);
     b = jspeBase(execInfo, execute);
-    jsvUnLock(b);
     if (JSP_SHOULD_EXECUTE(execute)) {
       JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
       jsvUnLock(a); a = res;
     }
+    jsvUnLock(b);
   }
   return a;
 }
@@ -643,7 +646,7 @@ JsVar *jspeCondition(JsExecInfo *execInfo, JsExecFlags *execute) {
 
 JsVar *jspeLogic(JsExecInfo *execInfo, JsExecFlags *execute) {
     JsVar *a = jspeCondition(execInfo, execute);
-    JsVar *b;
+    JsVar *b = 0;
     while (execInfo->lex->tk=='&' || execInfo->lex->tk=='|' || execInfo->lex->tk=='^' || execInfo->lex->tk==LEX_ANDAND || execInfo->lex->tk==LEX_OROR) {
         JsExecFlags noexecute = EXEC_NO;
         bool shortCircuit = false;
