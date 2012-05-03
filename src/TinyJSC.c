@@ -11,6 +11,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       Add Deep copy! Now function params > 8 chars cause a failure!
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
@@ -59,7 +60,6 @@ void nativePrint(JsVarRef var) {
 }
 
 void nativeJSONStringify(JsVarRef var) {
-  // FIXME: memory leak when calling this - one STRING_EXT block, locked too many times
   JsVar *data = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "data", false/*no create*/));
   JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
   JsVar *result = jsvNewFromString("");
@@ -131,11 +131,11 @@ int main(void) {
 	jspAddNativeFunction(&p, "function quit()", nativeQuit);
 	jspAddNativeFunction(&p, "function trace()", nativeTrace);
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
-        jspAddNativeFunction(&p, "function JSON.stringify(data)", nativeJSONStringify);
-        jspAddNativeFunction(&p, "function eval(js)", nativeEval);
+    jspAddNativeFunction(&p, "function JSON.stringify(data,xxx)", nativeJSONStringify);
+    jspAddNativeFunction(&p, "function eval(js)", nativeEval);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
-        jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
+    jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
 	//v = jspEvaluate(&p, "var Z = 1+2; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );

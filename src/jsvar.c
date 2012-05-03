@@ -498,22 +498,25 @@ INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v) {
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   int i;
-  JsVar *v = var;
+  JsVar *v = jsvLock(jsvGetRef(var));
   assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
 
   while (true) {
     JsVarRef next;
     for (i=0;i<JSVAR_STRING_LEN;i++) {
-       if (v->varData.str[i] != *str) return false;
-       if  (*str==0) return true; // end of string, all great!
+       if (v->varData.str[i] != *str) { jsvUnLock(v); return false; }
+       if  (*str==0) { jsvUnLock(v); return true; } // end of string, all great!
        str++;
     }
     // End of what is built in, but keep going!
     next = v->lastChild;
-    if  (*str==0) // end of input string
-      return next==0; // if we have more data then they are not equal!
+    if  (*str==0) { // end of input string
+      jsvUnLock(v);
+      return next==0;
+    }
+    // if we have more data then they are not equal!
+    jsvUnLock(v);
     if  (!next) return false; // end of this string, but not the input!
-    if (v!=var) jsvUnLock(v);
     v = jsvLock(next);
   }
 }
