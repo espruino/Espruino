@@ -340,13 +340,11 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         }
         JSP_MATCH(LEX_ID);
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
-          if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
-            JsVar *func = 0;
-            if (JSP_SHOULD_EXECUTE(execute)) {
+            if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
+              JsVar *func = 0;
               func = jsvSkipNameAndUnlock(a);
-            }
-            a = jspeFunctionCall(execInfo, execute, func, parent);
-            jsvUnLock(func);
+              a = jspeFunctionCall(execInfo, execute, func, parent);
+              jsvUnLock(func);
             } else if (execInfo->lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
                 if (JSP_SHOULD_EXECUTE(execute)) {
@@ -361,19 +359,15 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                       if (!child) child = findInParentClasses(aVar, name);
     #endif
                       if (!child) {
-                        /* OPT: Maybe check for builtins via a user-addable function?
-                         * That way we save on RAM for built-ins because all comes out of program code. */
-                        /* if we haven't found this defined yet, use the built-in
-                           'length' properly */
-                        if (jsvIsArray(aVar) && strcmp(name,"length")==0) {
-                          int l = jsvGetArrayLength(aVar);
-                          child = jsvNewFromInteger(l);
-                        } else if (jsvIsString(aVar) && strcmp(name,"length")==0) {
-                          int l = jsvGetStringLength(aVar);
-                          child = jsvNewFromInteger(l);
-                        } else {
-                          // TODO: ensure aVar is an object
-                          child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);
+                        /* Check for builtins via separate function
+                         * This way we save on RAM for built-ins because all comes out of program code. */
+                        child = jsfHandleFunctionCall(aVar, name);
+                        if (!child) {
+                          if (jsvIsObject(aVar))
+                            child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);
+                          else {
+                            jsErrorAt("Using '.' on a non-object", execInfo->lex, execInfo->lex->tokenLastEnd);
+                          }
                         }
                       }
                   } else {

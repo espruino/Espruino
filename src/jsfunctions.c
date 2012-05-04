@@ -6,9 +6,19 @@
  */
 
 #include "jsfunctions.h"
-/*
-JsVar *jsfHandleFunctionCall(JsVar *a, JsVar *parent, const char *name) {
-}*/
+
+JsVar *jsfHandleFunctionCall(JsVar *a, const char *name) {
+  if (strcmp(name,"length")==0) {
+    if (jsvIsArray(a)) {
+      return jsvNewFromInteger(jsvGetArrayLength(a));
+    }
+    if (jsvIsString(a)) {
+      return jsvNewFromInteger(jsvGetStringLength(a));
+    }
+  }
+  // unhandled
+  return 0;
+}
 
 void jsfGetJSON(JsVar *var, JsVar *result) {
   assert(jsvIsString(result));
