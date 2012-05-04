@@ -72,6 +72,37 @@ JsVar *jspeiFindNameOnTop(JsExecInfo *execInfo, JsVar *childName, bool createIfN
     return jsvFindChildFromVar(execInfo->scopes[execInfo->scopeCount-1], childName, createIfNotFound);
   return jsvFindChildFromVar(execInfo->parse->root, childName, createIfNotFound);
 }
+
+
+JsVar *jspeiFindChildFromStringInParents(JsExecInfo *execInfo, JsVar *parent, const char *name) {
+  if (jsvIsInt(parent))
+      return jsvFindChildFromString(execInfo->parse->intClass, name, false);
+  if (jsvIsString(parent))
+      return jsvFindChildFromString(execInfo->parse->stringClass, name, false);
+  if (jsvIsArray(parent))
+      return jsvFindChildFromString(execInfo->parse->arrayClass, name, false);
+
+  if (jsvIsObject(parent)) {
+    // If an object, look for prototypes
+    JsVar *proto = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(parent), JSPARSE_PROTOTYPE_CLASS, false));
+    if (proto) {
+      JsVar *child = jsvFindChildFromString(jsvGetRef(proto), name, false);
+      if (child) { // we found a child!
+        jsvUnLock(proto);
+        return child;
+      }
+      // else look for prototypes in THAT object
+      child = jspeiFindChildFromStringInParents(execInfo, proto, name);
+      jsvUnLock(proto);
+      return child;
+    } else {
+      // look in the basic object class
+      return jsvFindChildFromString(execInfo->parse->objectClass, name, false);
+    }
+  }
+  // no luck!
+  return 0;
+}
 // -----------------------------------------------
 
 // parse function with no arguments
@@ -385,9 +416,10 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                   JsVar *child = 0;
                   if (aVar && (jsvIsObject(aVar) || jsvIsString(aVar) || jsvIsArray(aVar))) {
                       child = jsvFindChildFromString(jsvGetRef(aVar), name, false);
-    #ifdef TODO
-                      if (!child) child = findInParentClasses(aVar, name);
-    #endif
+
+                      if (!child)
+                        child = jspeiFindChildFromStringInParents(execInfo, aVar, name);
+
                       if (child) {
                         // it was found - no need for name ptr now, so match!
                         JSP_MATCH(LEX_ID);
