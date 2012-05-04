@@ -1,7 +1,7 @@
 // built-in functions
 
 foo = "foo bar stuff";
-r = Math.rand();
+r = Math.random();
 
 parsed = Integer.parseInt("42");
 

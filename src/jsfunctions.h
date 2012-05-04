@@ -9,10 +9,12 @@
 #define JSFUNCTIONS_H_
 
 #include "jsvar.h"
+#include "jslex.h"
+#include "jsparse.h"
 
 /* This handles built-in function calls. It's easier to do it this way than to
 add it to the symbol table, as that uses RAM */
-JsVar *jsfHandleFunctionCall(JsVar *a, const char *name);
+JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name);
 
 void jsfGetJSON(JsVar *var, JsVar *result);
 

@@ -7,15 +7,54 @@
 
 #include "jsfunctions.h"
 
-JsVar *jsfHandleFunctionCall(JsVar *a, const char *name) {
+JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (strcmp(name,"length")==0) {
     if (jsvIsArray(a)) {
+      jslMatch(execInfo->lex, LEX_ID);
       return jsvNewFromInteger(jsvGetArrayLength(a));
     }
     if (jsvIsString(a)) {
+      jslMatch(execInfo->lex, LEX_ID);
       return jsvNewFromInteger(jsvGetStringLength(a));
     }
   }
+  if (jsvGetRef(a) == execInfo->parse->intClass) {
+    if (strcmp(name,"parseInt")==0) {
+      char buffer[16];
+      JsVar *v = jspParseSingleFunction(execInfo);
+      jsvGetString(v, buffer, 16);
+      jsvUnLock(v);
+      return jsvNewFromInteger((JsVarInt)strtol(buffer,0,0));
+    }
+  }
+  if (jsvGetRef(a) == execInfo->parse->mathClass) {
+    if (strcmp(name,"random")==0) {
+      if (jspParseEmptyFunction(execInfo))
+        return jsvNewFromFloat(rand() / (float)RAND_MAX);
+    }
+  }
+  if (jsvIsString(a)) {
+     if (strcmp(name,"charAt")==0) {
+       char buffer[2];
+       int idx = 0;
+       JsVar *v = jspParseSingleFunction(execInfo);
+       idx = jsvGetInteger(v);
+       jsvUnLock(v);
+       // now search to try and find the char
+       v = jsvLock(jsvGetRef(a));
+       while (v && idx >= JSVAR_STRING_LEN) {
+         JsVarRef next;
+         idx -= JSVAR_STRING_LEN;
+         next = v->lastChild;
+         jsvUnLock(v);
+         v = jsvLock(next);
+       }
+       buffer[0] = v ? v->varData.str[idx] : 0;
+       buffer[1] = 0;
+       jsvUnLock(v);
+       return jsvNewFromString(buffer);
+     }
+   }
   // unhandled
   return 0;
 }

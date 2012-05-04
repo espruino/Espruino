@@ -1,22 +1,11 @@
 #include "jsparse.h"
 
-typedef struct {
-  JsParse *parse;
-  JsLex *lex;
-
-  JsVarRef scopes[JSPARSE_MAX_SCOPES];
-  int scopeCount;
-} JsExecInfo;
-
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
   EXEC_RUN_MASK = 1,
   // EXEC_ERROR = 2 // maybe?
 } JsExecFlags;
-
-
-
 
 // ----------------------------------------------- Forward decls
 JsVar *jspeBase(JsExecInfo *execInfo, JsExecFlags *execute);
@@ -81,6 +70,28 @@ JsVar *jspeiFindNameOnTop(JsExecInfo *execInfo, JsVar *childName, bool createIfN
   if (execInfo->scopeCount>0)
     return jsvFindChildFromVar(execInfo->scopes[execInfo->scopeCount-1], childName, createIfNotFound);
   return jsvFindChildFromVar(execInfo->parse->root, childName, createIfNotFound);
+}
+// -----------------------------------------------
+
+// parse function with no arguments
+bool jspParseEmptyFunction(JsExecInfo *execInfo) {
+  JSP_MATCH(LEX_ID);
+  JSP_MATCH('(');
+  JSP_MATCH(')');
+  return true;
+}
+
+// parse function with a single argument, return its value (no names!)
+JsVar *jspParseSingleFunction(JsExecInfo *execInfo) {
+  JsVar *v = 0;
+  JSP_MATCH(LEX_ID);
+  JSP_MATCH('(');
+  if (execInfo->lex->tk != ')') {
+    JsExecFlags execute = EXEC_YES;
+    v = jsvSkipNameAndUnlock(jspeBase(execInfo, &execute));
+  }
+  JSP_MATCH(')');
+  return v;
 }
 // -----------------------------------------------
 
@@ -353,7 +364,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
 
                   JsVar *aVar = jsvSkipName(a);
                   JsVar *child = 0;
-                  if (aVar && jsvIsObject(aVar)) {
+                  if (aVar && (jsvIsObject(aVar) || jsvIsString(aVar))) {
                       child = jsvFindChildFromString(jsvGetRef(aVar), name, false);
     #ifdef TODO
                       if (!child) child = findInParentClasses(aVar, name);
@@ -361,13 +372,16 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                       if (!child) {
                         /* Check for builtins via separate function
                          * This way we save on RAM for built-ins because all comes out of program code. */
-                        child = jsfHandleFunctionCall(aVar, name);
+                        child = jsfHandleFunctionCall(execInfo, aVar, name);
                         if (!child) {
-                          if (jsvIsObject(aVar))
+                          // It wasn't handled... We already know this is an object so just add a new child
+                          if (jsvIsObject(aVar)) {
                             child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);
-                          else {
-                            jsErrorAt("Using '.' on a non-object", execInfo->lex, execInfo->lex->tokenLastEnd);
+                          } else {
+                            // could have been a string...
+                            jsWarnAt("Using '.' operator on non-object", execInfo->lex, execInfo->lex->tokenLastEnd);
                           }
+                          JSP_MATCH(LEX_ID);
                         }
                       }
                   } else {
@@ -377,8 +391,10 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
                   parent = aVar;
                   jsvUnLock(a);
                   a = child;
+                } else {
+                  // Not executing, just match
+                  JSP_MATCH(LEX_ID);
                 }
-                JSP_MATCH(LEX_ID);
             } else if (execInfo->lex->tk == '[') { // ------------------------------------- Array Access
                 JsVar *index;
                 JSP_MATCH('[');
@@ -989,6 +1005,12 @@ void jspInit(JsParse *parse) {
   parse->arrayClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jsvUnLock(jsvAddNamedChild(parse->root, parse->arrayClass, "Array"));
   jsvUnRefRef(parse->arrayClass);
+  parse->intClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  jsvUnLock(jsvAddNamedChild(parse->root, parse->intClass, "Integer"));
+  jsvUnRefRef(parse->intClass);
+  parse->mathClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  jsvUnLock(jsvAddNamedChild(parse->root, parse->mathClass, "Math"));
+  jsvUnRefRef(parse->mathClass);
 }
 
 void jspKill(JsParse *parse) {

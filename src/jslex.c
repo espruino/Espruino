@@ -440,7 +440,7 @@ void jslGetLineAndCol(JsLex *lex, int charPos, int *line, int *col) {
   *col = 1;
   jslSeek(lex, 0);
   jslGetNextCh(lex);
-  while (lex->currCh && lex->currentPos<charPos-2) {
+  while (lex->currCh && lex->currentPos<charPos-1) {
     if (lex->currCh == '\n') {
       *col=0;
       (*line)++;
