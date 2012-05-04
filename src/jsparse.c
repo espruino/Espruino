@@ -616,11 +616,12 @@ JsVar *jspeExpression(JsExecInfo *execInfo, JsExecFlags *execute) {
                 JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
                 JsVar *oldValue;
                 jsvUnLock(one);
-                oldValue = jsvLock(jsvGetRef(a)); // keep old value
+                oldValue = jsvSkipName(a); // keep the old value
                 // in-place add/subtract
                 jspReplaceWith(execInfo, a, res);
-                jsvUnLock(a); jsvUnLock(res);
+                jsvUnLock(res);
                 // but then use the old value
+                jsvUnLock(a);
                 a = oldValue;
             }
         } else {

@@ -160,6 +160,7 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
 int jsvGetChildren(JsVar *v);
 JsVarInt jsvGetArrayLength(JsVar *v); ///< Not the same as GetChildren, as it can be a sparse array
 JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
+JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the value in the array
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

@@ -765,6 +765,25 @@ JsVar *jsvGetArrayItem(JsVar *arr, int index) {
   return 0; // undefined
 }
 
+/// Get the index of the value in the array
+JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
+  assert(jsvIsArray(arr) || jsvIsObject(arr));
+  JsVarRef indexref = arr->firstChild;
+  while (indexref) {
+    JsVar *childIndex = jsvLock(indexref);
+    assert(jsvIsName(childIndex))
+    JsVar *childValue = jsvLock(childIndex->firstChild);
+    if (jsvIsBasicVarEqual(childValue, value)) {
+      jsvUnLock(childValue);
+      return childIndex;
+    }
+    jsvUnLock(childValue);
+    indexref = childIndex->nextSibling;
+    jsvUnLock(childIndex);
+  }
+  return 0; // undefined
+}
+
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY

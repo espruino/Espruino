@@ -93,6 +93,21 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return jsvCopy(a);
     }
   }
+  if (jsvIsArray(a)) {
+       if (strcmp(name,"contains")==0) {
+         JsVar *childValue = jspParseSingleFunction(execInfo);
+         JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
+         jsvUnLock(childValue);
+         return jsvNewFromBool(found!=0);
+       }
+       if (strcmp(name,"indexOf")==0) {
+          JsVar *childValue = jspParseSingleFunction(execInfo);
+          JsVar *idx = jsvGetArrayIndexOf(a, childValue);
+          jsvUnLock(childValue);
+          if (idx==0) return jsfMakeUndefined();
+          return idx;
+        }
+  }
   // unhandled
   return 0;
 }
