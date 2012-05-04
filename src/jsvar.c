@@ -150,11 +150,13 @@ JsVarRef jsvUnLock(JsVar *var) {
 }
 
 JsVar *jsvRef(JsVar *v) {
+  assert(v);
   v->refs++;
   return v;
 }
 
 void jsvUnRef(JsVar *var) {
+  assert(var);
   assert(var->refs>0);
   var->refs--;
   if (var->locks == 0 && var->refs==0)
@@ -162,12 +164,14 @@ void jsvUnRef(JsVar *var) {
 }
 
 JsVarRef jsvRefRef(JsVarRef ref) {
+  assert(ref);
   JsVar *v = jsvLock(ref);
   jsvRef(v);
   jsvUnLock(v);
   return ref;
 }
 JsVarRef jsvUnRefRef(JsVarRef ref) {
+  assert(ref);
   JsVar *v = jsvLock(ref);
   jsvUnRef(v);
   jsvUnLock(v);
@@ -182,9 +186,13 @@ JsVarRef jsvGetRef(JsVar *var) {
 JsVar *jsvNewFromString(const char *str) {
   // Create a var
   JsVar *first = jsvNew();
+  if (!first) {
+    jsWarn("Truncating string as not enough memory");
+    return 0;
+  }
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
-  JsVar *var = first;
+  JsVar *var = jsvLock(jsvGetRef(first));
   var->flags = JSV_STRING;
   var->varData.str[0] = 0; // in case str is empty!
 
@@ -198,14 +206,20 @@ JsVar *jsvNewFromString(const char *str) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
-      JsVar *next = jsvRef(jsvNew());
+      JsVar *next = jsvNew();
+      if (!next) {
+        jsWarn("Truncating string as not enough memory");
+        jsvUnLock(var);
+        return first;
+      }
+      next = jsvRef(next);
       next->flags = JSV_STRING_EXT;
       var->lastChild = next->this;
-      if (var!=first) jsvUnLock(var);
+      jsvUnLock(var);
       var = next;
     }
   }
-  if (var!=first) jsvUnLock(var);
+  jsvUnLock(var);
   // return
   return first;
 }
@@ -260,28 +274,33 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   JsVar *var = jsvNew();
+  if (!var) return 0; // no memory
   var->flags = flags;
   return var;
 }
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNew();
+  if (!var) return 0; // no memory
   var->flags = JSV_INTEGER;
   var->varData.integer = value;
   return var;
 }
 JsVar *jsvNewFromBool(bool value) {
   JsVar *var = jsvNew();
+  if (!var) return 0; // no memory
   var->flags = JSV_INTEGER;
   var->varData.integer = value ? 1 : 0;
   return var;
 }
 JsVar *jsvNewFromFloat(JsVarFloat value) {
   JsVar *var = jsvNew();
+  if (!var) return 0; // no memory
   var->flags = JSV_FLOAT;
   var->varData.floating = value;
   return var;
 }
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
+  if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
   var->flags |= JSV_NAME;
   if (valueOrZero)

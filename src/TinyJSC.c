@@ -145,6 +145,13 @@ bool run_test(const char *filename) {
 
   JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, "result", false/*no create*/));
   bool pass = jsvGetBool(result);
+  jsvUnLock(result);
+
+  printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
+  jspKill(&p);
+  printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
+  jsvShowAllocated();
+  jsvKill();
 
   if (pass)
     printf("PASS\n");
@@ -179,6 +186,8 @@ void run_all_tests() {
     count++;
     test_num++;
   }
+
+  if (count==0) printf("No tests found in ../tests/test*.js!\n");
 }
 
 
@@ -187,6 +196,7 @@ int main(int argc, char **argv) {
     if (argc>1) {
       if (strcmp(argv[1],"test")==0) {
         run_all_tests();
+        exit(1);
       } else {
         printf("USAGE:\n");
         printf("./TinyJSC          : JavaScript imemdiate mode\n");
@@ -245,8 +255,6 @@ int main(int argc, char **argv) {
 	jspKill(&p);
 	printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
 	jsvShowAllocated();
-
-
 	jsvKill();
 	printf("Done!\n");
 	return 0;

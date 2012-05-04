@@ -937,8 +937,10 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
     } else if (execInfo->lex->tk==LEX_R_RETURN) {
         JsVar *result = 0;
         JSP_MATCH(LEX_R_RETURN);
-        if (execInfo->lex->tk != ';')
-          result = jspeBase(execInfo, execute);
+        if (execInfo->lex->tk != ';') {
+          // we only want the value, so skip the name if there was one
+          result = jsvSkipNameAndUnlock(jspeBase(execInfo, execute));
+        }
         if (JSP_SHOULD_EXECUTE(execute)) {
           JsVar *resultVar = jspeiFindOnTop(execInfo, JSPARSE_RETURN_VAR, false);
           if (resultVar) {

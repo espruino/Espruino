@@ -61,6 +61,10 @@ typedef enum {
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION |
                                    JSV_NAME, // this is inside a function, so it should be quite obvious
+    // these are useful ONLY because the debugger picks them up :)
+    JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
+    JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,
+    JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION
 } JsVarFlags;
 
 typedef enum LEX_TYPES {
