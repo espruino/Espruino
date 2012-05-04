@@ -136,7 +136,7 @@ long strtol(const char*str, char **endptr, int base);
 //void ftoa(float val, char *str);
 void exit(int errcode);
 #endif
-#define itoa(val,str,base) sprintf(str,"%d",val)
+#define itoa(val,str,base) sprintf(str,"%d",(int)val)
 #define ftoa(val,str) sprintf(str,"%f",val)
 
 #endif /* JSUTILS_H_ */

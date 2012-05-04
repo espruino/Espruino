@@ -1,4 +1,5 @@
 #include "jsparse.h"
+#include "jsfunctions.h"
 
 typedef enum  {
   EXEC_NO = 0,
@@ -261,7 +262,7 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
     // throw away extra params
     while (execInfo->lex->tk != ')') {
       JSP_MATCH(',');
-      jsvUnLock(jspeBase(execInfo, &execute));
+      jsvUnLock(jspeBase(execInfo, execute));
     }
     JSP_MATCH(')');
     // setup a return variable

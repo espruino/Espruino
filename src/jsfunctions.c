@@ -51,7 +51,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
       if (jspParseEmptyFunction(execInfo))
-        return jsvNewFromFloat(rand() / (float)RAND_MAX);
+        return jsvNewFromFloat((float)rand() / (float)RAND_MAX);
     }
   }
   if (jsvGetRef(a) == execInfo->parse->jsonClass) {
@@ -70,7 +70,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        char buffer[2];
        int idx = 0;
        JsVar *v = jspParseSingleFunction(execInfo);
-       idx = jsvGetInteger(v);
+       idx = (int)jsvGetInteger(v);
        jsvUnLock(v);
        // now search to try and find the char
        v = jsvLock(jsvGetRef(a));
@@ -81,7 +81,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          jsvUnLock(v);
          v = jsvLock(next);
        }
-       buffer[0] = v ? v->varData.str[idx] : 0;
+       buffer[0] = 0;
+       if (v) buffer[0] = v->varData.str[idx];
        buffer[1] = 0;
        jsvUnLock(v);
        return jsvNewFromString(buffer);
