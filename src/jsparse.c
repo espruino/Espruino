@@ -203,8 +203,9 @@ JsVar *jspeFunctionDefinition(JsExecInfo *execInfo, JsExecFlags *execute) {
  * if there was one (otherwise it's just a normnal function).
  */
 JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *function, JsVar *parent) {
-  if (JSP_SHOULD_EXECUTE(execute) && !function)
+  if (JSP_SHOULD_EXECUTE(execute) && !function) {
       jsWarnAt("Function not found! Skipping.", execInfo->lex, execInfo->lex->tokenLastEnd );
+  }
 
   if (JSP_SHOULD_EXECUTE(execute) && function) {
     JsVar *functionRoot;
@@ -345,11 +346,19 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         JsVar *parent = 0;
 
         if (JSP_SHOULD_EXECUTE(execute) && !a) {
-          /* Variable doesn't exist! JavaScript says we should create it
-           * (we won't add it here. This is done in the assignment operator)*/
-          a = jsvMakeIntoVariableName(jsvNewFromString(jslGetTokenValueAsString(execInfo->lex)), 0);
+          /* Special case! We haven't found the variable, so check out
+           * and see if it's one of our builtins...  */
+          a = jsfHandleFunctionCall(execInfo, 0, jslGetTokenValueAsString(execInfo->lex));
+          if (!a) {
+            /* Variable doesn't exist! JavaScript says we should create it
+             * (we won't add it here. This is done in the assignment operator)*/
+            a = jsvMakeIntoVariableName(jsvNewFromString(jslGetTokenValueAsString(execInfo->lex)), 0);
+            JSP_MATCH(LEX_ID);
+          }
+        } else {
+          JSP_MATCH(LEX_ID);
         }
-        JSP_MATCH(LEX_ID);
+
         while (execInfo->lex->tk=='(' || execInfo->lex->tk=='.' || execInfo->lex->tk=='[') {
             if (execInfo->lex->tk=='(') { // ------------------------------------- Function Call
               JsVar *func = 0;
@@ -369,7 +378,10 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
     #ifdef TODO
                       if (!child) child = findInParentClasses(aVar, name);
     #endif
-                      if (!child) {
+                      if (child) {
+                        // it was found - no need for name ptr now, so match!
+                        JSP_MATCH(LEX_ID);
+                      } else { // NOT FOUND...
                         /* Check for builtins via separate function
                          * This way we save on RAM for built-ins because all comes out of program code. */
                         child = jsfHandleFunctionCall(execInfo, aVar, name);
@@ -517,12 +529,13 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         if (jsvIsFunction(objClassOrFunc)) {
           jsvUnLock(jspeFunctionCall(execInfo, execute, objClassOrFunc, obj));
         } else {
-          jsvAddNamedChild(jsvGetRef(obj), jsvGetRef(objClassOrFunc), JSPARSE_PROTOTYPE_CLASS);
+          jsvUnLock(jsvAddNamedChild(jsvGetRef(obj), jsvGetRef(objClassOrFunc), JSPARSE_PROTOTYPE_CLASS));
           if (execInfo->lex->tk == '(') {
             JSP_MATCH('(');
             JSP_MATCH(')');
           }
         }
+        jsvUnLock(objClassOrFunc);
         return obj;
       } else {
         JSP_MATCH(LEX_ID);
@@ -775,7 +788,8 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
         execInfo->lex->tk==LEX_INT ||
         execInfo->lex->tk==LEX_FLOAT ||
         execInfo->lex->tk==LEX_STR ||
-        execInfo->lex->tk=='-') {
+        execInfo->lex->tk=='-' ||
+        execInfo->lex->tk=='(') {
         /* Execute a simple statement that only contains basic arithmetic... */
         JsVar *res = jspeBase(execInfo, execute);
         if (execInfo->lex->tk==';') JSP_MATCH(';');

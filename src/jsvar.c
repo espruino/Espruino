@@ -382,7 +382,9 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       ftoa(v->varData.floating, str);
     } else if (jsvIsNull(v)) {
       strncpy(str, "null", len);
-    } else if (jsvIsString(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
+    } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
+      if (jsvIsStringExt(v))
+        jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
       // print the string - we have to do it a block
       // at a time!
       JsVar *var = v;
@@ -544,6 +546,31 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   return true;
 }
 
+/** Copy only a name, not what it points to */
+JsVar *jsvCopyNameOnly(JsVar *src) {
+  JsVar *dst = jsvNewWithFlags(src->flags);
+  assert(jsvIsName(src));
+  memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
+
+  dst->lastChild = 0;
+  dst->firstChild = 0;
+  dst->prevSibling = 0;
+  dst->nextSibling = 0;
+  // Copy LINK of what it points to
+  if (src->firstChild)
+    dst->firstChild = jsvRefRef(src->firstChild);
+  // Copy extra string data if there was any
+  if (jsvIsString(src)) {
+      // copy extra bits of string if there were any
+      if (src->lastChild) {
+        JsVar *child = jsvLock(src->lastChild);
+        dst->lastChild = jsvUnLock(jsvRef(jsvCopy(child)));
+        jsvUnLock(child);
+      }
+  } else assert(jsvIsBasic(src)); // in case we missed something!
+  return dst;
+}
+
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
@@ -574,12 +601,12 @@ JsVar *jsvCopy(JsVar *src) {
     JsVarRef vr;
     vr = src->firstChild;
     while (vr) {
-      JsVar *v = jsvLock(vr);
-      JsVar *child = jsvCopy(v);
+      JsVar *name = jsvLock(vr);
+      JsVar *child = jsvCopyNameOnly(name); // NO DEEP COPY!
       jsvAddName(jsvGetRef(dst), jsvGetRef(child));
       jsvUnLock(child);
-      vr = v->nextSibling;
-      jsvUnLock(v);
+      vr = name->nextSibling;
+      jsvUnLock(name);
     }
   } else assert(jsvIsBasic(src)); // in case we missed something!
 

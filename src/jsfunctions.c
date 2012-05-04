@@ -7,7 +7,21 @@
 
 #include "jsfunctions.h"
 
+/** Note, if this function actually does handle a function call, it
+ * MUST return something. If it needs to return undefined, that's tough :/
+ */
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
+  if (a==0) { // Special cases for where we're just a basic function
+    if (strcmp(name,"eval")==0) {
+      JsVar *v = jspParseSingleFunction(execInfo);
+      JsVar *result = jspEvaluateVar(execInfo->parse, v);
+      jsvUnLock(v);
+      return result;
+    }
+    // unhandled
+    return 0;
+  }
+  // Is actually a method on some variable
   if (strcmp(name,"length")==0) {
     if (jsvIsArray(a)) {
       jslMatch(execInfo->lex, LEX_ID);

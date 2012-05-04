@@ -69,15 +69,6 @@ void nativeJSONStringify(JsVarRef var) {
   jsvUnLock(data);
 }
 
-void nativeEval(JsVarRef var) {
-  JsVar *js = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "js", false/*no create*/));
-  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
-  JsVar *result = jspEvaluateVar(&p, js);
-  jsvUnLock(jsvSetValueOfName(returnValue, result));
-  jsvUnLock(result);
-  jsvUnLock(js);
-}
-
 void nativeSetPin(JsVarRef var) {
   JsVar *pin = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "pin", false/*no create*/));
   JsVar *value = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "value", false/*no create*/));
@@ -148,12 +139,12 @@ bool run_test(const char *filename) {
   jsvUnLock(result);
 
   if (pass)
-    printf("----------------------------- PASS\n");
+    printf("----------------------------- PASS %s\n", filename);
   else {
     printf("----------------------------------\n");
-    printf("----------------------------- FAIL <-------\n");
+    printf("----------------------------- FAIL %s <-------\n", filename);
     jsvTrace(p.root, 0);
-    printf("----------------------------- FAIL <-------\n");
+    printf("----------------------------- FAIL %s <-------\n", filename);
     printf("----------------------------------\n");
   }
   printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
@@ -225,7 +216,6 @@ int main(int argc, char **argv) {
 	jspAddNativeFunction(&p, "function trace()", nativeTrace);
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
     jspAddNativeFunction(&p, "function JSON.stringify(data,xxx)", nativeJSONStringify);
-    jspAddNativeFunction(&p, "function eval(js)", nativeEval);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
     jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
