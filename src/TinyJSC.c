@@ -35,6 +35,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "jslex.h"
 #include "jsvar.h"
 #include "jsparse.h"
@@ -115,12 +116,86 @@ void nativeInputA(JsVarRef var) {
   jsvUnLock(value);
 }
 
+bool run_test(const char *filename) {
+  printf("----------------------------------\n");
+  printf("----------------------------- TEST %s \n", filename);
+  struct stat results;
+  if (!stat(filename, &results) == 0) {
+    printf("Cannot stat file! '%s'\n", filename);
+    return false;
+  }
+  int size = results.st_size;
+  FILE *file = fopen( filename, "rb" );
+  /* if we open as text, the number of bytes read may be > the size we read */
+  if( !file ) {
+     printf("Unable to open file! '%s'\n", filename);
+     return false;
+  }
+  char *buffer = malloc(size+1);
+  long actualRead = fread(buffer,1,size,file);
+  buffer[actualRead]=0;
+  buffer[size]=0;
+  fclose(file);
 
-int main(void) {
+  JsVar *v;
+  jsvInit();
+  jspInit(&p);
 
+  jsvUnLock(jspEvaluate(&p, buffer ));
+
+  JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, "result", false/*no create*/));
+  bool pass = jsvGetBool(result);
+
+  if (pass)
+    printf("PASS\n");
+  else {
+    printf("----------------------------------\n");
+    printf("----------------------------- FAIL\n");
+    jsvTrace(p.root, 0);
+    printf("----------------------------- FAIL\n");
+    printf("----------------------------------\n");
+  }
+
+  free(buffer);
+  return pass;
+}
+
+
+void run_all_tests() {
+  int test_num = 1;
+  int count = 0;
+  int passed = 0;
+
+  while (test_num<1000) {
+    char fn[32];
+    sprintf(fn, "../tests/test%03d.js", test_num);
+    // check if the file exists - if not, assume we're at the end of our tests
+    FILE *f = fopen(fn,"r");
+    if (!f) break;
+    fclose(f);
+
+    if (run_test(fn))
+      passed++;
+    count++;
+    test_num++;
+  }
+}
+
+
+int main(int argc, char **argv) {
+
+    if (argc>1) {
+      if (strcmp(argv[1],"test")==0) {
+        run_all_tests();
+      } else {
+        printf("USAGE:\n");
+        printf("./TinyJSC          : JavaScript imemdiate mode\n");
+        printf("./TinyJSC test     : Run Tests\n");
+        exit(1);
+      }
+    }
 
     char javaScript[256];
-
     JsVar *v;
 
     printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
