@@ -55,6 +55,12 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        return jsvNewFromString(buffer);
      }
    }
+  if (jsvIsString(a) || jsvIsObject(a)) {
+    if (strcmp(name,"clone")==0) {
+      if (jspParseEmptyFunction(execInfo))
+        return jsvCopy(a);
+    }
+  }
   // unhandled
   return 0;
 }

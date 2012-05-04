@@ -11,7 +11,6 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *       Add Deep copy! Now function params > 8 chars cause a failure!
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
@@ -21,7 +20,6 @@
  *       Memory manager to handle storing rarely used refs in flash
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
- *       Add a function to handle built-in functions without using up RAM
  *       Add require(filename) function
  *       Add Array.push()/indexOf/splice
  *       Add String builtins

@@ -540,16 +540,48 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
     if  (!next) return false; // end of this string, but not the input!
     v = jsvLock(next);
   }
+  // never get here, but the compiler warns...
+  return true;
 }
 
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
 
-  if (src->firstChild || src->lastChild) {
-    jsError("FIXME: deep copy!");
-    assert(0);
+  dst->lastChild = 0;
+  dst->firstChild = 0;
+  dst->prevSibling = 0;
+  dst->nextSibling = 0;
+
+  // Copy what names point to
+  if (jsvIsName(src)) {
+    if (src->firstChild) {
+      JsVar *child = jsvLock(src->firstChild);
+      dst->firstChild = jsvUnLock(jsvRef(jsvCopy(child)));
+      jsvUnLock(child);
+    }
   }
+
+  if (jsvIsString(src) || jsvIsStringExt(src)) {
+    // copy extra bits of string if there were any
+    if (src->lastChild) {
+      JsVar *child = jsvLock(src->lastChild);
+      dst->lastChild = jsvUnLock(jsvRef(jsvCopy(child)));
+      jsvUnLock(child);
+    }
+  } else if (jsvIsObject(src) || jsvIsFunction(src)) {
+    // Copy children..
+    JsVarRef vr;
+    vr = src->firstChild;
+    while (vr) {
+      JsVar *v = jsvLock(vr);
+      JsVar *child = jsvCopy(v);
+      jsvAddName(jsvGetRef(dst), jsvGetRef(child));
+      jsvUnLock(child);
+      vr = v->nextSibling;
+      jsvUnLock(v);
+    }
+  } else assert(jsvIsBasic(src)); // in case we missed something!
 
   return dst;
 }

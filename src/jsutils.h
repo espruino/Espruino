@@ -17,7 +17,7 @@ typedef char bool;
 #define true (1)
 #define false (0)
 
-#define JSVAR_STRING_LEN  8
+#define JSVAR_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
@@ -59,8 +59,7 @@ typedef enum {
     JSV_NATIVE      = 32, // to specify this is a native function
     JSV_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
 
-    JSV_FUNCTION_PARAMETER = JSV_FUNCTION |
-                                   JSV_NAME, // this is inside a function, so it should be quite obvious
+    JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
     // these are useful ONLY because the debugger picks them up :)
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,

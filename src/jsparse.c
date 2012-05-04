@@ -504,30 +504,26 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
       JSP_MATCH(LEX_R_FUNCTION);
       return jspeFunctionDefinition(execInfo, execute);
     }
-#if TODO
     if (execInfo->lex->tk==LEX_R_NEW) {
       // new -> create a new object
       JSP_MATCH(LEX_R_NEW);
-      const string &className = execInfo->lex->tkStr;
       if (JSP_SHOULD_EXECUTE(execute)) {
-        JsVar *objClassOrFunc = findInScopes(className);
+        JsVar *objClassOrFunc = jsvSkipNameAndUnlock(jspeiFindInScopes(execInfo, jslGetTokenValueAsString(execInfo->lex)));
         if (!objClassOrFunc) {
-          TRACE("%s is not a valid class name", className.c_str());
-          return new JsVar(new CScriptVar());
+          jsWarnAt("Prototype used in NEW is not defined", execInfo->lex, execInfo->lex->tokenStart);
         }
         JSP_MATCH(LEX_ID);
-        CScriptVar *obj = new CScriptVar(JSPARSE_BLANK_DATA, JSV_OBJECT);
-        JsVar *objLink = new JsVar(obj);
-        if (objClassOrFunc->var->isFunction()) {
-          jsvUnLock(functionCall(execute, objClassOrFunc, obj));
+        JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+        if (jsvIsFunction(objClassOrFunc)) {
+          jsvUnLock(jspeFunctionCall(execInfo, execute, objClassOrFunc, obj));
         } else {
-          obj->addChild(JSPARSE_PROTOTYPE_CLASS, objClassOrFunc->var);
+          jsvAddNamedChild(jsvGetRef(obj), jsvGetRef(objClassOrFunc), JSPARSE_PROTOTYPE_CLASS);
           if (execInfo->lex->tk == '(') {
             JSP_MATCH('(');
             JSP_MATCH(')');
           }
         }
-        return objLink;
+        return obj;
       } else {
         JSP_MATCH(LEX_ID);
         if (execInfo->lex->tk == '(') {
@@ -536,7 +532,6 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         }
       }
     }
-#endif
     // Nothing we can do here... just hope it's the end...
     JSP_MATCH(LEX_EOF);
     return 0;
