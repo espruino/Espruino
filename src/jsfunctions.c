@@ -7,6 +7,10 @@
 
 #include "jsfunctions.h"
 
+JsVar* jsfMakeUndefined() {
+  return jsvNewWithFlags(JSV_NULL); // TODO see about above - should really be 'undefined'
+}
+
 /** Note, if this function actually does handle a function call, it
  * MUST return something. If it needs to return undefined, that's tough :/
  */
@@ -14,8 +18,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // Special cases for where we're just a basic function
     if (strcmp(name,"eval")==0) {
       JsVar *v = jspParseSingleFunction(execInfo);
-      JsVar *result = jspEvaluateVar(execInfo->parse, v);
+      JsVar *result = 0;
+      if (v) result = jspEvaluateVar(execInfo->parse, v);
       jsvUnLock(v);
+      if (!result) result = jsfMakeUndefined();
       return result;
     }
     // unhandled
@@ -32,6 +38,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return jsvNewFromInteger(jsvGetStringLength(a));
     }
   }
+  // --------------------------------- built-in class stuff
   if (jsvGetRef(a) == execInfo->parse->intClass) {
     if (strcmp(name,"parseInt")==0) {
       char buffer[16];
@@ -47,6 +54,17 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return jsvNewFromFloat(rand() / (float)RAND_MAX);
     }
   }
+  if (jsvGetRef(a) == execInfo->parse->jsonClass) {
+      if (strcmp(name,"stringify")==0) {
+        JsVar *v = jspParseSingleFunction(execInfo);
+        JsVar *result = jsvNewFromString("");
+        jsfGetJSON(v, result);
+        jsvUnLock(v);
+        return result;
+      }
+      // TODO: Add JSON.parse
+    }
+  // ------------------------------------------ Built-in variable stuff
   if (jsvIsString(a)) {
      if (strcmp(name,"charAt")==0) {
        char buffer[2];

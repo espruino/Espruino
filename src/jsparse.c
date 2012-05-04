@@ -83,12 +83,16 @@ bool jspParseEmptyFunction(JsExecInfo *execInfo) {
 
 // parse function with a single argument, return its value (no names!)
 JsVar *jspParseSingleFunction(JsExecInfo *execInfo) {
+  JsExecFlags execute = EXEC_YES;
   JsVar *v = 0;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
-  if (execInfo->lex->tk != ')') {
-    JsExecFlags execute = EXEC_YES;
+  if (execInfo->lex->tk != ')')
     v = jsvSkipNameAndUnlock(jspeBase(execInfo, &execute));
+  // throw away extra params
+  while (execInfo->lex->tk != ')') {
+    JSP_MATCH(',');
+    jsvUnLock(jspeBase(execInfo, &execute));
   }
   JSP_MATCH(')');
   return v;
@@ -254,6 +258,11 @@ JsVar *jspeFunctionCall(JsExecInfo *execInfo, JsExecFlags *execute, JsVar *funct
         v = param->nextSibling;
         jsvUnLock(param);
     }
+    // throw away extra params
+    while (execInfo->lex->tk != ')') {
+      JSP_MATCH(',');
+      jsvUnLock(jspeBase(execInfo, &execute));
+    }
     JSP_MATCH(')');
     // setup a return variable
     returnVarName = jsvAddNamedChild(jsvGetRef(functionRoot), 0, JSPARSE_RETURN_VAR);
@@ -373,7 +382,7 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
 
                   JsVar *aVar = jsvSkipName(a);
                   JsVar *child = 0;
-                  if (aVar && (jsvIsObject(aVar) || jsvIsString(aVar))) {
+                  if (aVar && (jsvIsObject(aVar) || jsvIsString(aVar) || jsvIsArray(aVar))) {
                       child = jsvFindChildFromString(jsvGetRef(aVar), name, false);
     #ifdef TODO
                       if (!child) child = findInParentClasses(aVar, name);
@@ -1020,6 +1029,9 @@ void jspInit(JsParse *parse) {
   parse->mathClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jsvUnLock(jsvAddNamedChild(parse->root, parse->mathClass, "Math"));
   jsvUnRefRef(parse->mathClass);
+  parse->jsonClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  jsvUnLock(jsvAddNamedChild(parse->root, parse->jsonClass, "JSON"));
+  jsvUnRefRef(parse->jsonClass);
 }
 
 void jspKill(JsParse *parse) {

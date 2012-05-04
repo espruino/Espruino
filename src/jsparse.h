@@ -22,6 +22,7 @@ typedef struct {
   JsVarRef arrayClass; ///< Built in array class
   JsVarRef intClass; ///< Built in integer class
   JsVarRef mathClass; ///< Built in maths class
+  JsVarRef jsonClass; ///< Built in json class
 } JsParse;
 
 void jspInit(JsParse *parse);
