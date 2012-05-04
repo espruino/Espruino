@@ -19,7 +19,7 @@ typedef char bool;
 
 #define JSVAR_STRING_LEN  8
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
-#define JSLEX_MAX_TOKEN_LENGTH  32
+#define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16
 

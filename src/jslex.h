@@ -53,4 +53,7 @@ void jslSeek(JsLex *lex, int seekToChar);
 void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
+/// Return line and column of a certain character
+void jslGetLineAndCol(JsLex *lex, int charPos, int *line, int *col);
+
 #endif /* JSLEX_H_ */

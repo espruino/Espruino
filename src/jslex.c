@@ -431,3 +431,28 @@ bool jslMatch(JsLex *lex, int expected_tk) {
   jslGetNextToken(lex);
   return true;
 }
+
+/// Return line and column of a certain character
+void jslGetLineAndCol(JsLex *lex, int charPos, int *line, int *col) {
+  int currentPos = lex->currentPos;
+  // reset us completely
+  *line = 1;
+  *col = 1;
+  jslSeek(lex, 0);
+  jslGetNextCh(lex);
+  while (lex->currCh && lex->currentPos<charPos-2) {
+    if (lex->currCh == '\n') {
+      *col=0;
+      (*line)++;
+    } else {
+      (*col)++;
+    }
+    jslGetNextCh(lex);
+  }
+
+  // Go back to where we were
+  assert(currentPos>1); // must be, as lex should already have been loaded
+  jslSeek(lex, currentPos-2);
+  jslGetNextCh(lex);
+  jslGetNextCh(lex);
+}

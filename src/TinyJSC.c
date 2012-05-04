@@ -13,6 +13,7 @@
  * TODO:
  *       Add Deep copy! Now function params > 8 chars cause a failure!
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
+ *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
  *       Possibly special array type that stores values directly, not with a Name
@@ -140,6 +141,7 @@ bool run_test(const char *filename) {
   JsVar *v;
   jsvInit();
   jspInit(&p);
+  //jspAddNativeFunction(&p, "function print(text)", nativePrint);
 
   jsvUnLock(jspEvaluate(&p, buffer ));
 
@@ -147,21 +149,22 @@ bool run_test(const char *filename) {
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 
+  if (pass)
+    printf("----------------------------- PASS\n");
+  else {
+    printf("----------------------------------\n");
+    printf("----------------------------- FAIL <-------\n");
+    jsvTrace(p.root, 0);
+    printf("----------------------------- FAIL <-------\n");
+    printf("----------------------------------\n");
+  }
   printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
   jspKill(&p);
   printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
   jsvShowAllocated();
   jsvKill();
+  printf("\n");
 
-  if (pass)
-    printf("PASS\n");
-  else {
-    printf("----------------------------------\n");
-    printf("----------------------------- FAIL\n");
-    jsvTrace(p.root, 0);
-    printf("----------------------------- FAIL\n");
-    printf("----------------------------------\n");
-  }
 
   free(buffer);
   return pass;
@@ -188,22 +191,29 @@ void run_all_tests() {
   }
 
   if (count==0) printf("No tests found in ../tests/test*.js!\n");
+  printf("--------------------------------------------------\n");
+  printf(" %d of %d tests passed\n", passed, count);
+  printf("--------------------------------------------------\n");
 }
 
 
 int main(int argc, char **argv) {
 
-    if (argc>1) {
-      if (strcmp(argv[1],"test")==0) {
-        run_all_tests();
-        exit(1);
-      } else {
-        printf("USAGE:\n");
-        printf("./TinyJSC          : JavaScript imemdiate mode\n");
-        printf("./TinyJSC test     : Run Tests\n");
-        exit(1);
-      }
-    }
+  if (argc==1) {
+    printf("Interactive mode.\n");
+  } else if (argc==2 && strcmp(argv[1],"test")==0) {
+    run_all_tests();
+    exit(0);
+  } else if (argc==3 && strcmp(argv[1],"test")==0) {
+      run_test(argv[2]);
+      exit(0);
+  } else {
+    printf("USAGE:\n");
+    printf("./TinyJSC           : JavaScript imemdiate mode\n");
+    printf("./TinyJSC test      : Run Tests\n");
+    printf("./TinyJSC test x.js : Run Single Test\n");
+    exit(1);
+  }
 
     char javaScript[256];
     JsVar *v;

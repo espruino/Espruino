@@ -45,7 +45,9 @@ void jsError(const char *message) {
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
-  printf("ERROR: %s at char #%d\n", message, tokenPos);
+  int line,col;
+  jslGetLineAndCol(lex, tokenPos, &line, &col);
+  printf("ERROR: %s at line %d col %d (char %d)\n", message, line, col, tokenPos);
 }
 
 void jsWarn(const char *message) {
@@ -53,7 +55,9 @@ void jsWarn(const char *message) {
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
-  printf("WARNING: %s at char #%d\n", message, tokenPos);
+  int line,col;
+  jslGetLineAndCol(lex, tokenPos, &line, &col);
+  printf("WARNING: %s at line %d col %d (char %d)\n", message, line, col, tokenPos);
 }
 
 void jsAssertFail(const char *file, int line) {

@@ -12,7 +12,7 @@
 #ifdef SDCC
 #define JSVAR_CACHE_SIZE 10
 #else
-#define JSVAR_CACHE_SIZE 128
+#define JSVAR_CACHE_SIZE 512
 #endif
 JsVar jsVars[JSVAR_CACHE_SIZE];
 
@@ -406,6 +406,8 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
         var = ref ? jsvLock(ref) : 0;
       }
       if (ref) jsvUnLock(var); // Note use of if (ref), not var
+      // if it has not had a 0 appended, do it now...
+      if (str[-1]) *str = 0;
     } else if (jsvIsFunction(v)) {
       strncpy(str, "function", len);
     } else assert(0);
@@ -844,6 +846,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
        // use strings
        switch (op) {
            case '+': {
+             // FIXME we need to do string add properly
              strncat(da, db, JSVAR_STRING_OP_BUFFER_SIZE);
              return jsvNewFromString(da);
            }
