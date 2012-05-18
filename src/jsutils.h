@@ -17,6 +17,18 @@ typedef char bool;
 #define true (1)
 #define false (0)
 
+/// Reference for variables
+typedef unsigned short JsVarRef;
+// We treat 0 as null
+
+typedef long JsVarInt;
+typedef unsigned long JsVarIntUnsigned;
+#ifdef USE_FLOATS
+typedef float JsVarFloat;
+#else
+typedef double JsVarFloat;
+#endif
+
 #define JSVAR_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
@@ -120,6 +132,9 @@ bool isHexadecimal(char ch);
 bool isAlpha(char ch);
 bool isIDString(const char *s);
 
+/* convert hex, binary, octal or decimal string into an int. strtoint is broken on PIC32 */
+JsVarInt stringToInt(const char *s);
+
 // forward decl
 struct JsLex;
 // ------------
@@ -131,12 +146,8 @@ void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsAssertFail(const char *file, int line);
 
 #ifdef SDCC
-long strtol(const char*str, char **endptr, int base);
-//void itoa(int val, char *str, int base);
-//void ftoa(float val, char *str);
 void exit(int errcode);
 #endif
 #define itoa(val,str,base) sprintf(str,"%d",(int)val)
 #define ftoa(val,str) sprintf(str,"%f",val)
-
 #endif /* JSUTILS_H_ */

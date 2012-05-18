@@ -484,7 +484,8 @@ JsVar *jspeFactor(JsExecInfo *execInfo, JsExecFlags *execute) {
         // atol works only on decimals
         // strtol handles 0x12345 as well
         //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo->lex));
-        JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo->lex),0,0);
+        //JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo->lex),0,0); // broken on PIC
+        JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo->lex));
         JSP_MATCH(LEX_INT);
         return jsvNewFromInteger(v);
     }

@@ -14,17 +14,7 @@
 #define INLINE_FUNC
 #endif
 
-/// Reference for variables
-typedef unsigned short JsVarRef;
-// We treat 0 as null
 
-typedef long JsVarInt;
-typedef unsigned long JsVarIntUnsigned;
-#ifdef USE_FLOATS
-typedef float JsVarFloat;
-#else
-typedef double JsVarFloat;
-#endif
 
 typedef void (*JsCallback)(JsVarRef var) 
 #ifdef SDCC

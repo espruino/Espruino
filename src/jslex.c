@@ -121,18 +121,22 @@ void jslGetNextToken(JsLex *lex) {
       else if (jslIsToken(lex,"undefined")) lex->tk = LEX_R_UNDEFINED;
       else if (jslIsToken(lex,"new")) lex->tk = LEX_R_NEW;
   } else if (isNumeric(lex->currCh)) { // Numbers
-      bool isHex = false;
-      if (lex->currCh=='0') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
-      if (lex->currCh=='x') {
-        isHex = true;
+      // TODO: check numbers aren't the wrong format
+      bool canBeFloating = true;
+      if (lex->currCh=='0') { 
+        jslTokenAppendChar(lex, lex->currCh); 
+        jslGetNextCh(lex); 
+      }
+      if (lex->currCh=='x' || lex->currCh=='b') {
+        canBeFloating = false;
         jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
       }
       lex->tk = LEX_INT;
-      while (isNumeric(lex->currCh) || (isHex && isHexadecimal(lex->currCh))) {
+      while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
         jslTokenAppendChar(lex, lex->currCh);
         jslGetNextCh(lex);
       }
-      if (!isHex && lex->currCh=='.') {
+      if (canBeFloating && lex->currCh=='.') {
           lex->tk = LEX_FLOAT;
           jslTokenAppendChar(lex, '.');
           jslGetNextCh(lex);
@@ -142,7 +146,7 @@ void jslGetNextToken(JsLex *lex) {
           }
       }
       // do fancy e-style floating point
-      if (!isHex && (lex->currCh=='e'||lex->currCh=='E')) {
+      if (canBeFloating && (lex->currCh=='e'||lex->currCh=='E')) {
         lex->tk = LEX_FLOAT;
         jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
         if (lex->currCh=='-') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
