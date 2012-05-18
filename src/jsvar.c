@@ -14,14 +14,18 @@
 #else
 #define JSVAR_CACHE_SIZE 512
 #endif
-JsVar jsVars[JSVAR_CACHE_SIZE];
+JsVar jsVars[JSVAR_CACHE_SIZE]; 
+JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
 
 void jsvInit() {
   int i;
   for (i=0;i<JSVAR_CACHE_SIZE;i++) {
     jsVars[i].this = (JsVarRef)(i+1);
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
+    jsVars[i].nextSibling = (JsVarRef)(i+2);
   }
+  jsVars[JSVAR_CACHE_SIZE-1].nextSibling = (JsVarRef)(i+2);
+  jsVarFirstEmpty = 1;
 }
 
 void jsvKill() {
@@ -48,11 +52,10 @@ void jsvShowAllocated() {
 }
 
 JsVar *jsvNew() {
-  int i;
-  for (i=1;i<JSVAR_CACHE_SIZE;i++) {
-    if (jsVars[i].refs == JSVAR_CACHE_UNUSED_REF) {
-      JsVar *v = &jsVars[i];
-      // this variable is empty
+  if (jsVarFirstEmpty!=0) {
+      JsVar *v = jsvLock(jsVarFirstEmpty);
+      jsVarFirstEmpty = v->nextSibling; // move our reference to the next in the free list
+      assert(v->refs == JSVAR_CACHE_UNUSED_REF);
       // reset it
       v->refs = 0;
       v->locks = 1;
@@ -62,9 +65,8 @@ JsVar *jsvNew() {
       v->lastChild = 0;
       v->prevSibling = 0;
       v->nextSibling = 0;
-      // return ref
+      // return pointer
       return v;
-    }
   }
   jsError("Out of Memory!");
   return 0;
@@ -79,6 +81,10 @@ void jsvFreePtr(JsVar *var) {
     assert(!var->nextSibling && !var->prevSibling);
     // free!
     var->refs = JSVAR_CACHE_UNUSED_REF;
+
+    // add this to our free list
+    var->nextSibling = jsVarFirstEmpty; 
+    jsVarFirstEmpty = var->this;
 
     /* Now, unref children - see jsvar.h comments for how! */
     if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
@@ -880,7 +886,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
                 case '%': return jsvNewFromInteger(da%db);
                 case LEX_LSHIFT: return jsvNewFromInteger(da << db);
                 case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
-                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger(((JsVarIntUnsigned)da) >> db);
+                case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger((JsVarInt)(((JsVarIntUnsigned)da) >> db));
                 case LEX_EQUAL:     return jsvNewFromBool(da==db);
                 case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
                 case '<':           return jsvNewFromBool(da<db);

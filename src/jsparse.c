@@ -973,7 +973,7 @@ JsVar *jspeStatement(JsExecInfo *execInfo, JsExecFlags *execute) {
             jsvUnLock(jspeBase(execInfo, execute));
         }
         while (JSP_SHOULD_EXECUTE(execute) && loopCond && loopCount-->0) {
-          jslReset(&forCond);
+            jslReset(&forCond);
             execInfo->lex = &forCond;
             cond = jspeBase(execInfo, execute);
             loopCond = jsvGetBoolSkipName(cond);
