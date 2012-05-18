@@ -22,42 +22,37 @@ __reentrant
 #endif
 ;
 
-#ifndef SDCC
-#pragma pack(1) // make this as small as possible
-#endif
-
 typedef union {
     char str[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
-} JsVarData;
+} PACKED_FLAGS JsVarData;
 
 typedef struct {
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
-  JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc
+  JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
   JsVarData varData;
+  // For Variable NAMES ONLY (could this be part of the union?)
+  JsVarRef nextSibling;
+  JsVarRef prevSibling;
 
-  /**
-   * For OBJECT/ARRAY/FUNCTION - this is the first child
-   * For NAMES ONLY - this is a link to the variable it points to
-   */
-  JsVarRef firstChild;
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
    * For STRINGS/NAMES - this is a link to more string data if it is needed
    */
   JsVarRef lastChild;
-  // For Variable NAMES ONLY (could this be part of the union?)
-  JsVarRef nextSibling;
-  JsVarRef prevSibling;
-} JsVar;
-#ifndef SDCC
-#pragma pack() // reset packing
-#endif
+  /**
+   * For OBJECT/ARRAY/FUNCTION - this is the first child
+   * For NAMES ONLY - this is a link to the variable it points to
+   */
+  JsVarRef firstChild;
+
+} PACKED_FLAGS JsVar;
+
 
 /* We have a few different types:
  *

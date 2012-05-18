@@ -46,10 +46,13 @@ typedef double JsVarFloat;
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 
 #ifndef SDCC
-#define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
+ #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
+ #define PACKED_FLAGS  __attribute__ ((__packed__))  
 #else
-#define assert(X) 
+ #define assert(X) 
+ #define PACKED_FLAGS 
 #endif
+
 
 typedef enum {
   // OPT: These can be packed as there's no point being an array AND a float
@@ -76,7 +79,7 @@ typedef enum {
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,
     JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION
-} JsVarFlags;
+} PACKED_FLAGS JsVarFlags;
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
