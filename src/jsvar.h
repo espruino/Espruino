@@ -41,16 +41,16 @@ typedef struct {
   JsVarRef prevSibling;
 
   /**
-   * For OBJECT/ARRAY/FUNCTION - this is the last child
-   * For STRINGS/NAMES - this is a link to more string data if it is needed
-   */
-  JsVarRef lastChild;
-  /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
    * For NAMES ONLY - this is a link to the variable it points to
    */
   JsVarRef firstChild;
 
+  /**
+   * For OBJECT/ARRAY/FUNCTION - this is the last child
+   * For STRINGS/NAMES - this is a link to more string data if it is needed
+   */
+  JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
 
 
