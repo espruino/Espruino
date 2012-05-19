@@ -156,6 +156,9 @@ void jsPrintInt(int d);
 #ifdef SDCC
 void exit(int errcode);
 #endif
+
+// FIXME: use itoa/ftoa direct - sprintf is huge
 #define itoa(val,str,base) sprintf(str,"%d",(int)val)
 #define ftoa(val,str) sprintf(str,"%f",val)
+
 #endif /* JSUTILS_H_ */
