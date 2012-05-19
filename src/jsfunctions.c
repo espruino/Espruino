@@ -74,9 +74,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        jsvUnLock(v);
        // now search to try and find the char
        v = jsvLock(jsvGetRef(a));
-       while (v && idx >= JSVAR_STRING_LEN) {
+       while (v && idx >= jsvGetMaxCharactersInVar(v)) {
          JsVarRef next;
-         idx -= JSVAR_STRING_LEN;
+         idx -= jsvGetMaxCharactersInVar(v);
          next = v->lastChild;
          jsvUnLock(v);
          v = jsvLock(next);

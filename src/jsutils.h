@@ -29,7 +29,7 @@ typedef float JsVarFloat;
 typedef double JsVarFloat;
 #endif
 
-#define JSVAR_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+#define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
@@ -63,7 +63,7 @@ typedef enum {
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = 1, // it seems null is its own data type
     JSV_STRING      = 2, // string
-    JSV_STRING_EXT  = 3,
+    JSV_STRING_EXT  = 3, // extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_ARRAY       = 4,
     JSV_OBJECT      = 5,
     JSV_FUNCTION    = 6,

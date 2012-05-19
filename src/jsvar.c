@@ -92,8 +92,8 @@ void jsvFreePtr(JsVar *var) {
       var->lastChild = 0;
       if (stringDataRef) {
         JsVar *child = jsvLock(stringDataRef);
-        assert(jsvIsStringExt(child) && !child->prevSibling && !child->nextSibling);
-        child->prevSibling = 0;
+        assert(jsvIsStringExt(child));
+        child->prevSibling = 0; // these pointers may contain rubbish as StringEXT uses them for extra characters
         child->nextSibling = 0;
         jsvUnRef(child);
         jsvUnLock(child);
@@ -111,7 +111,8 @@ void jsvFreePtr(JsVar *var) {
           jsvUnLock(child);
         }
       } else {
-        assert(!var->firstChild);
+        // StringExts use firstChild for character data, so ignore them
+        assert(jsvIsStringExt(var) || !var->firstChild);
       }
     } else if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
       JsVarRef childref = var->firstChild;
@@ -205,7 +206,7 @@ JsVar *jsvNewFromString(const char *str) {
   while (*str) {
     int i;
     // copy data in
-    for (i=0;i<JSVAR_STRING_LEN;i++) {
+    for (i=0;i<jsvGetMaxCharactersInVar(var);i++) {
       var->varData.str[i] = *str;
       if (*str) str++;
     }
@@ -257,7 +258,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   while (newLex.currCh) {
     int i;
     // copy data in
-    for (i=0;i<JSVAR_STRING_LEN;i++) {
+    for (i=0;i<jsvGetMaxCharactersInVar(var);i++) {
       var->varData.str[i] = newLex.currCh;
       if (newLex.currCh) jslGetNextCh(&newLex);
     }
@@ -328,6 +329,13 @@ INLINE_FUNC bool jsvIsUndefined(JsVar *v) { return !v; }
 INLINE_FUNC bool jsvIsNull(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 INLINE_FUNC bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 INLINE_FUNC bool jsvIsName(JsVar *v) { return v && (v->flags & JSV_NAME)!=0; }
+INLINE_FUNC bool jsvHasCharacterData(JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
+/// This is the number of characters a JsVar can contain, NOT string length
+INLINE_FUNC bool jsvGetMaxCharactersInVar(JsVar *v) {
+    if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3;
+    assert(jsvHasCharacterData(v));
+    return JSVAR_DATA_STRING_LEN;
+}
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // OPT: would this be useful as compare instead?
@@ -355,7 +363,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
     JsVar *vb = b;
     while (true) {
       JsVarRef var, vbr;
-      for (i=0;i<JSVAR_STRING_LEN;i++) {
+      for (i=0;i<jsvGetMaxCharactersInVar(va);i++) {
         if (va->varData.str[i] != vb->varData.str[i]) return false;
         if (!va->varData.str[i]) return true; // equal, but end of string
       }
@@ -398,7 +406,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       while (var) {
         JsVarRef refNext;
         int i;
-        for (i=0;i<JSVAR_STRING_LEN;i++) {
+        for (i=0;i<jsvGetMaxCharactersInVar(var);i++) {
           if (len--<=0) {
             *str = 0;
             jsWarn("jsvGetString overflowed\n");
@@ -433,11 +441,11 @@ int jsvGetStringLength(JsVar *v) {
 
     if (refNext!=0) {
       // we have more, so this section MUST be full
-      strLength += JSVAR_STRING_LEN;
+      strLength += jsvGetMaxCharactersInVar(var);
     } else {
       int i;
       // count
-      for (i=0;i<JSVAR_STRING_LEN;i++) {
+      for (i=0;i<jsvGetMaxCharactersInVar(var);i++) {
         if (var->varData.str[i])
           strLength++;
         else
@@ -466,13 +474,13 @@ void jsvAppendString(JsVar *var, const char *str) {
   }
   // find how full the block is
   blockChars=0;
-  while (blockChars<JSVAR_STRING_LEN && block->varData.str[blockChars]) 
+  while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
         blockChars++;
   // now start appending
   while (*str) {
     int i;
     // copy data in
-    for (i=blockChars;i<JSVAR_STRING_LEN;i++) {
+    for (i=blockChars;i<jsvGetMaxCharactersInVar(block);i++) {
       block->varData.str[i] = *str;
       if (*str) str++;
     }
@@ -528,11 +536,12 @@ INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v) {
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   int i;
   JsVar *v = jsvLock(jsvGetRef(var));
-  assert(jsvIsString(var) || jsvIsName(var)); // we hope! Might just want to return 0?
+  assert(jsvIsBasic(v) || jsvHasCharacterData(v));
+  if (!jsvHasCharacterData(v)) return 0; // not a string so not equal!
 
   while (true) {
     JsVarRef next;
-    for (i=0;i<JSVAR_STRING_LEN;i++) {
+    for (i=0;i<jsvGetMaxCharactersInVar(v);i++) {
        if (v->varData.str[i] != *str) { jsvUnLock(v); return false; }
        if  (*str==0) { jsvUnLock(v); return true; } // end of string, all great!
        str++;

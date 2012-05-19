@@ -23,7 +23,7 @@ __reentrant
 ;
 
 typedef union {
-    char str[JSVAR_STRING_LEN]; ///< The contents of this variable if it is a string
+    char str[JSVAR_DATA_STRING_LEN]; ///< The contents of this variable if it is a string
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
@@ -36,19 +36,23 @@ typedef struct {
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
   JsVarData varData;
-  // For Variable NAMES ONLY (could this be part of the union?)
+  /* For Variable NAMES...
+   * For STRING_EXT - extra characters
+   * Not used for other stuff
+   */
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
    * For NAMES ONLY - this is a link to the variable it points to
+   * For STRING_EXT - extra characters
    */
   JsVarRef firstChild;
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
-   * For STRINGS/NAMES - this is a link to more string data if it is needed
+   * For STRINGS/STRING_EXT/NAMES - this is a link to more string data if it is needed
    */
   JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
@@ -103,6 +107,8 @@ INLINE_FUNC bool jsvIsUndefined(JsVar *v);
 INLINE_FUNC bool jsvIsNull(JsVar *v);
 INLINE_FUNC bool jsvIsBasic(JsVar *v);
 INLINE_FUNC bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+INLINE_FUNC bool jsvHasCharacterData(JsVar *v); ///< does the v->data union contain character data?
+INLINE_FUNC bool jsvGetMaxCharactersInVar(JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
