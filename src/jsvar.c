@@ -318,23 +318,23 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
   return var;
 }
 
-INLINE_FUNC bool jsvIsInt(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
-INLINE_FUNC bool jsvIsFloat(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
-INLINE_FUNC bool jsvIsString(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
-INLINE_FUNC bool jsvIsStringExt(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
-INLINE_FUNC bool jsvIsNumeric(JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }
-INLINE_FUNC bool jsvIsFunction(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
-INLINE_FUNC bool jsvIsFunctionParameter(JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
-INLINE_FUNC bool jsvIsObject(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
-INLINE_FUNC bool jsvIsArray(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
-INLINE_FUNC bool jsvIsNative(JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
-INLINE_FUNC bool jsvIsUndefined(JsVar *v) { return !v; }
-INLINE_FUNC bool jsvIsNull(JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
-INLINE_FUNC bool jsvIsBasic(JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
-INLINE_FUNC bool jsvIsName(JsVar *v) { return v && (v->flags & JSV_NAME)!=0; }
-INLINE_FUNC bool jsvHasCharacterData(JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
+INLINE_FUNC bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
+INLINE_FUNC bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
+INLINE_FUNC bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
+INLINE_FUNC bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
+INLINE_FUNC bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }
+INLINE_FUNC bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
+INLINE_FUNC bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+INLINE_FUNC bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
+INLINE_FUNC bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
+INLINE_FUNC bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
+INLINE_FUNC bool jsvIsUndefined(const JsVar *v) { return !v; }
+INLINE_FUNC bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
+INLINE_FUNC bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
+INLINE_FUNC bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; }
+INLINE_FUNC bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
 /// This is the number of characters a JsVar can contain, NOT string length
-INLINE_FUNC bool jsvGetMaxCharactersInVar(JsVar *v) {
+INLINE_FUNC bool jsvGetMaxCharactersInVar(const JsVar *v) {
     if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3;
     assert(jsvHasCharacterData(v));
     return JSVAR_DATA_STRING_LEN;
@@ -501,7 +501,7 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
-INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v) {
+INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
     if (jsvIsInt(v)) return v->varData.integer;
@@ -511,11 +511,11 @@ INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v) {
     return 0;
 }
 
-INLINE_FUNC bool jsvGetBool(JsVar *v) {
+INLINE_FUNC bool jsvGetBool(const JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
 
-INLINE_FUNC JsVarFloat jsvGetDouble(JsVar *v) {
+INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v) {
     if (!v) return 0;
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;

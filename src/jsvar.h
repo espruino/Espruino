@@ -101,22 +101,22 @@ INLINE_FUNC JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set th
 INLINE_FUNC JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
 INLINE_FUNC JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
 
-INLINE_FUNC bool jsvIsInt(JsVar *v);
-INLINE_FUNC bool jsvIsDouble(JsVar *v);
-INLINE_FUNC bool jsvIsString(JsVar *v);
-INLINE_FUNC bool jsvIsStringExt(JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
-INLINE_FUNC bool jsvIsNumeric(JsVar *v);
-INLINE_FUNC bool jsvIsFunction(JsVar *v);
-INLINE_FUNC bool jsvIsFunctionParameter(JsVar *v);
-INLINE_FUNC bool jsvIsObject(JsVar *v);
-INLINE_FUNC bool jsvIsArray(JsVar *v);
-INLINE_FUNC bool jsvIsNative(JsVar *v);
-INLINE_FUNC bool jsvIsUndefined(JsVar *v);
-INLINE_FUNC bool jsvIsNull(JsVar *v);
-INLINE_FUNC bool jsvIsBasic(JsVar *v);
-INLINE_FUNC bool jsvIsName(JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
-INLINE_FUNC bool jsvHasCharacterData(JsVar *v); ///< does the v->data union contain character data?
-INLINE_FUNC bool jsvGetMaxCharactersInVar(JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
+INLINE_FUNC bool jsvIsInt(const JsVar *v);
+INLINE_FUNC bool jsvIsDouble(const JsVar *v);
+INLINE_FUNC bool jsvIsString(const JsVar *v);
+INLINE_FUNC bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
+INLINE_FUNC bool jsvIsNumeric(const JsVar *v);
+INLINE_FUNC bool jsvIsFunction(const JsVar *v);
+INLINE_FUNC bool jsvIsFunctionParameter(const JsVar *v);
+INLINE_FUNC bool jsvIsObject(const JsVar *v);
+INLINE_FUNC bool jsvIsArray(const JsVar *v);
+INLINE_FUNC bool jsvIsNative(const JsVar *v);
+INLINE_FUNC bool jsvIsUndefined(const JsVar *v);
+INLINE_FUNC bool jsvIsNull(const JsVar *v);
+INLINE_FUNC bool jsvIsBasic(const JsVar *v);
+INLINE_FUNC bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
+INLINE_FUNC bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
+INLINE_FUNC bool jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
@@ -129,9 +129,9 @@ int jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a
 bool jsvIsStringEqual(JsVar *var, const char *str);
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 
-INLINE_FUNC JsVarInt jsvGetInteger(JsVar *v);
-INLINE_FUNC JsVarFloat jsvGetDouble(JsVar *v); // TODO: rename to jsvGetFloat
-INLINE_FUNC bool jsvGetBool(JsVar *v);
+INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
+INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat
+INLINE_FUNC bool jsvGetBool(const JsVar *v);
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */
