@@ -75,32 +75,70 @@ JsVarInt stringToInt(const char *s) {
 }
 
 void jsError(const char *message) {
-  printf("ERROR: %s\n", message);
+    jsPrint("ERROR: ");
+    jsPrint(message);
+    jsPrint(")\n");
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   int line,col;
   jslGetLineAndCol(lex, tokenPos, &line, &col);
-  printf("ERROR: %s at line %d col %d (char %d)\n", message, line, col, tokenPos);
+  jsPrint("ERROR: ");
+  jsPrint(message);
+  jsPrint(" at line ");
+  jsPrintInt(line);
+  jsPrint(" col ");
+  jsPrintInt(col);
+  jsPrint(" (char ");
+  jsPrintInt(tokenPos);
+  jsPrint(")\n");
 }
 
 void jsWarn(const char *message) {
-  printf("WARNING: %s\n", message);
+    jsPrint("WARNING: ");
+    jsPrint(message);
+    jsPrint(")\n");
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
   int line,col;
   jslGetLineAndCol(lex, tokenPos, &line, &col);
-  printf("WARNING: %s at line %d col %d (char %d)\n", message, line, col, tokenPos);
+  jsPrint("WARNING: ");
+  jsPrint(message);
+  jsPrint(" at line ");
+  jsPrintInt(line);
+  jsPrint(" col ");
+  jsPrintInt(col);
+  jsPrint(" (char ");
+  jsPrintInt(tokenPos);
+  jsPrint(")\n");
 }
 
 void jsAssertFail(const char *file, int line) {
-  printf("ASSERT FAIL AT %s:%d\n", file, line);
+  jsPrint("ASSERT FAIL AT ");
+  jsPrint(file);
+  jsPrint(":");
+  jsPrintInt(line);
+  jsPrint("\n");
   exit(1);
+}
+
+
+
+/// This is the place that all text is output from TinyJS. It could be overwridden if required
+void jsPrint(const char *txt) {
+    fputs(txt, stdout);
+}
+
+/// Helper function - prints an integer
+void jsPrintInt(int d) {
+    char buf[32];
+    itoa(d, buf, 10);
+    jsPrint(buf);
 }
 
 #ifdef SDCC
 void exit(int errcode) {
-  printf("EXIT CALLED.\n");
+    jsPrint("EXIT CALLED.\n");
 }
 #endif

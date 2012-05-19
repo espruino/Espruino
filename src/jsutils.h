@@ -148,6 +148,11 @@ void jsWarn(const char *message);
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsAssertFail(const char *file, int line);
 
+/// This is the place that all text is output from TinyJS. It could be overwridden if required
+void jsPrint(const char *txt);
+/// Helper function - prints an integer
+void jsPrintInt(int d);
+
 #ifdef SDCC
 void exit(int errcode);
 #endif

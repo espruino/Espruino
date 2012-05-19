@@ -2,6 +2,11 @@ CC=gcc
 CFLAGS=-c -g -Wall -Wextra -Wconversion
 LDFLAGS=-g
 
+ifdef ARM
+CC=~/bin/arm/gnuarm/bin/arm-elf-gcc
+CFLAGS=-c -Wall -Wextra -Wconversion -Os
+endif
+
 ifdef SDCC
 CC=sdcc
 CFLAGS=-c --std-sdcc99 -DUSE_FLOATS 

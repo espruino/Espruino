@@ -46,7 +46,9 @@ void jsvShowAllocated() {
   int i;
   for (i=1;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
-      printf("USED VAR #%d:", jsVars[i].this);
+      jsPrint("USED VAR #");
+      jsPrintInt(jsVars[i].this);
+      jsPrint(":");
       jsvTrace(jsVars[i].this, 2);
     }
 }
@@ -73,10 +75,6 @@ JsVar *jsvNew() {
 }
 
 void jsvFreePtr(JsVar *var) {
-    /*var->refs = 1000; // just ensure we don't get freed while tracing!
-    printf("FREEING #%d:\n", var->this);
-    jsvTrace(var->this, 4);*/
-
     // we shouldn't be linked from anywhere!
     assert(!var->nextSibling && !var->prevSibling);
     // free!
@@ -139,7 +137,6 @@ JsVar *jsvLock(JsVarRef ref) {
   JsVar *var;
   assert(ref);
   var = &jsVars[ref-1];
-//  if (ref==29) printf("+ %d : %d\n", ++c, var->locks);
   var->locks++;
   return var;
 }
@@ -149,7 +146,6 @@ JsVarRef jsvUnLock(JsVar *var) {
   if (!var) return 0;
   ref = var->this;
   assert(var->locks>0);
-//  if (ref==29) printf("- %d : %d\n", c, var->locks);
   var->locks--;
   if (var->locks == 0 && var->refs==0)
     jsvFreePtr(var);
@@ -972,6 +968,16 @@ JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
     return res;
 }
 
+void jsvTraceLockInfo(JsVar *v) {
+    jsPrint("#");
+    jsPrintInt(jsvGetRef(v));
+    jsPrint("[r");
+    jsPrintInt(v->refs);
+    jsPrint(",l");
+    jsPrintInt(v->locks-1);
+    jsPrint("] ");
+}
+
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent) {
 #ifndef SDCC
@@ -979,69 +985,81 @@ void jsvTrace(JsVarRef ref, int indent) {
     char buf[JS_ERROR_BUF_SIZE];
     JsVar *var;
 
-    for (i=0;i<indent;i++) printf(" ");
+    for (i=0;i<indent;i++) jsPrint(" ");
 
     if (!ref) {
-        printf("undefined\n");
+        jsPrint("undefined\n");
         return;
     }
     var = jsvLock(ref);
-
-    printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
+    jsvTraceLockInfo(var);
 
 
     if (jsvIsName(var)) {
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-      if (jsvIsInt(var)) printf("Name: int %s  ", buf);
-      else if (jsvIsFloat(var)) printf("Name: flt %s  ", buf);
-      else if (jsvIsString(var) || jsvIsFunctionParameter(var)) printf("Name: '%s'  ", buf);
-      else assert(0);
+      if (jsvIsInt(var)) {
+          jsPrint("Name: int ");
+          jsPrint(buf);
+          jsPrint("  ");
+      } else if (jsvIsFloat(var)) {
+          jsPrint("Name: flt ");
+          jsPrint(buf);
+          jsPrint("  ");
+      } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
+          jsPrint("Name: '");
+          jsPrint(buf);
+          jsPrint("'  ");
+      } else assert(0);
       // go to what the name points to
       ref = var->firstChild;
       jsvUnLock(var);
       if (ref) {
         var = jsvLock(ref);
-        printf("#%d[r%d,l%d] ", ref, var->refs, var->locks-1);
+        jsvTraceLockInfo(var);
       } else {
-        printf("undefined\n");
+          jsPrint("undefined\n");
         return;
       }
     }
     if (jsvIsName(var)) {
-      printf("\n");
+        jsPrint("\n");
       jsvTrace(var->this, indent+1);
       jsvUnLock(var);
       return;
     }
-    if (jsvIsObject(var)) printf("Object {\n");
-    else if (jsvIsArray(var)) printf("Array [\n");
-    else if (jsvIsInt(var)) printf("Integer ");
-    else if (jsvIsFloat(var)) printf("Double ");
-    else if (jsvIsString(var)) printf("String ");
-    else if (jsvIsFunction(var)) printf("Function {\n");
-    else printf("Flags %d\n", var->flags);
+    if (jsvIsObject(var)) jsPrint("Object {\n");
+    else if (jsvIsArray(var)) jsPrint("Array [\n");
+    else if (jsvIsInt(var)) jsPrint("Integer ");
+    else if (jsvIsFloat(var)) jsPrint("Double ");
+    else if (jsvIsString(var)) jsPrint("String ");
+    else if (jsvIsFunction(var)) jsPrint("Function {\n");
+    else {
+        jsPrint("Flags ");
+        jsPrintInt(var->flags);
+        jsPrint("\n");
+    }
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-      printf("%s", buf);
+      jsPrint(buf);
     }
 
     if (jsvIsString(var) || jsvIsName(var)) {
       JsVarRef child = var->firstChild;
       if (child) {
-        printf("( Multi-block string ");
+          jsPrint("( Multi-block string ");
         while (child) {
           JsVar *childVar = jsvLock(child);
-          printf("#%d[r%d,l%d] ", child, childVar->refs, childVar->locks-1);
+          jsvTraceLockInfo(childVar);
           child = childVar->firstChild;
           jsvUnLock(childVar);
         }
-        printf(")\n");
+        jsPrint(")\n");
       } else
-        printf("\n");
+          jsPrint("\n");
     } else {
       JsVarRef child = var->firstChild;
-      printf("\n");
+      jsPrint("\n");
       // dump children
       while (child) {
         JsVar *childVar;
@@ -1055,12 +1073,12 @@ void jsvTrace(JsVarRef ref, int indent) {
 
     if (jsvIsObject(var) || jsvIsFunction(var)) {
       int i;
-      for (i=0;i<indent;i++) printf(" ");
-      printf("}\n");
+      for (i=0;i<indent;i++) jsPrint(" ");
+      jsPrint("}\n");
     } else if (jsvIsArray(var)) {
       int i;
-      for (i=0;i<indent;i++) printf(" ");
-      printf("]\n");
+      for (i=0;i<indent;i++) jsPrint(" ");
+      jsPrint("]\n");
     }
 
     jsvUnLock(var);
