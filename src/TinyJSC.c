@@ -25,7 +25,6 @@
  *       Add String builtins
  *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
- *       Add support for super-length STRING_EXT
  *
  * In code:
  * TODO - should be fixed

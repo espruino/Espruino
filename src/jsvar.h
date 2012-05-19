@@ -24,6 +24,9 @@ __reentrant
 
 typedef union {
     char str[JSVAR_DATA_STRING_LEN]; ///< The contents of this variable if it is a string
+    /* NOTE: For str above, we INTENTIONALLY OVERFLOW str (and hence data) in the case of STRING_EXTS
+     * to overwrite 3 references in order to grab another 6 bytes worth of string data */
+    // TODO do some magic with union/structs in order to make sure we don't intentionally write off the end of arrays
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
@@ -36,6 +39,11 @@ typedef struct {
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
   JsVarData varData;
+  /* NOTE: WE INTENTIONALLY OVERFLOW data in the case of STRING_EXTS
+   * to overwrite the following 3 references in order to grab another
+   * 6 bytes worth of string data */
+
+
   /* For Variable NAMES...
    * For STRING_EXT - extra characters
    * Not used for other stuff
