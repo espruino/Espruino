@@ -42,21 +42,21 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (jsvGetRef(a) == execInfo->parse->intClass) {
     if (strcmp(name,"parseInt")==0) {
       char buffer[16];
-      JsVar *v = jspParseSingleFunction(execInfo);
+      JsVar *v = jspParseSingleFunction();
       jsvGetString(v, buffer, 16);
       jsvUnLock(v);
-      return jsvNewFromInteger((JsVarInt)strtol(buffer,0,0));
+      return jsvNewFromInteger(stringToInt(buffer));
     }
   }
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
-      if (jspParseEmptyFunction(execInfo))
+      if (jspParseEmptyFunction())
         return jsvNewFromFloat((float)rand() / (float)RAND_MAX);
     }
   }
   if (jsvGetRef(a) == execInfo->parse->jsonClass) {
       if (strcmp(name,"stringify")==0) {
-        JsVar *v = jspParseSingleFunction(execInfo);
+        JsVar *v = jspParseSingleFunction();
         JsVar *result = jsvNewFromString("");
         jsfGetJSON(v, result);
         jsvUnLock(v);
@@ -69,7 +69,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      if (strcmp(name,"charAt")==0) {
        char buffer[2];
        int idx = 0;
-       JsVar *v = jspParseSingleFunction(execInfo);
+       JsVar *v = jspParseSingleFunction();
        idx = (int)jsvGetInteger(v);
        jsvUnLock(v);
        // now search to try and find the char
@@ -157,11 +157,11 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
       JsVar *child = jsvLock(childref);
       childref = child->nextSibling;
       if (jsvIsFunctionParameter(child)) {
+        char buf[JSLEX_MAX_TOKEN_LENGTH];
         if (firstParm) 
           firstParm=false;
         else
           jsvAppendString(result, ","); 
-        char buf[JSLEX_MAX_TOKEN_LENGTH];
         // TODO: ability to append one string to another      
         jsvGetString(child, buf, JSLEX_MAX_TOKEN_LENGTH);
         jsvAppendString(result, buf); // FIXME: escape the string

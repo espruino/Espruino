@@ -100,7 +100,6 @@ void jsAssertFail(const char *file, int line) {
 }
 
 #ifdef SDCC
-long strtol(const char*str, char **endptr, int base);
 void exit(int errcode) {
   printf("EXIT CALLED.\n");
 }

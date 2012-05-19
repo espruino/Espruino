@@ -171,15 +171,17 @@ void jsvUnRef(JsVar *var) {
 }
 
 JsVarRef jsvRefRef(JsVarRef ref) {
+  JsVar *v;
   assert(ref);
-  JsVar *v = jsvLock(ref);
+  v = jsvLock(ref);
   jsvRef(v);
   jsvUnLock(v);
   return ref;
 }
 JsVarRef jsvUnRefRef(JsVarRef ref) {
+  JsVar *v;
   assert(ref);
-  JsVar *v = jsvLock(ref);
+  v = jsvLock(ref);
   jsvUnRef(v);
   jsvUnLock(v);
   return 0;
@@ -191,6 +193,7 @@ JsVarRef jsvGetRef(JsVar *var) {
 }
 
 JsVar *jsvNewFromString(const char *str) {
+  JsVar *var;
   // Create a var
   JsVar *first = jsvNew();
   if (!first) {
@@ -199,7 +202,7 @@ JsVar *jsvNewFromString(const char *str) {
   }
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
-  JsVar *var = jsvLock(jsvGetRef(first));
+  var = jsvLock(jsvGetRef(first));
   var->flags = JSV_STRING;
   var->varData.str[0] = 0; // in case str is empty!
 
@@ -397,12 +400,12 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
     } else if (jsvIsNull(v)) {
       strncpy(str, "null", len);
     } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
+      JsVar *var = v;
+      JsVarRef ref = 0;
       if (jsvIsStringExt(v))
         jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
       // print the string - we have to do it a block
       // at a time!
-      JsVar *var = v;
-      JsVarRef ref = 0;
       while (var) {
         JsVarRef refNext;
         int i;
@@ -782,8 +785,9 @@ JsVar *jsvGetArrayItem(JsVar *arr, int index) {
 
 /// Get the index of the value in the array
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
+  JsVarRef indexref;
   assert(jsvIsArray(arr) || jsvIsObject(arr));
-  JsVarRef indexref = arr->firstChild;
+  indexref = arr->firstChild;
   while (indexref) {
     JsVar *childIndex = jsvLock(indexref);
     assert(jsvIsName(childIndex))

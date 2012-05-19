@@ -193,10 +193,17 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
 
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr) {
     bool success;
-    JsExecInfo oldExecInfo = execInfo;
-    // Set up Lexer
-    JsVar *fncode = jsvNewFromString(funcDesc);
     JsLex lex;
+    JsVar *fncode;
+#ifndef SDCC
+    JsExecInfo oldExecInfo = execInfo;
+#else
+    JsExecInfo oldExecInfo;
+    memcpy(&oldExecInfo, &execInfo, sizeof(JsExecInfo));
+#endif
+    // Set up Lexer
+    fncode = jsvNewFromString(funcDesc);
+
     jslInit(&lex, fncode, 0, -1);
     jsvUnLock(fncode);
 
@@ -213,7 +220,11 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     // cleanup
     jspeiKill();
     jslKill(&lex);
+#ifndef SDCC
     execInfo = oldExecInfo;
+#else
+    memcpy(&execInfo, &oldExecInfo, sizeof(JsExecInfo));
+#endif
 
 
     return success;
@@ -344,7 +355,7 @@ JsVar *jspeFunctionCall(JsExecFlags *execute, JsVar *function, JsVar *parent) {
 #ifdef JSPARSE_CALL_STACK
     if (!call_stack.empty()) call_stack.pop_back();
 #endif
-    jspeiRemoveScope(execInfo);
+    jspeiRemoveScope();
     /* get the real return var before we remove it from our function */
     returnVar = jsvSkipNameAndUnlock(returnVarName);
     jsvUnLock(functionRoot);
@@ -573,12 +584,13 @@ JsVar *jspeFactor(JsExecFlags *execute) {
       // new -> create a new object
       JSP_MATCH(LEX_R_NEW);
       if (JSP_SHOULD_EXECUTE(execute)) {
+        JsVar *obj;
         JsVar *objClassOrFunc = jsvSkipNameAndUnlock(jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex)));
         if (!objClassOrFunc) {
           jsWarnAt("Prototype used in NEW is not defined", execInfo.lex, execInfo.lex->tokenStart);
         }
         JSP_MATCH(LEX_ID);
-        JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+        obj = jsvNewWithFlags(JSV_OBJECT);
         if (jsvIsFunction(objClassOrFunc)) {
           jsvUnLock(jspeFunctionCall(execute, objClassOrFunc, obj));
         } else {
@@ -1085,9 +1097,14 @@ void jspKill(JsParse *parse) {
 
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   JsExecFlags execute = EXEC_YES;
-  JsExecInfo oldExecInfo = execInfo;
   JsLex lex;
   JsVar *v = 0;
+#ifndef SDCC
+    JsExecInfo oldExecInfo = execInfo;
+#else
+    JsExecInfo oldExecInfo;
+    memcpy(&oldExecInfo, &execInfo, sizeof(JsExecInfo));
+#endif
 
   jslInit(&lex, str, 0, -1);
 
@@ -1100,7 +1117,11 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   jspeiKill();
   jslKill(&lex);
   // restore state
-  execInfo = oldExecInfo;
+#ifndef SDCC
+    execInfo = oldExecInfo;
+#else
+    memcpy(&execInfo, &oldExecInfo, sizeof(JsExecInfo));
+#endif
 
   // It may have returned a reference, but we just want the value...
   if (v) {

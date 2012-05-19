@@ -188,21 +188,21 @@ void jslGetNextToken(JsLex *lex) {
               case '\\' : jslTokenAppendChar(lex, '\\'); break;
 #ifndef SDCC
               case 'x' : { // hex digits
-                            char buf[3] = "??";
-                            jslGetNextCh(lex); buf[0] = lex->currCh;
-                            jslGetNextCh(lex); buf[1] = lex->currCh;
-                            jslTokenAppendChar(lex, (char)strtol(buf,0,16));
+                            char buf[5] = "0x??";
+                            jslGetNextCh(lex); buf[2] = lex->currCh;
+                            jslGetNextCh(lex); buf[3] = lex->currCh;
+                            jslTokenAppendChar(lex, (char)stringToInt(buf));
                          } break;
 #endif
               default: 
 #ifndef SDCC
                        if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
-                         char buf[4] = "???";
-                         buf[0] = lex->currCh;
-                         jslGetNextCh(lex); buf[1] = lex->currCh;
+                         char buf[5] = "0???";
+                         buf[1] = lex->currCh;
                          jslGetNextCh(lex); buf[2] = lex->currCh;
-                         jslTokenAppendChar(lex, (char)strtol(buf,0,8));
+                         jslGetNextCh(lex); buf[3] = lex->currCh;
+                         jslTokenAppendChar(lex, (char)stringToInt(buf));
                        } else
 #endif
                          jslTokenAppendChar(lex, lex->currCh);
