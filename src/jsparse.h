@@ -42,7 +42,7 @@ typedef struct {
   int scopeCount;
 } JsExecInfo;
 
-bool jspParseEmptyFunction(JsExecInfo *execInfo);    ///< parse function with no arguments
-JsVar *jspParseSingleFunction(JsExecInfo *execInfo); ///< parse function with a single argument, return its value (no names!)
+bool jspParseEmptyFunction();    ///< parse function with no arguments
+JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
 
 #endif /* JSPARSE_H_ */

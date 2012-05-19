@@ -17,7 +17,7 @@ JsVar* jsfMakeUndefined() {
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // Special cases for where we're just a basic function
     if (strcmp(name,"eval")==0) {
-      JsVar *v = jspParseSingleFunction(execInfo);
+      JsVar *v = jspParseSingleFunction();
       JsVar *result = 0;
       if (v) result = jspEvaluateVar(execInfo->parse, v);
       jsvUnLock(v);
@@ -90,19 +90,19 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
    }
   if (jsvIsString(a) || jsvIsObject(a)) {
     if (strcmp(name,"clone")==0) {
-      if (jspParseEmptyFunction(execInfo))
+      if (jspParseEmptyFunction())
         return jsvCopy(a);
     }
   }
   if (jsvIsArray(a)) {
        if (strcmp(name,"contains")==0) {
-         JsVar *childValue = jspParseSingleFunction(execInfo);
+         JsVar *childValue = jspParseSingleFunction();
          JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
          jsvUnLock(childValue);
          return jsvNewFromBool(found!=0);
        }
        if (strcmp(name,"indexOf")==0) {
-          JsVar *childValue = jspParseSingleFunction(execInfo);
+          JsVar *childValue = jspParseSingleFunction();
           JsVar *idx = jsvGetArrayIndexOf(a, childValue);
           jsvUnLock(childValue);
           if (idx==0) return jsfMakeUndefined();
