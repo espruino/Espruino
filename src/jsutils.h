@@ -8,14 +8,19 @@
 #ifndef JSUTILS_H_
 #define JSUTILS_H_
 
+#ifndef ARM
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#endif
 
 // surely bool is defined??
-typedef char bool;
+typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #define true (1)
 #define false (0)
+#ifdef ARM
+typedef unsigned int size_t;
+#endif
 
 /// Reference for variables
 typedef unsigned short JsVarRef;
@@ -155,6 +160,15 @@ void jsPrintInt(int d);
 
 #ifdef SDCC
 void exit(int errcode);
+#endif
+#ifdef ARM
+void exit(int errcode);
+void strncat(char *dst, const char *src, int c);
+void strncpy(char *dst, const char *src, int c);
+int strlen(const char *s);
+int strcmp(char *a, const char *b);
+void memcpy(char *dst, const char *src, int size);
+int rand();
 #endif
 
 // FIXME: use itoa/ftoa direct - sprintf is huge

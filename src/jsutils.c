@@ -127,7 +127,17 @@ void jsAssertFail(const char *file, int line) {
 
 /// This is the place that all text is output from TinyJS. It could be overwridden if required
 void jsPrint(const char *txt) {
+#ifdef SDCC
+    while (*txt)
+        putchar(*(txt++));
+#else
+ #ifdef ARM
+    while (*txt)
+        usart1_tx(*(txt++));
+ #else
     fputs(txt, stdout);
+ #endif
+#endif
 }
 
 /// Helper function - prints an integer
@@ -140,5 +150,44 @@ void jsPrintInt(int d) {
 #ifdef SDCC
 void exit(int errcode) {
     jsPrint("EXIT CALLED.\n");
+}
+#endif
+
+#ifdef ARM
+void exit(int errcode) {
+    jsPrint("EXIT CALLED.\n");
+}
+
+void strncat(char *dst, const char *src, int c) {
+        // FIXME
+        while (*(dst++));
+        while (*src)
+                *(dst++) = *(src++);
+        *dst = 0;
+}
+void strncpy(char *dst, const char *src, int c) {
+        // FIXME
+        while (*src)
+                *(dst++) = *(src++);
+        *dst = 0;
+}
+int strlen(const char *s) {
+        int l=0;
+        while (*(s++)) l++;
+        return l;
+}
+int strcmp(char *a, const char *b) {
+        while (*a && *b) {
+                if (*a != *b)
+                        return *a - *b; // correct?
+        }
+        return *a - *b;
+}
+void memcpy(char *dst, const char *src, int size) {
+        for (int i=0;i<size;i++)
+                dst[i] = src[i];
+}
+int rand() { 
+        return 0; //FIXME
 }
 #endif

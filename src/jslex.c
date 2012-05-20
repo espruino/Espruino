@@ -393,9 +393,9 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_R_NEW : strncpy(str, "new", len); return;
   }
   assert(len>=10);
-  strcpy(str, "?[");
+  strncpy(str, "?[",len);
   itoa(token, &str[2], 10);
-  strcat(str, "]");
+  strncat(str, "]",len);
 }
 
 void jslGetTokenString(JsLex *lex, char *str, size_t len) {
