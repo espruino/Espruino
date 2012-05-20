@@ -163,16 +163,22 @@ void exit(int errcode);
 #endif
 #ifdef ARM
 void exit(int errcode);
-void strncat(char *dst, const char *src, int c);
-void strncpy(char *dst, const char *src, int c);
-int strlen(const char *s);
+void strncat(char *dst, const char *src, size_t c);
+void strncpy(char *dst, const char *src, size_t c);
+size_t strlen(const char *s);
 int strcmp(char *a, const char *b);
-void memcpy(char *dst, const char *src, int size);
+void memcpy(char *dst, const char *src, size_t size);
+#define RAND_MAX (0x7FFFFFFF)
 int rand();
-#endif
-
+void itoa(int val,char *str,int base);
+void ftoa(JsVarFloat val,char *str);
+JsVarFloat atof(const char *str);
+#else
 // FIXME: use itoa/ftoa direct - sprintf is huge
 #define itoa(val,str,base) sprintf(str,"%d",(int)val)
 #define ftoa(val,str) sprintf(str,"%f",val)
+
+#endif
+
 
 #endif /* JSUTILS_H_ */

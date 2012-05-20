@@ -158,21 +158,21 @@ void exit(int errcode) {
     jsPrint("EXIT CALLED.\n");
 }
 
-void strncat(char *dst, const char *src, int c) {
+void strncat(char *dst, const char *src, size_t c) {
         // FIXME
         while (*(dst++));
         while (*src)
                 *(dst++) = *(src++);
         *dst = 0;
 }
-void strncpy(char *dst, const char *src, int c) {
+void strncpy(char *dst, const char *src, size_t c) {
         // FIXME
         while (*src)
                 *(dst++) = *(src++);
         *dst = 0;
 }
-int strlen(const char *s) {
-        int l=0;
+size_t strlen(const char *s) {
+        size_t l=0;
         while (*(s++)) l++;
         return l;
 }
@@ -183,11 +183,38 @@ int strcmp(char *a, const char *b) {
         }
         return *a - *b;
 }
-void memcpy(char *dst, const char *src, int size) {
-        for (int i=0;i<size;i++)
+void memcpy(char *dst, const char *src, size_t size) {
+        size_t i;
+        for (i=0;i<size;i++)
                 dst[i] = src[i];
 }
 int rand() { 
         return 0; //FIXME
+}
+char itoch(int val) {
+  if (val<10) return '0'+val;
+  return 'A'+val-10;
+}
+void itoa(int val,char *str,int base) {
+  if (val<0) {
+    *(str++)='-';
+    val = -val;
+  }
+  int d = 1;
+  while (d*base <= val) d*=base;
+  while (d > 1) {
+    int v = val / d;
+    val -= v*d;
+    *(str++)=itoch(v);
+    d /= base;
+  }  
+  *(str++)=itoch(val);
+  *(str++)=0;
+}
+void ftoa(JsVarFloat val,char *str) {
+  str[0] = 0; //FIXME
+}
+JsVarFloat atof(const char *str) {
+  return 0; //FIXME       
 }
 #endif
