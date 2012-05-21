@@ -12,7 +12,7 @@
 #ifdef SDCC
 #define JSVAR_CACHE_SIZE 10
 #else
-#define JSVAR_CACHE_SIZE 32
+#define JSVAR_CACHE_SIZE 100
 #endif
 JsVar jsVars[JSVAR_CACHE_SIZE]; 
 JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
@@ -24,7 +24,7 @@ void jsvInit() {
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
     jsVars[i].nextSibling = (JsVarRef)(i+2);
   }
-  jsVars[JSVAR_CACHE_SIZE-1].nextSibling = (JsVarRef)(i+2);
+  jsVars[JSVAR_CACHE_SIZE-1].nextSibling = 0;
   jsVarFirstEmpty = 1;
 }
 

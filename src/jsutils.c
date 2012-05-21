@@ -77,7 +77,7 @@ JsVarInt stringToInt(const char *s) {
 void jsError(const char *message) {
     jsPrint("ERROR: ");
     jsPrint(message);
-    jsPrint(")\n");
+    jsPrint("\n");
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
@@ -97,7 +97,7 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
 void jsWarn(const char *message) {
     jsPrint("WARNING: ");
     jsPrint(message);
-    jsPrint(")\n");
+    jsPrint("\n");
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {

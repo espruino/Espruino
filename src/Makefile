@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -g -Wall -Wextra -Wconversion
+CFLAGS=-c -g -Wall -Wextra -Wconversion 
 LDFLAGS=-g
 
 ifdef ARM
