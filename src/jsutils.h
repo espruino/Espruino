@@ -8,19 +8,23 @@
 #ifndef JSUTILS_H_
 #define JSUTILS_H_
 
-#ifndef ARM
+#ifndef FAKE_STDLIB
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #endif
 
 // surely bool is defined??
-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
-#define true (1)
-#define false (0)
 #ifdef ARM
 typedef unsigned int size_t;
 #endif
+
+#ifndef __STM32F10x_H
+typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#endif
+
+#define true (1)
+#define false (0)
 
 /// Reference for variables
 typedef unsigned short JsVarRef;
@@ -161,7 +165,7 @@ void jsPrintInt(int d);
 #ifdef SDCC
 void exit(int errcode);
 #endif
-#ifdef ARM
+#ifdef FAKE_STDLIB
 void exit(int errcode);
 void strncat(char *dst, const char *src, size_t c);
 void strncpy(char *dst, const char *src, size_t c);

@@ -138,6 +138,7 @@ JsVar *jsvLock(JsVarRef ref) {
   assert(ref);
   var = &jsVars[ref-1];
   var->locks++;
+  if (var->locks==0) jsError("Too many references to Variable!");
   return var;
 }
 

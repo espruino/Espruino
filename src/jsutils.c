@@ -132,8 +132,7 @@ void jsPrint(const char *txt) {
         putchar(*(txt++));
 #else
  #ifdef ARM
-    while (*txt)
-        usart1_tx(*(txt++));
+    usart1_tx_str(txt);
  #else
     fputs(txt, stdout);
  #endif
@@ -153,7 +152,7 @@ void exit(int errcode) {
 }
 #endif
 
-#ifdef ARM
+#ifdef FAKE_STDLIB
 void exit(int errcode) {
     jsPrint("EXIT CALLED.\n");
 }
