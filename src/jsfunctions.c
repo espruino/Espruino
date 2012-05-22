@@ -35,7 +35,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (jsvIsString(a)) {
       jslMatch(execInfo->lex, LEX_ID);
-      return jsvNewFromInteger(jsvGetStringLength(a));
+      return jsvNewFromInteger((JsVarInt)jsvGetStringLength(a));
     }
   }
   // --------------------------------- built-in class stuff
@@ -68,9 +68,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (jsvIsString(a)) {
      if (strcmp(name,"charAt")==0) {
        char buffer[2];
-       int idx = 0;
+       size_t idx = 0;
        JsVar *v = jspParseSingleFunction();
-       idx = (int)jsvGetInteger(v);
+       idx = (size_t)jsvGetInteger(v);
        jsvUnLock(v);
        // now search to try and find the char
        v = jsvLock(jsvGetRef(a));

@@ -192,24 +192,27 @@ int rand() {
 }
 #endif
 char itoch(int val) {
-  if (val<10) return '0'+val;
-  return 'A'+val-10;
+  if (val<10) return (char)('0'+val);
+  return (char)('A'+val-10);
 }
 
-void itoa(int val,char *str,int base) {
-  if (val<0) {
+void itoa(JsVarInt vals,char *str,unsigned int base) {
+  JsVarIntUnsigned val;
+  if (vals<0) {
     *(str++)='-';
-    val = -val;
+    val = (JsVarIntUnsigned)(-vals);
+  } else {
+    val = (JsVarIntUnsigned)vals;
   }
-  int d = 1;
+  JsVarIntUnsigned d = 1;
   while (d*base <= val) d*=base;
   while (d > 1) {
-    int v = val / d;
+    unsigned int v = (unsigned int)(val / d);
     val -= v*d;
-    *(str++)=itoch(v);
+    *(str++) = itoch((int)v);
     d /= base;
   }  
-  *(str++)=itoch(val);
+  *(str++)=itoch((int)val);
   *(str++)=0;
 }
 void ftoa(JsVarFloat val,char *str) {

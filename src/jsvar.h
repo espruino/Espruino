@@ -116,7 +116,7 @@ INLINE_FUNC bool jsvIsNull(const JsVar *v);
 INLINE_FUNC bool jsvIsBasic(const JsVar *v);
 INLINE_FUNC bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 INLINE_FUNC bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
-INLINE_FUNC bool jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
+INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
@@ -125,7 +125,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len);
-int jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
+size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 

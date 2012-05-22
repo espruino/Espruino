@@ -24,9 +24,9 @@ void jslSeek(JsLex *lex, int seekToChar) {
   lex->currentVarRef = lex->sourceVarRef;
   lex->currentVar = jsvLock(lex->currentVarRef);
   // Keep seeking until we get to the start position
-  while (lex->currentVarPos >= jsvGetMaxCharactersInVar(lex->currentVar)) {
+  while (lex->currentVarPos >= (int)jsvGetMaxCharactersInVar(lex->currentVar)) {
     JsVarRef next;
-    lex->currentVarPos -= jsvGetMaxCharactersInVar(lex->currentVar);
+    lex->currentVarPos -= (int)jsvGetMaxCharactersInVar(lex->currentVar);
     next = lex->currentVar->lastChild;
     assert(next);
     jsvUnLock(lex->currentVar);
@@ -43,9 +43,9 @@ void jslGetNextCh(JsLex *lex) {
       lex->nextCh = lex->currentVar->varData.str[lex->currentVarPos];
     lex->currentVarPos++;
     // make sure we move on to next..
-    if (lex->currentVarPos >= jsvGetMaxCharactersInVar(lex->currentVar)) {
+    if (lex->currentVarPos >= (int)jsvGetMaxCharactersInVar(lex->currentVar)) {
       JsVarRef next;
-      lex->currentVarPos -= jsvGetMaxCharactersInVar(lex->currentVar);
+      lex->currentVarPos -= (int)jsvGetMaxCharactersInVar(lex->currentVar);
       next = lex->currentVar->lastChild;
       jsvUnLock(lex->currentVar);
       lex->currentVarRef = next;
@@ -292,7 +292,7 @@ void jslGetNextToken(JsLex *lex) {
 
 void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   if (endPos<0) {
-    endPos = jsvGetStringLength(var);
+    endPos = (int)jsvGetStringLength(var);
   }
   lex->sourceVarRef = jsvRef(var)->this;
   lex->sourceStartPos = startPos;
