@@ -9,10 +9,10 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
-#ifdef SDCC
-#define JSVAR_CACHE_SIZE 10
-#else
+#ifdef ARM
 #define JSVAR_CACHE_SIZE 100
+#else
+#define JSVAR_CACHE_SIZE 2000
 #endif
 JsVar jsVars[JSVAR_CACHE_SIZE]; 
 JsVarRef jsVarFirstEmpty; ///< reference of first unused variable

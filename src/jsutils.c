@@ -190,10 +190,12 @@ void memcpy(char *dst, const char *src, size_t size) {
 int rand() { 
         return 0; //FIXME
 }
+#endif
 char itoch(int val) {
   if (val<10) return '0'+val;
   return 'A'+val-10;
 }
+
 void itoa(int val,char *str,int base) {
   if (val<0) {
     *(str++)='-';
@@ -211,9 +213,27 @@ void itoa(int val,char *str,int base) {
   *(str++)=0;
 }
 void ftoa(JsVarFloat val,char *str) {
-  str[0] = 0; //FIXME
+  const JsVarFloat base = 10;
+  if (val<0) {
+    *(str++)='-';
+    val = -val;
+  }
+  JsVarFloat d = 1;
+  while (d*base < val) d*=base;
+  while (d >= 1) {
+    int v = (int)(val / d);
+    val -= v*d;
+    *(str++)=itoch(v);
+    d /= base;
+  }  
+  if (val>0) {
+    *(str++)='.';
+    while (val>0.000001) {
+      int v = (int)(val / d);
+      val -= v*d;
+      *(str++)=itoch(v);
+      d /= base;
+    }
+  }  
+  *(str++)=0;
 }
-JsVarFloat atof(const char *str) {
-  return 0; //FIXME       
-}
-#endif

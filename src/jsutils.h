@@ -174,15 +174,16 @@ int strcmp(char *a, const char *b);
 void memcpy(char *dst, const char *src, size_t size);
 #define RAND_MAX (0x7FFFFFFF)
 int rand();
-void itoa(int val,char *str,int base);
-void ftoa(JsVarFloat val,char *str);
 JsVarFloat atof(const char *str);
 #else
 // FIXME: use itoa/ftoa direct - sprintf is huge
-#define itoa(val,str,base) sprintf(str,"%d",(int)val)
-#define ftoa(val,str) sprintf(str,"%f",val)
+//#define itoa(val,str,base) sprintf(str,"%d",(int)val)
+//#define ftoa(val,str) sprintf(str,"%f",val)
 
 #endif
+
+void itoa(int val,char *str,int base);
+void ftoa(JsVarFloat val,char *str);
 
 
 #endif /* JSUTILS_H_ */

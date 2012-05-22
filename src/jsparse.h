@@ -32,6 +32,15 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
 
+/** When parsing, this enum defines whether
+ we are executing or not */
+typedef enum  {
+  EXEC_NO = 0,
+  EXEC_YES = 1,
+  EXEC_RUN_MASK = 1,
+  // EXEC_ERROR = 2 // maybe?
+} JsExecFlags;
+
 /** This structure is used when parsing the JavaScript. It contains
  * everything that should be needed. */
 typedef struct {
@@ -40,6 +49,8 @@ typedef struct {
 
   JsVarRef scopes[JSPARSE_MAX_SCOPES];
   int scopeCount;
+
+  JsExecFlags execute;
 } JsExecInfo;
 
 bool jspParseEmptyFunction();    ///< parse function with no arguments
