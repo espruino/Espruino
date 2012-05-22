@@ -1055,7 +1055,7 @@ JsVar *jspeStatement() {
             jsvUnLock(resultVar);
           } else
             jsErrorAt("RETURN statement, but not in a function.\n", execInfo.lex, execInfo.lex->tokenLastEnd);
-          jspSetNoExecute();
+          jspSetNoExecute(); // Stop anything else in this function executing
         }
         jsvUnLock(result);
         JSP_MATCH(';');
