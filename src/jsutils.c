@@ -123,6 +123,9 @@ void jsAssertFail(const char *file, int line) {
   exit(1);
 }
 
+#ifdef ARM
+void usart1_tx_str(const char *str);
+#endif
 
 
 /// This is the place that all text is output from TinyJS. It could be overwridden if required
@@ -147,7 +150,7 @@ void jsPrintInt(int d) {
 }
 
 #ifdef SDCC
-void exit(int errcode) {
+void exit(int errcode) {dst;
     jsPrint("EXIT CALLED.\n");
 }
 #endif
@@ -155,37 +158,43 @@ void exit(int errcode) {
 #ifdef FAKE_STDLIB
 void exit(int errcode) {
     jsPrint("EXIT CALLED.\n");
+    while (1);
 }
 
-void strncat(char *dst, const char *src, size_t c) {
+char * strncat(char *dst, const char *src, size_t c) {
         // FIXME
-        while (*(dst++));
+        char *dstx = dst;
+        while (*(dstx++));
         while (*src)
-                *(dst++) = *(src++);
-        *dst = 0;
+                *(dstx++) = *(src++);
+        *dstx = 0;
+        return dst;
 }
-void strncpy(char *dst, const char *src, size_t c) {
+char *strncpy(char *dst, const char *src, size_t c) {
         // FIXME
+        char *dstx = dst;
         while (*src)
-                *(dst++) = *(src++);
-        *dst = 0;
+                *(dstx++) = *(src++);
+        *dstx = 0;
+        return dst;
 }
 size_t strlen(const char *s) {
         size_t l=0;
         while (*(s++)) l++;
         return l;
 }
-int strcmp(char *a, const char *b) {
+int strcmp(const char *a, const char *b) {
         while (*a && *b) {
                 if (*a != *b)
                         return *a - *b; // correct?
         }
         return *a - *b;
 }
-void memcpy(char *dst, const char *src, size_t size) {
+void *memcpy(void *dst, const void *src, size_t size) {
         size_t i;
         for (i=0;i<size;i++)
-                dst[i] = src[i];
+                ((char*)dst)[i] = ((char*)src)[i];
+        return dst;
 }
 int rand() { 
         return 0; //FIXME

@@ -54,14 +54,14 @@ typedef double JsVarFloat;
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 
-#ifndef SDCC
+#if 1 // ndef ARM
  #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
- #define PACKED_FLAGS  __attribute__ ((__packed__))  
 #else
  #define assert(X) 
- #define PACKED_FLAGS 
 #endif
 
+// Used when we have enums we want to squash down
+#define PACKED_FLAGS  __attribute__ ((__packed__))  
 
 typedef enum {
   // OPT: These can be packed as there's no point being an array AND a float
@@ -167,11 +167,11 @@ void exit(int errcode);
 #endif
 #ifdef FAKE_STDLIB
 void exit(int errcode);
-void strncat(char *dst, const char *src, size_t c);
-void strncpy(char *dst, const char *src, size_t c);
+char *strncat(char *dst, const char *src, size_t c);
+char *strncpy(char *dst, const char *src, size_t c);
 size_t strlen(const char *s);
-int strcmp(char *a, const char *b);
-void memcpy(char *dst, const char *src, size_t size);
+int strcmp(const char *a, const char *b);
+void *memcpy(void *dst, const void *src, size_t size);
 #define RAND_MAX (0x7FFFFFFF)
 int rand();
 JsVarFloat atof(const char *str);
