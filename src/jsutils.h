@@ -32,10 +32,14 @@ typedef unsigned short JsVarRef;
 
 typedef long JsVarInt;
 typedef unsigned long JsVarIntUnsigned;
-#ifdef USE_FLOATS
-typedef float JsVarFloat;
+#ifndef USE_NO_FLOATS
+ #ifdef USE_FLOATS
+  typedef float JsVarFloat;
+ #else
+  typedef double JsVarFloat;
+ #endif
 #else
-typedef double JsVarFloat;
+  typedef long JsVarFloat;
 #endif
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9

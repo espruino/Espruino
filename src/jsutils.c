@@ -199,6 +199,11 @@ void *memcpy(void *dst, const void *src, size_t size) {
 int rand() { 
         return 0; //FIXME
 }
+
+JsVarFloat atof(const char *str) {
+        return 0; //FIXME
+}
+
 #endif
 char itoch(int val) {
   if (val<10) return (char)('0'+val);
@@ -224,6 +229,7 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
   *(str++)=itoch((int)val);
   *(str++)=0;
 }
+
 void ftoa(JsVarFloat val,char *str) {
   const JsVarFloat base = 10;
   if (val<0) {
@@ -238,6 +244,7 @@ void ftoa(JsVarFloat val,char *str) {
     *(str++)=itoch(v);
     d /= base;
   }  
+#ifndef USE_NO_FLOATS
   if (val>0) {
     *(str++)='.';
     while (val>0.000001) {
@@ -247,5 +254,7 @@ void ftoa(JsVarFloat val,char *str) {
       d /= base;
     }
   }  
+#endif
+
   *(str++)=0;
 }
