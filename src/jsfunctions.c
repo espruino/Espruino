@@ -51,7 +51,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
       if (jspParseEmptyFunction())
-        return jsvNewFromFloat((float)rand() / (float)RAND_MAX);
+        return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
     }
   }
   if (jsvGetRef(a) == execInfo->parse->jsonClass) {

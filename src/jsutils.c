@@ -124,7 +124,7 @@ void jsAssertFail(const char *file, int line) {
 }
 
 #ifdef ARM
-void usart1_tx_str(const char *str);
+void usart2_tx_str(const char *str);
 #endif
 
 
@@ -135,7 +135,7 @@ void jsPrint(const char *txt) {
         putchar(*(txt++));
 #else
  #ifdef ARM
-    usart1_tx_str(txt);
+    usart2_tx_str(txt);
  #else
     fputs(txt, stdout);
  #endif
