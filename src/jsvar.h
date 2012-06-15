@@ -10,6 +10,9 @@
 
 #include "jsutils.h"
 
+/* This can be set to something like 'extern inline' to try and get GCC to inline the
+functions defined with it, but it may not work. Probably need to actually define them
+in the header. */
 #ifndef INLINE_FUNC
 #define INLINE_FUNC
 #endif
@@ -127,6 +130,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 void jsvGetString(JsVar *v, char *str, size_t len);
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
+int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);

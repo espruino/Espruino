@@ -59,16 +59,6 @@ void nativePrint(JsVarRef var) {
   jsvUnLock(text);
 }
 
-void nativeJSONStringify(JsVarRef var) {
-  JsVar *data = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "data", false/*no create*/));
-  JsVar *returnValue = jsvFindChildFromString(var, JSPARSE_RETURN_VAR, false/*no create*/); // no skip - because we want the name to write to
-  JsVar *result = jsvNewFromString("");
-  jsfGetJSON(data, result);
-  jsvUnLock(jsvSetValueOfName(returnValue, result));
-  jsvUnLock(result);
-  jsvUnLock(data);
-}
-
 void nativeSetPin(JsVarRef var) {
   JsVar *pin = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "pin", false/*no create*/));
   JsVar *value = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "value", false/*no create*/));
@@ -215,10 +205,9 @@ int main(int argc, char **argv) {
 	jspAddNativeFunction(&p, "function quit()", nativeQuit);
 	jspAddNativeFunction(&p, "function trace()", nativeTrace);
 	jspAddNativeFunction(&p, "function print(text)", nativePrint);
-    jspAddNativeFunction(&p, "function JSON.stringify(data,xxx)", nativeJSONStringify);
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
-    jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
+        jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
 	//v = jspEvaluate(&p, "var Z = 1+2; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );

@@ -561,6 +561,53 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   return true;
 }
 
+
+/** Compare 2 strings, starting from the given character positions. equalAtEndOfString means that
+ * if one of the strings ends, we treat them as equal. */
+int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString) {
+  int idxa = starta;
+  int idxb = startb;
+  assert(jsvIsString(va) || jsvIsName(va)); // we hope! Might just want to return 0?
+  assert(jsvIsString(vb) || jsvIsName(vb)); // we hope! Might just want to return 0?
+  va = jsvLock(jsvGetRef(va));
+  vb = jsvLock(jsvGetRef(vb));
+
+  // step to first positions
+  while (true) {
+    while (va && idxa >= jsvGetMaxCharactersInVar(va)) {
+      JsVarRef n = va->lastChild;
+      idxa -= jsvGetMaxCharactersInVar(va);
+      jsvUnLock(va);
+      va = n ? jsvLock(n) : 0;
+    }
+    while (vb && idxb >= jsvGetMaxCharactersInVar(vb)) {
+      JsVarRef n = vb->lastChild;
+      idxb -= jsvGetMaxCharactersInVar(vb);
+      jsvUnLock(vb);
+      vb = n ? jsvLock(n) : 0;
+    }
+
+    char ca = va ? va->varData.str[idxa] : 0;
+    char cb = vb ? vb->varData.str[idxb] : 0;
+    if (ca != cb) {
+      jsvUnLock(va);
+      jsvUnLock(vb);
+      if ((ca==0 || cb==0) && equalAtEndOfString) return 0;
+      return ca - cb;
+    }
+    if (ca == 0) { // end of string - equal!
+      jsvUnLock(va);
+      jsvUnLock(vb);
+      return 0;
+    }
+
+    idxa++;
+    idxb++;
+  }
+  // never get here, but the compiler warns...
+  return true;
+}
+
 /** Copy only a name, not what it points to */
 JsVar *jsvCopyNameOnly(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);

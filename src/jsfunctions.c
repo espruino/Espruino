@@ -87,6 +87,20 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        jsvUnLock(v);
        return jsvNewFromString(buffer);
      }
+     if (strcmp(name,"indexOf")==0) {
+       // slow, but simple!
+       JsVar *v = jspParseSingleFunction(execInfo);
+       JsVarInt idx = -1;
+       JsVarInt l = jsvGetStringLength(a) - jsvGetStringLength(v);
+       for (idx=0;idx<l;idx++) {
+         if (jsvCompareString(a, v, idx, 0, true)==0) {
+           jsvUnLock(v);
+           return jsvNewFromInteger(idx);
+         }
+       }
+       jsvUnLock(v);
+       return jsvNewFromInteger(-1);
+     }
    }
   if (jsvIsString(a) || jsvIsObject(a)) {
     if (strcmp(name,"clone")==0) {
