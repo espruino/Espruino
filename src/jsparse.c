@@ -754,7 +754,7 @@ JsVar *jspeLogic() {
         JsExecFlags oldExecute = execInfo.execute;
         if (shortCircuit) jspSetNoExecute(); 
         b = jspeCondition();
-        execInfo.execute = oldExecute;
+        if (shortCircuit) execInfo.execute = oldExecute;
         if (JSP_SHOULD_EXECUTE(execInfo) && !shortCircuit) {
             JsVar *res;
             if (boolean) {
@@ -953,7 +953,7 @@ JsVar *jspeStatement() {
         JsExecFlags oldExecute = execInfo.execute;
         if (!loopCond) jspSetNoExecute(); 
         jsvUnLock(jspeStatement());
-        execInfo.execute = oldExecute;
+        if (!loopCond) execInfo.execute = oldExecute;
         jslInitFromLex(&whileBody, execInfo.lex, whileBodyStart);
         oldLex = execInfo.lex;
 
@@ -1009,7 +1009,7 @@ JsVar *jspeStatement() {
         oldExecute = execInfo.execute;
         if (!loopCond) jspSetNoExecute(); 
         jsvUnLock(jspeStatement());
-        execInfo.execute = oldExecute;
+        if (!loopCond) execInfo.execute = oldExecute;
         jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
         oldLex = execInfo.lex;
         if (loopCond) {
