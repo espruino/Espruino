@@ -332,6 +332,7 @@ INLINE_FUNC bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=
 INLINE_FUNC bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
 /// This is the number of characters a JsVar can contain, NOT string length
 INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v) {
+    // see jsvCopy - we need to know about this in there too
     if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3;
     assert(jsvHasCharacterData(v));
     return JSVAR_DATA_STRING_LEN;
@@ -498,6 +499,74 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
+/** If var is a string, lock and return it, else
+ * create a new string  */
+JsVar *jsvAsString(JsVar *var) {
+  if (jsvIsString(var) || jsvIsName(var))
+    return jsvLock(jsvGetRef(var));
+
+  char buf[JSVAR_STRING_OP_BUFFER_SIZE];
+  jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);
+  return jsvNewFromString(buf);
+}
+
+/** Append str to var. Both must be strings */
+void jsvAppendStringVar(JsVar *var, JsVar *str) {
+  assert(jsvIsString(str) || jsvIsName(str));
+  str = jsvLock(jsvGetRef(str));
+  int stridx = 0;
+
+  JsVar *block = jsvLock(jsvGetRef(var));
+  unsigned int blockChars;
+  assert(jsvIsString(var));
+  // Find the block at end of the string...
+  while (block->lastChild) {
+    JsVarRef next = block->lastChild;
+    jsvUnLock(block);
+    block = jsvLock(next);
+  }
+  // find how full the block is
+  blockChars=0;
+  while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
+        blockChars++;
+  // now start appending
+  while (str) {
+    size_t i;
+    // copy data in
+    for (i=blockChars;i<jsvGetMaxCharactersInVar(block);i++) {
+      char ch = 0;
+      if (str) {
+        ch = str->varData.str[stridx];
+        if (ch) {
+          stridx++;
+          if (stridx >= jsvGetMaxCharactersInVar(str)) {
+            JsVarRef n = str->lastChild;
+            stridx = 0;
+            jsvUnLock(str);
+            str = n ? jsvLock(n) : 0;
+          }
+        } else {
+          // we're done with str, deallocate it
+          jsvUnLock(str);
+          str = 0;
+        }
+      }
+      block->varData.str[i] = ch;
+    }
+    // if there is still some left, it's because we filled up our var...
+    // make a new one, link it in, and unlock the old one.
+    if (str) {
+      JsVar *next = jsvRef(jsvNew());
+      next->flags = JSV_STRING_EXT;
+      block->lastChild = next->this;
+      jsvUnLock(block);
+      block = next;
+      blockChars=0; // it's new, so empty
+    }
+  }
+  jsvUnLock(block);
+}
+
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
@@ -563,7 +632,9 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
 
 
 /** Compare 2 strings, starting from the given character positions. equalAtEndOfString means that
- * if one of the strings ends, we treat them as equal. */
+ * if one of the strings ends, we treat them as equal.
+ * For a basic strcmp, do: jsvCompareString(a,b,0,0,false)
+ *  */
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString) {
   int idxa = starta;
   int idxb = startb;
@@ -574,21 +645,21 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 
   // step to first positions
   while (true) {
-    while (va && idxa >= jsvGetMaxCharactersInVar(va)) {
+    while (va && idxa >= (int)jsvGetMaxCharactersInVar(va)) {
       JsVarRef n = va->lastChild;
       idxa -= jsvGetMaxCharactersInVar(va);
       jsvUnLock(va);
       va = n ? jsvLock(n) : 0;
     }
-    while (vb && idxb >= jsvGetMaxCharactersInVar(vb)) {
+    while (vb && idxb >= (int)jsvGetMaxCharactersInVar(vb)) {
       JsVarRef n = vb->lastChild;
       idxb -= jsvGetMaxCharactersInVar(vb);
       jsvUnLock(vb);
       vb = n ? jsvLock(n) : 0;
     }
 
-    char ca = va ? va->varData.str[idxa] : 0;
-    char cb = vb ? vb->varData.str[idxb] : 0;
+    char ca = va ? va->varData.str[idxa] : (char)0;
+    char cb = vb ? vb->varData.str[idxb] : (char)0;
     if (ca != cb) {
       jsvUnLock(va);
       jsvUnLock(vb);
@@ -635,12 +706,18 @@ JsVar *jsvCopyNameOnly(JsVar *src) {
 
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
-  memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
-
-  dst->lastChild = 0;
-  dst->firstChild = 0;
-  dst->prevSibling = 0;
-  dst->nextSibling = 0;
+  if (!jsvIsStringExt(src)) {
+    memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
+    dst->lastChild = 0;
+    dst->firstChild = 0;
+    dst->prevSibling = 0;
+    dst->nextSibling = 0;
+  } else {
+    // stringexts use the extra pointers after varData to store characters
+    // see jsvGetMaxCharactersInVar
+    memcpy(&dst->varData, &src->varData, sizeof(JsVarData)+sizeof(JsVarRef)*3);
+    dst->lastChild = 0;
+  }
 
   // Copy what names point to
   if (jsvIsName(src)) {
@@ -980,24 +1057,28 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
            default: return jsvMathsOpError(op, isArray?"Array":"Object");
       }
     } else {
-       // FIXME - proper string compare and add using the var blocks
-       char da[JSVAR_STRING_OP_BUFFER_SIZE];
-       char db[JSVAR_STRING_OP_BUFFER_SIZE];
-       jsvGetString(a, da, JSVAR_STRING_OP_BUFFER_SIZE);
-       jsvGetString(b, db, JSVAR_STRING_OP_BUFFER_SIZE);
+       JsVar *da = jsvAsString(a);
+       JsVar *db = jsvAsString(b);
+       if (op=='+') {
+         JsVar *v = jsvCopy(da);
+         // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
+         jsvAppendStringVar(v, db);
+         jsvUnLock(da);
+         jsvUnLock(db);
+         return v;
+       }
+
+       int cmp = jsvCompareString(da,db,0,0,false);
+       jsvUnLock(da);
+       jsvUnLock(db);
        // use strings
        switch (op) {
-           case '+': {
-             // FIXME we need to do string add properly
-             strncat(da, db, JSVAR_STRING_OP_BUFFER_SIZE);
-             return jsvNewFromString(da);
-           }
-           case LEX_EQUAL:     return jsvNewFromBool(strcmp(da,db)==0);
-           case LEX_NEQUAL:    return jsvNewFromBool(strcmp(da,db)!=0);
-           case '<':           return jsvNewFromBool(strcmp(da,db)<0);
-           case LEX_LEQUAL:    return jsvNewFromBool(strcmp(da,db)<=0);
-           case '>':           return jsvNewFromBool(strcmp(da,db)>0);
-           case LEX_GEQUAL:    return jsvNewFromBool(strcmp(da,db)>=0);
+           case LEX_EQUAL:     return jsvNewFromBool(cmp==0);
+           case LEX_NEQUAL:    return jsvNewFromBool(cmp!=0);
+           case '<':           return jsvNewFromBool(cmp<0);
+           case LEX_LEQUAL:    return jsvNewFromBool(cmp<=0);
+           case '>':           return jsvNewFromBool(cmp>0);
+           case LEX_GEQUAL:    return jsvNewFromBool(cmp>=0);
            default: return jsvMathsOpError(op, "String");
        }
     }

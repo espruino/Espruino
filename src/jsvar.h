@@ -126,12 +126,14 @@ INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the nu
  */
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 
-/// Save this var as a string to the given buffer
-void jsvGetString(JsVar *v, char *str, size_t len);
+
+void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
+JsVar *jsvAsString(JsVar *var); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
+void jsvAppendStringVar(JsVar *var, JsVar *str); ///< Append str to var. Both must be strings
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat

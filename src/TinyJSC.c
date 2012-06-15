@@ -120,7 +120,7 @@ bool run_test(const char *filename) {
   JsVar *v;
   jsvInit();
   jspInit(&p);
-  //jspAddNativeFunction(&p, "function print(text)", nativePrint);
+  jspAddNativeFunction(&p, "function print(text)", nativePrint);
 
   jsvUnLock(jspEvaluate(&p, buffer ));
 
