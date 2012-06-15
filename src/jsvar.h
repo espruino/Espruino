@@ -133,7 +133,7 @@ size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it i
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
-void jsvAppendStringVar(JsVar *var, JsVar *str); ///< Append str to var. Both must be strings
+void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat

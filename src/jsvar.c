@@ -510,11 +510,11 @@ JsVar *jsvAsString(JsVar *var) {
   return jsvNewFromString(buf);
 }
 
-/** Append str to var. Both must be strings */
-void jsvAppendStringVar(JsVar *var, JsVar *str) {
+/** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters.
+ *  stridx can be negative to go from end of string */
+void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   assert(jsvIsString(str) || jsvIsName(str));
   str = jsvLock(jsvGetRef(str));
-  int stridx = 0;
 
   JsVar *block = jsvLock(jsvGetRef(var));
   unsigned int blockChars;
@@ -529,6 +529,15 @@ void jsvAppendStringVar(JsVar *var, JsVar *str) {
   blockChars=0;
   while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
         blockChars++;
+  // Now make sure we're in the correct block of str
+  if (stridx < 0) stridx = jsvGetStringLength(str)+stridx;
+  while (stridx >= jsvGetMaxCharactersInVar(str)) {
+    JsVarRef n = str->lastChild;
+    stridx -= jsvGetMaxCharactersInVar(str);
+    jsvUnLock(str);
+    str = n ? jsvLock(n) : 0;
+  }
+
   // now start appending
   while (str) {
     size_t i;
@@ -537,7 +546,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str) {
       char ch = 0;
       if (str) {
         ch = str->varData.str[stridx];
-        if (ch) {
+        if (ch && maxLength-->0) {
           stridx++;
           if (stridx >= jsvGetMaxCharactersInVar(str)) {
             JsVarRef n = str->lastChild;
@@ -1062,7 +1071,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
        if (op=='+') {
          JsVar *v = jsvCopy(da);
          // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
-         jsvAppendStringVar(v, db);
+         jsvAppendStringVar(v, db, 0, 0x7FFFFFFF);
          jsvUnLock(da);
          jsvUnLock(db);
          return v;

@@ -55,5 +55,6 @@ typedef struct {
 
 bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
+void jspParseDoubleFunction(JsVar **a, JsVar **b); ///< parse function with 2 arguments, return 2 values (no names!)
 
 #endif /* JSPARSE_H_ */

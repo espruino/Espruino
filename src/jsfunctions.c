@@ -47,6 +47,18 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(v);
       return jsvNewFromInteger(stringToInt(buffer));
     }
+    if (strcmp(name,"valueOf")==0) {
+      // value of a single character
+      int c;
+      JsVar *v = jspParseSingleFunction(execInfo);
+      if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
+        jsvUnLock(v);
+        return jsvNewFromInteger(0);
+      }
+      c = (int)v->varData.str[0];
+      jsvUnLock(v);
+      return jsvNewFromInteger(c);
+    }
   }
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
@@ -61,6 +73,17 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         jsfGetJSON(v, result);
         jsvUnLock(v);
         return result;
+      }
+      if (strcmp(name,"parse")==0) {
+        JsVar *v = jspParseSingleFunction();
+        JsVar *res;
+        JsVar *bracketed = jsvNewFromString("(");
+        jsvAppendStringVar(bracketed, v, 0, 0x7FFFFFFF);
+        jsvUnLock(v);
+        jsvAppendString(bracketed, ")");
+        res = jspEvaluateVar(execInfo->parse, bracketed);
+        jsvUnLock(bracketed);
+        return res;
       }
       // TODO: Add JSON.parse
     }
@@ -89,9 +112,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      }
      if (strcmp(name,"indexOf")==0) {
        // slow, but simple!
-       JsVar *v = jspParseSingleFunction(execInfo);
+       JsVar *v = jspParseSingleFunction();
        JsVarInt idx = -1;
-       JsVarInt l = jsvGetStringLength(a) - jsvGetStringLength(v);
+       int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
        for (idx=0;idx<l;idx++) {
          if (jsvCompareString(a, v, idx, 0, true)==0) {
            jsvUnLock(v);
@@ -101,6 +124,38 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        jsvUnLock(v);
        return jsvNewFromInteger(-1);
      }
+     if (strcmp(name,"substring")==0) {
+       JsVar *vStart, *vEnd, *res;
+       JsVarInt pStart, pEnd;
+       jspParseDoubleFunction(&vStart, &vEnd);
+       pStart = jsvGetInteger(vStart);
+       pEnd = jsvIsUndefined(vEnd) ? 0x7FFFFFFF : jsvGetInteger(vEnd);
+       jsvUnLock(vStart);
+       jsvUnLock(vEnd);
+       if (pStart<0) pStart=0;
+       if (pEnd<0) pEnd=0;
+       if (pEnd<pStart) {
+         int l = pStart;
+         pStart = pEnd;
+         pEnd = l;
+       }
+       res = jsvNewWithFlags(JSV_STRING);
+       jsvAppendStringVar(res, a, pStart, pEnd-(pStart+1));
+       return res;
+     }
+     if (strcmp(name,"substr")==0) {
+        JsVar *vStart, *vLen, *res;
+        JsVarInt pStart, pLen;
+        jspParseDoubleFunction(&vStart, &vLen);
+        pStart = jsvGetInteger(vStart);
+        pLen = jsvIsUndefined(vLen) ? 0x7FFFFFFF : jsvGetInteger(vLen);
+        jsvUnLock(vStart);
+        jsvUnLock(vLen);
+        if (pLen<0) pLen=0;
+        res = jsvNewWithFlags(JSV_STRING);
+        jsvAppendStringVar(res, a, pStart, pLen);
+        return res;
+      }
    }
   if (jsvIsString(a) || jsvIsObject(a)) {
     if (strcmp(name,"clone")==0) {
