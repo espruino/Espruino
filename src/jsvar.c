@@ -539,10 +539,10 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
         blockChars++;
   // Now make sure we're in the correct block of str
-  if (stridx < 0) stridx = jsvGetStringLength(str)+stridx;
-  while (stridx >= jsvGetMaxCharactersInVar(str)) {
+  if (stridx < 0) stridx += (int)jsvGetStringLength(str);
+  while (stridx >= (int)jsvGetMaxCharactersInVar(str)) {
     JsVarRef n = str->lastChild;
-    stridx -= jsvGetMaxCharactersInVar(str);
+    stridx -= (int)jsvGetMaxCharactersInVar(str);
     jsvUnLock(str);
     str = n ? jsvLock(n) : 0;
   }
@@ -557,7 +557,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
         ch = str->varData.str[stridx];
         if (ch && maxLength-->0) {
           stridx++;
-          if (stridx >= jsvGetMaxCharactersInVar(str)) {
+          if (stridx >= (int)jsvGetMaxCharactersInVar(str)) {
             JsVarRef n = str->lastChild;
             stridx = 0;
             jsvUnLock(str);
@@ -668,19 +668,19 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
   while (true) {
     while (va && idxa >= (int)jsvGetMaxCharactersInVar(va)) {
       JsVarRef n = va->lastChild;
-      idxa -= jsvGetMaxCharactersInVar(va);
+      idxa -= (int)jsvGetMaxCharactersInVar(va);
       jsvUnLock(va);
       va = n ? jsvLock(n) : 0;
     }
     while (vb && idxb >= (int)jsvGetMaxCharactersInVar(vb)) {
       JsVarRef n = vb->lastChild;
-      idxb -= jsvGetMaxCharactersInVar(vb);
+      idxb -= (int)jsvGetMaxCharactersInVar(vb);
       jsvUnLock(vb);
       vb = n ? jsvLock(n) : 0;
     }
 
-    char ca = va ? va->varData.str[idxa] : (char)0;
-    char cb = vb ? vb->varData.str[idxb] : (char)0;
+    char ca = (char) (va ? va->varData.str[idxa] : 0);
+    char cb = (char) (vb ? vb->varData.str[idxb] : 0);
     if (ca != cb) {
       jsvUnLock(va);
       jsvUnLock(vb);

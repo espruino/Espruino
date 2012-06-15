@@ -136,7 +136,7 @@ JsVar *jspParseSingleFunction() {
 }
 
 // parse function with 2 arguments, return 2 values (no names!)
-void jspParseDoubleFunction(JsVar **a, JsVar **b) {
+bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
   *a = 0;
   *b = 0;
   JsExecFlags execute = EXEC_YES;
@@ -154,6 +154,7 @@ void jspParseDoubleFunction(JsVar **a, JsVar **b) {
     jsvUnLock(jspeBase(&execute));
   }
   JSP_MATCH(')');
+  return true;
 }
 // -----------------------------------------------
 

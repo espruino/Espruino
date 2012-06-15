@@ -113,7 +113,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      if (strcmp(name,"indexOf")==0) {
        // slow, but simple!
        JsVar *v = jspParseSingleFunction();
-       JsVarInt idx = -1;
+       int idx = -1;
        int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
        for (idx=0;idx<l;idx++) {
          if (jsvCompareString(a, v, idx, 0, true)==0) {
@@ -126,10 +126,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      }
      if (strcmp(name,"substring")==0) {
        JsVar *vStart, *vEnd, *res;
-       JsVarInt pStart, pEnd;
+       int pStart, pEnd;
        jspParseDoubleFunction(&vStart, &vEnd);
-       pStart = jsvGetInteger(vStart);
-       pEnd = jsvIsUndefined(vEnd) ? 0x7FFFFFFF : jsvGetInteger(vEnd);
+       pStart = (int)jsvGetInteger(vStart);
+       pEnd = jsvIsUndefined(vEnd) ? 0x7FFFFFFF : (int)jsvGetInteger(vEnd);
        jsvUnLock(vStart);
        jsvUnLock(vEnd);
        if (pStart<0) pStart=0;
@@ -145,10 +145,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      }
      if (strcmp(name,"substr")==0) {
         JsVar *vStart, *vLen, *res;
-        JsVarInt pStart, pLen;
+        int pStart, pLen;
         jspParseDoubleFunction(&vStart, &vLen);
-        pStart = jsvGetInteger(vStart);
-        pLen = jsvIsUndefined(vLen) ? 0x7FFFFFFF : jsvGetInteger(vLen);
+        pStart = (int)jsvGetInteger(vStart);
+        pLen = jsvIsUndefined(vLen) ? 0x7FFFFFFF : (int)jsvGetInteger(vLen);
         jsvUnLock(vStart);
         jsvUnLock(vLen);
         if (pLen<0) pLen=0;
