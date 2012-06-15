@@ -612,9 +612,12 @@ INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v) {
 
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
-  JsVar *v = jsvLock(jsvGetRef(var));
-  assert(jsvIsBasic(v) || jsvHasCharacterData(v));
-  if (!jsvHasCharacterData(v)) return 0; // not a string so not equal!
+  JsVar *v;
+  assert(jsvIsBasic(var) || jsvHasCharacterData(var));
+  if (!jsvHasCharacterData(var)) {
+    return 0; // not a string so not equal!
+  }
+  v = jsvLock(jsvGetRef(var));
 
   while (true) {
     size_t i;
