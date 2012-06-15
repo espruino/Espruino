@@ -177,6 +177,26 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           if (idx==0) return jsfMakeUndefined();
           return idx;
         }
+       if (strcmp(name,"join")==0) {
+         JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
+
+         JsVar *str = jsvNewFromString("");
+         JsVarRef childRef = a->firstChild;
+         while (childRef) {
+           JsVar *child = jsvLock(childRef);
+           if (child->firstChild) {
+             JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
+             jsvAppendStringVar(str, data, 0, 0x7FFFFFFF);
+             jsvUnLock(data);
+           }
+           childRef = child->nextSibling;
+           jsvUnLock(child);
+           if (childRef)
+             jsvAppendStringVar(str, filler, 0, 0x7FFFFFFF);
+         }
+         jsvUnLock(filler);
+         return str;
+       }
   }
   // unhandled
   return 0;

@@ -500,13 +500,16 @@ void jsvAppendString(JsVar *var, const char *str) {
 }
 
 /** If var is a string, lock and return it, else
- * create a new string  */
-JsVar *jsvAsString(JsVar *var) {
-  if (jsvIsString(var) || jsvIsName(var))
+ * create a new string. unlockVar means this will auto-unlock 'var'  */
+JsVar *jsvAsString(JsVar *var, bool unlockVar) {
+  if (jsvIsString(var) || jsvIsName(var)) {
+    if (unlockVar) return var;
     return jsvLock(jsvGetRef(var));
+  }
 
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
   jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);
+  if (unlockVar) jsvUnLock(var);
   return jsvNewFromString(buf);
 }
 
@@ -1069,8 +1072,8 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
            default: return jsvMathsOpError(op, isArray?"Array":"Object");
       }
     } else {
-       JsVar *da = jsvAsString(a);
-       JsVar *db = jsvAsString(b);
+       JsVar *da = jsvAsString(a, false);
+       JsVar *db = jsvAsString(b, false);
        if (op=='+') {
          JsVar *v = jsvCopy(da);
          // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?

@@ -128,7 +128,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 
 
 void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
-JsVar *jsvAsString(JsVar *var); ///< If var is a string, lock and return it, else create a new string
+JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
