@@ -387,6 +387,12 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   }
 }
 
+bool jsvIsEqual(JsVar *a, JsVar *b) {
+  if (jsvIsBasic(a) && jsvIsBasic(b))
+    return jsvIsBasicVarEqual(a,b);
+  return jsvGetRef(a)==jsvGetRef(b);
+}
+
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
     if (jsvIsUndefined(v)) {

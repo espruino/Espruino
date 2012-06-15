@@ -126,6 +126,9 @@ INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the nu
  */
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 
+/** Check if two things are equal. Basic vars are done by value,
+ * for anything else the reference/pointer must be equal */
+bool jsvIsEqual(JsVar *a, JsVar *b);
 
 void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
