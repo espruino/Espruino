@@ -922,13 +922,13 @@ JsVar *jspeStatement() {
         JsExecFlags oldExecute = execInfo.execute;
         if (!cond) jspSetNoExecute(); 
         jsvUnLock(jspeStatement());
-        execInfo.execute = oldExecute;
+        if (!cond) execInfo.execute = oldExecute;
         if (execInfo.lex->tk==LEX_R_ELSE) {
             JSP_MATCH(LEX_R_ELSE);
             JsExecFlags oldExecute = execInfo.execute;
             if (cond) jspSetNoExecute();
             jsvUnLock(jspeStatement());
-            execInfo.execute = oldExecute;
+            if (cond) execInfo.execute = oldExecute;
         }
     } else if (execInfo.lex->tk==LEX_R_WHILE) {
         int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
