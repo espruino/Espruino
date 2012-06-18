@@ -1083,7 +1083,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
        if (op=='+') {
          JsVar *v = jsvCopy(da);
          // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
-         jsvAppendStringVar(v, db, 0, 0x7FFFFFFF);
+         jsvAppendStringVar(v, db, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
          jsvUnLock(da);
          jsvUnLock(db);
          return v;

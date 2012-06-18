@@ -78,7 +78,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         JsVar *v = jspParseSingleFunction();
         JsVar *res;
         JsVar *bracketed = jsvNewFromString("(");
-        jsvAppendStringVar(bracketed, v, 0, 0x7FFFFFFF);
+        jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
         jsvUnLock(v);
         jsvAppendString(bracketed, ")");
         res = jspEvaluateVar(execInfo->parse, bracketed);
@@ -129,7 +129,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        int pStart, pEnd;
        jspParseDoubleFunction(&vStart, &vEnd);
        pStart = (int)jsvGetInteger(vStart);
-       pEnd = jsvIsUndefined(vEnd) ? 0x7FFFFFFF : (int)jsvGetInteger(vEnd);
+       pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
        jsvUnLock(vStart);
        jsvUnLock(vEnd);
        if (pStart<0) pStart=0;
@@ -148,7 +148,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         int pStart, pLen;
         jspParseDoubleFunction(&vStart, &vLen);
         pStart = (int)jsvGetInteger(vStart);
-        pLen = jsvIsUndefined(vLen) ? 0x7FFFFFFF : (int)jsvGetInteger(vLen);
+        pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
         jsvUnLock(vStart);
         jsvUnLock(vLen);
         if (pLen<0) pLen=0;
@@ -186,13 +186,13 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
            JsVar *child = jsvLock(childRef);
            if (child->firstChild) {
              JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
-             jsvAppendStringVar(str, data, 0, 0x7FFFFFFF);
+             jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
              jsvUnLock(data);
            }
            childRef = child->nextSibling;
            jsvUnLock(child);
            if (childRef)
-             jsvAppendStringVar(str, filler, 0, 0x7FFFFFFF);
+             jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
          }
          jsvUnLock(filler);
          return str;
@@ -221,13 +221,11 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
     JsVarRef childref = var->firstChild;
     jsvAppendString(result,"{");
     while (childref) {
-      char buf[JSLEX_MAX_TOKEN_LENGTH];
       JsVar *child = jsvLock(childref);
       JsVar *childVar;
       // TODO: ability to append one string to another
-      jsvGetString(child, buf, JSLEX_MAX_TOKEN_LENGTH);
       jsvAppendString(result, "\"");
-      jsvAppendString(result, buf); // FIXME: escape the string
+      jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);// FIXME: escape the string
       jsvAppendString(result, "\":");
       childVar = jsvLock(child->firstChild);
       childref = child->nextSibling;
@@ -246,14 +244,11 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
       JsVar *child = jsvLock(childref);
       childref = child->nextSibling;
       if (jsvIsFunctionParameter(child)) {
-        char buf[JSLEX_MAX_TOKEN_LENGTH];
         if (firstParm) 
           firstParm=false;
         else
           jsvAppendString(result, ","); 
-        // TODO: ability to append one string to another      
-        jsvGetString(child, buf, JSLEX_MAX_TOKEN_LENGTH);
-        jsvAppendString(result, buf); // FIXME: escape the string
+        jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH); // FIXME: escape the string
       } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
         coderef = child->firstChild;
       }
@@ -262,10 +257,7 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
     jsvAppendString(result,") ");
     if (coderef) {
        JsVar *codeVar = jsvLock(coderef);
-       // TODO: ability to append one string to another
-       char buf[JSLEX_MAX_TOKEN_LENGTH];
-       jsvGetString(codeVar, buf, JSLEX_MAX_TOKEN_LENGTH);
-       jsvAppendString(result, buf);
+       jsvAppendStringVar(result, codeVar, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
        jsvUnLock(codeVar);
     } else jsvAppendString(result,"{}");
   } else {
