@@ -3,7 +3,7 @@ CFLAGS=-c -g -Wall -Wextra -Wconversion
 LDFLAGS=-g
 
 ifdef ARM
-CC=~/bin/arm/gnuarm/bin/arm-elf-gcc
+CC=arm-none-eabi-gcc
 CFLAGS=-c -Wall -Wextra -Wconversion -Os
 endif
 

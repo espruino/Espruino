@@ -156,6 +156,31 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         jsvAppendStringVar(res, a, pStart, pLen);
         return res;
       }
+      if (strcmp(name,"split")==0) {
+        JsVar *array;
+        int last, idx, arraylen=0;
+        JsVar *split = jspParseSingleFunction();
+        int splitlen =  (int)jsvGetStringLength(split);
+        int l = (int)jsvGetStringLength(a) - splitlen;
+        last = 0;
+
+        array = jsvNewWithFlags(JSV_ARRAY);
+
+        for (idx=0;idx<=l;idx++) {
+          if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
+            JsVar *part = jsvNewFromString("");
+            JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
+            jsvAppendStringVar(part, a, last, idx-(last+1));
+            jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
+            last = idx+splitlen;
+            jsvUnLock(idxvar);
+            jsvUnLock(part);
+          }
+        }
+
+        jsvUnLock(split);
+        return array;
+      }
    }
   if (jsvIsString(a) || jsvIsObject(a)) {
     if (strcmp(name,"clone")==0) {
