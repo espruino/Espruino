@@ -1127,6 +1127,9 @@ void jspInit(JsParse *parse) {
   parse->intClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jsvUnLock(jsvAddNamedChild(parse->root, parse->intClass, "Integer"));
   jsvUnRefRef(parse->intClass);
+  parse->doubleClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  jsvUnLock(jsvAddNamedChild(parse->root, parse->doubleClass, "Double"));
+  jsvUnRefRef(parse->doubleClass);
   parse->mathClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
   jsvUnLock(jsvAddNamedChild(parse->root, parse->mathClass, "Math"));
   jsvUnRefRef(parse->mathClass);

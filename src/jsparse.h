@@ -21,6 +21,7 @@ typedef struct {
   JsVarRef objectClass; ///< Built in object class
   JsVarRef arrayClass; ///< Built in array class
   JsVarRef intClass; ///< Built in integer class
+  JsVarRef doubleClass; ///< Built in double class
   JsVarRef mathClass; ///< Built in maths class
   JsVarRef jsonClass; ///< Built in json class
 } JsParse;

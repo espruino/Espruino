@@ -60,6 +60,14 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return jsvNewFromInteger(c);
     }
   }
+  if (jsvGetRef(a) == execInfo->parse->doubleClass) {
+    if (strcmp(name,"doubleToIntBits")==0) {
+      JsVar *v = jspParseSingleFunction(execInfo);
+      JsVarFloat f = jsvGetDouble(v);
+      jsvUnLock(v);
+      return jsvNewFromInteger(*(JsVarInt*)&f);
+    }
+  }
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
       if (jspParseEmptyFunction())
