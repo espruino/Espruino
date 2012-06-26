@@ -10,7 +10,7 @@
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
 #ifdef ARM
-#define JSVAR_CACHE_SIZE 100
+#define JSVAR_CACHE_SIZE 350
 #else
 #define JSVAR_CACHE_SIZE 2000
 #endif
