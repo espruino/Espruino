@@ -67,6 +67,7 @@ JsVarInt stringToInt(const char *s) {
       v = (v*radix) + (10 + *s - 'a');
     else if (*s >= 'A' && *s <= 'F')
       v = (v*radix) + (10 + *s - 'A');
+    else break;
     s++;
   }
 
@@ -201,8 +202,41 @@ int rand() {
         return 0; //FIXME
 }
 
-JsVarFloat atof(const char *str) {
-        return 0; //FIXME
+JsVarFloat atof(const char *s) {
+  bool isNegated = false;
+  bool hasDot = false;
+  JsVarFloat v = 0;
+  JsVarFloat mul = 0.1;
+  if (*s == '-') { 
+    isNegated = true;
+    s++;
+  }
+  while (*s) {
+    if (!hasDot) { 
+      if (*s == '.') 
+        hasDot = true;
+      else if (*s >= '0' && *s <= '9')
+        v = (v*10) + (*s - '0');
+      else if (*s >= 'a' && *s <= 'f')
+        v = (v*10) + (10 + *s - 'a');
+      else if (*s >= 'A' && *s <= 'F')
+        v = (v*10) + (10 + *s - 'A');
+      else break;
+    } else {
+      if (*s >= '0' && *s <= '9')
+        v += mul*(*s - '0');
+      else if (*s >= 'a' && *s <= 'f')
+        v += mul*(10 + *s - 'a');
+      else if (*s >= 'A' && *s <= 'F')
+        v += mul*(10 + *s - 'A');
+      else break;
+      mul = mul / 10;
+    }
+    s++;
+  }
+
+  if (isNegated) return -v;
+  return v;
 }
 
 #endif
