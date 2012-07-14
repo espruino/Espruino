@@ -556,7 +556,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
       char ch = 0;
       if (str) {
         ch = str->varData.str[stridx];
-        if (ch && maxLength-->0) {
+        if (ch && --maxLength>0) {
           stridx++;
           if (stridx >= (int)jsvGetMaxCharactersInVar(str)) {
             JsVarRef n = str->lastChild;

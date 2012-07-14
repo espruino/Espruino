@@ -148,7 +148,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          pEnd = l;
        }
        res = jsvNewWithFlags(JSV_STRING);
-       jsvAppendStringVar(res, a, pStart, pEnd-(pStart+1));
+       jsvAppendStringVar(res, a, pStart, pEnd-pStart);
        return res;
      }
      if (strcmp(name,"substr")==0) {

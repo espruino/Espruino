@@ -11,6 +11,8 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       'for (i in array)' syntax
+ *       'if ("key" in obj)' syntax
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
