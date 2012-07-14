@@ -293,6 +293,10 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
        jsvAppendStringVar(result, codeVar, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
        jsvUnLock(codeVar);
     } else jsvAppendString(result,"{}");
+  } else if (jsvIsString(var)) {
+    jsvAppendString(result,"\"");
+    jsvAppendStringVar(result, var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvAppendString(result,"\"");
   } else {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(var, buf, JSLEX_MAX_TOKEN_LENGTH);

@@ -43,6 +43,7 @@ typedef unsigned long JsVarIntUnsigned;
 #endif
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3)
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
@@ -165,6 +166,7 @@ void jsAssertFail(const char *file, int line);
 void jsPrint(const char *txt);
 /// Helper function - prints an integer
 void jsPrintInt(int d);
+
 
 #ifdef SDCC
 void exit(int errcode);

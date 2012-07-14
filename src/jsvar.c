@@ -334,7 +334,7 @@ INLINE_FUNC bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || 
 /// This is the number of characters a JsVar can contain, NOT string length
 INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v) {
     // see jsvCopy - we need to know about this in there too
-    if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3;
+    if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
     assert(jsvHasCharacterData(v));
     return JSVAR_DATA_STRING_LEN;
 }
@@ -585,6 +585,23 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   }
   jsvUnLock(block);
 }
+
+/// Print the contents of a string var - directly
+void jsvPrintStringVar(JsVar *v) {
+  assert(jsvIsString(v));
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    int l = jsvGetMaxCharactersInVar(v);
+    char buf[JSVAR_DATA_STRING_MAX_LEN+1];
+    memcpy(buf, v->varData.str, l);
+    buf[l] = 0;
+    jsPrint(buf);
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+}
+
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
