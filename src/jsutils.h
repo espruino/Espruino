@@ -58,6 +58,7 @@ typedef unsigned long JsVarIntUnsigned;
 #define JSPARSE_PROTOTYPE_CLASS "prototype"
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
+#define JSPARSE_FUNCTION_SCOPE_NAME "#scope#"
 
 #if 1 // ndef ARM
  #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);

@@ -103,6 +103,33 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   // no luck!
   return 0;
 }
+
+JsVar *jspeiGetScopesAsVar() {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  int i;
+  for (i=0;i<execInfo.scopeCount;i++) {
+      //printf("%d %d\n",i,execInfo.scopes[i]);
+      JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
+      jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
+      jsvUnLock(idx);
+  }
+  //printf("%d\n",arr->firstChild);
+  return arr;
+}
+
+void jspeiLoadScopesFromVar(JsVar *arr) {
+    execInfo.scopeCount = 0;
+    //printf("%d\n",arr->firstChild);
+    JsVarRef childref = arr->firstChild;
+    while (childref) {
+      JsVar *child = jsvLock(childref);
+      //printf("%d %d %d %d\n",execInfo.scopeCount,childref,child, child->firstChild);
+      execInfo.scopes[execInfo.scopeCount] = jsvRefRef(child->firstChild);
+      execInfo.scopeCount++;
+      childref = child->nextSibling;
+      jsvUnLock(child);
+    }
+}
 // -----------------------------------------------
 
 // Set execFlags such that we are not executing
@@ -271,9 +298,14 @@ JsVar *jspeFunctionDefinition() {
   execInfo.execute = oldExecute;
   // Then create var and set
   if (JSP_SHOULD_EXECUTE(execInfo)) {
+    // code var
     JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, execInfo.lex->tokenLastEnd+1);
     jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcCodeVar), JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
+    // scope var
+    JsVar *funcScopeVar = jspeiGetScopesAsVar();
+    jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcScopeVar), JSPARSE_FUNCTION_SCOPE_NAME));
+    jsvUnLock(funcScopeVar);
   }
   return funcVar;
 }
@@ -353,6 +385,23 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
         assert(function->varData.callback);
         function->varData.callback(jsvGetRef(functionRoot));
     } else {
+        // save old scopes
+        JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
+        int oldScopeCount;
+        // if we have a scope var, load it up
+        JsVar *functionScope = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_SCOPE_NAME, false);
+        if (functionScope) {
+            int i;
+            oldScopeCount = execInfo.scopeCount;
+            for (i=0;i<execInfo.scopeCount;i++)
+                oldScopes[i] = execInfo.scopes[i];
+            JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
+            jsvTrace(jsvGetRef(functionScopeVar),5);
+            jspeiLoadScopesFromVar(functionScopeVar);
+            jsvUnLock(functionScopeVar);
+            jsvUnLock(functionScope);
+        }
+
         /* we just want to execute the block, but something could
          * have messed up and left us with the wrong ScriptLex, so
          * we want to be careful here... */
@@ -373,6 +422,16 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
           execInfo.execute = oldExecute; // because return will probably have set execute to false
           jslKill(&newLex);
           execInfo.lex = oldLex;
+        }
+
+        if (functionScope) {
+            int i;
+            // Unref old scopes
+            for (i=0;i<execInfo.scopeCount;i++)
+                jsvUnRefRef(execInfo.scopes[i]);
+            // restore function scopes
+            for (i=0;i<oldScopeCount;i++)
+                execInfo.scopes[i] = oldScopes[i];
         }
     }
 #ifdef JSPARSE_CALL_STACK

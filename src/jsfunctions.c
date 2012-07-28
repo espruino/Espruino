@@ -256,7 +256,6 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
     while (childref) {
       JsVar *child = jsvLock(childref);
       JsVar *childVar;
-      // TODO: ability to append one string to another
       jsvAppendString(result, "\"");
       jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);// FIXME: escape the string
       jsvAppendString(result, "\":");
