@@ -107,6 +107,8 @@ void jsvFreePtr(JsVar *var) {
           child->prevSibling = 0;
           child->nextSibling = 0;
           jsvUnRef(child);
+          if (child->refs > 0 && jsvGetRefCount(child, child)==child->refs)
+            jsvFreePtr(child);
           jsvUnLock(child);
         }
       } else {
@@ -124,6 +126,8 @@ void jsvFreePtr(JsVar *var) {
         child->prevSibling = 0;
         child->nextSibling = 0;
         jsvUnRef(child);
+        if (child->refs > 0 && jsvGetRefCount(child, child)==child->refs)
+            jsvFreePtr(child);
         jsvUnLock(child);
       }
     } else {
@@ -331,6 +335,8 @@ INLINE_FUNC bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMA
 INLINE_FUNC bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 INLINE_FUNC bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; }
 INLINE_FUNC bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
+INLINE_FUNC bool jsvHasChildren(const JsVar *v) { return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v); }
+
 /// This is the number of characters a JsVar can contain, NOT string length
 INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v) {
     // see jsvCopy - we need to know about this in there too
@@ -1280,4 +1286,28 @@ void jsvTrace(JsVarRef ref, int indent) {
 
     jsvUnLock(var);
 #endif
+}
+
+/** Count references of 'toCount' starting from 'var' - for garbage collection on free */
+int jsvGetRefCount(JsVar *toCount, JsVar *var) {
+    if (var == toCount) return 1;
+    int refCount = 0;
+
+    if (jsvIsName(var)) {
+      JsVarRef child = var->firstChild;
+      JsVar *childVar = jsvLock(child);
+      refCount += jsvGetRefCount(toCount, childVar);
+      child = childVar->firstChild;
+      jsvUnLock(childVar);
+    } else if (jsvHasChildren(var)) {
+      JsVarRef child = var->firstChild;
+      while (child) {
+        JsVar *childVar;
+        childVar = jsvLock(child);
+        refCount += jsvGetRefCount(toCount, childVar);
+        child = childVar->nextSibling;
+        jsvUnLock(childVar);
+      }
+    }
+    return refCount;
 }

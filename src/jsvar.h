@@ -119,6 +119,7 @@ INLINE_FUNC bool jsvIsNull(const JsVar *v);
 INLINE_FUNC bool jsvIsBasic(const JsVar *v);
 INLINE_FUNC bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 INLINE_FUNC bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
+INLINE_FUNC bool jsvHasChildren(const JsVar *v);
 INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
@@ -176,5 +177,11 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the v
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);
+
+/** Count references of 'toCount' starting from 'var' - for garbage collection */
+int jsvGetRefCount(JsVar *toCount, JsVar *var);
+/** garbage collect var and its children */
+void jsvGarbageCollect(JsVar *var);
+
 
 #endif /* JSVAR_H_ */

@@ -140,6 +140,7 @@ bool run_test(const char *filename) {
     printf("----------------------------------\n");
   }
   printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
+ // jsvTrace(p.root, 0);
   jspKill(&p);
   printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
   jsvShowAllocated();
