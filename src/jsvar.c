@@ -1250,7 +1250,9 @@ void jsvTrace(JsVarRef ref, int indent) {
         jsPrint(")\n");
       } else
           jsPrint("\n");
-    } else {
+    } else if (var->locks <= 1) {
+      /* we don't recurse if locks>1 as it probably means that
+       * we had already recursed into this... */
       JsVarRef child = var->firstChild;
       jsPrint("\n");
       // dump children
@@ -1261,6 +1263,8 @@ void jsvTrace(JsVarRef ref, int indent) {
         child = childVar->nextSibling;
         jsvUnLock(childVar);
       }
+    } else {
+        jsPrint(" ... ");
     }
 
 

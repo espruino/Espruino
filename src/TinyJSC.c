@@ -11,6 +11,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       Garbage collection for nested references
  *       'for (i in array)' syntax
  *       'if ("key" in obj)' syntax
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
@@ -23,8 +24,7 @@
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
  *       Add require(filename) function
- *       Add Array.push()/indexOf/splice
- *       Add String builtins
+ *       Add Array.push()/splice
  *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
  *
