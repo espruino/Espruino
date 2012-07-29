@@ -893,6 +893,31 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
   return child;
 }
 
+void jsvRemoveChild(JsVar *parent, JsVar *child) {
+    assert(jsvIsArray(parent) || jsvIsObject(parent) || jsvIsFunction(parent));
+    JsVarRef childref = jsvGetRef(child);
+    // unlink from parent
+    if (parent->firstChild == childref)
+        parent->firstChild = child->nextSibling;
+    if (parent->lastChild == childref)
+        parent->lastChild = child->prevSibling;
+    // unlink from child list
+    if (child->prevSibling) {
+        JsVar *v = jsvLock(child->prevSibling);
+        v->nextSibling = child->nextSibling;
+        jsvUnLock(v);
+        child->prevSibling = 0;
+    }
+    if (child->nextSibling) {
+        JsVar *v = jsvLock(child->nextSibling);
+        v->prevSibling = child->prevSibling;
+        jsvUnLock(v);
+        child->nextSibling = 0;
+    }
+
+    jsvUnRef(child);
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;

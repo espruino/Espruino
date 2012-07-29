@@ -167,7 +167,7 @@ JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // A
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-
+void jsvRemoveChild(JsVar *parent, JsVar *child);
 
 int jsvGetChildren(JsVar *v);
 JsVarInt jsvGetArrayLength(JsVar *v); ///< Not the same as GetChildren, as it can be a sparse array

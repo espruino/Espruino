@@ -333,8 +333,9 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
     // OPT: can we cache this function execution environment + param variables?
     // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
     functionRoot = jsvNewWithFlags(JSV_FUNCTION);
+    JsVar *thisVar = 0;
     if (parent)
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(functionRoot), jsvGetRef(parent), JSPARSE_THIS_VAR));
+        thisVar = jsvAddNamedChild(jsvGetRef(functionRoot), jsvGetRef(parent), JSPARSE_THIS_VAR);
     // grab in all parameters
     v = function->firstChild;
     while (v) {
@@ -374,8 +375,6 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
     JSP_MATCH(')');
     // setup a return variable
     returnVarName = jsvAddNamedChild(jsvGetRef(functionRoot), 0, JSPARSE_RETURN_VAR);
-    // add the function's execute space to the symbol table so we can recurse
-    jspeiAddScope(jsvGetRef(functionRoot));
     //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
 #ifdef JSPARSE_CALL_STACK
     call_stack.push_back(function->name + " from " + l->getPosition());
@@ -396,11 +395,13 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
             for (i=0;i<execInfo.scopeCount;i++)
                 oldScopes[i] = execInfo.scopes[i];
             JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-            jsvTrace(jsvGetRef(functionScopeVar),5);
+            //jsvTrace(jsvGetRef(functionScopeVar),5);
             jspeiLoadScopesFromVar(functionScopeVar);
             jsvUnLock(functionScopeVar);
             jsvUnLock(functionScope);
         }
+        // add the function's execute space to the symbol table so we can recurse
+        jspeiAddScope(jsvGetRef(functionRoot));
 
         /* we just want to execute the block, but something could
          * have messed up and left us with the wrong ScriptLex, so
@@ -424,6 +425,8 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
           execInfo.lex = oldLex;
         }
 
+        jspeiRemoveScope();
+
         if (functionScope) {
             int i;
             // Unref old scopes
@@ -432,12 +435,19 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
             // restore function scopes
             for (i=0;i<oldScopeCount;i++)
                 execInfo.scopes[i] = oldScopes[i];
+            execInfo.scopeCount = oldScopeCount;
         }
     }
 #ifdef JSPARSE_CALL_STACK
     if (!call_stack.empty()) call_stack.pop_back();
 #endif
-    jspeiRemoveScope();
+
+    /* Now remove 'this' var */
+    if (thisVar) {
+        jsvRemoveChild(functionRoot, thisVar);
+        jsvUnLock(thisVar);
+        thisVar = 0;
+    }
     /* get the real return var before we remove it from our function */
     returnVar = jsvSkipNameAndUnlock(returnVarName);
     jsvUnLock(functionRoot);
