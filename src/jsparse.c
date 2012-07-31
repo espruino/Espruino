@@ -317,7 +317,7 @@ JsVar *jspeFunctionDefinition() {
  * on the start bracket). 'parent' is the object that contains this method,
  * if there was one (otherwise it's just a normnal function).
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
+JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
   if (JSP_SHOULD_EXECUTE(execInfo) && !function) {
       jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastEnd );
   }
@@ -331,7 +331,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
         jsErrorAt("Expecting a function to call", execInfo.lex, execInfo.lex->tokenLastEnd );
         return 0;
     }
-    JSP_MATCH('(');
+    if (isParsing) JSP_MATCH('(');
     // create a new symbol table entry for execution of this function
     // OPT: can we cache this function execution environment + param variables?
     // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
@@ -339,9 +339,10 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
     JsVar *thisVar = 0;
     if (parent)
         thisVar = jsvAddNamedChild(jsvGetRef(functionRoot), jsvGetRef(parent), JSPARSE_THIS_VAR);
-    // grab in all parameters
-    v = function->firstChild;
-    while (v) {
+    if (isParsing) {
+      // grab in all parameters
+      v = function->firstChild;
+      while (v) {
         JsVar *param = jsvLock(v);
         if (jsvIsFunctionParameter(param)) {
           JsVar *valueName = 0;
@@ -369,13 +370,14 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
         }
         v = param->nextSibling;
         jsvUnLock(param);
+      }
+      // throw away extra params
+      while (execInfo.lex->tk != ')') {
+        JSP_MATCH(',');
+        jsvUnLock(jspeBase());
+      }
+      JSP_MATCH(')');
     }
-    // throw away extra params
-    while (execInfo.lex->tk != ')') {
-      JSP_MATCH(',');
-      jsvUnLock(jspeBase());
-    }
-    JSP_MATCH(')');
     // setup a return variable
     returnVarName = jsvAddNamedChild(jsvGetRef(functionRoot), 0, JSPARSE_RETURN_VAR);
     //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
@@ -459,7 +461,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
       return returnVar;
     else
       return 0;
-  } else {
+  } else if (isParsing) {
     // function, but not executing - just parse args and be done
     JSP_MATCH('(');
     while (execInfo.lex->tk != ')') {
@@ -471,7 +473,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
     /* function will be a blank scriptvarlink if we're not executing,
      * so just return it rather than an alloc/free */
     return function;
-  }
+  } else return 0;
 }
 
 JsVar *jspeFactor() {
@@ -521,7 +523,7 @@ JsVar *jspeFactor() {
             if (execInfo.lex->tk=='(') { // ------------------------------------- Function Call
               JsVar *func = 0;
               func = jsvSkipNameAndUnlock(a);
-              a = jspeFunctionCall(func, parent);
+              a = jspeFunctionCall(func, parent, true);
               jsvUnLock(func);
             } else if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
@@ -688,7 +690,7 @@ JsVar *jspeFactor() {
         JSP_MATCH(LEX_ID);
         obj = jsvNewWithFlags(JSV_OBJECT);
         if (jsvIsFunction(objClassOrFunc)) {
-          jsvUnLock(jspeFunctionCall(objClassOrFunc, obj));
+          jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true));
         } else {
           jsvUnLock(jsvAddNamedChild(jsvGetRef(obj), jsvGetRef(objClassOrFunc), JSPARSE_PROTOTYPE_CLASS));
           if (execInfo.lex->tk == '(') {
@@ -1259,4 +1261,19 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   jsvUnLock(evCode);
 
   return v;
+}
+
+void jspExecuteFunction(JsParse *parse, JsVar *func) {
+  JsExecFlags execute = EXEC_YES;
+  JsVar *v = 0;
+  JsExecInfo oldExecInfo = execInfo;
+
+  jspeiInit(parse, 0);
+  JsVar *result = jspeFunctionCall(func, 0, false);
+  jsvUnLock(result);
+  // clean up
+  jspeiKill();
+  // restore state
+  execInfo = oldExecInfo;
+
 }

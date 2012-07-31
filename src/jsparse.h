@@ -32,6 +32,7 @@ void jspKill(JsParse *parse);
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
+void jspExecuteFunction(JsParse *parse, JsVar *func);
 
 /** When parsing, this enum defines whether
  we are executing or not */

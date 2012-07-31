@@ -193,6 +193,7 @@ JsVarFloat atof(const char *str);
 
 void itoa(JsVarInt val,char *str,unsigned int base);
 void ftoa(JsVarFloat val,char *str);
+char itoch(int val);
 
 
 #endif /* JSUTILS_H_ */

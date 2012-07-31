@@ -150,7 +150,7 @@ INLINE_FUNC bool jsvGetBool(const JsVar *v);
  * ALWAYS locks - so must unlock what it returns. */
 INLINE_FUNC JsVar *jsvSkipName(JsVar *a);
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used INLINE_FUNC */
+ * a name, so it can be used inline */
 INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a);
 INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
 INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
