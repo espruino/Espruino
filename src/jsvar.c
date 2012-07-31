@@ -809,6 +809,7 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
   JsVar *namedChild = jsvRef(jsvLock(namedChildRef));
   assert(jsvIsName(namedChild));
   v = jsvLock(parent);
+  // TODO: if array, insert in correct order
   if (v->lastChild) {
     // Link 2 children together
     JsVar *lastChild = jsvLock(v->lastChild);
