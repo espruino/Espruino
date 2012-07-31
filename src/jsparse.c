@@ -105,6 +105,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
 }
 
 JsVar *jspeiGetScopesAsVar() {
+  if (execInfo.scopeCount==0) return 0;
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   int i;
   for (i=0;i<execInfo.scopeCount;i++) {
@@ -304,8 +305,10 @@ JsVar *jspeFunctionDefinition() {
     jsvUnLock(funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
-    jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcScopeVar), JSPARSE_FUNCTION_SCOPE_NAME));
-    jsvUnLock(funcScopeVar);
+    if (funcScopeVar) {
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcScopeVar), JSPARSE_FUNCTION_SCOPE_NAME));
+      jsvUnLock(funcScopeVar);
+    }
   }
   return funcVar;
 }
@@ -387,7 +390,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
         // save old scopes
         JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
         int oldScopeCount;
-        // if we have a scope var, load it up
+        // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
         JsVar *functionScope = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_SCOPE_NAME, false);
         if (functionScope) {
             int i;

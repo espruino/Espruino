@@ -138,8 +138,8 @@ void jsvFreePtr(JsVar *var) {
 
 // Just for debugging so we can see when something has been freed in a non-normal way.
 void jsvFreeLoopedRefPtr(JsVar *var) {
-    printf("jsvFreeLoopedRefPtr refs %d\n", var->refs);
-    jsvTrace(jsvGetRef(var), 2);
+    //printf("jsvFreeLoopedRefPtr refs %d\n", var->refs);
+    //jsvTrace(jsvGetRef(var), 2);
     jsvFreePtr(var);
 }
 
