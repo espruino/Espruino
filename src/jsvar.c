@@ -78,12 +78,6 @@ JsVar *jsvNew() {
 void jsvFreePtr(JsVar *var) {
     // we shouldn't be linked from anywhere!
     assert(!var->nextSibling && !var->prevSibling);
-    // free!
-    var->refs = JSVAR_CACHE_UNUSED_REF;
-
-    // add this to our free list
-    var->nextSibling = jsVarFirstEmpty; 
-    jsVarFirstEmpty = var->this;
 
     /* Now, unref children - see jsvar.h comments for how! */
     if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
@@ -107,8 +101,8 @@ void jsvFreePtr(JsVar *var) {
           child->prevSibling = 0;
           child->nextSibling = 0;
           jsvUnRef(child);
-          if (child->refs > 0 && jsvGetRefCount(child, child)==child->refs)
-            jsvFreePtr(child);
+          if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
+              jsvFreeLoopedRefPtr(child);
           jsvUnLock(child);
         }
       } else {
@@ -126,15 +120,28 @@ void jsvFreePtr(JsVar *var) {
         child->prevSibling = 0;
         child->nextSibling = 0;
         jsvUnRef(child);
-        if (child->refs > 0 && jsvGetRefCount(child, child)==child->refs)
-            jsvFreePtr(child);
+        if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
+            jsvFreeLoopedRefPtr(child);
         jsvUnLock(child);
       }
     } else {
       assert(!var->firstChild);
       assert(!var->lastChild);
     }
-  }
+
+    // free!
+    var->refs = JSVAR_CACHE_UNUSED_REF;
+    // add this to our free list
+    var->nextSibling = jsVarFirstEmpty;
+    jsVarFirstEmpty = var->this;
+}
+
+// Just for debugging so we can see when something has been freed in a non-normal way.
+void jsvFreeLoopedRefPtr(JsVar *var) {
+    printf("jsvFreeLoopedRefPtr refs %d\n", var->refs);
+    jsvTrace(jsvGetRef(var), 2);
+    jsvFreePtr(var);
+}
 
 //int c = 0;
 
@@ -1256,9 +1263,9 @@ void jsvTrace(JsVarRef ref, int indent) {
         jsPrint(")\n");
       } else
           jsPrint("\n");
-    } else if (var->locks <= 1) {
-      /* we don't recurse if locks>1 as it probably means that
-       * we had already recursed into this... */
+    } else if (!(var->flags & JSV_IS_RECURSING)) {
+      /* IS_RECURSING check stops infinite loops */
+      var->flags |= JSV_IS_RECURSING;
       JsVarRef child = var->firstChild;
       jsPrint("\n");
       // dump children
@@ -1269,6 +1276,7 @@ void jsvTrace(JsVarRef ref, int indent) {
         child = childVar->nextSibling;
         jsvUnLock(childVar);
       }
+      var->flags &= ~JSV_IS_RECURSING;
     } else {
         jsPrint(" ... ");
     }
@@ -1290,13 +1298,15 @@ void jsvTrace(JsVarRef ref, int indent) {
 
 /** Count references of 'toCount' starting from 'var' - for garbage collection on free */
 int jsvGetRefCount(JsVar *toCount, JsVar *var) {
-    if (var == toCount) return 1;
     int refCount = 0;
 
     if (jsvIsName(var)) {
       JsVarRef child = var->firstChild;
       JsVar *childVar = jsvLock(child);
-      refCount += jsvGetRefCount(toCount, childVar);
+      if (childVar == toCount)
+          refCount+=1;
+      else
+          refCount += jsvGetRefCount(toCount, childVar);
       child = childVar->firstChild;
       jsvUnLock(childVar);
     } else if (jsvHasChildren(var)) {
@@ -1304,7 +1314,10 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var) {
       while (child) {
         JsVar *childVar;
         childVar = jsvLock(child);
-        refCount += jsvGetRefCount(toCount, childVar);
+        if (childVar == toCount)
+            refCount+=1;
+        else
+            refCount += jsvGetRefCount(toCount, childVar);
         child = childVar->nextSibling;
         jsvUnLock(childVar);
       }

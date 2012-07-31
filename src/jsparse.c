@@ -450,6 +450,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent) {
     }
     /* get the real return var before we remove it from our function */
     returnVar = jsvSkipNameAndUnlock(returnVarName);
+    jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
     jsvUnLock(functionRoot);
     if (returnVar)
       return returnVar;
