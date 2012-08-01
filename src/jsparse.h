@@ -21,6 +21,7 @@ typedef struct {
   JsVarRef objectClass; ///< Built in object class
   JsVarRef arrayClass; ///< Built in array class
   JsVarRef intClass; ///< Built in integer class
+  JsVarRef doubleClass; ///< Built in double class
   JsVarRef mathClass; ///< Built in maths class
   JsVarRef jsonClass; ///< Built in json class
 } JsParse;
@@ -31,6 +32,7 @@ void jspKill(JsParse *parse);
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
+void jspExecuteFunction(JsParse *parse, JsVar *func);
 
 /** When parsing, this enum defines whether
  we are executing or not */
@@ -47,6 +49,7 @@ typedef struct {
   JsParse *parse;
   JsLex *lex;
 
+  // TODO: could store scopes as JsVar array for speed
   JsVarRef scopes[JSPARSE_MAX_SCOPES];
   int scopeCount;
 

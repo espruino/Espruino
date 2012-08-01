@@ -119,6 +119,7 @@ INLINE_FUNC bool jsvIsNull(const JsVar *v);
 INLINE_FUNC bool jsvIsBasic(const JsVar *v);
 INLINE_FUNC bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
 INLINE_FUNC bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
+INLINE_FUNC bool jsvHasChildren(const JsVar *v);
 INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
@@ -138,6 +139,8 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
+/// Print the contents of a string var - directly
+void jsvPrintStringVar(JsVar *v);
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat
@@ -147,7 +150,7 @@ INLINE_FUNC bool jsvGetBool(const JsVar *v);
  * ALWAYS locks - so must unlock what it returns. */
 INLINE_FUNC JsVar *jsvSkipName(JsVar *a);
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used INLINE_FUNC */
+ * a name, so it can be used inline */
 INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a);
 INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
 INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
@@ -165,6 +168,7 @@ JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // A
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+void jsvRemoveChild(JsVar *parent, JsVar *child);
 
 int jsvGetChildren(JsVar *v);
 JsVarInt jsvGetArrayLength(JsVar *v); ///< Not the same as GetChildren, as it can be a sparse array
@@ -173,5 +177,11 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the v
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);
+
+/** Count references of 'toCount' starting from 'var' - for garbage collection */
+int jsvGetRefCount(JsVar *toCount, JsVar *var);
+/** garbage collect var and its children */
+void jsvGarbageCollect(JsVar *var);
+
 
 #endif /* JSVAR_H_ */

@@ -60,6 +60,14 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return jsvNewFromInteger(c);
     }
   }
+  if (jsvGetRef(a) == execInfo->parse->doubleClass) {
+    if (strcmp(name,"doubleToIntBits")==0) {
+      JsVar *v = jspParseSingleFunction(execInfo);
+      JsVarFloat f = jsvGetDouble(v);
+      jsvUnLock(v);
+      return jsvNewFromInteger(*(JsVarInt*)&f);
+    }
+  }
   if (jsvGetRef(a) == execInfo->parse->mathClass) {
     if (strcmp(name,"random")==0) {
       if (jspParseEmptyFunction())
@@ -140,7 +148,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          pEnd = l;
        }
        res = jsvNewWithFlags(JSV_STRING);
-       jsvAppendStringVar(res, a, pStart, pEnd-(pStart+1));
+       jsvAppendStringVar(res, a, pStart, pEnd-pStart);
        return res;
      }
      if (strcmp(name,"substr")==0) {
@@ -155,6 +163,31 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         res = jsvNewWithFlags(JSV_STRING);
         jsvAppendStringVar(res, a, pStart, pLen);
         return res;
+      }
+      if (strcmp(name,"split")==0) {
+        JsVar *array;
+        int last, idx, arraylen=0;
+        JsVar *split = jspParseSingleFunction();
+        int splitlen =  (int)jsvGetStringLength(split);
+        int l = (int)jsvGetStringLength(a) - splitlen;
+        last = 0;
+
+        array = jsvNewWithFlags(JSV_ARRAY);
+
+        for (idx=0;idx<=l;idx++) {
+          if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
+            JsVar *part = jsvNewFromString("");
+            JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
+            jsvAppendStringVar(part, a, last, idx-(last+1));
+            jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
+            last = idx+splitlen;
+            jsvUnLock(idxvar);
+            jsvUnLock(part);
+          }
+        }
+
+        jsvUnLock(split);
+        return array;
       }
    }
   if (jsvIsString(a) || jsvIsObject(a)) {
@@ -223,7 +256,6 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
     while (childref) {
       JsVar *child = jsvLock(childref);
       JsVar *childVar;
-      // TODO: ability to append one string to another
       jsvAppendString(result, "\"");
       jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);// FIXME: escape the string
       jsvAppendString(result, "\":");
@@ -260,6 +292,10 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
        jsvAppendStringVar(result, codeVar, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
        jsvUnLock(codeVar);
     } else jsvAppendString(result,"{}");
+  } else if (jsvIsString(var)) {
+    jsvAppendString(result,"\"");
+    jsvAppendStringVar(result, var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvAppendString(result,"\"");
   } else {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(var, buf, JSLEX_MAX_TOKEN_LENGTH);

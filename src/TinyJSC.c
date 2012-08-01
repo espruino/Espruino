@@ -1,6 +1,10 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       print("press " + count++); fails, but print("press " + (count++)); works
+ *       Garbage collection for nested references
+ *       'for (i in array)' syntax
+ *       'if ("key" in obj)' syntax
  *       function.call(scope)
  *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
  *       'Array.prototype.clear = function () { this.X = 2e23; };'
@@ -14,8 +18,7 @@
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
  *       Add require(filename) function
- *       Add Array.push()/indexOf/splice
- *       Add String builtins
+ *       Add Array.push()/splice
  *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
  *
@@ -131,6 +134,7 @@ bool run_test(const char *filename) {
     printf("----------------------------------\n");
   }
   printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
+ // jsvTrace(p.root, 0);
   jspKill(&p);
   printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
   jsvShowAllocated();
