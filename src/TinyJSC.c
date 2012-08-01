@@ -1,16 +1,9 @@
-/*
- ============================================================================
- Name        : TinyJSC.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       function.call(scope)
+ *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
+ *       'Array.prototype.clear = function () { this.X = 2e23; };'
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
