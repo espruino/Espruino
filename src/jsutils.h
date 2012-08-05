@@ -30,8 +30,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 typedef unsigned short JsVarRef;
 // We treat 0 as null
 
-typedef long JsVarInt;
-typedef unsigned long JsVarIntUnsigned;
+typedef long long JsVarInt;
+typedef unsigned long long JsVarIntUnsigned;
 #ifndef USE_NO_FLOATS
  #ifdef USE_FLOATS
   typedef float JsVarFloat;

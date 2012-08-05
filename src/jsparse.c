@@ -1263,17 +1263,19 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   return v;
 }
 
-void jspExecuteFunction(JsParse *parse, JsVar *func) {
+bool jspExecuteFunction(JsParse *parse, JsVar *func) {
   JsExecFlags execute = EXEC_YES;
   JsVar *v = 0;
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);
-  JsVar *result = jspeFunctionCall(func, 0, false);
-  jsvUnLock(result);
+  JsVar *resultVar = jspeFunctionCall(func, 0, false);
+  bool result = jsvGetBool(resultVar);
+  jsvUnLock(resultVar);
   // clean up
   jspeiKill();
   // restore state
   execInfo = oldExecInfo;
 
+  return result;
 }

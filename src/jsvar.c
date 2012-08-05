@@ -75,6 +75,8 @@ JsVar *jsvNew() {
   return 0;
 }
 
+void jsvFreeLoopedRefPtr(JsVar *var); // forward decl
+
 void jsvFreePtr(JsVar *var) {
     // we shouldn't be linked from anywhere!
     assert(!var->nextSibling && !var->prevSibling);
