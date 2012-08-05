@@ -26,10 +26,6 @@
  * TODO - should be fixed
  * FIXME - will probably break if used
  * OPT - potential for speed optimisation
-
-
-  addEvent(function() {print("foo");});
-  addEvent(function() { addEvent(function() {print("foo");}); });
  * */
 
 #include <stdio.h>
@@ -112,14 +108,14 @@ void nativeAddEvent(JsVarRef var) {
 
   // if it is a single callback, just add it
   JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
-  jsvAddNamedChild(jsvGetRef(event), jsvGetRef(func), "func");
+  jsvUnLock(jsvAddNamedChild(jsvGetRef(event), jsvGetRef(func), "func"));
   if (lastEvent) { 
     lastEvent->nextSibling = jsvGetRef(event);
     jsvUnLock(lastEvent);
   } else
     events = jsvGetRef(event);
   jsvUnLock(lastEvent);
-  lastEvent = event;
+  jsvUnLock(event);
   jsvUnLock(func);
 }
 
@@ -163,9 +159,11 @@ bool run_test(const char *filename) {
   fclose(file);
 
   JsVar *v;
+  events = 0;
   jsvInit();
   jspInit(&p);
   jspAddNativeFunction(&p, "function print(text)", nativePrint);
+  jspAddNativeFunction(&p, "function addEvent(func)", nativeAddEvent);
 
   jsvUnLock(jspEvaluate(&p, buffer ));
 
