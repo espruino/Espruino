@@ -1305,13 +1305,15 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var) {
 
     if (jsvIsName(var)) {
       JsVarRef child = var->firstChild;
-      JsVar *childVar = jsvLock(child);
-      if (childVar == toCount)
+      if (child) {
+        JsVar *childVar = jsvLock(child);
+        if (childVar == toCount)
           refCount+=1;
-      else
+        else
           refCount += jsvGetRefCount(toCount, childVar);
-      child = childVar->firstChild;
-      jsvUnLock(childVar);
+        child = childVar->firstChild;
+        jsvUnLock(childVar);
+      }
     } else if (jsvHasChildren(var)) {
       JsVarRef child = var->firstChild;
       while (child) {

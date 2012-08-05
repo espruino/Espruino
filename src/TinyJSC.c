@@ -26,6 +26,10 @@
  * TODO - should be fixed
  * FIXME - will probably break if used
  * OPT - potential for speed optimisation
+
+
+  addEvent(function() {print("foo");});
+  addEvent(function() { addEvent(function() {print("foo");}); });
  * */
 
 #include <stdio.h>
@@ -122,16 +126,18 @@ void nativeAddEvent(JsVarRef var) {
 void jsmExecuteEvents() {
   while (events) {
     JsVar *event = jsvLock(events);
-    // now run..
-    //jsPrint("Event\n");
+    // Get function to execute
     JsVar *func = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(event), "func", false));
-    if (func) jspExecuteFunction(&p, func);
-    //jsPrint("Event Done\n");
     // free + go to next
     events = event->nextSibling;
     event->nextSibling = 0;
     jsvUnRef(event);
     jsvUnLock(event);
+
+    // now run..
+    if (func) jspExecuteFunction(&p, func);
+    //jsPrint("Event Done\n");
+    jsvUnLock(func);
   }
 }
 
@@ -250,6 +256,7 @@ int main(int argc, char **argv) {
 	jspAddNativeFunction(&p, "function setPin(pin, value)", nativeSetPin);
 	jspAddNativeFunction(&p, "function getPin(pin)", nativeGetPin);
         jspAddNativeFunction(&p, "function inputa(value)", nativeInputA);
+        jspAddNativeFunction(&p, "function addEvent(func)", nativeAddEvent);
 	//v = jspEvaluate(&p, "print('Hello World from JavaScript!');for (i=0;i<10;i++) { setPin(1, (i&1) ^ getPin(1)); }" );
 	//v = jspEvaluate(&p, "var Z = 1+2; if (Z==4) X=1; else Y=1; var A = [1,2,3]; var B={ a:1, b:2, c:3 };B.c" );
 	//v = jspEvaluate(&p, "var Z = []; Z[0] = 'hello'; Z[1] = 'world'; Z[0]+' '+Z[1]" );
