@@ -44,6 +44,7 @@
 #include "jsfunctions.h"
 
 JsParse p;
+JsVarRef events = 0; 
 bool isRunning = true;
 
 void nativeQuit(JsVarRef var) {
@@ -99,6 +100,48 @@ void nativeInputA(JsVarRef var) {
   jsvUnLock(value);
 }
 
+void nativeAddEvent(JsVarRef var) {
+  JsVar *func = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "func", false/*no create*/));
+  // find the last event in our queue
+  JsVar *lastEvent = 0;
+  if (events) { 
+    lastEvent = jsvLock(events);
+    while (lastEvent->nextSibling) {
+      JsVar *next = jsvLock(lastEvent->nextSibling);
+      jsvUnLock(lastEvent);
+      lastEvent = next;
+    }
+  }
+
+  // if it is a single callback, just add it
+  JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
+  jsvAddNamedChild(jsvGetRef(event), jsvGetRef(func), "func");
+  if (lastEvent) { 
+    lastEvent->nextSibling = jsvGetRef(event);
+    jsvUnLock(lastEvent);
+  } else
+    events = jsvGetRef(event);
+  jsvUnLock(lastEvent);
+  lastEvent = event;
+  jsvUnLock(func);
+}
+
+void jsmExecuteEvents() {
+  while (events) {
+    JsVar *event = jsvLock(events);
+    // now run..
+    //jsPrint("Event\n");
+    JsVar *func = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(event), "func", false));
+    if (func) jspExecuteFunction(&p, func);
+    //jsPrint("Event Done\n");
+    // free + go to next
+    events = event->nextSibling;
+    event->nextSibling = 0;
+    jsvUnRef(event);
+    jsvUnLock(event);
+  }
+}
+
 bool run_test(const char *filename) {
   printf("----------------------------------\n");
   printf("----------------------------- TEST %s \n", filename);
@@ -130,6 +173,8 @@ bool run_test(const char *filename) {
   JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, "result", false/*no create*/));
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
+
+  jsmExecuteEvents();
 
   if (pass)
     printf("----------------------------- PASS %s\n", filename);
@@ -240,6 +285,8 @@ int main(int argc, char **argv) {
       printf("RESULT : ");
       jsvTrace(jsvGetRef(v), 0);
       jsvUnLock(v);
+
+      jsmExecuteEvents();
 	}
 
 	printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
