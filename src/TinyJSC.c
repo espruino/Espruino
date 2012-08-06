@@ -50,8 +50,8 @@ void nativeTrace(JsVarRef var) {
 
 void nativePrint(JsVarRef var) {
   JsVar *text = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "text", false/*no create*/));
-  char buf[64];
-  jsvGetString(text, buf, 64);
+  char buf[256];
+  jsvGetString(text, buf, 256);
   printf("PRINT: '%s'\n", buf);
   jsvUnLock(text);
 }

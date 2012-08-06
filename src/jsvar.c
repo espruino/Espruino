@@ -329,31 +329,6 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
   return var;
 }
 
-INLINE_FUNC bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
-INLINE_FUNC bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
-INLINE_FUNC bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
-INLINE_FUNC bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; }
-INLINE_FUNC bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }
-INLINE_FUNC bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
-INLINE_FUNC bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
-INLINE_FUNC bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
-INLINE_FUNC bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
-INLINE_FUNC bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
-INLINE_FUNC bool jsvIsUndefined(const JsVar *v) { return !v; }
-INLINE_FUNC bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
-INLINE_FUNC bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
-INLINE_FUNC bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; }
-INLINE_FUNC bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
-INLINE_FUNC bool jsvHasChildren(const JsVar *v) { return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v); }
-
-/// This is the number of characters a JsVar can contain, NOT string length
-INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v) {
-    // see jsvCopy - we need to know about this in there too
-    if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
-    assert(jsvHasCharacterData(v));
-    return JSVAR_DATA_STRING_LEN;
-}
-
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // OPT: would this be useful as compare instead?
   assert(jsvIsBasic(a) && jsvIsBasic(b));

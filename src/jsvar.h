@@ -104,23 +104,30 @@ INLINE_FUNC JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set th
 INLINE_FUNC JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
 INLINE_FUNC JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
 
-INLINE_FUNC bool jsvIsInt(const JsVar *v);
-INLINE_FUNC bool jsvIsDouble(const JsVar *v);
-INLINE_FUNC bool jsvIsString(const JsVar *v);
-INLINE_FUNC bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
-INLINE_FUNC bool jsvIsNumeric(const JsVar *v);
-INLINE_FUNC bool jsvIsFunction(const JsVar *v);
-INLINE_FUNC bool jsvIsFunctionParameter(const JsVar *v);
-INLINE_FUNC bool jsvIsObject(const JsVar *v);
-INLINE_FUNC bool jsvIsArray(const JsVar *v);
-INLINE_FUNC bool jsvIsNative(const JsVar *v);
-INLINE_FUNC bool jsvIsUndefined(const JsVar *v);
-INLINE_FUNC bool jsvIsNull(const JsVar *v);
-INLINE_FUNC bool jsvIsBasic(const JsVar *v);
-INLINE_FUNC bool jsvIsName(const JsVar *v); ///< NAMEs are what's used to name a variable (it is not the data itself)
-INLINE_FUNC bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
-INLINE_FUNC bool jsvHasChildren(const JsVar *v);
-INLINE_FUNC size_t jsvGetMaxCharactersInVar(const JsVar *v); ///< This is the number of characters a JsVar can contain, NOT string length
+static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
+static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
+static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
+static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; } ///< The extra bits dumped onto the end of a string to store more data
+static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }
+static inline bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
+static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+static inline bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
+static inline bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
+static inline bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
+static inline bool jsvIsUndefined(const JsVar *v) { return !v; }
+static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
+static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
+static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+static inline bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
+static inline bool jsvHasChildren(const JsVar *v) { return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v); }
+
+/// This is the number of characters a JsVar can contain, NOT string length
+static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
+    // see jsvCopy - we need to know about this in there too
+    if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
+    assert(jsvHasCharacterData(v));
+    return JSVAR_DATA_STRING_LEN;
+}
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')

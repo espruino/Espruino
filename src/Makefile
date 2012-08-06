@@ -1,6 +1,8 @@
 CC=gcc
-CFLAGS=-c -g -Wall -Wextra -Wconversion 
-LDFLAGS=-g
+DEBUGFLAGS=
+#DEBUGFLAGS=-g
+CFLAGS=-c $(DEBUGFLAGS) -Wall -Wextra -Wconversion 
+LDFLAGS=$(DEBUGFLAGS)
 
 ifdef ARM
 CC=arm-none-eabi-gcc
