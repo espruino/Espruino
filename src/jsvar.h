@@ -95,14 +95,52 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 // Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero);
 
-INLINE_FUNC JsVar *jsvLock(JsVarRef ref); ///< Lock this reference and return a pointer
-INLINE_FUNC JsVarRef jsvUnLock(JsVar *var); ///< Unlock this variable - this is SAFE for null variables
+/// Lock this reference and return a pointer - UNSAFE for null refs
+JsVar *jsvLock(JsVarRef ref);
+/// Unlock this variable - this is SAFE for null variables
+JsVarRef jsvUnLock(JsVar *var);
 
-INLINE_FUNC JsVar *jsvRef(JsVar *v); ///< Reference - set this variable as used by something
-INLINE_FUNC void jsvUnRef(JsVar *v); ///< Unreference - set this variable as not used by anything
-INLINE_FUNC JsVarRef jsvRefRef(JsVarRef ref); ///< Helper fn, Reference - set this variable as used by something
-INLINE_FUNC JsVarRef jsvUnRefRef(JsVarRef ref); ///< Helper fn, Unreference - set this variable as not used by anything
-INLINE_FUNC JsVarRef jsvGetRef(JsVar *var); ///< Get a reference from a var - SAFE for null vars
+/// Reference - set this variable as used by something
+static inline JsVar *jsvRef(JsVar *v) {
+  assert(v);
+  v->refs++;
+  return v;
+}
+
+/// Unreference - set this variable as not used by anything
+static inline void jsvUnRef(JsVar *var) {
+  assert(var);
+  assert(var->refs>0);
+  var->refs--;
+  if (var->locks == 0 && var->refs==0)
+      jsvFreePtr(var);
+}
+
+/// Helper fn, Reference - set this variable as used by something
+static inline JsVarRef jsvRefRef(JsVarRef ref) {
+  JsVar *v;
+  assert(ref);
+  v = jsvLock(ref);
+  jsvRef(v);
+  jsvUnLock(v);
+  return ref;
+}
+
+/// Helper fn, Unreference - set this variable as not used by anything
+static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
+  JsVar *v;
+  assert(ref);
+  v = jsvLock(ref);
+  jsvUnRef(v);
+  jsvUnLock(v);
+  return 0;
+}
+
+/// Get a reference from a var - SAFE for null vars
+static inline JsVarRef jsvGetRef(JsVar *var) {
+    if (!var) return 0;
+    return var->this;
+}
 
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }

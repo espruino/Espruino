@@ -9,12 +9,6 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
-#ifdef ARM
-#define JSVAR_CACHE_SIZE 150 
-// room for 350, but must leave stack
-#else
-#define JSVAR_CACHE_SIZE 2000
-#endif
 JsVar jsVars[JSVAR_CACHE_SIZE]; 
 JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
 
@@ -145,64 +139,6 @@ void jsvFreeLoopedRefPtr(JsVar *var) {
     jsvFreePtr(var);
 }
 
-//int c = 0;
-
-JsVar *jsvLock(JsVarRef ref) {
-  JsVar *var;
-  assert(ref);
-  var = &jsVars[ref-1];
-  var->locks++;
-  if (var->locks==0) jsError("Too many references to Variable!");
-  return var;
-}
-
-JsVarRef jsvUnLock(JsVar *var) {
-  JsVarRef ref;
-  if (!var) return 0;
-  ref = var->this;
-  assert(var->locks>0);
-  var->locks--;
-  if (var->locks == 0 && var->refs==0)
-    jsvFreePtr(var);
-  return ref;
-}
-
-JsVar *jsvRef(JsVar *v) {
-  assert(v);
-  v->refs++;
-  return v;
-}
-
-void jsvUnRef(JsVar *var) {
-  assert(var);
-  assert(var->refs>0);
-  var->refs--;
-  if (var->locks == 0 && var->refs==0)
-      jsvFreePtr(var);
-}
-
-JsVarRef jsvRefRef(JsVarRef ref) {
-  JsVar *v;
-  assert(ref);
-  v = jsvLock(ref);
-  jsvRef(v);
-  jsvUnLock(v);
-  return ref;
-}
-JsVarRef jsvUnRefRef(JsVarRef ref) {
-  JsVar *v;
-  assert(ref);
-  v = jsvLock(ref);
-  jsvUnRef(v);
-  jsvUnLock(v);
-  return 0;
-}
-
-JsVarRef jsvGetRef(JsVar *var) {
-    if (!var) return 0;
-    return var->this;
-}
-
 JsVar *jsvNewFromString(const char *str) {
   JsVar *var;
   // Create a var
@@ -328,6 +264,29 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
     var->firstChild = jsvRefRef(valueOrZero);
   return var;
 }
+
+/// Lock this reference and return a pointer - UNSAFE for null refs
+JsVar *jsvLock(JsVarRef ref) {
+  JsVar *var;
+  assert(ref);
+  var = &jsVars[ref-1];
+  var->locks++;
+  if (var->locks==0) jsError("Too many references to Variable!");
+  return var;
+}
+
+/// Unlock this variable - this is SAFE for null variables
+JsVarRef jsvUnLock(JsVar *var) {
+  JsVarRef ref;
+  if (!var) return 0;
+  ref = var->this;
+  assert(var->locks>0);
+  var->locks--;
+  if (var->locks == 0 && var->refs==0)
+    jsvFreePtr(var);
+  return ref;
+}
+
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // OPT: would this be useful as compare instead?

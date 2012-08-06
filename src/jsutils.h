@@ -42,6 +42,13 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
+#ifdef ARM
+#define JSVAR_CACHE_SIZE 150 
+// room for 350, but must leave stack
+#else
+#define JSVAR_CACHE_SIZE 2000
+#endif
+
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3)
 #define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
