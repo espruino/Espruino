@@ -1,5 +1,7 @@
 CC=gcc
 DEBUGFLAGS=
+#DEBUGFLAGS=-pg
+#gprof ./TinyJSC > gprof.txt
 #DEBUGFLAGS=-g
 CFLAGS=-c $(DEBUGFLAGS) -Wall -Wextra -Wconversion 
 LDFLAGS=$(DEBUGFLAGS)

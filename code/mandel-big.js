@@ -1,7 +1,3 @@
-// time ./TinyJSC test ../code/mandel-big.js
-// user	0m8.897s - 6/8/2012
-// user	0m8.501s - 6/8/2012 - make jsvIs* inline
-
 for (y=0;y<128;y++) {
   line="";
   for (x=0;x<128;x++) {
@@ -24,3 +20,8 @@ for (y=0;y<128;y++) {
    print(line);
   }
 
+// time ./TinyJSC test ../code/mandel-big.js
+// user	0m8.897s - 6/8/2012
+// user	0m8.501s - 6/8/2012 - make jsvIs* inline
+// user	0m7.160s - 6/8/2012 - no asserts
+// user	0m6.60s - 6/8/2012 - add jsvLockAgain instead of lock/getRef

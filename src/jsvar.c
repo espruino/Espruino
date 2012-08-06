@@ -149,7 +149,7 @@ JsVar *jsvNewFromString(const char *str) {
   }
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
-  var = jsvLock(jsvGetRef(first));
+  var = jsvLockAgain(first);
   var->flags = JSV_STRING;
   var->varData.str[0] = 0; // in case str is empty!
 
@@ -267,9 +267,15 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
 JsVar *jsvLock(JsVarRef ref) {
-  JsVar *var;
   assert(ref);
-  var = &jsVars[ref-1];
+  JsVar *var = &jsVars[ref-1];
+  var->locks++;
+  if (var->locks==0) jsError("Too many references to Variable!");
+  return var;
+}
+
+/// Lock this pointer and return a pointer - UNSAFE for null pointer
+JsVar *jsvLockAgain(JsVar *var) {
   var->locks++;
   if (var->locks==0) jsError("Too many references to Variable!");
   return var;
@@ -420,7 +426,7 @@ size_t jsvGetStringLength(JsVar *v) {
 }
 
 void jsvAppendString(JsVar *var, const char *str) {
-  JsVar *block = jsvLock(jsvGetRef(var));
+  JsVar *block = jsvLockAgain(var);
   unsigned int blockChars;
   assert(jsvIsString(var));
   // Find the block at end of the string...
@@ -460,7 +466,7 @@ void jsvAppendString(JsVar *var, const char *str) {
 JsVar *jsvAsString(JsVar *var, bool unlockVar) {
   if (jsvIsString(var) || jsvIsName(var)) {
     if (unlockVar) return var;
-    return jsvLock(jsvGetRef(var));
+    return jsvLockAgain(var);
   }
 
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
@@ -473,9 +479,9 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
  *  stridx can be negative to go from end of string */
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   assert(jsvIsString(str) || jsvIsName(str));
-  str = jsvLock(jsvGetRef(str));
+  str = jsvLockAgain(str);
 
-  JsVar *block = jsvLock(jsvGetRef(var));
+  JsVar *block = jsvLockAgain(var);
   unsigned int blockChars;
   assert(jsvIsString(var));
   // Find the block at end of the string...
@@ -593,7 +599,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   if (!jsvHasCharacterData(var)) {
     return 0; // not a string so not equal!
   }
-  v = jsvLock(jsvGetRef(var));
+  v = jsvLockAgain(var);
 
   while (true) {
     size_t i;
@@ -628,8 +634,8 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
   int idxb = startb;
   assert(jsvIsString(va) || jsvIsName(va)); // we hope! Might just want to return 0?
   assert(jsvIsString(vb) || jsvIsName(vb)); // we hope! Might just want to return 0?
-  va = jsvLock(jsvGetRef(va));
-  vb = jsvLock(jsvGetRef(vb));
+  va = jsvLockAgain(va);
+  vb = jsvLockAgain(vb);
 
   // step to first positions
   while (true) {

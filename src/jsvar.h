@@ -97,6 +97,8 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero);
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
 JsVar *jsvLock(JsVarRef ref);
+/// Lock this pointer and return a pointer - UNSAFE for null pointer
+JsVar *jsvLockAgain(JsVar *var);
 /// Unlock this variable - this is SAFE for null variables
 JsVarRef jsvUnLock(JsVar *var);
 
