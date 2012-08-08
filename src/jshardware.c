@@ -43,33 +43,33 @@ typedef struct IOPin {
 
 #define IOPINS 50 // 16*3+2
 const IOPin IOPIN_DATA[IOPINS] = {
- { GPIO_Pin_0, GPIOA, ADC_Channel_0 },
- { GPIO_Pin_1, GPIOA, ADC_Channel_1 },
- { GPIO_Pin_2, GPIOA, ADC_Channel_2 },
- { GPIO_Pin_3, GPIOA, ADC_Channel_3 },
- { GPIO_Pin_4, GPIOA, ADC_Channel_4 },
- { GPIO_Pin_5, GPIOA, ADC_Channel_5 },
- { GPIO_Pin_6, GPIOA, ADC_Channel_6 },
- { GPIO_Pin_7, GPIOA, ADC_Channel_7 },
- { GPIO_Pin_8, GPIOA, 0xFF },
- { GPIO_Pin_9, 0, 0xFF }, //A9 - Serial
- { GPIO_Pin_10, 0, 0xFF }, // A10 - Serial
+ { GPIO_Pin_0,  GPIOA, ADC_Channel_0 },
+ { GPIO_Pin_1,  GPIOA, ADC_Channel_1 },
+ { GPIO_Pin_2,  GPIOA, ADC_Channel_2 },
+ { GPIO_Pin_3,  GPIOA, ADC_Channel_3 },
+ { GPIO_Pin_4,  GPIOA, ADC_Channel_4 },
+ { GPIO_Pin_5,  GPIOA, ADC_Channel_5 },
+ { GPIO_Pin_6,  GPIOA, ADC_Channel_6 },
+ { GPIO_Pin_7,  GPIOA, ADC_Channel_7 },
+ { GPIO_Pin_8,  GPIOA, 0xFF },
+ { GPIO_Pin_9,  0,     0xFF }, //A9 - Serial
+ { GPIO_Pin_10, 0,     0xFF }, // A10 - Serial
  { GPIO_Pin_11, GPIOA, 0xFF },
  { GPIO_Pin_12, GPIOA, 0xFF },
  { GPIO_Pin_13, GPIOA, 0xFF },
  { GPIO_Pin_14, GPIOA, 0xFF },
  { GPIO_Pin_15, GPIOA, 0xFF },
 
- { GPIO_Pin_0, GPIOB, ADC_Channel_8 },
- { GPIO_Pin_1, GPIOB, ADC_Channel_9 },
- { GPIO_Pin_2, GPIOB, 0xFF },
- { GPIO_Pin_3, GPIOB, 0xFF },
- { GPIO_Pin_4, GPIOB, 0xFF },
- { GPIO_Pin_5, GPIOB, 0xFF },
- { GPIO_Pin_6, GPIOB, 0xFF },
- { GPIO_Pin_7, GPIOB, 0xFF },
- { GPIO_Pin_8, GPIOB, 0xFF },
- { GPIO_Pin_9, GPIOB, 0xFF },
+ { GPIO_Pin_0,  GPIOB, ADC_Channel_8 },
+ { GPIO_Pin_1,  GPIOB, ADC_Channel_9 },
+ { GPIO_Pin_2,  GPIOB, 0xFF },
+ { GPIO_Pin_3,  GPIOB, 0xFF },
+ { GPIO_Pin_4,  GPIOB, 0xFF },
+ { GPIO_Pin_5,  GPIOB, 0xFF },
+ { GPIO_Pin_6,  GPIOB, 0xFF },
+ { GPIO_Pin_7,  GPIOB, 0xFF },
+ { GPIO_Pin_8,  GPIOB, 0xFF },
+ { GPIO_Pin_9,  GPIOB, 0xFF },
  { GPIO_Pin_10, GPIOB, 0xFF },
  { GPIO_Pin_11, GPIOB, 0xFF },
  { GPIO_Pin_12, GPIOB, 0xFF },
@@ -77,16 +77,16 @@ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_14, GPIOB, 0xFF },
  { GPIO_Pin_15, GPIOB, 0xFF },
 
- { GPIO_Pin_0, GPIOC, ADC_Channel_10 },
- { GPIO_Pin_1, GPIOC, ADC_Channel_11 },
- { GPIO_Pin_2, GPIOC, ADC_Channel_12 },
- { GPIO_Pin_3, GPIOC, ADC_Channel_13 },
- { GPIO_Pin_4, GPIOC, ADC_Channel_14 },
- { GPIO_Pin_5, GPIOC, ADC_Channel_15 },
- { GPIO_Pin_6, GPIOC, 0xFF },
- { GPIO_Pin_7, GPIOC, 0xFF },
- { GPIO_Pin_8, GPIOC, 0xFF },
- { GPIO_Pin_9, GPIOC, 0xFF },
+ { GPIO_Pin_0,  GPIOC, ADC_Channel_10 },
+ { GPIO_Pin_1,  GPIOC, ADC_Channel_11 },
+ { GPIO_Pin_2,  GPIOC, ADC_Channel_12 },
+ { GPIO_Pin_3,  GPIOC, ADC_Channel_13 },
+ { GPIO_Pin_4,  GPIOC, ADC_Channel_14 },
+ { GPIO_Pin_5,  GPIOC, ADC_Channel_15 },
+ { GPIO_Pin_6,  GPIOC, 0xFF },
+ { GPIO_Pin_7,  GPIOC, 0xFF },
+ { GPIO_Pin_8,  GPIOC, 0xFF },
+ { GPIO_Pin_9,  GPIOC, 0xFF },
  { GPIO_Pin_10, GPIOC, 0xFF },
  { GPIO_Pin_11, GPIOC, 0xFF },
  { GPIO_Pin_12, GPIOC, 0xFF },
@@ -94,16 +94,62 @@ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_14, GPIOC, 0xFF },
  { GPIO_Pin_15, GPIOC, 0xFF },
 
- { GPIO_Pin_0, GPIOD, 0xFF },
- { GPIO_Pin_1, GPIOD, 0xFF },
+ { GPIO_Pin_0,  GPIOD, 0xFF },
+ { GPIO_Pin_1,  GPIOD, 0xFF },
 };
 
-typedef struct IOPinState {
-  bool value; // the value of this pin
-  JsVarRef callbacks; // an array of callbacks, or 0
-} IOPinState;
+uint8_t pinToPinSource(uint16_t pin) {
+  if (pin==GPIO_Pin_0 ) return GPIO_PinSource0;
+  if (pin==GPIO_Pin_1 ) return GPIO_PinSource1;
+  if (pin==GPIO_Pin_2 ) return GPIO_PinSource2;
+  if (pin==GPIO_Pin_3 ) return GPIO_PinSource3;
+  if (pin==GPIO_Pin_4 ) return GPIO_PinSource4;
+  if (pin==GPIO_Pin_5 ) return GPIO_PinSource5;
+  if (pin==GPIO_Pin_6 ) return GPIO_PinSource6;
+  if (pin==GPIO_Pin_7 ) return GPIO_PinSource7;
+  if (pin==GPIO_Pin_8 ) return GPIO_PinSource8;
+  if (pin==GPIO_Pin_9 ) return GPIO_PinSource9;
+  if (pin==GPIO_Pin_10) return GPIO_PinSource10;
+  if (pin==GPIO_Pin_11) return GPIO_PinSource11;
+  if (pin==GPIO_Pin_12) return GPIO_PinSource12;
+  if (pin==GPIO_Pin_13) return GPIO_PinSource13;
+  if (pin==GPIO_Pin_14) return GPIO_PinSource14;
+  if (pin==GPIO_Pin_15) return GPIO_PinSource15;
+  return GPIO_PinSource0;
+}
+uint8_t portToPortSource(GPIO_TypeDef *port) {
+  if (port == GPIOA) GPIO_PortSourceGPIOA;
+  if (port == GPIOB) GPIO_PortSourceGPIOB;
+  if (port == GPIOC) GPIO_PortSourceGPIOC;
+  if (port == GPIOD) GPIO_PortSourceGPIOD;
+  if (port == GPIOE) GPIO_PortSourceGPIOE;
+  if (port == GPIOF) GPIO_PortSourceGPIOF;
+  if (port == GPIOG) GPIO_PortSourceGPIOG;
+  return GPIO_PortSourceGPIOA
+}
 
-IOPinState ioPinState[IOPINS]; // the state of IO pins and callbacks for if they change
+typedef struct PinInterrupt {
+  unsigned char pin; // pin this is for, or -1
+  bool fired;
+  JsSysTime time; // time this fired
+  JsVarRef callbacks; // an array of callbacks, or 0
+} PinInterrupt;
+#define PININTERRUPTS 16
+PinInterrupt pinInterrupt[PININTERRUPTS];
+/* setWatch
+ * int idx = pinToPinSource(IOPIN_DATA[pin])
+ * if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
+ * pinInterrupt[idx].pin = pin;
+ * pinInterrupt[idx].fired = false;
+ * pinInterrupt[idx].callbacks = ...;
+ * GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
+ *  EXTI_StructInit(&s)
+ *  s.EXTI_Line = IOPIN_DATA[pin].pin; //EXTI_Line0
+ *  s.EXIT_Mode =  EXTI_Mode_Interrupt
+ *  s.EXTI_Trigger = EXTI_Trigger_Rising_Falling
+ *  s.EXTI_LineCmd = ENABLE;
+ *  EXTI_Init(&s)
+ */
 #endif
 // ----------------------------------------------------------------------------
 #ifdef ARM
@@ -131,6 +177,20 @@ void USART1_IRQHandler(void) {
       USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
   }
 }
+
+/*void EXTI0_IRQHandler(void) {
+  if (EXTI_GetITStatus(EXTI_Line0) == SET) {
+    pinInterrupt[0].fired = true;
+    pinInterrupt[0].time = jshGetSystemTime();
+    EXTI_ClearITPendingBit(EXTI_Line0);
+  }
+}
+void EXTI1_IRQHandler(void) {  }
+void EXTI2_IRQHandler(void) {  }
+void EXTI3_IRQHandler(void) {  }
+void EXTI4_IRQHandler(void) {  }
+void EXTI9_5_IRQHandler(void) {  }
+void EXTI15_10_IRQHandler(void) {  }*/
 #endif//ARM
 // ----------------------------------------------------------------------------
 #ifndef ARM
@@ -350,7 +410,7 @@ bool jshPinInput(int pin) {
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
     value = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? 1 : 0;
-  }
+  } else jsError("Invalid pin!");
 #endif
   return value;
 }
@@ -368,7 +428,7 @@ void jshPinOutput(int pin, bool value) {
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
     else
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
-  }
+  } else jsError("Invalid pin!");
 #endif
 }
 
@@ -394,6 +454,6 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
     else
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
-  }
+  } else jsError("Invalid pin!");
 #endif
 }
