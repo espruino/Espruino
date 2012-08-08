@@ -7,10 +7,6 @@
 
 #include "jsfunctions.h"
 
-JsVar* jsfMakeUndefined() {
-  return jsvNewWithFlags(JSV_NULL); // TODO see about above - should really be 'undefined'
-}
-
 /** Note, if this function actually does handle a function call, it
  * MUST return something. If it needs to return undefined, that's tough :/
  */
@@ -21,11 +17,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVar *result = 0;
       if (v) result = jspEvaluateVar(execInfo->parse, v);
       jsvUnLock(v);
-      if (!result) result = jsfMakeUndefined();
       return result;
     }
     // unhandled
-    return 0;
+    return JSFHANDLEFUNCTIONCALL_UNHANDLED;
   }
   // Is actually a method on some variable
   if (strcmp(name,"length")==0) {
@@ -207,7 +202,6 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           JsVar *childValue = jspParseSingleFunction();
           JsVar *idx = jsvGetArrayIndexOf(a, childValue);
           jsvUnLock(childValue);
-          if (idx==0) return jsfMakeUndefined();
           return idx;
         }
        if (strcmp(name,"join")==0) {
@@ -240,12 +234,11 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *childValue = jspParseSingleFunction();
          JsVar *item = jsvArrayPop(a);
          jsvUnLock(childValue);
-         if (item==0) return jsfMakeUndefined();
          return item;
        }
   }
   // unhandled
-  return 0;
+  return JSFHANDLEFUNCTIONCALL_UNHANDLED;
 }
 
 void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData) {

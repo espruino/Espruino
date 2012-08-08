@@ -509,7 +509,7 @@ JsVar *jspeFactor() {
           /* Special case! We haven't found the variable, so check out
            * and see if it's one of our builtins...  */
           a = jsfHandleFunctionCall(&execInfo, 0, jslGetTokenValueAsString(execInfo.lex));
-          if (!a) {
+          if (a == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
             /* Variable doesn't exist! JavaScript says we should create it
              * (we won't add it here. This is done in the assignment operator)*/
             a = jsvMakeIntoVariableName(jsvNewFromString(jslGetTokenValueAsString(execInfo.lex)), 0);
@@ -546,7 +546,8 @@ JsVar *jspeFactor() {
                         /* Check for builtins via separate function
                          * This way we save on RAM for built-ins because all comes out of program code. */
                         child = jsfHandleFunctionCall(&execInfo, aVar, name);
-                        if (!child) {
+                        if (child == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
+                          child = 0;
                           // It wasn't handled... We already know this is an object so just add a new child
                           if (jsvIsObject(aVar)) {
                             child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);

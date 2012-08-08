@@ -12,6 +12,8 @@
 #include "jslex.h"
 #include "jsparse.h"
 
+#define JSFHANDLEFUNCTIONCALL_UNHANDLED ((JsVar*)-1)
+
 /* This handles built-in function calls. It's easier to do it this way than to
 add it to the symbol table, as that uses RAM */
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name);
