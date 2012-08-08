@@ -77,7 +77,7 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
 JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   if (jsvIsInt(parent))
       return jsvFindChildFromString(execInfo.parse->intClass, name, false);
-  if (jsvIsDouble(parent))
+  if (jsvIsFloat(parent))
       return jsvFindChildFromString(execInfo.parse->doubleClass, name, false);
   if (jsvIsString(parent))
       return jsvFindChildFromString(execInfo.parse->stringClass, name, false);

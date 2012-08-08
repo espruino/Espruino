@@ -58,9 +58,6 @@ void jsiInit() {
 
   // rectangles @ http://www.network-science.de/ascii/
   jsPrint("\r\n _____ _            __ _____\r\n|_   _|_|___ _ _ __|  |   __|\r\n  | | | |   | | |  |  |__   |\r\n  |_| |_|_|_|_  |_____|_____|\r\n            |___|\r\n Copyright 2012 Gordon Williams\r\n                gw@pur3.co.uk\r\n-------------------------------- ");
-#ifdef ARM
-  jsPrintInt(SystemCoreClock/1000000);jsPrint(" Mhz");
-#endif
   jsPrint("\r\n\r\n>");
 }
 
