@@ -457,3 +457,45 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
   } else jsError("Invalid pin!");
 #endif
 }
+
+
+#define FLASH_MEMORY_SIZE (128*1024)
+#define FLASH_PAGE_SIZE 1024
+#define FLASH_PAGES 8
+#define FLASH_LENGTH (1024*FLASH_PAGES)
+#define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
+
+void jshSaveToFlash() {
+#ifdef ARM
+  FLASH_UnlockBank1();
+
+  int i;
+  /* Clear All pending flags */
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+  jsPrint("Erasing Flash...");
+  /* Erase the FLASH pages */
+  for(i=0;i<FLASH_PAGES;i++) {
+    FLASH_ErasePage(FLASH_START + (FLASH_PAGE_SIZE * i));
+    jsPrint(".");
+  }
+  jsPrint("\nProgramming...");
+
+
+  /* Program Flash Bank1 */
+  for (i=0;i<FLASH_LENGTH;i+=4) {
+      FLASH_ProgramWord(FLASH_START+i, ((int*)jsVars)[i>>2]);
+      if ((i&(FLASH_PAGE_SIZE-1))==0) jsPrint(".");
+  }
+  jsPrint("\nDone!\n");
+  FLASH_LockBank1();
+#endif
+}
+
+void jshLoadFromFlash() {
+#ifdef ARM
+  jsPrint("\nLoading...");
+  memcpy(jsVars, FLASH_START, FLASH_LENGTH);
+  jsPrint("\nDone!\n");
+#endif
+}

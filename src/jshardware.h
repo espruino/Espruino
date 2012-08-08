@@ -33,4 +33,9 @@ bool jshPinInput(int pin);
 void jshPinOutput(int pin, bool value);
 void jshPinPulse(int pin, bool value, JsVarFloat time);
 
+/// Save contents of JsVars into Flash
+void jshSaveToFlash();
+/// Load contents of JsVars from Flash
+void jshLoadFromFlash();
+
 #endif /* JSHARDWARE_H_ */

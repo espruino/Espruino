@@ -359,6 +359,17 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jshPinPulse(pin, value, time);
       return 0;
     }
+
+    if (strcmp(name,"load")==0) {
+      jspParseEmptyFunction();
+      jshLoadFromFlash();
+      return 0;
+    }
+    if (strcmp(name,"save")==0) {
+      jspParseEmptyFunction();
+      jshSaveToFlash();
+      return 0;
+    }
 /* TODO:
        "function setWatch(func,pin)",
        "function clearWatch(func,pin)",
