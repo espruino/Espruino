@@ -163,7 +163,6 @@ int main(int argc, char **argv) {
 
   jshInit();
   jsiInit();
-  int counter = 0;
   while (1) {
     jsiLoop();
   }

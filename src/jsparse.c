@@ -172,9 +172,35 @@ bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
     *a = jsvSkipNameAndUnlock(jspeBase(&execute));
-  if (execInfo.lex->tk != ')') {
+  if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *b = jsvSkipNameAndUnlock(jspeBase(&execute));
+  }
+  // throw away extra params
+  while (execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    jsvUnLock(jspeBase(&execute));
+  }
+  JSP_MATCH(')');
+  return true;
+}
+
+// parse function with 3 arguments, return 3 values (no names!)
+bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c) {
+  *a = 0;
+  *b = 0;
+  JsExecFlags execute = EXEC_YES;
+  JSP_MATCH(LEX_ID);
+  JSP_MATCH('(');
+  if (execInfo.lex->tk != ')')
+    *a = jsvSkipNameAndUnlock(jspeBase(&execute));
+  if (b && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    *b = jsvSkipNameAndUnlock(jspeBase(&execute));
+  }
+  if (c && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    *c = jsvSkipNameAndUnlock(jspeBase(&execute));
   }
   // throw away extra params
   while (execInfo.lex->tk != ')') {
