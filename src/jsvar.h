@@ -189,6 +189,7 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
+void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v);
 

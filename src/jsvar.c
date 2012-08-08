@@ -543,6 +543,11 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   jsvUnLock(block);
 }
 
+/** Append all of str to var. Both must be strings.  */
+void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
+  jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+}
+
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v) {
   assert(jsvIsString(v));

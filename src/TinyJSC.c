@@ -281,8 +281,9 @@ int main(int argc, char **argv) {
 
       gets(javaScript);
       v = jspEvaluate(&p, javaScript );
-      printf("RESULT : ");
-      jsvTrace(jsvGetRef(v), 0);
+      printf(":");
+      jsfPrintJSON(v);
+      printf("\n");
       jsvUnLock(v);
 
       jsmExecuteEvents();

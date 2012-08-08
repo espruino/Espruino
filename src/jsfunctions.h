@@ -16,6 +16,11 @@
 add it to the symbol table, as that uses RAM */
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name);
 
+typedef void (*JsfGetJSONCallbackString)(void *data, const char *string);
+typedef void (*JsfGetJSONCallbackVar)(void *data, JsVar *var);
+void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData);
+
 void jsfGetJSON(JsVar *var, JsVar *result);
+void jsfPrintJSON(JsVar *var);
 
 #endif /* JSFUNCTIONS_H_ */

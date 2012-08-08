@@ -248,43 +248,43 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   return 0;
 }
 
-void jsfGetJSON(JsVar *var, JsVar *result) {
+void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData) {
   assert(jsvIsString(result));
   if (jsvIsUndefined(var)) { 
-    jsvAppendString(result,"undefined");
+    callbackString(callbackData, "undefined");
   } else if (jsvIsArray(var)) { 
     int length = (int)jsvGetArrayLength(var);
     int i;
-    jsvAppendString(result,"[");
+    callbackString(callbackData, "[");
     for (i=0;i<length;i++) {
       JsVar *item = jsvGetArrayItem(var, i);
-      jsfGetJSON(item, result);
+      jsfGetJSONWithCallback(item, callbackString, callbackVar, callbackData);
       jsvUnLock(item);
-      if (i<length-1) jsvAppendString(result,",");
+      if (i<length-1) callbackString(callbackData, ",");
     }
-    jsvAppendString(result,"]");
+    callbackString(callbackData, "]");
   } else if (jsvIsObject(var)) {
     JsVarRef childref = var->firstChild;
-    jsvAppendString(result,"{");
+    callbackString(callbackData, "{");
     while (childref) {
       JsVar *child = jsvLock(childref);
       JsVar *childVar;
-      jsvAppendString(result, "\"");
-      jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);// FIXME: escape the string
-      jsvAppendString(result, "\":");
+      callbackString(callbackData, "\"");
+      callbackVar(callbackData, child); // FIXME: escape the string
+      callbackString(callbackData, "\":");
       childVar = jsvLock(child->firstChild);
       childref = child->nextSibling;
       jsvUnLock(child);
-      jsfGetJSON(childVar, result);
+      jsfGetJSONWithCallback(childVar, callbackString, callbackVar, callbackData);
       jsvUnLock(childVar);
-      if (childref) jsvAppendString(result,",");
+      if (childref) callbackString(callbackData, ",");
     }
-    jsvAppendString(result,"}");
+    callbackString(callbackData, "}");
   } else if (jsvIsFunction(var)) {
     JsVarRef coderef = 0;
     JsVarRef childref = var->firstChild;
     bool firstParm = true;
-    jsvAppendString(result,"function (");
+    callbackString(callbackData, "function (");
     while (childref) {
       JsVar *child = jsvLock(childref);
       childref = child->nextSibling;
@@ -292,28 +292,38 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
         if (firstParm) 
           firstParm=false;
         else
-          jsvAppendString(result, ","); 
-        jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH); // FIXME: escape the string
+          callbackString(callbackData, ",");
+        callbackVar(callbackData, child); // FIXME: escape the string
       } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
         coderef = child->firstChild;
       }
       jsvUnLock(child);
     }
-    jsvAppendString(result,") ");
+    callbackString(callbackData, ") ");
     if (coderef) {
        JsVar *codeVar = jsvLock(coderef);
-       jsvAppendStringVar(result, codeVar, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+       callbackVar(callbackData, codeVar);
        jsvUnLock(codeVar);
-    } else jsvAppendString(result,"{}");
+    } else callbackString(callbackData, "{}");
   } else if (jsvIsString(var)) {
-    jsvAppendString(result,"\"");
-    jsvAppendStringVar(result, var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    jsvAppendString(result,"\"");
+    callbackString(callbackData, "\"");
+    callbackVar(callbackData, var);
+    callbackString(callbackData, "\"");
   } else {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(var, buf, JSLEX_MAX_TOKEN_LENGTH);
-    jsvAppendString(result, buf);
+    callbackString(callbackData, buf);
   }
   // TODO: functions
+}
+
+void jsfGetJSON(JsVar *var, JsVar *result) {
+  jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
+}
+
+void _jsfPrintJSON_str(void *data, const char *str) { jsPrint(str); }
+void _jsfPrintJSON_var(void *data, JsVar *var) { jsvPrintStringVar(var); }
+void jsfPrintJSON(JsVar *var) {
+  jsfGetJSONWithCallback(var, _jsfPrintJSON_str, _jsfPrintJSON_var, 0);
 }
 
