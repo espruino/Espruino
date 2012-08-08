@@ -13,9 +13,15 @@
 #include "jsparse.h"
 
 #define JSFHANDLEFUNCTIONCALL_UNHANDLED ((JsVar*)-1)
+typedef JsVar *(*JsfHandleFunctionCallDelegate)(JsExecInfo *execInfo, JsVar *a, const char *name);
 
-/* This handles built-in function calls. It's easier to do it this way than to
-add it to the symbol table, as that uses RAM */
+/** If we want to add our own extra functions, we can do it by creating a
+ * delegate function and linking it in here. */
+void jsfSetHandleFunctionCallDelegate(JsfHandleFunctionCallDelegate delegate);
+
+/** This handles built-in function calls. It's easier to do it this way than to
+add it to the symbol table, as that uses RAM. It returns JSFHANDLEFUNCTIONCALL_UNHANDLED
+if it hasn't handled the function, or anything else (including 0 for undefined) if it has. */
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name);
 
 typedef void (*JsfGetJSONCallbackString)(void *data, const char *string);

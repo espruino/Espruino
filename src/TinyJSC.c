@@ -12,8 +12,7 @@
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
- *       Possibly special array type that stores values directly, not with a Name
- *       Maybe keep track of whether JsVar was changed/written to?
+ *       Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
  *       Memory manager to handle storing rarely used refs in flash
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
