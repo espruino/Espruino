@@ -470,6 +470,9 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
     if (unlockVar) return var;
     return jsvLockAgain(var);
   }
+  /* TODO: If this is an array return a string with elements concatenated by '.'
+   * TODO: If this is an object, search for 'toString'
+   */
 
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
   jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);

@@ -2,7 +2,7 @@ CC=gcc
 DEBUGFLAGS=
 #DEBUGFLAGS=-pg
 #gprof ./TinyJSC > gprof.txt
-#DEBUGFLAGS=-g
+DEBUGFLAGS=-g
 CFLAGS=-c $(DEBUGFLAGS) -Wall -Wextra -Wconversion 
 LDFLAGS=$(DEBUGFLAGS)
 
@@ -23,6 +23,8 @@ jsparse.c \
 jsutils.c \
 jsvar.c \
 jsfunctions.c \
+jsinteractive.c \
+jshardware.c \
 TinyJSC.c
 
 

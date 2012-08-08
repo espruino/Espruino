@@ -124,23 +124,9 @@ void jsAssertFail(const char *file, int line) {
   exit(1);
 }
 
-#ifdef ARM
-void usart2_tx_str(const char *str);
-#endif
-
-
 /// This is the place that all text is output from TinyJS. It could be overwridden if required
 void jsPrint(const char *txt) {
-#ifdef SDCC
-    while (*txt)
-        putchar(*(txt++));
-#else
- #ifdef ARM
-    usart2_tx_str(txt);
- #else
-    fputs(txt, stdout);
- #endif
-#endif
+  jshTXStr(txt);
 }
 
 /// Helper function - prints an integer
