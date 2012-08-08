@@ -18,7 +18,7 @@
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
  *       Add require(filename) function
- *       Add Array.push()/splice
+ *       Add Array.splice
  *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words

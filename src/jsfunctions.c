@@ -230,6 +230,19 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          jsvUnLock(filler);
          return str;
        }
+       if (strcmp(name,"push")==0) {
+         JsVar *childValue = jspParseSingleFunction();
+         JsVarInt newSize = jsvArrayPush(a, childValue);
+         jsvUnLock(childValue);
+         return jsvNewFromInteger(newSize);
+       }
+       if (strcmp(name,"pop")==0) {
+         JsVar *childValue = jspParseSingleFunction();
+         JsVar *item = jsvArrayPop(a);
+         jsvUnLock(childValue);
+         if (item==0) return jsfMakeUndefined();
+         return item;
+       }
   }
   // unhandled
   return 0;

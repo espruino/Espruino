@@ -594,7 +594,9 @@ JsVar *jspeFactor() {
                   }
                 }
                 jsvUnLock(index);
-            } else assert(0);
+            } else {
+              assert(0);
+            }
         }
         jsvUnLock(parent);
         return a;
@@ -930,7 +932,9 @@ JsVar *jspeBase() {
                 JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '-');
                 jspReplaceWith(lhs, res);
                 jsvUnLock(res);
-            } else assert(0);
+            } else {
+              assert(0);
+            }
         }
         jsvUnLock(rhs);
     }
@@ -1264,8 +1268,6 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
 }
 
 bool jspExecuteFunction(JsParse *parse, JsVar *func) {
-  JsExecFlags execute = EXEC_YES;
-  JsVar *v = 0;
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);
