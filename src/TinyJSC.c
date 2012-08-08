@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
 
   jshInit();
-  jsiInit();
+  jsiInit(true);
 
   jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
   jspAddNativeFunction(jsiGetParser(), "function trace()", nativeTrace);

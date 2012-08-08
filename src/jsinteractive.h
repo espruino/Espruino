@@ -10,7 +10,8 @@
 
 #include "jsparse.h"
 
-void jsiInit();
+/// autoLoad = do we load the current state if it exists?
+void jsiInit(bool autoLoad);
 void jsiKill();
 
 void jsiLoop();

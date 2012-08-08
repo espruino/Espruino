@@ -9,6 +9,7 @@
 #include "stm32f10x.h"
 #include "peripherals/stm32f10x_adc.h"
 #include "peripherals/stm32f10x_usart.h"
+#include "peripherals/stm32f10x_flash.h"
 #include "STM32vldiscovery.h"
 #else//!ARM
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 #endif//ARM
 
 #include "jshardware.h"
+#include "jsutils.h"
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
@@ -97,7 +99,7 @@ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_0,  GPIOD, 0xFF },
  { GPIO_Pin_1,  GPIOD, 0xFF },
 };
-
+/*
 uint8_t pinToPinSource(uint16_t pin) {
   if (pin==GPIO_Pin_0 ) return GPIO_PinSource0;
   if (pin==GPIO_Pin_1 ) return GPIO_PinSource1;
@@ -125,7 +127,7 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
   if (port == GPIOE) GPIO_PortSourceGPIOE;
   if (port == GPIOF) GPIO_PortSourceGPIOF;
   if (port == GPIOG) GPIO_PortSourceGPIOG;
-  return GPIO_PortSourceGPIOA
+  return GPIO_PortSourceGPIOA;
 }
 
 typedef struct PinInterrupt {
@@ -135,7 +137,7 @@ typedef struct PinInterrupt {
   JsVarRef callbacks; // an array of callbacks, or 0
 } PinInterrupt;
 #define PININTERRUPTS 16
-PinInterrupt pinInterrupt[PININTERRUPTS];
+PinInterrupt pinInterrupt[PININTERRUPTS];*/
 /* setWatch
  * int idx = pinToPinSource(IOPIN_DATA[pin])
  * if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
@@ -461,9 +463,11 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
 
 #define FLASH_MEMORY_SIZE (128*1024)
 #define FLASH_PAGE_SIZE 1024
-#define FLASH_PAGES 8
+#define FLASH_PAGES 4
 #define FLASH_LENGTH (1024*FLASH_PAGES)
 #define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
+#define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-8)
+#define FLASH_MAGIC 0xDEADBEEF
 
 void jshSaveToFlash() {
 #ifdef ARM
@@ -479,23 +483,47 @@ void jshSaveToFlash() {
     FLASH_ErasePage(FLASH_START + (FLASH_PAGE_SIZE * i));
     jsPrint(".");
   }
-  jsPrint("\nProgramming...");
-
+  jsPrint("\nProgramming ");
+  jsPrintInt(jsvGetVarDataSize());
+  jsPrint(" Bytes...");
 
   /* Program Flash Bank1 */
-  for (i=0;i<FLASH_LENGTH;i+=4) {
-      FLASH_ProgramWord(FLASH_START+i, ((int*)jsVars)[i>>2]);
+  int *basePtr = jsvGetVarDataPointer();
+  for (i=0;i<jsvGetVarDataSize();i+=4) {
+      FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]);
       if ((i&(FLASH_PAGE_SIZE-1))==0) jsPrint(".");
   }
+  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
   jsPrint("\nDone!\n");
   FLASH_LockBank1();
+
+  /*jsPrint("Magic contains ");
+  jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
+  jsPrint(" we want ");
+  jsPrintInt(FLASH_MAGIC);
+  jsPrint("\n");*/
 #endif
 }
 
 void jshLoadFromFlash() {
 #ifdef ARM
-  jsPrint("\nLoading...");
-  memcpy(jsVars, FLASH_START, FLASH_LENGTH);
+  jsPrint("\nLoading ");
+  jsPrintInt(jsvGetVarDataSize());
+  jsPrint(" bytes from flash...");
+  memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
   jsPrint("\nDone!\n");
+#endif
+}
+
+bool jshFlashContainsCode() {
+#ifdef ARM
+  /*jsPrint("Magic contains ");
+  jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
+  jsPrint("we want");
+  jsPrintInt(FLASH_MAGIC);
+  jsPrint("\n");*/
+  return (*(int*)FLASH_MAGIC_LOCATION) == FLASH_MAGIC;
+#else
+  return false;
 #endif
 }

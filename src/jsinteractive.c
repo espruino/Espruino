@@ -29,6 +29,14 @@ typedef struct TimerState {
 TimerState timers[MAX_TIMERS]; // Timers available
 
 
+typedef enum {
+ TODO_NOTHING = 0,
+ TODO_FLASH_SAVE = 1,
+ TODO_FLASH_LOAD = 2,
+ TODO_RESET = 4,
+} TODOFlags;
+
+TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
@@ -38,7 +46,23 @@ int brackets = 0; ///<  how many brackets have we got on this line?
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
 
-void jsiInit() {
+// Used when recovering after being flashed
+void jsiSoftInit() {
+  events = 0;
+  inputline = jsvNewFromString("");
+}
+
+// Used when shutting down before flashing
+void jsiSoftKill() {
+  jsvUnLock(inputline);
+  inputline=0;
+  if (events) {
+    jsvUnRefRef(events);
+    events=0;
+  }
+}
+
+void jsiInit(bool autoLoad) {
   jsvInit();
   jspInit(&p);
   // link in our functions
@@ -51,23 +75,25 @@ void jsiInit() {
   for (i=0;i<MAX_TIMERS;i++)
      timers[i].interval = 0;
 
-  inputline = jsvNewFromString("");
+  /* If flash contains any code, then we should
+     Try and load from it... */
+  if (autoLoad && jshFlashContainsCode())
+    jshLoadFromFlash();
+
+  jsiSoftInit();
   echo = true;
   brackets = 0;
-  events = 0;
+  
 
   // rectangles @ http://www.network-science.de/ascii/
   jsPrint("\r\n _____ _            __ _____\r\n|_   _|_|___ _ _ __|  |   __|\r\n  | | | |   | | |  |  |__   |\r\n  |_| |_|_|_|_  |_____|_____|\r\n            |___|\r\n Copyright 2012 Gordon Williams\r\n                gw@pur3.co.uk\r\n-------------------------------- ");
   jsPrint("\r\n\r\n>");
 }
 
+
+
 void jsiKill() {
-  jsvUnLock(inputline);
-  inputline=0;
-  if (events) {
-    jsvUnRefRef(events);
-    events=0;
-  }
+  jsiSoftKill();
 
   jspKill(&p);
   jsvKill();
@@ -229,6 +255,27 @@ void jsiIdle() {
   }
   // execute any outstanding events
   jsiExecuteEvents();
+  // check for TODOs
+  if (todo) {
+    if (todo & TODO_RESET) {
+      todo &= ~TODO_RESET;
+      // shut down everything and start up again
+      jsiKill();
+      jsiInit(false); // don't autoload
+    }
+    if (todo & TODO_FLASH_SAVE) {
+      todo &= ~TODO_FLASH_SAVE;
+      jsiSoftKill();
+      jshSaveToFlash(); 
+      jsiSoftInit();
+    }
+    if (todo & TODO_FLASH_LOAD) {
+      todo &= ~TODO_FLASH_LOAD;
+      jsiSoftKill();
+      jshLoadFromFlash();
+      jsiSoftInit();
+    }
+  }
 }
 
 void jsiLoop() {
@@ -361,13 +408,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
 
     if (strcmp(name,"load")==0) {
+      /*JS* function load()
+       * Load program memory out of flash */
       jspParseEmptyFunction();
-      jshLoadFromFlash();
+      todo |= TODO_FLASH_LOAD;
       return 0;
     }
     if (strcmp(name,"save")==0) {
+      /*JS* function save()
+       * Save program memory into flash */
       jspParseEmptyFunction();
-      jshSaveToFlash();
+      todo |= TODO_FLASH_SAVE;
+      return 0;
+    }
+    if (strcmp(name,"reset")==0) {
+      /*JS* function reset()
+       * Reset everything - clear program memory */
+      jspParseEmptyFunction();
+      todo |= TODO_RESET;
       return 0;
     }
 /* TODO:

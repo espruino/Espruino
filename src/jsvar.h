@@ -236,5 +236,7 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var);
 /** garbage collect var and its children */
 void jsvGarbageCollect(JsVar *var);
 
+void *jsvGetVarDataPointer();
+int jsvGetVarDataSize();
 
 #endif /* JSVAR_H_ */

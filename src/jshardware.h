@@ -37,5 +37,7 @@ void jshPinPulse(int pin, bool value, JsVarFloat time);
 void jshSaveToFlash();
 /// Load contents of JsVars from Flash
 void jshLoadFromFlash();
+/// Returns true if flash contains something useful
+bool jshFlashContainsCode();
 
 #endif /* JSHARDWARE_H_ */

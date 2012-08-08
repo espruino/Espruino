@@ -12,6 +12,9 @@
 JsVar jsVars[JSVAR_CACHE_SIZE]; 
 JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
 
+void *jsvGetVarDataPointer() { return &jsVars[0]; }
+int jsvGetVarDataSize() { return sizeof(jsVars); }
+
 void jsvInit() {
   int i;
   for (i=0;i<JSVAR_CACHE_SIZE;i++) {
