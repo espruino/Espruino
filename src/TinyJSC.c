@@ -21,6 +21,7 @@
  *       Add Array.push()/splice
  *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
+ *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
  *
  * In code:
  * TODO - should be fixed
