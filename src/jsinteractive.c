@@ -253,6 +253,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVar *v = jsvAsString(jspParseSingleFunction(), true);
       jsvPrintStringVar(v);
       jsvUnLock(v);
+      jsPrint("\n");
       return 0;
     }
     if (strcmp(name,"getTime")==0) {
