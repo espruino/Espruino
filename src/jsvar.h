@@ -102,6 +102,9 @@ JsVar *jsvLockAgain(JsVar *var);
 /// Unlock this variable - this is SAFE for null variables
 JsVarRef jsvUnLock(JsVar *var);
 
+/// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
+void jsvFreePtr(JsVar *var);
+
 /// Reference - set this variable as used by something
 static inline JsVar *jsvRef(JsVar *v) {
   assert(v);
@@ -186,6 +189,7 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
+void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v);
 
@@ -218,9 +222,11 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 
 int jsvGetChildren(JsVar *v);
-JsVarInt jsvGetArrayLength(JsVar *v); ///< Not the same as GetChildren, as it can be a sparse array
+JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the value in the array
+JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the end of an array, and returns the new length
+JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty)
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

@@ -389,7 +389,9 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       if (str[-1]) *str = 0;
     } else if (jsvIsFunction(v)) {
       strncpy(str, "function", len);
-    } else assert(0);
+    } else {
+      assert(0);
+    }
 }
 
 size_t jsvGetStringLength(JsVar *v) {
@@ -468,6 +470,9 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
     if (unlockVar) return var;
     return jsvLockAgain(var);
   }
+  /* TODO: If this is an array return a string with elements concatenated by '.'
+   * TODO: If this is an object, search for 'toString'
+   */
 
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
   jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);
@@ -541,13 +546,18 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   jsvUnLock(block);
 }
 
+/** Append all of str to var. Both must be strings.  */
+void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
+  jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+}
+
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v) {
   assert(jsvIsString(v));
   JsVarRef r = jsvGetRef(v);
   while (r) {
     v = jsvLock(r);
-    int l = jsvGetMaxCharactersInVar(v);
+    size_t l = jsvGetMaxCharactersInVar(v);
     char buf[JSVAR_DATA_STRING_MAX_LEN+1];
     memcpy(buf, v->varData.str, l);
     buf[l] = 0;
@@ -694,7 +704,9 @@ JsVar *jsvCopyNameOnly(JsVar *src) {
         dst->lastChild = jsvUnLock(jsvRef(jsvCopy(child)));
         jsvUnLock(child);
       }
-  } else assert(jsvIsBasic(src)); // in case we missed something!
+  } else {
+    assert(jsvIsBasic(src)); // in case we missed something!
+  }
   return dst;
 }
 
@@ -741,7 +753,9 @@ JsVar *jsvCopy(JsVar *src) {
       vr = name->nextSibling;
       jsvUnLock(name);
     }
-  } else assert(jsvIsBasic(src)); // in case we missed something!
+  } else {
+    assert(jsvIsBasic(src)); // in case we missed something!
+  }
 
   return dst;
 }
@@ -888,21 +902,22 @@ int jsvGetChildren(JsVar *v) {
 }
 
 
-JsVarInt jsvGetArrayLength(JsVar *v) {
+JsVarInt jsvGetArrayLength(JsVar *arr) {
   JsVarInt lastIdx = 0;
-  JsVarRef childref = v->firstChild;
+  JsVarRef childref = arr->firstChild;
+  // TODO: when everying is in order in an array, we can just look at the last element
   while (childref) {
     JsVarInt childIndex;
     JsVar *child = jsvLock(childref);
     
     assert(jsvIsInt(child));
-    childIndex = jsvGetInteger(child);
+    childIndex = jsvGetInteger(child)+1;
     if (childIndex>lastIdx) 
         lastIdx = childIndex;
     childref = child->nextSibling;
     jsvUnLock(child);
   }
-  return lastIdx+1;
+  return lastIdx;
 }
 
 JsVar *jsvGetArrayItem(JsVar *arr, int index) {
@@ -944,6 +959,31 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
   return 0; // undefined
 }
 
+/// Adds new elements to the end of an array, and returns the new length
+JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
+  assert(jsvIsArray(arr));
+  JsVarInt index = jsvGetArrayLength(arr);
+  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), jsvGetRef(value));
+  jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
+  jsvUnLock(idx);
+  return index+1; // new size
+}
+
+/// Removes the last element of an array, and returns that element (or 0 if empty)
+JsVar *jsvArrayPop(JsVar *arr) {
+  assert(jsvIsArray(arr));
+  if (arr->lastChild) {
+    JsVar *child = jsvLock(arr->lastChild);
+    if (arr->firstChild == arr->lastChild)
+      arr->firstChild = 0; // if 1 item in array
+    arr->lastChild = child->prevSibling; // unlink from end of array
+    jsvUnRef(child); // as no longer in array
+    return child; // and return it
+  } else {
+    // no children!
+    return 0;
+  }
+}
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY
@@ -1147,18 +1187,20 @@ void jsvTrace(JsVarRef ref, int indent) {
     if (jsvIsName(var)) {
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
       if (jsvIsInt(var)) {
-          jsPrint("Name: int ");
-          jsPrint(buf);
-          jsPrint("  ");
+        jsPrint("Name: int ");
+        jsPrint(buf);
+        jsPrint("  ");
       } else if (jsvIsFloat(var)) {
-          jsPrint("Name: flt ");
-          jsPrint(buf);
-          jsPrint("  ");
+        jsPrint("Name: flt ");
+        jsPrint(buf);
+        jsPrint("  ");
       } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
-          jsPrint("Name: '");
-          jsPrint(buf);
-          jsPrint("'  ");
-      } else assert(0);
+        jsPrint("Name: '");
+        jsPrint(buf);
+        jsPrint("'  ");
+      } else {
+        assert(0);
+      }
       // go to what the name points to
       ref = var->firstChild;
       jsvUnLock(var);

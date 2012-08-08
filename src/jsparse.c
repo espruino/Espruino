@@ -174,9 +174,35 @@ bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
     *a = jsvSkipNameAndUnlock(jspeBase(&execute));
-  if (execInfo.lex->tk != ')') {
+  if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *b = jsvSkipNameAndUnlock(jspeBase(&execute));
+  }
+  // throw away extra params
+  while (execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    jsvUnLock(jspeBase(&execute));
+  }
+  JSP_MATCH(')');
+  return true;
+}
+
+// parse function with 3 arguments, return 3 values (no names!)
+bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c) {
+  *a = 0;
+  *b = 0;
+  JsExecFlags execute = EXEC_YES;
+  JSP_MATCH(LEX_ID);
+  JSP_MATCH('(');
+  if (execInfo.lex->tk != ')')
+    *a = jsvSkipNameAndUnlock(jspeBase(&execute));
+  if (b && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    *b = jsvSkipNameAndUnlock(jspeBase(&execute));
+  }
+  if (c && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    *c = jsvSkipNameAndUnlock(jspeBase(&execute));
   }
   // throw away extra params
   while (execInfo.lex->tk != ')') {
@@ -511,7 +537,7 @@ JsVar *jspeFactor() {
           /* Special case! We haven't found the variable, so check out
            * and see if it's one of our builtins...  */
           a = jsfHandleFunctionCall(&execInfo, 0, jslGetTokenValueAsString(execInfo.lex));
-          if (!a) {
+          if (a == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
             /* Variable doesn't exist! JavaScript says we should create it
              * (we won't add it here. This is done in the assignment operator)*/
             a = jsvMakeIntoVariableName(jsvNewFromString(jslGetTokenValueAsString(execInfo.lex)), 0);
@@ -548,7 +574,8 @@ JsVar *jspeFactor() {
                         /* Check for builtins via separate function
                          * This way we save on RAM for built-ins because all comes out of program code. */
                         child = jsfHandleFunctionCall(&execInfo, aVar, name);
-                        if (!child) {
+                        if (child == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
+                          child = 0;
                           // It wasn't handled... We already know this is an object so just add a new child
                           if (jsvIsObject(aVar)) {
                             child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);
@@ -596,7 +623,9 @@ JsVar *jspeFactor() {
                   }
                 }
                 jsvUnLock(index);
-            } else assert(0);
+            } else {
+              assert(0);
+            }
         }
         jsvUnLock(parent);
         return a;
@@ -932,7 +961,9 @@ JsVar *jspeBase() {
                 JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '-');
                 jspReplaceWith(lhs, res);
                 jsvUnLock(res);
-            } else assert(0);
+            } else {
+              assert(0);
+            }
         }
         jsvUnLock(rhs);
     }
@@ -1266,8 +1297,6 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
 }
 
 bool jspExecuteFunction(JsParse *parse, JsVar *func) {
-  JsExecFlags execute = EXEC_YES;
-  JsVar *v = 0;
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);

@@ -7,271 +7,289 @@
 
 #include "jsfunctions.h"
 
-JsVar* jsfMakeUndefined() {
-  return jsvNewWithFlags(JSV_NULL); // TODO see about above - should really be 'undefined'
+JsfHandleFunctionCallDelegate jsfHandleFunctionCallDelegate = 0;
+
+/** If we want to add our own extra functions, we can do it by creating a
+ * delegate function and linking it in here. */
+void jsfSetHandleFunctionCallDelegate(JsfHandleFunctionCallDelegate delegate) {
+  jsfHandleFunctionCallDelegate = delegate;
 }
 
 /** Note, if this function actually does handle a function call, it
  * MUST return something. If it needs to return undefined, that's tough :/
  */
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
+  if (jsfHandleFunctionCallDelegate) {
+    JsVar *v = jsfHandleFunctionCallDelegate(execInfo, a, name);
+    if (v!=0) return v;
+  }
+
   if (a==0) { // Special cases for where we're just a basic function
     if (strcmp(name,"eval")==0) {
       JsVar *v = jspParseSingleFunction();
       JsVar *result = 0;
       if (v) result = jspEvaluateVar(execInfo->parse, v);
       jsvUnLock(v);
-      if (!result) result = jsfMakeUndefined();
       return result;
     }
-    // unhandled
-    return 0;
-  }
-  // Is actually a method on some variable
-  if (strcmp(name,"length")==0) {
-    if (jsvIsArray(a)) {
-      jslMatch(execInfo->lex, LEX_ID);
-      return jsvNewFromInteger(jsvGetArrayLength(a));
-    }
-    if (jsvIsString(a)) {
-      jslMatch(execInfo->lex, LEX_ID);
-      return jsvNewFromInteger((JsVarInt)jsvGetStringLength(a));
-    }
-  }
-  // --------------------------------- built-in class stuff
-  if (jsvGetRef(a) == execInfo->parse->intClass) {
-    if (strcmp(name,"parseInt")==0) {
-      char buffer[16];
-      JsVar *v = jspParseSingleFunction();
-      jsvGetString(v, buffer, 16);
-      jsvUnLock(v);
-      return jsvNewFromInteger(stringToInt(buffer));
-    }
-    if (strcmp(name,"valueOf")==0) {
-      // value of a single character
-      int c;
-      JsVar *v = jspParseSingleFunction(execInfo);
-      if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
-        jsvUnLock(v);
-        return jsvNewFromInteger(0);
+  } else {
+    // Is actually a method on some variable
+    if (strcmp(name,"length")==0) {
+      if (jsvIsArray(a)) {
+        jslMatch(execInfo->lex, LEX_ID);
+        return jsvNewFromInteger(jsvGetArrayLength(a));
       }
-      c = (int)v->varData.str[0];
-      jsvUnLock(v);
-      return jsvNewFromInteger(c);
+      if (jsvIsString(a)) {
+        jslMatch(execInfo->lex, LEX_ID);
+        return jsvNewFromInteger((JsVarInt)jsvGetStringLength(a));
+      }
     }
-  }
-  if (jsvGetRef(a) == execInfo->parse->doubleClass) {
-    if (strcmp(name,"doubleToIntBits")==0) {
-      JsVar *v = jspParseSingleFunction(execInfo);
-      JsVarFloat f = jsvGetDouble(v);
-      jsvUnLock(v);
-      return jsvNewFromInteger(*(JsVarInt*)&f);
-    }
-  }
-  if (jsvGetRef(a) == execInfo->parse->mathClass) {
-    if (strcmp(name,"random")==0) {
-      if (jspParseEmptyFunction())
-        return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
-    }
-  }
-  if (jsvGetRef(a) == execInfo->parse->jsonClass) {
-      if (strcmp(name,"stringify")==0) {
+    // --------------------------------- built-in class stuff
+    if (jsvGetRef(a) == execInfo->parse->intClass) {
+      if (strcmp(name,"parseInt")==0) {
+        char buffer[16];
         JsVar *v = jspParseSingleFunction();
-        JsVar *result = jsvNewFromString("");
-        jsfGetJSON(v, result);
+        jsvGetString(v, buffer, 16);
         jsvUnLock(v);
-        return result;
+        return jsvNewFromInteger(stringToInt(buffer));
       }
-      if (strcmp(name,"parse")==0) {
-        JsVar *v = jspParseSingleFunction();
-        JsVar *res;
-        JsVar *bracketed = jsvNewFromString("(");
-        jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-        jsvUnLock(v);
-        jsvAppendString(bracketed, ")");
-        res = jspEvaluateVar(execInfo->parse, bracketed);
-        jsvUnLock(bracketed);
-        return res;
-      }
-      // TODO: Add JSON.parse
-    }
-  // ------------------------------------------ Built-in variable stuff
-  if (jsvIsString(a)) {
-     if (strcmp(name,"charAt")==0) {
-       char buffer[2];
-       size_t idx = 0;
-       JsVar *v = jspParseSingleFunction();
-       idx = (size_t)jsvGetInteger(v);
-       jsvUnLock(v);
-       // now search to try and find the char
-       v = jsvLock(jsvGetRef(a));
-       while (v && idx >= jsvGetMaxCharactersInVar(v)) {
-         JsVarRef next;
-         idx -= jsvGetMaxCharactersInVar(v);
-         next = v->lastChild;
-         jsvUnLock(v);
-         v = jsvLock(next);
-       }
-       buffer[0] = 0;
-       if (v) buffer[0] = v->varData.str[idx];
-       buffer[1] = 0;
-       jsvUnLock(v);
-       return jsvNewFromString(buffer);
-     }
-     if (strcmp(name,"indexOf")==0) {
-       // slow, but simple!
-       JsVar *v = jspParseSingleFunction();
-       int idx = -1;
-       int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
-       for (idx=0;idx<l;idx++) {
-         if (jsvCompareString(a, v, idx, 0, true)==0) {
-           jsvUnLock(v);
-           return jsvNewFromInteger(idx);
-         }
-       }
-       jsvUnLock(v);
-       return jsvNewFromInteger(-1);
-     }
-     if (strcmp(name,"substring")==0) {
-       JsVar *vStart, *vEnd, *res;
-       int pStart, pEnd;
-       jspParseDoubleFunction(&vStart, &vEnd);
-       pStart = (int)jsvGetInteger(vStart);
-       pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
-       jsvUnLock(vStart);
-       jsvUnLock(vEnd);
-       if (pStart<0) pStart=0;
-       if (pEnd<0) pEnd=0;
-       if (pEnd<pStart) {
-         int l = pStart;
-         pStart = pEnd;
-         pEnd = l;
-       }
-       res = jsvNewWithFlags(JSV_STRING);
-       jsvAppendStringVar(res, a, pStart, pEnd-pStart);
-       return res;
-     }
-     if (strcmp(name,"substr")==0) {
-        JsVar *vStart, *vLen, *res;
-        int pStart, pLen;
-        jspParseDoubleFunction(&vStart, &vLen);
-        pStart = (int)jsvGetInteger(vStart);
-        pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
-        jsvUnLock(vStart);
-        jsvUnLock(vLen);
-        if (pLen<0) pLen=0;
-        res = jsvNewWithFlags(JSV_STRING);
-        jsvAppendStringVar(res, a, pStart, pLen);
-        return res;
-      }
-      if (strcmp(name,"split")==0) {
-        JsVar *array;
-        int last, idx, arraylen=0;
-        JsVar *split = jspParseSingleFunction();
-        int splitlen =  (int)jsvGetStringLength(split);
-        int l = (int)jsvGetStringLength(a) - splitlen;
-        last = 0;
-
-        array = jsvNewWithFlags(JSV_ARRAY);
-
-        for (idx=0;idx<=l;idx++) {
-          if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
-            JsVar *part = jsvNewFromString("");
-            JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
-            jsvAppendStringVar(part, a, last, idx-(last+1));
-            jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
-            last = idx+splitlen;
-            jsvUnLock(idxvar);
-            jsvUnLock(part);
-          }
+      if (strcmp(name,"valueOf")==0) {
+        // value of a single character
+        int c;
+        JsVar *v = jspParseSingleFunction(execInfo);
+        if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
+          jsvUnLock(v);
+          return jsvNewFromInteger(0);
         }
-
-        jsvUnLock(split);
-        return array;
+        c = (int)v->varData.str[0];
+        jsvUnLock(v);
+        return jsvNewFromInteger(c);
       }
-   }
-  if (jsvIsString(a) || jsvIsObject(a)) {
-    if (strcmp(name,"clone")==0) {
-      if (jspParseEmptyFunction())
-        return jsvCopy(a);
     }
-  }
-  if (jsvIsArray(a)) {
-       if (strcmp(name,"contains")==0) {
-         JsVar *childValue = jspParseSingleFunction();
-         JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
-         jsvUnLock(childValue);
-         return jsvNewFromBool(found!=0);
+    if (jsvGetRef(a) == execInfo->parse->doubleClass) {
+      if (strcmp(name,"doubleToIntBits")==0) {
+        JsVar *v = jspParseSingleFunction(execInfo);
+        JsVarFloat f = jsvGetDouble(v);
+        jsvUnLock(v);
+        return jsvNewFromInteger(*(JsVarInt*)&f);
+      }
+    }
+    if (jsvGetRef(a) == execInfo->parse->mathClass) {
+      if (strcmp(name,"random")==0) {
+        if (jspParseEmptyFunction())
+          return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
+      }
+    }
+    if (jsvGetRef(a) == execInfo->parse->jsonClass) {
+        if (strcmp(name,"stringify")==0) {
+          JsVar *v = jspParseSingleFunction();
+          JsVar *result = jsvNewFromString("");
+          jsfGetJSON(v, result);
+          jsvUnLock(v);
+          return result;
+        }
+        if (strcmp(name,"parse")==0) {
+          JsVar *v = jspParseSingleFunction();
+          JsVar *res;
+          JsVar *bracketed = jsvNewFromString("(");
+          jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+          jsvUnLock(v);
+          jsvAppendString(bracketed, ")");
+          res = jspEvaluateVar(execInfo->parse, bracketed);
+          jsvUnLock(bracketed);
+          return res;
+        }
+        // TODO: Add JSON.parse
+      }
+    // ------------------------------------------ Built-in variable stuff
+    if (jsvIsString(a)) {
+       if (strcmp(name,"charAt")==0) {
+         char buffer[2];
+         size_t idx = 0;
+         JsVar *v = jspParseSingleFunction();
+         idx = (size_t)jsvGetInteger(v);
+         jsvUnLock(v);
+         // now search to try and find the char
+         v = jsvLock(jsvGetRef(a));
+         while (v && idx >= jsvGetMaxCharactersInVar(v)) {
+           JsVarRef next;
+           idx -= jsvGetMaxCharactersInVar(v);
+           next = v->lastChild;
+           jsvUnLock(v);
+           v = jsvLock(next);
+         }
+         buffer[0] = 0;
+         if (v) buffer[0] = v->varData.str[idx];
+         buffer[1] = 0;
+         jsvUnLock(v);
+         return jsvNewFromString(buffer);
        }
        if (strcmp(name,"indexOf")==0) {
-          JsVar *childValue = jspParseSingleFunction();
-          JsVar *idx = jsvGetArrayIndexOf(a, childValue);
-          jsvUnLock(childValue);
-          if (idx==0) return jsfMakeUndefined();
-          return idx;
-        }
-       if (strcmp(name,"join")==0) {
-         JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
-
-         JsVar *str = jsvNewFromString("");
-         JsVarRef childRef = a->firstChild;
-         while (childRef) {
-           JsVar *child = jsvLock(childRef);
-           if (child->firstChild) {
-             JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
-             jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-             jsvUnLock(data);
+         // slow, but simple!
+         JsVar *v = jspParseSingleFunction();
+         int idx = -1;
+         int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
+         for (idx=0;idx<l;idx++) {
+           if (jsvCompareString(a, v, idx, 0, true)==0) {
+             jsvUnLock(v);
+             return jsvNewFromInteger(idx);
            }
-           childRef = child->nextSibling;
-           jsvUnLock(child);
-           if (childRef)
-             jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
          }
-         jsvUnLock(filler);
-         return str;
+         jsvUnLock(v);
+         return jsvNewFromInteger(-1);
        }
+       if (strcmp(name,"substring")==0) {
+         JsVar *vStart, *vEnd, *res;
+         int pStart, pEnd;
+         jspParseDoubleFunction(&vStart, &vEnd);
+         pStart = (int)jsvGetInteger(vStart);
+         pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
+         jsvUnLock(vStart);
+         jsvUnLock(vEnd);
+         if (pStart<0) pStart=0;
+         if (pEnd<0) pEnd=0;
+         if (pEnd<pStart) {
+           int l = pStart;
+           pStart = pEnd;
+           pEnd = l;
+         }
+         res = jsvNewWithFlags(JSV_STRING);
+         jsvAppendStringVar(res, a, pStart, pEnd-pStart);
+         return res;
+       }
+       if (strcmp(name,"substr")==0) {
+          JsVar *vStart, *vLen, *res;
+          int pStart, pLen;
+          jspParseDoubleFunction(&vStart, &vLen);
+          pStart = (int)jsvGetInteger(vStart);
+          pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
+          jsvUnLock(vStart);
+          jsvUnLock(vLen);
+          if (pLen<0) pLen=0;
+          res = jsvNewWithFlags(JSV_STRING);
+          jsvAppendStringVar(res, a, pStart, pLen);
+          return res;
+        }
+        if (strcmp(name,"split")==0) {
+          JsVar *array;
+          int last, idx, arraylen=0;
+          JsVar *split = jspParseSingleFunction();
+          int splitlen =  (int)jsvGetStringLength(split);
+          int l = (int)jsvGetStringLength(a) - splitlen;
+          last = 0;
+
+          array = jsvNewWithFlags(JSV_ARRAY);
+
+          for (idx=0;idx<=l;idx++) {
+            if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
+              JsVar *part = jsvNewFromString("");
+              JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
+              jsvAppendStringVar(part, a, last, idx-(last+1));
+              jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
+              last = idx+splitlen;
+              jsvUnLock(idxvar);
+              jsvUnLock(part);
+            }
+          }
+
+          jsvUnLock(split);
+          return array;
+        }
+     }
+    if (jsvIsString(a) || jsvIsObject(a)) {
+      if (strcmp(name,"clone")==0) {
+        if (jspParseEmptyFunction())
+          return jsvCopy(a);
+      }
+    }
+    if (jsvIsArray(a)) {
+         if (strcmp(name,"contains")==0) {
+           JsVar *childValue = jspParseSingleFunction();
+           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
+           jsvUnLock(childValue);
+           return jsvNewFromBool(found!=0);
+         }
+         if (strcmp(name,"indexOf")==0) {
+            JsVar *childValue = jspParseSingleFunction();
+            JsVar *idx = jsvGetArrayIndexOf(a, childValue);
+            jsvUnLock(childValue);
+            return idx;
+          }
+         if (strcmp(name,"join")==0) {
+           JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
+
+           JsVar *str = jsvNewFromString("");
+           JsVarRef childRef = a->firstChild;
+           while (childRef) {
+             JsVar *child = jsvLock(childRef);
+             if (child->firstChild) {
+               JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
+               jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+               jsvUnLock(data);
+             }
+             childRef = child->nextSibling;
+             jsvUnLock(child);
+             if (childRef)
+               jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+           }
+           jsvUnLock(filler);
+           return str;
+         }
+         if (strcmp(name,"push")==0) {
+           JsVar *childValue = jspParseSingleFunction();
+           JsVarInt newSize = jsvArrayPush(a, childValue);
+           jsvUnLock(childValue);
+           return jsvNewFromInteger(newSize);
+         }
+         if (strcmp(name,"pop")==0) {
+           JsVar *childValue = jspParseSingleFunction();
+           JsVar *item = jsvArrayPop(a);
+           jsvUnLock(childValue);
+           return item;
+         }
+    }
   }
   // unhandled
-  return 0;
+  return JSFHANDLEFUNCTIONCALL_UNHANDLED;
 }
 
-void jsfGetJSON(JsVar *var, JsVar *result) {
+void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData) {
   assert(jsvIsString(result));
   if (jsvIsUndefined(var)) { 
-    jsvAppendString(result,"undefined");
+    callbackString(callbackData, "undefined");
   } else if (jsvIsArray(var)) { 
     int length = (int)jsvGetArrayLength(var);
     int i;
-    jsvAppendString(result,"[");
+    callbackString(callbackData, "[");
     for (i=0;i<length;i++) {
       JsVar *item = jsvGetArrayItem(var, i);
-      jsfGetJSON(item, result);
+      jsfGetJSONWithCallback(item, callbackString, callbackVar, callbackData);
       jsvUnLock(item);
-      if (i<length-1) jsvAppendString(result,",");
+      if (i<length-1) callbackString(callbackData, ",");
     }
-    jsvAppendString(result,"]");
+    callbackString(callbackData, "]");
   } else if (jsvIsObject(var)) {
     JsVarRef childref = var->firstChild;
-    jsvAppendString(result,"{");
+    callbackString(callbackData, "{");
     while (childref) {
       JsVar *child = jsvLock(childref);
       JsVar *childVar;
-      jsvAppendString(result, "\"");
-      jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);// FIXME: escape the string
-      jsvAppendString(result, "\":");
+      callbackString(callbackData, "\"");
+      callbackVar(callbackData, child); // FIXME: escape the string
+      callbackString(callbackData, "\":");
       childVar = jsvLock(child->firstChild);
       childref = child->nextSibling;
       jsvUnLock(child);
-      jsfGetJSON(childVar, result);
+      jsfGetJSONWithCallback(childVar, callbackString, callbackVar, callbackData);
       jsvUnLock(childVar);
-      if (childref) jsvAppendString(result,",");
+      if (childref) callbackString(callbackData, ",");
     }
-    jsvAppendString(result,"}");
+    callbackString(callbackData, "}");
   } else if (jsvIsFunction(var)) {
     JsVarRef coderef = 0;
     JsVarRef childref = var->firstChild;
     bool firstParm = true;
-    jsvAppendString(result,"function (");
+    callbackString(callbackData, "function (");
     while (childref) {
       JsVar *child = jsvLock(childref);
       childref = child->nextSibling;
@@ -279,28 +297,38 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
         if (firstParm) 
           firstParm=false;
         else
-          jsvAppendString(result, ","); 
-        jsvAppendStringVar(result, child, 0, JSVAPPENDSTRINGVAR_MAXLENGTH); // FIXME: escape the string
+          callbackString(callbackData, ",");
+        callbackVar(callbackData, child); // FIXME: escape the string
       } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
         coderef = child->firstChild;
       }
       jsvUnLock(child);
     }
-    jsvAppendString(result,") ");
+    callbackString(callbackData, ") ");
     if (coderef) {
        JsVar *codeVar = jsvLock(coderef);
-       jsvAppendStringVar(result, codeVar, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+       callbackVar(callbackData, codeVar);
        jsvUnLock(codeVar);
-    } else jsvAppendString(result,"{}");
+    } else callbackString(callbackData, "{}");
   } else if (jsvIsString(var)) {
-    jsvAppendString(result,"\"");
-    jsvAppendStringVar(result, var, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-    jsvAppendString(result,"\"");
+    callbackString(callbackData, "\"");
+    callbackVar(callbackData, var);
+    callbackString(callbackData, "\"");
   } else {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(var, buf, JSLEX_MAX_TOKEN_LENGTH);
-    jsvAppendString(result, buf);
+    callbackString(callbackData, buf);
   }
   // TODO: functions
+}
+
+void jsfGetJSON(JsVar *var, JsVar *result) {
+  jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
+}
+
+void _jsfPrintJSON_str(void *data, const char *str) { jsPrint(str); }
+void _jsfPrintJSON_var(void *data, JsVar *var) { jsvPrintStringVar(var); }
+void jsfPrintJSON(JsVar *var) {
+  jsfGetJSONWithCallback(var, _jsfPrintJSON_str, _jsfPrintJSON_var, 0);
 }
 
