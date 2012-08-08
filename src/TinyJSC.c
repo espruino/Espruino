@@ -163,9 +163,16 @@ int main(int argc, char **argv) {
 
   jshInit();
   jsiInit();
-  while (1) {
+
+  jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
+  jspAddNativeFunction(jsiGetParser(), "function trace()", nativeTrace);
+
+  while (isRunning) {
     jsiLoop();
   }
-  //jsiKill();
-  //jshKill();
+  jsPrint("\n");
+  jsiKill();
+
+  jsvShowAllocated();
+  jshKill();
 }

@@ -80,7 +80,7 @@ void jsiHandleChar(char ch) {
 
   if (ch == CHAR_DELETE_RECV /*delete*/) {
     size_t l = jsvGetStringLength(inputline);
-    if (l>1) {
+    if (l>0) {
       // clear the character
       if (echo) {
         jshTX(CHAR_DELETE_SEND);
@@ -89,12 +89,11 @@ void jsiHandleChar(char ch) {
       }
       // FIXME hacky - should be able to just remove the end character without copying
       JsVar *v = jsvNewFromString("");
-      jsvAppendStringVar(v, inputline, 0, (int)(l-1));
+      if (l>1) jsvAppendStringVar(v, inputline, 0, (int)(l-1));
       jsvUnLock(inputline);
       inputline=v;
     } else {
       // no characters, don't allow delete
-      if (echo) jshTX(' ');
     }
   } else if (ch == '\r') {
     if (brackets<=0) {
@@ -369,4 +368,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   }
   // unhandled
   return JSFHANDLEFUNCTIONCALL_UNHANDLED;
+}
+
+JsParse *jsiGetParser() {
+  return &p;
 }

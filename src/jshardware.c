@@ -337,7 +337,6 @@ int jshGetPinFromVar(JsVar *pinv) {
   } else if (jsvIsInt(pinv)) {
     pin = (int)jsvGetInteger(pinv);
   }
-  jsvUnLock(pinv);
   return pin;
 }
 

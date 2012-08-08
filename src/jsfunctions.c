@@ -21,7 +21,7 @@ void jsfSetHandleFunctionCallDelegate(JsfHandleFunctionCallDelegate delegate) {
 JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (jsfHandleFunctionCallDelegate) {
     JsVar *v = jsfHandleFunctionCallDelegate(execInfo, a, name);
-    if (v!=0) return v;
+    if (v!=JSFHANDLEFUNCTIONCALL_UNHANDLED) return v;
   }
 
   if (a==0) { // Special cases for where we're just a basic function
