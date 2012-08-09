@@ -594,6 +594,11 @@ INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     return 0;
 }
 
+INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value) {
+  assert(jsvIsInt(v));
+  v->varData.integer  = value;
+}
+
 INLINE_FUNC bool jsvGetBool(const JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
@@ -1006,7 +1011,7 @@ JsVar *jsvArrayPop(JsVar *arr) {
  * return 0.  */
 INLINE_FUNC JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
-  if (!a) return a;
+  if (!a) return 0;
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);

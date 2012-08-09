@@ -254,7 +254,6 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 }
 
 void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData) {
-  assert(jsvIsString(result));
   if (jsvIsUndefined(var)) { 
     callbackString(callbackData, "undefined");
   } else if (jsvIsArray(var)) { 
@@ -323,6 +322,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
 }
 
 void jsfGetJSON(JsVar *var, JsVar *result) {
+  assert(jsvIsString(result));
   jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
 }
 

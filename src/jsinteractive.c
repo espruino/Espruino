@@ -19,14 +19,12 @@
 #endif
 
 // ----------------------------------------------------------------------------
-#define MAX_TIMERS 4
 typedef struct TimerState {
   JsSysTime time;
   JsSysTime interval;
   bool recurring;
   JsVarRef callback; // a calback, or 0
 } TimerState;
-TimerState timers[MAX_TIMERS]; // Timers available
 
 
 typedef enum {
@@ -38,6 +36,7 @@ typedef enum {
 
 TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
+JsVarRef timerArray; // Linked List of timers to check and run
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
@@ -47,18 +46,46 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 // ----------------------------------------------------------------------------
 
 // Used when recovering after being flashed
+// 'claim' anything we are using
 void jsiSoftInit() {
   events = 0;
   inputline = jsvNewFromString("");
+
+  JsVar *timersName = jsvFindChildFromString(p.root, "timers", true);
+  if (!timersName->firstChild)
+    timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
+  timerArray = jsvRefRef(timersName->firstChild);
+  jsvUnLock(timersName);
+
+  // Check any existing timers and try and set time correctly
+  JsSysTime currentTime = jshGetSystemTime();
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  JsVarRef timer = timerArrayPtr->firstChild;
+  while (timer) {
+    JsVar *timerNamePtr = jsvLock(timer);
+    JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
+    JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
+    jsvSetInteger(timerTime, currentTime + jsvGetInteger(timerInterval));
+    jsvUnLock(timerInterval);
+    jsvUnLock(timerTime);
+    timer = timerNamePtr->nextSibling;
+    jsvUnLock(timerNamePtr);
+  }
+  jsvUnLock(timerArrayPtr);
 }
 
 // Used when shutting down before flashing
+// 'release' anything we are using, but ensure that it doesn't get freed
 void jsiSoftKill() {
   jsvUnLock(inputline);
   inputline=0;
   if (events) {
     jsvUnRefRef(events);
     events=0;
+  }
+  if (timerArray) {
+    jsvUnRefRef(timerArray);
+    timerArray=0;
   }
 }
 
@@ -69,11 +96,8 @@ void jsiInit(bool autoLoad) {
   jsfSetHandleFunctionCallDelegate(jsiHandleFunctionCall);
 
 
-  int i;
   /*for (i=0;i<IOPINS;i++)
      ioPinState[i].callbacks = 0;*/
-  for (i=0;i<MAX_TIMERS;i++)
-     timers[i].interval = 0;
 
   /* If flash contains any code, then we should
      Try and load from it... */
@@ -238,21 +262,35 @@ void jsiIdle() {
   }*/
   // Check timers
   JsSysTime time = jshGetSystemTime();
-  int i;
-  for (i=0;i<MAX_TIMERS;i++) {
-    if (timers[i].interval && time > timers[i].time) {
-      // queue
-      jsiQueueEvents(timers[i].callback);
-      if (timers[i].recurring) {
-        timers[i].time += timers[i].interval;
+
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  JsVarRef timer = timerArrayPtr->firstChild;
+  while (timer) {
+    JsVar *timerNamePtr = jsvLock(timer);
+    JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
+    if (timerTime && time > jsvGetInteger(timerTime)) {
+      JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
+      JsVar *timerRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false));
+      jsiQueueEvents(jsvGetRef(timerCallback));
+      if (jsvGetBool(timerRecurring)) {
+        JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
+        jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jsvGetInteger(timerInterval));
+        jsvUnLock(timerInterval);
       } else {
         // free all
-        timers[i].interval = 0;
-        jsvUnRefRef(timers[i].callback);
-        timers[i].callback = 0;
+        jsvRemoveChild(timerArrayPtr, timerNamePtr);
       }
+      jsvUnLock(timerCallback);
+      jsvUnLock(timerRecurring);
+
     }
+    jsvUnLock(timerTime);
+    timer = timerNamePtr->nextSibling;
+    jsvUnLock(timerNamePtr);
   }
+  jsvUnLock(timerArrayPtr);
+
+
   // execute any outstanding events
   jsiExecuteEvents();
   // check for TODOs
@@ -329,21 +367,31 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       if (!jsvIsFunction(func)) {
         jsError("Function not supplied!");
       }
-      // find an empty timer
-      int timer = 0;
-      while (timer<MAX_TIMERS && timers[timer].interval!=0) timer++;
-      // then
-      if (timer >= MAX_TIMERS) {
-        jsError("Too many timers!");
-        return 0;
-      } else {
-        timers[timer].interval = jshGetTimeFromMilliseconds(jsvGetDouble(timeout));
-        if (timers[timer].interval<1) timers[timer].interval=1;
-        timers[timer].time = jshGetSystemTime() + timers[timer].interval;
-        timers[timer].recurring = recurring;
-        timers[timer].callback = jsvGetRef(jsvRef(func));
-        return jsvNewFromInteger(timer);
+      // Create a new timer
+      JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
+      JsVarInt interval = jshGetTimeFromMilliseconds(jsvGetDouble(timeout));
+      if (interval<1) interval=1;
+      JsVar *v;
+      v = jsvNewFromInteger(jshGetSystemTime() + interval);
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "time"));
+      jsvUnLock(v);
+      if (recurring) {
+        v = jsvNewFromInteger(interval);
+        jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "interval"));
+        jsvUnLock(v);
       }
+      v = jsvNewFromBool(recurring);
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "recur"));
+      jsvUnLock(v);
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(func), "callback"));
+      JsVar *timerArrayPtr = jsvLock(timerArray);
+      JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
+      jsvUnLock(timerArrayPtr);
+      jsvUnLock(timerPtr);
+      jsvUnLock(func);
+      jsvUnLock(timeout);
+      //jsvTrace(jsiGetParser()->root, 0);
+      return jsvNewFromInteger(itemIndex);
     }
     if (strcmp(name,"clearTimeout")==0 || strcmp(name,"clearInterval")==0) {
       /*JS* function clearTimeout(id)
@@ -357,13 +405,14 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *   clearInterval(id);
        */
       JsVar *idVar = jspParseSingleFunction();
-      int id = (int)jsvGetInteger(idVar);
+      JsVar *child = jsvFindChildFromVar(timerArray, idVar, false);
       jsvUnLock(idVar);
 
-      if (id>=0 && id<MAX_TIMERS && timers[id].interval) {
-        timers[id].interval = 0;
-        jsvUnRefRef(timers[id].callback);
-        timers[id].callback = 0;
+      if (child) {
+        JsVar *timerArrayPtr = jsvLock(timerArray);
+        jsvRemoveChild(timerArrayPtr, child);
+        jsvUnLock(child);
+        jsvUnLock(timerArrayPtr);
       } else {
         jsError("Unknown Timer");
       }
@@ -430,6 +479,11 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        * Reset everything - clear program memory */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
+      return 0;
+    }
+    if (strcmp(name,"trace")==0) {
+      jspParseEmptyFunction();
+      jsvTrace(p.root, 0);
       return 0;
     }
 /* TODO:

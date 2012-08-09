@@ -26,6 +26,9 @@
  * TODO - should be fixed
  * FIXME - will probably break if used
  * OPT - potential for speed optimisation
+ *
+ *
+ FIXME: save(); close, start, save(); breaks!
  * */
 
 #include <stdio.h>
@@ -39,15 +42,11 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 
-JsParse p;
+
 bool isRunning = true;
 
 void nativeQuit(JsVarRef var) {
   isRunning = false;
-}
-
-void nativeTrace(JsVarRef var) {
-  jsvTrace(p.root, 0);
 }
 
 void nativePrint(JsVarRef var) {
@@ -81,7 +80,9 @@ bool run_test(const char *filename) {
   fclose(file);
 
   JsVar *v;
+
   jsvInit();
+  JsParse p;
   jspInit(&p);
   jspAddNativeFunction(&p, "function print(text)", nativePrint);
 
@@ -165,7 +166,6 @@ int main(int argc, char **argv) {
   jsiInit(true);
 
   jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-  jspAddNativeFunction(jsiGetParser(), "function trace()", nativeTrace);
 
   while (isRunning) {
     jsiLoop();

@@ -195,6 +195,7 @@ void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str 
 void jsvPrintStringVar(JsVar *v);
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
+INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
 INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat
 INLINE_FUNC bool jsvGetBool(const JsVar *v);
 
