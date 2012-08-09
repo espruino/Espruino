@@ -81,7 +81,7 @@ typedef enum {
     JSV_NUMERICMASK = 8,
     JSV_VARTYPEMASK = 15,
 
-    JSV_UNUSED   = 0,
+    JSV_UNUSED      = 0,
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = 1, // it seems null is its own data type
     JSV_STRING      = 2, // string
@@ -102,7 +102,8 @@ typedef enum {
     // these are useful ONLY because the debugger picks them up :)
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,
-    JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION
+    JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION,
+    JSV_ROOT = JSV_OBJECT | JSV_NATIVE,
 } PACKED_FLAGS JsVarFlags;
 
 typedef enum LEX_TYPES {

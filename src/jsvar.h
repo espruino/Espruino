@@ -81,6 +81,7 @@ typedef struct {
 // Init/kill vars as a whole
 void jsvInit();
 void jsvKill();
+JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used mainly if recovering from a saved state.
 int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 

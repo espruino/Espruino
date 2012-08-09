@@ -29,6 +29,9 @@ typedef struct {
 void jspInit(JsParse *parse);
 void jspKill(JsParse *parse);
 
+void jspSoftInit(JsParse *parse); // used when recovering from or saving to flash
+void jspSoftKill(JsParse *parse); // used when recovering from or saving to flash
+
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);

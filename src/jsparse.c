@@ -1214,39 +1214,85 @@ JsVar *jspeStatement() {
 
 // -----------------------------------------------------------------------------
 
-void jspInit(JsParse *parse) {
-  parse->root = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+void jspSoftInit(JsParse *parse) {
+  parse->root = jsvUnLock(jsvFindOrCreateRoot());
 
-  parse->zeroInt = jsvUnLock(jsvRef(jsvNewFromInteger(0)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->zeroInt, "#zero#"));
+  JsVar *name;
+
+  name = jsvFindChildFromString(parse->root, "#zero#", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewFromInteger(0)));
+  parse->zeroInt = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "#one#", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewFromInteger(1)));
+  parse->oneInt = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "String", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->stringClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "Object", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->objectClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "Array", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->arrayClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "Integer", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->intClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "Double", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->doubleClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "Math", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->mathClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+
+  name = jsvFindChildFromString(parse->root, "JSON", true);
+  name->flags |= JSV_NATIVE;
+  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+  parse->jsonClass = jsvRefRef(name->firstChild);
+  jsvUnLock(name);
+}
+
+void jspSoftKill(JsParse *parse) {
   jsvUnRefRef(parse->zeroInt);
-  parse->oneInt = jsvUnLock(jsvRef(jsvNewFromInteger(1)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->oneInt, "#one#"));
   jsvUnRefRef(parse->oneInt);
-  parse->stringClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->stringClass, "String"));
   jsvUnRefRef(parse->stringClass);
-  parse->objectClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->objectClass, "Object"));
   jsvUnRefRef(parse->objectClass);
-  parse->arrayClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->arrayClass, "Array"));
   jsvUnRefRef(parse->arrayClass);
-  parse->intClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->intClass, "Integer"));
   jsvUnRefRef(parse->intClass);
-  parse->doubleClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->doubleClass, "Double"));
   jsvUnRefRef(parse->doubleClass);
-  parse->mathClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->mathClass, "Math"));
   jsvUnRefRef(parse->mathClass);
-  parse->jsonClass = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
-  jsvUnLock(jsvAddNamedChild(parse->root, parse->jsonClass, "JSON"));
   jsvUnRefRef(parse->jsonClass);
 }
 
+void jspInit(JsParse *parse) {
+  jspSoftInit(parse);
+}
+
 void jspKill(JsParse *parse) {
+  jspSoftKill(parse);
+  // Unreffing this should completely kill everything attached to root
   jsvUnRefRef(parse->root);
 }
 

@@ -18,6 +18,7 @@ int jsvGetVarDataSize() { return sizeof(jsVars); }
 void jsvInit() {
   int i;
   for (i=0;i<JSVAR_CACHE_SIZE;i++) {
+    jsVars[i].flags = JSV_UNUSED;
     jsVars[i].this = (JsVarRef)(i+1);
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
     jsVars[i].nextSibling = (JsVarRef)(i+2);
@@ -27,6 +28,18 @@ void jsvInit() {
 }
 
 void jsvKill() {
+}
+
+/** Find or create the ROOT variable item - used mainly
+ * if recovering from a saved state. */
+JsVar *jsvFindOrCreateRoot() {
+  int i;
+
+  for (i=0;i<JSVAR_CACHE_SIZE;i++)
+    if (jsVars[i].flags==JSV_ROOT)
+      return jsvLock(jsVars[i].this);
+
+  return jsvRef(jsvNewWithFlags(JSV_ROOT));
 }
 
 // Get number of memory records (JsVars) used

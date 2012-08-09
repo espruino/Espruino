@@ -266,13 +266,17 @@ void jsiIdle() {
     if (todo & TODO_FLASH_SAVE) {
       todo &= ~TODO_FLASH_SAVE;
       jsiSoftKill();
-      jshSaveToFlash(); 
+      jspSoftKill(&p);
+      jshSaveToFlash();
+      jspSoftInit(&p);
       jsiSoftInit();
     }
     if (todo & TODO_FLASH_LOAD) {
       todo &= ~TODO_FLASH_LOAD;
       jsiSoftKill();
+      jspSoftKill(&p);
       jshLoadFromFlash();
+      jspSoftInit(&p);
       jsiSoftInit();
     }
   }
