@@ -502,6 +502,17 @@ void jshSaveToFlash() {
   jsPrint(" we want ");
   jsPrintInt(FLASH_MAGIC);
   jsPrint("\n");*/
+#else
+  FILE *f = fopen("TinyJSC.state","wb");
+  if (f) {
+    jsPrint("\nSaving ");
+    jsPrintInt(jsvGetVarDataSize());
+    jsPrint(" bytes...\n");
+    fwrite(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
+    fclose(f);
+  } else {
+    jsPrint("\nFile Open Failed... \n");
+  }
 #endif
 }
 
@@ -512,6 +523,17 @@ void jshLoadFromFlash() {
   jsPrint(" bytes from flash...");
   memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
   jsPrint("\nDone!\n");
+#else
+  FILE *f = fopen("TinyJSC.state","rb");
+  if (f) {
+    jsPrint("\nLoading ");
+    jsPrintInt(jsvGetVarDataSize());
+    jsPrint(" bytes...\n");
+    fread(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
+    fclose(f);
+  } else {
+    jsPrint("\nFile Open Failed... \n");
+  }
 #endif
 }
 
@@ -524,6 +546,8 @@ bool jshFlashContainsCode() {
   jsPrint("\n");*/
   return (*(int*)FLASH_MAGIC_LOCATION) == FLASH_MAGIC;
 #else
-  return false;
+  FILE *f = fopen("TinyJSC.state","rb");
+  if (f) fclose(f);
+  return f!=0;
 #endif
 }
