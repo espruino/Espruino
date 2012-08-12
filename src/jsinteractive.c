@@ -101,8 +101,12 @@ void jsiInit(bool autoLoad) {
 
   /* If flash contains any code, then we should
      Try and load from it... */
-  if (autoLoad && jshFlashContainsCode())
+  if (autoLoad && jshFlashContainsCode()) {
+    jspSoftKill(&p);
     jshLoadFromFlash();
+    jspSoftInit(&p);
+  }
+  jsvTrace(jsiGetParser()->root, 0);
 
   jsiSoftInit();
   echo = true;
