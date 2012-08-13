@@ -26,14 +26,39 @@
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
 #ifdef ARM
+// UART Receive
 #define RXBUFFERMASK 31
 char rxBuffer[RXBUFFERMASK+1];
 volatile unsigned char rxHead=0, rxTail=0;
 
+// UART Transmit
 #define TXBUFFERMASK 15
 char txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
+
 #endif
+
+// IO Events
+#define IOBUFFERMASK 7
+IOEvent ioBuffer[IOBUFFERMASK+1];
+volatile unsigned char ioHead=0, ioTail=0;
+
+void jshPushIOEvent(JsSysTime time, unsigned char channel) {
+  unsigned char nextHead = (ioHead+1) & IOBUFFERMASK;
+  if (ioTail == nextHead) return; // queue full - dump this event!
+  ioBuffer[ioHead].time = time;
+  ioBuffer[ioHead].channel = channel;
+  ioHead = nextHead;
+}
+
+// returns true on success
+bool jshPopIOEvent(IOEvent *result) {
+  if (ioHead==ioTail) return false;
+  *result = ioBuffer[ioTail];
+  ioTail = (ioTail+1) & IOBUFFERMASK;
+  return true;
+}
+
 // ----------------------------------------------------------------------------
 //                                                                        PINS
 #ifdef ARM
@@ -129,29 +154,8 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
   if (port == GPIOG) GPIO_PortSourceGPIOG;
   return GPIO_PortSourceGPIOA;
 }
+*/
 
-typedef struct PinInterrupt {
-  unsigned char pin; // pin this is for, or -1
-  bool fired;
-  JsSysTime time; // time this fired
-  JsVarRef callbacks; // an array of callbacks, or 0
-} PinInterrupt;
-#define PININTERRUPTS 16
-PinInterrupt pinInterrupt[PININTERRUPTS];*/
-/* setWatch
- * int idx = pinToPinSource(IOPIN_DATA[pin])
- * if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
- * pinInterrupt[idx].pin = pin;
- * pinInterrupt[idx].fired = false;
- * pinInterrupt[idx].callbacks = ...;
- * GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
- *  EXTI_StructInit(&s)
- *  s.EXTI_Line = IOPIN_DATA[pin].pin; //EXTI_Line0
- *  s.EXIT_Mode =  EXTI_Mode_Interrupt
- *  s.EXTI_Trigger = EXTI_Trigger_Rising_Falling
- *  s.EXTI_LineCmd = ENABLE;
- *  EXTI_Init(&s)
- */
 #endif
 // ----------------------------------------------------------------------------
 #ifdef ARM
@@ -180,19 +184,19 @@ void USART1_IRQHandler(void) {
   }
 }
 
-/*void EXTI0_IRQHandler(void) {
+void EXTI0_IRQHandler(void) {
   if (EXTI_GetITStatus(EXTI_Line0) == SET) {
-    pinInterrupt[0].fired = true;
-    pinInterrupt[0].time = jshGetSystemTime();
+    jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource0);
     EXTI_ClearITPendingBit(EXTI_Line0);
   }
+  // repeat for EXTI1 etc...
 }
 void EXTI1_IRQHandler(void) {  }
 void EXTI2_IRQHandler(void) {  }
 void EXTI3_IRQHandler(void) {  }
 void EXTI4_IRQHandler(void) {  }
 void EXTI9_5_IRQHandler(void) {  }
-void EXTI15_10_IRQHandler(void) {  }*/
+void EXTI15_10_IRQHandler(void) {  }
 #endif//ARM
 // ----------------------------------------------------------------------------
 #ifndef ARM
@@ -323,6 +327,7 @@ void jshInit() {
 void jshKill() {
 }
 
+
 int jshRX() {
 #ifdef ARM
   if (rxHead == rxTail) return -1;
@@ -354,6 +359,7 @@ void jshTXStr(const char *str) {
        jshTX(*(str++));
   }
 }
+
 
 // ----------------------------------------------------------------------------
 
@@ -457,6 +463,31 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
     else
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
   } else jsError("Invalid pin!");
+#endif
+}
+
+void jshPinWatch(int pin, bool shouldWatch) {
+#ifdef ARM
+  /*int idx = pinToPinSource(IOPIN_DATA[pin])
+  if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
+  pinInterrupt[idx].pin = pin;
+  pinInterrupt[idx].fired = false;
+  pinInterrupt[idx].callbacks = ...;
+  GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
+  EXTI_StructInit(&s)
+  s.EXTI_Line = IOPIN_DATA[pin].pin; //EXTI_Line0
+  s.EXIT_Mode =  EXTI_Mode_Interrupt
+  s.EXTI_Trigger = EXTI_Trigger_Rising_Falling
+  s.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&s)*/
+#endif
+}
+
+bool jshIsEventForPin(IOEvent *event, int pin) {
+#ifdef ARM
+  return event->channel == pinToPinSource(IOPIN_DATA[pin].pin);
+#else
+  return false;
 #endif
 }
 

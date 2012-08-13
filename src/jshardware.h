@@ -27,11 +27,24 @@ JsSysTime jshGetSystemTime();
 /// Convert a time in Milliseconds to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 
+
+// IO Events - these happen when a pin changes
+typedef struct IOEvent {
+  JsSysTime time; // time event occurred
+  unsigned char channel; // 'channel'
+} IOEvent;
+
+void jshPushIOEvent(JsSysTime time, unsigned char channel);
+bool jshPopIOEvent(IOEvent *result); ///< returns true on success
+
+
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
 int jshGetPinFromVar(JsVar *pinv);
 bool jshPinInput(int pin);
 void jshPinOutput(int pin, bool value);
 void jshPinPulse(int pin, bool value, JsVarFloat time);
+void jshPinWatch(int pin, bool shouldWatch);
+bool jshIsEventForPin(IOEvent *event, int pin);
 
 /// Save contents of JsVars into Flash
 void jshSaveToFlash();

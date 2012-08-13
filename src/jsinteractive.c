@@ -37,6 +37,7 @@ typedef enum {
 TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray; // Linked List of timers to check and run
+JsVarRef watchArray; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
@@ -56,6 +57,12 @@ void jsiSoftInit() {
     timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
   timerArray = jsvRefRef(timersName->firstChild);
   jsvUnLock(timersName);
+
+  JsVar *watchName = jsvFindChildFromString(p.root, "watches", true);
+  if (!watchName->firstChild)
+    watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
+  watchArray = jsvRefRef(watchName->firstChild);
+  jsvUnLock(watchName);
 
   // Check any existing timers and try and set time correctly
   JsSysTime currentTime = jshGetSystemTime();
@@ -87,6 +94,10 @@ void jsiSoftKill() {
     jsvUnRefRef(timerArray);
     timerArray=0;
   }
+  if (watchArray) {
+    jsvUnRefRef(watchArray);
+    watchArray=0;
+  }
 }
 
 void jsiInit(bool autoLoad) {
@@ -106,7 +117,7 @@ void jsiInit(bool autoLoad) {
     jshLoadFromFlash();
     jspSoftInit(&p);
   }
-  jsvTrace(jsiGetParser()->root, 0);
+  //jsvTrace(jsiGetParser()->root, 0);
 
   jsiSoftInit();
   echo = true;
@@ -264,6 +275,35 @@ void jsiIdle() {
       // TODO: clear callbacks list after execution?
     }
   }*/
+  // Handle hardware-related idle stuff (like checking for pin events)
+  IOEvent event;
+  while (jshPopIOEvent(&event)) {
+    // we have an event... find out what it was for...
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVarRef watch = watchArrayPtr->firstChild;
+    while (watch) {
+      JsVar *watchNamePtr = jsvLock(watch);
+      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "time", false));
+      int pin = jshGetPinFromVar(watchPin); // TODO: could be faster?
+      jsvUnLock(watchPin);
+
+      if (jshIsEventForPin(&event, pin)) {
+        JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
+        JsVar *watchRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
+        jsiQueueEvents(jsvGetRef(watchCallback));
+        if (!jsvGetBool(watchRecurring)) {
+          // free all
+          jsvRemoveChild(watchArrayPtr, watchNamePtr);
+        }
+        jsvUnLock(watchCallback);
+        jsvUnLock(watchRecurring);
+      }
+      watch = watchNamePtr->nextSibling;
+      jsvUnLock(watchNamePtr);
+    }
+    jsvUnLock(watchArrayPtr);
+  }
+
   // Check timers
   JsSysTime time = jshGetSystemTime();
 
