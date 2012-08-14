@@ -622,8 +622,21 @@ void jshSaveToFlash() {
       if ((i&(FLASH_PAGE_SIZE-1))==0) jsPrint(".");
   }
   FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
-  jsPrint("\nDone!\n");
+  FLASH_WaitForLastOperation(0x2000);
   FLASH_LockBank1();
+  jsPrint("\nChecking...");
+
+  int errors = 0;
+  for (i=0;i<jsvGetVarDataSize();i+=4)
+    if ((*(int*)(FLASH_START+i)) != basePtr[i>>2])
+      errors++;
+
+  if (errors) {
+      jsPrint("\nThere were ");
+      jsPrintInt(errors);
+      jsPrint(" errors!\n>");
+  } else
+      jsPrint("\nDone!\n>");
 
   /*jsPrint("Magic contains ");
   jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
@@ -635,11 +648,12 @@ void jshSaveToFlash() {
   if (f) {
     jsPrint("\nSaving ");
     jsPrintInt(jsvGetVarDataSize());
-    jsPrint(" bytes...\n");
+    jsPrint(" bytes...");
     fwrite(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
     fclose(f);
+    jsPrint("\nDone!\n>");
   } else {
-    jsPrint("\nFile Open Failed... \n");
+    jsPrint("\nFile Open Failed... \n>");
   }
 #endif
 }
@@ -650,17 +664,17 @@ void jshLoadFromFlash() {
   jsPrintInt(jsvGetVarDataSize());
   jsPrint(" bytes from flash...");
   memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
-  jsPrint("\nDone!\n");
+  jsPrint("\nDone!\n>");
 #else
   FILE *f = fopen("TinyJSC.state","rb");
   if (f) {
     jsPrint("\nLoading ");
     jsPrintInt(jsvGetVarDataSize());
-    jsPrint(" bytes...\n");
+    jsPrint(" bytes...\n>");
     fread(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
     fclose(f);
   } else {
-    jsPrint("\nFile Open Failed... \n");
+    jsPrint("\nFile Open Failed... \n>");
   }
 #endif
 }
