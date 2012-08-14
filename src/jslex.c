@@ -294,7 +294,7 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   if (endPos<0) {
     endPos = (int)jsvGetStringLength(var);
   }
-  lex->sourceVarRef = jsvRef(var)->this;
+  lex->sourceVarRef = jsvGetRef(jsvRef(var));
   lex->sourceStartPos = startPos;
   lex->sourceEndPos = endPos;
   // reset stuff

@@ -36,7 +36,9 @@ typedef union {
 } PACKED_FLAGS JsVarData;
 
 typedef struct {
+#ifdef LARGE_MEM
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
+#endif
   unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
@@ -77,6 +79,9 @@ typedef struct {
  *  STRING - use firstChild to link to other STRINGs if String value is too long
  *  INT/DOUBLE - firstChild never used
  */
+
+void *jsvGetVarDataPointer();
+int jsvGetVarDataSize();
 
 // Init/kill vars as a whole
 void jsvInit();
@@ -147,7 +152,11 @@ static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
 /// Get a reference from a var - SAFE for null vars
 static inline JsVarRef jsvGetRef(JsVar *var) {
     if (!var) return 0;
+#ifdef LARGE_MEM
     return var->this;
+#else
+    return (JsVarRef)(1 + (var - (JsVar*)jsvGetVarDataPointer()));
+#endif
 }
 
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
@@ -239,8 +248,5 @@ void jsvTrace(JsVarRef ref, int indent);
 int jsvGetRefCount(JsVar *toCount, JsVar *var);
 /** garbage collect var and its children */
 void jsvGarbageCollect(JsVar *var);
-
-void *jsvGetVarDataPointer();
-int jsvGetVarDataSize();
 
 #endif /* JSVAR_H_ */

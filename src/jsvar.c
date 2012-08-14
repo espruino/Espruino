@@ -39,7 +39,9 @@ void jsvInit() {
   int i;
   for (i=0;i<JSVAR_CACHE_SIZE;i++) {
     jsVars[i].flags = JSV_UNUSED;
+#ifdef LARGE_MEM
     jsVars[i].this = (JsVarRef)(i+1);
+#endif
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
     jsVars[i].nextSibling = (JsVarRef)(i+2);
   }
@@ -58,7 +60,7 @@ JsVar *jsvFindOrCreateRoot() {
 
   for (i=0;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].flags==JSV_ROOT)
-      return jsvLock(jsVars[i].this);
+      return jsvLockAgain(&jsVars[i]);
 
   return jsvRef(jsvNewWithFlags(JSV_ROOT));
 }
@@ -79,9 +81,9 @@ void jsvShowAllocated() {
   for (i=1;i<JSVAR_CACHE_SIZE;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
       jsPrint("USED VAR #");
-      jsPrintInt(jsVars[i].this);
+      jsPrintInt(jsvGetRef(&jsVars[i]));
       jsPrint(":");
-      jsvTrace(jsVars[i].this, 2);
+      jsvTrace(jsvGetRef(&jsVars[i]), 2);
     }
 }
 
@@ -166,7 +168,7 @@ void jsvFreePtr(JsVar *var) {
     var->refs = JSVAR_CACHE_UNUSED_REF;
     // add this to our free list
     var->nextSibling = jsVarFirstEmpty;
-    jsVarFirstEmpty = var->this;
+    jsVarFirstEmpty = jsvGetRef(var);
 }
 
 // Just for debugging so we can see when something has been freed in a non-normal way.
@@ -208,7 +210,7 @@ JsVar *jsvNewFromString(const char *str) {
       }
       next = jsvRef(next);
       next->flags = JSV_STRING_EXT;
-      var->lastChild = next->this;
+      var->lastChild = jsvGetRef(next);
       jsvUnLock(var);
       var = next;
     }
@@ -254,7 +256,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
     if (newLex.currCh) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = JSV_STRING_EXT;
-      var->lastChild = next->this;
+      var->lastChild = jsvGetRef(next);
       if (var!=first) jsvUnLock(var);
       var = next;
     }
@@ -322,7 +324,7 @@ JsVar *jsvLockAgain(JsVar *var) {
 JsVarRef jsvUnLock(JsVar *var) {
   JsVarRef ref;
   if (!var) return 0;
-  ref = var->this;
+  ref = jsvGetRef(var);
   assert(var->locks>0);
   var->locks--;
   if (var->locks == 0 && var->refs==0)
@@ -491,7 +493,7 @@ void jsvAppendString(JsVar *var, const char *str) {
     if (*str) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = JSV_STRING_EXT;
-      block->lastChild = next->this;
+      block->lastChild = jsvGetRef(next);
       jsvUnLock(block);
       block = next;
       blockChars=0; // it's new, so empty
@@ -509,6 +511,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
   }
   /* TODO: If this is an array return a string with elements concatenated by '.'
    * TODO: If this is an object, search for 'toString'
+   * TODO: Try and do without the string buffer
    */
 
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
@@ -574,7 +577,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
     if (str) {
       JsVar *next = jsvRef(jsvNew());
       next->flags = JSV_STRING_EXT;
-      block->lastChild = next->this;
+      block->lastChild = jsvGetRef(next);
       jsvUnLock(block);
       block = next;
       blockChars=0; // it's new, so empty
@@ -866,7 +869,7 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
   child = 0;
   if (createIfNotFound) {
     child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
-    jsvAddName(parentref, child->this);
+    jsvAddName(parentref, jsvGetRef(child));
   }
   jsvUnLock(parent);
   return child;
@@ -894,11 +897,11 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
       // Not reffed - great! let's just use it
       if (!jsvIsName(childName))
         childName = jsvMakeIntoVariableName(childName, 0);
-      jsvAddName(parentref, childName->this);
-      child = jsvLock(childName->this);
+      jsvAddName(parentref, jsvGetRef(childName));
+      child = jsvLockAgain(childName);
     } else { // it was reffed, we must add a new one
       child = jsvMakeIntoVariableName(jsvCopy(childName), 0);
-      jsvAddName(parentref, child->this);
+      jsvAddName(parentref, jsvGetRef(child));
     }
   }
   jsvUnLock(parent);
@@ -1039,7 +1042,7 @@ INLINE_FUNC JsVar *jsvSkipName(JsVar *a) {
     if (!n) return 0;
     pa = jsvLock(n);
   }
-  if (pa==a) jsvLock(pa->this);
+  if (pa==a) jsvLockAgain(pa);
   return pa;
 }
 
@@ -1256,7 +1259,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     }
     if (jsvIsName(var)) {
         jsPrint("\n");
-      jsvTrace(var->this, indent+1);
+      jsvTrace(jsvGetRef(var), indent+1);
       jsvUnLock(var);
       return;
     }

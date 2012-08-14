@@ -27,7 +27,11 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #define false (0)
 
 /// Reference for variables
+#ifdef ARM
+typedef unsigned char JsVarRef;
+#else
 typedef unsigned short JsVarRef;
+#endif
 // We treat 0 as null
 
 typedef long long JsVarInt;
@@ -43,15 +47,15 @@ typedef unsigned long long JsVarIntUnsigned;
 #endif
 
 #ifdef ARM
-#define JSVAR_CACHE_SIZE 150 
+#define JSVAR_CACHE_SIZE 250 
 // room for 350, but must leave stack
 #else
-#define JSVAR_CACHE_SIZE 2000
+#define JSVAR_CACHE_SIZE 500
 #endif
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3)
-#define JSVAR_STRING_OP_BUFFER_SIZE 256 // FIXME - we need to do this properly
+#define JSVAR_STRING_OP_BUFFER_SIZE 64 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16
