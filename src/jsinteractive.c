@@ -462,6 +462,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       }
       return 0;
     }
+
     if (strcmp(name,"input")==0) {
       /*JS* function input(pin)
        *  Get the digital value of the given pin.
@@ -501,6 +502,64 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVarFloat time = jsvGetDouble(timeVar);
       jsvUnLock(timeVar);
       jshPinPulse(pin, value, time);
+      return 0;
+    }
+    if (strcmp(name,"setWatch")==0) {
+      /*JS* function setWatch(function, pin, repeat)
+       * Call the function specified ONCE (if repeat==false or undefined) or
+       * REPEATEDLY if (repeat==true) when the pin changes
+       * This can also be removed using clearWatch
+       */
+      JsVar *funcVar, *pinVar, *recurringVar;
+      jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
+      if (!jsvIsFunction(funcVar)) {
+        jsError("Function not supplied!");
+      }
+      // Create a new watch
+      JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
+      JsVar *v;
+      v = jsvSkipName(pinVar);
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "time"));
+      jsvUnLock(v);
+      v = jsvNewFromBool(jsvGetBool(recurringVar));
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "recur"));
+      jsvUnLock(v);
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(funcVar), "callback"));
+      JsVar *timerArrayPtr = jsvLock(timerArray);
+      JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, watchPtr) - 1;
+      jsvUnLock(timerArrayPtr);
+      jsvUnLock(watchPtr);
+      jsvUnLock(funcVar);
+
+      jshPinWatch(jshGetPinFromVar(pinVar), true);
+      jsvUnLock(pinVar);
+      jsvUnLock(recurringVar);
+      //jsvTrace(jsiGetParser()->root, 0);
+
+
+      return jsvNewFromInteger(itemIndex);
+    }
+    if (strcmp(name,"clearWatch")==0) {
+      /*JS* function clearWatch(id)
+       *  Clear the Watch that was created with setWatch.
+       */
+      JsVar *idVar = jspParseSingleFunction();
+      JsVar *watchNamePtr = jsvFindChildFromVar(timerArray, idVar, false);
+      jsvUnLock(idVar);
+
+      if (watchNamePtr) { // child is a 'name'
+        JsVar *pinVar = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+        jshPinWatch(jshGetPinFromVar(pinVar), true);
+        jsvUnLock(pinVar);
+
+
+        JsVar *watchArrayPtr = jsvLock(watchArray);
+        jsvRemoveChild(watchArrayPtr, watchNamePtr);
+        jsvUnLock(watchNamePtr);
+        jsvUnLock(watchArrayPtr);
+      } else {
+        jsError("Unknown Watch");
+      }
       return 0;
     }
 
