@@ -525,9 +525,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "recur"));
       jsvUnLock(v);
       jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(funcVar), "callback"));
-      JsVar *timerArrayPtr = jsvLock(timerArray);
-      JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, watchPtr) - 1;
-      jsvUnLock(timerArrayPtr);
+      JsVar *watchArrayPtr = jsvLock(watchArray);
+      JsVarInt itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
+      jsvUnLock(watchArrayPtr);
       jsvUnLock(watchPtr);
       jsvUnLock(funcVar);
 
@@ -536,7 +536,6 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(recurringVar);
       //jsvTrace(jsiGetParser()->root, 0);
 
-
       return jsvNewFromInteger(itemIndex);
     }
     if (strcmp(name,"clearWatch")==0) {
@@ -544,7 +543,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *  Clear the Watch that was created with setWatch.
        */
       JsVar *idVar = jspParseSingleFunction();
-      JsVar *watchNamePtr = jsvFindChildFromVar(timerArray, idVar, false);
+      JsVar *watchNamePtr = jsvFindChildFromVar(watchArray, idVar, false);
       jsvUnLock(idVar);
 
       if (watchNamePtr) { // child is a 'name'

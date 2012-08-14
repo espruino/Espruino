@@ -124,7 +124,7 @@ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_0,  GPIOD, 0xFF },
  { GPIO_Pin_1,  GPIOD, 0xFF },
 };
-/*
+
 uint8_t pinToPinSource(uint16_t pin) {
   if (pin==GPIO_Pin_0 ) return GPIO_PinSource0;
   if (pin==GPIO_Pin_1 ) return GPIO_PinSource1;
@@ -145,16 +145,16 @@ uint8_t pinToPinSource(uint16_t pin) {
   return GPIO_PinSource0;
 }
 uint8_t portToPortSource(GPIO_TypeDef *port) {
-  if (port == GPIOA) GPIO_PortSourceGPIOA;
-  if (port == GPIOB) GPIO_PortSourceGPIOB;
-  if (port == GPIOC) GPIO_PortSourceGPIOC;
-  if (port == GPIOD) GPIO_PortSourceGPIOD;
-  if (port == GPIOE) GPIO_PortSourceGPIOE;
-  if (port == GPIOF) GPIO_PortSourceGPIOF;
-  if (port == GPIOG) GPIO_PortSourceGPIOG;
+  if (port == GPIOA) return GPIO_PortSourceGPIOA;
+  if (port == GPIOB) return GPIO_PortSourceGPIOB;
+  if (port == GPIOC) return GPIO_PortSourceGPIOC;
+  if (port == GPIOD) return GPIO_PortSourceGPIOD;
+  if (port == GPIOE) return GPIO_PortSourceGPIOE;
+  if (port == GPIOF) return GPIO_PortSourceGPIOF;
+  if (port == GPIOG) return GPIO_PortSourceGPIOG;
   return GPIO_PortSourceGPIOA;
 }
-*/
+
 
 #endif
 // ----------------------------------------------------------------------------
@@ -185,13 +185,19 @@ void USART1_IRQHandler(void) {
 }
 
 void EXTI0_IRQHandler(void) {
+  STM32vldiscovery_LEDOn(LED3);
   if (EXTI_GetITStatus(EXTI_Line0) == SET) {
     jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource0);
     EXTI_ClearITPendingBit(EXTI_Line0);
   }
   // repeat for EXTI1 etc...
 }
-void EXTI1_IRQHandler(void) {  }
+void EXTI1_IRQHandler(void) {
+  if (EXTI_GetITStatus(EXTI_Line0) == SET) {
+    jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource1);
+    EXTI_ClearITPendingBit(EXTI_Line0);
+  }
+}
 void EXTI2_IRQHandler(void) {  }
 void EXTI3_IRQHandler(void) {  }
 void EXTI4_IRQHandler(void) {  }
@@ -304,6 +310,25 @@ void jshInit() {
   USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
   //Enable USART1
   USART_Cmd(USART1, ENABLE);
+
+  /* Enable and set EXTI Line0 Interrupt to the lowest priority */
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI3_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI9_5_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
+  NVIC_Init(&NVIC_InitStructure);
 
 #ifdef ARM
   jsPrintInt(SystemCoreClock/1000000);jsPrint(" Mhz\r\n");
@@ -468,18 +493,30 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
 
 void jshPinWatch(int pin, bool shouldWatch) {
 #ifdef ARM
-  /*int idx = pinToPinSource(IOPIN_DATA[pin])
-  if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
-  pinInterrupt[idx].pin = pin;
-  pinInterrupt[idx].fired = false;
-  pinInterrupt[idx].callbacks = ...;
-  GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
-  EXTI_StructInit(&s)
-  s.EXTI_Line = IOPIN_DATA[pin].pin; //EXTI_Line0
-  s.EXIT_Mode =  EXTI_Mode_Interrupt
-  s.EXTI_Trigger = EXTI_Trigger_Rising_Falling
-  s.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&s)*/
+  if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
+    // TODO: check for DUPs, also disable interrupt
+    int idx = pinToPinSource(IOPIN_DATA[pin].pin);
+    /*if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
+    pinInterrupt[idx].pin = pin;
+    pinInterrupt[idx].fired = false;
+    pinInterrupt[idx].callbacks = ...;*/
+
+    // set as input
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
+
+    GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
+
+    EXTI_InitTypeDef s;
+    EXTI_StructInit(&s);
+    s.EXTI_Line = IOPIN_DATA[pin].pin; //EXTI_Line0
+    s.EXTI_Mode =  EXTI_Mode_Interrupt;
+    s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+    s.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&s);
+  } else jsError("Invalid pin!");
 #endif
 }
 
