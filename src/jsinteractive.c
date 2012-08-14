@@ -36,8 +36,8 @@ typedef enum {
 
 TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
-JsVarRef timerArray; // Linked List of timers to check and run
-JsVarRef watchArray; // Linked List of input watches to check and run
+JsVarRef timerArray = 0; // Linked List of timers to check and run
+JsVarRef watchArray = 0; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
@@ -50,19 +50,23 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 // 'claim' anything we are using
 void jsiSoftInit() {
   events = 0;
+  jsPrint("inputline\n");
   inputline = jsvNewFromString("");
 
+  jsPrint("Reading timers\n");
   JsVar *timersName = jsvFindChildFromString(p.root, "timers", true);
   if (!timersName->firstChild)
     timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
   timerArray = jsvRefRef(timersName->firstChild);
   jsvUnLock(timersName);
 
+  jsPrint("Reading watches\n");
   JsVar *watchName = jsvFindChildFromString(p.root, "watches", true);
   if (!watchName->firstChild)
     watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
   watchArray = jsvRefRef(watchName->firstChild);
   jsvUnLock(watchName);
+  jsPrint("Done\n");
 
   // Check any existing timers and try and set time correctly
   JsSysTime currentTime = jshGetSystemTime();
@@ -114,12 +118,16 @@ void jsiInit(bool autoLoad) {
      Try and load from it... */
   if (autoLoad && jshFlashContainsCode()) {
     jspSoftKill(&p);
+    jsvSoftKill();
     jshLoadFromFlash();
+    jsvSoftInit();
     jspSoftInit(&p);
   }
   //jsvTrace(jsiGetParser()->root, 0);
 
+  jsPrint("iSoftInit\n");
   jsiSoftInit();
+  jsPrint("iSoftInit done\n");
   echo = true;
   brackets = 0;
   
@@ -349,7 +357,9 @@ void jsiIdle() {
       todo &= ~TODO_FLASH_SAVE;
       jsiSoftKill();
       jspSoftKill(&p);
+      jsvSoftKill();
       jshSaveToFlash();
+      jsvSoftInit();
       jspSoftInit(&p);
       jsiSoftInit();
     }
@@ -357,7 +367,9 @@ void jsiIdle() {
       todo &= ~TODO_FLASH_LOAD;
       jsiSoftKill();
       jspSoftKill(&p);
+      jsvSoftKill();
       jshLoadFromFlash();
+      jsvSoftInit();
       jspSoftInit(&p);
       jsiSoftInit();
     }

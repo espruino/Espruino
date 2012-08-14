@@ -185,7 +185,6 @@ void USART1_IRQHandler(void) {
 }
 
 void EXTI0_IRQHandler(void) {
-  STM32vldiscovery_LEDOn(LED3);
   if (EXTI_GetITStatus(EXTI_Line0) == SET) {
     jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource0);
     EXTI_ClearITPendingBit(EXTI_Line0);
@@ -193,16 +192,77 @@ void EXTI0_IRQHandler(void) {
   // repeat for EXTI1 etc...
 }
 void EXTI1_IRQHandler(void) {
-  if (EXTI_GetITStatus(EXTI_Line0) == SET) {
+  if (EXTI_GetITStatus(EXTI_Line1) == SET) {
     jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource1);
-    EXTI_ClearITPendingBit(EXTI_Line0);
+    EXTI_ClearITPendingBit(EXTI_Line1);
   }
 }
-void EXTI2_IRQHandler(void) {  }
-void EXTI3_IRQHandler(void) {  }
-void EXTI4_IRQHandler(void) {  }
-void EXTI9_5_IRQHandler(void) {  }
-void EXTI15_10_IRQHandler(void) {  }
+void EXTI2_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line2) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource2);
+      EXTI_ClearITPendingBit(EXTI_Line2);
+    }
+}
+void EXTI3_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line3) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource3);
+      EXTI_ClearITPendingBit(EXTI_Line3);
+    }
+}
+void EXTI4_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line4) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource4);
+      EXTI_ClearITPendingBit(EXTI_Line4);
+    }
+}
+void EXTI9_5_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line5) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource5);
+      EXTI_ClearITPendingBit(EXTI_Line5);
+    }
+    if (EXTI_GetITStatus(EXTI_Line6) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource6);
+      EXTI_ClearITPendingBit(EXTI_Line6);
+    }
+    if (EXTI_GetITStatus(EXTI_Line7) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource7);
+      EXTI_ClearITPendingBit(EXTI_Line7);
+    }
+    if (EXTI_GetITStatus(EXTI_Line8) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource8);
+      EXTI_ClearITPendingBit(EXTI_Line8);
+    }
+    if (EXTI_GetITStatus(EXTI_Line9) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource9);
+      EXTI_ClearITPendingBit(EXTI_Line9);
+    }
+}
+void EXTI15_10_IRQHandler(void) {
+    if (EXTI_GetITStatus(EXTI_Line10) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource10);
+      EXTI_ClearITPendingBit(EXTI_Line10);
+    }
+    if (EXTI_GetITStatus(EXTI_Line11) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource11);
+      EXTI_ClearITPendingBit(EXTI_Line11);
+    }
+    if (EXTI_GetITStatus(EXTI_Line12) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource12);
+      EXTI_ClearITPendingBit(EXTI_Line12);
+    }
+    if (EXTI_GetITStatus(EXTI_Line13) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource13);
+      EXTI_ClearITPendingBit(EXTI_Line13);
+    }
+    if (EXTI_GetITStatus(EXTI_Line14) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource14);
+      EXTI_ClearITPendingBit(EXTI_Line14);
+    }
+    if (EXTI_GetITStatus(EXTI_Line15) == SET) {
+      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource15);
+      EXTI_ClearITPendingBit(EXTI_Line15);
+    }
+}
 #endif//ARM
 // ----------------------------------------------------------------------------
 #ifndef ARM

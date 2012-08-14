@@ -15,6 +15,26 @@ JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
 void *jsvGetVarDataPointer() { return &jsVars[0]; }
 int jsvGetVarDataSize() { return sizeof(jsVars); }
 
+// maps the empty variables in...
+void jsvSoftInit() {
+  int i;
+  jsVarFirstEmpty = 0;
+  JsVar *lastEmpty = 0;
+  for (i=0;i<JSVAR_CACHE_SIZE;i++) {
+    if (jsVars[i].refs == JSVAR_CACHE_UNUSED_REF) {
+      jsVars[i].nextSibling = 0;
+      if (lastEmpty)
+        lastEmpty->nextSibling = jsvGetRef(&jsVars[i]);
+      else
+        jsVarFirstEmpty = jsvGetRef(&jsVars[i]);
+      lastEmpty = &jsVars[i];
+    }
+  }
+}
+
+void jsvSoftKill() {
+}
+
 void jsvInit() {
   int i;
   for (i=0;i<JSVAR_CACHE_SIZE;i++) {
@@ -25,6 +45,7 @@ void jsvInit() {
   }
   jsVars[JSVAR_CACHE_SIZE-1].nextSibling = 0;
   jsVarFirstEmpty = 1;
+  jsvSoftInit();
 }
 
 void jsvKill() {
