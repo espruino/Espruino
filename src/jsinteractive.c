@@ -50,23 +50,33 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 // 'claim' anything we are using
 void jsiSoftInit() {
   events = 0;
-  jsPrint("inputline\n");
   inputline = jsvNewFromString("");
 
-  jsPrint("Reading timers\n");
   JsVar *timersName = jsvFindChildFromString(p.root, "timers", true);
   if (!timersName->firstChild)
     timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
   timerArray = jsvRefRef(timersName->firstChild);
   jsvUnLock(timersName);
 
-  jsPrint("Reading watches\n");
   JsVar *watchName = jsvFindChildFromString(p.root, "watches", true);
   if (!watchName->firstChild)
     watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
   watchArray = jsvRefRef(watchName->firstChild);
   jsvUnLock(watchName);
-  jsPrint("Done\n");
+
+  // Check any existing watches and set up interrupts for them
+  JsVar *watchArrayPtr = jsvLock(watchArray);
+  JsVarRef watch = watchArrayPtr->firstChild;
+  while (watch) {
+    JsVar *watchNamePtr = jsvLock(watch);
+    JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+    jshPinWatch(jshGetPinFromVar(watchPin), true);
+    jsvUnLock(watchPin);
+    watch = watchNamePtr->nextSibling;
+    jsvUnLock(watchNamePtr);
+  }
+  jsvUnLock(watchArrayPtr);
+
 
   // Check any existing timers and try and set time correctly
   JsSysTime currentTime = jshGetSystemTime();
@@ -99,6 +109,19 @@ void jsiSoftKill() {
     timerArray=0;
   }
   if (watchArray) {
+    // Check any existing watches and disable interrupts for them
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVarRef watch = watchArrayPtr->firstChild;
+    while (watch) {
+      JsVar *watchNamePtr = jsvLock(watch);
+      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      jsvUnLock(watchPin);
+      watch = watchNamePtr->nextSibling;
+      jsvUnLock(watchNamePtr);
+    }
+    jsvUnLock(watchArrayPtr);
+
     jsvUnRefRef(watchArray);
     watchArray=0;
   }
@@ -125,9 +148,7 @@ void jsiInit(bool autoLoad) {
   }
   //jsvTrace(jsiGetParser()->root, 0);
 
-  jsPrint("iSoftInit\n");
   jsiSoftInit();
-  jsPrint("iSoftInit done\n");
   echo = true;
   brackets = 0;
   
@@ -531,7 +552,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
       JsVar *v;
       v = jsvSkipName(pinVar);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "time"));
+      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "pin"));
       jsvUnLock(v);
       v = jsvNewFromBool(jsvGetBool(recurringVar));
       jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "recur"));
