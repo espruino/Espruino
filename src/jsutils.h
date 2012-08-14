@@ -46,6 +46,8 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
+/* Number of Js Variables allowed. NOTE: this must be at least 1 less than
+ the number we can fit in JsVarRef */
 #ifdef ARM
 #define JSVAR_CACHE_SIZE 250 
 // room for 350, but must leave stack
