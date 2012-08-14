@@ -506,6 +506,17 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(pinVar);
       return jsvNewFromBool(jshPinInput(pin));
     }
+    if (strcmp(name,"analog")==0) {
+      /*JS* function analog(pin)
+       *  Get the analog value of the given pin as a value between 0 and 1
+       *  Pin can be an integer, or a string such as "A0","C13",etc
+       *  However only pins connected to an ADC will work (see the datasheet)
+       */
+      JsVar *pinVar = jspParseSingleFunction();
+      int pin = jshGetPinFromVar(pinVar);
+      jsvUnLock(pinVar);
+      return jsvNewFromFloat(jshPinAnalog(pin));
+    }
     if (strcmp(name,"output")==0) {
       /*JS* function output(pin, value)
        *  Set the digital value of the given pin.

@@ -316,6 +316,7 @@ void jshInit() {
   /* Enable UART and  GPIOx Clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(
+        RCC_APB2Periph_ADC1 |
         RCC_APB2Periph_USART1 |
         RCC_APB2Periph_GPIOA |
         RCC_APB2Periph_GPIOB |
@@ -389,6 +390,28 @@ void jshInit() {
   NVIC_Init(&NVIC_InitStructure);
   NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
   NVIC_Init(&NVIC_InitStructure);
+
+  // ADC Structure Initialization
+  ADC_InitTypeDef ADC_InitStructure;
+  ADC_StructInit(&ADC_InitStructure);
+
+  // Preinit
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+  ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Left;
+  ADC_InitStructure.ADC_NbrOfChannel = 1;
+  ADC_Init(ADC1, &ADC_InitStructure);
+
+  // Enable the ADC
+  ADC_Cmd(ADC1, ENABLE);
+
+  // Calibrate
+  ADC_ResetCalibration(ADC1);
+  while(ADC_GetResetCalibrationStatus(ADC1));
+  ADC_StartCalibration(ADC1);
+  while(ADC_GetCalibrationStatus(ADC1));
 
 #ifdef ARM
   jsPrintInt(SystemCoreClock/1000000);jsPrint(" Mhz\r\n");
@@ -504,6 +527,31 @@ bool jshPinInput(int pin) {
 
     value = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? 1 : 0;
   } else jsError("Invalid pin!");
+#endif
+  return value;
+}
+
+JsVarFloat jshPinAnalog(int pin) {
+  JsVarFloat value = 0;
+#ifdef ARM
+  if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].adc!=0xFF) {
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+    GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
+
+    // Configure chanel
+    ADC_RegularChannelConfig(ADC1, IOPIN_DATA[pin].adc, 1, ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/);
+
+    // Start the conversion
+    ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+
+    // Wait until conversion completion
+    while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
+
+    // Get the conversion value
+    value = ADC_GetConversionValue(ADC1) / (JsVarFloat)65535;
+  } else jsError("Invalid analog pin!");
 #endif
   return value;
 }

@@ -41,6 +41,7 @@ bool jshPopIOEvent(IOEvent *result); ///< returns true on success
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
 int jshGetPinFromVar(JsVar *pinv);
 bool jshPinInput(int pin);
+JsVarFloat jshPinAnalog(int pin);
 void jshPinOutput(int pin, bool value);
 void jshPinPulse(int pin, bool value, JsVarFloat time);
 void jshPinWatch(int pin, bool shouldWatch);
