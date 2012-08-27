@@ -1,6 +1,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       IF..ELSE IS BROKEN WITH STATEMENTS. SEMI COLON ISSUE
  *       Memory leaks when errors - test cases?
  *       Memory leak cleanup code - to try and clean up if memory has been leaked
  *       Garbage collection for nested references

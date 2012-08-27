@@ -1004,7 +1004,6 @@ JsVar *jspeStatement() {
         execInfo.lex->tk=='(') {
         /* Execute a simple statement that only contains basic arithmetic... */
         JsVar *res = jspeBase();
-        if (execInfo.lex->tk==';') JSP_MATCH(';');
         return res;
     } else if (execInfo.lex->tk=='{') {
         /* A block of code */
@@ -1063,6 +1062,7 @@ JsVar *jspeStatement() {
         jsvUnLock(jspeStatement());
         if (!cond) execInfo.execute = oldExecute;
         if (execInfo.lex->tk==LEX_R_ELSE) {
+            //JSP_MATCH(';'); ???
             JSP_MATCH(LEX_R_ELSE);
             JsExecFlags oldExecute = execInfo.execute;
             if (cond) jspSetNoExecute();
@@ -1174,7 +1174,8 @@ JsVar *jspeStatement() {
             jsvUnLock(rootScope);
           }
           jsvUnLock(forStatement);
-        } else {
+          jsvUnLock(array);
+        } else { // NORMAL FOR LOOP
           int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
           JsVar *cond;
           bool loopCond;
@@ -1182,7 +1183,7 @@ JsVar *jspeStatement() {
           JsLex forIter;
 
           jsvUnLock(forStatement);
-          //JSP_MATCH(';');
+          JSP_MATCH(';');
           int forCondStart = execInfo.lex->tokenStart;
           cond = jspeBase(); // condition
           loopCond = JSP_SHOULD_EXECUTE(execInfo) && jsvGetBoolSkipName(cond);
@@ -1251,7 +1252,6 @@ JsVar *jspeStatement() {
           jspSetNoExecute(); // Stop anything else in this function executing
         }
         jsvUnLock(result);
-        JSP_MATCH(';');
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
         JsVar *funcName = 0;
         JsVar *funcVar;
