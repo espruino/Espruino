@@ -1009,6 +1009,10 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), jsvGetRef(value));
+  if (!idx) {
+    jsWarn("Out of memory while appending to array");
+    return 0;
+  }
   jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
   jsvUnLock(idx);
   return index+1; // new size

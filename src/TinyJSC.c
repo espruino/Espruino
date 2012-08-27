@@ -1,7 +1,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *       print("press " + count++); fails, but print("press " + (count++)); works
+ *
  *       Garbage collection for nested references
  *       'for (i in array)' syntax
  *       'if ("key" in obj)' syntax

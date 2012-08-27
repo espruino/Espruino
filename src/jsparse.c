@@ -744,11 +744,33 @@ JsVar *jspeFactor() {
     return 0;
 }
 
+JsVar *jspePostfix() {
+  JsVar *a = jspeFactor();
+  while (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
+    int op = execInfo.lex->tk;
+    JSP_MATCH(execInfo.lex->tk);
+    if (JSP_SHOULD_EXECUTE(execInfo)) {
+        JsVar *one = jsvLock(execInfo.parse->oneInt);
+        JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
+        JsVar *oldValue;
+        jsvUnLock(one);
+        oldValue = jsvSkipName(a); // keep the old value
+        // in-place add/subtract
+        jspReplaceWith(a, res);
+        jsvUnLock(res);
+        // but then use the old value
+        jsvUnLock(a);
+        a = oldValue;
+    }
+  }
+  return a;
+}
+
 JsVar *jspeUnary() {
     JsVar *a;
     if (execInfo.lex->tk=='!') {
         JSP_MATCH('!'); // binary not
-        a = jspeFactor();
+        a = jspePostfix();
         if (JSP_SHOULD_EXECUTE(execInfo)) {
             JsVar *zero = jsvLock(execInfo.parse->zeroInt);
             JsVar *res = jsvMathsOpPtrSkipNames(a, zero, LEX_EQUAL);
@@ -756,7 +778,7 @@ JsVar *jspeUnary() {
             jsvUnLock(a); a = res;
         }
     } else
-        a = jspeFactor();
+        a = jspePostfix();
     return a;
 }
 
@@ -791,33 +813,16 @@ JsVar *jspeExpression() {
       jsvUnLock(a); a = res;
     }
 
-    while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-' ||
-        execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
+    while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-') {
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
-        if (op==LEX_PLUSPLUS || op==LEX_MINUSMINUS) {
-            if (JSP_SHOULD_EXECUTE(execInfo)) {
-                JsVar *one = jsvLock(execInfo.parse->oneInt);
-                JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
-                JsVar *oldValue;
-                jsvUnLock(one);
-                oldValue = jsvSkipName(a); // keep the old value
-                // in-place add/subtract
-                jspReplaceWith(a, res);
-                jsvUnLock(res);
-                // but then use the old value
-                jsvUnLock(a);
-                a = oldValue;
-            }
-        } else {
-            JsVar *b = jspeTerm();
-            if (JSP_SHOULD_EXECUTE(execInfo)) {
-                // not in-place, so just replace
-              JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
-              jsvUnLock(a); a = res;
-            }
-            jsvUnLock(b);
+        JsVar *b = jspeTerm();
+        if (JSP_SHOULD_EXECUTE(execInfo)) {
+            // not in-place, so just replace
+          JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
+          jsvUnLock(a); a = res;
         }
+        jsvUnLock(b);
     }
     return a;
 }
