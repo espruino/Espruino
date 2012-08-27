@@ -1127,6 +1127,12 @@ JsVar *jspeStatement() {
             jsErrorAt("FOR a IN b - 'a' must be a variable name", execInfo.lex, execInfo.lex->tokenLastEnd);
             return 0;
           }
+          bool addedIteratorToScope = false;
+          if (JSP_SHOULD_EXECUTE(execInfo) && !forStatement->refs) {
+            // if the variable did not exist, add it to the scope
+            addedIteratorToScope = true;
+            jsvAddName(execInfo.parse->root, jsvGetRef(forStatement));
+          }
           JSP_MATCH(LEX_R_IN);
           JsVar *array = jsvSkipNameAndUnlock(jspeExpression());
           JSP_MATCH(')');
@@ -1162,6 +1168,11 @@ JsVar *jspeStatement() {
           execInfo.lex = oldLex;
           jslKill(&forBody);
 
+          if (addedIteratorToScope) {
+            JsVar *rootScope = jsvLock(execInfo.parse->root);
+            jsvRemoveChild(rootScope, forStatement);
+            jsvUnLock(rootScope);
+          }
           jsvUnLock(forStatement);
         } else {
           int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;

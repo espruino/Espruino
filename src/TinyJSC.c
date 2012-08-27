@@ -4,7 +4,6 @@
  *       Memory leaks when errors - test cases?
  *       Memory leak cleanup code - to try and clean up if memory has been leaked
  *       Garbage collection for nested references
- *       'for (i in array)', although 'for (var i in array)' works
  *       'if ("key" in obj)' syntax
  *       function.call(scope)
  *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
