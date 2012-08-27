@@ -1011,11 +1011,12 @@ JsVar *jspeStatement() {
         /* Empty statement - to allow things like ;;; */
         JSP_MATCH(';');
     } else if (execInfo.lex->tk==LEX_R_VAR) {
+        JsVar *lastDefined = 0;
         /* variable creation. TODO - we need a better way of parsing the left
          * hand side. Maybe just have a flag called can_create_var that we
          * set and then we parse as if we're doing a normal equals.*/
         JSP_MATCH(LEX_R_VAR);
-        while (execInfo.lex->tk != ';') {
+        while (execInfo.lex->tk == LEX_ID) {
           JsVar *a = 0;
           if (JSP_SHOULD_EXECUTE(execInfo))
             a = jspeiFindOnTop(jslGetTokenValueAsString(execInfo.lex), true);
@@ -1039,11 +1040,12 @@ JsVar *jspeStatement() {
                   jspReplaceWith(a, var);
               jsvUnLock(var);
           }
-          jsvUnLock(a);
-          if (execInfo.lex->tk != ';')
+          jsvUnLock(lastDefined);
+          lastDefined = a;
+          if (execInfo.lex->tk != ';' && execInfo.lex->tk != LEX_R_IN) // bodge
             JSP_MATCH(',');
         }
-        JSP_MATCH(';');
+        return lastDefined;
     } else if (execInfo.lex->tk==LEX_R_IF) {
         bool cond;
         JsVar *var;        
@@ -1112,69 +1114,108 @@ JsVar *jspeStatement() {
           jsErrorAt("WHILE Loop exceeded the maximum number of iterations", execInfo.lex, execInfo.lex->tokenLastEnd);
         }
     } else if (execInfo.lex->tk==LEX_R_FOR) {
-        int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
-        int forCondStart;
-        JsVar *cond;
-        bool loopCond;
-        JsLex forCond;
-        int forIterStart;
-        JsLex forIter;
-        int forBodyStart;
-        JsLex forBody;
-        JsLex *oldLex;
-        
         JSP_MATCH(LEX_R_FOR);
         JSP_MATCH('(');
-        jsvUnLock(jspeStatement()); // initialisation
-        //JSP_MATCH(';');
-        forCondStart = execInfo.lex->tokenStart;
-        cond = jspeBase(); // condition
-        loopCond = JSP_SHOULD_EXECUTE(execInfo) && jsvGetBoolSkipName(cond);
-        jsvUnLock(cond);
-        jslInitFromLex(&forCond, execInfo.lex, forCondStart);
-        JSP_MATCH(';');
-        forIterStart = execInfo.lex->tokenStart;
-        JsExecFlags oldExecute = execInfo.execute;
-        jspSetNoExecute();
-        jsvUnLock(jspeBase()); // iterator
-        execInfo.execute = oldExecute;
-        jslInitFromLex(&forIter, execInfo.lex, forIterStart);
-        JSP_MATCH(')');
-        forBodyStart = execInfo.lex->tokenStart;
-        oldExecute = execInfo.execute;
-        if (!loopCond) jspSetNoExecute(); 
-        jsvUnLock(jspeStatement());
-        if (!loopCond) execInfo.execute = oldExecute;
-        jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
-        oldLex = execInfo.lex;
-        if (loopCond) {
-            jslReset(&forIter);
-            execInfo.lex = &forIter;
-            jsvUnLock(jspeBase());
-        }
-        while (JSP_SHOULD_EXECUTE(execInfo) && loopCond && loopCount-->0) {
-            jslReset(&forCond);
-            execInfo.lex = &forCond;
-            cond = jspeBase();
-            loopCond = jsvGetBoolSkipName(cond);
-            jsvUnLock(cond);
-            if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
-                jslReset(&forBody);
-                execInfo.lex = &forBody;
-                jsvUnLock(jspeStatement());
-            }
-            if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
-                jslReset(&forIter);
-                execInfo.lex = &forIter;
-                jsvUnLock(jspeBase());
-            }
-        }
-        execInfo.lex = oldLex;
-        jslKill(&forCond);
-        jslKill(&forIter);
-        jslKill(&forBody);
-        if (loopCount<=0) {
-            jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo.lex, execInfo.lex->tokenLastEnd);
+        JsVar *forStatement = jspeStatement(); // initialisation
+        if (execInfo.lex->tk == LEX_R_IN) {
+          // for (i in array)
+          // where i = jsvUnLock(forStatement);
+          if (!jsvIsName(forStatement)) {
+            jsvUnLock(forStatement);
+            jsErrorAt("FOR a IN b - 'a' must be a variable name", execInfo.lex, execInfo.lex->tokenLastEnd);
+            return 0;
+          }
+          JSP_MATCH(LEX_R_IN);
+          JsVar *array = jsvSkipNameAndUnlock(jspeExpression());
+          JSP_MATCH(')');
+          int forBodyStart = execInfo.lex->tokenStart;
+          JsExecFlags oldExecute = execInfo.execute;
+          jspSetNoExecute();
+          jsvUnLock(jspeStatement());
+          execInfo.execute = oldExecute;
+          JsLex forBody;
+          jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
+          JsLex *oldLex = execInfo.lex;
+
+          JsVarRef loopIndex = 0;
+          if (jsvIsArray(array) || jsvIsObject(array)) {
+            loopIndex = array->firstChild;
+          } else
+            jsErrorAt("FOR loop can only iterate over Arrays or Objects", execInfo.lex, execInfo.lex->tokenLastEnd);
+
+          while (JSP_SHOULD_EXECUTE(execInfo) && loopIndex) {
+              JsVar *loopIndexVar = jsvLock(loopIndex);
+              jsvSetValueOfName(forStatement, jsvSkipName(loopIndexVar));
+              loopIndex = loopIndexVar->nextSibling;
+              jsvUnLock(loopIndexVar);
+
+              jslReset(&forBody);
+              execInfo.lex = &forBody;
+              jsvUnLock(jspeStatement());
+          }
+          execInfo.lex = oldLex;
+          jslKill(&forBody);
+
+          jsvUnLock(forStatement);
+        } else {
+          int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
+          JsVar *cond;
+          bool loopCond;
+          JsLex forCond;
+          JsLex forIter;
+
+          jsvUnLock(forStatement);
+          //JSP_MATCH(';');
+          int forCondStart = execInfo.lex->tokenStart;
+          cond = jspeBase(); // condition
+          loopCond = JSP_SHOULD_EXECUTE(execInfo) && jsvGetBoolSkipName(cond);
+          jsvUnLock(cond);
+          jslInitFromLex(&forCond, execInfo.lex, forCondStart);
+          JSP_MATCH(';');
+          int forIterStart = execInfo.lex->tokenStart;
+          JsExecFlags oldExecute = execInfo.execute;
+          jspSetNoExecute();
+          jsvUnLock(jspeBase()); // iterator
+          execInfo.execute = oldExecute;
+          jslInitFromLex(&forIter, execInfo.lex, forIterStart);
+          JSP_MATCH(')');
+          int forBodyStart = execInfo.lex->tokenStart;
+          oldExecute = execInfo.execute;
+          if (!loopCond) jspSetNoExecute();
+          jsvUnLock(jspeStatement());
+          if (!loopCond) execInfo.execute = oldExecute;
+          JsLex forBody;
+          jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
+          JsLex *oldLex = execInfo.lex;
+          if (loopCond) {
+              jslReset(&forIter);
+              execInfo.lex = &forIter;
+              jsvUnLock(jspeBase());
+          }
+          while (JSP_SHOULD_EXECUTE(execInfo) && loopCond && loopCount-->0) {
+              jslReset(&forCond);
+              execInfo.lex = &forCond;
+              cond = jspeBase();
+              loopCond = jsvGetBoolSkipName(cond);
+              jsvUnLock(cond);
+              if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
+                  jslReset(&forBody);
+                  execInfo.lex = &forBody;
+                  jsvUnLock(jspeStatement());
+              }
+              if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
+                  jslReset(&forIter);
+                  execInfo.lex = &forIter;
+                  jsvUnLock(jspeBase());
+              }
+          }
+          execInfo.lex = oldLex;
+          jslKill(&forCond);
+          jslKill(&forIter);
+          jslKill(&forBody);
+          if (loopCount<=0) {
+              jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo.lex, execInfo.lex->tokenLastEnd);
+          }
         }
     } else if (execInfo.lex->tk==LEX_R_RETURN) {
         JsVar *result = 0;

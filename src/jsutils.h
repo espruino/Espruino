@@ -156,6 +156,7 @@ typedef enum LEX_TYPES {
     LEX_R_NULL,
     LEX_R_UNDEFINED,
     LEX_R_NEW,
+    LEX_R_IN,
 
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;

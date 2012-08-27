@@ -120,6 +120,7 @@ void jslGetNextToken(JsLex *lex) {
       else if (jslIsToken(lex,"null")) lex->tk = LEX_R_NULL;
       else if (jslIsToken(lex,"undefined")) lex->tk = LEX_R_UNDEFINED;
       else if (jslIsToken(lex,"new")) lex->tk = LEX_R_NEW;
+      else if (jslIsToken(lex,"in")) lex->tk = LEX_R_IN;
   } else if (isNumeric(lex->currCh)) { // Numbers
       // TODO: check numbers aren't the wrong format
       bool canBeFloating = true;
@@ -391,6 +392,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_R_NULL : strncpy(str, "null", len); return;
       case LEX_R_UNDEFINED : strncpy(str, "undefined", len); return;
       case LEX_R_NEW : strncpy(str, "new", len); return;
+      case LEX_R_IN : strncpy(str, "in", len); return;
   }
   assert(len>=10);
   strncpy(str, "?[",len);
