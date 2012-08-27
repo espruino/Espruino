@@ -728,8 +728,8 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
   return true;
 }
 
-/** Copy only a name, not what it points to */
-JsVar *jsvCopyNameOnly(JsVar *src) {
+/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
+JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
   JsVar *dst = jsvNewWithFlags(src->flags);
   assert(jsvIsName(src));
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
@@ -739,7 +739,7 @@ JsVar *jsvCopyNameOnly(JsVar *src) {
   dst->prevSibling = 0;
   dst->nextSibling = 0;
   // Copy LINK of what it points to
-  if (src->firstChild)
+  if (linkChildren && src->firstChild)
     dst->firstChild = jsvRefRef(src->firstChild);
   // Copy extra string data if there was any
   if (jsvIsString(src)) {
@@ -792,7 +792,7 @@ JsVar *jsvCopy(JsVar *src) {
     vr = src->firstChild;
     while (vr) {
       JsVar *name = jsvLock(vr);
-      JsVar *child = jsvCopyNameOnly(name); // NO DEEP COPY!
+      JsVar *child = jsvCopyNameOnly(name, true); // NO DEEP COPY!
       jsvAddName(jsvGetRef(dst), jsvGetRef(child));
       jsvUnLock(child);
       vr = name->nextSibling;

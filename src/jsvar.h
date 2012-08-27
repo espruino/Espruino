@@ -226,6 +226,8 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
 
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);
+/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
+JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren);
 /// Tree related stuff
 void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var

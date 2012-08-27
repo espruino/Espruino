@@ -1145,7 +1145,11 @@ JsVar *jspeStatement() {
 
           while (JSP_SHOULD_EXECUTE(execInfo) && loopIndex) {
               JsVar *loopIndexVar = jsvLock(loopIndex);
-              jsvSetValueOfName(forStatement, jsvSkipName(loopIndexVar));
+              JsVar *indexValue = jsvCopyNameOnly(loopIndexVar, false);
+              assert(jsvIsName(indexValue) && indexValue->refs==0);
+              indexValue->flags &= ~JSV_NAME; // make sure this is NOT a name
+              jsvSetValueOfName(forStatement, indexValue);
+              jsvUnLock(indexValue);
               loopIndex = loopIndexVar->nextSibling;
               jsvUnLock(loopIndexVar);
 
