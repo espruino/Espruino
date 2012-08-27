@@ -1,7 +1,10 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *
+
+>a=[1,2,3
+ASSERT FAIL AT jslex.c:31
+ *       Memory leaks when errors
  *       Garbage collection for nested references
  *       'for (i in array)', although 'for (var i in array)' works
  *       'if ("key" in obj)' syntax

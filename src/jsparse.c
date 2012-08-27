@@ -11,6 +11,8 @@ JsVar *jspeBlock();
 JsVar *jspeStatement();
 // ----------------------------------------------- Utils
 #define JSP_MATCH(TOKEN) {if (!jslMatch(execInfo.lex,(TOKEN))) return 0;}
+#define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) {if (!jslMatch(execInfo.lex,(TOKEN))) return RETURN_VAL;}
+#define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_SHOULD_EXECUTE(execInfo) (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 
 ///< Same as jsvSetValueOfName, but nice error message
@@ -675,9 +677,9 @@ JsVar *jspeFactor() {
           }
           jsvUnLock(varName);
           // no need to clean here, as it will definitely be used
-          if (execInfo.lex->tk != '}') JSP_MATCH(',');
+          if (execInfo.lex->tk != '}') JSP_MATCH_WITH_RETURN(',', contents);
         }
-        JSP_MATCH('}');
+        JSP_MATCH_WITH_RETURN('}', contents);
         return contents;
     }
     if (execInfo.lex->tk=='[') {
@@ -699,10 +701,10 @@ JsVar *jspeFactor() {
             jsvUnLock(aVar);
           }
           // no need to clean here, as it will definitely be used
-          if (execInfo.lex->tk != ']') JSP_MATCH(',');
+          if (execInfo.lex->tk != ']') JSP_MATCH_WITH_RETURN(',', contents);
           idx++;
         }
-        JSP_MATCH(']');
+        JSP_MATCH_WITH_RETURN(']', contents);
         return contents;
     }
     if (execInfo.lex->tk==LEX_R_FUNCTION) {
@@ -1020,21 +1022,21 @@ JsVar *jspeStatement() {
           JsVar *a = 0;
           if (JSP_SHOULD_EXECUTE(execInfo))
             a = jspeiFindOnTop(jslGetTokenValueAsString(execInfo.lex), true);
-          JSP_MATCH(LEX_ID);
+          JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(a), lastDefined);
           // now do stuff defined with dots
           while (execInfo.lex->tk == '.') {
-              JSP_MATCH('.');
+              JSP_MATCH_WITH_CLEANUP_AND_RETURN('.', jsvUnLock(a), lastDefined);
               if (JSP_SHOULD_EXECUTE(execInfo)) {
                   JsVar *lastA = a;
                   a = jsvFindChildFromString(jsvGetRef(lastA), jslGetTokenValueAsString(execInfo.lex), true);
                   jsvUnLock(lastA);
               }
-              JSP_MATCH(LEX_ID);
+              JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(a), lastDefined);
           }
           // sort out initialiser
           if (execInfo.lex->tk == '=') {
               JsVar *var;
-              JSP_MATCH('=');
+              JSP_MATCH_WITH_CLEANUP_AND_RETURN('=', jsvUnLock(a), lastDefined);
               var = jspeBase();
               if (JSP_SHOULD_EXECUTE(execInfo))
                   jspReplaceWith(a, var);
@@ -1043,7 +1045,7 @@ JsVar *jspeStatement() {
           jsvUnLock(lastDefined);
           lastDefined = a;
           if (execInfo.lex->tk != ';' && execInfo.lex->tk != LEX_R_IN) // bodge
-            JSP_MATCH(',');
+            JSP_MATCH_WITH_RETURN(',', lastDefined);
         }
         return lastDefined;
     } else if (execInfo.lex->tk==LEX_R_IF) {
