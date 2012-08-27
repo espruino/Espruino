@@ -1,10 +1,8 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
-
->a=[1,2,3
-ASSERT FAIL AT jslex.c:31
- *       Memory leaks when errors
+ *       Memory leaks when errors - test cases?
+ *       Memory leak cleanup code - to try and clean up if memory has been leaked
  *       Garbage collection for nested references
  *       'for (i in array)', although 'for (var i in array)' works
  *       'if ("key" in obj)' syntax
@@ -12,18 +10,20 @@ ASSERT FAIL AT jslex.c:31
  *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
  *       'Array.prototype.clear = function () { this.X = 2e23; };'
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
- *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
+ *       Add Array.splice
+ *       Add 'delete' keyword for killing array items?
+ *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
+ *
+ *  LOW PRIORITY
+ *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
  *       Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
  *       Memory manager to handle storing rarely used refs in flash
  *          - use binary tree to look up JsVar from its ref
  *          - maybe also linked list to keep track of what is used most often
  *       Add require(filename) function
- *       Add Array.splice
- *       Add 'delete' keyword for killing array items?
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
- *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
  *
  * In code:
  * TODO - should be fixed

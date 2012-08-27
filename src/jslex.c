@@ -28,9 +28,10 @@ void jslSeek(JsLex *lex, int seekToChar) {
     JsVarRef next;
     lex->currentVarPos -= (int)jsvGetMaxCharactersInVar(lex->currentVar);
     next = lex->currentVar->lastChild;
-    assert(next);
     jsvUnLock(lex->currentVar);
     lex->currentVarRef = next;
+    if (!next)
+      return; // we're out of chars - assume all ok
     lex->currentVar = jsvLock(lex->currentVarRef);
   }
 }
