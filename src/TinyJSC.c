@@ -2,8 +2,9 @@
  *
  * TODO:
  *       IF..ELSE IS BROKEN WITH STATEMENTS. SEMI COLON ISSUE
- *       Memory leaks when errors - test cases?
+ *       Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
  *       Memory leak cleanup code - to try and clean up if memory has been leaked
+ *       break/continue
  *       Garbage collection for nested references
  *       'if ("key" in obj)' syntax
  *       function.call(scope)
