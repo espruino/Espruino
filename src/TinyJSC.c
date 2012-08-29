@@ -17,6 +17,8 @@
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
  *
  *  LOW PRIORITY
+ *       Rename IO functions to Arduino style: http://arduino.cc/en/Reference/HomePage
+ *       Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
  *       Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
