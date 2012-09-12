@@ -1000,7 +1000,7 @@ JsVar *jspeBlockOrStatement() {
        return jspeBlock();
     else {
        JsVar *v = jspeStatement();
-       JSP_MATCH(';');
+       if (execInfo.lex->tk==';') JSP_MATCH(';');
        return v;
     }
 }
@@ -1385,7 +1385,7 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   jspeiInit(parse, &lex);
   while (execInfo.lex->tk != LEX_EOF) {
     jsvUnLock(v);
-    v = jspeStatement(&execute);
+    v = jspeBlockOrStatement(&execute);
   }
   // clean up
   jspeiKill();
