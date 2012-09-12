@@ -995,6 +995,16 @@ JsVar *jspeBlock() {
     return 0;
 }
 
+JsVar *jspeBlockOrStatement() {
+    if (execInfo.lex->tk=='{') 
+       return jspeBlock();
+    else {
+       JsVar *v = jspeStatement();
+       JSP_MATCH(';');
+       return v;
+    }
+}
+
 JsVar *jspeStatement() {
     if (execInfo.lex->tk==LEX_ID ||
         execInfo.lex->tk==LEX_INT ||
@@ -1059,14 +1069,14 @@ JsVar *jspeStatement() {
 
         JsExecFlags oldExecute = execInfo.execute;
         if (!cond) jspSetNoExecute(); 
-        jsvUnLock(jspeStatement());
+        jsvUnLock(jspeBlockOrStatement());
         if (!cond) execInfo.execute = oldExecute;
         if (execInfo.lex->tk==LEX_R_ELSE) {
             //JSP_MATCH(';'); ???
             JSP_MATCH(LEX_R_ELSE);
             JsExecFlags oldExecute = execInfo.execute;
             if (cond) jspSetNoExecute();
-            jsvUnLock(jspeStatement());
+            jsvUnLock(jspeBlockOrStatement());
             if (cond) execInfo.execute = oldExecute;
         }
     } else if (execInfo.lex->tk==LEX_R_WHILE) {
@@ -1091,7 +1101,7 @@ JsVar *jspeStatement() {
         whileBodyStart = execInfo.lex->tokenStart;
         JsExecFlags oldExecute = execInfo.execute;
         if (!loopCond) jspSetNoExecute(); 
-        jsvUnLock(jspeStatement());
+        jsvUnLock(jspeBlockOrStatement());
         if (!loopCond) execInfo.execute = oldExecute;
         jslInitFromLex(&whileBody, execInfo.lex, whileBodyStart);
         oldLex = execInfo.lex;
@@ -1105,7 +1115,7 @@ JsVar *jspeStatement() {
             if (loopCond) {
                 jslReset(&whileBody);
                 execInfo.lex = &whileBody;
-                jsvUnLock(jspeStatement());
+                jsvUnLock(jspeBlockOrStatement());
             }
         }
         execInfo.lex = oldLex;
@@ -1139,7 +1149,7 @@ JsVar *jspeStatement() {
           int forBodyStart = execInfo.lex->tokenStart;
           JsExecFlags oldExecute = execInfo.execute;
           jspSetNoExecute();
-          jsvUnLock(jspeStatement());
+          jsvUnLock(jspeBlockOrStatement());
           execInfo.execute = oldExecute;
           JsLex forBody;
           jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
@@ -1163,7 +1173,7 @@ JsVar *jspeStatement() {
 
               jslReset(&forBody);
               execInfo.lex = &forBody;
-              jsvUnLock(jspeStatement());
+              jsvUnLock(jspeBlockOrStatement());
           }
           execInfo.lex = oldLex;
           jslKill(&forBody);
@@ -1200,7 +1210,7 @@ JsVar *jspeStatement() {
           int forBodyStart = execInfo.lex->tokenStart;
           oldExecute = execInfo.execute;
           if (!loopCond) jspSetNoExecute();
-          jsvUnLock(jspeStatement());
+          jsvUnLock(jspeBlockOrStatement());
           if (!loopCond) execInfo.execute = oldExecute;
           JsLex forBody;
           jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
@@ -1219,7 +1229,7 @@ JsVar *jspeStatement() {
               if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
                   jslReset(&forBody);
                   execInfo.lex = &forBody;
-                  jsvUnLock(jspeStatement());
+                  jsvUnLock(jspeBlockOrStatement());
               }
               if (JSP_SHOULD_EXECUTE(execInfo) && loopCond) {
                   jslReset(&forIter);
