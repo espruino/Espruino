@@ -209,6 +209,7 @@ INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
 INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat
 INLINE_FUNC bool jsvGetBool(const JsVar *v);
+static inline JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */

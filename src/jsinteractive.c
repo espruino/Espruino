@@ -496,8 +496,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
 
-    if (strcmp(name,"input")==0) {
-      /*JS* function input(pin)
+    if (strcmp(name,"digitalRead")==0) {
+      /*JS* function digitalRead(pin)
        *  Get the digital value of the given pin.
        *  Pin can be an integer, or a string such as "A0","C13",etc
        */
@@ -506,8 +506,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(pinVar);
       return jsvNewFromBool(jshPinInput(pin));
     }
-    if (strcmp(name,"analog")==0) {
-      /*JS* function analog(pin)
+    if (strcmp(name,"analogRead")==0) {
+      /*JS* function analogRead(pin)
        *  Get the analog value of the given pin as a value between 0 and 1
        *  Pin can be an integer, or a string such as "A0","C13",etc
        *  However only pins connected to an ADC will work (see the datasheet)
@@ -517,8 +517,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(pinVar);
       return jsvNewFromFloat(jshPinAnalog(pin));
     }
-    if (strcmp(name,"output")==0) {
-      /*JS* function output(pin, value)
+    if (strcmp(name,"digitalWrite")==0) {
+      /*JS* function digitalWrite(pin, value)
        *  Set the digital value of the given pin.
        *  Pin can be an integer, or a string such as "A0","C13",etc
        */
@@ -532,7 +532,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
     if (strcmp(name,"pulse")==0) {
-      /*JS* function pulse(pin, value,time)
+      /*JS* function pulse(pin,value,time)
        *  Pulse the pin with the value for the given time in milliseconds
        *  eg. pulse("A0",1,500); pulses A0 high for 500ms
        *  Pin can be an integer, or a string such as "A0","C13",etc
@@ -632,9 +632,73 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvTrace(p.root, 0);
       return 0;
     }
+
+    if (strcmp(name,"bitRead")==0) {
+      /*JS* function bitRead(value, bitnum)
+       *  Get the specified bit from the value. Lowest significance bit is 0
+       */
+      JsVar *valueVar, *bitVar;
+      jspParseDoubleFunction(&valueVar, &bitVar);
+      bool value = jsvGetIntegerAndUnLock(valueVar);
+      int bit = jsvGetIntegerAndUnLock(bitVar);
+      return jsvNewFromInteger( (value >> bit) & 1);
+    }
+    if (strcmp(name,"bitWrite")==0) {
+      /*JS* function bitWrite(value, bitnum, bitdata) 
+       *  Write the specified bit from the value. Lowest significance bit is 0
+       */
+      JsVar *valueVar, *bitVar, *dataVar;
+      jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
+      bool value = jsvGetInteger(valueVar);
+      int bit = jsvGetIntegerAndUnLock(bitVar);
+      int data = jsvGetIntegerAndUnLock(dataVar);
+      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, (value & ~(1<<bit)) | ((data?1:0)<<bit));
+      jsvUnLock(valueVar);
+      return 0;
+    }
+    if (strcmp(name,"bitSet")==0) {
+      /*JS* function bitSet(value, bitnum)
+       *  Set the given bit in the value. Lowest significance bit is 0
+       */
+      JsVar *valueVar, *bitVar;
+      jspParseDoubleFunction(&valueVar, &bitVar);
+      bool value = jsvGetInteger(valueVar);
+      int bit = jsvGetIntegerAndUnLock(bitVar);
+      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value | (1<<bit));
+      jsvUnLock(valueVar);
+      return 0;
+    }
+    if (strcmp(name,"bitClear")==0) {
+      /*JS* function bitClear(value, bitnum)
+       *  Clear the given bit in the value. Lowest significance bit is 0
+       */
+      JsVar *valueVar, *bitVar;
+      jspParseDoubleFunction(&valueVar, &bitVar);
+      bool value = jsvGetInteger(valueVar);
+      int bit = jsvGetIntegerAndUnLock(bitVar);
+      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value & ~(1<<bit));
+      jsvUnLock(valueVar);
+      return 0;
+    }
+    if (strcmp(name,"bit")==0) {
+      /*JS* function bit(bitnum)
+       *  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
+       */
+      JsVar *bitVar = jspParseSingleFunction();
+      int bit = jsvGetIntegerAndUnLock(bitVar);
+      return jsvNewFromInteger(1 << bit);
+    }
 /* TODO:
-       "function setWatch(func,pin)",
-       "function clearWatch(func,pin)",
+analogWrite(pin, value, [freq])
+addWatch -> attachInterrupt(pin, handler, mode)
+clearWatch -> detachInterrupt(pin)
+delay(milliseconds)
+getPinMode(pin) -> pinMode
+pinMode(pin, direction, [mux], [pullup], [slew])
+shiftOut(dataPin, clockPin, bitOrder, val)
+
+lowByte(value)
+highByte(value)
  *
  *
  *
