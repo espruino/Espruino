@@ -2,6 +2,7 @@
  *
  * TODO:
  *       Make save() retry writing to flash (and not even bother if it was correct)
+ *       Detect if running out of FIFO space and skip writing characters
  *       Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
  *       Memory leak cleanup code - to try and clean up if memory has been leaked
  *       break/continue
