@@ -688,6 +688,22 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       int bit = jsvGetIntegerAndUnLock(bitVar);
       return jsvNewFromInteger(1 << bit);
     }
+    if (strcmp(name,"lowByte")==0) {
+      /*JS* function lowByte(value)
+       *  Return the low byte of the value
+       */
+      JsVar *valueVar = jspParseSingleFunction();
+      int value = jsvGetIntegerAndUnLock(valueVar);
+      return jsvNewFromInteger(value & 0xFF);
+    }
+    if (strcmp(name,"highByte")==0) {
+      /*JS* function highByte(value)
+       *  Return the high (second) byte of the value
+       */
+      JsVar *valueVar = jspParseSingleFunction();
+      int value = jsvGetIntegerAndUnLock(valueVar);
+      return jsvNewFromInteger((value>>8) & 0xFF);
+    }
 /* TODO:
 analogWrite(pin, value, [freq])
 addWatch -> attachInterrupt(pin, handler, mode)
@@ -697,11 +713,6 @@ getPinMode(pin) -> pinMode
 pinMode(pin, direction, [mux], [pullup], [slew])
 shiftOut(dataPin, clockPin, bitOrder, val)
 
-lowByte(value)
-highByte(value)
- *
- *
- *
  */
   }
   // unhandled
