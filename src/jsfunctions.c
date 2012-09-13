@@ -28,8 +28,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     if (strcmp(name,"eval")==0) {
       JsVar *v = jspParseSingleFunction();
       JsVar *result = 0;
-      if (v) result = jspEvaluateVar(execInfo->parse, v);
-      jsvUnLock(v);
+      if (v) {
+        result = jspEvaluateVar(execInfo->parse, v);
+        jsvUnLock(v);
+      }
       return result;
     }
   } else {
@@ -84,19 +86,22 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         if (strcmp(name,"stringify")==0) {
           JsVar *v = jspParseSingleFunction();
           JsVar *result = jsvNewFromString("");
-          jsfGetJSON(v, result);
+          if (result) // could be out of memory
+              jsfGetJSON(v, result);
           jsvUnLock(v);
           return result;
         }
         if (strcmp(name,"parse")==0) {
           JsVar *v = jspParseSingleFunction();
-          JsVar *res;
+          JsVar *res = 0;
           JsVar *bracketed = jsvNewFromString("(");
-          jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-          jsvUnLock(v);
-          jsvAppendString(bracketed, ")");
-          res = jspEvaluateVar(execInfo->parse, bracketed);
-          jsvUnLock(bracketed);
+          if (bracketed) { // could be out of memory
+            jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+            jsvUnLock(v);
+            jsvAppendString(bracketed, ")");
+            res = jspEvaluateVar(execInfo->parse, bracketed);
+            jsvUnLock(bracketed);
+          }
           return res;
         }
         // TODO: Add JSON.parse
@@ -126,7 +131,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        }
        if (strcmp(name,"indexOf")==0) {
          // slow, but simple!
-         JsVar *v = jspParseSingleFunction();
+         JsVar *v = jsvAsString(jspParseSingleFunction(), true);
+         if (!v) return 0; // out of memory
          int idx = -1;
          int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
          for (idx=0;idx<l;idx++) {
@@ -154,6 +160,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
            pEnd = l;
          }
          res = jsvNewWithFlags(JSV_STRING);
+         if (!res) return 0; // out of memory
          jsvAppendStringVar(res, a, pStart, pEnd-pStart);
          return res;
        }
@@ -167,6 +174,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           jsvUnLock(vLen);
           if (pLen<0) pLen=0;
           res = jsvNewWithFlags(JSV_STRING);
+          if (!res) return 0; // out of memory
           jsvAppendStringVar(res, a, pStart, pLen);
           return res;
         }
@@ -179,15 +187,19 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           last = 0;
 
           array = jsvNewWithFlags(JSV_ARRAY);
+          if (!array) return 0; // out of memory
 
           for (idx=0;idx<=l;idx++) {
             if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
               JsVar *part = jsvNewFromString("");
+              if (!part) break; // out of memory
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
-              jsvAppendStringVar(part, a, last, idx-(last+1));
-              jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
-              last = idx+splitlen;
-              jsvUnLock(idxvar);
+              if (idxvar) { // could be out of memory
+                jsvAppendStringVar(part, a, last, idx-(last+1));
+                jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
+                last = idx+splitlen;
+                jsvUnLock(idxvar);
+              }
               jsvUnLock(part);
             }
           }
@@ -217,15 +229,21 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           }
          if (strcmp(name,"join")==0) {
            JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
-
+           if (!filler) return 0; // out of memory
            JsVar *str = jsvNewFromString("");
+           if (!str) { // out of memory
+             jsvUnLock(filler);
+             return 0;
+           }
            JsVarRef childRef = a->firstChild;
            while (childRef) {
              JsVar *child = jsvLock(childRef);
              if (child->firstChild) {
                JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
-               jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-               jsvUnLock(data);
+               if (data) { // could be out of memory
+                 jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+                 jsvUnLock(data);
+               }
              }
              childRef = child->nextSibling;
              jsvUnLock(child);

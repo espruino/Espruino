@@ -174,6 +174,7 @@ JsVarInt stringToInt(const char *s);
 struct JsLex;
 // ------------
 
+void jsPrintPosition(struct JsLex *lex, int tokenPos);
 void jsError(const char *message);
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsWarn(const char *message);

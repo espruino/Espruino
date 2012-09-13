@@ -75,6 +75,18 @@ JsVarInt stringToInt(const char *s) {
   return v;
 }
 
+void jsPrintPosition(struct JsLex *lex, int tokenPos) {
+  int line,col;
+  jslGetLineAndCol(lex, tokenPos, &line, &col);
+  jsPrint("line ");
+  jsPrintInt(line);
+  jsPrint(" col ");
+  jsPrintInt(col);
+  jsPrint(" (char ");
+  jsPrintInt(tokenPos);
+  jsPrint(")\n");
+}
+
 void jsError(const char *message) {
     jsPrint("ERROR: ");
     jsPrint(message);
@@ -82,17 +94,10 @@ void jsError(const char *message) {
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
-  int line,col;
-  jslGetLineAndCol(lex, tokenPos, &line, &col);
   jsPrint("ERROR: ");
   jsPrint(message);
-  jsPrint(" at line ");
-  jsPrintInt(line);
-  jsPrint(" col ");
-  jsPrintInt(col);
-  jsPrint(" (char ");
-  jsPrintInt(tokenPos);
-  jsPrint(")\n");
+  jsPrint(" at ");
+  jsPrintPosition(lex, tokenPos);
 }
 
 void jsWarn(const char *message) {
@@ -102,17 +107,10 @@ void jsWarn(const char *message) {
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
-  int line,col;
-  jslGetLineAndCol(lex, tokenPos, &line, &col);
   jsPrint("WARNING: ");
   jsPrint(message);
-  jsPrint(" at line ");
-  jsPrintInt(line);
-  jsPrint(" col ");
-  jsPrintInt(col);
-  jsPrint(" (char ");
-  jsPrintInt(tokenPos);
-  jsPrint(")\n");
+  jsPrint(" at ");
+  jsPrintPosition(lex, tokenPos);
 }
 
 void jsAssertFail(const char *file, int line) {

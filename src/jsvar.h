@@ -83,6 +83,9 @@ typedef struct {
 void *jsvGetVarDataPointer();
 int jsvGetVarDataSize();
 
+// For debugging/testing ONLY - maximum # of vars we are allowed to use
+void jsvSetMaxVarsUsed(int size);
+
 // Init/kill vars as a whole
 void jsvInit();
 void jsvKill();
@@ -90,7 +93,9 @@ void jsvSoftInit(); ///< called when loading from flash
 void jsvSoftKill(); ///< called when saving to flash
 JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used mainly if recovering from a saved state.
 int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
+bool jsvIsMemoryFull(); ///< Get whether memory is full or not
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
+
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable

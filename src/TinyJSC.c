@@ -1,6 +1,8 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       On assert fail, should restart interpreter and try and recover
+ *       Run tests with ever decreasing memory available to ensure that there are no crash/assert errors
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
  *       Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
@@ -148,6 +150,43 @@ bool run_all_tests() {
   return passed == count;
 }
 
+bool run_memory_test(const char *fn, int vars) {
+  int i;
+  int min = 20;
+  int max = 100;
+  if (vars>0) {
+    min = vars;
+    max = vars+1;
+  }
+  for (i=min;i<max;i++) {
+    jsvSetMaxVarsUsed(i);
+    printf("----------------------------------------------------- MEMORY TEST WITH %d VARS\n", i);
+    run_test(fn);
+  }
+  return true;
+}
+
+bool run_memory_tests(int vars) {
+  int test_num = 1;
+  int count = 0;
+  int passed = 0;
+
+  while (test_num<1000) {
+    char fn[32];
+    sprintf(fn, "../tests/test%03d.js", test_num);
+    // check if the file exists - if not, assume we're at the end of our tests
+    FILE *f = fopen(fn,"r");
+    if (!f) break;
+    fclose(f);
+
+    run_memory_test(fn, vars);
+    test_num++;
+  }
+
+  if (count==0) printf("No tests found in ../tests/test*.js!\n");
+  return true;
+}
+
 
 int main(int argc, char **argv) {
 
@@ -159,11 +198,23 @@ int main(int argc, char **argv) {
   } else if (argc==3 && strcmp(argv[1],"test")==0) {
     bool ok = run_test(argv[2]);
     exit(ok ? 0 : 1);
+  } else if (argc==2 && strcmp(argv[1],"mem")==0) {
+    bool ok = run_memory_tests(0);
+    exit(ok ? 0 : 1);
+  } else if (argc==3 && strcmp(argv[1],"mem")==0) {
+      bool ok = run_memory_test(argv[2], 0);
+      exit(ok ? 0 : 1);
+  } else if (argc==4 && strcmp(argv[1],"mem")==0) {
+      bool ok = run_memory_test(argv[2], atoi(argv[3]));
+      exit(ok ? 0 : 1);
   } else {
     printf("USAGE:\n");
-    printf("./TinyJSC           : JavaScript imemdiate mode\n");
-    printf("./TinyJSC test      : Run Tests\n");
-    printf("./TinyJSC test x.js : Run Single Test\n");
+    printf("./TinyJSC            : JavaScript imemdiate mode\n");
+    printf("./TinyJSC test       : Run Tests\n");
+    printf("./TinyJSC test x.js  : Run Single Test\n");
+    printf("./TinyJSC mem        : Run Exhaustive Memory crash test\n");
+    printf("./TinyJSC mem        : Run Exhaustive Memory crash test for Single test\n");
+    printf("./TinyJSC mem x.js # : Run Memory crash test for one amount of vars\n");
     exit(1);
   }
 

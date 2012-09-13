@@ -9,18 +9,26 @@
 #include "jslex.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
-JsVar jsVars[JSVAR_CACHE_SIZE]; 
+JsVar jsVars[JSVAR_CACHE_SIZE];
+int jsVarsSize = JSVAR_CACHE_SIZE;
 JsVarRef jsVarFirstEmpty; ///< reference of first unused variable
 
 void *jsvGetVarDataPointer() { return &jsVars[0]; }
 int jsvGetVarDataSize() { return sizeof(jsVars); }
+
+// For debugging/testing ONLY - maximum # of vars we are allowed to use
+void jsvSetMaxVarsUsed(int size) {
+  assert(size < JSVAR_CACHE_SIZE);
+  jsVarsSize = size;
+}
+
 
 // maps the empty variables in...
 void jsvSoftInit() {
   int i;
   jsVarFirstEmpty = 0;
   JsVar *lastEmpty = 0;
-  for (i=0;i<JSVAR_CACHE_SIZE;i++) {
+  for (i=0;i<jsVarsSize;i++) {
     if (jsVars[i].refs == JSVAR_CACHE_UNUSED_REF) {
       jsVars[i].nextSibling = 0;
       if (lastEmpty)
@@ -37,7 +45,7 @@ void jsvSoftKill() {
 
 void jsvInit() {
   int i;
-  for (i=0;i<JSVAR_CACHE_SIZE;i++) {
+  for (i=0;i<jsVarsSize;i++) {
     jsVars[i].flags = JSV_UNUSED;
 #ifdef LARGE_MEM
     jsVars[i].this = (JsVarRef)(i+1);
@@ -45,7 +53,7 @@ void jsvInit() {
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
     jsVars[i].nextSibling = (JsVarRef)(i+2);
   }
-  jsVars[JSVAR_CACHE_SIZE-1].nextSibling = 0;
+  jsVars[jsVarsSize-1].nextSibling = 0;
   jsVarFirstEmpty = 1;
   jsvSoftInit();
 }
@@ -58,7 +66,7 @@ void jsvKill() {
 JsVar *jsvFindOrCreateRoot() {
   int i;
 
-  for (i=0;i<JSVAR_CACHE_SIZE;i++)
+  for (i=0;i<jsVarsSize;i++)
     if (jsVars[i].flags==JSV_ROOT)
       return jsvLockAgain(&jsVars[i]);
 
@@ -69,16 +77,21 @@ JsVar *jsvFindOrCreateRoot() {
 int jsvGetMemoryUsage() {
   int usage = 0;
   int i;
-  for (i=1;i<JSVAR_CACHE_SIZE;i++)
+  for (i=1;i<jsVarsSize;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF)
       usage++;
   return usage;
 }
 
+/// Get whether memory is full or not
+bool jsvIsMemoryFull() {
+  return !jsVarFirstEmpty;
+}
+
 // Show what is still allocated, for debugging memory problems
 void jsvShowAllocated() {
   int i;
-  for (i=1;i<JSVAR_CACHE_SIZE;i++)
+  for (i=1;i<jsVarsSize;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
       jsPrint("USED VAR #");
       jsPrintInt(jsvGetRef(&jsVars[i]));
@@ -183,7 +196,7 @@ JsVar *jsvNewFromString(const char *str) {
   // Create a var
   JsVar *first = jsvNew();
   if (!first) {
-    jsWarn("Truncating string as not enough memory");
+    jsWarn("Unable to create string as not enough memory");
     return 0;
   }
   // Now we copy the string, but keep creating new jsVars if we go
@@ -221,7 +234,12 @@ JsVar *jsvNewFromString(const char *str) {
 }
 
 JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
-  JsVar *first;
+  // Create a var
+  JsVar *first = jsvNew();
+  if (!first) { // out of memory
+    return 0;
+  }
+
   JsVar *var;
   // Create a new STRING from part of the lexer
   // Create a new lexer to span the whole area
@@ -235,11 +253,9 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   jslGetNextCh(&newLex);
   jslGetNextCh(&newLex);
 
-  // Create a var
-  first = jsvNew();
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
-  var = first;
+  var = jsvLockAgain(first);
   var->flags = JSV_STRING;
   var->varData.str[0] = 0; // in case str is empty!
 
@@ -254,15 +270,17 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (newLex.currCh) {
-      JsVar *next = jsvRef(jsvNew());
+      JsVar *next = jsvNew();
+      if (!next) break; // out of memory
+      next = jsvRef(next);
       next->flags = JSV_STRING_EXT;
       var->lastChild = jsvGetRef(next);
-      if (var!=first) jsvUnLock(var);
+      jsvUnLock(var);
       var = next;
     }
   }
   // free
-  if (var!=first) jsvUnLock(var);
+  jsvUnLock(var);
   jslKill(&newLex);
   // return
   return first;
@@ -334,6 +352,9 @@ JsVarRef jsvUnLock(JsVar *var) {
 
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
+  // quick checks
+  if (a==b) return true;
+  if (!a || !b) return false; // one of them is undefined
   // OPT: would this be useful as compare instead?
   assert(jsvIsBasic(a) && jsvIsBasic(b));
   if (jsvIsNumeric(a) && jsvIsNumeric(b)) {
@@ -399,7 +420,7 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
     } else if (jsvIsNull(v)) {
       strncpy(str, "null", len);
     } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
-      JsVar *var = v;
+      JsVar *var = jsvLockAgain(v);
       JsVarRef ref = 0;
       if (jsvIsStringExt(v))
         jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
@@ -412,18 +433,18 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
           if (len--<=0) {
             *str = 0;
             jsWarn("jsvGetString overflowed\n");
-            if (ref) jsvUnLock(var); // Note use of if (ref), not var
+            jsvUnLock(var); // Note use of if (ref), not var
             return;
           }
           *(str++) = var->varData.str[i];
         }
         // Go to next
         refNext = var->lastChild;
-        if (ref) jsvUnLock(var); // Note use of if (ref), not var
+        jsvUnLock(var);
         ref = refNext;
         var = ref ? jsvLock(ref) : 0;
       }
-      if (ref) jsvUnLock(var); // Note use of if (ref), not var
+      jsvUnLock(var);
       // if it has not had a 0 appended, do it now...
       if (str[-1]) *str = 0;
     } else if (jsvIsFunction(v)) {
@@ -491,7 +512,9 @@ void jsvAppendString(JsVar *var, const char *str) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
-      JsVar *next = jsvRef(jsvNew());
+      JsVar *next = jsvNew();
+      if (!next) break;
+      next = jsvRef(next);
       next->flags = JSV_STRING_EXT;
       block->lastChild = jsvGetRef(next);
       jsvUnLock(block);
@@ -575,7 +598,9 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (str) {
-      JsVar *next = jsvRef(jsvNew());
+      JsVar *next = jsvNew();
+      if (!next) break; // out of memory
+      next = jsvRef(next);
       next->flags = JSV_STRING_EXT;
       block->lastChild = jsvGetRef(next);
       jsvUnLock(block);
@@ -731,6 +756,7 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
   JsVar *dst = jsvNewWithFlags(src->flags);
+  if (!dst) return 0; // out of memory
   assert(jsvIsName(src));
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
 
@@ -746,7 +772,9 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
       // copy extra bits of string if there were any
       if (src->lastChild) {
         JsVar *child = jsvLock(src->lastChild);
-        dst->lastChild = jsvUnLock(jsvRef(jsvCopy(child)));
+        JsVar *childCopy = jsvCopy(child);
+        if (childCopy) // could be out of memory
+          dst->lastChild = jsvUnLock(jsvRef(childCopy));
         jsvUnLock(child);
       }
   } else {
@@ -757,6 +785,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
 
 JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags);
+  if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
     memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
     dst->lastChild = 0;
@@ -783,7 +812,9 @@ JsVar *jsvCopy(JsVar *src) {
     // copy extra bits of string if there were any
     if (src->lastChild) {
       JsVar *child = jsvLock(src->lastChild);
-      dst->lastChild = jsvUnLock(jsvRef(jsvCopy(child)));
+      JsVar *childCopy = jsvCopy(child);
+      if (childCopy) // could be out of memory
+        dst->lastChild = jsvUnLock(jsvRef(childCopy));
       jsvUnLock(child);
     }
   } else if (jsvIsObject(src) || jsvIsFunction(src)) {
@@ -793,8 +824,10 @@ JsVar *jsvCopy(JsVar *src) {
     while (vr) {
       JsVar *name = jsvLock(vr);
       JsVar *child = jsvCopyNameOnly(name, true); // NO DEEP COPY!
-      jsvAddName(jsvGetRef(dst), jsvGetRef(child));
-      jsvUnLock(child);
+      if (child) { // could have been out of memory
+        jsvAddName(jsvGetRef(dst), jsvGetRef(child));
+        jsvUnLock(child);
+      }
       vr = name->nextSibling;
       jsvUnLock(name);
     }
@@ -830,6 +863,7 @@ void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
 
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
   JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
+  if (!namedChild) return 0; // Out of memory
   jsvAddName(parent, jsvGetRef(namedChild));
   return namedChild;
 }
@@ -869,7 +903,8 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
   child = 0;
   if (createIfNotFound) {
     child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
-    jsvAddName(parentref, jsvGetRef(child));
+    if (child) // could be out of memory
+      jsvAddName(parentref, jsvGetRef(child));
   }
   jsvUnLock(parent);
   return child;
@@ -892,7 +927,7 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
   }
 
   child = 0;
-  if (addIfNotFound) {
+  if (addIfNotFound && childName) {
     if (childName->refs == 0) {
       // Not reffed - great! let's just use it
       if (!jsvIsName(childName))
@@ -1168,10 +1203,16 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
     } else {
        JsVar *da = jsvAsString(a, false);
        JsVar *db = jsvAsString(b, false);
+       if (!da || !db) { // out of memory
+         jsvUnLock(da);
+         jsvUnLock(db);
+         return 0;
+       }
        if (op=='+') {
          JsVar *v = jsvCopy(da);
          // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
-         jsvAppendStringVar(v, db, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+         if (v) // could be out of memory
+           jsvAppendStringVar(v, db, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
          jsvUnLock(da);
          jsvUnLock(db);
          return v;
@@ -1284,10 +1325,10 @@ void jsvTrace(JsVarRef ref, int indent) {
       jsPrint(buf);
     }
 
-    if (jsvIsString(var) || jsvIsName(var)) {
-      JsVarRef child = var->firstChild;
-      if (child) {
-          jsPrint("( Multi-block string ");
+    if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
+      if (!jsvIsStringExt(var) && var->firstChild) { // stringext don't have children (the use them for chars)
+        jsPrint("( Multi-block string ");
+        JsVarRef child = var->firstChild;
         while (child) {
           JsVar *childVar = jsvLock(child);
           jsvTraceLockInfo(childVar);

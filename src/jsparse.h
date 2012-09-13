@@ -44,7 +44,7 @@ typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
   EXEC_RUN_MASK = 1,
-  // EXEC_ERROR = 2 // maybe?
+  EXEC_ERROR = 2
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
