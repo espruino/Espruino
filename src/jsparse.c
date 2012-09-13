@@ -122,7 +122,9 @@ JsVar *jspeiGetScopesAsVar() {
   int i;
   for (i=0;i<execInfo.scopeCount;i++) {
       //printf("%d %d\n",i,execInfo.scopes[i]);
-      JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
+      JsVar *scope = jsvLock(execInfo.scopes[i]);
+      JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), scope);
+      jsvUnLock(scope);
       if (!idx) { // out of memort
         jspSetError();
         return arr;
@@ -417,12 +419,12 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
             // TODO: deep copy required?
             /*if (jsvIsBasic(value)) {
               // pass by value
-              jsvAddNamedChild(jsvGetRef(functionRoot), v->name, value->var->deepCopy());
+              jsvAddNamedChild(functionRoot, v->name, value->var->deepCopy());
             } else {
               // pass by reference
-              jsvAddNamedChild(jsvGetRef(functionRoot), v->name, value);
+              jsvAddNamedChild(functionRoot, v->name, value);
             }*/
-            JsVar *newValueName = jsvMakeIntoVariableName(jsvCopy(param), jsvGetRef(value));
+            JsVar *newValueName = jsvMakeIntoVariableName(jsvCopy(param), value);
             if (newValueName) { // could be out of memory
               jsvAddName(functionRoot, newValueName);
             } else
@@ -750,7 +752,7 @@ JsVar *jspeFactor() {
               return contents;
             }
             valueVar = jsvSkipNameAndUnlock(value);
-            varName = jsvMakeIntoVariableName(varName, jsvGetRef(valueVar));
+            varName = jsvMakeIntoVariableName(varName, valueVar);
             jsvAddName(contents, varName);
             jsvUnLock(valueVar);
           }
@@ -785,7 +787,7 @@ JsVar *jspeFactor() {
             JsVar *indexName;
             a = jspeBase();
             aVar = jsvSkipNameAndUnlock(a);
-            indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  jsvGetRef(aVar));
+            indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
             if (!indexName)  // out of memory
               jspSetError();
             else {

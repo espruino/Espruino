@@ -313,12 +313,12 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
   var->varData.floating = value;
   return var;
 }
-JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero) {
+JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
   var->flags |= JSV_NAME;
   if (valueOrZero)
-    var->firstChild = jsvRefRef(valueOrZero);
+    var->firstChild = jsvGetRef(jsvRef(valueOrZero));
   return var;
 }
 
@@ -858,7 +858,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
 }
 
 JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
-  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), jsvGetRef(child));
+  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
   if (!namedChild) return 0; // Out of memory
   jsvAddName(parent, namedChild);
   return namedChild;
@@ -1039,7 +1039,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
-  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), jsvGetRef(value));
+  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
   if (!idx) {
     jsWarn("Out of memory while appending to array");
     return 0;

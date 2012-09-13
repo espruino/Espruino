@@ -106,7 +106,7 @@ JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
 // Turns var into a Variable name that links to the given value... No locking so no need to unlock var
-JsVar *jsvMakeIntoVariableName(JsVar *var, JsVarRef valueOrZero);
+JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
 JsVar *jsvLock(JsVarRef ref);

@@ -193,7 +193,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
             if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
               JsVar *part = jsvNewFromString("");
               if (!part) break; // out of memory
-              JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
+              JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
               if (idxvar) { // could be out of memory
                 jsvAppendStringVar(part, a, last, idx-(last+1));
                 jsvAddName(array, idxvar);
