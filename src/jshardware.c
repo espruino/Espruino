@@ -6,11 +6,36 @@
  */
 
 #ifdef ARM
-#include "stm32f10x.h"
-#include "peripherals/stm32f10x_adc.h"
-#include "peripherals/stm32f10x_usart.h"
-#include "peripherals/stm32f10x_flash.h"
-#include "STM32vldiscovery.h"
+ #ifdef STM32F4
+  #include "stm32f4xx_conf.h" // again, added because ST didn't put it here ?
+  #include "peripherals/stm32f4xx_adc.h"
+  #include "peripherals/stm32f4xx_gpio.h"
+  #include "peripherals/stm32f4xx_usart.h"
+  #include "peripherals/stm32f4xx_flash.h"
+  #include "stm32f4_discovery.h"
+
+  #define MAIN_USART_Pin_RX GPIO_Pin_10
+  #define MAIN_USART_Pin_TX GPIO_Pin_9
+  #define MAIN_USART_Port GPIOA
+
+  #define STM32vldiscovery_LEDInit STM_EVAL_LEDInit
+  #define STM32vldiscovery_LEDOn STM_EVAL_LEDOn
+  #define STM32vldiscovery_LEDOff STM_EVAL_LEDOff
+  #define STM32vldiscovery_PBInit STM_EVAL_PBInit
+  #define GPIO_Mode_IN_FLOATING GPIO_Mode_IN
+  #define GPIO_Mode_AF_PP GPIO_Mode_AF
+ #else
+  #include "stm32f10x.h"
+  #include "peripherals/stm32f10x_adc.h"
+  #include "peripherals/stm32f10x_gpio.h"
+  #include "peripherals/stm32f10x_usart.h"
+  #include "peripherals/stm32f10x_flash.h"
+  #include "STM32vldiscovery.h"
+
+  #define MAIN_USART_Pin_RX GPIO_Pin_10
+  #define MAIN_USART_Pin_TX GPIO_Pin_9
+  #define MAIN_USART_Port GPIOA
+ #endif
 #else//!ARM
 #include <stdlib.h>
 #include <string.h>
@@ -145,6 +170,16 @@ uint8_t pinToPinSource(uint16_t pin) {
   return GPIO_PinSource0;
 }
 uint8_t portToPortSource(GPIO_TypeDef *port) {
+ #ifdef STM32F4
+  if (port == GPIOA) return EXTI_PortSourceGPIOA;
+  if (port == GPIOB) return EXTI_PortSourceGPIOB;
+  if (port == GPIOC) return EXTI_PortSourceGPIOC;
+  if (port == GPIOD) return EXTI_PortSourceGPIOD;
+  if (port == GPIOE) return EXTI_PortSourceGPIOE;
+  if (port == GPIOF) return EXTI_PortSourceGPIOF;
+  if (port == GPIOG) return EXTI_PortSourceGPIOG;
+  return EXTI_PortSourceGPIOA;
+#else
   if (port == GPIOA) return GPIO_PortSourceGPIOA;
   if (port == GPIOB) return GPIO_PortSourceGPIOB;
   if (port == GPIOC) return GPIO_PortSourceGPIOC;
@@ -153,6 +188,7 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
   if (port == GPIOF) return GPIO_PortSourceGPIOF;
   if (port == GPIOG) return GPIO_PortSourceGPIOG;
   return GPIO_PortSourceGPIOA;
+#endif
 }
 
 
@@ -314,6 +350,18 @@ int getch()
 void jshInit() {
 #ifdef ARM
   /* Enable UART and  GPIOx Clock */
+ #ifdef STM32F4
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
+                         RCC_APB2Periph_USART1, ENABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
+                         RCC_AHB1Periph_GPIOB |
+                         RCC_AHB1Periph_GPIOC | 
+                         RCC_AHB1Periph_GPIOD |
+                         RCC_AHB1Periph_GPIOE |
+                         RCC_AHB1Periph_GPIOF |
+                         RCC_AHB1Periph_GPIOG, ENABLE);
+ #else
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(
         RCC_APB2Periph_ADC1 |
@@ -323,6 +371,7 @@ void jshInit() {
         RCC_APB2Periph_GPIOC |
         RCC_APB2Periph_GPIOD |
         RCC_APB2Periph_AFIO, ENABLE);
+ #endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
   SysTick_Config(0xFFFFFF); // 24 bit
@@ -339,14 +388,15 @@ void jshInit() {
   USART_InitTypeDef USART_InitStructure;
   USART_ClockInitTypeDef USART_ClockInitStructure;
 
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10; // RX
+
+  GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9; // TX
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
   USART_ClockStructInit(&USART_ClockInitStructure);
   USART_ClockInit(USART1, &USART_ClockInitStructure);
