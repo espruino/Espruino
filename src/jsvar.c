@@ -1091,10 +1091,10 @@ INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a) {
 
 /** Same as jsvMathsOpPtr, but if a or b are a name, skip them
  * and go to what they point to. */
-JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op) {
+JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op) {
   JsVar *pa = jsvSkipName(a);
   JsVar *pb = jsvSkipName(b);
-  JsVar *res = jsvMathsOpPtr(pa,pb,op);
+  JsVar *res = jsvMathsOp(pa,pb,op);
   jsvUnLock(pa);
   jsvUnLock(pb);
   return res;
@@ -1117,7 +1117,7 @@ JsVar *jsvMathsOpError(int op, const char *datatype) {
     return 0;
 }
 
-JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
+JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     // Type equality check
     if (op == LEX_TYPEEQUAL || op == LEX_NTYPEEQUAL) {
       // check type first, then call again to check data
@@ -1125,7 +1125,7 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
       if (a && b) eql = ((a->flags & JSV_VARTYPEMASK) ==
                          (b->flags & JSV_VARTYPEMASK));
       if (eql) {
-        JsVar *contents = jsvMathsOpPtr(a,b, LEX_EQUAL);
+        JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
         if (!jsvGetBool(contents)) eql = false;
         jsvUnLock(contents);
       }
@@ -1228,19 +1228,6 @@ JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op) {
            default: return jsvMathsOpError(op, "String");
        }
     }
-}
-
-JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op) {
-    JsVar *a;
-    JsVar *b;
-    JsVar *res;
-    if (!ar || !br) return 0;
-    a = jsvLock(ar);
-    b = jsvLock(br);
-    res = jsvMathsOpPtr(a,b,op);
-    jsvUnLock(a);
-    jsvUnLock(b);
-    return res;
 }
 
 void jsvTraceLockInfo(JsVar *v) {

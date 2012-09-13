@@ -849,7 +849,7 @@ JsVar *jspePostfix() {
     JSP_MATCH(execInfo.lex->tk);
     if (JSP_SHOULD_EXECUTE) {
         JsVar *one = jsvLock(execInfo.parse->oneInt);
-        JsVar *res = jsvMathsOpPtrSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
+        JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
         JsVar *oldValue;
         jsvUnLock(one);
         oldValue = jsvSkipName(a); // keep the old value
@@ -871,7 +871,7 @@ JsVar *jspeUnary() {
         a = jspePostfix();
         if (JSP_SHOULD_EXECUTE) {
             JsVar *zero = jsvLock(execInfo.parse->zeroInt);
-            JsVar *res = jsvMathsOpPtrSkipNames(a, zero, LEX_EQUAL);
+            JsVar *res = jsvMathsOpSkipNames(a, zero, LEX_EQUAL);
             jsvUnLock(zero);
             jsvUnLock(a); a = res;
         }
@@ -888,7 +888,7 @@ JsVar *jspeTerm() {
         JSP_MATCH(execInfo.lex->tk);
         b = jspeUnary();
         if (JSP_SHOULD_EXECUTE) {
-          JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
+          JsVar *res = jsvMathsOpSkipNames(a, b, op);
           jsvUnLock(a); a = res;
         }
         jsvUnLock(b);
@@ -906,7 +906,7 @@ JsVar *jspeExpression() {
     a = jspeTerm();
     if (negate) {
       JsVar *zero = jsvLock(execInfo.parse->zeroInt);
-      JsVar *res = jsvMathsOpPtrSkipNames(zero, a, '-');
+      JsVar *res = jsvMathsOpSkipNames(zero, a, '-');
       jsvUnLock(zero);
       jsvUnLock(a); a = res;
     }
@@ -917,7 +917,7 @@ JsVar *jspeExpression() {
         JsVar *b = jspeTerm();
         if (JSP_SHOULD_EXECUTE) {
             // not in-place, so just replace
-          JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
+          JsVar *res = jsvMathsOpSkipNames(a, b, op);
           jsvUnLock(a); a = res;
         }
         jsvUnLock(b);
@@ -933,7 +933,7 @@ JsVar *jspeShift() {
     JSP_MATCH(op);
     b = jspeBase();
     if (JSP_SHOULD_EXECUTE) {
-      JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
+      JsVar *res = jsvMathsOpSkipNames(a, b, op);
       jsvUnLock(a); a = res;
     }
     jsvUnLock(b);
@@ -952,7 +952,7 @@ JsVar *jspeCondition() {
         JSP_MATCH(execInfo.lex->tk);
         b = jspeShift();
         if (JSP_SHOULD_EXECUTE) {
-            JsVar *res = jsvMathsOpPtrSkipNames(a, b, op);
+            JsVar *res = jsvMathsOpSkipNames(a, b, op);
             jsvUnLock(a); a = res;
         }
         jsvUnLock(b);
@@ -994,7 +994,7 @@ JsVar *jspeLogic() {
               jsvUnLock(a); a = newa;
               jsvUnLock(b); b = newb;
             }
-            res = jsvMathsOpPtrSkipNames(a, b, op);
+            res = jsvMathsOpSkipNames(a, b, op);
             jsvUnLock(a); a = res;
         }
         jsvUnLock(b);
@@ -1059,11 +1059,11 @@ JsVar *jspeBase() {
             if (op=='=') {
                 jspReplaceWith(lhs, rhs);
             } else if (op==LEX_PLUSEQUAL) {
-                JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '+');
+                JsVar *res = jsvMathsOpSkipNames(lhs,rhs, '+');
                 jspReplaceWith(lhs, res);
                 jsvUnLock(res);
             } else if (op==LEX_MINUSEQUAL) {
-                JsVar *res = jsvMathsOpPtrSkipNames(lhs,rhs, '-');
+                JsVar *res = jsvMathsOpSkipNames(lhs,rhs, '-');
                 jspReplaceWith(lhs, res);
                 jsvUnLock(res);
             } else {

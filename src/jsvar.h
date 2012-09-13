@@ -226,9 +226,8 @@ INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
 INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
 
 /// MATHS!
-JsVar *jsvMathsOp(JsVarRef ar, JsVarRef br, int op);
-JsVar *jsvMathsOpPtrSkipNames(JsVar *a, JsVar *b, int op);
-JsVar *jsvMathsOpPtr(JsVar *a, JsVar *b, int op);
+JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op);
+JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
 
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);
