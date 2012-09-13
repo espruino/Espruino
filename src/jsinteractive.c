@@ -340,6 +340,7 @@ void jsiIdle() {
   JsVarRef timer = timerArrayPtr->firstChild;
   while (timer) {
     JsVar *timerNamePtr = jsvLock(timer);
+    timer = timerNamePtr->nextSibling; // ptr to next
     JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
     if (timerTime && time > jsvGetInteger(timerTime)) {
       JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
@@ -358,12 +359,12 @@ void jsiIdle() {
 
     }
     jsvUnLock(timerTime);
-    timer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
   }
   jsvUnLock(timerArrayPtr);
 
 
+  // TODO: could now sort events by time?
   // execute any outstanding events
   jsiExecuteEvents();
   // check for TODOs
@@ -461,8 +462,10 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
       jsvUnLock(v);
       jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
+      //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
       JsVar *timerArrayPtr = jsvLock(timerArray);
       JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
+      //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
       jsvUnLock(timerArrayPtr);
       jsvUnLock(timerPtr);
       jsvUnLock(func);

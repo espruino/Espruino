@@ -959,14 +959,14 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
         JsVar *v = jsvLock(child->prevSibling);
         v->nextSibling = child->nextSibling;
         jsvUnLock(v);
-        child->prevSibling = 0;
     }
     if (child->nextSibling) {
         JsVar *v = jsvLock(child->nextSibling);
         v->prevSibling = child->prevSibling;
         jsvUnLock(v);
-        child->nextSibling = 0;
     }
+    child->prevSibling = 0;
+    child->nextSibling = 0;
 
     jsvUnRef(child);
 }
@@ -1311,8 +1311,12 @@ void jsvTrace(JsVarRef ref, int indent) {
     }
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
-      jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-      jsPrint(buf);
+      if (jsvIsString(var) || jsvIsName(var))
+        jsvPrintStringVar(var);
+      else {
+        jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
+        jsPrint(buf);
+      }
     }
 
     if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {

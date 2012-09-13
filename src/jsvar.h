@@ -127,8 +127,7 @@ static inline JsVar *jsvRef(JsVar *v) {
 
 /// Unreference - set this variable as not used by anything
 static inline void jsvUnRef(JsVar *var) {
-  assert(var);
-  assert(var->refs>0);
+  assert(var && var->refs>0);
   var->refs--;
   if (var->locks == 0 && var->refs==0)
       jsvFreePtr(var);
