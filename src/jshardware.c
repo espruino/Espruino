@@ -651,7 +651,7 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
     JsSysTime endtime = starttime + ticks;
     //jsPrint("----------- ");jsPrintInt(endtime>>16);jsPrint("\n");
     JsSysTime stime = jshGetSystemTime();
-    while (stime>starttime && stime<endtime) { // this stops rollover issue
+    while (stime>=starttime && stime<endtime) { // this stops rollover issue
       stime = jshGetSystemTime();
       //jsPrintInt(stime>>16);jsPrint("\n");
     }
