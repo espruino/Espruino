@@ -2,6 +2,8 @@
  *
  * TODO:
  *       Ctrl-c to break execution
+ *       When entering stuff interactively, newlines are not kept (try entering a function)
+ *       'dump' function to dump state such that it can be copied to another device
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters

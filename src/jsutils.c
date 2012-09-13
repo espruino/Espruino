@@ -141,6 +141,8 @@ void exit(int errcode) {dst;
 #endif
 
 #ifdef FAKE_STDLIB
+int __errno;
+
 void exit(int errcode) {
     jsPrint("EXIT CALLED.\n");
     while (1);

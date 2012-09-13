@@ -625,7 +625,7 @@ void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
 
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v) {
-  assert(jsvIsString(v));
+  assert(jsvIsString(v) || jsvIsName(v));
   JsVarRef r = jsvGetRef(v);
   while (r) {
     v = jsvLock(r);
