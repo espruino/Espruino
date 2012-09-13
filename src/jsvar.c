@@ -825,7 +825,7 @@ JsVar *jsvCopy(JsVar *src) {
       JsVar *name = jsvLock(vr);
       JsVar *child = jsvCopyNameOnly(name, true); // NO DEEP COPY!
       if (child) { // could have been out of memory
-        jsvAddName(jsvGetRef(dst), jsvGetRef(child));
+        jsvAddName(dst, child);
         jsvUnLock(child);
       }
       vr = name->nextSibling;
@@ -838,33 +838,31 @@ JsVar *jsvCopy(JsVar *src) {
   return dst;
 }
 
-void jsvAddName(JsVarRef parent, JsVarRef namedChildRef) {
-  JsVar *v;
-  JsVar *namedChild = jsvRef(jsvLock(namedChildRef));
+void jsvAddName(JsVar *parent, JsVar *namedChild) {
+  namedChild = jsvRef(namedChild);
   assert(jsvIsName(namedChild));
-  v = jsvLock(parent);
   // TODO: if array, insert in correct order
-  if (v->lastChild) {
+  if (parent->lastChild) {
     // Link 2 children together
-    JsVar *lastChild = jsvLock(v->lastChild);
-    lastChild->nextSibling = namedChildRef;
+    JsVar *lastChild = jsvLock(parent->lastChild);
+    lastChild->nextSibling = jsvGetRef(namedChild);
     jsvUnLock(lastChild);
 
-    namedChild->prevSibling = v->lastChild;
+    namedChild->prevSibling = parent->lastChild;
     // finally set the new child as the last one
-    v->lastChild = namedChildRef;
+    parent->lastChild = jsvGetRef(namedChild);
   } else {
-    v->firstChild = namedChildRef;
-    v->lastChild = namedChildRef;
+    parent->firstChild = parent->lastChild = jsvGetRef(namedChild);
+
   }
-  jsvUnLock(namedChild);
-  jsvUnLock(v);
 }
 
-JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name) {
+JsVar *jsvAddNamedChild(JsVarRef parentref, JsVarRef child, const char *name) {
   JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
   if (!namedChild) return 0; // Out of memory
-  jsvAddName(parent, jsvGetRef(namedChild));
+  JsVar *parent = jsvLock(parentref);
+  jsvAddName(parent, namedChild);
+  jsvUnLock(parent);
   return namedChild;
 }
 
@@ -904,7 +902,7 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
   if (createIfNotFound) {
     child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
     if (child) // could be out of memory
-      jsvAddName(parentref, jsvGetRef(child));
+      jsvAddName(parent, child);
   }
   jsvUnLock(parent);
   return child;
@@ -932,11 +930,11 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
       // Not reffed - great! let's just use it
       if (!jsvIsName(childName))
         childName = jsvMakeIntoVariableName(childName, 0);
-      jsvAddName(parentref, jsvGetRef(childName));
+      jsvAddName(parent, childName);
       child = jsvLockAgain(childName);
     } else { // it was reffed, we must add a new one
       child = jsvMakeIntoVariableName(jsvCopy(childName), 0);
-      jsvAddName(parentref, jsvGetRef(child));
+      jsvAddName(parent, child);
     }
   }
   jsvUnLock(parent);
@@ -1048,7 +1046,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
     jsWarn("Out of memory while appending to array");
     return 0;
   }
-  jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
+  jsvAddName(arr, idx);
   jsvUnLock(idx);
   return index+1; // new size
 }

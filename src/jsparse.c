@@ -17,7 +17,7 @@ JsVar *jspeStatement();
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR)==EXEC_ERROR)
 
 static inline void jspSetError() {
-  execInfo.execute = (execInfo.execute & ~EXEC_YES) | EXEC_ERROR;
+  execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_YES) | EXEC_ERROR;
 }
 
 ///< Same as jsvSetValueOfName, but nice error message
@@ -127,7 +127,7 @@ JsVar *jspeiGetScopesAsVar() {
         jspSetError();
         return arr;
       }
-      jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
+      jsvAddName(arr, idx);
       jsvUnLock(idx);
   }
   //printf("%d\n",arr->firstChild);
@@ -424,7 +424,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
             }*/
             JsVar *newValueName = jsvMakeIntoVariableName(jsvCopy(param), jsvGetRef(value));
             if (newValueName) { // could be out of memory
-              jsvAddName(jsvGetRef(functionRoot), jsvGetRef(newValueName));
+              jsvAddName(functionRoot, newValueName);
             } else
               jspSetError();
             jsvUnLock(newValueName);
@@ -751,7 +751,7 @@ JsVar *jspeFactor() {
             }
             valueVar = jsvSkipNameAndUnlock(value);
             varName = jsvMakeIntoVariableName(varName, jsvGetRef(valueVar));
-            jsvAddName(jsvGetRef(contents), jsvGetRef(varName));
+            jsvAddName(contents, varName);
             jsvUnLock(valueVar);
           }
           jsvUnLock(varName);
@@ -789,7 +789,7 @@ JsVar *jspeFactor() {
             if (!indexName)  // out of memory
               jspSetError();
             else {
-              jsvAddName(jsvGetRef(contents), jsvGetRef(indexName));
+              jsvAddName(contents, indexName);
               jsvUnLock(indexName);
             }
             jsvUnLock(aVar);
@@ -1042,7 +1042,9 @@ JsVar *jspeBase() {
          * add it to the symbol table root as per JavaScript. */
         if (JSP_SHOULD_EXECUTE && lhs && !lhs->refs) {
           if (jsvIsName(lhs)/* && jsvGetStringLength(lhs)>0*/) {
-            jsvAddName(execInfo.parse->root, jsvGetRef(lhs));
+            JsVar *root = jsvLock(execInfo.parse->root);
+            jsvAddName(root, lhs);
+            jsvUnLock(root);
           } else // TODO: Why was this here? can it happen?
             jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastEnd);
         }
@@ -1244,7 +1246,9 @@ JsVar *jspeStatement() {
           if (JSP_SHOULD_EXECUTE && !forStatement->refs) {
             // if the variable did not exist, add it to the scope
             addedIteratorToScope = true;
-            jsvAddName(execInfo.parse->root, jsvGetRef(forStatement));
+            JsVar *root = jsvLock(execInfo.parse->root);
+            jsvAddName(root, forStatement);
+            jsvUnLock(root);
           }
           JSP_MATCH(LEX_R_IN);
           JsVar *array = jsvSkipNameAndUnlock(jspeExpression());

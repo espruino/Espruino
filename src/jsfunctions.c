@@ -196,7 +196,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), jsvGetRef(part));
               if (idxvar) { // could be out of memory
                 jsvAppendStringVar(part, a, last, idx-(last+1));
-                jsvAddName(jsvGetRef(array), jsvGetRef(idxvar));
+                jsvAddName(array, idxvar);
                 last = idx+splitlen;
                 jsvUnLock(idxvar);
               }

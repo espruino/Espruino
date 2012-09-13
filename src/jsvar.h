@@ -235,7 +235,7 @@ JsVar *jsvCopy(JsVar *src);
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren);
 /// Tree related stuff
-void jsvAddName(JsVarRef parent, JsVarRef nameChild); // Add a child, which is itself a name
+void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itself a name
 JsVar *jsvAddNamedChild(JsVarRef parent, JsVarRef child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var

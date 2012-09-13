@@ -87,8 +87,6 @@ bool run_test(const char *filename) {
   buffer[size]=0;
   fclose(file);
 
-  JsVar *v;
-
   jsvInit();
   JsParse p;
   jspInit(&p);
@@ -232,4 +230,6 @@ int main(int argc, char **argv) {
 
   jsvShowAllocated();
   jshKill();
+
+  return 0;
 }

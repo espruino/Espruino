@@ -369,13 +369,13 @@ void jsiIdle() {
   // check for TODOs
   if (todo) {
     if (todo & TODO_RESET) {
-      todo &= ~TODO_RESET;
+      todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
       jsiKill();
       jsiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {
-      todo &= ~TODO_FLASH_SAVE;
+      todo &= (TODOFlags)~TODO_FLASH_SAVE;
       jsiSoftKill();
       jspSoftKill(&p);
       jsvSoftKill();
@@ -385,7 +385,7 @@ void jsiIdle() {
       jsiSoftInit();
     }
     if (todo & TODO_FLASH_LOAD) {
-      todo &= ~TODO_FLASH_LOAD;
+      todo &= (TODOFlags)~TODO_FLASH_LOAD;
       jsiSoftKill();
       jspSoftKill(&p);
       jsvSoftKill();
@@ -639,8 +639,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
-      bool value = jsvGetIntegerAndUnLock(valueVar);
-      int bit = jsvGetIntegerAndUnLock(bitVar);
+      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
+      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
       return jsvNewFromInteger( (value >> bit) & 1);
     }
     if (strcmp(name,"bitWrite")==0) {
@@ -649,9 +649,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       JsVar *valueVar, *bitVar, *dataVar;
       jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
-      bool value = jsvGetInteger(valueVar);
-      int bit = jsvGetIntegerAndUnLock(bitVar);
-      int data = jsvGetIntegerAndUnLock(dataVar);
+      JsVarInt value = jsvGetInteger(valueVar);
+      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+      JsVarInt data = jsvGetIntegerAndUnLock(dataVar);
       if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, (value & ~(1<<bit)) | ((data?1:0)<<bit));
       jsvUnLock(valueVar);
       return 0;
@@ -662,8 +662,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
-      bool value = jsvGetInteger(valueVar);
-      int bit = jsvGetIntegerAndUnLock(bitVar);
+      JsVarInt value = jsvGetInteger(valueVar);
+      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
       if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value | (1<<bit));
       jsvUnLock(valueVar);
       return 0;
@@ -674,8 +674,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
-      bool value = jsvGetInteger(valueVar);
-      int bit = jsvGetIntegerAndUnLock(bitVar);
+      JsVarInt value = jsvGetInteger(valueVar);
+      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
       if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value & ~(1<<bit));
       jsvUnLock(valueVar);
       return 0;
@@ -685,7 +685,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
        */
       JsVar *bitVar = jspParseSingleFunction();
-      int bit = jsvGetIntegerAndUnLock(bitVar);
+      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
       return jsvNewFromInteger(1 << bit);
     }
     if (strcmp(name,"lowByte")==0) {
@@ -693,7 +693,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *  Return the low byte of the value
        */
       JsVar *valueVar = jspParseSingleFunction();
-      int value = jsvGetIntegerAndUnLock(valueVar);
+      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
       return jsvNewFromInteger(value & 0xFF);
     }
     if (strcmp(name,"highByte")==0) {
@@ -701,7 +701,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *  Return the high (second) byte of the value
        */
       JsVar *valueVar = jspParseSingleFunction();
-      int value = jsvGetIntegerAndUnLock(valueVar);
+      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
       return jsvNewFromInteger((value>>8) & 0xFF);
     }
 /* TODO:
