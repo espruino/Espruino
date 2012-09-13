@@ -13,10 +13,10 @@
  *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
  *       'Array.prototype.clear = function () { this.X = 2e23; };'
  *       See if jsvNewVariableName/jsvAdd* can use pointers instead of refs?
- *       Handle errors gracefully (have an ERROR state in the JsExecFlags?)
- *       Add Array.splice
+  *       Add Array.splice
  *       Add 'delete' keyword for killing array items?
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
+ *       Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
  *
  *  LOW PRIORITY
  *       Rename IO functions to Arduino style: http://arduino.cc/en/Reference/HomePage
