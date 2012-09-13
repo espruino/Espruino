@@ -2,7 +2,6 @@
  *
  * TODO:
  *       On assert fail, should restart interpreter and try and recover
- *       Run tests with ever decreasing memory available to ensure that there are no crash/assert errors
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
  *       Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred

@@ -122,6 +122,10 @@ JsVar *jspeiGetScopesAsVar() {
   for (i=0;i<execInfo.scopeCount;i++) {
       //printf("%d %d\n",i,execInfo.scopes[i]);
       JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
+      if (!idx) { // out of memort
+        jspSetError();
+        return arr;
+      }
       jsvAddName(jsvGetRef(arr), jsvGetRef(idx));
       jsvUnLock(idx);
   }
