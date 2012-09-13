@@ -1410,17 +1410,8 @@ void jspSoftInit(JsParse *parse) {
 
   JsVar *name;
 
-  name = jsvFindChildFromString(parse->root, "#zero#", true);
-  name->flags |= JSV_NATIVE;
-  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewFromInteger(0)));
-  parse->zeroInt = jsvRefRef(name->firstChild);
-  jsvUnLock(name);
-
-  name = jsvFindChildFromString(parse->root, "#one#", true);
-  name->flags |= JSV_NATIVE;
-  if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewFromInteger(1)));
-  parse->oneInt = jsvRefRef(name->firstChild);
-  jsvUnLock(name);
+  parse->zeroInt = jsvUnLock(jsvRef(jsvNewFromInteger(0)));
+  parse->oneInt = jsvUnLock(jsvRef(jsvNewFromInteger(1)));
 
   name = jsvFindChildFromString(parse->root, "String", true);
   name->flags |= JSV_NATIVE;
