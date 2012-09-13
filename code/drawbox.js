@@ -35,3 +35,18 @@ setInterval(function() {
  pulse("A1",1,1+coords[0]);
  pulse("A2",1,1+coords[1]);
 },20);
+
+setWatch(function() { 
+  if (digitalRead("A0")) { 
+    digitalWrite("C9",1); 
+    setTimeout(function() { 
+      digitalWrite("C9", 0);
+      setTimeout(function() { 
+        digitalWrite("C9", 1);
+        setTimeout(function() { 
+          digitalWrite("C9", 0);
+        }, 300);
+      }, 300);
+    }, 300);
+  }
+}, "A0", true);

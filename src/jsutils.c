@@ -119,6 +119,8 @@ void jsAssertFail(const char *file, int line) {
   jsPrint(":");
   jsPrintInt(line);
   jsPrint("\n");
+
+  jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
   exit(1);
 }
 
