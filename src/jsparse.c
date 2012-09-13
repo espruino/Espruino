@@ -156,6 +156,12 @@ void jspSetNoExecute() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)(int)~EXEC_RUN_MASK) | EXEC_NO;
 }
 
+// parse single variable name
+bool jspParseVariableName() {
+  JSP_MATCH(LEX_ID);
+  return true;
+}
+
 // parse function with no arguments
 bool jspParseEmptyFunction() {
   JSP_MATCH(LEX_ID);

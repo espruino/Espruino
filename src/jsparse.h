@@ -60,6 +60,8 @@ typedef struct {
   JsExecFlags execute;
 } JsExecInfo;
 
+
+bool jspParseVariableName();     ///< parse single variable name
 bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
 bool jspParseDoubleFunction(JsVar **a, JsVar **b); ///< parse function with 2 arguments, return 2 values (no names!)

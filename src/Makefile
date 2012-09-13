@@ -5,10 +5,14 @@ DEBUGFLAGS=
 DEBUGFLAGS=-g
 CFLAGS=-c $(DEBUGFLAGS) -Wall -Wextra -Wconversion 
 LDFLAGS=$(DEBUGFLAGS)
+LIBS=
 
 ifdef ARM
 CC=arm-none-eabi-gcc
 CFLAGS=-c -Wall -Wextra -Wconversion -Os
+else
+CFLAGS+=-DUSE_MATH
+LIBS+=-lm
 endif
 
 ifdef SDCC
@@ -33,7 +37,7 @@ OBJECTS=$(SOURCES:.c=.o)
 all: TinyJSC
 
 TinyJSC: $(OBJECTS)
-	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
+	$(CC) $(LDFLAGS) $(OBJECTS) -o $@ $(LIBS)
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@

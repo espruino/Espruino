@@ -6,6 +6,9 @@
  */
 
 #include "jsfunctions.h"
+#ifdef USE_MATH
+#include <math.h>
+#endif
 
 JsfHandleFunctionCallDelegate jsfHandleFunctionCallDelegate = 0;
 
@@ -77,6 +80,57 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       }
     }
     if (jsvGetRef(a) == execInfo->parse->mathClass) {
+      if (strcmp(name,"E")==0) {
+        jspParseVariableName();
+        return jsvNewFromFloat(2.71828182846);
+      }
+      if (strcmp(name,"PI")==0) {
+        jspParseVariableName();
+        return jsvNewFromFloat(3.14159265359);
+      }
+#ifdef USE_MATH
+      if (strcmp(name,"abs")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(abs(x));
+      }
+      if (strcmp(name,"acos")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(acos(x));
+      }
+      if (strcmp(name,"asin")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(asin(x));
+      }
+      if (strcmp(name,"atan")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(atan(x));
+      }
+      if (strcmp(name,"atan2")==0) {
+        JsVar *x,*y;
+        jspParseDoubleFunction(&y,&x);
+        return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
+      }
+      if (strcmp(name,"cos")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(cos(x));
+      }
+      if (strcmp(name,"round")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromInteger(lround(x));
+      }
+      if (strcmp(name,"sin")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(sin(x));
+      }
+      if (strcmp(name,"sqrt")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(sqrt(x));
+      }
+      if (strcmp(name,"tan")==0) {
+        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+        return jsvNewFromFloat(tan(x));
+      }
+#endif
       if (strcmp(name,"random")==0) {
         if (jspParseEmptyFunction())
           return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
