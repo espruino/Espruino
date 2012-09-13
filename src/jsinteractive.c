@@ -210,14 +210,12 @@ void jsiHandleChar(char ch) {
       if (echo) jshTXStr("\r\n>");
     } else {
       if (echo) jshTXStr("\n:");
+      jsvAppendCharacter(inputline, '\n');
     }
   } else {
     if (echo) jshTX(ch);
     // Append the character to our input line
-    char buf[2];
-    buf[0] = ch;
-    buf[1] = 0;
-    jsvAppendString(inputline, buf);
+    jsvAppendCharacter(inputline, ch);
   }
 }
 

@@ -532,6 +532,14 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
+void jsvAppendCharacter(JsVar *var, char ch) {
+  // Append the character to our input line
+  char buf[2];
+  buf[0] = ch;
+  buf[1] = 0;
+  jsvAppendString(var, buf);
+}
+
 /** If var is a string, lock and return it, else
  * create a new string. unlockVar means this will auto-unlock 'var'  */
 JsVar *jsvAsString(JsVar *var, bool unlockVar) {
