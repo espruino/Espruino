@@ -171,7 +171,6 @@ void jsiHandleChar(char ch) {
   if (ch=='{') brackets++;
   if (ch=='}') brackets--;
 
-
   if (ch == CHAR_DELETE_RECV /*delete*/) {
     size_t l = jsvGetStringLength(inputline);
     if (l>0) {
@@ -544,8 +543,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(pinVar);
       bool value = jsvGetBool(valueVar);
       jsvUnLock(valueVar);
-      JsVarFloat time = jsvGetDouble(timeVar);
-      jsvUnLock(timeVar);
+      JsVarFloat time = jsvGetDoubleAndUnLock(timeVar);
       //jsPrintInt((JsVarInt)(time*1000));
       jshPinPulse(pin, value, time);
       return 0;

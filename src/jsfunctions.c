@@ -74,8 +74,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     if (jsvGetRef(a) == execInfo->parse->doubleClass) {
       if (strcmp(name,"doubleToIntBits")==0) {
         JsVar *v = jspParseSingleFunction(execInfo);
-        JsVarFloat f = jsvGetDouble(v);
-        jsvUnLock(v);
+        JsVarFloat f = jsvGetDoubleAndUnLock(v);
         return jsvNewFromInteger(*(JsVarInt*)&f);
       }
     }
@@ -166,8 +165,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          char buffer[2];
          size_t idx = 0;
          JsVar *v = jspParseSingleFunction();
-         idx = (size_t)jsvGetInteger(v);
-         jsvUnLock(v);
+         idx = (size_t)jsvGetIntegerAndUnLock(v);
          // now search to try and find the char
          v = jsvLock(jsvGetRef(a));
          while (v && idx >= jsvGetMaxCharactersInVar(v)) {
@@ -202,9 +200,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *vStart, *vEnd, *res;
          int pStart, pEnd;
          jspParseDoubleFunction(&vStart, &vEnd);
-         pStart = (int)jsvGetInteger(vStart);
+         pStart = (int)jsvGetIntegerAndUnLock(vStart);
          pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
-         jsvUnLock(vStart);
          jsvUnLock(vEnd);
          if (pStart<0) pStart=0;
          if (pEnd<0) pEnd=0;
@@ -222,9 +219,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           JsVar *vStart, *vLen, *res;
           int pStart, pLen;
           jspParseDoubleFunction(&vStart, &vLen);
-          pStart = (int)jsvGetInteger(vStart);
+          pStart = (int)jsvGetIntegerAndUnLock(vStart);
           pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
-          jsvUnLock(vStart);
           jsvUnLock(vLen);
           if (pLen<0) pLen=0;
           res = jsvNewWithFlags(JSV_STRING);

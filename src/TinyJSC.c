@@ -2,6 +2,7 @@
  *
  * TODO:
  *       Ctrl-c to break execution
+ *       Delete when typing multi-line stuff
  *       'dump' function to dump state such that it can be copied to another device
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
