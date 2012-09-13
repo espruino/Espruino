@@ -51,6 +51,7 @@ void jsvInit() {
     jsVars[i].this = (JsVarRef)(i+1);
 #endif
     jsVars[i].refs = JSVAR_CACHE_UNUSED_REF;
+    jsVars[i].locks = 0;
     jsVars[i].nextSibling = (JsVarRef)(i+2);
   }
   jsVars[jsVarsSize-1].nextSibling = 0;
@@ -327,14 +328,20 @@ JsVar *jsvLock(JsVarRef ref) {
   assert(ref);
   JsVar *var = &jsVars[ref-1];
   var->locks++;
-  if (var->locks==0) jsError("Too many references to Variable!");
+  if (var->locks==0) {
+    jsError("Too many locks to Variable!");
+    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
+  }
   return var;
 }
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 JsVar *jsvLockAgain(JsVar *var) {
   var->locks++;
-  if (var->locks==0) jsError("Too many references to Variable!");
+  if (var->locks==0) {
+    jsError("Too many locks to Variable!");
+    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
+  }
   return var;
 }
 
