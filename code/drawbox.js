@@ -26,11 +26,12 @@ setInterval(function() {
  print("0");
 },100);
 
+clearInterval(0);
 var pos = 0.0;
 var coords = [];
 setInterval(function() {
- pos+=0.005;
+ pos+=0.002;
  coords = boxcoords(pos);
  pulse("A1",1,1+coords[0]);
  pulse("A2",1,1+coords[1]);
-},50);
+},20);
