@@ -545,6 +545,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvUnLock(valueVar);
       JsVarFloat time = jsvGetDouble(timeVar);
       jsvUnLock(timeVar);
+      //jsPrintInt((JsVarInt)(time*1000));
       jshPinPulse(pin, value, time);
       return 0;
     }

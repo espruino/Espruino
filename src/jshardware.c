@@ -639,8 +639,11 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
     else
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
-    JsSysTime endtime = jshGetSystemTime() + time;
-    while (jshGetSystemTime()<endtime);
+    JsSysTime endtime = jshGetSystemTime() + ticks;
+    //jsPrint("----------- ");jsPrintInt(endtime);jsPrint("\n");
+    while (jshGetSystemTime()<endtime) {
+      //jsPrintInt(jshGetSystemTime());jsPrint("\n");
+    }
     if (!value)
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
     else
