@@ -195,9 +195,10 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 #endif
 // ----------------------------------------------------------------------------
 #ifdef ARM
-JsSysTime SysTickMajor = 0;
+#define SYSTICK_RANGE 0x1000000
+JsSysTime SysTickMajor = SYSTICK_RANGE;
 void SysTick_Handler(void) {
-  SysTickMajor+=0x1000000;
+  SysTickMajor+=SYSTICK_RANGE;
 }
 
 void USART1_IRQHandler(void) {
@@ -374,7 +375,7 @@ void jshInit() {
  #endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
-  SysTick_Config(0xFFFFFF); // 24 bit
+  SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   /* Initialise LEDs LD3&LD4, both on */
   STM32vldiscovery_LEDInit(LED3);
   STM32vldiscovery_LEDInit(LED4);
@@ -531,7 +532,13 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 
 JsSysTime jshGetSystemTime() {
 #ifdef ARM
-  return SysTickMajor - (JsSysTime)SysTick->VAL;
+  JsSysTime t1 = SysTickMajor;
+  JsSysTime time = (JsSysTime)SysTick->VAL;
+  JsSysTime t2 = SysTickMajor;
+  // times are different and systick has rolled over
+  if (t1!=t2 && time > (SYSTICK_RANGE>>1)) 
+    return t2 - time;
+  return t1-time;
 #else
   struct timeval tm;
   gettimeofday(&tm, 0);
@@ -625,6 +632,7 @@ void jshPinOutput(int pin, bool value) {
 
 void jshPinPulse(int pin, bool value, JsVarFloat time) {
  JsSysTime ticks = jshGetTimeFromMilliseconds(time);
+ //jsPrintInt(ticks);jsPrint("\n");
 #ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -639,10 +647,13 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
     else
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
-    JsSysTime endtime = jshGetSystemTime() + ticks;
-    //jsPrint("----------- ");jsPrintInt(endtime);jsPrint("\n");
-    while (jshGetSystemTime()<endtime) {
-      //jsPrintInt(jshGetSystemTime());jsPrint("\n");
+    JsSysTime starttime = jshGetSystemTime();
+    JsSysTime endtime = starttime + ticks;
+    //jsPrint("----------- ");jsPrintInt(endtime>>16);jsPrint("\n");
+    JsSysTime stime = jshGetSystemTime();
+    while (stime>starttime && stime<endtime) { // this stops rollover issue
+      stime = jshGetSystemTime();
+      //jsPrintInt(stime>>16);jsPrint("\n");
     }
     if (!value)
       IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;

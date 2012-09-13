@@ -11,18 +11,20 @@ function boxcoords(i) {
   }
 }
 
-for (i=0;i<4;i+=0.1) print(JSON.stringify(boxcoords(i)));
+//for (i=0;i<4;i+=0.1) print(JSON.stringify(boxcoords(i)));
+
+//clearInterval(0);
 
 var pos = 0.0;
+var coords = [];
 setInterval(function() {
  pos+=0.01;
- var coords = boxcoords(pos);
- //print(JSON.stringify(coords));
+ coords = boxcoords(pos);
+ print("1");
  pulse("A1",1,1+coords[0]);
  pulse("A2",1,1+coords[1]);
+ print("0");
 },100);
-
-clearInterval(0);
 
 var pos = 0.0;
 var coords = [];
@@ -32,5 +34,3 @@ setInterval(function() {
  pulse("A1",1,1+coords[0]);
  pulse("A2",1,1+coords[1]);
 },50);
-
-
