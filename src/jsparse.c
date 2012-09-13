@@ -233,7 +233,7 @@ bool jspeFunctionArguments(JsVar *funcVar) {
   JSP_MATCH('(');
   while (execInfo.lex->tk!=')') {
       if (funcVar) {
-        JsVar *param = jsvAddNamedChild(jsvGetRef(funcVar), 0, jslGetTokenValueAsString(execInfo.lex));
+        JsVar *param = jsvAddNamedChild(funcVar, 0, jslGetTokenValueAsString(execInfo.lex));
         if (!param) { // out of memory
           jspSetError();
           return false;
@@ -264,7 +264,7 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
       // if it doesn't exist, make a new object class
       if (!link) {
         JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
-        link = jsvAddNamedChild(jsvGetRef(base), jsvGetRef(obj), funcName);
+        link = jsvAddNamedChild(base, obj, funcName);
         jsvUnLock(obj);
       }
       // set base to the object (not the name)
@@ -290,7 +290,7 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
       return false;
     }
     // Add the function with its name
-    jsvUnLock(jsvAddNamedChild(jsvGetRef(base), jsvGetRef(funcVar), funcName));
+    jsvUnLock(jsvAddNamedChild(base, funcVar, funcName));
     jsvUnLock(base);
     jsvUnLock(funcVar);
     return true;
@@ -358,12 +358,12 @@ JsVar *jspeFunctionDefinition() {
   if (JSP_SHOULD_EXECUTE) {
     // code var
     JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, execInfo.lex->tokenLastEnd+1);
-    jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcCodeVar), JSPARSE_FUNCTION_CODE_NAME));
+    jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
     if (funcScopeVar) {
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(funcVar), jsvGetRef(funcScopeVar), JSPARSE_FUNCTION_SCOPE_NAME));
+      jsvUnLock(jsvAddNamedChild(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME));
       jsvUnLock(funcScopeVar);
     }
   }
@@ -400,7 +400,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
     }
     JsVar *thisVar = 0;
     if (parent)
-        thisVar = jsvAddNamedChild(jsvGetRef(functionRoot), jsvGetRef(parent), JSPARSE_THIS_VAR);
+        thisVar = jsvAddNamedChild(functionRoot, parent, JSPARSE_THIS_VAR);
     if (isParsing) {
       // grab in all parameters
       v = function->firstChild;
@@ -444,7 +444,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
       JSP_MATCH(')');
     }
     // setup a return variable
-    returnVarName = jsvAddNamedChild(jsvGetRef(functionRoot), 0, JSPARSE_RETURN_VAR);
+    returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
     if (!returnVarName) // out of memory
       jspSetError();
     //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
@@ -630,7 +630,7 @@ JsVar *jspeFactor() {
                           child = 0;
                           // It wasn't handled... We already know this is an object so just add a new child
                           if (jsvIsObject(aVar)) {
-                            child = jsvAddNamedChild(jsvGetRef(aVar), 0, name);
+                            child = jsvAddNamedChild(aVar, 0, name);
                           } else {
                             // could have been a string...
                             jsWarnAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastEnd);
@@ -819,7 +819,7 @@ JsVar *jspeFactor() {
         if (jsvIsFunction(objClassOrFunc)) {
           jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true));
         } else {
-          jsvUnLock(jsvAddNamedChild(jsvGetRef(obj), jsvGetRef(objClassOrFunc), JSPARSE_PROTOTYPE_CLASS));
+          jsvUnLock(jsvAddNamedChild(obj, objClassOrFunc, JSPARSE_PROTOTYPE_CLASS));
           if (execInfo.lex->tk == '(') {
             JSP_MATCH('(');
             JSP_MATCH(')');

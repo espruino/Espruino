@@ -857,12 +857,10 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
   }
 }
 
-JsVar *jsvAddNamedChild(JsVarRef parentref, JsVarRef child, const char *name) {
-  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), child);
+JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
+  JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromString(name), jsvGetRef(child));
   if (!namedChild) return 0; // Out of memory
-  JsVar *parent = jsvLock(parentref);
   jsvAddName(parent, namedChild);
-  jsvUnLock(parent);
   return namedChild;
 }
 

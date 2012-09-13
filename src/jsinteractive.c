@@ -238,7 +238,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
   // if it is a single callback, just add it
   if (jsvIsFunction(callbackVar)) {
     JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
-    jsvUnLock(jsvAddNamedChild(jsvGetRef(event), jsvGetRef(callbackVar), "func"));
+    jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
     if (lastEvent) {
       lastEvent->nextSibling = jsvGetRef(event);
       jsvUnLock(lastEvent);
@@ -255,7 +255,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
       JsVar *child = jsvLock(next);
       // for each callback...
       JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(event), jsvGetRef(child), "func"));
+      jsvUnLock(jsvAddNamedChild(event, child, "func"));
       // TODO: load in parameters
       // add event to the events list
       if (lastEvent) {
@@ -450,17 +450,17 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       if (interval<1) interval=1;
       JsVar *v;
       v = jsvNewFromInteger(jshGetSystemTime() + interval);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "time"));
+      jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
       jsvUnLock(v);
       if (recurring) {
         v = jsvNewFromInteger(interval);
-        jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "interval"));
+        jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
         jsvUnLock(v);
       }
       v = jsvNewFromBool(recurring);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(v), "recur"));
+      jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
       jsvUnLock(v);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(timerPtr), jsvGetRef(func), "callback"));
+      jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
       JsVar *timerArrayPtr = jsvLock(timerArray);
       JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
       jsvUnLock(timerArrayPtr);
@@ -563,12 +563,12 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
       JsVar *v;
       v = jsvSkipName(pinVar);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "pin"));
+      jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
       jsvUnLock(v);
       v = jsvNewFromBool(jsvGetBool(recurringVar));
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(v), "recur"));
+      jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
       jsvUnLock(v);
-      jsvUnLock(jsvAddNamedChild(jsvGetRef(watchPtr), jsvGetRef(funcVar), "callback"));
+      jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
       JsVar *watchArrayPtr = jsvLock(watchArray);
       JsVarInt itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
       jsvUnLock(watchArrayPtr);
