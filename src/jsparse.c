@@ -556,15 +556,15 @@ JsVar *jspeFactor() {
     }
     if (execInfo.lex->tk==LEX_R_TRUE) {
         JSP_MATCH(LEX_R_TRUE);
-        return jsvNewFromBool(true);
+        return JSP_SHOULD_EXECUTE ? jsvNewFromBool(true) : 0;
     }
     if (execInfo.lex->tk==LEX_R_FALSE) {
         JSP_MATCH(LEX_R_FALSE);
-        return jsvNewFromBool(false);
+        return JSP_SHOULD_EXECUTE ? jsvNewFromBool(false) : 0;
     }
     if (execInfo.lex->tk==LEX_R_NULL) {
         JSP_MATCH(LEX_R_NULL);
-        return jsvNewWithFlags(JSV_NULL);
+        return JSP_SHOULD_EXECUTE ? jsvNewWithFlags(JSV_NULL) : 0;
     }
     if (execInfo.lex->tk==LEX_R_UNDEFINED) {
         JSP_MATCH(LEX_R_UNDEFINED);
@@ -677,21 +677,37 @@ JsVar *jspeFactor() {
         // strtol handles 0x12345 as well
         //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo.lex));
         //JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo.lex),0,0); // broken on PIC
-        JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo.lex));
-        JSP_MATCH(LEX_INT);
-        return jsvNewFromInteger(v);
+        if (JSP_SHOULD_EXECUTE) {
+          JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo.lex));
+          JSP_MATCH(LEX_INT);
+          return jsvNewFromInteger(v);
+        } else {
+          JSP_MATCH(LEX_INT);
+          return 0;
+        }
     }
     if (execInfo.lex->tk==LEX_FLOAT) {
+      if (JSP_SHOULD_EXECUTE) {
         JsVarFloat v = atof(jslGetTokenValueAsString(execInfo.lex));
         JSP_MATCH(LEX_FLOAT);
         return jsvNewFromFloat(v);
+      } else {
+        JSP_MATCH(LEX_FLOAT);
+        return 0;
+      }
     }
     if (execInfo.lex->tk==LEX_STR) {
+      if (JSP_SHOULD_EXECUTE) {
         JsVar *a = jsvNewFromString(jslGetTokenValueAsString(execInfo.lex));
         JSP_MATCH_WITH_RETURN(LEX_STR, a);
         return a;
+      } else {
+        JSP_MATCH(LEX_STR);
+        return 0;
+      }
     }
     if (execInfo.lex->tk=='{') {
+      if (JSP_SHOULD_EXECUTE) {
         JsVar *contents = jsvNewWithFlags(JSV_OBJECT);
         if (!contents) { // out of memory
           jspSetError();
@@ -734,16 +750,23 @@ JsVar *jspeFactor() {
         }
         JSP_MATCH_WITH_RETURN('}', contents);
         return contents;
+      } else {
+        // Not executing so do fast skip
+        return jspeBlock();
+      }
     }
     if (execInfo.lex->tk=='[') {
         int idx = 0;
-        JsVar *contents = jsvNewWithFlags(JSV_ARRAY);
-        if (!contents) { // out of memory
-          jspSetError();
-          return 0;
+        JsVar *contents = 0;
+        if (JSP_SHOULD_EXECUTE) {
+          contents = jsvNewWithFlags(JSV_ARRAY);
+          if (!contents) { // out of memory
+            jspSetError();
+            return 0;
+          }
         }
         /* JSON-style array */
-        JSP_MATCH('[');
+        JSP_MATCH_WITH_RETURN('[', contents);
         while (!JSP_HAS_ERROR && execInfo.lex->tk != ']') {
           if (JSP_SHOULD_EXECUTE) {
             // OPT: Store array indices as actual ints
@@ -972,7 +995,7 @@ JsVar *jspeTernary() {
   if (execInfo.lex->tk=='?') {
     JSP_MATCH('?');
     if (!JSP_SHOULD_EXECUTE) {
-      jsvUnLock(lhs);
+      // just let lhs pass through
       jsvUnLock(jspeBase());
       JSP_MATCH(':');
       jsvUnLock(jspeBase());
