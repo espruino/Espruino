@@ -44,13 +44,14 @@ void jspeiKill() {
   assert(execInfo.scopeCount==0);
 }
 
-void jspeiAddScope(JsVarRef scope) {
+bool jspeiAddScope(JsVarRef scope) {
   if (execInfo.scopeCount >= JSPARSE_MAX_SCOPES) {
     jsError("Maximum number of scopes exceeded");
     jspSetError();
-    return;
+    return false;
   }
   execInfo.scopes[execInfo.scopeCount++] = jsvRefRef(scope);
+  return true;
 }
 
 void jspeiRemoveScope() {
@@ -473,36 +474,41 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
             jsvUnLock(functionScope);
         }
         // add the function's execute space to the symbol table so we can recurse
-        jspeiAddScope(jsvGetRef(functionRoot));
 
-        /* we just want to execute the block, but something could
-         * have messed up and left us with the wrong ScriptLex, so
-         * we want to be careful here... */
+        if (jspeiAddScope(jsvGetRef(functionRoot))) {
+          /* Adding scope may have failed - we may have descended too deep - so be sure
+           * not to pull somebody else's scope off
+           */
 
-        JsVar *functionCode = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_CODE_NAME, false);
-        if (functionCode) {
-          JsLex *oldLex;
-          JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
-          JsLex newLex;
-          jslInit(&newLex, functionCodeVar, 0, -1);
-          jsvUnLock(functionCodeVar);
+          /* we just want to execute the block, but something could
+           * have messed up and left us with the wrong ScriptLex, so
+           * we want to be careful here... */
 
-          oldLex = execInfo.lex;
-          execInfo.lex = &newLex;
-          JsExecFlags oldExecute = execInfo.execute;
-          jspeBlock();
-          bool hasError = JSP_HAS_ERROR;
-          execInfo.execute = oldExecute; // because return will probably have set execute to false
-          jslKill(&newLex);
-          execInfo.lex = oldLex;
-          if (hasError) {
-            jsPrint("in function called from ");
-            jsPrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
-            jspSetError();
+          JsVar *functionCode = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_CODE_NAME, false);
+          if (functionCode) {
+            JsLex *oldLex;
+            JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
+            JsLex newLex;
+            jslInit(&newLex, functionCodeVar, 0, -1);
+            jsvUnLock(functionCodeVar);
+
+            oldLex = execInfo.lex;
+            execInfo.lex = &newLex;
+            JsExecFlags oldExecute = execInfo.execute;
+            jspeBlock();
+            bool hasError = JSP_HAS_ERROR;
+            execInfo.execute = oldExecute; // because return will probably have set execute to false
+            jslKill(&newLex);
+            execInfo.lex = oldLex;
+            if (hasError) {
+              jsPrint("in function called from ");
+              jsPrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
+              jspSetError();
+            }
           }
-        }
 
-        jspeiRemoveScope();
+          jspeiRemoveScope();
+        }
 
         if (functionScope) {
             int i;
