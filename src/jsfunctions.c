@@ -29,6 +29,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
   if (a==0) { // Special cases for where we're just a basic function
     if (strcmp(name,"eval")==0) {
+      /*JS* function eval(code)
+       *JS*  Evaluate a string containing JavaScript code
+       */
       JsVar *v = jspParseSingleFunction();
       JsVar *result = 0;
       if (v) {
@@ -41,10 +44,16 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     // Is actually a method on some variable
     if (strcmp(name,"length")==0) {
       if (jsvIsArray(a)) {
+      /*JS* property Array.length
+       *JS*  Return the length of the array
+       */
         jslMatch(execInfo->lex, LEX_ID);
         return jsvNewFromInteger(jsvGetArrayLength(a));
       }
       if (jsvIsString(a)) {
+      /*JS* property String.length
+       *JS*  Return the number of characters in the string
+       */
         jslMatch(execInfo->lex, LEX_ID);
         return jsvNewFromInteger((JsVarInt)jsvGetStringLength(a));
       }
@@ -52,6 +61,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     // --------------------------------- built-in class stuff
     if (jsvGetRef(a) == execInfo->parse->intClass) {
       if (strcmp(name,"parseInt")==0) {
+      /*JS* method Integer.parseInt(string)
+       *JS*  Convert a string representing a number into a number
+       */
         char buffer[16];
         JsVar *v = jspParseSingleFunction();
         jsvGetString(v, buffer, 16);
@@ -59,6 +71,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return jsvNewFromInteger(stringToInt(buffer));
       }
       if (strcmp(name,"valueOf")==0) {
+      /*JS* method Integer.valueOf(char)
+       *JS*  Given a string containing a single character, return the numeric value of it
+       */
         // value of a single character
         int c;
         JsVar *v = jspParseSingleFunction(execInfo);
@@ -73,6 +88,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (jsvGetRef(a) == execInfo->parse->doubleClass) {
       if (strcmp(name,"doubleToIntBits")==0) {
+      /*JS* method Double.doubleToIntBits(val)
+       *JS*  Convert the floating point value given into an integer representing the bits contained in it
+       */
         JsVar *v = jspParseSingleFunction(execInfo);
         JsVarFloat f = jsvGetDoubleAndUnLock(v);
         return jsvNewFromInteger(*(JsVarInt*)&f);
@@ -80,10 +98,16 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (jsvGetRef(a) == execInfo->parse->mathClass) {
       if (strcmp(name,"E")==0) {
+      /*JS* property Math.E
+       *JS*  The value of E - 2.71828182846
+       */
         jspParseVariableName();
         return jsvNewFromFloat(2.71828182846);
       }
       if (strcmp(name,"PI")==0) {
+      /*JS* property Math.PI
+       *JS*  The value of PI - 3.14159265359
+       */
         jspParseVariableName();
         return jsvNewFromFloat(3.14159265359);
       }
@@ -137,6 +161,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (jsvGetRef(a) == execInfo->parse->jsonClass) {
         if (strcmp(name,"stringify")==0) {
+      /*JS* method JSON.stringify(object)
+       *JS*  Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval 
+       */
           JsVar *v = jspParseSingleFunction();
           JsVar *result = jsvNewFromString("");
           if (result) // could be out of memory
@@ -145,6 +172,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           return result;
         }
         if (strcmp(name,"parse")==0) {
+      /*JS* method JSON.parse(string)
+       *JS*  Parse the given JSON string into a JavaScript object 
+       */
           JsVar *v = jspParseSingleFunction();
           JsVar *res = 0;
           JsVar *bracketed = jsvNewFromString("(");
@@ -162,6 +192,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     // ------------------------------------------ Built-in variable stuff
     if (jsvIsString(a)) {
        if (strcmp(name,"charAt")==0) {
+      /*JS* method String.charAt(idx)
+       *JS*  Return a single character at the given position in the String
+       */
          char buffer[2];
          size_t idx = 0;
          JsVar *v = jspParseSingleFunction();
@@ -182,6 +215,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          return jsvNewFromString(buffer);
        }
        if (strcmp(name,"indexOf")==0) {
+      /*JS* method String.indexOf(substring)
+       *JS*  Return the index of substring in this string, or -1 if not found
+       */
          // slow, but simple!
          JsVar *v = jsvAsString(jspParseSingleFunction(), true);
          if (!v) return 0; // out of memory
@@ -197,6 +233,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          return jsvNewFromInteger(-1);
        }
        if (strcmp(name,"substring")==0) {
+      /*JS* method String.substring(start,end)
+       */
          JsVar *vStart, *vEnd, *res;
          int pStart, pEnd;
          jspParseDoubleFunction(&vStart, &vEnd);
@@ -216,6 +254,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          return res;
        }
        if (strcmp(name,"substr")==0) {
+      /*JS* method String.substr(start,len)
+       */
           JsVar *vStart, *vLen, *res;
           int pStart, pLen;
           jspParseDoubleFunction(&vStart, &vLen);
@@ -229,6 +269,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           return res;
         }
         if (strcmp(name,"split")==0) {
+      /*JS* method String.split(separator)
+       *JS*  Return an array made by splitting this string up by the separator. eg. "1,2,3".split(",")==[1,2,3]
+       */
           JsVar *array;
           int last, idx, arraylen=0;
           JsVar *split = jspParseSingleFunction();
@@ -260,24 +303,35 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
      }
     if (jsvIsString(a) || jsvIsObject(a)) {
       if (strcmp(name,"clone")==0) {
+      /*JS* method Object.clone()
+       *JS*  Copy this object in its Entirity
+       */
         if (jspParseEmptyFunction())
           return jsvCopy(a);
       }
     }
     if (jsvIsArray(a)) {
          if (strcmp(name,"contains")==0) {
+      /*JS* method Array.contains(value)
+       *JS*  Return true if this array contains the given value
+       */
            JsVar *childValue = jspParseSingleFunction();
            JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
            jsvUnLock(childValue);
            return jsvNewFromBool(found!=0);
          }
          if (strcmp(name,"indexOf")==0) {
-            JsVar *childValue = jspParseSingleFunction();
+      /*JS* method Array.indexOf(value)
+       *JS*  Return the index of the value in the array, or -1
+       */            JsVar *childValue = jspParseSingleFunction();
             JsVar *idx = jsvGetArrayIndexOf(a, childValue);
             jsvUnLock(childValue);
             return idx;
           }
          if (strcmp(name,"join")==0) {
+      /*JS* method Array.join(separator)
+       *JS*  Join all elements of this array together into one string, using 'separator' between them. eg. [1,2,3].join(" ")=="1 2 3"
+       */
            JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
            if (!filler) return 0; // out of memory
            JsVar *str = jsvNewFromString("");
@@ -304,12 +358,18 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
            return str;
          }
          if (strcmp(name,"push")==0) {
+      /*JS* method Array.push(value)
+       *JS*  Push a new value onto the end of this array
+       */
            JsVar *childValue = jspParseSingleFunction();
            JsVarInt newSize = jsvArrayPush(a, childValue);
            jsvUnLock(childValue);
            return jsvNewFromInteger(newSize);
          }
          if (strcmp(name,"pop")==0) {
+      /*JS* method Array.pop()
+       *JS*  Pop a new value off of the end of this array
+       */
            JsVar *childValue = jspParseSingleFunction();
            JsVar *item = jsvArrayPop(a);
            jsvUnLock(childValue);

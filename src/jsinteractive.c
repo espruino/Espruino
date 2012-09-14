@@ -415,7 +415,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // Special cases for we're just a basic function
     if (strcmp(name,"print")==0) {
       /*JS* function print(text)
-       * Print the supplied string
+       *JS* Print the supplied string
        */
       JsVar *v = jsvAsString(jspParseSingleFunction(), true);
       jsvPrintStringVar(v);
@@ -425,19 +425,19 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"getTime")==0) {
       /*JS* function getTime()
-       *  Return the current system time in Seconds (as a floating point number)
+       *JS*  Return the current system time in Seconds (as a floating point number)
        */
       jspParseEmptyFunction();
       return jsvNewFromFloat((JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1000));
     }
     if (strcmp(name,"setTimeout")==0 || strcmp(name,"setInterval")==0) {
       /*JS* function setTimeout(function, timeout)
-       * Call the function specified ONCE after the timeout in milliseconds.
-       * This can also be removed using clearTimeout
+       *JS* Call the function specified ONCE after the timeout in milliseconds.
+       *JS* This can also be removed using clearTimeout
        */
       /*JS* function setInterval(function, timeout)
-       * Call the function specified REPEATEDLY after the timeout in milliseconds.
-       * This can also be removed using clearInterval
+       *JS* Call the function specified REPEATEDLY after the timeout in milliseconds.
+       *JS* This can also be removed using clearInterval
        */
       bool recurring = strcmp(name,"setInterval")==0;
       JsVar *func, *timeout;
@@ -475,14 +475,14 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"clearTimeout")==0 || strcmp(name,"clearInterval")==0) {
       /*JS* function clearTimeout(id)
-       *  Clear the Timeout that was created with setTimeout, for example:
-       *   var id = setTimeout(function () { print("foo"); }, 1000);
-       *   clearTimeout(id);
+       *JS*  Clear the Timeout that was created with setTimeout, for example:
+       *JS*   var id = setTimeout(function () { print("foo"); }, 1000);
+       *JS*   clearTimeout(id);
        */
       /*JS* function clearInterval(id)
-       *  Clear the Interval that was created with setTimeout, for example:
-       *   var id = setInterval(function () { print("foo"); }, 1000);
-       *   clearInterval(id);
+       *JS*  Clear the Interval that was created with setTimeout, for example:
+       *JS*   var id = setInterval(function () { print("foo"); }, 1000);
+       *JS*   clearInterval(id);
        */
       JsVar *idVar = jspParseSingleFunction();
       JsVar *child = jsvFindChildFromVar(timerArray, idVar, false);
@@ -501,8 +501,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"digitalRead")==0) {
       /*JS* function digitalRead(pin)
-       *  Get the digital value of the given pin.
-       *  Pin can be an integer, or a string such as "A0","C13",etc
+       *JS*  Get the digital value of the given pin.
+       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
        */
       JsVar *pinVar = jspParseSingleFunction();
       int pin = jshGetPinFromVar(pinVar);
@@ -511,10 +511,10 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"analogRead")==0) {
       /*JS* function analogRead(pin)
-       *  Get the analog value of the given pin as a value between 0 and 1.
-       *  This is different to Arduino which only returns an integer between 0 and 1023
-       *  Pin can be an integer, or a string such as "A0","C13",etc
-       *  However only pins connected to an ADC will work (see the datasheet)
+       *JS*  Get the analog value of the given pin as a value between 0 and 1.
+       *JS*  This is different to Arduino which only returns an integer between 0 and 1023
+       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
+       *JS*  However only pins connected to an ADC will work (see the datasheet)
        */
       JsVar *pinVar = jspParseSingleFunction();
       int pin = jshGetPinFromVar(pinVar);
@@ -523,8 +523,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"digitalWrite")==0) {
       /*JS* function digitalWrite(pin, value)
-       *  Set the digital value of the given pin.
-       *  Pin can be an integer, or a string such as "A0","C13",etc
+       *JS*  Set the digital value of the given pin.
+       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
        */
       JsVar *pinVar, *valueVar;
       jspParseDoubleFunction(&pinVar, &valueVar);
@@ -537,9 +537,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"digitalPulse")==0) {
       /*JS* function digitalPulse(pin,value,time)
-       *  Pulse the pin with the value for the given time in milliseconds
-       *  eg. pulse("A0",1,500); pulses A0 high for 500ms
-       *  Pin can be an integer, or a string such as "A0","C13",etc
+       *JS*  Pulse the pin with the value for the given time in milliseconds
+       *JS*  eg. pulse("A0",1,500); pulses A0 high for 500ms
+       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
        */
       JsVar *pinVar, *valueVar, *timeVar;
       jspParseTripleFunction(&pinVar, &valueVar, &timeVar);
@@ -554,9 +554,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"setWatch")==0) {
       /*JS* function setWatch(function, pin, repeat)
-       * Call the function specified ONCE (if repeat==false or undefined) or
-       * REPEATEDLY if (repeat==true) when the pin changes
-       * This can also be removed using clearWatch
+       *JS* Call the function specified ONCE (if repeat==false or undefined) or
+       *JS* REPEATEDLY if (repeat==true) when the pin changes
+       *JS* This can also be removed using clearWatch
        */
       JsVar *funcVar, *pinVar, *recurringVar;
       jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
@@ -588,7 +588,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"clearWatch")==0) {
       /*JS* function clearWatch(id)
-       *  Clear the Watch that was created with setWatch.
+       *JS*  Clear the Watch that was created with setWatch.
        */
       JsVar *idVar = jspParseSingleFunction();
       JsVar *watchNamePtr = jsvFindChildFromVar(watchArray, idVar, false);
@@ -612,21 +612,21 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"load")==0) {
       /*JS* function load()
-       * Load program memory out of flash */
+       *JS* Load program memory out of flash */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_LOAD;
       return 0;
     }
     if (strcmp(name,"save")==0) {
       /*JS* function save()
-       * Save program memory into flash */
+       *JS* Save program memory into flash */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_SAVE;
       return 0;
     }
     if (strcmp(name,"reset")==0) {
       /*JS* function reset()
-       * Reset everything - clear program memory */
+       *JS* Reset everything - clear program memory */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
       return 0;
@@ -639,7 +639,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"bitRead")==0) {
       /*JS* function bitRead(value, bitnum)
-       *  Get the specified bit from the value. Lowest significance bit is 0
+       *JS*  Get the specified bit from the value. Lowest significance bit is 0
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
@@ -649,7 +649,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"bitWrite")==0) {
       /*JS* function bitWrite(value, bitnum, bitdata) 
-       *  Write the specified bit from the value. Lowest significance bit is 0
+       *JS*  Write the specified bit from the value. Lowest significance bit is 0
        */
       JsVar *valueVar, *bitVar, *dataVar;
       jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
@@ -662,7 +662,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"bitSet")==0) {
       /*JS* function bitSet(value, bitnum)
-       *  Set the given bit in the value. Lowest significance bit is 0
+       *JS*  Set the given bit in the value. Lowest significance bit is 0
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
@@ -674,7 +674,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"bitClear")==0) {
       /*JS* function bitClear(value, bitnum)
-       *  Clear the given bit in the value. Lowest significance bit is 0
+       *JS*  Clear the given bit in the value. Lowest significance bit is 0
        */
       JsVar *valueVar, *bitVar;
       jspParseDoubleFunction(&valueVar, &bitVar);
@@ -686,7 +686,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"bit")==0) {
       /*JS* function bit(bitnum)
-       *  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
+       *JS*  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
        */
       JsVar *bitVar = jspParseSingleFunction();
       JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
@@ -694,7 +694,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"lowByte")==0) {
       /*JS* function lowByte(value)
-       *  Return the low byte of the value
+       *JS*  Return the low byte of the value
        */
       JsVar *valueVar = jspParseSingleFunction();
       JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
@@ -702,7 +702,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"highByte")==0) {
       /*JS* function highByte(value)
-       *  Return the high (second) byte of the value
+       *JS*  Return the high (second) byte of the value
        */
       JsVar *valueVar = jspParseSingleFunction();
       JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
