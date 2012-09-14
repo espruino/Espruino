@@ -432,12 +432,12 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"setTimeout")==0 || strcmp(name,"setInterval")==0) {
       /*JS* function setTimeout(function, timeout)
-       *JS* Call the function specified ONCE after the timeout in milliseconds.
-       *JS* This can also be removed using clearTimeout
+       *JS*  Call the function specified ONCE after the timeout in milliseconds.
+       *JS*  This can also be removed using clearTimeout
        */
       /*JS* function setInterval(function, timeout)
-       *JS* Call the function specified REPEATEDLY after the timeout in milliseconds.
-       *JS* This can also be removed using clearInterval
+       *JS*  Call the function specified REPEATEDLY after the timeout in milliseconds.
+       *JS*  This can also be removed using clearInterval
        */
       bool recurring = strcmp(name,"setInterval")==0;
       JsVar *func, *timeout;
@@ -554,9 +554,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"setWatch")==0) {
       /*JS* function setWatch(function, pin, repeat)
-       *JS* Call the function specified ONCE (if repeat==false or undefined) or
-       *JS* REPEATEDLY if (repeat==true) when the pin changes
-       *JS* This can also be removed using clearWatch
+       *JS*  Call the function specified ONCE (if repeat==false or undefined) or
+       *JS*  REPEATEDLY if (repeat==true) when the pin changes
+       *JS*  This can also be removed using clearWatch
        */
       JsVar *funcVar, *pinVar, *recurringVar;
       jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
@@ -612,26 +612,28 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"load")==0) {
       /*JS* function load()
-       *JS* Load program memory out of flash */
+       *JS*  Load program memory out of flash */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_LOAD;
       return 0;
     }
     if (strcmp(name,"save")==0) {
       /*JS* function save()
-       *JS* Save program memory into flash */
+       *JS*  Save program memory into flash */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_SAVE;
       return 0;
     }
     if (strcmp(name,"reset")==0) {
       /*JS* function reset()
-       *JS* Reset everything - clear program memory */
+       *JS*  Reset everything - clear program memory */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
       return 0;
     }
     if (strcmp(name,"trace")==0) {
+      /*JS* function trace()
+       *JS*  Output debugging information */
       jspParseEmptyFunction();
       jsvTrace(p.root, 0);
       return 0;
