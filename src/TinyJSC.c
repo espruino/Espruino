@@ -45,6 +45,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <signal.h>
+
 #include "jslex.h"
 #include "jsvar.h"
 #include "jsparse.h"
@@ -188,6 +190,14 @@ bool run_memory_tests(int vars) {
 }
 
 
+void sig_handler(int sig)
+{
+    if (sig==SIGINT) 
+      isRunning = false;
+
+}
+
+
 int main(int argc, char **argv) {
 
   if (argc==1) {
@@ -219,6 +229,15 @@ int main(int argc, char **argv) {
   }
 
   printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
+
+  struct sigaction sa;
+  sa.sa_handler = sig_handler;
+  sa.sa_flags = 0;
+  sigemptyset(&sa.sa_mask);
+  if (sigaction(SIGINT, &sa, NULL) == -1)
+     printf("Adding SIGINT hook failed\n");
+  else
+     printf("Added SIGINT hook\n");
 
   jshInit();
   jsiInit(true);

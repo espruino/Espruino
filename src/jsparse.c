@@ -14,7 +14,7 @@ JsVar *jspeStatement();
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0)
 #define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
-#define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR)==EXEC_ERROR)
+#define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
 
 static inline void jspSetError() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_YES) | EXEC_ERROR;

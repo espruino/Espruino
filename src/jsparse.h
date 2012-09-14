@@ -43,8 +43,10 @@ bool jspExecuteFunction(JsParse *parse, JsVar *func);
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
+  EXEC_ERROR = 2,
+
   EXEC_RUN_MASK = 1,
-  EXEC_ERROR = 2
+  EXEC_ERROR_MASK = 4,
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
