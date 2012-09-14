@@ -192,9 +192,9 @@ bool run_memory_tests(int vars) {
 
 void sig_handler(int sig)
 {
+  printf("Got Signal %d\n",sig);fflush(stdout);
     if (sig==SIGINT) 
-      isRunning = false;
-
+      jspSetInterrupted(true);
 }
 
 
@@ -235,9 +235,17 @@ int main(int argc, char **argv) {
   sa.sa_flags = 0;
   sigemptyset(&sa.sa_mask);
   if (sigaction(SIGINT, &sa, NULL) == -1)
-     printf("Adding SIGINT hook failed\n");
+    printf("Adding SIGINT hook failed\n");
   else
-     printf("Added SIGINT hook\n");
+    printf("Added SIGINT hook\n");
+  if (sigaction(SIGHUP, &sa, NULL) == -1)
+    printf("Adding SIGHUP hook failed\n");
+  else
+    printf("Added SIGHUP hook\n");
+  if (sigaction(SIGTERM, &sa, NULL) == -1)
+    printf("Adding SIGTERM hook failed\n");
+  else
+    printf("Added SIGTERM hook\n");
 
   jshInit();
   jsiInit(true);

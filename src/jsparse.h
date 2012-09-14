@@ -33,6 +33,11 @@ void jspKill(JsParse *parse);
 void jspSoftInit(JsParse *parse); ///< used when recovering from or saving to flash
 void jspSoftKill(JsParse *parse); ///< used when recovering from or saving to flash
 
+/// if interrupting execution, this is set
+bool jspIsInterrupted();
+/// if interrupting execution, this is set
+void jspSetInterrupted(bool interrupt);
+
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
@@ -43,9 +48,10 @@ bool jspExecuteFunction(JsParse *parse, JsVar *func);
 typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
-  EXEC_ERROR = 2,
+  EXEC_INTERRUPTED = 2, // true if execution has been interrupted
+  EXEC_ERROR = 4,
 
-  EXEC_RUN_MASK = 1,
+  EXEC_RUN_MASK = 3,
   EXEC_ERROR_MASK = 4,
 } JsExecFlags;
 
