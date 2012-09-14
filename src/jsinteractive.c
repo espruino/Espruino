@@ -154,7 +154,14 @@ void jsiInit(bool autoLoad) {
   
 
   // rectangles @ http://www.network-science.de/ascii/
-  jsPrint("\r\n _____ _            __ _____\r\n|_   _|_|___ _ _ __|  |   __|\r\n  | | | |   | | |  |  |__   |\r\n  |_| |_|_|_|_  |_____|_____|\r\n            |___|\r\n Copyright 2012 Gordon Williams\r\n                gw@pur3.co.uk\r\n-------------------------------- ");
+  jsPrint("\r\n           _     _ _\r\n"
+              " ___ ___ _| |___| |_|___ ___ \r\n"
+              "|   | . | . | -_| | |   | . |\r\n"
+              "|_|_|___|___|___|_|_|_|_|_  |\r\n"
+              "                        |___|\r\n"
+              " Copyright 2012 Gordon Williams\r\n"
+              "                gw@pur3.co.uk\r\n"
+              "-------------------------------- ");
   jsPrint("\r\n\r\n>");
 }
 
