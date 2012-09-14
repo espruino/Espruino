@@ -519,7 +519,10 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
             execInfo.lex = oldLex;
             if (hasError) {
               jsPrint("in function called from ");
-              jsPrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
+              if (execInfo.lex)
+                jsPrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
+              else
+                jsPrint("system\n");
               jspSetError();
             }
           }

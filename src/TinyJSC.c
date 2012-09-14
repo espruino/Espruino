@@ -62,6 +62,10 @@ void nativeQuit(JsVarRef var) {
   isRunning = false;
 }
 
+void nativeInterrupt(JsVarRef var) {
+  jspSetInterrupted(true);
+}
+
 void nativePrint(JsVarRef var) {
   JsVar *text = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "text", false/*no create*/));
   char buf[256];
@@ -96,6 +100,7 @@ bool run_test(const char *filename) {
   JsParse p;
   jspInit(&p);
   jspAddNativeFunction(&p, "function print(text)", nativePrint);
+  jspAddNativeFunction(&p, "function interrupt()", nativeInterrupt);
 
   jsvUnLock(jspEvaluate(&p, buffer ));
 
@@ -251,6 +256,7 @@ int main(int argc, char **argv) {
   jsiInit(true);
 
   jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
+  jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);
 
   while (isRunning) {
     jsiLoop();
