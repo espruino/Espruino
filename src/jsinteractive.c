@@ -345,8 +345,11 @@ void jsiIdle() {
       jsiQueueEvents(jsvGetRef(timerCallback));
       if (jsvGetBool(timerRecurring)) {
         JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
-        jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jsvGetInteger(timerInterval));
-        jsvUnLock(timerInterval);
+        JsVarInt interval = jsvGetIntegerAndUnLock(timerInterval);
+        if (interval<=0)
+          jsvSetInteger(timerTime, time); // just set to current system time
+        else
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
       } else {
         // free all
         jsvRemoveChild(timerArrayPtr, timerNamePtr);
