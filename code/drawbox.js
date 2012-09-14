@@ -17,8 +17,8 @@ var coords = [];
 setInterval(function() {
  pos+=0.002;
  coords = boxcoords(pos);
- pulse("A1",1,1+coords[0]);
- pulse("A2",1,1+coords[1]);
+ digitalPulse("A1",1,1+coords[0]);
+ digitalPulse("A2",1,1+coords[1]);
 },20);
 
 setWatch(function() { 

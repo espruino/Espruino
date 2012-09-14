@@ -511,7 +511,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"analogRead")==0) {
       /*JS* function analogRead(pin)
-       *  Get the analog value of the given pin as a value between 0 and 1
+       *  Get the analog value of the given pin as a value between 0 and 1.
+       *  This is different to Arduino which only returns an integer between 0 and 1023
        *  Pin can be an integer, or a string such as "A0","C13",etc
        *  However only pins connected to an ADC will work (see the datasheet)
        */
@@ -534,8 +535,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jshPinOutput(pin, value);
       return 0;
     }
-    if (strcmp(name,"pulse")==0) {
-      /*JS* function pulse(pin,value,time)
+    if (strcmp(name,"digitalPulse")==0) {
+      /*JS* function digitalPulse(pin,value,time)
        *  Pulse the pin with the value for the given time in milliseconds
        *  eg. pulse("A0",1,500); pulses A0 high for 500ms
        *  Pin can be an integer, or a string such as "A0","C13",etc
