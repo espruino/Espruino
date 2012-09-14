@@ -206,8 +206,13 @@ void USART1_IRQHandler(void) {
     /* Clear the USART Receive interrupt */
     USART_ClearITPendingBit(USART1, USART_IT_RXNE);
     /* Read one byte from the receive data register */
-    rxBuffer[rxHead] = USART_ReceiveData(USART1);
-    rxHead = (rxHead+1)&RXBUFFERMASK;
+    char ch = USART_ReceiveData(USART1);
+    if (ch==3) { // Ctrl-C - force interrupt
+      jspSetInterrupted(true);
+    } else {
+      rxBuffer[rxHead] = ch;
+      rxHead = (rxHead+1)&RXBUFFERMASK;
+    }
   }
   if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET) {
     /* Clear the USART Transmit interrupt */
@@ -651,7 +656,7 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
     JsSysTime endtime = starttime + ticks;
     //jsPrint("----------- ");jsPrintInt(endtime>>16);jsPrint("\n");
     JsSysTime stime = jshGetSystemTime();
-    while (stime>=starttime && stime<endtime) { // this stops rollover issue
+    while (stime>=starttime && stime<endtime && !jspIsInterrupted()) { // this stops rollover issue
       stime = jshGetSystemTime();
       //jsPrintInt(stime>>16);jsPrint("\n");
     }

@@ -52,7 +52,7 @@ typedef enum  {
   EXEC_ERROR = 4,
 
   EXEC_RUN_MASK = 3,
-  EXEC_ERROR_MASK = 4,
+  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains

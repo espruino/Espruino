@@ -15,7 +15,7 @@ JsVar *jspeStatement();
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0)
 #define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
-#define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_RUN_MASK)) | (oldExecute&EXEC_RUN_MASK);
+#define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_YES)) | (oldExecute&EXEC_YES);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
 
 /// if interrupting execution, this is set
@@ -323,12 +323,9 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     bool success;
     JsLex lex;
     JsVar *fncode;
-#ifndef SDCC
+    JSP_SAVE_EXECUTE();
     JsExecInfo oldExecInfo = execInfo;
-#else
-    JsExecInfo oldExecInfo;
-    memcpy(&oldExecInfo, &execInfo, sizeof(JsExecInfo));
-#endif
+
     // Set up Lexer
     fncode = jsvNewFromString(funcDesc);
 
@@ -349,12 +346,9 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     // cleanup
     jspeiKill();
     jslKill(&lex);
-#ifndef SDCC
+    JSP_RESTORE_EXECUTE();
+    oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
     execInfo = oldExecInfo;
-#else
-    memcpy(&execInfo, &oldExecInfo, sizeof(JsExecInfo));
-#endif
-
 
     return success;
 }
@@ -1505,12 +1499,8 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   JsExecFlags execute = EXEC_YES;
   JsLex lex;
   JsVar *v = 0;
-#ifndef SDCC
-    JsExecInfo oldExecInfo = execInfo;
-#else
-    JsExecInfo oldExecInfo;
-    memcpy(&oldExecInfo, &execInfo, sizeof(JsExecInfo));
-#endif
+  JSP_SAVE_EXECUTE();
+  JsExecInfo oldExecInfo = execInfo;
 
   jslInit(&lex, str, 0, -1);
 
@@ -1522,12 +1512,11 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   // clean up
   jspeiKill();
   jslKill(&lex);
+
   // restore state
-#ifndef SDCC
-    execInfo = oldExecInfo;
-#else
-    memcpy(&execInfo, &oldExecInfo, sizeof(JsExecInfo));
-#endif
+  JSP_RESTORE_EXECUTE();
+  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
+  execInfo = oldExecInfo;
 
   // It may have returned a reference, but we just want the value...
   if (v) {
@@ -1549,6 +1538,7 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
 }
 
 bool jspExecuteFunction(JsParse *parse, JsVar *func) {
+  JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);
@@ -1558,7 +1548,10 @@ bool jspExecuteFunction(JsParse *parse, JsVar *func) {
   // clean up
   jspeiKill();
   // restore state
+  JSP_RESTORE_EXECUTE();
+  oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
+
 
   return result;
 }

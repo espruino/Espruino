@@ -198,11 +198,6 @@ void jsiHandleChar(char ch) {
       JsVar *v = jspEvaluateVar(&p, inputline);
       jsvUnLock(inputline);
 
-      if (jspIsInterrupted()) {
-        jspSetInterrupted(false);
-        jshTXStr("Execution Interrupted.\r\n");
-      }
-
       if (echo) jshTX('=');
 
       jsfPrintJSON(v);
@@ -411,6 +406,11 @@ void jsiLoop() {
   } else {
     // Do general idle stuff
     jsiIdle();
+  }
+  
+  if (jspIsInterrupted()) {
+    jspSetInterrupted(false);
+    jshTXStr("Execution Interrupted.\r\n>"); 
   }
 }
 
