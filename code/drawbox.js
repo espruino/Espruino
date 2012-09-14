@@ -15,7 +15,7 @@ clearInterval(0);
 var pos = 0.0;
 var coords = [];
 setInterval(function() {
- pos+=0.002;
+ pos+=0.01;
  coords = boxcoords(pos);
  digitalPulse("A1",1,1+coords[0]);
  digitalPulse("A2",1,1+coords[1]);

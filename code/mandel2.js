@@ -52,4 +52,31 @@ for (y=0;y<64;y++) {  line="";  for (x=0;x<64;x++) {Xr=0;Xi=0; Cr=(4.0*x/64)-2.0
 y=0;
 setInterval(function() { line="";  for (x=0;x<64;x++) {Xr=0;Xi=0; Cr=(4.0*x/64)-2.0;Ci=(4.0*y/64)-2.0;i=0;while ((i<32) && ((Xr*Xr+Xi*Xi)<4)) {t=Xr*Xr - Xi*Xi + Cr;Xi=2*Xr*Xi+Ci;Xr=t;i++;}if (i&1)line += "*";else line += " ";    }print(line); y++; }, 1000);
 
+digitalWrite("C9", 1);
+digitalWrite("C9", 0);
 
+setWatch(function() { 
+  if (digitalRead("A0")) { 
+    digitalWrite("C9",1); 
+    setTimeout(function() { 
+      digitalWrite("C9", 0);
+      setTimeout(function() { 
+        digitalWrite("C9", 1);
+        setTimeout(function() { 
+          digitalWrite("C9", 0);
+        }, 301);
+      }, 302);
+    }, 303);
+}}, "A0", true);
+
+setWatch(function() { 
+  if (digitalRead("A0")) { 
+    digitalWrite("C9",1); 
+    setTimeout(function() { 
+      digitalWrite("C9", 0);
+    }, 303);
+}}, "A0", true);
+
+setWatch(function() { print(getTime()); }, "A0", true);
+
+digitalPulse("C9",1,1000);

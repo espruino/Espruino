@@ -204,12 +204,12 @@ JsVar *jspParseSingleFunction() {
 
 // parse function with 2 arguments, return 2 values (no names!)
 bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
-  *a = 0;
-  *b = 0;
+  if (a) *a = 0;
+  if (b) *b = 0;
   JsExecFlags execute = EXEC_YES;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
-  if (execInfo.lex->tk != ')')
+  if (b && execInfo.lex->tk != ')')
     *a = jsvSkipNameAndUnlock(jspeBase(&execute));
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
@@ -226,8 +226,9 @@ bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
 
 // parse function with 3 arguments, return 3 values (no names!)
 bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c) {
-  *a = 0;
-  *b = 0;
+  if (a) *a = 0;
+  if (b) *b = 0;
+  if (c) *c = 0; 
   JsExecFlags execute = EXEC_YES;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
