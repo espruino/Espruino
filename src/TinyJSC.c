@@ -1,7 +1,6 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *       Ctrl-c to break execution
  *       echo(x) function to choose whether to echo user input or not
  *       Delete when typing multi-line stuff
  *       'dump' function to dump state such that it can be copied to another device
