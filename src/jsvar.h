@@ -216,6 +216,7 @@ INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFl
 INLINE_FUNC bool jsvGetBool(const JsVar *v);
 static inline JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static inline JsVarFloat jsvGetDoubleAndUnLock(JsVar *v) { JsVarFloat f = jsvGetDouble(v); jsvUnLock(v); return f; }
+static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */

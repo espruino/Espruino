@@ -205,9 +205,10 @@ void jsiHandleChar(char ch) {
       JsVar *v = jspEvaluateVar(&p, inputline);
       jsvUnLock(inputline);
 
-      if (echo) jshTX('=');
-
-      jsfPrintJSON(v);
+      if (echo) {
+        jshTX('=');
+        jsfPrintJSON(v);
+      }
       jsvUnLock(v);
 
       inputline = jsvNewFromString("");
@@ -417,7 +418,8 @@ void jsiLoop() {
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
-    jshTXStr("Execution Interrupted.\r\n>"); 
+    jshTXStr("Execution Interrupted.\r\n");
+    if (echo) jshTXStr(">");
   }
 }
 
@@ -641,6 +643,15 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Reset everything - clear program memory */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
+      return 0;
+    }
+    if (strcmp(name,"echo")==0) {
+      /*JS* function echo(yesorno)
+       *JS* Should TinyJS echo what you type back to you? true = yes (Default), false = no.
+       *JS* When echo is off, the result of executing a command is not returned.
+       *JS* Instead, you must use 'print' to send output. */
+      bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
+      echo = b;
       return 0;
     }
     if (strcmp(name,"trace")==0) {
