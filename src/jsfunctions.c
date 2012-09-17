@@ -193,23 +193,15 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     if (jsvIsString(a)) {
        if (strcmp(name,"charAt")==0) {
       /*JS* method String.charAt(idx)
-       *JS*  Return a single character at the given position in the String
+       *JS*  Return a single character at the given position in the String.
+       *JS*  Negative values return characters from end of string (-1 = last char)
+       *JS*  Running on a non-string returns 0
        */
          char buffer[2];
-         size_t idx = 0;
          JsVar *v = jspParseSingleFunction();
-         idx = (size_t)jsvGetIntegerAndUnLock(v);
+         JsVarInt idx = jsvGetIntegerAndUnLock(v);
          // now search to try and find the char
-         v = jsvLock(jsvGetRef(a));
-         while (v && idx >= jsvGetMaxCharactersInVar(v)) {
-           JsVarRef next;
-           idx -= jsvGetMaxCharactersInVar(v);
-           next = v->lastChild;
-           jsvUnLock(v);
-           v = jsvLock(next);
-         }
-         buffer[0] = 0;
-         if (v) buffer[0] = v->varData.str[idx];
+         buffer[0] = jsvGetCharInString(v, idx);
          buffer[1] = 0;
          jsvUnLock(v);
          return jsvNewFromString(buffer);

@@ -631,6 +631,28 @@ void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
   jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
+char jsvGetCharInString(JsVar *v, int idx) {
+  if (!jsvIsString(v)) return 0;
+  if (idx<0) idx += jsvGetStringLength(v); // <0 goes from end of string
+  if (idx<0) return 0;
+
+  v = jsvLockAgain(v);
+  while (v && idx >= jsvGetMaxCharactersInVar(v)) {
+    JsVarRef next;
+    idx -= jsvGetMaxCharactersInVar(v);
+    next = v->lastChild;
+    jsvUnLock(v);
+    v = jsvLock(next);
+  }
+
+  char c = 0;
+  if (v) {
+    c = v->varData.str[idx];
+    jsvUnLock(v);
+  }
+  return c;
+}
+
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v) {
   assert(jsvIsString(v) || jsvIsName(v));

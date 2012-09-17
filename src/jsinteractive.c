@@ -180,7 +180,7 @@ void jsiHandleChar(char ch) {
 
   if (ch == CHAR_DELETE_RECV /*delete*/) {
     size_t l = jsvGetStringLength(inputline);
-    if (l>0) {
+    if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
       // clear the character
       if (echo) {
         jshTX(CHAR_DELETE_SEND);

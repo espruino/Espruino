@@ -207,6 +207,8 @@ void jsvAppendCharacter(JsVar *var, char ch); ///< Append the given character to
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
 void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
+char jsvGetCharInString(JsVar *v, int idx);
+
 /// Print the contents of a string var - directly
 void jsvPrintStringVar(JsVar *v);
 
