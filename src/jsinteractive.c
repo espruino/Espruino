@@ -85,9 +85,8 @@ void jsiSoftInit() {
   while (timer) {
     JsVar *timerNamePtr = jsvLock(timer);
     JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
-    JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
-    jsvSetInteger(timerTime, currentTime + jsvGetInteger(timerInterval));
-    jsvUnLock(timerInterval);
+    JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
+    jsvSetInteger(timerTime, currentTime + jshGetTimeFromMilliseconds(interval));
     jsvUnLock(timerTime);
     timer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
@@ -352,12 +351,11 @@ void jsiIdle() {
       JsVar *timerRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false));
       jsiQueueEvents(jsvGetRef(timerCallback));
       if (jsvGetBool(timerRecurring)) {
-        JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
-        JsVarInt interval = jsvGetIntegerAndUnLock(timerInterval);
+        JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
         if (interval<=0)
           jsvSetInteger(timerTime, time); // just set to current system time
         else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jshGetTimeFromMilliseconds(interval));
       } else {
         // free all
         jsvRemoveChild(timerArrayPtr, timerNamePtr);
@@ -423,6 +421,95 @@ void jsiLoop() {
   }
 }
 
+/** Output extra functions defined in an object such that they can be copied to a new device */
+void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
+  JsVarRef childRef = parent->firstChild;
+  while (childRef) {
+    JsVar *child = jsvLock(childRef);
+    JsVar *data = jsvSkipName(child);
+    jsvPrintStringVar(parentName);
+    jsPrint(".");
+    jsvPrintStringVar(child);
+    jsPrint(" = ");
+    jsfPrintJSON(data);
+    jsPrint(";\n");
+    jsvUnLock(data);
+    childRef = child->nextSibling;
+    jsvUnLock(child);
+  }
+}
+
+/** Output current interpreter state such that it can be copied to a new device */
+void jsiDumpState() {
+  JsVar *parent = jsvLock(p.root);
+  JsVarRef childRef = parent->firstChild;
+  jsvUnLock(parent);
+  while (childRef) {
+    JsVar *child = jsvLock(childRef);
+    JsVar *data = jsvSkipName(child);
+    if (jspIsCreatedObject(&p, data)) {
+      jsiDumpObjectState(child, data);
+    } else if (jsvIsStringEqual(child, "timers")) {
+      // skip - done later
+    } else if (jsvIsStringEqual(child, "watches")) {
+      // skip - done later
+    } else if (!jsvIsNative(data)) { // just a variable/function!
+      jsPrint("var ");
+      jsvPrintStringVar(child);
+      jsPrint(" = ");
+      jsfPrintJSON(data);
+      jsPrint(";\n");
+    }
+    jsvUnLock(data);
+    childRef = child->nextSibling;
+    jsvUnLock(child);
+  }
+  // Now do timers
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  JsVarRef timerRef = timerArrayPtr->firstChild;
+  jsvUnLock(timerArrayPtr);
+  while (timerRef) {
+    JsVar *timerNamePtr = jsvLock(timerRef);
+    JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
+    bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false)));
+    JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
+    jsPrint(recur ? "setInterval(" : "setTimeout(");
+    jsfPrintJSON(timerCallback);
+    jsPrint(", ");
+    jsfPrintJSON(timerInterval);
+    jsPrint(");\n");
+    jsvUnLock(timerInterval);
+    jsvUnLock(timerCallback);
+    // next
+    timerRef = timerNamePtr->nextSibling;
+    jsvUnLock(timerNamePtr);
+  }
+  // Now do watches
+  {
+   JsVar *watchArrayPtr = jsvLock(watchArray);
+   JsVarRef watchRef = watchArrayPtr->firstChild;
+   jsvUnLock(watchArrayPtr);
+   while (watchRef) {
+     JsVar *watchNamePtr = jsvLock(watchRef);
+     JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
+     JsVar *watchRecur = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
+     JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+     jsPrint("setWatch(");
+     jsfPrintJSON(watchCallback);
+     jsPrint(", ");
+     jsfPrintJSON(watchPin);
+     jsPrint(", ");
+     jsfPrintJSON(watchRecur);
+     jsPrint(");\n");
+     jsvUnLock(watchPin);
+     jsvUnLock(watchRecur);
+     jsvUnLock(watchCallback);
+     // next
+     watchRef = watchNamePtr->nextSibling;
+     jsvUnLock(watchNamePtr);
+   }
+  }
+}
 
 /** Handle function calls - do this programatically, so we can save on RAM */
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
@@ -461,17 +548,15 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       }
       // Create a new timer
       JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-      JsVarInt interval = jshGetTimeFromMilliseconds(jsvGetDouble(timeout));
+      JsVarFloat interval = jsvGetDouble(timeout);
       if (interval<1) interval=1;
       JsVar *v;
-      v = jsvNewFromInteger(jshGetSystemTime() + interval);
+      v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
       jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
       jsvUnLock(v);
-      if (recurring) {
-        v = jsvNewFromInteger(interval);
-        jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
-        jsvUnLock(v);
-      }
+      v = jsvNewFromFloat(interval);
+      jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
+      jsvUnLock(v);
       v = jsvNewFromBool(recurring);
       jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
       jsvUnLock(v);
@@ -572,33 +657,36 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  REPEATEDLY if (repeat==true) when the pin changes
        *JS*  This can also be removed using clearWatch
        */
+      JsVarInt itemIndex = -1;
       JsVar *funcVar, *pinVar, *recurringVar;
       jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
       if (!jsvIsFunction(funcVar)) {
         jsError("Function not supplied!");
-      }
-      // Create a new watch
-      JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
-      JsVar *v;
-      v = jsvSkipName(pinVar);
-      jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
-      jsvUnLock(v);
-      v = jsvNewFromBool(jsvGetBool(recurringVar));
-      jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
-      jsvUnLock(v);
-      jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
-      JsVar *watchArrayPtr = jsvLock(watchArray);
-      JsVarInt itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
-      jsvUnLock(watchArrayPtr);
-      jsvUnLock(watchPtr);
-      jsvUnLock(funcVar);
+      } else {
+        int pin = jshGetPinFromVar(pinVar);
 
-      jshPinWatch(jshGetPinFromVar(pinVar), true);
+        // Create a new watch
+        JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
+        JsVar *v;
+        v = jsvNewFromInteger(pin);
+        jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
+        jsvUnLock(v);
+        v = jsvNewFromBool(jsvGetBool(recurringVar));
+        jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
+        jsvUnLock(v);
+        jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
+        JsVar *watchArrayPtr = jsvLock(watchArray);
+        itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
+        jsvUnLock(watchArrayPtr);
+        jsvUnLock(watchPtr);
+        jshPinWatch(pin, true);
+      }
+      jsvUnLock(funcVar);
       jsvUnLock(pinVar);
       jsvUnLock(recurringVar);
       //jsvTrace(jsiGetParser()->root, 0);
 
-      return jsvNewFromInteger(itemIndex);
+      return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
     }
     if (strcmp(name,"clearWatch")==0) {
       /*JS* function clearWatch(id)
@@ -659,6 +747,13 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Output debugging information */
       jspParseEmptyFunction();
       jsvTrace(p.root, 0);
+      return 0;
+    }
+    if (strcmp(name,"dump")==0) {
+      /*JS* function dump()
+       *JS*  Output current interpreter state such that it can be copied to a new device */
+      jspParseEmptyFunction();
+      jsiDumpState();
       return 0;
     }
 
@@ -735,7 +830,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
 /* TODO:
 analogWrite(pin, value, [freq])
-addWatch -> attachInterrupt(pin, handler, mode)
+setWatch -> attachInterrupt(pin, handler, mode)
 clearWatch -> detachInterrupt(pin)
 delay(milliseconds)
 getPinMode(pin) -> pinMode

@@ -260,7 +260,7 @@ void ftoa(JsVarFloat val,char *str) {
     val = -val;
   }
   JsVarFloat d = 1;
-  while (d*base < val) d*=base;
+  while (d*base <= val) d*=base;
   while (d >= 1) {
     int v = (int)(val / d);
     val -= v*d;

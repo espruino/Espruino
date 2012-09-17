@@ -32,6 +32,7 @@ void jspKill(JsParse *parse);
 // jspSoft* - 'release' or 'claim' anything we are using, but ensure that it doesn't get freed
 void jspSoftInit(JsParse *parse); ///< used when recovering from or saving to flash
 void jspSoftKill(JsParse *parse); ///< used when recovering from or saving to flash
+bool jspIsCreatedObject(JsParse *parse, JsVar *v); ///< Is v likely to have been created by this parser?
 
 /// if interrupting execution, this is set
 bool jspIsInterrupted();

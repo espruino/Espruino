@@ -1477,6 +1477,22 @@ void jspSoftInit(JsParse *parse) {
   jsvUnLock(name);
 }
 
+/** Is v likely to have been created by this parser? */
+bool jspIsCreatedObject(JsParse *parse, JsVar *v) {
+  JsVarRef r = jsvGetRef(v);
+  return
+      r==parse->root ||
+      r==parse->zeroInt      ||
+      r==parse->oneInt       ||
+      r==parse->stringClass  ||
+      r==parse->objectClass  ||
+      r==parse->arrayClass   ||
+      r==parse->intClass     ||
+      r==parse->doubleClass  ||
+      r==parse->mathClass    ||
+      r==parse->jsonClass;
+}
+
 void jspSoftKill(JsParse *parse) {
   jsvUnRefRef(parse->zeroInt);
   jsvUnRefRef(parse->oneInt);
@@ -1498,6 +1514,8 @@ void jspKill(JsParse *parse) {
   // Unreffing this should completely kill everything attached to root
   jsvUnRefRef(parse->root);
 }
+
+
 
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   JsExecFlags execute = EXEC_YES;
