@@ -755,6 +755,48 @@ void jshSaveToFlash() {
   } else
       jsPrint("\nDone!\n>");
 
+
+//  This is nicer, but also broken!
+//  FLASH_UnlockBank1();
+//  /* Clear All pending flags */
+//  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+//
+//  size_t varDataSize = jsvGetVarDataSize();
+//  int *basePtr = jsvGetVarDataPointer();
+//
+//  int page;
+//  for(page=0;page<FLASH_PAGES;page++) {
+//    jsPrint("Flashing Page ");jsPrintInt(page);jsPrint("...\n");
+//    size_t pageOffset = (FLASH_PAGE_SIZE * page);
+//    size_t pagePtr = FLASH_START + pageOffset;
+//    size_t pageSize = varDataSize-pageOffset;
+//    if (pageSize>FLASH_PAGE_SIZE) pageSize = FLASH_PAGE_SIZE;
+//    jsPrint("Offset ");jsPrintInt(pageOffset);jsPrint(", Size ");jsPrintInt(pageSize);jsPrint(" bytes\n");
+//    bool first = true;
+//    int errors = 0;
+//    int i;
+//    for (i=pageOffset;i<pageOffset+pageSize;i+=4)
+//      if ((*(int*)(FLASH_START+i)) != basePtr[i>>2])
+//        errors++;
+//    while (errors && !jspIsInterrupted()) {
+//      if (!first) { jsPrintInt(errors);jsPrint(" errors - retrying...\n"); }
+//      first = false;
+//      /* Erase the FLASH page */
+//      FLASH_ErasePage(pagePtr);
+//      /* Program Flash Bank1 */
+//      for (i=pageOffset;i<pageOffset+pageSize;i+=4)
+//          FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]);
+//      FLASH_WaitForLastOperation(0x20000);
+//    }
+//  }
+//  // finally flash magic byte
+//  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
+//  FLASH_WaitForLastOperation(0x20000);
+//  FLASH_LockBank1();
+//  if (*(int*)FLASH_MAGIC_LOCATION != FLASH_MAGIC)
+//    jsPrint("Flash magic word not flashed correctly!\n");
+//  jsPrint("Flashing Complete\n");
+
   /*jsPrint("Magic contains ");
   jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
   jsPrint(" we want ");
