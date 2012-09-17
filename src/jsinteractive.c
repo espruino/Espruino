@@ -177,6 +177,17 @@ void jsiHandleChar(char ch) {
   if (ch=='{') brackets++;
   if (ch=='}') brackets--;
 
+  // jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
+  //
+  // special stuff
+  // 27 then 91 then 68 - left
+  // 27 then 91 then 67 - right
+  // 27 then 91 then 65 - up
+  // 27 then 91 then 66 - down
+  // 27 then 91 then 51 then 126 - backwards delete
+  // 27 then 91 then 49 then 126 - home
+  // 27 then 79 then 70 - end
+
   if (ch == CHAR_DELETE_RECV /*delete*/) {
     size_t l = jsvGetStringLength(inputline);
     if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
