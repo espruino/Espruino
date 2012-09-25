@@ -42,7 +42,8 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
 bool echo = true; ///< do we provide any user feedback?
-int brackets = 0; ///<  how many brackets have we got on this line?
+int brackets = 0; ///< how many brackets have we got on this line?
+char cursorKeyState = 0; ///< state for dealing with cursor keys
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
 
@@ -188,51 +189,69 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 49 then 126 - home
   // 27 then 79 then 70 - end
 
-  if (ch == CHAR_DELETE_RECV /*delete*/) {
-    size_t l = jsvGetStringLength(inputline);
-    if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
-      // clear the character
-      if (echo) {
-        jshTX(CHAR_DELETE_SEND);
-        jshTX(' ');
-        jshTX(CHAR_DELETE_SEND);
-      }
-      // FIXME hacky - should be able to just remove the end character without copying
-      JsVar *v = jsvNewFromString("");
-      if (l>1) jsvAppendStringVar(v, inputline, 0, (int)(l-1));
-      jsvUnLock(inputline);
-      inputline=v;
-    } else {
-      // no characters, don't allow delete
+  if (cursorKeyState==0 && ch == 27) {
+    cursorKeyState = 1;
+  } else if (cursorKeyState==1 && ch == 91) {
+    cursorKeyState = 2;
+  } else if (cursorKeyState==2) {
+    cursorKeyState = 0;
+    if (ch==68) { // left
     }
-  } else if (ch == '\r') {
-    if (brackets<=0) {
-      if (echo) {
-        jshTX('\r');
-        jshTX('\n');
-      }
-
-      JsVar *v = jspEvaluateVar(&p, inputline);
-      jsvUnLock(inputline);
-
-      if (echo) {
-        jshTX('=');
-        jsfPrintJSON(v);
-      }
-      jsvUnLock(v);
-
-      inputline = jsvNewFromString("");
-      brackets = 0;
-
-      if (echo) jshTXStr("\r\n>");
-    } else {
-      if (echo) jshTXStr("\n:");
-      jsvAppendCharacter(inputline, '\n');
+    if (ch==67) { // right
+      //jshTX(27);jshTX(91);jshTX(67);
+    }
+    if (ch==65) { // up
+    }
+    if (ch==66) { // down
     }
   } else {
-    if (echo) jshTX(ch);
-    // Append the character to our input line
-    jsvAppendCharacter(inputline, ch);
+    cursorKeyState = 0;
+    if (ch == CHAR_DELETE_RECV /*delete*/) {
+      size_t l = jsvGetStringLength(inputline);
+      if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
+        // clear the character
+        if (echo) {
+          jshTX(CHAR_DELETE_SEND);
+          jshTX(' ');
+          jshTX(CHAR_DELETE_SEND);
+        }
+        // FIXME hacky - should be able to just remove the end character without copying
+        JsVar *v = jsvNewFromString("");
+        if (l>1) jsvAppendStringVar(v, inputline, 0, (int)(l-1));
+        jsvUnLock(inputline);
+        inputline=v;
+      } else {
+        // no characters, don't allow delete
+      }
+    } else if (ch == '\r') {
+      if (brackets<=0) {
+        if (echo) {
+          jshTX('\r');
+          jshTX('\n');
+        }
+
+        JsVar *v = jspEvaluateVar(&p, inputline);
+        jsvUnLock(inputline);
+
+        if (echo) {
+          jshTX('=');
+          jsfPrintJSON(v);
+        }
+        jsvUnLock(v);
+
+        inputline = jsvNewFromString("");
+        brackets = 0;
+
+        if (echo) jshTXStr("\r\n>");
+      } else {
+        if (echo) jshTXStr("\n:");
+        jsvAppendCharacter(inputline, '\n');
+      }
+    } else {
+      if (echo) jshTX(ch);
+      // Append the character to our input line
+      jsvAppendCharacter(inputline, ch);
+    }
   }
 }
 
