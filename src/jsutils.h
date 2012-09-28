@@ -14,6 +14,13 @@
 #include <stdlib.h>
 #endif
 
+#define JS_VERSION "1v04"
+/* VERSION HISTORY:
+     1v04 : Called Espruino
+
+
+*/
+
 // surely bool is defined??
 #ifdef ARM
 typedef unsigned int size_t;

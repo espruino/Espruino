@@ -166,10 +166,10 @@ void jsiInit(bool autoLoad) {
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
               "|   __|_ -| . |  _| | | |   | . |\r\n"
               "|_____|___|  _|_| |___|_|_|_|___|\r\n"
-              "          |_|\r\n"
-              " Copyright 2012 Gordon Williams\r\n"
-              "                gw@pur3.co.uk\r\n"
-              "-------------------------------- ");
+              "          |_|                " JS_VERSION "\r\n"
+              "   Copyright 2012 Gordon Williams\r\n"
+              "                    gw@pur3.co.uk\r\n"
+              "--------------------------------- ");
   jsPrint("\r\n\r\n>");
 }
 
