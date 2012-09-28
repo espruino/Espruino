@@ -1,6 +1,19 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+
+function flash(c) {                                                                             
+  if (c<=0) return;                                                                                    
+  setTimeout(function() {                                                                              
+    digitalWrite("C9",1);                                                                              
+    setTimeout(function() {                                                                            
+      digitalWrite("C9",0);                                                                            
+      flash(c-1);                                                                                      
+    }, 250);                                                                                           
+  }, 250);                                                                                             
+}; 
+Why does flash(10) cause us to run out of RAM?
+
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
