@@ -554,7 +554,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // Special cases for we're just a basic function
     if (strcmp(name,"print")==0) {
       /*JS* function print(text)
-       *JS* Print the supplied string
+       *JS*  Print the supplied string
        */
       JsVar *v = jsvAsString(jspParseSingleFunction(), true);
       jsvPrintStringVar(v);
@@ -773,9 +773,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
     }
     if (strcmp(name,"echo")==0) {
       /*JS* function echo(yesorno)
-       *JS* Should TinyJS echo what you type back to you? true = yes (Default), false = no.
-       *JS* When echo is off, the result of executing a command is not returned.
-       *JS* Instead, you must use 'print' to send output. */
+       *JS*  Should TinyJS echo what you type back to you? true = yes (Default), false = no.
+       *JS*  When echo is off, the result of executing a command is not returned.
+       *JS*  Instead, you must use 'print' to send output. */
       bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
       echo = b;
       return 0;

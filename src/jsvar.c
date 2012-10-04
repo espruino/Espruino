@@ -119,6 +119,7 @@ JsVar *jsvNew() {
       return v;
   }
   jsError("Out of Memory!");
+  jspSetInterrupted(true);
   return 0;
 }
 
