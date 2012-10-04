@@ -426,7 +426,7 @@ void jsiIdle() {
   if (jspIsInterrupted()) {
     jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
     JsVar *timerArrayPtr = jsvLock(timerArray);
-    jsvRemoveAllChildren();
+    jsvRemoveAllChildren(timerArrayPtr);
     jsvUnLock(timerArrayPtr);
   }
   // check for TODOs
