@@ -17,7 +17,7 @@
 #define JS_VERSION "1v04"
 /* VERSION HISTORY:
      1v04 : Called Espruino
-
+            Fixed issue with event add when out of memory
 
 */
 
@@ -59,7 +59,7 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JSVAR_CACHE_SIZE 250 
 // room for 350, but must leave stack
 #else
-#define JSVAR_CACHE_SIZE 500
+#define JSVAR_CACHE_SIZE 250
 #endif
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9

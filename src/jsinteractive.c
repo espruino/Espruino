@@ -283,14 +283,17 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
   JsVar *callbackVar = jsvLock(callbacks);
   // if it is a single callback, just add it
   if (jsvIsFunction(callbackVar)) {
-    JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
-    jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
-    if (lastEvent) {
-      lastEvent->nextSibling = jsvGetRef(event);
-      jsvUnLock(lastEvent);
-    } else
-      events = jsvGetRef(event);
-    jsvUnLock(event);
+    JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
+    if (event) { // Could be out of memory error!
+      event = jsvRef(event);
+      jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
+      if (lastEvent) {
+        lastEvent->nextSibling = jsvGetRef(event);
+        jsvUnLock(lastEvent);
+      } else
+        events = jsvGetRef(event);
+      jsvUnLock(event);
+    }
     jsvUnLock(callbackVar);
   } else {
     // go through all callbacks
@@ -299,19 +302,23 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
     while (next) {
       //jsPrint("Queue Event\n");
       JsVar *child = jsvLock(next);
+      
       // for each callback...
-      JsVar *event = jsvRef(jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE));
-      jsvUnLock(jsvAddNamedChild(event, child, "func"));
-      // TODO: load in parameters
-      // add event to the events list
-      if (lastEvent) {
-        lastEvent->nextSibling = jsvGetRef(event);
+      JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
+      if (event) { // Could be out of memory error!
+        event = jsvRef(event);
+        jsvUnLock(jsvAddNamedChild(event, child, "func"));
+        // TODO: load in parameters
+        // add event to the events list
+        if (lastEvent) {
+          lastEvent->nextSibling = jsvGetRef(event);
+          jsvUnLock(lastEvent);
+        } else
+          events = jsvGetRef(event);
         jsvUnLock(lastEvent);
-      } else
-        events = jsvGetRef(event);
-      jsvUnLock(lastEvent);
-      lastEvent = event;
-      // go to next callback
+        lastEvent = event;
+        // go to next callback
+      }
       next = child->nextSibling;
       jsvUnLock(child);
     }
