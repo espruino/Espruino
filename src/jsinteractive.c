@@ -421,13 +421,15 @@ void jsiIdle() {
 
   // TODO: could now sort events by time?
   // execute any outstanding events
-  jsiExecuteEvents();
-
-  if (jspIsInterrupted()) {
-    jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
-    JsVar *timerArrayPtr = jsvLock(timerArray);
-    jsvRemoveAllChildren(timerArrayPtr);
-    jsvUnLock(timerArrayPtr);
+  if (!jspIsInterrupted()) {
+    jsiExecuteEvents();
+  
+    if (jspIsInterrupted()) {
+      jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
+      JsVar *timerArrayPtr = jsvLock(timerArray);
+      jsvRemoveAllChildren(timerArrayPtr);
+     jsvUnLock(timerArrayPtr);
+    }
   }
   // check for TODOs
   if (todo) {
@@ -770,21 +772,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"load")==0) {
       /*JS* function load()
-       *JS*  Load program memory out of flash */
+       *JS*  Load program memory out of flash 
+       */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_LOAD;
       return 0;
     }
     if (strcmp(name,"save")==0) {
       /*JS* function save()
-       *JS*  Save program memory into flash */
+       *JS*  Save program memory into flash 
+       */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_SAVE;
       return 0;
     }
     if (strcmp(name,"reset")==0) {
       /*JS* function reset()
-       *JS*  Reset everything - clear program memory */
+       *JS*  Reset everything - clear program memory
+       */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
       return 0;
@@ -793,21 +798,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       /*JS* function echo(yesorno)
        *JS*  Should TinyJS echo what you type back to you? true = yes (Default), false = no.
        *JS*  When echo is off, the result of executing a command is not returned.
-       *JS*  Instead, you must use 'print' to send output. */
+       *JS*  Instead, you must use 'print' to send output.
+       */
       bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
       echo = b;
       return 0;
     }
     if (strcmp(name,"trace")==0) {
       /*JS* function trace()
-       *JS*  Output debugging information */
+       *JS*  Output debugging information 
+       */
       jspParseEmptyFunction();
       jsvTrace(p.root, 0);
       return 0;
     }
     if (strcmp(name,"dump")==0) {
       /*JS* function dump()
-       *JS*  Output current interpreter state such that it can be copied to a new device */
+       *JS*  Output current interpreter state such that it can be copied to a new device 
+       */
       jspParseEmptyFunction();
       jsiDumpState();
       return 0;
