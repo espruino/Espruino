@@ -169,8 +169,12 @@ void jsiInit(bool autoLoad) {
               "          |_|                " JS_VERSION "\r\n"
               "   Copyright 2012 Gordon Williams\r\n"
               "                    gw@pur3.co.uk\r\n"
-              "--------------------------------- ");
-  jsPrint("\r\n\r\n>");
+              "---------------------------------\r\n"
+              "This version is for personal use\r\n"
+              "only. If you were sold this on a\r\n"
+              "device, please contact us.\r\n"
+              "---------------------------------\r\n");
+  jsPrint("\r\n>");
 }
 
 
