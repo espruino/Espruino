@@ -422,6 +422,13 @@ void jsiIdle() {
   // TODO: could now sort events by time?
   // execute any outstanding events
   jsiExecuteEvents();
+
+  if (jspIsInterrupted()) {
+    jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
+    JsVar *timerArrayPtr = jsvLock(timerArray);
+    jsvRemoveAllChildren();
+    jsvUnLock(timerArrayPtr);
+  }
   // check for TODOs
   if (todo) {
     if (todo & TODO_RESET) {

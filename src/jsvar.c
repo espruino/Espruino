@@ -1002,6 +1002,15 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
     jsvUnRef(child);
 }
 
+void jsvRemoveAllChildren(JsVar *parent) {
+    assert(jsvIsArray(parent) || jsvIsObject(parent) || jsvIsFunction(parent));
+    while (parent->firstChild) {
+      JsVar *v = jsvLock(parent->firstChild);
+      jsvRemoveChild(parent, v);
+      jsvUnLock(v);
+    }
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;

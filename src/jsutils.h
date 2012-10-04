@@ -18,6 +18,7 @@
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
+            If out of memory happens during a timer, kill all timers
 
 */
 
