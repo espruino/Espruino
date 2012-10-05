@@ -13,7 +13,9 @@ function flash(c) {
   }, 250);                                                                                             
 }; 
 Why does flash(10) cause us to run out of RAM?
-
+ 
+ *       When calling a NAMED function, zero the scopes
+ *       Handle adding Open bracket then deleting it
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
@@ -22,6 +24,8 @@ Why does flash(10) cause us to run out of RAM?
  *       Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
  *
  *  LOW PRIORITY
+ *       Handle '0' in strings - switch to storing string length in flags
+ *       When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using same code - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
  *       Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
  *       Add 'delete' keyword for killing array items?
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words

@@ -14,12 +14,12 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v04"
+#define JS_VERSION "1v05"
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
             If out of memory happens during a timer, kill all timers
-
+     1v05 : Allow setWatch/setTimeout/setInterval with a string
 */
 
 // surely bool is defined??

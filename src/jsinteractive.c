@@ -282,7 +282,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
 
   JsVar *callbackVar = jsvLock(callbacks);
   // if it is a single callback, just add it
-  if (jsvIsFunction(callbackVar)) {
+  if (jsvIsFunction(callbackVar) || jsvIsString(callbackVar)) {
     JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
     if (event) { // Could be out of memory error!
       event = jsvRef(event);
@@ -296,6 +296,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
     }
     jsvUnLock(callbackVar);
   } else {
+    assert(jsvIsArray(callbackVar));
     // go through all callbacks
     JsVarRef next = callbackVar->firstChild;
     jsvUnLock(callbackVar);
@@ -339,7 +340,14 @@ void jsiExecuteEvents() {
     jsvUnLock(event);
 
     // now run..
-    if (func) jspExecuteFunction(&p, func);
+    if (func) {
+      if (jsvIsFunction(func))
+        jspExecuteFunction(&p, func);
+      else if (jsvIsString(func))
+        jsvUnLock(jspEvaluateVar(&p, func));
+      else 
+        jsError("Unknown type of callback in Event Queue");
+    }
     //jsPrint("Event Done\n");
     jsvUnLock(func);
   }
@@ -601,8 +609,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       bool recurring = strcmp(name,"setInterval")==0;
       JsVar *func, *timeout;
       jspParseDoubleFunction(&func, &timeout);
-      if (!jsvIsFunction(func)) {
-        jsError("Function not supplied!");
+      if (!jsvIsFunction(func) && !jsvIsString(func)) {
+        jsError("Function or String not supplied!");
       }
       // Create a new timer
       JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
@@ -718,8 +726,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVarInt itemIndex = -1;
       JsVar *funcVar, *pinVar, *recurringVar;
       jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
-      if (!jsvIsFunction(funcVar)) {
-        jsError("Function not supplied!");
+      if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
+        jsError("Function or String not supplied!");
       } else {
         int pin = jshGetPinFromVar(pinVar);
 
