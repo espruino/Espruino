@@ -1464,6 +1464,47 @@ JsVar *jspeStatement() {
       if (JSP_SHOULD_EXECUTE) {
         execInfo.execute = EXEC_BREAK;
       }
+    } else if (execInfo.lex->tk==LEX_R_SWITCH) {
+          JSP_MATCH(LEX_R_SWITCH);
+          JSP_MATCH('(');
+          JsVar *switchOn = jspeBase();
+          JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
+          JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
+          JSP_SAVE_EXECUTE();
+          bool execute = JSP_SHOULD_EXECUTE;
+          bool hasExecuted = false;
+          if (execute) execInfo.execute=EXEC_NO;
+          while (execInfo.lex->tk==LEX_R_CASE) {
+            JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
+            JsExecFlags oldFlags = execInfo.execute;
+            if (execute) execInfo.execute=EXEC_YES;
+            JsVar *test = jspeBase();
+            execInfo.execute = oldFlags;
+            JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(switchOn);jsvUnLock(test), 0);
+            bool cond = false;
+            if (execute)
+              cond = jsvGetBoolAndUnLock(jsvMathsOpSkipNames(switchOn, test, LEX_EQUAL));
+            if (cond) hasExecuted = true;
+            jsvUnLock(test);
+            if (cond && execInfo.execute==EXEC_NO) execInfo.execute=EXEC_YES;
+            while (execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
+              jsvUnLock(jspeBlockOrStatement());
+          }
+          jsvUnLock(switchOn);
+          if (execute && execInfo.execute==EXEC_BREAK) execInfo.execute=EXEC_YES;
+          JSP_RESTORE_EXECUTE();
+
+          if (execInfo.lex->tk==LEX_R_DEFAULT) {
+            JSP_MATCH(LEX_R_DEFAULT);
+            JSP_MATCH(':');
+            JSP_SAVE_EXECUTE();
+            if (hasExecuted) jspSetNoExecute();
+            while (execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!='}')
+              jsvUnLock(jspeBlockOrStatement());
+            JSP_RESTORE_EXECUTE();
+          }
+          JSP_MATCH('}');
+
     } else JSP_MATCH(LEX_EOF);
     return 0;
 }

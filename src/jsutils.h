@@ -23,6 +23,7 @@
             Handle adding Open bracket then deleting it
             When calling a NAMED function, zero the scopes - this stops scope table overflow
      1v06 : Add break + continue
+            Add switch statement
 */
 
 // surely bool is defined??
@@ -168,6 +169,9 @@ typedef enum LEX_TYPES {
     LEX_R_UNDEFINED,
     LEX_R_NEW,
     LEX_R_IN,
+    LEX_R_SWITCH,
+    LEX_R_CASE,
+    LEX_R_DEFAULT,
 
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;

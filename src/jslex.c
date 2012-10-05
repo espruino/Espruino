@@ -67,7 +67,7 @@ void jslTokenAppendChar(JsLex *lex, char ch) {
   }
 }
 
-bool jslIsToken(JsLex *lex, const char *token) {
+static inline bool jslIsToken(JsLex *lex, const char *token) {
   int i;
   for (i=0;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
@@ -122,6 +122,9 @@ void jslGetNextToken(JsLex *lex) {
       else if (jslIsToken(lex,"undefined")) lex->tk = LEX_R_UNDEFINED;
       else if (jslIsToken(lex,"new")) lex->tk = LEX_R_NEW;
       else if (jslIsToken(lex,"in")) lex->tk = LEX_R_IN;
+      else if (jslIsToken(lex,"switch")) lex->tk = LEX_R_SWITCH;
+      else if (jslIsToken(lex,"case")) lex->tk = LEX_R_CASE;
+      else if (jslIsToken(lex,"default")) lex->tk = LEX_R_DEFAULT;
   } else if (isNumeric(lex->currCh)) { // Numbers
       // TODO: check numbers aren't the wrong format
       bool canBeFloating = true;
