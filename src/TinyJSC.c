@@ -4,6 +4,7 @@
  *       
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
+ *       Switch statement
  *       break/continue
  *       Add Array.splice
  *       Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
