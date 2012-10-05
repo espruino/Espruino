@@ -50,9 +50,11 @@ typedef enum  {
   EXEC_NO = 0,
   EXEC_YES = 1,
   EXEC_INTERRUPTED = 2, // true if execution has been interrupted
-  EXEC_ERROR = 4,
+  EXEC_BREAK = 3,
+  EXEC_CONTINUE = 4,
+  EXEC_ERROR = 8,
 
-  EXEC_RUN_MASK = 3,
+  EXEC_RUN_MASK = 7,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
 } JsExecFlags;
 

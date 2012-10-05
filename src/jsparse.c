@@ -1211,6 +1211,7 @@ JsVar *jspeStatement() {
         JsLex whileCond;
         JsLex whileBody;
         JsLex *oldLex;
+        bool hasHadBreak = false;
         // We do repetition by pulling out the string representing our statement
         // there's definitely some opportunity for optimisation here
         JSP_MATCH(LEX_R_WHILE);
@@ -1223,13 +1224,20 @@ JsVar *jspeStatement() {
         JSP_MATCH(')');
         whileBodyStart = execInfo.lex->tokenStart;
         JSP_SAVE_EXECUTE();
+        // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
         if (!loopCond) jspSetNoExecute(); 
         jsvUnLock(jspeBlockOrStatement());
+        if (execInfo.execute == EXEC_CONTINUE)
+          execInfo.execute = EXEC_YES;
+        if (execInfo.execute == EXEC_BREAK) {
+          execInfo.execute = EXEC_YES;
+          hasHadBreak = true; // fail loop condition, so we exit
+        }
         if (!loopCond) JSP_RESTORE_EXECUTE();
         jslInitFromLex(&whileBody, execInfo.lex, whileBodyStart);
         oldLex = execInfo.lex;
 
-        while (loopCond && loopCount-->0) {
+        while (!hasHadBreak && loopCond && loopCount-->0) {
             jslReset(&whileCond);
             execInfo.lex = &whileCond;
             cond = jspeBase();
@@ -1239,6 +1247,12 @@ JsVar *jspeStatement() {
                 jslReset(&whileBody);
                 execInfo.lex = &whileBody;
                 jsvUnLock(jspeBlockOrStatement());
+                if (execInfo.execute == EXEC_CONTINUE)
+                  execInfo.execute = EXEC_YES;
+                if (execInfo.execute == EXEC_BREAK) {
+                  execInfo.execute = EXEC_YES;
+                  hasHadBreak = true;
+                }
             }
         }
         execInfo.lex = oldLex;
@@ -1290,7 +1304,8 @@ JsVar *jspeStatement() {
             jspSetError();
           }
 
-          while (JSP_SHOULD_EXECUTE && loopIndex) {
+          bool hasHadBreak = false;
+          while (JSP_SHOULD_EXECUTE && loopIndex && !hasHadBreak) {
               JsVar *loopIndexVar = jsvLock(loopIndex);
               JsVar *indexValue = jsvCopyNameOnly(loopIndexVar, false);
               assert(jsvIsName(indexValue) && indexValue->refs==0);
@@ -1303,6 +1318,13 @@ JsVar *jspeStatement() {
               jslReset(&forBody);
               execInfo.lex = &forBody;
               jsvUnLock(jspeBlockOrStatement());
+
+              if (execInfo.execute == EXEC_CONTINUE)
+                execInfo.execute = EXEC_YES;
+              if (execInfo.execute == EXEC_BREAK) {
+                execInfo.execute = EXEC_YES;
+                hasHadBreak = true;
+              }
           }
           execInfo.lex = oldLex;
           jslKill(&forBody);
@@ -1320,6 +1342,7 @@ JsVar *jspeStatement() {
           bool loopCond;
           JsLex forCond;
           JsLex forIter;
+          bool hasHadBreak = false;
 
           jsvUnLock(forStatement);
           JSP_MATCH(';');
@@ -1342,6 +1365,12 @@ JsVar *jspeStatement() {
           JSP_SAVE_EXECUTE();
           if (!loopCond) jspSetNoExecute();
           jsvUnLock(jspeBlockOrStatement());
+          if (execInfo.execute == EXEC_CONTINUE)
+            execInfo.execute = EXEC_YES;
+          if (execInfo.execute == EXEC_BREAK) {
+            execInfo.execute = EXEC_YES;
+            hasHadBreak = true;
+          }
           if (!loopCond) JSP_RESTORE_EXECUTE();
           JsLex forBody;
           jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
@@ -1351,7 +1380,7 @@ JsVar *jspeStatement() {
               execInfo.lex = &forIter;
               jsvUnLock(jspeBase());
           }
-          while (JSP_SHOULD_EXECUTE && loopCond && loopCount-->0) {
+          while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond && loopCount-->0) {
               jslReset(&forCond);
               execInfo.lex = &forCond;
               cond = jspeBase();
@@ -1361,6 +1390,12 @@ JsVar *jspeStatement() {
                   jslReset(&forBody);
                   execInfo.lex = &forBody;
                   jsvUnLock(jspeBlockOrStatement());
+                  if (execInfo.execute == EXEC_CONTINUE)
+                    execInfo.execute = EXEC_YES;
+                  if (execInfo.execute == EXEC_BREAK) {
+                    execInfo.execute = EXEC_YES;
+                    hasHadBreak = true;
+                  }
               }
               if (JSP_SHOULD_EXECUTE && loopCond) {
                   jslReset(&forIter);
@@ -1419,6 +1454,16 @@ JsVar *jspeStatement() {
         }
         jsvUnLock(funcVar);
         return funcName;
+    } else if (execInfo.lex->tk==LEX_R_CONTINUE) {
+      JSP_MATCH(LEX_R_CONTINUE);
+      if (JSP_SHOULD_EXECUTE) {
+        execInfo.execute = EXEC_CONTINUE;
+      }
+    } else if (execInfo.lex->tk==LEX_R_BREAK) {
+      JSP_MATCH(LEX_R_BREAK);
+      if (JSP_SHOULD_EXECUTE) {
+        execInfo.execute = EXEC_BREAK;
+      }
     } else JSP_MATCH(LEX_EOF);
     return 0;
 }

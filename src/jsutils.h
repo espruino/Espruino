@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v05"
+#define JS_VERSION "1v06"
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
@@ -22,6 +22,7 @@
      1v05 : Allow setWatch/setTimeout/setInterval with a string
             Handle adding Open bracket then deleting it
             When calling a NAMED function, zero the scopes - this stops scope table overflow
+     1v06 : Add break + continue
 */
 
 // surely bool is defined??
