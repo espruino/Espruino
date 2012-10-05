@@ -15,7 +15,6 @@ function flash(c) {
 Why does flash(10) cause us to run out of RAM?
  
  *       When calling a NAMED function, zero the scopes
- *       Handle adding Open bracket then deleting it
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters

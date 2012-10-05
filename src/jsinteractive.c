@@ -42,7 +42,6 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
 bool echo = true; ///< do we provide any user feedback?
-int brackets = 0; ///< how many brackets have we got on this line?
 char cursorKeyState = 0; ///< state for dealing with cursor keys
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
@@ -150,7 +149,6 @@ void jsiInit(bool autoLoad) {
 
   jsiSoftInit();
   echo = true;
-  brackets = 0;
   
 
   // rectangles @ http://www.network-science.de/ascii/
@@ -186,10 +184,27 @@ void jsiKill() {
   jsvKill();
 }
 
-void jsiHandleChar(char ch) {
-  if (ch=='{') brackets++;
-  if (ch=='}') brackets--;
+int jsiCountBracketsInInput() {
+  int brackets = 0;
 
+  JsVarRef r = jsvGetRef(inputline);
+  while (r) {
+    JsVar *v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    int i;
+    for (i=0;i<l;i++) { 
+      char ch = v->varData.str[i];
+      if (ch=='{') brackets++;
+      if (ch=='}') brackets--;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+
+  return brackets;
+} 
+
+void jsiHandleChar(char ch) {
   // jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
   //
   // special stuff
@@ -236,7 +251,7 @@ void jsiHandleChar(char ch) {
         // no characters, don't allow delete
       }
     } else if (ch == '\r') {
-      if (brackets<=0) {
+      if (jsiCountBracketsInInput()<=0) {
         if (echo) {
           jshTX('\r');
           jshTX('\n');
@@ -252,7 +267,6 @@ void jsiHandleChar(char ch) {
         jsvUnLock(v);
 
         inputline = jsvNewFromString("");
-        brackets = 0;
 
         if (echo) jshTXStr("\r\n>");
       } else {

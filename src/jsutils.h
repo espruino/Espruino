@@ -20,6 +20,7 @@
             Fixed issue with event add when out of memory
             If out of memory happens during a timer, kill all timers
      1v05 : Allow setWatch/setTimeout/setInterval with a string
+            Handle adding Open bracket then deleting it
 */
 
 // surely bool is defined??
