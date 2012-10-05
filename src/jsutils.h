@@ -112,7 +112,7 @@ typedef enum {
     JSV_NATIVE      = 32, // to specify this is a native function
     JSV_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
 
-    JSV_IS_RECURSING = 128, // used to stop vrecursive loops in jsvTrace
+    JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
     // these are useful ONLY because the debugger picks them up :)
