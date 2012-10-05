@@ -1,20 +1,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
-
-function flash(c) {                                                                             
-  if (c<=0) return;                                                                                    
-  setTimeout(function() {                                                                              
-    digitalWrite("C9",1);                                                                              
-    setTimeout(function() {                                                                            
-      digitalWrite("C9",0);                                                                            
-      flash(c-1);                                                                                      
-    }, 250);                                                                                           
-  }, 250);                                                                                             
-}; 
-Why does flash(10) cause us to run out of RAM?
- 
- *       When calling a NAMED function, zero the scopes
+ *       
  *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
@@ -25,6 +12,7 @@ Why does flash(10) cause us to run out of RAM?
  *  LOW PRIORITY
  *       Handle '0' in strings - switch to storing string length in flags
  *       When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using same code - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
+ *       Group builtin functions alphabetically and do quick check on first character
  *       Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
  *       Add 'delete' keyword for killing array items?
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
@@ -45,6 +33,7 @@ Why does flash(10) cause us to run out of RAM?
  *          - maybe also linked list to keep track of what is used most often
  *       Add require(filename) function
  *       Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
+ *       Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
  *
  * In code:
  * TODO - should be fixed

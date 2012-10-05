@@ -1305,6 +1305,8 @@ void jsvTrace(JsVarRef ref, int indent) {
 
 
     if (jsvIsName(var)) {
+      if (jsvIsFunctionParameter(var))
+        jsPrint("Param ");
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
       if (jsvIsInt(var)) {
         jsPrint("Name: int ");

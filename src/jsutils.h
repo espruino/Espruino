@@ -21,6 +21,7 @@
             If out of memory happens during a timer, kill all timers
      1v05 : Allow setWatch/setTimeout/setInterval with a string
             Handle adding Open bracket then deleting it
+            When calling a NAMED function, zero the scopes - this stops scope table overflow
 */
 
 // surely bool is defined??
