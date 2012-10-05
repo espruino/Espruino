@@ -244,6 +244,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child c
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 void jsvRemoveChild(JsVar *parent, JsVar *child);
+void jsvRemoveAllChildren(JsVar *parent);
 
 int jsvGetChildren(JsVar *v);
 JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array

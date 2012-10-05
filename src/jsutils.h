@@ -14,11 +14,14 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v04"
+#define JS_VERSION "1v05"
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
-
+            If out of memory happens during a timer, kill all timers
+     1v05 : Allow setWatch/setTimeout/setInterval with a string
+            Handle adding Open bracket then deleting it
+            When calling a NAMED function, zero the scopes - this stops scope table overflow
 */
 
 // surely bool is defined??
@@ -80,7 +83,7 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 #define JSPARSE_FUNCTION_SCOPE_NAME "#scope#"
 
-#if 1 // ndef ARM
+#ifndef ARM
  #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 #else
  #define assert(X) 
@@ -109,7 +112,7 @@ typedef enum {
     JSV_NATIVE      = 32, // to specify this is a native function
     JSV_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
 
-    JSV_IS_RECURSING = 128, // used to stop vrecursive loops in jsvTrace
+    JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
     // these are useful ONLY because the debugger picks them up :)

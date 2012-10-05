@@ -1002,6 +1002,15 @@ void jsvRemoveChild(JsVar *parent, JsVar *child) {
     jsvUnRef(child);
 }
 
+void jsvRemoveAllChildren(JsVar *parent) {
+    assert(jsvIsArray(parent) || jsvIsObject(parent) || jsvIsFunction(parent));
+    while (parent->firstChild) {
+      JsVar *v = jsvLock(parent->firstChild);
+      jsvRemoveChild(parent, v);
+      jsvUnLock(v);
+    }
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;
@@ -1296,6 +1305,8 @@ void jsvTrace(JsVarRef ref, int indent) {
 
 
     if (jsvIsName(var)) {
+      if (jsvIsFunctionParameter(var))
+        jsPrint("Param ");
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
       if (jsvIsInt(var)) {
         jsPrint("Name: int ");

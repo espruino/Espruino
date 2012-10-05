@@ -478,21 +478,23 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
         // save old scopes
         JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
         int oldScopeCount;
+        int i;
+        oldScopeCount = execInfo.scopeCount;
+        for (i=0;i<execInfo.scopeCount;i++)
+          oldScopes[i] = execInfo.scopes[i];
         // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
         JsVar *functionScope = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_SCOPE_NAME, false);
         if (functionScope) {
-            int i;
-            oldScopeCount = execInfo.scopeCount;
-            for (i=0;i<execInfo.scopeCount;i++)
-                oldScopes[i] = execInfo.scopes[i];
             JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
             //jsvTrace(jsvGetRef(functionScopeVar),5);
             jspeiLoadScopesFromVar(functionScopeVar);
             jsvUnLock(functionScopeVar);
             jsvUnLock(functionScope);
+        } else {
+            // no scope var defined? We have no scopes at all!
+            execInfo.scopeCount = 0;
         }
         // add the function's execute space to the symbol table so we can recurse
-
         if (jspeiAddScope(jsvGetRef(functionRoot))) {
           /* Adding scope may have failed - we may have descended too deep - so be sure
            * not to pull somebody else's scope off
@@ -531,16 +533,13 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
           jspeiRemoveScope();
         }
 
-        if (functionScope) {
-            int i;
-            // Unref old scopes
-            for (i=0;i<execInfo.scopeCount;i++)
-                jsvUnRefRef(execInfo.scopes[i]);
-            // restore function scopes
-            for (i=0;i<oldScopeCount;i++)
-                execInfo.scopes[i] = oldScopes[i];
-            execInfo.scopeCount = oldScopeCount;
-        }
+        // Unref old scopes
+        for (i=0;i<execInfo.scopeCount;i++)
+            jsvUnRefRef(execInfo.scopes[i]);
+        // restore function scopes
+        for (i=0;i<oldScopeCount;i++)
+            execInfo.scopes[i] = oldScopes[i];
+        execInfo.scopeCount = oldScopeCount;
       }
     }
 #ifdef JSPARSE_CALL_STACK

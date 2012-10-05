@@ -42,7 +42,6 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
 bool echo = true; ///< do we provide any user feedback?
-int brackets = 0; ///< how many brackets have we got on this line?
 char cursorKeyState = 0; ///< state for dealing with cursor keys
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
@@ -150,7 +149,6 @@ void jsiInit(bool autoLoad) {
 
   jsiSoftInit();
   echo = true;
-  brackets = 0;
   
 
   // rectangles @ http://www.network-science.de/ascii/
@@ -186,10 +184,27 @@ void jsiKill() {
   jsvKill();
 }
 
-void jsiHandleChar(char ch) {
-  if (ch=='{') brackets++;
-  if (ch=='}') brackets--;
+int jsiCountBracketsInInput() {
+  int brackets = 0;
 
+  JsVarRef r = jsvGetRef(inputline);
+  while (r) {
+    JsVar *v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    int i;
+    for (i=0;i<l;i++) { 
+      char ch = v->varData.str[i];
+      if (ch=='{') brackets++;
+      if (ch=='}') brackets--;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+
+  return brackets;
+} 
+
+void jsiHandleChar(char ch) {
   // jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
   //
   // special stuff
@@ -236,7 +251,7 @@ void jsiHandleChar(char ch) {
         // no characters, don't allow delete
       }
     } else if (ch == '\r') {
-      if (brackets<=0) {
+      if (jsiCountBracketsInInput()<=0) {
         if (echo) {
           jshTX('\r');
           jshTX('\n');
@@ -252,7 +267,6 @@ void jsiHandleChar(char ch) {
         jsvUnLock(v);
 
         inputline = jsvNewFromString("");
-        brackets = 0;
 
         if (echo) jshTXStr("\r\n>");
       } else {
@@ -282,7 +296,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
 
   JsVar *callbackVar = jsvLock(callbacks);
   // if it is a single callback, just add it
-  if (jsvIsFunction(callbackVar)) {
+  if (jsvIsFunction(callbackVar) || jsvIsString(callbackVar)) {
     JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
     if (event) { // Could be out of memory error!
       event = jsvRef(event);
@@ -296,6 +310,7 @@ void jsiQueueEvents(JsVarRef callbacks) { // array of functions or single functi
     }
     jsvUnLock(callbackVar);
   } else {
+    assert(jsvIsArray(callbackVar));
     // go through all callbacks
     JsVarRef next = callbackVar->firstChild;
     jsvUnLock(callbackVar);
@@ -339,7 +354,14 @@ void jsiExecuteEvents() {
     jsvUnLock(event);
 
     // now run..
-    if (func) jspExecuteFunction(&p, func);
+    if (func) {
+      if (jsvIsFunction(func))
+        jspExecuteFunction(&p, func);
+      else if (jsvIsString(func))
+        jsvUnLock(jspEvaluateVar(&p, func));
+      else 
+        jsError("Unknown type of callback in Event Queue");
+    }
     //jsPrint("Event Done\n");
     jsvUnLock(func);
   }
@@ -421,7 +443,16 @@ void jsiIdle() {
 
   // TODO: could now sort events by time?
   // execute any outstanding events
-  jsiExecuteEvents();
+  if (!jspIsInterrupted()) {
+    jsiExecuteEvents();
+  
+    if (jspIsInterrupted()) {
+      jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
+      JsVar *timerArrayPtr = jsvLock(timerArray);
+      jsvRemoveAllChildren(timerArrayPtr);
+     jsvUnLock(timerArrayPtr);
+    }
+  }
   // check for TODOs
   if (todo) {
     if (todo & TODO_RESET) {
@@ -592,8 +623,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       bool recurring = strcmp(name,"setInterval")==0;
       JsVar *func, *timeout;
       jspParseDoubleFunction(&func, &timeout);
-      if (!jsvIsFunction(func)) {
-        jsError("Function not supplied!");
+      if (!jsvIsFunction(func) && !jsvIsString(func)) {
+        jsError("Function or String not supplied!");
       }
       // Create a new timer
       JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
@@ -709,8 +740,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVarInt itemIndex = -1;
       JsVar *funcVar, *pinVar, *recurringVar;
       jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
-      if (!jsvIsFunction(funcVar)) {
-        jsError("Function not supplied!");
+      if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
+        jsError("Function or String not supplied!");
       } else {
         int pin = jshGetPinFromVar(pinVar);
 
@@ -763,21 +794,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
 
     if (strcmp(name,"load")==0) {
       /*JS* function load()
-       *JS*  Load program memory out of flash */
+       *JS*  Load program memory out of flash 
+       */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_LOAD;
       return 0;
     }
     if (strcmp(name,"save")==0) {
       /*JS* function save()
-       *JS*  Save program memory into flash */
+       *JS*  Save program memory into flash 
+       */
       jspParseEmptyFunction();
       todo |= TODO_FLASH_SAVE;
       return 0;
     }
     if (strcmp(name,"reset")==0) {
       /*JS* function reset()
-       *JS*  Reset everything - clear program memory */
+       *JS*  Reset everything - clear program memory
+       */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
       return 0;
@@ -786,21 +820,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       /*JS* function echo(yesorno)
        *JS*  Should TinyJS echo what you type back to you? true = yes (Default), false = no.
        *JS*  When echo is off, the result of executing a command is not returned.
-       *JS*  Instead, you must use 'print' to send output. */
+       *JS*  Instead, you must use 'print' to send output.
+       */
       bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
       echo = b;
       return 0;
     }
     if (strcmp(name,"trace")==0) {
       /*JS* function trace()
-       *JS*  Output debugging information */
+       *JS*  Output debugging information 
+       */
       jspParseEmptyFunction();
       jsvTrace(p.root, 0);
       return 0;
     }
     if (strcmp(name,"dump")==0) {
       /*JS* function dump()
-       *JS*  Output current interpreter state such that it can be copied to a new device */
+       *JS*  Output current interpreter state such that it can be copied to a new device 
+       */
       jspParseEmptyFunction();
       jsiDumpState();
       return 0;
