@@ -9,6 +9,7 @@
  *       Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       On assert fail, should restart interpreter and try and recover
+ *       Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
  *
  *  LOW PRIORITY
  *       Handle '0' in strings - switch to storing string length in flags
