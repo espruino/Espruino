@@ -1,0 +1,110 @@
+Hi, I thought this might be handy for anyone looking for a cheap way to get extra IO on their RasPi (or PC :). 
+
+I've written a JavaScript interpreter which runs on a VERY cheap board, the STM32VLDISCOVERY. It's currently £8 from Farnell and it's got bags of IO: [url]http://uk.farnell.com/stmicroelectronics/stm32vldiscovery/stm32-value-line-discovery-kit/dp/2118806[/url]
+
+It's 3.3v, so no problem connecting it with the Pi.
+
+The interpreter is here:
+[url]http://www.pur3.co.uk/espruino/[/url]
+
+Just follow the instructions there to put it onto the STM32VLDISCOVERY board, then use these instructions. The rest of this needs to be executed into a terminal:
+
+We need to stop the Raspberry PI trying to use its serial port:
+
+  [code]sudo nano /boot/cmdline.txt[/code]
+  Remove the text 'console=ttyAMA0,115200' and 'kgdboc=ttyAMA0,115200'. Press Ctrl+X to exit, then Y then enter to confirm.
+
+  [code]sudo nano  /etc/inittab[/code]
+  Remove the lines (down the bottom):
+[code]    #Spawn a getty on Raspberry Pi serial line
+    T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100[/code]
+  Press Ctrl+X to exit, then Y then enter to confirm. 
+
+  Reboot:
+[code]  sudo shutdown -r now[/code]
+
+Then install a terminal app to test with:
+
+[code]  sudo apt-get install minicom[/code]
+
+And finally, we want to set our user up so that we can access the serial port without having to type 'sudo'. This allows us to 'dialout' of the Raspberry Pi:
+
+[code]  sudo usermod -a -G dialout pi[/code]
+
+And run it:
+
+[code]  minicom -o -b 9600 -D /dev/ttyAMA0[/code]
+
+Connect up the STM32VLDISCOVERY board:
+
+[code]  PI            STM32
+  P1-04         5V
+  P1-06         GND
+  P1-08         PA10
+  P1-10         PA9[/code]
+
+  For the locations, see: [url]http://elinux.org/RPi_Low-level_peripherals[/url]
+  Note: On the Pi, P1-04/6/8/10 are 4 pins next to each other, down the long edge of the board. P1-02 is the pin right in the corner (don't use that one!) and P1-04 is the one next to it, P1-06 is the one after that, etc.
+
+Now when you hit the black reset button on the STM32 board, you should see some text appear saying 'Espruino' in big letters. Sorted.
+
+You can turn digital pins on and off using a command like digitalWrite(pin, value) - eg, writing [b]digitalWrite("C9", 1); [/b]will turn the LED on.
+
+Or copy and pasting the following will flash it 5 times every time you press the blue button:
+
+[code]setWatch(function() {
+  if (!digitalRead("A0")) return;
+  var led=10;
+  var flasher = setInterval(function() { 
+   led--;
+   digitalWrite("C9",led&1); 
+   if (led<=0) clearInterval(flasher);
+  }, 200);
+}, "A0", true);[/code]
+
+You can write complete JavaScript code in it - see the website [url]http://www.pur3.co.uk/espruino/[/url] for other stuff you can put in.
+
+To exit the terminal app, press Ctrl-A then X, then hit enter to confirm.
+
+So now you might want to actually control some IO from a program.
+
+Set up serial port:
+
+  [code]stty -F /dev/ttyAMA0 9600 -parenb -parodd cs8 hupcl -cstopb cread clocal -crtscts ignbrk raw min 0 time 5[/code]
+  (note that raw,min + time 5 are important - they make cat only wait for 1/2 a sec for a reply)
+
+Turn LED on:
+
+  [code]echo -ne 'digitalWrite("C9",1);\r' > /dev/ttyAMA0[/code]
+
+Turn LED off:
+
+  [code]echo -ne 'digitalWrite("C9",0);\r' > /dev/ttyAMA0[/code]
+
+Turn LED on, then off 1 second later - note that it returns immediately!:
+
+  [code]echo -ne 'digitalWrite("C9",1);setTimeout("digitalWrite(\"C9\",0);",1000);\r' > /dev/ttyAMA0[/code]
+
+You can also read inputs (for instance the button) with digitalRead("A0"), as well as Analog inputs (on the A port) using analogRead("A0"):
+
+ first - to set it up not to send any 'extra' data back:
+    [code]echo -ne 'echo(false);\r' > /dev/ttyAMA0 [/code]
+
+ and then:
+    [code]echo -ne 'setTimeout("print(digitalRead(\"A0\"))",100);\r' > /dev/ttyAMA0;cat /dev/ttyAMA0[/code]
+
+ This is particularly nasty - can anyone think of a better way?
+
+As you can run JavaScript while the Pi is off doing something else, you can also do stuff like this:
+
+  Every 10th of a second, read an analog value, and store it in a running average:
+    [code]echo -ne 'echo(false);var a=0;var n=0;setInterval("a+=analogRead(\"A0\");n++;",100);\r' > /dev/ttyAMA0[/code]
+
+  Then at any point after, do this to read the average and zero it:
+    [code]echo -ne 'setTimeout("print(a/n);a=0;n=0;",100);\r' > /dev/ttyAMA0;cat /dev/ttyAMA0[/code]
+
+  So you could do it as a cron job, and read what the average has been over the last hour...
+
+Anyway, hope that's interesting to someone - let me know what you think! 
+
+I'd like to find some way to get support for this so I can improve the interpreter and port it to more boards.
