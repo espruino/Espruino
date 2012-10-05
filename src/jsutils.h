@@ -83,7 +83,7 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 #define JSPARSE_FUNCTION_SCOPE_NAME "#scope#"
 
-#if 1 // ndef ARM
+#ifndef ARM
  #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 #else
  #define assert(X) 

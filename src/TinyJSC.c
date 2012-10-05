@@ -2,30 +2,28 @@
  *
  * TODO:
  *       
- *       On assert fail, should restart interpreter and try and recover
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
  *       break/continue
  *       Add Array.splice
  *       Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
+ *       Lex could use JsVars in order to store potentially very big strings that it parses
+ *       On assert fail, should restart interpreter and try and recover
  *
  *  LOW PRIORITY
  *       Handle '0' in strings - switch to storing string length in flags
- *       When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using same code - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
+ *       When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
  *       Group builtin functions alphabetically and do quick check on first character
  *       Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
  *       Add 'delete' keyword for killing array items?
  *       Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
  *       Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
  *       Memory leak cleanup code - to try and clean up if memory has been leaked
- *       Garbage collection for nested references
  *       'if ("key" in obj)' syntax
  *       function.call(scope)
  *       handle 'new Function() { X.call(this); Y.call(this); }' correctly
- *       'Array.prototype.clear = function () { this.X = 2e23; };'
- *       Rename IO functions to Arduino style: http://arduino.cc/en/Reference/HomePage
+ *       'Array.prototype.clear = function () { this.X = 23; };'
  *       Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
- *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       Could store vars in arrays/objects/functions as a binary tree instead of a linked list
  *       Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
  *       Memory manager to handle storing rarely used refs in flash
@@ -40,8 +38,6 @@
  * FIXME - will probably break if used
  * OPT - potential for speed optimisation
  *
- *
- FIXME: save(); close, start, save(); breaks!
  * */
 
 #include <stdio.h>
