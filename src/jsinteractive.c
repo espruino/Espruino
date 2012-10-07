@@ -34,6 +34,13 @@ typedef enum {
  TODO_RESET = 4,
 } TODOFlags;
 
+typedef enum {
+ IS_NONE,
+ IS_HAD_R,
+ IS_HAD_27,
+ IS_HAD_27_91,
+} InputState;
+
 TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
@@ -42,7 +49,7 @@ JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
 bool echo = true; ///< do we provide any user feedback?
-char cursorKeyState = 0; ///< state for dealing with cursor keys
+InputState inputState = 0; ///< state for dealing with cursor keys
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
 
@@ -191,7 +198,7 @@ int jsiCountBracketsInInput() {
   while (r) {
     JsVar *v = jsvLock(r);
     size_t l = jsvGetMaxCharactersInVar(v);
-    int i;
+    size_t i;
     for (i=0;i<l;i++) { 
       char ch = v->varData.str[i];
       if (ch=='{') brackets++;
@@ -216,12 +223,12 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 49 then 126 - home
   // 27 then 79 then 70 - end
 
-  if (cursorKeyState==0 && ch == 27) {
-    cursorKeyState = 1;
-  } else if (cursorKeyState==1 && ch == 91) {
-    cursorKeyState = 2;
-  } else if (cursorKeyState==2) {
-    cursorKeyState = 0;
+  if (inputState==IS_NONE && ch == 27) {
+    inputState = IS_HAD_27;
+  } else if (inputState==IS_HAD_27 && ch == 91) {
+    inputState = IS_HAD_27_91;
+  } else if (inputState==IS_HAD_27_91) {
+    inputState = IS_NONE;
     if (ch==68) { // left
     }
     if (ch==67) { // right
@@ -232,9 +239,9 @@ void jsiHandleChar(char ch) {
     if (ch==66) { // down
     }
   } else {
-    cursorKeyState = 0;
+    inputState = IS_NONE;
     if (ch == CHAR_DELETE_RECV /*delete*/) {
-      size_t l = jsvGetStringLength(inputline);
+      int l = (int)jsvGetStringLength(inputline);
       if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
         // clear the character
         if (echo) {
@@ -250,7 +257,10 @@ void jsiHandleChar(char ch) {
       } else {
         // no characters, don't allow delete
       }
-    } else if (ch == '\r') {
+    } else if (ch == '\n' && inputState == IS_HAD_R) {
+      inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
+    } else if (ch == '\r' || ch == '\n') { // TODO: double newlines if \r\n?
+      if (ch == '\r') inputState = IS_HAD_R;
       if (jsiCountBracketsInInput()<=0) {
         if (echo) {
           jshTX('\r');

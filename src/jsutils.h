@@ -24,6 +24,7 @@
             When calling a NAMED function, zero the scopes - this stops scope table overflow
      1v06 : Add break + continue
             Add switch statement
+            Handle /r, /r/n or just /n for newlines - phone compatible                            
 */
 
 // surely bool is defined??

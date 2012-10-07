@@ -9,6 +9,7 @@
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       On assert fail, should restart interpreter and try and recover
  *       Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
+ *       digitalWrite/Read to take arrays of pins, and int for value
  *
  *  LOW PRIORITY
  *       Handle '0' in strings - switch to storing string length in flags
