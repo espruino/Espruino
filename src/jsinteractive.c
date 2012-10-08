@@ -11,10 +11,8 @@
 #include "jshardware.h"
 
 #ifdef ARM
-#define CHAR_DELETE_RECV 0x08
 #define CHAR_DELETE_SEND 0x08
 #else
-#define CHAR_DELETE_RECV 127
 #define CHAR_DELETE_SEND '\b'
 #endif
 
@@ -212,7 +210,7 @@ int jsiCountBracketsInInput() {
 } 
 
 void jsiHandleChar(char ch) {
-  // jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
+  //jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
   //
   // special stuff
   // 27 then 91 then 68 - left
@@ -240,7 +238,7 @@ void jsiHandleChar(char ch) {
     }
   } else {
     inputState = IS_NONE;
-    if (ch == CHAR_DELETE_RECV /*delete*/) {
+    if (ch == 0x08 || ch == 0x7F /*delete*/) {
       int l = (int)jsvGetStringLength(inputline);
       if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
         // clear the character

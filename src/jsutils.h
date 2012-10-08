@@ -25,6 +25,7 @@
      1v06 : Add break + continue
             Add switch statement
             Handle /r, /r/n or just /n for newlines - phone compatible                            
+            Handle different type of delete
 */
 
 // surely bool is defined??
