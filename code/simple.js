@@ -26,4 +26,11 @@ setWatch(function () {
  count++;
 }, "A0", 1);    
 
-
+// measure the time between button presses
+var downTime = 0;
+setWatch(function(x) { 
+  if (digitalRead("A0")) 
+    downTime = x.time;
+  else
+    print(x.time - downTime); 
+}, "A0", true);

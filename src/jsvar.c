@@ -7,6 +7,7 @@
 //#define INLINE_FUNC inline
 #include "jsvar.h"
 #include "jslex.h"
+#include "jsparse.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
 JsVar jsVars[JSVAR_CACHE_SIZE];

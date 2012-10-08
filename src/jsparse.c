@@ -390,9 +390,10 @@ JsVar *jspeFunctionDefinition() {
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'parent' is the object that contains this method,
- * if there was one (otherwise it's just a normnal function).
+ * if there was one (otherwise it's just a normal function).
+ * If !isParsing and arg0!=0, argument 0 is set to what is supplied
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
+JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *arg0) {
   if (JSP_SHOULD_EXECUTE && !function) {
       jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastEnd );
   }
@@ -460,7 +461,24 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing) {
         jsvUnLock(jspeBase());
       }
       JSP_MATCH(')');
-    }
+    } else if (JSP_SHOULD_EXECUTE && arg0!=0) {  // and NOT isParsing 
+      bool foundArg = false;
+      v = function->firstChild;
+      while (!foundArg && v) {
+        JsVar *param = jsvLock(v);
+        if (jsvIsFunctionParameter(param)) {
+          JsVar *newValueName = jsvMakeIntoVariableName(jsvCopy(param), arg0);
+          if (newValueName) { // could be out of memory
+            jsvAddName(functionRoot, newValueName);
+          } else 
+            jspSetError();
+          jsvUnLock(newValueName);
+          foundArg = true;
+        }
+        v = param->nextSibling;
+        jsvUnLock(param);
+      }
+    } 
     // setup a return variable
     returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
     if (!returnVarName) // out of memory
@@ -623,7 +641,7 @@ JsVar *jspeFactor() {
             if (execInfo.lex->tk=='(') { // ------------------------------------- Function Call
               JsVar *func = 0;
               func = jsvSkipNameAndUnlock(a);
-              a = jspeFunctionCall(func, parent, true);
+              a = jspeFunctionCall(func, parent, true, 0);
               jsvUnLock(func);
             } else if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
@@ -837,7 +855,7 @@ JsVar *jspeFactor() {
         JSP_MATCH(LEX_ID);
         obj = jsvNewWithFlags(JSV_OBJECT);
         if (jsvIsFunction(objClassOrFunc)) {
-          jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true));
+          jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true, 0));
         } else {
           jsvUnLock(jsvAddNamedChild(obj, objClassOrFunc, JSPARSE_PROTOTYPE_CLASS));
           if (execInfo.lex->tk == '(') {
@@ -1644,12 +1662,12 @@ JsVar *jspEvaluate(JsParse *parse, const char *str) {
   return v;
 }
 
-bool jspExecuteFunction(JsParse *parse, JsVar *func) {
+bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *arg0) {
   JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);
-  JsVar *resultVar = jspeFunctionCall(func, 0, false);
+  JsVar *resultVar = jspeFunctionCall(func, 0, false, arg0);
   bool result = jsvGetBool(resultVar);
   jsvUnLock(resultVar);
   // clean up

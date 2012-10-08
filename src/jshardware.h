@@ -26,6 +26,8 @@ typedef long long JsSysTime;
 JsSysTime jshGetSystemTime();
 /// Convert a time in Milliseconds to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
+/// Convert ticks to a time in Milliseconds
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
 
 // IO Events - these happen when a pin changes

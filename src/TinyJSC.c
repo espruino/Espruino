@@ -1,7 +1,6 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
- *       Pass arguments to event handlers - eg. time
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
  *       Add Array.splice
@@ -9,11 +8,11 @@
  *       Lex could use JsVars in order to store potentially very big strings that it parses
  *       On assert fail, should restart interpreter and try and recover
  *       Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
- *       digitalWrite/Read to take arrays of pins, and int for value
  *
  *  LOW PRIORITY
  *       Handle '0' in strings - switch to storing string length in flags
  *       When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
+ *       Handle serial port like node SerialPort? Or Arduino :/
  *       Group builtin functions alphabetically and do quick check on first character
  *       Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
  *       Add 'delete' keyword for killing array items?

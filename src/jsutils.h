@@ -27,6 +27,9 @@
             Handle /r, /r/n or just /n for newlines - phone compatible                            
             Handle different type of delete
      1v07 : Fix string charAt
+            Fix watch on different pin
+            Pass arguments to event handlers - eg. time
+            digitalWrite/Read to take arrays of pins, and int for value
 */
 
 // surely bool is defined??

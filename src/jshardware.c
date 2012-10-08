@@ -535,6 +535,15 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 #endif
 }
 
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+#ifdef ARM
+  return ((JsVarFloat)time)*1000/SystemCoreClock;
+#else
+  return ((JsVarFloat)time)/1000;
+#endif
+}
+
+
 JsSysTime jshGetSystemTime() {
 #ifdef ARM
   JsSysTime t1 = SysTickMajor;

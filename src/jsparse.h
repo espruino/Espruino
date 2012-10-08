@@ -42,7 +42,7 @@ void jspSetInterrupted(bool interrupt);
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str);
 JsVar *jspEvaluate(JsParse *parse, const char *str);
-bool jspExecuteFunction(JsParse *parse, JsVar *func);
+bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *arg0);
 
 /** When parsing, this enum defines whether
  we are executing or not */
