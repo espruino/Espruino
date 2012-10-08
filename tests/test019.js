@@ -7,6 +7,7 @@ parsed = Integer.parseInt("42");
 
 aStr = "ABCD";
 aChar = aStr.charAt(0);
+bChar = aStr.charAt(1);
 
 obj1 = new Object();
 obj1.food = "cake";
@@ -22,8 +23,10 @@ var a = [
   parsed==42,
   Integer.valueOf(aChar)==65,
   obj1.food=="cake",
-  obj2.desert=="pie"
+  obj2.desert=="pie",
+  aChar=="A",
+  bChar=="B"
 ];
 var d = Integer.valueOf(aChar);
 
-result = a[0]&&a[1]&&a[2]&&a[3]&&a[4]&&a[5]&&a[6];
+result = a[0]&&a[1]&&a[2]&&a[3]&&a[4]&&a[5]&&a[6]&&a[7]&&a[8];

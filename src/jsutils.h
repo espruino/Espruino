@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v06"
+#define JS_VERSION "1v07"
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
@@ -26,6 +26,7 @@
             Add switch statement
             Handle /r, /r/n or just /n for newlines - phone compatible                            
             Handle different type of delete
+     1v07 : Fix string charAt
 */
 
 // surely bool is defined??

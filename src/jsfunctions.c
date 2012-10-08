@@ -201,9 +201,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *v = jspParseSingleFunction();
          JsVarInt idx = jsvGetIntegerAndUnLock(v);
          // now search to try and find the char
-         buffer[0] = jsvGetCharInString(v, idx);
+         buffer[0] = jsvGetCharInString(a, idx);
          buffer[1] = 0;
-         jsvUnLock(v);
          return jsvNewFromString(buffer);
        }
        if (strcmp(name,"indexOf")==0) {
