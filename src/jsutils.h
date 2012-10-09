@@ -34,6 +34,11 @@
 
 
   TODO:
+        MEMORY LEAK:
+ 
+              var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); }
+              setInterval(f,200);
+
         See sos.js - run multiple times so it runs out of memory - big memory leak
         Make save() retry writing to flash (and not even bother if it was correct)
         Detect if running out of FIFO space and skip writing characters
