@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v08"
+#define JS_VERSION "1v09"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -35,6 +35,7 @@
             Allowed test cases to test timers - eg. code in jsinteractive.c
             Fix memory leak for timer
             Fix memory leak for digitalWrite
+     1v09 : Anabled 'abs' by default
 [/CHANGELOG]
 
 [TODO]
@@ -48,9 +49,10 @@
     STM32F4: Extra IO pin defs
         Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-
+        analogWrite, using 3rd argument with optional frequency
 
   MEDIUM PRIORITY:
+	When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
         Lex could use JsVars in order to store potentially very big strings that it parses
         On assert fail, should restart interpreter and try and recover
@@ -61,6 +63,7 @@
   LOW PRIORITY
         Built-in constants for LED1/BTN/etc.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
+        Allow Serial comms via other UARTS
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Handle serial port like node.js SerialPort? Or Arduino :/
