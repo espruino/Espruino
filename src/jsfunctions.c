@@ -111,11 +111,15 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         jspParseVariableName();
         return jsvNewFromFloat(3.14159265359);
       }
-#ifdef USE_MATH
       if (strcmp(name,"abs")==0) {
+      /*JS* method Math.abs(x)
+       *JS*  Return the absolute value of X (as a double)
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(abs(x));
+        if (x<0) x=-x;
+        return jsvNewFromFloat(x);
       }
+#ifdef USE_MATH
       if (strcmp(name,"acos")==0) {
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(acos(x));

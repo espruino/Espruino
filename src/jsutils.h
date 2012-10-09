@@ -43,6 +43,7 @@
   HIGH PRIORITY:
     MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak (maybe not now??)
         Detect if running out of FIFO space and skip writing characters
+        Add Math functions
     STM32F4: Allow write to flash
     STM32F4: Extra IO pin defs
         Make save() retry writing to flash if there was an error
