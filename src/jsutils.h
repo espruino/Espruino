@@ -30,7 +30,49 @@
             Fix watch on different pin
             Pass arguments to event handlers - eg. time
             digitalWrite/Read to take arrays of pins, and int for value
-     1v08 : Attempting to add F4 support
+     1v08 : Add preliminary F4 support
+
+
+  TODO:
+        See sos.js - run multiple times so it runs out of memory - big memory leak
+        Make save() retry writing to flash (and not even bother if it was correct)
+        Detect if running out of FIFO space and skip writing characters
+        Add Array.splice
+        Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
+        Lex could use JsVars in order to store potentially very big strings that it parses
+        On assert fail, should restart interpreter and try and recover
+        Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
+     STM32F4: Allow write to flash
+     STM32F4: Extra IO pin defs
+ 
+  LOW PRIORITY
+        Handle '0' in strings - switch to storing string length in flags
+        When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
+        Handle serial port like node SerialPort? Or Arduino :/
+        Group builtin functions alphabetically and do quick check on first character
+        Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+        Add 'delete' keyword for killing array items?
+        Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
+        Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
+        Memory leak cleanup code - to try and clean up if memory has been leaked
+        'if ("key" in obj)' syntax
+        function.call(scope)
+        handle 'new Function() { X.call(this); Y.call(this); }' correctly
+        'Array.prototype.clear = function () { this.X = 23; };'
+        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
+        Could store vars in arrays/objects/functions as a binary tree instead of a linked list
+        Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
+        Memory manager to handle storing rarely used refs in flash
+           - use binary tree to look up JsVar from its ref
+           - maybe also linked list to keep track of what is used most often
+        Add require(filename) function
+        Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
+        Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
+ 
+  In code:
+  TODO - should be fixed
+  FIXME - will probably break if used
+  OPT - potential for speed optimisation
 */
 
 // surely bool is defined??
@@ -45,13 +87,32 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #define true (1)
 #define false (0)
 
-/// Reference for variables
+/* Number of Js Variables allowed and Js Reference format. 
+
+   JsVarRef = char -> 20 bytes/JsVar
+   JsVarRef = short -> 24 bytes/JsVar
+
+   NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
+*/
 #ifdef ARM
-typedef unsigned char JsVarRef;
+ #ifdef STM32F4
+  #define JSVAR_CACHE_SIZE 6000  
+  typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
+ #else
+  #define JSVAR_CACHE_SIZE 250 // room for 350, but must leave stack
+  typedef unsigned char JsVarRef;  // References for variables - We treat 0 as null 
+ #endif
 #else
-typedef unsigned short JsVarRef;
+ #define JSVAR_CACHE_SIZE 250
+ typedef unsigned short JsVarRef; // References for variables - We treat 0 as null
 #endif
-// We treat 0 as null
+
+
+#ifdef ARM
+
+#else
+
+#endif
 
 typedef long long JsVarInt;
 typedef unsigned long long JsVarIntUnsigned;
@@ -65,14 +126,7 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
-/* Number of Js Variables allowed. NOTE: this must be at least 1 less than
- the number we can fit in JsVarRef */
-#ifdef ARM
-#define JSVAR_CACHE_SIZE 250 
-// room for 350, but must leave stack
-#else
-#define JSVAR_CACHE_SIZE 250
-#endif
+
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3)

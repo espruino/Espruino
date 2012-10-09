@@ -26,8 +26,11 @@
   #define STM32vldiscovery_LEDOn STM_EVAL_LEDOn
   #define STM32vldiscovery_LEDOff STM_EVAL_LEDOff
   #define STM32vldiscovery_PBInit STM_EVAL_PBInit
-  #define GPIO_Mode_IN_FLOATING GPIO_Mode_IN
-  #define GPIO_Mode_AF_PP GPIO_Mode_AF
+
+  // we have loads of memory
+  #define RXBUFFERMASK 127
+  #define TXBUFFERMASK 127
+
  #else
   #include "stm32f10x.h"
   #include "peripherals/stm32f10x_adc.h"
@@ -41,6 +44,10 @@
   #define MAIN_USART_Port GPIOA
   #define MAIN_USART USART1
   #define JOIN_MAIN_USART(X) USART1 ## X
+
+  #define RXBUFFERMASK 31
+  #define TXBUFFERMASK 15
+
  #endif
 #else//!ARM
 #include <stdlib.h>
@@ -59,12 +66,10 @@
 //                                                                     BUFFERS
 #ifdef ARM
 // UART Receive
-#define RXBUFFERMASK 31
 char rxBuffer[RXBUFFERMASK+1];
 volatile unsigned char rxHead=0, rxTail=0;
 
 // UART Transmit
-#define TXBUFFERMASK 15
 char txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
 
@@ -391,6 +396,10 @@ void jshInit() {
   /* Initialise LEDs LD3&LD4, both on */
   STM32vldiscovery_LEDInit(LED3);
   STM32vldiscovery_LEDInit(LED4);
+#ifdef STM32F4
+  STM32vldiscovery_LEDInit(LED5);
+  STM32vldiscovery_LEDInit(LED6);
+#endif
   STM32vldiscovery_PBInit(BUTTON_USER, BUTTON_MODE_GPIO); // See STM32vldiscovery.c (MODE_EXTI) to see how to set up interrupts!
   STM32vldiscovery_LEDOn(LED3);
   STM32vldiscovery_LEDOn(LED4);
@@ -398,22 +407,42 @@ void jshInit() {
   STM32vldiscovery_LEDOff(LED3);
 
   GPIO_InitTypeDef GPIO_InitStructure;
-  USART_InitTypeDef USART_InitStructure;
-  USART_ClockInitTypeDef USART_ClockInitStructure;
-
 
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+#else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
   GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_TX; // TX
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; // alternate fn
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+#else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#endif
   GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
+#ifdef STM32F4
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2);
+#endif
+
+  USART_ClockInitTypeDef USART_ClockInitStructure;
   USART_ClockStructInit(&USART_ClockInitStructure);
   USART_ClockInit(MAIN_USART, &USART_ClockInitStructure);
+
+  USART_InitTypeDef USART_InitStructure;
+#ifdef STM32F4
+  USART_InitStructure.USART_BaudRate = 9600*3;//38400; // FIXME wtf
+#else
   USART_InitStructure.USART_BaudRate = 9600;//38400;
+#endif
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No ;
@@ -421,6 +450,7 @@ void jshInit() {
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
   //Write USART parameters
   USART_Init(MAIN_USART, &USART_InitStructure);
+
 
   // enable uart interrupt
   NVIC_InitTypeDef NVIC_InitStructure;
@@ -434,6 +464,19 @@ void jshInit() {
   USART_ITConfig(MAIN_USART, USART_IT_RXNE, ENABLE);
   //Enable USART
   USART_Cmd(MAIN_USART, ENABLE);
+/*
+  while (true) {
+    STM32vldiscovery_LEDOn(LED5);
+    USART_SendData(USART2, (uint8_t) 'G');
+    //Loop until the end of transmission
+    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+   STM32vldiscovery_LEDOn(LED4);
+    USART_SendData(USART2, (uint8_t) 'W');
+    //Loop until the end of transmission
+    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
+
+  }*/
+
 
   /* Enable and set EXTI Line0 Interrupt to the lowest priority */
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
@@ -531,11 +574,16 @@ int jshRX() {
 
 void jshTX(char data) {
 #ifdef ARM
+ #if 1
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
   txBuffer[txHead] = (char)data;
   txHead = txHeadNext;
   USART_ITConfig(MAIN_USART, USART_IT_TXE, ENABLE); // enable interrupt -> start transmission
+ #else // No IRQs
+  USART_SendData(MAIN_USART, data);
+  while(USART_GetFlagStatus(MAIN_USART, USART_FLAG_TC) == RESET);
+ #endif
 #else
   fputc(data, stdout);
   fflush(stdout);
@@ -618,8 +666,14 @@ bool jshPinInput(int pin) {
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
+#ifdef STM32F4    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;    
+#else
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
+
 
     value = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? 1 : 0;
   } else jsError("Invalid pin!");
@@ -634,6 +688,9 @@ JsVarFloat jshPinAnalog(int pin) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+#ifdef STM32F4    
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;    
+#endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
     // Configure chanel
@@ -737,7 +794,12 @@ void jshPinWatch(int pin, bool shouldWatch) {
     // set as input
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
+#ifdef STM32F4    
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;    
+#else
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
 #ifdef STM32F4 
