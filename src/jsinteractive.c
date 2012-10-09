@@ -378,6 +378,13 @@ void jsiExecuteEvents() {
   }
 }
 
+bool jsiHasTimers() {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  JsVarInt c = jsvGetArrayLength(timerArrayPtr);
+  jsvUnLock(timerArrayPtr);
+  return c>0;
+}
+
 void jsiIdle() {
   // Check each pin for any change
   /*int pin;
@@ -408,7 +415,8 @@ void jsiIdle() {
         JsVar *data = jsvNewWithFlags(JSV_OBJECT);
         if (data) {
           JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.time)/1000);
-          if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
+          if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));          
+          jsvUnLock(dataTime);
         }
         jsiQueueEvents(jsvGetRef(watchCallback), data);
         jsvUnLock(data);
@@ -441,8 +449,10 @@ void jsiIdle() {
       if (data) {
         JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000);
         if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
+        jsvUnLock(dataTime);
       }
       jsiQueueEvents(jsvGetRef(timerCallback), data);
+      jsvUnLock(data);
       if (jsvGetBool(timerRecurring)) {
         JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
         if (interval<=0)
@@ -472,7 +482,7 @@ void jsiIdle() {
       jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
       JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveAllChildren(timerArrayPtr);
-     jsvUnLock(timerArrayPtr);
+      jsvUnLock(timerArrayPtr);
     }
   }
   // check for TODOs
@@ -715,7 +725,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         JsVarRef pinName = pinVar->firstChild;        
         while (pinName) {
           JsVar *pinNamePtr = jsvLock(pinName);
-          value = (value<<1) | jshPinInput(jshGetPinFromVar(jsvSkipName(pinNamePtr)));
+          JsVar *pinPtr = jsvSkipName(pinNamePtr);
+          value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+          jsvUnLock(pinPtr);
           pinName = pinNamePtr->nextSibling; 
           jsvUnLock(pinNamePtr);
           pins++;
@@ -755,7 +767,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         JsVarRef pinName = pinVar->lastChild; // NOTE: start at end and work back!
         while (pinName) {
           JsVar *pinNamePtr = jsvLock(pinName);
-          jshPinOutput(jshGetPinFromVar(jsvSkipName(pinNamePtr)), value&1);
+          JsVar *pinPtr = jsvSkipName(pinNamePtr);
+          jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
+          jsvUnLock(pinPtr);
           pinName = pinNamePtr->prevSibling; 
           jsvUnLock(pinNamePtr);
           value = value>>1; // next bit down

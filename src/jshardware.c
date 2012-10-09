@@ -816,6 +816,7 @@ JsVarFloat jshPinAnalog(int pin) {
   return value;
 }
 
+#ifdef ARM
 static inline void jshSetPinValue(int pin, bool value) {
 #ifdef STM32F4 
     if (value)
@@ -829,6 +830,7 @@ static inline void jshSetPinValue(int pin, bool value) {
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
 #endif
 }
+#endif
 
 void jshPinOutput(int pin, bool value) {
 #ifdef ARM

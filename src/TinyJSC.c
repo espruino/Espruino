@@ -22,28 +22,19 @@ void nativeInterrupt(JsVarRef var) {
   jspSetInterrupted(true);
 }
 
-void nativePrint(JsVarRef var) {
-  JsVar *text = jsvSkipNameAndUnlock(jsvFindChildFromString(var, "text", false/*no create*/));
-  char buf[256];
-  jsvGetString(text, buf, 256);
-  printf("PRINT: '%s'\n", buf);
-  jsvUnLock(text);
-}
-
-
 bool run_test(const char *filename) {
-  printf("----------------------------------\n");
-  printf("----------------------------- TEST %s \n", filename);
+  printf("----------------------------------\r\n");
+  printf("----------------------------- TEST %s \r\n", filename);
   struct stat results;
   if (!stat(filename, &results) == 0) {
-    printf("Cannot stat file! '%s'\n", filename);
+    printf("Cannot stat file! '%s'\r\n", filename);
     return false;
   }
   int size = results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
-     printf("Unable to open file! '%s'\n", filename);
+     printf("Unable to open file! '%s'\r\n", filename);
      return false;
   }
   char *buffer = malloc(size+1);
@@ -52,35 +43,40 @@ bool run_test(const char *filename) {
   buffer[size]=0;
   fclose(file);
 
-  jsvInit();
-  JsParse p;
-  jspInit(&p);
-  jspAddNativeFunction(&p, "function print(text)", nativePrint);
-  jspAddNativeFunction(&p, "function interrupt()", nativeInterrupt);
 
-  jsvUnLock(jspEvaluate(&p, buffer ));
+  jshInit();
+  jsiInit(true);
 
-  JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, "result", false/*no create*/));
+  jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
+  jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);
+
+  jsvUnLock(jspEvaluate(jsiGetParser(), buffer ));
+
+  isRunning = true;
+  while (isRunning && jsiHasTimers()) {
+    jsiLoop();
+  }
+
+  JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(jsiGetParser()->root, "result", false/*no create*/));
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 
   if (pass)
-    printf("----------------------------- PASS %s\n", filename);
+    printf("----------------------------- PASS %s\r\n", filename);
   else {
-    printf("----------------------------------\n");
-    printf("----------------------------- FAIL %s <-------\n", filename);
-    jsvTrace(p.root, 0);
-    printf("----------------------------- FAIL %s <-------\n", filename);
-    printf("----------------------------------\n");
+    printf("----------------------------------\r\n");
+    printf("----------------------------- FAIL %s <-------\r\n", filename);
+    jsvTrace(jsiGetParser()->root, 0);
+    printf("----------------------------- FAIL %s <-------\r\n", filename);
+    printf("----------------------------------\r\n");
   }
-  printf("BEFORE: %d Memory Records Used\n", jsvGetMemoryUsage());
- // jsvTrace(p.root, 0);
-  jspKill(&p);
-  printf("AFTER: %d Memory Records Used (should be 0!)\n", jsvGetMemoryUsage());
+  printf("BEFORE: %d Memory Records Used\r\n", jsvGetMemoryUsage());
+ // jsvTrace(jsiGetParser()->root, 0);
+  jsiKill();
+  printf("AFTER: %d Memory Records Used (should be 0!)\r\n", jsvGetMemoryUsage());
   jsvShowAllocated();
-  jsvKill();
-  printf("\n");
-
+  jshKill();
+  printf("\r\n");
 
   free(buffer);
   return pass;
@@ -92,6 +88,8 @@ bool run_all_tests() {
   int count = 0;
   int passed = 0;
 
+  char *fails = strdup("");
+
   while (test_num<1000) {
     char fn[32];
     sprintf(fn, "../tests/test%03d.js", test_num);
@@ -100,16 +98,28 @@ bool run_all_tests() {
     if (!f) break;
     fclose(f);
 
-    if (run_test(fn))
+    if (run_test(fn)) {
       passed++;
+    } else {
+      char *t = malloc(strlen(fails)+2+strlen(fn));
+      strcpy(t, fails);
+      strcat(t,fn);
+      strcat(t,"\r\n");  
+      free(fails);
+      fails  =t;
+    }
     count++;
     test_num++;
   }
 
-  if (count==0) printf("No tests found in ../tests/test*.js!\n");
-  printf("--------------------------------------------------\n");
-  printf(" %d of %d tests passed\n", passed, count);
-  printf("--------------------------------------------------\n");
+  if (count==0) printf("No tests found in ../tests/test*.js!\r\n");
+  printf("--------------------------------------------------\r\n");
+  printf(" %d of %d tests passed\r\n", passed, count);
+  if (passed!=count) {
+   printf("FAILS:\r\n%s", fails);
+  }
+  printf("--------------------------------------------------\r\n");
+  free(fails);
   return passed == count;
 }
 

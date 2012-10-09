@@ -32,6 +32,9 @@
             Pass arguments to event handlers - eg. time
             digitalWrite/Read to take arrays of pins, and int for value
      1v08 : Add preliminary STM32F4 support
+            Allowed test cases to test timers - eg. code in jsinteractive.c
+            Fix memory leak for timer
+            Fix memory leak for digitalWrite
 [/CHANGELOG]
 
 [TODO]
@@ -39,7 +42,7 @@
 
   HIGH PRIORITY:
 
-    MEMORY LEAK: var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); } setInterval(f,200);
+    MEMORY LEAK: var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); }; setInterval(f,200);
     MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak
         Detect if running out of FIFO space and skip writing characters
     STM32F4: Allow write to flash
@@ -115,7 +118,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   typedef unsigned char JsVarRef;  // References for variables - We treat 0 as null 
  #endif
 #else
- #define JSVAR_CACHE_SIZE 250
+ #define JSVAR_CACHE_SIZE 350
  typedef unsigned short JsVarRef; // References for variables - We treat 0 as null
 #endif
 

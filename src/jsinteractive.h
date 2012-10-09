@@ -16,6 +16,7 @@ void jsiKill();
 
 void jsiLoop();
 
+bool jsiHasTimers(); // are there timers still left to run?
 JsParse *jsiGetParser();
 
 #endif /* JSINTERACTIVE_H_ */
