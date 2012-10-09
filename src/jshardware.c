@@ -12,11 +12,15 @@
   #include "peripherals/stm32f4xx_gpio.h"
   #include "peripherals/stm32f4xx_usart.h"
   #include "peripherals/stm32f4xx_flash.h"
+  #include "peripherals/stm32f4xx_syscfg.h"
   #include "stm32f4_discovery.h"
 
-  #define MAIN_USART_Pin_RX GPIO_Pin_10
-  #define MAIN_USART_Pin_TX GPIO_Pin_9
+  #define MAIN_USART_Pin_RX GPIO_Pin_3
+  #define MAIN_USART_Pin_TX GPIO_Pin_2
   #define MAIN_USART_Port GPIOA
+  #define MAIN_USART USART2
+  #define JOIN_MAIN_USART(X) USART2 ## X
+
 
   #define STM32vldiscovery_LEDInit STM_EVAL_LEDInit
   #define STM32vldiscovery_LEDOn STM_EVAL_LEDOn
@@ -35,6 +39,8 @@
   #define MAIN_USART_Pin_RX GPIO_Pin_10
   #define MAIN_USART_Pin_TX GPIO_Pin_9
   #define MAIN_USART_Port GPIOA
+  #define MAIN_USART USART1
+  #define JOIN_MAIN_USART(X) USART1 ## X
  #endif
 #else//!ARM
 #include <stdlib.h>
@@ -47,6 +53,7 @@
 
 #include "jshardware.h"
 #include "jsutils.h"
+#include "jsparse.h"
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
@@ -201,12 +208,12 @@ void SysTick_Handler(void) {
   SysTickMajor+=SYSTICK_RANGE;
 }
 
-void USART1_IRQHandler(void) {
- if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
+void JOIN_MAIN_USART(_IRQHandler)(void) {
+ if(USART_GetITStatus(MAIN_USART, USART_IT_RXNE) != RESET) {
     /* Clear the USART Receive interrupt */
-    USART_ClearITPendingBit(USART1, USART_IT_RXNE);
+    USART_ClearITPendingBit(MAIN_USART, USART_IT_RXNE);
     /* Read one byte from the receive data register */
-    char ch = USART_ReceiveData(USART1);
+    char ch = USART_ReceiveData(MAIN_USART);
     if (ch==3) { // Ctrl-C - force interrupt
       jspSetInterrupted(true);
     } else {
@@ -214,15 +221,15 @@ void USART1_IRQHandler(void) {
       rxHead = (rxHead+1)&RXBUFFERMASK;
     }
   }
-  if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET) {
+  if(USART_GetITStatus(MAIN_USART, USART_IT_TXE) != RESET) {
     /* Clear the USART Transmit interrupt */
-    //USART_ClearITPendingBit(USART1, USART_IT_TXE);
+    //USART_ClearITPendingBit(MAIN_USART, USART_IT_TXE);
     /* If we have other data to send, send it */
     if (txHead != txTail) {
-      USART_SendData(USART1, txBuffer[txTail]);
+      USART_SendData(MAIN_USART, txBuffer[txTail]);
       txTail = (txTail+1)&TXBUFFERMASK;
     } else
-      USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
+      USART_ITConfig(MAIN_USART, USART_IT_TXE, DISABLE);
   }
 }
 
@@ -357,9 +364,9 @@ void jshInit() {
 #ifdef ARM
   /* Enable UART and  GPIOx Clock */
  #ifdef STM32F4
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
-                         RCC_APB2Periph_USART1, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR |
+                         RCC_APB1Periph_USART2, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
                          RCC_AHB1Periph_GPIOC | 
@@ -399,34 +406,34 @@ void jshInit() {
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9; // TX
+  GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_TX; // TX
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
   GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
 
   USART_ClockStructInit(&USART_ClockInitStructure);
-  USART_ClockInit(USART1, &USART_ClockInitStructure);
+  USART_ClockInit(MAIN_USART, &USART_ClockInitStructure);
   USART_InitStructure.USART_BaudRate = 9600;//38400;
   USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   USART_InitStructure.USART_StopBits = USART_StopBits_1;
   USART_InitStructure.USART_Parity = USART_Parity_No ;
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  //Write USART1 parameters
-  USART_Init(USART1, &USART_InitStructure);
+  //Write USART parameters
+  USART_Init(MAIN_USART, &USART_InitStructure);
 
   // enable uart interrupt
   NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannel = JOIN_MAIN_USART(_IRQn);
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init( &NVIC_InitStructure );
   // Enable RX interrupt (TX is done when we have bytes)
-  USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-  USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-  //Enable USART1
-  USART_Cmd(USART1, ENABLE);
+  USART_ClearITPendingBit(MAIN_USART, USART_IT_RXNE);
+  USART_ITConfig(MAIN_USART, USART_IT_RXNE, ENABLE);
+  //Enable USART
+  USART_Cmd(MAIN_USART, ENABLE);
 
   /* Enable and set EXTI Line0 Interrupt to the lowest priority */
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
@@ -447,27 +454,45 @@ void jshInit() {
   NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
   NVIC_Init(&NVIC_InitStructure);
 
+#ifdef STM32F4
+  ADC_CommonInitTypeDef ADC_CommonInitStructure;
+  ADC_CommonStructInit(&ADC_CommonInitStructure);
+  ADC_CommonInitStructure.ADC_Mode			= ADC_Mode_Independent;
+  ADC_CommonInitStructure.ADC_Prescaler			= ADC_Prescaler_Div2;
+  ADC_CommonInitStructure.ADC_DMAAccessMode		= ADC_DMAAccessMode_Disabled;
+  ADC_CommonInitStructure.ADC_TwoSamplingDelay	        = ADC_TwoSamplingDelay_5Cycles;
+  ADC_CommonInit(&ADC_CommonInitStructure);
+#endif
+
   // ADC Structure Initialization
   ADC_InitTypeDef ADC_InitStructure;
   ADC_StructInit(&ADC_InitStructure);
 
   // Preinit
-  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
   ADC_InitStructure.ADC_ScanConvMode = DISABLE;
   ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+#ifdef STM32F4
+  ADC_InitStructure.ADC_ExternalTrigConvEdge		= ADC_ExternalTrigConvEdge_None;
+#else
+  ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
   ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Left;
   ADC_InitStructure.ADC_NbrOfChannel = 1;
+#endif
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Left;
   ADC_Init(ADC1, &ADC_InitStructure);
 
   // Enable the ADC
   ADC_Cmd(ADC1, ENABLE);
 
+#ifdef STM32F4
+  // No calibration??
+#else
   // Calibrate
   ADC_ResetCalibration(ADC1);
   while(ADC_GetResetCalibrationStatus(ADC1));
   ADC_StartCalibration(ADC1);
   while(ADC_GetCalibrationStatus(ADC1));
+#endif
 
 #ifdef ARM
   jsPrintInt(SystemCoreClock/1000000);jsPrint(" Mhz\r\n");
@@ -510,7 +535,7 @@ void jshTX(char data) {
   while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
   txBuffer[txHead] = (char)data;
   txHead = txHeadNext;
-  USART_ITConfig(USART1, USART_IT_TXE, ENABLE); // enable interrupt -> start transmission
+  USART_ITConfig(MAIN_USART, USART_IT_TXE, ENABLE); // enable interrupt -> start transmission
 #else
   fputc(data, stdout);
   fflush(stdout);
@@ -612,10 +637,18 @@ JsVarFloat jshPinAnalog(int pin) {
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
     // Configure chanel
+#ifdef STM32F4    
+    ADC_RegularChannelConfig(ADC1, IOPIN_DATA[pin].adc, 1, ADC_SampleTime_480Cycles);
+#else
     ADC_RegularChannelConfig(ADC1, IOPIN_DATA[pin].adc, 1, ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/);
+#endif
 
     // Start the conversion
+#ifdef STM32F4    
+    ADC_SoftwareStartConv(ADC1);
+#else
     ADC_SoftwareStartConvCmd(ADC1, ENABLE);
+#endif
 
     // Wait until conversion completion
     while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
@@ -627,19 +660,35 @@ JsVarFloat jshPinAnalog(int pin) {
   return value;
 }
 
+static inline void jshSetPinValue(int pin, bool value) {
+#ifdef STM32F4 
+    if (value)
+      GPIO_SetBits(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin);
+    else
+      GPIO_ResetBits(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin);
+#else
+    if (value)
+      IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
+    else
+      IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
+#endif
+}
+
 void jshPinOutput(int pin, bool value) {
 #ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef STM32F4 
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+#else
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+#endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
-    if (value)
-      IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
-    else
-      IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
+    jshSetPinValue(pin, value);
   } else jsError("Invalid pin!");
 #endif
 }
@@ -651,16 +700,17 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
-
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef STM32F4 
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+#else
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+#endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
 
-    if (value)
-      IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
-    else
-      IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
+    jshSetPinValue(pin, value);
     JsSysTime starttime = jshGetSystemTime();
     JsSysTime endtime = starttime + ticks;
     //jsPrint("----------- ");jsPrintInt(endtime>>16);jsPrint("\n");
@@ -669,10 +719,7 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
       stime = jshGetSystemTime();
       //jsPrintInt(stime>>16);jsPrint("\n");
     }
-    if (!value)
-      IOPIN_DATA[pin].gpio->BSRR = IOPIN_DATA[pin].pin;
-    else
-      IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
+    jshSetPinValue(pin, !value);
   } else jsError("Invalid pin!");
 #endif
 }
@@ -693,7 +740,11 @@ void jshPinWatch(int pin, bool shouldWatch) {
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
 
+#ifdef STM32F4 
+    SYSCFG_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
+#else
     GPIO_EXTILineConfig(portToPortSource(IOPIN_DATA[pin].gpio), pinToPinSource(IOPIN_DATA[pin].pin));
+#endif
 
     EXTI_InitTypeDef s;
     EXTI_StructInit(&s);
@@ -715,21 +766,40 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 }
 
 
-#define FLASH_MEMORY_SIZE (128*1024)
-#define FLASH_PAGE_SIZE 1024
-#define FLASH_PAGES 4
-#define FLASH_LENGTH (1024*FLASH_PAGES)
+#ifdef STM32F4
+ #define FLASH_MEMORY_SIZE (128*1024)
+ #define FLASH_PAGE_SIZE 4096
+ #define FLASH_PAGES 4
+#else
+ #define FLASH_MEMORY_SIZE (128*1024)
+ #define FLASH_PAGE_SIZE 1024
+ #define FLASH_PAGES 4
+#endif
+
+#define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
 #define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
 #define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-8)
 #define FLASH_MAGIC 0xDEADBEEF
 
+
 void jshSaveToFlash() {
 #ifdef ARM
+#ifdef STM32F4
+  jsPrint("\nSorry, Flash programming is not implemented on STM32F4 yet...\r\n");
+#else
+#ifdef STM32F4 
+  FLASH_Unlock();
+#else
   FLASH_UnlockBank1();
+#endif
 
   int i;
   /* Clear All pending flags */
+#ifdef STM32F4 
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR);
+#else
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+#endif
 
   jsPrint("Erasing Flash...");
   /* Erase the FLASH pages */
@@ -749,7 +819,11 @@ void jshSaveToFlash() {
   }
   FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
   FLASH_WaitForLastOperation(0x2000);
+#ifdef STM32F4 
+  FLASH_Lock();
+#else
   FLASH_LockBank1();
+#endif
   jsPrint("\nChecking...");
 
   int errors = 0;
@@ -763,7 +837,7 @@ void jshSaveToFlash() {
       jsPrint(" errors!\n>");
   } else
       jsPrint("\nDone!\n>");
-
+#endif // STM32F4
 
 //  This is nicer, but also broken!
 //  FLASH_UnlockBank1();

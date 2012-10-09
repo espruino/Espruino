@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v07"
+#define JS_VERSION "1v08"
 /* VERSION HISTORY:
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
@@ -30,6 +30,7 @@
             Fix watch on different pin
             Pass arguments to event handlers - eg. time
             digitalWrite/Read to take arrays of pins, and int for value
+     1v08 : Attempting to add F4 support
 */
 
 // surely bool is defined??

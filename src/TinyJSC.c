@@ -1,6 +1,7 @@
 /* REQUIRES -std=c99 FOR COMPILATION!
  *
  * TODO:
+ *       See sos.js - run multiple times so it runs out of memory - big memory leak
  *       Make save() retry writing to flash (and not even bother if it was correct)
  *       Detect if running out of FIFO space and skip writing characters
  *       Add Array.splice
