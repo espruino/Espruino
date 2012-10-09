@@ -15,7 +15,8 @@
 #endif
 
 #define JS_VERSION "1v08"
-/* VERSION HISTORY:
+/*
+[CHANGELOG]
      1v04 : Called Espruino
             Fixed issue with event add when out of memory
             If out of memory happens during a timer, kill all timers
@@ -30,32 +31,38 @@
             Fix watch on different pin
             Pass arguments to event handlers - eg. time
             digitalWrite/Read to take arrays of pins, and int for value
-     1v08 : Add preliminary F4 support
+     1v08 : Add preliminary STM32F4 support
+[/CHANGELOG]
 
+[TODO]
+  Things which are known about in this version which should be fixed (or just implemented!):  
 
-  TODO:
-        MEMORY LEAK:
- 
-              var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); }
-              setInterval(f,200);
+  HIGH PRIORITY:
 
-        See sos.js - run multiple times so it runs out of memory - big memory leak
-        Make save() retry writing to flash (and not even bother if it was correct)
+    MEMORY LEAK: var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); } setInterval(f,200);
+    MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak
         Detect if running out of FIFO space and skip writing characters
-        Add Array.splice
+    STM32F4: Allow write to flash
+    STM32F4: Extra IO pin defs
+        Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
+
+
+  MEDIUM PRIORITY:
+        Add Array.splice
         Lex could use JsVars in order to store potentially very big strings that it parses
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-     STM32F4: Allow write to flash
-     STM32F4: Extra IO pin defs
+        Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+
  
   LOW PRIORITY
+        Built-in constants for LED1/BTN/etc.
+        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
-        Handle serial port like node SerialPort? Or Arduino :/
+        Handle serial port like node.js SerialPort? Or Arduino :/
         Group builtin functions alphabetically and do quick check on first character
-        Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Add 'delete' keyword for killing array items?
         Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
@@ -64,16 +71,16 @@
         function.call(scope)
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         'Array.prototype.clear = function () { this.X = 23; };'
-        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Could store vars in arrays/objects/functions as a binary tree instead of a linked list
         Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
         Memory manager to handle storing rarely used refs in flash
            - use binary tree to look up JsVar from its ref
            - maybe also linked list to keep track of what is used most often
-        Add require(filename) function
+        Add require(filename) function (need fileIO first!)
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
- 
+[/TODO]
+
   In code:
   TODO - should be fixed
   FIXME - will probably break if used
