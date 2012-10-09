@@ -48,6 +48,7 @@
         Add Math functions
         Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
+        Allow lexer to handle strings longer than 32 chars
 
   MEDIUM PRIORITY:
 	When printing lines, backspace and add '>' prompt after print (only if echo=1)

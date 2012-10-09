@@ -69,3 +69,38 @@ setInterval(next,50);
 
 
 analogWrite("C9",0.1);
+
+analogWrite("D12",0.5);
+analogWrite("D13",0.25);  
+analogWrite("D14",0.75); 
+analogWrite("D15",1); 
+
+var ramp = [0,0.05,0.2,0.3,0.5,1,0.5,0.3,0.2,0.05];
+var c = 0;
+var d = 5;
+function next() {
+  c = (c+1)%ramp.length;
+  d = (d+1)%ramp.length;
+  analogWrite("C8",ramp[c]);
+  analogWrite("C9",ramp[d]);
+}
+setInterval(next,50);
+
+
+// measure time between keypresses and set light brightness
+var bright = 0;
+var target = 0;
+var lastPress = 0;
+setWatch(function(e) {
+ if (digitalRead("A0"))
+   lastPress = e.time;
+ else
+   target = (e.time-lastPress)/2;
+}, "A0",true);
+setInterval(function() {
+  bright=bright*0.9+target*0.1;
+  analogWrite("C9",bright-0.1);
+  analogWrite("C8",bright-0.6);
+},100);
+
+
