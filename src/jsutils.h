@@ -41,9 +41,7 @@
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
-
-    MEMORY LEAK: var n=1; var f = function () { n=n<<1; if (n>15)n=1; digitalWrite(["D12","D13","D14","D15"],n); }; setInterval(f,200);
-    MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak
+    MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak (maybe not now??)
         Detect if running out of FIFO space and skip writing characters
     STM32F4: Allow write to flash
     STM32F4: Extra IO pin defs
