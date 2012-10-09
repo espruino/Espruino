@@ -34,3 +34,11 @@ setWatch(function(x) {
   else
     print(x.time - downTime); 
 }, "A0", true);
+
+// flash 4 lights on stm32f4 around
+var n=1;
+setInterval(function () { 
+ n=n>>1; 
+ if (n==0) n=16; 
+ digitalWrite(["D12","D13","D14","D15"],n); 
+},50);
