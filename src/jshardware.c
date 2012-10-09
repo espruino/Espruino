@@ -105,8 +105,100 @@ typedef struct IOPin {
   uint8_t adc; // 0xFF or ADC_Channel_1
 } IOPin;
 
-#define IOPINS 50 // 16*3+2
-const IOPin IOPIN_DATA[IOPINS] = {
+#ifdef STM32F4
+ #define IOPINS 82 // 16*5+2
+ const IOPin IOPIN_DATA[IOPINS] = {
+ { GPIO_Pin_0,  GPIOA, ADC_Channel_0 },
+ { GPIO_Pin_1,  GPIOA, ADC_Channel_1 },
+ { GPIO_Pin_2,  0, 0xFF },//A2 - Serial
+ { GPIO_Pin_3,  0, 0xFF },//A3 - Serial
+ { GPIO_Pin_4,  GPIOA, ADC_Channel_4 },
+ { GPIO_Pin_5,  GPIOA, ADC_Channel_5 },
+ { GPIO_Pin_6,  GPIOA, ADC_Channel_6 },
+ { GPIO_Pin_7,  GPIOA, ADC_Channel_7 },
+ { GPIO_Pin_8,  GPIOA, 0xFF },
+ { GPIO_Pin_9,  GPIOA, 0xFF }, 
+ { GPIO_Pin_10, GPIOA, 0xFF }, 
+ { GPIO_Pin_11, GPIOA, 0xFF },
+ { GPIO_Pin_12, GPIOA, 0xFF },
+ { GPIO_Pin_13, GPIOA, 0xFF },
+ { GPIO_Pin_14, GPIOA, 0xFF },
+ { GPIO_Pin_15, GPIOA, 0xFF },
+
+ { GPIO_Pin_0,  GPIOB, ADC_Channel_8 },
+ { GPIO_Pin_1,  GPIOB, ADC_Channel_9 },
+ { GPIO_Pin_2,  GPIOB, 0xFF },
+ { GPIO_Pin_3,  GPIOB, 0xFF },
+ { GPIO_Pin_4,  GPIOB, 0xFF },
+ { GPIO_Pin_5,  GPIOB, 0xFF },
+ { GPIO_Pin_6,  GPIOB, 0xFF },
+ { GPIO_Pin_7,  GPIOB, 0xFF },
+ { GPIO_Pin_8,  GPIOB, 0xFF },
+ { GPIO_Pin_9,  GPIOB, 0xFF },
+ { GPIO_Pin_10, GPIOB, 0xFF },
+ { GPIO_Pin_11, GPIOB, 0xFF },
+ { GPIO_Pin_12, GPIOB, 0xFF },
+ { GPIO_Pin_13, GPIOB, 0xFF },
+ { GPIO_Pin_14, GPIOB, 0xFF },
+ { GPIO_Pin_15, GPIOB, 0xFF },
+
+ { GPIO_Pin_0,  GPIOC, ADC_Channel_10 },
+ { GPIO_Pin_1,  GPIOC, ADC_Channel_11 },
+ { GPIO_Pin_2,  GPIOC, ADC_Channel_12 },
+ { GPIO_Pin_3,  GPIOC, ADC_Channel_13 },
+ { GPIO_Pin_4,  GPIOC, ADC_Channel_14 },
+ { GPIO_Pin_5,  GPIOC, ADC_Channel_15 },
+ { GPIO_Pin_6,  GPIOC, 0xFF },
+ { GPIO_Pin_7,  GPIOC, 0xFF },
+ { GPIO_Pin_8,  GPIOC, 0xFF },
+ { GPIO_Pin_9,  GPIOC, 0xFF },
+ { GPIO_Pin_10, GPIOC, 0xFF },
+ { GPIO_Pin_11, GPIOC, 0xFF },
+ { GPIO_Pin_12, GPIOC, 0xFF },
+ { GPIO_Pin_13, GPIOC, 0xFF },
+ { GPIO_Pin_14, GPIOC, 0xFF },
+ { GPIO_Pin_15, GPIOC, 0xFF },
+
+ { GPIO_Pin_0,  GPIOD, 0xFF },
+ { GPIO_Pin_1,  GPIOD, 0xFF },
+ { GPIO_Pin_2,  GPIOD, 0xFF },
+ { GPIO_Pin_3,  GPIOD, 0xFF },
+ { GPIO_Pin_4,  GPIOD, 0xFF },
+ { GPIO_Pin_5,  GPIOD, 0xFF },
+ { GPIO_Pin_6,  GPIOD, 0xFF },
+ { GPIO_Pin_7,  GPIOD, 0xFF },
+ { GPIO_Pin_8,  GPIOD, 0xFF },
+ { GPIO_Pin_9,  GPIOD, 0xFF },
+ { GPIO_Pin_10, GPIOD, 0xFF },
+ { GPIO_Pin_11, GPIOD, 0xFF },
+ { GPIO_Pin_12, GPIOD, 0xFF },
+ { GPIO_Pin_13, GPIOD, 0xFF },
+ { GPIO_Pin_14, GPIOD, 0xFF },
+ { GPIO_Pin_15, GPIOD, 0xFF },
+
+ { GPIO_Pin_0,  GPIOE, 0xFF },
+ { GPIO_Pin_1,  GPIOE, 0xFF },
+ { GPIO_Pin_2,  GPIOE, 0xFF },
+ { GPIO_Pin_3,  GPIOE, 0xFF },
+ { GPIO_Pin_4,  GPIOE, 0xFF },
+ { GPIO_Pin_5,  GPIOE, 0xFF },
+ { GPIO_Pin_6,  GPIOE, 0xFF },
+ { GPIO_Pin_7,  GPIOE, 0xFF },
+ { GPIO_Pin_8,  GPIOE, 0xFF },
+ { GPIO_Pin_9,  GPIOE, 0xFF },
+ { GPIO_Pin_10, GPIOE, 0xFF },
+ { GPIO_Pin_11, GPIOE, 0xFF },
+ { GPIO_Pin_12, GPIOE, 0xFF },
+ { GPIO_Pin_13, GPIOE, 0xFF },
+ { GPIO_Pin_14, GPIOE, 0xFF },
+ { GPIO_Pin_15, GPIOE, 0xFF },
+
+ { GPIO_Pin_0,  GPIOH, 0xFF },
+ { GPIO_Pin_1,  GPIOH, 0xFF },
+};
+#else
+ #define IOPINS 50 // 16*3+2
+ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_0,  GPIOA, ADC_Channel_0 },
  { GPIO_Pin_1,  GPIOA, ADC_Channel_1 },
  { GPIO_Pin_2,  GPIOA, ADC_Channel_2 },
@@ -161,6 +253,7 @@ const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_0,  GPIOD, 0xFF },
  { GPIO_Pin_1,  GPIOD, 0xFF },
 };
+#endif
 
 uint8_t pinToPinSource(uint16_t pin) {
   if (pin==GPIO_Pin_0 ) return GPIO_PinSource0;
@@ -190,6 +283,7 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
   if (port == GPIOE) return EXTI_PortSourceGPIOE;
   if (port == GPIOF) return EXTI_PortSourceGPIOF;
   if (port == GPIOG) return EXTI_PortSourceGPIOG;
+  if (port == GPIOH) return EXTI_PortSourceGPIOH;
   return EXTI_PortSourceGPIOA;
 #else
   if (port == GPIOA) return GPIO_PortSourceGPIOA;
@@ -378,7 +472,8 @@ void jshInit() {
                          RCC_AHB1Periph_GPIOD |
                          RCC_AHB1Periph_GPIOE |
                          RCC_AHB1Periph_GPIOF |
-                         RCC_AHB1Periph_GPIOG, ENABLE);
+                         RCC_AHB1Periph_GPIOG |
+                         RCC_AHB1Periph_GPIOH, ENABLE);
  #else
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(
@@ -645,6 +740,10 @@ int jshGetPinFromVar(JsVar *pinv) {
     else if (pinv->varData.str[0]=='B') gpioport = GPIOB;
     else if (pinv->varData.str[0]=='C') gpioport = GPIOC;
     else if (pinv->varData.str[0]=='D') gpioport = GPIOD;
+#ifdef STM32F4
+    else if (pinv->varData.str[0]=='E') gpioport = GPIOE;
+    else if (pinv->varData.str[0]=='H') gpioport = GPIOH;
+#endif
     if (gpioport) {
       gpiopin = 1 << stringToInt(&pinv->varData.str[1]);
       int i;
