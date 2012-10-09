@@ -13,6 +13,7 @@
   #include "peripherals/stm32f4xx_usart.h"
   #include "peripherals/stm32f4xx_flash.h"
   #include "peripherals/stm32f4xx_syscfg.h"
+  #include "peripherals/stm32f4xx_tim.h"
   #include "stm32f4_discovery.h"
 
   #define MAIN_USART_Pin_RX GPIO_Pin_3
@@ -37,6 +38,7 @@
   #include "peripherals/stm32f10x_gpio.h"
   #include "peripherals/stm32f10x_usart.h"
   #include "peripherals/stm32f10x_flash.h"
+  #include "peripherals/stm32f10x_tim.h"
   #include "STM32vldiscovery.h"
 
   #define MAIN_USART_Pin_RX GPIO_Pin_10
@@ -106,8 +108,8 @@ typedef struct IOPin {
   GPIO_TypeDef *gpio; // GPIOA
   uint8_t adc; // 0xFF or ADC_Channel_1
   /* timer - bits 0-1 = channel
-             bits 2-5 = timer
-             bit 6 ? 
+             bits 2-5 = timer (NOTE - so only 0-15!)
+             bit 6    = remap - for F1 part crazy stuff
              bit 7    = negated */
   uint8_t timer;
 } IOPin;
@@ -115,6 +117,8 @@ typedef struct IOPin {
 #define TIMER(TIM,CH) (TIM<<2)|(CH-1)
 #define TIMERN(TIM,CH) (TIM<<2)|(CH-1)|0x80
 #define TIMNONE 0
+#define TIMREMAP 64
+#define TIMER_REMAP(X) ((X)&64)
 #define TIMER_CH(X) (((X)&3)+1)
 #define TIMER_TMR(X) (((X)>>2)&15)
 #define TIMER_NEG(X) (((X)>>7)&1)
@@ -235,29 +239,29 @@ typedef struct IOPin {
  { GPIO_Pin_1,  GPIOB, ADC_Channel_9, TIMER(3,4) }, // , TIMER(1,3)
  { GPIO_Pin_2,  GPIOB, 0xFF, TIMNONE },
  { GPIO_Pin_3,  GPIOB, 0xFF, TIMER(2,2) },
- { GPIO_Pin_4,  GPIOB, 0xFF, TIMER(3,1) },
- { GPIO_Pin_5,  GPIOB, 0xFF, TIMER(3,2) },
+ { GPIO_Pin_4,  GPIOB, 0xFF, TIMER(3,1)|TIMREMAP },
+ { GPIO_Pin_5,  GPIOB, 0xFF, TIMER(3,2)|TIMREMAP },
  { GPIO_Pin_6,  GPIOB, 0xFF, TIMER(4,1) },
  { GPIO_Pin_7,  GPIOB, 0xFF, TIMER(4,2) },
  { GPIO_Pin_8,  GPIOB, 0xFF, TIMER(4,3) }, //, TIMER(16,1)
  { GPIO_Pin_9,  GPIOB, 0xFF, TIMER(4,4) }, //, TIMER(17,1)
  { GPIO_Pin_10, GPIOB, 0xFF, TIMER(2,3) },
- { GPIO_Pin_11, GPIOB, 0xFF, TIMER(2,4) },
+ { GPIO_Pin_11, GPIOB, 0xFF, TIMER(2,4)|TIMREMAP },
  { GPIO_Pin_12, GPIOB, 0xFF, TIMNONE },
  { GPIO_Pin_13, GPIOB, 0xFF, TIMERN(1,1) },
- { GPIO_Pin_14, GPIOB, 0xFF, TIMER(15,1) },// , TIMERN(1,2)
- { GPIO_Pin_15, GPIOB, 0xFF, TIMER(15,2) },// , TIMERN(1,3), TIMERN(15,1)
+ { GPIO_Pin_14, GPIOB, 0xFF, TIMER(15,1)|TIMREMAP },// , TIMERN(1,2)
+ { GPIO_Pin_15, GPIOB, 0xFF, TIMER(15,2)|TIMREMAP },// , TIMERN(1,3), TIMERN(15,1)
 
- { GPIO_Pin_0,  GPIOC, ADC_Channel_10 },
- { GPIO_Pin_1,  GPIOC, ADC_Channel_11 },
- { GPIO_Pin_2,  GPIOC, ADC_Channel_12 },
- { GPIO_Pin_3,  GPIOC, ADC_Channel_13 },
- { GPIO_Pin_4,  GPIOC, ADC_Channel_14 },
- { GPIO_Pin_5,  GPIOC, ADC_Channel_15 },
- { GPIO_Pin_6,  GPIOC, 0xFF, TIMER(3,1) },
- { GPIO_Pin_7,  GPIOC, 0xFF, TIMER(3,2) },
- { GPIO_Pin_8,  GPIOC, 0xFF, TIMER(3,3) },
- { GPIO_Pin_9,  GPIOC, 0xFF, TIMER(3,4) },
+ { GPIO_Pin_0,  GPIOC, ADC_Channel_10, TIMNONE  },
+ { GPIO_Pin_1,  GPIOC, ADC_Channel_11, TIMNONE  },
+ { GPIO_Pin_2,  GPIOC, ADC_Channel_12, TIMNONE  },
+ { GPIO_Pin_3,  GPIOC, ADC_Channel_13, TIMNONE  },
+ { GPIO_Pin_4,  GPIOC, ADC_Channel_14, TIMNONE  },
+ { GPIO_Pin_5,  GPIOC, ADC_Channel_15, TIMNONE  },
+ { GPIO_Pin_6,  GPIOC, 0xFF, TIMER(3,1)|TIMREMAP },
+ { GPIO_Pin_7,  GPIOC, 0xFF, TIMER(3,2)|TIMREMAP },
+ { GPIO_Pin_8,  GPIOC, 0xFF, TIMER(3,3)|TIMREMAP },
+ { GPIO_Pin_9,  GPIOC, 0xFF, TIMER(3,4)|TIMREMAP },
  { GPIO_Pin_10, GPIOC, 0xFF, TIMNONE },
  { GPIO_Pin_11, GPIOC, 0xFF, TIMNONE },
  { GPIO_Pin_12, GPIOC, 0xFF, TIMNONE },
@@ -871,65 +875,70 @@ void jshPinAnalogOutput(int pin, JsVarFloat value) {
   if (value<0) value=0;
   if (value>1) value=1;
 #ifdef ARM
-  if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].timer!=TIMNONE) {
+  if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].timer!=TIMNONE) {
     TIM_TypeDef* TIMx;
+#ifdef STM32F4
+ #define STM32F4ONLY(X) X
     uint8_t afmap;
+#else
+ #define STM32F4ONLY(X)
+#endif
 
     if (TIMER_TMR(IOPIN_DATA[pin].timer)==1) {
       TIMx = TIM1;
-      afmap=GPIO_AF_TIM1;
+      STM32F4ONLY(afmap=GPIO_AF_TIM1);
       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==2)  {
       TIMx = TIM2;
-      afmap=GPIO_AF_TIM2;
+      STM32F4ONLY(afmap=GPIO_AF_TIM2);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==3)  {
       TIMx = TIM3;
-      afmap=GPIO_AF_TIM3;
+      STM32F4ONLY(afmap=GPIO_AF_TIM3);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==4)  {
       TIMx = TIM4;
-      afmap=GPIO_AF_TIM4;
+      STM32F4ONLY(afmap=GPIO_AF_TIM4);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==5) {
       TIMx = TIM5;
-      afmap=GPIO_AF_TIM5;
+      STM32F4ONLY(afmap=GPIO_AF_TIM5);
        RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);  
 /*    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==6)  { // Not used for outputs
       TIMx = TIM6;
-      afmap=GPIO_AF_TIM6;
+      STM32F4ONLY(afmap=GPIO_AF_TIM6);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==7)  { // Not used for outputs
       TIMx = TIM7;
-      afmap=GPIO_AF_TIM7;
+      STM32F4ONLY(afmap=GPIO_AF_TIM7);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE); */
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==8) {
       TIMx = TIM8;
-      afmap=GPIO_AF_TIM8;
-       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);  
+      STM32F4ONLY(afmap=GPIO_AF_TIM8);
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==9)  {
       TIMx = TIM9;
-      afmap=GPIO_AF_TIM9;
+      STM32F4ONLY(afmap=GPIO_AF_TIM9);
       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);  
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==10)  {
       TIMx = TIM10;
-      afmap=GPIO_AF_TIM10;
+      STM32F4ONLY(afmap=GPIO_AF_TIM10);
       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE); 
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==11)  {
       TIMx = TIM11;
-      afmap=GPIO_AF_TIM11;
+      STM32F4ONLY(afmap=GPIO_AF_TIM11);
       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM11, ENABLE); 
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==12)  {
       TIMx = TIM12;
-      afmap=GPIO_AF_TIM12;
+      STM32F4ONLY(afmap=GPIO_AF_TIM12);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM12, ENABLE); 
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==13)  {
       TIMx = TIM13;
-      afmap=GPIO_AF_TIM13;
+      STM32F4ONLY(afmap=GPIO_AF_TIM13);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE); 
     } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==14)  {
       TIMx = TIM14;
-      afmap=GPIO_AF_TIM14;
+      STM32F4ONLY(afmap=GPIO_AF_TIM14);
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE); 
     } else return; // eep!
     //   /* Compute the prescaler value */
@@ -981,9 +990,19 @@ void jshPinAnalogOutput(int pin, JsVarFloat value) {
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 #endif
     GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
-
+#ifdef STM32F4
     // connect timer pin up
     GPIO_PinAFConfig(IOPIN_DATA[pin].gpio, pinToPinSource(IOPIN_DATA[pin].pin), afmap);
+#else
+    if (TIMER_REMAP(IOPIN_DATA[pin].timer)) {
+      if (TIMER_TMR(IOPIN_DATA[pin].timer)==1) GPIO_PinRemapConfig( GPIO_FullRemap_TIM1, ENABLE );
+      else if (TIMER_TMR(IOPIN_DATA[pin].timer)==2) GPIO_PinRemapConfig( GPIO_FullRemap_TIM2, ENABLE );
+      else if (TIMER_TMR(IOPIN_DATA[pin].timer)==3) GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, ENABLE );
+      else if (TIMER_TMR(IOPIN_DATA[pin].timer)==4) GPIO_PinRemapConfig( GPIO_Remap_TIM4, ENABLE );
+      else if (TIMER_TMR(IOPIN_DATA[pin].timer)==15) GPIO_PinRemapConfig( GPIO_Remap_TIM15, ENABLE );
+      else jsError("(internal) Remap needed, but unknown timer."); 
+    }
+#endif
 
   } else jsError("Invalid pin!");
 #endif

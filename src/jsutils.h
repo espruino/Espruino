@@ -37,18 +37,15 @@
             Fix memory leak for digitalWrite
      1v09 : Enabled 'abs' by default
             Added flash programming to STM32F4
-            analogWrite now working! (not D15 on F4 though)
+            analogWrite now working!
 [/CHANGELOG]
 
 [TODO]
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
-    MEMORY LEAK: sos.js - run multiple times so it runs out of memory and errors - causes big memory leak (maybe not now??)
         Detect if running out of FIFO space and skip writing characters
         Add Math functions
-    STM32F4: Allow write to flash
-    STM32F4: Extra IO pin defs
         Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
 
