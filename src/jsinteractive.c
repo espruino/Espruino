@@ -785,6 +785,21 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return 0;
       }
     }
+    if (strcmp(name,"analogWrite")==0) {
+      /*JS* function analogWrite(pin, value)
+       *JS*  Set the analog value of the given pin. Value is between 0 and 1
+       *JS*  Analog values are output as PWM digital. If the pin is not capable a warning will be output
+       *JS*  Pin can be an integer, or a string such as "A0","C13",etc     
+       */
+      JsVar *pinVar, *valueVar;
+      jspParseDoubleFunction(&pinVar, &valueVar);
+      int pin = jshGetPinFromVar(pinVar);
+      jsvUnLock(pinVar);
+      JsVarFloat value = jsvGetDouble(valueVar);
+      jsvUnLock(valueVar);
+      jshPinAnalogOutput(pin, value);
+      return 0;
+    }
     if (strcmp(name,"digitalPulse")==0) {
       /*JS* function digitalPulse(pin,value,time)
        *JS*  Pulse the pin with the value for the given time in milliseconds

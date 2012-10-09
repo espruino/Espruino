@@ -45,6 +45,7 @@ int jshGetPinFromVar(JsVar *pinv);
 bool jshPinInput(int pin);
 JsVarFloat jshPinAnalog(int pin);
 void jshPinOutput(int pin, bool value);
+void jshPinAnalogOutput(int pin, JsVarFloat value);
 void jshPinPulse(int pin, bool value, JsVarFloat time);
 void jshPinWatch(int pin, bool shouldWatch);
 bool jshIsEventForPin(IOEvent *event, int pin);

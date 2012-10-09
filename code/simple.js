@@ -42,3 +42,27 @@ setInterval(function () {
  if (n==0) n=16; 
  digitalWrite(["D12","D13","D14","D15"],n); 
 },50);
+
+
+// just write different analog values...
+analogWrite("D12",0.5);
+analogWrite("D13",0.25);  
+analogWrite("D14",0.75); 
+analogWrite("D15",1); 
+
+var ramp = [0,0.05,0.2,0.3,0.5,1,0.5,0.3,0.2,0.05];
+var c = 0;
+var d = 2;
+var e = 4;
+var f = 8;
+function next() {
+  c = (c+1)%ramp.length;
+  d = (d+1)%ramp.length;
+  e = (e+1)%ramp.length;
+  f = (f+1)%ramp.length;
+  analogWrite("D12",ramp[c]);
+  analogWrite("D13",ramp[d]);
+  analogWrite("D14",ramp[e]);
+  analogWrite("D15",ramp[f]);
+}
+setInterval(next,50);

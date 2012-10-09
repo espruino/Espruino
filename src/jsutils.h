@@ -35,7 +35,9 @@
             Allowed test cases to test timers - eg. code in jsinteractive.c
             Fix memory leak for timer
             Fix memory leak for digitalWrite
-     1v09 : Anabled 'abs' by default
+     1v09 : Enabled 'abs' by default
+            Added flash programming to STM32F4
+            analogWrite now working! (not D15 on F4 though)
 [/CHANGELOG]
 
 [TODO]
@@ -49,7 +51,6 @@
     STM32F4: Extra IO pin defs
         Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        analogWrite, using 3rd argument with optional frequency
 
   MEDIUM PRIORITY:
 	When printing lines, backspace and add '>' prompt after print (only if echo=1)
@@ -61,6 +62,7 @@
 
  
   LOW PRIORITY
+        analogWrite should check about ports with overlapping timers
         Built-in constants for LED1/BTN/etc.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Allow Serial comms via other UARTS

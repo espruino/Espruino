@@ -99,98 +99,113 @@ bool jshPopIOEvent(IOEvent *result) {
 // ----------------------------------------------------------------------------
 //                                                                        PINS
 #ifdef ARM
+
+
 typedef struct IOPin {
   uint16_t pin;      // GPIO_Pin_1
   GPIO_TypeDef *gpio; // GPIOA
   uint8_t adc; // 0xFF or ADC_Channel_1
+  /* timer - bits 0-1 = channel
+             bits 2-5 = timer
+             bit 6 ? 
+             bit 7    = negated */
+  uint8_t timer;
 } IOPin;
+
+#define TIMER(TIM,CH) (TIM<<2)|(CH-1)
+#define TIMERN(TIM,CH) (TIM<<2)|(CH-1)|0x80
+#define TIMNONE 0
+#define TIMER_CH(X) (((X)&3)+1)
+#define TIMER_TMR(X) (((X)>>2)&15)
+#define TIMER_NEG(X) (((X)>>7)&1)
 
 #ifdef STM32F4
  #define IOPINS 82 // 16*5+2
+ // some of these use the same timer!
  const IOPin IOPIN_DATA[IOPINS] = {
- { GPIO_Pin_0,  GPIOA, ADC_Channel_0 },
- { GPIO_Pin_1,  GPIOA, ADC_Channel_1 },
- { GPIO_Pin_2,  0, 0xFF },//A2 - Serial
- { GPIO_Pin_3,  0, 0xFF },//A3 - Serial
- { GPIO_Pin_4,  GPIOA, ADC_Channel_4 },
- { GPIO_Pin_5,  GPIOA, ADC_Channel_5 },
- { GPIO_Pin_6,  GPIOA, ADC_Channel_6 },
- { GPIO_Pin_7,  GPIOA, ADC_Channel_7 },
- { GPIO_Pin_8,  GPIOA, 0xFF },
- { GPIO_Pin_9,  GPIOA, 0xFF }, 
- { GPIO_Pin_10, GPIOA, 0xFF }, 
- { GPIO_Pin_11, GPIOA, 0xFF },
- { GPIO_Pin_12, GPIOA, 0xFF },
- { GPIO_Pin_13, GPIOA, 0xFF },
- { GPIO_Pin_14, GPIOA, 0xFF },
- { GPIO_Pin_15, GPIOA, 0xFF },
+ { GPIO_Pin_0,  GPIOA, ADC_Channel_0, TIMER(5,1) },
+ { GPIO_Pin_1,  GPIOA, ADC_Channel_1, TIMER(5,2) },
+ { GPIO_Pin_2,  0, 0xFF, TIMNONE },//A2 - Serial
+ { GPIO_Pin_3,  0, 0xFF, TIMNONE },//A3 - Serial
+ { GPIO_Pin_4,  GPIOA, ADC_Channel_4, TIMNONE },
+ { GPIO_Pin_5,  GPIOA, ADC_Channel_5, TIMNONE },
+ { GPIO_Pin_6,  GPIOA, ADC_Channel_6, TIMER(13,1) }, //+ TIMER(3,1)
+ { GPIO_Pin_7,  GPIOA, ADC_Channel_7, TIMER(14,1) }, //+ TIMERN(8,1) + TIMER(3,2) + TIMERN(1,1)
+ { GPIO_Pin_8,  GPIOA, 0xFF, TIMER(1,1) },
+ { GPIO_Pin_9,  GPIOA, 0xFF, TIMER(1,2) }, 
+ { GPIO_Pin_10, GPIOA, 0xFF, TIMER(1,3) }, 
+ { GPIO_Pin_11, GPIOA, 0xFF, TIMER(1,4) },
+ { GPIO_Pin_12, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_14, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_15, GPIOA, 0xFF, TIMNONE },
 
- { GPIO_Pin_0,  GPIOB, ADC_Channel_8 },
- { GPIO_Pin_1,  GPIOB, ADC_Channel_9 },
- { GPIO_Pin_2,  GPIOB, 0xFF },
- { GPIO_Pin_3,  GPIOB, 0xFF },
- { GPIO_Pin_4,  GPIOB, 0xFF },
- { GPIO_Pin_5,  GPIOB, 0xFF },
- { GPIO_Pin_6,  GPIOB, 0xFF },
- { GPIO_Pin_7,  GPIOB, 0xFF },
- { GPIO_Pin_8,  GPIOB, 0xFF },
- { GPIO_Pin_9,  GPIOB, 0xFF },
- { GPIO_Pin_10, GPIOB, 0xFF },
- { GPIO_Pin_11, GPIOB, 0xFF },
- { GPIO_Pin_12, GPIOB, 0xFF },
- { GPIO_Pin_13, GPIOB, 0xFF },
- { GPIO_Pin_14, GPIOB, 0xFF },
- { GPIO_Pin_15, GPIOB, 0xFF },
+ { GPIO_Pin_0,  GPIOB, ADC_Channel_8, TIMER(3,3) }, //+ TIMERN(8,2) + TIMERN(1,2)
+ { GPIO_Pin_1,  GPIOB, ADC_Channel_9, TIMER(3,4) }, //+ TIMERN(8,3) + TIMERN(1,3)
+ { GPIO_Pin_2,  GPIOB, 0xFF, TIMNONE },
+ { GPIO_Pin_3,  GPIOB, 0xFF, TIMER(2,2) },
+ { GPIO_Pin_4,  GPIOB, 0xFF, TIMER(3,1) },
+ { GPIO_Pin_5,  GPIOB, 0xFF, TIMER(3,2) },
+ { GPIO_Pin_6,  GPIOB, 0xFF, TIMER(4,1) },
+ { GPIO_Pin_7,  GPIOB, 0xFF, TIMER(4,2) },
+ { GPIO_Pin_8,  GPIOB, 0xFF, TIMER(4,3) }, //+TIMER(10,1)
+ { GPIO_Pin_9,  GPIOB, 0xFF, TIMER(4,4) }, //+TIMER(11,1)
+ { GPIO_Pin_10, GPIOB, 0xFF, TIMER(2,3) },
+ { GPIO_Pin_11, GPIOB, 0xFF, TIMER(2,4) },
+ { GPIO_Pin_12, GPIOB, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOB, 0xFF, TIMERN(1,1) },
+ { GPIO_Pin_14, GPIOB, 0xFF, TIMER(12,1) }, //+TIMERN(1,2)+TIMERN(8,2)
+ { GPIO_Pin_15, GPIOB, 0xFF, TIMER(12,2) }, //+TIMERN(1,3)+TIMERN(8,3)
 
- { GPIO_Pin_0,  GPIOC, ADC_Channel_10 },
- { GPIO_Pin_1,  GPIOC, ADC_Channel_11 },
- { GPIO_Pin_2,  GPIOC, ADC_Channel_12 },
- { GPIO_Pin_3,  GPIOC, ADC_Channel_13 },
- { GPIO_Pin_4,  GPIOC, ADC_Channel_14 },
- { GPIO_Pin_5,  GPIOC, ADC_Channel_15 },
- { GPIO_Pin_6,  GPIOC, 0xFF },
- { GPIO_Pin_7,  GPIOC, 0xFF },
- { GPIO_Pin_8,  GPIOC, 0xFF },
- { GPIO_Pin_9,  GPIOC, 0xFF },
- { GPIO_Pin_10, GPIOC, 0xFF },
- { GPIO_Pin_11, GPIOC, 0xFF },
- { GPIO_Pin_12, GPIOC, 0xFF },
- { GPIO_Pin_13, GPIOC, 0xFF },
- { GPIO_Pin_14, GPIOC, 0xFF },
- { GPIO_Pin_15, GPIOC, 0xFF },
+ { GPIO_Pin_0,  GPIOC, ADC_Channel_10, TIMNONE },
+ { GPIO_Pin_1,  GPIOC, ADC_Channel_11, TIMNONE },
+ { GPIO_Pin_2,  GPIOC, ADC_Channel_12, TIMNONE },
+ { GPIO_Pin_3,  GPIOC, ADC_Channel_13, TIMNONE },
+ { GPIO_Pin_4,  GPIOC, ADC_Channel_14, TIMNONE },
+ { GPIO_Pin_5,  GPIOC, ADC_Channel_15, TIMNONE },
+ { GPIO_Pin_6,  GPIOC, 0xFF, TIMER(8,1) }, //+, TIMER(3,1)
+ { GPIO_Pin_7,  GPIOC, 0xFF, TIMER(8,2) },//+, TIMER(3,2)
+ { GPIO_Pin_8,  GPIOC, 0xFF, TIMER(8,3) },//+, TIMER(3,3)
+ { GPIO_Pin_9,  GPIOC, 0xFF, TIMER(8,4) }, //+, TIMER(3,4)
+ { GPIO_Pin_10, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_11, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_12, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_14, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_15, GPIOC, 0xFF, TIMNONE },
 
- { GPIO_Pin_0,  GPIOD, 0xFF },
- { GPIO_Pin_1,  GPIOD, 0xFF },
- { GPIO_Pin_2,  GPIOD, 0xFF },
- { GPIO_Pin_3,  GPIOD, 0xFF },
- { GPIO_Pin_4,  GPIOD, 0xFF },
- { GPIO_Pin_5,  GPIOD, 0xFF },
- { GPIO_Pin_6,  GPIOD, 0xFF },
- { GPIO_Pin_7,  GPIOD, 0xFF },
- { GPIO_Pin_8,  GPIOD, 0xFF },
- { GPIO_Pin_9,  GPIOD, 0xFF },
- { GPIO_Pin_10, GPIOD, 0xFF },
- { GPIO_Pin_11, GPIOD, 0xFF },
- { GPIO_Pin_12, GPIOD, 0xFF },
- { GPIO_Pin_13, GPIOD, 0xFF },
- { GPIO_Pin_14, GPIOD, 0xFF },
- { GPIO_Pin_15, GPIOD, 0xFF },
+ { GPIO_Pin_0,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_1,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_2,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_3,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_4,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_5,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_6,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_7,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_8,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_9,  GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_10, GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_11, GPIOD, 0xFF, TIMNONE },
+ { GPIO_Pin_12, GPIOD, 0xFF, TIMER(4,1) },
+ { GPIO_Pin_13, GPIOD, 0xFF, TIMER(4,2) },
+ { GPIO_Pin_14, GPIOD, 0xFF, TIMER(4,3) },
+ { GPIO_Pin_15, GPIOD, 0xFF, TIMER(4,4) },
 
  { GPIO_Pin_0,  GPIOE, 0xFF },
  { GPIO_Pin_1,  GPIOE, 0xFF },
  { GPIO_Pin_2,  GPIOE, 0xFF },
  { GPIO_Pin_3,  GPIOE, 0xFF },
  { GPIO_Pin_4,  GPIOE, 0xFF },
- { GPIO_Pin_5,  GPIOE, 0xFF },
- { GPIO_Pin_6,  GPIOE, 0xFF },
+ { GPIO_Pin_5,  GPIOE, 0xFF, TIMER(9,1) },
+ { GPIO_Pin_6,  GPIOE, 0xFF, TIMER(9,2) },
  { GPIO_Pin_7,  GPIOE, 0xFF },
- { GPIO_Pin_8,  GPIOE, 0xFF },
- { GPIO_Pin_9,  GPIOE, 0xFF },
- { GPIO_Pin_10, GPIOE, 0xFF },
- { GPIO_Pin_11, GPIOE, 0xFF },
- { GPIO_Pin_12, GPIOE, 0xFF },
- { GPIO_Pin_13, GPIOE, 0xFF },
- { GPIO_Pin_14, GPIOE, 0xFF },
+ { GPIO_Pin_8,  GPIOE, 0xFF, TIMERN(1,1) },
+ { GPIO_Pin_9,  GPIOE, 0xFF, TIMER(1,1) },
+ { GPIO_Pin_10, GPIOE, 0xFF, TIMERN(1,2) },
+ { GPIO_Pin_11, GPIOE, 0xFF, TIMER(1,2) },
+ { GPIO_Pin_12, GPIOE, 0xFF, TIMERN(1,3) },
+ { GPIO_Pin_13, GPIOE, 0xFF, TIMER(1,3) },
+ { GPIO_Pin_14, GPIOE, 0xFF, TIMER(1,4) },
  { GPIO_Pin_15, GPIOE, 0xFF },
 
  { GPIO_Pin_0,  GPIOH, 0xFF },
@@ -199,39 +214,39 @@ typedef struct IOPin {
 #else
  #define IOPINS 50 // 16*3+2
  const IOPin IOPIN_DATA[IOPINS] = {
- { GPIO_Pin_0,  GPIOA, ADC_Channel_0 },
- { GPIO_Pin_1,  GPIOA, ADC_Channel_1 },
- { GPIO_Pin_2,  GPIOA, ADC_Channel_2 },
- { GPIO_Pin_3,  GPIOA, ADC_Channel_3 },
- { GPIO_Pin_4,  GPIOA, ADC_Channel_4 },
- { GPIO_Pin_5,  GPIOA, ADC_Channel_5 },
- { GPIO_Pin_6,  GPIOA, ADC_Channel_6 },
- { GPIO_Pin_7,  GPIOA, ADC_Channel_7 },
- { GPIO_Pin_8,  GPIOA, 0xFF },
- { GPIO_Pin_9,  0,     0xFF }, //A9 - Serial
- { GPIO_Pin_10, 0,     0xFF }, // A10 - Serial
- { GPIO_Pin_11, GPIOA, 0xFF },
- { GPIO_Pin_12, GPIOA, 0xFF },
- { GPIO_Pin_13, GPIOA, 0xFF },
- { GPIO_Pin_14, GPIOA, 0xFF },
- { GPIO_Pin_15, GPIOA, 0xFF },
+ { GPIO_Pin_0,  GPIOA, ADC_Channel_0, TIMNONE },
+ { GPIO_Pin_1,  GPIOA, ADC_Channel_1, TIMER(2,2) },
+ { GPIO_Pin_2,  GPIOA, ADC_Channel_2, TIMER(2,3) }, // , TIMER(15,1)
+ { GPIO_Pin_3,  GPIOA, ADC_Channel_3, TIMER(2,4) }, //, TIMER(15,2)
+ { GPIO_Pin_4,  GPIOA, ADC_Channel_4, TIMNONE },
+ { GPIO_Pin_5,  GPIOA, ADC_Channel_5, TIMNONE },
+ { GPIO_Pin_6,  GPIOA, ADC_Channel_6, TIMER(3,1) }, //, TIMER(16,1)
+ { GPIO_Pin_7,  GPIOA, ADC_Channel_7, TIMER(3,2) }, //, TIMER(17,1)
+ { GPIO_Pin_8,  GPIOA, 0xFF, TIMER(1,1) },
+ { GPIO_Pin_9,  0,     0xFF, TIMER(1,2) }, // A9 - Serial
+ { GPIO_Pin_10, 0,     0xFF, TIMER(1,3) }, // A10 - Serial
+ { GPIO_Pin_11, GPIOA, 0xFF, TIMER(1,4) },
+ { GPIO_Pin_12, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_14, GPIOA, 0xFF, TIMNONE },
+ { GPIO_Pin_15, GPIOA, 0xFF, TIMNONE },
 
- { GPIO_Pin_0,  GPIOB, ADC_Channel_8 },
- { GPIO_Pin_1,  GPIOB, ADC_Channel_9 },
- { GPIO_Pin_2,  GPIOB, 0xFF },
- { GPIO_Pin_3,  GPIOB, 0xFF },
- { GPIO_Pin_4,  GPIOB, 0xFF },
- { GPIO_Pin_5,  GPIOB, 0xFF },
- { GPIO_Pin_6,  GPIOB, 0xFF },
- { GPIO_Pin_7,  GPIOB, 0xFF },
- { GPIO_Pin_8,  GPIOB, 0xFF },
- { GPIO_Pin_9,  GPIOB, 0xFF },
- { GPIO_Pin_10, GPIOB, 0xFF },
- { GPIO_Pin_11, GPIOB, 0xFF },
- { GPIO_Pin_12, GPIOB, 0xFF },
- { GPIO_Pin_13, GPIOB, 0xFF },
- { GPIO_Pin_14, GPIOB, 0xFF },
- { GPIO_Pin_15, GPIOB, 0xFF },
+ { GPIO_Pin_0,  GPIOB, ADC_Channel_8, TIMER(3,3) }, // , TIMERN(1,2)
+ { GPIO_Pin_1,  GPIOB, ADC_Channel_9, TIMER(3,4) }, // , TIMER(1,3)
+ { GPIO_Pin_2,  GPIOB, 0xFF, TIMNONE },
+ { GPIO_Pin_3,  GPIOB, 0xFF, TIMER(2,2) },
+ { GPIO_Pin_4,  GPIOB, 0xFF, TIMER(3,1) },
+ { GPIO_Pin_5,  GPIOB, 0xFF, TIMER(3,2) },
+ { GPIO_Pin_6,  GPIOB, 0xFF, TIMER(4,1) },
+ { GPIO_Pin_7,  GPIOB, 0xFF, TIMER(4,2) },
+ { GPIO_Pin_8,  GPIOB, 0xFF, TIMER(4,3) }, //, TIMER(16,1)
+ { GPIO_Pin_9,  GPIOB, 0xFF, TIMER(4,4) }, //, TIMER(17,1)
+ { GPIO_Pin_10, GPIOB, 0xFF, TIMER(2,3) },
+ { GPIO_Pin_11, GPIOB, 0xFF, TIMER(2,4) },
+ { GPIO_Pin_12, GPIOB, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOB, 0xFF, TIMERN(1,1) },
+ { GPIO_Pin_14, GPIOB, 0xFF, TIMER(15,1) },// , TIMERN(1,2)
+ { GPIO_Pin_15, GPIOB, 0xFF, TIMER(15,2) },// , TIMERN(1,3), TIMERN(15,1)
 
  { GPIO_Pin_0,  GPIOC, ADC_Channel_10 },
  { GPIO_Pin_1,  GPIOC, ADC_Channel_11 },
@@ -239,19 +254,20 @@ typedef struct IOPin {
  { GPIO_Pin_3,  GPIOC, ADC_Channel_13 },
  { GPIO_Pin_4,  GPIOC, ADC_Channel_14 },
  { GPIO_Pin_5,  GPIOC, ADC_Channel_15 },
- { GPIO_Pin_6,  GPIOC, 0xFF },
- { GPIO_Pin_7,  GPIOC, 0xFF },
- { GPIO_Pin_8,  GPIOC, 0xFF },
- { GPIO_Pin_9,  GPIOC, 0xFF },
- { GPIO_Pin_10, GPIOC, 0xFF },
- { GPIO_Pin_11, GPIOC, 0xFF },
- { GPIO_Pin_12, GPIOC, 0xFF },
- { GPIO_Pin_13, GPIOC, 0xFF },
- { GPIO_Pin_14, GPIOC, 0xFF },
- { GPIO_Pin_15, GPIOC, 0xFF },
+ { GPIO_Pin_6,  GPIOC, 0xFF, TIMER(3,1) },
+ { GPIO_Pin_7,  GPIOC, 0xFF, TIMER(3,2) },
+ { GPIO_Pin_8,  GPIOC, 0xFF, TIMER(3,3) },
+ { GPIO_Pin_9,  GPIOC, 0xFF, TIMER(3,4) },
+ { GPIO_Pin_10, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_11, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_12, GPIOC, 0xFF, TIMNONE },
+ { GPIO_Pin_13, GPIOC, 0xFF, TIMNONE/*?*/ },
+ { GPIO_Pin_14, GPIOC, 0xFF, TIMNONE/*?*/ },
+ { GPIO_Pin_15, GPIOC, 0xFF, TIMNONE/*?*/ },
 
- { GPIO_Pin_0,  GPIOD, 0xFF },
- { GPIO_Pin_1,  GPIOD, 0xFF },
+ { GPIO_Pin_0,  GPIOD, 0xFF, TIMNONE/*?*/ },
+ { GPIO_Pin_1,  GPIOD, 0xFF, TIMNONE/*?*/ }, 
+ // D2 ?
 };
 #endif
 
@@ -506,7 +522,7 @@ void jshInit() {
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
 #ifdef STM32F4
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // or NoPull?
 #else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 #endif
@@ -851,6 +867,128 @@ void jshPinOutput(int pin, bool value) {
 #endif
 }
 
+void jshPinAnalogOutput(int pin, JsVarFloat value) {
+  if (value<0) value=0;
+  if (value>1) value=1;
+#ifdef ARM
+  if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].timer!=TIMNONE) {
+    TIM_TypeDef* TIMx;
+    uint8_t afmap;
+
+    if (TIMER_TMR(IOPIN_DATA[pin].timer)==1) {
+      TIMx = TIM1;
+      afmap=GPIO_AF_TIM1;
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==2)  {
+      TIMx = TIM2;
+      afmap=GPIO_AF_TIM2;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE); 
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==3)  {
+      TIMx = TIM3;
+      afmap=GPIO_AF_TIM3;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==4)  {
+      TIMx = TIM4;
+      afmap=GPIO_AF_TIM4;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==5) {
+      TIMx = TIM5;
+      afmap=GPIO_AF_TIM5;
+       RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);  
+/*    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==6)  { // Not used for outputs
+      TIMx = TIM6;
+      afmap=GPIO_AF_TIM6;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==7)  { // Not used for outputs
+      TIMx = TIM7;
+      afmap=GPIO_AF_TIM7;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE); */
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==8) {
+      TIMx = TIM8;
+      afmap=GPIO_AF_TIM8;
+       RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==9)  {
+      TIMx = TIM9;
+      afmap=GPIO_AF_TIM9;
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);  
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==10)  {
+      TIMx = TIM10;
+      afmap=GPIO_AF_TIM10;
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE); 
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==11)  {
+      TIMx = TIM11;
+      afmap=GPIO_AF_TIM11;
+      RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM11, ENABLE); 
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==12)  {
+      TIMx = TIM12;
+      afmap=GPIO_AF_TIM12;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM12, ENABLE); 
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==13)  {
+      TIMx = TIM13;
+      afmap=GPIO_AF_TIM13;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE); 
+    } else if (TIMER_TMR(IOPIN_DATA[pin].timer)==14)  {
+      TIMx = TIM14;
+      afmap=GPIO_AF_TIM14;
+      RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE); 
+    } else return; // eep!
+    //   /* Compute the prescaler value */
+  
+
+  /* Time base configuration */
+  TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+  TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
+  TIM_TimeBaseStructure.TIM_Period = 0xFFFF;
+//  PrescalerValue = (uint16_t) ((SystemCoreClock /2) / 28000000) - 1;
+//  TIM_TimeBaseStructure.TIM_Prescaler = PrescalerValue;
+  TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  TIM_TimeBaseInit(TIMx, &TIM_TimeBaseStructure);
+
+  /* PWM1 Mode configuration*/
+  TIM_OCInitTypeDef  TIM_OCInitStructure;
+  TIM_OCStructInit(&TIM_OCInitStructure);
+  TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+  TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+  TIM_OCInitStructure.TIM_Pulse = (uint32_t)(value*TIM_TimeBaseStructure.TIM_Period);
+  TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+
+  if (TIMER_CH(IOPIN_DATA[pin].timer)==1) {
+    TIM_OC1Init(TIMx, &TIM_OCInitStructure);
+    TIM_OC1PreloadConfig(TIMx, TIM_OCPreload_Enable);
+  } else if (TIMER_CH(IOPIN_DATA[pin].timer)==2) {
+    TIM_OC2Init(TIMx, &TIM_OCInitStructure);
+    TIM_OC2PreloadConfig(TIMx, TIM_OCPreload_Enable);
+  } else if (TIMER_CH(IOPIN_DATA[pin].timer)==3) {
+    TIM_OC3Init(TIMx, &TIM_OCInitStructure);
+    TIM_OC3PreloadConfig(TIMx, TIM_OCPreload_Enable);
+  } else if (TIMER_CH(IOPIN_DATA[pin].timer)==4) {
+    TIM_OC4Init(TIMx, &TIM_OCInitStructure);
+    TIM_OC4PreloadConfig(TIMx, TIM_OCPreload_Enable);
+  }
+  TIM_ARRPreloadConfig(TIMx, ENABLE); // ARR = Period. Not sure if we need preloads?
+
+  // enable the timer
+  TIM_Cmd(TIMx, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef STM32F4 
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP ; // required?
+#else
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#endif
+    GPIO_Init(IOPIN_DATA[pin].gpio, &GPIO_InitStructure);
+
+    // connect timer pin up
+    GPIO_PinAFConfig(IOPIN_DATA[pin].gpio, pinToPinSource(IOPIN_DATA[pin].pin), afmap);
+
+  } else jsError("Invalid pin!");
+#endif
+}
+
 void jshPinPulse(int pin, bool value, JsVarFloat time) {
  JsSysTime ticks = jshGetTimeFromMilliseconds(time);
  //jsPrintInt(ticks);jsPrint("\n");
@@ -930,9 +1068,10 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 
 
 #ifdef STM32F4
- #define FLASH_MEMORY_SIZE (128*1024)
- #define FLASH_PAGE_SIZE 4096
- #define FLASH_PAGES 4
+ #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
+ #define FLASH_MEMORY_SIZE (1024*1024)
+ #define FLASH_PAGE_SIZE (128*1024)
+ #define FLASH_PAGES 1
 #else
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
@@ -947,9 +1086,6 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 
 void jshSaveToFlash() {
 #ifdef ARM
-#ifdef STM32F4
-  jsPrint("\nSorry, Flash programming is not implemented on STM32F4 yet...\r\n");
-#else
 #ifdef STM32F4 
   FLASH_Unlock();
 #else
@@ -959,29 +1095,42 @@ void jshSaveToFlash() {
   int i;
   /* Clear All pending flags */
 #ifdef STM32F4 
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR);
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | 
+                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
 #else
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 #endif
 
   jsPrint("Erasing Flash...");
+#ifdef STM32F4 
+  FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
+#else
   /* Erase the FLASH pages */
   for(i=0;i<FLASH_PAGES;i++) {
     FLASH_ErasePage(FLASH_START + (FLASH_PAGE_SIZE * i));
     jsPrint(".");
   }
+#endif
   jsPrint("\nProgramming ");
   jsPrintInt(jsvGetVarDataSize());
   jsPrint(" Bytes...");
 
-  /* Program Flash Bank1 */
   int *basePtr = jsvGetVarDataPointer();
+#ifdef STM32F4
+  for (i=0;i<jsvGetVarDataSize();i+=4) {
+      while (FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]) != FLASH_COMPLETE);
+      if ((i&1023)==0) jsPrint(".");
+  }
+  while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
+#else
+  /* Program Flash Bank1 */  
   for (i=0;i<jsvGetVarDataSize();i+=4) {
       FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]);
-      if ((i&(FLASH_PAGE_SIZE-1))==0) jsPrint(".");
+      if ((i&1023)==0) jsPrint(".");
   }
   FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
   FLASH_WaitForLastOperation(0x2000);
+#endif
 #ifdef STM32F4 
   FLASH_Lock();
 #else
@@ -1000,7 +1149,6 @@ void jshSaveToFlash() {
       jsPrint(" errors!\n>");
   } else
       jsPrint("\nDone!\n>");
-#endif // STM32F4
 
 //  This is nicer, but also broken!
 //  FLASH_UnlockBank1();
