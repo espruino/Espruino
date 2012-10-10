@@ -41,6 +41,8 @@
      1v10 : Increase FIFO size for VL
             Marginally decrease amount of F4 vars to ensure they all fit in one flash sector
             Allow strings to be longer than the max token size
+            '"key" in obj' syntax
+            Detect if in FOR or WHILE loop, and if not, disallow break and continue
 [/CHANGELOG]
 
 [TODO]
@@ -52,16 +54,18 @@
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
 
   MEDIUM PRIORITY:
-	When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
-        Lex could use JsVars in order to store potentially very big strings that it parses
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
+        Add instanceof
+        Check precedence against MDN javascript op precedence page
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)
+        function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
         Built-in constants for LED1/BTN/etc.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
@@ -74,8 +78,6 @@
         Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
         Memory leak cleanup code - to try and clean up if memory has been leaked
-        'if ("key" in obj)' syntax
-        function.call(thisArg, extraArgs)
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         'Array.prototype.clear = function () { this.X = 23; };'
         Could store vars in arrays/objects/functions as a binary tree instead of a linked list
@@ -86,6 +88,7 @@
         Add require(filename) function (need fileIO first!)
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
+
 [/TODO]
 
   In code:

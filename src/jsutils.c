@@ -7,6 +7,7 @@
 
 #include "jsutils.h"
 #include "jslex.h"
+#include "jshardware.h"
 
 bool isWhitespace(char ch) {
     return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');

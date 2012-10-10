@@ -15,7 +15,7 @@ JsVar *jspeStatement();
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0)
 #define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
-#define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_YES)) | (oldExecute&EXEC_YES);
+#define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_SAVE_RESTORE_MASK)) | (oldExecute&EXEC_SAVE_RESTORE_MASK);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
 
 /// if interrupting execution, this is set
@@ -983,13 +983,26 @@ JsVar *jspeCondition() {
     while (execInfo.lex->tk==LEX_EQUAL || execInfo.lex->tk==LEX_NEQUAL ||
            execInfo.lex->tk==LEX_TYPEEQUAL || execInfo.lex->tk==LEX_NTYPEEQUAL ||
            execInfo.lex->tk==LEX_LEQUAL || execInfo.lex->tk==LEX_GEQUAL ||
-           execInfo.lex->tk=='<' || execInfo.lex->tk=='>') {
+           execInfo.lex->tk=='<' || execInfo.lex->tk=='>' || (execInfo.lex->tk==LEX_R_IN && !(execInfo.execute&EXEC_FOR_INIT))) {
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         b = jspeShift();
         if (JSP_SHOULD_EXECUTE) {
-            JsVar *res = jsvMathsOpSkipNames(a, b, op);
-            jsvUnLock(a); a = res;
+          JsVar *res = 0;
+          if (op==LEX_R_IN) {
+            JsVar *av = jsvSkipName(a);
+            JsVar *bv = jsvSkipName(b);
+            if (jsvIsArray(bv) || jsvIsObject(bv)) {
+              JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(bv, av));  // ArrayIndexOf will return 0 if not found
+              res = jsvNewFromBool(found!=0);
+            } // else it will be undefined
+            jsvUnLock(av);
+            jsvUnLock(bv);
+          } else {
+            res = jsvMathsOpSkipNames(a, b, op);
+
+          }
+          jsvUnLock(a); a = res;
         }
         jsvUnLock(b);
     }
@@ -1244,7 +1257,9 @@ JsVar *jspeStatement() {
         JSP_SAVE_EXECUTE();
         // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
         if (!loopCond) jspSetNoExecute(); 
+        execInfo.execute |= EXEC_IN_LOOP;
         jsvUnLock(jspeBlockOrStatement());
+        execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
         if (execInfo.execute == EXEC_CONTINUE)
           execInfo.execute = EXEC_YES;
         if (execInfo.execute == EXEC_BREAK) {
@@ -1264,7 +1279,9 @@ JsVar *jspeStatement() {
             if (loopCond) {
                 jslReset(&whileBody);
                 execInfo.lex = &whileBody;
+                execInfo.execute |= EXEC_IN_LOOP;
                 jsvUnLock(jspeBlockOrStatement());
+                execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
                 if (execInfo.execute == EXEC_CONTINUE)
                   execInfo.execute = EXEC_YES;
                 if (execInfo.execute == EXEC_BREAK) {
@@ -1284,7 +1301,9 @@ JsVar *jspeStatement() {
     } else if (execInfo.lex->tk==LEX_R_FOR) {
         JSP_MATCH(LEX_R_FOR);
         JSP_MATCH('(');
+        execInfo.execute |= EXEC_FOR_INIT;
         JsVar *forStatement = jspeStatement(); // initialisation
+        execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
         if (execInfo.lex->tk == LEX_R_IN) {
           // for (i in array)
           // where i = jsvUnLock(forStatement);
@@ -1308,7 +1327,9 @@ JsVar *jspeStatement() {
           int forBodyStart = execInfo.lex->tokenStart;
           JSP_SAVE_EXECUTE();
           jspSetNoExecute();
+          execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
+          execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
           JSP_RESTORE_EXECUTE();
           JsLex forBody;
           jslInitFromLex(&forBody, execInfo.lex, forBodyStart);
@@ -1335,7 +1356,9 @@ JsVar *jspeStatement() {
 
               jslReset(&forBody);
               execInfo.lex = &forBody;
+              execInfo.execute |= EXEC_IN_LOOP;
               jsvUnLock(jspeBlockOrStatement());
+              execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
               if (execInfo.execute == EXEC_CONTINUE)
                 execInfo.execute = EXEC_YES;
@@ -1379,10 +1402,13 @@ JsVar *jspeStatement() {
           }
           jslInitFromLex(&forIter, execInfo.lex, forIterStart);
           JSP_MATCH(')');
-          int forBodyStart = execInfo.lex->tokenStart;
+
+          int forBodyStart = execInfo.lex->tokenStart; // actual for body
           JSP_SAVE_EXECUTE();
           if (!loopCond) jspSetNoExecute();
+          execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
+          execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
           if (execInfo.execute == EXEC_CONTINUE)
             execInfo.execute = EXEC_YES;
           if (execInfo.execute == EXEC_BREAK) {
@@ -1407,7 +1433,9 @@ JsVar *jspeStatement() {
               if (JSP_SHOULD_EXECUTE && loopCond) {
                   jslReset(&forBody);
                   execInfo.lex = &forBody;
+                  execInfo.execute |= EXEC_IN_LOOP;
                   jsvUnLock(jspeBlockOrStatement());
+                  execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
                   if (execInfo.execute == EXEC_CONTINUE)
                     execInfo.execute = EXEC_YES;
                   if (execInfo.execute == EXEC_BREAK) {
@@ -1475,12 +1503,18 @@ JsVar *jspeStatement() {
     } else if (execInfo.lex->tk==LEX_R_CONTINUE) {
       JSP_MATCH(LEX_R_CONTINUE);
       if (JSP_SHOULD_EXECUTE) {
-        execInfo.execute = EXEC_CONTINUE;
+        if (!(execInfo.execute & EXEC_IN_LOOP))
+          jsErrorAt("CONTINUE statement outside of FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastEnd);
+        else
+          execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) |  EXEC_CONTINUE;
       }
     } else if (execInfo.lex->tk==LEX_R_BREAK) {
       JSP_MATCH(LEX_R_BREAK);
       if (JSP_SHOULD_EXECUTE) {
-        execInfo.execute = EXEC_BREAK;
+        if (!(execInfo.execute & (EXEC_IN_LOOP|EXEC_IN_SWITCH)))
+          jsErrorAt("BREAK statement outside of SWITCH, FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastEnd);
+        else
+          execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_BREAK;
       }
     } else if (execInfo.lex->tk==LEX_R_SWITCH) {
           JSP_MATCH(LEX_R_SWITCH);
@@ -1491,25 +1525,27 @@ JsVar *jspeStatement() {
           JSP_SAVE_EXECUTE();
           bool execute = JSP_SHOULD_EXECUTE;
           bool hasExecuted = false;
-          if (execute) execInfo.execute=EXEC_NO;
+          if (execute) execInfo.execute=EXEC_NO|EXEC_IN_SWITCH;
           while (execInfo.lex->tk==LEX_R_CASE) {
             JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
             JsExecFlags oldFlags = execInfo.execute;
-            if (execute) execInfo.execute=EXEC_YES;
+            if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
             JsVar *test = jspeBase();
-            execInfo.execute = oldFlags;
+            execInfo.execute = oldFlags|EXEC_IN_SWITCH;;
             JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(switchOn);jsvUnLock(test), 0);
             bool cond = false;
             if (execute)
               cond = jsvGetBoolAndUnLock(jsvMathsOpSkipNames(switchOn, test, LEX_EQUAL));
             if (cond) hasExecuted = true;
             jsvUnLock(test);
-            if (cond && execInfo.execute==EXEC_NO) execInfo.execute=EXEC_YES;
+            if (cond && (execInfo.execute&EXEC_RUN_MASK)==EXEC_NO)
+              execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
             while (execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
               jsvUnLock(jspeBlockOrStatement());
           }
           jsvUnLock(switchOn);
-          if (execute && execInfo.execute==EXEC_BREAK) execInfo.execute=EXEC_YES;
+          if (execute && (execInfo.execute&EXEC_RUN_MASK)==EXEC_BREAK)
+            execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
           JSP_RESTORE_EXECUTE();
 
           if (execInfo.lex->tk==LEX_R_DEFAULT) {
@@ -1521,6 +1557,7 @@ JsVar *jspeStatement() {
               jsvUnLock(jspeBlockOrStatement());
             JSP_RESTORE_EXECUTE();
           }
+
           JSP_MATCH('}');
 
     } else JSP_MATCH(LEX_EOF);

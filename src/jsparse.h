@@ -52,10 +52,15 @@ typedef enum  {
   EXEC_INTERRUPTED = 2, // true if execution has been interrupted
   EXEC_BREAK = 3,
   EXEC_CONTINUE = 4,
+
   EXEC_ERROR = 8,
+  EXEC_FOR_INIT = 16, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
+  EXEC_IN_LOOP = 32, // when in a loop, set this - we can then block break/continue outside it
+  EXEC_IN_SWITCH = 64, // when in a switch, set this - we can then block break outside it/loops
 
   EXEC_RUN_MASK = 7,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
+  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains

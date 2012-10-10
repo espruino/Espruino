@@ -311,14 +311,15 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Return true if this array contains the given value
        */
            JsVar *childValue = jspParseSingleFunction();
-           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue));
+           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue)); // ArrayIndexOf will return 0 if not found
            jsvUnLock(childValue);
            return jsvNewFromBool(found!=0);
          }
          if (strcmp(name,"indexOf")==0) {
       /*JS* method Array.indexOf(value)
        *JS*  Return the index of the value in the array, or -1
-       */            JsVar *childValue = jspParseSingleFunction();
+       */
+            JsVar *childValue = jspParseSingleFunction();
             JsVar *idx = jsvGetArrayIndexOf(a, childValue);
             jsvUnLock(childValue);
             return idx;

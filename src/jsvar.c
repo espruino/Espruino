@@ -635,13 +635,13 @@ void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
 
 char jsvGetCharInString(JsVar *v, int idx) {
   if (!jsvIsString(v)) return 0;
-  if (idx<0) idx += jsvGetStringLength(v); // <0 goes from end of string
+  if (idx<0) idx += (int)jsvGetStringLength(v); // <0 goes from end of string
   if (idx<0) return 0;
 
   v = jsvLockAgain(v);
-  while (v && idx >= jsvGetMaxCharactersInVar(v)) {
+  while (v && idx >= (int)jsvGetMaxCharactersInVar(v)) {
     JsVarRef next;
-    idx -= jsvGetMaxCharactersInVar(v);
+    idx -= (int)jsvGetMaxCharactersInVar(v);
     next = v->lastChild;
     jsvUnLock(v);
     v = jsvLock(next);
@@ -1072,6 +1072,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
     JsVar *childIndex = jsvLock(indexref);
     assert(jsvIsName(childIndex))
     JsVar *childValue = jsvLock(childIndex->firstChild);
+
     if (jsvIsBasicVarEqual(childValue, value)) {
       jsvUnLock(childValue);
       return childIndex;
