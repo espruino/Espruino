@@ -200,6 +200,7 @@ int main(int argc, char **argv) {
   }
 
   printf("Size of JsVar is now %d bytes'\n", (int)sizeof(JsVar));
+  printf("Size of JsVarRef is now %d bytes'\n", (int)sizeof(JsVarRef));
 
   struct sigaction sa;
   sa.sa_handler = sig_handler;

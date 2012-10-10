@@ -136,12 +136,6 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #endif
 
 
-#ifdef ARM
-
-#else
-
-#endif
-
 typedef long long JsVarInt;
 typedef unsigned long long JsVarIntUnsigned;
 #ifndef USE_NO_FLOATS

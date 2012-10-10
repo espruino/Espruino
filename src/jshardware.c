@@ -1085,25 +1085,30 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 #endif
 }
 
-
-#if defined(STM32F4)
-#define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
-#define FLASH_MEMORY_SIZE (1024*1024)
-#define FLASH_PAGE_SIZE (128*1024)
-#define FLASH_PAGES 1
-#elif defined(OLIMEXINO_STM32)
- #define FLASH_MEMORY_SIZE (128*1024)
- #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 14
+#ifdef ARM
+ #if defined(STM32F4)
+  #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
+  #define FLASH_MEMORY_SIZE (1024*1024)
+  #define FLASH_PAGE_SIZE (128*1024)
+  #define FLASH_PAGES 1
+ #elif defined(OLIMEXINO_STM32)
+  #define FLASH_MEMORY_SIZE (128*1024)
+  #define FLASH_PAGE_SIZE 1024
+  #define FLASH_PAGES 14
+ #else
+  #define FLASH_MEMORY_SIZE (128*1024)
+  #define FLASH_PAGE_SIZE 1024
+  #define FLASH_PAGES 6
+ #endif
 #else
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 6
+ #define FLASH_PAGES 32
 #endif
 
 #define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
-#if FLASH_LENGTH+8 < JSVAR_CACHE_SIZE*24
-#error NOT ENOUGH ROOM IN FLASH - UNLESS WE ARE ONLY USING 20 bits?
+#if FLASH_LENGTH < 8+JSVAR_CACHE_SIZE*20
+#error NOT ENOUGH ROOM IN FLASH - UNLESS WE ARE ONLY USING 16 bytes forJsVarRef ? FLASH_PAGES pages at FLASH_PAGE_SIZE bytes
 #endif
 
 #define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
