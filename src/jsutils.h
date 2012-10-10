@@ -49,9 +49,7 @@
   HIGH PRIORITY:
         Detect if running out of FIFO space and skip writing characters
         Add Math functions
-        Make save() retry writing to flash if there was an error
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        Allow lexer to handle strings longer than 32 chars
 
   MEDIUM PRIORITY:
 	When printing lines, backspace and add '>' prompt after print (only if echo=1)
@@ -60,7 +58,7 @@
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
-
+        Make save() retry writing to flash if there was an error
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)
