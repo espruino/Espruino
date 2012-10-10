@@ -47,8 +47,8 @@
   #define MAIN_USART USART1
   #define JOIN_MAIN_USART(X) USART1 ## X
 
-  #define RXBUFFERMASK 31
-  #define TXBUFFERMASK 15
+  #define RXBUFFERMASK 63
+  #define TXBUFFERMASK 31
 
  #endif
 #else//!ARM

@@ -746,7 +746,7 @@ JsVar *jspeFactor() {
     }
     if (execInfo.lex->tk==LEX_STR) {
       if (JSP_SHOULD_EXECUTE) {
-        JsVar *a = jsvNewFromString(jslGetTokenValueAsString(execInfo.lex));
+        JsVar *a = jslGetTokenValueAsVar(execInfo.lex);
         JSP_MATCH_WITH_RETURN(LEX_STR, a);
         return a;
       } else {
@@ -766,7 +766,7 @@ JsVar *jspeFactor() {
         while (!JSP_HAS_ERROR && execInfo.lex->tk != '}') {
           JsVar *varName = 0;
           if (JSP_SHOULD_EXECUTE) {
-            varName = jsvNewFromString(jslGetTokenValueAsString(execInfo.lex));
+            varName = jslGetTokenValueAsVar(execInfo.lex);
             if (!varName) { // out of memory
               jspSetError();
               return contents;

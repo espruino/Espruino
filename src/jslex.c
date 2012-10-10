@@ -57,14 +57,17 @@ void jslGetNextCh(JsLex *lex) {
   lex->currentPos++;
 }
 
-void jslTokenAppendChar(JsLex *lex, char ch) {
+static inline void jslTokenAppendChar(JsLex *lex, char ch) {
   /* Add character to buffer but check it isn't too big.
    * Also Leave ONE character at the end for null termination */
   if (lex->tokenl < JSLEX_MAX_TOKEN_LENGTH-1) {
     lex->token[lex->tokenl++] = ch;
-  } else {
+  }
+#ifdef DEBUG
+  else {
     jsWarnAt("Token name is too long! skipping character", lex, lex->tokenStart);
   }
+#endif
 }
 
 static inline bool jslIsToken(JsLex *lex, const char *token) {
@@ -80,6 +83,10 @@ static inline bool jslIsToken(JsLex *lex, const char *token) {
 void jslGetNextToken(JsLex *lex) {
   lex->tk = LEX_EOF;
   lex->tokenl = 0; // clear token string
+  if (lex->tokenValue) {
+    jsvUnLock(lex->tokenValue);
+    lex->tokenValue = 0;
+  }
   while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // newline comments
   if (lex->currCh=='/' && lex->nextCh=='/') {
@@ -159,62 +166,48 @@ void jslGetNextToken(JsLex *lex) {
           jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
         }
       }
-  } else if (lex->currCh=='"') {
+  } else if (lex->currCh=='"' || lex->currCh=='\'') {
+      char delim = lex->currCh;
+      lex->tokenValue = jsvNewFromString("");
       // strings...
       jslGetNextCh(lex);
-      while (lex->currCh && lex->currCh!='"') {
+      while (lex->currCh && lex->currCh!=delim) {
           if (lex->currCh == '\\') {
               jslGetNextCh(lex);
+              char ch = lex->currCh;
               switch (lex->currCh) {
-              case 'n' : jslTokenAppendChar(lex, '\n'); break;
-              case '"' : jslTokenAppendChar(lex, '"'); break;
-              case '\\' : jslTokenAppendChar(lex, '\\'); break;
-              default: jslTokenAppendChar(lex, lex->currCh); break;
-              }
-          } else {
-            jslTokenAppendChar(lex, lex->currCh);
-          }
-          jslGetNextCh(lex);
-      }
-      jslGetNextCh(lex);
-      lex->tk = LEX_STR;
-  } else if (lex->currCh=='\'') {
-      // strings again...
-      jslGetNextCh(lex);
-      while (lex->currCh && lex->currCh!='\'') {
-          if (lex->currCh == '\\') {
-              jslGetNextCh(lex);
-              switch (lex->currCh) {
-              case 'n' : jslTokenAppendChar(lex, '\n'); break;
-              case 'a' : jslTokenAppendChar(lex, '\a'); break;
-              case 'r' : jslTokenAppendChar(lex, '\r'); break;
-              case 't' : jslTokenAppendChar(lex, '\t'); break;
-              case '\'' : jslTokenAppendChar(lex, '\''); break;
-              case '\\' : jslTokenAppendChar(lex, '\\'); break;
-#ifndef SDCC
+              case 'n'  : ch = '\n'; break;
+              case 'a'  : ch = '\a'; break;
+              case 'r'  : ch = '\r'; break;
+              case 't'  : ch = '\t'; break;
+              case '\'' : ch = '\''; break;
+              case '\\' : ch = '\\'; break;
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
                             jslGetNextCh(lex); buf[2] = lex->currCh;
                             jslGetNextCh(lex); buf[3] = lex->currCh;
-                            jslTokenAppendChar(lex, (char)stringToInt(buf));
+                            ch = (char)stringToInt(buf);
                          } break;
-#endif
               default: 
-#ifndef SDCC
                        if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
                          char buf[5] = "0???";
                          buf[1] = lex->currCh;
                          jslGetNextCh(lex); buf[2] = lex->currCh;
                          jslGetNextCh(lex); buf[3] = lex->currCh;
-                         jslTokenAppendChar(lex, (char)stringToInt(buf));
-                       } else
-#endif
-                         jslTokenAppendChar(lex, lex->currCh);
+                         ch = (char)stringToInt(buf);
+                       }
                        break;
               }
+              if (lex->tokenValue) {
+                jslTokenAppendChar(lex, ch);
+                jsvAppendCharacter(lex->tokenValue, ch);
+              }
           } else {
-            jslTokenAppendChar(lex, lex->currCh);
+            if (lex->tokenValue) {
+              jslTokenAppendChar(lex, lex->currCh);
+              jsvAppendCharacter(lex->tokenValue, lex->currCh);
+            }
           }
           jslGetNextCh(lex);
       }
@@ -312,6 +305,7 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   lex->tokenEnd = 0;
   lex->tokenLastEnd = 0;
   lex->tokenl = 0;
+  lex->tokenValue = 0;
   // reset position
   jslReset(lex);
 }
@@ -333,6 +327,10 @@ void jslKill(JsLex *lex) {
     jsvUnLock(lex->currentVar);
     lex->currentVarRef=0;
     lex->currentVar=0;
+  }
+  if (lex->tokenValue) {
+    jsvUnLock(lex->tokenValue);
+    lex->tokenValue = 0;
   }
   lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
 }
@@ -420,6 +418,16 @@ char *jslGetTokenValueAsString(JsLex *lex) {
   assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
   lex->token[lex->tokenl]  = 0; // add final null
   return lex->token;
+}
+
+JsVar *jslGetTokenValueAsVar(JsLex *lex) {
+  if (lex->tokenValue) {
+    return jsvLockAgain(lex->tokenValue);
+  } else {
+    assert(lex->tokenl < JSLEX_MAX_TOKEN_LENGTH);
+    lex->token[lex->tokenl]  = 0; // add final null
+    return jsvNewFromString(lex->token);
+  }
 }
 
 /// Match, and return true on success, false on failure

@@ -20,6 +20,7 @@ typedef struct JsLex
     int tokenEnd; ///< Position in the data at the last character of the token we have here
     int tokenLastEnd; ///< Position in the data at the last character of the last token
     char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
+    JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
     int tokenl; ///< the current length of token
 
     /* Where we get our data from...
@@ -47,6 +48,7 @@ bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on succe
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
 void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
+JsVar *jslGetTokenValueAsVar(JsLex *lex);
 
 // Only for more 'internal' use
 void jslSeek(JsLex *lex, int seekToChar);

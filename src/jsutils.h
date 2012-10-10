@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v09"
+#define JS_VERSION "1v10"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -38,6 +38,9 @@
      1v09 : Enabled 'abs' by default
             Added flash programming to STM32F4
             analogWrite now working!
+     1v10 : Increase FIFO size for VL
+            Marginally decrease amount of F4 vars to ensure they all fit in one flash sector
+            Allow strings to be longer than the max token size
 [/CHANGELOG]
 
 [TODO]
@@ -60,6 +63,7 @@
 
  
   LOW PRIORITY
+        add Array.map(fn(x), thisArg)
         analogWrite should check about ports with overlapping timers
         Built-in constants for LED1/BTN/etc.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
@@ -73,7 +77,7 @@
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
         Memory leak cleanup code - to try and clean up if memory has been leaked
         'if ("key" in obj)' syntax
-        function.call(scope)
+        function.call(thisArg, extraArgs)
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         'Array.prototype.clear = function () { this.X = 23; };'
         Could store vars in arrays/objects/functions as a binary tree instead of a linked list
@@ -110,10 +114,11 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
    JsVarRef = short -> 24 bytes/JsVar
 
    NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
+         See jshardware.c FLASH constants - all this must be able to fit in flash
 */
 #ifdef ARM
  #ifdef STM32F4
-  #define JSVAR_CACHE_SIZE 6000  
+  #define JSVAR_CACHE_SIZE 5450  
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
  #else
   #define JSVAR_CACHE_SIZE 250 // room for 350, but must leave stack
