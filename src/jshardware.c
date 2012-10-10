@@ -1094,7 +1094,7 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 #elif defined(OLIMEXINO_STM32)
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 17
+ #define FLASH_PAGES 14
 #else
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
