@@ -1086,18 +1086,26 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 }
 
 
-#ifdef STM32F4
- #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
- #define FLASH_MEMORY_SIZE (1024*1024)
- #define FLASH_PAGE_SIZE (128*1024)
- #define FLASH_PAGES 1
+#if defined(STM32F4)
+#define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
+#define FLASH_MEMORY_SIZE (1024*1024)
+#define FLASH_PAGE_SIZE (128*1024)
+#define FLASH_PAGES 1
+#elif defined(OLIMEXINO_STM32)
+ #define FLASH_MEMORY_SIZE (128*1024)
+ #define FLASH_PAGE_SIZE 1024
+ #define FLASH_PAGES 17
 #else
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 4
+ #define FLASH_PAGES 6
 #endif
 
 #define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
+#if FLASH_LENGTH+8 < JSVAR_CACHE_SIZE*24
+#error NOT ENOUGH ROOM IN FLASH - UNLESS WE ARE ONLY USING 20 bits?
+#endif
+
 #define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
 #define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-8)
 #define FLASH_MAGIC 0xDEADBEEF

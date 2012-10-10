@@ -111,19 +111,24 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 /* Number of Js Variables allowed and Js Reference format. 
 
-   JsVarRef = char -> 20 bytes/JsVar
-   JsVarRef = short -> 24 bytes/JsVar
+   JsVarRef = char -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
+   JsVarRef = short -> 24 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 24
 
    NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
          See jshardware.c FLASH constants - all this must be able to fit in flash
+
+
 */
 #ifdef ARM
- #ifdef STM32F4
+ #if defined(STM32F4)
   #define JSVAR_CACHE_SIZE 5450  
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
- #else
-  #define JSVAR_CACHE_SIZE 250 // room for 350, but must leave stack
-  typedef unsigned char JsVarRef;  // References for variables - We treat 0 as null 
+ #elif defined(OLIMEXINO_STM32)
+  #define JSVAR_CACHE_SIZE 700
+  typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
+#else
+  #define JSVAR_CACHE_SIZE 250
+  typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
  #endif
 #else
  #define JSVAR_CACHE_SIZE 350
