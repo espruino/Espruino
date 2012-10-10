@@ -127,7 +127,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #define JSVAR_CACHE_SIZE 700
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
  #else
-  #define JSVAR_CACHE_SIZE 250
+  #define JSVAR_CACHE_SIZE 253
   typedef unsigned char JsVarRef;  // References for variables - We treat 0 as null
  #endif
 #else
