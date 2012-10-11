@@ -108,9 +108,9 @@
 typedef unsigned int size_t;
 #endif
 
-#ifndef __STM32F10x_H
+#ifndef __USB_TYPE_H // it is defined in this file too!
 typedef enum {FALSE = 0, TRUE = !FALSE} bool;
-#endif
+#endif 
 
 #define true (1)
 #define false (0)
@@ -130,7 +130,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #define JSVAR_CACHE_SIZE 5450  
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
  #elif defined(OLIMEXINO_STM32)
-  #define JSVAR_CACHE_SIZE 700
+  #define JSVAR_CACHE_SIZE 500 // 700
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
  #else
   #define JSVAR_CACHE_SIZE 253

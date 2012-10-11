@@ -5,59 +5,13 @@
  *      Author: gw
  */
 
-#ifdef ARM
- #ifdef STM32F4
-  #include "stm32f4xx_conf.h" // again, added because ST didn't put it here ?
-  #include "peripherals/stm32f4xx_adc.h"
-  #include "peripherals/stm32f4xx_gpio.h"
-  #include "peripherals/stm32f4xx_usart.h"
-  #include "peripherals/stm32f4xx_flash.h"
-  #include "peripherals/stm32f4xx_syscfg.h"
-  #include "peripherals/stm32f4xx_tim.h"
-  #include "stm32f4_discovery.h"
-
-  #define MAIN_USART_Pin_RX GPIO_Pin_3
-  #define MAIN_USART_Pin_TX GPIO_Pin_2
-  #define MAIN_USART_Port GPIOA
-  #define MAIN_USART USART2
-  #define JOIN_MAIN_USART(X) USART2 ## X
-
-
-  #define STM32vldiscovery_LEDInit STM_EVAL_LEDInit
-  #define STM32vldiscovery_LEDOn STM_EVAL_LEDOn
-  #define STM32vldiscovery_LEDOff STM_EVAL_LEDOff
-  #define STM32vldiscovery_PBInit STM_EVAL_PBInit
-
-  // we have loads of memory
-  #define RXBUFFERMASK 127
-  #define TXBUFFERMASK 127
-
- #else
-  #include "stm32f10x.h"
-  #include "peripherals/stm32f10x_adc.h"
-  #include "peripherals/stm32f10x_gpio.h"
-  #include "peripherals/stm32f10x_usart.h"
-  #include "peripherals/stm32f10x_flash.h"
-  #include "peripherals/stm32f10x_tim.h"
-  #include "STM32vldiscovery.h"
-
-  #define MAIN_USART_Pin_RX GPIO_Pin_10
-  #define MAIN_USART_Pin_TX GPIO_Pin_9
-  #define MAIN_USART_Port GPIOA
-  #define MAIN_USART USART1
-  #define JOIN_MAIN_USART(X) USART1 ## X
-
-  #define RXBUFFERMASK 63
-  #define TXBUFFERMASK 31
-
- #endif
-#else//!ARM
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <sys/time.h>
-#include <sys/select.h>
-#include <termios.h>
+#ifndef ARM
+ #include <stdlib.h>
+ #include <string.h>
+ #include <stdio.h>
+ #include <sys/time.h>
+ #include <sys/select.h>
+ #include <termios.h>
 #endif//ARM
 
 #include "jshardware.h"
@@ -74,7 +28,6 @@ volatile unsigned char rxHead=0, rxTail=0;
 // UART Transmit
 char txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
-
 #endif
 
 // IO Events
@@ -321,116 +274,13 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 #endif
 // ----------------------------------------------------------------------------
 #ifdef ARM
-#define SYSTICK_RANGE 0x1000000
 JsSysTime SysTickMajor = SYSTICK_RANGE;
-void SysTick_Handler(void) {
+void jshDoSysTick() {
   SysTickMajor+=SYSTICK_RANGE;
 }
 
-void JOIN_MAIN_USART(_IRQHandler)(void) {
- if(USART_GetITStatus(MAIN_USART, USART_IT_RXNE) != RESET) {
-    /* Clear the USART Receive interrupt */
-    USART_ClearITPendingBit(MAIN_USART, USART_IT_RXNE);
-    /* Read one byte from the receive data register */
-    char ch = USART_ReceiveData(MAIN_USART);
-    if (ch==3) { // Ctrl-C - force interrupt
-      jspSetInterrupted(true);
-    } else {
-      rxBuffer[rxHead] = ch;
-      rxHead = (rxHead+1)&RXBUFFERMASK;
-    }
-  }
-  if(USART_GetITStatus(MAIN_USART, USART_IT_TXE) != RESET) {
-    /* Clear the USART Transmit interrupt */
-    //USART_ClearITPendingBit(MAIN_USART, USART_IT_TXE);
-    /* If we have other data to send, send it */
-    if (txHead != txTail) {
-      USART_SendData(MAIN_USART, txBuffer[txTail]);
-      txTail = (txTail+1)&TXBUFFERMASK;
-    } else
-      USART_ITConfig(MAIN_USART, USART_IT_TXE, DISABLE);
-  }
-}
 
-void EXTI0_IRQHandler(void) {
-  if (EXTI_GetITStatus(EXTI_Line0) == SET) {
-    jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource0);
-    EXTI_ClearITPendingBit(EXTI_Line0);
-  }
-  // repeat for EXTI1 etc...
-}
-void EXTI1_IRQHandler(void) {
-  if (EXTI_GetITStatus(EXTI_Line1) == SET) {
-    jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource1);
-    EXTI_ClearITPendingBit(EXTI_Line1);
-  }
-}
-void EXTI2_IRQHandler(void) {
-    if (EXTI_GetITStatus(EXTI_Line2) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource2);
-      EXTI_ClearITPendingBit(EXTI_Line2);
-    }
-}
-void EXTI3_IRQHandler(void) {
-    if (EXTI_GetITStatus(EXTI_Line3) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource3);
-      EXTI_ClearITPendingBit(EXTI_Line3);
-    }
-}
-void EXTI4_IRQHandler(void) {
-    if (EXTI_GetITStatus(EXTI_Line4) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource4);
-      EXTI_ClearITPendingBit(EXTI_Line4);
-    }
-}
-void EXTI9_5_IRQHandler(void) {
-    if (EXTI_GetITStatus(EXTI_Line5) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource5);
-      EXTI_ClearITPendingBit(EXTI_Line5);
-    }
-    if (EXTI_GetITStatus(EXTI_Line6) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource6);
-      EXTI_ClearITPendingBit(EXTI_Line6);
-    }
-    if (EXTI_GetITStatus(EXTI_Line7) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource7);
-      EXTI_ClearITPendingBit(EXTI_Line7);
-    }
-    if (EXTI_GetITStatus(EXTI_Line8) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource8);
-      EXTI_ClearITPendingBit(EXTI_Line8);
-    }
-    if (EXTI_GetITStatus(EXTI_Line9) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource9);
-      EXTI_ClearITPendingBit(EXTI_Line9);
-    }
-}
-void EXTI15_10_IRQHandler(void) {
-    if (EXTI_GetITStatus(EXTI_Line10) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource10);
-      EXTI_ClearITPendingBit(EXTI_Line10);
-    }
-    if (EXTI_GetITStatus(EXTI_Line11) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource11);
-      EXTI_ClearITPendingBit(EXTI_Line11);
-    }
-    if (EXTI_GetITStatus(EXTI_Line12) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource12);
-      EXTI_ClearITPendingBit(EXTI_Line12);
-    }
-    if (EXTI_GetITStatus(EXTI_Line13) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource13);
-      EXTI_ClearITPendingBit(EXTI_Line13);
-    }
-    if (EXTI_GetITStatus(EXTI_Line14) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource14);
-      EXTI_ClearITPendingBit(EXTI_Line14);
-    }
-    if (EXTI_GetITStatus(EXTI_Line15) == SET) {
-      jshPushIOEvent(jshGetSystemTime(), GPIO_PinSource15);
-      EXTI_ClearITPendingBit(EXTI_Line15);
-    }
-}
+
 #endif//ARM
 // ----------------------------------------------------------------------------
 #ifndef ARM
@@ -509,19 +359,36 @@ void jshInit() {
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   /* Initialise LEDs LD3&LD4, both on */
-  STM32vldiscovery_LEDInit(LED3);
-  STM32vldiscovery_LEDInit(LED4);
-#ifdef STM32F4
-  STM32vldiscovery_LEDInit(LED5);
-  STM32vldiscovery_LEDInit(LED6);
-#endif
-  STM32vldiscovery_PBInit(BUTTON_USER, BUTTON_MODE_GPIO); // See STM32vldiscovery.c (MODE_EXTI) to see how to set up interrupts!
-  STM32vldiscovery_LEDOn(LED3);
-  STM32vldiscovery_LEDOn(LED4);
-  volatile int cnt; for (cnt=0;cnt<10000;cnt++); // small delay
-  STM32vldiscovery_LEDOff(LED3);
-
   GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef LED1_PORT
+  GPIO_InitStructure.GPIO_Pin = LED1_PIN;  
+  GPIO_Init(LED1_PORT, &GPIO_InitStructure);
+#endif
+#ifdef LED2_PORT
+  GPIO_InitStructure.GPIO_Pin = LED2_PIN;  
+  GPIO_Init(LED2_PORT, &GPIO_InitStructure);
+#endif
+#ifdef LED3_PORT
+  GPIO_InitStructure.GPIO_Pin = LED3_PIN;  
+  GPIO_Init(LED3_PORT, &GPIO_InitStructure);
+#endif
+#ifdef LED4_PORT
+  GPIO_InitStructure.GPIO_Pin = LED4_PIN;  
+  GPIO_Init(LED4_PORT, &GPIO_InitStructure);
+#endif
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#ifdef BTN_PORT  
+  GPIO_InitStructure.GPIO_Pin = BTN_PIN;  
+  GPIO_Init(BTN_PORT, &GPIO_InitStructure);
+#endif
+  GPIO_SetBits(LED1_PORT,LED1_PIN);
+  GPIO_SetBits(LED2_PORT,LED2_PIN);
+  volatile int cnt; for (cnt=0;cnt<10000;cnt++); // small delay
+  GPIO_ResetBits(LED2_PORT,LED2_PIN);
+
+
 
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
 #ifdef STM32F4
@@ -712,6 +579,11 @@ void jshTXStr(const char *str) {
   }
 }
 
+void jshTXFlush() {
+#ifdef ARM
+  while (txHead != txTail) ; // wait for send to finish
+#endif  
+}
 
 // ----------------------------------------------------------------------------
 

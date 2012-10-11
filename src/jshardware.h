@@ -8,6 +8,9 @@
 #ifndef JSHARDWARE_H_
 #define JSHARDWARE_H_
 
+#ifdef ARM
+ #include "platform_config.h"
+#endif
 #include "jsutils.h"
 #include "jsvar.h"
 
@@ -20,6 +23,8 @@ int jshRX();
 void jshTX(char data);
 /// Transmit a string
 void jshTXStr(const char *str);
+/// Wait for transmit to finish
+void jshTXFlush();
 
 typedef long long JsSysTime;
 /// Get the system time (in ticks)
@@ -56,5 +61,19 @@ void jshSaveToFlash();
 void jshLoadFromFlash();
 /// Returns true if flash contains something useful
 bool jshFlashContainsCode();
+
+
+// ---------------------------------------------- LOW LEVEL
+
+#ifdef ARM
+///On SysTick interrupt, call this
+void jshDoSysTick();
+// UART Receive
+extern char rxBuffer[RXBUFFERMASK+1];
+extern volatile unsigned char rxHead, rxTail;
+// UART Transmit
+extern char txBuffer[TXBUFFERMASK+1];
+extern volatile unsigned char txHead, txTail;
+#endif
 
 #endif /* JSHARDWARE_H_ */
