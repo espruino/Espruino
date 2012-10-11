@@ -43,6 +43,8 @@
             Allow strings to be longer than the max token size
             '"key" in obj' syntax
             Detect if in FOR or WHILE loop, and if not, disallow break and continue
+            Change min setInterval time to 0.1ms - F4 can get close to this
+            Better analog pin error message
 [/CHANGELOG]
 
 [TODO]
@@ -52,9 +54,13 @@
         Detect if running out of FIFO space and skip writing characters
         Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
+        Make jsvAddName insert elements into arrays in the correct order (then ArrayGetLength can just return value of last element)
+        Faster code to work out pins from strings - is slow right now.
+        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
+        Built-in constants for LED1/BTN/etc.
 
   MEDIUM PRIORITY:
-	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -62,13 +68,13 @@
         Make save() retry writing to flash if there was an error
         Add instanceof
         Check precedence against MDN javascript op precedence page
+        Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
+        Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
-        Built-in constants for LED1/BTN/etc.
-        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Allow Serial comms via other UARTS
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays

@@ -1004,7 +1004,7 @@ void jshPinAnalogOutput(int pin, JsVarFloat value) {
     }
 #endif
 
-  } else jsError("Invalid pin!");
+  } else jsError("Invalid pin, or pin not capable of analog output!");
 #endif
 }
 

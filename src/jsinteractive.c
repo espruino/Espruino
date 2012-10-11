@@ -663,7 +663,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       // Create a new timer
       JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
       JsVarFloat interval = jsvGetDouble(timeout);
-      if (interval<1) interval=1;
+      if (interval<0.1) interval=0.1;
       JsVar *v;
       v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
       jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
