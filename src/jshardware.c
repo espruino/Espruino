@@ -279,7 +279,15 @@ void jshDoSysTick() {
   SysTickMajor+=SYSTICK_RANGE;
 }
 
-
+// Data has come in from serial - save it
+void jshReceiveChar(char ch) {
+    if (ch==3) { // Ctrl-C - force interrupt
+      jspSetInterrupted(true);
+    } else {
+      rxBuffer[rxHead] = ch;
+      rxHead = (rxHead+1)&RXBUFFERMASK;
+    }
+}
 
 #endif//ARM
 // ----------------------------------------------------------------------------
@@ -360,7 +368,13 @@ void jshInit() {
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   /* Initialise LEDs LD3&LD4, both on */
   GPIO_InitTypeDef GPIO_InitStructure;
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+#else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+#endif
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 #ifdef LED1_PORT
   GPIO_InitStructure.GPIO_Pin = LED1_PIN;  
@@ -378,7 +392,13 @@ void jshInit() {
   GPIO_InitStructure.GPIO_Pin = LED4_PIN;  
   GPIO_Init(LED4_PORT, &GPIO_InitStructure);
 #endif
+
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
 #ifdef BTN_PORT  
   GPIO_InitStructure.GPIO_Pin = BTN_PIN;  
   GPIO_Init(BTN_PORT, &GPIO_InitStructure);
@@ -393,7 +413,7 @@ void jshInit() {
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
 #ifdef STM32F4
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // or NoPull?
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // or UP?
 #else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 #endif
@@ -421,7 +441,7 @@ void jshInit() {
 
   USART_InitTypeDef USART_InitStructure;
 #ifdef STM32F4
-  USART_InitStructure.USART_BaudRate = 9600*3;//38400; // FIXME wtf
+  USART_InitStructure.USART_BaudRate = 9600;//38400; // FIXME wtf
 #else
   USART_InitStructure.USART_BaudRate = 9600;//38400;
 #endif
@@ -554,8 +574,15 @@ int jshRX() {
 #endif
 }
 
+#ifdef USB
+void USART_To_USB_Send_Data(char ch); // FIXME
+#endif
+
 void jshTX(char data) {
 #ifdef ARM
+#ifdef USB
+ USART_To_USB_Send_Data( data );
+#endif
  #if 1
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow

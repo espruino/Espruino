@@ -68,6 +68,8 @@ bool jshFlashContainsCode();
 #ifdef ARM
 ///On SysTick interrupt, call this
 void jshDoSysTick();
+// Data has come in from serial - save it
+void jshReceiveChar(char ch);
 // UART Receive
 extern char rxBuffer[RXBUFFERMASK+1];
 extern volatile unsigned char rxHead, rxTail;
