@@ -105,7 +105,6 @@ setInterval(function() {
 
 
 // stepper driver
-
 var step = 0;
 var steps = [1,3,2,6,4,12,8,9];
 var stepperPins = ["D12","D13","D14","D15"];
@@ -114,3 +113,10 @@ setInterval(function() {
  step = (step+1) % steps.length;
  digitalWrite(stepperPins, steps[step]);
 }, 10);
+
+// speed test
+var a = 1;
+setInterval("a=!a;digitalWrite('D12',a);", 0);
+var b = 1;
+setInterval("b=!b;digitalWrite('D13',b);", 0);
+

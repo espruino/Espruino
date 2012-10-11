@@ -66,7 +66,7 @@
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
-        Add instanceof
+        Add instanceof operator
         Check precedence against MDN javascript op precedence page
         Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
