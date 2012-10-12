@@ -589,11 +589,6 @@ void jshInit() {
   GPIO_Init(BTN_PORT, &GPIO_InitStructure);
 #endif
   GPIO_SetBits(LED1_PORT,LED1_PIN);
-  GPIO_SetBits(LED2_PORT,LED2_PIN);
-  volatile int cnt; for (cnt=0;cnt<10000;cnt++); // small delay
-  GPIO_ResetBits(LED2_PORT,LED2_PIN);
-
-
 
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
 #ifdef STM32F4
@@ -727,6 +722,9 @@ void jshInit() {
 #ifdef ARM
   jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n");
 #endif
+
+  // Turn led off - so we know we have initialised
+  GPIO_ResetBits(LED1_PORT,LED1_PIN);
 
 #else//!ARM
   //

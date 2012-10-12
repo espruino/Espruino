@@ -158,6 +158,9 @@ void jsiSoftInit() {
     JsVar *initCode = jsvLock(initName->firstChild);
     jsvUnLock(jspEvaluateVar(&p, initCode));
     jsvUnLock(initCode);
+    JsVar *root = jsvLock(p.root);
+    jsvRemoveChild(root, initName);
+    jsvUnLock(root);
   }
   jsvUnLock(initName);
 }
