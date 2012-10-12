@@ -4,10 +4,11 @@
  *  Created on: 1 Nov 2011
  *      Author: gw
  */
-//#define INLINE_FUNC inline
+
 #include "jsvar.h"
 #include "jslex.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
 JsVar jsVars[JSVAR_CACHE_SIZE];
@@ -781,6 +782,18 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
   return true;
 }
 
+/** Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later */
+int jsvCompareInteger(JsVar *va, JsVar *vb) {
+  if (jsvIsInt(va) && jsvIsInt(vb))
+    return (int)(jsvGetInteger(va) - jsvGetInteger(vb));
+  else if (jsvIsInt(va))
+    return -1;
+  else if (jsvIsInt(vb))
+    return 1;
+  else
+    return 0;
+}
+
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
   JsVar *dst = jsvNewWithFlags(src->flags);
@@ -867,20 +880,45 @@ JsVar *jsvCopy(JsVar *src) {
 }
 
 void jsvAddName(JsVar *parent, JsVar *namedChild) {
-  namedChild = jsvRef(namedChild);
+  namedChild = jsvRef(namedChild); // ref here VERY important as adding to structure!
   assert(jsvIsName(namedChild));
 
-  // TODO: if array, insert in correct order
-  if (parent->lastChild) {
-    // Link 2 children together
-    JsVar *lastChild = jsvLock(parent->lastChild);
-    lastChild->nextSibling = jsvGetRef(namedChild);
-    jsvUnLock(lastChild);
+  if (parent->lastChild) { // we have children already
+    JsVar *insertAfter = jsvLock(parent->lastChild);
+    if (jsvIsArray(parent)) {
+      // we must insert in order - so step back until we get the right place
+      while (insertAfter && jsvCompareInteger(namedChild, insertAfter)<0) {
+        JsVarRef prev = insertAfter->prevSibling;
+        jsvUnLock(insertAfter);
+        insertAfter = prev ? jsvLock(prev) : 0;
+      }
+    }
 
-    namedChild->prevSibling = parent->lastChild;
-    // finally set the new child as the last one
-    parent->lastChild = jsvGetRef(namedChild);
-  } else {
+    if (insertAfter) {
+      if (insertAfter->nextSibling) {
+        // great, we're in the middle...
+        JsVar *insertBefore = jsvLock(insertAfter->nextSibling);
+        insertBefore->prevSibling = jsvGetRef(namedChild);
+        namedChild->nextSibling = jsvGetRef(insertBefore);
+        jsvUnLock(insertBefore);
+      } else {
+        // We're at the end - just set up the parent
+        parent->lastChild = jsvGetRef(namedChild);
+      }
+      insertAfter->nextSibling = jsvGetRef(namedChild);
+      namedChild->prevSibling = jsvGetRef(insertAfter);
+      jsvUnLock(insertAfter);
+    } else { // Insert right at the beginning of the array
+      // Link 2 children together
+      JsVar *firstChild = jsvLock(parent->firstChild);
+      firstChild->prevSibling = jsvGetRef(namedChild);
+      jsvUnLock(firstChild);
+
+      namedChild->nextSibling = parent->firstChild;
+      // finally set the new child as the first one
+      parent->firstChild = jsvGetRef(namedChild);
+    }
+  } else { // we have no children - just add it
     parent->firstChild = parent->lastChild = jsvGetRef(namedChild);
 
   }
@@ -959,19 +997,17 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
     jsvUnLock(child);
   }
 
-  // TODO: if array, insert in correct order
   child = 0;
   if (addIfNotFound && childName) {
     if (childName->refs == 0) {
       // Not reffed - great! let's just use it
       if (!jsvIsName(childName))
         childName = jsvMakeIntoVariableName(childName, 0);
-      jsvAddName(parent, childName);
       child = jsvLockAgain(childName);
     } else { // it was reffed, we must add a new one
       child = jsvMakeIntoVariableName(jsvCopy(childName), 0);
-      jsvAddName(parent, child);
     }
+    jsvAddName(parent, child);
   }
   jsvUnLock(parent);
   return child;
@@ -1026,21 +1062,21 @@ int jsvGetChildren(JsVar *v) {
 
 
 JsVarInt jsvGetArrayLength(JsVar *arr) {
-  JsVarInt lastIdx = 0;
-  JsVarRef childref = arr->firstChild;
-  // TODO: when everying is in order in an array, we can just look at the last element
+  JsVarRef childref = arr->lastChild;
+  // Just look at last non-string element!
   while (childref) {
     JsVarInt childIndex;
     JsVar *child = jsvLock(childref);
-    
-    assert(jsvIsInt(child));
-    childIndex = jsvGetInteger(child)+1;
-    if (childIndex>lastIdx) 
-        lastIdx = childIndex;
-    childref = child->nextSibling;
+    if (jsvIsInt(child)) {
+      JsVarInt lastIdx = jsvGetInteger(child);
+      jsvUnLock(child);
+      return lastIdx+1;
+    }
+    // if not an int, keep going
+    childref = child->prevSibling;
     jsvUnLock(child);
   }
-  return lastIdx;
+  return 0;
 }
 
 JsVar *jsvGetArrayItem(JsVar *arr, int index) {

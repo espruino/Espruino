@@ -160,7 +160,7 @@ void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
     size_t l = jsvGetMaxCharactersInVar(v);
     size_t i;
     for (i=0;i<l;i++)
-      jshTransmit(device,  v->varData.str[i]);
+      jshTransmit(device, (unsigned char)v->varData.str[i]);
     r = v->lastChild;
     jsvUnLock(v);
   }
@@ -198,8 +198,6 @@ JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
 void jsiSoftInit() {
   events = 0;
   inputline = jsvNewFromString("");
-
-  ;
 
   // Load inbuild Classes
   classUSART1 = _jsiInitSerialClass(EV_USART1, "Serial1");

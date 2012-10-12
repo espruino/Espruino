@@ -202,6 +202,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock an
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
+int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
 void jsvAppendCharacter(JsVar *var, char ch); ///< Append the given character to this string

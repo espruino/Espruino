@@ -6,6 +6,7 @@
  */
 
 #include "jsfunctions.h"
+#include "jsinteractive.h"
 #ifdef USE_MATH
 #include <math.h>
 #endif
@@ -205,7 +206,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *v = jspParseSingleFunction();
          JsVarInt idx = jsvGetIntegerAndUnLock(v);
          // now search to try and find the char
-         buffer[0] = jsvGetCharInString(a, idx);
+         buffer[0] = jsvGetCharInString(a, (int)idx);
          buffer[1] = 0;
          return jsvNewFromString(buffer);
        }
@@ -328,27 +329,38 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       /*JS* method Array.join(separator)
        *JS*  Join all elements of this array together into one string, using 'separator' between them. eg. [1,2,3].join(" ")=="1 2 3"
        */
-           JsVar *filler = jsvAsString(jspParseSingleFunction(), true);
+           JsVar *filler = jspParseSingleFunction();
+           if (jsvIsUndefined(filler))
+             filler = jsvNewFromString(","); // the default it seems
+           else
+             filler = jsvAsString(filler, true);
            if (!filler) return 0; // out of memory
            JsVar *str = jsvNewFromString("");
            if (!str) { // out of memory
              jsvUnLock(filler);
              return 0;
            }
+           JsVarInt index = 0;
            JsVarRef childRef = a->firstChild;
            while (childRef) {
              JsVar *child = jsvLock(childRef);
-             if (child->firstChild) {
-               JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
-               if (data) { // could be out of memory
-                 jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-                 jsvUnLock(data);
+             if (jsvIsInt(child)) {
+               JsVarInt thisIndex = jsvGetInteger(child);
+               while (index<thisIndex) {
+                 index++;
+                 jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+               }
+
+               if (child->firstChild) {
+                 JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
+                 if (data) { // could be out of memory
+                   jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+                   jsvUnLock(data);
+                 }
                }
              }
              childRef = child->nextSibling;
              jsvUnLock(child);
-             if (childRef)
-               jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
            }
            jsvUnLock(filler);
            return str;

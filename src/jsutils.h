@@ -52,6 +52,7 @@
             Add 'setBusyIndicator(pin)' to set pin high when Espruino is busy
             Inbuilt function handling speed improvements
             Allow Serial comms via other UARTS. Serial1/2.onData and print/println
+            now inserts elements into arrays in the correct order (GetLength can be (is) now much faster)
 [/CHANGELOG]
 
 [TODO]
@@ -61,7 +62,6 @@
         Move load/save/etc into 'System' class for speed
         Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        Make jsvAddName insert elements into arrays in the correct order (then ArrayGetLength can just return value of last element)
         Faster code to work out pins from strings - is slow right now.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Built-in constants for LED1/BTN/etc.
@@ -87,8 +87,6 @@
         analogWrite should check about ports with overlapping timers
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
-        Handle serial port like node.js SerialPort? Or Arduino :/
-        Group builtin functions alphabetically and do quick check on first character
         Add 'delete' keyword for killing array items?
         String equals can compare whole 32 bit words
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
@@ -103,6 +101,7 @@
         Add require(filename) function (need fileIO first!)
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
+        ToJSON for arrays could probably be faster now arrays are sorted
 
 [/TODO]
 

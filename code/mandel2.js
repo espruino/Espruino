@@ -99,3 +99,12 @@ setWatch(function() {
 setWatch(function() { print(getTime()); }, "A0", true);
 
 digitalPulse("C9",1,1000);
+
+print("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+print("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+print("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+print("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+
+Serial1.onData(function(e){print(e.data);});
+
+
