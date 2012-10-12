@@ -181,8 +181,9 @@ JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
     // if baud rate is set, restore it
     if (device != EV_USBSERIAL) {
       JsVar *baudRate = jsvFindChildFromString(class, USART_BAUDRATE_NAME, false);
-      if (baudRate)
-        jshUSARTSetup(device, jsvGetInteger(baudRate));
+      if (baudRate) {
+        jshUSARTSetup(device, jsvGetIntegerAndUnLock(jsvSkipName(baudRate)));
+      }
       jsvUnLock(baudRate);
     }
     jsvUnLock(name);
