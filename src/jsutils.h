@@ -74,6 +74,7 @@
         Check precedence against MDN javascript op precedence page
         Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
+        Add 'showBusy(pin)' to set pin high when Espruino is busy
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)

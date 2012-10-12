@@ -26,15 +26,76 @@
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
+
+// ----------------------------------------------------------------------------
+//                                                         DATA TRANSMIT BUFFER
 #ifdef ARM
-// UART Transmit
-char txBuffer[TXBUFFERMASK+1];
+typedef struct {
+  IOEventFlags flags; // Where this data should be transmitted
+  unsigned char data;         // data to transmit
+} PACKED_FLAGS TxBufferItem;
+
+TxBufferItem txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
 #endif
+// ----------------------------------------------------------------------------
 
-// IO Events
+// Queue a character for transmission
+void jshTransmit(IOEventFlags device, unsigned char data) {
+#ifdef ARM
+  unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
+  while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
+  txBuffer[txHead].flags = device;
+  txBuffer[txHead].data = (char)data;
+  txHead = txHeadNext;
+
+  switch (device) {
+    case EV_USART1: USART_ITConfig(USART1, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_USART2: USART_ITConfig(USART2, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+  }
+#else // if PC, just put to stdout
+  fputc(data, stdout);
+  fflush(stdout);
+#endif
+}
+
+#ifdef ARM
+// Try and get a character for transmission - could just return -1 if nothing
+int jshGetCharToTransmit(IOEventFlags device) {
+  unsigned char ptr = txTail;
+  while (txHead != ptr) {
+    if (IOEVENTFLAGS_GETTYPE(txBuffer[ptr].flags) == device) {
+      if (ptr != txTail) { // so we weren't right at the back of the queue
+        // we need to work back from ptr (until we hit tail), shifting everything forwards
+        unsigned char this = ptr;
+        unsigned char last = (this+TXBUFFERMASK)&TXBUFFERMASK;
+        while (last!=txTail) { // if this==txTail, then last is before it, so stop here
+          txBuffer[this] = txBuffer[last];
+          this = last;
+          last = (this+TXBUFFERMASK)&TXBUFFERMASK;
+        }
+      }
+      txTail = (txTail+1)&TXBUFFERMASK; // advance the tail
+      return txBuffer[ptr].data; // return data
+    }
+    ptr = (ptr+1)&TXBUFFERMASK;
+  }
+  return -1; // no data :(
+}
+#endif
+
+void jshTransmitFlush() {
+#ifdef ARM
+  while (txHead != txTail) ; // wait for send to finish
+#endif
+}
+
+// ----------------------------------------------------------------------------
+//                                                              IO EVENT BUFFER
 IOEvent ioBuffer[IOBUFFERMASK+1];
 volatile unsigned char ioHead=0, ioTail=0;
+// ----------------------------------------------------------------------------
+
 
 void jshIOEventOverflowed() {
   // TODO: error here?
@@ -99,6 +160,7 @@ bool jshHasEvents() {
   return ioHead!=ioTail;
 }
 
+
 // ----------------------------------------------------------------------------
 //                                                                        PINS
 #ifdef ARM
@@ -113,7 +175,7 @@ typedef struct IOPin {
              bit 6    = remap - for F1 part crazy stuff
              bit 7    = negated */
   uint8_t timer;
-} IOPin;
+} PACKED_FLAGS IOPin;
 
 #define TIMER(TIM,CH) (TIM<<2)|(CH-1)
 #define TIMERN(TIM,CH) (TIM<<2)|(CH-1)|0x80
@@ -633,24 +695,7 @@ void USART_To_USB_Send_Data(char ch); // FIXME
 #endif
 
 void jshTX(char data) {
-#ifdef ARM
-#ifdef USB
- USART_To_USB_Send_Data( data );
-#endif
- #if 1
-  unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
-  while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
-  txBuffer[txHead] = (char)data;
-  txHead = txHeadNext;
-  USART_ITConfig(MAIN_USART, USART_IT_TXE, ENABLE); // enable interrupt -> start transmission
- #else // No IRQs
-  USART_SendData(MAIN_USART, data);
-  while(USART_GetFlagStatus(MAIN_USART, USART_FLAG_TC) == RESET);
- #endif
-#else
-  fputc(data, stdout);
-  fflush(stdout);
-#endif
+  jshTransmit(EV_USART1, data);
 }
 
 void jshTXStr(const char *str) {
@@ -658,12 +703,6 @@ void jshTXStr(const char *str) {
        if (*str == '\n') jshTX('\r');
        jshTX(*(str++));
   }
-}
-
-void jshTXFlush() {
-#ifdef ARM
-  while (txHead != txTail) ; // wait for send to finish
-#endif  
 }
 
 // ----------------------------------------------------------------------------

@@ -11,7 +11,7 @@
 #ifdef ARM
  #include "platform_config.h"
 #else
- #define IOBUFFERMASK 15
+ #define IOBUFFERMASK 15 // (max 255)
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
@@ -24,8 +24,7 @@ void jshIdle(); // stuff to do on idle
 void jshTX(char data);
 /// Transmit a string
 void jshTXStr(const char *str);
-/// Wait for transmit to finish
-void jshTXFlush();
+
 
 typedef long long JsSysTime;
 /// Get the system time (in ticks)
@@ -60,7 +59,7 @@ typedef enum {
 
  EV_TYPE_MASK = 31,
  EV_CHARS_MASK = 7 << 5,
-} IOEventFlags;
+} PACKED_FLAGS IOEventFlags;
 
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 #define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
@@ -70,13 +69,13 @@ typedef enum {
 typedef union {
   JsSysTime time; // time event occurred
   char chars[IOEVENT_MAXCHARS];
-} IOEventData;
+} PACKED_FLAGS IOEventData;
 
 // IO Events - these happen when a pin changes
 typedef struct IOEvent {
-  IOEventFlags flags; // 'channel'
+  IOEventFlags flags; // where this came from, and # of chars in it
   IOEventData data;
-} IOEvent;
+} PACKED_FLAGS IOEvent;
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
@@ -104,12 +103,23 @@ bool jshFlashContainsCode();
 
 // ---------------------------------------------- LOW LEVEL
 
+// ----------------------------------------------------------------------------
+//                                                         DATA TRANSMIT BUFFER
+// Queue a character for transmission
+void jshTransmit(IOEventFlags device, unsigned char data);
+/// Wait for transmit to finish
+void jshTransmitFlush();
+
 #ifdef ARM
+// Try and get a character for transmission - could just return -1 if nothing
+int jshGetCharToTransmit(IOEventFlags device);
+
+// ----------------------------------------------------------------------------
+//                                                                      SYSTICK
 ///On SysTick interrupt, call this
 void jshDoSysTick();
-// UART Transmit
-extern char txBuffer[TXBUFFERMASK+1];
-extern volatile unsigned char txHead, txTail;
-#endif
+
+
+#endif // ARM
 
 #endif /* JSHARDWARE_H_ */
