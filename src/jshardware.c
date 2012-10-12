@@ -99,13 +99,17 @@ int jshGetCharToTransmit(IOEventFlags device) {
 
 void jshTransmitFlush() {
 #ifdef ARM
+  jsiSetBusy(true);
   while (txHead != txTail) ; // wait for send to finish
+  jsiSetBusy(false);
 #endif
 }
 
 // Clear everything from a device
 void jshTransmitClearDevice(IOEventFlags device) {
+#ifdef ARM
   while (jshGetCharToTransmit(device)>=0);
+#endif
 }
 
 // ----------------------------------------------------------------------------

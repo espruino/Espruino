@@ -50,6 +50,7 @@
             Ctrl-C now clears the input line
             Save state of 'echo' into flash with save()
             Add 'setBusyIndicator(pin)' to set pin high when Espruino is busy
+            Inbuilt function handling speed improvements
 [/CHANGELOG]
 
 [TODO]
@@ -103,6 +104,13 @@
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
 
 [/TODO]
+
+ Extra functions to do:
+setWatch -> attachInterrupt(pin, handler, mode)
+clearWatch -> detachInterrupt(pin)
+getPinMode(pin) -> pinMode
+pinMode(pin, direction, [mux], [pullup], [slew])
+shiftOut(dataPin, clockPin, bitOrder, val)
 
   In code:
   TODO - should be fixed

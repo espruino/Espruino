@@ -72,7 +72,7 @@ void jsiSetConsoleDevice(IOEventFlags device) {
 }
 
 void jsiConsolePrintChar(char data) {
-  jshTransmit(consoleDevice, data);
+  jshTransmit(consoleDevice, (unsigned char)data);
 }
 
 void jsiConsolePrint(const char *str) {
@@ -472,7 +472,7 @@ void jsiIdle() {
   IOEvent event;
   while (jshPopIOEvent(&event)) {
     if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
-      unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       jsiSetBusy(true);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
       jsiSetBusy(false);
@@ -703,16 +703,349 @@ void jsiDumpState() {
 /** Handle function calls - do this programatically, so we can save on RAM */
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // Special cases for we're just a basic function
-    if (strcmp(name,"print")==0) {
-      /*JS* function print(text)
-       *JS*  Print the supplied string
+    if (name[0]=='a') {
+      if (strcmp(name,"analogRead")==0) {
+        /*JS* function analogRead(pin)
+         *JS*  Get the analog value of the given pin as a value between 0 and 1.
+         *JS*  This is different to Arduino which only returns an integer between 0 and 1023
+         *JS*  Pin can be an integer, or a string such as "A0","C13",etc
+         *JS*  However only pins connected to an ADC will work (see the datasheet)
+         */
+        JsVar *pinVar = jspParseSingleFunction();
+        int pin = jshGetPinFromVar(pinVar);
+        jsvUnLock(pinVar);
+        return jsvNewFromFloat(jshPinAnalog(pin));
+      }
+      if (strcmp(name,"analogWrite")==0) {
+        /*JS* function analogWrite(pin, value)
+         *JS*  Set the analog value of the given pin. Value is between 0 and 1
+         *JS*  Analog values are output as PWM digital. If the pin is not capable a warning will be output
+         *JS*  Pin can be an integer, or a string such as "A0","C13",etc
+         */
+        JsVar *pinVar, *valueVar;
+        jspParseDoubleFunction(&pinVar, &valueVar);
+        int pin = jshGetPinFromVar(pinVar);
+        jsvUnLock(pinVar);
+        JsVarFloat value = jsvGetDouble(valueVar);
+        jsvUnLock(valueVar);
+        jshPinAnalogOutput(pin, value);
+        return 0;
+      }
+    } else if (name[0]=='b') {
+      if (strcmp(name,"bitRead")==0) {
+        /*JS* function bitRead(value, bitnum)
+         *JS*  Get the specified bit from the value. Lowest significance bit is 0
+         */
+        JsVar *valueVar, *bitVar;
+        jspParseDoubleFunction(&valueVar, &bitVar);
+        JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
+        JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+        return jsvNewFromInteger( (value >> bit) & 1);
+      }
+      if (strcmp(name,"bitWrite")==0) {
+        /*JS* function bitWrite(value, bitnum, bitdata)
+         *JS*  Write the specified bit from the value. Lowest significance bit is 0
+         */
+        JsVar *valueVar, *bitVar, *dataVar;
+        jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
+        JsVarInt value = jsvGetInteger(valueVar);
+        JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+        JsVarInt data = jsvGetIntegerAndUnLock(dataVar);
+        if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, (value & ~(1<<bit)) | ((data?1:0)<<bit));
+        jsvUnLock(valueVar);
+        return 0;
+      }
+      if (strcmp(name,"bitSet")==0) {
+        /*JS* function bitSet(value, bitnum)
+         *JS*  Set the given bit in the value. Lowest significance bit is 0
+         */
+        JsVar *valueVar, *bitVar;
+        jspParseDoubleFunction(&valueVar, &bitVar);
+        JsVarInt value = jsvGetInteger(valueVar);
+        JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+        if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value | (1<<bit));
+        jsvUnLock(valueVar);
+        return 0;
+      }
+      if (strcmp(name,"bitClear")==0) {
+        /*JS* function bitClear(value, bitnum)
+         *JS*  Clear the given bit in the value. Lowest significance bit is 0
+         */
+        JsVar *valueVar, *bitVar;
+        jspParseDoubleFunction(&valueVar, &bitVar);
+        JsVarInt value = jsvGetInteger(valueVar);
+        JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+        if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value & ~(1<<bit));
+        jsvUnLock(valueVar);
+        return 0;
+      }
+      if (strcmp(name,"bit")==0) {
+        /*JS* function bit(bitnum)
+         *JS*  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
+         */
+        JsVar *bitVar = jspParseSingleFunction();
+        JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
+        return jsvNewFromInteger(1 << bit);
+      }
+    } else if (name[0]=='c') {
+      if (strcmp(name,"clearTimeout")==0 || strcmp(name,"clearInterval")==0) {
+        /*JS* function clearTimeout(id)
+         *JS*  Clear the Timeout that was created with setTimeout, for example:
+         *JS*   var id = setTimeout(function () { print("foo"); }, 1000);
+         *JS*   clearTimeout(id);
+         */
+        /*JS* function clearInterval(id)
+         *JS*  Clear the Interval that was created with setTimeout, for example:
+         *JS*   var id = setInterval(function () { print("foo"); }, 1000);
+         *JS*   clearInterval(id);
+         */
+        JsVar *idVar = jspParseSingleFunction();
+        JsVar *child = jsvFindChildFromVar(timerArray, idVar, false);
+        jsvUnLock(idVar);
+
+        if (child) {
+          JsVar *timerArrayPtr = jsvLock(timerArray);
+          jsvRemoveChild(timerArrayPtr, child);
+          jsvUnLock(child);
+          jsvUnLock(timerArrayPtr);
+        } else {
+          jsError("Unknown Timer");
+        }
+        return 0;
+      }
+      if (strcmp(name,"clearWatch")==0) {
+        /*JS* function clearWatch(id)
+         *JS*  Clear the Watch that was created with setWatch.
+         */
+        JsVar *idVar = jspParseSingleFunction();
+        JsVar *watchNamePtr = jsvFindChildFromVar(watchArray, idVar, false);
+        jsvUnLock(idVar);
+
+        if (watchNamePtr) { // child is a 'name'
+          JsVar *pinVar = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+          jshPinWatch(jshGetPinFromVar(pinVar), false);
+          jsvUnLock(pinVar);
+
+
+          JsVar *watchArrayPtr = jsvLock(watchArray);
+          jsvRemoveChild(watchArrayPtr, watchNamePtr);
+          jsvUnLock(watchNamePtr);
+          jsvUnLock(watchArrayPtr);
+        } else {
+          jsError("Unknown Watch");
+        }
+        return 0;
+      }
+    } else if (name[0]=='d') {
+      if (strcmp(name,"digitalPulse")==0) {
+        /*JS* function digitalPulse(pin,value,time)
+         *JS*  Pulse the pin with the value for the given time in milliseconds
+         *JS*  eg. pulse("A0",1,500); pulses A0 high for 500ms
+         *JS*  Pin can be an integer, or a string such as "A0","C13",etc
+         */
+        JsVar *pinVar, *valueVar, *timeVar;
+        jspParseTripleFunction(&pinVar, &valueVar, &timeVar);
+        int pin = jshGetPinFromVar(pinVar);
+        jsvUnLock(pinVar);
+        bool value = jsvGetBool(valueVar);
+        jsvUnLock(valueVar);
+        JsVarFloat time = jsvGetDoubleAndUnLock(timeVar);
+        //jsPrintInt((JsVarInt)(time*1000));
+        jshPinPulse(pin, value, time);
+        return 0;
+      }
+      if (strcmp(name,"digitalRead")==0) {
+        /*JS* function digitalRead(pin)
+         *JS*  Get the digital value of the given pin.
+         *JS*  Pin can be an integer, or a string such as "A0","C13",etc.
+         *JS*  If pin is an array of pins, eg. ["A2","A1","A0"] in which case an integer representing that value will be returned (first array element is the MSB).
+         */
+        JsVar *pinVar = jspParseSingleFunction();
+        if (jsvIsArray(pinVar)) {
+          int pins = 0;
+          JsVarInt value = 0;
+          JsVarRef pinName = pinVar->firstChild;
+          while (pinName) {
+            JsVar *pinNamePtr = jsvLock(pinName);
+            JsVar *pinPtr = jsvSkipName(pinNamePtr);
+            value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+            jsvUnLock(pinPtr);
+            pinName = pinNamePtr->nextSibling;
+            jsvUnLock(pinNamePtr);
+            pins++;
+          }
+          jsvUnLock(pinVar);
+          if (pins==0) return 0; // return undefined if array empty
+          return jsvNewFromInteger(value);
+        } else {
+          int pin = jshGetPinFromVar(pinVar);
+          jsvUnLock(pinVar);
+          return jsvNewFromBool(jshPinInput(pin));
+        }
+      }
+      if (strcmp(name,"digitalWrite")==0) {
+        /*JS* function digitalWrite(pin, value)
+         *JS*  Set the digital value of the given pin.
+         *JS*  Pin can be an integer, or a string such as "A0","C13",etc
+         *JS*  If pin is an array of pins, eg. ["A2","A1","A0"] in which case value will be treated as an integer where the first array element is the MSB
+         */
+        JsVar *pinVar, *valueVar;
+        jspParseDoubleFunction(&pinVar, &valueVar);
+        if (jsvIsArray(pinVar)) {
+          JsVarInt value = jsvGetInteger(valueVar);
+          jsvUnLock(valueVar);
+          JsVarRef pinName = pinVar->lastChild; // NOTE: start at end and work back!
+          while (pinName) {
+            JsVar *pinNamePtr = jsvLock(pinName);
+            JsVar *pinPtr = jsvSkipName(pinNamePtr);
+            jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
+            jsvUnLock(pinPtr);
+            pinName = pinNamePtr->prevSibling;
+            jsvUnLock(pinNamePtr);
+            value = value>>1; // next bit down
+          }
+          jsvUnLock(pinVar);
+          return 0;
+        } else {
+          int pin = jshGetPinFromVar(pinVar);
+          jsvUnLock(pinVar);
+          bool value = jsvGetBool(valueVar);
+          jsvUnLock(valueVar);
+          jshPinOutput(pin, value);
+          return 0;
+        }
+      }
+    } else if (name[0]=='s') {
+      if (strcmp(name,"setTimeout")==0 || strcmp(name,"setInterval")==0) {
+        /*JS* function setTimeout(function, timeout)
+         *JS*  Call the function specified ONCE after the timeout in milliseconds.
+         *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the timer happened
+         *JS*  This can also be removed using clearTimeout
+         */
+        /*JS* function setInterval(function, timeout)
+         *JS*  Call the function specified REPEATEDLY after the timeout in milliseconds.
+         *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the timer happened
+         *JS*  This can also be removed using clearInterval
+         */
+        bool recurring = strcmp(name,"setInterval")==0;
+        JsVar *func, *timeout;
+        jspParseDoubleFunction(&func, &timeout);
+        if (!jsvIsFunction(func) && !jsvIsString(func)) {
+          jsError("Function or String not supplied!");
+        }
+        // Create a new timer
+        JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
+        JsVarFloat interval = jsvGetDouble(timeout);
+        if (interval<0.1) interval=0.1;
+        JsVar *v;
+        v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
+        jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
+        jsvUnLock(v);
+        v = jsvNewFromFloat(interval);
+        jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
+        jsvUnLock(v);
+        v = jsvNewFromBool(recurring);
+        jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
+        jsvUnLock(v);
+        jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
+        //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
+        JsVar *timerArrayPtr = jsvLock(timerArray);
+        JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
+        //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
+        jsvUnLock(timerArrayPtr);
+        jsvUnLock(timerPtr);
+        jsvUnLock(func);
+        jsvUnLock(timeout);
+        //jsvTrace(jsiGetParser()->root, 0);
+        return jsvNewFromInteger(itemIndex);
+      }
+      if (strcmp(name,"setWatch")==0) {
+        /*JS* function setWatch(function, pin, repeat)
+         *JS*  Call the function specified ONCE (if repeat==false or undefined) or
+         *JS*  REPEATEDLY if (repeat==true) when the pin changes
+         *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the pin changed state
+         *JS*  This can also be removed using clearWatch
+         */
+        JsVarInt itemIndex = -1;
+        JsVar *funcVar, *pinVar, *recurringVar;
+        jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
+        if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
+          jsError("Function or String not supplied!");
+        } else {
+          int pin = jshGetPinFromVar(pinVar);
+
+          // Create a new watch
+          JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
+          JsVar *v;
+          v = jsvNewFromInteger(pin);
+          jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
+          jsvUnLock(v);
+          v = jsvNewFromBool(jsvGetBool(recurringVar));
+          jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
+          jsvUnLock(v);
+          jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
+          JsVar *watchArrayPtr = jsvLock(watchArray);
+          itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
+          jsvUnLock(watchArrayPtr);
+          jsvUnLock(watchPtr);
+          jshPinWatch(pin, true);
+        }
+        jsvUnLock(funcVar);
+        jsvUnLock(pinVar);
+        jsvUnLock(recurringVar);
+        //jsvTrace(jsiGetParser()->root, 0);
+
+        return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
+      }
+    } else {
+      if (strcmp(name,"highByte")==0) {
+        /*JS* function highByte(value)
+         *JS*  Return the high (second) byte of the value
+         */
+        JsVar *valueVar = jspParseSingleFunction();
+        JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
+        return jsvNewFromInteger((value>>8) & 0xFF);
+      }
+      if (strcmp(name,"lowByte")==0) {
+        /*JS* function lowByte(value)
+         *JS*  Return the low byte of the value
+         */
+        JsVar *valueVar = jspParseSingleFunction();
+        JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
+        return jsvNewFromInteger(value & 0xFF);
+      }
+      if (strcmp(name,"print")==0) {
+        /*JS* function print(text)
+         *JS*  Print the supplied string
+         */
+        JsVar *v = jsvAsString(jspParseSingleFunction(), true);
+        jsvPrintStringVar(v);
+        jsvUnLock(v);
+        jsiConsolePrint("\n");
+        return 0;
+      }
+    }
+
+
+    if (strcmp(name,"dump")==0) {
+      /*JS* function dump()
+       *JS*  Output current interpreter state such that it can be copied to a new device
        */
-      JsVar *v = jsvAsString(jspParseSingleFunction(), true);
-      jsvPrintStringVar(v);
-      jsvUnLock(v);
-      jsiConsolePrint("\n");
+      jspParseEmptyFunction();
+      jsiDumpState();
       return 0;
     }
+    if (strcmp(name,"echo")==0) {
+      /*JS* function echo(yesorno)
+       *JS*  Should TinyJS echo what you type back to you? true = yes (Default), false = no.
+       *JS*  When echo is off, the result of executing a command is not returned.
+       *JS*  Instead, you must use 'print' to send output.
+       */
+      bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
+      echo = b;
+      return 0;
+    }
+
     if (strcmp(name,"getTime")==0) {
       /*JS* function getTime()
        *JS*  Return the current system time in Seconds (as a floating point number)
@@ -720,264 +1053,6 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jspParseEmptyFunction();
       return jsvNewFromFloat((JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1000));
     }
-    if (strcmp(name,"setTimeout")==0 || strcmp(name,"setInterval")==0) {
-      /*JS* function setTimeout(function, timeout)
-       *JS*  Call the function specified ONCE after the timeout in milliseconds.
-       *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the timer happened
-       *JS*  This can also be removed using clearTimeout
-       */
-      /*JS* function setInterval(function, timeout)
-       *JS*  Call the function specified REPEATEDLY after the timeout in milliseconds.
-       *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the timer happened
-       *JS*  This can also be removed using clearInterval
-       */
-      bool recurring = strcmp(name,"setInterval")==0;
-      JsVar *func, *timeout;
-      jspParseDoubleFunction(&func, &timeout);
-      if (!jsvIsFunction(func) && !jsvIsString(func)) {
-        jsError("Function or String not supplied!");
-      }
-      // Create a new timer
-      JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-      JsVarFloat interval = jsvGetDouble(timeout);
-      if (interval<0.1) interval=0.1;
-      JsVar *v;
-      v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
-      jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
-      jsvUnLock(v);
-      v = jsvNewFromFloat(interval);
-      jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
-      jsvUnLock(v);
-      v = jsvNewFromBool(recurring);
-      jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
-      jsvUnLock(v);
-      jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
-      //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
-      JsVar *timerArrayPtr = jsvLock(timerArray);
-      JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
-      //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
-      jsvUnLock(timerArrayPtr);
-      jsvUnLock(timerPtr);
-      jsvUnLock(func);
-      jsvUnLock(timeout);
-      //jsvTrace(jsiGetParser()->root, 0);
-      return jsvNewFromInteger(itemIndex);
-    }
-    if (strcmp(name,"clearTimeout")==0 || strcmp(name,"clearInterval")==0) {
-      /*JS* function clearTimeout(id)
-       *JS*  Clear the Timeout that was created with setTimeout, for example:
-       *JS*   var id = setTimeout(function () { print("foo"); }, 1000);
-       *JS*   clearTimeout(id);
-       */
-      /*JS* function clearInterval(id)
-       *JS*  Clear the Interval that was created with setTimeout, for example:
-       *JS*   var id = setInterval(function () { print("foo"); }, 1000);
-       *JS*   clearInterval(id);
-       */
-      JsVar *idVar = jspParseSingleFunction();
-      JsVar *child = jsvFindChildFromVar(timerArray, idVar, false);
-      jsvUnLock(idVar);
-
-      if (child) {
-        JsVar *timerArrayPtr = jsvLock(timerArray);
-        jsvRemoveChild(timerArrayPtr, child);
-        jsvUnLock(child);
-        jsvUnLock(timerArrayPtr);
-      } else {
-        jsError("Unknown Timer");
-      }
-      return 0;
-    }
-
-    if (strcmp(name,"digitalRead")==0) {
-      /*JS* function digitalRead(pin)
-       *JS*  Get the digital value of the given pin.
-       *JS*  Pin can be an integer, or a string such as "A0","C13",etc. 
-       *JS*  If pin is an array of pins, eg. ["A2","A1","A0"] in which case an integer representing that value will be returned (first array element is the MSB).
-       */
-      JsVar *pinVar = jspParseSingleFunction();
-      if (jsvIsArray(pinVar)) {
-        int pins = 0;
-        JsVarInt value = 0;
-        JsVarRef pinName = pinVar->firstChild;        
-        while (pinName) {
-          JsVar *pinNamePtr = jsvLock(pinName);
-          JsVar *pinPtr = jsvSkipName(pinNamePtr);
-          value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
-          jsvUnLock(pinPtr);
-          pinName = pinNamePtr->nextSibling; 
-          jsvUnLock(pinNamePtr);
-          pins++;
-        }
-        jsvUnLock(pinVar);
-        if (pins==0) return 0; // return undefined if array empty 
-        return jsvNewFromInteger(value);
-      } else {        
-        int pin = jshGetPinFromVar(pinVar);
-        jsvUnLock(pinVar);
-        return jsvNewFromBool(jshPinInput(pin));
-      }
-    }
-    if (strcmp(name,"analogRead")==0) {
-      /*JS* function analogRead(pin)
-       *JS*  Get the analog value of the given pin as a value between 0 and 1.
-       *JS*  This is different to Arduino which only returns an integer between 0 and 1023
-       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
-       *JS*  However only pins connected to an ADC will work (see the datasheet)
-       */
-      JsVar *pinVar = jspParseSingleFunction();
-      int pin = jshGetPinFromVar(pinVar);
-      jsvUnLock(pinVar);
-      return jsvNewFromFloat(jshPinAnalog(pin));
-    }
-    if (strcmp(name,"digitalWrite")==0) {
-      /*JS* function digitalWrite(pin, value)
-       *JS*  Set the digital value of the given pin.
-       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
-       *JS*  If pin is an array of pins, eg. ["A2","A1","A0"] in which case value will be treated as an integer where the first array element is the MSB
-       */
-      JsVar *pinVar, *valueVar;
-      jspParseDoubleFunction(&pinVar, &valueVar);
-      if (jsvIsArray(pinVar)) {
-        JsVarInt value = jsvGetInteger(valueVar);
-        jsvUnLock(valueVar);
-        JsVarRef pinName = pinVar->lastChild; // NOTE: start at end and work back!
-        while (pinName) {
-          JsVar *pinNamePtr = jsvLock(pinName);
-          JsVar *pinPtr = jsvSkipName(pinNamePtr);
-          jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
-          jsvUnLock(pinPtr);
-          pinName = pinNamePtr->prevSibling; 
-          jsvUnLock(pinNamePtr);
-          value = value>>1; // next bit down
-        }
-        jsvUnLock(pinVar);        
-        return 0;
-      } else {        
-        int pin = jshGetPinFromVar(pinVar);
-        jsvUnLock(pinVar);
-        bool value = jsvGetBool(valueVar);
-        jsvUnLock(valueVar);
-        jshPinOutput(pin, value);
-        return 0;
-      }
-    }
-    if (strcmp(name,"analogWrite")==0) {
-      /*JS* function analogWrite(pin, value)
-       *JS*  Set the analog value of the given pin. Value is between 0 and 1
-       *JS*  Analog values are output as PWM digital. If the pin is not capable a warning will be output
-       *JS*  Pin can be an integer, or a string such as "A0","C13",etc     
-       */
-      JsVar *pinVar, *valueVar;
-      jspParseDoubleFunction(&pinVar, &valueVar);
-      int pin = jshGetPinFromVar(pinVar);
-      jsvUnLock(pinVar);
-      JsVarFloat value = jsvGetDouble(valueVar);
-      jsvUnLock(valueVar);
-      jshPinAnalogOutput(pin, value);
-      return 0;
-    }
-    if (strcmp(name,"digitalPulse")==0) {
-      /*JS* function digitalPulse(pin,value,time)
-       *JS*  Pulse the pin with the value for the given time in milliseconds
-       *JS*  eg. pulse("A0",1,500); pulses A0 high for 500ms
-       *JS*  Pin can be an integer, or a string such as "A0","C13",etc
-       */
-      JsVar *pinVar, *valueVar, *timeVar;
-      jspParseTripleFunction(&pinVar, &valueVar, &timeVar);
-      int pin = jshGetPinFromVar(pinVar);
-      jsvUnLock(pinVar);
-      bool value = jsvGetBool(valueVar);
-      jsvUnLock(valueVar);
-      JsVarFloat time = jsvGetDoubleAndUnLock(timeVar);
-      //jsPrintInt((JsVarInt)(time*1000));
-      jshPinPulse(pin, value, time);
-      return 0;
-    }
-    if (strcmp(name,"setBusyIndicator")==0) {
-      /*JS* function setBusyIndicator(pin)
-       *JS*  When Espruino is busy, set the pin specified here
-       *JS*  high. Set this to undefined to disable the feature.
-       */
-      JsVar *pinVar = jspParseSingleFunction();
-      int oldPin = pinBusyIndicator;
-      if (jsvIsUndefined(pinVar)) {
-        pinBusyIndicator = -1;
-      } else {
-        pinBusyIndicator = jshGetPinFromVar(pinVar);
-        if (pinBusyIndicator<=0)
-          jsError("Invalid pin!");
-      }
-      jsvUnLock(pinVar);
-      // we should be busy right now anyway, so set stuff up right
-      if (pinBusyIndicator!=oldPin) {
-        if (oldPin>=0) jshPinOutput(oldPin, 0);
-        jshPinOutput(pinBusyIndicator, 1);
-      }
-      return 0; // handled
-    }
-    if (strcmp(name,"setWatch")==0) {
-      /*JS* function setWatch(function, pin, repeat)
-       *JS*  Call the function specified ONCE (if repeat==false or undefined) or
-       *JS*  REPEATEDLY if (repeat==true) when the pin changes
-       *JS*  The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the pin changed state
-       *JS*  This can also be removed using clearWatch
-       */
-      JsVarInt itemIndex = -1;
-      JsVar *funcVar, *pinVar, *recurringVar;
-      jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
-      if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
-        jsError("Function or String not supplied!");
-      } else {
-        int pin = jshGetPinFromVar(pinVar);
-
-        // Create a new watch
-        JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
-        JsVar *v;
-        v = jsvNewFromInteger(pin);
-        jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
-        jsvUnLock(v);
-        v = jsvNewFromBool(jsvGetBool(recurringVar));
-        jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
-        jsvUnLock(v);
-        jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
-        JsVar *watchArrayPtr = jsvLock(watchArray);
-        itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
-        jsvUnLock(watchArrayPtr);
-        jsvUnLock(watchPtr);
-        jshPinWatch(pin, true);
-      }
-      jsvUnLock(funcVar);
-      jsvUnLock(pinVar);
-      jsvUnLock(recurringVar);
-      //jsvTrace(jsiGetParser()->root, 0);
-
-      return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
-    }
-    if (strcmp(name,"clearWatch")==0) {
-      /*JS* function clearWatch(id)
-       *JS*  Clear the Watch that was created with setWatch.
-       */
-      JsVar *idVar = jspParseSingleFunction();
-      JsVar *watchNamePtr = jsvFindChildFromVar(watchArray, idVar, false);
-      jsvUnLock(idVar);
-
-      if (watchNamePtr) { // child is a 'name'
-        JsVar *pinVar = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
-        jshPinWatch(jshGetPinFromVar(pinVar), false);
-        jsvUnLock(pinVar);
-
-
-        JsVar *watchArrayPtr = jsvLock(watchArray);
-        jsvRemoveChild(watchArrayPtr, watchNamePtr);
-        jsvUnLock(watchNamePtr);
-        jsvUnLock(watchArrayPtr);
-      } else {
-        jsError("Unknown Watch");
-      }
-      return 0;
-    }
-
     if (strcmp(name,"load")==0) {
       /*JS* function load()
        *JS*  Load program memory out of flash 
@@ -1002,15 +1077,27 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       todo |= TODO_RESET;
       return 0;
     }
-    if (strcmp(name,"echo")==0) {
-      /*JS* function echo(yesorno)
-       *JS*  Should TinyJS echo what you type back to you? true = yes (Default), false = no.
-       *JS*  When echo is off, the result of executing a command is not returned.
-       *JS*  Instead, you must use 'print' to send output.
+    if (strcmp(name,"setBusyIndicator")==0) {
+      /*JS* function setBusyIndicator(pin)
+       *JS*  When Espruino is busy, set the pin specified here
+       *JS*  high. Set this to undefined to disable the feature.
        */
-      bool b = jsvGetBoolAndUnLock(jspParseSingleFunction());
-      echo = b;
-      return 0;
+      JsVar *pinVar = jspParseSingleFunction();
+      int oldPin = pinBusyIndicator;
+      if (jsvIsUndefined(pinVar)) {
+        pinBusyIndicator = -1;
+      } else {
+        pinBusyIndicator = jshGetPinFromVar(pinVar);
+        if (pinBusyIndicator<=0)
+          jsError("Invalid pin!");
+      }
+      jsvUnLock(pinVar);
+      // we should be busy right now anyway, so set stuff up right
+      if (pinBusyIndicator!=oldPin) {
+        if (oldPin>=0) jshPinOutput(oldPin, 0);
+        jshPinOutput(pinBusyIndicator, 1);
+      }
+      return 0; // handled
     }
     if (strcmp(name,"trace")==0) {
       /*JS* function trace()
@@ -1020,96 +1107,6 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvTrace(p.root, 0);
       return 0;
     }
-    if (strcmp(name,"dump")==0) {
-      /*JS* function dump()
-       *JS*  Output current interpreter state such that it can be copied to a new device 
-       */
-      jspParseEmptyFunction();
-      jsiDumpState();
-      return 0;
-    }
-
-    if (strcmp(name,"bitRead")==0) {
-      /*JS* function bitRead(value, bitnum)
-       *JS*  Get the specified bit from the value. Lowest significance bit is 0
-       */
-      JsVar *valueVar, *bitVar;
-      jspParseDoubleFunction(&valueVar, &bitVar);
-      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
-      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
-      return jsvNewFromInteger( (value >> bit) & 1);
-    }
-    if (strcmp(name,"bitWrite")==0) {
-      /*JS* function bitWrite(value, bitnum, bitdata) 
-       *JS*  Write the specified bit from the value. Lowest significance bit is 0
-       */
-      JsVar *valueVar, *bitVar, *dataVar;
-      jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
-      JsVarInt value = jsvGetInteger(valueVar);
-      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
-      JsVarInt data = jsvGetIntegerAndUnLock(dataVar);
-      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, (value & ~(1<<bit)) | ((data?1:0)<<bit));
-      jsvUnLock(valueVar);
-      return 0;
-    }
-    if (strcmp(name,"bitSet")==0) {
-      /*JS* function bitSet(value, bitnum)
-       *JS*  Set the given bit in the value. Lowest significance bit is 0
-       */
-      JsVar *valueVar, *bitVar;
-      jspParseDoubleFunction(&valueVar, &bitVar);
-      JsVarInt value = jsvGetInteger(valueVar);
-      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
-      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value | (1<<bit));
-      jsvUnLock(valueVar);
-      return 0;
-    }
-    if (strcmp(name,"bitClear")==0) {
-      /*JS* function bitClear(value, bitnum)
-       *JS*  Clear the given bit in the value. Lowest significance bit is 0
-       */
-      JsVar *valueVar, *bitVar;
-      jspParseDoubleFunction(&valueVar, &bitVar);
-      JsVarInt value = jsvGetInteger(valueVar);
-      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
-      if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value & ~(1<<bit));
-      jsvUnLock(valueVar);
-      return 0;
-    }
-    if (strcmp(name,"bit")==0) {
-      /*JS* function bit(bitnum)
-       *JS*  Get the value of the specified bit (0->1, 1->2, 2->4, 3->8 etc). Lowest significance bit is 0
-       */
-      JsVar *bitVar = jspParseSingleFunction();
-      JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
-      return jsvNewFromInteger(1 << bit);
-    }
-    if (strcmp(name,"lowByte")==0) {
-      /*JS* function lowByte(value)
-       *JS*  Return the low byte of the value
-       */
-      JsVar *valueVar = jspParseSingleFunction();
-      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
-      return jsvNewFromInteger(value & 0xFF);
-    }
-    if (strcmp(name,"highByte")==0) {
-      /*JS* function highByte(value)
-       *JS*  Return the high (second) byte of the value
-       */
-      JsVar *valueVar = jspParseSingleFunction();
-      JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
-      return jsvNewFromInteger((value>>8) & 0xFF);
-    }
-/* TODO:
-analogWrite(pin, value, [freq])
-setWatch -> attachInterrupt(pin, handler, mode)
-clearWatch -> detachInterrupt(pin)
-delay(milliseconds)
-getPinMode(pin) -> pinMode
-pinMode(pin, direction, [mux], [pullup], [slew])
-shiftOut(dataPin, clockPin, bitOrder, val)
-
- */
   }
   // unhandled
   return JSFHANDLEFUNCTIONCALL_UNHANDLED;
