@@ -8,14 +8,18 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-cd $DIR/../stm32/stm32vl-tinyjs
-make clean
-make 
+cd $DIR/../stm32/stinyjs
+
+OLIMEX=1 make clean
+OLIMEX=1 make 
+cp main.bin  $DIR/espruino_${VERSION}_olimexino_stm32.bin
+
+STM32VLDISCOVERY=1 make clean
+STM32VLDISCOVERY=1 make 
 cp main.bin  $DIR/espruino_${VERSION}_stm32vldiscovery.bin
 
-cd $DIR/../stm32/stm32f4-tinyjs
-make clean
-make 
+STM32F4DISCOVERY=1 make clean
+STM32F4DISCOVERY=1 make 
 cp main.bin  $DIR/espruino_${VERSION}_stm32f4discovery.bin
 
 cd $DIR
@@ -25,6 +29,6 @@ awk '/\[CHANGELOG\]/{s=x}{s=s$0"\n"}/\[\/CHANGELOG\]/{print s}' src/jsutils.h > 
 awk '/\[TODO\]/{s=x}{s=s$0"\n"}/\[\/TODO\]/{print s}' src/jsutils.h > todo.txt
 
 rm -f espruino_${VERSION}.zip 
-zip espruino_${VERSION}.zip readme.txt functions.txt changelog.txt todo.txt espruino_${VERSION}_stm32vldiscovery.bin espruino_${VERSION}_stm32f4discovery.bin
+zip espruino_${VERSION}.zip readme.txt functions.txt changelog.txt todo.txt espruino_${VERSION}_stm32vldiscovery.bin espruino_${VERSION}_stm32f4discovery.bin espruino_olimexino_stm32.bin
 
-rm  espruino_${VERSION}_stm32vldiscovery.bin espruino_${VERSION}_stm32f4discovery.bin
+rm  espruino_${VERSION}_stm32vldiscovery.bin espruino_${VERSION}_stm32f4discovery.bin espruino_olimexino_stm32.bin

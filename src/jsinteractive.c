@@ -1257,9 +1257,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   } else if (isUSART(jsvGetRef(a))) { // ----------------------------------------   USART
     IOEventFlags device = getDeviceFromClass(jsvGetRef(a));
     if (strcmp(name,"setConsole")==0) {
-      /*JS* Serial1.setConsole()
-       *JS* Serial2.setConsole()
-       *JS* USB.setConsole()
+      /*JS* [Serial1|Serial2|USB].setConsole()
        *JS*  Set this Serial port as the port for the console
        */
       jspParseEmptyFunction();
@@ -1267,8 +1265,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
     if (strcmp(name,"setup")==0) {
-      /*JS* Serial1.setup(baudrate)
-       *JS* Serial2.setup(baudrate)
+      /*JS* [Serial1|Serial2].setup(baudrate)
        *JS*  Set this Serial port up on the default bins, with the given baud rate. For example Serial1.setup(9600)
        */
       JsVarInt baud = jsvGetIntegerAndUnLock(jspParseSingleFunction());
@@ -1281,14 +1278,10 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
     if (strcmp(name,"print")==0 || strcmp(name,"println")==0) {
-      /*JS* Serial1.print(string)
-       *JS* Serial2.print(string)
-       *JS* USB.print(string)
+      /*JS* [Serial1|Serial2|USB].print(string)
        *JS*  Print a string to the serial port - without a line feed
        */
-      /*JS* Serial1.println(string)
-       *JS* Serial2.println(string)
-       *JS* USB.println(string)
+      /*JS* [Serial1|Serial2|USB].println(string)
        *JS*  Print a line to the serial port (newline character sent are '\r\n')
        */
       bool newLine = strcmp(name,"println")==0;
@@ -1302,9 +1295,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
     if (strcmp(name,"onData")==0) {
-      /*JS* Serial1.onData(function(e) {..})
-       *JS* Serial2.onData(function(e) {..})
-       *JS* USB.onData(function(e) {..})
+      /*JS* [Serial1|Serial2|USB].onData(function(e) {..})
        *JS*  When a character is received on this serial port, the function supplied to onData
        *JS*  gets called. The character received is in 'e.data' as a String.
        *JS*  Only one function can ever be supplied, so calling onData(undefined) will stop any function being called
