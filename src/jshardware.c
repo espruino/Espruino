@@ -131,8 +131,9 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
     jspSetInterrupted(true);
     return;
   }
-  // Check for existing buffer
-  if (ioHead!=ioTail) {
+  // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
+  unsigned char nextTail = (ioTail+1) & IOBUFFERMASK;
+  if (ioHead!=ioTail && ioHead!=nextTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     unsigned char lastHead = (ioHead+IOBUFFERMASK) & IOBUFFERMASK;
     if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel &&
