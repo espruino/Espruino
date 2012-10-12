@@ -191,8 +191,8 @@ const char *jshGetDeviceString(IOEventFlags device) {
 #endif
   case EV_USART1: return "USART1";
   case EV_USART2: return "USART2";
-  case EV_USART3: return "USART3";
-  case EV_USART4: return "USART4";
+//  case EV_USART3: return "USART3";
+//  case EV_USART4: return "USART4";
   }
   return "";
 }
@@ -204,8 +204,8 @@ IOEventFlags jshFromDeviceString(const char *device) {
 #endif
     if (strcmp(device, "USART1")==0) return EV_USART1;
     if (strcmp(device, "USART2")==0) return EV_USART2;
-    if (strcmp(device, "USART3")==0) return EV_USART3;
-    if (strcmp(device, "USART4")==0) return EV_USART4;
+//    if (strcmp(device, "USART3")==0) return EV_USART3;
+//    if (strcmp(device, "USART4")==0) return EV_USART4;
   }
   return EV_NONE;
 }
