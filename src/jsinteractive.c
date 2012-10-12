@@ -897,14 +897,20 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  high. Set this to undefined to disable the feature.
        */
       JsVar *pinVar = jspParseSingleFunction();
-      if (jsvIsUndefined(pinVar))
+      int oldPin = pinBusyIndicator;
+      if (jsvIsUndefined(pinVar)) {
         pinBusyIndicator = -1;
-      else {
+      } else {
         pinBusyIndicator = jshGetPinFromVar(pinVar);
         if (pinBusyIndicator<=0)
           jsError("Invalid pin!");
       }
       jsvUnLock(pinVar);
+      // we should be busy right now anyway, so set stuff up right
+      if (pinBusyIndicator!=oldPin) {
+        if (oldPin>=0) jshPinOutput(oldPin, 0);
+        jshPinOutput(pinBusyIndicator, 1);
+      }
       return 0; // handled
     }
     if (strcmp(name,"setWatch")==0) {
