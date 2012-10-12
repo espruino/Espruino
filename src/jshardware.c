@@ -177,11 +177,20 @@ bool jshHasEvents() {
   return ioHead!=ioTail;
 }
 
+bool jshHasEventSpaceForChars(int n) {
+  int spacesNeeded = 4 + (n/IOEVENT_MAXCHARS); // be sensible - leave a little spare
+  int spaceUsed = (ioHead >= ioTail) ? ((int)ioHead-(int)ioTail) : /*or rolled*/((int)ioHead+IOBUFFERMASK+1-(int)ioTail);
+  int spaceLeft = IOBUFFERMASK+1-spaceUsed;
+  return spaceLeft > spacesNeeded;
+}
+
 // ----------------------------------------------------------------------------
 //                                                                      DEVICES
 const char *jshGetDeviceString(IOEventFlags device) {
   switch (device) {
+#ifdef USB
   case EV_USBSERIAL: return "USB";
+#endif
   case EV_USART1: return "USART1";
   case EV_USART2: return "USART2";
   case EV_USART3: return "USART3";
@@ -192,7 +201,9 @@ const char *jshGetDeviceString(IOEventFlags device) {
 
 IOEventFlags jshFromDeviceString(const char *device) {
   if (device[0]=='U') {
+#ifdef USB
     if (strcmp(device, "USB")==0) return EV_USBSERIAL;
+#endif
     if (strcmp(device, "USART1")==0) return EV_USART1;
     if (strcmp(device, "USART2")==0) return EV_USART2;
     if (strcmp(device, "USART3")==0) return EV_USART3;

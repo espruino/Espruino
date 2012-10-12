@@ -55,16 +55,16 @@
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
-        Detect if running out of FIFO space and skip writing characters
         Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
         Make jsvAddName insert elements into arrays in the correct order (then ArrayGetLength can just return value of last element)
         Faster code to work out pins from strings - is slow right now.
         Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
         Built-in constants for LED1/BTN/etc.
+        Ctrl-C in mandelbrot demo only breaks out of one FOR loop
 
   MEDIUM PRIORITY:
-	When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -75,6 +75,7 @@
         Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Add 'showBusy(pin)' to set pin high when Espruino is busy
+        Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)
@@ -86,7 +87,7 @@
         Handle serial port like node.js SerialPort? Or Arduino :/
         Group builtin functions alphabetically and do quick check on first character
         Add 'delete' keyword for killing array items?
-        Could get JsVar down to 20 bytes (4*N) so we can align it on a boundary. String equals can then compare whole 32 bit words
+        String equals can compare whole 32 bit words
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
         Memory leak cleanup code - to try and clean up if memory has been leaked
         handle 'new Function() { X.call(this); Y.call(this); }' correctly

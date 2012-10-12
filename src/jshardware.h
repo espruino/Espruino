@@ -78,7 +78,10 @@ typedef struct IOEvent {
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
+/// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
+/// Do we have enough space for N chanacters?
+bool jshHasEventSpaceForChars(int n);
 
 const char *jshGetDeviceString(IOEventFlags device);
 IOEventFlags jshFromDeviceString(const char *device);
