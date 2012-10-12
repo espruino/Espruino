@@ -65,18 +65,19 @@ int jshGetCharToTransmit(IOEventFlags device) {
   unsigned char ptr = txTail;
   while (txHead != ptr) {
     if (IOEVENTFLAGS_GETTYPE(txBuffer[ptr].flags) == device) {
+      unsigned char data = txBuffer[ptr].data;
       if (ptr != txTail) { // so we weren't right at the back of the queue
         // we need to work back from ptr (until we hit tail), shifting everything forwards
         unsigned char this = ptr;
         unsigned char last = (this+TXBUFFERMASK)&TXBUFFERMASK;
-        while (last!=txTail) { // if this==txTail, then last is before it, so stop here
+        while (this!=txTail) { // if this==txTail, then last is before it, so stop here
           txBuffer[this] = txBuffer[last];
           this = last;
           last = (this+TXBUFFERMASK)&TXBUFFERMASK;
         }
       }
       txTail = (txTail+1)&TXBUFFERMASK; // advance the tail
-      return txBuffer[ptr].data; // return data
+      return data; // return data
     }
     ptr = (ptr+1)&TXBUFFERMASK;
   }
@@ -696,6 +697,7 @@ void USART_To_USB_Send_Data(char ch); // FIXME
 
 void jshTX(char data) {
   jshTransmit(EV_USART1, data);
+  jshTransmit(EV_USBSERIAL, data);
 }
 
 void jshTXStr(const char *str) {
