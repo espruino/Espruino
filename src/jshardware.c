@@ -14,15 +14,18 @@
  #include <termios.h>
 #endif//ARM
 
+#ifdef ARM
+ #if USB
+  #include "hw_config.h"
+  #include "usb_lib.h"
+  #include "usb_conf.h"
+  #include "usb_pwr.h"
+ #endif
+#endif
+
 #include "jshardware.h"
 #include "jsutils.h"
 #include "jsparse.h"
-
-#ifdef ARM
- #if USB
-  #include "usb_regs.h"
- #endif
-#endif
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
@@ -43,8 +46,16 @@ volatile unsigned char txHead=0, txTail=0;
 // Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data) {
 #ifdef ARM
+#ifdef USB
+  if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected())
+    return;
+#endif
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
-  while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
+  if (txHeadNext==txTail) {
+    GPIO_SetBits(LED2_PORT,LED2_PIN);
+    while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
+    GPIO_ResetBits(LED2_PORT,LED2_PIN);
+  }
   txBuffer[txHead].flags = device;
   txBuffer[txHead].data = (char)data;
   txHead = txHeadNext;
@@ -89,6 +100,11 @@ void jshTransmitFlush() {
 #ifdef ARM
   while (txHead != txTail) ; // wait for send to finish
 #endif
+}
+
+// Clear everything from a device
+void jshTransmitClearDevice(IOEventFlags device) {
+  while (jshGetCharToTransmit(device)>=0);
 }
 
 // ----------------------------------------------------------------------------
@@ -159,6 +175,30 @@ bool jshPopIOEvent(IOEvent *result) {
 
 bool jshHasEvents() {
   return ioHead!=ioTail;
+}
+
+// ----------------------------------------------------------------------------
+//                                                                      DEVICES
+const char *jshGetDeviceString(IOEventFlags device) {
+  switch (device) {
+  case EV_USBSERIAL: return "USB";
+  case EV_USART1: return "USART1";
+  case EV_USART2: return "USART2";
+  case EV_USART3: return "USART3";
+  case EV_USART4: return "USART4";
+  }
+  return "";
+}
+
+IOEventFlags jshFromDeviceString(const char *device) {
+  if (device[0]=='U') {
+    if (strcmp(device, "USB")==0) return EV_USBSERIAL;
+    if (strcmp(device, "USART1")==0) return EV_USART1;
+    if (strcmp(device, "USART2")==0) return EV_USART2;
+    if (strcmp(device, "USART3")==0) return EV_USART3;
+    if (strcmp(device, "USART4")==0) return EV_USART4;
+  }
+  return EV_NONE;
 }
 
 
@@ -375,7 +415,7 @@ uint8_t pinToEVEXTI(uint16_t pin) {
   if (pin==GPIO_Pin_13) return EV_EXTI13;
   if (pin==GPIO_Pin_14) return EV_EXTI14;
   if (pin==GPIO_Pin_15) return EV_EXTI15;
-  return GPIO_PinSource0;
+  return EV_NONE;
 }
 uint8_t portToPortSource(GPIO_TypeDef *port) {
  #ifdef STM32F4
@@ -405,8 +445,24 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 // ----------------------------------------------------------------------------
 #ifdef ARM
 JsSysTime SysTickMajor = SYSTICK_RANGE;
+
+#ifdef USB
+unsigned int SysTickUSBWatchdog = 0;
+void jshKickUSBWatchdog() {
+  SysTickUSBWatchdog = 0;
+}
+#endif //USB
+
+
 void jshDoSysTick() {
   SysTickMajor+=SYSTICK_RANGE;
+#ifdef USB
+  if (SysTickUSBWatchdog < 2) {
+    SysTickUSBWatchdog++;
+  } else {
+    bDeviceState = UNCONNECTED;
+  }
+#endif //USB
 }
 
 #endif//ARM
@@ -660,7 +716,7 @@ void jshInit() {
 #endif
 
 #ifdef ARM
-  jsPrintInt(SystemCoreClock/1000000);jsPrint(" Mhz\r\n");
+  jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n");
 #endif
 
 #else//!ARM
@@ -681,7 +737,6 @@ void jshInit() {
 void jshKill() {
 }
 
-
 void jshIdle() {
 #ifdef ARM
 #else
@@ -689,25 +744,31 @@ void jshIdle() {
     jshPushIOCharEvent(EV_USART1, getch());
   }
 #endif
-}
-
 #ifdef USB
-void USART_To_USB_Send_Data(char ch); // FIXME
-#endif
-
-void jshTX(char data) {
-  jshTransmit(EV_USART1, data);
-  jshTransmit(EV_USBSERIAL, data);
-}
-
-void jshTXStr(const char *str) {
-  while (*str) {
-       if (*str == '\n') jshTX('\r');
-       jshTX(*(str++));
+  static bool wasUSBConnected = false;
+  bool USBConnected = jshIsUSBSERIALConnected();
+  if (wasUSBConnected != USBConnected) {
+    wasUSBConnected = USBConnected;
+    if (USBConnected)
+      jsiSetConsoleDevice(EV_USBSERIAL);
+    else {
+      jsiSetConsoleDevice(DEFAULT_CONSOLE_DEVICE);
+      jshTransmitClearDevice(EV_USBSERIAL); // clear the transmit queue
+    }
   }
+#endif
 }
 
 // ----------------------------------------------------------------------------
+
+bool jshIsUSBSERIALConnected() {
+#ifdef USB
+  return bDeviceState != UNCONNECTED;
+  // not a check for connected - we just want to have some idea...
+#else
+  return false;
+#endif
+}
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 #ifdef ARM
@@ -1127,32 +1188,32 @@ void jshSaveToFlash() {
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
 #endif
 
-  jsPrint("Erasing Flash...");
+  jsiConsolePrint("Erasing Flash...");
 #ifdef STM32F4 
   FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
 #else
   /* Erase the FLASH pages */
   for(i=0;i<FLASH_PAGES;i++) {
     FLASH_ErasePage(FLASH_START + (FLASH_PAGE_SIZE * i));
-    jsPrint(".");
+    jsiConsolePrint(".");
   }
 #endif
-  jsPrint("\nProgramming ");
-  jsPrintInt(jsvGetVarDataSize());
-  jsPrint(" Bytes...");
+  jsiConsolePrint("\nProgramming ");
+  jsiConsolePrintInt(jsvGetVarDataSize());
+  jsiConsolePrint(" Bytes...");
 
   int *basePtr = jsvGetVarDataPointer();
 #ifdef STM32F4
   for (i=0;i<jsvGetVarDataSize();i+=4) {
       while (FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]) != FLASH_COMPLETE);
-      if ((i&1023)==0) jsPrint(".");
+      if ((i&1023)==0) jsiConsolePrint(".");
   }
   while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
 #else
   /* Program Flash Bank1 */  
   for (i=0;i<jsvGetVarDataSize();i+=4) {
       FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]);
-      if ((i&1023)==0) jsPrint(".");
+      if ((i&1023)==0) jsiConsolePrint(".");
   }
   FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
   FLASH_WaitForLastOperation(0x2000);
@@ -1162,7 +1223,7 @@ void jshSaveToFlash() {
 #else
   FLASH_LockBank1();
 #endif
-  jsPrint("\nChecking...");
+  jsiConsolePrint("\nChecking...");
 
   int errors = 0;
   for (i=0;i<jsvGetVarDataSize();i+=4)
@@ -1170,11 +1231,11 @@ void jshSaveToFlash() {
       errors++;
 
   if (errors) {
-      jsPrint("\nThere were ");
-      jsPrintInt(errors);
-      jsPrint(" errors!\n>");
+      jsiConsolePrint("\nThere were ");
+      jsiConsolePrintInt(errors);
+      jsiConsolePrint(" errors!\n>");
   } else
-      jsPrint("\nDone!\n>");
+      jsiConsolePrint("\nDone!\n>");
 
 //  This is nicer, but also broken!
 //  FLASH_UnlockBank1();
@@ -1225,35 +1286,35 @@ void jshSaveToFlash() {
 #else
   FILE *f = fopen("TinyJSC.state","wb");
   if (f) {
-    jsPrint("\nSaving ");
-    jsPrintInt(jsvGetVarDataSize());
-    jsPrint(" bytes...");
+    jsiConsolePrint("\nSaving ");
+    jsiConsolePrintInt(jsvGetVarDataSize());
+    jsiConsolePrint(" bytes...");
     fwrite(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
     fclose(f);
-    jsPrint("\nDone!\n>");
+    jsiConsolePrint("\nDone!\n>");
   } else {
-    jsPrint("\nFile Open Failed... \n>");
+    jsiConsolePrint("\nFile Open Failed... \n>");
   }
 #endif
 }
 
 void jshLoadFromFlash() {
 #ifdef ARM
-  jsPrint("\nLoading ");
-  jsPrintInt(jsvGetVarDataSize());
-  jsPrint(" bytes from flash...");
+  jsiConsolePrint("\nLoading ");
+  jsiConsolePrintInt(jsvGetVarDataSize());
+  jsiConsolePrint(" bytes from flash...");
   memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
-  jsPrint("\nDone!\n>");
+  jsiConsolePrint("\nDone!\n>");
 #else
   FILE *f = fopen("TinyJSC.state","rb");
   if (f) {
-    jsPrint("\nLoading ");
-    jsPrintInt(jsvGetVarDataSize());
-    jsPrint(" bytes...\n>");
+    jsiConsolePrint("\nLoading ");
+    jsiConsolePrintInt(jsvGetVarDataSize());
+    jsiConsolePrint(" bytes...\n>");
     fread(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
     fclose(f);
   } else {
-    jsPrint("\nFile Open Failed... \n>");
+    jsiConsolePrint("\nFile Open Failed... \n>");
   }
 #endif
 }

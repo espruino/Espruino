@@ -95,9 +95,9 @@ void jsvShowAllocated() {
   int i;
   for (i=1;i<jsVarsSize;i++)
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
-      jsPrint("USED VAR #");
-      jsPrintInt(jsvGetRef(&jsVars[i]));
-      jsPrint(":");
+      jsiConsolePrint("USED VAR #");
+      jsiConsolePrintInt(jsvGetRef(&jsVars[i]));
+      jsiConsolePrint(":");
       jsvTrace(jsvGetRef(&jsVars[i]), 2);
     }
 }
@@ -665,7 +665,7 @@ void jsvPrintStringVar(JsVar *v) {
     char buf[JSVAR_DATA_STRING_MAX_LEN+1];
     memcpy(buf, v->varData.str, l);
     buf[l] = 0;
-    jsPrint(buf);
+    jsiConsolePrint(buf);
     r = v->lastChild;
     jsvUnLock(v);
   }
@@ -1280,13 +1280,13 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 }
 
 void jsvTraceLockInfo(JsVar *v) {
-    jsPrint("#");
-    jsPrintInt(jsvGetRef(v));
-    jsPrint("[r");
-    jsPrintInt(v->refs);
-    jsPrint(",l");
-    jsPrintInt(v->locks-1);
-    jsPrint("] ");
+    jsiConsolePrint("#");
+    jsiConsolePrintInt(jsvGetRef(v));
+    jsiConsolePrint("[r");
+    jsiConsolePrintInt(v->refs);
+    jsiConsolePrint(",l");
+    jsiConsolePrintInt(v->locks-1);
+    jsiConsolePrint("] ");
 }
 
 /** Write debug info for this Var out to the console */
@@ -1296,10 +1296,10 @@ void jsvTrace(JsVarRef ref, int indent) {
     char buf[JS_ERROR_BUF_SIZE];
     JsVar *var;
 
-    for (i=0;i<indent;i++) jsPrint(" ");
+    for (i=0;i<indent;i++) jsiConsolePrint(" ");
 
     if (!ref) {
-        jsPrint("undefined\n");
+        jsiConsolePrint("undefined\n");
         return;
     }
     var = jsvLock(ref);
@@ -1308,20 +1308,20 @@ void jsvTrace(JsVarRef ref, int indent) {
 
     if (jsvIsName(var)) {
       if (jsvIsFunctionParameter(var))
-        jsPrint("Param ");
+        jsiConsolePrint("Param ");
       jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
       if (jsvIsInt(var)) {
-        jsPrint("Name: int ");
-        jsPrint(buf);
-        jsPrint("  ");
+        jsiConsolePrint("Name: int ");
+        jsiConsolePrint(buf);
+        jsiConsolePrint("  ");
       } else if (jsvIsFloat(var)) {
-        jsPrint("Name: flt ");
-        jsPrint(buf);
-        jsPrint("  ");
+        jsiConsolePrint("Name: flt ");
+        jsiConsolePrint(buf);
+        jsiConsolePrint("  ");
       } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
-        jsPrint("Name: '");
-        jsPrint(buf);
-        jsPrint("'  ");
+        jsiConsolePrint("Name: '");
+        jsiConsolePrint(buf);
+        jsiConsolePrint("'  ");
       } else {
         assert(0);
       }
@@ -1332,26 +1332,26 @@ void jsvTrace(JsVarRef ref, int indent) {
         var = jsvLock(ref);
         jsvTraceLockInfo(var);
       } else {
-          jsPrint("undefined\n");
+          jsiConsolePrint("undefined\n");
         return;
       }
     }
     if (jsvIsName(var)) {
-        jsPrint("\n");
+        jsiConsolePrint("\n");
       jsvTrace(jsvGetRef(var), indent+1);
       jsvUnLock(var);
       return;
     }
-    if (jsvIsObject(var)) jsPrint("Object {\n");
-    else if (jsvIsArray(var)) jsPrint("Array [\n");
-    else if (jsvIsInt(var)) jsPrint("Integer ");
-    else if (jsvIsFloat(var)) jsPrint("Double ");
-    else if (jsvIsString(var)) jsPrint("String ");
-    else if (jsvIsFunction(var)) jsPrint("Function {\n");
+    if (jsvIsObject(var)) jsiConsolePrint("Object {\n");
+    else if (jsvIsArray(var)) jsiConsolePrint("Array [\n");
+    else if (jsvIsInt(var)) jsiConsolePrint("Integer ");
+    else if (jsvIsFloat(var)) jsiConsolePrint("Double ");
+    else if (jsvIsString(var)) jsiConsolePrint("String ");
+    else if (jsvIsFunction(var)) jsiConsolePrint("Function {\n");
     else {
-        jsPrint("Flags ");
-        jsPrintInt(var->flags);
-        jsPrint("\n");
+        jsiConsolePrint("Flags ");
+        jsiConsolePrintInt(var->flags);
+        jsiConsolePrint("\n");
     }
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
@@ -1359,13 +1359,13 @@ void jsvTrace(JsVarRef ref, int indent) {
         jsvPrintStringVar(var);
       else {
         jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-        jsPrint(buf);
+        jsiConsolePrint(buf);
       }
     }
 
     if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
       if (!jsvIsStringExt(var) && var->firstChild) { // stringext don't have children (the use them for chars)
-        jsPrint("( Multi-block string ");
+        jsiConsolePrint("( Multi-block string ");
         JsVarRef child = var->firstChild;
         while (child) {
           JsVar *childVar = jsvLock(child);
@@ -1373,14 +1373,14 @@ void jsvTrace(JsVarRef ref, int indent) {
           child = childVar->firstChild;
           jsvUnLock(childVar);
         }
-        jsPrint(")\n");
+        jsiConsolePrint(")\n");
       } else
-          jsPrint("\n");
+          jsiConsolePrint("\n");
     } else if (!(var->flags & JSV_IS_RECURSING)) {
       /* IS_RECURSING check stops infinite loops */
       var->flags |= JSV_IS_RECURSING;
       JsVarRef child = var->firstChild;
-      jsPrint("\n");
+      jsiConsolePrint("\n");
       // dump children
       while (child) {
         JsVar *childVar;
@@ -1391,18 +1391,18 @@ void jsvTrace(JsVarRef ref, int indent) {
       }
       var->flags &= ~JSV_IS_RECURSING;
     } else {
-        jsPrint(" ... ");
+        jsiConsolePrint(" ... ");
     }
 
 
     if (jsvIsObject(var) || jsvIsFunction(var)) {
       int i;
-      for (i=0;i<indent;i++) jsPrint(" ");
-      jsPrint("}\n");
+      for (i=0;i<indent;i++) jsiConsolePrint(" ");
+      jsiConsolePrint("}\n");
     } else if (jsvIsArray(var)) {
       int i;
-      for (i=0;i<indent;i++) jsPrint(" ");
-      jsPrint("]\n");
+      for (i=0;i<indent;i++) jsiConsolePrint(" ");
+      jsiConsolePrint("]\n");
     }
 
     jsvUnLock(var);

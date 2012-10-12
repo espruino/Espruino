@@ -12,6 +12,7 @@
  #include "platform_config.h"
 #else
  #define IOBUFFERMASK 15 // (max 255)
+ #define DEFAULT_CONSOLE_DEVICE EV_USBSERIAL
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
@@ -20,11 +21,7 @@ void jshInit();
 void jshKill();
 void jshIdle(); // stuff to do on idle
 
-/// Transmit a byte
-void jshTX(char data);
-/// Transmit a string
-void jshTXStr(const char *str);
-
+bool jshIsUSBSERIALConnected(); // is the serial device connected?
 
 typedef long long JsSysTime;
 /// Get the system time (in ticks)
@@ -35,6 +32,7 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
 typedef enum {
+ EV_NONE,
  EV_EXTI0,
  EV_EXTI1,
  EV_EXTI2,
@@ -82,6 +80,9 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData);
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
 bool jshHasEvents();
 
+const char *jshGetDeviceString(IOEventFlags device);
+IOEventFlags jshFromDeviceString(const char *device);
+
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
 int jshGetPinFromVar(JsVar *pinv);
@@ -109,6 +110,8 @@ bool jshFlashContainsCode();
 void jshTransmit(IOEventFlags device, unsigned char data);
 /// Wait for transmit to finish
 void jshTransmitFlush();
+// Clear everything from a device
+void jshTransmitClearDevice(IOEventFlags device);
 
 #ifdef ARM
 // Try and get a character for transmission - could just return -1 if nothing
@@ -118,7 +121,10 @@ int jshGetCharToTransmit(IOEventFlags device);
 //                                                                      SYSTICK
 ///On SysTick interrupt, call this
 void jshDoSysTick();
-
+#ifdef USB
+// Kick the USB SysTick watchdog - we need this to see if we have disconnected or not
+void jshKickUSBWatchdog();
+#endif
 
 #endif // ARM
 

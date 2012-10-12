@@ -450,7 +450,7 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
   jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
 }
 
-void _jsfPrintJSON_str(void *data, const char *str) { jsPrint(str); }
+void _jsfPrintJSON_str(void *data, const char *str) { jsiConsolePrint(str); }
 void _jsfPrintJSON_var(void *data, JsVar *var) { jsvPrintStringVar(var); }
 void jsfPrintJSON(JsVar *var) {
   jsfGetJSONWithCallback(var, _jsfPrintJSON_str, _jsfPrintJSON_var, 0);

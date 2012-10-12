@@ -44,12 +44,60 @@ JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
+IOEventFlags consoleDevice; ///< The console device for user interaction
+bool echo;                  ///< do we provide any user feedback?
+// ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
-bool echo = true; ///< do we provide any user feedback?
 InputState inputState = 0; ///< state for dealing with cursor keys
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
+
+/// Change the console to a new location
+void jsiSetConsoleDevice(IOEventFlags device) {
+  if (device == consoleDevice) return;
+  if (echo) {
+    jsiConsolePrint("Console Moved to ");
+    jsiConsolePrint(jshGetDeviceString(device));
+    jsiConsolePrint("\n");
+  }
+  IOEventFlags oldDevice = consoleDevice;
+  consoleDevice = device;
+  if (echo) {
+    jsiConsolePrint("Console Moved from ");
+    jsiConsolePrint(jshGetDeviceString(oldDevice));
+    jsiConsolePrint("\n>");
+  }
+}
+
+void jsiConsolePrintChar(char data) {
+  jshTransmit(consoleDevice, data);
+}
+
+void jsiConsolePrint(const char *str) {
+  while (*str) {
+       if (*str == '\n') jsiConsolePrintChar('\r');
+       jsiConsolePrintChar(*(str++));
+  }
+}
+
+void jsiConsolePrintInt(int d) {
+    char buf[32];
+    itoa(d, buf, 10);
+    jsiConsolePrint(buf);
+}
+
+void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
+  int line,col;
+  jslGetLineAndCol(lex, tokenPos, &line, &col);
+  jsiConsolePrint("line ");
+  jsiConsolePrintInt(line);
+  jsiConsolePrint(" col ");
+  jsiConsolePrintInt(col);
+  jsiConsolePrint(" (char ");
+  jsiConsolePrintInt(tokenPos);
+  jsiConsolePrint(")\n");
+}
 
 // Used when recovering after being flashed
 // 'claim' anything we are using
@@ -158,6 +206,12 @@ void jsiInit(bool autoLoad) {
   /*for (i=0;i<IOPINS;i++)
      ioPinState[i].callbacks = 0;*/
 
+  // Set defaults
+  echo = true;
+  consoleDevice = DEFAULT_CONSOLE_DEVICE;
+  if (jshIsUSBSERIALConnected())
+    consoleDevice = EV_USBSERIAL;
+
   /* If flash contains any code, then we should
      Try and load from it... */
   if (autoLoad && jshFlashContainsCode()) {
@@ -169,14 +223,12 @@ void jsiInit(bool autoLoad) {
   }
   //jsvTrace(jsiGetParser()->root, 0);
 
-  // Set defaults
-  echo = true;
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
 
   if (echo) {
     // rectangles @ http://www.network-science.de/ascii/
-    jsPrint("\r\n _____                 _ \r\n"
+    jsiConsolePrint("\r\n _____                 _ \r\n"
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
               "|   __|_ -| . |  _| | | |   | . |\r\n"
               "|_____|___|  _|_| |___|_|_|_|___|\r\n"
@@ -188,7 +240,7 @@ void jsiInit(bool autoLoad) {
               "only. If you were sold this on a\r\n"
               "device, please contact us.\r\n"
               "---------------------------------\r\n");
-    jsPrint("\r\n>");
+    jsiConsolePrint("\r\n>");
   }
 }
 
@@ -242,7 +294,7 @@ void jsiHandleChar(char ch) {
     if (ch==68) { // left
     }
     if (ch==67) { // right
-      //jshTX(27);jshTX(91);jshTX(67);
+      //jsiConsolePrintChar(27);jsiConsolePrintChar(91);jsiConsolePrintChar(67);
     }
     if (ch==65) { // up
     }
@@ -255,9 +307,9 @@ void jsiHandleChar(char ch) {
       if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
         // clear the character
         if (echo) {
-          jshTX(CHAR_DELETE_SEND);
-          jshTX(' ');
-          jshTX(CHAR_DELETE_SEND);
+          jsiConsolePrintChar(CHAR_DELETE_SEND);
+          jsiConsolePrintChar(' ');
+          jsiConsolePrintChar(CHAR_DELETE_SEND);
         }
         // FIXME hacky - should be able to just remove the end character without copying
         JsVar *v = jsvNewFromString("");
@@ -273,28 +325,28 @@ void jsiHandleChar(char ch) {
       if (ch == '\r') inputState = IS_HAD_R;
       if (jsiCountBracketsInInput()<=0) {
         if (echo) {
-          jshTX('\r');
-          jshTX('\n');
+          jsiConsolePrintChar('\r');
+          jsiConsolePrintChar('\n');
         }
 
         JsVar *v = jspEvaluateVar(&p, inputline);
         jsvUnLock(inputline);
 
         if (echo) {
-          jshTX('=');
+          jsiConsolePrintChar('=');
           jsfPrintJSON(v);
         }
         jsvUnLock(v);
 
         inputline = jsvNewFromString("");
 
-        if (echo) jshTXStr("\r\n>");
+        if (echo) jsiConsolePrint("\r\n>");
       } else {
-        if (echo) jshTXStr("\n:");
+        if (echo) jsiConsolePrint("\n:");
         jsvAppendCharacter(inputline, '\n');
       }
     } else {
-      if (echo) jshTX(ch);
+      if (echo) jsiConsolePrintChar(ch);
       // Append the character to our input line
       jsvAppendCharacter(inputline, ch);
     }
@@ -401,10 +453,7 @@ void jsiIdle() {
   // Handle hardware-related idle stuff (like checking for pin events)
   IOEvent event;
   while (jshPopIOEvent(&event)) {
-    if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USBSERIAL) {
-      unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
-      for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
-    } else if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USART1) {
+    if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
       unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
     } else {
@@ -488,7 +537,7 @@ void jsiIdle() {
     jsiExecuteEvents();
   
     if (jspIsInterrupted()) {
-      jshTXStr("Execution Interrupted during event processing - clearing all timers.\r\n");
+      jsiConsolePrint("Execution Interrupted during event processing - clearing all timers.\r\n");
       JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveAllChildren(timerArrayPtr);
       jsvUnLock(timerArrayPtr);
@@ -533,8 +582,8 @@ void jsiLoop() {
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
-    jshTXStr("Execution Interrupted.\r\n");
-    if (echo) jshTXStr(">");
+    jsiConsolePrint("Execution Interrupted.\r\n");
+    if (echo) jsiConsolePrint(">");
     // clear input line
     jsvUnLock(inputline);
     inputline = jsvNewFromString("");
@@ -548,11 +597,11 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
     JsVar *child = jsvLock(childRef);
     JsVar *data = jsvSkipName(child);
     jsvPrintStringVar(parentName);
-    jsPrint(".");
+    jsiConsolePrint(".");
     jsvPrintStringVar(child);
-    jsPrint(" = ");
+    jsiConsolePrint(" = ");
     jsfPrintJSON(data);
-    jsPrint(";\n");
+    jsiConsolePrint(";\n");
     jsvUnLock(data);
     childRef = child->nextSibling;
     jsvUnLock(child);
@@ -574,11 +623,11 @@ void jsiDumpState() {
     } else if (jsvIsStringEqual(child, "watches")) {
       // skip - done later
     } else if (!jsvIsNative(data)) { // just a variable/function!
-      jsPrint("var ");
+      jsiConsolePrint("var ");
       jsvPrintStringVar(child);
-      jsPrint(" = ");
+      jsiConsolePrint(" = ");
       jsfPrintJSON(data);
-      jsPrint(";\n");
+      jsiConsolePrint(";\n");
     }
     jsvUnLock(data);
     childRef = child->nextSibling;
@@ -593,11 +642,11 @@ void jsiDumpState() {
     JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
     bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false)));
     JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
-    jsPrint(recur ? "setInterval(" : "setTimeout(");
+    jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
     jsfPrintJSON(timerCallback);
-    jsPrint(", ");
+    jsiConsolePrint(", ");
     jsfPrintJSON(timerInterval);
-    jsPrint(");\n");
+    jsiConsolePrint(");\n");
     jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next
@@ -614,13 +663,13 @@ void jsiDumpState() {
      JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
      JsVar *watchRecur = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
-     jsPrint("setWatch(");
+     jsiConsolePrint("setWatch(");
      jsfPrintJSON(watchCallback);
-     jsPrint(", ");
+     jsiConsolePrint(", ");
      jsfPrintJSON(watchPin);
-     jsPrint(", ");
+     jsiConsolePrint(", ");
      jsfPrintJSON(watchRecur);
-     jsPrint(");\n");
+     jsiConsolePrint(");\n");
      jsvUnLock(watchPin);
      jsvUnLock(watchRecur);
      jsvUnLock(watchCallback);
@@ -641,7 +690,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       JsVar *v = jsvAsString(jspParseSingleFunction(), true);
       jsvPrintStringVar(v);
       jsvUnLock(v);
-      jsPrint("\n");
+      jsiConsolePrint("\n");
       return 0;
     }
     if (strcmp(name,"getTime")==0) {

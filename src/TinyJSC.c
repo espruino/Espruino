@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
   while (isRunning) {
     jsiLoop();
   }
-  jsPrint("\n");
+  jsiConsolePrint("\n");
   jsiKill();
 
   jsvShowAllocated();

@@ -76,70 +76,46 @@ JsVarInt stringToInt(const char *s) {
   return v;
 }
 
-void jsPrintPosition(struct JsLex *lex, int tokenPos) {
-  int line,col;
-  jslGetLineAndCol(lex, tokenPos, &line, &col);
-  jsPrint("line ");
-  jsPrintInt(line);
-  jsPrint(" col ");
-  jsPrintInt(col);
-  jsPrint(" (char ");
-  jsPrintInt(tokenPos);
-  jsPrint(")\n");
-}
-
 void jsError(const char *message) {
-    jsPrint("ERROR: ");
-    jsPrint(message);
-    jsPrint("\n");
+    jsiConsolePrint("ERROR: ");
+    jsiConsolePrint(message);
+    jsiConsolePrint("\n");
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
-  jsPrint("ERROR: ");
-  jsPrint(message);
-  jsPrint(" at ");
-  jsPrintPosition(lex, tokenPos);
+  jsiConsolePrint("ERROR: ");
+  jsiConsolePrint(message);
+  jsiConsolePrint(" at ");
+  jsiConsolePrintPosition(lex, tokenPos);
 }
 
 void jsWarn(const char *message) {
-    jsPrint("WARNING: ");
-    jsPrint(message);
-    jsPrint("\n");
+    jsiConsolePrint("WARNING: ");
+    jsiConsolePrint(message);
+    jsiConsolePrint("\n");
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
-  jsPrint("WARNING: ");
-  jsPrint(message);
-  jsPrint(" at ");
-  jsPrintPosition(lex, tokenPos);
+  jsiConsolePrint("WARNING: ");
+  jsiConsolePrint(message);
+  jsiConsolePrint(" at ");
+  jsiConsolePrintPosition(lex, tokenPos);
 }
 
 void jsAssertFail(const char *file, int line) {
-  jsPrint("ASSERT FAIL AT ");
-  jsPrint(file);
-  jsPrint(":");
-  jsPrintInt(line);
-  jsPrint("\n");
+  jsiConsolePrint("ASSERT FAIL AT ");
+  jsiConsolePrint(file);
+  jsiConsolePrint(":");
+  jsiConsolePrintInt(line);
+  jsiConsolePrint("\n");
 
   jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
   exit(1);
 }
 
-/// This is the place that all text is output from TinyJS. It could be overwridden if required
-void jsPrint(const char *txt) {
-  jshTXStr(txt);
-}
-
-/// Helper function - prints an integer
-void jsPrintInt(int d) {
-    char buf[32];
-    itoa(d, buf, 10);
-    jsPrint(buf);
-}
-
 #ifdef SDCC
 void exit(int errcode) {dst;
-    jsPrint("EXIT CALLED.\n");
+    jsiConsolePrint("EXIT CALLED.\n");
 }
 #endif
 
@@ -147,7 +123,7 @@ void exit(int errcode) {dst;
 int __errno;
 
 void exit(int errcode) {
-    jsPrint("EXIT CALLED.\n");
+    jsiConsolePrint("EXIT CALLED.\n");
     while (1);
 }
 
