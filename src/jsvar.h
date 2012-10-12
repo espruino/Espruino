@@ -203,6 +203,7 @@ size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it i
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
+void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
 void jsvAppendCharacter(JsVar *var, char ch); ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string

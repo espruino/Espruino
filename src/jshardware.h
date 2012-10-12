@@ -13,6 +13,7 @@
 #else
  #define IOBUFFERMASK 15 // (max 255)
  #define DEFAULT_CONSOLE_DEVICE EV_USBSERIAL
+ #define DEFAULT_BUSY_PIN_INDICATOR -1
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
@@ -96,6 +97,7 @@ void jshPinAnalogOutput(int pin, JsVarFloat value);
 void jshPinPulse(int pin, bool value, JsVarFloat time);
 void jshPinWatch(int pin, bool shouldWatch);
 bool jshIsEventForPin(IOEvent *event, int pin);
+
 
 /// Save contents of JsVars into Flash
 void jshSaveToFlash();

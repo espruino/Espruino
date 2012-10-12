@@ -534,6 +534,12 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
+void jsvAppendInteger(JsVar *var, JsVarInt i) {
+  char buf[32];
+  itoa(i,buf,10);
+  jsvAppendString(var, buf);
+}
+
 void jsvAppendCharacter(JsVar *var, char ch) {
   // Append the character to our input line
   char buf[2];

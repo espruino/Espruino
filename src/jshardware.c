@@ -50,11 +50,12 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected())
     return;
 #endif
+  if (device==EV_NONE) return;
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   if (txHeadNext==txTail) {
-    GPIO_SetBits(LED2_PORT,LED2_PIN);
+    jsiSetBusy(true);
     while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
-    GPIO_ResetBits(LED2_PORT,LED2_PIN);
+    jsiSetBusy(false);
   }
   txBuffer[txHead].flags = device;
   txBuffer[txHead].data = (char)data;
@@ -116,9 +117,6 @@ volatile unsigned char ioHead=0, ioTail=0;
 
 void jshIOEventOverflowed() {
   // TODO: error here?
-#ifdef LED2_PORT
-    GPIO_SetBits(LED2_PORT, LED2_PIN);
-#endif
 }
 
 

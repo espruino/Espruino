@@ -49,6 +49,7 @@
             Start of multiple COM port support (ioEvent queue)
             Ctrl-C now clears the input line
             Save state of 'echo' into flash with save()
+            Add 'setBusyIndicator(pin)' to set pin high when Espruino is busy
 [/CHANGELOG]
 
 [TODO]
@@ -63,6 +64,7 @@
         Built-in constants for LED1/BTN/etc.
         Ctrl-C in mandelbrot demo only breaks out of one FOR loop
 
+
   MEDIUM PRIORITY:
 	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
@@ -74,7 +76,6 @@
         Check precedence against MDN javascript op precedence page
         Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
-        Add 'showBusy(pin)' to set pin high when Espruino is busy
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
  
   LOW PRIORITY
@@ -290,9 +291,6 @@ void jsWarn(const char *message);
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsAssertFail(const char *file, int line);
 
-#ifdef SDCC
-void exit(int errcode);
-#endif
 #ifdef FAKE_STDLIB
 void exit(int errcode);
 char *strncat(char *dst, const char *src, size_t c);

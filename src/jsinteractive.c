@@ -44,7 +44,8 @@ JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
 // ----------------------------------------------------------------------------
-IOEventFlags consoleDevice; ///< The console device for user interaction
+IOEventFlags consoleDevice = EV_NONE; ///< The console device for user interaction
+int pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 bool echo;                  ///< do we provide any user feedback?
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
@@ -97,6 +98,11 @@ void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   jsiConsolePrint(" (char ");
   jsiConsolePrintInt(tokenPos);
   jsiConsolePrint(")\n");
+}
+
+void jsiSetBusy(bool isBusy) {
+  if (pinBusyIndicator >= 0)
+    jshPinOutput(pinBusyIndicator, isBusy);
 }
 
 // Used when recovering after being flashed
@@ -192,6 +198,11 @@ void jsiSoftKill() {
     initName->firstChild = jsvUnLock(jsvRef(jsvNewFromString("")));
   JsVar *initCode = jsvLock(initName->firstChild);
   if (!echo) jsvAppendString(initCode, "echo(0);");
+  if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
+    jsvAppendString(initCode, "setBusyIndicator(");
+    jsvAppendInteger(initCode, pinBusyIndicator);
+    jsvAppendString(initCode, ");");
+  }
   jsvUnLock(initCode);
   jsvUnLock(initName);
 }
@@ -209,6 +220,7 @@ void jsiInit(bool autoLoad) {
   // Set defaults
   echo = true;
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
+  pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
   if (jshIsUSBSERIALConnected())
     consoleDevice = EV_USBSERIAL;
 
@@ -416,6 +428,8 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
 }
 
 void jsiExecuteEvents() {
+  bool hasEvents = events;
+  if (hasEvents) jsiSetBusy(true);
   while (events) {
     JsVar *event = jsvLock(events);
     // Get function to execute
@@ -440,6 +454,7 @@ void jsiExecuteEvents() {
     jsvUnLock(func);
     jsvUnLock(arg0);
   }
+  if (hasEvents) jsiSetBusy(false);
 }
 
 bool jsiHasTimers() {
@@ -455,7 +470,9 @@ void jsiIdle() {
   while (jshPopIOEvent(&event)) {
     if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
       unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      jsiSetBusy(true);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
+      jsiSetBusy(false);
     } else {
       // we have an event... find out what it was for...
       JsVar *watchArrayPtr = jsvLock(watchArray);
@@ -873,6 +890,22 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       //jsPrintInt((JsVarInt)(time*1000));
       jshPinPulse(pin, value, time);
       return 0;
+    }
+    if (strcmp(name,"setBusyIndicator")==0) {
+      /*JS* function setBusyIndicator(pin)
+       *JS*  When Espruino is busy, set the pin specified here
+       *JS*  high. Set this to undefined to disable the feature.
+       */
+      JsVar *pinVar = jspParseSingleFunction();
+      if (jsvIsUndefined(pinVar))
+        pinBusyIndicator = -1;
+      else {
+        pinBusyIndicator = jshGetPinFromVar(pinVar);
+        if (pinBusyIndicator<=0)
+          jsError("Invalid pin!");
+      }
+      jsvUnLock(pinVar);
+      return 0; // handled
     }
     if (strcmp(name,"setWatch")==0) {
       /*JS* function setWatch(function, pin, repeat)
