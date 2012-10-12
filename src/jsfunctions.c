@@ -127,23 +127,38 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       }
 #ifdef USE_MATH
       if (strcmp(name,"acos")==0) {
+      /*JS* method Math.acos(x)
+       *JS*  Arc Cosine. Takes a double between -1 and 1 and produce a value between 0 and PI.
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(acos(x));
       }
       if (strcmp(name,"asin")==0) {
+      /*JS* method Math.asin(x)
+       *JS*  Arc Sine. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(asin(x));
       }
       if (strcmp(name,"atan")==0) {
+      /*JS* method Math.atan(x)
+       *JS*  Arc Tangent. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(atan(x));
       }
       if (strcmp(name,"atan2")==0) {
+      /*JS* method Math.atan2(x,y)
+       *JS*  Arc Tangent of y/x. Takes any values and produces values between 0 and PI.
+       */
         JsVar *x,*y;
         jspParseDoubleFunction(&y,&x);
         return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
       }
       if (strcmp(name,"cos")==0) {
+      /*JS* method Math.cos(rads)
+       *JS*  Cosine. Takes any value in radians and produces values between -1 and 1
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(cos(x));
       }
@@ -152,19 +167,31 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return jsvNewFromInteger(lround(x));
       }
       if (strcmp(name,"sin")==0) {
+      /*JS* method Math.sin(rads)
+       *JS*  Sine. Takes any value in radians and produces values between -1 and 1
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(sin(x));
       }
       if (strcmp(name,"sqrt")==0) {
+      /*JS* method Math.sqrt(x)
+       *JS*  Return the Square Root of X
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(sqrt(x));
       }
       if (strcmp(name,"tan")==0) {
+      /*JS* method Math.tan(rads)
+       *JS*  Tangent. Takes any value in radians and produces the Tangent
+       */
         JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
         return jsvNewFromFloat(tan(x));
       }
 #endif
       if (strcmp(name,"random")==0) {
+      /*JS* method Math.random()
+       *JS*  Return a random floating point value between 0 and 1
+       */
         if (jspParseEmptyFunction())
           return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
       }
