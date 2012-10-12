@@ -10,15 +10,16 @@
 
 #ifdef ARM
  #include "platform_config.h"
+#else
+ #define IOBUFFERMASK 15
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
 
 void jshInit();
 void jshKill();
+void jshIdle(); // stuff to do on idle
 
-/// Receive a byte, or return -1 if there isn't one
-int jshRX();
 /// Transmit a byte
 void jshTX(char data);
 /// Transmit a string
@@ -34,15 +35,53 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 /// Convert ticks to a time in Milliseconds
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
+typedef enum {
+ EV_EXTI0,
+ EV_EXTI1,
+ EV_EXTI2,
+ EV_EXTI3,
+ EV_EXTI4,
+ EV_EXTI5,
+ EV_EXTI6,
+ EV_EXTI7,
+ EV_EXTI8,
+ EV_EXTI9,
+ EV_EXTI10,
+ EV_EXTI11,
+ EV_EXTI12,
+ EV_EXTI13,
+ EV_EXTI14,
+ EV_EXTI15,
+ EV_USBSERIAL,
+ EV_USART1,
+ EV_USART2,  
+ EV_USART3,  
+ EV_USART4,    
+
+ EV_TYPE_MASK = 31,
+ EV_CHARS_MASK = 7 << 5,
+} IOEventFlags;
+
+#define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
+#define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
+#define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<5)))
+#define IOEVENT_MAXCHARS 8
+
+typedef union {
+  JsSysTime time; // time event occurred
+  char chars[IOEVENT_MAXCHARS];
+} IOEventData;
 
 // IO Events - these happen when a pin changes
 typedef struct IOEvent {
-  JsSysTime time; // time event occurred
-  unsigned char channel; // 'channel'
+  IOEventFlags flags; // 'channel'
+  IOEventData data;
 } IOEvent;
 
-void jshPushIOEvent(JsSysTime time, unsigned char channel);
+void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
+void jshPushIOCharEvent(IOEventFlags channel, char charData);
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
+bool jshHasEvents();
 
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
@@ -68,11 +107,6 @@ bool jshFlashContainsCode();
 #ifdef ARM
 ///On SysTick interrupt, call this
 void jshDoSysTick();
-// Data has come in from serial - save it
-void jshReceiveChar(char ch);
-// UART Receive
-extern char rxBuffer[RXBUFFERMASK+1];
-extern volatile unsigned char rxHead, rxTail;
 // UART Transmit
 extern char txBuffer[TXBUFFERMASK+1];
 extern volatile unsigned char txHead, txTail;

@@ -157,14 +157,6 @@ void jsiInit(bool autoLoad) {
   
 
   // rectangles @ http://www.network-science.de/ascii/
-  /*jsPrint("\r\n           _     _ _\r\n"
-              " ___ ___ _| |___| |_|___ ___ \r\n"
-              "|   | . | . | -_| | |   | . |\r\n"
-              "|_|_|___|___|___|_|_|_|_|_  |\r\n"
-              "                        |___|\r\n"
-              " Copyright 2012 Gordon Williams\r\n"
-              "                gw@pur3.co.uk\r\n"
-              "-------------------------------- ");*/
   jsPrint("\r\n _____                 _ \r\n"        
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
               "|   __|_ -| . |  _| | | |   | . |\r\n"
@@ -386,51 +378,48 @@ bool jsiHasTimers() {
 }
 
 void jsiIdle() {
-  // Check each pin for any change
-  /*int pin;
-  for (pin=0;pin<IOPINS;pin++) {
-    bool val = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? true : false;
-    if (val != ioPinState[pin].value) { // there was a change...
-      ioPinState[pin].value = val;
-      // TODO: do we want an 'event' object that we pass into the call?
-      queueAll(ioPinState[pin].callbacks); // queue callbacks for execution
-      // TODO: clear callbacks list after execution?
-    }
-  }*/
   // Handle hardware-related idle stuff (like checking for pin events)
   IOEvent event;
   while (jshPopIOEvent(&event)) {
-    // we have an event... find out what it was for...
-    JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
-      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
-      int pin = jshGetPinFromVar(watchPin); // TODO: could be faster?
-      jsvUnLock(watchPin);
+    if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USBSERIAL) {
+      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
+    } else if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USART1) {
+      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
+    } else {
+      // we have an event... find out what it was for...
+      JsVar *watchArrayPtr = jsvLock(watchArray);
+      JsVarRef watch = watchArrayPtr->firstChild;
+      while (watch) {
+        JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
+        JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+        int pin = jshGetPinFromVar(watchPin); // TODO: could be faster?
+        jsvUnLock(watchPin);
 
-      if (jshIsEventForPin(&event, pin)) {
-        JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
-        JsVar *watchRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
-        JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-        if (data) {
-          JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.time)/1000);
-          if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));          
-          jsvUnLock(dataTime);
+        if (jshIsEventForPin(&event, pin)) {
+          JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
+          JsVar *watchRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
+          JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+          if (data) {
+            JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000);
+            if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
+            jsvUnLock(dataTime);
+          }
+          jsiQueueEvents(jsvGetRef(watchCallback), data);
+          jsvUnLock(data);
+          if (!jsvGetBool(watchRecurring)) {
+            // free all
+            jsvRemoveChild(watchArrayPtr, watchNamePtr);
+          }
+          jsvUnLock(watchCallback);
+          jsvUnLock(watchRecurring);
         }
-        jsiQueueEvents(jsvGetRef(watchCallback), data);
-        jsvUnLock(data);
-        if (!jsvGetBool(watchRecurring)) {
-          // free all
-          jsvRemoveChild(watchArrayPtr, watchNamePtr);
-        }
-        jsvUnLock(watchCallback);
-        jsvUnLock(watchRecurring);
+        watch = watchNamePtr->nextSibling;
+        jsvUnLock(watchNamePtr);
       }
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+      jsvUnLock(watchArrayPtr);
     }
-    jsvUnLock(watchArrayPtr);
   }
 
   // Check timers
@@ -517,19 +506,18 @@ void jsiIdle() {
 }
 
 void jsiLoop() {
-  int ch = jshRX();
-  if (ch>=0) {
-    // We have data, use it!
-    jsiHandleChar((char)ch);
-  } else {
-    // Do general idle stuff
-    jsiIdle();
-  }
+  // idle stuff for hardware
+  jshIdle();
+  // Do general idle stuff
+  jsiIdle();
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
     jshTXStr("Execution Interrupted.\r\n");
     if (echo) jshTXStr(">");
+    // clear input line
+    jsvUnLock(inputline);
+    inputline = jsvNewFromString("");
   }
 }
 

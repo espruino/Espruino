@@ -45,6 +45,9 @@
             Detect if in FOR or WHILE loop, and if not, disallow break and continue
             Change min setInterval time to 0.1ms - F4 can get close to this
             Better analog pin error message
+            USB support on Olimexino/Maple
+            Start of multiple COM port support (ioEvent queue)
+            Ctrl-C now clears the input line
 [/CHANGELOG]
 
 [TODO]

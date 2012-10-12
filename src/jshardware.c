@@ -18,28 +18,72 @@
 #include "jsutils.h"
 #include "jsparse.h"
 
+#ifdef ARM
+ #if USB
+  #include "usb_regs.h"
+ #endif
+#endif
+
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
 #ifdef ARM
-// UART Receive
-char rxBuffer[RXBUFFERMASK+1];
-volatile unsigned char rxHead=0, rxTail=0;
-
 // UART Transmit
 char txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
 #endif
 
 // IO Events
-#define IOBUFFERMASK 7
 IOEvent ioBuffer[IOBUFFERMASK+1];
 volatile unsigned char ioHead=0, ioTail=0;
 
-void jshPushIOEvent(JsSysTime time, unsigned char channel) {
+void jshIOEventOverflowed() {
+  // TODO: error here?
+#ifdef LED2_PORT
+    GPIO_SetBits(LED2_PORT, LED2_PIN);
+#endif
+}
+
+
+void jshPushIOCharEvent(IOEventFlags channel, char charData) {
+  if (charData==3) {
+    // Ctrl-C - force interrupt
+    // TODO - check if this is our Console port?
+    jspSetInterrupted(true);
+    return;
+  }
+  // Check for existing buffer
+  if (ioHead!=ioTail) {
+    // we can do this because we only read in main loop, and we're in an interrupt here
+    unsigned char lastHead = (ioHead+IOBUFFERMASK) & IOBUFFERMASK;
+    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel &&
+        IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags) < IOEVENT_MAXCHARS) {
+      // last event was for this event type, and it has chars left
+      unsigned char c = IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags);
+      ioBuffer[lastHead].data.chars[c] = charData;
+      IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
+      return;
+    }
+  }
+  // Make new buffer
   unsigned char nextHead = (ioHead+1) & IOBUFFERMASK;
-  if (ioTail == nextHead) return; // queue full - dump this event!
-  ioBuffer[ioHead].time = time;
-  ioBuffer[ioHead].channel = channel;
+  if (ioTail == nextHead) {
+    jshIOEventOverflowed();
+    return; // queue full - dump this event!
+  }
+  ioBuffer[ioHead].flags = channel;
+  IOEVENTFLAGS_SETCHARS(ioBuffer[ioHead].flags, 1);
+  ioBuffer[ioHead].data.chars[0] = charData;  
+  ioHead = nextHead;
+}
+
+void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
+  unsigned char nextHead = (ioHead+1) & IOBUFFERMASK;
+  if (ioTail == nextHead) {
+    jshIOEventOverflowed();
+    return; // queue full - dump this event!
+  }
+  ioBuffer[ioHead].flags = channel;
+  ioBuffer[ioHead].data.time = time;
   ioHead = nextHead;
 }
 
@@ -49,6 +93,10 @@ bool jshPopIOEvent(IOEvent *result) {
   *result = ioBuffer[ioTail];
   ioTail = (ioTail+1) & IOBUFFERMASK;
   return true;
+}
+
+bool jshHasEvents() {
+  return ioHead!=ioTail;
 }
 
 // ----------------------------------------------------------------------------
@@ -247,6 +295,25 @@ uint8_t pinToPinSource(uint16_t pin) {
   if (pin==GPIO_Pin_15) return GPIO_PinSource15;
   return GPIO_PinSource0;
 }
+uint8_t pinToEVEXTI(uint16_t pin) {
+  if (pin==GPIO_Pin_0 ) return EV_EXTI0;
+  if (pin==GPIO_Pin_1 ) return EV_EXTI1;
+  if (pin==GPIO_Pin_2 ) return EV_EXTI2;
+  if (pin==GPIO_Pin_3 ) return EV_EXTI3;
+  if (pin==GPIO_Pin_4 ) return EV_EXTI4;
+  if (pin==GPIO_Pin_5 ) return EV_EXTI5;
+  if (pin==GPIO_Pin_6 ) return EV_EXTI6;
+  if (pin==GPIO_Pin_7 ) return EV_EXTI7;
+  if (pin==GPIO_Pin_8 ) return EV_EXTI8;
+  if (pin==GPIO_Pin_9 ) return EV_EXTI9;
+  if (pin==GPIO_Pin_10) return EV_EXTI10;
+  if (pin==GPIO_Pin_11) return EV_EXTI11;
+  if (pin==GPIO_Pin_12) return EV_EXTI12;
+  if (pin==GPIO_Pin_13) return EV_EXTI13;
+  if (pin==GPIO_Pin_14) return EV_EXTI14;
+  if (pin==GPIO_Pin_15) return EV_EXTI15;
+  return GPIO_PinSource0;
+}
 uint8_t portToPortSource(GPIO_TypeDef *port) {
  #ifdef STM32F4
   if (port == GPIOA) return EXTI_PortSourceGPIOA;
@@ -277,16 +344,6 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 JsSysTime SysTickMajor = SYSTICK_RANGE;
 void jshDoSysTick() {
   SysTickMajor+=SYSTICK_RANGE;
-}
-
-// Data has come in from serial - save it
-void jshReceiveChar(char ch) {
-    if (ch==3) { // Ctrl-C - force interrupt
-      jspSetInterrupted(true);
-    } else {
-      rxBuffer[rxHead] = ch;
-      rxHead = (rxHead+1)&RXBUFFERMASK;
-    }
 }
 
 #endif//ARM
@@ -413,7 +470,7 @@ void jshInit() {
   GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
 #ifdef STM32F4
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL; // or UP?
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // or UP?
 #else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 #endif
@@ -562,15 +619,12 @@ void jshKill() {
 }
 
 
-int jshRX() {
+void jshIdle() {
 #ifdef ARM
-  if (rxHead == rxTail) return -1;
-  char ch = rxBuffer[rxTail];
-  rxTail = (rxTail+1) & RXBUFFERMASK;
-  return ch;
 #else
-  if (!kbhit()) return -1;
-  return getch();
+  while (kbhit()) {
+    jshPushIOCharEvent(EV_USART1, getch());
+  }
 #endif
 }
 
@@ -978,7 +1032,7 @@ void jshPinWatch(int pin, bool shouldWatch) {
 
 bool jshIsEventForPin(IOEvent *event, int pin) {
 #ifdef ARM
-  return event->channel == pinToPinSource(IOPIN_DATA[pin].pin);
+  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(IOPIN_DATA[pin].pin);
 #else
   return false;
 #endif
