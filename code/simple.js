@@ -120,5 +120,34 @@ setInterval("a=!a;digitalWrite('D12',a);", 0);
 var b = 1;
 setInterval("b=!b;digitalWrite('D13',b);", 0);
 
+// servo test
+var coords = [0.876,0.5];
+var step = function () {
+  t+=s;
+  if (t>1) t=0;
+  if (t<0.25) {
+    coords = [t*4,0];
+  } else if (t<0.5) {
+    coords = [1,(t-0.25)*4];
+  } else if (t<0.75) {
+    coords = [1-((t-0.5)*4),1];
+  } else {
+    coords = [0,1-((t-0.75)*4)];
+  }
+};
+var step = function () {
+ t+=s;
+ if (t>1) t=0;
+ coords = [0.5 + Math.sin(t*2*Math.PI)*0.5, 0.5+Math.cos(t*2*Math.PI)*0.5];
+ print(coords[0]+","+coords[1]);
+}
+
+
+var pulse = function () {digitalPulse(D0,1,1+coords[0]);digitalPulse(D1,1,1+coords[1]);;
+var t = 0.438;
+var s = 0.001;
+setInterval("step();pulse();", 50);
+
+
 
 

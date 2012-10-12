@@ -8,7 +8,12 @@
 #include "jsfunctions.h"
 #include "jsinteractive.h"
 #ifdef USE_MATH
+#ifdef ARM
+#include "mconf.h"
+#include "protos.h"
+#else
 #include <math.h>
+#endif
 #endif
 
 JsfHandleFunctionCallDelegate jsfHandleFunctionCallDelegate = 0;

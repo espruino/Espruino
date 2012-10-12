@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v10"
+#define JS_VERSION "1v11"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -56,6 +56,7 @@
             Faster code to work out pins from strings
             Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
             Built-in constants for LED1/BTN/etc.
+     1v11 : Add Math functions
 [/CHANGELOG]
 
 [TODO]
@@ -63,13 +64,13 @@
 
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
-        Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
         Ctrl-C in mandelbrot demo only breaks out of one FOR loop
+        Issue when printing lots of data and then disconnect USB
 
 
   MEDIUM PRIORITY:
-	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -88,7 +89,7 @@
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Add 'delete' keyword for killing array items?
-        String equals can compare whole 32 bit words
+        String equals to compare whole 32 bit words
         Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
         Memory leak cleanup code - to try and clean up if memory has been leaked
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
