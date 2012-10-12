@@ -48,6 +48,7 @@
             USB support on Olimexino/Maple
             Start of multiple COM port support (ioEvent queue)
             Ctrl-C now clears the input line
+            Save state of 'echo' into flash with save()
 [/CHANGELOG]
 
 [TODO]

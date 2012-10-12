@@ -82,7 +82,6 @@ void jsiSoftInit() {
   }
   jsvUnLock(watchArrayPtr);
 
-
   // Check any existing timers and try and set time correctly
   JsSysTime currentTime = jshGetSystemTime();
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -97,6 +96,16 @@ void jsiSoftInit() {
     jsvUnLock(timerNamePtr);
   }
   jsvUnLock(timerArrayPtr);
+
+  // Now run initialisation code
+  JsVar *initName = jsvFindChildFromString(p.root, "__init", false);
+  if (initName && initName->firstChild) {
+    //jsPrint("Running initialisation code...\n");
+    JsVar *initCode = jsvLock(initName->firstChild);
+    jsvUnLock(jspEvaluateVar(&p, initCode));
+    jsvUnLock(initCode);
+  }
+  jsvUnLock(initName);
 }
 
 // Used when shutting down before flashing
@@ -129,6 +138,14 @@ void jsiSoftKill() {
     jsvUnRefRef(watchArray);
     watchArray=0;
   }
+  // Save initialisation information
+  JsVar *initName = jsvFindChildFromString(p.root, "__init", true);
+  if (!initName->firstChild)
+    initName->firstChild = jsvUnLock(jsvRef(jsvNewFromString("")));
+  JsVar *initCode = jsvLock(initName->firstChild);
+  if (!echo) jsvAppendString(initCode, "echo(0);");
+  jsvUnLock(initCode);
+  jsvUnLock(initName);
 }
 
 void jsiInit(bool autoLoad) {
@@ -152,12 +169,14 @@ void jsiInit(bool autoLoad) {
   }
   //jsvTrace(jsiGetParser()->root, 0);
 
-  jsiSoftInit();
+  // Set defaults
   echo = true;
-  
+  // Softinit may run initialisation code that will overwrite defaults
+  jsiSoftInit();
 
-  // rectangles @ http://www.network-science.de/ascii/
-  jsPrint("\r\n _____                 _ \r\n"        
+  if (echo) {
+    // rectangles @ http://www.network-science.de/ascii/
+    jsPrint("\r\n _____                 _ \r\n"
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
               "|   __|_ -| . |  _| | | |   | . |\r\n"
               "|_____|___|  _|_| |___|_|_|_|___|\r\n"
@@ -169,7 +188,8 @@ void jsiInit(bool autoLoad) {
               "only. If you were sold this on a\r\n"
               "device, please contact us.\r\n"
               "---------------------------------\r\n");
-  jsPrint("\r\n>");
+    jsPrint("\r\n>");
+  }
 }
 
 
@@ -382,10 +402,10 @@ void jsiIdle() {
   IOEvent event;
   while (jshPopIOEvent(&event)) {
     if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USBSERIAL) {
-      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
     } else if (IOEVENTFLAGS_GETTYPE(event.flags) == EV_USART1) {
-      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+      unsigned int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
     } else {
       // we have an event... find out what it was for...
