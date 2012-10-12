@@ -661,23 +661,6 @@ char jsvGetCharInString(JsVar *v, int idx) {
   return c;
 }
 
-/// Print the contents of a string var - directly
-void jsvPrintStringVar(JsVar *v) {
-  assert(jsvIsString(v) || jsvIsName(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    char buf[JSVAR_DATA_STRING_MAX_LEN+1];
-    memcpy(buf, v->varData.str, l);
-    buf[l] = 0;
-    jsiConsolePrint(buf);
-    r = v->lastChild;
-    jsvUnLock(v);
-  }
-}
-
-
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
@@ -886,6 +869,7 @@ JsVar *jsvCopy(JsVar *src) {
 void jsvAddName(JsVar *parent, JsVar *namedChild) {
   namedChild = jsvRef(namedChild);
   assert(jsvIsName(namedChild));
+
   // TODO: if array, insert in correct order
   if (parent->lastChild) {
     // Link 2 children together
@@ -907,6 +891,13 @@ JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
   if (!namedChild) return 0; // Out of memory
   jsvAddName(parent, namedChild);
   return namedChild;
+}
+
+JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name) {
+  JsVar *namedChild = jsvFindChildFromString(jsvGetRef(parent), name, true);
+  if (namedChild) // could be out of memory
+    return jsvSetValueOfName(namedChild, child);
+  return 0;
 }
 
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
@@ -956,6 +947,7 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
   JsVar *parent = jsvLock(parentref);
   JsVar *child;
   JsVarRef childref = parent->firstChild;
+
   while (childref) {
     child = jsvLock(childref);
     if (jsvIsBasicVarEqual(child, childName)) {
@@ -967,6 +959,7 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
     jsvUnLock(child);
   }
 
+  // TODO: if array, insert in correct order
   child = 0;
   if (addIfNotFound && childName) {
     if (childName->refs == 0) {
@@ -1362,7 +1355,7 @@ void jsvTrace(JsVarRef ref, int indent) {
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
       if (jsvIsString(var) || jsvIsName(var))
-        jsvPrintStringVar(var);
+        jsiConsolePrintStringVar(var);
       else {
         jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
         jsiConsolePrint(buf);

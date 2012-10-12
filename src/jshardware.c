@@ -530,8 +530,7 @@ void jshInit() {
 #ifdef ARM
   /* Enable UART and  GPIOx Clock */
  #ifdef STM32F4
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR |
-                         RCC_APB1Periph_USART2, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
@@ -545,7 +544,6 @@ void jshInit() {
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_APB2PeriphClockCmd(
         RCC_APB2Periph_ADC1 |
-        RCC_APB2Periph_USART1 |
         RCC_APB2Periph_GPIOA |
         RCC_APB2Periph_GPIOB |
         RCC_APB2Periph_GPIOC |
@@ -594,76 +592,10 @@ void jshInit() {
 #endif
   GPIO_SetBits(LED1_PORT,LED1_PIN);
 
-  GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_RX; // RX
-#ifdef STM32F4
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; // or UP?
-#else
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-#endif
-  GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL)
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, DEFAULT_BAUD_RATE);
 
-  GPIO_InitStructure.GPIO_Pin = MAIN_USART_Pin_TX; // TX
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-#ifdef STM32F4
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; // alternate fn
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
-#else
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-#endif
-  GPIO_Init(MAIN_USART_Port, &GPIO_InitStructure);
-
-#ifdef STM32F4
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_USART2);
-  GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_USART2);
-#endif
-
-  USART_ClockInitTypeDef USART_ClockInitStructure;
-  USART_ClockStructInit(&USART_ClockInitStructure);
-  USART_ClockInit(MAIN_USART, &USART_ClockInitStructure);
-
-  USART_InitTypeDef USART_InitStructure;
-#ifdef STM32F4
-  USART_InitStructure.USART_BaudRate = 9600;//38400; // FIXME wtf
-#else
-  USART_InitStructure.USART_BaudRate = 9600;//38400;
-#endif
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No ;
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  //Write USART parameters
-  USART_Init(MAIN_USART, &USART_InitStructure);
-
-
-  // enable uart interrupt
   NVIC_InitTypeDef NVIC_InitStructure;
-  NVIC_InitStructure.NVIC_IRQChannel = JOIN_MAIN_USART(_IRQn);
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init( &NVIC_InitStructure );
-  // Enable RX interrupt (TX is done when we have bytes)
-  USART_ClearITPendingBit(MAIN_USART, USART_IT_RXNE);
-  USART_ITConfig(MAIN_USART, USART_IT_RXNE, ENABLE);
-  //Enable USART
-  USART_Cmd(MAIN_USART, ENABLE);
-/*
-  while (true) {
-    STM32vldiscovery_LEDOn(LED5);
-    USART_SendData(USART2, (uint8_t) 'G');
-    //Loop until the end of transmission
-    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
-   STM32vldiscovery_LEDOn(LED4);
-    USART_SendData(USART2, (uint8_t) 'W');
-    //Loop until the end of transmission
-    while (USART_GetFlagStatus(USART2, USART_FLAG_TC) == RESET);
-
-  }*/
-
-
   /* Enable and set EXTI Line0 Interrupt to the lowest priority */
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x01;
@@ -1148,6 +1080,95 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(IOPIN_DATA[pin].pin);
 #else
   return false;
+#endif
+}
+
+void jshUSARTSetup(IOEventFlags device, int baudRate) {
+#ifdef ARM
+  uint16_t pinRX, pinTX;// GPIO_Pin_1
+  GPIO_TypeDef *gpio;   // GPIOA
+  USART_TypeDef *usart;
+  uint8_t usartIRQ;
+
+  if (device == EV_USART1) {
+    usart = USART1;
+    usartIRQ = USART1_IRQn;
+    gpio = USART1_PORT;
+    pinRX = USART1_PIN_RX;
+    pinTX = USART1_PIN_TX;
+  } else if (device == EV_USART2) {
+    usart = USART2;
+    usartIRQ = USART2_IRQn;
+    gpio = USART2_PORT;
+    pinRX = USART2_PIN_RX;
+    pinTX = USART2_PIN_TX;
+  } else {
+    jsError("Unable to set up this serial port.");
+    return;
+  }
+
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Pin = pinRX;
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+#else
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
+  GPIO_Init(gpio, &GPIO_InitStructure);
+
+  GPIO_InitStructure.GPIO_Pin = pinTX;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+#ifdef STM32F4
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF; // alternate fn
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+#else
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+#endif
+  GPIO_Init(gpio, &GPIO_InitStructure);
+
+  if (device == EV_USART1) {
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+  } else if (device == EV_USART2) {
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+  }
+
+#ifdef STM32F4
+  if (device == EV_USART1) {
+    GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART1);
+    GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART1);
+  } else if (device == EV_USART2) {
+    GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART2);
+    GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART2);
+  }
+#endif
+
+  USART_ClockInitTypeDef USART_ClockInitStructure;
+  USART_ClockStructInit(&USART_ClockInitStructure);
+  USART_ClockInit(usart, &USART_ClockInitStructure);
+
+  USART_InitTypeDef USART_InitStructure;
+  USART_InitStructure.USART_BaudRate = baudRate;
+  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  USART_InitStructure.USART_Parity = USART_Parity_No ;
+  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+  USART_Init(usart, &USART_InitStructure);
+
+  // enable uart interrupt
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_InitStructure.NVIC_IRQChannel = usartIRQ;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init( &NVIC_InitStructure );
+  // Enable RX interrupt (TX is done when we have bytes)
+  USART_ClearITPendingBit(usart, USART_IT_RXNE);
+  USART_ITConfig(usart, USART_IT_RXNE, ENABLE);
+  //Enable USART
+  USART_Cmd(usart, ENABLE);
 #endif
 }
 

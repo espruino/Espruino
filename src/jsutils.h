@@ -51,12 +51,14 @@
             Save state of 'echo' into flash with save()
             Add 'setBusyIndicator(pin)' to set pin high when Espruino is busy
             Inbuilt function handling speed improvements
+            Allow Serial comms via other UARTS. Serial1/2.onData and print/println
 [/CHANGELOG]
 
 [TODO]
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
+        Move load/save/etc into 'System' class for speed
         Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
         Make jsvAddName insert elements into arrays in the correct order (then ArrayGetLength can just return value of last element)
@@ -83,7 +85,6 @@
         add Array.map(fn(x), thisArg)
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
-        Allow Serial comms via other UARTS
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Handle serial port like node.js SerialPort? Or Arduino :/

@@ -8,12 +8,14 @@
 #ifndef JSHARDWARE_H_
 #define JSHARDWARE_H_
 
+#define DEFAULT_BAUD_RATE               9600
+
 #ifdef ARM
  #include "platform_config.h"
 #else
- #define IOBUFFERMASK 15 // (max 255)
- #define DEFAULT_CONSOLE_DEVICE EV_USBSERIAL
- #define DEFAULT_BUSY_PIN_INDICATOR -1
+ #define IOBUFFERMASK                   15 // (max 255)
+ #define DEFAULT_CONSOLE_DEVICE         EV_USBSERIAL
+ #define DEFAULT_BUSY_PIN_INDICATOR     -1
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
@@ -60,6 +62,8 @@ typedef enum {
  EV_CHARS_MASK = 7 << 5,
 } PACKED_FLAGS IOEventFlags;
 
+#define DEVICE_IS_USART(X) (((X)==EV_USBSERIAL) || ((X)==EV_USART1) || ((X)==EV_USART2) || ((X)==EV_USART3) || ((X)==EV_USART4))
+
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 #define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
 #define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<5)))
@@ -98,6 +102,7 @@ void jshPinPulse(int pin, bool value, JsVarFloat time);
 void jshPinWatch(int pin, bool shouldWatch);
 bool jshIsEventForPin(IOEvent *event, int pin);
 
+void jshUSARTSetup(IOEventFlags device, int baudRate);
 
 /// Save contents of JsVars into Flash
 void jshSaveToFlash();

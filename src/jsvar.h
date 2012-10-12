@@ -211,7 +211,7 @@ void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str 
 char jsvGetCharInString(JsVar *v, int idx);
 
 /// Print the contents of a string var - directly
-void jsvPrintStringVar(JsVar *v);
+void jsiConsolePrintStringVar(JsVar *v);
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
@@ -220,6 +220,8 @@ INLINE_FUNC bool jsvGetBool(const JsVar *v);
 static inline JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static inline JsVarFloat jsvGetDoubleAndUnLock(JsVar *v) { JsVarFloat f = jsvGetDouble(v); jsvUnLock(v); return f; }
 static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
+
+
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. */
@@ -240,7 +242,8 @@ JsVar *jsvCopy(JsVar *src);
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren);
 /// Tree related stuff
 void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itself a name
-JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var
+JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
+JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. CHECKS FOR DUPLICATES
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
