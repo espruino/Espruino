@@ -92,6 +92,8 @@ const char *jshGetDeviceString(IOEventFlags device);
 IOEventFlags jshFromDeviceString(const char *device);
 
 
+/// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
+int jshGetPinFromString(const char *s);
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
 int jshGetPinFromVar(JsVar *pinv);
 bool jshPinInput(int pin);

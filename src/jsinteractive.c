@@ -843,6 +843,12 @@ void jsiDumpState() {
 /** Handle function calls - do this programatically, so we can save on RAM */
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   if (a==0) { // ----------------------------------------   SYSTEM-WIDE
+    // Handle pins - eg LED1 or D5
+    int pin = jshGetPinFromString(name);
+    if (pin>=0) {
+      jspParseVariableName();
+      return jsvNewFromInteger(pin);
+    }
     // Special cases for we're just a basic function
     if (name[0]=='a') {
       if (strcmp(name,"analogRead")==0) {

@@ -53,6 +53,9 @@
             Inbuilt function handling speed improvements
             Allow Serial comms via other UARTS. Serial1/2.onData and print/println
             now inserts elements into arrays in the correct order (GetLength can be (is) now much faster)
+            Faster code to work out pins from strings
+            Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
+            Built-in constants for LED1/BTN/etc.
 [/CHANGELOG]
 
 [TODO]
@@ -62,9 +65,6 @@
         Move load/save/etc into 'System' class for speed
         Add Math functions
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        Faster code to work out pins from strings - is slow right now.
-        Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
-        Built-in constants for LED1/BTN/etc.
         Ctrl-C in mandelbrot demo only breaks out of one FOR loop
 
 
@@ -102,6 +102,7 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
+        Looking up an index in an array could be made half the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
 
 [/TODO]
 

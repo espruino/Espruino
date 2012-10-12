@@ -333,6 +333,65 @@ typedef struct IOPin {
  { GPIO_Pin_1,  GPIOH, 0xFF },
 };
 #else
+#if OLIMEXINO_STM32
+#define IOPINS 39 // 16*3+2
+const IOPin IOPIN_DATA[IOPINS] = {
+    // A0-A5 are hared with D15-D20
+#define A0_OFFSET 15
+    // D0
+{ GPIO_Pin_3,  GPIOA, ADC_Channel_3, TIMER(2,4) }, //, TIMER(15,2)
+{ GPIO_Pin_2,  GPIOA, ADC_Channel_2, TIMER(2,3) }, // , TIMER(15,1)
+{ GPIO_Pin_0,  GPIOA, ADC_Channel_0, TIMNONE },
+{ GPIO_Pin_1,  GPIOA, ADC_Channel_1, TIMER(2,2) },
+    // D4
+{ GPIO_Pin_5,  GPIOB, 0xFF, TIMER(3,2)|TIMREMAP },
+{ GPIO_Pin_6,  GPIOB, 0xFF, TIMER(4,1) },
+{ GPIO_Pin_8,  GPIOA, 0xFF, TIMER(1,1) },
+{ GPIO_Pin_9,  GPIOA, 0xFF, TIMER(1,2) }, // A9 - Serial
+    // D8
+{ GPIO_Pin_10, GPIOA, 0xFF, TIMER(1,3) }, // A10 - Serial
+{ GPIO_Pin_7,  GPIOB, 0xFF, TIMER(4,2) },
+{ GPIO_Pin_4,  GPIOA, ADC_Channel_4, TIMNONE },
+{ GPIO_Pin_7,  GPIOA, ADC_Channel_7, TIMER(3,2) }, //, TIMER(17,1)
+    // D12
+{ GPIO_Pin_6,  GPIOA, ADC_Channel_6, TIMER(3,1) }, //, TIMER(16,1)
+{ GPIO_Pin_5,  GPIOA, ADC_Channel_5, TIMNONE },
+{ GPIO_Pin_8,  GPIOB, 0xFF, TIMER(4,3) }, //, TIMER(16,1)
+    // D15-20 shared with A0-15
+{ GPIO_Pin_0,  GPIOC, ADC_Channel_10, TIMNONE  },
+{ GPIO_Pin_1,  GPIOC, ADC_Channel_11, TIMNONE  },
+{ GPIO_Pin_2,  GPIOC, ADC_Channel_12, TIMNONE  },
+{ GPIO_Pin_3,  GPIOC, ADC_Channel_13, TIMNONE  },
+{ GPIO_Pin_4,  GPIOC, ADC_Channel_14, TIMNONE  },
+{ GPIO_Pin_5,  GPIOC, ADC_Channel_15, TIMNONE  },
+    // D21
+{ GPIO_Pin_13, GPIOC, 0xFF, TIMNONE/*?*/ },
+{ GPIO_Pin_14, GPIOC, 0xFF, TIMNONE/*?*/ },
+{ GPIO_Pin_15, GPIOC, 0xFF, TIMNONE/*?*/ },
+    // D24
+{ GPIO_Pin_9,  GPIOB, 0xFF, TIMER(4,4) }, //, TIMER(17,1)
+{ GPIO_Pin_2,  GPIOD, 0xFF, TIMNONE/*?*/ },
+{ GPIO_Pin_10, GPIOC, 0xFF, TIMNONE },
+{ GPIO_Pin_0,  GPIOB, ADC_Channel_8, TIMER(3,3) }, // , TIMERN(1,2)
+    // D28
+{ GPIO_Pin_1,  GPIOB, ADC_Channel_9, TIMER(3,4) }, // , TIMER(1,3)
+{ GPIO_Pin_10, GPIOB, 0xFF, TIMER(2,3) },
+{ GPIO_Pin_11, GPIOB, 0xFF, TIMER(2,4)|TIMREMAP },
+{ GPIO_Pin_12, GPIOB, 0xFF, TIMNONE },
+    // D32
+{ GPIO_Pin_13, GPIOB, 0xFF, TIMERN(1,1) },
+{ GPIO_Pin_14, GPIOB, 0xFF, TIMER(15,1)|TIMREMAP },// , TIMERN(1,2)
+{ GPIO_Pin_15, GPIOB, 0xFF, TIMER(15,2)|TIMREMAP },// , TIMERN(1,3), TIMERN(15,1)
+{ GPIO_Pin_6,  GPIOC, 0xFF, TIMER(3,1)|TIMREMAP },
+   // D36
+{ GPIO_Pin_7,  GPIOC, 0xFF, TIMER(3,2)|TIMREMAP },
+{ GPIO_Pin_8,  GPIOC, 0xFF, TIMER(3,3)|TIMREMAP },
+   // 38 - the index of the button
+{ GPIO_Pin_9,  GPIOC, 0xFF, TIMER(3,4)|TIMREMAP },
+// D2 ?
+};
+#else
+ // STM32VLDISCOVERY
  #define IOPINS 50 // 16*3+2
  const IOPin IOPIN_DATA[IOPINS] = {
  { GPIO_Pin_0,  GPIOA, ADC_Channel_0, TIMNONE },
@@ -390,6 +449,7 @@ typedef struct IOPin {
  { GPIO_Pin_1,  GPIOD, 0xFF, TIMNONE/*?*/ }, 
  // D2 ?
 };
+#endif// OLIMEXINO_STM32
 #endif
 
 uint8_t pinToPinSource(uint16_t pin) {
@@ -748,29 +808,63 @@ JsSysTime jshGetSystemTime() {
 
 // ----------------------------------------------------------------------------
 
-int jshGetPinFromVar(JsVar *pinv) {
-  int pin=-1;
-  if (jsvIsString(pinv)) {
-#ifdef ARM
-    uint16_t gpiopin = 0;
-    GPIO_TypeDef *gpioport = 0;
-    if (pinv->varData.str[0]=='A') gpioport = GPIOA;
-    else if (pinv->varData.str[0]=='B') gpioport = GPIOB;
-    else if (pinv->varData.str[0]=='C') gpioport = GPIOC;
-    else if (pinv->varData.str[0]=='D') gpioport = GPIOD;
-#ifdef STM32F4
-    else if (pinv->varData.str[0]=='E') gpioport = GPIOE;
-    else if (pinv->varData.str[0]=='H') gpioport = GPIOH;
+int jshGetPinFromString(const char *s) {
+  // built in constants
+#ifdef BTN_PININDEX
+  if (s[0]=='B' && s[1]=='T' && s[2]=='N' && !s[3])
+    return BTN_PININDEX;
 #endif
-    if (gpioport) {
-      gpiopin = 1 << stringToInt(&pinv->varData.str[1]);
-      int i;
-      for (i=0;i<IOPINS;i++)
-        if (IOPIN_DATA[i].pin == gpiopin &&
-            IOPIN_DATA[i].gpio == gpioport)
-                pin = i;
+#if defined(LED1_PININDEX) || defined(LED2_PININDEX) || defined(LED3_PININDEX) || defined(LED4_PININDEX)
+  if (s[0]=='L' && s[1]=='E' && s[2]=='D') {
+#ifdef LED1_PININDEX
+    if (s[3]=='1' && !s[4]) return LED1_PININDEX;
+#endif
+#ifdef LED2_PININDEX
+    if (s[3]=='2' && !s[4]) return LED2_PININDEX;
+#endif
+#ifdef LED3_PININDEX
+    if (s[3]=='3' && !s[4]) return LED3_PININDEX;
+#endif
+#ifdef LED4_PININDEX
+    if (s[3]=='4' && !s[4]) return LED4_PININDEX;
+#endif
+  }
+#endif
+
+#ifdef ARM
+#if defined(OLIMEXINO_STM32)
+    // A0-A5 and D0-D37
+    if (s[0]=='A' && s[1]) { // first 6 are analogs
+      if (!s[2] && (s[1]>='0' && s[1]<='5'))
+        return A0_OFFSET + (s[1]-'0');
+    } else if (s[0]=='D' && s[1]) {
+      if (!s[2] && (s[1]>='0' && s[1]<='9')) { // D0-D9
+        return s[1]-'0';
+      } else if (!s[3] && (s[1]>='1' && s[1]<='3' && s[2]>='0' && s[2]<='9')) { // D1X-D3X
+        int n = (s[1]-'0')*10 + (s[2]-'0');
+        if (n<38) return n;
+      }
+    }
+#else // !OLIMEX
+    if ((s[0]=='A' || s[0]=='B' || s[0]=='C' || s[0]=='D' || s[0]=='E' || s[0]=='H') && s[1]) { // first 6 are analogs
+      int port = (s[0]=='H')?5:(s[0]-'A'); // GPIOH is strange because there is no F or G exposed!
+      if (!s[2] && (s[1]>='0' && s[1]<='9')) { // D0-D9
+        return (port*16) + (s[1]-'0');
+      } else if (!s[3] && (s[1]>='1' && s[1]<='3' && s[2]>='0' && s[2]<='9')) { // D1X-D3X
+        int n = (s[1]-'0')*10 + (s[2]-'0');
+        int pin = (port*16)+n;
+        if (pin<IOPINS) return pin;
+      }
     }
 #endif
+#endif // ARM
+  return -1;
+}
+
+int jshGetPinFromVar(JsVar *pinv) {
+  int pin=-1;
+  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
+    pin = jshGetPinFromString(&pinv->varData.str[0]);
   } else if (jsvIsInt(pinv)) {
     pin = (int)jsvGetInteger(pinv);
   }
