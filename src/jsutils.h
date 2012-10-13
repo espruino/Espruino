@@ -60,9 +60,11 @@
             Add command history (and dynamic history free if low memory)
             Fix broken jsvArrayPop
             Add tests for and fix Array.indexOf
-            In-line editing for strings (not multi-line yet)
+            In-line editing for commands
             Fix bug in basicVarEquals for big strings
             More fixes for low memory conditions
+            Multi-line edit for commands (but no newline or line delete yet)
+            Handle Home, End + reverse delete keys
 [/CHANGELOG]
 
 [TODO]
@@ -76,12 +78,11 @@
 
 
   MEDIUM PRIORITY:
-	When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
         Add Array.splice
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-        Handle Home, End + reverse delete keys        
-        Handle multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+        Allow new line or line delere in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
         Add instanceof operator
         Check precedence against MDN javascript op precedence page

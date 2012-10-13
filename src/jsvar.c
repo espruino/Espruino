@@ -501,7 +501,7 @@ size_t jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
-// get the number of lines in the string (min=1)
+//  IN A STRING  get the number of lines in the string (min=1)
 int jsvGetLinesInString(JsVar *v) {
   int lines = 1;
   assert(jsvIsString(v) || jsvIsName(v));
@@ -521,7 +521,7 @@ int jsvGetLinesInString(JsVar *v) {
   return lines;
 }
 
-// Get the number of characters on a line - lines start at 1
+// IN A STRING Get the number of characters on a line - lines start at 1
 int jsvGetCharsOnLine(JsVar *v, int line) {
   int currentLine = 1;
   int chars = 0;
@@ -543,6 +543,69 @@ int jsvGetCharsOnLine(JsVar *v, int line) {
   return chars;
 }
 
+//  IN A STRING, get the line and column of the given character. Both values must be non-null
+void jsvGetLineAndCol(JsVar *v, int charIdx, int* line, int *col) {
+  int x = 1;
+  int y = 1;
+  int n = 0;
+  assert((jsvIsString(v) || jsvIsName(v)) && line && col);
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break;
+      if (n==charIdx) {
+        jsvUnLock(v);
+        *line = y;
+        *col = x;
+        return;
+      }
+      x++;
+      if (ch=='\n') {
+        x=1; y++;
+      }
+      n++;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+  // uh-oh - not found
+  *line = y;
+  *col = x;
+}
+
+//  IN A STRING, get a character index from a line and column
+int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col) {
+  int x = 1;
+  int y = 1;
+  int n = 0;
+  assert(jsvIsString(v) || jsvIsName(v));
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break;
+      if ((y==line && x>=col) || y>line) {
+        jsvUnLock(v);
+        return (y>line) ? (n-1) : n;
+      }
+      x++;
+      if (ch=='\n') {
+        x=1; y++;
+      }
+      n++;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+  return n;
+}
 
 void jsvAppendString(JsVar *var, const char *str) {
   JsVar *block = jsvLockAgain(var);

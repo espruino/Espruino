@@ -36,7 +36,10 @@ typedef enum {
  IS_NONE,
  IS_HAD_R,
  IS_HAD_27,
+ IS_HAD_27_79,
  IS_HAD_27_91,
+ IS_HAD_27_91_49,
+ IS_HAD_27_91_51,
 } InputState;
 
 TODOFlags todo = TODO_NOTHING;
@@ -399,7 +402,7 @@ void jsiSoftKill() {
   }
   JsVar *initCode = jsvNewFromString("");
   if (initCode) { // out of memory
-    initName->firstChild = jsvRef(initCode);
+    initName->firstChild = jsvGetRef(jsvRef(initCode));
     if (!echo) jsvAppendString(initCode, "echo(0);");
     if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
       jsvAppendString(initCode, "setBusyIndicator(");
@@ -567,7 +570,7 @@ void jsiChangeToHistory(bool previous) {
     }
     jsvUnLock(inputline);
     inputline = nextHistory;
-    inputCursorPos = jsvGetStringLength(inputline);
+    inputCursorPos = (int)jsvGetStringLength(inputline);
     hasUsedHistory = true;
   } else if (!previous) { // if next, but we have something, just clear the line
     if (echo) {
@@ -594,6 +597,87 @@ void jsiIsAboutToEditInputLine() {
   }
 }
 
+void jsiHandleDelete(bool isBackspace) {
+  int l = (int)jsvGetStringLength(inputline);
+  if ((isBackspace && inputCursorPos>0 && jsvGetCharInString(inputline,inputCursorPos-1)!='\n') ||
+      (!isBackspace && inputCursorPos<l && jsvGetCharInString(inputline,inputCursorPos)!='\n')) {
+    // currently we are not allowed to delete newlines
+
+    // If we mod this to keep the string, use jsiIsAboutToEditInputLine
+    JsVar *v = jsvNewFromString("");
+    int p = inputCursorPos;
+    if (isBackspace) p--;
+    if (p>0) jsvAppendStringVar(v, inputline, 0, p); // add before cursor (delete)
+    if (p<l) jsvAppendStringVar(v, inputline, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    jsvUnLock(inputline);
+    inputline=v;
+    if (isBackspace) {
+      if (echo) jsiConsolePrintChar(0x08);
+      inputCursorPos--; // move cursor back
+    }
+    // clear the character and move line back
+    if (echo) {
+      jsiConsolePrintStringVarUntilEOL(inputline, inputCursorPos, true/*and backup*/);
+    }
+  }
+}
+
+void jsiHandleHome() {
+  while (inputCursorPos>0 && jsvGetCharInString(inputline,inputCursorPos-1)!='\n') {
+    if (echo) jsiConsolePrintChar(0x08);
+    inputCursorPos--;
+  }
+}
+
+void jsiHandleEnd() {
+  int l = (int)jsvGetStringLength(inputline);
+  while (inputCursorPos<l && jsvGetCharInString(inputline,inputCursorPos)!='\n') {
+    if (echo)
+      jsiConsolePrintChar(jsvGetCharInString(inputline,inputCursorPos));
+    inputCursorPos++;
+  }
+}
+
+void jsiHandleMoveUpDown(int direction) {
+  int x,y, lines=jsvGetLinesInString(inputline);
+  jsvGetLineAndCol(inputline, inputCursorPos, &y, &x);
+  int newX=x,newY=y;
+  newY+=direction;
+  if (newY<1) newY=1;
+  if (newY>lines) newY=lines;
+  // work out cursor pos and feed back through - we might not be able to get right to the same place
+  // if we move up
+  inputCursorPos = jsvGetIndexFromLineAndCol(inputline, newY, newX);
+  jsvGetLineAndCol(inputline, inputCursorPos, &newY, &newX);
+  if (echo) {
+    // move cursor
+    while (x < newX) {
+      jsiConsolePrintChar(27);
+      jsiConsolePrintChar(91);
+      jsiConsolePrintChar(67);
+      x++;
+    }
+    while (x > newX) {
+      jsiConsolePrintChar(27);
+      jsiConsolePrintChar(91);
+      jsiConsolePrintChar(68);
+      x--;
+    }
+    while (y < newY) {
+      jsiConsolePrintChar(27);
+      jsiConsolePrintChar(91);
+      jsiConsolePrintChar(66);
+      y++;
+    }
+    while (y > newY) {
+      jsiConsolePrintChar(27);
+      jsiConsolePrintChar(91);
+      jsiConsolePrintChar(65);
+      y--;;
+    }
+  }
+}
+
 void jsiHandleChar(char ch) {
   //jsiConsolePrint("  ["); jsiConsolePrintInt(inputState);jsiConsolePrint(":");jsiConsolePrintInt(ch); jsiConsolePrint("]  \n");
   //
@@ -604,12 +688,23 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 66 - down
   // 27 then 91 then 51 then 126 - backwards delete
   // 27 then 91 then 49 then 126 - home
-  // 27 then 79 then 70 - end
+  // 27 then 79 then 70 - home
+  // 27 then 79 then 72 - end
 
   if (ch == 27) {
     inputState = IS_HAD_27;
-  } else if (inputState==IS_HAD_27 && ch == 91) {
-    inputState = IS_HAD_27_91;
+  } else if (inputState==IS_HAD_27) {
+    inputState = IS_NONE;
+    if (ch == 79)
+      inputState = IS_HAD_27_79;
+    else if (ch == 91)
+      inputState = IS_HAD_27_91;
+  } else if (inputState==IS_HAD_27_79) {
+    inputState = IS_NONE;
+    if (ch == 70)
+      jsiHandleEnd();
+    else if (ch == 72)
+      jsiHandleHome();
   } else if (inputState==IS_HAD_27_91) {
     inputState = IS_NONE;
     if (ch==68) { // left
@@ -621,9 +716,8 @@ void jsiHandleChar(char ch) {
           jsiConsolePrintChar(68);
         }
       }
-    }
-    if (ch==67) { // right
-      if (inputCursorPos<jsvGetStringLength(inputline) && jsvGetCharInString(inputline,inputCursorPos+1)!='\n') {
+    } else if (ch==67) { // right
+      if (inputCursorPos<jsvGetStringLength(inputline) && jsvGetCharInString(inputline,inputCursorPos)!='\n') {
         inputCursorPos++;
         if (echo) {
           jsiConsolePrintChar(27);
@@ -631,37 +725,35 @@ void jsiHandleChar(char ch) {
           jsiConsolePrintChar(67);
         }
       }
-    }
-    if (ch==65) { // up
-      if (inputCursorPos == jsvGetStringLength(inputline))
+    } else if (ch==65) { // up
+      if (jsvGetStringLength(inputline)==0 || jsiIsInHistory(inputline))
         jsiChangeToHistory(true); // if at end of line
-      
-    }
-    if (ch==66) { // down
-      if (inputCursorPos == jsvGetStringLength(inputline))
+      else
+        jsiHandleMoveUpDown(-1);
+    } else if (ch==66) { // down
+      if (jsvGetStringLength(inputline)==0 || jsiIsInHistory(inputline))
         jsiChangeToHistory(false); // if at end of line
+      else
+        jsiHandleMoveUpDown(1);
+    } else if (ch==49) {
+      inputState=IS_HAD_27_91_49;
+    } else if (ch==51) {
+      inputState=IS_HAD_27_91_51;
     }
-    // FIXME: backwards delete
+  } else if (inputState==IS_HAD_27_91_49) {
+    inputState = IS_NONE;
+    if (ch==126) { // Home?? (or terminal maybe?)
+      jsiHandleHome();
+    }
+  } else if (inputState==IS_HAD_27_91_51) {
+    inputState = IS_NONE;
+    if (ch==126) { // Numpad (forwards) Delete
+      jsiHandleDelete(false/*not backspace*/);
+    }
   } else {  
     inputState = IS_NONE;
     if (ch == 0x08 || ch == 0x7F /*delete*/) {
-      if (inputCursorPos>0 && jsvGetCharInString(inputline,inputCursorPos-1)!='\n') { // not empty, or not new line
-        int l = (int)jsvGetStringLength(inputline);
-        // If we mod this to keep the string, use jsiIsAboutToEditInputLine
-        JsVar *v = jsvNewFromString("");
-        if (inputCursorPos>1) jsvAppendStringVar(v, inputline, 0, (int)(inputCursorPos-1)); // add before cursor (delete)
-        if (inputCursorPos<l) jsvAppendStringVar(v, inputline, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-        jsvUnLock(inputline);
-        inputline=v;
-        inputCursorPos--; // move cursor back
-        // clear the character and move line back
-        if (echo) {
-          jsiConsolePrintChar(0x08);
-          jsiConsolePrintStringVarUntilEOL(inputline, inputCursorPos, true/*and backup*/);
-        }
-      } else {
-        // no characters, don't allow delete
-      }
+      jsiHandleDelete(true /*backspace*/);
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
     } else if (ch == '\r' || ch == '\n') { 
