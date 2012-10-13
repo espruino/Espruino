@@ -61,6 +61,7 @@
             Fix broken jsvArrayPop
             Add tests for and fix Array.indexOf
             In-line editing for strings (not multi-line yet)
+            Fix bug in basicVarEquals for big strings
 [/CHANGELOG]
 
 [TODO]

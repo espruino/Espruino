@@ -13,7 +13,7 @@
 #ifdef ARM
  #include "platform_config.h"
 #else
- #define IOBUFFERMASK                   15 // (max 255)
+ #define IOBUFFERMASK                   255 // (max 255)
  #define DEFAULT_CONSOLE_DEVICE         EV_USBSERIAL
  #define DEFAULT_BUSY_PIN_INDICATOR     -1
 #endif

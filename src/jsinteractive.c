@@ -190,7 +190,11 @@ void jsiConsoleEraseStringVar(JsVar *v) {
     }
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) { // move cursor up
+    if (line>1) { 
+      // clear the character before - this would have had a colon
+      jsiConsolePrintChar(0x08);
+      jsiConsolePrintChar(' ');
+      // move cursor up      
       jsiConsolePrintChar(27);
       jsiConsolePrintChar(91); 
       jsiConsolePrintChar(65);

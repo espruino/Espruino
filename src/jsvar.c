@@ -400,8 +400,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       }
       // we're at the end of this, but are still ok. Move on
       // to STRING_EXTs
-      var = a->lastChild;
-      vbr = b->lastChild;
+      var = va->lastChild;
+      vbr = vb->lastChild;
       if ((var==0) && (vbr==0)) return true; // both ended
       if ((var==0) != (vbr==0)) return false; // one longer than the other
       if (va!=a) jsvUnLock(va);
