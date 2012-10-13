@@ -918,9 +918,11 @@ bool jsiHasTimers() {
 }
 
 void jsiIdle() {
+  bool hasDoneAnything = false;
   // Handle hardware-related idle stuff (like checking for pin events)
   IOEvent event;
   while (jshPopIOEvent(&event)) {
+    hasDoneAnything = true;
     if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
       int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       jsiSetBusy(true);
@@ -988,6 +990,7 @@ void jsiIdle() {
   }
 
   // Check timers
+  JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -996,7 +999,11 @@ void jsiIdle() {
     JsVar *timerNamePtr = jsvLock(timer);
     timer = timerNamePtr->nextSibling; // ptr to next
     JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
-    if (timerTime && time > jsvGetInteger(timerTime)) {
+    JsSysTime timeUntilNext = jsvGetInteger(timerTime) - time;
+    if (timeUntilNext < minTimeUntilNext)
+      minTimeUntilNext = timeUntilNext;
+    if (timerTime && timeUntilNext<=0) {
+      hasDoneAnything = true;
       JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
       JsVar *timerRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false));
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
@@ -1026,6 +1033,8 @@ void jsiIdle() {
   }
   jsvUnLock(timerArrayPtr);
 
+  // Just in case we got any events to do and didn't set hasDoneAnything before
+  if (events) hasDoneAnything = true;
 
   // TODO: could now sort events by time?
   // execute any outstanding events
@@ -1068,6 +1077,13 @@ void jsiIdle() {
       jsiSoftInit();
     }
   }
+#ifdef ARM
+  if (!hasDoneAnything && // once around the idle loop without having done any work already (just in case)
+      !jshHasEvents() && //no events have arrived in the mean time
+      minTimeUntilNext>SYSTICK_RANGE*2) { // we are sure we won't miss anything!
+    jshSleep();
+  }
+#endif
 }
 
 void jsiLoop() {

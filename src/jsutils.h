@@ -68,6 +68,7 @@
             Fix nested for loops not handling interrupts correctly
             Fix AppendString issue when given start value greater than string
             Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
+            Now puts itself to sleep to save power, when it knows nothing is required and it'll be woken up by SysTick before
 [/CHANGELOG]
 
 [TODO]
@@ -87,7 +88,6 @@
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
-        Power Saving - enter sleep mode (and wake up on interrupts). Could enter if no timer for >1sec, then use SysTick to wake? PWR_EnterSleepMode
  
   LOW PRIORITY
         On assert fail, should restart interpreter and try and recover
@@ -111,8 +111,7 @@
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
         Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
-        Check if issue with indexOf and LONG strings as indices exists (Copy and de-name)
-        Add nice iterators for strings (struct + inline fns)
+        Add nice iterators for strings and maybe arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
         
 

@@ -26,6 +26,7 @@ void jshIdle(); // stuff to do on idle
 
 bool jshIsUSBSERIALConnected(); // is the serial device connected?
 
+#define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef long long JsSysTime;
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime();
@@ -113,6 +114,9 @@ void jshLoadFromFlash();
 /// Returns true if flash contains something useful
 bool jshFlashContainsCode();
 
+
+/// Enter simple sleep mode (can be woken up by interrupts)
+void jshSleep();
 
 // ---------------------------------------------- LOW LEVEL
 

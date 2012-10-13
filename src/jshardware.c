@@ -1472,3 +1472,14 @@ bool jshFlashContainsCode() {
   return f!=0;
 #endif
 }
+
+
+/// Enter simple sleep mode (can be woken up by interrupts)
+void jshSleep() {
+#ifdef ARM
+  //jshPinOutput(LED1_PININDEX,1);
+  __WFI(); // Wait for Interrupt
+  //jshPinOutput(LED1_PININDEX,0);
+#endif
+}
+
