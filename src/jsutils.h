@@ -69,6 +69,7 @@
             Fix AppendString issue when given start value greater than string
             Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
             Now puts itself to sleep to save power, when it knows nothing is required and it'll be woken up by SysTick before
+            Change Math library to avoid putting constants in RAM
 [/CHANGELOG]
 
 [TODO]
