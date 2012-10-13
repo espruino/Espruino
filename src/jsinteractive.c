@@ -242,7 +242,14 @@ JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
   JsVar *name = jsvFindChildFromString(p.root, serialName, true);
   if (name) {
     name->flags |= JSV_NATIVE;
-    if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
+    if (!name->firstChild) {
+      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      if (!obj) { // out of memory
+        jsvUnLock(name);
+        return 0;
+      }
+      name->firstChild = jsvUnLock(jsvRef(obj));
+    }
     class = jsvRefRef(name->firstChild);
     // if baud rate is set, restore it
     if (device != EV_USBSERIAL) {
@@ -275,45 +282,52 @@ void jsiSoftInit() {
 
   // Load timer/watch arrays
   JsVar *timersName = jsvFindChildFromString(p.root, JSI_TIMERS_NAME, true);
-  if (!timersName->firstChild)
-    timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
-  timerArray = jsvRefRef(timersName->firstChild);
-  jsvUnLock(timersName);
+  if (timersName) {
+    if (!timersName->firstChild)
+      timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
+    timerArray = jsvRefRef(timersName->firstChild);
+    jsvUnLock(timersName);
+  }
 
   JsVar *watchName = jsvFindChildFromString(p.root, JSI_WATCHES_NAME, true);
-  if (!watchName->firstChild)
-    watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
-  watchArray = jsvRefRef(watchName->firstChild);
-  jsvUnLock(watchName);
+  if (timersName) {
+    if (!watchName->firstChild)
+     watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
+    watchArray = jsvRefRef(watchName->firstChild);
+    jsvUnLock(watchName);
+  }
 
   // Check any existing watches and set up interrupts for them
-  JsVar *watchArrayPtr = jsvLock(watchArray);
-  JsVarRef watch = watchArrayPtr->firstChild;
-  while (watch) {
-    JsVar *watchNamePtr = jsvLock(watch);
-    JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
-    jshPinWatch(jshGetPinFromVar(watchPin), true);
-    jsvUnLock(watchPin);
-    watch = watchNamePtr->nextSibling;
-    jsvUnLock(watchNamePtr);
+  if (watchArray) {
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVarRef watch = watchArrayPtr->firstChild;
+    while (watch) {
+      JsVar *watchNamePtr = jsvLock(watch);
+      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
+      jshPinWatch(jshGetPinFromVar(watchPin), true);
+      jsvUnLock(watchPin);
+      watch = watchNamePtr->nextSibling;
+      jsvUnLock(watchNamePtr);
+    }
+    jsvUnLock(watchArrayPtr);
   }
-  jsvUnLock(watchArrayPtr);
 
   // Check any existing timers and try and set time correctly
-  JsSysTime currentTime = jshGetSystemTime();
-  JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarRef timer = timerArrayPtr->firstChild;
-  while (timer) {
-    JsVar *timerNamePtr = jsvLock(timer);
-    JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
-    JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
-    jsvSetInteger(timerTime, currentTime + jshGetTimeFromMilliseconds(interval));
-    jsvUnLock(timerTime);
-    timer = timerNamePtr->nextSibling;
-    jsvUnLock(timerNamePtr);
+  if (timerArray) {
+    JsSysTime currentTime = jshGetSystemTime();
+    JsVar *timerArrayPtr = jsvLock(timerArray);
+    JsVarRef timer = timerArrayPtr->firstChild;
+    while (timer) {
+      JsVar *timerNamePtr = jsvLock(timer);
+      JsVar *timerTime = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
+      JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
+      jsvSetInteger(timerTime, currentTime + jshGetTimeFromMilliseconds(interval));
+      jsvUnLock(timerTime);
+      timer = timerNamePtr->nextSibling;
+      jsvUnLock(timerNamePtr);
+    }
+    jsvUnLock(timerArrayPtr);
   }
-  jsvUnLock(timerArrayPtr);
-
   // Now run initialisation code
   JsVar *initName = jsvFindChildFromString(p.root, "__init", false);
   if (initName && initName->firstChild) {
@@ -379,16 +393,21 @@ void jsiSoftKill() {
   }
   // Save initialisation information
   JsVar *initName = jsvFindChildFromString(p.root, "__init", true);
-  if (!initName->firstChild)
-    initName->firstChild = jsvUnLock(jsvRef(jsvNewFromString("")));
-  JsVar *initCode = jsvLock(initName->firstChild);
-  if (!echo) jsvAppendString(initCode, "echo(0);");
-  if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
-    jsvAppendString(initCode, "setBusyIndicator(");
-    jsvAppendInteger(initCode, pinBusyIndicator);
-    jsvAppendString(initCode, ");");
+  if (initName->firstChild) {
+    jsvUnRefRef(initName->firstChild); 
+    initName->firstChild = 0;
   }
-  jsvUnLock(initCode);
+  JsVar *initCode = jsvNewFromString("");
+  if (initCode) { // out of memory
+    initName->firstChild = jsvRef(initCode);
+    if (!echo) jsvAppendString(initCode, "echo(0);");
+    if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
+      jsvAppendString(initCode, "setBusyIndicator(");
+      jsvAppendInteger(initCode, pinBusyIndicator);
+      jsvAppendString(initCode, ");");
+    }
+    jsvUnLock(initCode);
+  }
   jsvUnLock(initName);
 }
 
@@ -680,20 +699,25 @@ void jsiHandleChar(char ch) {
       // Append the character to our input line
       jsiIsAboutToEditInputLine();
       int l = (int)jsvGetStringLength(inputline);
+      bool hasTab = ch=='\t';
       if (inputCursorPos>=l) {
-        jsvAppendCharacter(inputline, ch);
+        if (hasTab) jsvAppendString(inputline, "    ");
+        else jsvAppendCharacter(inputline, ch);
       } else {
         JsVar *v = jsvNewFromString("");
         if (inputCursorPos>0) jsvAppendStringVar(v, inputline, 0, inputCursorPos);
-        // FIXME - handle TAB
-        jsvAppendCharacter(v, ch);
+        if (hasTab) jsvAppendString(v, "    ");
+        else jsvAppendCharacter(v, ch);
         jsvAppendStringVar(v, inputline, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputline);
         inputline=v;
-        if (echo) jsiConsolePrintStringVarUntilEOL(inputline, inputCursorPos, true/*and backup*/);
+        if (echo) jsiConsolePrintStringVarUntilEOL(inputline, inputCursorPos, true/*and backup*/);       
       }
-      inputCursorPos++;
-      if (echo) jsiConsolePrintChar(ch);
+      inputCursorPos += hasTab ? 4 : 1;
+      if (echo) {
+        if (hasTab) jsiConsolePrint("    ");
+        else jsiConsolePrintChar(ch);
+      }
     }
   }
 }
@@ -791,6 +815,7 @@ void jsiExecuteEvents() {
 }
 
 bool jsiHasTimers() {
+  if (!timerArray) return false;
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsVarInt c = jsvGetArrayLength(timerArrayPtr);
   jsvUnLock(timerArrayPtr);

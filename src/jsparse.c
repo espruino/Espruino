@@ -322,15 +322,15 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
 }
 
 bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr) {
-    bool success;
-    JsLex lex;
-    JsVar *fncode;
+    JsVar *fncode = jsvNewFromString(funcDesc);
+    if (!fncode) return false; // out of memory!
+
     JSP_SAVE_EXECUTE();
     JsExecInfo oldExecInfo = execInfo;
 
     // Set up Lexer
-    fncode = jsvNewFromString(funcDesc);
 
+    JsLex lex;
     jslInit(&lex, fncode, 0, -1);
     jsvUnLock(fncode);
 
@@ -338,7 +338,7 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     jspeiInit(parse, &lex);
 
     // Parse
-    success = jspeParseNativeFunction(callbackPtr);
+    bool success = jspeParseNativeFunction(callbackPtr);
     if (!success) {
       jsError("Parsing Native Function failed!");
       jspSetError();

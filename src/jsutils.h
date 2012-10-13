@@ -62,6 +62,7 @@
             Add tests for and fix Array.indexOf
             In-line editing for strings (not multi-line yet)
             Fix bug in basicVarEquals for big strings
+            More fixes for low memory conditions
 [/CHANGELOG]
 
 [TODO]
