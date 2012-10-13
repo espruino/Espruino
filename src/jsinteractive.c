@@ -63,7 +63,7 @@ InputState inputState = 0; ///< state for dealing with cursor keys
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
-
+#define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 #define USART_CALLBACK_NAME "_callback"
 #define USART_BAUDRATE_NAME "_baudrate"
 #define JSI_WATCHES_NAME "watches"
@@ -611,7 +611,7 @@ void jsiHandleDelete(bool isBackspace) {
     int p = inputCursorPos;
     if (isBackspace) p--;
     if (p>0) jsvAppendStringVar(v, inputline, 0, p); // add before cursor (delete)
-    if (p<l) jsvAppendStringVar(v, inputline, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    if (p+1<l) jsvAppendStringVar(v, inputline, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
     jsvUnLock(inputline);
     inputline=v;
     if (isBackspace) {
@@ -720,7 +720,7 @@ void jsiHandleChar(char ch) {
         }
       }
     } else if (ch==67) { // right
-      if (inputCursorPos<jsvGetStringLength(inputline) && jsvGetCharInString(inputline,inputCursorPos)!='\n') {
+      if (inputCursorPos<(int)jsvGetStringLength(inputline) && jsvGetCharInString(inputline,inputCursorPos)!='\n') {
         inputCursorPos++;
         if (echo) {
           jsiConsolePrintChar(27);
@@ -1273,6 +1273,32 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         return jsvNewFromInteger(1 << bit);
       }
     } else if (name[0]=='c') {
+      if (strcmp(name,"changeInterval")==0) {
+        /*JS* function changeInterval(id)
+         *JS*  Change the Interval on a callback created with setInterval, for example:
+         *JS*   var id = setInterval(function () { print("foo"); }, 1000); <-- every second
+         *JS*   changeInterval(id, 1500); <-- not runs every 1.5 seconds
+         *JS*   This takes effect the text time the callback is called (so it is not immediate).
+         */
+        JsVar *idVar, *intervalVal;
+        jspParseDoubleFunction(&idVar, &intervalVal);
+        JsVarFloat interval = jsvGetDoubleAndUnLock(intervalVal);
+        if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+        JsVar *timerName = jsvFindChildFromVar(timerArray, idVar, false);
+        jsvUnLock(idVar);
+
+        if (timerName) {
+          JsVar *timer = jsvSkipNameAndUnlock(timerName);
+          JsVar *v = jsvNewFromFloat(interval);
+          jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
+          jsvUnLock(v);
+          jsvUnLock(timer);
+          // timerName already unlocked
+        } else {
+          jsError("Unknown Interval");
+        }
+        return 0;
+      }
       if (strcmp(name,"clearTimeout")==0 || strcmp(name,"clearInterval")==0) {
         /*JS* function clearTimeout(id)
          *JS*  Clear the Timeout that was created with setTimeout, for example:
@@ -1280,7 +1306,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*   clearTimeout(id);
          */
         /*JS* function clearInterval(id)
-         *JS*  Clear the Interval that was created with setTimeout, for example:
+         *JS*  Clear the Interval that was created with setInterval, for example:
          *JS*   var id = setInterval(function () { print("foo"); }, 1000);
          *JS*   clearInterval(id);
          */
@@ -1294,7 +1320,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           jsvUnLock(child);
           jsvUnLock(timerArrayPtr);
         } else {
-          jsError("Unknown Timer");
+          jsError("Unknown Timer or Interval");
         }
         return 0;
       }
@@ -1421,7 +1447,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         // Create a new timer
         JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
         JsVarFloat interval = jsvGetDouble(timeout);
-        if (interval<0.1) interval=0.1;
+        if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
         JsVar *v;
         v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
         jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
