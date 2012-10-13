@@ -1350,24 +1350,27 @@ JsVar *jspeStatement() {
           while (JSP_SHOULD_EXECUTE && loopIndex && !hasHadBreak) {
               JsVar *loopIndexVar = jsvLock(loopIndex);
               JsVar *indexValue = jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/);
-              assert(!jsvIsName(indexValue) && indexValue->refs==0);
-              jsvSetValueOfName(forStatement, indexValue);
-              jsvUnLock(indexValue);
-              loopIndex = loopIndexVar->nextSibling;
-              jsvUnLock(loopIndexVar);
+              if (indexValue) { // could be out of memory
+                assert(!jsvIsName(indexValue) && indexValue->refs==0);
+                jsvSetValueOfName(forStatement, indexValue);
+                jsvUnLock(indexValue);
 
-              jslReset(&forBody);
-              execInfo.lex = &forBody;
-              execInfo.execute |= EXEC_IN_LOOP;
-              jsvUnLock(jspeBlockOrStatement());
-              execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+                loopIndex = loopIndexVar->nextSibling;
 
-              if (execInfo.execute == EXEC_CONTINUE)
-                execInfo.execute = EXEC_YES;
-              if (execInfo.execute == EXEC_BREAK) {
-                execInfo.execute = EXEC_YES;
-                hasHadBreak = true;
+                jslReset(&forBody);
+                execInfo.lex = &forBody;
+                execInfo.execute |= EXEC_IN_LOOP;
+                jsvUnLock(jspeBlockOrStatement());
+                execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+
+                if (execInfo.execute == EXEC_CONTINUE)
+                  execInfo.execute = EXEC_YES;
+                if (execInfo.execute == EXEC_BREAK) {
+                  execInfo.execute = EXEC_YES;
+                  hasHadBreak = true;
+                }
               }
+              jsvUnLock(loopIndexVar);
           }
           execInfo.lex = oldLex;
           jslKill(&forBody);
