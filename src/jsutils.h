@@ -66,6 +66,8 @@
             Multi-line edit for commands (but no newline or line delete yet)
             Handle Home, End + reverse delete keys
             Fix nested for loops not handling interrupts correctly
+            Fix AppendString issue when given start value greater than string
+            Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
 [/CHANGELOG]
 
 [TODO]
@@ -77,20 +79,19 @@
         Issue when printing lots of data and then disconnect USB
 
   MEDIUM PRIORITY:
-	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
+	    When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         Add Array.splice
-        On assert fail, should restart interpreter and try and recover
-        Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-        Allow new line or line delere in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+        Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
         Add instanceof operator
         Check precedence against MDN javascript op precedence page
-        Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
         Power Saving - enter sleep mode (and wake up on interrupts). Could enter if no timer for >1sec, then use SysTick to wake? PWR_EnterSleepMode
  
   LOW PRIORITY
+        On assert fail, should restart interpreter and try and recover
+        Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         add Array.map(fn(x), thisArg)
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers

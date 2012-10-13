@@ -698,7 +698,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
         blockChars++;
   // Now make sure we're in the correct block of str
   if (stridx < 0) stridx += (int)jsvGetStringLength(str);
-  while (stridx >= (int)jsvGetMaxCharactersInVar(str)) {
+  while (str && stridx >= (int)jsvGetMaxCharactersInVar(str)) {
     JsVarRef n = str->lastChild;
     stridx -= (int)jsvGetMaxCharactersInVar(str);
     jsvUnLock(str);
