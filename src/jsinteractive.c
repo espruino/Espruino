@@ -126,7 +126,7 @@ void jsiConsolePrintInt(int d) {
 }
 
 /// Print the contents of a string var - directly
-void jsiConsolePrintStringVar(JsVar *v) {
+void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, char newLineCh) {
   assert(jsvIsString(v) || jsvIsName(v));
   JsVarRef r = jsvGetRef(v);
   while (r) {
@@ -136,30 +136,36 @@ void jsiConsolePrintStringVar(JsVar *v) {
     for (i=0;i<l;i++) {
       char ch = v->varData.str[i];
       if (!ch) break;
+      if (ch == '\n') jsiConsolePrintChar('\r');
       jsiConsolePrintChar(ch);
+      if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
     }
     r = v->lastChild;
     jsvUnLock(v);
   }
 }
 
+/// Print the contents of a string var - directly
+void jsiConsolePrintStringVar(JsVar *v) {
+  jsiConsolePrintStringVarWithNewLineChar(v,0);
+}
 
 void jsiConsoleEraseStringVar(JsVar *v) {
   assert(jsvIsString(v) || jsvIsName(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      jsiConsolePrintChar(0x08);
-      jsiConsolePrintChar(' '); // wipe out
-      jsiConsolePrintChar(0x08);
+
+  int line, lines = jsvGetLinesInString(v);
+  for (line=lines;line>0;line--) {
+    int i,chars = jsvGetCharsOnLine(v, line);
+    if (line==lines) {
+      for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
     }
-    r = v->lastChild;
-    jsvUnLock(v);
+    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
+    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+    if (line>1) { // move cursor up
+      jsiConsolePrintChar(27);
+      jsiConsolePrintChar(91); 
+      jsiConsolePrintChar(65);
+    }
   }
 }
 
@@ -502,7 +508,7 @@ void jsiChangeToHistory(bool previous) {
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     jsiConsoleEraseStringVar(inputline);
-    jsiConsolePrintStringVar(nextHistory);
+    jsiConsolePrintStringVarWithNewLineChar(nextHistory,':');
     jsvUnLock(inputline);
     inputline = nextHistory;
     hasUsedHistory = true;

@@ -200,6 +200,8 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
+int jsvGetLinesInString(JsVar *v); ///< get the number of lines in the string (min=1)
+int jsvGetCharsOnLine(JsVar *v, int line); ///< Get the number of characters on a line - lines start at 1
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later

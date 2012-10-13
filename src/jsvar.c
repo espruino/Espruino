@@ -501,6 +501,49 @@ size_t jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
+// get the number of lines in the string (min=1)
+int jsvGetLinesInString(JsVar *v) {
+  int lines = 1;
+  assert(jsvIsString(v) || jsvIsName(v));
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break; 
+      if (ch=='\n') lines++;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+  return lines;
+}
+
+// Get the number of characters on a line - lines start at 1
+int jsvGetCharsOnLine(JsVar *v, int line) {
+  int currentLine = 1;
+  int chars = 0;
+  assert(jsvIsString(v) || jsvIsName(v));
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break; 
+      if (ch=='\n') currentLine++;
+      else if (currentLine==line) chars++;
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+  return chars;
+}
+
+
 void jsvAppendString(JsVar *var, const char *str) {
   JsVar *block = jsvLockAgain(var);
   unsigned int blockChars;
