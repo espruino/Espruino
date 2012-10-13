@@ -16,6 +16,8 @@ void jsiInit(bool autoLoad);
 void jsiKill();
 
 void jsiLoop();
+/// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
+bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
 JsParse *jsiGetParser();

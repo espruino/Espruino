@@ -1,5 +1,6 @@
 #include "jsparse.h"
 #include "jsfunctions.h"
+#include "jsinteractive.h"
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */

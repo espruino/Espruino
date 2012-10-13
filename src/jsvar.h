@@ -256,7 +256,8 @@ JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it 
 JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the value in the array
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the end of an array, and returns the new length
-JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty)
+JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty) includes the NAME
+JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

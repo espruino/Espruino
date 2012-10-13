@@ -26,6 +26,7 @@
 #include "jshardware.h"
 #include "jsutils.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
@@ -198,8 +199,8 @@ const char *jshGetDeviceString(IOEventFlags device) {
   case EV_USART2: return "USART2";
 //  case EV_USART3: return "USART3";
 //  case EV_USART4: return "USART4";
-  }
-  return "";
+  default: return "";
+  }  
 }
 
 IOEventFlags jshFromDeviceString(const char *device) {

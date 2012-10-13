@@ -120,6 +120,10 @@ JsVar *jsvNew() {
       // return pointer
       return v;
   }
+  /* we don't have memory - last hope - ask jsInteractive to try and free some it
+   may have kicking around */
+  if (jsiFreeMoreMemory())
+    return jsvNew();
   jsError("Out of Memory!");
   jspSetInterrupted(true);
   return 0;
@@ -1065,7 +1069,6 @@ JsVarInt jsvGetArrayLength(JsVar *arr) {
   JsVarRef childref = arr->lastChild;
   // Just look at last non-string element!
   while (childref) {
-    JsVarInt childIndex;
     JsVar *child = jsvLock(childref);
     if (jsvIsInt(child)) {
       JsVarInt lastIdx = jsvGetInteger(child);
@@ -1141,6 +1144,22 @@ JsVar *jsvArrayPop(JsVar *arr) {
     if (arr->firstChild == arr->lastChild)
       arr->firstChild = 0; // if 1 item in array
     arr->lastChild = child->prevSibling; // unlink from end of array
+    jsvUnRef(child); // as no longer in array
+    return child; // and return it
+  } else {
+    // no children!
+    return 0;
+  }
+}
+
+/// Removes the first element of an array, and returns that element (or 0 if empty). 
+JsVar *jsvArrayPopFirst(JsVar *arr) {
+  assert(jsvIsArray(arr));
+  if (arr->firstChild) {
+    JsVar *child = jsvLock(arr->firstChild);
+    if (arr->firstChild == arr->lastChild)
+      arr->lastChild = 0; // if 1 item in array
+    arr->firstChild = child->nextSibling; // unlink from end of array
     jsvUnRef(child); // as no longer in array
     return child; // and return it
   } else {

@@ -81,6 +81,8 @@
         Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
+        Command history with up arrow (and flush if running low on RAM)
+        Power Saving - enter sleep mode (and wake up on interrupts). Could enter if no timer for >1sec, then use SysTick to wake? PWR_EnterSleepMode
  
   LOW PRIORITY
         add Array.map(fn(x), thisArg)
@@ -106,6 +108,14 @@
         Looking up an index in an array could be made half the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
 
 [/TODO]
+
+When presenting:
+   Show small time to first code
+   Easy transition from simple digitalWrite to loops/etc (don't get with Arduino)
+   Show how easy it is to change things (Stepper motor or LED light with ramp)
+   ability to save()
+   dump() to get code out
+   using from script on PC/Raspberry Pi 
 
  Extra functions to do:
 setWatch -> attachInterrupt(pin, handler, mode)

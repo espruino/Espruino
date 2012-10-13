@@ -63,6 +63,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 #define USART_BAUDRATE_NAME "_baudrate"
 #define JSI_WATCHES_NAME "watches"
 #define JSI_TIMERS_NAME "timers"
+#define JSI_HISTORY_NAME "history"
 
 bool isUSART(JsVarRef ref) {
   return  ref==classUSART1
@@ -182,7 +183,7 @@ JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
     if (device != EV_USBSERIAL) {
       JsVar *baudRate = jsvFindChildFromString(class, USART_BAUDRATE_NAME, false);
       if (baudRate) {
-        jshUSARTSetup(device, jsvGetIntegerAndUnLock(jsvSkipName(baudRate)));
+        jshUSARTSetup(device, (int)jsvGetIntegerAndUnLock(jsvSkipName(baudRate)));
       }
       jsvUnLock(baudRate);
     }
@@ -750,6 +751,17 @@ void jsiLoop() {
   }
 }
 
+/// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
+bool jsiFreeMoreMemory() {
+  JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  if (!history) return 0;
+  JsVar *item = jsvArrayPopFirst(history);
+  bool freed = item!=0;
+  jsvUnLock(item);
+  jsvUnLock(history);
+  return freed;
+}
+
 /** Output extra functions defined in an object such that they can be copied to a new device */
 void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   JsVarRef childRef = parent->firstChild;
@@ -1270,7 +1282,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       JsVarInt baud = jsvGetIntegerAndUnLock(jspParseSingleFunction());
       if (baud<=0) baud = DEFAULT_BAUD_RATE;
-      jshUSARTSetup(device, baud);
+      jshUSARTSetup(device, (int)baud);
       // Set baud rate in object, so we can initialise it on startup
       JsVar *baudVar = jsvNewFromInteger(baud);
       jsvUnLock(jsvSetNamedChild(a, baudVar, USART_BAUDRATE_NAME));
