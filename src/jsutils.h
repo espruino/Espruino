@@ -65,6 +65,7 @@
             More fixes for low memory conditions
             Multi-line edit for commands (but no newline or line delete yet)
             Handle Home, End + reverse delete keys
+            Fix nested for loops not handling interrupts correctly
 [/CHANGELOG]
 
 [TODO]
@@ -73,9 +74,7 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        Ctrl-C in mandelbrot demo only breaks out of one FOR loop
         Issue when printing lots of data and then disconnect USB
-
 
   MEDIUM PRIORITY:
 	    When printing lines, backspace and add '>' prompt after print (only if echo=1)
