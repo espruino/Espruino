@@ -12,6 +12,7 @@
  #include <sys/time.h>
  #include <sys/select.h>
  #include <termios.h>
+ #include <signal.h>
 #endif//ARM
 
 #ifdef ARM
@@ -129,6 +130,9 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   if (charData==3) {
     // Ctrl-C - force interrupt
     // TODO - check if this is our Console port?
+#ifndef ARM
+    raise(SIGINT);
+#endif
     jspSetInterrupted(true);
     return;
   }
@@ -725,7 +729,6 @@ void jshInit() {
   GPIO_ResetBits(LED1_PORT,LED1_PIN);
 
 #else//!ARM
-  //
   struct termios new_termios;
 
   /* take two copies - one for now, one for later */

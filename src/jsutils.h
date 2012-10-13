@@ -60,6 +60,7 @@
             Add command history (and dynamic history free if low memory)
             Fix broken jsvArrayPop
             Add tests for and fix Array.indexOf
+            In-line editing for strings (not multi-line yet)
 [/CHANGELOG]
 
 [TODO]
@@ -77,7 +78,8 @@
         Add Array.splice
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-        Handle multi-line editing/delete using arrow keys (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+        Handle Home, End + reverse delete keys        
+        Handle multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
         Add instanceof operator
         Check precedence against MDN javascript op precedence page
@@ -94,8 +96,6 @@
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Add 'delete' keyword for killing array items?
         String equals to compare whole 32 bit words
-        Memory leaks when errors - test cases? Maybe just do leak check after an error has occurred
-        Memory leak cleanup code - to try and clean up if memory has been leaked
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         'Array.prototype.clear = function () { this.X = 23; };'
         Could store vars in arrays/objects/functions as a binary tree instead of a linked list
@@ -107,7 +107,10 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
-        Looking up an index in an array could be made half the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
+        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
+        Check if issue with indexOf and LONG strings as indices exists (Copy and de-name)
+        Add nice iterators for strings (struct + inline fns)
+        Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
         
 
 [/TODO]
