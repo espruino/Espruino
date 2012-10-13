@@ -49,14 +49,22 @@ volatile unsigned char txHead=0, txTail=0;
 void jshTransmit(IOEventFlags device, unsigned char data) {
 #ifdef ARM
 #ifdef USB
-  if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected())
+  if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
+    jshTransmitClearDevice(EV_USBSERIAL); // clear out stuff already waiting
     return;
+  }
 #endif
   if (device==EV_NONE) return;
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   if (txHeadNext==txTail) {
     jsiSetBusy(true);
-    while (txHeadNext==txTail) ; // wait for send to finish as buffer is about to overflow
+    while (txHeadNext==txTail) {
+      // wait for send to finish as buffer is about to overflow
+#ifdef USB
+      // just in case USB was unplugged while we were waiting!
+      if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
+#endif
+    }
     jsiSetBusy(false);
   }
   txBuffer[txHead].flags = device;
