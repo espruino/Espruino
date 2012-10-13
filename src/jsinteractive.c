@@ -56,6 +56,7 @@ bool echo;                  ///< do we provide any user feedback?
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputline = 0; ///< The current input line
 InputState inputState = 0; ///< state for dealing with cursor keys
+bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
 
@@ -131,10 +132,32 @@ void jsiConsolePrintStringVar(JsVar *v) {
   while (r) {
     v = jsvLock(r);
     size_t l = jsvGetMaxCharactersInVar(v);
-    char buf[JSVAR_DATA_STRING_MAX_LEN+1];
-    memcpy(buf, v->varData.str, l);
-    buf[l] = 0;
-    jsiConsolePrint(buf);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break;
+      jsiConsolePrintChar(ch);
+    }
+    r = v->lastChild;
+    jsvUnLock(v);
+  }
+}
+
+
+void jsiConsoleEraseStringVar(JsVar *v) {
+  assert(jsvIsString(v) || jsvIsName(v));
+  JsVarRef r = jsvGetRef(v);
+  while (r) {
+    v = jsvLock(r);
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t i;
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break;
+      jsiConsolePrintChar(0x08);
+      jsiConsolePrintChar(' '); // wipe out
+      jsiConsolePrintChar(0x08);
+    }
     r = v->lastChild;
     jsvUnLock(v);
   }
@@ -160,8 +183,11 @@ void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
     v = jsvLock(r);
     size_t l = jsvGetMaxCharactersInVar(v);
     size_t i;
-    for (i=0;i<l;i++)
-      jshTransmit(device, (unsigned char)v->varData.str[i]);
+    for (i=0;i<l;i++) {
+      char ch = v->varData.str[i];
+      if (!ch) break;
+      jshTransmit(device, (unsigned char)ch);
+    }
     r = v->lastChild;
     jsvUnLock(v);
   }
@@ -411,13 +437,16 @@ bool jsiFreeMoreMemory() {
   bool freed = item!=0;
   jsvUnLock(item);
   jsvUnLock(history);
+  // TODO: could also free the array structure?
   return freed;
 }
 
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
+  if (!newLine || jsvGetStringLength(newLine)==0) return;
   JsVar *history = jsvFindChildFromString(p.root, JSI_HISTORY_NAME, true);
   if (!history) return; // out of memory
+  // ensure we actually have the history array
   if (!history->firstChild) {
     JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
     if (!arr) {// out of memory
@@ -427,12 +456,15 @@ void jsiHistoryAddLine(JsVar *newLine) {
     history->firstChild = jsvUnLock(jsvRef(arr));
   }
   history = jsvSkipNameAndUnlock(history);
-  JsVar *last = jsvSkipNameAndUnlock(jsvArrayGetLast(history));
-  if (!last || !jsvIsBasicVarEqual(last, newLine)) {
-    // don't add if this command is the same as the last
-    jsvArrayPush(history, newLine);
+  // if it was already in history, remove it - we'll put it back in front
+  JsVar *alreadyInHistory = jsvGetArrayIndexOf(history, newLine, false/*not exact*/);
+  if (alreadyInHistory) {
+    jsvRemoveChild(history, alreadyInHistory);
+    jsvUnLock(alreadyInHistory);
   }
-  jsvUnLock(last);
+  // put it back in front
+  jsvArrayPush(history, newLine);
+  
   jsvUnLock(history);
 }
 
@@ -440,11 +472,16 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
   JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
   JsVar *historyLine = 0;
   if (history) {
-    JsVar *idx = jsvGetArrayIndexOf(history, inputline); // get index of current line
+    JsVar *idx = jsvGetArrayIndexOf(history, inputline, true/*exact*/); // get index of current line
     if (idx) {
+      if (previous && idx->prevSibling) {
+        historyLine = jsvSkipNameAndUnlock(jsvLock(idx->prevSibling));
+      } else if (!previous && idx->nextSibling) {
+        historyLine = jsvSkipNameAndUnlock(jsvLock(idx->nextSibling));
+      }
       jsvUnLock(idx);
     } else {
-      if (previous) historyLine = jsvArrayGetLast(history);
+      if (previous) historyLine = jsvSkipNameAndUnlock(jsvArrayGetLast(history));
       // if next, we weren't using history so couldn't go forwards
     }
     
@@ -453,8 +490,46 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
   return historyLine;
 }
 
+bool jsiIsInHistory(JsVar *line) {
+  JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  if (!history) return false;
+  bool inHistory = jsvUnLock(jsvGetArrayIndexOf(history, line, true/*exact*/));
+  jsvUnLock(history);
+  return inHistory;
+}
+
+void jsiChangeToHistory(bool previous) {
+  JsVar *nextHistory = jsiGetHistoryLine(previous);
+  if (nextHistory) {
+    jsiConsoleEraseStringVar(inputline);
+    jsiConsolePrintStringVar(nextHistory);
+    jsvUnLock(inputline);
+    inputline = nextHistory;
+    hasUsedHistory = true;
+  } else if (!previous) { // if next, but we have something, just clear the line
+    jsiConsoleEraseStringVar(inputline);
+    jsvUnLock(inputline);
+    inputline = jsvNewFromString("");
+  }
+}
+
+void jsiIsAboutToEditInputLine() {
+  // we probably plan to do something with the line now - check it wasn't in history
+  // and if it was, duplicate it
+  if (hasUsedHistory) {
+    hasUsedHistory = false;
+    if (jsiIsInHistory(inputline)) {
+      JsVar *newLine = jsvCopy(inputline);
+      if (newLine) { // could have been out of memory!
+        jsvUnLock(inputline);
+        inputline = newLine;
+      }
+    }
+  }
+}
+
 void jsiHandleChar(char ch) {
-  //jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
+  //jsiConsolePrint("  ["); jsiConsolePrintInt(inputState);jsiConsolePrint(":");jsiConsolePrintInt(ch); jsiConsolePrint("]  \n");
   //
   // special stuff
   // 27 then 91 then 68 - left
@@ -465,7 +540,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 49 then 126 - home
   // 27 then 79 then 70 - end
 
-  if (inputState==IS_NONE && ch == 27) {
+  if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27 && ch == 91) {
     inputState = IS_HAD_27_91;
@@ -477,11 +552,14 @@ void jsiHandleChar(char ch) {
       //jsiConsolePrintChar(27);jsiConsolePrintChar(91);jsiConsolePrintChar(67);
     }
     if (ch==65) { // up
+      jsiChangeToHistory(true);
     }
     if (ch==66) { // down
+      jsiChangeToHistory(false);
     }
-  } else {
+  } else {  
     inputState = IS_NONE;
+    
     if (ch == 0x08 || ch == 0x7F /*delete*/) {
       int l = (int)jsvGetStringLength(inputline);
       if (l>0 && jsvGetCharInString(inputline,l-1)!='\n') { // not empty, or not new line
@@ -492,6 +570,7 @@ void jsiHandleChar(char ch) {
           jsiConsolePrintChar(CHAR_DELETE_SEND);
         }
         // FIXME hacky - should be able to just remove the end character without copying
+        // but if we do, use jsiIsAboutToEditInputLine
         JsVar *v = jsvNewFromString("");
         if (l>1) jsvAppendStringVar(v, inputline, 0, (int)(l-1));
         jsvUnLock(inputline);
@@ -524,11 +603,13 @@ void jsiHandleChar(char ch) {
         if (echo) jsiConsolePrint("\r\n>");
       } else {
         if (echo) jsiConsolePrint("\n:");
+        jsiIsAboutToEditInputLine();
         jsvAppendCharacter(inputline, '\n');
       }
     } else {
       if (echo) jsiConsolePrintChar(ch);
       // Append the character to our input line
+      jsiIsAboutToEditInputLine();
       jsvAppendCharacter(inputline, ch);
     }
   }

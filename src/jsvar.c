@@ -1105,8 +1105,8 @@ JsVar *jsvGetArrayItem(JsVar *arr, int index) {
   return 0; // undefined
 }
 
-/// Get the index of the value in the array
-JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
+/// Get the index of the value in the array (matchExact==use pointer, not equality check)
+JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   JsVarRef indexref;
   assert(jsvIsArray(arr) || jsvIsObject(arr));
   indexref = arr->firstChild;
@@ -1115,7 +1115,9 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value) {
     assert(jsvIsName(childIndex))
     JsVar *childValue = jsvLock(childIndex->firstChild);
 
-    if (jsvIsBasicVarEqual(childValue, value)) {
+      
+    if ((matchExact && childValue==value) ||
+        (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
       jsvUnLock(childValue);
       return childIndex;
     }
@@ -1149,6 +1151,12 @@ JsVar *jsvArrayPop(JsVar *arr) {
       arr->firstChild = 0; // if 1 item in array
     arr->lastChild = child->prevSibling; // unlink from end of array
     jsvUnRef(child); // as no longer in array
+    if (child->prevSibling) {
+      JsVar *v = jsvLock(child->prevSibling);
+      v->nextSibling = 0;
+      jsvUnLock(v);
+    }
+    child->prevSibling = 0;
     return child; // and return it
   } else {
     // no children!
@@ -1165,6 +1173,12 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
       arr->lastChild = 0; // if 1 item in array
     arr->firstChild = child->nextSibling; // unlink from end of array
     jsvUnRef(child); // as no longer in array
+    if (child->nextSibling) {
+      JsVar *v = jsvLock(child->nextSibling);
+      v->prevSibling = 0;
+      jsvUnLock(v);
+    }
+    child->nextSibling = 0;
     return child; // and return it
   } else {
     // no children!

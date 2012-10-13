@@ -229,7 +229,7 @@ static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUn
 INLINE_FUNC JsVar *jsvSkipName(JsVar *a);
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
  * a name, so it can be used inline */
-INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a);
+INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a); // TODO: Unlock->UnLock
 INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
 INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
 
@@ -255,7 +255,7 @@ void jsvRemoveAllChildren(JsVar *parent);
 int jsvGetChildren(JsVar *v);
 JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
-JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the value in the array
+JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the end of an array, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME

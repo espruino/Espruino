@@ -344,7 +344,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Return true if this array contains the given value
        */
            JsVar *childValue = jspParseSingleFunction();
-           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue)); // ArrayIndexOf will return 0 if not found
+           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue, false/*not exact*/)); // ArrayIndexOf will return 0 if not found
            jsvUnLock(childValue);
            return jsvNewFromBool(found!=0);
          }
@@ -353,7 +353,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Return the index of the value in the array, or -1
        */
             JsVar *childValue = jspParseSingleFunction();
-            JsVar *idxName = jsvGetArrayIndexOf(a, childValue);
+            JsVar *idxName = jsvGetArrayIndexOf(a, childValue, false/*not exact*/);
             jsvUnLock(childValue);
             // but this is the name - we must turn it into a var
             if (idxName == 0) return 0; // not found!

@@ -57,6 +57,9 @@
             Automatically convert IDs in form A#,A##,B#,B## etc into numbers.
             Built-in constants for LED1/BTN/etc.
      1v11 : Add Math functions
+            Add command history (and dynamic history free if low memory)
+            Fix broken jsvArrayPop
+            Add tests for and fix Array.indexOf
 [/CHANGELOG]
 
 [TODO]
@@ -106,7 +109,7 @@
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
         Looking up an index in an array could be made half the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
-        Add tests for Array.indexOf
+        
 
 [/TODO]
 

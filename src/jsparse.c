@@ -994,7 +994,7 @@ JsVar *jspeCondition() {
             JsVar *av = jsvSkipName(a);
             JsVar *bv = jsvSkipName(b);
             if (jsvIsArray(bv) || jsvIsObject(bv)) {
-              JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(bv, av));  // ArrayIndexOf will return 0 if not found
+              JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(bv, av, false/*not exact*/));  // ArrayIndexOf will return 0 if not found
               res = jsvNewFromBool(found!=0);
             } // else it will be undefined
             jsvUnLock(av);
