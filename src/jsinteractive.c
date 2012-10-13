@@ -269,6 +269,22 @@ JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
   return class;
 }
 
+static JsVarRef _jsiInitNamedArray(const char *name) {
+  JsVar *arrayName = jsvFindChildFromString(p.root, name, true);
+  if (!arrayName) return 0; // out of memory
+  if (!arrayName->firstChild) {
+    JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+    if (!array) { // out of memory
+      jsvUnLock(arrayName);
+      return 0;
+    }
+    arrayName->firstChild = jsvUnLock(jsvRef(array));
+  }
+  JsVarRef arrayRef = jsvRefRef(arrayName->firstChild);
+  jsvUnLock(arrayName);
+  return arrayRef;
+}
+
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
@@ -284,21 +300,8 @@ void jsiSoftInit() {
 #endif
 
   // Load timer/watch arrays
-  JsVar *timersName = jsvFindChildFromString(p.root, JSI_TIMERS_NAME, true);
-  if (timersName) {
-    if (!timersName->firstChild)
-      timersName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
-    timerArray = jsvRefRef(timersName->firstChild);
-    jsvUnLock(timersName);
-  }
-
-  JsVar *watchName = jsvFindChildFromString(p.root, JSI_WATCHES_NAME, true);
-  if (timersName) {
-    if (!watchName->firstChild)
-     watchName->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_ARRAY)));
-    watchArray = jsvRefRef(watchName->firstChild);
-    jsvUnLock(watchName);
-  }
+  timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
+  watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
   // Check any existing watches and set up interrupts for them
   if (watchArray) {

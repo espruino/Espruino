@@ -855,13 +855,15 @@ JsVar *jspeFactor() {
         }
         JSP_MATCH(LEX_ID);
         obj = jsvNewWithFlags(JSV_OBJECT);
-        if (jsvIsFunction(objClassOrFunc)) {
-          jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true, 0));
-        } else {
-          jsvUnLock(jsvAddNamedChild(obj, objClassOrFunc, JSPARSE_PROTOTYPE_CLASS));
-          if (execInfo.lex->tk == '(') {
-            JSP_MATCH('(');
-            JSP_MATCH(')');
+        if (obj) { // could be out of memory
+          if (jsvIsFunction(objClassOrFunc)) {
+            jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true, 0));
+          } else {
+            jsvUnLock(jsvAddNamedChild(obj, objClassOrFunc, JSPARSE_PROTOTYPE_CLASS));
+            if (execInfo.lex->tk == '(') {
+              JSP_MATCH('(');
+              JSP_MATCH(')');
+            }
           }
         }
         jsvUnLock(objClassOrFunc);
