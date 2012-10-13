@@ -353,8 +353,12 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Return the index of the value in the array, or -1
        */
             JsVar *childValue = jspParseSingleFunction();
-            JsVar *idx = jsvGetArrayIndexOf(a, childValue);
+            JsVar *idxName = jsvGetArrayIndexOf(a, childValue);
             jsvUnLock(childValue);
+            // but this is the name - we must turn it into a var
+            if (idxName == 0) return 0; // not found!
+            JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);
+            jsvUnLock(idxName);
             return idx;
           }
          if (strcmp(name,"join")==0) {

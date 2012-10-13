@@ -239,8 +239,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
 
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);
-/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
-JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren);
+/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false.
+    If keepAsName==false, this will be converted into a normal variable */
+JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName);
 /// Tree related stuff
 void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itself a name
 JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
@@ -258,6 +259,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value); ///< Get the index of the v
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the end of an array, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME
+JsVar *jsvArrayGetLast(JsVar *arr); ///< Get the last element of an array (does not remove, unlike jsvArrayPop), and returns that element (or 0 if empty) includes the NAME
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

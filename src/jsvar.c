@@ -798,11 +798,15 @@ int jsvCompareInteger(JsVar *va, JsVar *vb) {
     return 0;
 }
 
-/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false */
-JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren) {
-  JsVar *dst = jsvNewWithFlags(src->flags);
-  if (!dst) return 0; // out of memory
+/** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false
+    If keepAsName==false, this will be converted into a normal variable */
+JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   assert(jsvIsName(src));
+  JsVarFlags flags = src->flags;
+  if (!keepAsName) flags &= ~JSV_NAME; // make sure this is NOT a name
+  JsVar *dst = jsvNewWithFlags(flags);
+  if (!dst) return 0; // out of memory
+  
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
 
   dst->lastChild = 0;
@@ -868,7 +872,7 @@ JsVar *jsvCopy(JsVar *src) {
     vr = src->firstChild;
     while (vr) {
       JsVar *name = jsvLock(vr);
-      JsVar *child = jsvCopyNameOnly(name, true); // NO DEEP COPY!
+      JsVar *child = jsvCopyNameOnly(name, true/*link children*/, true/*keep as name*/); // NO DEEP COPY!
       if (child) { // could have been out of memory
         jsvAddName(dst, child);
         jsvUnLock(child);
@@ -1164,6 +1168,16 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
     return child; // and return it
   } else {
     // no children!
+    return 0;
+  }
+}
+
+///  Get the last element of an array (does not remove, unlike jsvArrayPop), and returns that element (or 0 if empty) includes the NAME
+JsVar *jsvArrayGetLast(JsVar *arr) {
+  assert(jsvIsArray(arr));
+  if (arr->lastChild) {
+    return jsvLock(arr->lastChild);
+  } else { // no children!    
     return 0;
   }
 }

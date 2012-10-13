@@ -403,6 +403,56 @@ int jsiCountBracketsInInput() {
   return brackets;
 } 
 
+/// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
+bool jsiFreeMoreMemory() {
+  JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  if (!history) return 0;
+  JsVar *item = jsvArrayPopFirst(history);
+  bool freed = item!=0;
+  jsvUnLock(item);
+  jsvUnLock(history);
+  return freed;
+}
+
+// Add a new line to the command history
+void jsiHistoryAddLine(JsVar *newLine) {
+  JsVar *history = jsvFindChildFromString(p.root, JSI_HISTORY_NAME, true);
+  if (!history) return; // out of memory
+  if (!history->firstChild) {
+    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    if (!arr) {// out of memory
+      jsvUnLock(history);
+      return;
+    }
+    history->firstChild = jsvUnLock(jsvRef(arr));
+  }
+  history = jsvSkipNameAndUnlock(history);
+  JsVar *last = jsvSkipNameAndUnlock(jsvArrayGetLast(history));
+  if (!last || !jsvIsBasicVarEqual(last, newLine)) {
+    // don't add if this command is the same as the last
+    jsvArrayPush(history, newLine);
+  }
+  jsvUnLock(last);
+  jsvUnLock(history);
+}
+
+JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
+  JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  JsVar *historyLine = 0;
+  if (history) {
+    JsVar *idx = jsvGetArrayIndexOf(history, inputline); // get index of current line
+    if (idx) {
+      jsvUnLock(idx);
+    } else {
+      if (previous) historyLine = jsvArrayGetLast(history);
+      // if next, we weren't using history so couldn't go forwards
+    }
+    
+    jsvUnLock(history);
+  }
+  return historyLine;
+}
+
 void jsiHandleChar(char ch) {
   //jsPrint("  ["); jsPrintInt(ch); jsPrint("]  \n");
   //
@@ -460,6 +510,7 @@ void jsiHandleChar(char ch) {
         }
 
         JsVar *v = jspEvaluateVar(&p, inputline);
+        jsiHistoryAddLine(inputline);
         jsvUnLock(inputline);
 
         if (echo) {
@@ -751,17 +802,6 @@ void jsiLoop() {
   }
 }
 
-/// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
-bool jsiFreeMoreMemory() {
-  JsVar *history = jsvSkipNameAndUnlock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
-  if (!history) return 0;
-  JsVar *item = jsvArrayPopFirst(history);
-  bool freed = item!=0;
-  jsvUnLock(item);
-  jsvUnLock(history);
-  return freed;
-}
-
 /** Output extra functions defined in an object such that they can be copied to a new device */
 void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   JsVarRef childRef = parent->firstChild;
@@ -794,6 +834,8 @@ void jsiDumpState() {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
+    } else if (jsvIsStringEqual(child, JSI_HISTORY_NAME)) {
+      // skip - don't care about command history
     } else if (!jsvIsNative(data)) { // just a variable/function!
       jsiConsolePrint("var ");
       jsiConsolePrintStringVar(child);

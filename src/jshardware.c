@@ -746,7 +746,7 @@ void jshIdle() {
 #ifdef ARM
 #else
   while (kbhit()) {
-    jshPushIOCharEvent(EV_USART1, getch());
+    jshPushIOCharEvent(EV_USBSERIAL, getch());
   }
 #endif
 #ifdef USB

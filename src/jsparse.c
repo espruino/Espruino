@@ -1347,9 +1347,8 @@ JsVar *jspeStatement() {
           bool hasHadBreak = false;
           while (JSP_SHOULD_EXECUTE && loopIndex && !hasHadBreak) {
               JsVar *loopIndexVar = jsvLock(loopIndex);
-              JsVar *indexValue = jsvCopyNameOnly(loopIndexVar, false);
-              assert(jsvIsName(indexValue) && indexValue->refs==0);
-              indexValue->flags &= ~JSV_NAME; // make sure this is NOT a name
+              JsVar *indexValue = jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/);
+              assert(!jsvIsName(indexValue) && indexValue->refs==0);
               jsvSetValueOfName(forStatement, indexValue);
               jsvUnLock(indexValue);
               loopIndex = loopIndexVar->nextSibling;
