@@ -114,6 +114,7 @@ setInterval(function() {
  digitalWrite(stepperPins, steps[step]);
 }, 10);
 
+
 // speed test
 var a = 1;
 setInterval("a=!a;digitalWrite('D12',a);", 0);
@@ -143,7 +144,10 @@ var step = function () {
 }
 
 
-var pulse = function () {digitalPulse(D0,1,1+coords[0]);digitalPulse(D1,1,1+coords[1]);;
+var pulse = function () {
+  digitalPulse(D0,1,1+coords[0]);
+  digitalPulse(D1,1,1+coords[1]);
+}
 var t = 0.438;
 var s = 0.001;
 setInterval("step();pulse();", 50);

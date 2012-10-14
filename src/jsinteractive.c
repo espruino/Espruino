@@ -134,7 +134,8 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
   assert(jsvIsString(v) || jsvIsName(v));
   int chars = 0;
   JsVarRef r = jsvGetRef(v);
-  while (r) {
+  bool done = false;
+  while (!done && r) {
     v = jsvLock(r);
     size_t l = jsvGetMaxCharactersInVar(v);
     size_t i;
@@ -143,7 +144,10 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
       if (!ch) break;
       fromCharacter--;
       if (fromCharacter<0) { 
-        if (ch == '\n') break;
+        if (ch == '\n') {
+          done = true;
+          break;
+        }
         jsiConsolePrintChar(ch);
         chars++;
       }
@@ -729,12 +733,14 @@ void jsiHandleChar(char ch) {
         }
       }
     } else if (ch==65) { // up
-      if (jsvGetStringLength(inputline)==0 || jsiIsInHistory(inputline))
+      int l = (int)jsvGetStringLength(inputline);
+      if ((l==0 || jsiIsInHistory(inputline)) && inputCursorPos==l)
         jsiChangeToHistory(true); // if at end of line
       else
         jsiHandleMoveUpDown(-1);
     } else if (ch==66) { // down
-      if (jsvGetStringLength(inputline)==0 || jsiIsInHistory(inputline))
+      int l = (int)jsvGetStringLength(inputline);
+      if ((l==0 || jsiIsInHistory(inputline)) && inputCursorPos==l)
         jsiChangeToHistory(false); // if at end of line
       else
         jsiHandleMoveUpDown(1);
@@ -791,7 +797,7 @@ void jsiHandleChar(char ch) {
         }
       }
     } else {
-      // Append the character to our input line
+      // Add the character to our input line
       jsiIsAboutToEditInputLine();
       int l = (int)jsvGetStringLength(inputline);
       bool hasTab = ch=='\t';
@@ -1134,8 +1140,11 @@ void jsiDumpState() {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
-    } else if (jsvIsStringEqual(child, JSI_HISTORY_NAME)) {
-      // skip - don't care about command history
+    } else if (jsvIsStringEqual(child, JSI_HISTORY_NAME) ||
+                jsvIsStringEqual(child, "USB") ||
+                jsvIsStringEqual(child, "Serial1") ||
+                jsvIsStringEqual(child, "Serial2")) {
+      // skip - don't care about this stuff
     } else if (!jsvIsNative(data)) { // just a variable/function!
       jsiConsolePrint("var ");
       jsiConsolePrintStringVar(child);

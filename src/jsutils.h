@@ -70,6 +70,7 @@
             Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
             Now puts itself to sleep to save power, when it knows nothing is required and it'll be woken up by SysTick before
             Change Math library to avoid putting constants in RAM
+            Issue when printing lots of data and then disconnect USB
 [/CHANGELOG]
 
 [TODO]
@@ -77,11 +78,10 @@
 
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
-        Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable
-        Issue when printing lots of data and then disconnect USB
+        Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable 
 
   MEDIUM PRIORITY:
-	    When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
+	When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         Add Array.splice
         Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
@@ -89,6 +89,8 @@
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
+        Hide USB/Serial in Dump()
+        Save state on setWatch interrupt (e.state)
  
   LOW PRIORITY
         On assert fail, should restart interpreter and try and recover
@@ -114,6 +116,7 @@
         Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
         Add nice iterators for strings and maybe arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
+        setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         
 
 [/TODO]
