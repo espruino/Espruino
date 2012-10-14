@@ -154,4 +154,15 @@ setInterval("step();pulse();", 50);
 
 
 
+var test = function () {
+ digitalWrite(A0,0);digitalWrite(A2,1); average=average*0.9 + 0.1*analogRead(A1);
+ if (!on && average<0.4) setOn(); 
+ if (on && average>0.5) setOff();
+};
+var on = 1;
+var setOn = function () { on=true; digitalWrite(LED1,1); setTimeout("digitalWrite(LED1,0)",1000);};
+var setOff = function () { on=false; digitalWrite(LED2,1); setTimeout("digitalWrite(LED2,0)",1000);};
+var average = 0.414431;
+setInterval("test()", 100);
+
 

@@ -81,6 +81,7 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable 
+        In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
 
   MEDIUM PRIORITY:
 	When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
@@ -94,6 +95,7 @@
         Save state on setWatch interrupt (e.state)
         Save pin input/output state with save()
         setBusyIndicator warns about invalid pin when using no argument, or undefined
+        When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
  
   LOW PRIORITY
         On assert fail, should restart interpreter and try and recover
