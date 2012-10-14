@@ -173,7 +173,7 @@ static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flag
 static inline bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
 static inline bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 static inline bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
-static inline bool jsvIsUndefined(const JsVar *v) { return !v; }
+static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)

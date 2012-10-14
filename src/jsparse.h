@@ -84,4 +84,11 @@ JsVar *jspParseSingleFunction(); ///< parse function with a single argument, ret
 bool jspParseDoubleFunction(JsVar **a, JsVar **b); ///< parse function with 2 arguments, return 2 values (no names!)
 bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c); ///< parse function with 3 arguments, return 3 values (no names!)
 
+/** Handle a function call (assumes we've parsed the function name and we're
+ * on the start bracket). 'parent' is the object that contains this method,
+ * if there was one (otherwise it's just a normal function).
+ * If !isParsing and arg0!=0, argument 0 is set to what is supplied
+ */
+JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *arg0); 
+
 #endif /* JSPARSE_H_ */

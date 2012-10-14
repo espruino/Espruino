@@ -72,6 +72,7 @@
             Change Math library to avoid putting constants in RAM
             Issue when printing lots of data and then disconnect USB
             Hide USB/Serial in Dump()
+            add Array.map(fn(x), thisArg)
 [/CHANGELOG]
 
 [TODO]
@@ -92,11 +93,11 @@
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
         Save state on setWatch interrupt (e.state)
         Save pin input/output state with save()
+        setBusyIndicator warns about invalid pin when using no argument, or undefined
  
   LOW PRIORITY
         On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-        add Array.map(fn(x), thisArg)
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
         Handle '0' in strings - switch to storing string length in flags

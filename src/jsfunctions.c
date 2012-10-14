@@ -419,6 +419,50 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
            jsvUnLock(childValue);
            return item;
          }
+         if (strcmp(name,"map")==0) {
+      /*JS* method Array.map(function, thisArg)
+       *JS*  Return an array which is made from the following: A.map(function) = [function(A[0]), function(A[1]), ...]
+       *JS*  If thisArg is specified, the function is called with 'this' set to thisArg
+       */
+           JsVar *funcVar, *thisVar; 
+           jspParseDoubleFunction(&funcVar, &thisVar);
+           if (!jsvIsFunction(funcVar)) {
+             jsError("Array.map's first argument should be a function");
+             jsvUnLock(funcVar); jsvUnLock(thisVar);
+             return 0;
+           }
+           if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
+             jsError("Array.map's second argument should be undefined, or an object");
+             jsvUnLock(funcVar); jsvUnLock(thisVar);
+             return 0;
+           }
+           JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+           if (array) { 
+             JsVarRef childRef = a->firstChild;
+             while (childRef) {
+               JsVar *child = jsvLock(childRef);
+               if (jsvIsInt(child)) {
+                 JsVarInt thisIndex = jsvGetInteger(child);
+                 JsVar *childValue = jsvLock(child->firstChild);
+                 JsVar *mapped = jspeFunctionCall(funcVar, thisVar, false, childValue); 
+                 jsvUnLock(childValue);
+                 if (mapped) {
+                   JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
+                   if (name) { // out of memory?
+                     name->firstChild = jsvGetRef(jsvRef(mapped));
+                     jsvAddName(array, name);
+                     jsvUnLock(name);
+                   }
+                   jsvUnLock(mapped); 
+                 }
+               }
+               childRef = child->nextSibling;
+               jsvUnLock(child);
+             }
+           }
+           jsvUnLock(funcVar); jsvUnLock(thisVar);
+           return array;
+        }
     }
   }
   // unhandled

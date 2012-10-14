@@ -1623,7 +1623,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         pinBusyIndicator = -1;
       } else {
         pinBusyIndicator = jshGetPinFromVar(pinVar);
-        if (pinBusyIndicator<=0)
+        if (pinBusyIndicator<0)
           jsError("Invalid pin!");
       }
       jsvUnLock(pinVar);
