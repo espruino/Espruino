@@ -71,6 +71,7 @@
             Now puts itself to sleep to save power, when it knows nothing is required and it'll be woken up by SysTick before
             Change Math library to avoid putting constants in RAM
             Issue when printing lots of data and then disconnect USB
+            Hide USB/Serial in Dump()
 [/CHANGELOG]
 
 [TODO]
@@ -89,8 +90,8 @@
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
-        Hide USB/Serial in Dump()
         Save state on setWatch interrupt (e.state)
+        Save pin input/output state with save()
  
   LOW PRIORITY
         On assert fail, should restart interpreter and try and recover
