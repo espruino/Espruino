@@ -1461,34 +1461,36 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         bool recurring = strcmp(name,"setInterval")==0;
         JsVar *func, *timeout;
         jspParseDoubleFunction(&func, &timeout);
+        JsVar *itemIndex = 0;
         if (!jsvIsFunction(func) && !jsvIsString(func)) {
           jsError("Function or String not supplied!");
+        } else {
+          // Create a new timer
+          JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
+          JsVarFloat interval = jsvGetDouble(timeout);
+          if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+          JsVar *v;
+          v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
+          jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
+          jsvUnLock(v);
+          v = jsvNewFromFloat(interval);
+          jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
+          jsvUnLock(v);
+          v = jsvNewFromBool(recurring);
+          jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
+          jsvUnLock(v);
+          jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
+          //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
+          JsVar *timerArrayPtr = jsvLock(timerArray);
+          itemIndex = jsvNewFromInteger(jsvArrayPush(timerArrayPtr, timerPtr) - 1);
+          //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
+          jsvUnLock(timerArrayPtr);
+          jsvUnLock(timerPtr);
         }
-        // Create a new timer
-        JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-        JsVarFloat interval = jsvGetDouble(timeout);
-        if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-        JsVar *v;
-        v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
-        jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
-        jsvUnLock(v);
-        v = jsvNewFromFloat(interval);
-        jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
-        jsvUnLock(v);
-        v = jsvNewFromBool(recurring);
-        jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
-        jsvUnLock(v);
-        jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
-        //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
-        JsVar *timerArrayPtr = jsvLock(timerArray);
-        JsVarInt itemIndex = jsvArrayPush(timerArrayPtr, timerPtr) - 1;
-        //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
-        jsvUnLock(timerArrayPtr);
-        jsvUnLock(timerPtr);
         jsvUnLock(func);
         jsvUnLock(timeout);
         //jsvTrace(jsiGetParser()->root, 0);
-        return jsvNewFromInteger(itemIndex);
+        return itemIndex;
       }
       if (strcmp(name,"setWatch")==0) {
         /*JS* function setWatch(function, pin, repeat)

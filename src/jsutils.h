@@ -74,6 +74,7 @@
             Hide USB/Serial in Dump()
             add Array.map(fn(x), thisArg)
             For newline, count [] and () (as well as {}) - also knows about comments/strings/etc
+            Fix assert fail is setTimeout with non-function
 [/CHANGELOG]
 
 [TODO]
