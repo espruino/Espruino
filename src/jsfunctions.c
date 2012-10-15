@@ -82,7 +82,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
         // value of a single character
         int c;
-        JsVar *v = jspParseSingleFunction(execInfo);
+        JsVar *v = jspParseSingleFunction();
         if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
           jsvUnLock(v);
           return jsvNewFromInteger(0);
@@ -97,7 +97,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       /*JS* method Double.doubleToIntBits(val)
        *JS*  Convert the floating point value given into an integer representing the bits contained in it
        */
-        JsVar *v = jspParseSingleFunction(execInfo);
+        JsVar *v = jspParseSingleFunction();
         JsVarFloat f = jsvGetDoubleAndUnLock(v);
         return jsvNewFromInteger(*(JsVarInt*)&f);
       }
@@ -152,7 +152,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Arc Tangent of y/x. Takes any values and produces values between 0 and PI.
        */
         JsVar *x,*y;
-        jspParseDoubleFunction(&y,&x);
+        jspParseFunction(0,&y,&x,0,0);
         return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
       }
       if (strcmp(name,"cos")==0) {
@@ -265,7 +265,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
          JsVar *vStart, *vEnd, *res;
          int pStart, pEnd;
-         jspParseDoubleFunction(&vStart, &vEnd);
+         jspParseFunction(0, &vStart, &vEnd, 0, 0);
          pStart = (int)jsvGetIntegerAndUnLock(vStart);
          pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
          jsvUnLock(vEnd);
@@ -286,7 +286,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
           JsVar *vStart, *vLen, *res;
           int pStart, pLen;
-          jspParseDoubleFunction(&vStart, &vLen);
+          jspParseFunction(0, &vStart, &vLen, 0, 0);
           pStart = (int)jsvGetIntegerAndUnLock(vStart);
           pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
           jsvUnLock(vLen);
@@ -425,7 +425,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  If thisArg is specified, the function is called with 'this' set to thisArg
        */
            JsVar *funcVar, *thisVar; 
-           jspParseDoubleFunction(&funcVar, &thisVar);
+           jspParseFunction(0, &funcVar, &thisVar, 0, 0);
            if (!jsvIsFunction(funcVar)) {
              jsError("Array.map's first argument should be a function");
              jsvUnLock(funcVar); jsvUnLock(thisVar);

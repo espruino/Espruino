@@ -77,12 +77,18 @@ typedef struct {
   JsExecFlags execute;
 } JsExecInfo;
 
+typedef enum {
+  JSP_NOSKIP_A = 1,
+  JSP_NOSKIP_B = 2,
+  JSP_NOSKIP_C = 4,
+} JspSkipFlags;
+
+/// parse function with max 4 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
+bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d);
 
 bool jspParseVariableName();     ///< parse single variable name
 bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
-bool jspParseDoubleFunction(JsVar **a, JsVar **b); ///< parse function with 2 arguments, return 2 values (no names!)
-bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c); ///< parse function with 3 arguments, return 3 values (no names!)
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'parent' is the object that contains this method,

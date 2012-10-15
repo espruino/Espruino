@@ -223,45 +223,27 @@ JsVar *jspParseSingleFunction() {
   return v;
 }
 
-// parse function with 2 arguments, return 2 values (no names!)
-bool jspParseDoubleFunction(JsVar **a, JsVar **b) {
-  if (a) *a = 0;
-  if (b) *b = 0;
-  JsExecFlags execute = EXEC_YES;
-  JSP_MATCH(LEX_ID);
-  JSP_MATCH('(');
-  if (b && execInfo.lex->tk != ')')
-    *a = jsvSkipNameAndUnlock(jspeBase(&execute));
-  if (b && execInfo.lex->tk != ')') {
-    JSP_MATCH(',');
-    *b = jsvSkipNameAndUnlock(jspeBase(&execute));
-  }
-  // throw away extra params
-  while (execInfo.lex->tk != ')') {
-    JSP_MATCH(',');
-    jsvUnLock(jspeBase(&execute));
-  }
-  JSP_MATCH(')');
-  return true;
-}
-
-// parse function with 3 arguments, return 3 values (no names!)
-bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c) {
+/// parse function with max 4 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
+bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d) {
   if (a) *a = 0;
   if (b) *b = 0;
   if (c) *c = 0; 
   JsExecFlags execute = EXEC_YES;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
-  if (execInfo.lex->tk != ')')
-    *a = jsvSkipNameAndUnlock(jspeBase(&execute));
+  if (a && execInfo.lex->tk != ')') {
+    *a = jspeBase(&execute);
+    if (!skipName&JSP_NOSKIP_A) *a = jsvSkipNameAndUnlock(*a);
+  }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *b = jsvSkipNameAndUnlock(jspeBase(&execute));
+    *b = jspeBase(&execute);
+    if (!skipName&JSP_NOSKIP_B) *b = jsvSkipNameAndUnlock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *c = jsvSkipNameAndUnlock(jspeBase(&execute));
+    *c = jspeBase(&execute);
+    if (!skipName&JSP_NOSKIP_B) *c = jsvSkipNameAndUnlock(*c);
   }
   // throw away extra params
   while (execInfo.lex->tk != ')') {

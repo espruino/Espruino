@@ -1248,7 +1248,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Pin can be an integer, or a string such as "A0","C13",etc
          */
         JsVar *pinVar, *valueVar;
-        jspParseDoubleFunction(&pinVar, &valueVar);
+        jspParseFunction(0, &pinVar, &valueVar, 0, 0);
         int pin = jshGetPinFromVar(pinVar);
         jsvUnLock(pinVar);
         JsVarFloat value = jsvGetDouble(valueVar);
@@ -1262,7 +1262,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Get the specified bit from the value. Lowest significance bit is 0
          */
         JsVar *valueVar, *bitVar;
-        jspParseDoubleFunction(&valueVar, &bitVar);
+        jspParseFunction(0, &valueVar, &bitVar, 0, 0);
         JsVarInt value = jsvGetIntegerAndUnLock(valueVar);
         JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
         return jsvNewFromInteger( (value >> bit) & 1);
@@ -1272,7 +1272,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Write the specified bit from the value. Lowest significance bit is 0
          */
         JsVar *valueVar, *bitVar, *dataVar;
-        jspParseTripleFunction(&valueVar, &bitVar, &dataVar);
+        jspParseFunction(0,&valueVar, &bitVar, &dataVar, 0);
         JsVarInt value = jsvGetInteger(valueVar);
         JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
         JsVarInt data = jsvGetIntegerAndUnLock(dataVar);
@@ -1285,7 +1285,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Set the given bit in the value. Lowest significance bit is 0
          */
         JsVar *valueVar, *bitVar;
-        jspParseDoubleFunction(&valueVar, &bitVar);
+        jspParseFunction(0, &valueVar, &bitVar, 0, 0);
         JsVarInt value = jsvGetInteger(valueVar);
         JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
         if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value | (1<<bit));
@@ -1297,7 +1297,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Clear the given bit in the value. Lowest significance bit is 0
          */
         JsVar *valueVar, *bitVar;
-        jspParseDoubleFunction(&valueVar, &bitVar);
+        jspParseFunction(0, &valueVar, &bitVar, 0, 0);
         JsVarInt value = jsvGetInteger(valueVar);
         JsVarInt bit = jsvGetIntegerAndUnLock(bitVar);
         if (jsvIsNumeric(valueVar)) jsvSetInteger(valueVar, value & ~(1<<bit));
@@ -1321,7 +1321,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*   This takes effect the text time the callback is called (so it is not immediate).
          */
         JsVar *idVar, *intervalVal;
-        jspParseDoubleFunction(&idVar, &intervalVal);
+        jspParseFunction(0, &idVar, &intervalVal, 0, 0);
         JsVarFloat interval = jsvGetDoubleAndUnLock(intervalVal);
         if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
         JsVar *timerName = jsvFindChildFromVar(timerArray, idVar, false);
@@ -1395,7 +1395,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Pin can be an integer, or a string such as "A0","C13",etc
          */
         JsVar *pinVar, *valueVar, *timeVar;
-        jspParseTripleFunction(&pinVar, &valueVar, &timeVar);
+        jspParseFunction(0, &pinVar, &valueVar, &timeVar, 0);
         int pin = jshGetPinFromVar(pinVar);
         jsvUnLock(pinVar);
         bool value = jsvGetBool(valueVar);
@@ -1441,7 +1441,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  If pin is an array of pins, eg. ["A2","A1","A0"] in which case value will be treated as an integer where the first array element is the MSB
          */
         JsVar *pinVar, *valueVar;
-        jspParseDoubleFunction(&pinVar, &valueVar);
+        jspParseFunction(0, &pinVar, &valueVar, 0, 0);
         if (jsvIsArray(pinVar)) {
           JsVarInt value = jsvGetInteger(valueVar);
           jsvUnLock(valueVar);
@@ -1480,7 +1480,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          */
         bool recurring = strcmp(name,"setInterval")==0;
         JsVar *func, *timeout;
-        jspParseDoubleFunction(&func, &timeout);
+        jspParseFunction(0, &func, &timeout, 0, 0);
         JsVar *itemIndex = 0;
         if (!jsvIsFunction(func) && !jsvIsString(func)) {
           jsError("Function or String not supplied!");
@@ -1521,7 +1521,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          */
         JsVarInt itemIndex = -1;
         JsVar *funcVar, *pinVar, *recurringVar;
-        jspParseTripleFunction(&funcVar, &pinVar, &recurringVar);
+        jspParseFunction(0, &funcVar, &pinVar, &recurringVar, 0);
         if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
           jsError("Function or String not supplied!");
         } else {
