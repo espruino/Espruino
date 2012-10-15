@@ -73,6 +73,7 @@
             Issue when printing lots of data and then disconnect USB
             Hide USB/Serial in Dump()
             add Array.map(fn(x), thisArg)
+            For newline, count [] and () (as well as {}) - also knows about comments/strings/etc
 [/CHANGELOG]
 
 [TODO]

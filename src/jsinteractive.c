@@ -482,19 +482,14 @@ void jsiKill() {
 int jsiCountBracketsInInput() {
   int brackets = 0;
 
-  JsVarRef r = jsvGetRef(inputline);
-  while (r) {
-    JsVar *v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) { 
-      char ch = v->varData.str[i];
-      if (ch=='{') brackets++;
-      if (ch=='}') brackets--;
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsLex lex;
+  jslInit(&lex, inputline, 0, -1);
+  while (lex.tk!=LEX_EOF) {
+    if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
+    if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
+    jslGetNextToken(&lex);
   }
+  jslKill(&lex);
 
   return brackets;
 } 
