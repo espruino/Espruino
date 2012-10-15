@@ -132,19 +132,46 @@ JsVar *jsvNew() {
 void jsvFreeLoopedRefPtr(JsVar *var); // forward decl
 
 void jsvFreePtr(JsVar *var) {
-    // we shouldn't be linked from anywhere!
-    assert(!var->nextSibling && !var->prevSibling);
+    /* We can be linked from places now (circular ref) but only
+     * if revs>0 AND we were called from jsvFreeLoopedRefPtr */
+    assert(var->refs>0 || (!var->nextSibling && !var->prevSibling));
 
     // Names Link to other things
     if (jsvIsName(var)) {
       if (var->firstChild) {
         JsVar *child = jsvLock(var->firstChild);
-        jsvUnRef(child);
+        jsvUnRef(child); var->firstChild = 0; // we just unlink the child
+        // now try and free it
         if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
             jsvFreeLoopedRefPtr(child);
         jsvUnLock(child);
-        var->firstChild = 0;
       }
+    }
+
+    /* This could still be reffed from itself - but if we haven't managed
+     * to get rid of it, it's because there was another ref!
+     *
+     *     WE ARE       |
+     *      HERE        v
+     *------> O-------> O ----->O
+     *        ^                 |
+     *        |-----------------
+     *
+     *
+     *  We came in from the LHS, and we have just cut the link to the right (and the link has been cut to us):
+     *
+     *
+     *     WE ARE       |
+     *      HERE        v
+     *        O         O ----->O
+     *        ^                 |
+     *        |-----------------
+     *
+     *
+     * So actually we're fine - DO NOT DELETE US!!!
+     *  */
+    if (var->refs > 0) {
+      return;
     }
 
     /* Now, unref children - see jsvar.h comments for how! */
