@@ -85,7 +85,7 @@
         In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
 
   MEDIUM PRIORITY:
-	When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
+	    When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         Add Array.splice
         Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
@@ -97,18 +97,28 @@
         Save pin input/output state with save()
         setBusyIndicator warns about invalid pin when using no argument, or undefined
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
+        Change setWatch to allow only on rise or fall as an option
+        When Ctrl-C, should print the line that the break first appeared on
  
   LOW PRIORITY
-        On assert fail, should restart interpreter and try and recover
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Add 'delete' keyword for killing array items?
-        String equals to compare whole 32 bit words
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         'Array.prototype.clear = function () { this.X = 23; };'
+        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
+        Add nice iterators for strings and maybe arrays (struct + inline fns)
+        Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
+        setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
+        digitalWrite with multiple pins doesn't set them all at once
+
+  VERY LOW PRIORITY
+        Allow console to be put on a user-generated device (eg, LCD) - provide one fn for writing, and allow chars to be poked in
+        On assert fail, should restart interpreter and try and recover (rare now!)
+        String equals to compare whole 32 bit words
         Could store vars in arrays/objects/functions as a binary tree instead of a linked list
         Maybe keep track of whether JsVar was changed/written to? jsvLockWritable
         Memory manager to handle storing rarely used refs in flash
@@ -118,11 +128,6 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
-        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
-        Add nice iterators for strings and maybe arrays (struct + inline fns)
-        Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
-        setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
-        
 
 [/TODO]
 
