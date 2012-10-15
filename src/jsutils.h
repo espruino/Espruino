@@ -99,6 +99,7 @@
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
         Change setWatch to allow only on rise or fall as an option
         When Ctrl-C, should print the line that the break first appeared on
+        setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
