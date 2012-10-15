@@ -79,6 +79,7 @@
             Removed some hard-coded arrays in favour of JsVar strings
             Fix confusion with jsvIsName/jsvIsString
             Handle numpad end key
+            Add code to check stack and stop stack overflow if too much recursion
 [/CHANGELOG]
 
 [TODO]
@@ -86,7 +87,6 @@
 
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
-        recursion is broken on device
         In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
         better digitalPulse
 

@@ -172,13 +172,13 @@ extern int _end;
 bool jspCheckStackPosition() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
-  if ((char*)frame < ((char*)&_end)+512/*512 bytes leeway*/) {
-    jsiConsolePrint("frame:");
+  if ((char*)frame < ((char*)&_end)+1024/*so many bytes leeway*/) {
+/*    jsiConsolePrint("frame:");
     jsiConsolePrintInt((int)frame);
     jsiConsolePrint(",end:");
     jsiConsolePrintInt((int)&_end);
-    jsiConsolePrint("\n");
-    jsError("Too much recursion - the stack is about to overflow");
+    jsiConsolePrint("\n");*/
+    jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenStart );
     jspSetInterrupted(true);
     return false;
   }
@@ -602,8 +602,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *a
       return returnVar;
     else
       return 0;
-  } else if (isParsing) {
-    // function, but not executing - just parse args and be done
+  } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
     JSP_MATCH('(');
     while (execInfo.lex->tk != ')') {
       JsVar *value = jspeBase();
@@ -611,9 +610,8 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *a
       if (execInfo.lex->tk!=')') JSP_MATCH(',');
     }
     JSP_MATCH(')');
-    /* function will be a blank scriptvarlink if we're not executing,
-     * so just return it rather than an alloc/free */
-    return function;
+    /* Do not return function, as it will be unlocked! */
+    return 0;
   } else return 0;
 }
 
