@@ -75,6 +75,7 @@
             add Array.map(fn(x), thisArg)
             For newline, count [] and () (as well as {}) - also knows about comments/strings/etc
             Fix assert fail is setTimeout with non-function
+            If space at end of input line, enter still executes
 [/CHANGELOG]
 
 [TODO]
@@ -84,6 +85,7 @@
         Move load/save/etc into 'System' class for speed
         Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable 
         In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
+        better digitalPulse
 
   MEDIUM PRIORITY:
 	    When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
@@ -95,12 +97,13 @@
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
         Save state on setWatch interrupt (e.state)
-        Save pin input/output state with save()
+        Save pin input/output state along with save()
         setBusyIndicator warns about invalid pin when using no argument, or undefined
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
         Change setWatch to allow only on rise or fall as an option
         When Ctrl-C, should print the line that the break first appeared on
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
+        Add shiftOut function
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
