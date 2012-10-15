@@ -40,6 +40,7 @@ typedef enum {
  IS_HAD_27_91,
  IS_HAD_27_91_49,
  IS_HAD_27_91_51,
+ IS_HAD_27_91_52,
 } InputState;
 
 TODOFlags todo = TODO_NOTHING;
@@ -699,7 +700,8 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 65 - up
   // 27 then 91 then 66 - down
   // 27 then 91 then 51 then 126 - backwards delete
-  // 27 then 91 then 49 then 126 - home
+  // 27 then 91 then 52 then 126 - numpad end
+  // 27 then 91 then 49 then 126 - numpad home
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
 
@@ -753,16 +755,23 @@ void jsiHandleChar(char ch) {
       inputState=IS_HAD_27_91_49;
     } else if (ch==51) {
       inputState=IS_HAD_27_91_51;
+    } else if (ch==52) {
+      inputState=IS_HAD_27_91_52;
     }
   } else if (inputState==IS_HAD_27_91_49) {
     inputState = IS_NONE;
-    if (ch==126) { // Home?? (or terminal maybe?)
+    if (ch==126) { // Numpad Home
       jsiHandleHome();
     }
   } else if (inputState==IS_HAD_27_91_51) {
     inputState = IS_NONE;
     if (ch==126) { // Numpad (forwards) Delete
       jsiHandleDelete(false/*not backspace*/);
+    }
+  } else if (inputState==IS_HAD_27_91_52) {
+    inputState = IS_NONE;
+    if (ch==126) { // Numpad End
+      jsiHandleEnd();
     }
   } else {  
     inputState = IS_NONE;

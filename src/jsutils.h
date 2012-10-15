@@ -78,6 +78,7 @@
             If space at end of input line, enter still executes
             Removed some hard-coded arrays in favour of JsVar strings
             Fix confusion with jsvIsName/jsvIsString
+            Handle numpad end key
 [/CHANGELOG]
 
 [TODO]
@@ -106,7 +107,7 @@
         When Ctrl-C, should print the line that the break first appeared on
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
         Add shiftOut function
-        Lexer could store a name, so when line numbers are reported, it can say where
+        Lexer could store a name, so when line numbers are reported for errors, it can say where
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
