@@ -169,7 +169,7 @@ static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTY
 static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; } ///< The extra bits dumped onto the end of a string to store more data
 static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }
 static inline bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
-static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER_MASK) == JSV_FUNCTION_PARAMETER; }
 static inline bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
 static inline bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 static inline bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }

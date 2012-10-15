@@ -135,8 +135,20 @@ void jsvFreePtr(JsVar *var) {
     // we shouldn't be linked from anywhere!
     assert(!var->nextSibling && !var->prevSibling);
 
+    // Names Link to other things
+    if (jsvIsName(var)) {
+      if (var->firstChild) {
+        JsVar *child = jsvLock(var->firstChild);
+        jsvUnRef(child);
+        if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
+            jsvFreeLoopedRefPtr(child);
+        jsvUnLock(child);
+        var->firstChild = 0;
+      }
+    }
+
     /* Now, unref children - see jsvar.h comments for how! */
-    if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
+    if (jsvIsString(var) || jsvIsStringExt(var)) {
       JsVarRef stringDataRef = var->lastChild;
       var->lastChild = 0;
       if (stringDataRef) {
@@ -146,24 +158,6 @@ void jsvFreePtr(JsVar *var) {
         child->nextSibling = 0;
         jsvUnRef(child);
         jsvUnLock(child);
-      }
-      // Names Link to other things
-      if (jsvIsName(var)) {
-        JsVarRef childref = var->firstChild;
-        var->firstChild = 0;
-        while (childref) {
-          JsVar *child = jsvLock(childref);
-          childref = child->nextSibling;
-          child->prevSibling = 0;
-          child->nextSibling = 0;
-          jsvUnRef(child);
-          if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
-              jsvFreeLoopedRefPtr(child);
-          jsvUnLock(child);
-        }
-      } else {
-        // StringExts use firstChild for character data, so ignore them
-        assert(jsvIsStringExt(var) || !var->firstChild);
       }
     } else if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
       JsVarRef childref = var->firstChild;
@@ -662,7 +656,7 @@ void jsvAppendCharacter(JsVar *var, char ch) {
 /** If var is a string, lock and return it, else
  * create a new string. unlockVar means this will auto-unlock 'var'  */
 JsVar *jsvAsString(JsVar *var, bool unlockVar) {
-  if (jsvIsString(var) || jsvIsName(var)) {
+  if (jsvIsString(var)) {
     if (unlockVar) return var;
     return jsvLockAgain(var);
   }
@@ -670,7 +664,6 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
    * TODO: If this is an object, search for 'toString'
    * TODO: Try and do without the string buffer
    */
-
   char buf[JSVAR_STRING_OP_BUFFER_SIZE];
   jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);
   if (unlockVar) jsvUnLock(var);
@@ -680,7 +673,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters.
  *  stridx can be negative to go from end of string */
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
-  assert(jsvIsString(str) || jsvIsName(str));
+  assert(jsvHasCharacterData(str));
   str = jsvLockAgain(str);
 
   JsVar *block = jsvLockAgain(var);
@@ -1481,7 +1474,6 @@ void jsvTraceLockInfo(JsVar *v) {
 void jsvTrace(JsVarRef ref, int indent) {
 #ifndef SDCC
     int i;
-    char buf[JS_ERROR_BUF_SIZE];
     JsVar *var;
 
     for (i=0;i<indent;i++) jsiConsolePrint(" ");
@@ -1497,22 +1489,23 @@ void jsvTrace(JsVarRef ref, int indent) {
     if (jsvIsName(var)) {
       if (jsvIsFunctionParameter(var))
         jsiConsolePrint("Param ");
-      jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
+      JsVar *str = jsvAsString(var, false);
       if (jsvIsInt(var)) {
         jsiConsolePrint("Name: int ");
-        jsiConsolePrint(buf);
+        jsiConsolePrintStringVar(str);
         jsiConsolePrint("  ");
       } else if (jsvIsFloat(var)) {
         jsiConsolePrint("Name: flt ");
-        jsiConsolePrint(buf);
+        jsiConsolePrintStringVar(str);
         jsiConsolePrint("  ");
       } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
         jsiConsolePrint("Name: '");
-        jsiConsolePrint(buf);
+        jsiConsolePrintStringVar(str);
         jsiConsolePrint("'  ");
       } else {
         assert(0);
       }
+      jsvUnLock(str);
       // go to what the name points to
       ref = var->firstChild;
       jsvUnLock(var);
@@ -1543,15 +1536,14 @@ void jsvTrace(JsVarRef ref, int indent) {
     }
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
-      if (jsvIsString(var) || jsvIsName(var))
-        jsiConsolePrintStringVar(var);
-      else {
-        jsvGetString(var, buf, JS_ERROR_BUF_SIZE);
-        jsiConsolePrint(buf);
+      JsVar *str = jsvAsString(var, false);
+      if (str) {
+        jsiConsolePrintStringVar(str);
+        jsvUnLock(str);
       }
     }
 
-    if (jsvIsString(var) || jsvIsStringExt(var) || jsvIsName(var)) {
+    if (jsvIsString(var) || jsvIsStringExt(var)) {
       if (!jsvIsStringExt(var) && var->firstChild) { // stringext don't have children (the use them for chars)
         jsiConsolePrint("( Multi-block string ");
         JsVarRef child = var->firstChild;

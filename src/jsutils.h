@@ -76,6 +76,8 @@
             For newline, count [] and () (as well as {}) - also knows about comments/strings/etc
             Fix assert fail is setTimeout with non-function
             If space at end of input line, enter still executes
+            Removed some hard-coded arrays in favour of JsVar strings
+            Fix confusion with jsvIsName/jsvIsString
 [/CHANGELOG]
 
 [TODO]
@@ -83,7 +85,7 @@
 
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
-        Use R13/ESP to read stack size and check it against a known max size - stop stack overflows: http://stackoverflow.com/questions/2114163/reading-a-register-value-into-a-c-variable 
+        recursion is broken on device
         In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
         better digitalPulse
 
@@ -104,6 +106,7 @@
         When Ctrl-C, should print the line that the break first appeared on
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
         Add shiftOut function
+        Lexer could store a name, so when line numbers are reported, it can say where
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -119,6 +122,8 @@
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
         setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         digitalWrite with multiple pins doesn't set them all at once
+        Implement call to Object.toString when string required
+        JSON.stringify to escape characters in strings
 
   VERY LOW PRIORITY
         Allow console to be put on a user-generated device (eg, LCD) - provide one fn for writing, and allow chars to be poked in
@@ -215,7 +220,7 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JSVAR_STRING_OP_BUFFER_SIZE 64 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
-#define JS_ERROR_TOKEN_BUF_SIZE 16
+#define JS_ERROR_TOKEN_BUF_SIZE 16 // see jslTokenAsString
 
 #define JSPARSE_MAX_SCOPES  32
 #define JSPARSE_MAX_LOOP_ITERATIONS 8192
@@ -260,6 +265,7 @@ typedef enum {
     JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
+    JSV_FUNCTION_PARAMETER_MASK = JSV_VARTYPEMASK | JSV_NAME,
     // these are useful ONLY because the debugger picks them up :)
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,

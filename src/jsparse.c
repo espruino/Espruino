@@ -166,6 +166,26 @@ void jspeiLoadScopesFromVar(JsVar *arr) {
     }
 }
 // -----------------------------------------------
+#ifdef ARM
+extern int _end;
+#endif
+bool jspCheckStackPosition() {
+#ifdef ARM
+  void *frame = __builtin_frame_address(0);
+  if ((char*)frame < ((char*)&_end)+512/*512 bytes leeway*/) {
+    jsiConsolePrint("frame:");
+    jsiConsolePrintInt((int)frame);
+    jsiConsolePrint(",end:");
+    jsiConsolePrintInt((int)&_end);
+    jsiConsolePrint("\n");
+    jsError("Too much recursion - the stack is about to overflow");
+    jspSetInterrupted(true);
+    return false;
+  }
+#endif
+  return true;
+}
+
 
 // Set execFlags such that we are not executing
 void jspSetNoExecute() {
@@ -251,7 +271,7 @@ bool jspParseTripleFunction(JsVar **a, JsVar **b, JsVar **c) {
   JSP_MATCH(')');
   return true;
 }
-// -----------------------------------------------
+// ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails
 bool jspeFunctionArguments(JsVar *funcVar) {
@@ -398,6 +418,8 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *a
   if (JSP_SHOULD_EXECUTE && !function) {
       jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastEnd );
   }
+
+  if (JSP_SHOULD_EXECUTE) jspCheckStackPosition(); // try and ensure that we won't overflow our stack
 
   if (JSP_SHOULD_EXECUTE && function) {
     JsVar *functionRoot;
@@ -597,9 +619,10 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *a
 
 JsVar *jspeFactor() {
     if (execInfo.lex->tk=='(') {
-        JsVar *a;
+        JsVar *a = 0;
         JSP_MATCH('(');
-        a = jspeBase();
+        if (jspCheckStackPosition())
+          a = jspeBase();
         if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
         return a;
     }

@@ -527,12 +527,15 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     } else callbackString(callbackData, "{}");
   } else if (jsvIsString(var)) {
     callbackString(callbackData, "\"");
+    // TODO: escape
     callbackVar(callbackData, var);
     callbackString(callbackData, "\"");
   } else {
-    char buf[JSLEX_MAX_TOKEN_LENGTH];
-    jsvGetString(var, buf, JSLEX_MAX_TOKEN_LENGTH);
-    callbackString(callbackData, buf);
+    JsVar *str = jsvAsString(var, false);
+    if (str) {
+      callbackVar(callbackData, str);
+      jsvUnLock(str);
+    }
   }
   // TODO: functions
 }

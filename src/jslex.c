@@ -344,6 +344,7 @@ void jslReset(JsLex *lex) {
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {
+  // see JS_ERROR_TOKEN_BUF_SIZE
   if (token>32 && token<128) {
       assert(len>=4);
       str[0] = '\'';
