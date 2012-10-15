@@ -1177,7 +1177,7 @@ void jsiDumpState() {
   jsvUnLock(timerArrayPtr);
   while (timerRef) {
     JsVar *timerNamePtr = jsvLock(timerRef);
-    JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
+    JsVar *timerCallback = jsvSkipOneNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
     bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false)));
     JsVar *timerInterval = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
@@ -1198,7 +1198,7 @@ void jsiDumpState() {
    jsvUnLock(watchArrayPtr);
    while (watchRef) {
      JsVar *watchNamePtr = jsvLock(watchRef);
-     JsVar *watchCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
+     JsVar *watchCallback = jsvSkipOneNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
      JsVar *watchRecur = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
      JsVar *watchPin = jsvSkipNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
      jsiConsolePrint("setWatch(");
@@ -1480,9 +1480,10 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          */
         bool recurring = strcmp(name,"setInterval")==0;
         JsVar *func, *timeout;
-        jspParseFunction(0, &func, &timeout, 0, 0);
+        jspParseFunction(JSP_NOSKIP_A, &func, &timeout, 0, 0);
+        JsVar *skippedFunc = jsvSkipName(func);
         JsVar *itemIndex = 0;
-        if (!jsvIsFunction(func) && !jsvIsString(func)) {
+        if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
           jsError("Function or String not supplied!");
         } else {
           // Create a new timer
@@ -1507,6 +1508,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           jsvUnLock(timerArrayPtr);
           jsvUnLock(timerPtr);
         }
+        jsvUnLock(skippedFunc);
         jsvUnLock(func);
         jsvUnLock(timeout);
         //jsvTrace(jsiGetParser()->root, 0);
@@ -1522,7 +1524,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         JsVarInt itemIndex = -1;
         JsVar *funcVar, *pinVar, *recurringVar;
         jspParseFunction(0, &funcVar, &pinVar, &recurringVar, 0);
-        if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
+        JsVar *skippedFunc = jsvSkipName(funcVar);
+        if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
           jsError("Function or String not supplied!");
         } else {
           int pin = jshGetPinFromVar(pinVar);
@@ -1543,6 +1546,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           jsvUnLock(watchPtr);
           jshPinWatch(pin, true);
         }
+        jsvUnLock(skippedFunc);
         jsvUnLock(funcVar);
         jsvUnLock(pinVar);
         jsvUnLock(recurringVar);

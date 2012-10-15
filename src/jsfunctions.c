@@ -525,10 +525,9 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
        callbackVar(callbackData, codeVar);
        jsvUnLock(codeVar);
     } else callbackString(callbackData, "{}");
-  } else if (jsvIsString(var)) {
+  } else if (jsvIsString(var) && !jsvIsName(var)) {
     callbackString(callbackData, "\"");
-    // TODO: escape
-    callbackVar(callbackData, var);
+    callbackVar(callbackData, var); // FIXME: escape the string
     callbackString(callbackData, "\"");
   } else {
     JsVar *str = jsvAsString(var, false);

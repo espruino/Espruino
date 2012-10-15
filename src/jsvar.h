@@ -227,13 +227,55 @@ static inline JsVarFloat jsvGetDoubleAndUnLock(JsVar *v) { JsVarFloat f = jsvGet
 static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
 
 
+/** If a is a name skip it and go to what it points to - and so on.
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0.  */
+static inline JsVar *jsvSkipName(JsVar *a) {
+  JsVar *pa = a;
+  if (!a) return 0;
+  while (jsvIsName(pa)) {
+    JsVarRef n = pa->firstChild;
+    if (pa!=a) jsvUnLock(pa);
+    if (!n) return 0;
+    pa = jsvLock(n);
+  }
+  if (pa==a) jsvLockAgain(pa);
+  return pa;
+}
 
 /** If a is a name skip it and go to what it points to.
- * ALWAYS locks - so must unlock what it returns. */
-INLINE_FUNC JsVar *jsvSkipName(JsVar *a);
+ * ALWAYS locks - so must unlock what it returns. It MAY
+ * return 0.  */
+static inline JsVar *jsvSkipOneName(JsVar *a) {
+  JsVar *pa = a;
+  if (!a) return 0;
+  if (jsvIsName(pa)) {
+    JsVarRef n = pa->firstChild;
+    if (pa!=a) jsvUnLock(pa);
+    if (!n) return 0;
+    pa = jsvLock(n);
+  }
+  if (pa==a) jsvLockAgain(pa);
+  return pa;
+}
+
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used inline */
-INLINE_FUNC JsVar *jsvSkipNameAndUnlock(JsVar *a); // TODO: Unlock->UnLock
+ * a name, so it can be used INLINE_FUNC */
+static inline JsVar *jsvSkipNameAndUnlock(JsVar *a) {
+  JsVar *b = jsvSkipName(a);
+  jsvUnLock(a);
+  return b;
+}
+
+/** Same as jsvSkipOneName, but ensures that 'a' is unlocked if it was
+ * a name, so it can be used INLINE_FUNC */
+static inline JsVar *jsvSkipOneNameAndUnlock(JsVar *a) {
+  JsVar *b = jsvSkipOneName(a);
+  jsvUnLock(a);
+  return b;
+}
+
+
 INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
 INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
 

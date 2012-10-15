@@ -80,6 +80,7 @@
             Fix confusion with jsvIsName/jsvIsString
             Handle numpad end key
             Add code to check stack and stop stack overflow if too much recursion
+            Ensure that setTimeout/setWatch store the link to a function, not the function
 [/CHANGELOG]
 
 [TODO]
@@ -87,7 +88,6 @@
 
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
-        In jsconsole, "function a() {console.log('foo');}setTimeout(a,1000);function a() {console.log('bar');}" prints bar. In Espruino it prints foo.
         better digitalPulse
 
   MEDIUM PRIORITY:
