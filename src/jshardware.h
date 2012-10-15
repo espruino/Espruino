@@ -128,6 +128,8 @@ void jshTransmit(IOEventFlags device, unsigned char data);
 void jshTransmitFlush();
 // Clear everything from a device
 void jshTransmitClearDevice(IOEventFlags device);
+/// Do we have anything we need to send?
+bool jshHasTransmitData();
 
 #ifdef ARM
 // Try and get a character for transmission - could just return -1 if nothing
@@ -135,7 +137,7 @@ int jshGetCharToTransmit(IOEventFlags device);
 
 // ----------------------------------------------------------------------------
 //                                                                      SYSTICK
-///On SysTick interrupt, call this
+// On SYSTick interrupt, call this
 void jshDoSysTick();
 #ifdef USB
 // Kick the USB SysTick watchdog - we need this to see if we have disconnected or not

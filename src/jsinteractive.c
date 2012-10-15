@@ -1100,7 +1100,8 @@ void jsiIdle() {
 #ifdef ARM
   if (!hasDoneAnything && // once around the idle loop without having done any work already (just in case)
       !jshHasEvents() && //no events have arrived in the mean time
-      minTimeUntilNext>SYSTICK_RANGE*2) { // we are sure we won't miss anything!
+      !jshHasTransmitData() && //nothing left to send over serial?
+      minTimeUntilNext > SYSTICK_RANGE*5/4) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
     jshSleep();
   }
 #endif

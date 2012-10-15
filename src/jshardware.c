@@ -110,7 +110,7 @@ int jshGetCharToTransmit(IOEventFlags device) {
 void jshTransmitFlush() {
 #ifdef ARM
   jsiSetBusy(true);
-  while (txHead != txTail) ; // wait for send to finish
+  while (jshHasTransmitData()) ; // wait for send to finish
   jsiSetBusy(false);
 #endif
 }
@@ -119,6 +119,14 @@ void jshTransmitFlush() {
 void jshTransmitClearDevice(IOEventFlags device) {
 #ifdef ARM
   while (jshGetCharToTransmit(device)>=0);
+#endif
+}
+
+bool jshHasTransmitData() {
+#ifdef ARM
+  return txHead != txTail;
+#else
+  return false;
 #endif
 }
 
@@ -624,8 +632,11 @@ void jshInit() {
         RCC_APB2Periph_GPIOD |
         RCC_APB2Periph_AFIO, ENABLE);
  #endif
+  // Slow the IO clocks down - we don't need them going so fast!
+  RCC_PCLK1Config(RCC_HCLK_Div16);
+  RCC_PCLK2Config(RCC_HCLK_Div16);
   /* System Clock */
-  SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
+  SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   /* Initialise LEDs LD3&LD4, both on */
   GPIO_InitTypeDef GPIO_InitStructure;
