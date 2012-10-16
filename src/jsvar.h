@@ -163,6 +163,10 @@ static inline JsVarRef jsvGetRef(JsVar *var) {
 #endif
 }
 
+/** Given a variable, return the basic object name of it */
+const char *jsvGetBasicObjectName(JsVar *v);
+bool jsvIsBuiltInObject(const char *name);
+
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }

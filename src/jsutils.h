@@ -88,6 +88,7 @@
             Added setSleepIndicator
             Fix line/col indicator in errors/warnings
             Fix JSON parsing and printing when 'undefined' encountered
+            Rewritten object handling code to be way more standard JavaScript compliant
 [/CHANGELOG]
 
 [TODO]
@@ -146,8 +147,10 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
+        SkipNameAndUnlock -> SkipNameAndUnLock
 
 [/TODO]
+
 
 When presenting:
    Show small time to first code
@@ -240,7 +243,8 @@ typedef unsigned long long JsVarIntUnsigned;
 // javascript specific names
 #define JSPARSE_RETURN_VAR "return"
 #define JSPARSE_THIS_VAR "this"
-#define JSPARSE_PROTOTYPE_CLASS "prototype"
+#define JSPARSE_PROTOTYPE_VAR "prototype"
+#define JSPARSE_INHERITS_VAR "__proto__"
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 #define JSPARSE_FUNCTION_SCOPE_NAME "#scope#"

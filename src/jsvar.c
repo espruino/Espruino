@@ -360,6 +360,34 @@ JsVarRef jsvUnLock(JsVar *var) {
     return ref;
 }
 
+/** Given a variable, return the basic object name of it */
+const char *jsvGetBasicObjectName(JsVar *v) {
+  if (jsvIsInt(v))
+      return "Integer";
+  if (jsvIsFloat(v))
+      return "Double";
+  if (jsvIsString(v))
+      return "String";
+  if (jsvIsArray(v))
+      return "Array";
+  if (jsvIsObject(v))
+      return "Object";
+  if (jsvIsFunction(v))
+      return "Function";
+  return 0;
+}
+
+bool jsvIsBuiltInObject(const char *name) {
+  return
+      strcmp(name, "String")==0 ||
+      strcmp(name, "Object")==0 ||
+      strcmp(name, "Array")==0 ||
+      strcmp(name, "Integer")==0 ||
+      strcmp(name, "Double")==0 ||
+      strcmp(name, "Function")==0 ||
+      strcmp(name, "Math")==0 ||
+      strcmp(name, "JSON")==0;
+}
 
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // quick checks
@@ -1566,6 +1594,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     jsvUnLock(var);
 #endif
 }
+
 
 /** Recursively mark the variable */
 static void jsvGarbageCollectMarkUsed(JsVar *var) {

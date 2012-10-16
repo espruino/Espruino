@@ -27,13 +27,13 @@ void jsfSetHandleFunctionCallDelegate(JsfHandleFunctionCallDelegate delegate) {
 /** Note, if this function actually does handle a function call, it
  * MUST return something. If it needs to return undefined, that's tough :/
  */
-JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
+JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentName, const char *name) {
   if (jsfHandleFunctionCallDelegate) {
-    JsVar *v = jsfHandleFunctionCallDelegate(execInfo, a, name);
+    JsVar *v = jsfHandleFunctionCallDelegate(execInfo, parent, name);
     if (v!=JSFHANDLEFUNCTIONCALL_UNHANDLED) return v;
   }
 
-  if (a==0) { // Special cases for where we're just a basic function
+  if (parent==0) { // Special cases for where we're just a basic function
     if (strcmp(name,"eval")==0) {
       /*JS* function eval(code)
        *JS*  Evaluate a string containing JavaScript code
@@ -49,185 +49,186 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
   } else {
     // Is actually a method on some variable
     if (strcmp(name,"length")==0) {
-      if (jsvIsArray(a)) {
+      if (jsvIsArray(parent)) {
       /*JS* property Array.length
        *JS*  Return the length of the array
        */
         jslMatch(execInfo->lex, LEX_ID);
-        return jsvNewFromInteger(jsvGetArrayLength(a));
+        return jsvNewFromInteger(jsvGetArrayLength(parent));
       }
-      if (jsvIsString(a)) {
+      if (jsvIsString(parent)) {
       /*JS* property String.length
        *JS*  Return the number of characters in the string
        */
         jslMatch(execInfo->lex, LEX_ID);
-        return jsvNewFromInteger((JsVarInt)jsvGetStringLength(a));
+        return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
       }
     }
     // --------------------------------- built-in class stuff
-    if (jsvGetRef(a) == execInfo->parse->intClass) {
-      if (strcmp(name,"parseInt")==0) {
-      /*JS* method Integer.parseInt(string)
-       *JS*  Convert a string representing a number into a number
-       */
-        char buffer[16];
-        JsVar *v = jspParseSingleFunction();
-        jsvGetString(v, buffer, 16);
-        jsvUnLock(v);
-        return jsvNewFromInteger(stringToInt(buffer));
-      }
-      if (strcmp(name,"valueOf")==0) {
-      /*JS* method Integer.valueOf(char)
-       *JS*  Given a string containing a single character, return the numeric value of it
-       */
-        // value of a single character
-        int c;
-        JsVar *v = jspParseSingleFunction();
-        if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
-          jsvUnLock(v);
-          return jsvNewFromInteger(0);
-        }
-        c = (int)v->varData.str[0];
-        jsvUnLock(v);
-        return jsvNewFromInteger(c);
-      }
-    }
-    if (jsvGetRef(a) == execInfo->parse->doubleClass) {
-      if (strcmp(name,"doubleToIntBits")==0) {
-      /*JS* method Double.doubleToIntBits(val)
-       *JS*  Convert the floating point value given into an integer representing the bits contained in it
-       */
-        JsVar *v = jspParseSingleFunction();
-        JsVarFloat f = jsvGetDoubleAndUnLock(v);
-        return jsvNewFromInteger(*(JsVarInt*)&f);
-      }
-    }
-    if (jsvGetRef(a) == execInfo->parse->mathClass) {
-      if (strcmp(name,"E")==0) {
-      /*JS* property Math.E
-       *JS*  The value of E - 2.71828182846
-       */
-        jspParseVariableName();
-        return jsvNewFromFloat(2.71828182846);
-      }
-      if (strcmp(name,"PI")==0) {
-      /*JS* property Math.PI
-       *JS*  The value of PI - 3.14159265359
-       */
-        jspParseVariableName();
-        return jsvNewFromFloat(3.14159265359);
-      }
-      if (strcmp(name,"abs")==0) {
-      /*JS* method Math.abs(x)
-       *JS*  Return the absolute value of X (as a double)
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        if (x<0) x=-x;
-        return jsvNewFromFloat(x);
-      }
-#ifdef USE_MATH
-      if (strcmp(name,"acos")==0) {
-      /*JS* method Math.acos(x)
-       *JS*  Arc Cosine. Takes a double between -1 and 1 and produce a value between 0 and PI.
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(acos(x));
-      }
-      if (strcmp(name,"asin")==0) {
-      /*JS* method Math.asin(x)
-       *JS*  Arc Sine. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(asin(x));
-      }
-      if (strcmp(name,"atan")==0) {
-      /*JS* method Math.atan(x)
-       *JS*  Arc Tangent. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(atan(x));
-      }
-      if (strcmp(name,"atan2")==0) {
-      /*JS* method Math.atan2(x,y)
-       *JS*  Arc Tangent of y/x. Takes any values and produces values between 0 and PI.
-       */
-        JsVar *x,*y;
-        jspParseFunction(0,&y,&x,0,0);
-        return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
-      }
-      if (strcmp(name,"cos")==0) {
-      /*JS* method Math.cos(rads)
-       *JS*  Cosine. Takes any value in radians and produces values between -1 and 1
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(cos(x));
-      }
-      if (strcmp(name,"round")==0) {
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromInteger(lround(x));
-      }
-      if (strcmp(name,"sin")==0) {
-      /*JS* method Math.sin(rads)
-       *JS*  Sine. Takes any value in radians and produces values between -1 and 1
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(sin(x));
-      }
-      if (strcmp(name,"sqrt")==0) {
-      /*JS* method Math.sqrt(x)
-       *JS*  Return the Square Root of X
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(sqrt(x));
-      }
-      if (strcmp(name,"tan")==0) {
-      /*JS* method Math.tan(rads)
-       *JS*  Tangent. Takes any value in radians and produces the Tangent
-       */
-        JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
-        return jsvNewFromFloat(tan(x));
-      }
-#endif
-      if (strcmp(name,"random")==0) {
-      /*JS* method Math.random()
-       *JS*  Return a random floating point value between 0 and 1
-       */
-        if (jspParseEmptyFunction())
-          return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
-      }
-    }
-    if (jsvGetRef(a) == execInfo->parse->jsonClass) {
-        if (strcmp(name,"stringify")==0) {
-      /*JS* method JSON.stringify(object)
-       *JS*  Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval 
-       */
+    if (parentName && jsvIsFunction(parent)) {
+      if (jsvIsStringEqual(parentName, "Integer")) {
+        if (strcmp(name,"parseInt")==0) {
+        /*JS* method Integer.parseInt(string)
+         *JS*  Convert a string representing a number into a number
+         */
+          char buffer[16];
           JsVar *v = jspParseSingleFunction();
-          JsVar *result = jsvNewFromString("");
-          if (result) // could be out of memory
-              jsfGetJSON(v, result);
+          jsvGetString(v, buffer, 16);
           jsvUnLock(v);
-          return result;
+          return jsvNewFromInteger(stringToInt(buffer));
         }
-        if (strcmp(name,"parse")==0) {
-      /*JS* method JSON.parse(string)
-       *JS*  Parse the given JSON string into a JavaScript object 
-       */
+        if (strcmp(name,"valueOf")==0) {
+        /*JS* method Integer.valueOf(char)
+         *JS*  Given a string containing a single character, return the numeric value of it
+         */
+          // value of a single character
+          int c;
           JsVar *v = jspParseSingleFunction();
-          JsVar *res = 0;
-          JsVar *bracketed = jsvNewFromString("(");
-          if (bracketed) { // could be out of memory
-            jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+          if (!jsvIsString(v) || jsvGetStringLength(v)!=1) {
             jsvUnLock(v);
-            jsvAppendString(bracketed, ")");
-            res = jspEvaluateVar(execInfo->parse, bracketed);
-            jsvUnLock(bracketed);
+            return jsvNewFromInteger(0);
           }
-          return res;
+          c = (int)v->varData.str[0];
+          jsvUnLock(v);
+          return jsvNewFromInteger(c);
         }
-        // TODO: Add JSON.parse
       }
+      if (jsvIsStringEqual(parentName, "Double")) {
+        if (strcmp(name,"doubleToIntBits")==0) {
+        /*JS* method Double.doubleToIntBits(val)
+         *JS*  Convert the floating point value given into an integer representing the bits contained in it
+         */
+          JsVar *v = jspParseSingleFunction();
+          JsVarFloat f = jsvGetDoubleAndUnLock(v);
+          return jsvNewFromInteger(*(JsVarInt*)&f);
+        }
+      }
+      if (jsvIsStringEqual(parentName, "Math")) {
+        if (strcmp(name,"E")==0) {
+        /*JS* property Math.E
+         *JS*  The value of E - 2.71828182846
+         */
+          jspParseVariableName();
+          return jsvNewFromFloat(2.71828182846);
+        }
+        if (strcmp(name,"PI")==0) {
+        /*JS* property Math.PI
+         *JS*  The value of PI - 3.14159265359
+         */
+          jspParseVariableName();
+          return jsvNewFromFloat(3.14159265359);
+        }
+        if (strcmp(name,"abs")==0) {
+        /*JS* method Math.abs(x)
+         *JS*  Return the absolute value of X (as a double)
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          if (x<0) x=-x;
+          return jsvNewFromFloat(x);
+        }
+  #ifdef USE_MATH
+        if (strcmp(name,"acos")==0) {
+        /*JS* method Math.acos(x)
+         *JS*  Arc Cosine. Takes a double between -1 and 1 and produce a value between 0 and PI.
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(acos(x));
+        }
+        if (strcmp(name,"asin")==0) {
+        /*JS* method Math.asin(x)
+         *JS*  Arc Sine. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(asin(x));
+        }
+        if (strcmp(name,"atan")==0) {
+        /*JS* method Math.atan(x)
+         *JS*  Arc Tangent. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(atan(x));
+        }
+        if (strcmp(name,"atan2")==0) {
+        /*JS* method Math.atan2(x,y)
+         *JS*  Arc Tangent of y/x. Takes any values and produces values between 0 and PI.
+         */
+          JsVar *x,*y;
+          jspParseFunction(0,&y,&x,0,0);
+          return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
+        }
+        if (strcmp(name,"cos")==0) {
+        /*JS* method Math.cos(rads)
+         *JS*  Cosine. Takes any value in radians and produces values between -1 and 1
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(cos(x));
+        }
+        if (strcmp(name,"round")==0) {
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromInteger(lround(x));
+        }
+        if (strcmp(name,"sin")==0) {
+        /*JS* method Math.sin(rads)
+         *JS*  Sine. Takes any value in radians and produces values between -1 and 1
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(sin(x));
+        }
+        if (strcmp(name,"sqrt")==0) {
+        /*JS* method Math.sqrt(x)
+         *JS*  Return the Square Root of X
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(sqrt(x));
+        }
+        if (strcmp(name,"tan")==0) {
+        /*JS* method Math.tan(rads)
+         *JS*  Tangent. Takes any value in radians and produces the Tangent
+         */
+          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          return jsvNewFromFloat(tan(x));
+        }
+  #endif
+        if (strcmp(name,"random")==0) {
+        /*JS* method Math.random()
+         *JS*  Return a random floating point value between 0 and 1
+         */
+          if (jspParseEmptyFunction())
+            return jsvNewFromFloat((JsVarFloat)rand() / (JsVarFloat)RAND_MAX);
+        }
+      }
+      if (jsvIsStringEqual(parentName, "JSON")) {
+          if (strcmp(name,"stringify")==0) {
+        /*JS* method JSON.stringify(object)
+         *JS*  Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval
+         */
+            JsVar *v = jspParseSingleFunction();
+            JsVar *result = jsvNewFromString("");
+            if (result) // could be out of memory
+                jsfGetJSON(v, result);
+            jsvUnLock(v);
+            return result;
+          }
+          if (strcmp(name,"parse")==0) {
+        /*JS* method JSON.parse(string)
+         *JS*  Parse the given JSON string into a JavaScript object
+         */
+            JsVar *v = jspParseSingleFunction();
+            JsVar *res = 0;
+            JsVar *bracketed = jsvNewFromString("(");
+            if (bracketed) { // could be out of memory
+              jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+              jsvUnLock(v);
+              jsvAppendString(bracketed, ")");
+              res = jspEvaluateVar(execInfo->parse, bracketed);
+              jsvUnLock(bracketed);
+            }
+            return res;
+          }
+        }
+    }
     // ------------------------------------------ Built-in variable stuff
-    if (jsvIsString(a)) {
+    if (jsvIsString(parent)) {
        if (strcmp(name,"charAt")==0) {
       /*JS* method String.charAt(idx)
        *JS*  Return a single character at the given position in the String.
@@ -238,7 +239,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *v = jspParseSingleFunction();
          JsVarInt idx = jsvGetIntegerAndUnLock(v);
          // now search to try and find the char
-         buffer[0] = jsvGetCharInString(a, (int)idx);
+         buffer[0] = jsvGetCharInString(parent, (int)idx);
          buffer[1] = 0;
          return jsvNewFromString(buffer);
        }
@@ -250,9 +251,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          JsVar *v = jsvAsString(jspParseSingleFunction(), true);
          if (!v) return 0; // out of memory
          int idx = -1;
-         int l = (int)jsvGetStringLength(a) - (int)jsvGetStringLength(v);
+         int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
          for (idx=0;idx<l;idx++) {
-           if (jsvCompareString(a, v, idx, 0, true)==0) {
+           if (jsvCompareString(parent, v, idx, 0, true)==0) {
              jsvUnLock(v);
              return jsvNewFromInteger(idx);
            }
@@ -278,7 +279,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          }
          res = jsvNewWithFlags(JSV_STRING);
          if (!res) return 0; // out of memory
-         jsvAppendStringVar(res, a, pStart, pEnd-pStart);
+         jsvAppendStringVar(res, parent, pStart, pEnd-pStart);
          return res;
        }
        if (strcmp(name,"substr")==0) {
@@ -293,7 +294,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           if (pLen<0) pLen=0;
           res = jsvNewWithFlags(JSV_STRING);
           if (!res) return 0; // out of memory
-          jsvAppendStringVar(res, a, pStart, pLen);
+          jsvAppendStringVar(res, parent, pStart, pLen);
           return res;
         }
         if (strcmp(name,"split")==0) {
@@ -304,19 +305,19 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           int last, idx, arraylen=0;
           JsVar *split = jspParseSingleFunction();
           int splitlen =  (int)jsvGetStringLength(split);
-          int l = (int)jsvGetStringLength(a) - splitlen;
+          int l = (int)jsvGetStringLength(parent) - splitlen;
           last = 0;
 
           array = jsvNewWithFlags(JSV_ARRAY);
           if (!array) return 0; // out of memory
 
           for (idx=0;idx<=l;idx++) {
-            if (idx==l || jsvCompareString(a, split, idx, 0, true)==0) {
+            if (idx==l || jsvCompareString(parent, split, idx, 0, true)==0) {
               JsVar *part = jsvNewFromString("");
               if (!part) break; // out of memory
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
               if (idxvar) { // could be out of memory
-                jsvAppendStringVar(part, a, last, idx-(last+1));
+                jsvAppendStringVar(part, parent, last, idx-(last+1));
                 jsvAddName(array, idxvar);
                 last = idx+splitlen;
                 jsvUnLock(idxvar);
@@ -329,22 +330,22 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
           return array;
         }
      }
-    if (jsvIsString(a) || jsvIsObject(a)) {
+    if (jsvIsString(parent) || jsvIsObject(parent)) {
       if (strcmp(name,"clone")==0) {
       /*JS* method Object.clone()
        *JS*  Copy this object in its Entirity
        */
         if (jspParseEmptyFunction())
-          return jsvCopy(a);
+          return jsvCopy(parent);
       }
     }
-    if (jsvIsArray(a)) {
+    if (jsvIsArray(parent)) {
          if (strcmp(name,"contains")==0) {
       /*JS* method Array.contains(value)
        *JS*  Return true if this array contains the given value
        */
            JsVar *childValue = jspParseSingleFunction();
-           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(a, childValue, false/*not exact*/)); // ArrayIndexOf will return 0 if not found
+           JsVarRef found = jsvUnLock(jsvGetArrayIndexOf(parent, childValue, false/*not exact*/)); // ArrayIndexOf will return 0 if not found
            jsvUnLock(childValue);
            return jsvNewFromBool(found!=0);
          }
@@ -353,7 +354,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Return the index of the value in the array, or -1
        */
             JsVar *childValue = jspParseSingleFunction();
-            JsVar *idxName = jsvGetArrayIndexOf(a, childValue, false/*not exact*/);
+            JsVar *idxName = jsvGetArrayIndexOf(parent, childValue, false/*not exact*/);
             jsvUnLock(childValue);
             // but this is the name - we must turn it into a var
             if (idxName == 0) return 0; // not found!
@@ -377,7 +378,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
              return 0;
            }
            JsVarInt index = 0;
-           JsVarRef childRef = a->firstChild;
+           JsVarRef childRef = parent->firstChild;
            while (childRef) {
              JsVar *child = jsvLock(childRef);
              if (jsvIsInt(child)) {
@@ -406,7 +407,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Push a new value onto the end of this array
        */
            JsVar *childValue = jspParseSingleFunction();
-           JsVarInt newSize = jsvArrayPush(a, childValue);
+           JsVarInt newSize = jsvArrayPush(parent, childValue);
            jsvUnLock(childValue);
            return jsvNewFromInteger(newSize);
          }
@@ -415,7 +416,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  Pop a new value off of the end of this array
        */
            JsVar *childValue = jspParseSingleFunction();
-           JsVar *item = jsvArrayPop(a);
+           JsVar *item = jsvArrayPop(parent);
            jsvUnLock(childValue);
            return item;
          }
@@ -438,7 +439,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
            }
            JsVar *array = jsvNewWithFlags(JSV_ARRAY);
            if (array) { 
-             JsVarRef childRef = a->firstChild;
+             JsVarRef childRef = parent->firstChild;
              while (childRef) {
                JsVar *child = jsvLock(childRef);
                if (jsvIsInt(child)) {
@@ -465,6 +466,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         }
     }
   }
+
   // unhandled
   return JSFHANDLEFUNCTIONCALL_UNHANDLED;
 }
