@@ -187,7 +187,7 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
 
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, char newLineCh) {
-  assert(jsvIsString(v) || jsvIsName(v));
+  assert(jsvIsString(v));
   JsVarRef r = jsvGetRef(v);
   while (r) {
     v = jsvLock(r);

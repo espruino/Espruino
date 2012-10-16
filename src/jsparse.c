@@ -568,7 +568,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
             execInfo.lex = oldLex;
             if (hasError) {
               jsiConsolePrint("in function ");
-              if (functionName) {
+              if (jsvIsString(functionName)) {
                 jsiConsolePrint("\"");
                 jsiConsolePrintStringVar(functionName);
                 jsiConsolePrint("\" ");
