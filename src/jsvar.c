@@ -120,6 +120,9 @@ JsVar *jsvNew() {
       // return pointer
       return v;
   }
+  /* we don't have memort - second last hope - run garbage collector */
+  if (jsvGarbageCollect())
+    return jsvNew(); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
    may have kicking around */
   if (jsiFreeMoreMemory())
@@ -132,24 +135,17 @@ JsVar *jsvNew() {
 void jsvFreeLoopedRefPtr(JsVar *var); // forward decl
 
 void jsvFreePtr(JsVar *var) {
-    /* To be here, we're not supposed to be part of anything else */
+    /* To be here, we're not supposed to be part of anything else. If
+     * we were, we'd have been freed by jsvGarbageCollect */
     assert(!var->nextSibling && !var->prevSibling);
 
     // Names Link to other things
     if (jsvIsName(var)) {
       if (var->firstChild) {
         JsVar *child = jsvLock(var->firstChild);
-        jsvUnRef(child); var->firstChild = 0; // we just unlink the child
-        // now try and free it
-        if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
-            jsvFreeLoopedRefPtr(child);
-        jsvUnLock(child);
+        jsvUnRef(child); var->firstChild = 0; // unlink the child
+        jsvUnLock(child); // unlock should trigger a free
       }
-    }
-
-
-    if (var->refs > 0) {
-      return;
     }
 
     /* Now, unref children - see jsvar.h comments for how! */
@@ -175,8 +171,6 @@ void jsvFreePtr(JsVar *var) {
         child->prevSibling = 0;
         child->nextSibling = 0;
         jsvUnRef(child);
-        if (child->refs > 0 && child->locks==1 && jsvGetRefCount(child, child)==child->refs)
-            jsvFreeLoopedRefPtr(child);
         jsvUnLock(child);
       }
     } else {
@@ -189,57 +183,6 @@ void jsvFreePtr(JsVar *var) {
     // add this to our free list
     var->nextSibling = jsVarFirstEmpty;
     jsVarFirstEmpty = jsvGetRef(var);
-}
-
-// Just for debugging so we can see when something has been freed in a non-normal way.
-void jsvFreeLoopedRefPtr(JsVar *var) {
-    //printf("jsvFreeLoopedRefPtr refs %d\n", var->refs);
-    //jsvTrace(jsvGetRef(var), 2);
-
-      /* We could be in this position - having been called from REF1 (REF2 is another external ref):
-       *
-       *                      REF2
-       *                        |
-       *           WE ARE       |
-       *            HERE        v
-       *REF1  ------> O -------> O ----->O
-       *              ^                  |
-       *              |------------------
-       *
-       *
-       *  Or even (maybe)
-       *
-       *                               REF2
-       *                                 |
-       *           WE ARE                |
-       *            HERE                 v
-       *REF1  ------> O ------> O -----> O ----->O
-       *              ^                  |
-       *              |------------------
-       *
-       * that would suck. for the first case the following code is ok.
-       *
-       *  */
-
-      // Names Link to other things
-      if (jsvIsName(var)) {
-        if (var->firstChild) {
-          JsVar *child = jsvLock(var->firstChild);
-          // now try and free it
-          if (child->refs > 1 && child->locks==1 && jsvGetRefCount(child, child)==child->refs) {
-            jsvUnRef(child); var->firstChild = 0; // we just unlink the child
-            jsvFreeLoopedRefPtr(child);
-            jsvUnLock(child);
-          } else {
-            jsvUnLock(child); // we can't unlink it because it is used by other stuff
-            // So just return
-            return;
-          }
-
-        }
-      }
-
-    jsvFreePtr(var);
 }
 
 JsVar *jsvNewFromString(const char *str) {
@@ -374,9 +317,14 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
 }
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
-JsVar *jsvLock(JsVarRef ref) {
+static inline JsVar *jsvGetAddressOf(JsVarRef ref) {
   assert(ref);
-  JsVar *var = &jsVars[ref-1];
+  return &jsVars[ref-1];
+}
+
+/// Lock this reference and return a pointer - UNSAFE for null refs
+JsVar *jsvLock(JsVarRef ref) {
+  JsVar *var = jsvGetAddressOf(ref);
   var->locks++;
   if (var->locks==0) {
     jsError("Too many locks to Variable!");
@@ -402,13 +350,14 @@ JsVarRef jsvUnLock(JsVar *var) {
   ref = jsvGetRef(var);
   assert(var->locks>0);
   var->locks--;
-  if (var->locks == 0) {
-    if (var->refs==0)
-      jsvFreePtr(var);
-    else if (jsvGetRefCount(var, var)==var->refs)
-      jsvFreeLoopedRefPtr(var); // handle unref of looped stuff
-  }
-  return ref;
+  /* if we know we're free, then we can just free
+   * this variable right now. Loops of variables
+   * are handled by the Garbage Collector */
+  if (var->locks == 0 && var->refs == 0) {
+    jsvFreePtr(var);
+    return 0;
+  } else
+    return ref;
 }
 
 
@@ -1618,38 +1567,68 @@ void jsvTrace(JsVarRef ref, int indent) {
 #endif
 }
 
-/** Count references of 'toCount' starting from 'var' - for garbage collection on free */
-int jsvGetRefCount(JsVar *toCount, JsVar *var) {
-    int refCount = 0;
-    if (var->flags & JSV_IS_RECURSING) return 0; // infinite loop
-    var->flags |= JSV_IS_RECURSING;
+/** Recursively mark the variable */
+static void jsvGarbageCollectMarkUsed(JsVar *var) {
+  var->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
 
-    if (jsvIsName(var)) {
-      JsVarRef child = var->firstChild;
-      if (child) {
-        JsVar *childVar = jsvLock(child);
-        if (childVar == toCount)
-          refCount+=1;
-        else
-          refCount += jsvGetRefCount(toCount, childVar);
-        child = childVar->firstChild;
-        jsvUnLock(childVar);
+  if (jsvHasCharacterData(var)) {
+      if (var->lastChild) {
+        JsVar *childVar = jsvGetAddressOf(var->lastChild);
+        if (childVar->flags & JSV_GARBAGE_COLLECT)
+          jsvGarbageCollectMarkUsed(childVar);
       }
-    } else if (jsvHasChildren(var)) {
-      JsVarRef child = var->firstChild;
-      while (child) {
-        JsVar *childVar;
-        childVar = jsvLock(child);
-        if (childVar == toCount)
-            refCount+=1;
-        else
-            refCount += jsvGetRefCount(toCount, childVar);
-        child = childVar->nextSibling;
-        jsvUnLock(childVar);
-      }
+  } // intentionally no else
+  if (jsvIsName(var)) {
+    if (var->firstChild) {
+      JsVar *childVar = jsvGetAddressOf(var->firstChild);
+      if (childVar->flags & JSV_GARBAGE_COLLECT)
+        jsvGarbageCollectMarkUsed(childVar);
     }
-    var->flags &= (JsVarFlags)~JSV_IS_RECURSING;
-    return refCount;
+  } else if (jsvHasChildren(var)) {
+    JsVarRef child = var->firstChild;
+    while (child) {
+      JsVar *childVar;
+      childVar = jsvGetAddressOf(child);
+      if (childVar->flags & JSV_GARBAGE_COLLECT)
+        jsvGarbageCollectMarkUsed(childVar);
+      child = childVar->nextSibling;
+    }
+  }
+}
+
+/** Run a garbage collection sweep - return true if things have been freed */
+bool jsvGarbageCollect() {
+  int i;
+  // clear garbage collect flags
+  for (i=0;i<jsVarsSize;i++)  {
+    JsVar *var = &jsVars[i];
+    if (var->refs == JSVAR_CACHE_UNUSED_REF) // if it is not unused
+      var->flags = 0; // no garbage collect!
+    else
+      var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
+  }
+  // recursively add 'native' vars
+  for (i=0;i<jsVarsSize;i++)  {
+    JsVar *var = &jsVars[i];
+    if ((var->flags & JSV_GARBAGE_COLLECT) && // not already GC'd
+        ((var->flags & JSV_NATIVE) || // native - root, or inputline/etc
+         var->locks>0)) // or it is locked
+      jsvGarbageCollectMarkUsed(var);
+  }
+  // now sweep for things that we can GC!
+  bool freedSomething = false;
+  for (i=0;i<jsVarsSize;i++)  {
+    JsVar *var = &jsVars[i];
+    if (var->flags & JSV_GARBAGE_COLLECT) {
+      freedSomething = true;
+      // free!
+      var->refs = JSVAR_CACHE_UNUSED_REF;
+      // add this to our free list
+      var->nextSibling = jsVarFirstEmpty;
+      jsVarFirstEmpty = jsvGetRef(var);
+    }
+  }
+  return freedSomething;
 }
 
 /** Dotty output for the graphviz package - helps
@@ -1662,7 +1641,7 @@ void jsvDottyOutput() {
   //jsiConsolePrint("  rankdir=LR;\n");
   for (i=0;i<jsVarsSize;i++) {
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
-      JsVar *var = jsvLock(i+1);
+      JsVar *var = jsvLock((JsVarRef)(i+1));
       if (ignoreStringExt && jsvIsStringExt(var)) {
         jsvUnLock(var);
         continue;
@@ -1691,7 +1670,7 @@ void jsvDottyOutput() {
       }
       jsiConsolePrint("\"];\n");
 
-      if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
+      if (jsvHasChildren(var)) {
         if (var->firstChild) {
           jsiConsolePrint("V");
           jsiConsolePrintInt(i+1);
@@ -1730,7 +1709,7 @@ void jsvDottyOutput() {
           jsiConsolePrint(":w [style=bold]\n");
         }
       }
-      if (!ignoreStringExt && (jsvIsString(var) || jsvIsStringExt(var))) {
+      if (!ignoreStringExt && jsvHasCharacterData(var)) {
         if (var->lastChild) {
           jsiConsolePrint("V");
           jsiConsolePrintInt(i+1);

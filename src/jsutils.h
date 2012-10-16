@@ -83,6 +83,8 @@
             Ensure that setTimeout/setWatch store the link to a function, not the function
             Fix nasty ref loop in ref loop GC issue
             Add dotty output
+            Fix memory leak when error in jspParseSingleFunction
+            Now run Garbage collection if we're idle, and we know we have a few ms spare
 [/CHANGELOG]
 
 [TODO]
@@ -263,8 +265,8 @@ typedef enum {
     JSV_FLOAT       = 9, // floating point double (note JSV_NUMERICMASK)
 
     JSV_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
-    JSV_NATIVE      = 32, // to specify this is a native function
-    JSV_TEMP        = 64, // mainly for debugging so we can see if a temp var got used wrongly
+    JSV_NATIVE      = 32, // to specify this is a native function, root, OR that it should not be freed
+    JSV_GARBAGE_COLLECT = 64, // When garbage collecting, this flag is true IF we should GC!
 
     JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 

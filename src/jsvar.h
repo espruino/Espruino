@@ -129,9 +129,8 @@ static inline JsVar *jsvRef(JsVar *v) {
 static inline void jsvUnRef(JsVar *var) {
   assert(var && var->refs>0);
   var->refs--;
-  // TODO: are locks ever 0 here?? we could skip this check
-  if (var->locks == 0 && var->refs==0)
-      jsvFreePtr(var);
+  // locks are never 0 here, so why bother checking!
+  assert(var->locks>0);
 }
 
 /// Helper fn, Reference - set this variable as used by something
@@ -311,10 +310,8 @@ JsVar *jsvArrayGetLast(JsVar *arr); ///< Get the last element of an array (does 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);
 
-/** Count references of 'toCount' starting from 'var' - for garbage collection */
-int jsvGetRefCount(JsVar *toCount, JsVar *var);
-/** garbage collect var and its children */
-void jsvGarbageCollect(JsVar *var);
+/** Run a garbage collection sweep - return true if things have been freed */
+bool jsvGarbageCollect();
 
 /** Dotty output for the graphviz package - helps
  *  visualize the data structure  */

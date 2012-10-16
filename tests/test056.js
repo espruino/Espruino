@@ -9,6 +9,5 @@ var moveServo = function (p) {
 };
 
 moveServo(1);
-
 setTimeout("result=count==21;", 100);
 

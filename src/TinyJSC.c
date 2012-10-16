@@ -73,9 +73,13 @@ bool run_test(const char *filename) {
   printf("BEFORE: %d Memory Records Used\r\n", jsvGetMemoryUsage());
  // jsvTrace(jsiGetParser()->root, 0);
   jsiKill();
-  printf("AFTER: %d Memory Records Used (should be 0!)\r\n", jsvGetMemoryUsage());
+  printf("AFTER: %d Memory Records Used\r\n", jsvGetMemoryUsage());
+  jsvGarbageCollect();
+  printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", jsvGetMemoryUsage());
   jsvShowAllocated();
   jshKill();
+
+  //jsvDottyOutput();
   printf("\r\n");
 
   free(buffer);

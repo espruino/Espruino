@@ -215,11 +215,11 @@ JsVar *jspParseSingleFunction() {
   if (execInfo.lex->tk != ')')
     v = jsvSkipNameAndUnlock(jspeBase(&execute));
   // throw away extra params
-  while (execInfo.lex->tk != ')') {
-    JSP_MATCH(',');
+  while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
+    JSP_MATCH_WITH_RETURN(',', v);
     jsvUnLock(jspeBase(&execute));
   }
-  JSP_MATCH(')');
+  JSP_MATCH_WITH_RETURN(')', v);
   return v;
 }
 
@@ -233,20 +233,20 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
   JSP_MATCH('(');
   if (a && execInfo.lex->tk != ')') {
     *a = jspeBase(&execute);
-    if (!skipName&JSP_NOSKIP_A) *a = jsvSkipNameAndUnlock(*a);
+    if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnlock(*a);
   }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *b = jspeBase(&execute);
-    if (!skipName&JSP_NOSKIP_B) *b = jsvSkipNameAndUnlock(*b);
+    if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnlock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *c = jspeBase(&execute);
-    if (!skipName&JSP_NOSKIP_B) *c = jsvSkipNameAndUnlock(*c);
+    if (!(skipName&JSP_NOSKIP_B)) *c = jsvSkipNameAndUnlock(*c);
   }
   // throw away extra params
-  while (execInfo.lex->tk != ')') {
+  while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     jsvUnLock(jspeBase(&execute));
   }
@@ -890,7 +890,7 @@ JsVar *jspePostfix() {
     int op = execInfo.lex->tk;
     JSP_MATCH(execInfo.lex->tk);
     if (JSP_SHOULD_EXECUTE) {
-        JsVar *one = jsvLock(execInfo.parse->oneInt);
+        JsVar *one = jsvNewFromInteger(1);
         JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
         JsVar *oldValue;
         jsvUnLock(one);
@@ -912,7 +912,7 @@ JsVar *jspeUnary() {
         JSP_MATCH('!'); // binary not
         a = jspePostfix();
         if (JSP_SHOULD_EXECUTE) {
-            JsVar *zero = jsvLock(execInfo.parse->zeroInt);
+            JsVar *zero = jsvNewFromInteger(0);
             JsVar *res = jsvMathsOpSkipNames(a, zero, LEX_EQUAL);
             jsvUnLock(zero);
             jsvUnLock(a); a = res;
@@ -947,7 +947,7 @@ JsVar *jspeExpression() {
     }
     a = jspeTerm();
     if (negate) {
-      JsVar *zero = jsvLock(execInfo.parse->zeroInt);
+      JsVar *zero = jsvNewFromInteger(0);
       JsVar *res = jsvMathsOpSkipNames(zero, a, '-');
       jsvUnLock(zero);
       jsvUnLock(a); a = res;
@@ -1579,9 +1579,6 @@ void jspSoftInit(JsParse *parse) {
 
   JsVar *name;
 
-  parse->zeroInt = jsvUnLock(jsvRef(jsvNewFromInteger(0)));
-  parse->oneInt = jsvUnLock(jsvRef(jsvNewFromInteger(1)));
-
   name = jsvFindChildFromString(parse->root, "String", true);
   name->flags |= JSV_NATIVE;
   if (!name->firstChild) name->firstChild = jsvUnLock(jsvRef(jsvNewWithFlags(JSV_OBJECT)));
@@ -1630,8 +1627,6 @@ bool jspIsCreatedObject(JsParse *parse, JsVar *v) {
   JsVarRef r = jsvGetRef(v);
   return
       r==parse->root ||
-      r==parse->zeroInt      ||
-      r==parse->oneInt       ||
       r==parse->stringClass  ||
       r==parse->objectClass  ||
       r==parse->arrayClass   ||
@@ -1642,8 +1637,6 @@ bool jspIsCreatedObject(JsParse *parse, JsVar *v) {
 }
 
 void jspSoftKill(JsParse *parse) {
-  jsvUnRefRef(parse->zeroInt);
-  jsvUnRefRef(parse->oneInt);
   jsvUnRefRef(parse->stringClass);
   jsvUnRefRef(parse->objectClass);
   jsvUnRefRef(parse->arrayClass);

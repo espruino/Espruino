@@ -15,8 +15,6 @@
 typedef struct {
   JsVarRef  root;   ///< root of symbol table
 
-  JsVarRef zeroInt;
-  JsVarRef oneInt;
   JsVarRef stringClass; ///< Built in string class
   JsVarRef objectClass; ///< Built in object class
   JsVarRef arrayClass; ///< Built in array class

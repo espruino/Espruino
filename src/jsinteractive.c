@@ -62,6 +62,7 @@ JsVar *inputLine = 0; ///< The current input line
 int inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
+int loopsIdling; ///< How many times around the loop have we been entirely idle?
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); // forward decl
 // ----------------------------------------------------------------------------
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
@@ -959,11 +960,13 @@ bool jsiHasTimers() {
 }
 
 void jsiIdle() {
-  bool hasDoneAnything = false;
+  // This is how many times we have been here and not done anything.
+  // It will be zeroed if we do stuff later
+  loopsIdling++;
   // Handle hardware-related idle stuff (like checking for pin events)
   IOEvent event;
   while (jshPopIOEvent(&event)) {
-    hasDoneAnything = true;
+    loopsIdling = 0; // because we're not idling
     if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
       int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       jsiSetBusy(true);
@@ -1044,7 +1047,7 @@ void jsiIdle() {
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
     if (timerTime && timeUntilNext<=0) {
-      hasDoneAnything = true;
+      loopsIdling = 0; // because we're not idling
       JsVar *timerCallback = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
       JsVar *timerRecurring = jsvSkipNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false));
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
@@ -1074,8 +1077,8 @@ void jsiIdle() {
   }
   jsvUnLock(timerArrayPtr);
 
-  // Just in case we got any events to do and didn't set hasDoneAnything before
-  if (events) hasDoneAnything = true;
+  // Just in case we got any events to do and didn't clear loopsIdling before
+  if (events) loopsIdling = 0;
 
   // TODO: could now sort events by time?
   // execute any outstanding events
@@ -1102,6 +1105,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill(&p);
       jsvSoftKill();
+      jsvGarbageCollect(); // nice to have everything all tidy!
       jshSaveToFlash();
       jsvSoftInit();
       jspSoftInit(&p);
@@ -1118,8 +1122,16 @@ void jsiIdle() {
       jsiSoftInit();
     }
   }
+
+  /* if we've been around this loop, there is nothing to do, and
+   * we have a spare 10ms then let's do some Garbage Collection
+   * just in case. */
+  if (loopsIdling==1 &&
+      minTimeUntilNext > jshGetTimeFromMilliseconds(10))
+    jsvGarbageCollect();
+  // Go to sleep!
 #ifdef ARM
-  if (!hasDoneAnything && // once around the idle loop without having done any work already (just in case)
+  if (loopsIdling>2 && // once around the idle loop without having done any work already (just in case)
       !jshHasEvents() && //no events have arrived in the mean time
       !jshHasTransmitData() && //nothing left to send over serial?
       minTimeUntilNext > SYSTICK_RANGE*5/4) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
