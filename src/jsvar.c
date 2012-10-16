@@ -1657,7 +1657,7 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var) {
 void jsvDottyOutput() {
   int i;
   bool ignoreStringExt = true;
-  char buf[JS_ERROR_BUF_SIZE];
+  char buf[256];
   jsiConsolePrint("digraph G {\n");
   //jsiConsolePrint("  rankdir=LR;\n");
   for (i=0;i<jsVarsSize;i++) {
@@ -1686,8 +1686,8 @@ void jsvDottyOutput() {
       }
       if (!jsvIsStringExt(var) && !jsvIsObject(var) && !jsvIsArray(var)) {
         jsiConsolePrint(":");
-        jsvGetString(var,buf,JS_ERROR_BUF_SIZE);
-        jsiConsolePrint(buf);
+        jsvGetString(var,buf,256);
+        jsiConsolePrintEscaped(buf);
       }
       jsiConsolePrint("\"];\n");
 
@@ -1742,5 +1742,5 @@ void jsvDottyOutput() {
       jsvUnLock(var);
     }
   }
-  jsiConsolePrint("}");
+  jsiConsolePrint("}\n");
 }

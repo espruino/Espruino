@@ -26,8 +26,10 @@ JsParse *jsiGetParser();
 void jsiSetConsoleDevice(IOEventFlags device);
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
+void jsiConsolePrintCharEscaped(char data); ///< transmit a byte, but escape it
 /// Transmit a string
 void jsiConsolePrint(const char *str);
+void jsiConsolePrintEscaped(const char *str); ///< transmit a string, but escape it
 /// Transmit an integer
 void jsiConsolePrintInt(int d);
 /// Transmit a position in the lexer (for reporting errors)
