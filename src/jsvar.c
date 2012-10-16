@@ -1651,3 +1651,96 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var) {
     var->flags &= (JsVarFlags)~JSV_IS_RECURSING;
     return refCount;
 }
+
+/** Dotty output for the graphviz package - helps
+ *  visualize the data structure  */
+void jsvDottyOutput() {
+  int i;
+  bool ignoreStringExt = true;
+  char buf[JS_ERROR_BUF_SIZE];
+  jsiConsolePrint("digraph G {\n");
+  //jsiConsolePrint("  rankdir=LR;\n");
+  for (i=0;i<jsVarsSize;i++) {
+    if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF) {
+      JsVar *var = jsvLock(i+1);
+      if (ignoreStringExt && jsvIsStringExt(var)) {
+        jsvUnLock(var);
+        continue;
+      }
+      jsiConsolePrint("V");
+      jsiConsolePrintInt(i+1);
+      jsiConsolePrint(" [shape=box,label=\"");
+      jsvTraceLockInfo(var);
+      jsiConsolePrint(":");
+      if (jsvIsName(var)) jsiConsolePrint("Name");
+      else if (jsvIsObject(var)) jsiConsolePrint("Object");
+      else if (jsvIsArray(var)) jsiConsolePrint("Array");
+      else if (jsvIsInt(var)) jsiConsolePrint("Integer");
+      else if (jsvIsFloat(var)) jsiConsolePrint("Double");
+      else if (jsvIsString(var)) jsiConsolePrint("String");
+      else if (jsvIsStringExt(var)) jsiConsolePrint("StringExt");
+      else if (jsvIsFunction(var)) jsiConsolePrint("Function");
+      else {
+          jsiConsolePrint("Flags ");
+          jsiConsolePrintInt(var->flags);
+      }
+      if (!jsvIsStringExt(var) && !jsvIsObject(var) && !jsvIsArray(var)) {
+        jsiConsolePrint(":");
+        jsvGetString(var,buf,JS_ERROR_BUF_SIZE);
+        jsiConsolePrint(buf);
+      }
+      jsiConsolePrint("\"];\n");
+
+      if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
+        if (var->firstChild) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":n -> V");
+          jsiConsolePrintInt(var->firstChild);
+          jsiConsolePrint(":n [label=\"first\"]\n");
+        }
+        if (var->lastChild) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(var->lastChild);
+          jsiConsolePrint(":s -> V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":s [label=\"last\"]\n");
+        }
+      }
+      if (jsvIsName(var)) {
+        if (var->nextSibling) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":s -> V");
+          jsiConsolePrintInt(var->nextSibling);
+          jsiConsolePrint(":n [weight=5,label=\"next\"]\n");
+        }
+        if (var->prevSibling) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":n -> V");
+          jsiConsolePrintInt(var->prevSibling);
+          jsiConsolePrint(":s [weight=5,style=dotted,label=\"prev\"]\n");
+        }
+        if (var->firstChild) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":e -> V");
+          jsiConsolePrintInt(var->firstChild);
+          jsiConsolePrint(":w [style=bold]\n");
+        }
+      }
+      if (!ignoreStringExt && (jsvIsString(var) || jsvIsStringExt(var))) {
+        if (var->lastChild) {
+          jsiConsolePrint("V");
+          jsiConsolePrintInt(i+1);
+          jsiConsolePrint(":e -> V");
+          jsiConsolePrintInt(var->lastChild);
+          jsiConsolePrint(":w\n");
+        }
+      }
+      jsvUnLock(var);
+    }
+  }
+  jsiConsolePrint("}");
+}

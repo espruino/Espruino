@@ -82,6 +82,7 @@
             Add code to check stack and stop stack overflow if too much recursion
             Ensure that setTimeout/setWatch store the link to a function, not the function
             Fix nasty ref loop in ref loop GC issue
+            Add dotty output
 [/CHANGELOG]
 
 [TODO]

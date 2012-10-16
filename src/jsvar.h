@@ -65,7 +65,7 @@ typedef struct {
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
-   * For STRINGS/STRING_EXT/NAMES - this is a link to more string data if it is needed
+   * For STRINGS/STRING_EXT/NAME+STRING - this is a link to more string data if it is needed
    */
   JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
@@ -315,5 +315,9 @@ void jsvTrace(JsVarRef ref, int indent);
 int jsvGetRefCount(JsVar *toCount, JsVar *var);
 /** garbage collect var and its children */
 void jsvGarbageCollect(JsVar *var);
+
+/** Dotty output for the graphviz package - helps
+ *  visualize the data structure  */
+void jsvDottyOutput();
 
 #endif /* JSVAR_H_ */

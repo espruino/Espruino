@@ -117,10 +117,31 @@ void jsiConsolePrintChar(char data) {
   jshTransmit(consoleDevice, (unsigned char)data);
 }
 
+void jsiConsolePrintCharEscaped(char data) {
+  if (data=='\n') {
+    jsiConsolePrintChar('\\');
+    jsiConsolePrintChar('n');
+  } else if (data=='\r') {
+    jsiConsolePrintChar('\\');
+    jsiConsolePrintChar('r');
+  } else if (data=='"') {
+      jsiConsolePrintChar('\\');
+      jsiConsolePrintChar('"');
+  } else
+    jsiConsolePrintChar(data);
+}
+
 void jsiConsolePrint(const char *str) {
   while (*str) {
        if (*str == '\n') jsiConsolePrintChar('\r');
        jsiConsolePrintChar(*(str++));
+  }
+}
+
+void jsiConsolePrintEscaped(const char *str) {
+  while (*str) {
+       if (*str == '\n') jsiConsolePrintCharEscaped('\r');
+       jsiConsolePrintCharEscaped(*(str++));
   }
 }
 
@@ -1661,6 +1682,14 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       jspParseEmptyFunction();
       jsvTrace(p.root, 0);
+      return 0;
+    }
+    if (strcmp(name,"dotty")==0) {
+      /*JS* function trace()
+       *JS*  Output debugging information
+       */
+      jspParseEmptyFunction();
+      jsvDottyOutput();
       return 0;
     }
     // ----------------------------------------   END OF SYSTEM-WIDE
