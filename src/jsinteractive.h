@@ -35,7 +35,10 @@ void jsiConsolePrintInt(int d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
 
-// Sets a busy indicator, if one is set
+/// Shows a busy indicator, if one is set up
 void jsiSetBusy(bool isBusy);
+/// Shows a sleep indicator, if one is set up
+void jsiSetSleep(bool isSleep);
+
 
 #endif /* JSINTERACTIVE_H_ */

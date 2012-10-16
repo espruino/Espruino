@@ -75,10 +75,12 @@ typedef struct {
   JsExecFlags execute;
 } JsExecInfo;
 
+/// flags for jspParseFunction
 typedef enum {
   JSP_NOSKIP_A = 1,
   JSP_NOSKIP_B = 2,
   JSP_NOSKIP_C = 4,
+  JSP_NOSKIP_D = 4,
 } JspSkipFlags;
 
 /// parse function with max 4 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say

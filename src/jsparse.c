@@ -228,6 +228,7 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
   if (a) *a = 0;
   if (b) *b = 0;
   if (c) *c = 0; 
+  if (d) *d = 0;
   JsExecFlags execute = EXEC_YES;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
@@ -243,7 +244,12 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *c = jspeBase(&execute);
-    if (!(skipName&JSP_NOSKIP_B)) *c = jsvSkipNameAndUnlock(*c);
+    if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnlock(*c);
+  }
+  if (d && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    *d = jspeBase(&execute);
+    if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnlock(*d);
   }
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {

@@ -85,6 +85,7 @@
             Add dotty output
             Fix memory leak when error in jspParseSingleFunction
             Now run Garbage collection if we're idle, and we know we have a few ms spare
+            Added setSleepIndicator
 [/CHANGELOG]
 
 [TODO]

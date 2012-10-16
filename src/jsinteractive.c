@@ -55,6 +55,7 @@ JsVarRef classUSB = 0;
 // ----------------------------------------------------------------------------
 IOEventFlags consoleDevice = EV_NONE; ///< The console device for user interaction
 int pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
+int pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 bool echo;                  ///< do we provide any user feedback?
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
@@ -267,6 +268,11 @@ void jsiSetBusy(bool isBusy) {
     jshPinOutput(pinBusyIndicator, isBusy);
 }
 
+void jsiSetSleep(bool isSleep) {
+  if (pinSleepIndicator >= 0)
+    jshPinOutput(pinSleepIndicator, isSleep);
+}
+
 JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
   JsVarRef class = 0;
   JsVar *name = jsvFindChildFromString(p.root, serialName, true);
@@ -437,6 +443,11 @@ void jsiSoftKill() {
     if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
       jsvAppendString(initCode, "setBusyIndicator(");
       jsvAppendInteger(initCode, pinBusyIndicator);
+      jsvAppendString(initCode, ");");
+    }
+    if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
+      jsvAppendString(initCode, "setSleepIndicator(");
+      jsvAppendInteger(initCode, pinSleepIndicator);
       jsvAppendString(initCode, ");");
     }
     jsvUnLock(initCode);
@@ -704,7 +715,7 @@ void jsiHandleMoveUpDown(int direction) {
 }
 
 bool jsiAtEndOfInputLine() {
-  size_t i = inputCursorPos, l = jsvGetStringLength(inputLine);
+  int i = inputCursorPos, l = (int)jsvGetStringLength(inputLine);
   while (i < l) {
     if (!isWhitespace(jsvGetCharInString(inputLine, i)))
         return false;
@@ -1094,6 +1105,7 @@ void jsiIdle() {
   }
   // check for TODOs
   if (todo) {
+    jsiSetBusy(true);
     if (todo & TODO_RESET) {
       todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
@@ -1121,21 +1133,27 @@ void jsiIdle() {
       jspSoftInit(&p);
       jsiSoftInit();
     }
+    jsiSetBusy(false);
   }
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
    * just in case. */
   if (loopsIdling==1 &&
-      minTimeUntilNext > jshGetTimeFromMilliseconds(10))
+      minTimeUntilNext > jshGetTimeFromMilliseconds(10)) {
+    jsiSetBusy(true);
     jsvGarbageCollect();
+    jsiSetBusy(false);
+  }
   // Go to sleep!
 #ifdef ARM
   if (loopsIdling>2 && // once around the idle loop without having done any work already (just in case)
       !jshHasEvents() && //no events have arrived in the mean time
       !jshHasTransmitData() && //nothing left to send over serial?
       minTimeUntilNext > SYSTICK_RANGE*5/4) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
+    jsiSetSleep(true);
     jshSleep();
+    jsiSetSleep(false);
   }
 #endif
 }
@@ -1686,6 +1704,22 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         if (oldPin>=0) jshPinOutput(oldPin, 0);
         jshPinOutput(pinBusyIndicator, 1);
       }
+      return 0; // handled
+    }
+    if (strcmp(name,"setSleepIndicator")==0) {
+      /*JS* function setSleepIndicator(pin)
+       *JS*  When Espruino is asleep, set the pin specified here
+       *JS*  high. Set this to undefined to disable the feature.
+       */
+      JsVar *pinVar = jspParseSingleFunction();
+      if (jsvIsUndefined(pinVar)) {
+        pinSleepIndicator = -1;
+      } else {
+        pinSleepIndicator = jshGetPinFromVar(pinVar);
+        if (pinSleepIndicator<0)
+          jsError("Invalid pin!");
+      }
+      jsvUnLock(pinVar);
       return 0; // handled
     }
     if (strcmp(name,"trace")==0) {
