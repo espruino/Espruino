@@ -149,7 +149,8 @@ When presenting:
    Show how easy it is to change things (Stepper motor or LED light with ramp)
    ability to save()
    dump() to get code out
-   using from script on PC/Raspberry Pi 
+   using from script on PC/Raspberry Pi  
+   SPBT2632C2A bluetooth module
 
  Extra functions to do:
 setWatch -> attachInterrupt(pin, handler, mode)

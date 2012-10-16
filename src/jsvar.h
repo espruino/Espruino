@@ -129,6 +129,7 @@ static inline JsVar *jsvRef(JsVar *v) {
 static inline void jsvUnRef(JsVar *var) {
   assert(var && var->refs>0);
   var->refs--;
+  // TODO: are locks ever 0 here?? we could skip this check
   if (var->locks == 0 && var->refs==0)
       jsvFreePtr(var);
 }

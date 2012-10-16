@@ -132,9 +132,8 @@ JsVar *jsvNew() {
 void jsvFreeLoopedRefPtr(JsVar *var); // forward decl
 
 void jsvFreePtr(JsVar *var) {
-    /* We can be linked from places now (circular ref) but only
-     * if revs>0 AND we were called from jsvFreeLoopedRefPtr */
-    assert(var->refs>0 || (!var->nextSibling && !var->prevSibling));
+    /* To be here, we're not supposed to be part of anything else */
+    assert(!var->nextSibling && !var->prevSibling);
 
     // Names Link to other things
     if (jsvIsName(var)) {
@@ -148,28 +147,7 @@ void jsvFreePtr(JsVar *var) {
       }
     }
 
-    /* This could still be reffed from itself - but if we haven't managed
-     * to get rid of it, it's because there was another ref!
-     *
-     *     WE ARE       |
-     *      HERE        v
-     *------> O-------> O ----->O
-     *        ^                 |
-     *        |-----------------
-     *
-     *
-     *  We came in from the LHS, and we have just cut the link to the right (and the link has been cut to us):
-     *
-     *
-     *     WE ARE       |
-     *      HERE        v
-     *        O         O ----->O
-     *        ^                 |
-     *        |-----------------
-     *
-     *
-     * So actually we're fine - DO NOT DELETE US!!!
-     *  */
+
     if (var->refs > 0) {
       return;
     }
@@ -217,6 +195,50 @@ void jsvFreePtr(JsVar *var) {
 void jsvFreeLoopedRefPtr(JsVar *var) {
     //printf("jsvFreeLoopedRefPtr refs %d\n", var->refs);
     //jsvTrace(jsvGetRef(var), 2);
+
+      /* We could be in this position - having been called from REF1 (REF2 is another external ref):
+       *
+       *                      REF2
+       *                        |
+       *           WE ARE       |
+       *            HERE        v
+       *REF1  ------> O -------> O ----->O
+       *              ^                  |
+       *              |------------------
+       *
+       *
+       *  Or even (maybe)
+       *
+       *                               REF2
+       *                                 |
+       *           WE ARE                |
+       *            HERE                 v
+       *REF1  ------> O ------> O -----> O ----->O
+       *              ^                  |
+       *              |------------------
+       *
+       * that would suck. for the first case the following code is ok.
+       *
+       *  */
+
+      // Names Link to other things
+      if (jsvIsName(var)) {
+        if (var->firstChild) {
+          JsVar *child = jsvLock(var->firstChild);
+          // now try and free it
+          if (child->refs > 1 && child->locks==1 && jsvGetRefCount(child, child)==child->refs) {
+            jsvUnRef(child); var->firstChild = 0; // we just unlink the child
+            jsvFreeLoopedRefPtr(child);
+            jsvUnLock(child);
+          } else {
+            jsvUnLock(child); // we can't unlink it because it is used by other stuff
+            // So just return
+            return;
+          }
+
+        }
+      }
+
     jsvFreePtr(var);
 }
 
@@ -380,8 +402,12 @@ JsVarRef jsvUnLock(JsVar *var) {
   ref = jsvGetRef(var);
   assert(var->locks>0);
   var->locks--;
-  if (var->locks == 0 && var->refs==0)
-    jsvFreePtr(var);
+  if (var->locks == 0) {
+    if (var->refs==0)
+      jsvFreePtr(var);
+    else if (jsvGetRefCount(var, var)==var->refs)
+      jsvFreeLoopedRefPtr(var); // handle unref of looped stuff
+  }
   return ref;
 }
 
@@ -1595,6 +1621,8 @@ void jsvTrace(JsVarRef ref, int indent) {
 /** Count references of 'toCount' starting from 'var' - for garbage collection on free */
 int jsvGetRefCount(JsVar *toCount, JsVar *var) {
     int refCount = 0;
+    if (var->flags & JSV_IS_RECURSING) return 0; // infinite loop
+    var->flags |= JSV_IS_RECURSING;
 
     if (jsvIsName(var)) {
       JsVarRef child = var->firstChild;
@@ -1620,5 +1648,6 @@ int jsvGetRefCount(JsVar *toCount, JsVar *var) {
         jsvUnLock(childVar);
       }
     }
+    var->flags &= (JsVarFlags)~JSV_IS_RECURSING;
     return refCount;
 }
