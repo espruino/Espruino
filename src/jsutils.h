@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v11"
+#define JS_VERSION "1v12"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -70,7 +70,7 @@
             Add 'changeInterval' to allow things created with setInterval to have the frequency changed (eg. stepper motor control)
             Now puts itself to sleep to save power, when it knows nothing is required and it'll be woken up by SysTick before
             Change Math library to avoid putting constants in RAM
-            Issue when printing lots of data and then disconnect USB
+     1v12 : Issue when printing lots of data and then disconnect USB
             Hide USB/Serial in Dump()
             add Array.map(fn(x), thisArg)
             For newline, count [] and () (as well as {}) - also knows about comments/strings/etc
