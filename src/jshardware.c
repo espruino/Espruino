@@ -552,7 +552,7 @@ void jshKickUSBWatchdog() {
 void jshDoSysTick() {
   SysTickMajor+=SYSTICK_RANGE;
 #ifdef USB
-  if (SysTickUSBWatchdog < 2) {
+  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
     SysTickUSBWatchdog++;
   } else {
     bDeviceState = UNCONNECTED;
@@ -633,7 +633,7 @@ void jshInit() {
         RCC_APB2Periph_AFIO, ENABLE);
  #endif
   // Slow the IO clocks down - we don't need them going so fast!
-  RCC_PCLK1Config(RCC_HCLK_Div16);
+  RCC_PCLK1Config(RCC_HCLK_Div8); // PCLK1 must be >8 Mhz for USB to work
   RCC_PCLK2Config(RCC_HCLK_Div16);
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
