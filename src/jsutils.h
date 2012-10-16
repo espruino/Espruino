@@ -86,6 +86,7 @@
             Fix memory leak when error in jspParseSingleFunction
             Now run Garbage collection if we're idle, and we know we have a few ms spare
             Added setSleepIndicator
+            Fix line/col indicator in errors/warnings
 [/CHANGELOG]
 
 [TODO]
@@ -96,7 +97,6 @@
         better digitalPulse
 
   MEDIUM PRIORITY:
-	    When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         Add Array.splice
         Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
@@ -113,6 +113,7 @@
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
+        When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -231,6 +232,9 @@ typedef unsigned long long JsVarIntUnsigned;
 
 #define JSPARSE_MAX_SCOPES  32
 #define JSPARSE_MAX_LOOP_ITERATIONS 8192
+
+#define STRINGIFY_HELPER(x) #x
+#define STRINGIFY(x) STRINGIFY_HELPER(x)
 
 // javascript specific names
 #define JSPARSE_RETURN_VAR "return"

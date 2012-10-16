@@ -401,8 +401,10 @@ JsVar *jspeFunctionDefinition() {
  * on the start bracket). 'parent' is the object that contains this method,
  * if there was one (otherwise it's just a normal function).
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied
+ *
+ * functionName is used only for error reporting - and can be 0
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *arg0) {
+JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, bool isParsing, JsVar *arg0) {
   if (JSP_SHOULD_EXECUTE && !function) {
       jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastEnd );
   }
@@ -550,7 +552,13 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *a
             jslKill(&newLex);
             execInfo.lex = oldLex;
             if (hasError) {
-              jsiConsolePrint("in function called from ");
+              jsiConsolePrint("in function ");
+              if (functionName) {
+                jsiConsolePrint("\"");
+                jsiConsolePrintStringVar(functionName);
+                jsiConsolePrint("\" ");
+              }
+              jsiConsolePrint("called from ");
               if (execInfo.lex)
                 jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
               else
@@ -649,9 +657,10 @@ JsVar *jspeFactor() {
 
         while (execInfo.lex->tk=='(' || execInfo.lex->tk=='.' || execInfo.lex->tk=='[') {
             if (execInfo.lex->tk=='(') { // ------------------------------------- Function Call
-              JsVar *func = 0;
-              func = jsvSkipNameAndUnlock(a);
-              a = jspeFunctionCall(func, parent, true, 0);
+              JsVar *funcName = a;
+              JsVar *func = jsvSkipName(funcName);
+              a = jspeFunctionCall(func, funcName, parent, true, 0);
+              jsvUnLock(funcName);
               jsvUnLock(func);
             } else if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
                 JSP_MATCH('.');
@@ -858,23 +867,25 @@ JsVar *jspeFactor() {
       JSP_MATCH(LEX_R_NEW);
       if (JSP_SHOULD_EXECUTE) {
         JsVar *obj;
-        JsVar *objClassOrFunc = jsvSkipNameAndUnlock(jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex)));
+        JsVar *objClassOrFuncName = jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex));
+        JsVar *objClassOrFunc = jsvSkipName(objClassOrFuncName);
         if (!objClassOrFunc) {
           jsWarnAt("Prototype used in NEW is not defined", execInfo.lex, execInfo.lex->tokenStart);
         }
-        JSP_MATCH(LEX_ID);
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(objClassOrFuncName);jsvUnLock(objClassOrFunc);, 0);
         obj = jsvNewWithFlags(JSV_OBJECT);
         if (obj) { // could be out of memory
           if (jsvIsFunction(objClassOrFunc)) {
-            jsvUnLock(jspeFunctionCall(objClassOrFunc, obj, true, 0));
+            jsvUnLock(jspeFunctionCall(objClassOrFunc, objClassOrFuncName, obj, true, 0));
           } else {
             jsvUnLock(jsvAddNamedChild(obj, objClassOrFunc, JSPARSE_PROTOTYPE_CLASS));
             if (execInfo.lex->tk == '(') {
-              JSP_MATCH('(');
-              JSP_MATCH(')');
+              JSP_MATCH_WITH_CLEANUP_AND_RETURN('(', jsvUnLock(objClassOrFuncName);jsvUnLock(objClassOrFunc);, 0);
+              JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(objClassOrFuncName);jsvUnLock(objClassOrFunc);, 0);
             }
           }
         }
+        jsvUnLock(objClassOrFuncName);
         jsvUnLock(objClassOrFunc);
         return obj;
       } else {
@@ -1307,7 +1318,7 @@ JsVar *jspeStatement() {
         jslKill(&whileBody);
 
         if (loopCount<=0) {
-          jsErrorAt("WHILE Loop exceeded the maximum number of iterations", execInfo.lex, execInfo.lex->tokenLastEnd);
+          jsErrorAt("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")", execInfo.lex, execInfo.lex->tokenLastEnd);
           jspSetError();
         }
     } else if (execInfo.lex->tk==LEX_R_FOR) {
@@ -1468,7 +1479,7 @@ JsVar *jspeStatement() {
           jslKill(&forIter);
           jslKill(&forBody);
           if (loopCount<=0) {
-              jsErrorAt("FOR Loop exceeded the maximum number of iterations", execInfo.lex, execInfo.lex->tokenLastEnd);
+              jsErrorAt("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")", execInfo.lex, execInfo.lex->tokenLastEnd);
               jspSetError();
           }
         }
@@ -1711,7 +1722,7 @@ bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *arg0) {
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(parse, 0);
-  JsVar *resultVar = jspeFunctionCall(func, 0, false, arg0);
+  JsVar *resultVar = jspeFunctionCall(func, 0, 0, false, arg0);
   bool result = jsvGetBool(resultVar);
   jsvUnLock(resultVar);
   // clean up

@@ -94,7 +94,9 @@ JsVar *jspParseSingleFunction(); ///< parse function with a single argument, ret
  * on the start bracket). 'parent' is the object that contains this method,
  * if there was one (otherwise it's just a normal function).
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied
+ *
+ * functionName is used only for error reporting - and can be 0
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *parent, bool isParsing, JsVar *arg0); 
+JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, bool isParsing, JsVar *arg0);
 
 #endif /* JSPARSE_H_ */

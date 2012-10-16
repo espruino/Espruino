@@ -444,7 +444,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
                if (jsvIsInt(child)) {
                  JsVarInt thisIndex = jsvGetInteger(child);
                  JsVar *childValue = jsvLock(child->firstChild);
-                 JsVar *mapped = jspeFunctionCall(funcVar, thisVar, false, childValue); 
+                 JsVar *mapped = jspeFunctionCall(funcVar, 0, thisVar, false, childValue);
                  jsvUnLock(childValue);
                  if (mapped) {
                    JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
