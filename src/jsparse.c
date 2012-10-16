@@ -787,7 +787,6 @@ JsVar *jspeFactor() {
           if (JSP_SHOULD_EXECUTE) {
             varName = jslGetTokenValueAsVar(execInfo.lex);
             if (!varName) { // out of memory
-              jspSetError();
               return contents;
             }
           }
@@ -800,12 +799,7 @@ JsVar *jspeFactor() {
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
           if (JSP_SHOULD_EXECUTE) {
             JsVar *valueVar;
-            JsVar *value = jspeBase();
-            if (!value) {
-              jspSetError();
-              jsvUnLock(varName);
-              return contents;
-            }
+            JsVar *value = jspeBase(); // value can be 0 (could be undefined!)
             valueVar = jsvSkipNameAndUnlock(value);
             varName = jsvMakeIntoVariableName(varName, valueVar);
             jsvAddName(contents, varName);
@@ -843,9 +837,7 @@ JsVar *jspeFactor() {
             a = jspeBase();
             aVar = jsvSkipNameAndUnlock(a);
             indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
-            if (!indexName)  // out of memory
-              jspSetError();
-            else {
+            if (indexName) { // could be out of memory
               jsvAddName(contents, indexName);
               jsvUnLock(indexName);
             }

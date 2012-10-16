@@ -87,6 +87,7 @@
             Now run Garbage collection if we're idle, and we know we have a few ms spare
             Added setSleepIndicator
             Fix line/col indicator in errors/warnings
+            Fix JSON parsing and printing when 'undefined' encountered
 [/CHANGELOG]
 
 [TODO]

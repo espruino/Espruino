@@ -1196,7 +1196,7 @@ JsVar *jsvGetArrayItem(JsVar *arr, int index) {
     assert(jsvIsInt(child));
     childIndex = jsvGetInteger(child);
     if (childIndex == index) {
-      JsVar *item = jsvLock(child->firstChild);
+      JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
       jsvUnLock(child);
       return item;
     }

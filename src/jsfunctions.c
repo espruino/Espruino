@@ -492,9 +492,10 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
       callbackString(callbackData, "\"");
       callbackVar(callbackData, child); // FIXME: escape the string
       callbackString(callbackData, "\":");
-      childVar = jsvLock(child->firstChild);
+      childVar = child->firstChild ? jsvLock(child->firstChild) : 0;
       childref = child->nextSibling;
       jsvUnLock(child);
+
       jsfGetJSONWithCallback(childVar, callbackString, callbackVar, callbackData);
       jsvUnLock(childVar);
       if (childref) callbackString(callbackData, ",");
