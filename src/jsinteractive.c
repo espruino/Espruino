@@ -263,9 +263,16 @@ void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
   }
 }
 
-void jsiSetBusy(bool isBusy) {
+void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
+  static JsiBusyDevice business = 0;
+
+  if (isBusy)
+    business |= device;
+  else
+    business &= (JsiBusyDevice)~device;
+
   if (pinBusyIndicator >= 0)
-    jshPinOutput(pinBusyIndicator, isBusy);
+    jshPinOutput(pinBusyIndicator, business!=0);
 }
 
 void jsiSetSleep(bool isSleep) {
@@ -934,7 +941,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
 
 void jsiExecuteEvents() {
   bool hasEvents = events;
-  if (hasEvents) jsiSetBusy(true);
+  if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
   while (events) {
     JsVar *event = jsvLock(events);
     // Get function to execute
@@ -959,7 +966,7 @@ void jsiExecuteEvents() {
     jsvUnLock(func);
     jsvUnLock(arg0);
   }
-  if (hasEvents) jsiSetBusy(false);
+  if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, false);
 }
 
 bool jsiHasTimers() {
@@ -980,9 +987,9 @@ void jsiIdle() {
     loopsIdling = 0; // because we're not idling
     if (IOEVENTFLAGS_GETTYPE(event.flags) == consoleDevice) {
       int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
-      jsiSetBusy(true);
+      jsiSetBusy(BUSY_INTERACTIVE, true);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
-      jsiSetBusy(false);
+      jsiSetBusy(BUSY_INTERACTIVE, false);
     }
 
 
@@ -1105,7 +1112,7 @@ void jsiIdle() {
   }
   // check for TODOs
   if (todo) {
-    jsiSetBusy(true);
+    jsiSetBusy(BUSY_INTERACTIVE, true);
     if (todo & TODO_RESET) {
       todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
@@ -1133,7 +1140,7 @@ void jsiIdle() {
       jspSoftInit(&p);
       jsiSoftInit();
     }
-    jsiSetBusy(false);
+    jsiSetBusy(BUSY_INTERACTIVE, false);
   }
 
   /* if we've been around this loop, there is nothing to do, and
@@ -1141,9 +1148,9 @@ void jsiIdle() {
    * just in case. */
   if (loopsIdling==1 &&
       minTimeUntilNext > jshGetTimeFromMilliseconds(10)) {
-    jsiSetBusy(true);
+    jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
-    jsiSetBusy(false);
+    jsiSetBusy(BUSY_INTERACTIVE, false);
   }
   // Go to sleep!
 #ifdef ARM

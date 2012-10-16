@@ -57,7 +57,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   if (device==EV_NONE) return;
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   if (txHeadNext==txTail) {
-    jsiSetBusy(true);
+    jsiSetBusy(BUSY_TRANSMIT, true);
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
 #ifdef USB
@@ -65,7 +65,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
 #endif
     }
-    jsiSetBusy(false);
+    jsiSetBusy(BUSY_TRANSMIT, false);
   }
   txBuffer[txHead].flags = device;
   txBuffer[txHead].data = (char)data;
@@ -109,9 +109,9 @@ int jshGetCharToTransmit(IOEventFlags device) {
 
 void jshTransmitFlush() {
 #ifdef ARM
-  jsiSetBusy(true);
+  jsiSetBusy(BUSY_TRANSMIT, true);
   while (jshHasTransmitData()) ; // wait for send to finish
-  jsiSetBusy(false);
+  jsiSetBusy(BUSY_TRANSMIT, false);
 #endif
 }
 

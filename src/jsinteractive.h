@@ -35,8 +35,15 @@ void jsiConsolePrintInt(int d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
 
+
+/// Flags for jsiSetBusy - THESE SHOULD BE 2^N
+typedef enum {
+  BUSY_INTERACTIVE = 1,
+  BUSY_TRANSMIT    = 2,
+  // ???           = 4
+} JsiBusyDevice;
 /// Shows a busy indicator, if one is set up
-void jsiSetBusy(bool isBusy);
+void jsiSetBusy(JsiBusyDevice device, bool isBusy);
 /// Shows a sleep indicator, if one is set up
 void jsiSetSleep(bool isSleep);
 
