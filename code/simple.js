@@ -156,4 +156,12 @@ var average = 0.414431;
 setInterval("test()", 100);
 
 
+// scroller
+var leds = [D9,D11,D12,D14];
+var state = 10307921510;
+var scroll = function () {
+  state = ((state>>1)&0b0111) | (state<<3);
+  digitalWrite(leds, state);
+};
+
 
