@@ -94,6 +94,7 @@
             Nice error reporting with line + pointer
             fixed Math.random
             Binary style ops on doubles now work - they are just converted to ints
+            Added boolean datatype
 [/CHANGELOG]
 
 [TODO]
@@ -280,6 +281,7 @@ typedef enum {
     JSV_FUNCTION    = 6,
     JSV_INTEGER     = 8, // integer number (note JSV_NUMERICMASK)
     JSV_FLOAT       = 9, // floating point double (note JSV_NUMERICMASK)
+    JSV_BOOLEAN     = 10, // boolean (note JSV_NUMERICMASK)
 
     JSV_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
     JSV_NATIVE      = 32, // to specify this is a native function, root, OR that it should not be freed

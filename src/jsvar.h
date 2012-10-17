@@ -169,6 +169,7 @@ bool jsvIsBuiltInObject(const char *name);
 
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
+static inline bool jsvIsBoolean(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN; }
 static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING; }
 static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_STRING_EXT; } ///< The extra bits dumped onto the end of a string to store more data
 static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_NUMERICMASK)!=0; }

@@ -297,7 +297,7 @@ JsVar *jsvNewFromInteger(JsVarInt value) {
 JsVar *jsvNewFromBool(bool value) {
   JsVar *var = jsvNew();
   if (!var) return 0; // no memory
-  var->flags = JSV_INTEGER;
+  var->flags = JSV_BOOLEAN;
   var->varData.integer = value ? 1 : 0;
   return var;
 }
@@ -454,8 +454,8 @@ const char *jsvGetConstString(JsVar *v) {
       return "undefined";
     } else if (jsvIsNull(v)) {
       return "null";
-/*    } else if (jsvIsBoolean(v)) {
-      return jsvGetBool(v) ? "true" : "false";*/
+    } else if (jsvIsBoolean(v)) {
+      return jsvGetBool(v) ? "true" : "false";
     } else if (jsvIsObject(v)) {
       return "[object Object]";
     }
@@ -841,7 +841,7 @@ char jsvGetCharInString(JsVar *v, int idx) {
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v)) return v->varData.integer;
+    if (jsvIsInt(v) || jsvIsBoolean(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;

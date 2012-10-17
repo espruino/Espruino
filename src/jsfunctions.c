@@ -510,7 +510,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     }
     callbackString(callbackData, "}");
   } else if (jsvIsFunction(var)) {
-    JsVarRef coderef = 0;
+    JsVarRef coderef = 0; // TODO: this should really be in jsvAsString
     JsVarRef childref = var->firstChild;
     bool firstParm = true;
     callbackString(callbackData, "function (");
