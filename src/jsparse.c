@@ -122,27 +122,33 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
       jsvUnLock(inheritsFrom);
       if (child) return child;
     }
+  } else { // Not actually an object - but might be an array/string/etc
+    const char *objectName = jsvGetBasicObjectName(parent);
+    while (objectName) {
+      JsVar *objName = jsvFindChildFromString(execInfo.parse->root, objectName, false);
+      if (objName) {
+        JsVar *result = 0;
+        JsVar *obj = jsvSkipNameAndUnlock(objName);
+        if (obj) {
+          // We have found an object with this name - search for the prototype var
+          JsVar *proto = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(obj), JSPARSE_PROTOTYPE_VAR, false));
+          if (proto) {
+            result = jsvFindChildFromString(jsvGetRef(proto), name, false);
+            jsvUnLock(proto);
+          }
+          jsvUnLock(obj);
+        }
+        if (result) return result;
+      }
+      // We haven't found anything in the actual object, we should check the 'Object' itself
+      // eg, we tried 'String', so now we should try 'Object'
+      if (strcmp(objectName,"Object")!=0)
+        objectName = "Object";
+      else
+        objectName = 0;
+    }
   }
 
-/*
-  const char *objectName = jsvGetBasicObjectName(parent);
-  while (objectName) {
-    JsVar *objName = jsvFindChildFromString(execInfo.parse->root, name, false);
-    if (objName) {
-      JsVar *obj = jsvSkipNameAndUnlock(objName);
-      // We have found an object with this name
-      JsVar *result = jsvFindChildFromString(jsvGetRef(obj), name, false);
-      jsvUnLock(obj);
-      return result;
-    }
-    // in the last case, we should check the 'Object' itself
-    if (strcmp(objectName,"Object")!=0)
-      objectName = "Object";
-    else
-      objectName = 0;
-  }*/
-/*
-  */
   // no luck!
   return 0;
 }
