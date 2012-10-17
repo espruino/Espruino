@@ -157,3 +157,16 @@ setInterval("test()", 100);
 
 
 
+
+
+// ----------------------------------- All 4 lights
+var c = 0;
+var next = function () {
+  c+=0.1;
+  analogWrite("D12",(Math.sin(c)+1)*0.25);
+  analogWrite("D13",(Math.sin(c+Math.PI*0.5)+1)*0.25);
+  analogWrite("D14",(Math.sin(c+Math.PI)+1)*0.25);
+  analogWrite("D15",(Math.sin(c+Math.PI*1.5)+1)*0.25);
+};
+setInterval(next, 50);
+
