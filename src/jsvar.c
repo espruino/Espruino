@@ -1455,7 +1455,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
         return 0; // undefined
     } else if ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
                (jsvIsNumeric(b) || jsvIsUndefined(b))) {
-        if (!jsvIsFloat(a) && !jsvIsFloat(b)) {
+        bool needsInt = op=='&' || op=='|' || op=='^' || op=='%' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
+
+        if (needsInt || (!jsvIsFloat(a) && !jsvIsFloat(b))) {
             // use ints
             JsVarInt da = jsvGetInteger(a);
             JsVarInt db = jsvGetInteger(b);

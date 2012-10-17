@@ -93,6 +93,7 @@
             Added a few more built in functions
             Nice error reporting with line + pointer
             fixed Math.random
+            Binary style ops on doubles now work - they are just converted to ints
 [/CHANGELOG]
 
 [TODO]

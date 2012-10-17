@@ -156,3 +156,4 @@ var average = 0.414431;
 setInterval("test()", 100);
 
 
+
