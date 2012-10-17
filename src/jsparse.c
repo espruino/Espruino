@@ -737,7 +737,8 @@ JsVar *jspeFactor() {
                       } else { // NOT FOUND...
                         /* Check for builtins via separate function
                          * This way we save on RAM for built-ins because all comes out of program code. */
-                        child = jsfHandleFunctionCall(&execInfo, aVar, a/*name*/, name);
+                        if (!jsvIsString(a) || !jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)) // don't try and use builtins on the prototype var!
+                          child = jsfHandleFunctionCall(&execInfo, aVar, a/*name*/, name);
                         if (child == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
                           child = 0;
                           // It wasn't handled... We already know this is an object so just add a new child
@@ -749,7 +750,8 @@ JsVar *jspeFactor() {
                             jsvUnLock(value);
                           } else {
                             // could have been a string...
-                            jsWarnAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastEnd);
+                            jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastEnd);
+                            jspSetError();
                           }
                           JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
                         }
@@ -963,12 +965,13 @@ JsVar *jspeFactor() {
           JsVar *objFuncName = jspeFactorID();
           JsVar *objFunc = jsvSkipName(objFuncName);
           if (!objFunc) {
-            jsWarnAt("Prototype used in NEW is not defined", execInfo.lex, execInfo.lex->tokenStart);
+            jsWarnAt("Argument used in 'new' is not defined", execInfo.lex, execInfo.lex->tokenStart);
           }
           obj = jsvNewWithFlags(JSV_OBJECT);
           if (obj) { // could be out of memory
             if (!jsvIsFunction(objFunc)) {
-              jsErrorAt("object is not a function", execInfo.lex, execInfo.lex->tokenLastEnd);
+              jsErrorAt("Argument supplied to 'new' is not a function", execInfo.lex, execInfo.lex->tokenLastEnd);
+              jspSetError();
             } else {
               // Make sure the function has a 'prototype' var
               JsVar *prototypeName = jsvFindChildFromString(jsvGetRef(objFunc), JSPARSE_PROTOTYPE_VAR, true);
