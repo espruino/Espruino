@@ -262,12 +262,12 @@ void ftoa(JsVarFloat val,char *str) {
   if (val>0) {
     *(str++)='.';
     while (val>0.000001) {
-      int v = (int)(val / d);
+      int v = (int)((val / d)+0.05);
       val -= v*d;
       *(str++)=itoch(v);
       d /= base;
     }
-  }  
+  }
 #endif
 
   *(str++)=0;
