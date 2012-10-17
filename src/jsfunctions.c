@@ -53,10 +53,15 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
       char buffer[JS_NUMBER_BUFFER_SIZE];
       JsVar *v, *radixVar;
       jspParseFunction(0, &v, &radixVar, 0, 0);
-      int radix = 10;
-      if (radixVar) radix = jsvGetIntegerAndUnLock(radixVar);
+      if (!v) {
+        jsvUnLock(radixVar);
+        return 0; // undefined!
+      }
       jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
       jsvUnLock(v);
+      int radix = 0;
+      if (radixVar)
+         radix = (int)jsvGetIntegerAndUnLock(radixVar);
       return jsvNewFromInteger(stringToIntWithRadix(buffer, radix));
     }
     if (strcmp(name,"parseFloat")==0) {

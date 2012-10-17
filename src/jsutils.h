@@ -352,7 +352,7 @@ bool isHexadecimal(char ch);
 bool isAlpha(char ch);
 bool isIDString(const char *s);
 
-/* convert a number in the given radix to an int */
+/* convert a number in the given radix to an int. if radix=0, autodetect */
 JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix);
 /* convert hex, binary, octal or decimal string into an int */
 JsVarInt stringToInt(const char *s);

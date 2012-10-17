@@ -42,14 +42,33 @@ bool isIDString(const char *s) {
     return true;
 }
 
-/* convert a number in the given radix to an int */
-JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix) {
+/* convert a number in the given radix to an int. if radix=0, autodetect */
+JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
   bool isNegated = false;
   JsVarInt v = 0;
-  if (*s == '-') { 
+  JsVarInt radix = 0;
+  if (*s == '-') {
     isNegated = true;
     s++;
   }
+  if (*s == '0') {
+    radix = 8;
+    s++;
+  }
+  if (*s == 'x') {
+    radix = 16;
+    s++;
+  } else if (*s == 'b') {
+    radix = 2;
+    s++;
+  }
+  if (forceRadix==0) {
+    if (radix==0) radix = 10; // default to 10
+  } else {
+    if (radix==0) radix = forceRadix;
+    else if (radix!=forceRadix) return 0; // this thinks the radix is different from what it was forced to be
+  }
+
   while (*s) {
     if (*s >= '0' && *s <= '9')
       v = (v*radix) + (*s - '0');
@@ -67,37 +86,7 @@ JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix) {
 
 /* convert hex, binary, octal or decimal string into an int */
 JsVarInt stringToInt(const char *s) {
-  bool isNegated = false;
-    JsVarInt v = 0;
-    JsVarInt radix = 10;
-    if (*s == '-') {
-      isNegated = true;
-      s++;
-    }
-    if (*s == '0') {
-      radix = 8;
-      s++;
-    }
-    if (*s == 'x') {
-      radix = 16;
-      s++;
-    } else if (*s == 'b') {
-      radix = 2;
-      s++;
-    }
-    while (*s) {
-      if (*s >= '0' && *s <= '9')
-        v = (v*radix) + (*s - '0');
-      else if (*s >= 'a' && *s <= 'f')
-        v = (v*radix) + (10 + *s - 'a');
-      else if (*s >= 'A' && *s <= 'F')
-        v = (v*radix) + (10 + *s - 'A');
-      else break;
-      s++;
-    }
-
-    if (isNegated) return -v;
-    return v;
+    return stringToIntWithRadix(s,0);
 }
 
 void jsError(const char *message) {
