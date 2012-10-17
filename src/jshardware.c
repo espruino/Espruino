@@ -1305,10 +1305,10 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
   #define FLASH_PAGE_SIZE 1024
   #define FLASH_PAGES 6
  #endif
-#else
+#else // !ARM
  #define FLASH_MEMORY_SIZE (128*1024)
  #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 32
+ #define FLASH_PAGES 3200
 #endif
 
 #define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)

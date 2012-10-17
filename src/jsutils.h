@@ -92,6 +92,7 @@
             Array initialisation with 'new Array()', also for Strings
             Added a few more built in functions
             Nice error reporting with line + pointer
+            fixed Math.random
 [/CHANGELOG]
 
 [TODO]
@@ -211,7 +212,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   typedef unsigned char JsVarRef;  // References for variables - We treat 0 as null
  #endif
 #else
- #define JSVAR_CACHE_SIZE 350
+ #define JSVAR_CACHE_SIZE 35000
  typedef unsigned short JsVarRef; // References for variables - We treat 0 as null
 #endif
 
@@ -374,8 +375,8 @@ char *strncpy(char *dst, const char *src, size_t c);
 size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
-#define RAND_MAX (0x7FFFFFFF)
-int rand();
+#define RAND_MAX (0xFFFFFFFFU)
+unsigned int rand();
 JsVarFloat atof(const char *str);
 #else
 // FIXME: use itoa/ftoa direct - sprintf is huge

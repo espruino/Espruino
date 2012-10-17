@@ -8,6 +8,7 @@
 #include "jsvar.h"
 #include "jslex.h"
 #include "jsparse.h"
+#include "jsfunctions.h"
 #include "jsinteractive.h"
 
 #define JSVAR_CACHE_UNUSED_REF 0xFFFF
@@ -538,6 +539,9 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       JsVar *filler = jsvNewFromString(",");
       str = jsvArrayJoin(v, filler);
       jsvUnLock(filler);
+    } else if (jsvIsFunction(v)) {
+      str = jsvNewFromString("");
+      if (str) jsfGetJSON(v, str);
     } else {
       jsWarn("INTERNAL: variable type cannot be converted to string");
       str = 0;

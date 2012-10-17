@@ -142,7 +142,7 @@ void exit(int errcode) {
 }
 
 char * strncat(char *dst, const char *src, size_t c) {
-        // FIXME
+        // FIXME ignores c!
         char *dstx = dst;
         while (*(dstx++));
         while (*src)
@@ -151,7 +151,7 @@ char * strncat(char *dst, const char *src, size_t c) {
         return dst;
 }
 char *strncpy(char *dst, const char *src, size_t c) {
-        // FIXME
+        // FIXME ignores c!
         char *dstx = dst;
         while (*src)
                 *(dstx++) = *(src++);
@@ -177,8 +177,13 @@ void *memcpy(void *dst, const void *src, size_t size) {
                 ((char*)dst)[i] = ((char*)src)[i];
         return dst;
 }
-int rand() { 
-        return 0; //FIXME
+unsigned int rand() { 
+   static unsigned int m_w = <choose-initializer>;    /* must not be zero */
+   static unsigned int m_z = <choose-initializer>;    /* must not be zero */
+
+    m_z = 36969 * (m_z & 65535) + (m_z >> 16);
+    m_w = 18000 * (m_w & 65535) + (m_w >> 16);
+    return (m_z << 16) + m_w;  /* 32-bit result */
 }
 
 JsVarFloat atof(const char *s) {

@@ -12,6 +12,7 @@ var a = [
          1234.56, "1234.56", 
          {a:2}, "[object Object]",
          new Foo(), "Hello World",
+         function (b) {c}, "function (b) {c}"
 ];
 
 var result = 1;

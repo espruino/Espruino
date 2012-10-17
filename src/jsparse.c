@@ -1284,7 +1284,12 @@ JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_INT ||
         execInfo.lex->tk==LEX_FLOAT ||
         execInfo.lex->tk==LEX_STR ||
+        execInfo.lex->tk==LEX_R_NULL ||
+        execInfo.lex->tk==LEX_R_UNDEFINED ||
+        execInfo.lex->tk==LEX_R_TRUE ||
+        execInfo.lex->tk==LEX_R_FALSE ||
         execInfo.lex->tk=='-' ||
+        execInfo.lex->tk=='[' ||
         execInfo.lex->tk=='(') {
         /* Execute a simple statement that only contains basic arithmetic... */
         JsVar *res = jspeBase();
