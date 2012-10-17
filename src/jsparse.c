@@ -282,7 +282,7 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
 }
 // ----------------------------------------------
 
-// we return a value so that JSP_MATCH can return 0 if it fails
+// we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)
 bool jspeFunctionArguments(JsVar *funcVar) {
   JSP_MATCH('(');
   while (execInfo.lex->tk!=')') {
@@ -416,6 +416,18 @@ JsVar *jspeFunctionDefinition() {
     }
   }
   return funcVar;
+}
+
+/* Parse just the brackets of a function - and throw
+ * everything away */
+bool jspeParseFunctionCallBrackets() {
+  JSP_MATCH('(');
+  while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
+    jsvUnLock(jspeBase());
+    if (execInfo.lex->tk!=')') JSP_MATCH(',');
+  }
+  if (!JSP_HAS_ERROR) JSP_MATCH(')');
+  return 0;
 }
 
 /** Handle a function call (assumes we've parsed the function name and we're
@@ -620,13 +632,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
     else
       return 0;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
-    JSP_MATCH('(');
-    while (execInfo.lex->tk != ')') {
-      JsVar *value = jspeBase();
-      jsvUnLock(value);
-      if (execInfo.lex->tk!=')') JSP_MATCH(',');
-    }
-    JSP_MATCH(')');
+    jspeParseFunctionCallBrackets();
     /* Do not return function, as it will be unlocked! */
     return 0;
   } else return 0;
@@ -891,40 +897,78 @@ JsVar *jspeFactor() {
     }
     if (execInfo.lex->tk==LEX_R_FUNCTION) {
       JSP_MATCH(LEX_R_FUNCTION);
+      JSP_MATCH('(');
+      JSP_MATCH(')');
       return jspeFunctionDefinition();
     }
     if (execInfo.lex->tk==LEX_R_NEW) {
       // new -> create a new object
       JSP_MATCH(LEX_R_NEW);
       if (JSP_SHOULD_EXECUTE) {
-        JsVar *obj;
-        JsVar *objFuncName = jspeFactorID();
-
-        JsVar *objFunc = jsvSkipName(objFuncName);
-        if (!objFunc) {
-          jsWarnAt("Prototype used in NEW is not defined", execInfo.lex, execInfo.lex->tokenStart);
-        }
-        obj = jsvNewWithFlags(JSV_OBJECT);
-        if (obj) { // could be out of memory
-          if (!jsvIsFunction(objFunc)) {
-            jsErrorAt("object is not a function", execInfo.lex, execInfo.lex->tokenLastEnd);
-          } else {
-            // Make sure the function has a 'prototype' var
-            JsVar *prototypeName = jsvFindChildFromString(jsvGetRef(objFunc), JSPARSE_PROTOTYPE_VAR, true);
-            jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
-            jsvUnLock(prototypeName);
-            jsvUnLock(jspeFunctionCall(objFunc, objFuncName, obj, true, 0));
+        const char *name = jslGetTokenValueAsString(execInfo.lex);
+        if (strcmp(name, "Array")==0) {
+          JSP_MATCH(LEX_ID);
+          JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+          if (!arr) return 0; // out of memory
+          if (execInfo.lex->tk == '(') {
+            JsVar *arg = 0;
+            bool moreThanOne = false;
+            JSP_MATCH('(');
+            while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
+              if (arg) {
+                moreThanOne = true;
+                jsvArrayPush(arr, arg);
+                jsvUnLock(arg);
+              }
+              arg = jsvSkipNameAndUnlock(jspeBase());
+              if (execInfo.lex->tk!=')') JSP_MATCH(',');
+            }
+            JSP_MATCH(')');
+            if (arg) {
+              if (!moreThanOne && jsvIsInt(arg) && jsvGetInteger(arg)>=0) { // this is the size of the array
+                JsVarInt count = jsvGetIntegerAndUnLock(arg);
+                // we cheat - no need to fill the array - just the last element
+                if (count>0) {
+                  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
+                  if (idx) { // could be out of memory
+                    jsvAddName(arr, idx);
+                    jsvUnLock(idx);
+                  }
+                }
+              } else { // just append to array
+                jsvArrayPush(arr, arg);
+                jsvUnLock(arg);
+              }
+            }
           }
+          return arr;
+        } else { // not built-in, try and run constructor function
+          JsVar *obj;
+          JsVar *objFuncName = jspeFactorID();
+          JsVar *objFunc = jsvSkipName(objFuncName);
+          if (!objFunc) {
+            jsWarnAt("Prototype used in NEW is not defined", execInfo.lex, execInfo.lex->tokenStart);
+          }
+          obj = jsvNewWithFlags(JSV_OBJECT);
+          if (obj) { // could be out of memory
+            if (!jsvIsFunction(objFunc)) {
+              jsErrorAt("object is not a function", execInfo.lex, execInfo.lex->tokenLastEnd);
+            } else {
+              // Make sure the function has a 'prototype' var
+              JsVar *prototypeName = jsvFindChildFromString(jsvGetRef(objFunc), JSPARSE_PROTOTYPE_VAR, true);
+              jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
+              jsvUnLock(prototypeName);
+              jsvUnLock(jspeFunctionCall(objFunc, objFuncName, obj, true, 0));
+            }
+          }
+          jsvUnLock(objFuncName);
+          jsvUnLock(objFunc);
+          return obj;
         }
-        jsvUnLock(objFuncName);
-        jsvUnLock(objFunc);
-        return obj;
       } else {
         JSP_MATCH(LEX_ID);
-        if (execInfo.lex->tk == '(') {
-          JSP_MATCH('(');
-          JSP_MATCH(')');
-        }
+        jspeParseFunctionCallBrackets();
+        return 0;
       }
     }
     // Nothing we can do here... just hope it's the end...

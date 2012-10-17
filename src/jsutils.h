@@ -89,6 +89,7 @@
             Fix line/col indicator in errors/warnings
             Fix JSON parsing and printing when 'undefined' encountered
             Rewritten object handling code to be way more standard JavaScript compliant
+            Array initialisation with 'new Array()'
 [/CHANGELOG]
 
 [TODO]
