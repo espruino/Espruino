@@ -1,8 +1,7 @@
 // Test for toString
 
 
-function Foo() {
-}
+function Foo() {}
 Foo.prototype.toString = function() { return "Hello World"; }
 
 var a = [

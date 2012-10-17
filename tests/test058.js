@@ -5,9 +5,9 @@ function Person(name,age) {
  this.age = age;
 
  // 'privileged'
- this.toString = function() { return this.name + " is " + this.age; }
+ this.rename = function(n){ this.name = n; };
 }
-Person.prototype.rename = function(n){ this.name = n; }
+Person.prototype.toString = function() { return this.name + " is " + this.age; }
 
 
 var p = new Person("Bob",1);

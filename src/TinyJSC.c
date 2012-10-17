@@ -105,7 +105,7 @@ bool run_all_tests() {
     if (run_test(fn)) {
       passed++;
     } else {
-      char *t = malloc(strlen(fails)+2+strlen(fn));
+      char *t = malloc(strlen(fails)+3+strlen(fn));
       strcpy(t, fails);
       strcat(t,fn);
       strcat(t,"\r\n");  

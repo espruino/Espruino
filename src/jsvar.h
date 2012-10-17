@@ -201,6 +201,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
  * for anything else the reference/pointer must be equal */
 bool jsvIsEqual(JsVar *a, JsVar *b);
 
+
+const char *jsvGetConstString(JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
@@ -215,7 +217,7 @@ void jsvAppendString(JsVar *var, const char *str); ///< Append the given string 
 void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
 void jsvAppendCharacter(JsVar *var, char ch); ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
-void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters. stridx can be negative to go from end of string
+void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
 void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
 char jsvGetCharInString(JsVar *v, int idx);
 
@@ -310,6 +312,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the e
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayGetLast(JsVar *arr); ///< Get the last element of an array (does not remove, unlike jsvArrayPop), and returns that element (or 0 if empty) includes the NAME
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);

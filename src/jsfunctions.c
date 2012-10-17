@@ -404,33 +404,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
            else
              filler = jsvAsString(filler, true);
            if (!filler) return 0; // out of memory
-           JsVar *str = jsvNewFromString("");
-           if (!str) { // out of memory
-             jsvUnLock(filler);
-             return 0;
-           }
-           JsVarInt index = 0;
-           JsVarRef childRef = parent->firstChild;
-           while (childRef) {
-             JsVar *child = jsvLock(childRef);
-             if (jsvIsInt(child)) {
-               JsVarInt thisIndex = jsvGetInteger(child);
-               while (index<thisIndex) {
-                 index++;
-                 jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-               }
-
-               if (child->firstChild) {
-                 JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
-                 if (data) { // could be out of memory
-                   jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
-                   jsvUnLock(data);
-                 }
-               }
-             }
-             childRef = child->nextSibling;
-             jsvUnLock(child);
-           }
+           JsVar *str = jsvArrayJoin(parent, filler);
            jsvUnLock(filler);
            return str;
          }

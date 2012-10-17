@@ -736,9 +736,17 @@ JsVar *jspeFactor() {
                         JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
                       } else { // NOT FOUND...
                         /* Check for builtins via separate function
-                         * This way we save on RAM for built-ins because all comes out of program code. */
-                        if (!jsvIsString(a) || !jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)) // don't try and use builtins on the prototype var!
+                         * This way we save on RAM for built-ins because all comes out of program code.
+                         *
+                         * We don't check for prototype vars, so people can overload the built
+                         * in functions (eg. Person.prototype.toString). HOWEVER if we did
+                         * this for 'this' then we couldn't say 'this.toString()'
+                         * */
+                        if (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)/* &&
+                                                !jsvIsStringEqual(a, JSPARSE_THIS_VAR)*/)) // don't try and use builtins on the prototype var!
                           child = jsfHandleFunctionCall(&execInfo, aVar, a/*name*/, name);
+                        else
+                          child = JSFHANDLEFUNCTIONCALL_UNHANDLED;
                         if (child == JSFHANDLEFUNCTIONCALL_UNHANDLED) {
                           child = 0;
                           // It wasn't handled... We already know this is an object so just add a new child

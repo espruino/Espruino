@@ -447,17 +447,30 @@ bool jsvIsEqual(JsVar *a, JsVar *b) {
   return jsvGetRef(a)==jsvGetRef(b);
 }
 
+/// Get a const string representing this variable - if we can. Otherwise return 0
+const char *jsvGetConstString(JsVar *v) {
+    if (jsvIsUndefined(v)) {
+      return "undefined";
+    } else if (jsvIsNull(v)) {
+      return "null";
+/*    } else if (jsvIsBoolean(v)) {
+      return jsvGetBool(v) ? "true" : "false";*/
+    } else if (jsvIsObject(v)) {
+      return "[object Object]";
+    }
+    return 0;
+}
+
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
-    if (jsvIsUndefined(v)) {
-      strncpy(str, "undefined", len);
-    } else if (jsvIsInt(v)) {
-      itoa(v->varData.integer, str, 10); 
-    } else if (jsvIsFloat(v)) {
-      ftoa(v->varData.floating, str);
-    } else if (jsvIsNull(v)) {
-      strncpy(str, "null", len);
-    } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsName(v) || jsvIsFunctionParameter(v)) {
+   const char *s = jsvGetConstString(v);
+   if (s) {
+     strncpy(str, s, len);
+   } else if (jsvIsInt(v)) {
+     itoa(v->varData.integer, str, 10);
+   } else if (jsvIsFloat(v)) {
+     ftoa(v->varData.floating, str);
+   } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v)) {
       JsVar *var = jsvLockAgain(v);
       JsVarRef ref = 0;
       if (jsvIsStringExt(v))
@@ -485,11 +498,54 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
       jsvUnLock(var);
       // if it has not had a 0 appended, do it now...
       if (str[-1]) *str = 0;
-    } else if (jsvIsFunction(v)) {
-      strncpy(str, "function", len);
     } else {
-      assert(0);
+      // Try and get as a JsVar string, and try again
+      JsVar *stringVar = jsvAsString(v, false);
+      if (stringVar) {
+        jsvGetString(stringVar, str, len); // call again - but this tm
+        jsvUnLock(stringVar);
+      } else {
+        strncpy(str, "", len);
+        jsWarn("INTERNAL: variable type cannot be converted to string");
+      }
     }
+}
+
+/** If var is a string, lock and return it, else
+ * create a new string. unlockVar means this will auto-unlock 'var'  */
+JsVar *jsvAsString(JsVar *v, bool unlockVar) {
+  JsVar *str = 0;
+  // If it is string-ish, but not quite a string, copy it
+  if (jsvHasCharacterData(v) && jsvIsName(v)) {
+    str = jsvNewFromString("");
+    if (str) jsvAppendStringVar(str,v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
+  } else if (jsvIsString(v)) { // If it is a string - just return a reference
+    str = jsvLockAgain(v);
+  } else {
+    const char *constChar = jsvGetConstString(v);
+    if (constChar) {
+      // if we could get this as a simple const char, do that..
+      str = jsvNewFromString(constChar);
+    } else if (jsvIsInt(v)) {
+      char buf[JS_NUMBER_BUFFER_SIZE];
+      itoa(v->varData.integer, buf, 10);
+      str = jsvNewFromString(buf);
+    } else if (jsvIsFloat(v)) {
+      char buf[JS_NUMBER_BUFFER_SIZE];
+      ftoa(v->varData.floating, buf);
+      str = jsvNewFromString(buf);
+    } else if (jsvIsArray(v)) {
+      JsVar *filler = jsvNewFromString(",");
+      str = jsvArrayJoin(v, filler);
+      jsvUnLock(filler);
+    } else {
+      jsWarn("INTERNAL: variable type cannot be converted to string");
+      str = 0;
+    }
+  }
+
+  if (unlockVar) jsvUnLock(v);
+  return str;
 }
 
 size_t jsvGetStringLength(JsVar *v) {
@@ -683,24 +739,7 @@ void jsvAppendCharacter(JsVar *var, char ch) {
   jsvAppendString(var, buf);
 }
 
-/** If var is a string, lock and return it, else
- * create a new string. unlockVar means this will auto-unlock 'var'  */
-JsVar *jsvAsString(JsVar *var, bool unlockVar) {
-  if (jsvIsString(var)) {
-    if (unlockVar) return var;
-    return jsvLockAgain(var);
-  }
-  /* TODO: If this is an array return a string with elements concatenated by ','
-   * TODO: If this is an object, search for 'toString'
-   * TODO: Try and do without the string buffer
-   */
-  char buf[JSVAR_STRING_OP_BUFFER_SIZE];
-  jsvGetString(var, buf, JSVAR_STRING_OP_BUFFER_SIZE);
-  if (unlockVar) jsvUnLock(var);
-  return jsvNewFromString(buf);
-}
-
-/** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters.
+/** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
  *  stridx can be negative to go from end of string */
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   assert(jsvHasCharacterData(str));
@@ -1325,6 +1364,37 @@ JsVar *jsvArrayGetLast(JsVar *arr) {
   }
 }
 
+/// Join all elements of an array together into a string
+JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
+  JsVar *str = jsvNewFromString("");
+  if (!str) return 0; // out of memory
+  JsVarInt index = 0;
+  JsVarRef childRef = arr->firstChild;
+  while (childRef) {
+   JsVar *child = jsvLock(childRef);
+   if (jsvIsInt(child)) {
+     JsVarInt thisIndex = jsvGetInteger(child);
+     if (filler) {
+       while (index<thisIndex) {
+         index++;
+         jsvAppendStringVar(str, filler, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+       }
+     }
+
+     if (child->firstChild) {
+       JsVar *data = jsvAsString(jsvLock(child->firstChild), true);
+       if (data) { // could be out of memory
+         jsvAppendStringVar(str, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+         jsvUnLock(data);
+       }
+     }
+   }
+   childRef = child->nextSibling;
+   jsvUnLock(child);
+  }
+  return str;
+}
+
 /** Same as jsvMathsOpPtr, but if a or b are a name, skip them
  * and go to what they point to. */
 JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op) {
@@ -1525,7 +1595,7 @@ void jsvTrace(JsVarRef ref, int indent) {
     }
     if (jsvIsName(var)) {
         jsiConsolePrint("\n");
-      jsvTrace(jsvGetRef(var), indent+1);
+      jsvTrace(jsvGetRef(var), indent+2);
       jsvUnLock(var);
       return;
     }
@@ -1570,7 +1640,7 @@ void jsvTrace(JsVarRef ref, int indent) {
       // dump children
       while (child) {
         JsVar *childVar;
-        jsvTrace(child, indent+1);
+        jsvTrace(child, indent+2);
         childVar = jsvLock(child);
         child = childVar->nextSibling;
         jsvUnLock(childVar);
