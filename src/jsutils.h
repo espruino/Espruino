@@ -89,7 +89,8 @@
             Fix line/col indicator in errors/warnings
             Fix JSON parsing and printing when 'undefined' encountered
             Rewritten object handling code to be way more standard JavaScript compliant
-            Array initialisation with 'new Array()'
+            Array initialisation with 'new Array()', also for Strings
+            Added a few more built in functions
 [/CHANGELOG]
 
 [TODO]
@@ -100,6 +101,7 @@
         better digitalPulse
 
   MEDIUM PRIORITY:
+        Add boolean data types
         Add Array.splice
         Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
@@ -235,6 +237,8 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16 // see jslTokenAsString
 
+#define JS_NUMBER_BUFFER_SIZE 24
+
 #define JSPARSE_MAX_SCOPES  32
 #define JSPARSE_MAX_LOOP_ITERATIONS 8192
 
@@ -348,7 +352,9 @@ bool isHexadecimal(char ch);
 bool isAlpha(char ch);
 bool isIDString(const char *s);
 
-/* convert hex, binary, octal or decimal string into an int. strtoint is broken on PIC32 */
+/* convert a number in the given radix to an int */
+JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix);
+/* convert hex, binary, octal or decimal string into an int */
 JsVarInt stringToInt(const char *s);
 
 // forward decl

@@ -450,7 +450,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b) {
 /// Save this var as a string to the given buffer
 void jsvGetString(JsVar *v, char *str, size_t len) {
     if (jsvIsUndefined(v)) {
-          strncpy(str, "undefined", len);
+      strncpy(str, "undefined", len);
     } else if (jsvIsInt(v)) {
       itoa(v->varData.integer, str, 10); 
     } else if (jsvIsFloat(v)) {
@@ -690,7 +690,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar) {
     if (unlockVar) return var;
     return jsvLockAgain(var);
   }
-  /* TODO: If this is an array return a string with elements concatenated by '.'
+  /* TODO: If this is an array return a string with elements concatenated by ','
    * TODO: If this is an object, search for 'toString'
    * TODO: Try and do without the string buffer
    */

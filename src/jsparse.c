@@ -223,22 +223,28 @@ bool jspParseVariableName() {
 bool jspParseEmptyFunction() {
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
+  if (execInfo.lex->tk != ')')
+    jsvUnLock(jspeBase());
+  // throw away extra params
+  while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
+    JSP_MATCH(',');
+    jsvUnLock(jspeBase());
+  }
   JSP_MATCH(')');
   return true;
 }
 
 // parse function with a single argument, return its value (no names!)
 JsVar *jspParseSingleFunction() {
-  JsExecFlags execute = EXEC_YES;
   JsVar *v = 0;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
-    v = jsvSkipNameAndUnlock(jspeBase(&execute));
+    v = jsvSkipNameAndUnlock(jspeBase());
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH_WITH_RETURN(',', v);
-    jsvUnLock(jspeBase(&execute));
+    jsvUnLock(jspeBase());
   }
   JSP_MATCH_WITH_RETURN(')', v);
   return v;
@@ -250,32 +256,31 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
   if (b) *b = 0;
   if (c) *c = 0; 
   if (d) *d = 0;
-  JsExecFlags execute = EXEC_YES;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (a && execInfo.lex->tk != ')') {
-    *a = jspeBase(&execute);
+    *a = jspeBase();
     if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnlock(*a);
   }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *b = jspeBase(&execute);
+    *b = jspeBase();
     if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnlock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *c = jspeBase(&execute);
+    *c = jspeBase();
     if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnlock(*c);
   }
   if (d && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *d = jspeBase(&execute);
+    *d = jspeBase();
     if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnlock(*d);
   }
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    jsvUnLock(jspeBase(&execute));
+    jsvUnLock(jspeBase());
   }
   JSP_MATCH(')');
   return true;
@@ -393,6 +398,7 @@ JsVar *jspeFunctionDefinition() {
     funcVar = jsvNewWithFlags(JSV_FUNCTION);
   // Get arguments save them to the structure
   if (!jspeFunctionArguments(funcVar)) {
+    jsvUnLock(funcVar);
     // parse failed
     return 0;
   }
@@ -897,8 +903,6 @@ JsVar *jspeFactor() {
     }
     if (execInfo.lex->tk==LEX_R_FUNCTION) {
       JSP_MATCH(LEX_R_FUNCTION);
-      JSP_MATCH('(');
-      JSP_MATCH(')');
       return jspeFunctionDefinition();
     }
     if (execInfo.lex->tk==LEX_R_NEW) {
@@ -942,6 +946,10 @@ JsVar *jspeFactor() {
             }
           }
           return arr;
+        } else if (strcmp(name, "String")==0) {
+          JsVar *a = jspParseSingleFunction();
+          if (!a) return jsvNewFromString(""); // out of mem, or just no argument!
+          return jsvAsString(a, true);
         } else { // not built-in, try and run constructor function
           JsVar *obj;
           JsVar *objFuncName = jspeFactorID();
@@ -1693,7 +1701,6 @@ void jspKill(JsParse *parse) {
 
 
 JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
-  JsExecFlags execute = EXEC_YES;
   JsLex lex;
   JsVar *v = 0;
   JSP_SAVE_EXECUTE();
@@ -1704,7 +1711,7 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   jspeiInit(parse, &lex);
   while (!JSP_HAS_ERROR && execInfo.lex->tk != LEX_EOF) {
     jsvUnLock(v);
-    v = jspeBlockOrStatement(&execute);
+    v = jspeBlockOrStatement();
   }
   // clean up
   jspeiKill();

@@ -42,24 +42,12 @@ bool isIDString(const char *s) {
     return true;
 }
 
-/* convert hex, binary, octal or decimal string into an int. strtoint is broken on PIC32 */
-JsVarInt stringToInt(const char *s) {
+/* convert a number in the given radix to an int */
+JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix) {
   bool isNegated = false;
   JsVarInt v = 0;
-  JsVarInt radix = 10;
   if (*s == '-') { 
     isNegated = true;
-    s++;
-  }
-  if (*s == '0') {
-    radix = 8;
-    s++;
-  }
-  if (*s == 'x') { 
-    radix = 16;
-    s++;
-  } else if (*s == 'b') { 
-    radix = 2;
     s++;
   }
   while (*s) {
@@ -75,6 +63,41 @@ JsVarInt stringToInt(const char *s) {
 
   if (isNegated) return -v;
   return v;
+}
+
+/* convert hex, binary, octal or decimal string into an int */
+JsVarInt stringToInt(const char *s) {
+  bool isNegated = false;
+    JsVarInt v = 0;
+    JsVarInt radix = 10;
+    if (*s == '-') {
+      isNegated = true;
+      s++;
+    }
+    if (*s == '0') {
+      radix = 8;
+      s++;
+    }
+    if (*s == 'x') {
+      radix = 16;
+      s++;
+    } else if (*s == 'b') {
+      radix = 2;
+      s++;
+    }
+    while (*s) {
+      if (*s >= '0' && *s <= '9')
+        v = (v*radix) + (*s - '0');
+      else if (*s >= 'a' && *s <= 'f')
+        v = (v*radix) + (10 + *s - 'a');
+      else if (*s >= 'A' && *s <= 'F')
+        v = (v*radix) + (10 + *s - 'A');
+      else break;
+      s++;
+    }
+
+    if (isNegated) return -v;
+    return v;
 }
 
 void jsError(const char *message) {

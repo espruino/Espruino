@@ -46,6 +46,29 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
       }
       return result;
     }
+    if (strcmp(name,"parseInt")==0) {
+    /*JS* method parseInt(string, radix)
+     *JS*  Convert a string representing a number into an integer
+     */
+      char buffer[JS_NUMBER_BUFFER_SIZE];
+      JsVar *v, *radixVar;
+      jspParseFunction(0, &v, &radixVar, 0, 0);
+      int radix = 10;
+      if (radixVar) radix = jsvGetIntegerAndUnLock(radixVar);
+      jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+      jsvUnLock(v);
+      return jsvNewFromInteger(stringToIntWithRadix(buffer, radix));
+    }
+    if (strcmp(name,"parseFloat")==0) {
+      /*JS* method parseFloat(string)
+       *JS*  Convert a string representing a number into a float
+       */
+        char buffer[JS_NUMBER_BUFFER_SIZE];
+        JsVar *v = jspParseSingleFunction();
+        jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+        jsvUnLock(v);
+        return jsvNewFromFloat(atof(buffer));
+    }
   } else {
     // Is actually a method on some variable
     if (strcmp(name,"length")==0) {
@@ -71,9 +94,9 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
         /*JS* method Integer.parseInt(string)
          *JS*  Convert a string representing a number into a number
          */
-          char buffer[16];
+          char buffer[JS_NUMBER_BUFFER_SIZE];
           JsVar *v = jspParseSingleFunction();
-          jsvGetString(v, buffer, 16);
+          jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
           jsvUnLock(v);
           return jsvNewFromInteger(stringToInt(buffer));
         }
