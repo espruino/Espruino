@@ -151,7 +151,6 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
-        SkipNameAndUnlock -> SkipNameAndUnLock
 
 [/TODO]
 

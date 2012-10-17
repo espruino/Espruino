@@ -267,7 +267,7 @@ static inline JsVar *jsvSkipOneName(JsVar *a) {
 
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
  * a name, so it can be used INLINE_FUNC */
-static inline JsVar *jsvSkipNameAndUnlock(JsVar *a) {
+static inline JsVar *jsvSkipNameAndUnLock(JsVar *a) {
   JsVar *b = jsvSkipName(a);
   jsvUnLock(a);
   return b;

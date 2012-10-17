@@ -57,7 +57,7 @@ bool run_test(const char *filename) {
     jsiLoop();
   }
 
-  JsVar *result = jsvSkipNameAndUnlock(jsvFindChildFromString(jsiGetParser()->root, "result", false/*no create*/));
+  JsVar *result = jsvSkipNameAndUnLock(jsvFindChildFromString(jsiGetParser()->root, "result", false/*no create*/));
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 

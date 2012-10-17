@@ -104,13 +104,13 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
 JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   if (jsvIsObject(parent)) {
     // If an object, look for an 'inherits' var
-    JsVar *inheritsFrom = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(parent), JSPARSE_INHERITS_VAR, false));
+    JsVar *inheritsFrom = jsvSkipNameAndUnLock(jsvFindChildFromString(jsvGetRef(parent), JSPARSE_INHERITS_VAR, false));
 
     // if there's no inheritsFrom, just default to 'Object.prototype'
     if (!inheritsFrom) {
-      JsVar *obj = jsvSkipNameAndUnlock(jsvFindChildFromString(execInfo.parse->root, "Object", false));
+      JsVar *obj = jsvSkipNameAndUnLock(jsvFindChildFromString(execInfo.parse->root, "Object", false));
       if (obj) {
-        inheritsFrom = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(obj), JSPARSE_PROTOTYPE_VAR, false));
+        inheritsFrom = jsvSkipNameAndUnLock(jsvFindChildFromString(jsvGetRef(obj), JSPARSE_PROTOTYPE_VAR, false));
         jsvUnLock(obj);
       }
     }
@@ -128,10 +128,10 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
       JsVar *objName = jsvFindChildFromString(execInfo.parse->root, objectName, false);
       if (objName) {
         JsVar *result = 0;
-        JsVar *obj = jsvSkipNameAndUnlock(objName);
+        JsVar *obj = jsvSkipNameAndUnLock(objName);
         if (obj) {
           // We have found an object with this name - search for the prototype var
-          JsVar *proto = jsvSkipNameAndUnlock(jsvFindChildFromString(jsvGetRef(obj), JSPARSE_PROTOTYPE_VAR, false));
+          JsVar *proto = jsvSkipNameAndUnLock(jsvFindChildFromString(jsvGetRef(obj), JSPARSE_PROTOTYPE_VAR, false));
           if (proto) {
             result = jsvFindChildFromString(jsvGetRef(proto), name, false);
             jsvUnLock(proto);
@@ -240,7 +240,7 @@ JsVar *jspParseSingleFunction() {
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
-    v = jsvSkipNameAndUnlock(jspeBase());
+    v = jsvSkipNameAndUnLock(jspeBase());
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH_WITH_RETURN(',', v);
@@ -260,22 +260,22 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
   JSP_MATCH('(');
   if (a && execInfo.lex->tk != ')') {
     *a = jspeBase();
-    if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnlock(*a);
+    if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnLock(*a);
   }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *b = jspeBase();
-    if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnlock(*b);
+    if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnLock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *c = jspeBase();
-    if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnlock(*c);
+    if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnLock(*c);
   }
   if (d && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
     *d = jspeBase();
-    if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnlock(*d);
+    if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnLock(*d);
   }
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
@@ -328,7 +328,7 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
       }
       // set base to the object (not the name)
       jsvUnLock(base);
-      base = jsvSkipNameAndUnlock(link);
+      base = jsvSkipNameAndUnLock(link);
       // Look for another name
       strncpy(funcName, jslGetTokenValueAsString(execInfo.lex), JSLEX_MAX_TOKEN_LENGTH);
       JSP_MATCH(LEX_ID);
@@ -585,7 +585,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
           JsVar *functionCode = jsvFindChildFromString(jsvGetRef(function), JSPARSE_FUNCTION_CODE_NAME, false);
           if (functionCode) {
             JsLex *oldLex;
-            JsVar* functionCodeVar = jsvSkipNameAndUnlock(functionCode);
+            JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
             JsLex newLex;
             jslInit(&newLex, functionCodeVar, 0, -1);
             jsvUnLock(functionCodeVar);
@@ -637,7 +637,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
         thisVar = 0;
     }
     /* get the real return var before we remove it from our function */
-    returnVar = jsvSkipNameAndUnlock(returnVarName);
+    returnVar = jsvSkipNameAndUnLock(returnVarName);
     if (returnVarName) // could have failed with out of memory
       jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
     jsvUnLock(functionRoot);
@@ -869,7 +869,7 @@ JsVar *jspeFactor() {
           if (JSP_SHOULD_EXECUTE) {
             JsVar *valueVar;
             JsVar *value = jspeBase(); // value can be 0 (could be undefined!)
-            valueVar = jsvSkipNameAndUnlock(value);
+            valueVar = jsvSkipNameAndUnLock(value);
             varName = jsvMakeIntoVariableName(varName, valueVar);
             jsvAddName(contents, varName);
             jsvUnLock(valueVar);
@@ -904,7 +904,7 @@ JsVar *jspeFactor() {
             JsVar *aVar;
             JsVar *indexName;
             a = jspeBase();
-            aVar = jsvSkipNameAndUnlock(a);
+            aVar = jsvSkipNameAndUnLock(a);
             indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
             if (indexName) { // could be out of memory
               jsvAddName(contents, indexName);
@@ -942,7 +942,7 @@ JsVar *jspeFactor() {
                 jsvArrayPush(arr, arg);
                 jsvUnLock(arg);
               }
-              arg = jsvSkipNameAndUnlock(jspeBase());
+              arg = jsvSkipNameAndUnLock(jspeBase());
               if (execInfo.lex->tk!=')') JSP_MATCH(',');
             }
             JSP_MATCH(')');
@@ -1228,7 +1228,7 @@ JsVar *jspeBase() {
         op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         rhs = jspeBase();
-        rhs = jsvSkipNameAndUnlock(rhs); // ensure we get rid of any references on the RHS
+        rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
         if (JSP_SHOULD_EXECUTE && lhs) {
             if (op=='=') {
                 jspReplaceWith(lhs, rhs);
@@ -1447,7 +1447,7 @@ JsVar *jspeStatement() {
             jsvUnLock(root);
           }
           JSP_MATCH(LEX_R_IN);
-          JsVar *array = jsvSkipNameAndUnlock(jspeExpression());
+          JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
           JSP_MATCH(')');
           int forBodyStart = execInfo.lex->tokenStart;
           JSP_SAVE_EXECUTE();
@@ -1590,7 +1590,7 @@ JsVar *jspeStatement() {
         JSP_MATCH(LEX_R_RETURN);
         if (execInfo.lex->tk != ';') {
           // we only want the value, so skip the name if there was one
-          result = jsvSkipNameAndUnlock(jspeBase());
+          result = jsvSkipNameAndUnLock(jspeBase());
         }
         if (JSP_SHOULD_EXECUTE) {
           JsVar *resultVar = jspeiFindOnTop(JSPARSE_RETURN_VAR, false);
@@ -1743,7 +1743,7 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
 
   // It may have returned a reference, but we just want the value...
   if (v) {
-    return jsvSkipNameAndUnlock(v);
+    return jsvSkipNameAndUnLock(v);
   }
   // nothing returned
   return 0;
