@@ -91,6 +91,7 @@
             Rewritten object handling code to be way more standard JavaScript compliant
             Array initialisation with 'new Array()', also for Strings
             Added a few more built in functions
+            Nice error reporting with line + pointer
 [/CHANGELOG]
 
 [TODO]

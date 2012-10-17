@@ -235,7 +235,9 @@ void jsiConsoleEraseStringVar(JsVar *v) {
 
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   int line,col;
-  jslGetLineAndCol(lex, tokenPos, &line, &col);
+  JsVar *v = jsvLock(lex->sourceVarRef);
+  jsvGetLineAndCol(v, tokenPos, &line, &col);
+  jsvUnLock(v);
   jsiConsolePrint("line ");
   jsiConsolePrintInt(line);
   jsiConsolePrint(" col ");
@@ -244,6 +246,20 @@ void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   jsiConsolePrintInt(tokenPos);
   jsiConsolePrint(")\n");
 }
+
+void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
+  int line = 1,col = 1;
+  JsVar *v = jsvLock(lex->sourceVarRef);
+  jsvGetLineAndCol(v, tokenPos, &line, &col);
+  int startOfLine = jsvGetIndexFromLineAndCol(v, line, 1);
+  jsiConsolePrintStringVarUntilEOL(v, startOfLine, false);
+  jsiConsolePrint("\n");
+  while (col-- > 1) jsiConsolePrintChar(' ');
+  jsiConsolePrintChar('^');
+  jsiConsolePrint("\n");
+  jsvUnLock(v);
+}
+
 
 /// Print the contents of a string var - directly
 void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {

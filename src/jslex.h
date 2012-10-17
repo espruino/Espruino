@@ -18,7 +18,8 @@ typedef struct JsLex
     int tk; ///< The type of the token that we have
     int tokenStart; ///< Position in the data at the beginning of the token we have here
     int tokenEnd; ///< Position in the data at the last character of the token we have here
-    int tokenLastEnd; ///< Position in the data at the last character of the last token
+    int tokenLastStart; ///< Position in the data of the first character of the last token
+    int tokenLastEnd; ///< Position in the data of the last character of the last token
     char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
     JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
     int tokenl; ///< the current length of token
@@ -54,8 +55,5 @@ JsVar *jslGetTokenValueAsVar(JsLex *lex);
 void jslSeek(JsLex *lex, int seekToChar);
 void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
-
-/// Return line and column of a certain character
-void jslGetLineAndCol(JsLex *lex, int charPos, int *line, int *col);
 
 #endif /* JSLEX_H_ */

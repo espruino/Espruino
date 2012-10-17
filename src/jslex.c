@@ -104,6 +104,7 @@ void jslGetNextToken(JsLex *lex) {
       return;
   }
   // record beginning of this token
+  lex->tokenLastStart = lex->tokenStart;
   lex->tokenStart = lex->currentPos-2;
   // tokens
   if (isAlpha(lex->currCh)) { //  IDs
@@ -303,6 +304,7 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   lex->tk = 0;
   lex->tokenStart = 0;
   lex->tokenEnd = 0;
+  lex->tokenLastStart = 0;
   lex->tokenLastEnd = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
@@ -452,28 +454,3 @@ bool jslMatch(JsLex *lex, int expected_tk) {
   return true;
 }
 
-/// Return line and column of a certain character
-void jslGetLineAndCol(JsLex *lex, int charPos, int *line, int *col) {
-  int currentPos = lex->currentPos;
-  // reset us completely
-  *line = 1;
-  *col = 1;
-  jslSeek(lex, 0);
-  jslGetNextCh(lex);
-  jslGetNextCh(lex);
-  while (lex->currCh && lex->currentPos<charPos-1) {
-    if (lex->currCh == '\n') {
-      *col=0;
-      (*line)++;
-    } else {
-      (*col)++;
-    }
-    jslGetNextCh(lex);
-  }
-
-  // Go back to where we were
-  assert(currentPos>1); // must be, as lex should already have been loaded
-  jslSeek(lex, currentPos-2);
-  jslGetNextCh(lex);
-  jslGetNextCh(lex);
-}

@@ -34,6 +34,8 @@ void jsiConsolePrintEscaped(const char *str); ///< transmit a string, but escape
 void jsiConsolePrintInt(int d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
+/// Transmit the current line, along with a marker of where the error was (for reporting errors)
+void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos);
 
 
 /// Flags for jsiSetBusy - THESE SHOULD BE 2^N

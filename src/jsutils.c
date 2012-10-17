@@ -100,6 +100,7 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   jsiConsolePrint(message);
   jsiConsolePrint(" at ");
   jsiConsolePrintPosition(lex, tokenPos);
+  jsiConsolePrintTokenLineMarker(lex, tokenPos);
 }
 
 void jsWarn(const char *message) {

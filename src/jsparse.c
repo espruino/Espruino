@@ -445,7 +445,7 @@ bool jspeParseFunctionCallBrackets() {
  */
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, bool isParsing, JsVar *arg0) {
   if (JSP_SHOULD_EXECUTE && !function) {
-      jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastEnd );
+      jsWarnAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastStart );
   }
 
   if (JSP_SHOULD_EXECUTE) jspCheckStackPosition(); // try and ensure that we won't overflow our stack
@@ -456,7 +456,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
     JsVar *returnVar;
     JsVarRef v;
     if (!jsvIsFunction(function)) {
-        jsErrorAt("Expecting a function to call", execInfo.lex, execInfo.lex->tokenLastEnd );
+        jsErrorAt("Expecting a function to call", execInfo.lex, execInfo.lex->tokenLastStart );
         jspSetError();
         return 0;
     }
