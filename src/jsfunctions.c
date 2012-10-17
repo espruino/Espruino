@@ -92,6 +92,10 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
         return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
       }
     }
+    if (strcmp(name,"toString")==0) {
+      jspParseEmptyFunction();
+      return jsvAsString(parent, false);
+    }
     // --------------------------------- built-in class stuff
     if (parentName && jsvIsFunction(parent)) {
       if (jsvIsStringEqual(parentName, "Integer")) {
