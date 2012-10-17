@@ -1478,8 +1478,12 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         bool value = jsvGetBool(valueVar);
         jsvUnLock(valueVar);
         JsVarFloat time = jsvGetDoubleAndUnLock(timeVar);
-        //jsPrintInt((JsVarInt)(time*1000));
-        jshPinPulse(pin, value, time);
+        if (time<0) { 
+          jsWarn("Pulse Time given for digitalPulse is less that or equal to 0");
+        } else {
+          //jsPrintInt((JsVarInt)(time*1000));
+          jshPinPulse(pin, value, time);
+        }
         return 0;
       }
       if (strcmp(name,"digitalRead")==0) {
