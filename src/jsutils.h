@@ -105,7 +105,7 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-
+        Support *,/ etc on numpad
 
   MEDIUM PRIORITY:
         Add Array.splice
@@ -144,6 +144,7 @@
         digitalWrite with multiple pins doesn't set them all at once
         Implement call to Object.toString when string required
         JSON.stringify to escape characters in strings
+        If a line overflows and wraps, everything gets confused
 
   VERY LOW PRIORITY
         Allow console to be put on a user-generated device (eg, LCD) - provide one fn for writing, and allow chars to be poked in

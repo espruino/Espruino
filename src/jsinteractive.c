@@ -185,9 +185,11 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
   }
 }
 
-/// Print the contents of a string var - directly
-void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, char newLineCh) {
+/** Print the contents of a string var - directly - starting from the given character, and
+ * using newLineCh to prefix new lines (if it is not 0). */
+void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, int fromCharacter, char newLineCh) {
   assert(jsvIsString(v));
+  int n = 0;
   JsVarRef r = jsvGetRef(v);
   while (r) {
     v = jsvLock(r);
@@ -196,9 +198,12 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, char newLineCh) {
     for (i=0;i<l;i++) {
       char ch = v->varData.str[i];
       if (!ch) break;
-      if (ch == '\n') jsiConsolePrintChar('\r');
-      jsiConsolePrintChar(ch);
-      if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
+      if (n>=fromCharacter) {
+        if (ch == '\n') jsiConsolePrintChar('\r');
+        jsiConsolePrintChar(ch);
+        if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
+      }
+      n++;
     }
     r = v->lastChild;
     jsvUnLock(v);
@@ -207,10 +212,12 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, char newLineCh) {
 
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v) {
-  jsiConsolePrintStringVarWithNewLineChar(v,0);
+  jsiConsolePrintStringVarWithNewLineChar(v,0,0);
 }
 
-void jsiConsoleEraseStringVar(JsVar *v) {
+/** Assuming that we are at the end of the string, this backs up
+ * and deletes it */
+void jsiConsoleEraseStringVarBackwards(JsVar *v) {
   assert(jsvIsString(v) || jsvIsName(v));
 
   int line, lines = jsvGetLinesInString(v);
@@ -232,6 +239,77 @@ void jsiConsoleEraseStringVar(JsVar *v) {
     }
   }
 }
+
+/** Assuming that we are at fromCharacter position in the string var,
+ * erase everything that comes AFTER */
+void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter) {
+  assert(jsvIsString(v) || jsvIsName(v));
+  int cursorLine, cursorCol;
+  jsvGetLineAndCol(v, fromCharacter, &cursorLine, &cursorCol);
+  // delete contents of current line
+  int i, chars = jsvGetCharsOnLine(v, cursorLine);
+  for (i=cursorCol;i<=chars;i++) jsiConsolePrintChar(' ');
+  for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+
+  int line, lines = jsvGetLinesInString(v);
+  for (line=cursorLine+1;line<=lines;line++) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(66); // move down
+    chars = jsvGetCharsOnLine(v, line);
+    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
+    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+  }
+  // move the cursor back up
+  for (line=cursorLine+1;line<=lines;line++) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(65);
+  }
+  // move the cursor forwards
+  for (i=1;i<cursorCol;i++) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(67);
+  }
+}
+
+void jsiMoveCursor(int oldX, int oldY, int newX, int newY) {
+  // move cursor
+  while (oldX < newX) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(67);
+    oldX++;
+  }
+  while (oldX > newX) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(68);
+    oldX--;
+  }
+  while (oldY < newY) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(66);
+    oldY++;
+  }
+  while (oldY > newY) {
+    jsiConsolePrintChar(27);
+    jsiConsolePrintChar(91);
+    jsiConsolePrintChar(65);
+    oldY--;
+  }
+}
+
+void jsiMoveCursorChar(JsVar *v, int fromCharacter, int toCharacter) {
+  int oldX, oldY;
+  jsvGetLineAndCol(v, fromCharacter, &oldY, &oldX);
+  int newX, newY;
+  jsvGetLineAndCol(v, toCharacter, &newY, &newX);
+  jsiMoveCursor(oldX, oldY, newX, newY);
+}
+
 
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   int line,col;
@@ -624,8 +702,8 @@ void jsiChangeToHistory(bool previous) {
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     if (echo) {
-      jsiConsoleEraseStringVar(inputLine);
-      jsiConsolePrintStringVarWithNewLineChar(nextHistory,':');
+      jsiConsoleEraseStringVarBackwards(inputLine);
+      jsiConsolePrintStringVarWithNewLineChar(nextHistory,0,':');
     }
     jsvUnLock(inputLine);
     inputLine = nextHistory;
@@ -633,7 +711,7 @@ void jsiChangeToHistory(bool previous) {
     hasUsedHistory = true;
   } else if (!previous) { // if next, but we have something, just clear the line
     if (echo) {
-      jsiConsoleEraseStringVar(inputLine);
+      jsiConsoleEraseStringVarBackwards(inputLine);
     }
     jsvUnLock(inputLine);
     inputLine = jsvNewFromString("");
@@ -709,31 +787,7 @@ void jsiHandleMoveUpDown(int direction) {
   inputCursorPos = jsvGetIndexFromLineAndCol(inputLine, newY, newX);
   jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
   if (echo) {
-    // move cursor
-    while (x < newX) {
-      jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91);
-      jsiConsolePrintChar(67);
-      x++;
-    }
-    while (x > newX) {
-      jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91);
-      jsiConsolePrintChar(68);
-      x--;
-    }
-    while (y < newY) {
-      jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91);
-      jsiConsolePrintChar(66);
-      y++;
-    }
-    while (y > newY) {
-      jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91);
-      jsiConsolePrintChar(65);
-      y--;;
-    }
+    jsiMoveCursor(x,y,newX,newY);
   }
 }
 
@@ -761,7 +815,9 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
 
-  if (ch == 27) {
+  if (ch == 0) {
+    inputState = IS_NONE; // numpad stuff - but treat it like it didn't happen
+  } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
     inputState = IS_NONE;
@@ -837,9 +893,8 @@ void jsiHandleChar(char ch) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
     } else if (ch == '\r' || ch == '\n') { 
       if (jsiAtEndOfInputLine()) { // ignore unless at EOL
-        // FIXME newline when cursor not at end
         if (ch == '\r') inputState = IS_HAD_R;
-        if (jsiCountBracketsInInput()<=0) {
+        if (jsiCountBracketsInInput()<=0) { // actually execute!
           if (echo) {
             jsiConsolePrintChar('\r');
             jsiConsolePrintChar('\n');
@@ -865,6 +920,20 @@ void jsiHandleChar(char ch) {
           jsvAppendCharacter(inputLine, '\n');
           inputCursorPos++; 
         }
+      } else { // new line - but not at end of line!
+        jsiIsAboutToEditInputLine();
+        if (echo) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos); // erase all in front
+        JsVar *v = jsvNewFromString("");
+        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+        jsvAppendCharacter(v, '\n');
+        jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+        jsvUnLock(inputLine);
+        inputLine=v;
+        if (echo) { // now print the rest
+          jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
+          jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
+        }
+        inputCursorPos++;
       }
     } else {
       // Add the character to our input line
