@@ -880,7 +880,7 @@ void jsiHandleChar(char ch) {
   // 27 then 79 then 72 - end
 
   if (ch == 0) {
-    inputState = IS_NONE; // numpad stuff - but treat it like it didn't happen
+    inputState = IS_NONE; // ignore 0 - it's scary
   } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
@@ -889,12 +889,15 @@ void jsiHandleChar(char ch) {
       inputState = IS_HAD_27_79;
     else if (ch == 91)
       inputState = IS_HAD_27_91;
-  } else if (inputState==IS_HAD_27_79) {
+  } else if (inputState==IS_HAD_27_79) { // Numpad
     inputState = IS_NONE;
-    if (ch == 70)
-      jsiHandleEnd();
-    else if (ch == 72)
-      jsiHandleHome();
+    if (ch == 70) jsiHandleEnd();
+    else if (ch == 72) jsiHandleHome();
+    else if (ch == 111) jsiHandleChar('/');
+    else if (ch == 106) jsiHandleChar('*');
+    else if (ch == 109) jsiHandleChar('-');
+    else if (ch == 107) jsiHandleChar('+');
+    else if (ch == 77) jsiHandleChar('\r');
   } else if (inputState==IS_HAD_27_91) {
     inputState = IS_NONE;
     if (ch==68) { // left

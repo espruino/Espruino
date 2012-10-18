@@ -100,6 +100,7 @@
             Allow new line or line delete in multi-line editing
             add edit(functionName) - which copies function definition into inputline so it can be updated
             When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
+            Support *,/ etc on numpad
 [/CHANGELOG]
 
 [TODO]
@@ -108,7 +109,6 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-        Support *,/ etc on numpad
 
   MEDIUM PRIORITY:
         dump() should produce code for Serial1.onData(...) etc
