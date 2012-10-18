@@ -131,7 +131,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
          *JS*  Convert the floating point value given into an integer representing the bits contained in it
          */
           JsVar *v = jspParseSingleFunction();
-          JsVarFloat f = jsvGetDoubleAndUnLock(v);
+          JsVarFloat f = jsvGetFloatAndUnLock(v);
           return jsvNewFromInteger(*(JsVarInt*)&f);
         }
       }
@@ -154,7 +154,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
         /*JS* method Math.abs(x)
          *JS*  Return the absolute value of X (as a double)
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           if (x<0) x=-x;
           return jsvNewFromFloat(x);
         }
@@ -163,21 +163,21 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
         /*JS* method Math.acos(x)
          *JS*  Arc Cosine. Takes a double between -1 and 1 and produce a value between 0 and PI.
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(acos(x));
         }
         if (strcmp(name,"asin")==0) {
         /*JS* method Math.asin(x)
          *JS*  Arc Sine. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(asin(x));
         }
         if (strcmp(name,"atan")==0) {
         /*JS* method Math.atan(x)
          *JS*  Arc Tangent. Takes a double between -1 and 1 and produce a value between -PI/2 and PI/2.
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(atan(x));
         }
         if (strcmp(name,"atan2")==0) {
@@ -186,38 +186,38 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
          */
           JsVar *x,*y;
           jspParseFunction(0,&y,&x,0,0);
-          return jsvNewFromFloat(atan2(jsvGetDoubleAndUnLock(y),jsvGetDoubleAndUnLock(x)));
+          return jsvNewFromFloat(atan2(jsvGetFloatAndUnLock(y),jsvGetFloatAndUnLock(x)));
         }
         if (strcmp(name,"cos")==0) {
         /*JS* method Math.cos(rads)
          *JS*  Cosine. Takes any value in radians and produces values between -1 and 1
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(cos(x));
         }
         if (strcmp(name,"round")==0) {
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromInteger(lround(x));
         }
         if (strcmp(name,"sin")==0) {
         /*JS* method Math.sin(rads)
          *JS*  Sine. Takes any value in radians and produces values between -1 and 1
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(sin(x));
         }
         if (strcmp(name,"sqrt")==0) {
         /*JS* method Math.sqrt(x)
          *JS*  Return the Square Root of X
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(sqrt(x));
         }
         if (strcmp(name,"tan")==0) {
         /*JS* method Math.tan(rads)
          *JS*  Tangent. Takes any value in radians and produces the Tangent
          */
-          JsVarFloat x = jsvGetDoubleAndUnLock(jspParseSingleFunction());
+          JsVarFloat x = jsvGetFloatAndUnLock(jspParseSingleFunction());
           return jsvNewFromFloat(tan(x));
         }
   #endif

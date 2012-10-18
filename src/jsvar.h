@@ -227,10 +227,10 @@ void jsiConsolePrintStringVar(JsVar *v);
 
 INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
 INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
-INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v); // TODO: rename to jsvGetFloat
+INLINE_FUNC JsVarFloat jsvGetFloat(const JsVar *v); // TODO: rename to jsvGetFloat
 INLINE_FUNC bool jsvGetBool(const JsVar *v);
 static inline JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
-static inline JsVarFloat jsvGetDoubleAndUnLock(JsVar *v) { JsVarFloat f = jsvGetDouble(v); jsvUnLock(v); return f; }
+static inline JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
 
 

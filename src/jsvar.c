@@ -857,7 +857,7 @@ INLINE_FUNC bool jsvGetBool(const JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
 
-INLINE_FUNC JsVarFloat jsvGetDouble(const JsVar *v) {
+INLINE_FUNC JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return 0;
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
@@ -1483,8 +1483,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
             }
         } else {
             // use doubles
-            JsVarFloat da = jsvGetDouble(a);
-            JsVarFloat db = jsvGetDouble(b);
+            JsVarFloat da = jsvGetFloat(a);
+            JsVarFloat db = jsvGetFloat(b);
             switch (op) {
                 case '+': return jsvNewFromFloat(da+db);
                 case '-': return jsvNewFromFloat(da-db);

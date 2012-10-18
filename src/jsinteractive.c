@@ -382,7 +382,7 @@ void jsiSoftInit() {
     while (timer) {
       JsVar *timerNamePtr = jsvLock(timer);
       JsVar *timerTime = jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "time", false));
-      JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
+      JsVarFloat interval = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
       jsvSetInteger(timerTime, currentTime + jshGetTimeFromMilliseconds(interval));
       jsvUnLock(timerTime);
       timer = timerNamePtr->nextSibling;
@@ -1093,7 +1093,7 @@ void jsiIdle() {
       jsiQueueEvents(jsvGetRef(timerCallback), data);
       jsvUnLock(data);
       if (jsvGetBool(timerRecurring)) {
-        JsVarFloat interval = jsvGetDoubleAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
+        JsVarFloat interval = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false)));
         if (interval<=0)
           jsvSetInteger(timerTime, time); // just set to current system time
         else
@@ -1328,7 +1328,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         jspParseFunction(0, &pinVar, &valueVar, 0, 0);
         int pin = jshGetPinFromVar(pinVar);
         jsvUnLock(pinVar);
-        JsVarFloat value = jsvGetDouble(valueVar);
+        JsVarFloat value = jsvGetFloat(valueVar);
         jsvUnLock(valueVar);
         jshPinAnalogOutput(pin, value);
         return 0;
@@ -1399,7 +1399,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          */
         JsVar *idVar, *intervalVal;
         jspParseFunction(0, &idVar, &intervalVal, 0, 0);
-        JsVarFloat interval = jsvGetDoubleAndUnLock(intervalVal);
+        JsVarFloat interval = jsvGetFloatAndUnLock(intervalVal);
         if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
         JsVar *timerName = jsvFindChildFromVar(timerArray, idVar, false);
         jsvUnLock(idVar);
@@ -1477,7 +1477,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         jsvUnLock(pinVar);
         bool value = jsvGetBool(valueVar);
         jsvUnLock(valueVar);
-        JsVarFloat time = jsvGetDoubleAndUnLock(timeVar);
+        JsVarFloat time = jsvGetFloatAndUnLock(timeVar);
         if (time<0) { 
           jsWarn("Pulse Time given for digitalPulse is less that or equal to 0");
         } else {
@@ -1569,7 +1569,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         } else {
           // Create a new timer
           JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-          JsVarFloat interval = jsvGetDouble(timeout);
+          JsVarFloat interval = jsvGetFloat(timeout);
           if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
           JsVar *v;
           v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
