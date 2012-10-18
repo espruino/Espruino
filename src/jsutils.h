@@ -122,6 +122,7 @@
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
+        analogWrite may accidentally reset the timer (causing glitches if called quickly)
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
