@@ -280,6 +280,7 @@ void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCha
 }
 
 void jsiMoveCursor(int oldX, int oldY, int newX, int newY) {
+  // see http://www.termsys.demon.co.uk/vtansi.htm - we could do this better
   // move cursor
   while (oldX < newX) {
     jsiConsolePrintChar(27);
@@ -593,6 +594,8 @@ void jsiInit(bool autoLoad) {
   jsiSoftInit();
 
   if (echo) {
+    // set up terminal to avoid word wrap
+    jsiConsolePrint("\e[?7l");
     // rectangles @ http://www.network-science.de/ascii/
     jsiConsolePrint("\r\n _____                 _ \r\n"
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
