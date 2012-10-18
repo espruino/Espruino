@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v12"
+#define JS_VERSION "1v13"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -95,6 +95,8 @@
             fixed Math.random
             Binary style ops on doubles now work - they are just converted to ints
             Added boolean datatype
+     1v13 : Operations like + on Object/Array convert them to strings rather than error
+            var now doesn't error if there is no semi-colon
 [/CHANGELOG]
 
 [TODO]
@@ -103,6 +105,7 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
+
 
   MEDIUM PRIORITY:
         Add boolean data types
@@ -124,6 +127,7 @@
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
+        dump() should produce code for Serial1.onData(...) etc
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!

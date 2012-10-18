@@ -1306,7 +1306,8 @@ JsVar *jspeStatement() {
          * hand side. Maybe just have a flag called can_create_var that we
          * set and then we parse as if we're doing a normal equals.*/
         JSP_MATCH(LEX_R_VAR);
-        while (execInfo.lex->tk == LEX_ID) {
+        bool hasComma = true; // for first time in loop
+        while (hasComma && execInfo.lex->tk == LEX_ID) {
           JsVar *a = 0;
           if (JSP_SHOULD_EXECUTE) {
             a = jspeiFindOnTop(jslGetTokenValueAsString(execInfo.lex), true);
@@ -1337,8 +1338,8 @@ JsVar *jspeStatement() {
           }
           jsvUnLock(lastDefined);
           lastDefined = a;
-          if (execInfo.lex->tk != ';' && execInfo.lex->tk != LEX_R_IN) // bodge
-            JSP_MATCH_WITH_RETURN(',', lastDefined);
+          hasComma = execInfo.lex->tk == ',';
+          if (hasComma) JSP_MATCH_WITH_RETURN(',', lastDefined);
         }
         return lastDefined;
     } else if (execInfo.lex->tk==LEX_R_IF) {

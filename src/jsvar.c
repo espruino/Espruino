@@ -1499,8 +1499,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 default: return jsvMathsOpError(op, "Double");
             }
         }
-    } else if (jsvIsArray(a) || jsvIsObject(a) ||
-               jsvIsArray(b) || jsvIsObject(b)) {
+    } else if ((jsvIsArray(a) || jsvIsObject(a) ||
+                jsvIsArray(b) || jsvIsObject(b)) &&
+                (op == LEX_EQUAL || op==LEX_NEQUAL)) {
       bool isArray = jsvIsArray(a);
       /* Just check pointers */
       switch (op) {
