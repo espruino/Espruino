@@ -98,6 +98,8 @@
      1v13 : Operations like + on Object/Array convert them to strings rather than error
             var now doesn't error if there is no semi-colon
             Allow new line or line delete in multi-line editing
+            add edit(functionName) - which copies function definition into inputline so it can be updated
+            When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
 [/CHANGELOG]
 
 [TODO]
@@ -109,8 +111,8 @@
         Support *,/ etc on numpad
 
   MEDIUM PRIORITY:
+        dump() should produce code for Serial1.onData(...) etc
         Add Array.splice
-        add edit(functionName) - which copies function definition into inputline so it can be updated
         Make save() retry writing to flash if there was an error
         Add instanceof operator
         Check precedence against MDN javascript op precedence page
@@ -125,14 +127,13 @@
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
-        When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
-        dump() should produce code for Serial1.onData(...) etc
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg, extraArgs)
         analogWrite should check about ports with overlapping timers
+        analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Add 'delete' keyword for killing array items?

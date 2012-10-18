@@ -37,6 +37,7 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
 typedef enum {
+ // device type
  EV_NONE,
  EV_EXTI0,
  EV_EXTI1,

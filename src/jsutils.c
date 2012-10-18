@@ -90,12 +90,14 @@ JsVarInt stringToInt(const char *s) {
 }
 
 void jsError(const char *message) {
-    jsiConsolePrint("ERROR: ");
-    jsiConsolePrint(message);
-    jsiConsolePrint("\n");
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("ERROR: ");
+  jsiConsolePrint(message);
+  jsiConsolePrint("\n");
 }
 
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
+  jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   jsiConsolePrint(message);
   jsiConsolePrint(" at ");
@@ -104,12 +106,14 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
 }
 
 void jsWarn(const char *message) {
-    jsiConsolePrint("WARNING: ");
-    jsiConsolePrint(message);
-    jsiConsolePrint("\n");
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("WARNING: ");
+  jsiConsolePrint(message);
+  jsiConsolePrint("\n");
 }
 
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
+  jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
   jsiConsolePrint(message);
   jsiConsolePrint(" at ");
@@ -117,6 +121,7 @@ void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
 }
 
 void jsAssertFail(const char *file, int line) {
+  jsiConsoleRemoveInputLine();
   jsiConsolePrint("ASSERT FAIL AT ");
   jsiConsolePrint(file);
   jsiConsolePrint(":");

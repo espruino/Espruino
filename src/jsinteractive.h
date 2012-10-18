@@ -36,7 +36,8 @@ void jsiConsolePrintInt(int d);
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos);
-
+/// If the input line was shown in the console, remove it
+void jsiConsoleRemoveInputLine();
 
 /// Flags for jsiSetBusy - THESE SHOULD BE 2^N
 typedef enum {

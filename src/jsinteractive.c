@@ -60,6 +60,7 @@ bool echo;                  ///< do we provide any user feedback?
 // ----------------------------------------------------------------------------
 JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputLine = 0; ///< The current input line
+bool inputLineRemoved = false;
 int inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
 bool hasUsedHistory = false; ///< Used to speed up - if we were cycling through history and then edit, we need to copy the string
@@ -98,20 +99,25 @@ JsVarRef getClassFromDevice(IOEventFlags device) {
   return 0;
 }
 
+static inline bool jsiShowInputLine() {
+  return echo && !inputLineRemoved;
+}
+
 /// Change the console to a new location
 void jsiSetConsoleDevice(IOEventFlags device) {
   if (device == consoleDevice) return;
-  if (echo) {
+  jsiConsoleRemoveInputLine();
+  if (echo) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved to ");
     jsiConsolePrint(jshGetDeviceString(device));
     jsiConsolePrint("\n");
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
-  if (echo) {
+  if (echo) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved from ");
     jsiConsolePrint(jshGetDeviceString(oldDevice));
-    jsiConsolePrint("\n>");
+    jsiConsolePrint("\n");
   }
 }
 
@@ -241,8 +247,8 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
 }
 
 /** Assuming that we are at fromCharacter position in the string var,
- * erase everything that comes AFTER. On newlines, if erasePrevCharacter,
- * we remove the character before. */
+ * erase everything that comes AFTER and return the cursor to 'fromCharacter'
+ * On newlines, if erasePrevCharacter, we remove the character before too. */
 void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCharacter) {
   assert(jsvIsString(v) || jsvIsName(v));
   int cursorLine, cursorCol;
@@ -309,6 +315,7 @@ void jsiMoveCursor(int oldX, int oldY, int newX, int newY) {
 }
 
 void jsiMoveCursorChar(JsVar *v, int fromCharacter, int toCharacter) {
+  if (fromCharacter==toCharacter) return;
   int oldX, oldY;
   jsvGetLineAndCol(v, fromCharacter, &oldY, &oldX);
   int newX, newY;
@@ -316,6 +323,30 @@ void jsiMoveCursorChar(JsVar *v, int fromCharacter, int toCharacter) {
   jsiMoveCursor(oldX, oldY, newX, newY);
 }
 
+/// If the input line was shown in the console, remove it
+void jsiConsoleRemoveInputLine() {
+  if (!inputLineRemoved) {
+    inputLineRemoved = true;
+    if (echo) { // intentionally not using jsiShowInputLine()
+      jsiMoveCursorChar(inputLine, inputCursorPos, 0);
+      jsiConsoleEraseStringVarFrom(inputLine, 0, true);
+      jsiConsolePrintChar(0x08); // go back to start of line
+    }
+  }
+}
+
+/// If the input line has been removed, return it
+void jsiReturnInputLine() {
+  if (inputLineRemoved) {
+    inputLineRemoved = false;
+    if (echo) { // intentionally not using jsiShowInputLine()
+      jsiConsolePrintChar('\r'); // carriage return
+      jsiConsolePrintChar('>');
+      jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
+      jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos);
+    }
+  }
+}
 
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   int line,col;
@@ -593,7 +624,7 @@ void jsiInit(bool autoLoad) {
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
 
-  if (echo) {
+  if (echo) { // intentionally not using jsiShowInputLine()
     // set up terminal to avoid word wrap
     jsiConsolePrint("\e[?7l");
     // rectangles @ http://www.network-science.de/ascii/
@@ -707,19 +738,26 @@ bool jsiIsInHistory(JsVar *line) {
   return inHistory;
 }
 
+void jsiReplaceInputLine(JsVar *newLine) {
+  if (jsiShowInputLine()) {
+    int oldLen =  (int)jsvGetStringLength(inputLine);
+    jsiMoveCursorChar(inputLine, inputCursorPos, oldLen); // move cursor to end
+    jsiConsoleEraseStringVarBackwards(inputLine);
+    jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
+  }
+  jsvUnLock(inputLine);
+  inputLine = jsvLockAgain(newLine);
+  inputCursorPos = (int)jsvGetStringLength(inputLine);
+}
+
 void jsiChangeToHistory(bool previous) {
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
-    if (echo) {
-      jsiConsoleEraseStringVarBackwards(inputLine);
-      jsiConsolePrintStringVarWithNewLineChar(nextHistory,0,':');
-    }
-    jsvUnLock(inputLine);
-    inputLine = nextHistory;
-    inputCursorPos = (int)jsvGetStringLength(inputLine);
+    jsiReplaceInputLine(nextHistory);
+    jsvUnLock(nextHistory);
     hasUsedHistory = true;
   } else if (!previous) { // if next, but we have something, just clear the line
-    if (echo) {
+    if (jsiShowInputLine()) {
       jsiConsoleEraseStringVarBackwards(inputLine);
     }
     jsvUnLock(inputLine);
@@ -751,7 +789,7 @@ void jsiHandleDelete(bool isBackspace) {
   bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine,inputCursorPos-1)=='\n') ||
                        (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
-  if (deleteNewline && echo) {
+  if (deleteNewline && jsiShowInputLine()) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
     if (isBackspace) {
       // delete newline char
@@ -772,36 +810,22 @@ void jsiHandleDelete(bool isBackspace) {
     inputCursorPos--; // move cursor back
 
   // update the console
-  if (echo) {
+  if (jsiShowInputLine()) {
     if (deleteNewline) {
       // we already removed everything, so just put it back
       jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
-      jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos); // move cursor back
+      jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos); // move cursor back
     } else {
       // clear the character and move line back
       if (isBackspace) jsiConsolePrintChar(0x08);
       jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
     }
   }
-
-
-  /*
-  if (echo)
-          JsVar *v = jsvNewFromString("");
-          if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
-          jsvAppendCharacter(v, '\n');
-          jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-          jsvUnLock(inputLine);
-          inputLine=v;
-          if (echo) { // now print the rest
-            jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
-            jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
-          }*/
 }
 
 void jsiHandleHome() {
   while (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
-    if (echo) jsiConsolePrintChar(0x08);
+    if (jsiShowInputLine()) jsiConsolePrintChar(0x08);
     inputCursorPos--;
   }
 }
@@ -809,7 +833,7 @@ void jsiHandleHome() {
 void jsiHandleEnd() {
   int l = (int)jsvGetStringLength(inputLine);
   while (inputCursorPos<l && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
-    if (echo)
+    if (jsiShowInputLine())
       jsiConsolePrintChar(jsvGetCharInString(inputLine,inputCursorPos));
     inputCursorPos++;
   }
@@ -826,7 +850,7 @@ void jsiHandleMoveUpDown(int direction) {
   // if we move up
   inputCursorPos = jsvGetIndexFromLineAndCol(inputLine, newY, newX);
   jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
-  if (echo) {
+  if (jsiShowInputLine()) {
     jsiMoveCursor(x,y,newX,newY);
   }
 }
@@ -876,7 +900,7 @@ void jsiHandleChar(char ch) {
     if (ch==68) { // left
       if (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
         inputCursorPos--;
-        if (echo) {
+        if (jsiShowInputLine()) {
           jsiConsolePrintChar(27);
           jsiConsolePrintChar(91);
           jsiConsolePrintChar(68);
@@ -885,7 +909,7 @@ void jsiHandleChar(char ch) {
     } else if (ch==67) { // right
       if (inputCursorPos<(int)jsvGetStringLength(inputLine) && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
         inputCursorPos++;
-        if (echo) {
+        if (jsiShowInputLine()) {
           jsiConsolePrintChar(27);
           jsiConsolePrintChar(91);
           jsiConsolePrintChar(67);
@@ -935,43 +959,47 @@ void jsiHandleChar(char ch) {
       if (jsiAtEndOfInputLine()) { // ignore unless at EOL
         if (ch == '\r') inputState = IS_HAD_R;
         if (jsiCountBracketsInInput()<=0) { // actually execute!
-          if (echo) {
+          if (jsiShowInputLine()) {
             jsiConsolePrintChar('\r');
             jsiConsolePrintChar('\n');
           }
+          inputLineRemoved = true;
 
-          JsVar *v = jspEvaluateVar(&p, inputLine);
-          jsiHistoryAddLine(inputLine);
-          jsvUnLock(inputLine);
-
-          if (echo) {
-            jsiConsolePrintChar('=');
-            jsfPrintJSON(v);
-          }
-          jsvUnLock(v);
-  
+          // Get line to execute, and reset inputLine
+          JsVar *lineToExecute = inputLine;
           inputLine = jsvNewFromString("");
           inputCursorPos = 0;
-  
-          if (echo) jsiConsolePrint("\r\n>");
+          // execute!
+          JsVar *v = jspEvaluateVar(&p, lineToExecute);
+          // add input line to history
+          jsiHistoryAddLine(lineToExecute);
+          jsvUnLock(lineToExecute);
+          // print result
+          if (echo) { // intentionally not using jsiShowInputLine()
+            jsiConsolePrintChar('=');
+            jsfPrintJSON(v);
+            jsiConsolePrint("\r\n");
+          }
+          jsvUnLock(v);
+          // console will be returned next time around the input loop
         } else {
-          if (echo) jsiConsolePrint("\n:");
+          if (jsiShowInputLine()) jsiConsolePrint("\n:");
           jsiIsAboutToEditInputLine();
           jsvAppendCharacter(inputLine, '\n');
           inputCursorPos++; 
         }
       } else { // new line - but not at end of line!
         jsiIsAboutToEditInputLine();
-        if (echo) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
+        if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
         JsVar *v = jsvNewFromString("");
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         jsvAppendCharacter(v, '\n');
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputLine);
         inputLine=v;
-        if (echo) { // now print the rest
+        if (jsiShowInputLine()) { // now print the rest
           jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
-          jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
+          jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
         }
         inputCursorPos++;
       }
@@ -991,10 +1019,10 @@ void jsiHandleChar(char ch) {
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputLine);
         inputLine=v;
-        if (echo) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);       
+        if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
       }
       inputCursorPos += hasTab ? 4 : 1;
-      if (echo) {
+      if (jsiShowInputLine()) {
         if (hasTab) jsiConsolePrint("    ");
         else jsiConsolePrintChar(ch);
       }
@@ -1301,12 +1329,15 @@ void jsiLoop() {
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
+    jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted.\r\n");
-    if (echo) jsiConsolePrint(">");
     // clear input line
     jsvUnLock(inputLine);
     inputLine = jsvNewFromString("");
   }
+
+  // return console (if it was gone!)
+  jsiReturnInputLine();
 }
 
 /** Output extra functions defined in an object such that they can be copied to a new device */
@@ -1766,6 +1797,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          *JS*  Print the supplied string
          */
         JsVar *v = jsvAsString(jspParseSingleFunction(), true);
+        jsiConsoleRemoveInputLine();
         jsiConsolePrintStringVar(v);
         jsvUnLock(v);
         jsiConsolePrint("\n");
@@ -1821,6 +1853,40 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        */
       jspParseEmptyFunction();
       todo |= TODO_RESET;
+      return 0;
+    }
+    if (strcmp(name,"edit")==0) {
+      /*JS* function edit(functionName/"functionName")
+       *JS*  Fill the console with the contents of the given function, so you can edit it.
+       */
+      JsVar *funcName = 0;
+      jspParseFunction(JSP_NOSKIP_A, &funcName,0,0,0);
+      if (jsvIsString(funcName)) {
+        JsVar *func = 0;
+        if (jsvIsName(funcName))
+          func = jsvSkipName(funcName);
+        else
+          func = jsvSkipNameAndUnLock(jsvFindChildFromVar(p.root, funcName, 0));
+        if (jsvIsFunction(func)) {
+          JsVar *newLine = jsvNewFromString("");
+          if (newLine) {
+            jsvAppendStringVarComplete(newLine, funcName);
+            jsvAppendString(newLine, " = ");
+            JsVar *funcData = jsvAsString(func, false);
+            if (funcData)
+              jsvAppendStringVarComplete(newLine, funcData);
+            jsvUnLock(funcData);
+            jsvAppendString(newLine, ";");
+            jsiReplaceInputLine(newLine);
+            jsvUnLock(newLine);
+          }
+        } else
+          jsError("Edit should be called with the name of a function");
+        jsvUnLock(func);
+      } else {
+        jsError("Edit should be called with edit(funcName) or edit('funcName')");
+      }
+      jsvUnLock(funcName);
       return 0;
     }
     if (strcmp(name,"setBusyIndicator")==0) {
