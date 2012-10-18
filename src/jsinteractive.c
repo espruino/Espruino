@@ -1621,7 +1621,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         bool value = jsvGetBool(valueVar);
         jsvUnLock(valueVar);
         JsVarFloat time = jsvGetFloatAndUnLock(timeVar);
-        if (time<0) { 
+        if (time<=0) { 
           jsWarn("Pulse Time given for digitalPulse is less that or equal to 0");
         } else {
           //jsPrintInt((JsVarInt)(time*1000));
