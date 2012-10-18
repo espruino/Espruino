@@ -105,7 +105,6 @@
         better digitalPulse
 
   MEDIUM PRIORITY:
-        Add boolean data types
         Add Array.splice
         Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
         Make save() retry writing to flash if there was an error
@@ -162,12 +161,14 @@ When presenting:
    Show small time to first code
    Easy transition from simple digitalWrite to loops/etc (don't get with Arduino)
    Show how easy it is to change things (Stepper motor or LED light with ramp)
+   How easy to inspect - eg, checking + setting state of counters
    ability to save()
    dump() to get code out
    using from script on PC/Raspberry Pi  
-   SPBT2632C2A bluetooth module
+   Easy to add bluetooth and be completely wireless
+   SPBT2632C2A bluetooth module (tiny bluetooth, with 48kb STM32)
 
- Extra functions to do:
+Extra functions to do:
 setWatch -> attachInterrupt(pin, handler, mode)
 clearWatch -> detachInterrupt(pin)
 getPinMode(pin) -> pinMode
