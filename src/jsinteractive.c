@@ -241,8 +241,9 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
 }
 
 /** Assuming that we are at fromCharacter position in the string var,
- * erase everything that comes AFTER */
-void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter) {
+ * erase everything that comes AFTER. On newlines, if erasePrevCharacter,
+ * we remove the character before. */
+void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCharacter) {
   assert(jsvIsString(v) || jsvIsName(v));
   int cursorLine, cursorCol;
   jsvGetLineAndCol(v, fromCharacter, &cursorLine, &cursorCol);
@@ -259,6 +260,10 @@ void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter) {
     chars = jsvGetCharsOnLine(v, line);
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+    if (erasePrevCharacter) {
+      jsiConsolePrintChar(0x08); // move cursor back
+      jsiConsolePrintChar(' ');
+    }
   }
   // move the cursor back up
   for (line=cursorLine+1;line<=lines;line++) {
@@ -736,27 +741,54 @@ void jsiIsAboutToEditInputLine() {
 
 void jsiHandleDelete(bool isBackspace) {
   int l = (int)jsvGetStringLength(inputLine);
-  if ((isBackspace && inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') ||
-      (!isBackspace && inputCursorPos<l && jsvGetCharInString(inputLine,inputCursorPos)!='\n')) {
-    // currently we are not allowed to delete newlines
+  if (isBackspace && inputCursorPos<=0) return; // at beginning of line
+  if (!isBackspace && inputCursorPos>=l) return; // at end of line
+  // work out if we are deleting a newline
+  bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine,inputCursorPos-1)=='\n') ||
+                       (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
+  // If we mod this to keep the string, use jsiIsAboutToEditInputLine
+  if (deleteNewline && echo) {
+    jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
+    if (isBackspace)
+      jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
+  }
 
-    // If we mod this to keep the string, use jsiIsAboutToEditInputLine
-    JsVar *v = jsvNewFromString("");
-    int p = inputCursorPos;
-    if (isBackspace) p--;
-    if (p>0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
-    if (p+1<l) jsvAppendStringVar(v, inputLine, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-    jsvUnLock(inputLine);
-    inputLine=v;
-    if (isBackspace) {
-      if (echo) jsiConsolePrintChar(0x08);
-      inputCursorPos--; // move cursor back
-    }
-    // clear the character and move line back
-    if (echo) {
+  JsVar *v = jsvNewFromString("");
+  int p = inputCursorPos;
+  if (isBackspace) p--;
+  if (p>0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
+  if (p+1<l) jsvAppendStringVar(v, inputLine, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+  jsvUnLock(inputLine);
+  inputLine=v;
+  if (isBackspace)
+    inputCursorPos--; // move cursor back
+
+  // update the console
+  if (echo) {
+    if (deleteNewline) {
+      // we already removed everything, so just put it back
+      jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
+      jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos); // move cursor back
+    } else {
+      // clear the character and move line back
+      if (isBackspace) jsiConsolePrintChar(0x08);
       jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
     }
   }
+
+
+  /*
+  if (echo)
+          JsVar *v = jsvNewFromString("");
+          if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+          jsvAppendCharacter(v, '\n');
+          jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+          jsvUnLock(inputLine);
+          inputLine=v;
+          if (echo) { // now print the rest
+            jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
+            jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
+          }*/
 }
 
 void jsiHandleHome() {
@@ -922,7 +954,7 @@ void jsiHandleChar(char ch) {
         }
       } else { // new line - but not at end of line!
         jsiIsAboutToEditInputLine();
-        if (echo) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos); // erase all in front
+        if (echo) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
         JsVar *v = jsvNewFromString("");
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         jsvAppendCharacter(v, '\n');

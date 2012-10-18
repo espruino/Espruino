@@ -97,6 +97,7 @@
             Added boolean datatype
      1v13 : Operations like + on Object/Array convert them to strings rather than error
             var now doesn't error if there is no semi-colon
+            Allow new line or line delete in multi-line editing
 [/CHANGELOG]
 
 [TODO]
@@ -109,7 +110,7 @@
 
   MEDIUM PRIORITY:
         Add Array.splice
-        Allow new line or line delete in multi-line editing (once done, add edit(functionName) - which copies function definition into inputline so it can be updated)
+        add edit(functionName) - which copies function definition into inputline so it can be updated
         Make save() retry writing to flash if there was an error
         Add instanceof operator
         Check precedence against MDN javascript op precedence page
