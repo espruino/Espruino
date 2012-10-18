@@ -630,6 +630,7 @@ int jsiCountBracketsInInput() {
   while (lex.tk!=LEX_EOF) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
+    if (brackets<0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
   jslKill(&lex);
@@ -752,8 +753,12 @@ void jsiHandleDelete(bool isBackspace) {
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
   if (deleteNewline && echo) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
-    if (isBackspace)
+    if (isBackspace) {
+      // delete newline char
+      jsiConsolePrintChar(0x08);
+      jsiConsolePrintChar(' ');
       jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
+    }
   }
 
   JsVar *v = jsvNewFromString("");
