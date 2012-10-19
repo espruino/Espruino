@@ -147,6 +147,7 @@
         Implement call to Object.toString when string required
         JSON.stringify to escape characters in strings
         If a line overflows and wraps, everything gets confused
+        Add datatype for PIN, so pins are output by pin name rather than integer value
 
   VERY LOW PRIORITY
         Allow console to be put on a user-generated device (eg, LCD) - provide one fn for writing, and allow chars to be poked in
