@@ -1910,7 +1910,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       // we should be busy right now anyway, so set stuff up right
       if (pinBusyIndicator!=oldPin) {
         if (oldPin>=0) jshPinOutput(oldPin, 0);
-        jshPinOutput(pinBusyIndicator, 1);
+        if (pinBusyIndicator>=0) jshPinOutput(pinBusyIndicator, 1);
       }
       return 0; // handled
     }

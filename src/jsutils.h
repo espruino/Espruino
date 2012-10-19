@@ -101,6 +101,7 @@
             add edit(functionName) - which copies function definition into inputline so it can be updated
             When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
             Support *,/ etc on numpad
+     1v14 : Fix complaint about pins during setBusyIndicator()
 [/CHANGELOG]
 
 [TODO]
@@ -120,7 +121,6 @@
         Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
         Save state on setWatch interrupt (e.state)
         Save pin input/output state along with save()
-        setBusyIndicator warns about invalid pin when using no argument, or undefined
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
         Change setWatch to allow only on rise or fall as an option
         When Ctrl-C, should print the line that the break first appeared on
@@ -131,7 +131,7 @@
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
-        function.call(thisArg, extraArgs)
+        function.call(thisArg[, arg1[, arg2, ...]]) / function.apply(thisArg[, argsArray])
         analogWrite should check about ports with overlapping timers
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
@@ -161,6 +161,8 @@
         Currently, accessing an undefined array or object item creates it. Maybe that could be changed?
         Can the max number of scopes ever be >2(3)? (Root)Function Caller,Function Called? What about 'this'?
         ToJSON for arrays could probably be faster now arrays are sorted
+        http://doctrina.org/Javascript-Function-Invocation-Patterns.html - invoking a function from within method *should* make 'this' point to root 
+               possibly, 'this' should be a keyword, not a variable that we define (would be faster)
 
 [/TODO]
 
