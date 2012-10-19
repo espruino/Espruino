@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v13"
+#define JS_VERSION "1v14"
 /*
 [CHANGELOG]
      1v04 : Called Espruino
@@ -102,6 +102,7 @@
             When printing lines, delete current inputline and then put it back in idle loop (only if echo=1)
             Support *,/ etc on numpad
      1v14 : Fix complaint about pins during setBusyIndicator()
+            Increase available memory on OLIMEXINO
 [/CHANGELOG]
 
 [TODO]
@@ -219,7 +220,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #define JSVAR_CACHE_SIZE 5450  
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
  #elif defined(OLIMEXINO_STM32)
-  #define JSVAR_CACHE_SIZE 500 // 700
+  #define JSVAR_CACHE_SIZE 700
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
  #else
   #define JSVAR_CACHE_SIZE 253
