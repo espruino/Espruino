@@ -132,13 +132,12 @@
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg[, arg1[, arg2, ...]]) / function.apply(thisArg[, argsArray])
+        handle 'new Function() { X.call(this); Y.call(this); }' correctly
         analogWrite should check about ports with overlapping timers
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Add 'delete' keyword for killing array items?
-        handle 'new Function() { X.call(this); Y.call(this); }' correctly
-        'Array.prototype.clear = function () { this.X = 23; };'
         Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
         Add nice iterators for strings and maybe arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
