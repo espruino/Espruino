@@ -104,6 +104,8 @@
      1v14 : Fix complaint about pins during setBusyIndicator()
             Increase available memory on OLIMEXINO
             Added function memory() to return memory usage
+            setWatch now links to function names (rather than just functions)
+            dump() also handles Serial.onData(...)
 [/CHANGELOG]
 
 [TODO]
@@ -114,7 +116,6 @@
         better digitalPulse
 
   MEDIUM PRIORITY:
-        dump() should produce code for Serial1.onData(...) etc
         Add Array.splice
         Make save() retry writing to flash if there was an error
         Add instanceof operator

@@ -1361,6 +1361,22 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   }
 }
 
+void jsiDumpSerialState(const char *serialName) {
+  JsVar *serialVar = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, serialName, false));
+  if (serialVar) {
+    JsVar *onData = jsvSkipOneNameAndUnlock(jsvFindChildFromString(jsvGetRef(serialVar), USART_CALLBACK_NAME, false));
+    if (onData) {
+      JsVar *str = jsvAsString(onData, true/*unlock*/);
+      jsiConsolePrint(serialName);
+      jsiConsolePrint(".onData(");
+      jsiConsolePrintStringVar(str);
+      jsiConsolePrint(");\n");
+      jsvUnLock(str);
+    }
+    jsvUnLock(serialVar);
+  }
+}
+
 /** Output current interpreter state such that it can be copied to a new device */
 void jsiDumpState() {
   JsVar *parent = jsvLock(p.root);
@@ -1436,6 +1452,10 @@ void jsiDumpState() {
      jsvUnLock(watchNamePtr);
    }
   }
+  // and now serial
+  jsiDumpSerialState("USB");
+  jsiDumpSerialState("Serial1");
+  jsiDumpSerialState("Serial2");
 }
 
 /** Handle function calls - do this programatically, so we can save on RAM */
@@ -1747,7 +1767,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
          */
         JsVarInt itemIndex = -1;
         JsVar *funcVar, *pinVar, *recurringVar;
-        jspParseFunction(0, &funcVar, &pinVar, &recurringVar, 0);
+        jspParseFunction(JSP_NOSKIP_A, &funcVar, &pinVar, &recurringVar, 0);
         JsVar *skippedFunc = jsvSkipName(funcVar);
         if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
           jsError("Function or String not supplied!");
@@ -2015,12 +2035,15 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
        *JS*  gets called. The character received is in 'e.data' as a String.
        *JS*  Only one function can ever be supplied, so calling onData(undefined) will stop any function being called
        */
-      JsVar *funcVar = jspParseSingleFunction();
-      if (!jsvIsFunction(funcVar) && !jsvIsString(funcVar)) {
+      JsVar *funcVar = 0;
+      jspParseFunction(JSP_NOSKIP_A, &funcVar, 0, 0, 0);
+      JsVar *skippedFunc = jsvSkipName(funcVar);
+      if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
         jsError("Function or String not supplied!");
       } else {
         jsvUnLock(jsvSetNamedChild(a, funcVar, USART_CALLBACK_NAME));
       }
+      jsvUnLock(skippedFunc);
       jsvUnLock(funcVar);
       return 0;
     }

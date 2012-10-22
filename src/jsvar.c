@@ -1132,7 +1132,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
    * filled in (or it may be undefined). */
   if (name->firstChild) jsvUnRefRef(name->firstChild); // free existing
   if (src) {
-      assert(!jsvIsName(src)); // ensure not linking to a name!
+      // we can link to a name if we want (so can remove the assert!)
       name->firstChild = jsvGetRef(jsvRef(src));
   } else
       name->firstChild = 0;
