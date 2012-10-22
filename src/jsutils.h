@@ -103,6 +103,7 @@
             Support *,/ etc on numpad
      1v14 : Fix complaint about pins during setBusyIndicator()
             Increase available memory on OLIMEXINO
+            Added function memory() to return memory usage
 [/CHANGELOG]
 
 [TODO]
@@ -111,7 +112,6 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-        Check lst file for extra sections that break compile on newer gcc (different .ld file should be around on PC somewhere?)
 
   MEDIUM PRIORITY:
         dump() should produce code for Serial1.onData(...) etc
@@ -167,10 +167,6 @@
                possibly, 'this' should be a keyword, not a variable that we define (would be faster)
 
 [/TODO]
-
-
-For freescale:
- $(OBJCOPY) -O srec bootloader.elf $@     
 
 When presenting:
    Show small time to first code
@@ -273,7 +269,7 @@ typedef unsigned long long JsVarIntUnsigned;
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
 #define JSPARSE_FUNCTION_SCOPE_NAME "#scope#"
 
-#ifndef ARM
+#if 1
  #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__);
 #else
  #define assert(X) 

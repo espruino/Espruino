@@ -77,7 +77,7 @@ JsVar *jsvFindOrCreateRoot() {
   return jsvRef(jsvNewWithFlags(JSV_ROOT));
 }
 
-// Get number of memory records (JsVars) used
+/// Get number of memory records (JsVars) used
 int jsvGetMemoryUsage() {
   int usage = 0;
   int i;
@@ -85,6 +85,11 @@ int jsvGetMemoryUsage() {
     if (jsVars[i].refs != JSVAR_CACHE_UNUSED_REF)
       usage++;
   return usage;
+}
+
+/// Get total amount of memory records
+int jsvGetMemoryTotal() {
+  return jsVarsSize;
 }
 
 /// Get whether memory is full or not

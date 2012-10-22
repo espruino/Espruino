@@ -93,6 +93,7 @@ void jsvSoftInit(); ///< called when loading from flash
 void jsvSoftKill(); ///< called when saving to flash
 JsVar *jsvFindOrCreateRoot(); ///< Find or create the ROOT variable item - used mainly if recovering from a saved state.
 int jsvGetMemoryUsage(); ///< Get number of memory records (JsVars) used
+int jsvGetMemoryTotal(); ///< Get total amount of memory records
 bool jsvIsMemoryFull(); ///< Get whether memory is full or not
 void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory problems
 

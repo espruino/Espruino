@@ -1858,6 +1858,21 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       todo |= TODO_RESET;
       return 0;
     }
+    if (strcmp(name,"memory")==0) {
+      /*JS* function memory()
+       *JS*  Return an object containing information on memory usage at the start of the call
+       */
+      jspParseEmptyFunction();
+      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      if (obj) {
+        int usage = jsvGetMemoryUsage();
+        int total = jsvGetMemoryTotal();
+        jsvAddNamedChild(obj, jsvNewFromInteger(total-usage), "free");
+        jsvAddNamedChild(obj, jsvNewFromInteger(usage), "usage");
+        jsvAddNamedChild(obj, jsvNewFromInteger(total), "total");
+      }
+      return obj;
+    }
     if (strcmp(name,"edit")==0) {
       /*JS* function edit(functionName/"functionName")
        *JS*  Fill the console with the contents of the given function, so you can edit it.
