@@ -121,10 +121,11 @@
         Add instanceof operator
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
-        Detect if running out of FIFO space and skip writing characters (not such an issue now we have a big shared buffer)
+        Implement XON/XOFF flow control
         Save state on setWatch interrupt (e.state)
         Save pin input/output state along with save()
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
+        Can we stop GPIO clocks on sleep? Could check if using analogWrite
         Change setWatch to allow only on rise or fall as an option
         When Ctrl-C, should print the line that the break first appeared on
         setTimeout(obj.method, 100); doesn't work. WORKAROUND: setTimeout("obj.method()", 100); works
