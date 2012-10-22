@@ -110,6 +110,7 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
+        Check lst file for extra sections that break compile on newer gcc (different .ld file should be around on PC somewhere?)
 
   MEDIUM PRIORITY:
         dump() should produce code for Serial1.onData(...) etc
@@ -166,6 +167,9 @@
 
 [/TODO]
 
+
+For freescale:
+ $(OBJCOPY) -O srec bootloader.elf $@     
 
 When presenting:
    Show small time to first code
