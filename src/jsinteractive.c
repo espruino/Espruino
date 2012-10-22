@@ -1867,9 +1867,16 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       if (obj) {
         int usage = jsvGetMemoryUsage();
         int total = jsvGetMemoryTotal();
-        jsvAddNamedChild(obj, jsvNewFromInteger(total-usage), "free");
-        jsvAddNamedChild(obj, jsvNewFromInteger(usage), "usage");
-        jsvAddNamedChild(obj, jsvNewFromInteger(total), "total");
+        JsVar *v;
+        v = jsvNewFromInteger(total-usage);
+        jsvUnLock(jsvAddNamedChild(obj, v, "free"));
+        jsvUnLock(v);
+        v = jsvNewFromInteger(usage);
+        jsvUnLock(jsvAddNamedChild(obj, v, "usage"));
+        jsvUnLock(v);
+        v = jsvNewFromInteger(total);
+        jsvUnLock(jsvAddNamedChild(obj, v, "total"));
+        jsvUnLock(v);
       }
       return obj;
     }
