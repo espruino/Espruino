@@ -42,8 +42,10 @@ LCD.prototype.createChar = function(ch, data) {
 
 echo(1);
 // ------------------------------------------------------- 
+// see http://arduino.cc/en/uploads/Tutorial/LCD_bb.png for wiring
+// VO can usually be grounded
 var lcd = new LCD(A4,A5,A0,A1,A2,A3);
-lcd.print("Hello World")
+lcd.print("Hello World");
 
 lcd.createChar(0,[
 0b11111,
@@ -77,6 +79,44 @@ function showData() {
  lcd.setCursor(4,1);
  lcd.print("D1 = "+analogRead(D1));
 }
-
 setInterval(showData, 1000);
+
+
+// Draw data with bar graph...
+lcd.createChar(0,[0,0,0,0,0,0,0,31]);
+lcd.createChar(1,[0,0,0,0,0,0,31,31]);
+lcd.createChar(2,[0,0,0,0,0,31,31,31]);
+lcd.createChar(3,[0,0,0,0,31,31,31,31]);
+lcd.createChar(4,[0,0,0,31,31,31,31,31]);
+lcd.createChar(5,[0,0,31,31,31,31,31,31]);
+lcd.createChar(6,[0,31,31,31,31,31,31,31]);
+lcd.createChar(7,[31,31,31,31,31,31,31,31]);
+var history = new Array(20);
+
+
+function showData() {
+ for (var i=1;i<history.length;i++) history[i-1]=history[i];
+ history[history.length-1] = Math.round(analogRead(D1)*16);
+
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("Current data:");
+ digitalWrite(D0,0);
+ digitalWrite(D2,1);
+ lcd.setCursor(4,1);
+ lcd.print("D1 = "+analogRead(D1));
+ lcd.setCursor(0,2);
+ for (var i=0;i<history.length;i++) {
+  var n=history[i];
+  if (n>16) n=16;
+  lcd.write((n>8)?(n-9):32);
+ }
+ lcd.setCursor(0,3);
+ for (var i=0;i<history.length;i++) {
+  var n=history[i];
+  if (n>8) n=8;
+  lcd.write((n>0)?(n-1):32);
+ }
+}
+setInterval(showData, 5000);
 
