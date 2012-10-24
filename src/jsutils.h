@@ -106,6 +106,7 @@
             Added function memory() to return memory usage
             setWatch now links to function names (rather than just functions)
             dump() also handles Serial.onData(...)
+            Fix issue with JSON printing functions with arguments to console
 [/CHANGELOG]
 
 [TODO]

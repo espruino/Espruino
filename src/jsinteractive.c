@@ -161,7 +161,7 @@ void jsiConsolePrintInt(int d) {
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBackup) {
-  assert(jsvIsString(v) || jsvIsName(v));
+  assert(jsvHasCharacterData(v));
   int chars = 0;
   JsVarRef r = jsvGetRef(v);
   bool done = false;
@@ -194,7 +194,7 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
 /** Print the contents of a string var - directly - starting from the given character, and
  * using newLineCh to prefix new lines (if it is not 0). */
 void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, int fromCharacter, char newLineCh) {
-  assert(jsvIsString(v));
+  assert(jsvHasCharacterData(v));
   int n = 0;
   JsVarRef r = jsvGetRef(v);
   while (r) {
@@ -224,7 +224,7 @@ void jsiConsolePrintStringVar(JsVar *v) {
 /** Assuming that we are at the end of the string, this backs up
  * and deletes it */
 void jsiConsoleEraseStringVarBackwards(JsVar *v) {
-  assert(jsvIsString(v) || jsvIsName(v));
+  assert(jsvHasCharacterData(v));
 
   int line, lines = jsvGetLinesInString(v);
   for (line=lines;line>0;line--) {
@@ -250,7 +250,7 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
  * erase everything that comes AFTER and return the cursor to 'fromCharacter'
  * On newlines, if erasePrevCharacter, we remove the character before too. */
 void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCharacter) {
-  assert(jsvIsString(v) || jsvIsName(v));
+  assert(jsvHasCharacterData(v));
   int cursorLine, cursorCol;
   jsvGetLineAndCol(v, fromCharacter, &cursorLine, &cursorCol);
   // delete contents of current line
@@ -378,7 +378,7 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
 
 /// Print the contents of a string var - directly
 void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
-  assert(jsvIsString(v) || jsvIsName(v));
+  assert(jsvHasCharacterData(v));
   JsVarRef r = jsvGetRef(v);
   while (r) {
     v = jsvLock(r);
