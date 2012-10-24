@@ -107,6 +107,8 @@
             setWatch now links to function names (rather than just functions)
             dump() also handles Serial.onData(...)
             Fix issue with JSON printing functions with arguments to console
+            prefix builtin variables with '_'
+            fix ArrayIndexOf when array contains undefineds
 [/CHANGELOG]
 
 [TODO]

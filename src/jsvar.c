@@ -1290,15 +1290,16 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   while (indexref) {
     JsVar *childIndex = jsvLock(indexref);
     assert(jsvIsName(childIndex))
-    JsVar *childValue = jsvLock(childIndex->firstChild);
-
-      
-    if ((matchExact && childValue==value) ||
-        (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
+    if (childIndex->firstChild) {
+      JsVar *childValue = jsvLock(childIndex->firstChild);
+      if ((matchExact && childValue==value) ||
+          (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
+        jsvUnLock(childValue);
+        return childIndex;
+      }
       jsvUnLock(childValue);
-      return childIndex;
-    }
-    jsvUnLock(childValue);
+    } else if (jsvIsUndefined(value)) 
+      return childIndex; // both are undefined, so we return the index
     indexref = childIndex->nextSibling;
     jsvUnLock(childIndex);
   }

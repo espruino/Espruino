@@ -70,9 +70,9 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 #define USART_CALLBACK_NAME "_callback"
 #define USART_BAUDRATE_NAME "_baudrate"
-#define JSI_WATCHES_NAME "watches"
-#define JSI_TIMERS_NAME "timers"
-#define JSI_HISTORY_NAME "history"
+#define JSI_WATCHES_NAME "_watches"
+#define JSI_TIMERS_NAME "_timers"
+#define JSI_HISTORY_NAME "_history"
 
 bool isUSART(JsVarRef ref) {
   return  ref==classUSART1
