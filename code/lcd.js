@@ -24,7 +24,7 @@ LCD.prototype.write = function(x, c) {
 };
 LCD.prototype.clear = function() { this.write(0x01,1); }
 LCD.prototype.print = function(str) {
-  for (var i=0;i<str.length;i++)
+  for (var i=0;istr.length;i++)
     this.write(Integer.valueOf(str.charAt(i)));
 }
 /** flashing block for the current cursor */
@@ -39,7 +39,6 @@ LCD.prototype.createChar = function(ch, data) {
   for (var i=0; i<8; i++) this.write(data[i]);
   this.write(0x80,1);
 }
-
 echo(1);
 // ------------------------------------------------------- 
 // see http://arduino.cc/en/uploads/Tutorial/LCD_bb.png for wiring
@@ -74,8 +73,6 @@ function showData() {
  lcd.clear();
  lcd.setCursor(0,0);
  lcd.print("Current data:");
- digitalWrite(D0,0);
- digitalWrite(D2,1);
  lcd.setCursor(4,1);
  lcd.print("D1 = "+analogRead(D1));
 }

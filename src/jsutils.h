@@ -135,6 +135,8 @@
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
+        Use RPi to profile the code
+        Add #define to beginning of each function - use it to store stack usage per-fn while running
  
   LOW PRIORITY
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -172,6 +174,18 @@
                possibly, 'this' should be a keyword, not a variable that we define (would be faster)
 
 [/TODO]
+
+Board ideas:
+   Arduino form factor, but don't put sockets in.
+   USB, also 2x1 for power
+   2 switches on edge
+   Switchmode?
+   Could do battery charge using STM32 logic
+   Small prototype area - allow pin header for servos easily
+   Arrange 4x solder points so bluetooth dongle can be soldered on
+   Unpopulated points for L293D-type ICs
+   Ethernet version?
+     
 
 When presenting:
    Show small time to first code

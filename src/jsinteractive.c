@@ -1981,8 +1981,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       return 0;
     }
     if (strcmp(name,"dotty")==0) {
-      /*JS* function trace()
-       *JS*  Output debugging information
+      /*JS* function dotty()
+       *JS*  Output dotty-format graph of debugging information
        */
       jspParseEmptyFunction();
       jsvDottyOutput();
