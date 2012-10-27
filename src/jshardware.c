@@ -17,7 +17,7 @@
 
 #ifdef ARM
  #if USB
-  #include "hw_config.h"
+  #include "usb_utils.h"
   #include "usb_lib.h"
   #include "usb_conf.h"
   #include "usb_pwr.h"
