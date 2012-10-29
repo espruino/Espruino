@@ -117,8 +117,16 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
+        call onInit function if exists when Espruino powers on (eg, to set up LCD)
+        Split out STM32-only hardware code
+        Split out serial port code for arbitrary # of ports
+        Serial3/4 on F4
+        Serial3 on Olimexino
+        USB on F4
+        I2C/SPI support
 
   MEDIUM PRIORITY:
+        Flow control? 2nd '{...}' parameter on serial init
         Add Array.splice
         Make save() retry writing to flash if there was an error
         Add instanceof operator
