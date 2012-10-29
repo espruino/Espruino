@@ -68,6 +68,8 @@
 #include "usbd_desc.h"
 #include "usbd_req.h"
 
+#include "jshardware.h"
+
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -163,14 +165,6 @@ __ALIGN_BEGIN static __IO uint32_t  usbd_cdc_AltSet  __ALIGN_END = 0;
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN uint8_t USB_Rx_Buffer   [CDC_DATA_MAX_PACKET_SIZE] __ALIGN_END ;
-
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
-    #pragma data_alignment=4   
-  #endif
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
-__ALIGN_BEGIN uint8_t APP_Rx_Buffer   [APP_RX_DATA_SIZE] __ALIGN_END ; 
-
 
 #ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
   #if defined ( __ICCARM__ ) /*!< IAR Compiler */
@@ -623,39 +617,29 @@ static uint8_t  usbd_cdc_EP0_RxReady (void  *pdev)
   */
 static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
 {
-  uint16_t USB_Tx_ptr;
-  uint16_t USB_Tx_length;
-
   if (USB_Tx_State == 1)
   {
-    if (APP_Rx_length == 0) 
-    {
+    unsigned char USB_TX_Buffer[CDC_DATA_IN_PACKET_SIZE];
+    int USB_Tx_length = 0;
+
+    // try and fill the buffer
+    int c;
+    while (USB_Tx_length<CDC_DATA_IN_PACKET_SIZE &&
+           ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
+      USB_TX_Buffer[USB_Tx_length++] = c;
+    }
+
+    // if nothing, set state to 0
+    if (USB_Tx_length==0) {
       USB_Tx_State = 0;
+      return USBD_OK;
     }
-    else 
-    {
-      if (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE){
-        USB_Tx_ptr = APP_Rx_ptr_out;
-        USB_Tx_length = CDC_DATA_IN_PACKET_SIZE;
-        
-        APP_Rx_ptr_out += CDC_DATA_IN_PACKET_SIZE;
-        APP_Rx_length -= CDC_DATA_IN_PACKET_SIZE;    
-      }
-      else 
-      {
-        USB_Tx_ptr = APP_Rx_ptr_out;
-        USB_Tx_length = APP_Rx_length;
-        
-        APP_Rx_ptr_out += APP_Rx_length;
-        APP_Rx_length = 0;
-      }
       
-      /* Prepare the available data buffer to be sent on IN endpoint */
-      DCD_EP_Tx (pdev,
-                 CDC_IN_EP,
-                 (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
-                 USB_Tx_length);
-    }
+    /* Prepare the available data buffer to be sent on IN endpoint */
+    DCD_EP_Tx (pdev,
+               CDC_IN_EP,
+               (uint8_t*)USB_TX_Buffer,
+               USB_Tx_length);
   }  
   
   return USBD_OK;
@@ -719,57 +703,28 @@ static uint8_t  usbd_cdc_SOF (void *pdev)
   */
 static void Handle_USBAsynchXfer (void *pdev)
 {
-  uint16_t USB_Tx_ptr;
-  uint16_t USB_Tx_length;
-  
   if(USB_Tx_State != 1)
   {
-    if (APP_Rx_ptr_out == APP_RX_DATA_SIZE)
-    {
-      APP_Rx_ptr_out = 0;
+    unsigned char USB_TX_Buffer[CDC_DATA_IN_PACKET_SIZE];
+    int USB_Tx_length = 0;
+
+    // try and fill the buffer
+    int c;
+    while (USB_Tx_length<CDC_DATA_IN_PACKET_SIZE &&
+           ((c = jshGetCharToTransmit(EV_USBSERIAL)) >=0) ) { // get byte to transmit
+      USB_TX_Buffer[USB_Tx_length++] = c;
     }
-    
-    if(APP_Rx_ptr_out == APP_Rx_ptr_in) 
-    {
+
+    // if nothing, set state to 0
+    if (USB_Tx_length==0) {
       USB_Tx_State = 0; 
       return;
-    }
-    
-    if(APP_Rx_ptr_out > APP_Rx_ptr_in) /* rollback */
-    { 
-      APP_Rx_length = APP_RX_DATA_SIZE - APP_Rx_ptr_out;
-    
-    }
-    else 
-    {
-      APP_Rx_length = APP_Rx_ptr_in - APP_Rx_ptr_out;
-     
-    }
-#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
-     APP_Rx_length &= ~0x03;
-#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
-    
-    if (APP_Rx_length > CDC_DATA_IN_PACKET_SIZE)
-    {
-      USB_Tx_ptr = APP_Rx_ptr_out;
-      USB_Tx_length = CDC_DATA_IN_PACKET_SIZE;
-      
-      APP_Rx_ptr_out += CDC_DATA_IN_PACKET_SIZE;	
-      APP_Rx_length -= CDC_DATA_IN_PACKET_SIZE;
-    }
-    else
-    {
-      USB_Tx_ptr = APP_Rx_ptr_out;
-      USB_Tx_length = APP_Rx_length;
-      
-      APP_Rx_ptr_out += APP_Rx_length;
-      APP_Rx_length = 0;
     }
     USB_Tx_State = 1; 
 
     DCD_EP_Tx (pdev,
                CDC_IN_EP,
-               (uint8_t*)&APP_Rx_Buffer[USB_Tx_ptr],
+               (uint8_t*)USB_TX_Buffer,
                USB_Tx_length);
   }  
   

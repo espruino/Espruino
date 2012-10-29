@@ -49,15 +49,6 @@ LINE_CODING linecoding =
 
 USART_InitTypeDef USART_InitStructure;
 
-/* These are external variables imported from CDC core to be used for IN 
-   transfer management. */
-extern uint8_t  APP_Rx_Buffer []; /* Write CDC received data in this buffer.
-                                     These data will be sent over USB IN endpoint
-                                     in the CDC core functions. */
-extern uint32_t APP_Rx_ptr_in;    /* Increment this pointer or roll it back to
-                                     start address when writing received data
-                                     in the buffer APP_Rx_Buffer. */
-
 /* Private function prototypes -----------------------------------------------*/
 static uint16_t VCP_Init     (void);
 static uint16_t VCP_DeInit   (void);
@@ -72,7 +63,7 @@ CDC_IF_Prop_TypeDef VCP_fops =
   VCP_Init,
   VCP_DeInit,
   VCP_Ctrl,
-  VCP_DataTx,
+  0,
   VCP_DataRx
 };
 
@@ -165,39 +156,6 @@ static uint16_t VCP_Ctrl (uint32_t Cmd, uint8_t* Buf, uint32_t Len)
     break;
   }
 
-  return USBD_OK;
-}
-
-/**
-  * @brief  VCP_DataTx
-  *         CDC received data to be send over USB IN endpoint are managed in 
-  *         this function.
-  * @param  Buf: Buffer of data to be sent
-  * @param  Len: Number of data to be sent (in bytes)
-  * @retval Result of the opeartion: USBD_OK if all operations are OK else VCP_FAIL
-  */
-static uint16_t VCP_DataTx (uint8_t* Buf, uint32_t Len)
-{
-  int c = jshGetCharToTransmit(EV_USBSERIAL);
-  if (c<0) return USBD_OK;
-
-  if (linecoding.datatype == 7)
-  {
-    APP_Rx_Buffer[APP_Rx_ptr_in] = c & 0x7F;
-  }
-  else if (linecoding.datatype == 8)
-  {
-    APP_Rx_Buffer[APP_Rx_ptr_in] = c;
-  }
-  
-  APP_Rx_ptr_in++;
-  
-
-  if(APP_Rx_ptr_in == APP_RX_DATA_SIZE)
-  {
-    APP_Rx_ptr_in = 0;
-  }  
-  
   return USBD_OK;
 }
 
