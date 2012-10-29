@@ -42,13 +42,6 @@
 /* Interval between sending IN packets in frame number (1 frame = 1ms) */
 #define VCOMPORT_IN_FRAME_INTERVAL             5
 
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-extern uint8_t USART_Rx_Buffer[];
-extern volatile uint32_t USART_Rx_ptr_in;
-extern volatile uint32_t USART_Rx_ptr_out;
-extern volatile uint32_t USART_Rx_length;
-
 uint8_t USB_Tx_State = 0;
 
 /* Private function prototypes -----------------------------------------------*/

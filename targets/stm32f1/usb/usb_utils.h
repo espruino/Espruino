@@ -45,11 +45,10 @@
 
 #define USART_RX_DATA_SIZE   VIRTUAL_COM_PORT_DATA_SIZE
 /* Exported functions ------------------------------------------------------- */
-void Set_System(void);
-void Set_USBClock(void);
+void USB_Init_Hardware(void);
+
 void Enter_LowPowerMode(void);
 void Leave_LowPowerMode(void);
-void USB_Interrupts_Config(void);
 void USB_Cable_Config (FunctionalState NewState);
 void USART_To_USB_Send_Data(char ch);
 void Get_SerialNum(void);

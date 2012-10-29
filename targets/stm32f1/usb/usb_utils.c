@@ -40,28 +40,45 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-ErrorStatus HSEStartUpStatus;
-USART_InitTypeDef USART_InitStructure;
-
-uint8_t  USART_Rx_Buffer [USART_RX_DATA_SIZE]; 
-volatile uint32_t USART_Rx_ptr_in = 0;
-volatile uint32_t USART_Rx_ptr_out = 0;
-volatile uint32_t USART_Rx_length  = 0;
 
 static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
 /* Extern variables ----------------------------------------------------------*/
 
-extern LINE_CODING linecoding;
-
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 /*******************************************************************************
-* Function Name  : Set_System
-* Description    : Configures Main system clocks & power
+* Function Name  : Enter_LowPowerMode
+* Description    : Power-off system clocks and power while entering suspend mode
 * Input          : None.
 * Return         : None.
 *******************************************************************************/
-void Set_System(void)
+void Enter_LowPowerMode(void)
+{
+  /* Set the device state to suspend */
+  bDeviceState = SUSPENDED;
+}
+
+/*******************************************************************************
+* Function Name  : Leave_LowPowerMode
+* Description    : Restores system clocks and power while exiting suspend mode
+* Input          : None.
+* Return         : None.
+*******************************************************************************/
+void Leave_LowPowerMode(void)
+{
+  DEVICE_INFO *pInfo = &Device_Info;
+
+  /* Set the device state to the correct state */
+  if (pInfo->Current_Configuration != 0)
+  {
+    /* Device configured */
+    bDeviceState = CONFIGURED;
+  }
+  else
+  {
+    bDeviceState = ATTACHED;
+  }
+}
+
+void USB_Init_Hardware(void)
 {
 #if !defined(STM32F10X_CL) && !defined(STM32L1XX_MD) && !defined(STM32L1XX_HD) && !defined(STM32L1XX_MD_PLUS)
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -105,21 +122,8 @@ void Set_System(void)
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(USB_DISCONNECT, &GPIO_InitStructure);  
 #endif /* USB_USE_EXTERNAL_PULLUP */  
-}
 
-/*******************************************************************************
-* Function Name  : Set_USBClock
-* Description    : Configures USB Clock input (48MHz)
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
-void Set_USBClock(void)
-{
-#if defined(STM32F4)
-  RCC_APB2PeriphClockCmd(RCC_AHB1Periph_OTG_HS |  RCC_AHB1Periph_OTG_HS_ULPI, ENABLE); // FIXME: need this?
-  RCC_APB2PeriphClockCmd(RCC_AHB2Periph_OTG_FS, ENABLE);
-
-#elif defined(STM32L1XX_MD) || defined(STM32L1XX_HD) || defined(STM32L1XX_MD_PLUS) || defined(STM32F4)
+#if defined(STM32L1XX_MD) || defined(STM32L1XX_HD) || defined(STM32L1XX_MD_PLUS) || defined(STM32F4)
   /* Enable USB clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
   
@@ -137,50 +141,7 @@ void Set_USBClock(void)
   /* Enable the USB clock */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
 #endif /* STM32F10X_CL */
-}
 
-/*******************************************************************************
-* Function Name  : Enter_LowPowerMode
-* Description    : Power-off system clocks and power while entering suspend mode
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
-void Enter_LowPowerMode(void)
-{
-  /* Set the device state to suspend */
-  bDeviceState = SUSPENDED;
-}
-
-/*******************************************************************************
-* Function Name  : Leave_LowPowerMode
-* Description    : Restores system clocks and power while exiting suspend mode
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
-void Leave_LowPowerMode(void)
-{
-  DEVICE_INFO *pInfo = &Device_Info;
-
-  /* Set the device state to the correct state */
-  if (pInfo->Current_Configuration != 0)
-  {
-    /* Device configured */
-    bDeviceState = CONFIGURED;
-  }
-  else
-  {
-    bDeviceState = ATTACHED;
-  }
-}
-
-/*******************************************************************************
-* Function Name  : USB_Interrupts_Config
-* Description    : Configures the USB interrupts
-* Input          : None.
-* Return         : None.
-*******************************************************************************/
-void USB_Interrupts_Config(void)
-{
   NVIC_InitTypeDef NVIC_InitStructure;
 
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
