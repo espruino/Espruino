@@ -1,0 +1,7 @@
+*~
+*.o
+*.elf
+*.hex
+*.lst
+*.srec
+src/TinyJSC

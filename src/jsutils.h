@@ -109,13 +109,13 @@
             Fix issue with JSON printing functions with arguments to console
             prefix builtin variables with '_'
             fix ArrayIndexOf when array contains undefineds
+            move all devices into one git repository
 [/CHANGELOG]
 
 [TODO]
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
-        Git subproject
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         call onInit function if exists when Espruino powers on (eg, to set up LCD)
@@ -166,6 +166,7 @@
         JSON.stringify to escape characters in strings
         If a line overflows and wraps, everything gets confused
         Add datatype for PIN, so pins are output by pin name rather than integer value
+        Arrays could store data in a n-tree, would be quite efficient (currently 8 data per 1 node)
 
   VERY LOW PRIORITY
         Allow console to be put on a user-generated device (eg, LCD) - provide one fn for writing, and allow chars to be poked in
