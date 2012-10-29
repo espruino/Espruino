@@ -643,7 +643,8 @@ void jsiInit(bool autoLoad) {
     // set up terminal to avoid word wrap
     jsiConsolePrint("\e[?7l");
     // rectangles @ http://www.network-science.de/ascii/
-    jsiConsolePrint("\r\n _____                 _ \r\n"
+    jsiConsolePrint("\r\n"
+              " _____                 _ \r\n"
               "|   __|___ ___ ___ _ _|_|___ ___ \r\n"
               "|   __|_ -| . |  _| | | |   | . |\r\n"
               "|_____|___|  _|_| |___|_|_|_|___|\r\n"

@@ -5,7 +5,7 @@
           |_|                                                               
    Copyright 2012 Gordon Williams
                                                
-http://www.pur3.co.uk/espruino
+http://www.espruino.com
 
 This version of Espruino is provided free for personal
 use only. This must not be sold either as software or
@@ -15,7 +15,13 @@ For more information on how to program this onto your
 STM32VLDISCOVERY board, please see the website above.
 
 
-Misc Notes:
+
+Please see functions.txt for a description of functions
+available to you.
+
+
+
+NOTES:
 
 * On the STM32F4DISCOVERY the default USART is USART2 (because
 USART1 shares some pins with USB). This means you must connect
@@ -30,3 +36,4 @@ Espruino powers on it'll resume from where it left off.
 code the first time it starts (for instance to initialise
 some external hardware like an LCD), create a function or
 string called 'onInit'.
+
