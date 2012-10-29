@@ -17,10 +17,12 @@
 
 #ifdef ARM
  #if USB
-  #include "usb_utils.h"
-  #include "usb_lib.h"
-  #include "usb_conf.h"
-  #include "usb_pwr.h"
+  #ifdef STM32F1
+   #include "usb_utils.h"
+   #include "usb_lib.h"
+   #include "usb_conf.h"
+   #include "usb_pwr.h"
+  #endif
  #endif
 #endif
 
@@ -555,7 +557,9 @@ void jshDoSysTick() {
   if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
     SysTickUSBWatchdog++;
   } else {
+#ifdef STM32F1
     bDeviceState = UNCONNECTED;
+#endif
   }
 #endif //USB
 }
@@ -795,7 +799,13 @@ void jshIdle() {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef USB
+#ifdef STM32F1
   return bDeviceState != UNCONNECTED;
+#endif
+#ifdef STM32F4
+  return false;
+#endif
+
   // not a check for connected - we just want to have some idea...
 #else
   return false;

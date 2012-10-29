@@ -41,8 +41,8 @@ STLIB=STM32F10X_MD
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
 else ifdef STM32F4DISCOVERY
 PROJ_NAME=espruino_stm32f4discovery
-#USB=1
-#DEFINES += -DUSE_USB_OTG_FS=1
+USB=1
+DEFINES += -DUSE_USB_OTG_FS=1
 #for F4 see https://www.das-labor.org/trac/browser/microcontroller/src-stm32f4xx/serialUSB
 FAMILY=STM32F4
 CHIP=STM32F407
@@ -114,6 +114,10 @@ math/unity.c
 #math/dtestvec.c 
 endif
 
+ifdef USB
+DEFINES += -DUSB
+endif
+
 ifeq ($(FAMILY), STM32F1)
 export ARCHFLAGS=-mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
 ARM=1
@@ -147,25 +151,24 @@ targets/stm32f1/lib/stm32f10x_wwdg.c    \
 targets/stm32f1/lib/system_stm32f10x.c
 
 ifdef USB
-DEFINES += -DUSB
-INCLUDE += -I$(ROOT)/targets/stm32f1/usb
+INCLUDE += -I$(ROOT)/targets/stm32f1/usblib -I$(ROOT)/targets/stm32f1/usb
 SOURCES +=                              \
-targets/stm32f1/usb/otgd_fs_cal.c       \
-targets/stm32f1/usb/otgd_fs_dev.c       \
-targets/stm32f1/usb/otgd_fs_int.c       \
-targets/stm32f1/usb/otgd_fs_pcd.c       \
-targets/stm32f1/usb/usb_core.c          \
-targets/stm32f1/usb/usb_init.c          \
-targets/stm32f1/usb/usb_int.c           \
-targets/stm32f1/usb/usb_mem.c           \
-targets/stm32f1/usb/usb_regs.c          \
-targets/stm32f1/usb/usb_sil.c           \
-targets/stm32f1/usb_desc.c              \
-targets/stm32f1/usb_endp.c              \
-targets/stm32f1/usb_istr.c              \
-targets/stm32f1/usb_prop.c              \
-targets/stm32f1/usb_pwr.c               \
-targets/stm32f1/usb_utils.c
+targets/stm32f1/usblib/otgd_fs_cal.c       \
+targets/stm32f1/usblib/otgd_fs_dev.c       \
+targets/stm32f1/usblib/otgd_fs_int.c       \
+targets/stm32f1/usblib/otgd_fs_pcd.c       \
+targets/stm32f1/usblib/usb_core.c          \
+targets/stm32f1/usblib/usb_init.c          \
+targets/stm32f1/usblib/usb_int.c           \
+targets/stm32f1/usblib/usb_mem.c           \
+targets/stm32f1/usblib/usb_regs.c          \
+targets/stm32f1/usblib/usb_sil.c           \
+targets/stm32f1/usb/usb_desc.c              \
+targets/stm32f1/usb/usb_endp.c              \
+targets/stm32f1/usb/usb_istr.c              \
+targets/stm32f1/usb/usb_prop.c              \
+targets/stm32f1/usb/usb_pwr.c               \
+targets/stm32f1/usb/usb_utils.c
 endif
 
 endif
@@ -209,6 +212,30 @@ targets/stm32f4/lib/stm32f4xx_tim.c        \
 targets/stm32f4/lib/stm32f4xx_usart.c      \
 targets/stm32f4/lib/stm32f4xx_wwdg.c       \
 targets/stm32f4/lib/system_stm32f4xx.c
+
+ifdef USB
+INCLUDE += -I$(ROOT)/targets/stm32f4/usblib -I$(ROOT)/targets/stm32f4/usb
+SOURCES +=                                 \
+targets/stm32f4/usblib/usb_core.c          \
+targets/stm32f4/usblib/usbd_cdc_core.c     \
+targets/stm32f4/usblib/usb_dcd.c           \
+targets/stm32f4/usblib/usb_dcd_int.c       \
+targets/stm32f4/usblib/usbd_core.c         \
+targets/stm32f4/usblib/usbd_ioreq.c        \
+targets/stm32f4/usblib/usbd_req.c          \
+targets/stm32f4/usb/usb_bsp.c              \
+targets/stm32f4/usb/usbd_cdc_vcp.c         \
+targets/stm32f4/usb/usbd_desc.c            \
+targets/stm32f4/usb/usbd_usr.c
+
+
+#targets/stm32f4/usblib/usb_hcd.c           
+#targets/stm32f4/usblib/usb_hcd_int.c
+#targets/stm32f4/usblib/usb_otg.c           
+       
+
+endif
+
 endif
 
 ifdef ARM

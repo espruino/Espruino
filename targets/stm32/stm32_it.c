@@ -31,9 +31,16 @@
 #include "platform_config.h"
 #include "stm32_it.h"
 #ifdef USB
+#ifdef STM32F1
  #include "usb_utils.h"
  #include "usb_lib.h"
  #include "usb_istr.h"
+#endif
+#ifdef STM32F4
+ #include "usb_core.h"
+ #include "usbd_core.h"
+ #include "usbd_cdc_core.h"
+#endif
 #endif
 #include "jshardware.h"
 
@@ -290,6 +297,7 @@ void USART2_IRQHandler(void) {
 
 #ifdef USB
 
+#ifdef STM32F1
 #ifndef STM32F10X_CL
 /*******************************************************************************
 * Function Name  : USB_IRQHandler
@@ -322,8 +330,9 @@ void OTG_FS_IRQHandler(void)
   STM32_PCD_OTG_ISR_Handler(); 
 }
 #endif /* STM32F10X_CL */
-#endif
+#endif // STM32F1
 
+#ifdef STM32F4
 /******************************************************************************/
 /*                 STM32 Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
@@ -341,6 +350,81 @@ void OTG_FS_IRQHandler(void)
 /*void PPP_IRQHandler(void)
 {
 }*/
+
+/**
+  * @brief  This function handles EXTI15_10_IRQ Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_FS
+void OTG_FS_WKUP_IRQHandler(void)
+{
+  if(USB_OTG_dev.cfg.low_power)
+  {
+    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+    SystemInit();
+    USB_OTG_UngateClock(&USB_OTG_dev);
+  }
+  EXTI_ClearITPendingBit(EXTI_Line18);
+}
+#endif
+
+/**
+  * @brief  This function handles EXTI15_10_IRQ Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_HS
+void OTG_HS_WKUP_IRQHandler(void)
+{
+  if(USB_OTG_dev.cfg.low_power)
+  {
+    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+    SystemInit();
+    USB_OTG_UngateClock(&USB_OTG_dev);
+  }
+  EXTI_ClearITPendingBit(EXTI_Line20);
+}
+#endif
+
+/**
+  * @brief  This function handles OTG_HS Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_HS
+void OTG_HS_IRQHandler(void)
+#else
+void OTG_FS_IRQHandler(void)
+#endif
+{
+  USBD_OTG_ISR_Handler (&USB_OTG_dev);
+}
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+/**
+  * @brief  This function handles EP1_IN Handler.
+  * @param  None
+  * @retval None
+  */
+void OTG_HS_EP1_IN_IRQHandler(void)
+{
+  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
+}
+
+/**
+  * @brief  This function handles EP1_OUT Handler.
+  * @param  None
+  * @retval None
+  */
+void OTG_HS_EP1_OUT_IRQHandler(void)
+{
+  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
+}
+#endif
+
+#endif // STM32F4
+#endif // USB
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
 
