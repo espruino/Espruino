@@ -110,6 +110,8 @@
             prefix builtin variables with '_'
             fix ArrayIndexOf when array contains undefineds
             move all devices into one git repository
+            USB on F4
+            call onInit function/string if it exists when Espruino powers on
 [/CHANGELOG]
 
 [TODO]
@@ -118,14 +120,13 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-        call onInit function if exists when Espruino powers on (eg, to set up LCD)
         Split out STM32-only hardware code
         Split out serial port code for arbitrary # of ports
         Serial3/4 on F4
         Serial3 on Olimexino
 
   MEDIUM PRIORITY:
-        USB on F4
+        Make Serial.onData() clear onData handler
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
         Add Array.splice

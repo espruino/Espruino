@@ -73,6 +73,8 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 #define JSI_WATCHES_NAME "_watches"
 #define JSI_TIMERS_NAME "_timers"
 #define JSI_HISTORY_NAME "_history"
+#define JSI_INIT_CODE_NAME "_init"
+#define JSI_ONINIT_NAME "onInit"
 
 bool isUSART(JsVarRef ref) {
   return  ref==classUSART1
@@ -506,9 +508,9 @@ void jsiSoftInit() {
     jsvUnLock(timerArrayPtr);
   }
   // Now run initialisation code
-  JsVar *initName = jsvFindChildFromString(p.root, "__init", false);
+  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, false);
   if (initName && initName->firstChild) {
-    //jsPrint("Running initialisation code...\n");
+    //jsiConsolePrint("Running initialisation code...\n");
     JsVar *initCode = jsvLock(initName->firstChild);
     jsvUnLock(jspEvaluateVar(&p, initCode));
     jsvUnLock(initCode);
@@ -517,6 +519,19 @@ void jsiSoftInit() {
     jsvUnLock(root);
   }
   jsvUnLock(initName);
+  // And look for onInit function
+  JsVar *onInit = jsvFindChildFromString(p.root, JSI_ONINIT_NAME, false);
+  if (onInit && onInit->firstChild) {
+    if (echo) jsiConsolePrint("Running onInit()...\n");
+    JsVar *func = jsvSkipName(onInit);
+    if (jsvIsFunction(func))
+      jspExecuteFunction(&p, func, 0);
+    else if (jsvIsString(func))
+      jsvUnLock(jspEvaluateVar(&p, func));
+    else
+      jsError("onInit is not a Function or a String");
+  }
+  jsvUnLock(onInit);
 }
 
 // Used when shutting down before flashing
@@ -569,7 +584,7 @@ void jsiSoftKill() {
     watchArray=0;
   }
   // Save initialisation information
-  JsVar *initName = jsvFindChildFromString(p.root, "__init", true);
+  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, true);
   if (initName->firstChild) {
     jsvUnRefRef(initName->firstChild); 
     initName->firstChild = 0;
