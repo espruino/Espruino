@@ -556,10 +556,6 @@ void jshDoSysTick() {
 #ifdef USB
   if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
     SysTickUSBWatchdog++;
-  } else {
-#ifdef STM32F1
-    bDeviceState = UNCONNECTED;
-#endif
   }
 #endif //USB
 }
@@ -799,13 +795,7 @@ void jshIdle() {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef USB
-#ifdef STM32F1
-  return bDeviceState != UNCONNECTED;
-#endif
-#ifdef STM32F4
-  return false;
-#endif
-
+  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
   // not a check for connected - we just want to have some idea...
 #else
   return false;

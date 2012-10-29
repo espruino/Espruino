@@ -683,6 +683,8 @@ static uint8_t  usbd_cdc_SOF (void *pdev)
 {      
   static uint32_t FrameCount = 0;
   
+  jshKickUSBWatchdog();
+
   if (FrameCount++ == CDC_IN_FRAME_INTERVAL)
   {
     /* Reset the frame counter */

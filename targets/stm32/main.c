@@ -43,7 +43,11 @@ int main(void){
   volatile int w,h;
 #ifdef USB
   for (w=0;w<1000000;w++)
+ #ifdef STM32F4 // IT's FAST!
+    for (h=0;h<10;h++); // wait for things to settle (for USB)
+ #else
     for (h=0;h<2;h++); // wait for things to settle (for USB)
+ #endif
 #else
   for (w=0;w<100000;w++)
     for (h=0;h<2;h++); // wait for things to settle (for Serial comms)
