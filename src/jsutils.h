@@ -115,6 +115,7 @@
   Things which are known about in this version which should be fixed (or just implemented!):  
 
   HIGH PRIORITY:
+        Git subproject
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         call onInit function if exists when Espruino powers on (eg, to set up LCD)
@@ -147,6 +148,7 @@
         Add #define to beginning of each function - use it to store stack usage per-fn while running
  
   LOW PRIORITY
+        Redo built-in functions with script to create a fast checker
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg[, arg1[, arg2, ...]]) / function.apply(thisArg[, argsArray])
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
@@ -192,7 +194,7 @@ Board ideas:
    Small prototype area - allow pin header for servos easily
    Arrange 4x solder points so bluetooth dongle can be soldered on
    Unpopulated points for L293D-type ICs
-   Ethernet version?
+   Ethernet version with F4 http://blog.tkjelectronics.dk/2012/08/ethernet-on-stm32f4discovery-using-external-phy/
      
 
 When presenting:
