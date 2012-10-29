@@ -221,10 +221,12 @@ const char *jshGetDeviceString(IOEventFlags device) {
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif
-  case EV_SERIAL1: return "USART1";
-  case EV_SERIAL2: return "USART2";
-//  case EV_USART3: return "USART3";
-//  case EV_USART4: return "USART4";
+  case EV_SERIAL1: return "Serial1";
+  case EV_SERIAL2: return "Serial2";
+//  case EV_SERIAL3: return "Serial3";
+//  case EV_SERIAL4: return "Serial4";
+//  case EV_SERIAL5: return "Serial5";
+//  case EV_SERIAL6: return "Serial6";
   default: return "";
   }  
 }
@@ -234,10 +236,14 @@ IOEventFlags jshFromDeviceString(const char *device) {
 #ifdef USB
     if (strcmp(device, "USB")==0) return EV_USBSERIAL;
 #endif
-    if (strcmp(device, "USART1")==0) return EV_SERIAL1;
-    if (strcmp(device, "USART2")==0) return EV_SERIAL2;
-//    if (strcmp(device, "USART3")==0) return EV_USART3;
-//    if (strcmp(device, "USART4")==0) return EV_USART4;
+  }
+  if (device[0]=='S') {
+    if (strcmp(device, "Serial1")==0) return EV_SERIAL1;
+    if (strcmp(device, "Serial2")==0) return EV_SERIAL2;
+//    if (strcmp(device, "Serial3")==0) return EV_SERIAL3;
+//    if (strcmp(device, "Serial4")==0) return EV_SERIAL4;
+//    if (strcmp(device, "Serial5")==0) return EV_SERIAL5;
+//    if (strcmp(device, "Serial6")==0) return EV_SERIAL5;
   }
   return EV_NONE;
 }
