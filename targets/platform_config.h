@@ -82,7 +82,7 @@
   #define USART2_PORT                     GPIOA
 
 #if defined(OLIMEXINO_STM32)
-  #define DEFAULT_CONSOLE_DEVICE              EV_USART1
+  #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL1
 
   #define IOBUFFERMASK 31 // (max 255) amount of items in event buffer - events take ~9 bytes each
   #define TXBUFFERMASK 31 // (max 255)
@@ -103,7 +103,7 @@
   #define RCC_APB2Periph_GPIO_DISCONNECT      RCC_APB2Periph_GPIOC
 
 #elif defined(STM32VLDISCOVERY)
-  #define DEFAULT_CONSOLE_DEVICE              EV_USART1
+  #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL1
 
   #define IOBUFFERMASK 31 // amount of items in event buffer - events take ~9 bytes each
   #define TXBUFFERMASK 31 // (max 255)
@@ -119,7 +119,7 @@
   #define BTN_PININDEX                        ((0*16)+0)
 
 #elif defined(STM32F4DISCOVERY)
-  #define DEFAULT_CONSOLE_DEVICE              EV_USART2
+  #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL2
 
   // we have loads of memory
   #define IOBUFFERMASK 63 // amount of items in event buffer - events take ~9 bytes each

@@ -250,50 +250,53 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
+static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+  if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
+     /* Clear the USART Receive interrupt */
+     USART_ClearITPendingBit(USART, USART_IT_RXNE);
+     /* Read one byte from the receive data register */
+     jshPushIOCharEvent(device, USART_ReceiveData(USART1));
+   }
+   /* If overrun condition occurs, clear the ORE flag and recover communication */
+   if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
+   {
+     (void)USART_ReceiveData(USART);
+   }
+   if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {
+     /* If we have other data to send, send it */
+     int c = jshGetCharToTransmit(device);
+     if (c >= 0) {
+       USART_SendData(USART, c);
+     } else
+       USART_ITConfig(USART, USART_IT_TXE, DISABLE);
+   }
+}
+
 void USART1_IRQHandler(void) {
- if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) {
-    /* Clear the USART Receive interrupt */
-    USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-    /* Read one byte from the receive data register */
-    jshPushIOCharEvent(EV_USART1, USART_ReceiveData(USART1));
-  }
-  /* If overrun condition occurs, clear the ORE flag and recover communication */
-  if (USART_GetFlagStatus(USART1, USART_FLAG_ORE) != RESET)
-  {
-    (void)USART_ReceiveData(USART1);
-  }
-  if(USART_GetITStatus(USART1, USART_IT_TXE) != RESET) {
-    /* If we have other data to send, send it */
-    int c = jshGetCharToTransmit(EV_USART1);
-    if (c >= 0) {
-      USART_SendData(USART1, c);
-    } else
-      USART_ITConfig(USART1, USART_IT_TXE, DISABLE);
-  }
+  USART_IRQHandler(USART1, EV_SERIAL1);
 }
 
 void USART2_IRQHandler(void) {
- if(USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
-    /* Clear the USART Receive interrupt */
-    USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-    /* Read one byte from the receive data register */
-    jshPushIOCharEvent(EV_USART2, USART_ReceiveData(USART2));
-
-  }
-  /* If overrun condition occurs, clear the ORE flag and recover communication */
-  if (USART_GetFlagStatus(USART2, USART_FLAG_ORE) != RESET)
-  {
-    (void)USART_ReceiveData(USART2);
-  }
-  if(USART_GetITStatus(USART2, USART_IT_TXE) != RESET) {
-    /* If we have other data to send, send it */
-    int c = jshGetCharToTransmit(EV_USART2);
-    if (c >= 0) {
-      USART_SendData(USART2, c);
-    } else
-      USART_ITConfig(USART2, USART_IT_TXE, DISABLE);
-  }
+  USART_IRQHandler(USART2, EV_SERIAL2);
 }
+
+void USART3_IRQHandler(void) {
+  USART_IRQHandler(USART3, EV_SERIAL3);
+}
+
+void UART4_IRQHandler(void) {
+  USART_IRQHandler(UART4, EV_SERIAL4);
+}
+
+void UART5_IRQHandler(void) {
+  USART_IRQHandler(UART5, EV_SERIAL5);
+}
+
+#ifdef STM32F4
+void USART6_IRQHandler(void) {
+  USART_IRQHandler(USART6, EV_SERIAL6);
+}
+#endif
 
 #ifdef USB
 

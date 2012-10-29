@@ -120,12 +120,13 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-        Split out STM32-only hardware code
         Split out serial port code for arbitrary # of ports
         Serial3/4 on F4
         Serial3 on Olimexino
+        USB flow control for RX on the F4
 
   MEDIUM PRIORITY:
+        Split out STM32-only hardware code
         Make Serial.onData() clear onData handler
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?

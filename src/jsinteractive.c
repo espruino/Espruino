@@ -47,8 +47,8 @@ TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
-JsVarRef classUSART1 = 0;
-JsVarRef classUSART2 = 0;
+JsVarRef classSERIAL1 = 0;
+JsVarRef classSERIAL2 = 0;
 #ifdef USB
 JsVarRef classUSB = 0;
 #endif
@@ -77,24 +77,24 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 #define JSI_ONINIT_NAME "onInit"
 
 bool isUSART(JsVarRef ref) {
-  return  ref==classUSART1
-        || ref==classUSART2
+  return  ref==classSERIAL1
+       || ref==classSERIAL2
 #ifdef USB
-        || ref==classUSB
+       || ref==classUSB
 #endif
       ;
 }
 IOEventFlags getDeviceFromClass(JsVarRef ref) {
-  if (ref==classUSART1) return EV_USART1;
-  if (ref==classUSART2) return EV_USART2;
+  if (ref==classSERIAL1) return EV_SERIAL1;
+  if (ref==classSERIAL2) return EV_SERIAL2;
 #ifdef USB
   if (ref==classUSB) return EV_USBSERIAL;
 #endif
   return EV_NONE;
 }
 JsVarRef getClassFromDevice(IOEventFlags device) {
-  if (device==EV_USART1) return classUSART1;
-  if (device==EV_USART2) return classUSART2;
+  if (device==EV_SERIAL1) return classSERIAL1;
+  if (device==EV_SERIAL2) return classSERIAL2;
 #ifdef USB
   if (device==EV_USBSERIAL) return classUSB;
 #endif
@@ -466,8 +466,8 @@ void jsiSoftInit() {
   inputCursorPos = 0;
 
   // Load inbuild Classes
-  classUSART1 = _jsiInitSerialClass(EV_USART1, "Serial1");
-  classUSART2 = _jsiInitSerialClass(EV_USART2, "Serial2");
+  classSERIAL1 = _jsiInitSerialClass(EV_SERIAL1, "Serial1");
+  classSERIAL2 = _jsiInitSerialClass(EV_SERIAL2, "Serial2");
 #ifdef USB
   classUSB = _jsiInitSerialClass(EV_USBSERIAL, "USB");
 #endif
@@ -542,13 +542,13 @@ void jsiSoftKill() {
   inputCursorPos = 0;
 
   // UnRef inbuild Classes
-  if (classUSART1) {
-    jsvUnRefRef(classUSART1);
-    classUSART1 = 0;
+  if (classSERIAL1) {
+    jsvUnRefRef(classSERIAL1);
+    classSERIAL1 = 0;
   }
-  if (classUSART2) {
-    jsvUnRefRef(classUSART2);
-    classUSART2 = 0;
+  if (classSERIAL2) {
+    jsvUnRefRef(classSERIAL2);
+    classSERIAL2 = 0;
   }
 #ifdef USB
   if (classUSB) {

@@ -74,8 +74,12 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   txHead = txHeadNext;
 
   switch (device) {
-    case EV_USART1: USART_ITConfig(USART1, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_USART2: USART_ITConfig(USART2, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL1: USART_ITConfig(USART1, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL2: USART_ITConfig(USART2, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL3: USART_ITConfig(USART3, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL4: USART_ITConfig(UART4, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL5: USART_ITConfig(UART5, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
+    case EV_SERIAL6: USART_ITConfig(USART6, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
   }
 #else // if PC, just put to stdout
   fputc(data, stdout);
@@ -217,8 +221,8 @@ const char *jshGetDeviceString(IOEventFlags device) {
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif
-  case EV_USART1: return "USART1";
-  case EV_USART2: return "USART2";
+  case EV_SERIAL1: return "USART1";
+  case EV_SERIAL2: return "USART2";
 //  case EV_USART3: return "USART3";
 //  case EV_USART4: return "USART4";
   default: return "";
@@ -230,8 +234,8 @@ IOEventFlags jshFromDeviceString(const char *device) {
 #ifdef USB
     if (strcmp(device, "USB")==0) return EV_USBSERIAL;
 #endif
-    if (strcmp(device, "USART1")==0) return EV_USART1;
-    if (strcmp(device, "USART2")==0) return EV_USART2;
+    if (strcmp(device, "USART1")==0) return EV_SERIAL1;
+    if (strcmp(device, "USART2")==0) return EV_SERIAL2;
 //    if (strcmp(device, "USART3")==0) return EV_USART3;
 //    if (strcmp(device, "USART4")==0) return EV_USART4;
   }
@@ -1213,18 +1217,50 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
   USART_TypeDef *usart;
   uint8_t usartIRQ;
 
-  if (device == EV_USART1) {
+  if (device == EV_SERIAL1) {
     usart = USART1;
     usartIRQ = USART1_IRQn;
     gpio = USART1_PORT;
     pinRX = USART1_PIN_RX;
     pinTX = USART1_PIN_TX;
-  } else if (device == EV_USART2) {
+  } else if (device == EV_SERIAL2) {
     usart = USART2;
     usartIRQ = USART2_IRQn;
     gpio = USART2_PORT;
     pinRX = USART2_PIN_RX;
     pinTX = USART2_PIN_TX;
+#ifdef USART3_PORT
+  } else if (device == EV_SERIAL3) {
+    usart = USART3;
+    usartIRQ = USART3_IRQn;
+    gpio = USART3_PORT;
+    pinRX = USART3_PIN_RX;
+    pinTX = USART3_PIN_TX;
+#endif
+#ifdef USART4_PORT
+  } else if (device == EV_SERIAL4) {
+    usart = USART4;
+    usartIRQ = UART4_IRQn;
+    gpio = USART4_PORT;
+    pinRX = USART4_PIN_RX;
+    pinTX = USART4_PIN_TX;
+#endif
+#ifdef USART5_PORT
+  } else if (device == EV_SERIAL5) {
+    usart = USART5;
+    usartIRQ = UART5_IRQn;
+    gpio = USART5_PORT;
+    pinRX = USART5_PIN_RX;
+    pinTX = USART5_PIN_TX;
+#endif
+#ifdef USART6_PORT
+  } else if (device == EV_SERIAL6) {
+    usart = USART6;
+    usartIRQ = USART6_IRQn;
+    gpio = USART6_PORT;
+    pinRX = USART6_PIN_RX;
+    pinTX = USART6_PIN_TX;
+#endif
   } else {
     jsError("Unable to set up this serial port.");
     return;
@@ -1251,17 +1287,17 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
 #endif
   GPIO_Init(gpio, &GPIO_InitStructure);
 
-  if (device == EV_USART1) {
+  if (device == EV_SERIAL1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-  } else if (device == EV_USART2) {
+  } else if (device == EV_SERIAL2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
   }
 
 #ifdef STM32F4
-  if (device == EV_USART1) {
+  if (device == EV_SERIAL1) {
     GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART1);
     GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART1);
-  } else if (device == EV_USART2) {
+  } else if (device == EV_SERIAL2) {
     GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART2);
     GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART2);
   }
