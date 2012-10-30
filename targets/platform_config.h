@@ -80,6 +80,11 @@
   #define USART2_PIN_RX                   GPIO_Pin_3
   #define USART2_PIN_TX                   GPIO_Pin_2
   #define USART2_PORT                     GPIOA
+  #define USART3_PIN_RX                   GPIO_Pin_11
+  #define USART3_PIN_TX                   GPIO_Pin_10
+  #define USART3_PORT                     GPIOB
+
+
 
 #if defined(OLIMEXINO_STM32)
   #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL1
@@ -102,6 +107,8 @@
   #define USB_DISCONNECT_PIN                  GPIO_Pin_12
   #define RCC_APB2Periph_GPIO_DISCONNECT      RCC_APB2Periph_GPIOC
 
+  #define USARTS                          3
+
 #elif defined(STM32VLDISCOVERY)
   #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL1
 
@@ -117,6 +124,8 @@
   #define BTN_PORT                            GPIOA
   #define BTN_PIN                             GPIO_Pin_0
   #define BTN_PININDEX                        ((0*16)+0)
+
+  #define USARTS                          3
 
 #elif defined(STM32F4DISCOVERY)
   #define DEFAULT_CONSOLE_DEVICE              EV_SERIAL2
@@ -140,6 +149,18 @@
   #define BTN_PORT                            GPIOA
   #define BTN_PIN                             GPIO_Pin_0
   #define BTN_PININDEX                        ((0*16)+0)
+
+  #define USARTS                          6
+  #define USART4_PIN_RX                   GPIO_Pin_11
+  #define USART4_PIN_TX                   GPIO_Pin_10
+  #define USART4_PORT                     GPIOC
+  #define USART5_PIN_RX                   GPIO_Pin_2
+  #define USART5_PORT_RX                  GPIOD
+  #define USART5_PIN_TX                   GPIO_Pin_12
+  #define USART5_PORT_TX                  GPIOC
+  #define USART6_PIN_RX                   GPIO_Pin_7
+  #define USART6_PIN_TX                   GPIO_Pin_6
+  #define USART6_PORT                     GPIOC
 
 #else
   #error UNKNOWN BOARD

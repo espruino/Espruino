@@ -47,8 +47,7 @@ TODOFlags todo = TODO_NOTHING;
 JsVarRef events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
-JsVarRef classSERIAL1 = 0;
-JsVarRef classSERIAL2 = 0;
+JsVarRef classSERIALs[USARTS];
 #ifdef USB
 JsVarRef classUSB = 0;
 #endif
@@ -76,25 +75,21 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name); 
 #define JSI_INIT_CODE_NAME "_init"
 #define JSI_ONINIT_NAME "onInit"
 
-bool isUSART(JsVarRef ref) {
-  return  ref==classSERIAL1
-       || ref==classSERIAL2
-#ifdef USB
-       || ref==classUSB
-#endif
-      ;
-}
 IOEventFlags getDeviceFromClass(JsVarRef ref) {
-  if (ref==classSERIAL1) return EV_SERIAL1;
-  if (ref==classSERIAL2) return EV_SERIAL2;
+  int i;
+  for (i=0;i<USARTS;i++)
+    if (ref==classSERIALs[i]) return EV_SERIAL1+i;
 #ifdef USB
   if (ref==classUSB) return EV_USBSERIAL;
 #endif
   return EV_NONE;
 }
+bool isUSART(JsVarRef ref) {
+  return  getDeviceFromClass(ref)!=EV_NONE;
+}
 JsVarRef getClassFromDevice(IOEventFlags device) {
-  if (device==EV_SERIAL1) return classSERIAL1;
-  if (device==EV_SERIAL2) return classSERIAL2;
+  if (device>=EV_SERIAL1 && device<EV_SERIAL1+USARTS)
+    return classSERIALs[device-EV_SERIAL1];
 #ifdef USB
   if (device==EV_USBSERIAL) return classUSB;
 #endif
@@ -413,7 +408,8 @@ void jsiSetSleep(bool isSleep) {
     jshPinOutput(pinSleepIndicator, isSleep);
 }
 
-JsVarRef _jsiInitSerialClass(IOEventFlags device, const char *serialName) {
+JsVarRef _jsiInitSerialClass(IOEventFlags device) {
+  const char *serialName = jshGetDeviceString(device);
   JsVarRef class = 0;
   JsVar *name = jsvFindChildFromString(p.root, serialName, true);
   if (name) {
@@ -466,10 +462,11 @@ void jsiSoftInit() {
   inputCursorPos = 0;
 
   // Load inbuild Classes
-  classSERIAL1 = _jsiInitSerialClass(EV_SERIAL1, "Serial1");
-  classSERIAL2 = _jsiInitSerialClass(EV_SERIAL2, "Serial2");
+  int i;
+  for (i=0;i<USARTS;i++)
+    classSERIALs[i] = _jsiInitSerialClass(EV_SERIAL1+i);
 #ifdef USB
-  classUSB = _jsiInitSerialClass(EV_USBSERIAL, "USB");
+  classUSB = _jsiInitSerialClass(EV_USBSERIAL);
 #endif
 
   // Load timer/watch arrays
@@ -542,13 +539,12 @@ void jsiSoftKill() {
   inputCursorPos = 0;
 
   // UnRef inbuild Classes
-  if (classSERIAL1) {
-    jsvUnRefRef(classSERIAL1);
-    classSERIAL1 = 0;
-  }
-  if (classSERIAL2) {
-    jsvUnRefRef(classSERIAL2);
-    classSERIAL2 = 0;
+  int i;
+  for (i=0;i<USARTS;i++) {
+    if (classSERIALs[i]) {
+      jsvUnRefRef(classSERIALs[i]);
+      classSERIALs[i] = 0;
+    }
   }
 #ifdef USB
   if (classUSB) {
@@ -609,6 +605,8 @@ void jsiSoftKill() {
 }
 
 void jsiInit(bool autoLoad) {
+  int i;
+
   jsvInit();
   jspInit(&p);
   // link in our functions
@@ -619,6 +617,8 @@ void jsiInit(bool autoLoad) {
      ioPinState[i].callbacks = 0;*/
 
   // Set defaults
+
+  for (i=0;i<USARTS;i++) classSERIALs[i]=0;
   echo = true;
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
@@ -1380,7 +1380,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
 void jsiDumpSerialState(const char *serialName) {
   JsVar *serialVar = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, serialName, false));
   if (serialVar) {
-    JsVar *onData = jsvSkipOneNameAndUnlock(jsvFindChildFromString(jsvGetRef(serialVar), USART_CALLBACK_NAME, false));
+    JsVar *onData = jsvSkipOneNameAndUnLock(jsvFindChildFromString(jsvGetRef(serialVar), USART_CALLBACK_NAME, false));
     if (onData) {
       JsVar *str = jsvAsString(onData, true/*unlock*/);
       jsiConsolePrint(serialName);
@@ -1388,6 +1388,14 @@ void jsiDumpSerialState(const char *serialName) {
       jsiConsolePrintStringVar(str);
       jsiConsolePrint(");\n");
       jsvUnLock(str);
+    }
+    JsVar *baud = jsvSkipNameAndUnLock(jsvFindChildFromString(jsvGetRef(serialVar), USART_BAUDRATE_NAME, false));
+    if (baud) {
+      jsiConsolePrint(serialName);
+      jsiConsolePrint(".setup(");
+      jsiConsolePrintInt(jsvGetInteger(baud));
+      jsiConsolePrint(");\n");
+      jsvUnLock(baud);
     }
     jsvUnLock(serialVar);
   }
@@ -1400,6 +1408,9 @@ void jsiDumpState() {
   jsvUnLock(parent);
   while (childRef) {
     JsVar *child = jsvLock(childRef);
+    char childName[16];
+    jsvGetString(child, childName, 16);
+
     JsVar *data = jsvSkipName(child);
     if (jspIsCreatedObject(&p, data)) {
       jsiDumpObjectState(child, data);
@@ -1408,9 +1419,7 @@ void jsiDumpState() {
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_HISTORY_NAME) ||
-                jsvIsStringEqual(child, "USB") ||
-                jsvIsStringEqual(child, "Serial1") ||
-                jsvIsStringEqual(child, "Serial2")) {
+               jshFromDeviceString(childName)!=EV_NONE) {
       // skip - don't care about this stuff
     } else if (!jsvIsNative(data)) { // just a variable/function!
       jsiConsolePrint("var ");
@@ -1429,7 +1438,7 @@ void jsiDumpState() {
   jsvUnLock(timerArrayPtr);
   while (timerRef) {
     JsVar *timerNamePtr = jsvLock(timerRef);
-    JsVar *timerCallback = jsvSkipOneNameAndUnlock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
+    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "callback", false));
     bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "recur", false)));
     JsVar *timerInterval = jsvSkipNameAndUnLock(jsvFindChildFromString(timerNamePtr->firstChild, "interval", false));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
@@ -1450,7 +1459,7 @@ void jsiDumpState() {
    jsvUnLock(watchArrayPtr);
    while (watchRef) {
      JsVar *watchNamePtr = jsvLock(watchRef);
-     JsVar *watchCallback = jsvSkipOneNameAndUnlock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
+     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watchNamePtr->firstChild, "callback", false));
      JsVar *watchRecur = jsvSkipNameAndUnLock(jsvFindChildFromString(watchNamePtr->firstChild, "recur", false));
      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromString(watchNamePtr->firstChild, "pin", false));
      jsiConsolePrint("setWatch(");
@@ -1470,8 +1479,9 @@ void jsiDumpState() {
   }
   // and now serial
   jsiDumpSerialState("USB");
-  jsiDumpSerialState("Serial1");
-  jsiDumpSerialState("Serial2");
+  int i;
+  for (i=0;i<USARTS;i++)
+    jsiDumpSerialState(jshGetDeviceString(EV_SERIAL1+i));
 }
 
 /** Handle function calls - do this programatically, so we can save on RAM */

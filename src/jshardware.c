@@ -47,6 +47,26 @@ volatile unsigned char txHead=0, txTail=0;
 #endif
 // ----------------------------------------------------------------------------
 
+#ifdef ARM
+USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SERIAL1 : return USART1;
+   case EV_SERIAL2 : return USART2;
+   case EV_SERIAL3 : return USART3;
+#if USARTS>=4
+   case EV_SERIAL4 : return UART4;
+#endif
+#if USARTS>=5
+   case EV_SERIAL5 : return UART5;
+#endif
+#if USARTS>=6
+   case EV_SERIAL6 : return USART6;
+#endif
+   default: return 0;
+ }
+}
+#endif
+
 // Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data) {
 #ifdef ARM
@@ -73,14 +93,9 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   txBuffer[txHead].data = (char)data;
   txHead = txHeadNext;
 
-  switch (device) {
-    case EV_SERIAL1: USART_ITConfig(USART1, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_SERIAL2: USART_ITConfig(USART2, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_SERIAL3: USART_ITConfig(USART3, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_SERIAL4: USART_ITConfig(UART4, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_SERIAL5: USART_ITConfig(UART5, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-    case EV_SERIAL6: USART_ITConfig(USART6, USART_IT_TXE, ENABLE); break; // enable interrupt -> start transmission
-  }
+  USART_TypeDef *uart = getUsartFromDevice(device);
+  if (uart) USART_ITConfig(uart, USART_IT_TXE, ENABLE);
+
 #else // if PC, just put to stdout
   fputc(data, stdout);
   fflush(stdout);
@@ -223,10 +238,16 @@ const char *jshGetDeviceString(IOEventFlags device) {
 #endif
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
-//  case EV_SERIAL3: return "Serial3";
-//  case EV_SERIAL4: return "Serial4";
-//  case EV_SERIAL5: return "Serial5";
-//  case EV_SERIAL6: return "Serial6";
+  case EV_SERIAL3: return "Serial3";
+#if USARTS>=4
+  case EV_SERIAL4: return "Serial4";
+#endif
+#if USARTS>=5
+  case EV_SERIAL5: return "Serial5";
+#endif
+#if USARTS>=6
+  case EV_SERIAL6: return "Serial6";
+#endif
   default: return "";
   }  
 }
@@ -240,10 +261,16 @@ IOEventFlags jshFromDeviceString(const char *device) {
   if (device[0]=='S') {
     if (strcmp(device, "Serial1")==0) return EV_SERIAL1;
     if (strcmp(device, "Serial2")==0) return EV_SERIAL2;
-//    if (strcmp(device, "Serial3")==0) return EV_SERIAL3;
-//    if (strcmp(device, "Serial4")==0) return EV_SERIAL4;
-//    if (strcmp(device, "Serial5")==0) return EV_SERIAL5;
-//    if (strcmp(device, "Serial6")==0) return EV_SERIAL5;
+    if (strcmp(device, "Serial3")==0) return EV_SERIAL3;
+#if USARTS>=4
+    if (strcmp(device, "Serial4")==0) return EV_SERIAL4;
+#endif
+#if USARTS>=5
+    if (strcmp(device, "Serial5")==0) return EV_SERIAL5;
+#endif
+#if USARTS>=6
+    if (strcmp(device, "Serial6")==0) return EV_SERIAL6;
+#endif
   }
   return EV_NONE;
 }
@@ -1218,57 +1245,64 @@ bool jshIsEventForPin(IOEvent *event, int pin) {
 
 void jshUSARTSetup(IOEventFlags device, int baudRate) {
 #ifdef ARM
-  uint16_t pinRX, pinTX;// GPIO_Pin_1
-  GPIO_TypeDef *gpio;   // GPIOA
-  USART_TypeDef *usart;
+  uint16_t pinRX, pinTX;// eg. GPIO_Pin_1
+  GPIO_TypeDef *gpioRX, *gpioTX;   // eg. GPIOA
+
+  USART_TypeDef *usart = getUsartFromDevice(device);
   uint8_t usartIRQ;
 
   if (device == EV_SERIAL1) {
-    usart = USART1;
     usartIRQ = USART1_IRQn;
-    gpio = USART1_PORT;
+    gpioRX = USART1_PORT;
+    gpioTX = USART1_PORT;
     pinRX = USART1_PIN_RX;
     pinTX = USART1_PIN_TX;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
   } else if (device == EV_SERIAL2) {
-    usart = USART2;
     usartIRQ = USART2_IRQn;
-    gpio = USART2_PORT;
+    gpioRX = USART2_PORT;
+    gpioTX = USART2_PORT;
     pinRX = USART2_PIN_RX;
     pinTX = USART2_PIN_TX;
-#ifdef USART3_PORT
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+#if USARTS>= 3
   } else if (device == EV_SERIAL3) {
-    usart = USART3;
     usartIRQ = USART3_IRQn;
-    gpio = USART3_PORT;
+    gpioRX = USART3_PORT;
+    gpioTX = USART3_PORT;
     pinRX = USART3_PIN_RX;
     pinTX = USART3_PIN_TX;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
 #endif
-#ifdef USART4_PORT
+#if USARTS>= 4
   } else if (device == EV_SERIAL4) {
-    usart = USART4;
     usartIRQ = UART4_IRQn;
-    gpio = USART4_PORT;
+    gpioRX = USART4_PORT;
+    gpioTX = USART4_PORT;
     pinRX = USART4_PIN_RX;
     pinTX = USART4_PIN_TX;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
 #endif
-#ifdef USART5_PORT
+#if USARTS>= 5
   } else if (device == EV_SERIAL5) {
-    usart = USART5;
     usartIRQ = UART5_IRQn;
-    gpio = USART5_PORT;
+    gpioRX = USART5_PORT_RX;
+    gpioTX = USART5_PORT_TX;
     pinRX = USART5_PIN_RX;
     pinTX = USART5_PIN_TX;
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);
 #endif
-#ifdef USART6_PORT
+#if USARTS>= 6
   } else if (device == EV_SERIAL6) {
-    usart = USART6;
     usartIRQ = USART6_IRQn;
-    gpio = USART6_PORT;
+    gpioRX = USART6_PORT;
+    gpioTX = USART6_PORT;
     pinRX = USART6_PIN_RX;
     pinTX = USART6_PIN_TX;
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);
 #endif
   } else {
-    jsError("Unable to set up this serial port.");
+    jsError("internal: Unknown serial port device.");
     return;
   }
 
@@ -1280,7 +1314,7 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
 #else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 #endif
-  GPIO_Init(gpio, &GPIO_InitStructure);
+  GPIO_Init(gpioRX, &GPIO_InitStructure);
 
   GPIO_InitStructure.GPIO_Pin = pinTX;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -1291,7 +1325,7 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
 #else
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 #endif
-  GPIO_Init(gpio, &GPIO_InitStructure);
+  GPIO_Init(gpioTX, &GPIO_InitStructure);
 
   if (device == EV_SERIAL1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
@@ -1301,11 +1335,23 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
 
 #ifdef STM32F4
   if (device == EV_SERIAL1) {
-    GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART1);
-    GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART1);
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_USART1);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_USART1);
   } else if (device == EV_SERIAL2) {
-    GPIO_PinAFConfig(gpio, pinToPinSource(pinRX), GPIO_AF_USART2);
-    GPIO_PinAFConfig(gpio, pinToPinSource(pinTX), GPIO_AF_USART2);
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_USART2);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_USART2);
+  } else if (device == EV_SERIAL3) {
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_USART3);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_USART3);
+  } else if (device == EV_SERIAL4) {
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_UART4);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_UART4);
+  } else if (device == EV_SERIAL5) {
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_UART5);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_UART5);
+  } else if (device == EV_SERIAL6) {
+    GPIO_PinAFConfig(gpioRX, pinToPinSource(pinRX), GPIO_AF_USART6);
+    GPIO_PinAFConfig(gpioTX, pinToPinSource(pinTX), GPIO_AF_USART6);
   }
 #endif
 

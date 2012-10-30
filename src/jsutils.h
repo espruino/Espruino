@@ -113,6 +113,8 @@
             USB on F4
             call onInit function/string if it exists when Espruino powers on
             Compile F4 with -O2 - as we have the program memory for it
+            Serial3/4/5/6 on F4
+            Serial3 on Olimexino
 [/CHANGELOG]
 
 [TODO]
@@ -121,9 +123,6 @@
   HIGH PRIORITY:
         Move load/save/etc into 'System' class for speed
         better digitalPulse
-        Split out serial port code for arbitrary # of ports
-        Serial3/4 on F4
-        Serial3 on Olimexino
         USB flow control for RX on the F4
 
   MEDIUM PRIORITY:

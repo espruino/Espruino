@@ -17,6 +17,7 @@
  #define DEFAULT_CONSOLE_DEVICE         EV_USBSERIAL
  #define DEFAULT_BUSY_PIN_INDICATOR     -1
  #define DEFAULT_SLEEP_PIN_INDICATOR     -1
+ #define USARTS 1
 #endif
 #include "jsutils.h"
 #include "jsvar.h"
