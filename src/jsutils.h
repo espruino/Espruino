@@ -125,6 +125,8 @@
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         USB flow control for RX on the F4
+        dump() should dump out prototypes for functions
+        Must improve stack usage - makes LCD module hard to use
 
   MEDIUM PRIORITY:
         Split out STM32-only hardware code
@@ -187,6 +189,9 @@
                possibly, 'this' should be a keyword, not a variable that we define (would be faster)
 
 [/TODO]
+
+Contact http://www.wired.com/gadgetlab/author/snackfight/
+Seems to blog odd bits about embedded dev
 
 Board ideas:
    Arduino form factor, but don't put sockets in.

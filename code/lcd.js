@@ -24,7 +24,7 @@ LCD.prototype.write = function(x, c) {
 };
 LCD.prototype.clear = function() { this.write(0x01,1); }
 LCD.prototype.print = function(str) {
-  for (var i=0;istr.length;i++)
+  for (var i=0;i<str.length;i++)
     this.write(Integer.valueOf(str.charAt(i)));
 }
 /** flashing block for the current cursor */
@@ -40,6 +40,37 @@ LCD.prototype.createChar = function(ch, data) {
   this.write(0x80,1);
 }
 echo(1);
+// Big characters
+LCD.prototype.bigChars = ["415 431151153 3311411115415415","3 3  3223223323315315  3323723","3 3  33    3  3  33 3  33 3  3","726  3322226  3226726  3726226"];
+LCD.prototype.bigInit = function() {
+  this.createChar(1,[31,31,31,31,0,0,0,0]);
+  this.createChar(2,[0,0,0,0,0,31,31,31,31]);
+  this.createChar(3,[31,31,31,31,31,31,31,31]);
+  this.createChar(4,[1,3,7,15,31,31,31,31]);
+  this.createChar(5,[16,24,28,30,31,31,31,31]);
+  this.createChar(6,[31,31,31,31,30,28,24,16]);
+  this.createChar(7,[31,31,31,31,15,7,3,1]);
+}
+LCD.prototype.bigNum = function(x, num) { 
+  for (var y=0;y<4;y++) { 
+    this.setCursor(x,y);
+    for (var n=0;n<3;n++) {   
+      var c = this.bigChars[y].charAt(num*3+n);
+      this.write(c==" "?32:parseInt(c));
+    }
+  }
+}
+LCD.prototype.bigDecimal = function(num) { 
+  lcd.clear();lcd.bigNum(17,num%10);
+  if (num>9) lcd.bigNum(14,(num/10)%10);
+  if (num>99) lcd.bigNum(11,(num/100)%10);
+  if (num>999) lcd.bigNum(8,(num/1000)%10);
+  if (num>9999) lcd.bigNum(5,(num/10000)%10);
+}
+// ------------------------------------------------------- 
+var onInit = function () { lcd = new LCD(A4,A5,A0,A1,A2,A3); lcd.bigInit(); };
+num=0;
+setInterval("num++;lcd.bigNum(17,num%10);if (num>9) lcd.bigNum(14,(num/10)%10);if (num>99) lcd.bigNum(11,(num/100)%10);if (num>999) lcd.bigNum(8,(num/1000)%10);if (num>9999) lcd.bigNum(5,(num/10000)%10);if (num>99999) lcd.bigNum(2,(num/100000)%10);",500);
 // ------------------------------------------------------- 
 // see http://arduino.cc/en/uploads/Tutorial/LCD_bb.png for wiring
 // VO can usually be grounded
@@ -116,4 +147,11 @@ function showData() {
  }
 }
 setInterval(showData, 5000);
+
+
+
+
+
+
+
 
