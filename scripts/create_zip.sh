@@ -6,6 +6,7 @@ cd ..
 VERSION=`sed -ne "s/^.*JS_VERSION.*\"\(.*\)\"/\1/p" src/jsutils.h`
 DIR=`pwd`
 ZIPDIR=$DIR/zipcontents
+ZIPFILE=$DIR/archives/espruino_${VERSION}.zip
 rm -rf $ZIPDIR
 mkdir $ZIPDIR
 
@@ -32,6 +33,6 @@ bash scripts/extract_docs.sh > $ZIPDIR/functions.txt
 awk '/\[CHANGELOG\]/{s=x}{s=s$0"\n"}/\[\/CHANGELOG\]/{print s}' src/jsutils.h >  $ZIPDIR/changelog.txt
 awk '/\[TODO\]/{s=x}{s=s$0"\n"}/\[\/TODO\]/{print s}' src/jsutils.h >  $ZIPDIR/todo.txt
 
-rm -f espruino_${VERSION}.zip 
+rm -f $ZIPFILE
 cd zipcontents
-zip $DIR/espruino_${VERSION}.zip *
+zip $ZIPFILE *
