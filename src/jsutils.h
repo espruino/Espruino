@@ -17,7 +17,7 @@
 #define JS_VERSION "1v14"
 /*
 [CHANGELOG]
-     1v04 : Called Espruino
+     1v04 : Renamed to Espruino
             Fixed issue with event add when out of memory
             If out of memory happens during a timer, kill all timers
      1v05 : Allow setWatch/setTimeout/setInterval with a string

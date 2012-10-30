@@ -30,8 +30,8 @@ cd $DIR
 
 cp readme.txt $ZIPDIR
 bash scripts/extract_docs.sh > $ZIPDIR/functions.txt
-awk '/\[CHANGELOG\]/{s=x}{s=s$0"\n"}/\[\/CHANGELOG\]/{print s}' src/jsutils.h >  $ZIPDIR/changelog.txt
-awk '/\[TODO\]/{s=x}{s=s$0"\n"}/\[\/TODO\]/{print s}' src/jsutils.h >  $ZIPDIR/todo.txt
+bash scripts/extract_changelog.sh >  $ZIPDIR/changelog.txt
+bash scripts/extract_todo.sh  >  $ZIPDIR/todo.txt
 
 rm -f $ZIPFILE
 cd zipcontents
