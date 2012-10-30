@@ -198,6 +198,7 @@ Board ideas:
    Arrange 4x solder points so bluetooth dongle can be soldered on
    Unpopulated points for L293D-type ICs
    Ethernet version with F4 http://blog.tkjelectronics.dk/2012/08/ethernet-on-stm32f4discovery-using-external-phy/
+   Or ethernet with microchip ENC28J60
      
 
 When presenting:
