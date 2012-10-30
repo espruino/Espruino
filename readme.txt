@@ -12,7 +12,7 @@ use only. This must not be sold either as software or
 pre-programmed hardware without the author's permission.
 
 For more information on how to program this onto your
-STM32VLDISCOVERY board, please see the website above.
+board, please see the website above.
 
 
 

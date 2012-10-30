@@ -115,6 +115,7 @@
             Compile F4 with -O2 - as we have the program memory for it
             Serial3/4/5/6 on F4
             Serial3 on Olimexino
+            Make Serial.onData() clear onData handler
 [/CHANGELOG]
 
 [TODO]
@@ -127,7 +128,6 @@
 
   MEDIUM PRIORITY:
         Split out STM32-only hardware code
-        Make Serial.onData() clear onData handler
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
         Add Array.splice

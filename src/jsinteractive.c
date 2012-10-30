@@ -2065,7 +2065,12 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jspParseFunction(JSP_NOSKIP_A, &funcVar, 0, 0, 0);
       JsVar *skippedFunc = jsvSkipName(funcVar);
       if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
-        jsError("Function or String not supplied!");
+        jsiConsolePrint("Function or String not supplied - removing onData handler.\n");
+        JsVar *handler = jsvFindChildFromString(jsvGetRef(a), USART_CALLBACK_NAME, false);
+        if (handler) {
+          jsvRemoveChild(a, handler);
+          jsvUnLock(handler);
+        }
       } else {
         jsvUnLock(jsvSetNamedChild(a, funcVar, USART_CALLBACK_NAME));
       }
