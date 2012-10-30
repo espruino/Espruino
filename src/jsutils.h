@@ -112,6 +112,7 @@
             move all devices into one git repository
             USB on F4
             call onInit function/string if it exists when Espruino powers on
+            Compile F4 with -O2 - as we have the program memory for it
 [/CHANGELOG]
 
 [TODO]

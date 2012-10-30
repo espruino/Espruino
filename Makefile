@@ -11,6 +11,7 @@ MAKEFLAGS=-j5 # multicore
 INCLUDE=-I$(ROOT)/targets -I$(ROOT)/src
 DEFINES=-DFAKE_STDLIB
 USE_MATH=1
+OPTIMIZEFLAGS=
 
 CWD = $(shell pwd)
 export ROOT=$(CWD)
@@ -39,16 +40,17 @@ CHIP=STM32F103
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
+OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef STM32F4DISCOVERY
 PROJ_NAME=espruino_stm32f4discovery
 USB=1
 DEFINES += -DUSE_USB_OTG_FS=1
-#for F4 see https://www.das-labor.org/trac/browser/microcontroller/src-stm32f4xx/serialUSB
 FAMILY=STM32F4
 CHIP=STM32F407
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F4XX
 STARTUP=$(ROOT)/targets/stm32f4/lib/startup_stm32f4xx
+OPTIMIZEFLAGS+=-O2
 else ifdef STM32VLDISCOVERY
 PROJ_NAME=espruino_stm32vldiscovery
 FAMILY=STM32F1
@@ -56,6 +58,7 @@ CHIP=STM32F100
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md_vl
+OPTIMIZEFLAGS+=-Os # short on program memory
 else
 $(error Must give a device name (eg. STM32F4DISCOVERY=1 make)- see head of makefile)
 endif
@@ -256,27 +259,17 @@ OBJS = $(SOURCEOBJS)
 OBJS += $(LIB_ROOT)/$(STARTUP).o # add startup file to build
 
 
-export ASFLAGS=
-
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common
 # -nodefaultlibs -nostdlib -nostartfiles
 
 DEFINES += -D$(CHIP) -D$(BOARD) -D$(STLIB)
 
-export CFLAGS=-Os -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 $(DEFINES)
+export CFLAGS=$(OPTIMIZEFLAGS) -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 $(DEFINES)
 #export CFLAGS=-g -O1 -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 -DARM -DFAKE_STDLIB
 #can use O2 here
 
 
 CFLAGS +=  $(INCLUDE)
-
-#ifdef OLIMEX
-#DEFINES += -DOLIMEXINO_STM32
-#-DSYSCLK_FREQ_72MHz
-#else
-#CFLAGS += -DSTM32F10X_MD_VL=1
-#endif
-
 export LDFLAGS=$(ARCHFLAGS) -Tlinker/$(CHIP).ld -Llib 
 
 
