@@ -273,11 +273,11 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
  typedef unsigned short JsVarRef; // References for variables - We treat 0 as null
 #endif
 
-#if LOTS_OF_FLASH
+//#if LOTS_OF_FLASH
  #define INLINE_IF_SPACE inline
-#else
+/*#else
  #define INLINE_IF_SPACE __attribute((noinline))
-#endif
+#endif*/
 
 
 typedef long long JsVarInt;
