@@ -42,6 +42,26 @@ bool isIDString(const char *s) {
     return true;
 }
 
+/** escape a character - if it is required. This may return a reference to a static array, 
+so you can't store the value it returns in a variable and call it again. */
+const char *escapeCharacter(char ch) {
+  if (ch=='\n') return "\\n";
+  if (ch=='\a') return "\\a";
+  if (ch=='\r') return "\\r";
+  if (ch=='\t') return "\\t";
+  if (ch=='\\') return "\\\\";
+  if (ch=='"') return "\\\"";
+  static char buf[5];
+  if (ch<32) {  
+    buf[0]='\\';
+    itoa(ch, &buf[1], 8/*octal*/);
+    return buf;
+  }
+  buf[1] = 0;
+  buf[0] = ch;
+  return buf;
+}
+
 /* convert a number in the given radix to an int. if radix=0, autodetect */
 JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
   bool isNegated = false;

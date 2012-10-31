@@ -536,7 +536,20 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     } else callbackString(callbackData, "{}");
   } else if (jsvIsString(var) && !jsvIsName(var)) {
     callbackString(callbackData, "\"");
-    callbackVar(callbackData, var); // FIXME: escape the string
+    // all this to escape the string
+    JsVarRef r = jsvGetRef(var);
+    while (r) {
+      JsVar *v = jsvLock(r);
+      size_t l = jsvGetMaxCharactersInVar(v);
+      size_t i;
+      for (i=0;i<l;i++) {
+        char ch = v->varData.str[i];
+        if (!ch) break;
+        callbackString(callbackData, escapeCharacter(ch));
+      }
+      r = v->lastChild;
+      jsvUnLock(v);
+    }
     callbackString(callbackData, "\"");
   } else {
     JsVar *str = jsvAsString(var, false);

@@ -192,10 +192,16 @@ void jslGetNextToken(JsLex *lex) {
               default: 
                        if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
-                         char buf[5] = "0???";
+                         char buf[5] = "0";
                          buf[1] = lex->currCh;
-                         jslGetNextCh(lex); buf[2] = lex->currCh;
-                         jslGetNextCh(lex); buf[3] = lex->currCh;
+                         int n=2;
+                         if (lex->currCh>='0' && lex->currCh<='7') {
+                           jslGetNextCh(lex); buf[n++] = lex->currCh;
+                         }
+                         if (lex->currCh>='0' && lex->currCh<='7') {
+                           jslGetNextCh(lex); buf[n++] = lex->currCh;
+                         }
+                         buf[n]=0;
                          ch = (char)stringToInt(buf);
                        }
                        break;
