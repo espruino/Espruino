@@ -10,15 +10,6 @@
 
 #include "jsutils.h"
 
-/* This can be set to something like 'extern inline' to try and get GCC to inline the
-functions defined with it, but it may not work. Probably need to actually define them
-in the header. */
-#ifndef INLINE_FUNC
-#define INLINE_FUNC
-#endif
-
-
-
 typedef void (*JsCallback)(JsVarRef var) 
 #ifdef SDCC
 __reentrant
@@ -226,19 +217,18 @@ char jsvGetCharInString(JsVar *v, int idx);
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
 
-INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v);
-INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
-INLINE_FUNC JsVarFloat jsvGetFloat(const JsVar *v); // TODO: rename to jsvGetFloat
-INLINE_FUNC bool jsvGetBool(const JsVar *v);
+JsVarInt jsvGetInteger(const JsVar *v);
+void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
+JsVarFloat jsvGetFloat(const JsVar *v); // TODO: rename to jsvGetFloat
+bool jsvGetBool(const JsVar *v);
 static inline JsVarInt jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static inline JsVarFloat jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
 static inline bool jsvGetBoolAndUnLock(JsVar *v) { bool b = jsvGetBool(v); jsvUnLock(v); return b; }
 
-
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
-static inline JsVar *jsvSkipName(JsVar *a) {
+static INLINE_IF_SPACE JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   while (jsvIsName(pa)) {
@@ -254,7 +244,7 @@ static inline JsVar *jsvSkipName(JsVar *a) {
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
-static inline JsVar *jsvSkipOneName(JsVar *a) {
+static INLINE_IF_SPACE JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsName(pa)) {
@@ -269,7 +259,7 @@ static inline JsVar *jsvSkipOneName(JsVar *a) {
 
 /** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
  * a name, so it can be used INLINE_FUNC */
-static inline JsVar *jsvSkipNameAndUnLock(JsVar *a) {
+static INLINE_IF_SPACE JsVar *jsvSkipNameAndUnLock(JsVar *a) {
   JsVar *b = jsvSkipName(a);
   jsvUnLock(a);
   return b;
@@ -277,19 +267,17 @@ static inline JsVar *jsvSkipNameAndUnLock(JsVar *a) {
 
 /** Same as jsvSkipOneName, but ensures that 'a' is unlocked if it was
  * a name, so it can be used INLINE_FUNC */
-static inline JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
+static INLINE_IF_SPACE JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
   JsVar *b = jsvSkipOneName(a);
   jsvUnLock(a);
   return b;
 }
 
-
-INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v);
-INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v);
-
 /// MATHS!
 JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op);
 JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
+/// Negates an integer/double value
+JsVar *jsvNegateAndUnLock(JsVar *v);
 
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);

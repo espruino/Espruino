@@ -843,7 +843,7 @@ char jsvGetCharInString(JsVar *v, int idx) {
   return c;
 }
 
-INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
+JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
     if (jsvIsInt(v) || jsvIsBoolean(v)) return v->varData.integer;
@@ -853,33 +853,22 @@ INLINE_FUNC JsVarInt jsvGetInteger(const JsVar *v) {
     return 0;
 }
 
-INLINE_FUNC void jsvSetInteger(JsVar *v, JsVarInt value) {
+void jsvSetInteger(JsVar *v, JsVarInt value) {
   assert(jsvIsInt(v));
   v->varData.integer  = value;
 }
 
-INLINE_FUNC bool jsvGetBool(const JsVar *v) {
+bool jsvGetBool(const JsVar *v) {
   return jsvGetInteger(v)!=0;
 }
 
-INLINE_FUNC JsVarFloat jsvGetFloat(const JsVar *v) {
+JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return 0;
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     return 0; /* or NaN? */
-}
-
-INLINE_FUNC JsVarInt jsvGetIntegerSkipName(JsVar *v) {
-    JsVar *a = jsvSkipName(v);
-    JsVarInt l = jsvGetInteger(a);
-    jsvUnLock(a);
-    return l;
-}
-
-INLINE_FUNC bool jsvGetBoolSkipName(JsVar *v) {
-  return jsvGetIntegerSkipName(v)!=0;
 }
 
 // Also see jsvIsBasicVarEqual
@@ -1547,6 +1536,14 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
            default: return jsvMathsOpError(op, "String");
        }
     }
+}
+
+JsVar *jsvNegateAndUnLock(JsVar *v) {
+  JsVar *zero = jsvNewFromInteger(0);
+  JsVar *res = jsvMathsOpSkipNames(v, zero, LEX_EQUAL);
+  jsvUnLock(zero);
+  jsvUnLock(v);
+  return res;
 }
 
 void jsvTraceLockInfo(JsVar *v) {

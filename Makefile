@@ -40,7 +40,7 @@ CHIP=STM32F103
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
-OPTIMIZEFLAGS+=-Os # short on program memory
+OPTIMIZEFLAGS+=-O3 # short on program memory
 else ifdef STM32F4DISCOVERY
 PROJ_NAME=espruino_stm32f4discovery
 USB=1
@@ -50,7 +50,7 @@ CHIP=STM32F407
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F4XX
 STARTUP=$(ROOT)/targets/stm32f4/lib/startup_stm32f4xx
-OPTIMIZEFLAGS+=-O2
+OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
 PROJ_NAME=espruino_stm32vldiscovery
 FAMILY=STM32F1
@@ -62,6 +62,7 @@ OPTIMIZEFLAGS+=-Os # short on program memory
 else
 $(error Must give a device name (eg. STM32F4DISCOVERY=1 make)- see head of makefile)
 endif
+
 
 SOURCES= \
 src/jslex.c \
@@ -264,26 +265,16 @@ OBJS += $(LIB_ROOT)/$(STARTUP).o # add startup file to build
 
 DEFINES += -D$(CHIP) -D$(BOARD) -D$(STLIB)
 
-export CFLAGS=$(OPTIMIZEFLAGS) -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 $(DEFINES)
+# -fdata-sections -ffunction-sections are to help remove unused code
+export CFLAGS=$(OPTIMIZEFLAGS) -c -fno-common -fno-exceptions -fdata-sections -ffunction-sections $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 $(DEFINES) $(INCLUDE)
 #export CFLAGS=-g -O1 -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 -DARM -DFAKE_STDLIB
 #can use O2 here
 
 
-CFLAGS +=  $(INCLUDE)
-export LDFLAGS=$(ARCHFLAGS) -Tlinker/$(CHIP).ld -Llib 
+# -Wl,--gc-sections helps remove unused code
+# -Wl,--whole-archive checks for duplicates
+export LDFLAGS=$(ARCHFLAGS) -Wl,--gc-sections -Tlinker/$(CHIP).ld -Llib 
 
-
-# this makes a load of .au files defining stack usage
-# CFLAGS += -fstack-usage
-# need new GCC
-
-
-###################################################
-
-vpath %.c $(ROOT)/src  
-
-
-###################################################
 
 .PHONY:  proj
 
@@ -293,10 +284,10 @@ proj: 	$(PROJ_NAME).elf
 
 $(PROJ_NAME).elf: $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
 	$(OBJCOPY) -O srec $(PROJ_NAME).elf $(PROJ_NAME).srec
 	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
-	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) $< -o $@

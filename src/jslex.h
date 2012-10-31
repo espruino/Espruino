@@ -15,14 +15,14 @@ typedef struct JsLex
 {
     // Actual Lexing related stuff
     char currCh, nextCh;
-    int tk; ///< The type of the token that we have
-    int tokenStart; ///< Position in the data at the beginning of the token we have here
-    int tokenEnd; ///< Position in the data at the last character of the token we have here
-    int tokenLastStart; ///< Position in the data of the first character of the last token
-    int tokenLastEnd; ///< Position in the data of the last character of the last token
+    short tk; ///< The type of the token that we have
+    short tokenStart; ///< Position in the data at the beginning of the token we have here
+    short tokenEnd; ///< Position in the data at the last character of the token we have here
+    short tokenLastStart; ///< Position in the data of the first character of the last token
+    short tokenLastEnd; ///< Position in the data of the last character of the last token
     char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
     JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
-    int tokenl; ///< the current length of token
+    short tokenl; ///< the current length of token
 
     /* Where we get our data from...
      *
@@ -31,11 +31,11 @@ typedef struct JsLex
      * to the next jsVar...
      */
     JsVarRef sourceVarRef; // the actual string var
-    int sourceStartPos;
-    int sourceEndPos;
+    short sourceStartPos;
+    short sourceEndPos;
     // current position in data
-    int currentPos;
-    int currentVarPos; // current position in currentVar
+    short currentPos;
+    short currentVarPos; // current position in currentVar
     JsVarRef currentVarRef; // current var
     JsVar *currentVar; // current JsVar itself
 } JsLex;

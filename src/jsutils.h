@@ -118,6 +118,7 @@
             Make Serial.onData() clear onData handler
      1v15 : Escaping JSON strings
             Fix parsing of octal numbers in strings (so don't have to be 3 chars long)
+            Drastically improved stack usage using small stub functions (at expense of a bit of speed)
 [/CHANGELOG]
 
 [TODO]
@@ -129,6 +130,7 @@
         USB flow control for RX on the F4
         dump() should dump out prototypes for functions
         Must improve stack usage - makes LCD module hard to use
+        JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
 
   MEDIUM PRIORITY:
         Split out STM32-only hardware code
@@ -257,7 +259,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #ifdef ARM
  #if defined(STM32F4)
   #define JSVAR_CACHE_SIZE 5450  
-  typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null 
+  typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
+  #define LOTS_OF_FLASH 1
  #elif defined(OLIMEXINO_STM32)
   #define JSVAR_CACHE_SIZE 700
   typedef unsigned short JsVarRef;  // References for variables - We treat 0 as null
@@ -268,6 +271,12 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #else
  #define JSVAR_CACHE_SIZE 35000
  typedef unsigned short JsVarRef; // References for variables - We treat 0 as null
+#endif
+
+#if LOTS_OF_FLASH
+ #define INLINE_IF_SPACE inline
+#else
+ #define INLINE_IF_SPACE __attribute((noinline))
 #endif
 
 
