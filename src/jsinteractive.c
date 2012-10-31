@@ -1408,8 +1408,8 @@ void jsiDumpState() {
   jsvUnLock(parent);
   while (childRef) {
     JsVar *child = jsvLock(childRef);
-    char childName[16];
-    jsvGetString(child, childName, 16);
+    char childName[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(child, childName, JSLEX_MAX_TOKEN_LENGTH);
 
     JsVar *data = jsvSkipName(child);
     if (jspIsCreatedObject(&p, data)) {
@@ -1427,6 +1427,26 @@ void jsiDumpState() {
       jsiConsolePrint(" = ");
       jsfPrintJSON(data);
       jsiConsolePrint(";\n");
+      if (jsvIsFunction(data)) {
+        JsVar *proto = jsvSkipNameAndUnLock(jsvFindChildFromString(jsvGetRef(data), JSPARSE_PROTOTYPE_VAR, false));
+        if (proto) {
+          JsVarRef protoRef = proto->firstChild;
+          jsvUnLock(proto);
+          while (protoRef) {
+            JsVar *protoName = jsvLock(protoRef);
+            JsVar *protoData = jsvSkipName(protoName);
+            jsiConsolePrintStringVar(child);
+            jsiConsolePrint(".prototype.");
+            jsiConsolePrintStringVar(protoName);
+            jsiConsolePrint(" = ");
+            jsfPrintJSON(protoData);
+            jsiConsolePrint(";\n");
+            jsvUnLock(protoData);
+            protoRef = protoName->nextSibling;
+            jsvUnLock(protoName);
+          }
+        }
+      }
     }
     jsvUnLock(data);
     childRef = child->nextSibling;

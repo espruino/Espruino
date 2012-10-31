@@ -40,7 +40,7 @@ CHIP=STM32F103
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
-OPTIMIZEFLAGS+=-O3 # short on program memory
+OPTIMIZEFLAGS+=-O2 # short on program memory
 else ifdef STM32F4DISCOVERY
 PROJ_NAME=espruino_stm32f4discovery
 USB=1
@@ -58,7 +58,7 @@ CHIP=STM32F100
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md_vl
-OPTIMIZEFLAGS+=-Os # short on program memory
+OPTIMIZEFLAGS+=-O2 # short on program memory
 else
 $(error Must give a device name (eg. STM32F4DISCOVERY=1 make)- see head of makefile)
 endif

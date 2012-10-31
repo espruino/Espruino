@@ -119,6 +119,7 @@
      1v15 : Escaping JSON strings
             Fix parsing of octal numbers in strings (so don't have to be 3 chars long)
             Drastically improved stack usage using small stub functions (at expense of a bit of speed)
+            dump() also dumps out prototypes for functions
 [/CHANGELOG]
 
 [TODO]
@@ -128,11 +129,10 @@
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         USB flow control for RX on the F4
-        dump() should dump out prototypes for functions
-        Must improve stack usage - makes LCD module hard to use
         JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
 
   MEDIUM PRIORITY:
+        dump() should understand about __proto__ so objects can be recreated
         Split out STM32-only hardware code
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
