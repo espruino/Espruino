@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v14"
+#define JS_VERSION "1v15"
 /*
 [CHANGELOG]
      1v04 : Renamed to Espruino
