@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v15"
+#define JS_VERSION "1v16"
 /*
 [CHANGELOG]
      1v04 : Renamed to Espruino
@@ -120,6 +120,7 @@
             Fix parsing of octal numbers in strings (so don't have to be 3 chars long)
             Drastically improved stack usage using small stub functions (at expense of a bit of speed)
             dump() also dumps out prototypes for functions
+     1v16 : Inlining of jsvLock/UnLock to improve speed
 [/CHANGELOG]
 
 [TODO]
@@ -133,6 +134,7 @@
 
   MEDIUM PRIORITY:
         dump() should understand about __proto__ so objects can be recreated
+        Experiment with moving variables to the front of their object when they are accessed (speedup)
         Split out STM32-only hardware code
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
@@ -411,10 +413,24 @@ typedef enum LEX_TYPES {
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;
 
-bool isWhitespace(char ch);
-bool isNumeric(char ch);
-bool isHexadecimal(char ch);
-bool isAlpha(char ch);
+static inline bool isWhitespace(char ch) {
+    return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
+}
+
+static inline bool isNumeric(char ch) {
+    return (ch>='0') && (ch<='9');
+}
+
+static inline bool isHexadecimal(char ch) {
+    return ((ch>='0') && (ch<='9')) ||
+           ((ch>='a') && (ch<='f')) ||
+           ((ch>='A') && (ch<='F'));
+}
+static inline bool isAlpha(char ch) {
+    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+}
+
+
 bool isIDString(const char *s);
 
 /** escape a character - if it is required. This may return a reference to a static array, 

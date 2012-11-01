@@ -322,50 +322,6 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   return var;
 }
 
-/// Lock this reference and return a pointer - UNSAFE for null refs
-static inline JsVar *jsvGetAddressOf(JsVarRef ref) {
-  assert(ref);
-  return &jsVars[ref-1];
-}
-
-/// Lock this reference and return a pointer - UNSAFE for null refs
-JsVar *jsvLock(JsVarRef ref) {
-  JsVar *var = jsvGetAddressOf(ref);
-  var->locks++;
-  if (var->locks==0) {
-    jsError("Too many locks to Variable!");
-    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
-  }
-  return var;
-}
-
-/// Lock this pointer and return a pointer - UNSAFE for null pointer
-JsVar *jsvLockAgain(JsVar *var) {
-  var->locks++;
-  if (var->locks==0) {
-    jsError("Too many locks to Variable!");
-    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
-  }
-  return var;
-}
-
-/// Unlock this variable - this is SAFE for null variables
-JsVarRef jsvUnLock(JsVar *var) {
-  JsVarRef ref;
-  if (!var) return 0;
-  ref = jsvGetRef(var);
-  assert(var->locks>0);
-  var->locks--;
-  /* if we know we're free, then we can just free
-   * this variable right now. Loops of variables
-   * are handled by the Garbage Collector */
-  if (var->locks == 0 && var->refs == 0) {
-    jsvFreePtr(var);
-    return 0;
-  } else
-    return ref;
-}
-
 /** Given a variable, return the basic object name of it */
 const char *jsvGetBasicObjectName(JsVar *v) {
   if (jsvIsInt(v))
@@ -879,11 +835,10 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
     return 0; // not a string so not equal!
   }
   v = jsvLockAgain(var);
-
   while (true) {
-    size_t i;
+    size_t i, l = jsvGetMaxCharactersInVar(v);
     JsVarRef next;
-    for (i=0;i<jsvGetMaxCharactersInVar(v);i++) {
+    for (i=0;i<l;i++) {
        if (v->varData.str[i] != *str) { jsvUnLock(v); return false; }
        if  (*str==0) { jsvUnLock(v); return true; } // end of string, all great!
        str++;
@@ -1130,11 +1085,9 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
 
 JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound) {
   JsVar *parent = jsvLock(parentref);
-  JsVar *child;
   JsVarRef childref = parent->firstChild;
   while (childref) {
-
-    child = jsvLock(childref);
+    JsVar *child = jsvLock(childref);
     if (jsvIsStringEqual(child, name)) {
        // found it! unlock parent but leave child locked
        jsvUnLock(parent);
@@ -1144,7 +1097,7 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
     jsvUnLock(child);
   }
 
-  child = 0;
+  JsVar *child = 0;
   if (createIfNotFound) {
     child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
     if (child) // could be out of memory

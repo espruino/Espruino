@@ -100,15 +100,68 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 // Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 
-/// Lock this reference and return a pointer - UNSAFE for null refs
-JsVar *jsvLock(JsVarRef ref);
-/// Lock this pointer and return a pointer - UNSAFE for null pointer
-JsVar *jsvLockAgain(JsVar *var);
-/// Unlock this variable - this is SAFE for null variables
-JsVarRef jsvUnLock(JsVar *var);
-
 /// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
 void jsvFreePtr(JsVar *var);
+
+extern JsVar jsVars[];
+
+/// Get a reference from a var - SAFE for null vars
+static inline JsVarRef jsvGetRef(JsVar *var) {
+    if (!var) return 0;
+#ifdef LARGE_MEM
+    return var->this;
+#else
+    return (JsVarRef)(1 + (var - jsVars));
+#endif
+}
+
+/// Lock this reference and return a pointer - UNSAFE for null refs
+static inline JsVar *jsvGetAddressOf(JsVarRef ref) {
+  assert(ref);
+  return &jsVars[ref-1];
+}
+
+/// Lock this reference and return a pointer - UNSAFE for null refs
+static inline JsVar *jsvLock(JsVarRef ref) {
+  JsVar *var = jsvGetAddressOf(ref);
+  var->locks++;
+#ifdef DEBUG
+  if (var->locks==0) {
+    jsError("Too many locks to Variable!");
+    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
+  }
+#endif
+  return var;
+}
+
+/// Lock this pointer and return a pointer - UNSAFE for null pointer
+static inline JsVar *jsvLockAgain(JsVar *var) {
+  var->locks++;
+#ifdef DEBUG
+  if (var->locks==0) {
+    jsError("Too many locks to Variable!");
+    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
+  }
+#endif
+  return var;
+}
+
+/// Unlock this variable - this is SAFE for null variables
+static inline JsVarRef jsvUnLock(JsVar *var) {
+  JsVarRef ref;
+  if (!var) return 0;
+  ref = jsvGetRef(var);
+  assert(var->locks>0);
+  var->locks--;
+  /* if we know we're free, then we can just free
+   * this variable right now. Loops of variables
+   * are handled by the Garbage Collector */
+  if (var->locks == 0 && var->refs == 0) {
+    jsvFreePtr(var);
+    return 0;
+  } else
+    return ref;
+}
 
 /// Reference - set this variable as used by something
 static inline JsVar *jsvRef(JsVar *v) {
@@ -143,16 +196,6 @@ static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
   jsvUnRef(v);
   jsvUnLock(v);
   return 0;
-}
-
-/// Get a reference from a var - SAFE for null vars
-static inline JsVarRef jsvGetRef(JsVar *var) {
-    if (!var) return 0;
-#ifdef LARGE_MEM
-    return var->this;
-#else
-    return (JsVarRef)(1 + (var - (JsVar*)jsvGetVarDataPointer()));
-#endif
 }
 
 /** Given a variable, return the basic object name of it */
