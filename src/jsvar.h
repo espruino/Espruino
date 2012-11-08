@@ -100,15 +100,21 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 // Turns var into a Variable name that links to the given value... No locking so no need to unlock var
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 
+/// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
+void jsvFreePtr(JsVar *var);
+
+/// Get a reference from a var - SAFE for null vars
+JsVarRef jsvGetRef(JsVar *var);
+
 /// Lock this reference and return a pointer - UNSAFE for null refs
 JsVar *jsvLock(JsVarRef ref);
+
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 JsVar *jsvLockAgain(JsVar *var);
+
 /// Unlock this variable - this is SAFE for null variables
 JsVarRef jsvUnLock(JsVar *var);
 
-/// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
-void jsvFreePtr(JsVar *var);
 
 /// Reference - set this variable as used by something
 static inline JsVar *jsvRef(JsVar *v) {
@@ -143,16 +149,6 @@ static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
   jsvUnRef(v);
   jsvUnLock(v);
   return 0;
-}
-
-/// Get a reference from a var - SAFE for null vars
-static inline JsVarRef jsvGetRef(JsVar *var) {
-    if (!var) return 0;
-#ifdef LARGE_MEM
-    return var->this;
-#else
-    return (JsVarRef)(1 + (var - (JsVar*)jsvGetVarDataPointer()));
-#endif
 }
 
 /** Given a variable, return the basic object name of it */
