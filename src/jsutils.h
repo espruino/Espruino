@@ -122,6 +122,7 @@
             dump() also dumps out prototypes for functions
      1v16 : Inlining of jsvLock/UnLock to improve speed
             Move non-hardware-dependent stuff into jsdevices
+            Move jshardware.c into targets/stm32/jshardware.c, create 'targets/linux' and use a single makefile
 [/CHANGELOG]
 
 [TODO]
@@ -133,7 +134,7 @@
         USB flow control for RX on the F4
         JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
         Handle new Foo() as per spec (return value + init of this+prototype): http://stackoverflow.com/questions/1978049/what-values-can-a-constructor-return-to-avoid-returning-this
-        Move jshardware.c into targets/stm32/jshardware.c, create 'targets/pc' and use a single makefile
+
 
   MEDIUM PRIORITY:
         Espruino for raspberry pi

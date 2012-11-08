@@ -3,6 +3,8 @@
  *
  *  Created on: 8 Aug 2012
  *      Author: gw
+ *
+ *  NOTE: The definitions of these functions are inside targets/{target}/jshardware.c
  */
 
 #ifndef JSHARDWARE_H_
@@ -25,12 +27,20 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 /// Convert ticks to a time in Milliseconds
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
-
-
 /// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
 int jshGetPinFromString(const char *s);
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist)
-int jshGetPinFromVar(JsVar *pinv);
+static inline int jshGetPinFromVar(JsVar *pinv) {
+  int pin=-1;
+  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
+    pin = jshGetPinFromString(&pinv->varData.str[0]);
+  } else if (jsvIsInt(pinv)) {
+    pin = (int)jsvGetInteger(pinv);
+  }
+  return pin;
+}
+
+
 bool jshPinInput(int pin);
 JsVarFloat jshPinAnalog(int pin);
 void jshPinOutput(int pin, bool value);

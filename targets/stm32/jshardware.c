@@ -5,24 +5,12 @@
  *      Author: gw
  */
 
-#ifndef ARM
- #include <stdlib.h>
- #include <string.h>
- #include <stdio.h>
- #include <sys/time.h>
- #include <sys/select.h>
- #include <termios.h>
- #include <signal.h>
-#endif//ARM
-
-#ifdef ARM
- #if USB
-  #ifdef STM32F1
-   #include "usb_utils.h"
-   #include "usb_lib.h"
-   #include "usb_conf.h"
-   #include "usb_pwr.h"
-  #endif
+#if USB
+ #ifdef STM32F1
+  #include "usb_utils.h"
+  #include "usb_lib.h"
+  #include "usb_conf.h"
+  #include "usb_pwr.h"
  #endif
 #endif
 
@@ -32,7 +20,6 @@
 #include "jsinteractive.h"
 
 
-#ifdef ARM
  #if defined(STM32F4)
   #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
   #define FLASH_MEMORY_SIZE (1024*1024)
@@ -47,11 +34,6 @@
   #define FLASH_PAGE_SIZE 1024
   #define FLASH_PAGES 6
  #endif
-#else // !ARM
- #define FLASH_MEMORY_SIZE (128*1024)
- #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 3200
-#endif
 
 #define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
 #if FLASH_LENGTH < 8+JSVAR_CACHE_SIZE*20
@@ -64,8 +46,6 @@
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
-#ifdef ARM
-
 typedef struct IOPin {
   uint16_t pin;      // GPIO_Pin_1
   GPIO_TypeDef *gpio; // GPIOA
@@ -359,10 +339,7 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 #endif
 }
 
-
-#endif
 // ----------------------------------------------------------------------------
-#ifdef ARM
 JsSysTime SysTickMajor = SYSTICK_RANGE;
 
 #ifdef USB
@@ -382,56 +359,8 @@ void jshDoSysTick() {
 #endif //USB
 }
 
-#endif//ARM
 // ----------------------------------------------------------------------------
-#ifndef ARM
-// for non-blocking IO
-struct termios orig_termios;
-
-void reset_terminal_mode()
-{
-    tcsetattr(0, TCSANOW, &orig_termios);
-}
-
-void set_conio_terminal_mode()
-{
-    struct termios new_termios;
-
-    /* take two copies - one for now, one for later */
-    tcgetattr(0, &orig_termios);
-    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-    /* register cleanup handler, and set the new terminal mode */
-    atexit(reset_terminal_mode);
-    cfmakeraw(&new_termios);
-    tcsetattr(0, TCSANOW, &new_termios);
-}
-
-int kbhit()
-{
-    struct timeval tv = { 0L, 0L };
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
-}
-
-int getch()
-{
-    int r;
-    unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
-        return r;
-    } else {
-        if (c=='\3') exit(0); // ctrl-c
-        return c;
-    }
-}
-#endif
-
-
 void jshInit() {
-#ifdef ARM
   /* Enable UART and  GPIOx Clock */
  #ifdef STM32F4
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
@@ -567,37 +496,16 @@ void jshInit() {
   while(ADC_GetCalibrationStatus(ADC1));
 #endif
 
-#ifdef ARM
   jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n");
-#endif
 
   // Turn led off - so we know we have initialised
   GPIO_ResetBits(LED1_PORT,LED1_PIN);
-
-#else//!ARM
-  struct termios new_termios;
-
-  /* take two copies - one for now, one for later */
-  tcgetattr(0, &orig_termios);
-  memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-  /* register cleanup handler, and set the new terminal mode */
-  atexit(reset_terminal_mode);
-  cfmakeraw(&new_termios);
-  tcsetattr(0, TCSANOW, &new_termios);
-#endif//ARM
 }
 
 void jshKill() {
 }
 
 void jshIdle() {
-#ifdef ARM
-#else
-  while (kbhit()) {
-    jshPushIOCharEvent(EV_USBSERIAL, (char)getch());
-  }
-#endif
 #ifdef USB
   static bool wasUSBConnected = false;
   bool USBConnected = jshIsUSBSERIALConnected();
@@ -625,24 +533,15 @@ bool jshIsUSBSERIALConnected() {
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-#ifdef ARM
   return (JsSysTime)((ms*SystemCoreClock)/1000);
-#else
-  return (JsSysTime)(ms*1000);
-#endif
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-#ifdef ARM
   return ((JsVarFloat)time)*1000/SystemCoreClock;
-#else
-  return ((JsVarFloat)time)/1000;
-#endif
 }
 
 
 JsSysTime jshGetSystemTime() {
-#ifdef ARM
   JsSysTime t1 = SysTickMajor;
   JsSysTime time = (JsSysTime)SysTick->VAL;
   JsSysTime t2 = SysTickMajor;
@@ -650,11 +549,6 @@ JsSysTime jshGetSystemTime() {
   if (t1!=t2 && time > (SYSTICK_RANGE>>1)) 
     return t2 - time;
   return t1-time;
-#else
-  struct timeval tm;
-  gettimeofday(&tm, 0);
-  return tm.tv_sec*1000000L + tm.tv_usec;
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -682,7 +576,6 @@ int jshGetPinFromString(const char *s) {
   }
 #endif
 
-#ifdef ARM
 #if defined(OLIMEXINO_STM32)
     // A0-A5 and D0-D37
     if (s[0]=='A' && s[1]) { // first 6 are analogs
@@ -708,23 +601,11 @@ int jshGetPinFromString(const char *s) {
       }
     }
 #endif
-#endif // ARM
   return -1;
-}
-
-int jshGetPinFromVar(JsVar *pinv) {
-  int pin=-1;
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    pin = jshGetPinFromString(&pinv->varData.str[0]);
-  } else if (jsvIsInt(pinv)) {
-    pin = (int)jsvGetInteger(pinv);
-  }
-  return pin;
 }
 
 bool jshPinInput(int pin) {
   bool value = false;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -739,13 +620,11 @@ bool jshPinInput(int pin) {
 
     value = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? 1 : 0;
   } else jsError("Invalid pin!");
-#endif
   return value;
 }
 
 JsVarFloat jshPinAnalog(int pin) {
   JsVarFloat value = 0;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].adc!=0xFF) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -775,11 +654,9 @@ JsVarFloat jshPinAnalog(int pin) {
     // Get the conversion value
     value = ADC_GetConversionValue(ADC1) / (JsVarFloat)65535;
   } else jsError("Invalid analog pin!");
-#endif
   return value;
 }
 
-#ifdef ARM
 static inline void jshSetPinValue(int pin, bool value) {
 #ifdef STM32F4 
     if (value)
@@ -793,10 +670,8 @@ static inline void jshSetPinValue(int pin, bool value) {
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
 #endif
 }
-#endif
 
 void jshPinOutput(int pin, bool value) {
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -811,13 +686,11 @@ void jshPinOutput(int pin, bool value) {
 
     jshSetPinValue(pin, value);
   } else jsError("Invalid pin!");
-#endif
 }
 
 void jshPinAnalogOutput(int pin, JsVarFloat value) {
   if (value<0) value=0;
   if (value>1) value=1;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].timer!=TIMNONE) {
     TIM_TypeDef* TIMx;
 #ifdef STM32F4
@@ -948,13 +821,11 @@ void jshPinAnalogOutput(int pin, JsVarFloat value) {
 #endif
 
   } else jsError("Invalid pin, or pin not capable of analog output!");
-#endif
 }
 
 void jshPinPulse(int pin, bool value, JsVarFloat time) {
  JsSysTime ticks = jshGetTimeFromMilliseconds(time);
  //jsPrintInt(ticks);jsPrint("\n");
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -979,11 +850,9 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
     }
     jshSetPinValue(pin, !value);
   } else jsError("Invalid pin!");
-#endif
 }
 
 void jshPinWatch(int pin, bool shouldWatch) {
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     // TODO: check for DUPs, also disable interrupt
     int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -1017,18 +886,12 @@ void jshPinWatch(int pin, bool shouldWatch) {
     s.EXTI_LineCmd = ENABLE;
     EXTI_Init(&s);
   } else jsError("Invalid pin!");
-#endif
 }
 
 bool jshIsEventForPin(IOEvent *event, int pin) {
-#ifdef ARM
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(IOPIN_DATA[pin].pin);
-#else
-  return false;
-#endif
 }
 
-#ifdef ARM
 USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
@@ -1046,10 +909,8 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
    default: return 0;
  }
 }
-#endif
 
 void jshUSARTSetup(IOEventFlags device, int baudRate) {
-#ifdef ARM
   uint16_t pinRX, pinTX;// eg. GPIO_Pin_1
   GPIO_TypeDef *gpioRX, *gpioTX;   // eg. GPIOA
 
@@ -1185,21 +1046,17 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
   USART_ITConfig(usart, USART_IT_RXNE, ENABLE);
   //Enable USART
   USART_Cmd(usart, ENABLE);
-#endif
 }
 
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-#ifdef ARM
   USART_TypeDef *uart = getUsartFromDevice(device);
     if (uart) USART_ITConfig(uart, USART_IT_TXE, ENABLE);
-#endif
 }
 
 
 void jshSaveToFlash() {
-#ifdef ARM
 #ifdef STM32F4 
   FLASH_Unlock();
 #else
@@ -1310,64 +1167,30 @@ void jshSaveToFlash() {
   jsPrint(" we want ");
   jsPrintInt(FLASH_MAGIC);
   jsPrint("\n");*/
-#else
-  FILE *f = fopen("TinyJSC.state","wb");
-  if (f) {
-    jsiConsolePrint("\nSaving ");
-    jsiConsolePrintInt(jsvGetVarDataSize());
-    jsiConsolePrint(" bytes...");
-    fwrite(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
-    fclose(f);
-    jsiConsolePrint("\nDone!\n>");
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-#endif
 }
 
 void jshLoadFromFlash() {
-#ifdef ARM
   jsiConsolePrint("\nLoading ");
   jsiConsolePrintInt(jsvGetVarDataSize());
   jsiConsolePrint(" bytes from flash...");
   memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
   jsiConsolePrint("\nDone!\n>");
-#else
-  FILE *f = fopen("TinyJSC.state","rb");
-  if (f) {
-    jsiConsolePrint("\nLoading ");
-    jsiConsolePrintInt(jsvGetVarDataSize());
-    jsiConsolePrint(" bytes...\n>");
-    fread(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
-    fclose(f);
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-#endif
 }
 
 bool jshFlashContainsCode() {
-#ifdef ARM
   /*jsPrint("Magic contains ");
   jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
   jsPrint("we want");
   jsPrintInt(FLASH_MAGIC);
   jsPrint("\n");*/
   return (*(int*)FLASH_MAGIC_LOCATION) == FLASH_MAGIC;
-#else
-  FILE *f = fopen("TinyJSC.state","rb");
-  if (f) fclose(f);
-  return f!=0;
-#endif
 }
 
 
 /// Enter simple sleep mode (can be woken up by interrupts)
 void jshSleep() {
-#ifdef ARM
   //jshPinOutput(LED1_PININDEX,1);
   __WFI(); // Wait for Interrupt
   //jshPinOutput(LED1_PININDEX,0);
-#endif
 }
 
