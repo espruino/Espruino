@@ -121,6 +121,7 @@
             Drastically improved stack usage using small stub functions (at expense of a bit of speed)
             dump() also dumps out prototypes for functions
      1v16 : Inlining of jsvLock/UnLock to improve speed
+            Move non-hardware-dependent stuff into jsdevices
 [/CHANGELOG]
 
 [TODO]
@@ -132,9 +133,9 @@
         USB flow control for RX on the F4
         JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
         Handle new Foo() as per spec (return value + init of this+prototype): http://stackoverflow.com/questions/1978049/what-values-can-a-constructor-return-to-avoid-returning-this
+        Move jshardware.c into targets/stm32/jshardware.c, create 'targets/pc' and use a single makefile
 
   MEDIUM PRIORITY:
-        Turbo overclocking mode
         Espruino for raspberry pi
         dump() should understand about __proto__ so objects can be recreated
         Experiment with moving variables to the front of their object when they are accessed (speedup)
@@ -161,6 +162,7 @@
         Add #define to beginning of each function - use it to store stack usage per-fn while running
  
   LOW PRIORITY
+        Turbo overclocking mode (VL running at 48Mhz seems ok according to IgorM)
         Redo built-in functions with script to create a fast checker
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg[, arg1[, arg2, ...]]) / function.apply(thisArg[, argsArray])
@@ -302,6 +304,8 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
+#define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
+typedef long long JsSysTime;
 
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9

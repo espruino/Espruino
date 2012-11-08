@@ -71,6 +71,7 @@ src/jsfunctions.c \
 src/jsutils.c \
 src/jsparse.c \
 src/jsinteractive.c \
+src/jsdevices.c \
 src/jshardware.c 
 
 ifdef USE_MATH

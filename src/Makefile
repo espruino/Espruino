@@ -28,6 +28,7 @@ jsutils.c \
 jsvar.c \
 jsfunctions.c \
 jsinteractive.c \
+jsdevices.c \
 jshardware.c \
 TinyJSC.c
 
