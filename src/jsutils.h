@@ -130,8 +130,11 @@
         better digitalPulse
         USB flow control for RX on the F4
         JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
+        Handle new Foo() as per spec (return value + init of this+prototype): http://stackoverflow.com/questions/1978049/what-values-can-a-constructor-return-to-avoid-returning-this
 
   MEDIUM PRIORITY:
+        Turbo overclocking mode
+        Espruino for raspberry pi
         dump() should understand about __proto__ so objects can be recreated
         Split out STM32-only hardware code
         I2C/SPI support
@@ -196,6 +199,10 @@
 
 Contact http://www.wired.com/gadgetlab/author/snackfight/
 Seems to blog odd bits about embedded dev
+http://www.hobbytronics.co.uk/ might be a good stockist?
+http://www.pololu.com/ (contacted)
+http://www.parallax.com/
+http://hackerthings.com/
 
 Board ideas:
    Arduino form factor, but don't put sockets in.
@@ -208,7 +215,8 @@ Board ideas:
    Unpopulated points for L293D-type ICs
    Ethernet version with F4 http://blog.tkjelectronics.dk/2012/08/ethernet-on-stm32f4discovery-using-external-phy/
    Or ethernet with microchip ENC28J60
-     
+   Display connector (nokia phone?) simple touchscreen?
+   WiFi - looks easy with http://uk.farnell.com/microchip/rn131c-rm/module-wlan-w-ant-u-fl-conn/dp/2143313 (could just leave pads?)
 
 When presenting:
    Show small time to first code
