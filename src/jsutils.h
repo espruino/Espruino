@@ -140,15 +140,15 @@
         Espruino for raspberry pi
         dump() should understand about __proto__ so objects can be recreated
         Experiment with moving variables to the front of their object when they are accessed (speedup)
-        Split out STM32-only hardware code
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
+        Implement XON/XOFF flow control
         Add Array.splice
         Make save() retry writing to flash if there was an error
         Add instanceof operator
+        Add 'delete' keyword
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
-        Implement XON/XOFF flow control
         Save state on setWatch interrupt (e.state)
         Save pin input/output state along with save()
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
@@ -159,8 +159,6 @@
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
-        Use RPi to profile the code
-        Add #define to beginning of each function - use it to store stack usage per-fn while running
  
   LOW PRIORITY
         Turbo overclocking mode (VL running at 48Mhz seems ok according to IgorM)
@@ -172,7 +170,6 @@
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
-        Add 'delete' keyword for killing array items?
         Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
         Add nice iterators for strings and maybe arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
