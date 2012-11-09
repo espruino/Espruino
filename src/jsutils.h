@@ -159,8 +159,10 @@
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
+        Port to Netduino Plus 2 (STM32F4, Ethernet, SD)
  
   LOW PRIORITY
+        Cache the last few IDs that were found (clear cache if variable added or scope changes)
         Turbo overclocking mode (VL running at 48Mhz seems ok according to IgorM)
         Redo built-in functions with script to create a fast checker
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
@@ -196,10 +198,12 @@
         ToJSON for arrays could probably be faster now arrays are sorted
         http://doctrina.org/Javascript-Function-Invocation-Patterns.html - invoking a function from within method *should* make 'this' point to root 
                possibly, 'this' should be a keyword, not a variable that we define (would be faster)
+        Use the 'True Random Number Generator' in some of the STM32s
 
 [/TODO]
 
 Contact http://www.wired.com/gadgetlab/author/snackfight/
+http://www.engadget.com/2012/11/08/arduino-micro-shrinks-your-favorite-diy-platform/
 Seems to blog odd bits about embedded dev
 http://www.hobbytronics.co.uk/ might be a good stockist?
 http://www.pololu.com/ (contacted)
