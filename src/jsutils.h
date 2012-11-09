@@ -133,7 +133,6 @@
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         USB flow control for RX on the F4
-        JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
         Handle new Foo() as per spec (return value + init of this+prototype): http://stackoverflow.com/questions/1978049/what-values-can-a-constructor-return-to-avoid-returning-this
 
 
