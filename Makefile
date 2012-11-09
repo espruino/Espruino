@@ -262,6 +262,7 @@ targets/stm32/stm32_it.c
 endif
 
 ifdef LINUX
+OPTIMIZEFLAGS += -g # DEBUG
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux 
 SOURCES +=                              \

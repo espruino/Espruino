@@ -8,7 +8,7 @@
 #include "jslex.h"
 
 
-void jslSeek(JsLex *lex, int seekToChar) {
+void jslSeek(JsLex *lex, JslCharPos seekToChar) {
   /*OPT: maybe we can seek backwards (for instance when doing
    * small FOR loops */
   // free previous
@@ -38,7 +38,7 @@ void jslSeek(JsLex *lex, int seekToChar) {
 
 void jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
-  if (lex->currentPos < lex->sourceEndPos) {
+  if (lex->currentPos < lex->range.end) {
     lex->nextCh = 0;
     if (lex->currentVar)
       lex->nextCh = lex->currentVar->varData.str[lex->currentVarPos];
@@ -295,13 +295,13 @@ void jslGetNextToken(JsLex *lex) {
   lex->tokenEnd = lex->currentPos-3/*because of nextCh/currCh/etc */;
 }
 
-void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
+void jslInit(JsLex *lex, JsVar *var, JslCharPos startPos, JslCharPos endPos) {
   if (endPos<0) {
     endPos = (int)jsvGetStringLength(var);
   }
   lex->sourceVarRef = jsvGetRef(jsvRef(var));
-  lex->sourceStartPos = startPos;
-  lex->sourceEndPos = endPos;
+  lex->range.start = startPos;
+  lex->range.end = endPos;
   // reset stuff
   lex->currentPos = 0;
   lex->currentVarPos = 0;
@@ -318,12 +318,12 @@ void jslInit(JsLex *lex, JsVar *var, int startPos, int endPos) {
   jslReset(lex);
 }
 
-void jslInitFromLex(JsLex *lex, JsLex *initFrom, int startPos) {
+void jslInitFromLex(JsLex *lex, JsLex *initFrom, JslCharPos startPos) {
   JsVar *var;
   // TODO: New lexes could change their start var depending on startPos, to avoid costly iterations when seeking to start
   int lastCharIdx = initFrom->tokenLastEnd+1;
-  if (lastCharIdx >= initFrom->sourceEndPos)
-    lastCharIdx = initFrom->sourceEndPos;
+  if (lastCharIdx >= initFrom->range.end)
+    lastCharIdx = initFrom->range.end;
   var = jsvLock(initFrom->sourceVarRef);
   jslInit(lex, var, startPos, lastCharIdx);
   jsvUnLock(var);
@@ -343,12 +343,16 @@ void jslKill(JsLex *lex) {
   lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
 }
 
-void jslReset(JsLex *lex) {
-  jslSeek(lex, lex->sourceStartPos);
+void jslSeekTo(JsLex *lex, JslCharPos seekToChar) {
+  jslSeek(lex, seekToChar);
   // set up..
   jslGetNextCh(lex);
   jslGetNextCh(lex);
   jslGetNextToken(lex);
+}
+
+void jslReset(JsLex *lex) {
+  jslSeekTo(lex, lex->range.start);
 }
 
 void jslTokenAsString(int token, char *str, size_t len) {

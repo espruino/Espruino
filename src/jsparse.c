@@ -1421,24 +1421,18 @@ JsVar *jspeStatementSwitch() {
 JsVar *jspeStatementWhile() {
   int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
   JsVar *cond;
-  int whileCondStart;
   bool loopCond;
-  int whileBodyStart;
-  JsLex whileCond;
-  JsLex whileBody;
-  JsLex *oldLex;
   bool hasHadBreak = false;
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
   JSP_MATCH(LEX_R_WHILE);
   JSP_MATCH('(');
-  whileCondStart = execInfo.lex->tokenStart;
+  JslCharPos whileCondStart = execInfo.lex->tokenStart;
   cond = jspeBase();
   loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
   jsvUnLock(cond);
-  jslInitFromLex(&whileCond, execInfo.lex, whileCondStart);
   JSP_MATCH(')');
-  whileBodyStart = execInfo.lex->tokenStart;
+  JslCharPos whileBodyStart = execInfo.lex->tokenStart;
   JSP_SAVE_EXECUTE();
   // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
   if (!loopCond) jspSetNoExecute();
@@ -1452,18 +1446,16 @@ JsVar *jspeStatementWhile() {
     hasHadBreak = true; // fail loop condition, so we exit
   }
   if (!loopCond) JSP_RESTORE_EXECUTE();
-  jslInitFromLex(&whileBody, execInfo.lex, whileBodyStart);
-  oldLex = execInfo.lex;
+
+  JslCharPos whileBodyEnd = execInfo.lex->tokenStart;
 
   while (!hasHadBreak && loopCond && loopCount-->0) {
-      jslReset(&whileCond);
-      execInfo.lex = &whileCond;
+      jslSeekTo(execInfo.lex, whileCondStart);
       cond = jspeBase();
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
       if (loopCond) {
-          jslReset(&whileBody);
-          execInfo.lex = &whileBody;
+          jslSeekTo(execInfo.lex, whileBodyStart);
           execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
           execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1475,9 +1467,7 @@ JsVar *jspeStatementWhile() {
           }
       }
   }
-  execInfo.lex = oldLex;
-  jslKill(&whileCond);
-  jslKill(&whileBody);
+  jslSeekTo(execInfo.lex, whileBodyEnd);
 
   if (loopCount<=0) {
     jsErrorAt("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")", execInfo.lex, execInfo.lex->tokenLastEnd);
@@ -1512,7 +1502,7 @@ JsVar *jspeStatementFor() {
     JSP_MATCH(LEX_R_IN);
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
     JSP_MATCH(')');
-    int forBodyStart = execInfo.lex->tokenStart;
+    JslCharPos forBodyStart = execInfo.lex->tokenStart;
     JSP_SAVE_EXECUTE();
     jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
@@ -1577,13 +1567,13 @@ JsVar *jspeStatementFor() {
 
     jsvUnLock(forStatement);
     JSP_MATCH(';');
-    int forCondStart = execInfo.lex->tokenStart;
+    JslCharPos forCondStart = execInfo.lex->tokenStart;
     cond = jspeBase(); // condition
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     jslInitFromLex(&forCond, execInfo.lex, forCondStart);
     JSP_MATCH(';');
-    int forIterStart = execInfo.lex->tokenStart;
+    JslCharPos forIterStart = execInfo.lex->tokenStart;
     {
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
@@ -1593,7 +1583,7 @@ JsVar *jspeStatementFor() {
     jslInitFromLex(&forIter, execInfo.lex, forIterStart);
     JSP_MATCH(')');
 
-    int forBodyStart = execInfo.lex->tokenStart; // actual for body
+    JslCharPos forBodyStart = execInfo.lex->tokenStart; // actual for body
     JSP_SAVE_EXECUTE();
     if (!loopCond) jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;

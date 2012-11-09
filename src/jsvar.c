@@ -307,7 +307,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
   jslInit(&newLex, sourceVar, charFrom, charTo);
   jsvUnLock(sourceVar);
   // Reset (we must do this because normally it tries to get a new token)
-  jslSeek(&newLex, newLex.sourceStartPos);
+  jslSeek(&newLex, newLex.range.start);
   jslGetNextCh(&newLex);
   jslGetNextCh(&newLex);
 

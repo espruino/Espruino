@@ -123,6 +123,7 @@
      1v16 : Inlining of jsvLock/UnLock to improve speed
             Move non-hardware-dependent stuff into jsdevices
             Move jshardware.c into targets/stm32/jshardware.c, create 'targets/linux' and use a single makefile
+            While loop works without reallocating lex 
 [/CHANGELOG]
 
 [TODO]
