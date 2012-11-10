@@ -306,6 +306,7 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
+typedef short JslCharPos;
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef long long JsSysTime;
 
@@ -324,6 +325,7 @@ typedef long long JsSysTime;
 
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define NOT_USED(x) ( (void)(x) )
 
 // javascript specific names
 #define JSPARSE_RETURN_VAR "return"

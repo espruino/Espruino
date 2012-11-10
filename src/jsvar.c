@@ -291,57 +291,17 @@ JsVar *jsvNewFromString(const char *str) {
   return first;
 }
 
-JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo) {
+JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo) {
   // Create a var
-  JsVar *first = jsvNew();
-  if (!first) { // out of memory
+  JsVar *var = jsvNewFromString("");
+  if (!var) { // out of memory
     return 0;
   }
 
-  JsVar *var;
-  // Create a new STRING from part of the lexer
-  // Create a new lexer to span the whole area
-  // OPT: probably not the fastest, but safe. Only done when a new function is created anyway
-  JsLex newLex;
-  JsVar *sourceVar = jsvLock(lex->sourceVarRef);
-  jslInit(&newLex, sourceVar, charFrom, charTo);
-  jsvUnLock(sourceVar);
-  // Reset (we must do this because normally it tries to get a new token)
-  jslSeek(&newLex, newLex.range.start);
-  jslGetNextCh(&newLex);
-  jslGetNextCh(&newLex);
-
-  // Now we copy the string, but keep creating new jsVars if we go
-  // over the end
-  var = jsvLockAgain(first);
-  var->flags = JSV_STRING;
-  var->varData.str[0] = 0; // in case str is empty!
-
-
-  while (newLex.currCh) {
-    int i;
-    // copy data in
-    for (i=0;i<(int)jsvGetMaxCharactersInVar(var);i++) {
-      var->varData.str[i] = newLex.currCh;
-      if (newLex.currCh) jslGetNextCh(&newLex);
-    }
-    // if there is still some left, it's because we filled up our var...
-    // make a new one, link it in, and unlock the old one.
-    if (newLex.currCh) {
-      JsVar *next = jsvNew();
-      if (!next) break; // out of memory
-      next = jsvRef(next);
-      next->flags = JSV_STRING_EXT;
-      var->lastChild = jsvGetRef(next);
-      jsvUnLock(var);
-      var = next;
-    }
-  }
-  // free
-  jsvUnLock(var);
-  jslKill(&newLex);
-  // return
-  return first;
+  JsVar *src = jsvLock(lex->sourceVarRef);
+  jsvAppendStringVar(var, src, charFrom, (JslCharPos)charTo-charFrom);
+  jsvUnLock(src);
+  return var;
 }
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
@@ -769,7 +729,6 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   str = jsvLockAgain(str);
 
   JsVar *block = jsvLockAgain(var);
-  unsigned int blockChars;
   assert(jsvIsString(var));
   // Find the block at end of the string...
   while (block->lastChild) {
@@ -778,7 +737,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
     block = jsvLock(next);
   }
   // find how full the block is
-  blockChars=0;
+  unsigned int blockChars=0;
   while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
         blockChars++;
   // Now make sure we're in the correct block of str

@@ -11,12 +11,6 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
-typedef short JslCharPos;
-
-typedef struct JslRange {
-  JslCharPos start, end;
-} JslRange;
-
 typedef struct JsLex
 {
     // Actual Lexing related stuff
@@ -37,7 +31,6 @@ typedef struct JsLex
      * to the next jsVar...
      */
     JsVarRef sourceVarRef; // the actual string var
-    JslRange range; ///< Range of character indices to work from
     // current position in data
     JslCharPos currentPos;
     JslCharPos currentVarPos; // current position in currentVar
@@ -45,8 +38,7 @@ typedef struct JsLex
     JsVar *currentVar; // current JsVar itself
 } JsLex;
 
-void jslInit(JsLex *lex, JsVar *var, JslCharPos startPos, JslCharPos endPos);
-void jslInitFromLex(JsLex *lex, JsLex *initFrom, JslCharPos startPos);
+void jslInit(JsLex *lex, JsVar *var);
 void jslKill(JsLex *lex);
 void jslReset(JsLex *lex);
 void jslSeekTo(JsLex *lex, JslCharPos seekToChar); // like jslSeek, but pre-fills characters

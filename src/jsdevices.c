@@ -56,12 +56,13 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   jshUSARTKick(device); // set up interrupts if required
 
 #else // if PC, just put to stdout
-  fputc(data, stdout);
-  fflush(stdout);
+  if (device==DEFAULT_CONSOLE_DEVICE) {
+    fputc(data, stdout);
+    fflush(stdout);
+  }
 #endif
 }
 
-#ifdef ARM
 // Try and get a character for transmission - could just return -1 if nothing
 int jshGetCharToTransmit(IOEventFlags device) {
   unsigned char ptr = txTail;
@@ -71,35 +72,30 @@ int jshGetCharToTransmit(IOEventFlags device) {
       if (ptr != txTail) { // so we weren't right at the back of the queue
         // we need to work back from ptr (until we hit tail), shifting everything forwards
         unsigned char this = ptr;
-        unsigned char last = (this+TXBUFFERMASK)&TXBUFFERMASK;
+        unsigned char last = (unsigned char)((this+TXBUFFERMASK)&TXBUFFERMASK);
         while (this!=txTail) { // if this==txTail, then last is before it, so stop here
           txBuffer[this] = txBuffer[last];
           this = last;
-          last = (this+TXBUFFERMASK)&TXBUFFERMASK;
+          last = (unsigned char)((this+TXBUFFERMASK)&TXBUFFERMASK);
         }
       }
-      txTail = (txTail+1)&TXBUFFERMASK; // advance the tail
+      txTail = (unsigned char)((txTail+1)&TXBUFFERMASK); // advance the tail
       return data; // return data
     }
-    ptr = (ptr+1)&TXBUFFERMASK;
+    ptr = (unsigned char)((ptr+1)&TXBUFFERMASK);
   }
   return -1; // no data :(
 }
-#endif
 
 void jshTransmitFlush() {
-#ifdef ARM
   jsiSetBusy(BUSY_TRANSMIT, true);
   while (jshHasTransmitData()) ; // wait for send to finish
   jsiSetBusy(BUSY_TRANSMIT, false);
-#endif
 }
 
 // Clear everything from a device
 void jshTransmitClearDevice(IOEventFlags device) {
-#ifdef ARM
   while (jshGetCharToTransmit(device)>=0);
-#endif
 }
 
 bool jshHasTransmitData() {

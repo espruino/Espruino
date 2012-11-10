@@ -450,7 +450,6 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
              while (childRef) {
                JsVar *child = jsvLock(childRef);
                if (jsvIsInt(child)) {
-                 JsVarInt thisIndex = jsvGetInteger(child);
                  JsVar *childValue = jsvLock(child->firstChild);
                  JsVar *mapped = jspeFunctionCall(funcVar, 0, thisVar, false, childValue);
                  jsvUnLock(childValue);
@@ -567,8 +566,8 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
   jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
 }
 
-void _jsfPrintJSON_str(void *data, const char *str) { jsiConsolePrint(str); }
-void _jsfPrintJSON_var(void *data, JsVar *var) { jsiConsolePrintStringVar(var); }
+void _jsfPrintJSON_str(void *data, const char *str) { NOT_USED(data); jsiConsolePrint(str); }
+void _jsfPrintJSON_var(void *data, JsVar *var) { NOT_USED(data); jsiConsolePrintStringVar(var); }
 void jsfPrintJSON(JsVar *var) {
   jsfGetJSONWithCallback(var, _jsfPrintJSON_str, _jsfPrintJSON_var, 0);
 }

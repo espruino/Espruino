@@ -365,7 +365,7 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     // Set up Lexer
 
     JsLex lex;
-    jslInit(&lex, fncode, 0, -1);
+    jslInit(&lex, fncode);
     jsvUnLock(fncode);
 
     
@@ -390,7 +390,6 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
 }
 
 JsVar *jspeFunctionDefinition() {
-  int funcBegin;
   // actually parse a function... We assume that the LEX_FUNCTION and name
   // have already been parsed
   JsVar *funcVar = 0;
@@ -403,7 +402,7 @@ JsVar *jspeFunctionDefinition() {
     return 0;
   }
   // Get the code - first parse it so we know where it stops
-  funcBegin = execInfo.lex->tokenStart;
+  JslCharPos funcBegin = execInfo.lex->tokenStart;
   JSP_SAVE_EXECUTE();
   jspSetNoExecute();
   jsvUnLock(jspeBlock());
@@ -411,7 +410,7 @@ JsVar *jspeFunctionDefinition() {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE) {
     // code var
-    JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, execInfo.lex->tokenLastEnd+1);
+    JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, (JslCharPos)(execInfo.lex->tokenLastEnd+1));
     jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
@@ -587,7 +586,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
             JsLex *oldLex;
             JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
             JsLex newLex;
-            jslInit(&newLex, functionCodeVar, 0, -1);
+            jslInit(&newLex, functionCodeVar);
             jsvUnLock(functionCodeVar);
 
             oldLex = execInfo.lex;
@@ -1087,7 +1086,6 @@ __attribute((noinline)) JsVar *__jspeExpression(bool negate, JsVar *a) {
 
 
 JsVar *jspeExpression() {
-    JsVar *a;
     bool negate = false;
     if (execInfo.lex->tk=='-') {
         JSP_MATCH('-');
@@ -1739,6 +1737,7 @@ bool jspIsCreatedObject(JsParse *parse, JsVar *v) {
 }
 
 void jspSoftKill(JsParse *parse) {
+  NOT_USED(parse);
 }
 
 void jspInit(JsParse *parse) {
@@ -1759,7 +1758,7 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str) {
   JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
-  jslInit(&lex, str, 0, -1);
+  jslInit(&lex, str);
 
   jspeiInit(parse, &lex);
   while (!JSP_HAS_ERROR && execInfo.lex->tk != LEX_EOF) {

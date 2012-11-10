@@ -150,7 +150,7 @@ void jsiConsolePrintEscaped(const char *str) {
   }
 }
 
-void jsiConsolePrintInt(int d) {
+void jsiConsolePrintInt(JsVarInt d) {
     char buf[32];
     itoa(d, buf, 10);
     jsiConsolePrint(buf);
@@ -673,7 +673,7 @@ int jsiCountBracketsInInput() {
   int brackets = 0;
 
   JsLex lex;
-  jslInit(&lex, inputLine, 0, -1);
+  jslInit(&lex, inputLine);
   while (lex.tk!=LEX_EOF) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
@@ -1506,6 +1506,7 @@ void jsiDumpState() {
 
 /** Handle function calls - do this programatically, so we can save on RAM */
 JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
+  NOT_USED(execInfo);
   if (a==0) { // ----------------------------------------   SYSTEM-WIDE
     // Handle pins - eg LED1 or D5
     int pin = jshGetPinFromString(name);

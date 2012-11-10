@@ -31,7 +31,7 @@ void jsiConsolePrintCharEscaped(char data); ///< transmit a byte, but escape it
 void jsiConsolePrint(const char *str);
 void jsiConsolePrintEscaped(const char *str); ///< transmit a string, but escape it
 /// Transmit an integer
-void jsiConsolePrintInt(int d);
+void jsiConsolePrintInt(JsVarInt d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)
