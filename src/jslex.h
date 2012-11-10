@@ -30,12 +30,9 @@ typedef struct JsLex
      * which only have fixed length strings. If we go past this, we have to go
      * to the next jsVar...
      */
-    JsVarRef sourceVarRef; // the actual string var
-    // current position in data
-    JslCharPos currentPos;
-    JslCharPos currentVarPos; // current position in currentVar
-    JsVarRef currentVarRef; // current var
-    JsVar *currentVar; // current JsVar itself
+    JsVar *sourceVar; // the actual string var
+    JslCharPos currentPos; // current position in the string
+    JsvStringIterator it; // Iterator for the string
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var);

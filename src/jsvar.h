@@ -358,7 +358,7 @@ static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
 }
 
 static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
-  return it->var && it->idx < it->charsInVar;
+  return it->var && it->var->varData.str[it->idx]!=0;
 }
 
 static inline void jsvStringIteratorNext(JsvStringIterator *it) {

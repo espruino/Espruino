@@ -298,9 +298,7 @@ JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo
     return 0;
   }
 
-  JsVar *src = jsvLock(lex->sourceVarRef);
-  jsvAppendStringVar(var, src, charFrom, (JslCharPos)charTo-charFrom);
-  jsvUnLock(src);
+  jsvAppendStringVar(var, lex->sourceVar, charFrom, (JslCharPos)charTo-charFrom);
   return var;
 }
 

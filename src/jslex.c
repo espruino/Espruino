@@ -9,53 +9,18 @@
 
 
 void jslSeek(JsLex *lex, JslCharPos seekToChar) {
-  /*OPT: maybe we can seek backwards (for instance when doing
-   * small FOR loops */
-  // free previous
-  if (lex->currentVar) {
-    jsvUnLock(lex->currentVar);
-    lex->currentVar = 0;
-    lex->currentVarRef = 0;
-  }
-
-  // Set up to first string object
-  lex->currentVarPos = seekToChar;
   lex->currentPos = seekToChar;
-  lex->currentVarRef = lex->sourceVarRef;
-  lex->currentVar = jsvLock(lex->currentVarRef);
-  // Keep seeking until we get to the start position
-  JslCharPos l =  (JslCharPos)jsvGetMaxCharactersInVar(lex->currentVar);
-  while (lex->currentVarPos >= l) {
-    JsVarRef next;
-    lex->currentVarPos = (JslCharPos)(lex->currentVarPos - l);
-    next = lex->currentVar->lastChild;
-    jsvUnLock(lex->currentVar);
-    lex->currentVarRef = next;
-    if (!next)
-      return; // we're out of chars - assume all ok
-    lex->currentVar = jsvLock(lex->currentVarRef);
-    l =  (JslCharPos)jsvGetMaxCharactersInVar(lex->currentVar);
-  }
+  jsvStringIteratorFree(&lex->it);
+  jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
 }
 
 void jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
-  lex->nextCh = 0;
-  if (lex->currentVar)
-    lex->nextCh = lex->currentVar->varData.str[lex->currentVarPos];
-  lex->currentVarPos++;
-  // make sure we move on to next..
-  if (lex->currentVar) {
-    JslCharPos l =  (JslCharPos)jsvGetMaxCharactersInVar(lex->currentVar);
-    if (lex->currentVarPos >= l) {
-      JsVarRef next;
-      lex->currentVarPos = (JslCharPos)(lex->currentVarPos - l);
-      next = lex->currentVar->lastChild;
-      jsvUnLock(lex->currentVar);
-      lex->currentVarRef = next;
-      lex->currentVar = next ? jsvLock(lex->currentVarRef) : 0;
-    }
-  }
+  if (jsvStringIteratorHasChar(&lex->it)) {
+    lex->nextCh = jsvStringIteratorGetChar(&lex->it);
+    jsvStringIteratorNext(&lex->it);
+  } else
+    lex->nextCh = 0;
   lex->currentPos++;
 }
 
@@ -297,13 +262,17 @@ void jslGetNextToken(JsLex *lex) {
   lex->tokenEnd = (JslCharPos)(lex->currentPos-3)/*because of nextCh/currCh/etc */;
 }
 
+static inline void jslPreload(JsLex *lex) {
+  // set up..
+  jslGetNextCh(lex);
+  jslGetNextCh(lex);
+  jslGetNextToken(lex);
+}
+
 void jslInit(JsLex *lex, JsVar *var) {
-  lex->sourceVarRef = jsvGetRef(jsvRef(var));
+  lex->sourceVar = jsvLockAgain(var);
   // reset stuff
   lex->currentPos = 0;
-  lex->currentVarPos = 0;
-  lex->currentVarRef = 0;
-  lex->currentVar = 0;
   lex->tk = 0;
   lex->tokenStart = 0;
   lex->tokenEnd = 0;
@@ -311,30 +280,24 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->tokenLastEnd = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
-  // reset position
-  jslReset(lex);
+  // set up iterator
+  jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
+  jslPreload(lex);
 }
 
 void jslKill(JsLex *lex) {
   lex->tk = LEX_EOF; // safety ;)
-  if (lex->currentVarRef) {
-    jsvUnLock(lex->currentVar);
-    lex->currentVarRef=0;
-    lex->currentVar=0;
-  }
+  jsvStringIteratorFree(&lex->it);
   if (lex->tokenValue) {
     jsvUnLock(lex->tokenValue);
     lex->tokenValue = 0;
   }
-  lex->sourceVarRef = jsvUnRefRef(lex->sourceVarRef);
+  jsvUnLock(lex->sourceVar);
 }
 
 void jslSeekTo(JsLex *lex, JslCharPos seekToChar) {
   jslSeek(lex, seekToChar);
-  // set up..
-  jslGetNextCh(lex);
-  jslGetNextCh(lex);
-  jslGetNextToken(lex);
+  jslPreload(lex);
 }
 
 void jslReset(JsLex *lex) {

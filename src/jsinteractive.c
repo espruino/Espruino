@@ -324,9 +324,7 @@ void jsiReturnInputLine() {
 
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   int line,col;
-  JsVar *v = jsvLock(lex->sourceVarRef);
-  jsvGetLineAndCol(v, tokenPos, &line, &col);
-  jsvUnLock(v);
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   jsiConsolePrint("line ");
   jsiConsolePrintInt(line);
   jsiConsolePrint(" col ");
@@ -338,34 +336,26 @@ void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
 
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
   int line = 1,col = 1;
-  JsVar *v = jsvLock(lex->sourceVarRef);
-  jsvGetLineAndCol(v, tokenPos, &line, &col);
-  int startOfLine = jsvGetIndexFromLineAndCol(v, line, 1);
-  jsiConsolePrintStringVarUntilEOL(v, startOfLine, false);
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+  int startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
+  jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, false);
   jsiConsolePrint("\n");
   while (col-- > 1) jsiConsolePrintChar(' ');
   jsiConsolePrintChar('^');
   jsiConsolePrint("\n");
-  jsvUnLock(v);
 }
 
 
 /// Print the contents of a string var - directly
 void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
-  assert(jsvHasCharacterData(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      jshTransmit(device, (unsigned char)ch);
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    jshTransmit(device, (unsigned char)ch);
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
 }
 
 void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
