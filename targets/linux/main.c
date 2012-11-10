@@ -49,7 +49,7 @@ bool run_test(const char *filename) {
 
 
   jshInit();
-  jsiInit(true);
+  jsiInit(false /* do not autoload!!! */);
 
   jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
   jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);

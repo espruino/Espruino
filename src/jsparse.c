@@ -349,7 +349,9 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
       return false;
     }
     // Add the function with its name
-    jsvUnLock(jsvAddNamedChild(base, funcVar, funcName));
+    JsVar *funcNameVar = jsvFindChildFromString(jsvGetRef(base), funcName, true);
+    if (funcNameVar) // could be out of memory
+      jsvUnLock(jsvSetValueOfName(funcNameVar, funcVar)); // unlocks funcNameVar
     jsvUnLock(base);
     jsvUnLock(funcVar);
     return true;

@@ -124,6 +124,7 @@
             Move non-hardware-dependent stuff into jsdevices
             Move jshardware.c into targets/stm32/jshardware.c, create 'targets/linux' and use a single makefile
             For + While loops work without reallocating lex 
+            Fix AddNativeFunction when function already exists (and tests + saved state)
 [/CHANGELOG]
 
 [TODO]
