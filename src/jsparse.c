@@ -922,13 +922,22 @@ JsVar *jspeFactorNew() {
         } else {
           // Make sure the function has a 'prototype' var
           JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
+          // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
           jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
           jsvUnLock(prototypeName);
-          jsvUnLock(jspeFunctionCall(objFunc, objFuncName, obj, true, 0));
+          JsVar *funcResult = jspeFunctionCall(objFunc, objFuncName, obj, true, 0);
+          if (jsvIsObject(funcResult)) {
+            jsvUnLock(obj);
+            obj = funcResult;
+          } else {
+            jsvUnLock(funcResult);
+          }
+          jsvUnLock(jsvAddNamedChild(obj, objFunc, JSPARSE_CONSTRUCTOR_VAR));
         }
       }
       jsvUnLock(objFuncName);
       jsvUnLock(objFunc);
+
       return obj;
     }
   } else {

@@ -126,6 +126,8 @@
             For + While loops work without reallocating lex 
             Fix AddNativeFunction when function already exists (and tests + saved state)
             Change jsvFindChildFromX to use JsVar* from JsVarRef - saves a lot of lock/unlock
+            Handle new Foo() as per spec (return value + init of this+prototype) - still does not cope with non-object prototype
+
 [/CHANGELOG]
 
 [TODO]
@@ -135,7 +137,6 @@
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         USB flow control for RX on the F4
-        Handle new Foo() as per spec (return value + init of this+prototype): http://stackoverflow.com/questions/1978049/what-values-can-a-constructor-return-to-avoid-returning-this
 
 
   MEDIUM PRIORITY:
@@ -180,7 +181,7 @@
         setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         digitalWrite with multiple pins doesn't set them all at once
         Implement call to Object.toString when string required
-        If a line overflows and wraps, everything gets confused
+        If a line overflows and wraps, everything in interactive mode gets confused
         Add datatype for PIN, so pins are output by pin name rather than integer value
         Arrays could store data in a n-tree, would be quite efficient (currently 8 data per 1 node)
 
@@ -332,6 +333,7 @@ typedef long long JsSysTime;
 #define JSPARSE_RETURN_VAR "return"
 #define JSPARSE_THIS_VAR "this"
 #define JSPARSE_PROTOTYPE_VAR "prototype"
+#define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
