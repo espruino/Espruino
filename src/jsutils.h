@@ -180,7 +180,6 @@
         setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         digitalWrite with multiple pins doesn't set them all at once
         Implement call to Object.toString when string required
-        JSON.stringify to escape characters in strings
         If a line overflows and wraps, everything gets confused
         Add datatype for PIN, so pins are output by pin name rather than integer value
         Arrays could store data in a n-tree, would be quite efficient (currently 8 data per 1 node)
