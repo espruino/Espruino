@@ -125,6 +125,7 @@
             Move jshardware.c into targets/stm32/jshardware.c, create 'targets/linux' and use a single makefile
             For + While loops work without reallocating lex 
             Fix AddNativeFunction when function already exists (and tests + saved state)
+            Change jsvFindChildFromX to use JsVar* from JsVarRef - saves a lot of lock/unlock
 [/CHANGELOG]
 
 [TODO]

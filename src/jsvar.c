@@ -1078,7 +1078,7 @@ JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name) {
 }
 
 JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name) {
-  JsVar *namedChild = jsvFindChildFromString(jsvGetRef(parent), name, true);
+  JsVar *namedChild = jsvFindChildFromString(parent, name, true);
   if (namedChild) // could be out of memory
     return jsvSetValueOfName(namedChild, child);
   return 0;
@@ -1100,14 +1100,12 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   return name;
 }
 
-JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound) {
-  JsVar *parent = jsvLock(parentref);
+JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFound) {
   JsVarRef childref = parent->firstChild;
   while (childref) {
     JsVar *child = jsvLock(childref);
     if (jsvIsStringEqual(child, name)) {
        // found it! unlock parent but leave child locked
-       jsvUnLock(parent);
        return child;
     }
     childref = child->nextSibling;
@@ -1115,18 +1113,16 @@ JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createI
   }
 
   JsVar *child = 0;
-  if (createIfNotFound) {
+  if (addIfNotFound) {
     child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
     if (child) // could be out of memory
       jsvAddName(parent, child);
   }
-  jsvUnLock(parent);
   return child;
 }
 
 /** Non-recursive finding */
-JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound) {
-  JsVar *parent = jsvLock(parentref);
+JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) {
   JsVar *child;
   JsVarRef childref = parent->firstChild;
 
@@ -1134,7 +1130,6 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
     child = jsvLock(childref);
     if (jsvIsBasicVarEqual(child, childName)) {
       // found it! unlock parent but leave child locked
-      jsvUnLock(parent);
       return child;
     }
     childref = child->nextSibling;
@@ -1153,7 +1148,6 @@ JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFo
     }
     jsvAddName(parent, child);
   }
-  jsvUnLock(parent);
   return child;
 }
 

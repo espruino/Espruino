@@ -286,8 +286,20 @@ void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itsel
 JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
 JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. CHECKS FOR DUPLICATES
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
-JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+static inline JsVar *jsvFindChildFromStringRef(JsVarRef parentref, const char *name, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
+  JsVar *p = jsvLock(parentref);
+  JsVar *v = jsvFindChildFromString(p, name, addIfNotFound);
+  jsvUnLock(p);
+  return v;
+}
+static inline JsVar *jsvFindChildFromVarRef(JsVarRef parentref, JsVar *childName, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
+  JsVar *p = jsvLock(parentref);
+  JsVar *v = jsvFindChildFromVar(p, childName, addIfNotFound);
+  jsvUnLock(p);
+  return v;
+}
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
 
