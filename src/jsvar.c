@@ -392,25 +392,24 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
     }
   } else if (jsvIsString(a) && jsvIsString(b)) {
     int i;
-    JsVar *va = a;
-    JsVar *vb = b;
+    JsvStringIterator ita, itb;
+    jsvStringIteratorNew(&ita, a, 0);
+    jsvStringIteratorNew(&itb, b, 0);
     while (true) {
-      JsVarRef var, vbr;
-      for (i=0;i<(int)jsvGetMaxCharactersInVar(va);i++) {
-        if (va->varData.str[i] != vb->varData.str[i]) return false;
-        if (!va->varData.str[i]) return true; // equal, but end of string
+      char a = jsvStringIteratorGetChar(&ita);
+      char b = jsvStringIteratorGetChar(&itb);
+      if (a != b) {
+        jsvStringIteratorFree(&ita);
+        jsvStringIteratorFree(&itb);
+        return false;
       }
-      // we're at the end of this, but are still ok. Move on
-      // to STRING_EXTs
-      var = va->lastChild;
-      vbr = vb->lastChild;
-      if ((var==0) && (vbr==0)) return true; // both ended
-      if ((var==0) != (vbr==0)) return false; // one longer than the other
-      if (va!=a) jsvUnLock(va);
-      if (vb!=b) jsvUnLock(vb);
-      va = jsvLock(var);
-      vb = jsvLock(vbr);
-      // all done - keep going!
+      if (!a) { // equal, but end of string
+        jsvStringIteratorFree(&ita);
+        jsvStringIteratorFree(&itb);
+        return true;
+      }
+      jsvStringIteratorNext(&ita);
+      jsvStringIteratorNext(&itb);
     }
     // we never get here
   } else {
