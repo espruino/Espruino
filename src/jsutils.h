@@ -138,7 +138,6 @@
         better digitalPulse
         USB flow control for RX on the F4
 
-
   MEDIUM PRIORITY:
         Espruino for raspberry pi
         dump() should understand about __proto__ so objects can be recreated

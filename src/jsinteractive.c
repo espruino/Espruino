@@ -158,30 +158,17 @@ void jsiConsolePrintInt(JsVarInt d) {
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBackup) {
-  assert(jsvHasCharacterData(v));
   int chars = 0;
-  JsVarRef r = jsvGetRef(v);
-  bool done = false;
-  while (!done && r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      fromCharacter--;
-      if (fromCharacter<0) { 
-        if (ch == '\n') {
-          done = true;
-          break;
-        }
-        jsiConsolePrintChar(ch);
-        chars++;
-      }
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, fromCharacter);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (ch == '\n') break;
+    jsiConsolePrintChar(ch);
+    chars++;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   if (andBackup) {
     jsiConsolePrintChar(' ');chars++;
     while (chars--) jsiConsolePrintChar(0x08); //delete
@@ -191,26 +178,16 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
 /** Print the contents of a string var - directly - starting from the given character, and
  * using newLineCh to prefix new lines (if it is not 0). */
 void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, int fromCharacter, char newLineCh) {
-  assert(jsvHasCharacterData(v));
-  int n = 0;
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      if (n>=fromCharacter) {
-        if (ch == '\n') jsiConsolePrintChar('\r');
-        jsiConsolePrintChar(ch);
-        if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
-      }
-      n++;
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, fromCharacter);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (ch == '\n') jsiConsolePrintChar('\r');
+    jsiConsolePrintChar(ch);
+    if (ch == '\n' && newLineCh) jsiConsolePrintChar(newLineCh);
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
 }
 
 /// Print the contents of a string var - directly

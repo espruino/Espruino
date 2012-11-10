@@ -323,4 +323,64 @@ bool jsvGarbageCollect();
  *  visualize the data structure  */
 void jsvDottyOutput();
 
+typedef struct JsvStringIterator {
+  size_t idx;
+  size_t charsInVar;
+  JsVar *var;
+} JsvStringIterator;
+
+static inline void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
+  assert(jsvHasCharacterData(str));
+  it->var = jsvLockAgain(str);
+  it->charsInVar = jsvGetMaxCharactersInVar(str);
+  it->idx = (size_t)startIdx;
+  while (it->idx >= it->charsInVar) {
+    it->idx -= it->charsInVar;
+    if (it->var) {
+      if (it->var->lastChild) {
+        JsVar *next = jsvLock(it->var->lastChild);
+        jsvUnLock(it->var);
+        it->var = next;
+        it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+      } else {
+        jsvUnLock(it->var);
+        it->var = 0;
+        it->charsInVar = 0;
+        return; // get out of loop
+      }
+    }
+  }
+}
+
+static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
+  if (!it->var) return 0;
+  return  it->var->varData.str[it->idx];
+}
+
+static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
+  return it->var && it->idx < it->charsInVar;
+}
+
+static inline void jsvStringIteratorNext(JsvStringIterator *it) {
+  if (!it->var) return;
+  it->idx++;
+  if (it->idx >= it->charsInVar) {
+    it->idx -= it->charsInVar;
+    if (it->var->lastChild) {
+      JsVar *next = jsvLock(it->var->lastChild);
+      jsvUnLock(it->var);
+      it->var = next;
+      it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+    } else {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->charsInVar = 0;
+    }
+  }
+}
+
+static inline void jsvStringIteratorFree(JsvStringIterator *it) {
+  jsvUnLock(it->var);
+}
+
 #endif /* JSVAR_H_ */
