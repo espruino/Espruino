@@ -552,20 +552,13 @@ size_t jsvGetStringLength(JsVar *v) {
 //  IN A STRING  get the number of lines in the string (min=1)
 int jsvGetLinesInString(JsVar *v) {
   int lines = 1;
-  assert(jsvIsString(v) || jsvIsName(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break; 
-      if (ch=='\n') lines++;
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (jsvStringIteratorGetChar(&it)=='\n') lines++;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   return lines;
 }
 
@@ -573,21 +566,16 @@ int jsvGetLinesInString(JsVar *v) {
 int jsvGetCharsOnLine(JsVar *v, int line) {
   int currentLine = 1;
   int chars = 0;
-  assert(jsvIsString(v) || jsvIsName(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break; 
-      if (ch=='\n') currentLine++;
-      else if (currentLine==line) chars++;
-    }
-    r = v->lastChild;
-    jsvUnLock(v);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (jsvStringIteratorGetChar(&it)=='\n') {
+      currentLine++;
+      if (currentLine > line) break;
+    } else if (currentLine==line) chars++;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   return chars;
 }
 
@@ -596,30 +584,26 @@ void jsvGetLineAndCol(JsVar *v, int charIdx, int* line, int *col) {
   int x = 1;
   int y = 1;
   int n = 0;
-  assert((jsvIsString(v) || jsvIsName(v)) && line && col);
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      if (n==charIdx) {
-        jsvUnLock(v);
-        *line = y;
-        *col = x;
-        return;
-      }
-      x++;
-      if (ch=='\n') {
-        x=1; y++;
-      }
-      n++;
+  assert(line && col);
+
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (n==charIdx) {
+      jsvStringIteratorFree(&it);
+      *line = y;
+      *col = x;
+      return;
     }
-    r = v->lastChild;
-    jsvUnLock(v);
+    x++;
+    if (ch=='\n') {
+      x=1; y++;
+    }
+    n++;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   // uh-oh - not found
   *line = y;
   *col = x;
