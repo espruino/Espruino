@@ -44,7 +44,7 @@ typedef enum {
 } InputState;
 
 TODOFlags todo = TODO_NOTHING;
-JsVar *events = 0; // Linked List of events to execute
+JsVar *events = 0; // Array of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsVarRef classSERIALs[USARTS];
@@ -424,7 +424,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
-  events = 0;
+  events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromString("");
   inputCursorPos = 0;
 
@@ -1016,32 +1016,17 @@ void jsiHandleChar(char ch) {
 
 void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or single function
   if (!callbacks) return;
-  // find the last event in our queue
-  JsVar *lastEvent = 0;
-  if (events) {
-    lastEvent = jsvLockAgain(events);
-    while (lastEvent->nextSibling) {
-      JsVar *next = jsvLock(lastEvent->nextSibling);
-      jsvUnLock(lastEvent);
-      lastEvent = next;
-    }
-  }
 
   JsVar *callbackVar = jsvLock(callbacks);
   // if it is a single callback, just add it
   if (jsvIsFunction(callbackVar) || jsvIsString(callbackVar)) {
-    JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
+    JsVar *event = jsvNewWithFlags(JSV_OBJECT);
     if (event) { // Could be out of memory error!
       event = jsvRef(event);
       jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
       if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
-      if (events) {
-        assert(lastEvent);
-        lastEvent->nextSibling = jsvGetRef(event);
-        jsvUnLock(lastEvent);
-        jsvUnLock(event);
-      } else
-        events = event;
+      jsvArrayPush(events, event);
+      jsvUnLock(event);
     }
     jsvUnLock(callbackVar);
   } else {
@@ -1054,45 +1039,32 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
       JsVar *child = jsvLock(next);
       
       // for each callback...
-      JsVar *event = jsvNewWithFlags(JSV_OBJECT|JSV_NATIVE);
+      JsVar *event = jsvNewWithFlags(JSV_OBJECT);
       if (event) { // Could be out of memory error!
         event = jsvRef(event);
         jsvUnLock(jsvAddNamedChild(event, child, "func"));
         if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
         // add event to the events list
-        if (lastEvent) {
-          lastEvent->nextSibling = jsvGetRef(event);
-          jsvUnLock(lastEvent);
-        } else
-          events = event;
-        jsvUnLock(lastEvent);
-        lastEvent = event;
+        jsvArrayPush(events, event);
+        jsvUnLock(event);
         // go to next callback
       }
       next = child->nextSibling;
       jsvUnLock(child);
     }
-    // clean up
-    jsvUnLock(lastEvent);
   }
 }
 
 void jsiExecuteEvents() {
-  bool hasEvents = events!=0;
+  bool hasEvents = !jsvArrayIsEmpty(events);
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
-  while (events) {
+  while (!jsvArrayIsEmpty(events)) {
+    JsVar *event = jsvSkipNameAndUnLock(jsvArrayPop(events));
     // Get function to execute
-    JsVar *func = jsvSkipNameAndUnLock(jsvFindChildFromString(events, "func", false));
-    JsVar *arg0 = jsvSkipNameAndUnLock(jsvFindChildFromString(events, "arg0", false));
-    // free + go to next
-    JsVarRef next = events->nextSibling;
-    events->nextSibling = 0;
-    jsvUnLock(events);
-    if (next) {
-      events = jsvLock(next);
-      jsvUnRef(events); // because we removed this from the last element
-    } else
-      events = 0;
+    JsVar *func = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "func", false));
+    JsVar *arg0 = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "arg0", false));
+    // free
+    jsvUnLock(event);
 
 
     // now run..
@@ -1238,7 +1210,7 @@ void jsiIdle() {
   jsvUnLock(timerArrayPtr);
 
   // Just in case we got any events to do and didn't clear loopsIdling before
-  if (events) loopsIdling = 0;
+  if (!jsvArrayIsEmpty(events)) loopsIdling = 0;
 
   // TODO: could now sort events by time?
   // execute any outstanding events

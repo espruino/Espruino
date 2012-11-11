@@ -1174,7 +1174,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   return index+1; // new size
 }
 
-/// Removes the last element of an array, and returns that element (or 0 if empty)
+/// Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPop(JsVar *arr) {
   assert(jsvIsArray(arr));
   if (arr->lastChild) {
