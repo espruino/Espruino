@@ -614,28 +614,22 @@ int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col) {
   int x = 1;
   int y = 1;
   int n = 0;
-  assert(jsvIsString(v) || jsvIsName(v));
-  JsVarRef r = jsvGetRef(v);
-  while (r) {
-    v = jsvLock(r);
-    size_t l = jsvGetMaxCharactersInVar(v);
-    size_t i;
-    for (i=0;i<l;i++) {
-      char ch = v->varData.str[i];
-      if (!ch) break;
-      if ((y==line && x>=col) || y>line) {
-        jsvUnLock(v);
-        return (y>line) ? (n-1) : n;
-      }
-      x++;
-      if (ch=='\n') {
-        x=1; y++;
-      }
-      n++;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if ((y==line && x>=col) || y>line) {
+      jsvStringIteratorFree(&it);
+      return (y>line) ? (n-1) : n;
     }
-    r = v->lastChild;
-    jsvUnLock(v);
+    x++;
+    if (ch=='\n') {
+      x=1; y++;
+    }
+    n++;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   return n;
 }
 
@@ -694,9 +688,6 @@ void jsvAppendCharacter(JsVar *var, char ch) {
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
  *  stridx can be negative to go from end of string */
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
-  assert(jsvHasCharacterData(str));
-  str = jsvLockAgain(str);
-
   JsVar *block = jsvLockAgain(var);
   assert(jsvIsString(var));
   // Find the block at end of the string...
@@ -708,43 +699,13 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   // find how full the block is
   unsigned int blockChars=0;
   while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
-        blockChars++;
-  // Now make sure we're in the correct block of str
-  if (stridx < 0) stridx += (int)jsvGetStringLength(str);
-  while (str && stridx >= (int)jsvGetMaxCharactersInVar(str)) {
-    JsVarRef n = str->lastChild;
-    stridx -= (int)jsvGetMaxCharactersInVar(str);
-    jsvUnLock(str);
-    str = n ? jsvLock(n) : 0;
-  }
-
+        blockChars++; // TODO: fix for zeros in strings
   // now start appending
-  while (str) {
-    size_t i;
-    // copy data in
-    for (i=blockChars;i<jsvGetMaxCharactersInVar(block);i++) {
-      char ch = 0;
-      if (str) {
-        ch = str->varData.str[stridx];
-        if (ch && --maxLength>0) {
-          stridx++;
-          if (stridx >= (int)jsvGetMaxCharactersInVar(str)) {
-            JsVarRef n = str->lastChild;
-            stridx = 0;
-            jsvUnLock(str);
-            str = n ? jsvLock(n) : 0;
-          }
-        } else {
-          // we're done with str, deallocate it
-          jsvUnLock(str);
-          str = 0;
-        }
-      }
-      block->varData.str[i] = ch;
-    }
-    // if there is still some left, it's because we filled up our var...
-    // make a new one, link it in, and unlock the old one.
-    if (str) {
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, stridx);
+  while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       JsVar *next = jsvNew();
       if (!next) break; // out of memory
       next = jsvRef(next);
@@ -754,7 +715,10 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
       block = next;
       blockChars=0; // it's new, so empty
     }
+    block->varData.str[blockChars++] = ch;
+    jsvStringIteratorNext(&it);
   }
+  jsvStringIteratorFree(&it);
   jsvUnLock(block);
 }
 
@@ -768,21 +732,11 @@ char jsvGetCharInString(JsVar *v, int idx) {
   if (idx<0) idx += (int)jsvGetStringLength(v); // <0 goes from end of string
   if (idx<0) return 0;
 
-  v = jsvLockAgain(v);
-  while (v && idx >= (int)jsvGetMaxCharactersInVar(v)) {
-    JsVarRef next;
-    idx -= (int)jsvGetMaxCharactersInVar(v);
-    next = v->lastChild;
-    jsvUnLock(v);
-    v = jsvLock(next);
-  }
-
-  char c = 0;
-  if (v) {
-    c = v->varData.str[idx];
-    jsvUnLock(v);
-  }
-  return c;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, idx);
+  char ch = jsvStringIteratorGetChar(&it);
+  jsvStringIteratorFree(&it);
+  return ch;
 }
 
 JsVarInt jsvGetInteger(const JsVar *v) {
@@ -850,44 +804,26 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
  * For a basic strcmp, do: jsvCompareString(a,b,0,0,false)
  *  */
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString) {
-  int idxa = starta;
-  int idxb = startb;
-  assert(jsvIsString(va) || jsvIsName(va)); // we hope! Might just want to return 0?
-  assert(jsvIsString(vb) || jsvIsName(vb)); // we hope! Might just want to return 0?
-  va = jsvLockAgain(va);
-  vb = jsvLockAgain(vb);
-
-  // step to first positions
+  JsvStringIterator ita, itb;
+  jsvStringIteratorNew(&ita, va, starta);
+  jsvStringIteratorNew(&itb, vb, startb);
+   // step to first positions
   while (true) {
-    while (va && idxa >= (int)jsvGetMaxCharactersInVar(va)) {
-      JsVarRef n = va->lastChild;
-      idxa -= (int)jsvGetMaxCharactersInVar(va);
-      jsvUnLock(va);
-      va = n ? jsvLock(n) : 0;
-    }
-    while (vb && idxb >= (int)jsvGetMaxCharactersInVar(vb)) {
-      JsVarRef n = vb->lastChild;
-      idxb -= (int)jsvGetMaxCharactersInVar(vb);
-      jsvUnLock(vb);
-      vb = n ? jsvLock(n) : 0;
-    }
-
-    char ca = (char) (va ? va->varData.str[idxa] : 0);
-    char cb = (char) (vb ? vb->varData.str[idxb] : 0);
+    char ca = jsvStringIteratorGetChar(&ita);
+    char cb = jsvStringIteratorGetChar(&itb);
     if (ca != cb) {
-      jsvUnLock(va);
-      jsvUnLock(vb);
+      jsvStringIteratorFree(&ita);
+      jsvStringIteratorFree(&itb);
       if ((ca==0 || cb==0) && equalAtEndOfString) return 0;
       return ca - cb;
     }
-    if (ca == 0) { // end of string - equal!
-      jsvUnLock(va);
-      jsvUnLock(vb);
+    if (ca == 0) { // both equal, but end of string
+      jsvStringIteratorFree(&ita);
+      jsvStringIteratorFree(&itb);
       return 0;
     }
-
-    idxa++;
-    idxb++;
+    jsvStringIteratorNext(&ita);
+    jsvStringIteratorNext(&itb);
   }
   // never get here, but the compiler warns...
   return true;

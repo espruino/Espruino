@@ -350,7 +350,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
               if (!part) break; // out of memory
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
               if (idxvar) { // could be out of memory
-                jsvAppendStringVar(part, parent, last, idx-(last+1));
+                if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+                jsvAppendStringVar(part, parent, last, idx-last);
                 jsvAddName(array, idxvar);
                 last = idx+splitlen;
                 jsvUnLock(idxvar);
