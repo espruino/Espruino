@@ -391,7 +391,6 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       }
     }
   } else if (jsvIsString(a) && jsvIsString(b)) {
-    int i;
     JsvStringIterator ita, itb;
     jsvStringIteratorNew(&ita, a, 0);
     jsvStringIteratorNew(&itb, b, 0);
@@ -448,33 +447,22 @@ void jsvGetString(JsVar *v, char *str, size_t len) {
    } else if (jsvIsFloat(v)) {
      ftoa(v->varData.floating, str);
    } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v)) {
-      JsVar *var = jsvLockAgain(v);
-      JsVarRef ref = 0;
-      if (jsvIsStringExt(v))
+       if (jsvIsStringExt(v))
         jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
-      // print the string - we have to do it a block
-      // at a time!
-      while (var) {
-        JsVarRef refNext;
-        int i;
-        for (i=0;i<(int)jsvGetMaxCharactersInVar(var);i++) {
-          if (len--<=0) {
-            *str = 0;
-            jsWarn("jsvGetString overflowed\n");
-            jsvUnLock(var); // Note use of if (ref), not var
-            return;
-          }
-          *(str++) = var->varData.str[i];
+      JsvStringIterator it;
+      jsvStringIteratorNew(&it, v, 0);
+      while (jsvStringIteratorHasChar(&it)) {
+        if (len--<=1) {
+          *str = 0;
+          jsWarn("jsvGetString overflowed\n");
+          jsvStringIteratorFree(&it);
+          return;
         }
-        // Go to next
-        refNext = var->lastChild;
-        jsvUnLock(var);
-        ref = refNext;
-        var = ref ? jsvLock(ref) : 0;
+        *(str++) = jsvStringIteratorGetChar(&it);
+        jsvStringIteratorNext(&it);
       }
-      jsvUnLock(var);
-      // if it has not had a 0 appended, do it now...
-      if (str[-1]) *str = 0;
+      jsvStringIteratorFree(&it);
+      *str = 0;
     } else {
       // Try and get as a JsVar string, and try again
       JsVar *stringVar = jsvAsString(v, false);
