@@ -44,7 +44,7 @@ typedef enum {
 } InputState;
 
 TODOFlags todo = TODO_NOTHING;
-JsVarRef events = 0; // Linked List of events to execute
+JsVar *events = 0; // Linked List of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
 JsVarRef classSERIALs[USARTS];
@@ -301,7 +301,7 @@ void jsiMoveCursorChar(JsVar *v, int fromCharacter, int toCharacter) {
 void jsiConsoleRemoveInputLine() {
   if (!inputLineRemoved) {
     inputLineRemoved = true;
-    if (echo) { // intentionally not using jsiShowInputLine()
+    if (echo && inputLine) { // intentionally not using jsiShowInputLine()
       jsiMoveCursorChar(inputLine, inputCursorPos, 0);
       jsiConsoleEraseStringVarFrom(inputLine, 0, true);
       jsiConsolePrintChar(0x08); // go back to start of line
@@ -520,7 +520,7 @@ void jsiSoftKill() {
 
   // Unref Watches/etc
   if (events) {
-    jsvUnRefRef(events);
+    jsvUnLock(events);
     events=0;
   }
   if (timerArray) {
@@ -1019,7 +1019,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
   // find the last event in our queue
   JsVar *lastEvent = 0;
   if (events) {
-    lastEvent = jsvLock(events);
+    lastEvent = jsvLockAgain(events);
     while (lastEvent->nextSibling) {
       JsVar *next = jsvLock(lastEvent->nextSibling);
       jsvUnLock(lastEvent);
@@ -1035,12 +1035,13 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
       event = jsvRef(event);
       jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
       if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
-      if (lastEvent) {
+      if (events) {
+        assert(lastEvent);
         lastEvent->nextSibling = jsvGetRef(event);
         jsvUnLock(lastEvent);
+        jsvUnLock(event);
       } else
-        events = jsvGetRef(event);
-      jsvUnLock(event);
+        events = event;
     }
     jsvUnLock(callbackVar);
   } else {
@@ -1063,7 +1064,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
           lastEvent->nextSibling = jsvGetRef(event);
           jsvUnLock(lastEvent);
         } else
-          events = jsvGetRef(event);
+          events = event;
         jsvUnLock(lastEvent);
         lastEvent = event;
         // go to next callback
@@ -1077,18 +1078,22 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
 }
 
 void jsiExecuteEvents() {
-  bool hasEvents = events;
+  bool hasEvents = events!=0;
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
   while (events) {
-    JsVar *event = jsvLock(events);
     // Get function to execute
-    JsVar *func = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "func", false));
-    JsVar *arg0 = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "arg0", false));
+    JsVar *func = jsvSkipNameAndUnLock(jsvFindChildFromString(events, "func", false));
+    JsVar *arg0 = jsvSkipNameAndUnLock(jsvFindChildFromString(events, "arg0", false));
     // free + go to next
-    events = event->nextSibling;
-    event->nextSibling = 0;
-    jsvUnRef(event);
-    jsvUnLock(event);
+    JsVarRef next = events->nextSibling;
+    events->nextSibling = 0;
+    jsvUnLock(events);
+    if (next) {
+      events = jsvLock(next);
+      jsvUnRef(events); // because we removed this from the last element
+    } else
+      events = 0;
+
 
     // now run..
     if (func) {

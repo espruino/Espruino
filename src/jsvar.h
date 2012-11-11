@@ -31,7 +31,6 @@ typedef struct {
 #ifdef LARGE_MEM
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
 #endif
-  unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
@@ -62,7 +61,6 @@ typedef struct {
   JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
 
-
 /* We have a few different types:
  *
  *  OBJECT/ARRAY - uses firstChild/lastChild to link to NAMEs
@@ -71,6 +69,8 @@ typedef struct {
  *  STRING - use firstChild to link to other STRINGs if String value is too long
  *  INT/DOUBLE - firstChild never used
  */
+
+static inline unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 void *jsvGetVarDataPointer();
 int jsvGetVarDataSize();
@@ -129,7 +129,7 @@ static inline void jsvUnRef(JsVar *var) {
   assert(var && var->refs>0);
   var->refs--;
   // locks are never 0 here, so why bother checking!
-  assert(var->locks>0);
+  assert(jsvGetLocks(var)>0);
 }
 
 /// Helper fn, Reference - set this variable as used by something
@@ -156,6 +156,7 @@ static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
 const char *jsvGetBasicObjectName(JsVar *v);
 bool jsvIsBuiltInObject(const char *name);
 
+static inline bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 static inline bool jsvIsBoolean(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN; }

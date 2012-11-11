@@ -297,7 +297,7 @@ bool jspeFunctionArguments(JsVar *funcVar) {
           jspSetError();
           return false;
         }
-        param->flags = JSV_FUNCTION_PARAMETER;
+        param->flags = (param->flags & (JsVarFlags)(~JSV_VARTYPEMASK)) | JSV_FUNCTION_PARAMETER;
         jsvUnLock(param);
       }
       JSP_MATCH(LEX_ID);

@@ -347,8 +347,13 @@ typedef long long JsSysTime;
 // Used when we have enums we want to squash down
 #define PACKED_FLAGS  __attribute__ ((__packed__))  
 
+
+#define JSV_LOCK_SHIFT 8
+#define JSV_LOCK_MAX  15
+#define JSV_STRING_LEN_SHIFT 12
+#define JSV_STRING_LEN_MAX 15
+
 typedef enum {
-  // OPT: These can be packed as there's no point being an array AND a float
     JSV_NUMERICMASK = 8,
     JSV_VARTYPEMASK = 15,
 
@@ -363,11 +368,12 @@ typedef enum {
     JSV_INTEGER     = 8, // integer number (note JSV_NUMERICMASK)
     JSV_FLOAT       = 9, // floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = 10, // boolean (note JSV_NUMERICMASK)
+    JSV_ROOT        = 11,
 
     JSV_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
     JSV_NATIVE      = 32, // to specify this is a native function, root, OR that it should not be freed
-    JSV_GARBAGE_COLLECT = 64, // When garbage collecting, this flag is true IF we should GC!
 
+    JSV_GARBAGE_COLLECT = 64, // When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
@@ -376,8 +382,15 @@ typedef enum {
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,
     JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION,
-    JSV_ROOT = JSV_OBJECT | JSV_NATIVE,
+
+
+    JSV_LOCK_MASK = JSV_LOCK_MAX << JSV_LOCK_SHIFT,
+    JSV_LOCK_ONE  = 1 << JSV_LOCK_SHIFT,
+
+    JSV_STRING_LEN_MASK = JSV_STRING_LEN_MAX << JSV_STRING_LEN_SHIFT,
+    JSV_STRING_LEN_ONE  = 1 << JSV_STRING_LEN_SHIFT,
 } PACKED_FLAGS JsVarFlags;
+
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,
