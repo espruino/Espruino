@@ -605,8 +605,10 @@ void jsiInit(bool autoLoad) {
   jsiSoftInit();
 
   if (echo) { // intentionally not using jsiShowInputLine()
+#ifndef LINUX
     // set up terminal to avoid word wrap
     jsiConsolePrint("\e[?7l");
+#endif
     // rectangles @ http://www.network-science.de/ascii/
     jsiConsolePrint("\r\n"
               " _____                 _ \r\n"
@@ -1022,7 +1024,6 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
   if (jsvIsFunction(callbackVar) || jsvIsString(callbackVar)) {
     JsVar *event = jsvNewWithFlags(JSV_OBJECT);
     if (event) { // Could be out of memory error!
-      event = jsvRef(event);
       jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
       if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
       jsvArrayPush(events, event);
@@ -1041,7 +1042,6 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0) { // array of functions or 
       // for each callback...
       JsVar *event = jsvNewWithFlags(JSV_OBJECT);
       if (event) { // Could be out of memory error!
-        event = jsvRef(event);
         jsvUnLock(jsvAddNamedChild(event, child, "func"));
         if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
         // add event to the events list

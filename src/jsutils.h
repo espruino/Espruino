@@ -147,8 +147,9 @@
         Implement XON/XOFF flow control
         Add Array.splice
         Make save() retry writing to flash if there was an error
-        Add instanceof operator
+        Add typeof + instanceof operators
         Add 'delete' keyword
+        Add try..catch
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
         Save state on setWatch interrupt (e.state)
@@ -174,8 +175,9 @@
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
-        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
-        Add nice iterators for strings and maybe arrays (struct + inline fns)
+        Ensure code is compatible with that created by Emscriptem
+        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)        
+        Add nice iterators for arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
         setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         digitalWrite with multiple pins doesn't set them all at once

@@ -1572,7 +1572,6 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
 
 /** Run a garbage collection sweep - return true if things have been freed */
 bool jsvGarbageCollect() {
-  return false;
   int i;
   // clear garbage collect flags
   for (i=0;i<jsVarsSize;i++)  {
