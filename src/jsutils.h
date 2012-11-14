@@ -120,7 +120,7 @@
             Fix parsing of octal numbers in strings (so don't have to be 3 chars long)
             Drastically improved stack usage using small stub functions (at expense of a bit of speed)
             dump() also dumps out prototypes for functions
-     1v16 : Inlining of jsvLock/UnLock to improve speed
+     1v16 : Inlining of jsvLock/UnLock in jsvar.h to improve speed
 [/CHANGELOG]
 
 [TODO]
