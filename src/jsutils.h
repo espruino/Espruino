@@ -121,6 +121,13 @@
             Drastically improved stack usage using small stub functions (at expense of a bit of speed)
             dump() also dumps out prototypes for functions
      1v16 : Inlining of jsvLock/UnLock in jsvar.h to improve speed
+            Move non-hardware-dependent stuff into jsdevices
+            Move jshardware.c into targets/stm32/jshardware.c, create 'targets/linux' and use a single makefile
+            For + While loops work without reallocating lex 
+            Fix AddNativeFunction when function already exists (and tests + saved state)
+            Change jsvFindChildFromX to use JsVar* from JsVarRef - saves a lot of lock/unlock
+            Handle new Foo() as per spec (return value + init of this+prototype) - still does not cope with non-object prototype
+
 [/CHANGELOG]
 
 [TODO]
@@ -130,20 +137,21 @@
         Move load/save/etc into 'System' class for speed
         better digitalPulse
         USB flow control for RX on the F4
-        JsLex is large - allow ability to set an 'eof' marker so that while/for/etc don't have to make their own lexers
 
   MEDIUM PRIORITY:
+        Espruino for raspberry pi
         dump() should understand about __proto__ so objects can be recreated
         Experiment with moving variables to the front of their object when they are accessed (speedup)
-        Split out STM32-only hardware code
         I2C/SPI support
         Flow control? (first in software) 2nd '{...}' parameter on serial init, Serial.setCTS/etc?
+        Implement XON/XOFF flow control
         Add Array.splice
         Make save() retry writing to flash if there was an error
-        Add instanceof operator
+        Add typeof + instanceof operators
+        Add 'delete' keyword
+        Add try..catch
         Check precedence against MDN javascript op precedence page
         Add 'setTimer' (or similar?) to schedule a single callback at a specified time (so the time from a setWatch can be used to schedule something to occur exactly X ms after)
-        Implement XON/XOFF flow control
         Save state on setWatch interrupt (e.state)
         Save pin input/output state along with save()
         When going to sleep, shut ext osc down and drop to 8Mhz internal (currently 20mA sleep, 35mA awake)
@@ -154,10 +162,11 @@
         Add shiftOut function
         Lexer could store a name, so when line numbers are reported for errors, it can say where
         analogWrite may accidentally reset the timer (causing glitches if called quickly)
-        Use RPi to profile the code
-        Add #define to beginning of each function - use it to store stack usage per-fn while running
+        Port to Netduino Plus 2 (STM32F4, Ethernet, SD)
  
   LOW PRIORITY
+        Cache the last few IDs that were found (clear cache if variable added or scope changes)
+        Turbo overclocking mode (VL running at 48Mhz seems ok according to IgorM)
         Redo built-in functions with script to create a fast checker
         Instead of using execInfo.lex->tokenStart, loops store index + ref to stringext -> superfast!
         function.call(thisArg[, arg1[, arg2, ...]]) / function.apply(thisArg[, argsArray])
@@ -166,15 +175,14 @@
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
         Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
-        Add 'delete' keyword for killing array items?
-        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)
-        Add nice iterators for strings and maybe arrays (struct + inline fns)
+        Ensure code is compatible with that created by Emscriptem
+        Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)        
+        Add nice iterators for arrays (struct + inline fns)
         Add string splice function (remove chars + add chars) and then speed up jsiHandleChar
         setWatch("data.push(getTime());save();",BTN,true); gets stuck in save loop
         digitalWrite with multiple pins doesn't set them all at once
         Implement call to Object.toString when string required
-        JSON.stringify to escape characters in strings
-        If a line overflows and wraps, everything gets confused
+        If a line overflows and wraps, everything in interactive mode gets confused
         Add datatype for PIN, so pins are output by pin name rather than integer value
         Arrays could store data in a n-tree, would be quite efficient (currently 8 data per 1 node)
 
@@ -193,11 +201,17 @@
         ToJSON for arrays could probably be faster now arrays are sorted
         http://doctrina.org/Javascript-Function-Invocation-Patterns.html - invoking a function from within method *should* make 'this' point to root 
                possibly, 'this' should be a keyword, not a variable that we define (would be faster)
+        Use the 'True Random Number Generator' in some of the STM32s
 
 [/TODO]
 
 Contact http://www.wired.com/gadgetlab/author/snackfight/
+http://www.engadget.com/2012/11/08/arduino-micro-shrinks-your-favorite-diy-platform/
 Seems to blog odd bits about embedded dev
+http://www.hobbytronics.co.uk/ might be a good stockist?
+http://www.pololu.com/ (contacted)
+http://www.parallax.com/
+http://hackerthings.com/
 
 Board ideas:
    Arduino form factor, but don't put sockets in.
@@ -210,7 +224,8 @@ Board ideas:
    Unpopulated points for L293D-type ICs
    Ethernet version with F4 http://blog.tkjelectronics.dk/2012/08/ethernet-on-stm32f4discovery-using-external-phy/
    Or ethernet with microchip ENC28J60
-     
+   Display connector (nokia phone?) simple touchscreen?
+   WiFi - looks easy with http://uk.farnell.com/microchip/rn131c-rm/module-wlan-w-ant-u-fl-conn/dp/2143313 (could just leave pads?)
 
 When presenting:
    Show small time to first code
@@ -294,6 +309,9 @@ typedef unsigned long long JsVarIntUnsigned;
   typedef long JsVarFloat;
 #endif
 
+typedef short JslCharPos;
+#define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
+typedef long long JsSysTime;
 
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
@@ -310,11 +328,13 @@ typedef unsigned long long JsVarIntUnsigned;
 
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)
+#define NOT_USED(x) ( (void)(x) )
 
 // javascript specific names
 #define JSPARSE_RETURN_VAR "return"
 #define JSPARSE_THIS_VAR "this"
 #define JSPARSE_PROTOTYPE_VAR "prototype"
+#define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
 // internal names that hopefully nobody will be able to access
 #define JSPARSE_FUNCTION_CODE_NAME "#code#"
@@ -329,8 +349,13 @@ typedef unsigned long long JsVarIntUnsigned;
 // Used when we have enums we want to squash down
 #define PACKED_FLAGS  __attribute__ ((__packed__))  
 
+
+#define JSV_LOCK_SHIFT 8
+#define JSV_LOCK_MAX  15
+#define JSV_STRING_LEN_SHIFT 12
+#define JSV_STRING_LEN_MAX 15
+
 typedef enum {
-  // OPT: These can be packed as there's no point being an array AND a float
     JSV_NUMERICMASK = 8,
     JSV_VARTYPEMASK = 15,
 
@@ -345,11 +370,12 @@ typedef enum {
     JSV_INTEGER     = 8, // integer number (note JSV_NUMERICMASK)
     JSV_FLOAT       = 9, // floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = 10, // boolean (note JSV_NUMERICMASK)
+    JSV_ROOT        = 11,
 
     JSV_NAME        = 16, // a NAME of a variable - this isn't a variable itself (and can be an int/string/etc)
     JSV_NATIVE      = 32, // to specify this is a native function, root, OR that it should not be freed
-    JSV_GARBAGE_COLLECT = 64, // When garbage collecting, this flag is true IF we should GC!
 
+    JSV_GARBAGE_COLLECT = 64, // When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = 128, // used to stop recursive loops in jsvTrace
 
     JSV_FUNCTION_PARAMETER = JSV_FUNCTION | JSV_NAME, // this is inside a function, so it should be quite obvious
@@ -358,8 +384,15 @@ typedef enum {
     JSV_NAME_AS_STRING = JSV_NAME | JSV_STRING,
     JSV_NAME_AS_INT = JSV_NAME | JSV_INTEGER,
     JSV_NATIVE_FUNCTION = JSV_NATIVE | JSV_FUNCTION,
-    JSV_ROOT = JSV_OBJECT | JSV_NATIVE,
+
+
+    JSV_LOCK_MASK = JSV_LOCK_MAX << JSV_LOCK_SHIFT,
+    JSV_LOCK_ONE  = 1 << JSV_LOCK_SHIFT,
+
+    JSV_STRING_LEN_MASK = JSV_STRING_LEN_MAX << JSV_STRING_LEN_SHIFT,
+    JSV_STRING_LEN_ONE  = 1 << JSV_STRING_LEN_SHIFT,
 } PACKED_FLAGS JsVarFlags;
+
 
 typedef enum LEX_TYPES {
     LEX_EOF = 0,

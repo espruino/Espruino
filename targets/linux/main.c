@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <signal.h>
 
@@ -11,14 +12,17 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 
+#define TEST_DIR "tests/"
 
 bool isRunning = true;
 
 void nativeQuit(JsVarRef var) {
+  NOT_USED(var);
   isRunning = false;
 }
 
 void nativeInterrupt(JsVarRef var) {
+  NOT_USED(var);
   jspSetInterrupted(true);
 }
 
@@ -30,7 +34,7 @@ bool run_test(const char *filename) {
     printf("Cannot stat file! '%s'\r\n", filename);
     return false;
   }
-  int size = results.st_size;
+  int size = (int)results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
@@ -38,14 +42,14 @@ bool run_test(const char *filename) {
      return false;
   }
   char *buffer = malloc(size+1);
-  long actualRead = fread(buffer,1,size,file);
+  size_t actualRead = fread(buffer,1,size,file);
   buffer[actualRead]=0;
   buffer[size]=0;
   fclose(file);
 
 
   jshInit();
-  jsiInit(true);
+  jsiInit(false /* do not autoload!!! */);
 
   jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
   jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);
@@ -66,7 +70,7 @@ bool run_test(const char *filename) {
   else {
     printf("----------------------------------\r\n");
     printf("----------------------------- FAIL %s <-------\r\n", filename);
-    jsvTrace(jsiGetParser()->root, 0);
+    jsvTrace(jsvGetRef(jsiGetParser()->root), 0);
     printf("----------------------------- FAIL %s <-------\r\n", filename);
     printf("----------------------------------\r\n");
   }
@@ -92,11 +96,12 @@ bool run_all_tests() {
   int count = 0;
   int passed = 0;
 
-  char *fails = strdup("");
+  char *fails = malloc(1);
+  fails[0] = 0;
 
   while (test_num<1000) {
     char fn[32];
-    sprintf(fn, "../tests/test%03d.js", test_num);
+    sprintf(fn, TEST_DIR"test%03d.js", test_num);
     // check if the file exists - if not, assume we're at the end of our tests
     FILE *f = fopen(fn,"r");
     if (!f) break;
@@ -116,7 +121,7 @@ bool run_all_tests() {
     test_num++;
   }
 
-  if (count==0) printf("No tests found in ../tests/test*.js!\r\n");
+  if (count==0) printf("No tests found in "TEST_DIR"test*.js!\r\n");
   printf("--------------------------------------------------\r\n");
   printf(" %d of %d tests passed\r\n", passed, count);
   if (passed!=count) {
@@ -150,7 +155,7 @@ bool run_memory_tests(int vars) {
 
   while (test_num<1000) {
     char fn[32];
-    sprintf(fn, "../tests/test%03d.js", test_num);
+    sprintf(fn, TEST_DIR"test%03d.js", test_num);
     // check if the file exists - if not, assume we're at the end of our tests
     FILE *f = fopen(fn,"r");
     if (!f) break;
@@ -160,7 +165,7 @@ bool run_memory_tests(int vars) {
     test_num++;
   }
 
-  if (count==0) printf("No tests found in ../tests/test*.js!\n");
+  if (count==0) printf("No tests found in "TEST_DIR"test*.js!\n");
   return true;
 }
 

@@ -10,6 +10,7 @@
 
 #include "jsutils.h"
 
+
 typedef void (*JsCallback)(JsVarRef var) 
 #ifdef SDCC
 __reentrant
@@ -30,7 +31,6 @@ typedef struct {
 #ifdef LARGE_MEM
   JsVarRef this; ///< The reference of this variable itself (so we can get back)
 #endif
-  unsigned char locks; ///< When a pointer is obtained, 'locks' is increased
   unsigned short refs; ///< The number of references held to this - used for garbage collection
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
@@ -61,7 +61,6 @@ typedef struct {
   JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
 
-
 /* We have a few different types:
  *
  *  OBJECT/ARRAY - uses firstChild/lastChild to link to NAMEs
@@ -70,6 +69,8 @@ typedef struct {
  *  STRING - use firstChild to link to other STRINGs if String value is too long
  *  INT/DOUBLE - firstChild never used
  */
+
+static inline unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 void *jsvGetVarDataPointer();
 int jsvGetVarDataSize();
@@ -92,7 +93,7 @@ void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
-JsVar *jsvNewFromLexer(struct JsLex *lex, int charFrom, int charTo); // Create a new STRING from part of the lexer
+JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
@@ -128,7 +129,7 @@ static inline void jsvUnRef(JsVar *var) {
   assert(var && var->refs>0);
   var->refs--;
   // locks are never 0 here, so why bother checking!
-  assert(var->locks>0);
+  assert(jsvGetLocks(var)>0);
 }
 
 /// Helper fn, Reference - set this variable as used by something
@@ -155,6 +156,7 @@ static inline JsVarRef jsvUnRefRef(JsVarRef ref) {
 const char *jsvGetBasicObjectName(JsVar *v);
 bool jsvIsBuiltInObject(const char *name);
 
+static inline bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 static inline bool jsvIsInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_INTEGER; }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 static inline bool jsvIsBoolean(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN; }
@@ -171,7 +173,7 @@ static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPE
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
 static inline bool jsvHasCharacterData(const JsVar *v) { return jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v); } // does the v->data union contain character data?
-static inline bool jsvHasChildren(const JsVar *v) { return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v); }
+static inline bool jsvHasChildren(const JsVar *v) { return jsvIsFunction(v) || jsvIsObject(v) || jsvIsArray(v) || jsvIsRoot(v); }
 
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
@@ -285,8 +287,20 @@ void jsvAddName(JsVar *parent, JsVar *nameChild); // Add a child, which is itsel
 JsVar *jsvAddNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. Returns a LOCKED var. DOES NOT CHECK FOR DUPLICATES
 JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a child, and create a name for it. CHECKS FOR DUPLICATES
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild
-JsVar *jsvFindChildFromString(JsVarRef parentref, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-JsVar *jsvFindChildFromVar(JsVarRef parentref, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
+static inline JsVar *jsvFindChildFromStringRef(JsVarRef parentref, const char *name, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
+  JsVar *p = jsvLock(parentref);
+  JsVar *v = jsvFindChildFromString(p, name, addIfNotFound);
+  jsvUnLock(p);
+  return v;
+}
+static inline JsVar *jsvFindChildFromVarRef(JsVarRef parentref, JsVar *childName, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
+  JsVar *p = jsvLock(parentref);
+  JsVar *v = jsvFindChildFromVar(p, childName, addIfNotFound);
+  jsvUnLock(p);
+  return v;
+}
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
 
@@ -295,10 +309,11 @@ JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it 
 JsVar *jsvGetArrayItem(JsVar *arr, int index); ///< Get an item at the specified index in the array (and lock it)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds new elements to the end of an array, and returns the new length
-JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty) includes the NAME
+JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayGetLast(JsVar *arr); ///< Get the last element of an array (does not remove, unlike jsvArrayPop), and returns that element (or 0 if empty) includes the NAME
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
+static inline bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !arr->firstChild; } ///< Return true is array is empty
 
 /** Write debug info for this Var out to the console */
 void jsvTrace(JsVarRef ref, int indent);
@@ -309,5 +324,65 @@ bool jsvGarbageCollect();
 /** Dotty output for the graphviz package - helps
  *  visualize the data structure  */
 void jsvDottyOutput();
+
+typedef struct JsvStringIterator {
+  size_t idx;
+  size_t charsInVar;
+  JsVar *var;
+} JsvStringIterator;
+
+static inline void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
+  assert(jsvHasCharacterData(str));
+  it->var = jsvLockAgain(str);
+  it->charsInVar = jsvGetMaxCharactersInVar(str);
+  it->idx = (size_t)startIdx;
+  while (it->idx >= it->charsInVar) {
+    it->idx -= it->charsInVar;
+    if (it->var) {
+      if (it->var->lastChild) {
+        JsVar *next = jsvLock(it->var->lastChild);
+        jsvUnLock(it->var);
+        it->var = next;
+        it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+      } else {
+        jsvUnLock(it->var);
+        it->var = 0;
+        it->charsInVar = 0;
+        return; // get out of loop
+      }
+    }
+  }
+}
+
+static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
+  if (!it->var) return 0;
+  return  it->var->varData.str[it->idx];
+}
+
+static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
+  return it->var && it->var->varData.str[it->idx]!=0;
+}
+
+static inline void jsvStringIteratorNext(JsvStringIterator *it) {
+  if (!it->var) return;
+  it->idx++;
+  if (it->idx >= it->charsInVar) {
+    it->idx -= it->charsInVar;
+    if (it->var->lastChild) {
+      JsVar *next = jsvLock(it->var->lastChild);
+      jsvUnLock(it->var);
+      it->var = next;
+      it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+    } else {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->charsInVar = 0;
+    }
+  }
+}
+
+static inline void jsvStringIteratorFree(JsvStringIterator *it) {
+  jsvUnLock(it->var);
+}
 
 #endif /* JSVAR_H_ */

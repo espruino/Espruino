@@ -1,36 +1,28 @@
 #OLIMEX=1 for OLIMEXINO
 #STM32VLDISCOVERY
 #STM32F4DISCOVERY
+# Or nothing for standard linux compile
 
 #OLIMEX=1
 #STM32VLDISCOVERY=1
 #STM32F4DISCOVERY=1
 
+
 MAKEFLAGS=-j5 # multicore
 
 INCLUDE=-I$(ROOT)/targets -I$(ROOT)/src
-DEFINES=-DFAKE_STDLIB
+LIBS=
+DEFINES=
+CFLAGS=-Wall -Wextra -Wconversion
+OPTIMIZEFLAGS= 
+
+# Espruino flags...
 USE_MATH=1
-OPTIMIZEFLAGS=
 
 CWD = $(shell pwd)
-export ROOT=$(CWD)
+ROOT=$(CWD)
 
 ###################################################
-# 4.6
-#export CCPREFIX=arm-linux-gnueabi-
-# 4.5
-#export CCPREFIX=~/sat/bin/arm-none-eabi-
-# 4.4
-export CCPREFIX=arm-none-eabi-
-
-
-export CC=$(CCPREFIX)gcc
-export LD=$(CCPREFIX)gcc
-export AR=$(CCPREFIX)ar
-export AS=$(CCPREFIX)as
-export OBJCOPY=$(CCPREFIX)objcopy
-export OBJDUMP=$(CCPREFIX)objdump
 
 ifdef OLIMEX
 PROJ_NAME=espruino_olimexino_stm32
@@ -39,7 +31,7 @@ FAMILY=STM32F1
 CHIP=STM32F103
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
-STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
+STARTUP_CODE=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md
 OPTIMIZEFLAGS+=-O2 # short on program memory
 else ifdef STM32F4DISCOVERY
 PROJ_NAME=espruino_stm32f4discovery
@@ -49,7 +41,7 @@ FAMILY=STM32F4
 CHIP=STM32F407
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F4XX
-STARTUP=$(ROOT)/targets/stm32f4/lib/startup_stm32f4xx
+STARTUP_CODE=$(ROOT)/targets/stm32f4/lib/startup_stm32f4xx
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
 PROJ_NAME=espruino_stm32vldiscovery
@@ -57,10 +49,11 @@ FAMILY=STM32F1
 CHIP=STM32F100
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
-STARTUP=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md_vl
+STARTUP_CODE=$(ROOT)/targets/stm32f1/lib/startup_stm32f10x_md_vl
 OPTIMIZEFLAGS+=-O2 # short on program memory
 else
-$(error Must give a device name (eg. STM32F4DISCOVERY=1 make)- see head of makefile)
+PROJ_NAME=espruino
+LINUX=1
 endif
 
 
@@ -71,10 +64,12 @@ src/jsfunctions.c \
 src/jsutils.c \
 src/jsparse.c \
 src/jsinteractive.c \
-src/jshardware.c 
+src/jsdevices.c 
+
 
 ifdef USE_MATH
-DEFINES += -DUSE_MATH 
+DEFINES += -DUSE_MATH
+ifndef LINUX 
 INCLUDE += -I$(ROOT)/math
 SOURCES += \
 math/acosh.c \
@@ -117,13 +112,14 @@ math/unity.c
 #math/mtst.c 
 #math/dtestvec.c 
 endif
+endif
 
 ifdef USB
 DEFINES += -DUSB
 endif
 
 ifeq ($(FAMILY), STM32F1)
-export ARCHFLAGS=-mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targets/stm32f1 -I$(ROOT)/targets/stm32f1/lib
@@ -178,7 +174,7 @@ endif
 endif
 
 ifeq ($(FAMILY), STM32F4)
-export ARCHFLAGS=-mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targets/stm32f4 -I$(ROOT)/targets/stm32f4/lib
@@ -243,51 +239,67 @@ endif
 endif
 
 ifdef ARM
-DEFINES += -DARM
+DEFINES += -DARM -DFAKE_STDLIB
+# FAKE_STDLIB is for TinyJS - it uses its own standard library so we don't have to link in the normal one + get bloated 
 INCLUDE += -I$(ROOT)/targets/arm
+OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
+
+# 4.6
+#export CCPREFIX=arm-linux-gnueabi-
+# 4.5
+#export CCPREFIX=~/sat/bin/arm-none-eabi-
+# 4.4
+export CCPREFIX=arm-none-eabi-
 endif
 
 ifdef STM32
-DEFINES += -DSTM32
+DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
 SOURCES +=                              \
 targets/stm32/main.c                    \
+targets/stm32/jshardware.c              \
 targets/stm32/stm32_it.c
 endif
 
-SOURCEOBJS=$(SOURCES:.c=.o)
+ifdef LINUX
+OPTIMIZEFLAGS += -g # DEBUG
+DEFINES += -DLINUX
+INCLUDE += -I$(ROOT)/targets/linux 
+SOURCES +=                              \
+targets/linux/main.c                    \
+targets/linux/jshardware.c  
+LIBS += -lm # maths lib
+endif
+
+SOURCEOBJS = $(SOURCES:.c=.o)
 OBJS = $(SOURCEOBJS)
-OBJS += $(LIB_ROOT)/$(STARTUP).o # add startup file to build
+ifdef STARTUP_CODE
+OBJS += $(LIB_ROOT)/$(STARTUP_CODE).o # add startup file to build
+endif
 
 
 # -ffreestanding -nodefaultlibs -nostdlib -fno-common
 # -nodefaultlibs -nostdlib -nostartfiles
 
-DEFINES += -D$(CHIP) -D$(BOARD) -D$(STLIB)
-
 # -fdata-sections -ffunction-sections are to help remove unused code
-export CFLAGS=$(OPTIMIZEFLAGS) -c -fno-common -fno-exceptions -fdata-sections -ffunction-sections $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 $(DEFINES) $(INCLUDE)
-#export CFLAGS=-g -O1 -c -fno-common $(ARCHFLAGS) -DUSE_STDPERIPH_DRIVER=1 -DARM -DFAKE_STDLIB
-#can use O2 here
-
+CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-export LDFLAGS=$(ARCHFLAGS) -Wl,--gc-sections -Tlinker/$(CHIP).ld -Llib 
+LDFLAGS += $(ARCHFLAGS) -Wl,--gc-sections
+ifdef CHIP 
+LDFLAGS += -Tlinker/$(CHIP).ld
+endif 
 
-
+export CC=$(CCPREFIX)gcc
+export LD=$(CCPREFIX)gcc
+export AR=$(CCPREFIX)ar
+export AS=$(CCPREFIX)as
+export OBJCOPY=$(CCPREFIX)objcopy
+export OBJDUMP=$(CCPREFIX)objdump
 .PHONY:  proj
 
 all: 	 proj
-
-proj: 	$(PROJ_NAME).elf
-
-$(PROJ_NAME).elf: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS)
-	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
-	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
-	$(OBJCOPY) -O srec $(PROJ_NAME).elf $(PROJ_NAME).srec
-	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
 
 .c.o:
 	$(CC) $(CFLAGS) $(DEFINES) $< -o $@
@@ -295,15 +307,27 @@ $(PROJ_NAME).elf: $(OBJS)
 .s.o:
 	$(CC) $(CFLAGS) $(DEFINES) $< -o $@
 
-flash: all
-	~/bin/st-flash write $(PROJ_NAME).bin 0x08000000
+ifdef LINUX # ---------------------------------------------------
+proj: 	$(PROJ_NAME)
 
+$(PROJ_NAME): $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+else # embedded, so generate bin, etc ---------------------------
+proj: 	$(PROJ_NAME).elf
+
+$(PROJ_NAME).elf: $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
+	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
+	$(OBJCOPY) -O srec $(PROJ_NAME).elf $(PROJ_NAME).srec
+	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
+	
+flash: all
+	~/bin/st-flash write $(PROJ_NAME).bin 0x08000000	
+endif	    # ---------------------------------------------------
+ 
 clean:
-	rm -f $(SOURCEOBJS)
-	rm -f src/*.o
-	rm -f lib/*.o
-	rm -f lib/*.a
-	rm -f tinyjs/*.o
+	find . -name *.o -delete
 	rm -f $(PROJ_NAME).elf
 	rm -f $(PROJ_NAME).hex
 	rm -f $(PROJ_NAME).bin

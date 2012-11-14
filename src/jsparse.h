@@ -13,7 +13,7 @@
 
 
 typedef struct {
-  JsVarRef  root;   ///< root of symbol table
+  JsVar  *root;   ///< root of symbol table
 } JsParse;
 
 void jspInit(JsParse *parse);

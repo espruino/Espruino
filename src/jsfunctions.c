@@ -7,6 +7,7 @@
 
 #include "jsfunctions.h"
 #include "jsinteractive.h"
+
 #ifdef USE_MATH
 #ifdef ARM
 #include "mconf.h"
@@ -349,7 +350,8 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
               if (!part) break; // out of memory
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
               if (idxvar) { // could be out of memory
-                jsvAppendStringVar(part, parent, last, idx-(last+1));
+                if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+                jsvAppendStringVar(part, parent, last, idx-last);
                 jsvAddName(array, idxvar);
                 last = idx+splitlen;
                 jsvUnLock(idxvar);
@@ -449,7 +451,6 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
              while (childRef) {
                JsVar *child = jsvLock(childRef);
                if (jsvIsInt(child)) {
-                 JsVarInt thisIndex = jsvGetInteger(child);
                  JsVar *childValue = jsvLock(child->firstChild);
                  JsVar *mapped = jspeFunctionCall(funcVar, 0, thisVar, false, childValue);
                  jsvUnLock(childValue);
@@ -535,21 +536,16 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
        jsvUnLock(codeVar);
     } else callbackString(callbackData, "{}");
   } else if (jsvIsString(var) && !jsvIsName(var)) {
+    // escape the string
     callbackString(callbackData, "\"");
-    // all this to escape the string
-    JsVarRef r = jsvGetRef(var);
-    while (r) {
-      JsVar *v = jsvLock(r);
-      size_t l = jsvGetMaxCharactersInVar(v);
-      size_t i;
-      for (i=0;i<l;i++) {
-        char ch = v->varData.str[i];
-        if (!ch) break;
-        callbackString(callbackData, escapeCharacter(ch));
-      }
-      r = v->lastChild;
-      jsvUnLock(v);
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, var, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      callbackString(callbackData, escapeCharacter(ch));
+      jsvStringIteratorNext(&it);
     }
+    jsvStringIteratorFree(&it);
     callbackString(callbackData, "\"");
   } else {
     JsVar *str = jsvAsString(var, false);
@@ -566,8 +562,8 @@ void jsfGetJSON(JsVar *var, JsVar *result) {
   jsfGetJSONWithCallback(var, (JsfGetJSONCallbackString)jsvAppendString, (JsfGetJSONCallbackVar)jsvAppendStringVarComplete, result);
 }
 
-void _jsfPrintJSON_str(void *data, const char *str) { jsiConsolePrint(str); }
-void _jsfPrintJSON_var(void *data, JsVar *var) { jsiConsolePrintStringVar(var); }
+void _jsfPrintJSON_str(void *data, const char *str) { NOT_USED(data); jsiConsolePrint(str); }
+void _jsfPrintJSON_var(void *data, JsVar *var) { NOT_USED(data); jsiConsolePrintStringVar(var); }
 void jsfPrintJSON(JsVar *var) {
   jsfGetJSONWithCallback(var, _jsfPrintJSON_str, _jsfPrintJSON_var, 0);
 }

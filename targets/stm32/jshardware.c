@@ -5,24 +5,12 @@
  *      Author: gw
  */
 
-#ifndef ARM
- #include <stdlib.h>
- #include <string.h>
- #include <stdio.h>
- #include <sys/time.h>
- #include <sys/select.h>
- #include <termios.h>
- #include <signal.h>
-#endif//ARM
-
-#ifdef ARM
- #if USB
-  #ifdef STM32F1
-   #include "usb_utils.h"
-   #include "usb_lib.h"
-   #include "usb_conf.h"
-   #include "usb_pwr.h"
-  #endif
+#if USB
+ #ifdef STM32F1
+  #include "usb_utils.h"
+  #include "usb_lib.h"
+  #include "usb_conf.h"
+  #include "usb_pwr.h"
  #endif
 #endif
 
@@ -31,256 +19,33 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
-// ----------------------------------------------------------------------------
-//                                                                     BUFFERS
 
-// ----------------------------------------------------------------------------
-//                                                         DATA TRANSMIT BUFFER
-#ifdef ARM
-typedef struct {
-  IOEventFlags flags; // Where this data should be transmitted
-  unsigned char data;         // data to transmit
-} PACKED_FLAGS TxBufferItem;
+ #if defined(STM32F4)
+  #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
+  #define FLASH_MEMORY_SIZE (1024*1024)
+  #define FLASH_PAGE_SIZE (128*1024)
+  #define FLASH_PAGES 1
+ #elif defined(OLIMEXINO_STM32)
+  #define FLASH_MEMORY_SIZE (128*1024)
+  #define FLASH_PAGE_SIZE 1024
+  #define FLASH_PAGES 14
+ #else
+  #define FLASH_MEMORY_SIZE (128*1024)
+  #define FLASH_PAGE_SIZE 1024
+  #define FLASH_PAGES 6
+ #endif
 
-TxBufferItem txBuffer[TXBUFFERMASK+1];
-volatile unsigned char txHead=0, txTail=0;
-#endif
-// ----------------------------------------------------------------------------
-
-#ifdef ARM
-USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_SERIAL1 : return USART1;
-   case EV_SERIAL2 : return USART2;
-   case EV_SERIAL3 : return USART3;
-#if USARTS>=4
-   case EV_SERIAL4 : return UART4;
-#endif
-#if USARTS>=5
-   case EV_SERIAL5 : return UART5;
-#endif
-#if USARTS>=6
-   case EV_SERIAL6 : return USART6;
-#endif
-   default: return 0;
- }
-}
+#define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
+#if FLASH_LENGTH < 8+JSVAR_CACHE_SIZE*20
+#error NOT ENOUGH ROOM IN FLASH - UNLESS WE ARE ONLY USING 16 bytes forJsVarRef ? FLASH_PAGES pages at FLASH_PAGE_SIZE bytes
 #endif
 
-// Queue a character for transmission
-void jshTransmit(IOEventFlags device, unsigned char data) {
-#ifdef ARM
-#ifdef USB
-  if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
-    jshTransmitClearDevice(EV_USBSERIAL); // clear out stuff already waiting
-    return;
-  }
-#endif
-  if (device==EV_NONE) return;
-  unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
-  if (txHeadNext==txTail) {
-    jsiSetBusy(BUSY_TRANSMIT, true);
-    while (txHeadNext==txTail) {
-      // wait for send to finish as buffer is about to overflow
-#ifdef USB
-      // just in case USB was unplugged while we were waiting!
-      if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
-#endif
-    }
-    jsiSetBusy(BUSY_TRANSMIT, false);
-  }
-  txBuffer[txHead].flags = device;
-  txBuffer[txHead].data = (char)data;
-  txHead = txHeadNext;
-
-  USART_TypeDef *uart = getUsartFromDevice(device);
-  if (uart) USART_ITConfig(uart, USART_IT_TXE, ENABLE);
-
-#else // if PC, just put to stdout
-  fputc(data, stdout);
-  fflush(stdout);
-#endif
-}
-
-#ifdef ARM
-// Try and get a character for transmission - could just return -1 if nothing
-int jshGetCharToTransmit(IOEventFlags device) {
-  unsigned char ptr = txTail;
-  while (txHead != ptr) {
-    if (IOEVENTFLAGS_GETTYPE(txBuffer[ptr].flags) == device) {
-      unsigned char data = txBuffer[ptr].data;
-      if (ptr != txTail) { // so we weren't right at the back of the queue
-        // we need to work back from ptr (until we hit tail), shifting everything forwards
-        unsigned char this = ptr;
-        unsigned char last = (this+TXBUFFERMASK)&TXBUFFERMASK;
-        while (this!=txTail) { // if this==txTail, then last is before it, so stop here
-          txBuffer[this] = txBuffer[last];
-          this = last;
-          last = (this+TXBUFFERMASK)&TXBUFFERMASK;
-        }
-      }
-      txTail = (txTail+1)&TXBUFFERMASK; // advance the tail
-      return data; // return data
-    }
-    ptr = (ptr+1)&TXBUFFERMASK;
-  }
-  return -1; // no data :(
-}
-#endif
-
-void jshTransmitFlush() {
-#ifdef ARM
-  jsiSetBusy(BUSY_TRANSMIT, true);
-  while (jshHasTransmitData()) ; // wait for send to finish
-  jsiSetBusy(BUSY_TRANSMIT, false);
-#endif
-}
-
-// Clear everything from a device
-void jshTransmitClearDevice(IOEventFlags device) {
-#ifdef ARM
-  while (jshGetCharToTransmit(device)>=0);
-#endif
-}
-
-bool jshHasTransmitData() {
-#ifdef ARM
-  return txHead != txTail;
-#else
-  return false;
-#endif
-}
-
-// ----------------------------------------------------------------------------
-//                                                              IO EVENT BUFFER
-IOEvent ioBuffer[IOBUFFERMASK+1];
-volatile unsigned char ioHead=0, ioTail=0;
-// ----------------------------------------------------------------------------
-
-
-void jshIOEventOverflowed() {
-  // TODO: error here?
-}
-
-
-void jshPushIOCharEvent(IOEventFlags channel, char charData) {
-  if (charData==3) {
-    // Ctrl-C - force interrupt
-    // TODO - check if this is our Console port?
-#ifndef ARM
-    raise(SIGINT);
-#endif
-    jspSetInterrupted(true);
-    return;
-  }
-  // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
-  unsigned char nextTail = (ioTail+1) & IOBUFFERMASK;
-  if (ioHead!=ioTail && ioHead!=nextTail) {
-    // we can do this because we only read in main loop, and we're in an interrupt here
-    unsigned char lastHead = (ioHead+IOBUFFERMASK) & IOBUFFERMASK;
-    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel &&
-        IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags) < IOEVENT_MAXCHARS) {
-      // last event was for this event type, and it has chars left
-      unsigned char c = IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags);
-      ioBuffer[lastHead].data.chars[c] = charData;
-      IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
-      return;
-    }
-  }
-  // Make new buffer
-  unsigned char nextHead = (ioHead+1) & IOBUFFERMASK;
-  if (ioTail == nextHead) {
-    jshIOEventOverflowed();
-    return; // queue full - dump this event!
-  }
-  ioBuffer[ioHead].flags = channel;
-  IOEVENTFLAGS_SETCHARS(ioBuffer[ioHead].flags, 1);
-  ioBuffer[ioHead].data.chars[0] = charData;  
-  ioHead = nextHead;
-}
-
-void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
-  unsigned char nextHead = (ioHead+1) & IOBUFFERMASK;
-  if (ioTail == nextHead) {
-    jshIOEventOverflowed();
-    return; // queue full - dump this event!
-  }
-  ioBuffer[ioHead].flags = channel;
-  ioBuffer[ioHead].data.time = time;
-  ioHead = nextHead;
-}
-
-// returns true on success
-bool jshPopIOEvent(IOEvent *result) {
-  if (ioHead==ioTail) return false;
-  *result = ioBuffer[ioTail];
-  ioTail = (ioTail+1) & IOBUFFERMASK;
-  return true;
-}
-
-bool jshHasEvents() {
-  return ioHead!=ioTail;
-}
-
-bool jshHasEventSpaceForChars(int n) {
-  int spacesNeeded = 4 + (n/IOEVENT_MAXCHARS); // be sensible - leave a little spare
-  int spaceUsed = (ioHead >= ioTail) ? ((int)ioHead-(int)ioTail) : /*or rolled*/((int)ioHead+IOBUFFERMASK+1-(int)ioTail);
-  int spaceLeft = IOBUFFERMASK+1-spaceUsed;
-  return spaceLeft > spacesNeeded;
-}
-
-// ----------------------------------------------------------------------------
-//                                                                      DEVICES
-const char *jshGetDeviceString(IOEventFlags device) {
-  switch (device) {
-#ifdef USB
-  case EV_USBSERIAL: return "USB";
-#endif
-  case EV_SERIAL1: return "Serial1";
-  case EV_SERIAL2: return "Serial2";
-  case EV_SERIAL3: return "Serial3";
-#if USARTS>=4
-  case EV_SERIAL4: return "Serial4";
-#endif
-#if USARTS>=5
-  case EV_SERIAL5: return "Serial5";
-#endif
-#if USARTS>=6
-  case EV_SERIAL6: return "Serial6";
-#endif
-  default: return "";
-  }  
-}
-
-IOEventFlags jshFromDeviceString(const char *device) {
-  if (device[0]=='U') {
-#ifdef USB
-    if (strcmp(device, "USB")==0) return EV_USBSERIAL;
-#endif
-  }
-  if (device[0]=='S') {
-    if (strcmp(device, "Serial1")==0) return EV_SERIAL1;
-    if (strcmp(device, "Serial2")==0) return EV_SERIAL2;
-    if (strcmp(device, "Serial3")==0) return EV_SERIAL3;
-#if USARTS>=4
-    if (strcmp(device, "Serial4")==0) return EV_SERIAL4;
-#endif
-#if USARTS>=5
-    if (strcmp(device, "Serial5")==0) return EV_SERIAL5;
-#endif
-#if USARTS>=6
-    if (strcmp(device, "Serial6")==0) return EV_SERIAL6;
-#endif
-  }
-  return EV_NONE;
-}
-
+#define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
+#define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-8)
+#define FLASH_MAGIC 0xDEADBEEF
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
-#ifdef ARM
-
-
 typedef struct IOPin {
   uint16_t pin;      // GPIO_Pin_1
   GPIO_TypeDef *gpio; // GPIOA
@@ -574,10 +339,7 @@ uint8_t portToPortSource(GPIO_TypeDef *port) {
 #endif
 }
 
-
-#endif
 // ----------------------------------------------------------------------------
-#ifdef ARM
 JsSysTime SysTickMajor = SYSTICK_RANGE;
 
 #ifdef USB
@@ -597,56 +359,8 @@ void jshDoSysTick() {
 #endif //USB
 }
 
-#endif//ARM
 // ----------------------------------------------------------------------------
-#ifndef ARM
-// for non-blocking IO
-struct termios orig_termios;
-
-void reset_terminal_mode()
-{
-    tcsetattr(0, TCSANOW, &orig_termios);
-}
-
-void set_conio_terminal_mode()
-{
-    struct termios new_termios;
-
-    /* take two copies - one for now, one for later */
-    tcgetattr(0, &orig_termios);
-    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-    /* register cleanup handler, and set the new terminal mode */
-    atexit(reset_terminal_mode);
-    cfmakeraw(&new_termios);
-    tcsetattr(0, TCSANOW, &new_termios);
-}
-
-int kbhit()
-{
-    struct timeval tv = { 0L, 0L };
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
-}
-
-int getch()
-{
-    int r;
-    unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
-        return r;
-    } else {
-        if (c=='\3') exit(0); // ctrl-c
-        return c;
-    }
-}
-#endif
-
-
 void jshInit() {
-#ifdef ARM
   /* Enable UART and  GPIOx Clock */
  #ifdef STM32F4
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
@@ -782,37 +496,16 @@ void jshInit() {
   while(ADC_GetCalibrationStatus(ADC1));
 #endif
 
-#ifdef ARM
   jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n");
-#endif
 
   // Turn led off - so we know we have initialised
   GPIO_ResetBits(LED1_PORT,LED1_PIN);
-
-#else//!ARM
-  struct termios new_termios;
-
-  /* take two copies - one for now, one for later */
-  tcgetattr(0, &orig_termios);
-  memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-  /* register cleanup handler, and set the new terminal mode */
-  atexit(reset_terminal_mode);
-  cfmakeraw(&new_termios);
-  tcsetattr(0, TCSANOW, &new_termios);
-#endif//ARM
 }
 
 void jshKill() {
 }
 
 void jshIdle() {
-#ifdef ARM
-#else
-  while (kbhit()) {
-    jshPushIOCharEvent(EV_USBSERIAL, getch());
-  }
-#endif
 #ifdef USB
   static bool wasUSBConnected = false;
   bool USBConnected = jshIsUSBSERIALConnected();
@@ -840,24 +533,15 @@ bool jshIsUSBSERIALConnected() {
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-#ifdef ARM
   return (JsSysTime)((ms*SystemCoreClock)/1000);
-#else
-  return (JsSysTime)(ms*1000);
-#endif
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-#ifdef ARM
   return ((JsVarFloat)time)*1000/SystemCoreClock;
-#else
-  return ((JsVarFloat)time)/1000;
-#endif
 }
 
 
 JsSysTime jshGetSystemTime() {
-#ifdef ARM
   JsSysTime t1 = SysTickMajor;
   JsSysTime time = (JsSysTime)SysTick->VAL;
   JsSysTime t2 = SysTickMajor;
@@ -865,11 +549,6 @@ JsSysTime jshGetSystemTime() {
   if (t1!=t2 && time > (SYSTICK_RANGE>>1)) 
     return t2 - time;
   return t1-time;
-#else
-  struct timeval tm;
-  gettimeofday(&tm, 0);
-  return tm.tv_sec*1000000L + tm.tv_usec;
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -897,7 +576,6 @@ int jshGetPinFromString(const char *s) {
   }
 #endif
 
-#ifdef ARM
 #if defined(OLIMEXINO_STM32)
     // A0-A5 and D0-D37
     if (s[0]=='A' && s[1]) { // first 6 are analogs
@@ -923,23 +601,11 @@ int jshGetPinFromString(const char *s) {
       }
     }
 #endif
-#endif // ARM
   return -1;
-}
-
-int jshGetPinFromVar(JsVar *pinv) {
-  int pin=-1;
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    pin = jshGetPinFromString(&pinv->varData.str[0]);
-  } else if (jsvIsInt(pinv)) {
-    pin = (int)jsvGetInteger(pinv);
-  }
-  return pin;
 }
 
 bool jshPinInput(int pin) {
   bool value = false;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -954,13 +620,11 @@ bool jshPinInput(int pin) {
 
     value = GPIO_ReadInputDataBit(IOPIN_DATA[pin].gpio, IOPIN_DATA[pin].pin) ? 1 : 0;
   } else jsError("Invalid pin!");
-#endif
   return value;
 }
 
 JsVarFloat jshPinAnalog(int pin) {
   JsVarFloat value = 0;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].adc!=0xFF) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -990,11 +654,9 @@ JsVarFloat jshPinAnalog(int pin) {
     // Get the conversion value
     value = ADC_GetConversionValue(ADC1) / (JsVarFloat)65535;
   } else jsError("Invalid analog pin!");
-#endif
   return value;
 }
 
-#ifdef ARM
 static inline void jshSetPinValue(int pin, bool value) {
 #ifdef STM32F4 
     if (value)
@@ -1008,10 +670,8 @@ static inline void jshSetPinValue(int pin, bool value) {
       IOPIN_DATA[pin].gpio->BRR = IOPIN_DATA[pin].pin;
 #endif
 }
-#endif
 
 void jshPinOutput(int pin, bool value) {
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -1026,13 +686,11 @@ void jshPinOutput(int pin, bool value) {
 
     jshSetPinValue(pin, value);
   } else jsError("Invalid pin!");
-#endif
 }
 
 void jshPinAnalogOutput(int pin, JsVarFloat value) {
   if (value<0) value=0;
   if (value>1) value=1;
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio && IOPIN_DATA[pin].timer!=TIMNONE) {
     TIM_TypeDef* TIMx;
 #ifdef STM32F4
@@ -1163,13 +821,11 @@ void jshPinAnalogOutput(int pin, JsVarFloat value) {
 #endif
 
   } else jsError("Invalid pin, or pin not capable of analog output!");
-#endif
 }
 
 void jshPinPulse(int pin, bool value, JsVarFloat time) {
  JsSysTime ticks = jshGetTimeFromMilliseconds(time);
  //jsPrintInt(ticks);jsPrint("\n");
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = IOPIN_DATA[pin].pin;
@@ -1194,11 +850,9 @@ void jshPinPulse(int pin, bool value, JsVarFloat time) {
     }
     jshSetPinValue(pin, !value);
   } else jsError("Invalid pin!");
-#endif
 }
 
 void jshPinWatch(int pin, bool shouldWatch) {
-#ifdef ARM
   if (pin>=0 && pin < IOPINS && IOPIN_DATA[pin].gpio) {
     // TODO: check for DUPs, also disable interrupt
     int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -1232,19 +886,31 @@ void jshPinWatch(int pin, bool shouldWatch) {
     s.EXTI_LineCmd = ENABLE;
     EXTI_Init(&s);
   } else jsError("Invalid pin!");
-#endif
 }
 
 bool jshIsEventForPin(IOEvent *event, int pin) {
-#ifdef ARM
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(IOPIN_DATA[pin].pin);
-#else
-  return false;
+}
+
+USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SERIAL1 : return USART1;
+   case EV_SERIAL2 : return USART2;
+   case EV_SERIAL3 : return USART3;
+#if USARTS>=4
+   case EV_SERIAL4 : return UART4;
 #endif
+#if USARTS>=5
+   case EV_SERIAL5 : return UART5;
+#endif
+#if USARTS>=6
+   case EV_SERIAL6 : return USART6;
+#endif
+   default: return 0;
+ }
 }
 
 void jshUSARTSetup(IOEventFlags device, int baudRate) {
-#ifdef ARM
   uint16_t pinRX, pinTX;// eg. GPIO_Pin_1
   GPIO_TypeDef *gpioRX, *gpioTX;   // eg. GPIOA
 
@@ -1380,42 +1046,17 @@ void jshUSARTSetup(IOEventFlags device, int baudRate) {
   USART_ITConfig(usart, USART_IT_RXNE, ENABLE);
   //Enable USART
   USART_Cmd(usart, ENABLE);
-#endif
 }
 
-#ifdef ARM
- #if defined(STM32F4)
-  #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
-  #define FLASH_MEMORY_SIZE (1024*1024)
-  #define FLASH_PAGE_SIZE (128*1024)
-  #define FLASH_PAGES 1
- #elif defined(OLIMEXINO_STM32)
-  #define FLASH_MEMORY_SIZE (128*1024)
-  #define FLASH_PAGE_SIZE 1024
-  #define FLASH_PAGES 14
- #else
-  #define FLASH_MEMORY_SIZE (128*1024)
-  #define FLASH_PAGE_SIZE 1024
-  #define FLASH_PAGES 6
- #endif
-#else // !ARM
- #define FLASH_MEMORY_SIZE (128*1024)
- #define FLASH_PAGE_SIZE 1024
- #define FLASH_PAGES 3200
-#endif
-
-#define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
-#if FLASH_LENGTH < 8+JSVAR_CACHE_SIZE*20
-#error NOT ENOUGH ROOM IN FLASH - UNLESS WE ARE ONLY USING 16 bytes forJsVarRef ? FLASH_PAGES pages at FLASH_PAGE_SIZE bytes
-#endif
-
-#define FLASH_START (0x08000000 + FLASH_MEMORY_SIZE - FLASH_LENGTH)
-#define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-8)
-#define FLASH_MAGIC 0xDEADBEEF
+/** Kick a device into action (if required). For instance we may need
+ * to set up interrupts */
+void jshUSARTKick(IOEventFlags device) {
+  USART_TypeDef *uart = getUsartFromDevice(device);
+    if (uart) USART_ITConfig(uart, USART_IT_TXE, ENABLE);
+}
 
 
 void jshSaveToFlash() {
-#ifdef ARM
 #ifdef STM32F4 
   FLASH_Unlock();
 #else
@@ -1526,64 +1167,30 @@ void jshSaveToFlash() {
   jsPrint(" we want ");
   jsPrintInt(FLASH_MAGIC);
   jsPrint("\n");*/
-#else
-  FILE *f = fopen("TinyJSC.state","wb");
-  if (f) {
-    jsiConsolePrint("\nSaving ");
-    jsiConsolePrintInt(jsvGetVarDataSize());
-    jsiConsolePrint(" bytes...");
-    fwrite(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
-    fclose(f);
-    jsiConsolePrint("\nDone!\n>");
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-#endif
 }
 
 void jshLoadFromFlash() {
-#ifdef ARM
   jsiConsolePrint("\nLoading ");
   jsiConsolePrintInt(jsvGetVarDataSize());
   jsiConsolePrint(" bytes from flash...");
   memcpy(jsvGetVarDataPointer(), (int*)FLASH_START, jsvGetVarDataSize());
   jsiConsolePrint("\nDone!\n>");
-#else
-  FILE *f = fopen("TinyJSC.state","rb");
-  if (f) {
-    jsiConsolePrint("\nLoading ");
-    jsiConsolePrintInt(jsvGetVarDataSize());
-    jsiConsolePrint(" bytes...\n>");
-    fread(jsvGetVarDataPointer(),1,jsvGetVarDataSize(),f);
-    fclose(f);
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-#endif
 }
 
 bool jshFlashContainsCode() {
-#ifdef ARM
   /*jsPrint("Magic contains ");
   jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
   jsPrint("we want");
   jsPrintInt(FLASH_MAGIC);
   jsPrint("\n");*/
   return (*(int*)FLASH_MAGIC_LOCATION) == FLASH_MAGIC;
-#else
-  FILE *f = fopen("TinyJSC.state","rb");
-  if (f) fclose(f);
-  return f!=0;
-#endif
 }
 
 
 /// Enter simple sleep mode (can be woken up by interrupts)
 void jshSleep() {
-#ifdef ARM
   //jshPinOutput(LED1_PININDEX,1);
   __WFI(); // Wait for Interrupt
   //jshPinOutput(LED1_PININDEX,0);
-#endif
 }
 
