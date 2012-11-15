@@ -1,0 +1,51 @@
+Espruino, a JavaScript interpreter for Microcontrollers
+
+
+------------- What does it do?
+
+Espruino lets anybody easily create intelligent electronic devices.
+
+There's no compilation or 'flashing' step needed. You just write code, and as soon as you hit enter it executes.
+
+------------- Why not just use Arduino?
+
+Remember the good old days of Computing, where you wrote code in BASIC?
+
+For me, the greatest part of that was the immediacy. You wrote code, hit enter, and it was executed right away. When learning to program, I found that instant feedback invaluable. Of course it became even better when you connected actual hardware (such as a Robot) up to the computer, and could cold turn motors on and off with a few keypresses.
+
+Moving from simple commands (on/off) to strings of commands (on...delay...off) and finally for loops was easy.
+
+While Arduino is very user friendly, it doesn't provide any feedback. If you flash your code onto it and it doesn't work, you're stuck. There's no easy way to debug it.
+
+------------- So why not Raspberry Pi?
+
+* The Pi draws a lot of power (3.5W) which makes it difficult to use in Battery-operated devices for any length of time. Espruino will last for days.
+* The Pi doesn't have much IO. By comparison, most of the devices  
+* The Pi runs Linux - which is great, but it makes real-time control
+* Raspberry Pi encourages the use of Python to program - however for most people, this will be an entirely new language to learn. If you've written a webpage, you probably have a good idea what JavaScript looks like already.
+
+------------- What rewards will I get?
+
+You'll get a pre-flashed development board containing Espruino. We haven't created this KickStarter in order to mass-produce boards though. Many companies already make STM32-based development boards, and they make these cheaper than we could manage for KickStarter volumes.
+
+Instead, by backing this project you will be supporting the development of Espruino. You will allow us to:
+
+* Get the source code ready for an Open Source release
+* Produce tutorials and examples for Espruino
+* Set up a forum and support our KickStarters as they get started with this awesome new tool
+* Create and test drivers for common peripherals such as LCDs and Temperature sensors
+* Turn Espruino into a sustainable business - so we can continue to support it and release improvements.
+* (stretch goal) Create a book (and maybe a kit) that will teach people how to use Espruino
+
+So please, support us today - and help us create something awesome!
+
+------------- RISKS AND CHALLENGES
+
+As we are not designing and manufacturing hardware ourselves, the risks are greatly reduced.
+
+The main risk to rewards is that the deal with the supplier of development boards will fall through. However there are many suppliers of similar STM32 boards that could be contacted if required, and in the worst case I am confident that a similar board could be designed and sent for manufacturing within the time constraints that we have set ourselves.
+
+The biggest risk to the development of Espruino is that the lead developer may fall ill. However even this can be mitigated because we have developers on hand that can take his place if anything were to happen.
+
+
+

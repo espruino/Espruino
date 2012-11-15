@@ -1,0 +1,82 @@
+Raspberry Pi Bluetooth setup
+
+Install bluetooth support
+sudo apt-get install bluetooth bluez-utils 
+
+
+Find out device address:
+hcitool scan 
+
+
+
+
+
+# to pair
+bluez-simple-agent hci0 07:12:04:18:62:16
+
+sudo nano /etc/bluetooth/rfcomm.conf 
+rfcomm0 {
+  bind yes;
+  device 07:12:04:18:62:16;
+  channel 1;
+  comment "Garage Espruino";
+}
+
+# to grab new rfcomm device
+sudo /etc/init.d/bluetooth restart
+
+
+sudo apt-get install python-serial
+
+nano gettemp.py
+
+#!/usr/bin/python
+import time
+import datetime
+import serial
+
+# Wait 2 seconds and write out everything we get
+print "Connecting..."
+ser = serial.Serial(
+	port='/dev/rfcomm0',
+	baudrate=9600,
+	parity=serial.PARITY_NONE,
+	stopbits=serial.STOPBITS_ONE,
+	bytesize=serial.EIGHTBITS,
+	xonxoff=0, rtscts=0, dsrdtr=0,
+)
+ser.open()
+ser.isOpen()
+print "Connected..."
+#print "Sending echo(0)"
+#ser.write("echo(0);\n")
+#time.sleep(5)
+time.sleep(2)
+print "Getting temperature"
+ser.write("print(getAverage()+'\n');\n")
+# Wait a while for input - it can take a while for stuff to get through!
+result=""
+endtime = time.time()+5
+while time.time() < endtime:
+	while ser.inWaiting() > 0:
+		ch=ser.read(1)
+		result=result+ch
+ser.close()
+
+temperature = result.strip()
+print "Temp = "+temperature
+
+if temperature!="":
+	print "Saving temperature"
+	now = datetime.datetime.now()
+	with open("temperature.txt", "a") as myfile:
+		myfile.write(now.strftime("%Y-%m-%d %H:%M")+","+temperature+"\n")
+
+
+chmod a+x gettemp.py
+0,5,10,15,20,25,30,35,40,45,50,55 * * * *  /home/pi/gettemp.py 2>/dev/null >/dev/null
+
+
+
+
+
