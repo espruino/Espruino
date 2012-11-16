@@ -130,7 +130,7 @@
             Beginning of SD card support
             Fix for parse/eval when given non-strings
             Strings can now contain '\0'
-
+            Jumptable-friendly reserved word check
 [/CHANGELOG]
 
 [TODO]

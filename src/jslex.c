@@ -37,9 +37,9 @@ static inline void jslTokenAppendChar(JsLex *lex, char ch) {
 #endif
 }
 
-static inline bool jslIsToken(JsLex *lex, const char *token) {
+static inline bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
   int i;
-  for (i=0;i<lex->tokenl;i++) {
+  for (i=startOffset;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
     // if token is smaller than lex->token, there will be a null char
     // which will be different from the token
@@ -80,26 +80,42 @@ void jslGetNextToken(JsLex *lex) {
           jslGetNextCh(lex);
       }
       lex->tk = LEX_ID;
-           //OPT: could do fancy nested IFs here to reduce number of compares
-           if (jslIsToken(lex,"if")) lex->tk = LEX_R_IF;
-      else if (jslIsToken(lex,"else")) lex->tk = LEX_R_ELSE;
-      else if (jslIsToken(lex,"do")) lex->tk = LEX_R_DO;
-      else if (jslIsToken(lex,"while")) lex->tk = LEX_R_WHILE;
-      else if (jslIsToken(lex,"for")) lex->tk = LEX_R_FOR;
-      else if (jslIsToken(lex,"break")) lex->tk = LEX_R_BREAK;
-      else if (jslIsToken(lex,"continue")) lex->tk = LEX_R_CONTINUE;
-      else if (jslIsToken(lex,"function")) lex->tk = LEX_R_FUNCTION;
-      else if (jslIsToken(lex,"return")) lex->tk = LEX_R_RETURN;
-      else if (jslIsToken(lex,"var")) lex->tk = LEX_R_VAR;
-      else if (jslIsToken(lex,"true")) lex->tk = LEX_R_TRUE;
-      else if (jslIsToken(lex,"false")) lex->tk = LEX_R_FALSE;
-      else if (jslIsToken(lex,"null")) lex->tk = LEX_R_NULL;
-      else if (jslIsToken(lex,"undefined")) lex->tk = LEX_R_UNDEFINED;
-      else if (jslIsToken(lex,"new")) lex->tk = LEX_R_NEW;
-      else if (jslIsToken(lex,"in")) lex->tk = LEX_R_IN;
-      else if (jslIsToken(lex,"switch")) lex->tk = LEX_R_SWITCH;
-      else if (jslIsToken(lex,"case")) lex->tk = LEX_R_CASE;
-      else if (jslIsToken(lex,"default")) lex->tk = LEX_R_DEFAULT;
+      // We do fancy stuff here to reduce number of compares (hopefully GCC creates a jump table)
+      switch (lex->token[0]) {
+      case 'b': if (jslIsToken(lex,"break", 1)) lex->tk = LEX_R_BREAK;
+                break;
+      case 'c': if (jslIsToken(lex,"case", 1)) lex->tk = LEX_R_CASE;
+                else if (jslIsToken(lex,"continue", 1)) lex->tk = LEX_R_CONTINUE;
+                break;
+      case 'd': if (jslIsToken(lex,"default", 1)) lex->tk = LEX_R_DEFAULT;
+                else if (jslIsToken(lex,"do", 1)) lex->tk = LEX_R_DO;
+                break;
+      case 'e': if (jslIsToken(lex,"else", 1)) lex->tk = LEX_R_ELSE;
+                break;
+      case 'f': if (jslIsToken(lex,"false", 1)) lex->tk = LEX_R_FALSE;
+                else if (jslIsToken(lex,"for", 1)) lex->tk = LEX_R_FOR;
+                else if (jslIsToken(lex,"function", 1)) lex->tk = LEX_R_FUNCTION;
+                break;
+      case 'i': if (jslIsToken(lex,"if", 1)) lex->tk = LEX_R_IF;
+                else if (jslIsToken(lex,"in", 1)) lex->tk = LEX_R_IN;
+                break;
+      case 'n': if (jslIsToken(lex,"new", 1)) lex->tk = LEX_R_NEW;
+                else if (jslIsToken(lex,"null", 1)) lex->tk = LEX_R_NULL;
+                break;
+      case 'r': if (jslIsToken(lex,"return", 1)) lex->tk = LEX_R_RETURN;
+                break;
+      case 's': if (jslIsToken(lex,"switch", 1)) lex->tk = LEX_R_SWITCH;
+                break;
+      case 't': if (jslIsToken(lex,"true", 1)) lex->tk = LEX_R_TRUE;
+                break;
+      case 'u': if (jslIsToken(lex,"undefined", 1)) lex->tk = LEX_R_UNDEFINED;
+                break;
+      case 'w': if (jslIsToken(lex,"while", 1)) lex->tk = LEX_R_WHILE;
+                break;
+      case 'v': if (jslIsToken(lex,"var", 1)) lex->tk = LEX_R_VAR;
+                break;
+      default: break;
+      }
   } else if (isNumeric(lex->currCh)) { // Numbers
       // TODO: check numbers aren't the wrong format
       bool canBeFloating = true;
