@@ -97,21 +97,23 @@ JsVar *wrap_fs_list(JsVar *parent, JsVar *parentName) {
 
 /*JSON{ "type":"method",
          "class" : "Math", "name" : "sin",
-         "wrap" : "wrap_math_sin",
-         "params" : { "theta" : "The angle to get the sine of" },
-         "return" : "The sine of theta"
+         "generate" : "sin",
+         "params" : { "theta" : ["float", "The angle to get the sine of"] },
+         "return" : ["float", "The sine of theta"]
 }*/
+
 /*JSON{ "type":"method",
          "class" : "Math", "name" : "atan",
-         "wrap" : "wrap_math_atan",
-         "params" : { "theta" : "The angle to get the sine of" },
-         "return" : "The sine of theta"
+         "generate" : "atan",
+         "params" : { "theta" :  ["float", "The angle to get the arc tangent  of"] },
+         "return" : ["float", "The arctangent of theta"]
 }*/
 /*JSON{ "type":"method",
-         "class" : "Math", "name" : "atan2",
-         "wrap" : "wrap_math_atan2",
-         "params" : { "theta" : "The angle to get the sine of" },
-         "return" : "The sine of theta"
+        "class" : "Math", "name" : "atan2",
+         "generate" : "atan2",
+         "params" : { "y" :  ["float", "The Y-part of the angle to get the arc tangent of"],
+                      "x" :  ["float", "The X-part of the angle to get the arc tangent of"] },
+         "return" : ["float", "The arctangent of Y/X"]
 }*/
 
 /*JSON{ "type":"function",

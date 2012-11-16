@@ -11,7 +11,7 @@ for jswrap in jswraps:
   print "Scanning "+jswrap
   code = open(jswrap, "r").read()
 
-  for comment in re.findall(r"/\*JSON[^(\*/)]*\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
+  for comment in re.findall(r"/\*JSON[^\*]*\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
     jsonstring = comment[6:-2]
     print "Parsing "+jsonstring
     try:
@@ -53,8 +53,54 @@ print "Outputting decision tree"
 
 def codeOut(s): print str(s)
 
+def getTestFor(className):
+  if className=="": return "!parent"
+  else: return 'parentName && jsvIsStringEqual(parentName, "'+className+'")'
+#  else: return "is"+className+"(parent)"
+
+def getUnLockGetter(varType, name):
+  if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
+  print "ERROR: getGetter: Unknown type '"+varType+"'"
+  exit(1)
+
+def getCreator(varType, value):
+  if varType=="float": return "jsvNewFromFloat("+value+")"
+  print "ERROR: getCreator: Unknown type '"+varType+"'"
+  exit(1)
+
 def codeOutFunction(indent, func):
-  codeOut(indent+"return "+func["wrap"]+"(parent, parentName)")
+  if "generate" in func:
+    argNames = ["a","b","c","d"];
+    params = []
+    if "params" in func: params = func["params"]
+    if len(params)==0: 
+      codeOut(indent+"jspParseEmptyFunction();")
+    elif len(params)==1: 
+      codeOut(indent+"JsVar *"+params.keys()[0]+" = jspParseSingleFunction();")
+    elif len(params)==2: 
+      paramDefs = []
+      paramPtrs = []
+      for paramName in params:
+        paramDefs.append("*"+paramName)
+        paramPtrs.append("&"+paramName)
+      while len(paramPtrs)<4: paramPtrs.append("0")
+      codeOut(indent+"JsVar "+', '.join(paramDefs)+";");
+      codeOut(indent+"jspParseFunction(0, "+', '.join(paramPtrs)+");");
+    else:
+      print "ERROR: codeOutFunction unknown nukber of args "+str(len(params))
+      exit(1)
+    commandargs = [];
+    for paramName in params:
+      param = params[paramName]
+      commandargs.append(getUnLockGetter(param[0], paramName));
+    command = func["generate"]+"("+ ', '.join(commandargs) +")";
+    line = "return " + getCreator(func["return"][0], command)+";";
+    codeOut(indent+line);
+  elif "wrap" in func:
+    codeOut(indent+"return "+func["wrap"]+"(parent, parentName);")
+  else:
+    print "ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate or wrap elements'"
+    exit(1)
 
 def codeOutTree(indent, tree, offset):
   first = True
@@ -82,14 +128,16 @@ def codeOutTree(indent, tree, offset):
       # Now we do the handling part!
   if "" in tree:
     func = tree[""]
-    if not first: codeOut(indent + "} else {")
+    line = indent;
+    if first: first = False
+    if not first: line = line + "} else "
+    line = line + "if (name["+str(offset)+"]==0) {";
+    codeOut(line)
     codeOutFunction(indent+"  ", func)
   if not first:
     codeOut(indent+'}')
 
-def getTestFor(className):
-  if className=="": return "!parent"
-  else: return "is"+className+"(parent)"
+
 
 
 print ""
