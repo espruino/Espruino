@@ -183,6 +183,15 @@ static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
     return JSVAR_DATA_STRING_LEN;
 }
 
+/// This is the number of characters a JsVar can contain, NOT string length
+static inline size_t jsvGetCharactersInVar(const JsVar *v) {
+    size_t l = jsvGetMaxCharactersInVar(v);
+    size_t c = 0;
+    while (c<l && v->varData.str[c])
+          c++;
+    return c;
+}
+
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')
  */

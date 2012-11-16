@@ -42,6 +42,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
       JsVar *v = jspParseSingleFunction();
       JsVar *result = 0;
       if (v) {
+        v = jsvAsString(v, true); // get as a astring
         result = jspEvaluateVar(execInfo->parse, v);
         jsvUnLock(v);
       }
@@ -250,12 +251,14 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
             JsVar *res = 0;
             JsVar *bracketed = jsvNewFromString("(");
             if (bracketed) { // could be out of memory
+              v = jsvAsString(v, true); // try and get this as a string
               jsvAppendStringVar(bracketed, v, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
               jsvUnLock(v);
               jsvAppendString(bracketed, ")");
               res = jspEvaluateVar(execInfo->parse, bracketed);
               jsvUnLock(bracketed);
-            }
+            } else
+              jsvUnLock(v);
             return res;
           }
         }

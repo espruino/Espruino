@@ -128,6 +128,7 @@
             Change jsvFindChildFromX to use JsVar* from JsVarRef - saves a lot of lock/unlock
             Handle new Foo() as per spec (return value + init of this+prototype) - still does not cope with non-object prototype
             Beginning of SD card support
+            Fix for parse/eval when given non-strings
 
 [/CHANGELOG]
 

@@ -261,8 +261,6 @@ JsVar *jsvNewFromString(const char *str) {
   // Now we copy the string, but keep creating new jsVars if we go
   // over the end
   var = jsvLockAgain(first);
-  var->varData.str[0] = 0; // in case str is empty!
-
   while (*str) {
     int i;
     // copy data in
@@ -528,14 +526,7 @@ size_t jsvGetStringLength(JsVar *v) {
       // we have more, so this section MUST be full
       strLength += jsvGetMaxCharactersInVar(var);
     } else {
-      size_t i; 
-      // count
-      for (i=0;i<jsvGetMaxCharactersInVar(var);i++) {
-        if (var->varData.str[i])
-          strLength++;
-        else
-          break;
-      }
+      strLength += jsvGetCharactersInVar(var);
     }
 
     // Go to next
@@ -633,7 +624,6 @@ int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col) {
 
 void jsvAppendString(JsVar *var, const char *str) {
   JsVar *block = jsvLockAgain(var);
-  unsigned int blockChars;
   assert(jsvIsString(var));
   // Find the block at end of the string...
   while (block->lastChild) {
@@ -642,9 +632,7 @@ void jsvAppendString(JsVar *var, const char *str) {
     block = jsvLock(next);
   }
   // find how full the block is
-  blockChars=0;
-  while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
-        blockChars++;
+  size_t blockChars = jsvGetCharactersInVar(block);
   // now start appending
   while (*str) {
     size_t i;
@@ -694,9 +682,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
     block = jsvLock(next);
   }
   // find how full the block is
-  unsigned int blockChars=0;
-  while (blockChars<jsvGetMaxCharactersInVar(block) && block->varData.str[blockChars])
-        blockChars++; // TODO: fix for zeros in strings
+  size_t blockChars = jsvGetCharactersInVar(block);
   // now start appending
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, stridx);
@@ -765,33 +751,24 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
 
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
-  JsVar *v;
-  assert(jsvIsBasic(var) || jsvHasCharacterData(var));
   if (!jsvHasCharacterData(var)) {
+    assert(jsvIsBasic(var));
     return 0; // not a string so not equal!
   }
-  v = jsvLockAgain(var);
-  while (true) {
-    size_t i, l = jsvGetMaxCharactersInVar(v);
-    JsVarRef next;
-    for (i=0;i<l;i++) {
-       if (v->varData.str[i] != *str) { jsvUnLock(v); return false; }
-       if  (*str==0) { jsvUnLock(v); return true; } // end of string, all great!
-       str++;
+
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  while (jsvStringIteratorHasChar(&it) && *str) {
+    if (jsvStringIteratorGetChar(&it) != *str) {
+      jsvStringIteratorFree(&it);
+      return false;
     }
-    // End of what is built in, but keep going!
-    next = v->lastChild;
-    if  (*str==0) { // end of input string
-      jsvUnLock(v);
-      return next==0;
-    }
-    // if we have more data then they are not equal!
-    jsvUnLock(v);
-    if  (!next) return false; // end of this string, but not the input!
-    v = jsvLock(next);
+    str++;
+    jsvStringIteratorNext(&it);
   }
-  // never get here, but the compiler warns...
-  return true;
+  bool eq = jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
+  jsvStringIteratorFree(&it);
+  return eq;
 }
 
 
