@@ -72,45 +72,45 @@ DEFINES += -DUSE_MATH
 ifndef LINUX 
 INCLUDE += -I$(ROOT)/math
 SOURCES += \
-math/acosh.c \
-math/asin.c \
-math/asinh.c \
-math/atan.c \
-math/atanh.c \
-math/cbrt.c \
-math/chbevl.c \
-math/clog.c \
-math/cmplx.c \
-math/const.c \
-math/cosh.c \
-math/drand.c \
-math/exp10.c \
-math/exp2.c \
-math/exp.c \
-math/fabs.c \
-math/floor.c \
-math/isnan.c \
-math/log10.c \
-math/log2.c \
-math/log.c \
-math/mtherr.c \
-math/polevl.c \
-math/pow.c \
-math/powi.c \
-math/round.c \
-math/setprec.c \
-math/sin.c \
-math/sincos.c \
-math/sindg.c \
-math/sinh.c \
-math/sqrt.c \
-math/tan.c \
-math/tandg.c \
-math/tanh.c \
-math/unity.c
-#math/mod2pi.c 
-#math/mtst.c 
-#math/dtestvec.c 
+libs/math/acosh.c \
+libs/math/asin.c \
+libs/math/asinh.c \
+libs/math/atan.c \
+libs/math/atanh.c \
+libs/math/cbrt.c \
+libs/math/chbevl.c \
+libs/math/clog.c \
+libs/math/cmplx.c \
+libs/math/const.c \
+libs/math/cosh.c \
+libs/math/drand.c \
+libs/math/exp10.c \
+libs/math/exp2.c \
+libs/math/exp.c \
+libs/math/fabs.c \
+libs/math/floor.c \
+libs/math/isnan.c \
+libs/math/log10.c \
+libs/math/log2.c \
+libs/math/log.c \
+libs/math/mtherr.c \
+libs/math/polevl.c \
+libs/math/pow.c \
+libs/math/powi.c \
+libs/math/round.c \
+libs/math/setprec.c \
+libs/math/sin.c \
+libs/math/sincos.c \
+libs/math/sindg.c \
+libs/math/sinh.c \
+libs/math/sqrt.c \
+libs/math/tan.c \
+libs/math/tandg.c \
+libs/math/tanh.c \
+libs/math/unity.c
+#libs/math/mod2pi.c 
+#libs/math/mtst.c 
+#libs/math/dtestvec.c 
 endif
 endif
 
