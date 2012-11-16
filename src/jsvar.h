@@ -206,6 +206,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 
 const char *jsvGetConstString(JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 size_t jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 int jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
@@ -366,15 +367,24 @@ static inline void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int s
   }
 }
 
+/// Gets the current character (or 0)
 static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
   if (!it->var) return 0;
   return  it->var->varData.str[it->idx];
 }
 
+/// Do we have a character, or are we at the end?
 static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
   return it->var && it->idx < it->charsInVar;
 }
 
+/// Sets a character (will not extend the string - just overwrites)
+static inline void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
+  if (jsvStringIteratorHasChar(it))
+    it->var->varData.str[it->idx] = c;
+}
+
+/// Move to next character
 static inline void jsvStringIteratorNext(JsvStringIterator *it) {
   if (!it->var) return;
   it->idx++;

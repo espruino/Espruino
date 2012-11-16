@@ -480,6 +480,21 @@ size_t jsvGetString(JsVar *v, char *str, size_t len) {
     }
 }
 
+/// Set the Data in this string. This must JUST overwrite - not extend or shrink
+void jsvSetString(JsVar *v, char *str, size_t len) {
+  assert(jsvHasCharacterData(v));
+  assert(len == jsvGetStringLength(v));
+
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  size_t i;
+  for (i=0;i<len;i++) {
+    jsvStringIteratorSetChar(&it, str[i]);
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+}
+
 /** If var is a string, lock and return it, else
  * create a new string. unlockVar means this will auto-unlock 'var'  */
 JsVar *jsvAsString(JsVar *v, bool unlockVar) {
