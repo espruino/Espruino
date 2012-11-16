@@ -357,6 +357,9 @@ void jshDoSysTick() {
     SysTickUSBWatchdog++;
   }
 #endif //USB
+#ifdef USE_FILESYSTEM
+  disk_timerproc();
+#endif
 }
 
 // ----------------------------------------------------------------------------

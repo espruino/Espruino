@@ -27,6 +27,7 @@ ROOT=$(CWD)
 ifdef OLIMEX
 PROJ_NAME=espruino_olimexino_stm32
 USB=1
+USE_FILESYSTEM=1
 FAMILY=STM32F1
 CHIP=STM32F103
 BOARD=OLIMEXINO_STM32
@@ -66,11 +67,23 @@ src/jsparse.c \
 src/jsinteractive.c \
 src/jsdevices.c 
 
+ifdef USE_FILESYSTEM
+DEFINES += -DUSE_FILESYSTEM
+ifndef LINUX 
+INCLUDE += -I$(ROOT)/libs/fat_sd
+SOURCES += \
+libs/fat_sd/fattime.c \
+libs/fat_sd/ff.c \
+libs/fat_sd/sd_spi_stm32.c 
+#libs/fat_sd/option/ccsbcs.c # for LFN support (see _USE_LFN in ff.h)
+endif
+endif
+
 
 ifdef USE_MATH
 DEFINES += -DUSE_MATH
 ifndef LINUX 
-INCLUDE += -I$(ROOT)/math
+INCLUDE += -I$(ROOT)/libs/math
 SOURCES += \
 libs/math/acosh.c \
 libs/math/asin.c \

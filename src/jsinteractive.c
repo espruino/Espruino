@@ -9,6 +9,9 @@
 #include "jsinteractive.h"
 #include "jsfunctions.h"
 #include "jshardware.h"
+#ifdef USE_FILESYSTEM
+#include "ff.h"
+#endif
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1975,6 +1978,52 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
       jsvDottyOutput();
       return 0;
     }
+#ifdef USE_FILESYSTEM
+    if (strcmp(name,"list")==0) {
+      jspParseEmptyFunction();
+      DIR dirs;
+      FILINFO Finfo;
+      FRESULT res;
+      int i = 0;
+      char *fn;
+      FATFS fat;
+
+      jsiConsolePrint("Mounting...\n");
+
+      if ((res = f_mount(0, &fat)) == FR_OK) {
+        jsiConsolePrint("Scanning...\n");
+        if ((res=f_opendir(&dirs, "")) == FR_OK) {
+          jsiConsolePrint("Opened...\n");
+            while (((res=f_readdir(&dirs, &Finfo)) == FR_OK) && Finfo.fname[0]) {
+                  jsiConsolePrintInt(i++);
+            #if _USE_LFN
+                            fn = *Finfo.lfname ? Finfo.lfname : Finfo.fname;
+            #else
+                            fn = Finfo.fname;
+            #endif
+                        if (Finfo.fattrib & AM_DIR) {
+                            jsiConsolePrint(" DIR ");
+                            jsiConsolePrint(fn);
+                            jsiConsolePrint("\n");
+                        } else {
+                          jsiConsolePrint(" FILE ");
+                          jsiConsolePrint(fn);
+                          jsiConsolePrint("\n");
+                        }
+                    }
+                }
+        if (res==FR_OK) {
+          jsiConsolePrint("Unmounting...\n");
+          res = f_mount(0, 0);
+        }
+      }
+      jsiConsolePrint("Code ");
+      jsiConsolePrintInt(res);
+      jsiConsolePrint("\nDone.\n");
+
+      return 0;
+     }
+#endif
     // ----------------------------------------   END OF SYSTEM-WIDE
   } else if (isUSART(jsvGetRef(a))) { // ----------------------------------------   USART
     IOEventFlags device = getDeviceFromClass(jsvGetRef(a));
