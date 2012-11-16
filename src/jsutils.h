@@ -323,7 +323,6 @@ typedef long long JsSysTime;
 
 #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3)
-#define JSVAR_STRING_OP_BUFFER_SIZE 64 // FIXME - we need to do this properly
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16 // see jslTokenAsString

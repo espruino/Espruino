@@ -83,14 +83,14 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
       /*JS* property Array.length
        *JS*  Return the length of the array
        */
-        jslMatch(execInfo->lex, LEX_ID);
+        jspParseVariableName();
         return jsvNewFromInteger(jsvGetArrayLength(parent));
       }
       if (jsvIsString(parent)) {
       /*JS* property String.length
        *JS*  Return the number of characters in the string
        */
-        jslMatch(execInfo->lex, LEX_ID);
+        jspParseVariableName();
         return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
       }
     }

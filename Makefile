@@ -74,7 +74,8 @@ INCLUDE += -I$(ROOT)/libs/fat_sd
 SOURCES += \
 libs/fat_sd/fattime.c \
 libs/fat_sd/ff.c \
-libs/fat_sd/sd_spi_stm32.c 
+libs/fat_sd/sd_spi_stm32.c \
+libs/fat_sd/jswrap.c 
 #libs/fat_sd/option/ccsbcs.c # for LFN support (see _USE_LFN in ff.h)
 endif
 endif
