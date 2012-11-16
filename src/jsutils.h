@@ -227,6 +227,10 @@ Board ideas:
    Display connector (nokia phone?) simple touchscreen?
    WiFi - looks easy with http://uk.farnell.com/microchip/rn131c-rm/module-wlan-w-ant-u-fl-conn/dp/2143313 (could just leave pads?)
 
+Tutorial ideas:
+   Create and turn a brushless DC motor
+   Fan controller for PC
+
 When presenting:
    Show small time to first code
    Easy transition from simple digitalWrite to loops/etc (don't get with Arduino)
