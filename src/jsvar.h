@@ -186,11 +186,12 @@ static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
 
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline size_t jsvGetCharactersInVar(const JsVar *v) {
-    size_t l = jsvGetMaxCharactersInVar(v);
+    /*size_t l = jsvGetMaxCharactersInVar(v);
     size_t c = 0;
     while (c<l && v->varData.str[c])
           c++;
-    return c;
+    return c;*/
+    return JSVAR_GET_STRING_LEN(v);
 }
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
@@ -215,8 +216,9 @@ bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
+void jsvAppendStringBuf(JsVar *var, const char *str, int length); ///< Append the given string to this one - but does not use null-terminated strings
 void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
-void jsvAppendCharacter(JsVar *var, char ch); ///< Append the given character to this string
+static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
 void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
@@ -344,7 +346,7 @@ typedef struct JsvStringIterator {
 static inline void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
-  it->charsInVar = jsvGetMaxCharactersInVar(str);
+  it->charsInVar = jsvGetCharactersInVar(str);
   it->idx = (size_t)startIdx;
   while (it->idx >= it->charsInVar) {
     it->idx -= it->charsInVar;
@@ -353,7 +355,7 @@ static inline void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int s
         JsVar *next = jsvLock(it->var->lastChild);
         jsvUnLock(it->var);
         it->var = next;
-        it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+        it->charsInVar = jsvGetCharactersInVar(it->var);
       } else {
         jsvUnLock(it->var);
         it->var = 0;
@@ -370,7 +372,7 @@ static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
 }
 
 static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
-  return it->var && it->var->varData.str[it->idx]!=0;
+  return it->var && it->idx < it->charsInVar;
 }
 
 static inline void jsvStringIteratorNext(JsvStringIterator *it) {
@@ -382,7 +384,7 @@ static inline void jsvStringIteratorNext(JsvStringIterator *it) {
       JsVar *next = jsvLock(it->var->lastChild);
       jsvUnLock(it->var);
       it->var = next;
-      it->charsInVar = jsvGetMaxCharactersInVar(it->var);
+      it->charsInVar = jsvGetCharactersInVar(it->var);
     } else {
       jsvUnLock(it->var);
       it->var = 0;

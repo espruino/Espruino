@@ -262,12 +262,13 @@ JsVar *jsvNewFromString(const char *str) {
   // over the end
   var = jsvLockAgain(first);
   while (*str) {
-    int i;
     // copy data in
-    for (i=0;i<(int)jsvGetMaxCharactersInVar(var);i++) {
-      var->varData.str[i] = *str;
-      if (*str) str++;
-    }
+    size_t i, l = jsvGetMaxCharactersInVar(var);
+    for (i=0;i<l && *str;i++)
+      var->varData.str[i] = *(str++);
+    // we've stopped if the string was empty
+    JSVAR_SET_STRING_LEN(var, i);
+
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
@@ -623,8 +624,8 @@ int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col) {
 }
 
 void jsvAppendString(JsVar *var, const char *str) {
-  JsVar *block = jsvLockAgain(var);
   assert(jsvIsString(var));
+  JsVar *block = jsvLockAgain(var);
   // Find the block at end of the string...
   while (block->lastChild) {
     JsVarRef next = block->lastChild;
@@ -635,12 +636,12 @@ void jsvAppendString(JsVar *var, const char *str) {
   size_t blockChars = jsvGetCharactersInVar(block);
   // now start appending
   while (*str) {
-    size_t i;
     // copy data in
-    for (i=blockChars;i<jsvGetMaxCharactersInVar(block);i++) {
-      block->varData.str[i] = *str;
-      if (*str) str++;
+    size_t i, l=jsvGetMaxCharactersInVar(block);
+    for (i=blockChars;i<l && *str;i++) {
+      block->varData.str[i] = *(str++);
     }
+    JSVAR_SET_STRING_LEN(block, i);
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
@@ -656,17 +657,44 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
+void jsvAppendStringBuf(JsVar *var, const char *str, int length) {
+  assert(jsvIsString(var));
+  JsVar *block = jsvLockAgain(var);
+  // Find the block at end of the string...
+  while (block->lastChild) {
+    JsVarRef next = block->lastChild;
+    jsvUnLock(block);
+    block = jsvLock(next);
+  }
+  // find how full the block is
+  size_t blockChars = jsvGetCharactersInVar(block);
+  // now start appending
+  while (length) {
+    // copy data in
+    size_t i, l=jsvGetMaxCharactersInVar(block);
+    for (i=blockChars;i<l && length;i++) {
+      block->varData.str[i] = *(str++);
+      length--;
+    }
+    JSVAR_SET_STRING_LEN(block, i);
+    // if there is still some left, it's because we filled up our var...
+    // make a new one, link it in, and unlock the old one.
+    if (length) {
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      if (!next) break;
+      next = jsvRef(next);
+      block->lastChild = jsvGetRef(next);
+      jsvUnLock(block);
+      block = next;
+      blockChars=0; // it's new, so empty
+    }
+  }
+  jsvUnLock(block);
+}
+
 void jsvAppendInteger(JsVar *var, JsVarInt i) {
   char buf[32];
   itoa(i,buf,10);
-  jsvAppendString(var, buf);
-}
-
-void jsvAppendCharacter(JsVar *var, char ch) {
-  // Append the character to our input line
-  char buf[2];
-  buf[0] = ch;
-  buf[1] = 0;
   jsvAppendString(var, buf);
 }
 
@@ -689,6 +717,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
+      JSVAR_SET_STRING_LEN(block, blockChars);
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
       if (!next) break; // out of memory
       next = jsvRef(next);
@@ -701,6 +730,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
+  JSVAR_SET_STRING_LEN(block, blockChars);
   jsvUnLock(block);
 }
 

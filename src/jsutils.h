@@ -129,6 +129,7 @@
             Handle new Foo() as per spec (return value + init of this+prototype) - still does not cope with non-object prototype
             Beginning of SD card support
             Fix for parse/eval when given non-strings
+            Strings can now contain '\0'
 
 [/CHANGELOG]
 
@@ -398,6 +399,9 @@ typedef enum {
     JSV_STRING_LEN_MASK = JSV_STRING_LEN_MAX << JSV_STRING_LEN_SHIFT,
     JSV_STRING_LEN_ONE  = 1 << JSV_STRING_LEN_SHIFT,
 } PACKED_FLAGS JsVarFlags;
+
+#define JSVAR_GET_STRING_LEN(VAR) (((VAR)->flags&JSV_STRING_LEN_MASK) >> JSV_STRING_LEN_SHIFT)
+#define JSVAR_SET_STRING_LEN(VAR, LEN) ((VAR)->flags = ((VAR)->flags&~JSV_STRING_LEN_MASK) | ((LEN) << JSV_STRING_LEN_SHIFT))
 
 
 typedef enum LEX_TYPES {

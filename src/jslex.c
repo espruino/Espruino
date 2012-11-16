@@ -144,16 +144,17 @@ void jslGetNextToken(JsLex *lex) {
               jslGetNextCh(lex);
               char ch = lex->currCh;
               switch (lex->currCh) {
-              case 'n'  : ch = '\n'; break;
-              case 'a'  : ch = '\a'; break;
-              case 'r'  : ch = '\r'; break;
-              case 't'  : ch = '\t'; break;
-              case '\'' : ch = '\''; break;
-              case '\\' : ch = '\\'; break;
+              case 'n'  : ch = '\n'; jslGetNextCh(lex); break;
+              case 'a'  : ch = '\a'; jslGetNextCh(lex); break;
+              case 'r'  : ch = '\r'; jslGetNextCh(lex); break;
+              case 't'  : ch = '\t'; jslGetNextCh(lex); break;
+              case '\'' : ch = '\''; jslGetNextCh(lex); break;
+              case '\\' : ch = '\\'; jslGetNextCh(lex); break;
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
-                            jslGetNextCh(lex); buf[2] = lex->currCh;
-                            jslGetNextCh(lex); buf[3] = lex->currCh;
+                            jslGetNextCh(lex);
+                            buf[2] = lex->currCh; jslGetNextCh(lex);
+                            buf[3] = lex->currCh; jslGetNextCh(lex);
                             ch = (char)stringToInt(buf);
                          } break;
               default: 
@@ -162,11 +163,12 @@ void jslGetNextToken(JsLex *lex) {
                          char buf[5] = "0";
                          buf[1] = lex->currCh;
                          int n=2;
+                         jslGetNextCh(lex);
                          if (lex->currCh>='0' && lex->currCh<='7') {
-                           jslGetNextCh(lex); buf[n++] = lex->currCh;
-                         }
-                         if (lex->currCh>='0' && lex->currCh<='7') {
-                           jslGetNextCh(lex); buf[n++] = lex->currCh;
+                           buf[n++] = lex->currCh; jslGetNextCh(lex);
+                           if (lex->currCh>='0' && lex->currCh<='7') {
+                             buf[n++] = lex->currCh; jslGetNextCh(lex);
+                           }
                          }
                          buf[n]=0;
                          ch = (char)stringToInt(buf);
@@ -182,8 +184,8 @@ void jslGetNextToken(JsLex *lex) {
               jslTokenAppendChar(lex, lex->currCh);
               jsvAppendCharacter(lex->tokenValue, lex->currCh);
             }
+            jslGetNextCh(lex);
           }
-          jslGetNextCh(lex);
       }
       jslGetNextCh(lex);
       lex->tk = LEX_STR;
