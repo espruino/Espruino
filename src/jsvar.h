@@ -205,7 +205,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 
 
 const char *jsvGetConstString(JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
-void jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer
+size_t jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 int jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)

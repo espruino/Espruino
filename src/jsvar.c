@@ -434,41 +434,48 @@ const char *jsvGetConstString(JsVar *v) {
     return 0;
 }
 
-/// Save this var as a string to the given buffer
-void jsvGetString(JsVar *v, char *str, size_t len) {
+/// Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+size_t jsvGetString(JsVar *v, char *str, size_t len) {
    const char *s = jsvGetConstString(v);
    if (s) {
      strncpy(str, s, len);
+     return strlen(s);
    } else if (jsvIsInt(v)) {
      itoa(v->varData.integer, str, 10);
+     return strlen(str);
    } else if (jsvIsFloat(v)) {
      ftoa(v->varData.floating, str);
+     return strlen(str);
    } else if (jsvIsString(v) || jsvIsStringExt(v) || jsvIsFunctionParameter(v)) {
        if (jsvIsStringExt(v))
         jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
+      size_t l = len;
       JsvStringIterator it;
       jsvStringIteratorNew(&it, v, 0);
       while (jsvStringIteratorHasChar(&it)) {
-        if (len--<=1) {
+        if (l--<=1) {
           *str = 0;
           jsWarn("jsvGetString overflowed\n");
           jsvStringIteratorFree(&it);
-          return;
+          return len;
         }
         *(str++) = jsvStringIteratorGetChar(&it);
         jsvStringIteratorNext(&it);
       }
       jsvStringIteratorFree(&it);
       *str = 0;
+      return len-l;
     } else {
       // Try and get as a JsVar string, and try again
       JsVar *stringVar = jsvAsString(v, false);
       if (stringVar) {
-        jsvGetString(stringVar, str, len); // call again - but this tm
+        size_t l = jsvGetString(stringVar, str, len); // call again - but this time with converted var
         jsvUnLock(stringVar);
+        return l;
       } else {
         strncpy(str, "", len);
         jsWarn("INTERNAL: variable type cannot be converted to string");
+        return 0;
       }
     }
 }
@@ -518,17 +525,11 @@ size_t jsvGetStringLength(JsVar *v) {
   JsVar *var = v;
   JsVarRef ref = 0;
 
-  if (!jsvIsString(v)) return 0;
+  if (!jsvHasCharacterData(v)) return 0;
 
   while (var) {
     JsVarRef refNext = var->lastChild;
-
-    if (refNext!=0) {
-      // we have more, so this section MUST be full
-      strLength += jsvGetMaxCharactersInVar(var);
-    } else {
-      strLength += jsvGetCharactersInVar(var);
-    }
+    strLength += jsvGetCharactersInVar(var);
 
     // Go to next
     if (ref) jsvUnLock(var); // note use of if (ref), not var
