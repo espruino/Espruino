@@ -401,7 +401,7 @@ typedef enum {
 } PACKED_FLAGS JsVarFlags;
 
 #define JSVAR_GET_STRING_LEN(VAR) (((VAR)->flags&JSV_STRING_LEN_MASK) >> JSV_STRING_LEN_SHIFT)
-#define JSVAR_SET_STRING_LEN(VAR, LEN) ((VAR)->flags = ((VAR)->flags&~JSV_STRING_LEN_MASK) | ((LEN) << JSV_STRING_LEN_SHIFT))
+#define JSVAR_SET_STRING_LEN(VAR, LEN) ((VAR)->flags = ((VAR)->flags&~JSV_STRING_LEN_MASK) | ((int)(LEN) << JSV_STRING_LEN_SHIFT))
 
 
 typedef enum LEX_TYPES {
