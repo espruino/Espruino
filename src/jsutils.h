@@ -176,7 +176,6 @@
         handle 'new Function() { X.call(this); Y.call(this); }' correctly
         analogWrite should check about ports with overlapping timers
         analogWrite to have optional 3rd argument of an object, with frequency (and other options?)
-        Handle '0' in strings - switch to storing string length in flags
         When 0 handled in strings, implement ArrayBuffer/Int32Array/Int16Array/Int8Array/etc using strings - https://developer.mozilla.org/en-US/docs/JavaScript_typed_arrays
         Ensure code is compatible with that created by Emscriptem
         Looking up an index in an array could be made twice the speed for larger arrays (start at end - if <arr.length/2, start from beginning)        
