@@ -428,7 +428,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // 'claim' anything we are using
 void jsiSoftInit() {
   events = jsvNewWithFlags(JSV_ARRAY);
-  inputLine = jsvNewFromString("");
+  inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
 
   // Load inbuild Classes
@@ -553,7 +553,7 @@ void jsiSoftKill() {
     jsvUnRefRef(initName->firstChild); 
     initName->firstChild = 0;
   }
-  JsVar *initCode = jsvNewFromString("");
+  JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
     initName->firstChild = jsvGetRef(jsvRef(initCode));
     if (!echo) jsvAppendString(initCode, "echo(0);");
@@ -747,7 +747,7 @@ void jsiChangeToHistory(bool previous) {
       jsiConsoleEraseStringVarBackwards(inputLine);
     }
     jsvUnLock(inputLine);
-    inputLine = jsvNewFromString("");
+    inputLine = jsvNewFromEmptyString();
     inputCursorPos = 0;
   }
 }
@@ -785,7 +785,7 @@ void jsiHandleDelete(bool isBackspace) {
     }
   }
 
-  JsVar *v = jsvNewFromString("");
+  JsVar *v = jsvNewFromEmptyString();
   int p = inputCursorPos;
   if (isBackspace) p--;
   if (p>0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
@@ -956,7 +956,7 @@ void jsiHandleChar(char ch) {
 
           // Get line to execute, and reset inputLine
           JsVar *lineToExecute = inputLine;
-          inputLine = jsvNewFromString("");
+          inputLine = jsvNewFromEmptyString();
           inputCursorPos = 0;
           // execute!
           JsVar *v = jspEvaluateVar(&p, lineToExecute);
@@ -980,7 +980,7 @@ void jsiHandleChar(char ch) {
       } else { // new line - but not at end of line!
         jsiIsAboutToEditInputLine();
         if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
-        JsVar *v = jsvNewFromString("");
+        JsVar *v = jsvNewFromEmptyString();
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         jsvAppendCharacter(v, '\n');
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
@@ -1001,7 +1001,7 @@ void jsiHandleChar(char ch) {
         if (hasTab) jsvAppendString(inputLine, "    ");
         else jsvAppendCharacter(inputLine, ch);
       } else {
-        JsVar *v = jsvNewFromString("");
+        JsVar *v = jsvNewFromEmptyString();
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         if (hasTab) jsvAppendString(v, "    ");
         else jsvAppendCharacter(v, ch);
@@ -1297,7 +1297,7 @@ void jsiLoop() {
     jsiConsolePrint("Execution Interrupted.\r\n");
     // clear input line
     jsvUnLock(inputLine);
-    inputLine = jsvNewFromString("");
+    inputLine = jsvNewFromEmptyString();
   }
 
   // return console (if it was gone!)
@@ -1903,7 +1903,7 @@ JsVar *jsiHandleFunctionCall(JsExecInfo *execInfo, JsVar *a, const char *name) {
         else
           func = jsvSkipNameAndUnLock(jsvFindChildFromVar(p.root, funcName, 0));
         if (jsvIsFunction(func)) {
-          JsVar *newLine = jsvNewFromString("");
+          JsVar *newLine = jsvNewFromEmptyString();
           if (newLine) {
             jsvAppendStringVarComplete(newLine, funcName);
             jsvAppendString(newLine, " = ");

@@ -290,7 +290,7 @@ JsVar *jsvNewFromString(const char *str) {
 
 JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo) {
   // Create a var
-  JsVar *var = jsvNewFromString("");
+  JsVar *var = jsvNewFromEmptyString();
   if (!var) { // out of memory
     return 0;
   }
@@ -478,7 +478,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   JsVar *str = 0;
   // If it is string-ish, but not quite a string, copy it
   if (jsvHasCharacterData(v) && jsvIsName(v)) {
-    str = jsvNewFromString("");
+    str = jsvNewFromEmptyString();
     if (str) jsvAppendStringVar(str,v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
@@ -500,7 +500,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       str = jsvArrayJoin(v, filler);
       jsvUnLock(filler);
     } else if (jsvIsFunction(v)) {
-      str = jsvNewFromString("");
+      str = jsvNewFromEmptyString();
       if (str) jsfGetJSON(v, str);
     } else {
       jsWarn("INTERNAL: variable type cannot be converted to string");
@@ -1207,7 +1207,7 @@ JsVar *jsvArrayGetLast(JsVar *arr) {
 
 /// Join all elements of an array together into a string
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
-  JsVar *str = jsvNewFromString("");
+  JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0; // out of memory
   JsVarInt index = 0;
   JsVarRef childRef = arr->firstChild;

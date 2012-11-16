@@ -92,9 +92,10 @@ void jsvShowAllocated(); ///< Show what is still allocated, for debugging memory
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable
-JsVar *jsvNewFromString(const char *str); ///< Create a new string
-JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewWithFlags(JsVarFlags flags);
+JsVar *jsvNewFromString(const char *str); ///< Create a new string
+static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
+JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);

@@ -905,7 +905,7 @@ JsVar *jspeFactorNew() {
       return arr;
     } else if (strcmp(name, "String")==0) {
       JsVar *a = jspParseSingleFunction();
-      if (!a) return jsvNewFromString(""); // out of mem, or just no argument!
+      if (!a) return jsvNewFromEmptyString(); // out of mem, or just no argument!
       return jsvAsString(a, true);
     } else { // not built-in, try and run constructor function
       JsVar *obj;

@@ -237,7 +237,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
          *JS*  Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval
          */
             JsVar *v = jspParseSingleFunction();
-            JsVar *result = jsvNewFromString("");
+            JsVar *result = jsvNewFromEmptyString();
             if (result) // could be out of memory
                 jsfGetJSON(v, result);
             jsvUnLock(v);
@@ -349,7 +349,7 @@ JsVar *jsfHandleFunctionCall(JsExecInfo *execInfo, JsVar *parent, JsVar *parentN
 
           for (idx=0;idx<=l;idx++) {
             if (idx==l || jsvCompareString(parent, split, idx, 0, true)==0) {
-              JsVar *part = jsvNewFromString("");
+              JsVar *part = jsvNewFromEmptyString();
               if (!part) break; // out of memory
               JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
               if (idxvar) { // could be out of memory

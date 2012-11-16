@@ -136,7 +136,7 @@ void jslGetNextToken(JsLex *lex) {
       }
   } else if (lex->currCh=='"' || lex->currCh=='\'') {
       char delim = lex->currCh;
-      lex->tokenValue = jsvNewFromString("");
+      lex->tokenValue = jsvNewFromEmptyString();
       // strings...
       jslGetNextCh(lex);
       while (lex->currCh && lex->currCh!=delim) {
