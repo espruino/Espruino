@@ -21,6 +21,26 @@ Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md)
 
+Current State
+-------------
+
+Please note that this is BETA. We've been working hard on the Espruino Board support but we haven't had time to check the other boards properly.
+
+* Espruino Board - working
+* Linux - working
+* STM32VLDISCOVERY - ?
+* STM32F3DISCOVERY - ?
+* STM32F4DISCOVERY - ?
+* HY STM32 2.4" - ?
+* HY STM32 2.8" - ?
+* HY STM32 3.2" - ?
+* Olimexino - ?
+* Carambola - ?
+* Raspberry Pi - ?
+* Sony SmartWatch - USB VCP support still needed
+* MBed platforms - have not worked for a while - hardware wrapper still needed
+* Arduino - has never worked. Compiles but doesn't even seem to get past init
+
 Using
 -----
 
