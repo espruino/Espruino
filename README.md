@@ -60,27 +60,27 @@ We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may
 ```  BOARDNAME=1 RELEASE=1 make```
 
 * See the top of Makefile for board names
-* Without RELEASE=1, assertions are kept in the code (which is good for debugging, bad for performance + code size)
-* 'BOARDNAME=1 RELEASE=1 make serialflash' will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for Espruino + HY boards)
-* 'BOARDNAME=1 RELEASE=1 make flash' will flash using st-flash if discovery, or maple bootloader if using that board
+* Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
+* `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for Espruino + HY boards)
+* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if discovery, or maple bootloader if using that board
 
 Directories and Files
 ---------------------
 
-ChangeLog          What's new
-TODO               List of things to do
-boards/            Information on boards, used to auto-generate a lot of the code
-code/              Example JavaScript code
-gen/               Auto-Generated Source Files
-libs/              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
-linker/            Linker files for various processors
-misc/              random other stuff
-scripts/           Scripts for generating files in gen, and for analysing code/compilation/etc
-src/               Main source code
-targetlibs/        Libraries for targeted architectures
-targets/           Specific code for targeted architectures
-tests/             Testcases
-dist_*             files to be copied into distribution zip file
+* `ChangeLog`:          What's new
+* `TODO`:               List of things to do
+* `boards/`:            Information on boards, used to auto-generate a lot of the code
+* `code/`:              Example JavaScript code
+* `gen/`:               Auto-Generated Source Files
+* `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
+* `linker/`:            Linker files for various processors
+* `misc/`:              random other stuff
+* `scripts/`:           Scripts for generating files in gen, and for analysing code/compilation/etc
+* `src/`:               Main source code
+* `targetlibs/`:        Libraries for targeted architectures
+* `targets/`:           Specific code for targeted architectures
+* `tests/`:             Testcases
+* `dist_*`:             files to be copied into distribution zip file
 
 Adding more devices
 -------------------
@@ -101,14 +101,14 @@ Currently there are a bunch of different files to modify. Eventually the plan is
 Adding libraries
 -------------------
 
-* Create jswrap_mylib.c/h in libs/
-* Create library functions (see examples in other jswrap files, also the comments in scripts/common.py)
+* Create `jswrap_mylib.c/h` in `libs/`
+* Create library functions (see examples in other jswrap files, also the comments in `scripts/common.py`)
 
 
 Arduino Compile (beta)
 ----------------------
-* Ensure that targets/arduino/utility is symlinked to src
-* Symlink ...arduino_workspace/libraries/Espruino to targets/arduino 
+* Ensure that `targets/arduino/utility` is symlinked to `src`
+* Symlink `...arduino_workspace/libraries/Espruino` to `targets/arduino`
 
 Cross Compile for Raspberry Pi
 ------------------------------
@@ -122,5 +122,5 @@ sudo apt-get install ia32-libs
 
 Cross Compile for Carambola (OpenWRT)
 -------------------------------------
-* Follow instructions at [https://github.com/8devices/carambola] to set toolchain up in ```~/workspace/carambola```
+* Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
 * Run ```CARAMBOLA=1 make```
