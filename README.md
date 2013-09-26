@@ -14,12 +14,12 @@ NOTE: This software is beta and is provided as-is, and won't be considered even 
 License
 -------
 
-Please see [LICENCE]
+Please see [LICENCE](LICENCE)
 
 Contributing
 ------------
 
-Please see [CONTRIBUTING.md]
+Please see [CONTRIBUTING.md](CONTRIBUTING.md)
 
 Using
 -----
