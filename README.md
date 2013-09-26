@@ -14,7 +14,7 @@ NOTE: This software is beta and is provided as-is, and won't be considered even 
 License
 -------
 
-Please see [LICENCE](LICENCE)
+Please see the [LICENSE](LICENSE) file
 
 Contributing
 ------------
