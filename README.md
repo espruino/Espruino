@@ -11,6 +11,12 @@ http://www.espruino.com
 
 NOTE: This software is beta and is provided as-is, and won't be considered even remotely final until we've released the Espruino Board. As such, don't expect support, and do expect it to change rapidly and without warning.
 
+About
+-----
+
+It'd probably help to read the [FAQ](http://www.espruino.com/FAQ), and specifically the page about [Performance](http://www.espruino.com/Performance) as it contains information about how Espruino itself works. There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands.
+
+
 License
 -------
 
