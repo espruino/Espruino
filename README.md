@@ -61,6 +61,8 @@ However if you're planning on including the Espruino software in your commercial
 Building
 --------
   
+Espruino is easy to build under Linux, and it is possible to build under MacOS. We'd strongly suggest that you DO NOT TRY AND BUILD UNDER WINDOWS, and instead use a Virtual Machine. There's a good post on this here: http://forum.espruino.com/conversations/151
+  
 We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may need changing...
 
 ```  BOARDNAME=1 RELEASE=1 make```
