@@ -81,7 +81,8 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
 
 /*JSON{ "type":"function", "name" : "digitalPulse",
          "description" : ["Pulse the pin with the value for the given time in milliseconds",
-                          "eg. ```pulse(A0,1,500);``` pulses A0 high for 500ms" ],
+                          "eg. ```pulse(A0,1,5);``` pulses A0 high for 5ms",
+                          "digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead" ],
          "generate" : "jswrap_io_digitalPulse",
          "params" : [ [ "pin", "pin", "The pin to use"],
                       [ "value", "bool", "Whether to pulse high (true) or low (false)"],
