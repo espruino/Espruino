@@ -11,6 +11,12 @@ http://www.espruino.com
 
 NOTE: This software is beta and is provided as-is, and won't be considered even remotely final until we've released the Espruino Board. As such, don't expect support, and do expect it to change rapidly and without warning.
 
+About
+-----
+
+It'd probably help to read the [FAQ](http://www.espruino.com/FAQ), and specifically the page about [Performance](http://www.espruino.com/Performance) as it contains information about how Espruino itself works. There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands.
+
+
 License
 -------
 
@@ -30,11 +36,11 @@ Please note that this is BETA. We've been working hard on the Espruino Board sup
 * Linux - working
 * STM32VLDISCOVERY - ?
 * STM32F3DISCOVERY - ?
-* STM32F4DISCOVERY - ?
-* HY STM32 2.4" - ?
-* HY STM32 2.8" - ?
-* HY STM32 3.2" - ?
-* Olimexino - ?
+* STM32F4DISCOVERY - WORKING
+* HY STM32 2.4" - WORKING
+* HY STM32 2.8" - WORKING, but screen is not black at startup
+* HY STM32 3.2" - WORKING
+* Olimexino - BROKEN - https://github.com/espruino/Espruino/issues/6
 * Carambola - ?
 * Raspberry Pi - ?
 * Sony SmartWatch - USB VCP support still needed
@@ -54,6 +60,8 @@ However if you're planning on including the Espruino software in your commercial
 
 Building
 --------
+  
+Espruino is easy to build under Linux, and it is possible to build under MacOS. We'd strongly suggest that you DO NOT TRY AND BUILD UNDER WINDOWS, and instead use a Virtual Machine. There's a good post on this here: http://forum.espruino.com/conversations/151
   
 We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may need changing...
 

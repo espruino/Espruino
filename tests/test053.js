@@ -13,4 +13,8 @@ function eq(a,b) {
   return true;
 }
 
-result = eq(r1,[4,6,8,10]) && eq(r2,[6,9,12,15]);
+var mismatch = 0;
+var r3 = a.map(function(x, idx, arr) {mismatch |= !eq(arr,a); return idx+1;});
+
+result = eq(r1,[4,6,8,10]) && eq(r2,[6,9,12,15]) && eq(r3,[1,2,3,4]) && 
+  !mismatch;
