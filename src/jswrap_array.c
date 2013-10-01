@@ -104,9 +104,14 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
    while (childRef) {
      JsVar *child = jsvLock(childRef);
      if (jsvIsInt(child)) {
-       JsVar *childValue = jsvLock(child->firstChild);
-       JsVar *mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 1, &childValue);
-       jsvUnLock(childValue);
+       JsVar *args[3], *mapped;
+       args[0] = jsvLock(child->firstChild);
+       // child is a variable name, create a new variable for the index
+       args[1] = jsvNewFromInteger(jsvGetInteger(child));
+       args[2] = parent;
+       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
+       jsvUnLock(args[0]);
+       jsvUnLock(args[1]);
        if (mapped) {
          JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
          if (name) { // out of memory?
