@@ -933,7 +933,7 @@ JsVar *jspeFactorIdPostfix(JsVar *a) {
 }
 
 JsVar *jspeFactorId() {
-  return jspeFactorIdPostfix(jspeFactorSingleId());
+  return jspeFactorSingleId();
 }
 
 
@@ -1208,7 +1208,7 @@ JsVar *jspeFactor() {
         return jspeFactorArray();
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
       JSP_MATCH(LEX_R_FUNCTION);
-      return jspeFactorIdPostfix(jspeFunctionDefinition());
+      return jspeFunctionDefinition();
     } else  if (execInfo.lex->tk==LEX_R_NEW) {
       return jspeFactorNew();
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
@@ -1242,7 +1242,7 @@ __attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
 }
 
 JsVar *jspePostfix() {
-  return __jspePostfix(jspeFactor());
+  return __jspePostfix(jspeFactorIdPostfix(jspeFactor()));
 }
 
 JsVar *jspeUnary() {
