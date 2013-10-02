@@ -284,7 +284,8 @@ CPPSOURCES =
 ifdef BOOTLOADER
 WRAPPERSOURCES =
 SOURCES = \
-targets/stm32_boot/main.c
+targets/stm32_boot/main.c \
+targets/stm32_boot/utils.c
 OPTIMIZEFLAGS=-Os
 endif
 
