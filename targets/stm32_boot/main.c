@@ -119,7 +119,7 @@ int main(void) {
               chksum = getc_blocking();
               // TODO: check checksum and address&3==0
               putc(ACK);
-              setLEDs(4); // blue = wait for data
+              setLEDs(2); // green = wait for data
               nBytesMinusOne = getc_blocking();
               for (i=0;i<=nBytesMinusOne;i++)
                 buffer[i] = getc_blocking();
