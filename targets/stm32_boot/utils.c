@@ -26,34 +26,19 @@ char txBuffer[BUFFERMASK+1];
 int txHead=0, txTail=0;
 
 uint16_t stmPin(Pin ipin) {
-  JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
-  if (pin==JSH_PIN1 ) return GPIO_Pin_1;
-  if (pin==JSH_PIN2 ) return GPIO_Pin_2;
-  if (pin==JSH_PIN3 ) return GPIO_Pin_3;
-  if (pin==JSH_PIN4 ) return GPIO_Pin_4;
-  if (pin==JSH_PIN5 ) return GPIO_Pin_5;
-  if (pin==JSH_PIN6 ) return GPIO_Pin_6;
-  if (pin==JSH_PIN7 ) return GPIO_Pin_7;
-  if (pin==JSH_PIN8 ) return GPIO_Pin_8;
-  if (pin==JSH_PIN9 ) return GPIO_Pin_9;
-  if (pin==JSH_PIN10) return GPIO_Pin_10;
-  if (pin==JSH_PIN11) return GPIO_Pin_11;
-  if (pin==JSH_PIN12) return GPIO_Pin_12;
-  if (pin==JSH_PIN13) return GPIO_Pin_13;
-  if (pin==JSH_PIN14) return GPIO_Pin_14;
-  if (pin==JSH_PIN15) return GPIO_Pin_15;
-  return GPIO_Pin_0;
+  JsvPinInfoPin pin = JSH_PIN0;
+  if (ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
+  else if (ipin > JSH_PORTC_OFFSET) pin = ipin-JSH_PORTC_OFFSET;
+  else if (ipin > JSH_PORTB_OFFSET) pin = ipin-JSH_PORTB_OFFSET;
+  else if (ipin > JSH_PORTA_OFFSET) pin = ipin-JSH_PORTA_OFFSET;
+  return 1 << pin;
 }
 
-GPIO_TypeDef *stmPort(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
-  if (port == JSH_PORTA) return GPIOA;
-  if (port == JSH_PORTB) return GPIOB;
-  if (port == JSH_PORTC) return GPIOC;
-  if (port == JSH_PORTD) return GPIOD;
-  if (port == JSH_PORTE) return GPIOE;
-  if (port == JSH_PORTF) return GPIOF;
+GPIO_TypeDef *stmPort(Pin ipin) {
+  if (ipin > JSH_PORTD_OFFSET) return GPIOD;
+  else if (ipin > JSH_PORTC_OFFSET) return GPIOC;
+  else if (ipin > JSH_PORTB_OFFSET) return GPIOB;
+  //else if (ipin > JSH_PORTA_OFFSET) return GPIOA;
   return GPIOA;
 }
 

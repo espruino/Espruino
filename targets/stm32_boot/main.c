@@ -24,6 +24,7 @@
 #define CMD_EXTERASE (0x44)
 
 #define FLASH_START 0x08000000
+#define BOOTLOADER_SIZE (10*1024)
 
 #define ACK (0x79)
 #define NACK (0x1F)
@@ -41,10 +42,8 @@ void setLEDs(int l) {
   jshPinOutput(LED3_PININDEX, (l>>2)&1);
 }
 
-int main(void){
-
+int main(void) {
   initHardware();
-
   int flashy = 0;
   BootloaderState state = BLS_UNDEFINED;
   char currentCommand = 0;
@@ -129,7 +128,9 @@ int main(void){
               // TODO: check checksum and (nBytesMinusOne+1)&3==0
               FLASH_UnlockBank1();
               for (i=0;i<=nBytesMinusOne;i+=4) {
-                FLASH_ProgramWord(addr+i, *(unsigned int*)&buffer[i]);
+                unsigned int realaddr = addr+i;
+                if (realaddr >= (FLASH_START+BOOTLOADER_SIZE)) // protect bootloader
+                  FLASH_ProgramWord(realaddr, *(unsigned int*)&buffer[i]);
               }
               FLASH_LockBank1();
               setLEDs(0); // off
@@ -145,7 +146,7 @@ int main(void){
                 // all pages (except us!)
                 setLEDs(1); // red =  write
                 FLASH_UnlockBank1();
-                for (i=16384;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE)
+                for (i=BOOTLOADER_SIZE;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE)
                   FLASH_ErasePage((uint32_t)(FLASH_START + i));
                 FLASH_LockBank1();
                 setLEDs(0); // off
