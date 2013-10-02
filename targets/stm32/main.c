@@ -30,11 +30,16 @@
 #include "jshardware.h"
 #include "jshardware_pininfo.h"
 
+extern void _VECTOR_TABLE;
+
 int main(void){
 #ifdef STM32F103RB_MAPLE
   // get in quick and relocate vector table!
   SCB->VTOR = 0x08005000;
+#else // quickly set up the vector table...
+  SCB->VTOR = (unsigned int)&_VECTOR_TABLE;
 #endif
+
   jshInit();
 #ifdef USB
 #if defined(STM32F1) || defined(STM32F3)
@@ -72,7 +77,6 @@ int main(void){
   bool buttonState = false;
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
   jsiInit(!buttonState); // pressing USER button skips autoload
-
 
   int counter = 0;
   while (1) {
