@@ -31,6 +31,7 @@
 # DEBUG=1                 # add debug symbols (-g)
 # RELEASE=1               # Force release-style compile (no asserts, etc)
 # SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+# BOOTLOADER=1            # make the bootloader (not Espruino)
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -73,6 +74,7 @@ PLATFORM_CONFIG_FILE=gen/platform_config.h
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 ifdef ESPRUINO_1V0
 PROJ_NAME=espruino_espruino_1v0
+USE_BOOTLOADER=1
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -88,6 +90,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
 PROJ_NAME=espruino_espruino_1v1
 DEFINES+=-DESPRUINO_1V1
+USE_BOOTLOADER=1
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -279,6 +282,23 @@ src/jsinteractive.c \
 src/jsdevices.c \
 $(WRAPPERFILE)
 CPPSOURCES =
+
+ifdef BOOTLOADER
+ifndef USE_BOOTLOADER
+$(error Using bootloader on device that is not expecting one)
+endif
+BUILD_LINKER_FLAGS+=--bootloader
+PROJ_NAME=bootloader
+WRAPPERSOURCES =
+SOURCES = \
+targets/stm32_boot/main.c \
+targets/stm32_boot/utils.c
+OPTIMIZEFLAGS=-Os
+else # !BOOTLOADER
+ ifdef USE_BOOTLOADER
+  BUILD_LINKER_FLAGS+=--using_bootloader
+ endif
+endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
@@ -659,6 +679,7 @@ CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
 ifdef ARM
+LINKER_FILE = gen/linker.ld
 PININFOFILE=$(ROOT)/gen/jshardware_pininfo.c
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
@@ -701,10 +722,12 @@ DEFINES += -DFAKE_STDLIB
 # FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated 
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
+ifndef BOOTLOADER
 SOURCES +=                              \
 targets/stm32/main.c                    \
 targets/stm32/jshardware.c              \
 targets/stm32/stm32_it.c
+endif
 endif
 
 ifdef LINUX
@@ -730,8 +753,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) -Wl,--gc-sections
-ifdef CHIP 
-LDFLAGS += -Tlinker/$(CHIP).ld
+
+ifdef LINKER_FILE 
+LDFLAGS += -T$(LINKER_FILE)
 endif 
 
 export CC=$(CCPREFIX)gcc
@@ -757,6 +781,9 @@ $(PININFOFILE): scripts/build_pininfo.py
 	python scripts/build_pininfo.py $(BOARD) $(PININFOFILE)
 endif
 
+$(LINKER_FILE): scripts/build_linker.py 
+	python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	python scripts/build_platform_config.py $(BOARD)
 
@@ -777,7 +804,7 @@ $(PROJ_NAME): $(OBJS)
 else # embedded, so generate bin, etc ---------------------------
 proj: 	$(PROJ_NAME).elf
 
-$(PROJ_NAME).elf: $(OBJS)
+$(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
@@ -815,7 +842,7 @@ endif	    # ---------------------------------------------------
  
 clean:
 	find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
-	rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h
+	rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	rm -f $(PROJ_NAME).elf
 	rm -f $(PROJ_NAME).hex
 	rm -f $(PROJ_NAME).bin
