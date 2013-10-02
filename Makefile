@@ -74,6 +74,7 @@ PLATFORM_CONFIG_FILE=gen/platform_config.h
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 ifdef ESPRUINO_1V0
 PROJ_NAME=espruino_espruino_1v0
+USE_BOOTLOADER=1
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -89,6 +90,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
 PROJ_NAME=espruino_espruino_1v1
 DEFINES+=-DESPRUINO_1V1
+USE_BOOTLOADER=1
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -282,11 +284,20 @@ $(WRAPPERFILE)
 CPPSOURCES =
 
 ifdef BOOTLOADER
+ifndef USE_BOOTLOADER
+$(error Using bootloader on device that is not expecting one)
+endif
+BUILD_LINKER_FLAGS+=--bootloader
+PROJ_NAME=bootloader
 WRAPPERSOURCES =
 SOURCES = \
 targets/stm32_boot/main.c \
 targets/stm32_boot/utils.c
 OPTIMIZEFLAGS=-Os
+else # !BOOTLOADER
+ ifdef USE_BOOTLOADER
+  BUILD_LINKER_FLAGS+=--using_bootloader
+ endif
 endif
 
 ifdef SAVE_ON_FLASH
@@ -771,7 +782,7 @@ $(PININFOFILE): scripts/build_pininfo.py
 endif
 
 $(LINKER_FILE): scripts/build_linker.py 
-	python scripts/build_linker.py $(BOARD) $(LINKER_FILE)
+	python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	python scripts/build_platform_config.py $(BOARD)

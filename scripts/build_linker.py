@@ -27,17 +27,35 @@ sys.path.append(basedir+"boards");
 import pinutils;
 
 # -----------------------------------------------------------------------------------------
+def die(err):
+  print("ERROR: "+err)
+  sys.exit(1)
+# -----------------------------------------------------------------------------------------
 
 # Now scan AF file
 print "Script location "+scriptdir
 
-if len(sys.argv)!=3:
-  print "ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE"
+if len(sys.argv)<3:
+  print "ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE [--bootloader_leave_space] [--bootloader]"
+  print "                              --using_bootloader       -> step forwards in flash to leave room for bootloader"
+  print "                              --bootloader             -> is a bootloader - place it in the correct position"
   exit(1)
 boardname = sys.argv[1]
 linkerFilename = sys.argv[2]
+
+IS_BOOTLOADER = False
+IS_USING_BOOTLOADER = False
+for i in range(3,len(sys.argv)):
+  arg = sys.argv[i];
+  if arg=="--using_bootloader": IS_USING_BOOTLOADER=True
+  elif arg=="--bootloader": IS_BOOTLOADER=True
+  else: die("Unknown option '"+arg+"'");
+
+
 print "LINKER_FILENAME "+linkerFilename
 print "BOARD "+boardname
+print "IS_BOOTLOADER "+str(IS_BOOTLOADER)
+print "IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER)
 # import the board def
 board = importlib.import_module(boardname)
 
@@ -45,14 +63,17 @@ board = importlib.import_module(boardname)
 linkerFile = open(linkerFilename, 'w')
 def codeOut(s): linkerFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
-def die(err):
-  print("ERROR: "+err)
-  sys.exit(1)
-# -----------------------------------------------------------------------------------------
+BOOTLOADER_SIZE = 10*1024
 RAM_BASE = 0x20000000;
 FLASH_BASE = 0x08000000;
 RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
+if IS_BOOTLOADER:
+  FLASH_SIZE = BOOTLOADER_SIZE
+elif IS_USING_BOOTLOADER:
+  FLASH_BASE += BOOTLOADER_SIZE
+  FLASH_SIZE -= BOOTLOADER_SIZE
+
 
 codeOut("""
 /* Automatically generated linker file for """+boardname+"""
