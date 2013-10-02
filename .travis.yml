@@ -1,0 +1,7 @@
+language: c
+before_install:
+before_script:
+compiler:
+  - gcc
+env:
+script: make
