@@ -668,6 +668,7 @@ CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
 ifdef ARM
+LINKER_FILE = gen/linker.ld
 PININFOFILE=$(ROOT)/gen/jshardware_pininfo.c
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
@@ -741,8 +742,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) -Wl,--gc-sections
-ifdef CHIP 
-LDFLAGS += -Tlinker/$(CHIP).ld
+
+ifdef LINKER_FILE 
+LDFLAGS += -T$(LINKER_FILE)
 endif 
 
 export CC=$(CCPREFIX)gcc
@@ -768,6 +770,9 @@ $(PININFOFILE): scripts/build_pininfo.py
 	python scripts/build_pininfo.py $(BOARD) $(PININFOFILE)
 endif
 
+$(LINKER_FILE): scripts/build_linker.py 
+	python scripts/build_linker.py $(BOARD) $(LINKER_FILE)
+
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	python scripts/build_platform_config.py $(BOARD)
 
@@ -788,7 +793,7 @@ $(PROJ_NAME): $(OBJS)
 else # embedded, so generate bin, etc ---------------------------
 proj: 	$(PROJ_NAME).elf
 
-$(PROJ_NAME).elf: $(OBJS)
+$(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
@@ -826,7 +831,7 @@ endif	    # ---------------------------------------------------
  
 clean:
 	find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
-	rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h
+	rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	rm -f $(PROJ_NAME).elf
 	rm -f $(PROJ_NAME).hex
 	rm -f $(PROJ_NAME).bin
