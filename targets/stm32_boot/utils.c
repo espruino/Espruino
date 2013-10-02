@@ -114,7 +114,7 @@ int getc() {
   return d;
 }
 
-char getc_blocking() {
+unsigned char getc_blocking() {
   int c = getc();
   while (c<0) c=getc();
   return c;
