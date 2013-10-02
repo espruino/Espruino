@@ -12,172 +12,161 @@
  * ----------------------------------------------------------------------------
  */
 #include "platform_config.h"
-#include "usb_utils.h"
-#include "usb_lib.h"
-#include "usb_desc.h"
-#include "usb_pwr.h"
-#include "usb_istr.h"
-#include "jshardware.h"
+#include "utils.h"
+
+#define BOOTLOADER_MAJOR_VERSION 0
+#define BOOTLOADER_MINOR_VERSION 20
+
+#define CMD_GET (0x00)
+#define CMD_GET_ID (0x02)
+#define CMD_READ (0x11)
+#define CMD_WRITE (0x31)
+#define CMD_ERASE (0x43)
+
+#define FLASH_START 0x08000000
 
 #define ACK (0x79)
 #define NACK (0x1F)
 
-#define BUFFERMASK 1023
-char rxBuffer[BUFFERMASK+1];
-int rxHead=0, rxTail=0;
-char txBuffer[BUFFERMASK+1];
-int txHead=0, txTail=0;
+typedef enum {
+  BLS_UNDEFINED,
+  BLS_INITED,             // Has got 0x7F byte...
+  BLS_COMMAND_FIRST_BYTE, // Got first byte of command - waiting for inverted byte
+  BLS_EXPECT_DATA,
+} BootloaderState;
 
-uint16_t stmPin(Pin ipin) {
-  JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
-  if (pin==JSH_PIN1 ) return GPIO_Pin_1;
-  if (pin==JSH_PIN2 ) return GPIO_Pin_2;
-  if (pin==JSH_PIN3 ) return GPIO_Pin_3;
-  if (pin==JSH_PIN4 ) return GPIO_Pin_4;
-  if (pin==JSH_PIN5 ) return GPIO_Pin_5;
-  if (pin==JSH_PIN6 ) return GPIO_Pin_6;
-  if (pin==JSH_PIN7 ) return GPIO_Pin_7;
-  if (pin==JSH_PIN8 ) return GPIO_Pin_8;
-  if (pin==JSH_PIN9 ) return GPIO_Pin_9;
-  if (pin==JSH_PIN10) return GPIO_Pin_10;
-  if (pin==JSH_PIN11) return GPIO_Pin_11;
-  if (pin==JSH_PIN12) return GPIO_Pin_12;
-  if (pin==JSH_PIN13) return GPIO_Pin_13;
-  if (pin==JSH_PIN14) return GPIO_Pin_14;
-  if (pin==JSH_PIN15) return GPIO_Pin_15;
-  return GPIO_Pin_0;
+void setLEDs(int l) {
+  jshPinOutput(LED1_PININDEX, l&1);
+  jshPinOutput(LED2_PININDEX, (l>>1)&1);
+  jshPinOutput(LED3_PININDEX, (l>>2)&1);
 }
-
-GPIO_TypeDef *stmPort(Pin pin) {
-  JsvPinInfoPort port = pinInfo[pin].port;
-  if (port == JSH_PORTA) return GPIOA;
-  if (port == JSH_PORTB) return GPIOB;
-  if (port == JSH_PORTC) return GPIOC;
-  if (port == JSH_PORTD) return GPIOD;
-  if (port == JSH_PORTE) return GPIOE;
-  if (port == JSH_PORTF) return GPIOF;
-#if defined(STM32F4)
-  if (port == JSH_PORTG) return GPIOG;
-  if (port == JSH_PORTH) return GPIOH;
-#endif
-  return GPIOA;
-}
-
-
-void jshPinOutput(Pin pin, bool value) {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_InitStructure.GPIO_Pin = stmPin(pin);
-  GPIO_Init(stmPort(pin), &GPIO_InitStructure);
-  if (value)
-    stmPort(pin)->BSRR = stmPin(pin);
-  else
-    stmPort(pin)->BRR = stmPin(pin);
-}
-
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-  USB_Istr();
-}
-
-unsigned int SysTickUSBWatchdog = 0;
-
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
-}
-
-void SysTick_Handler(void) {
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
-  }
-}
-
-bool jshIsUSBSERIALConnected() {
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
-}
-
-int jshGetCharToTransmit(IOEventFlags device) {
-  if (txHead == txTail) return -1;
-  char d = txBuffer[txTail];
-  txTail = (txTail+1) & BUFFERMASK;
-  return d;
-}
-
-void jshPushIOCharEvent(IOEventFlags channel, char charData) {
-  rxBuffer[rxHead] = charData;
-  rxHead = (rxHead+1) & BUFFERMASK;
-}
-
-bool jshHasEventSpaceForChars(int n) {
-  return true;
-}
-
-int getc() {
-  if (rxHead == rxTail) return -1;
-  char d = rxBuffer[rxTail];
-  rxTail = (rxTail+1) & BUFFERMASK;
-  return d;
-}
-
-void putc(char charData) {
-  txBuffer[txHead] = charData;
-  txHead = (txHead+1) & BUFFERMASK;
-}
-
-
 
 int main(void){
 
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
-  RCC_APB2PeriphClockCmd(
-        RCC_APB2Periph_ADC1 |
-        RCC_APB2Periph_GPIOA |
-        RCC_APB2Periph_GPIOB |
-        RCC_APB2Periph_GPIOC |
-        RCC_APB2Periph_GPIOD |
-        RCC_APB2Periph_GPIOE |
-        RCC_APB2Periph_GPIOF |
-        RCC_APB2Periph_GPIOG |
-        RCC_APB2Periph_AFIO, ENABLE);
-  RCC_PCLK1Config(RCC_HCLK_Div8); // PCLK1 must be >8 Mhz for USB to work
-  RCC_PCLK2Config(RCC_HCLK_Div16);
-  /* System Clock */
-  SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
-  SysTick_Config(SYSTICK_RANGE-1); // 24 bit
-  NVIC_SetPriority(SysTick_IRQn, 0); // Super high priority
-
-
-#ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
-  USB_Init_Hardware();
-  USB_Init();
-#endif
-#ifdef STM32F4
-  USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
-            USB_OTG_FS_CORE_ID,
-#endif
-            &USR_desc,
-            &USBD_CDC_cb,
-            &USR_cb);
-#endif
-#endif
+  initHardware();
 
   int flashy = 0;
+  BootloaderState state = BLS_UNDEFINED;
+  char currentCommand = 0;
 
   while (1) {
     if (!jshIsUSBSERIALConnected()) {
       jshPinOutput(LED2_PININDEX, 0);
       // reset, led off
     } else {
-      jshPinOutput(LED2_PININDEX, ((flashy++)&0x1000)!=0);
+      jshPinOutput(LED3_PININDEX, ((flashy++)&0xFF)<5);
       // flash led
       int d = getc();
-      if (d>=0) putc(d);
+      if (d>=0) { // if we have data
+        if (state==BLS_EXPECT_DATA) {
+
+        } else if (state==BLS_INITED) {
+          currentCommand = d;
+          state = BLS_COMMAND_FIRST_BYTE;
+        } else if (state==BLS_COMMAND_FIRST_BYTE) {
+          if (currentCommand == d^0xFF) {
+            unsigned int addr,i;
+            char chksum, buffer[256];
+            unsigned char nBytesMinusOne, nPages;
+            // confirmed
+            switch (currentCommand) {
+            case CMD_GET: // get bootloader info
+              putc(ACK);
+              putc(5); // 6 bytes
+              // now report what we support
+              putc(BOOTLOADER_MAJOR_VERSION<<4 | BOOTLOADER_MINOR_VERSION); // Bootloader version
+              // list supported commands
+              putc(CMD_GET);
+              putc(CMD_GET_ID);
+              putc(CMD_READ);
+              putc(CMD_WRITE);
+              putc(CMD_ERASE); // erase
+              putc(ACK); // last byte
+              break;
+            case CMD_GET_ID: // get chip ID
+              putc(ACK);
+              putc(1); // 2 bytes
+              // now report what we support
+              putc(0x04);
+              // 0x30 F1 XL density
+              // 0x14 F1 high density
+              putc(0x30); // TODO: really?
+              putc(ACK); // last byte
+              break;
+            case CMD_READ: // read memory
+              putc(ACK);
+              addr = (unsigned char)getc_blocking() << 24;
+              addr |= (unsigned char)getc_blocking()  << 16;
+              addr |= (unsigned char)getc_blocking()  << 8;
+              addr |= (unsigned char)getc_blocking();
+              chksum = getc_blocking();
+              // TODO: check checksum
+              putc(ACK);
+              nBytesMinusOne = getc_blocking();
+              chksum = getc_blocking();
+              // TODO: check checksum
+              putc(ACK);
+              for (i=0;i<=nBytesMinusOne;i++)
+                putc(((unsigned char*)addr)[i]);
+              break;
+            case CMD_WRITE: // write memory
+              putc(ACK);
+              addr = (unsigned char)getc_blocking() << 24;
+              addr |= (unsigned char)getc_blocking()  << 16;
+              addr |= (unsigned char)getc_blocking()  << 8;
+              addr |= (unsigned char)getc_blocking();
+              chksum = getc_blocking();
+              // TODO: check checksum and address&3==0
+              putc(ACK);
+              setLEDs(4); // blue = wait for data
+              nBytesMinusOne = getc_blocking();
+              for (i=0;i<=nBytesMinusOne;i++)
+                buffer[i] = getc_blocking();
+              chksum = getc_blocking();
+              setLEDs(1); // red =  write
+              // TODO: check checksum and (nBytesMinusOne+1)&3==0
+              FLASH_UnlockBank1();
+              for (i=0;i<=nBytesMinusOne;i+=4) {
+                FLASH_ProgramWord(addr+i, *(unsigned int*)&buffer[i]);
+              }
+              FLASH_LockBank1();
+              setLEDs(0); // off
+              putc(ACK);
+              break;
+            case CMD_ERASE: // erase memory
+              putc(ACK);
+              nPages = getc_blocking();
+              if (nPages == 0xFF) {
+                // all pages (except us!)
+                setLEDs(1); // red =  write
+                FLASH_UnlockBank1();
+                for (i=16384;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE)
+                  FLASH_ErasePage((uint32_t)(FLASH_START + i));
+                FLASH_LockBank1();
+                setLEDs(0); // off
+                putc(ACK);
+              } else {
+                putc(NACK); // not implemented
+              }
+              break;
+            default: // unknown command
+              putc(NACK);
+              break;
+            }
+          } else {
+            // not correct
+            putc(NACK);
+          }
+          state = BLS_INITED;
+        } else {
+          switch (d) {
+          case 0x7F: // initialisation byte
+                     putc(state == BLS_UNDEFINED ? ACK : NACK);
+                     state = BLS_INITED;
+                     break;
+          }
+        }
+      }
     }
   }
 }
