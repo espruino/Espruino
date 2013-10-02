@@ -75,6 +75,7 @@ PLATFORM_CONFIG_FILE=gen/platform_config.h
 ifdef ESPRUINO_1V0
 PROJ_NAME=espruino_espruino_1v0
 USE_BOOTLOADER=1
+BOOTLOADER_PROJ_NAME=bootloader_espruino_1v0
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -91,6 +92,7 @@ else ifdef ESPRUINO_1V1
 PROJ_NAME=espruino_espruino_1v1
 DEFINES+=-DESPRUINO_1V1
 USE_BOOTLOADER=1
+BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -288,7 +290,7 @@ ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
 endif
 BUILD_LINKER_FLAGS+=--bootloader
-PROJ_NAME=bootloader
+PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
 WRAPPERSOURCES =
 SOURCES = \
 targets/stm32_boot/main.c \
