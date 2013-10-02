@@ -30,6 +30,8 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md)
 Current State
 -------------
 
+You can download binaries from http://www.espruino.com/Download (these aren't the latest, but are more likely to work with your board)
+
 Please note that this is BETA. We've been working hard on the Espruino Board support but we haven't had time to check the other boards properly.
 
 * Espruino Board - working
