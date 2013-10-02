@@ -37,7 +37,10 @@
             Remove registration code
             Adding MPL licence
             Remove Arduino bit manipulation functions - nobody seems to use them anyway
-            # of flash pages/etc now comes from board info
+            # of flash pages/etc now comes from board info            
+            [ebirger] Supply the correct arguments to Array.map
+            [ebirger] Method calls and membership evaluation should be done on all factors (ee. [1,2,3].foo())
+            [ebirger] When running multiple tests, only set up terminal once or it breaks the terminal window on exit
 
      1v39 : Added Bitwise NOT operator
             Added Raspberry Pi version to ZIP (with HTTP support)
