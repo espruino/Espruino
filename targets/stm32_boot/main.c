@@ -14,14 +14,14 @@
 #include "platform_config.h"
 #include "utils.h"
 
-#define BOOTLOADER_MAJOR_VERSION 0
-#define BOOTLOADER_MINOR_VERSION 20
+#define BOOTLOADER_MAJOR_VERSION 3 // needed for Ext Erase in stm32loader.py
+#define BOOTLOADER_MINOR_VERSION 0
 
 #define CMD_GET (0x00)
 #define CMD_GET_ID (0x02)
 #define CMD_READ (0x11)
 #define CMD_WRITE (0x31)
-#define CMD_ERASE (0x43)
+#define CMD_EXTERASE (0x44)
 
 #define FLASH_START 0x08000000
 
@@ -54,7 +54,9 @@ int main(void){
       jshPinOutput(LED2_PININDEX, 0);
       // reset, led off
     } else {
-      jshPinOutput(LED3_PININDEX, ((flashy++)&0xFF)<5);
+      int f = (flashy>>9) & 0x7F;
+      if (f&0x40) f=128-f;
+      jshPinOutput(LED3_PININDEX, ((flashy++)&0xFF)<f);
       // flash led
       int d = getc();
       if (d>=0) { // if we have data
@@ -67,7 +69,7 @@ int main(void){
           if (currentCommand == d^0xFF) {
             unsigned int addr,i;
             char chksum, buffer[256];
-            unsigned char nBytesMinusOne, nPages;
+            unsigned int nBytesMinusOne, nPages;
             // confirmed
             switch (currentCommand) {
             case CMD_GET: // get bootloader info
@@ -80,7 +82,7 @@ int main(void){
               putc(CMD_GET_ID);
               putc(CMD_READ);
               putc(CMD_WRITE);
-              putc(CMD_ERASE); // erase
+              putc(CMD_EXTERASE); // erase
               putc(ACK); // last byte
               break;
             case CMD_GET_ID: // get chip ID
@@ -95,10 +97,10 @@ int main(void){
               break;
             case CMD_READ: // read memory
               putc(ACK);
-              addr = (unsigned char)getc_blocking() << 24;
-              addr |= (unsigned char)getc_blocking()  << 16;
-              addr |= (unsigned char)getc_blocking()  << 8;
-              addr |= (unsigned char)getc_blocking();
+              addr = getc_blocking() << 24;
+              addr |= getc_blocking()  << 16;
+              addr |= getc_blocking()  << 8;
+              addr |= getc_blocking();
               chksum = getc_blocking();
               // TODO: check checksum
               putc(ACK);
@@ -111,10 +113,10 @@ int main(void){
               break;
             case CMD_WRITE: // write memory
               putc(ACK);
-              addr = (unsigned char)getc_blocking() << 24;
-              addr |= (unsigned char)getc_blocking()  << 16;
-              addr |= (unsigned char)getc_blocking()  << 8;
-              addr |= (unsigned char)getc_blocking();
+              addr = getc_blocking() << 24;
+              addr |= getc_blocking()  << 16;
+              addr |= getc_blocking()  << 8;
+              addr |= getc_blocking();
               chksum = getc_blocking();
               // TODO: check checksum and address&3==0
               putc(ACK);
@@ -123,7 +125,7 @@ int main(void){
               for (i=0;i<=nBytesMinusOne;i++)
                 buffer[i] = getc_blocking();
               chksum = getc_blocking();
-              setLEDs(1); // red =  write
+              setLEDs(1); // red = write
               // TODO: check checksum and (nBytesMinusOne+1)&3==0
               FLASH_UnlockBank1();
               for (i=0;i<=nBytesMinusOne;i+=4) {
@@ -133,10 +135,13 @@ int main(void){
               setLEDs(0); // off
               putc(ACK);
               break;
-            case CMD_ERASE: // erase memory
+            case CMD_EXTERASE: // erase memory
               putc(ACK);
-              nPages = getc_blocking();
-              if (nPages == 0xFF) {
+              nPages = getc_blocking() << 8;
+              nPages |= getc_blocking();
+              chksum = getc_blocking();
+              // TODO: check checksum
+              if (nPages == 0xFFFF) {
                 // all pages (except us!)
                 setLEDs(1); // red =  write
                 FLASH_UnlockBank1();

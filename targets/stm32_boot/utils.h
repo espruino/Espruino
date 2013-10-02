@@ -15,7 +15,7 @@
 #include "jshardware.h"
 
 int getc();
-char getc_blocking();
+unsigned char getc_blocking();
 void putc(char charData);
 
 
