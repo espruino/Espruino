@@ -41,6 +41,7 @@
             [ebirger] Supply the correct arguments to Array.map
             [ebirger] Method calls and membership evaluation should be done on all factors (ee. [1,2,3].foo())
             [ebirger] When running multiple tests, only set up terminal once or it breaks the terminal window on exit
+            Added STM32-style USB CDC bootloader for Espruino Boards
 
      1v39 : Added Bitwise NOT operator
             Added Raspberry Pi version to ZIP (with HTTP support)
