@@ -19,7 +19,7 @@
 #include "usb_istr.h"
 #include "jshardware.h"
 
-#define BUFFERMASK 1023
+#define BUFFERMASK 8191
 char rxBuffer[BUFFERMASK+1];
 int rxHead=0, rxTail=0;
 char txBuffer[BUFFERMASK+1];
@@ -42,6 +42,13 @@ GPIO_TypeDef *stmPort(Pin ipin) {
   return GPIOA;
 }
 
+bool jshPinGetValue(Pin pin) {
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+  GPIO_InitStructure.GPIO_Pin = stmPin(pin);
+  GPIO_Init(stmPort(pin), &GPIO_InitStructure);
+  return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
+}
 
 void jshPinOutput(Pin pin, bool value) {
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -124,6 +131,14 @@ void initHardware() {
         RCC_APB2Periph_AFIO, ENABLE);
   RCC_PCLK1Config(RCC_HCLK_Div8); // PCLK1 must be >8 Mhz for USB to work
   RCC_PCLK2Config(RCC_HCLK_Div16);
+
+  // if button is not set, jump to this address
+  if (jshPinGetValue(BTN1_PININDEX) != BTN1_ONSTATE) {
+    unsigned int *ResetHandler = (unsigned int *)(0x08002800 + 4);
+    void (*startPtr)() = *ResetHandler;
+    startPtr();
+  }
+
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit

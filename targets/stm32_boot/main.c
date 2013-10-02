@@ -103,12 +103,14 @@ int main(void) {
               chksum = getc_blocking();
               // TODO: check checksum
               putc(ACK);
+              setLEDs(2); // green = wait for data
               nBytesMinusOne = getc_blocking();
               chksum = getc_blocking();
               // TODO: check checksum
               putc(ACK);
               for (i=0;i<=nBytesMinusOne;i++)
                 putc(((unsigned char*)addr)[i]);
+              setLEDs(0); // off
               break;
             case CMD_WRITE: // write memory
               putc(ACK);
@@ -134,7 +136,7 @@ int main(void) {
               }
               FLASH_LockBank1();
               setLEDs(0); // off
-              putc(ACK);
+              putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
               break;
             case CMD_EXTERASE: // erase memory
               putc(ACK);
