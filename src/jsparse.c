@@ -1031,6 +1031,50 @@ void jspEnsureIsPrototype(JsVar *prototypeName) {
   jsvUnLock(prototypeVar);
 }
 
+JsVar *jspeFactorNewArray() {
+  JSP_MATCH(LEX_ID);
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0; // out of memory
+  if (execInfo.lex->tk == '(') {
+    JsVar *arg = 0;
+    bool moreThanOne = false;
+    JSP_MATCH('(');
+    while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
+      if (arg) {
+	moreThanOne = true;
+	jsvArrayPush(arr, arg);
+	jsvUnLock(arg);
+      }
+      arg = jsvSkipNameAndUnLock(jspeBase());
+      if (execInfo.lex->tk!=')') JSP_MATCH(',');
+    }
+    JSP_MATCH(')');
+    if (arg) {
+      if (!moreThanOne && jsvIsInt(arg) && jsvGetInteger(arg)>=0) { // this is the size of the array
+	JsVarInt count = jsvGetIntegerAndUnLock(arg);
+	// we cheat - no need to fill the array - just the last element
+	if (count>0) {
+	  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
+	  if (idx) { // could be out of memory
+	    jsvAddName(arr, idx);
+	    jsvUnLock(idx);
+	  }
+	}
+      } else { // just append to array
+	jsvArrayPush(arr, arg);
+	jsvUnLock(arg);
+      }
+    }
+  }
+  return arr;
+}
+
+JsVar *jspeFactorNewString() {
+  JsVar *a = jspParseSingleFunction();
+  if (!a) return jsvNewFromEmptyString(); // out of mem, or just no argument!
+  return jsvAsString(a, true);
+}
+
 JsVar *jspeFactorNew() {
   // new -> create a new object
   JSP_MATCH(LEX_R_NEW);
@@ -1041,47 +1085,11 @@ JsVar *jspeFactorNew() {
 
   if (JSP_SHOULD_EXECUTE) {
     const char *name = jslGetTokenValueAsString(execInfo.lex);
-    if (strcmp(name, "Array")==0) {
-      JSP_MATCH(LEX_ID);
-      JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-      if (!arr) return 0; // out of memory
-      if (execInfo.lex->tk == '(') {
-        JsVar *arg = 0;
-        bool moreThanOne = false;
-        JSP_MATCH('(');
-        while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
-          if (arg) {
-            moreThanOne = true;
-            jsvArrayPush(arr, arg);
-            jsvUnLock(arg);
-          }
-          arg = jsvSkipNameAndUnLock(jspeBase());
-          if (execInfo.lex->tk!=')') JSP_MATCH(',');
-        }
-        JSP_MATCH(')');
-        if (arg) {
-          if (!moreThanOne && jsvIsInt(arg) && jsvGetInteger(arg)>=0) { // this is the size of the array
-            JsVarInt count = jsvGetIntegerAndUnLock(arg);
-            // we cheat - no need to fill the array - just the last element
-            if (count>0) {
-              JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
-              if (idx) { // could be out of memory
-                jsvAddName(arr, idx);
-                jsvUnLock(idx);
-              }
-            }
-          } else { // just append to array
-            jsvArrayPush(arr, arg);
-            jsvUnLock(arg);
-          }
-        }
-      }
-      return arr;
-    } else if (strcmp(name, "String")==0) {
-      JsVar *a = jspParseSingleFunction();
-      if (!a) return jsvNewFromEmptyString(); // out of mem, or just no argument!
-      return jsvAsString(a, true);
-    } else { // ---------------------- not built-in, try and run constructor function
+    if (strcmp(name, "Array")==0)
+      return jspeFactorNewArray();
+    else if (strcmp(name, "String")==0)
+      return jspeFactorNewString();
+    else { // ---------------------- not built-in, try and run constructor function
       JsVar *obj = jswHandleFunctionCall(0, 0, name);
       if (obj == JSW_HANDLEFUNCTIONCALL_UNHANDLED) {
         // NOT a built-in function, must try and execute it directly
