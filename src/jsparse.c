@@ -922,12 +922,24 @@ JsVar *jspeFactorMember(JsVar *a) {
 }
 
 JsVar *jspeFactor();
+void jspEnsureIsPrototype(JsVar *prototypeName);
+
+JsVar *jspeFactorNew() {
+  if (execInfo.lex->tk==LEX_R_NEW) {
+    JSP_MATCH(LEX_R_NEW);
+    execInfo.execute |= EXEC_CONSTRUCT;
+  }
+  return jspeFactorMember(jspeFactor());
+}
 
 JsVar *jspeFactorFunctionCall() {
   /* The parent if we're executing a method call */
   JsVar *parent = 0, *a;
 
-  a = jspeFactorMember(jspeFactor());
+  a = jspeFactorNew();
+  int is_construct = execInfo.execute & EXEC_CONSTRUCT;
+  execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
+
   while (execInfo.lex->tk=='(') {
     JsVar *funcName = a;
     JsVarRef parentRef = 0;
@@ -936,7 +948,36 @@ JsVar *jspeFactorFunctionCall() {
       jsvUnLock(parent);
       parent = jsvLock(parentRef);
     }
-    a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
+
+    JsVar *thisObj = parent;
+
+    if (is_construct) {
+      thisObj = jsvNewWithFlags(JSV_OBJECT);
+      // Make sure the function has a 'prototype' var
+      JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
+      jspEnsureIsPrototype(prototypeName); // make sure it's an array
+      // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
+      jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
+      jsvUnLock(prototypeName);
+    }
+
+    a = jspeFunctionCall(func, funcName, thisObj, true, 0, 0);
+
+    if (is_construct) {
+      if (a) {
+	jsvUnLock(thisObj);
+	thisObj = a;
+      } else {
+	jsvUnLock(a);
+	JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
+	if (constructor) {
+	  jsvSetValueOfName(constructor, funcName);
+	  jsvUnLock(constructor);
+	}
+	a = thisObj;
+      }
+      is_construct = 0;
+    }
     jsvUnLock(funcName);
     jsvUnLock(func);
   }
@@ -1088,67 +1129,19 @@ JsVar *jspeFactorNewString() {
   return jsvAsString(a, true);
 }
 
-JsVar *jspeFactorNew() {
-  // new -> create a new object
-  JSP_MATCH(LEX_R_NEW);
-  if (execInfo.lex->tk == LEX_ID) {
-    if (JSP_SHOULD_EXECUTE) {
-      const char *name = jslGetTokenValueAsString(execInfo.lex);
-      if (strcmp(name, "Array")==0)
-	return jspeFactorNewArray();
-      else if (strcmp(name, "String")==0)
-	return jspeFactorNewString();
-      else { // ---------------------- not built-in, try and run constructor function
-	JsVar *obj = jswHandleFunctionCall(0, 0, name);
-	if (obj == JSW_HANDLEFUNCTIONCALL_UNHANDLED) {
-	  // NOT a built-in function, must try and execute it directly
-	  JsVar *objFuncName = jspeFactorSingleId();
-	  JsVar *objFunc = jsvSkipName(objFuncName);
-	  if (!objFunc) {
-	    jsWarnAt("Argument used in 'new' is not defined", execInfo.lex, execInfo.lex->tokenStart);
-	  }
-	  obj = jsvNewWithFlags(JSV_OBJECT);
-	  if (obj) { // could be out of memory
-	    if (!jsvIsFunction(objFunc)) {
-	      jsErrorAt("Argument supplied to 'new' is not a function", execInfo.lex, execInfo.lex->tokenLastEnd);
-	      jspSetError();
-	    } else {
-	      // Make sure the function has a 'prototype' var
-	      JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
-	      jspEnsureIsPrototype(prototypeName); // make sure it's an array
-	      // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
-	      jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
-	      jsvUnLock(prototypeName);
-	      JsVar *funcResult = jspeFunctionCall(objFunc, objFuncName, obj, true, 0, 0);
-	      if (jsvIsObject(funcResult)) {
-		jsvUnLock(obj);
-		obj = funcResult;
-	      } else {
-		jsvUnLock(funcResult);
-	      }
-	      JsVar *constructor = jsvFindChildFromString(obj, JSPARSE_CONSTRUCTOR_VAR, true);
-	      if (constructor) {
-		jsvSetValueOfName(constructor, objFuncName);
-		jsvUnLock(constructor);
-	      }
-	    }
-	  }
-	  jsvUnLock(objFuncName);
-	  jsvUnLock(objFunc);
-	} else {
-	  // built-in function - just return it as-is
-	}
-
-	return obj;
-      }
-    } else {
-      JSP_MATCH(LEX_ID);
-      jspeParseFunctionCallBrackets();
-      return 0;
-    }
+JsVar *jspeFactorNewId() {
+  // TODO: these should be regular constructors
+  if (JSP_SHOULD_EXECUTE) {
+    const char *name = jslGetTokenValueAsString(execInfo.lex);
+    if (strcmp(name, "Array")==0)
+      return jspeFactorNewArray();
+    else if (strcmp(name, "String")==0)
+      return jspeFactorNewString();
+    return 0;
   }
   else {
     JSP_MATCH(LEX_ID);
+    jspeParseFunctionCallBrackets();
     return 0;
   }
 }
@@ -1192,7 +1185,12 @@ JsVar *jspeFactor() {
         JSP_MATCH(LEX_R_UNDEFINED);
         return 0;
     } else if (execInfo.lex->tk==LEX_ID) {
-        return jspeFactorId();
+      if (execInfo.execute & EXEC_CONSTRUCT) {
+	JsVar *a = jspeFactorNewId();
+	if (a || !JSP_SHOULD_EXECUTE)
+	  return a;
+      }
+      return jspeFactorId();
     } else if (execInfo.lex->tk==LEX_INT) {
         // atol works only on decimals
         // strtol handles 0x12345 as well
@@ -1231,8 +1229,6 @@ JsVar *jspeFactor() {
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
       JSP_MATCH(LEX_R_FUNCTION);
       return jspeFunctionDefinition();
-    } else  if (execInfo.lex->tk==LEX_R_NEW) {
-      return jspeFactorNew();
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
       return jspeFactorTypeOf();
     }
