@@ -14,13 +14,25 @@ NOTE: This software is beta and is provided as-is, and won't be considered even 
 About
 -----
 
-It'd probably help to read the [FAQ](http://www.espruino.com/FAQ), and specifically the page about [Performance](http://www.espruino.com/Performance) as it contains information about how Espruino itself works. There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands.
+It'd probably help to read the [FAQ](http://www.espruino.com/FAQ), and specifically the page about [Performance](http://www.espruino.com/Performance) as it contains information about how Espruino itself works.
+
+There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as the [Tutorials](http://www.espruino.com/Tutorials) on the website. However please note that this repository is under heavy development, and the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but NOT the latest version from Git.
 
 
 License
 -------
 
 Please see the [LICENSE](LICENSE) file
+
+Found a Bug?
+------------
+
+Please check that:
+* It hasn't [already been found](https://github.com/espruino/Espruino/issues)
+* You're not just looking at outdated documentation (See the [Building](#Building) section to see how to build documentation)
+
+Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (and ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them.
+
 
 Contributing
 ------------
@@ -74,6 +86,12 @@ We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may
 * `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for Espruino + HY boards)
 * `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if discovery, or maple bootloader if using that board
 
+You can build documentation by running:
+
+```  python scripts/build_docs.py ```
+
+This will create a file called ```functions.html```
+
 Directories and Files
 ---------------------
 
@@ -97,16 +115,15 @@ Adding more devices
 
 Currently there are a bunch of different files to modify. Eventually the plan is to fit everything into boards/BOARDNAME.py and to auto-generate the rest of the config files.
 
-* Most build options handled in Makefile
-* Extra libraries like USB/LCD/filesystem in Makefile
-* Linker Scripts are in linker/
-* boards/*.py files handle loading the list of available pins so the relevant headers + docs can be created
-* Processor-specific code in targets/stm32, targets/linux, etc.
-* Processor-specific libs in targetlibs/foo 
-* src/jshardware.h is effectively a simple abstraction layer for SPI/I2C/etc
-* targets/stm32/jshardware.c also has flash-size-specific defines
-* libs/fat_sd and libs/lcd still have some device-specific defines in too
-* If you're low on flash, you might want to modify check_size.sh
+* Most build options handled in `Makefile`
+* Extra libraries like USB/LCD/filesystem in `Makefile`
+* Linker Scripts are in `linker/`
+* `boards/*.py` files handle loading the list of available pins so the relevant headers + docs can be created
+* Processor-specific code in `targets/stm32`, `targets/linux`, etc.
+* Processor-specific libs in `targetlibs/foo` 
+* `src/jshardware.h` is effectively a simple abstraction layer for SPI/I2C/etc
+* `targets/stm32/jshardware.c` also has flash-size-specific defines
+* `libs/fat_sd` and `libs/lcd` still have some device-specific defines in too
 
 Adding libraries
 -------------------
