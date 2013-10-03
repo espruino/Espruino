@@ -67,6 +67,7 @@ typedef enum  {
   EXEC_FOR_INIT = 64, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
   EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
   EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
+  EXEC_CONSTRUCT = 512, // after parsing the 'new' operator, the next function call is a constructor
 
 
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
