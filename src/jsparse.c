@@ -782,23 +782,12 @@ JsVar *jspeFactorSingleId() {
   return a;
 }
 
-JsVar *jspeFactorIdPostfix(JsVar *a) {
+JsVar *jspeFactorMember(JsVar *a) {
   /* The parent if we're executing a method call */
   JsVar *parent = 0;
 
-  while (execInfo.lex->tk=='(' || execInfo.lex->tk=='.' || execInfo.lex->tk=='[') {
-      if (execInfo.lex->tk=='(') { // ------------------------------------- Function Call
-        JsVar *funcName = a;
-        JsVarRef parentRef = 0;
-        JsVar *func = jsvSkipNameKeepParent(funcName, &parentRef);
-        if (parentRef) {
-          jsvUnLock(parent);
-          parent = jsvLock(parentRef);
-        }
-        a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
-        jsvUnLock(funcName);
-        jsvUnLock(func);
-      } else if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
+  while (execInfo.lex->tk=='.' || execInfo.lex->tk=='[') {
+      if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
           JSP_MATCH('.');
           if (JSP_SHOULD_EXECUTE) {
             // Note: name will go away when we oarse something else!
@@ -926,6 +915,30 @@ JsVar *jspeFactorIdPostfix(JsVar *a) {
       jsvUnLock(a);
       return ref;
     }
+  }
+
+  jsvUnLock(parent);
+  return a;
+}
+
+JsVar *jspeFactor();
+
+JsVar *jspeFactorFunctionCall() {
+  /* The parent if we're executing a method call */
+  JsVar *parent = 0, *a;
+
+  a = jspeFactorMember(jspeFactor());
+  while (execInfo.lex->tk=='(') {
+    JsVar *funcName = a;
+    JsVarRef parentRef = 0;
+    JsVar *func = jsvSkipNameKeepParent(funcName, &parentRef);
+    if (parentRef) {
+      jsvUnLock(parent);
+      parent = jsvLock(parentRef);
+    }
+    a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
+    jsvUnLock(funcName);
+    jsvUnLock(func);
   }
 
   jsvUnLock(parent);
@@ -1250,7 +1263,7 @@ __attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
 }
 
 JsVar *jspePostfix() {
-  return __jspePostfix(jspeFactorIdPostfix(jspeFactor()));
+  return __jspePostfix(jspeFactorFunctionCall());
 }
 
 JsVar *jspeUnary() {
