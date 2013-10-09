@@ -1,4 +1,4 @@
-     1v41 : ...?
+     1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)

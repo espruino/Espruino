@@ -1466,14 +1466,6 @@ JshPinFunction getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
 
 /** Try and find the best pin suitable for the given function. Can return -1. */
 Pin findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo) {
-  if (functionType == JSH_USART1) {
-#ifdef DEFAULT_USART1_TX_PIN
-    if (functionInfo == JSH_USART_TX) return DEFAULT_USART1_TX_PIN;
-#endif
-#ifdef DEFAULT_USART1_RX_PIN
-    if (functionInfo == JSH_USART_RX) return DEFAULT_USART1_RX_PIN;
-#endif
-  }
 #ifdef OLIMEXINO_STM32
   /** Hack, as you can't mix AFs on the STM32F1, and Olimexino reordered the pins
    * such that D4(AF1) is before D11(AF0) - and there are no SCK/MISO for AF1! */
@@ -1481,6 +1473,14 @@ Pin findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo)
 #endif
   Pin i;
   int j;
+  // first, try and find the pin with an AF of 0 - this is usually the 'default'
+  for (i=0;i<pinInfoCount;i++)
+    for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
+      if ((pinInfo[i].functions[j]&JSH_MASK_AF) == JSH_AF0 &&
+          (pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
+          (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
+        return i;
+  // otherwise just try and find anything
   for (i=0;i<pinInfoCount;i++)
     for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
       if ((pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
