@@ -980,6 +980,7 @@ JsVar *jspeFactorFunctionCall() {
     }
     jsvUnLock(funcName);
     jsvUnLock(func);
+    a = jspeFactorMember(a);
   }
 
   jsvUnLock(parent);
