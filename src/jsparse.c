@@ -965,16 +965,16 @@ JsVar *jspeFactorFunctionCall() {
 
     if (is_construct) {
       if (a) {
-	jsvUnLock(thisObj);
-	thisObj = a;
+        jsvUnLock(thisObj);
+        thisObj = a;
       } else {
-	jsvUnLock(a);
-	JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
-	if (constructor) {
-	  jsvSetValueOfName(constructor, funcName);
-	  jsvUnLock(constructor);
-	}
-	a = thisObj;
+        jsvUnLock(a);
+        JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
+        if (constructor) {
+          jsvSetValueOfName(constructor, funcName);
+          jsvUnLock(constructor);
+        }
+        a = thisObj;
       }
       is_construct = 0;
     }
@@ -1096,9 +1096,9 @@ JsVar *jspeFactorNewArray() {
     JSP_MATCH('(');
     while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
       if (arg) {
-	moreThanOne = true;
-	jsvArrayPush(arr, arg);
-	jsvUnLock(arg);
+        moreThanOne = true;
+        jsvArrayPush(arr, arg);
+        jsvUnLock(arg);
       }
       arg = jsvSkipNameAndUnLock(jspeBase());
       if (execInfo.lex->tk!=')') JSP_MATCH(',');
@@ -1106,18 +1106,18 @@ JsVar *jspeFactorNewArray() {
     JSP_MATCH(')');
     if (arg) {
       if (!moreThanOne && jsvIsInt(arg) && jsvGetInteger(arg)>=0) { // this is the size of the array
-	JsVarInt count = jsvGetIntegerAndUnLock(arg);
-	// we cheat - no need to fill the array - just the last element
-	if (count>0) {
-	  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
-	  if (idx) { // could be out of memory
-	    jsvAddName(arr, idx);
-	    jsvUnLock(idx);
-	  }
-	}
+        JsVarInt count = jsvGetIntegerAndUnLock(arg);
+        // we cheat - no need to fill the array - just the last element
+        if (count>0) {
+          JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
+          if (idx) { // could be out of memory
+            jsvAddName(arr, idx);
+            jsvUnLock(idx);
+          }
+        }
       } else { // just append to array
-	jsvArrayPush(arr, arg);
-	jsvUnLock(arg);
+        jsvArrayPush(arr, arg);
+        jsvUnLock(arg);
       }
     }
   }
@@ -1187,9 +1187,9 @@ JsVar *jspeFactor() {
         return 0;
     } else if (execInfo.lex->tk==LEX_ID) {
       if (execInfo.execute & EXEC_CONSTRUCT) {
-	JsVar *a = jspeFactorNewId();
-	if (a || !JSP_SHOULD_EXECUTE)
-	  return a;
+        JsVar *a = jspeFactorNewId();
+        if (a || !JSP_SHOULD_EXECUTE)
+          return a;
       }
       return jspeFactorId();
     } else if (execInfo.lex->tk==LEX_INT) {
