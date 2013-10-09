@@ -9,22 +9,24 @@ Espruino JavaScript for Microcontrollers
 </pre>
 http://www.espruino.com
 
-**NOTE:** This software is beta and is provided as-is, and won't be considered even remotely final until we've released the Espruino Board. As such, don't expect support, and do expect it to change rapidly and without warning.
+**NOTE:** This software is beta and is provided as-is, and won't be considered even remotely final until we've released the Espruino Board. As such, don't expect support, and do expect it to change rapidly and without warning. Build your own documentation (see **Building**), as the API may be different from the one described on the Espruino website.
 
-The KickStarter campaign said the Espruino Board will have some things which this repository does not yet have (like working CC3000 support). This is not because we're lying - it's because they *haven't been implemented yet*. They will be done by the time you get your board though.
+The KickStarter campaign said the Espruino Board will have some things which this repository does not yet have (like working CC3000 support). These are works in progress and should be done by the time you get your board (or will be available as a software update).
+
 
 About
 -----
 
 It'd probably help to read the [FAQ](http://www.espruino.com/FAQ), and specifically the page about [Performance](http://www.espruino.com/Performance) as it contains information about how Espruino itself works.
 
-There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as the [Tutorials](http://www.espruino.com/Tutorials) on the website. However please note that this repository is under heavy development, and the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but NOT the latest version from Git.
+There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as the [Tutorials](http://www.espruino.com/Tutorials) on the website. However please note that this repository is under heavy development, and the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but **not** the latest version from Git.
 
 
 License
 -------
 
 Please see the [LICENSE](LICENSE) file
+
 
 Found a Bug?
 ------------
@@ -33,7 +35,7 @@ Please check that:
 * It hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](www.espruino.com/Forum)
 * You're not just looking at outdated documentation (See the [Building](#Building) section to see how to build documentation)
 
-Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (and ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them.
+Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (and ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues (some quite large), so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
 
 
 Contributing
@@ -68,10 +70,11 @@ Using
 
 If you're using Espruino for your own personal projects - go ahead, we hope you have fun - and please let us know what you do with it on http://www.espruino.com/Forum!
 
-However if you're planning on including the Espruino software in your commercial product, please read the following:
+However if you're planning on selling the Espruino software on your own board, please talk to us:
 
-* If you sell a board with the Espruino software on, you cannot call it 'Espruino' but you must explain clearly that it uses 'Espruino' internally (we own the trademark).
-* If you're not willing to support us, we won't support you (or your users). Please contact us about this.
+* Read the terms of the MPLv2 Licence that Espruino is distributed under, and make sure you comply with it
+* You won't be able to call your board 'Espruino' but you must explain clearly that it uses 'Espruino' internally (we own the trademark)
+* If you're profiting from Espruino without contributing anything back, we won't support you (or your users)
 
 
 Building
