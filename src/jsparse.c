@@ -937,7 +937,7 @@ JsVar *jspeFactorFunctionCall() {
   JsVar *parent = 0, *a;
 
   a = jspeFactorNew();
-  int is_construct = execInfo.execute & EXEC_CONSTRUCT;
+  bool isConstruct = execInfo.execute & EXEC_CONSTRUCT;
   execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
 
   while (execInfo.lex->tk=='(') {
@@ -951,7 +951,7 @@ JsVar *jspeFactorFunctionCall() {
 
     JsVar *thisObj = parent;
 
-    if (is_construct) {
+    if (isConstruct) {
       thisObj = jsvNewWithFlags(JSV_OBJECT);
       // Make sure the function has a 'prototype' var
       JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
@@ -963,7 +963,7 @@ JsVar *jspeFactorFunctionCall() {
 
     a = jspeFunctionCall(func, funcName, thisObj, true, 0, 0);
 
-    if (is_construct) {
+    if (isConstruct) {
       if (a) {
         jsvUnLock(thisObj);
         thisObj = a;
@@ -976,7 +976,7 @@ JsVar *jspeFactorFunctionCall() {
         }
         a = thisObj;
       }
-      is_construct = 0;
+      isConstruct = 0;
     }
     jsvUnLock(funcName);
     jsvUnLock(func);
