@@ -1,0 +1,11 @@
+*~
+*.o
+*.elf
+*.hex
+*.lst
+*.srec
+*.bin
+*.pyc
+gen/*
+zipcontents
+tmp
