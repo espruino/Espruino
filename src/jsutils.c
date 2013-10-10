@@ -69,11 +69,9 @@ JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
     isNegated = true;
     s++;
   }
-  if (forceRadix == 0) {
-    if (*s == '0') {
-      radix = 8;
-      s++;
-    }
+  if (*s == '0') {
+    radix = 8;
+    s++;
     if (*s == 'x') {
       radix = 16;
       s++;
@@ -81,9 +79,9 @@ JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
       radix = 2;
       s++;
     }
-  } else {
-    radix = forceRadix;
   }
+  if (forceRadix)
+    radix = forceRadix;
 
   while (*s) {
     if (*s >= '0' && *s <= '9')
