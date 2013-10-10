@@ -1599,10 +1599,11 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   return 0; // undefined
 }
 
-/// Adds new elements to the end of an array, and returns the new length
-JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
+/// Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
+JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialValue) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
+  if (index==0) index=initialValue;
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
   if (!idx) {
     jsWarn("Out of memory while appending to array");
@@ -1611,6 +1612,11 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   jsvAddName(arr, idx);
   jsvUnLock(idx);
   return index+1; // new size
+}
+
+/// Adds new elements to the end of an array, and returns the new length
+JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
+  return jsvArrayPushWithInitialSize(arr, value, 0);
 }
 
 /// Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME

@@ -230,7 +230,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
     //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
     JsVar *timerArrayPtr = jsvLock(timerArray);
-    itemIndex = jsvNewFromInteger(jsvArrayPush(timerArrayPtr, timerPtr) - 1);
+    itemIndex = jsvNewFromInteger(jsvArrayPushWithInitialSize(timerArrayPtr, timerPtr, 1) - 1);
     //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
     jsvUnLock(timerArrayPtr);
     jsvUnLock(timerPtr);
@@ -294,7 +294,7 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     jsvUnLock(v);
     jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    itemIndex = jsvArrayPush(watchArrayPtr, watchPtr) - 1;
+    itemIndex = jsvArrayPushWithInitialSize(watchArrayPtr, watchPtr, 1) - 1;
     jsvUnLock(watchArrayPtr);
     jsvUnLock(watchPtr);
     jshPinWatch(pin, true);
