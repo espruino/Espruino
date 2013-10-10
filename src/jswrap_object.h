@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript methods for Objects
+ * JavaScript methods for Objects and Functions
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
@@ -23,3 +23,4 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
+JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d);

@@ -110,12 +110,13 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
 
 /** Handle a function call (assumes we've parsed the function name and we're
- * on the start bracket). 'parent' is the object that contains this method,
- * if there was one (otherwise it's just a normal function).
+ * on the start bracket). 'thisArg' is the value of the 'this' variable when the
+ * function is executed (it's usually the parent object)
+ *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, bool isParsing, int argCount, JsVar **argPtr);
+JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 #endif /* JSPARSE_H_ */

@@ -527,13 +527,14 @@ bool jspeParseFunctionCallBrackets() {
 }
 
 /** Handle a function call (assumes we've parsed the function name and we're
- * on the start bracket). 'parent' is the object that contains this method,
- * if there was one (otherwise it's just a normal function).
+ * on the start bracket). 'thisArg' is the value of the 'this' variable when the
+ * function is executed (it's usually the parent object)
+ *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, bool isParsing, int argCount, JsVar **argPtr) {
+JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
   if (JSP_SHOULD_EXECUTE && !function) {
       jsErrorAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastStart );
       jspSetError();
@@ -590,8 +591,8 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *parent, boo
       return 0;
     }
     JsVar *thisVar = 0;
-    if (parent)
-        thisVar = jsvAddNamedChild(functionRoot, parent, JSPARSE_THIS_VAR);
+    if (thisArg)
+        thisVar = jsvAddNamedChild(functionRoot, thisArg, JSPARSE_THIS_VAR);
     if (isParsing) {
       int hadParams = 0;
       // grab in all parameters

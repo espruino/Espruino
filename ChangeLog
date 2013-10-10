@@ -8,6 +8,7 @@
             'make serialflash' is now works correctly for Espruino Boards with bootloader
             setWatch(..A0);setWatch(..A0);clearWatch(1) does not now kill the other watch, fix #25
             One-based setTimeout/setWatch, fix #3
+            Added Function.call
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)

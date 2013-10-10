@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * JavaScript methods for Objects
+ * JavaScript methods for Objects and Functions
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_object.h"
@@ -212,6 +212,8 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
 }
 
+// ------------------------------------------------------------------------------
+
 /*JSON{ "type":"method", "class": "Function", "name" : "replaceWith",
          "description" : ["This replaces the function with the one in the argument - while keeping the old function's scope. This allows inner functions to be edited, and is used when edit() is called on an inner function."],
          "generate" : "jswrap_function_replaceWith",
@@ -245,4 +247,22 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   }
   jsvObjectIteratorFree(&it);
 
+}
+
+/*JSON{ "type":"method", "class": "Function", "name" : "call",
+         "description" : ["This executes the function with the supplied 'this' argument and parameters"],
+         "generate" : "jswrap_function_call",
+         "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
+                      [ "a", "JsVar", "Optional Parameter 1"],
+                      [ "b", "JsVar", "Optional Parameter 2"],
+                      [ "c", "JsVar", "Optional Parameter 3"],
+                      [ "d", "JsVar", "Optional Parameter 4"]
+                    ],
+         "return" : [ "JsVar", "The return value of executing this function" ]
+}*/
+JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d) {
+  JsVar *args[4] = {a,b,c,d};
+  int argC;
+  while (argC<4 && args[argC]!=0) argC++;
+  return jspeFunctionCall(parent, 0, thisArg, false, argC, args);
 }
