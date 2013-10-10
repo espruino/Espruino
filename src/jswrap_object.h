@@ -24,3 +24,4 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
 JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d);
+JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray);

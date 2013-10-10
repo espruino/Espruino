@@ -47,7 +47,7 @@ JsVar *jswrap_object_length(JsVar *parent) {
   if (jsvIsArray(parent)) {
     return jsvNewFromInteger(jsvGetArrayLength(parent));
   } else if (jsvIsArrayBuffer(parent)) {
-      return jsvNewFromInteger(jsvGetArrayBufferLength(parent));
+      return jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
   } else if (jsvIsString(parent)) {
     return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
   }
@@ -262,7 +262,47 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
 }*/
 JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d) {
   JsVar *args[4] = {a,b,c,d};
-  int argC;
+  int argC = 0;
   while (argC<4 && args[argC]!=0) argC++;
   return jspeFunctionCall(parent, 0, thisArg, false, argC, args);
+}
+
+/*JSON{ "type":"method", "class": "Function", "name" : "apply",
+         "description" : ["This executes the function with the supplied 'this' argument and parameters"],
+         "generate" : "jswrap_function_apply",
+         "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
+                      [ "args", "JsVar", "Optional Array of Aruments"]
+                    ],
+         "return" : [ "JsVar", "The return value of executing this function" ]
+}*/
+JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
+  int i;
+  JsVar **args = 0;
+  size_t argC = 0;
+
+  if (jsvIsArray(argsArray)) {
+    argC = jsvGetArrayLength(argsArray);
+    if (argC>64) argC=64; // sanity
+    args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
+
+
+    for (i=0;i<argC;i++) args[i] = 0;
+    JsArrayIterator it;
+    jsvArrayIteratorNew(&it, argsArray);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
+      if (idx>=0 && idx<argC) {
+        assert(!args[idx]); // just in case there were dups
+        args[idx] = jsvArrayIteratorGetElement(&it);
+      }
+      jsvArrayIteratorNext(&it);
+    }
+    jsvArrayIteratorFree(&it);
+  } else if (!jsvIsUndefined(argsArray)) {
+    jsWarn("Second argument to Function.apply must be an array");
+  }
+
+  JsVar *r = jspeFunctionCall(parent, 0, thisArg, false, (int)argC, args);
+  for (i=0;i<argC;i++) jsvUnLock(args[i]);
+  return r;
 }
