@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_io.h"
+#include "jsvar.h"
 
 
 /*JSON{ "type":"function", "name" : "peek8",
@@ -384,7 +385,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     while (watch) {
       JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
       JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      jshPinWatch(jshGetPinFromVar(pinVar), false); // 'unwatch' pin
+      jshPinWatch(jshGetPinFromVar(pinVar), false); // 'unwatch' pin because we know that we're removing ALL watches
       jsvUnLock(pinVar);
       watch = watchNamePtr->nextSibling;
       jsvUnLock(watchNamePtr);
@@ -396,13 +397,31 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
     JsVar *watchNamePtr = jsvFindChildFromVarRef(watchArray, idVar, false);
     if (watchNamePtr) { // child is a 'name'
       JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      jshPinWatch(jshGetPinFromVar(pinVar), false); // 'unwatch' pin
+      Pin pin = jshGetPinFromVar(pinVar);
       jsvUnLock(pinVar);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
       jsvUnLock(watchNamePtr);
+
+      // Now check if this pin is still being watched
+      bool stillWatched = false;
+      JsArrayIterator it;
+      jsvArrayIteratorNew(&it, watchArrayPtr);
+      while (jsvArrayIteratorHasElement(&it)) {
+        JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+        JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromString(watchPtr, "pin", false));
+        if (jshGetPinFromVar(pinVar) == pin)
+          stillWatched = true;
+        jsvUnLock(pinVar);
+        jsvUnLock(watchPtr);
+        jsvArrayIteratorNext(&it);
+      }
+      jsvArrayIteratorFree(&it);
       jsvUnLock(watchArrayPtr);
+
+      if (!stillWatched)
+        jshPinWatch(pin, false); // 'unwatch' pin
     } else {
       jsError("Unknown Watch");
     }

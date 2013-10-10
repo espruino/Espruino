@@ -79,7 +79,7 @@ void jsiSetBusy(JsiBusyDevice device, bool isBusy);
 void jsiSetSleep(bool isSleep);
 
 
-// for jswrap_interactive.c ----------------------------------------------------
+// for jswrap_interactive/io.c ----------------------------------------------------
 typedef enum {
  TODO_NOTHING = 0,
  TODO_FLASH_SAVE = 1,
@@ -99,7 +99,7 @@ void jsiSetTodo(TODOFlags newTodo);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run
 extern JsVarRef watchArray; // Linked List of input watches to check and run
-// end for jswrap_interactive.c ------------------------------------------------
+// end for jswrap_interactive/io.c ------------------------------------------------
 
 
 #endif /* JSINTERACTIVE_H_ */
