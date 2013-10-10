@@ -299,6 +299,7 @@ OPTIMIZEFLAGS=-Os
 else # !BOOTLOADER
  ifdef USE_BOOTLOADER
   BUILD_LINKER_FLAGS+=--using_bootloader
+  STM32LOADER_FLAGS+=-p /dev/ttyACM0 -a 0x08002800
  endif
 endif
 
@@ -829,7 +830,7 @@ endif
 
 serialflash: all
 	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
-	python scripts/stm32loader.py -ew $(PROJ_NAME).bin
+	python scripts/stm32loader.py -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 #	python scripts/stm32loader.py -ewv $(PROJ_NAME).bin
 		
 gdb: 

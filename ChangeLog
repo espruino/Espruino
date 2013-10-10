@@ -4,6 +4,8 @@
             Fix for tests/test_json_arraybuffer_001.js - iteration of arraybuffers of length==1
             Add Object.keys(...)
             More arraybuffer iteration fixes
+            On linux, use built-in stringToFloat to aid debugging. Handle exponentials, fix #31
+            'make serialflash' is now works correctly for Espruino Boards with bootloader
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)
