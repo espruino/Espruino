@@ -72,6 +72,39 @@ JsVar *jswrap_object_clone(JsVar *parent) {
   return jsvCopy(parent);
 }
 
+/*JSON{ "type":"staticmethod", "class": "Object", "name" : "keys",
+         "description" : "Return all enumerable keys of the given object",
+         "generate" : "jswrap_object_keys",
+         "params" : [ [ "object", "JsVar", "The object to return keys for"] ],
+         "return" : ["JsVar", "An array of strings - one for each key on the given object"]
+}*/
+JsVar *jswrap_object_keys(JsVar *obj) {
+  if (jsvIsIterable(obj)) {
+    bool isFunction = jsvIsFunction(obj);
+    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    if (!arr) return 0;
+    JsvIterator it;
+    jsvIteratorNew(&it, obj);
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *key = jsvIteratorGetKey(&it);
+      if (!(isFunction && jsvIsInternalFunctionKey(key))) {
+        JsVar *name = jsvCopyNameOnly(key,false,false);
+        if (name) {
+          jsvArrayPush(arr, name);
+          jsvUnLock(name);
+        }
+      }
+      jsvUnLock(key);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+    return arr;
+  } else {
+    jsWarn("Object.keys called on non-object");
+    return 0;
+  }
+}
+
 /*JSON{ "type":"method", "class": "Object", "name" : "on",
          "description" : ["Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter."],
          "generate" : "jswrap_object_on",

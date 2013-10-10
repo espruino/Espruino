@@ -1808,11 +1808,7 @@ JsVar *jspeStatementFor() {
       while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
           bool ignore = false;
-          if (isFunction && (
-                (jsvIsString(loopIndexVar) &&
-                  (jsvIsStringEqual(loopIndexVar, JSPARSE_FUNCTION_CODE_NAME) ||
-                  jsvIsStringEqual(loopIndexVar, JSPARSE_FUNCTION_SCOPE_NAME))) ||
-                jsvIsFunctionParameter(loopIndexVar)))
+          if (isFunction && jsvIsInternalFunctionKey(loopIndexVar))
             ignore = true;
           if (!ignore) {
             JsVar *indexValue = jsvIsName(loopIndexVar) ?
