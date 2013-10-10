@@ -1,6 +1,7 @@
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )
             [ebirger] Ensuring integers with radix specifiers can still be parsed if a radix is specified
+            Fix for tests/test_json_arraybuffer_001.js - iteration of arraybuffers of length==1
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)

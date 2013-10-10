@@ -2304,7 +2304,7 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
 
   it->byteOffset = it->byteOffset + index*JSV_ARRAYBUFFER_GET_SIZE(it->type);
   it->byteLength += it->byteOffset;
-  if (it->byteOffset<0 || (it->byteLength>=0 && it->byteOffset>=(it->byteLength-JSV_ARRAYBUFFER_GET_SIZE(it->type)))) {
+  if (it->byteOffset<0 || (it->byteLength>=0 && it->byteOffset>=(it->byteLength+1-JSV_ARRAYBUFFER_GET_SIZE(it->type)))) {
     jsvUnLock(arrayBufferData);
     it->type = ARRAYBUFFERVIEW_UNDEFINED;
     return;
