@@ -1207,7 +1207,7 @@ JsVar *jspeFactor() {
         }
     } else if (execInfo.lex->tk==LEX_FLOAT) {
       if (JSP_SHOULD_EXECUTE) {
-        JsVarFloat v = atof(jslGetTokenValueAsString(execInfo.lex));
+        JsVarFloat v = stringToFloat(jslGetTokenValueAsString(execInfo.lex));
         JSP_MATCH(LEX_FLOAT);
         return jsvNewFromFloat(v);
       } else {

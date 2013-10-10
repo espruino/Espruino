@@ -16,6 +16,10 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
+
+extern double pow ( double, double );
+// just for exponentials
+
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
         return false;
@@ -209,45 +213,62 @@ unsigned int rand() {
     m_w = 18000 * (m_w & 65535) + (m_w >> 16);
     return (m_z << 16) + m_w;  /* 32-bit result */
 }
+#endif
 
-JsVarFloat atof(const char *s) {
+JsVarFloat stringToFloat(const char *s) {
   bool isNegated = false;
-  bool hasDot = false;
   JsVarFloat v = 0;
   JsVarFloat mul = 0.1;
   if (*s == '-') { 
     isNegated = true;
     s++;
   }
+  // handle integer part
   while (*s) {
-    if (!hasDot) { 
-      if (*s == '.') 
-        hasDot = true;
-      else if (*s >= '0' && *s <= '9')
-        v = (v*10) + (*s - '0');
-      else if (*s >= 'a' && *s <= 'f')
-        v = (v*10) + (10 + *s - 'a');
-      else if (*s >= 'A' && *s <= 'F')
-        v = (v*10) + (10 + *s - 'A');
-      else break;
-    } else {
-      if (*s >= '0' && *s <= '9')
-        v += mul*(*s - '0');
-      else if (*s >= 'a' && *s <= 'f')
-        v += mul*(10 + *s - 'a');
-      else if (*s >= 'A' && *s <= 'F')
-        v += mul*(10 + *s - 'A');
-      else break;
-      mul = mul / 10;
-    }
+    if (*s >= '0' && *s <= '9')
+      v = (v*10) + (*s - '0');
+    else break;
     s++;
   }
+  // handle decimal point
+  if (*s == '.') {
+    s++; // skip .
+
+    while (*s) {
+      if (*s >= '0' && *s <= '9')
+        v += mul*(*s - '0');
+      else break;
+      mul /= 10;
+      s++;
+    }
+  }
+
+  // handle exponentials
+  if (*s == 'e' || *s == 'E') {
+    s++;  // skip E
+    bool isENegated = false;
+    if (*s == '-' || *s == '+') {
+      isENegated = *s=='-';
+      s++;
+    }
+    int e = 0;
+    while (*s) {
+      if (*s >= '0' && *s <= '9')
+        e = (e*10) + (*s - '0');
+      else break;
+      s++;
+    }
+    if (isENegated) e=-e;
+    v = v * pow(10, e);
+  }
+  // check we have parsed everything
+  assert(*s==0);
 
   if (isNegated) return -v;
   return v;
 }
 
-#endif
+
 char itoch(int val) {
   if (val<10) return (char)('0'+val);
   return (char)('A'+val-10);

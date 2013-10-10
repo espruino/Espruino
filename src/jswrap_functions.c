@@ -54,5 +54,5 @@ JsVarInt jswrap_parseInt(JsVar *v, JsVarInt radix) {
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
-  return atof(buffer);
+  return stringToFloat(buffer);
 }
