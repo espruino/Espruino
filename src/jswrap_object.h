@@ -16,6 +16,7 @@
 JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent);
 JsVar *jswrap_object_clone(JsVar *parent);
+JsVar *jswrap_object_keys(JsVar *obj);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2);

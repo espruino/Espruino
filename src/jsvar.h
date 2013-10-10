@@ -410,6 +410,9 @@ void jsvDottyOutput();
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);
+
+/** If v is the key of a function, return true if it is internal and shouldn't be visible to the user */
+bool jsvIsInternalFunctionKey(JsVar *v);
 // --------------------------------------------------------------------------------------------
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var

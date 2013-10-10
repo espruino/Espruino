@@ -2216,6 +2216,13 @@ JsVar *jsvStringTrimRight(JsVar *srcString) {
   return dstString;
 }
 
+/// If v is the key of a function, return true if it is internal and shouldn't be visible to the user
+bool jsvIsInternalFunctionKey(JsVar *v) {
+  return (jsvIsString(v) && v->varData.str[0]==JS_HIDDEN_CHAR) ||
+         jsvIsFunctionParameter(v);
+}
+
+
 // --------------------------------------------------------------------------------------------
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
