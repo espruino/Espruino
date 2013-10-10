@@ -315,13 +315,14 @@ int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
 #define RAND_MAX (0xFFFFFFFFU)
 unsigned int rand();
-JsVarFloat atof(const char *str);
 #else
 // FIXME: use itoa/ftoa direct - sprintf is huge
 //#define itoa(val,str,base) sprintf(str,"%d",(int)val)
 //#define ftoa(val,str) sprintf(str,"%f",val)
 
 #endif
+
+JsVarFloat stringToFloat(const char *str);
 
 #ifndef HAS_STDLIB
 void itoa(JsVarInt val,char *str,unsigned int base);

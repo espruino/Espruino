@@ -13,6 +13,10 @@ var a = [
          parseFloat("1.11"), 1.11,
          parseFloat(".01"), 0.01,
          parseFloat("100."), 100.0,
+         parseFloat("1e+1"), 10.0,
+         parseFloat("1.e+1"), 10.0,
+         parseFloat("1.2e+2"), 120.0,
+         parseFloat("1200e-3"), 1.2,
 ];
 
 var result = 1;
