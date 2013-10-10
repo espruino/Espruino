@@ -153,7 +153,7 @@ void jslGetNextToken(JsLex *lex) {
       if (canBeFloating && (lex->currCh=='e'||lex->currCh=='E')) {
         lex->tk = LEX_FLOAT;
         jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
-        if (lex->currCh=='-') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
+        if (lex->currCh=='-' || lex->currCh=='+') { jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex); }
         while (isNumeric(lex->currCh)) {
           jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
         }
