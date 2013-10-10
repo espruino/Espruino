@@ -23,7 +23,9 @@ import os;
 # 
 # Comments look like:
 #
-#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable",
+#/*JSON{ "type":"staticmethod|staticproperty|constructor|method|property|function|variable|class|library",
+#                      // class = built-in class that does not require instantiation
+#                      // library = built-in class that needs require('classname')
 #         "class" : "Double", "name" : "doubleToIntBits",
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x",

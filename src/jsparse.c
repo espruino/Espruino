@@ -760,12 +760,8 @@ JsVar *jspeFactorSingleId() {
     /* Special case! We haven't found the variable, so check out
      * and see if it's one of our builtins...  */
     if (jswIsBuiltInObject(tokenName)) {
-      JsVar *obj = jsvNewWithFlags(JSV_FUNCTION); // yes, really a function :/.
+      JsVar *obj = jspNewBuiltin(tokenName);
       if (obj) { // not out of memory
-        if (strlen(tokenName)==sizeof(obj->varData))
-          memcpy(obj->varData.str, tokenName, sizeof(obj->varData)); // no trailing zero!
-        else
-          strncpy(obj->varData.str, tokenName, sizeof(obj->varData));
         a = jsvAddNamedChild(execInfo.parse->root, obj, tokenName);
         jsvUnLock(obj);
       }
@@ -2036,6 +2032,18 @@ JsVar *jspeStatement() {
 }
 
 // -----------------------------------------------------------------------------
+/// Create a new built-in object that jswrapper can use to check for built-in functions
+JsVar *jspNewBuiltin(const char *instanceOf) {
+  JsVar *objFunc = jsvNewWithFlags(JSV_FUNCTION);
+  if (!objFunc) return 0; // out of memory
+  // set object data to be object name
+  if (strlen(instanceOf)==sizeof(objFunc->varData))
+    memcpy(objFunc->varData.str, instanceOf, sizeof(objFunc->varData)); // no trailing zero!
+  else
+    strncpy(objFunc->varData.str, instanceOf, sizeof(objFunc->varData));
+  return objFunc;
+}
+
 
 JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
   JsVar *objFuncName = jsvFindChildFromString(parse->root, instanceOf, true);
@@ -2044,13 +2052,12 @@ JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
 
   JsVar *objFunc = jsvSkipName(objFuncName);
   if (!objFunc) {
-    objFunc = jsvNewWithFlags(JSV_FUNCTION);
+    objFunc = jspNewBuiltin(instanceOf);
     if (!objFunc) { // out of memory
       jsvUnLock(objFuncName);
       return 0;
     }
-    // set object data to be object name
-    strncpy(objFunc->varData.str, instanceOf, sizeof(objFunc->varData));
+
     // set up name
     jsvSetValueOfName(objFuncName, objFunc);
   }

@@ -30,10 +30,11 @@ http.createServer(function (req, res) {
 /*JSON{ "type":"class",
         "class" : "http",
         "description" : [
-                         "This class allows you to create http servers and make http requests",
+                         "This library allows you to create http servers and make http requests",
                          "NOTE: This is currently only available in the Raspberry Pi version",
                          "This is a cut-down version of node.js's library",
                          "Please see http://nodemanual.org/latest/nodejs_ref_guide/http.html",
+                         "To use this, you must type ```var http = require('http')``` to get access to the library",
                          "NOTE: The HTTP client + server send in ~8 byte chunks. This is normally fine but big servers - eg. Google will reject requests made like this (DDoS protection?)"
                           ]
 }*/

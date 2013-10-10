@@ -23,6 +23,9 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);
 
+/// If we get this in 'require', should we make an object with this name?
+bool jswIsBuiltInLibrary(const char *name);
+
 /** Given a variable, return the basic object name of it */
 const char *jswGetBasicObjectName(JsVar *var);
 

@@ -346,19 +346,36 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
+
+builtinLibraryChecks = []
+for jsondata in jsondatas:
+  if jsondata["type"]=="library":
+    check = 'strcmp(name, "'+jsondata["class"]+'")==0';
+    builtinLibraryChecks.append(check)
+
+
 builtinChecks = []
 notRealObjects = []
 for jsondata in jsondatas:
   if "class" in jsondata:
     check = 'strcmp(name, "'+jsondata["class"]+'")==0';
-    if "not_real_object" in jsondata:
-      notRealObjects.append(check)
-    if not check in builtinChecks:
-      builtinChecks.append(check)
+    if not check in builtinLibraryChecks:
+      if "not_real_object" in jsondata:
+        notRealObjects.append(check)
+      if not check in builtinChecks:
+        builtinChecks.append(check)
 
 
 codeOut('bool jswIsBuiltInObject(const char *name) {') 
 codeOut('  return\n'+" ||\n    ".join(builtinChecks)+';')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+
+codeOut('bool jswIsBuiltInLibrary(const char *name) {') 
+codeOut('  return\n'+" ||\n    ".join(builtinLibraryChecks)+';')
 codeOut('}')
 
 codeOut('')

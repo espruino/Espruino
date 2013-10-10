@@ -156,7 +156,7 @@ for jsondata in detail:
     html("<h2 class=\"class\"><a name=\""+linkName+"\">"+niceName+"</a></h2>")
     html("  <p class=\"top\"><a href=\"#top\">(top)</a></p>")
     for j in jsondatas:
-      if j["type"]=="class" and j["class"]==className:
+      if (j["type"]=="class" or j["type"]=="library") and j["class"]==className:
         ds = html_description(j["description"], className)
 
     instances = []

@@ -17,6 +17,7 @@
 #include "jslex.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrapper.h"
 #ifdef USE_FILESYSTEM
 #include "../libs/jswrap_fat.h"
 #endif
@@ -29,7 +30,7 @@
 }*/
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
-    jsWarn("Expecting amodule name as a string");
+    jsWarn("Expecting a module name as a string");
     return 0;
   }
   // Search to see if we have already loaded this module
@@ -51,33 +52,42 @@ JsVar *jswrap_require(JsVar *moduleName) {
     return jsvSkipNameAndUnLock(moduleExportName);
   }
 
-  // Now try and load it
-  JsVar *fileContents = 0;
-  //if (jsvIsStringEqual(moduleName,"http")) {}
-  //if (jsvIsStringEqual(moduleName,"fs")) {}
-#ifdef USE_FILESYSTEM
-  JsVar *modulePath = jsvNewFromString(
-#ifdef LINUX
-      "node_modules/"
-#else
-      "NODE_M~1/"
-#endif
-      );
-  if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
-  jsvAppendStringVarComplete(modulePath, moduleName);
-  jsvAppendString(modulePath,".js");
-  fileContents = wrap_fat_readFile(modulePath);
-  jsvUnLock(modulePath);
-#endif
-  if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-    jsvUnLock(moduleExportName);
+  // Now check if it is built-in
+  char moduleNameBuf[16];
+  jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf));
+  if (jswIsBuiltInLibrary(moduleNameBuf)) {
+    // create a 'fake' module that Espruino can use to map its built-in functions against
+    moduleExport = jspNewBuiltin(moduleNameBuf);
+  } else {
+    // Now try and load it
+    JsVar *fileContents = 0;
+    //if (jsvIsStringEqual(moduleName,"http")) {}
+    //if (jsvIsStringEqual(moduleName,"fs")) {}
+  #ifdef USE_FILESYSTEM
+    JsVar *modulePath = jsvNewFromString(
+  #ifdef LINUX
+        "node_modules/"
+  #else
+        "NODE_M~1/"
+  #endif
+        );
+    if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
+    jsvAppendStringVarComplete(modulePath, moduleName);
+    jsvAppendString(modulePath,".js");
+    fileContents = wrap_fat_readFile(modulePath);
+    jsvUnLock(modulePath);
+  #endif
+    if (!fileContents || jsvIsStringEqual(fileContents,"")) {
+      jsvUnLock(moduleExportName);
+      jsvUnLock(fileContents);
+      jsWarn("Module not found");
+      return 0;
+    }
+    moduleExport = jspEvaluateModule(jsiGetParser(), fileContents);
     jsvUnLock(fileContents);
-    jsWarn("Module not found");
-    return 0;
   }
 
-  moduleExport = jspEvaluateModule(jsiGetParser(), fileContents);
-  jsvUnLock(fileContents);
+  assert(moduleExport);
   jsvSetValueOfName(moduleExportName, moduleExport); // save in cache
   jsvUnLock(moduleExportName);
   return moduleExport;
