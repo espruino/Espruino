@@ -71,16 +71,33 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
+
   if (baud>0) inf.baudRate = (int)baud;
+
   if (jsvIsObject(options)) {
     JsVar *v;
+
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "rx", false));
     inf.pinRX = jshGetPinFromVar(v);
     jsvUnLock(v);
+
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "tx", false));
     inf.pinTX = jshGetPinFromVar(v);
     jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
+    inf.bytesize = (uint16_t)jsvGetInteger(v);
+    jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
+    inf.parity = (uint16_t)jsvGetInteger(v);
+    jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "stopbits", false));
+    inf.stopbits = (uint16_t)jsvGetInteger(v);
+    jsvUnLock(v);
   }
+
   jshUSARTSetup(device, &inf);
   // Set baud rate in object, so we can initialise it on startup
   if (baud != DEFAULT_BAUD_RATE) {
