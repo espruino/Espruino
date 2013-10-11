@@ -32,6 +32,11 @@
 #define     eSPI_STATE_READ_FIRST_PORTION    (7)
 #define     eSPI_STATE_READ_EOT              (8)
 
+#define READ                    3
+#define WRITE                   1
+#define HI(value)               (((value) & 0xFF00) >> 8)
+#define LO(value)               ((value) & 0x00FF)
+
 typedef struct
 {
     gcSpiHandleRx  SPIRxHandler;
