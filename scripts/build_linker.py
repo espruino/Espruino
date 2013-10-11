@@ -68,11 +68,19 @@ RAM_BASE = 0x20000000;
 FLASH_BASE = 0x08000000;
 RAM_SIZE = board.chip["ram"]*1024;
 FLASH_SIZE = board.chip["flash"]*1024;
+
+# Beware - on some devices (the STM32F4) the memory is divided into two non-continuous blocks
+if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
+  RAM_SIZE = 128*1024
+
+
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
 elif IS_USING_BOOTLOADER:
   FLASH_BASE += BOOTLOADER_SIZE
   FLASH_SIZE -= BOOTLOADER_SIZE
+
+STACK_START = RAM_BASE + RAM_SIZE
 
 
 codeOut("""
@@ -82,7 +90,7 @@ codeOut("""
 ENTRY(Reset_Handler)
 
 /* Highest stack address */
-_estack = """+hex(RAM_BASE+RAM_SIZE)+""";
+_estack = """+hex(STACK_START)+""";
 
 MEMORY
 {
