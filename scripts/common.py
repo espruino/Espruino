@@ -19,8 +19,8 @@ import json;
 import sys;
 import os;
 
-verbose = os.getenv("V");
-if not verbose:
+silent = os.getenv("SILENT");
+if silent:
   class Discarder(object):
     def write(self, text):
         pass # do nothing

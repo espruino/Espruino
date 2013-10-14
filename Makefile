@@ -780,6 +780,7 @@ ifeq ($(V),1)
 else
         quiet_=quiet_
         Q=@
+	export SILENT=1
 endif
 
 
