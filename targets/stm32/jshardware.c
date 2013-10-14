@@ -1567,11 +1567,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   USART_InitStructure.USART_BaudRate = (uint32_t)inf->baudRate;
 
-  // TODO: Should we ignore 7bit mode and handle it in JS?
   // 7-bit + 1-bit (parity odd or even) = 8-bit
   // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and 
-  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case. 
-  // The register is 9-bits long.
+  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case 
+  // the register is 9-bits long.
 
   if((inf->bytesize == 7 && inf->parity > 0 ) || inf->bytesize == 8) {
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;

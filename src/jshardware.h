@@ -128,9 +128,9 @@ typedef struct {
   int baudRate; // FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
-  uint16_t bytesize;
-  uint16_t parity;
-  uint16_t stopbits;
+  unsigned char bytesize;
+  unsigned char parity;
+  unsigned char stopbits;
 } JshUSARTInfo;
 
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {

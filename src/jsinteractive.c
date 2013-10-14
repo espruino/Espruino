@@ -1268,18 +1268,18 @@ void jsiIdle() {
           int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
 
 // Part of hackish solution to 7 bit support on STM32
-#ifdef STM32          
-          uint16_t bytesize = 8;
-          uint16_t parity   = 0;
+#ifdef STM32
+          unsigned char bytesize = 8;
+          unsigned char parity   = 0;
           JsVar *options    = jsvSkipNameAndUnLock(jsvFindChildFromString(usartClass, DEVICE_OPTIONS_NAME, false));
 
           if(jsvIsObject(options)) {
             JsVar *v;
             v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
-            bytesize = (uint16_t)jsvGetInteger(v);
+            bytesize = (unsigned char)jsvGetInteger(v);
             jsvUnLock(v);
             v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
-            parity = (uint16_t)jsvGetInteger(v);
+            parity = (unsigned char)jsvGetInteger(v);
             jsvUnLock(v);
           }
 
