@@ -4,6 +4,7 @@ cd ..
 DIR=`pwd`
 WEBSITEDIR=$DIR/../espruinowebsite
 CMSDIR=$DIR/../espruinowebsite/cms
+REFERENCEDIR=$DIR/../espruinowebsite/reference
 BOARDIMGDIR=$WEBSITEDIR/www/img
 
 echo Updating Board Docs
@@ -14,7 +15,7 @@ echo "<h2>Espruino Board - Supported</h2>" >> NewReference.html
  NICENAME=`python scripts/get_board_name.py $BOARDNAME`
  echo $BOARDNAME = $NICENAME 
  python scripts/build_board_docs.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
- grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${CMSDIR}/Reference${BOARDNAME}.html
+ grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${REFERENCEDIR}/Reference${BOARDNAME}.html
  cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}
  convert boards/img/${BOARDNAME}.* -resize 256x256 ${BOARDIMGDIR}/${BOARDNAME}_thumb.jpg
  echo -e "<center><span style=\"text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span></center>" >> NewReference.html
@@ -26,7 +27,7 @@ do
  NICENAME=`python scripts/get_board_name.py $BOARDNAME`
  echo $BOARDNAME = $NICENAME 
  python scripts/build_board_docs.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
- grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${CMSDIR}/Reference${BOARDNAME}.html
+ grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${REFERENCEDIR}/Reference${BOARDNAME}.html
  cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}
  convert boards/img/${BOARDNAME}.* -resize 128x128 ${BOARDIMGDIR}/${BOARDNAME}_thumb.jpg
  echo -e "<span style=\"display:inline-block;text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span>" >> NewReference.html
@@ -38,7 +39,7 @@ echo Updating Reference.html
 python scripts/build_docs.py
 grep functions.html -v -f scripts/website_banned_lines.txt >> NewReference.html
 rm functions.html
-mv NewReference.html ${CMSDIR}/Reference.html
+mv NewReference.html ${REFERENCEDIR}/Reference.html
 
 echo Updating ChangeLog.html
 sed -n "/FILEBEGIN/,/CHANGELOGBEGIN/p" ${CMSDIR}/ChangeLog.html > tmp.html

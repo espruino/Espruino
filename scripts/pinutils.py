@@ -49,6 +49,8 @@ for i in range(1, 19):
 
 CLASSES["CANRX"]="CAN"
 CLASSES["CANTX"]="CAN"
+CLASSES["CAN_RX"]="CAN"
+CLASSES["CAN_TX"]="CAN"
 for i in range(0,17):
   CLASSES["ADC1_IN"+str(i)]="ADC"
   CLASSES["ADC2_IN"+str(i)]="ADC"
@@ -199,6 +201,7 @@ def fill_gaps_in_pin_list(pins):
 def only_from_package(pins, package):
   newpins = []
   for pin in pins:
+    print json.dumps(pin)
     pinnumber =  pin["csv"][package]
     if pinnumber!="" and pinnumber!="0":
       newpins.append(pin)
