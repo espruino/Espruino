@@ -1263,16 +1263,45 @@ void jsiIdle() {
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (usartClass) {
         JsVar *callback = jsvFindChildFromString(usartClass, USART_CALLBACK_NAME, false);
+
         if (callback) {
           int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
-          for (i=0;i<c;i++) {
+
+// Part of hackish solution to 7 bit support on STM32
+#ifdef STM32          
+          uint16_t bytesize = 8;
+          JsVar *options = jsvSkipNameAndUnLock(jsvFindChildFromString(usartClass, DEVICE_OPTIONS_NAME, false));
+
+          if(jsvIsObject(options)) {
+            JsVar *v;
+            v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
+            bytesize = (uint16_t)jsvGetInteger(v);
+            jsvUnLock(v);
+          }
+          jsvUnLock(options);
+#endif
+
+          for (i=0; i<c; i++) {
             JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+
             if (data) {
               JsVar *dataTime = jsvNewFromString("X");
-              dataTime->varData.str[0] = event.data.chars[i];;
+
+#ifdef STM32 
+              if(bytesize == 7) {
+                dataTime->varData.str[0] = event.data.chars[i] & 0x7F;
+              }
+              else {
+                dataTime->varData.str[0] = event.data.chars[i]; 
+              }
+#else
+              dataTime->varData.str[0] = event.data.chars[i]; 
+#endif
+
               if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "data"));
               jsvUnLock(dataTime);
             }
+            
             jsiExecuteEventCallback(callback, data, 0);
             jsvUnLock(data);
           }
