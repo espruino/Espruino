@@ -24,7 +24,7 @@ chip = {
   'part' : "STM32F303VCT6",
   'family' : "STM32F3",
   'package' : "LQFP100",
-  'ram' : 48,
+  'ram' : 40,
   'flash' : 256,
   'speed' : 72,
   'usart' : 3,

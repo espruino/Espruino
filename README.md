@@ -52,8 +52,8 @@ Please note that this is BETA. We've been working hard on the Espruino Board sup
 
 * Espruino Board - working
 * Linux - working
-* STM32VLDISCOVERY - ?
-* STM32F3DISCOVERY - ?
+* STM32VLDISCOVERY - WORKING
+* STM32F3DISCOVERY - WORKING
 * STM32F4DISCOVERY - WORKING
 * HY STM32 2.4" - WORKING
 * HY STM32 2.8" - WORKING, but screen is not black at startup
