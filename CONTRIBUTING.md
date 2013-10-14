@@ -7,7 +7,7 @@ Thanks for thinking about contributing to Espruino! Anything you can add is huge
 * Ensure that you are not contributing someone else's code, and that you are willing to add your code under Espruino's MPL Licence
 * Make sure that what you do doesn't break the Espruino board or the other boards we build for. We can't check all the boards for every commit, so if you break something you'll annoy a whole bunch of people.
 * Be aware that Espruino is designed for Microcontrollers - with very low amounts of flash and memory. Both are at a premium so don't statically allocate variables or do other stuff that will use up memory.
-* Avoid randomly refactoring everything or renaming things to your own personal style (some things really could do with renaming, but please check first or we may reject your pull request)
+* Avoid randomly adding newlines, spaces, refactoring everything or renaming things to your own personal style (some things really could do with renaming, but please check first or we may reject your pull request)
 * Don't add a whole bunch of indirection/abstraction for the sake of it - it'll probably just use of more of our precious memory.
 * If you add a new API, try and make it familiar to Arduino/JavaScript users.
 
@@ -42,4 +42,5 @@ The rough coding style is as follows, but you should get a good idea from the co
 * Use bool for booleans - not int
 * ```//``` comments for single lines, ```/* ... */``` for multiple lines
 * Half-hearted Doxygen compatibility: use ```///<``` for function declaration documentation (if on same line), and ```/** ... */``` if doing it right before a function
+* Use new lines sparingly (only where it really makes sense)
 
