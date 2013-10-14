@@ -22,6 +22,8 @@
 #include "jsdevices.h"
 #ifndef LINUX
 #include "jshardware_pininfo.h"
+#else
+#include <inttypes.h>
 #endif
 
 void jshInit();
