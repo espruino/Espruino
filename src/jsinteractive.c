@@ -1270,14 +1270,19 @@ void jsiIdle() {
 // Part of hackish solution to 7 bit support on STM32
 #ifdef STM32          
           uint16_t bytesize = 8;
-          JsVar *options = jsvSkipNameAndUnLock(jsvFindChildFromString(usartClass, DEVICE_OPTIONS_NAME, false));
+          uint16_t parity   = 0;
+          JsVar *options    = jsvSkipNameAndUnLock(jsvFindChildFromString(usartClass, DEVICE_OPTIONS_NAME, false));
 
           if(jsvIsObject(options)) {
             JsVar *v;
             v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
             bytesize = (uint16_t)jsvGetInteger(v);
             jsvUnLock(v);
+            v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
+            parity = (uint16_t)jsvGetInteger(v);
+            jsvUnLock(v);
           }
+
           jsvUnLock(options);
 #endif
 
@@ -1288,14 +1293,17 @@ void jsiIdle() {
               JsVar *dataTime = jsvNewFromString("X");
 
 #ifdef STM32 
-              if(bytesize == 7) {
+              if(bytesize == 7 && parity > 0) {
                 dataTime->varData.str[0] = event.data.chars[i] & 0x7F;
               }
+              else if(bytesize == 8 && parity > 0) {
+                dataTime->varData.str[0] = event.data.chars[i] & 0xFF;
+              }
               else {
-                dataTime->varData.str[0] = event.data.chars[i]; 
+                dataTime->varData.str[0] = event.data.chars[i];
               }
 #else
-              dataTime->varData.str[0] = event.data.chars[i]; 
+              dataTime->varData.str[0] = event.data.chars[i];
 #endif
 
               if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "data"));
