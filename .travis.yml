@@ -1,9 +1,22 @@
 language: c
 before_install:
+ - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
  - sudo apt-get update
  - sudo apt-get install libsdl1.2-dev
+ - sudo apt-get install gcc-arm-none-eabi
 before_script:
+ - arm-none-eabi-gcc --version
 compiler:
   - gcc
 env:
+  - ESPRUINO_1V0=1
+  - ESPRUINO_1V1=1
+  - OLIMEX=1
+  - HYSTM32_24=1
+  - HYSTM32_28=1
+  - HYSTM32_32=1
+  - STM32VLDISCOVERY=1
+  - STM32F3DISCOVERY=1
+  - STM32F4DISCOVERY=1
+  - LINUX_BUILD=1
 script: make
