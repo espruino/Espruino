@@ -205,3 +205,29 @@ for jsondata in detail:
 
 html(" </body>")
 html("</html>")
+
+
+
+# --------------------------------------------------------------------------
+#                                                     Write/create keywords
+# --------------------------------------------------------------------------
+keywords = {}
+for j in jsondatas:
+  if ("name" in j):
+    item = { "title" : get_surround(j), "path": "/Reference#"+get_link(j) };
+    jkeywords = [ j["name"] ]
+    if get_prefixed_name(j)!=j["name"]: jkeywords.append(get_prefixed_name(j))
+    if "class" in j: jkeywords.append(j["class"])
+    
+    for k in jkeywords:
+      k = k.lower()
+      if not k in keywords: 
+        keywords[k] = [ item ]
+      else:
+        keywords[k].append(item)
+
+#print(json.dumps(keywords, sort_keys=True, indent=2)) 
+keywordFile = open('function_keywords.js', 'w')
+keywordFile.write(json.dumps(keywords, sort_keys=True, indent=2));
+
+
