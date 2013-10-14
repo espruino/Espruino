@@ -86,15 +86,33 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
     jsvUnLock(v);
 
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
-    inf.bytesize = (uint16_t)jsvGetInteger(v);
+    inf.bytesize = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
 
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
-    inf.parity = (uint16_t)jsvGetInteger(v);
+    if(jsvIsNull(v)) {
+	inf.parity = 0;
+    }
+    else if(jsvIsString(v)) {
+	inf.parity = 0xFF;
+	char s[8] = "";
+
+	jsvGetString(v, s, sizeof(s) - 1);
+
+	if(!strcmp(s, "o") || !strcmp(s, "odd")) {
+	    inf.parity = 1;
+	}
+	else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+	    inf.parity = 2;
+	}
+    }
+    else if(jsvIsInt(v)) {
+	inf.parity = (unsigned char)jsvGetInteger(v);
+    }
     jsvUnLock(v);
 
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "stopbits", false));
-    inf.stopbits = (uint16_t)jsvGetInteger(v);
+    inf.stopbits = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
   }
 
