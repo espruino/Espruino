@@ -3,6 +3,7 @@ cd `dirname $0`
 cd ..
 DIR=`pwd`
 WEBSITEDIR=$DIR/../espruinowebsite
+ESPRUINODOCS=$DIR/../EspruinoDocs
 CMSDIR=$DIR/../espruinowebsite/cms
 REFERENCEDIR=$DIR/../espruinowebsite/reference
 BOARDIMGDIR=$WEBSITEDIR/www/img
@@ -55,3 +56,6 @@ cp -v $CURRENTZIP $WEBSITEDIR/www/files
 CURRENTVERSION=`echo $CURRENTZIP | sed -ne "s/.*\(1v[0-9][0-9]\).*/\1/p"`
 echo Current version = $CURRENTVERSION
 sed -i "s/1v[0-9][0-9]/$CURRENTVERSION/g" $CMSDIR/Download.html
+
+cd $ESPRUINODOCS
+./build.sh

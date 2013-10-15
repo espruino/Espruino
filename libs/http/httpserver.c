@@ -12,16 +12,39 @@
  * ----------------------------------------------------------------------------
  */
 #include "httpserver.h"
-#define INVALID_SOCKET (-1)
+#define INVALID_SOCKET ((SOCKET)(-1))
 #define SOCKET_ERROR (-1)
 #include "jsparse.h"
 #include "jsinteractive.h"
+
 #ifdef USE_CC3000
+ #include "socket.h"
+ #include "cc3000_common.h"
+ #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
+
 #else
-#include <sys/stat.h>
-#include <errno.h>
+ #include <sys/stat.h>
+ #include <errno.h>
+
+ #define closesocket(SOCK) close(SOCK)
 #endif
 
+
+extern void _end;
+char *malloc_mem = (char*)&_end;
+
+#ifdef ARM
+// FIXME
+void * malloc(int s) {
+  char * p = malloc_mem;
+  malloc_mem +=s;
+  return p;
+}
+void free(void *p) {
+  jsiConsolePrint("Oh no! hacked up free doesn't work\n");
+  return;
+}
+#endif
 
 // -----------------------------
 
@@ -88,7 +111,7 @@ void httpServerInit() {
 }
 
 void _httpServerConnectionKill(HttpServerConnection *connection) {
-  if (connection->socket!=-1) close(connection->socket);
+  if (connection->socket!=INVALID_SOCKET) closesocket(connection->socket);
   jsvUnLock(connection->var);
   jsvUnLock(connection->resVar);
   jsvUnLock(connection->reqVar);
@@ -99,7 +122,7 @@ void _httpServerConnectionKill(HttpServerConnection *connection) {
 }
 
 void _httpClientConnectionKill(HttpClientConnection *connection) {
-  if (connection->socket!=-1) close(connection->socket);
+  if (connection->socket!=INVALID_SOCKET) closesocket(connection->socket);
   jsvUnLock(connection->resVar);
   jsvUnLock(connection->reqVar);
   jsvUnLock(connection->sendData);
@@ -132,7 +155,7 @@ void httpServerKill() {
   HttpServer *server = httpServers;
   while (server) {
     jsvUnLock(server->var);
-    close(server->listeningSocket);
+    closesocket(server->listeningSocket);
     HttpServer *oldServer = server;
     server = server->next;
     free(oldServer);
@@ -241,7 +264,24 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   return true;
 }
 
+size_t httpStringGet(JsVar *v, char *str, size_t len) {
+  size_t l = len;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, v, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (l--==0) {
+      jsvStringIteratorFree(&it);
+      return len;
+    }
+    *(str++) = jsvStringIteratorGetChar(&it);
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  return len-l;
+}
+
 void httpServerConnectionsIdle() {
+  char buf[256];
   HttpServerConnection *connection = httpServerConnections;
   while (connection) {
     HttpServerConnection *nextConnection = connection->next;
@@ -282,15 +322,15 @@ void httpServerConnectionsIdle() {
        int a=1;
        int len = (int)jsvGetStringLength(connection->sendData);
        if (len>0) {
-         char *data = (char*)malloc((size_t)(len+1));
-         jsvGetString(connection->sendData, data, (size_t)(len+1));
-         a = (int)send(connection->socket,data,(size_t)len, MSG_NOSIGNAL);
-         jsvUnLock(connection->sendData); connection->sendData = 0;
+         len = (int)httpStringGet(connection->sendData, buf, sizeof(buf));
+         a = (int)send(connection->socket,buf,(size_t)len, MSG_NOSIGNAL);
          if (a!=len) {
-           connection->sendData = jsvNewFromEmptyString();
-           jsvAppendStringBuf(connection->sendData, &data[a], len-a);
+           JsVar *v = jsvNewFromEmptyString();
+           jsvAppendStringVar(v, connection->sendData, a, len-a);
+           jsvUnLock(connection->sendData); connection->sendData = v;
+         } else {
+           jsvUnLock(connection->sendData); connection->sendData = 0;
          }
-         free(data);
        }
        if (a<=0) {
          httpError("Socket error while sending");
@@ -309,6 +349,8 @@ void httpServerConnectionsIdle() {
 }
 
 void httpClientConnectionsIdle() {
+  char buf[256];
+
   HttpClientConnection *connection = httpClientConnections;
   while (connection) {
     HttpClientConnection *nextConnection = connection->next;
@@ -322,7 +364,7 @@ void httpClientConnectionsIdle() {
       connection->receiveData = 0;
     }
 
-    if (connection->socket!=-1) {
+    if (connection->socket!=INVALID_SOCKET) {
       // send data if possible
       if (connection->sendData) {
         // this will wait to see if we can write any more, but ALSO
@@ -343,15 +385,15 @@ void httpClientConnectionsIdle() {
           int a=1;
           int len = (int)jsvGetStringLength(connection->sendData);
           if (len>0) {
-            char *data = (char*)malloc((size_t)(len+1));
-            jsvGetString(connection->sendData, data, (size_t)(len+1));
-            a = (int)send(connection->socket,data,(size_t)len, MSG_NOSIGNAL);
-            jsvUnLock(connection->sendData); connection->sendData = 0;
+            len = (int)httpStringGet(connection->sendData, buf, (size_t)(len+1));
+            a = (int)send(connection->socket,buf,(size_t)len, MSG_NOSIGNAL);
             if (a!=len) {
-              connection->sendData = jsvNewFromEmptyString();
-              jsvAppendStringBuf(connection->sendData, &data[a], len-a);
+              JsVar *v = jsvNewFromEmptyString();
+              jsvAppendStringVar(v, connection->sendData, a, len-a);
+              jsvUnLock(connection->sendData); connection->sendData = v;
+            } else {
+              jsvUnLock(connection->sendData); connection->sendData = 0;
             }
-            free(data);
           }
           if (a<=0) {
             httpError("Socket error while sending");
@@ -502,9 +544,11 @@ JsVar *httpServerNew(JsVar *callback) {
     return serverVar;
   }
 
+#ifndef USE_CC3000
   int optval = 1;
   if (setsockopt(server->listeningSocket,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval))==-1)
     jsWarn("http: setsockopt failed\n");
+#endif
 
   return serverVar;
 }
@@ -515,17 +559,19 @@ void httpServerListen(JsVar *httpServerVar, int port) {
 
   int nret;
   sockaddr_in serverInfo;
+  memset(&serverInfo, 0, sizeof(serverInfo));
   serverInfo.sin_family = AF_INET;
+#ifndef USE_CC3000
   if (false)
     serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // allow only LOCAL clients to connect
   else
     serverInfo.sin_addr.s_addr = INADDR_ANY; // allow anyone to connect
-
+#endif
   serverInfo.sin_port = htons((unsigned short)port); // port
-  nret = bind(server->listeningSocket, (struct sockaddr*)&serverInfo, sizeof(struct sockaddr));
+  nret = bind(server->listeningSocket, (struct sockaddr*)&serverInfo, sizeof(serverInfo));
   if (nret == SOCKET_ERROR) {
     httpError("httpServer: bind");
-    close(server->listeningSocket);
+    closesocket(server->listeningSocket);
     return;
   }
 
@@ -533,7 +579,7 @@ void httpServerListen(JsVar *httpServerVar, int port) {
   nret = listen(server->listeningSocket, 10); // 10 connections
   if (nret == SOCKET_ERROR) {
     httpError("httpServer: listen");
-    close(server->listeningSocket);
+    closesocket(server->listeningSocket);
     return;
   }
 }
@@ -548,7 +594,7 @@ JsVar *httpClientRequestNew(JsVar *options, JsVar *callback) {
    HttpClientConnection *connection = (HttpClientConnection*)malloc(sizeof(HttpClientConnection));
    connection->reqVar = jsvLockAgain(req);
    connection->resVar = jsvLockAgain(res);
-   connection->socket = -1;
+   connection->socket = INVALID_SOCKET;
    connection->sendData = 0;
    connection->receiveData = 0;
    connection->closeNow = false;
@@ -616,7 +662,7 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   if (!connection) return;
 
   connection->socket = socket (AF_INET, SOCK_STREAM, 0);
-  if (connection->socket == -1) {
+  if (connection->socket == INVALID_SOCKET) {
      httpError("Unable to create socket\n");
      connection->closeNow = true;
   }
@@ -630,7 +676,15 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   JsVar *hostNameVar = jsvSkipNameAndUnLock(jsvFindChildFromString(connection->options, "host", false));
   jsvGetString(hostNameVar, hostName, sizeof(hostName));
   jsvUnLock(hostNameVar);
-  struct hostent * host_addr = gethostbyname(hostName);
+
+  unsigned long host_addr = 0;
+#ifdef USE_CC3000
+  gethostbyname(hostName, strlen(hostName), &host_addr);
+#else
+  struct hostent * host_addr_p = gethostbyname(hostName);
+  if (host_addr_p)
+    host_addr = *((int*)*host_addr_p->h_addr_list);
+#endif
   /* getaddrinfo is newer than this?
   *
   * struct addrinfo * result;
@@ -639,7 +693,7 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   *   fprintf(stderr, "error %s\n", gai_strerror(error));
   *
   */
-  if(host_addr==NULL) {
+  if(!host_addr) {
     httpError("Unable to locate host");
     connection->closeNow = true;
     return;
@@ -649,6 +703,10 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   #ifdef WIN_OS
   u_long n = 1;
   ioctlsocket(connection->socket,FIONBIO,&n);
+  #elif defined(USE_CC3000)
+  int zero = 0;
+  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
+  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
   #else
   int flags = fcntl(connection->socket, F_GETFL);
   if (flags < 0) {
@@ -660,7 +718,7 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
      httpError("Unable to set socket descriptor status flags\n");
   #endif
 
-  sin.sin_addr.s_addr = (in_addr_t)*((int*)*host_addr->h_addr_list) ;
+  sin.sin_addr.s_addr = host_addr;
   //uint32_t a = sin.sin_addr.s_addr;
   //_DEBUG_PRINT( cout<<"Port :"<<sin.sin_port<<", Address : "<< sin.sin_addr.s_addr<<endl);
   int res = connect (connection->socket,(const struct sockaddr *)&sin, sizeof(sockaddr_in) );

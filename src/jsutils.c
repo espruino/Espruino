@@ -203,6 +203,14 @@ void *memcpy(void *dst, const void *src, size_t size) {
                 ((char*)dst)[i] = ((char*)src)[i];
         return dst;
 }
+
+void memset(void *dst, unsigned char val, size_t size) {
+  unsigned char *d = (unsigned char*)dst;
+  int i;
+  for (i=0;i<size;i++)
+    d[i]=val;
+}
+
 unsigned int rand() { 
     static unsigned int m_w = 0xDEADBEEF;    /* must not be zero */
     static unsigned int m_z = 0xCAFEBABE;    /* must not be zero */
