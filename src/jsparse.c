@@ -934,7 +934,7 @@ JsVar *jspeFactorFunctionCall() {
   JsVar *parent = 0, *a;
 
   a = jspeFactorNew();
-  bool isConstruct = execInfo.execute & EXEC_CONSTRUCT;
+  bool isConstruct = (execInfo.execute & EXEC_CONSTRUCT) ? true : false;
   execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
 
   while (execInfo.lex->tk=='(') {
