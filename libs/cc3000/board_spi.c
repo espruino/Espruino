@@ -84,15 +84,20 @@ void  SpiInit(void)
   inf.pinSCK =  WLAN_CLK_PIN;
   inf.pinMISO = WLAN_MISO_PIN;
   inf.pinMOSI = WLAN_MOSI_PIN;
+  inf.baudRate = 100000; // FIXME - just slow for debug
+  inf.spiMode = SPIF_SPI_MODE_1;  // Mode 1   CPOL= 0  CPHA= 1
   jshSPISetup(WLAN_SPI, &inf);
 
   // WLAN CS, EN and WALN IRQ Configuration
   jshSetPinStateIsManual(WLAN_CS_PIN, false);
-  jshPinOutput(WLAN_CS_PIN, 1);
+  jshPinOutput(WLAN_CS_PIN, 1); // de-assert CS
   jshSetPinStateIsManual(WLAN_EN_PIN, false);
-  jshPinOutput(WLAN_EN_PIN, 0);
-  jshSetPinStateIsManual(WLAN_IRQ_PIN, false);
+  jshPinOutput(WLAN_EN_PIN, 0); // disable WLAN
+  jshSetPinStateIsManual(WLAN_IRQ_PIN, true);
   jshPinSetState(WLAN_IRQ_PIN, JSHPINSTATE_GPIO_IN_PULLUP); // flip into read mode with pullup
+
+  // wait a little (ensure that WLAN takes effect)
+  jshDelayMicroseconds(500*1000); // force a 500ms delay! FIXME
 }
 
 void SpiClose(void)
@@ -138,6 +143,8 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
     sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
 
     DEASSERT_CS();
+
+    jshDelayMicroseconds(10000);
 
     return(0);
 }
@@ -230,11 +237,13 @@ void
 SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
   int bSend = 0, bRecv = 0;
-  while (bSend<size && bRecv<size) {
+  while (bSend<size || bRecv<size) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?data[bSend]:-1);
     bSend++;
-    if (r>=0) bRecv++;
+    if (bSend>0 && r>=0) bRecv++;
   }
+
+  jshDelayMicroseconds(10); // because of final clock pulse
 }
 
 
@@ -242,11 +251,13 @@ void
 SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
   int bSend = 0, bRecv = 0;
-  while (bSend<size && bRecv<size) {
+  while (bSend<size || bRecv<size) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);
     bSend++;
-    if (r>=0) data[bRecv++] = r;
+    if (bSend>0 && r>=0) data[bRecv++] = r;
   }
+
+  jshDelayMicroseconds(10); // because of final clock pulse
 }
 
 void

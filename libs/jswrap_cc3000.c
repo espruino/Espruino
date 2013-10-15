@@ -21,6 +21,7 @@
 #include "board_spi.h"
 // ti driver
 #include "wlan.h"
+#include "netapp.h"
 #include "hci.h"
 
 /*JSON{ "type":"class",
@@ -48,30 +49,31 @@ void SmartConfigLedOn(uint32_t ulTrueFalse)
 
 void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength)
 {
-    if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE)
-    {
-        //ulSmartConfigFinished = 1;
-        jsiConsolePrint("ulSmartConfigFinished\n");
+    if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
+      //ulSmartConfigFinished = 1;
+      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
     }
 
-    if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT)
-    {
-        //ulCC3000Connected = 1;
-        /* Turn On LED */
-        SmartConfigLedOn(TRUE);
+    if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
+      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
+      //ulCC3000Connected = 1;
+      /* Turn On LED */
+      SmartConfigLedOn(TRUE);
     }
 
-    if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT)
-    {
-        //ulCC3000Connected = 0;
-        /*  Turn Off LED */
-        SmartConfigLedOn(FALSE);
+    if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
+      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
+      //ulCC3000Connected = 0;
+      /*  Turn Off LED */
+      SmartConfigLedOn(FALSE);
     }
-        if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP)
-        {
-          //ulCC3000DHCP = 1;
-          jsiConsolePrint("ulCC3000DHCP\n");
-        }
+    if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
+      //ulCC3000DHCP = 1;
+      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
+    }
+    if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
+      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
+    }
 }
 
 /**
@@ -128,7 +130,7 @@ void WriteWlanPin( unsigned char val )
 }*/
 void jswrap_wlan_init() {
   SpiInit();
-  wlan_init(CC3000_UsynchCallback, (tFWPatches )sendWLFWPatch, (tDriverPatches )sendDriverPatch, (tBootLoaderPatches)sendBootLoaderPatch, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
+  wlan_init(CC3000_UsynchCallback, sendWLFWPatch, sendDriverPatch, sendBootLoaderPatch, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
 }
 
 /*JSON{ "type":"staticmethod",
@@ -140,17 +142,83 @@ void jswrap_wlan_init() {
 void jswrap_wlan_start() {
   wlan_start(0);
   // Mask out all non-required events from CC3000
-  wlan_set_event_mask(HCI_EVNT_WLAN_KEEPALIVE|HCI_EVNT_WLAN_UNSOL_INIT|HCI_EVNT_WLAN_UNSOL_DHCP|HCI_EVNT_WLAN_ASYNC_PING_REPORT);
+  wlan_set_event_mask(
+      HCI_EVNT_WLAN_KEEPALIVE |
+      HCI_EVNT_WLAN_UNSOL_INIT);
+
+  // TODO: check return value !=0
+  wlan_ioctl_set_connection_policy(0, 0, 0); // don't auto-connect
+  wlan_ioctl_del_profile(255); // delete stored eeprom data
 }
 
 /*JSON{ "type":"staticmethod",
          "class" : "WLAN", "name" : "connect",
          "generate" : "jswrap_wlan_connect",
-         "description" : "",
-         "params" : [  ],
+         "description" : "Connect to a wireless network",
+         "params" : [ [ "ap", "JsVar", "Access point name" ],
+                      [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ] ],
          "return" : ["int", ""]
 }*/
-JsVarInt jswrap_wlan_connect() {
-  const char *ap = "Iles Farm TPLink";
-  return wlan_connect(WLAN_SEC_UNSEC, ap, strlen(ap), NULL, NULL, 0);
+JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey) {
+  char ap[32];
+  char key[32];
+  unsigned long security = WLAN_SEC_UNSEC;
+  jsvGetString(vAP, ap, sizeof(ap));
+  if (jsvIsString(vKey)) {
+    security = WLAN_SEC_WPA2;
+    jsvGetString(vKey, key, sizeof(key));
+  }
+  // might want to set wlan_ioctl_set_connection_policy
+  return wlan_connect(security, ap, strlen(ap), NULL, key, strlen(key));
+}
+
+
+void _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, int base, char separator) {
+  char data[64] = "";
+  int i, l = 0;
+  for (i=nBytes-1;i>=0;i--) {
+    itoa(ip[i], &data[l], base);
+    l = strlen(data);
+    if (i>0 && separator) {
+      data[l++] = separator;
+      data[l] = 0;
+    }
+  }
+
+  JsVar *dataVar = jsvNewFromString(data);
+  if (!dataVar) return;
+
+  JsVar *v = jsvFindChildFromString(object, name, true);
+  if (!v) {
+    jsvUnLock(dataVar);
+    return; // out of memory
+  }
+  jsvSetValueOfName(v, dataVar);
+  jsvUnLock(dataVar);
+  jsvUnLock(v);
+}
+
+/*JSON{ "type":"staticmethod",
+         "class" : "WLAN", "name" : "getIP",
+         "generate" : "jswrap_wlan_getIP",
+         "description" : "Get the current IP address",
+         "return" : ["JsVar", ""]
+}*/
+JsVar *jswrap_wlan_getIP() {
+  tNetappIpconfigRetArgs ipconfig;
+  netapp_ipconfig(&ipconfig);
+
+  /* If byte 1 is 0 we don't have a valid address */
+  if (ipconfig.aucIP[3] == 0) return 0;
+
+  JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+  _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP, 4, 10, '.');
+  _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask, 4, 10, '.');
+  _wlan_getIP_get_address(data, "gateway", &ipconfig.aucDefaultGateway, 4, 10, '.');
+  _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer, 4, 10, '.');
+  _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer, 4, 10, '.');
+  _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr, 6, 16, 0);
+  // unsigned char uaSSID[32];
+
+  return data;
 }

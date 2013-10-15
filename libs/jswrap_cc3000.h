@@ -15,4 +15,5 @@
 
 void jswrap_wlan_init();
 void jswrap_wlan_start();
-JsVarInt jswrap_wlan_connect();
+JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey);
+JsVar *jswrap_wlan_getIP();
