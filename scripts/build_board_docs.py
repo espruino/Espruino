@@ -90,11 +90,12 @@ def dump_pin(pin, pinstrip):
           if name in pinfuncs:
             pinfuncs[name]["title"] = pinfuncs[name]["title"] + " " + title
           else:
-            pinfuncs[name] = { 'cls': cls, 'title': "["+pin+"] "+title, 'name': name };
+            pinfuncs[name] = { 'cls': cls, 'title': "["+pin+"] "+title, 'name': name, 'id': pin+"_"+func };
 
       for func in sorted(pinfuncs.items(),key=lambda x: x[1]['cls']):
         pf = func[1]
-        writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'">'+pf["name"]+'</SPAN>')    
+        writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'" onMouseOver="showTT(\''+pf["id"]+'\')" onMouseOut="hideTT(\''+pf["id"]+'\')">'+pf["name"]+'</SPAN>')
+        writeHTML('     <SPAN class="pintooltip" id="'+pf["id"]+'" style="display:none;">'+pf["title"]+'</SPAN>')        
           
       if reverse: writeHTML(pinHTML)
       writeHTML('    </DIV>')    
@@ -122,6 +123,15 @@ writeHTML("""
      border-radius:3px; 
      padding-left: 2px;
      padding-right: 2px; 
+   }
+   .pintooltip {
+      background-color: #FFD;
+      border:1px solid black; 
+      padding-left: 2px;
+      padding-right: 2px; 
+      font-weight: bold;  
+      position: absolute;
+      z-index: 100;
    }
    .SPI { background-color: #8F8; }
    .ADC { background-color: #88F; }
@@ -182,6 +192,18 @@ for pinstrip in board.board:
   writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
 writeHTML(board.board_css)
 writeHTML("  </STYLE>")
+writeHTML(""""
+  <SCRIPT type="text/javascript"> 
+    function showTT(ttid) { 
+      var e = document.getElementById(ttid);
+      e.style.display = "block";
+    }
+    function hideTT(ttid) { 
+      var e = document.getElementById(ttid);
+      e.style.display = "none";
+    }
+  </SCRIPT>
+""")
 writeHTML(" </HEAD>")
 writeHTML(" <BODY>")
 writeHTML('  <H1>'+board.info["name"]+'</H1>')
