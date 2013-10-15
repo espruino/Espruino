@@ -136,17 +136,36 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device);
 
+typedef enum {
+  SPIF_CPHA = 1,
+  SPIF_CPOL = 2,
+  SPIF_SPI_MODE_0 = 0,
+  SPIF_SPI_MODE_1 = SPIF_CPHA,
+  SPIF_SPI_MODE_2 = SPIF_CPOL,
+  SPIF_SPI_MODE_3 = SPIF_CPHA | SPIF_CPOL,
+  /* Mode   CPOL  CPHA
+        0   0     0
+        1   0     1
+        2   1     0
+        3   1     1
+    */
+
+} JshSPIFlags;
+
 typedef struct {
   int baudRate;
   Pin pinSCK;
   Pin pinMISO;
   Pin pinMOSI;
+  unsigned char spiMode;
+
 } JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 1000000;
   inf->pinSCK = -1;
   inf->pinMISO = -1;
   inf->pinMOSI = -1;
+  inf->spiMode = SPIF_SPI_MODE_0;
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */

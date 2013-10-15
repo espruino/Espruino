@@ -81,8 +81,9 @@ JsVar *map_var_as_unsigned_char(JsVar *src, IOEventFlags device, unsigned_char_m
          "generate" : "jswrap_spi_setup",
          "params" : [ [ "options", "JsVar", ["An optional structure containing extra information on initialising the SPI port",
                                               "Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%",
-                                              "```{sck:pin, miso:pin, mosi:pin, baud:integer}```",
+                                              "```{sck:pin, miso:pin, mosi:pin, baud:integer, mode:integer=0 }```",
                                               "If sck,miso and mosi are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.",
+                                              "The SPI ```mode``` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase",
                                               "On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this." ] ] ]
 }*/
 void jswrap_spi_setup(JsVar *parent, JsVar *options) {
@@ -103,6 +104,9 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "baud", false));
     if (jsvIsNumeric(v))
       inf.baudRate = (int)jsvGetInteger(v);
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "mode", false));
+    if (jsvIsNumeric(v))
+      inf.spiMode = ((int)jsvGetInteger(v))&3;;
     jsvUnLock(v);
   }
   jshSPISetup(device, &inf);
