@@ -1572,10 +1572,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case 
   // the register is 9-bits long.
 
-  if((inf->bytesize == 7 && inf->parity > 0 ) || inf->bytesize == 8) {
+  if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   }
-  else if((inf->bytesize == 8 && inf->parity > 0) || inf->bytesize == 9) {
+  else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_9b; 
   }
   else {
