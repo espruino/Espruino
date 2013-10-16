@@ -1280,22 +1280,22 @@ void jsiIdle() {
             jsvUnLock(v);
             v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
 
-	    if(jsvIsString(v)) {
-		parity = 0xFF;
-		char s[8] = "";
+            if(jsvIsString(v)) {
+              parity = 0xFF;
+              char s[8] = "";
 
-		jsvGetString(v, s, sizeof(s) - 1);
+              jsvGetString(v, s, sizeof(s) - 1);
 
-		if(!strcmp(s, "o") || !strcmp(s, "odd")) {
-		    parity = 1;
-		}
-		else if(!strcmp(s, "e") || !strcmp(s, "even")) {
-		    parity = 2;
-		}
-	    }
-	    else if(jsvIsInt(v)) {
-		parity = (unsigned char)jsvGetInteger(v);
-	    }
+              if(!strcmp(s, "o") || !strcmp(s, "odd")) {
+                parity = 1;
+              }
+              else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+                parity = 2;
+              }
+            }
+            else if(jsvIsInt(v)) {
+              parity = (unsigned char)jsvGetInteger(v);
+            }
 
             jsvUnLock(v);
           }
