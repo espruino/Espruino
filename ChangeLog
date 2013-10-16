@@ -13,6 +13,7 @@
             Updated pin info for STM32F103xC/D/E chips, fix #84
             Fixed linker script for STM32F4 (discovery board now works)
             Object prototypes are now Objects, fix #101
+            Board docs now specify '3.3v' only pins fix #104
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)

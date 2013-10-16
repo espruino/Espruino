@@ -62,16 +62,28 @@ def writeHTML(s): htmlFile.write(s+"\n");
 
 
 def dump_pin(pin, pinstrip):
-      writeHTML('    <DIV class="'+pinstrip+'pin pin">');
-      pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
-      reverse = pinstrip=="left" or pinstrip=="right2";
-      if not reverse: writeHTML(pinHTML)
+
       if pin in pinmap:
         pin = pinmap[pin];      
       pininfo = pinutils.findpin(pins, pin, False)
 
-      pinfuncs = {}
 
+      not_five_volt = False
+#      print(json.dumps(pininfo))
+      if ("csv" in pininfo) and ("IO" in pininfo["csv"]) and  ("Type" in pininfo["csv"]) and (pininfo["csv"]["Type"]=="I/O") and (pininfo["csv"]["IO"]!="FT") : 
+         not_five_volt = True
+
+      writeHTML('    <DIV class="'+pinstrip+'pin pin">');
+      pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
+      pinHTML2 = '';
+
+      if not_five_volt:
+        pinHTML2 += '<SPAN class="pinfunction NOT_5V" title="Not 5v Tolerant">3.3v</SPAN>';
+
+      reverse = pinstrip=="left" or pinstrip=="right2";
+      if not reverse: writeHTML(pinHTML+"\n"+pinHTML2)
+
+      pinfuncs = {}
 
       for func in sorted(pininfo["functions"]):
 #       writeHTML('     '+func)    
@@ -97,7 +109,7 @@ def dump_pin(pin, pinstrip):
         writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'" onMouseOver="showTT(\''+pf["id"]+'\')" onMouseOut="hideTT(\''+pf["id"]+'\')">'+pf["name"]+'</SPAN>')
         writeHTML('     <SPAN class="pintooltip" id="'+pf["id"]+'" style="display:none;">'+pf["title"]+'</SPAN>')        
           
-      if reverse: writeHTML(pinHTML)
+      if reverse: writeHTML(pinHTML2+"\n"+pinHTML)
       writeHTML('    </DIV>')    
 
 
@@ -141,6 +153,7 @@ writeHTML("""
    .CAN { background-color: #F8F; }
    .I2C { background-color: #F88; }
    .DEVICE { background-color: #F8F; }
+   .NOT_5V { background-color: #FDD; }
 
 #top { white-space: nowrap; }
 #top2 { white-space: nowrap; }

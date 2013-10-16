@@ -155,13 +155,14 @@ def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset)
   for line in lines:
     pindata = line.split(",")
     pinname = pindata[nameoffset].strip()
+
     extrafunction = "" 
     if "BOOT1" in line: extrafunction="BOOT1"                            
     if pinname.find('(')>0: pinname = pinname[:pinname.find('(')]
     if not isvalidpin(pinname): continue
     pin = findpin(pins, pinname, False)
     for i,head in enumerate(headings):
-      pin["csv"][head] = pindata[i]
+      pin["csv"][head] = pindata[i].strip()      
     if extrafunction!="":
       pin["functions"][extrafunction] = 0
     for fn in pindata[functionoffset].strip().split("/"): 
