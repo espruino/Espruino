@@ -9,14 +9,17 @@ before_script:
 compiler:
   - gcc
 env:
-  - ESPRUINO_1V0=1
-  - ESPRUINO_1V1=1
-  - OLIMEX=1
-  - HYSTM32_24=1
-  - HYSTM32_28=1
-  - HYSTM32_32=1
-  - STM32VLDISCOVERY=1
-  - STM32F3DISCOVERY=1
-  - STM32F4DISCOVERY=1
-  - LINUX_BUILD=1
+  global:
+    - RELEASE=1
+  matrix:
+    - ESPRUINO_1V0=1
+    - ESPRUINO_1V1=1
+    - OLIMEX=1
+    - HYSTM32_24=1
+    - HYSTM32_28=1
+    - HYSTM32_32=1
+    - STM32VLDISCOVERY=1
+    - STM32F3DISCOVERY=1
+    - STM32F4DISCOVERY=1
+    - LINUX_BUILD=1
 script: make
