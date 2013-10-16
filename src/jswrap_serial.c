@@ -71,16 +71,53 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
+
   if (baud>0) inf.baudRate = (int)baud;
+
   if (jsvIsObject(options)) {
     JsVar *v;
+
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "rx", false));
     inf.pinRX = jshGetPinFromVar(v);
     jsvUnLock(v);
+
     v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "tx", false));
     inf.pinTX = jshGetPinFromVar(v);
     jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
+    inf.bytesize = (unsigned char)jsvGetInteger(v);
+    jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
+    
+    if(jsvIsNull(v)) {
+      inf.parity = 0;
+    }
+    else if(jsvIsString(v)) {
+      inf.parity = 0xFF;
+      char s[8] = "";
+
+      jsvGetString(v, s, sizeof(s) - 1);
+
+      if(!strcmp(s, "o") || !strcmp(s, "odd")) {
+        inf.parity = 1;
+      }
+      else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+        inf.parity = 2;
+      }
+    }
+    else if(jsvIsInt(v)) {
+      inf.parity = (unsigned char)jsvGetInteger(v);
+    }
+
+    jsvUnLock(v);
+
+    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "stopbits", false));
+    inf.stopbits = (unsigned char)jsvGetInteger(v);
+    jsvUnLock(v);
   }
+
   jshUSARTSetup(device, &inf);
   // Set baud rate in object, so we can initialise it on startup
   if (baud != DEFAULT_BAUD_RATE) {

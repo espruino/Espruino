@@ -1491,32 +1491,42 @@ Pin findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo)
 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  USART_TypeDef *USARTx;
+  JshPinFunction funcType;
+  uint8_t usartIRQ;
+
   jshSetDeviceInitialised(device, true);
-  if (device == EV_USBSERIAL) return; // eep!
-  JshPinFunction funcType = getPinFunctionFromDevice(device);
+
+  if (device == EV_USBSERIAL) {
+    return; // eep!
+  }
+
+  funcType = getPinFunctionFromDevice(device);
+  USARTx   = getUsartFromDevice(device);
+
   // Find pins if not given
   if (inf->pinRX<0) inf->pinRX = findPinForFunction(funcType, JSH_USART_RX);
   if (inf->pinTX<0) inf->pinTX = findPinForFunction(funcType, JSH_USART_TX);
-  // find + check pin functions
+
+  // Find and check pin functions
   JshPinFunction pinRXfunc = getPinFunctionForPin(inf->pinRX, funcType);
   JshPinFunction pinTXfunc = getPinFunctionForPin(inf->pinTX, funcType);
+
   if (!pinRXfunc || ((pinRXfunc&JSH_MASK_INFO)!=JSH_USART_RX)) {
     jshPrintCapablePins(inf->pinRX, "USART RX", funcType, funcType,  JSH_MASK_INFO, JSH_USART_RX, false);
     return;
   }
+
   if (!pinTXfunc || ((pinTXfunc&JSH_MASK_INFO)!=JSH_USART_TX)) {
     jshPrintCapablePins(inf->pinTX, "USART TX", funcType, funcType,  JSH_MASK_INFO, JSH_USART_TX, false);
     return;
   }
 
-
-/*  if (device==EV_SERIAL3) {
+  /*if (device==EV_SERIAL3) {
     // this will fail for serial1 now (as we call this fn on init)
     jsiConsolePrint("UART Init ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint(", ");jsiConsolePrintInt(inf->pinRX);jsiConsolePrint(", ");jsiConsolePrintInt(inf->pinTX);jsiConsolePrint("\n");
   }*/
 
-  USART_TypeDef *USARTx = getUsartFromDevice(device);
-  uint8_t usartIRQ;
   if (device == EV_SERIAL1) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
@@ -1544,34 +1554,80 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   setDeviceClockCmd(device, ENABLE);
 
-  // set input/output state
+  // Set input/output state
   jshPinSetFunction(inf->pinRX, pinRXfunc);
   jshPinSetFunction(inf->pinTX, pinTXfunc);
 
   USART_ClockInitTypeDef USART_ClockInitStructure;
+
   USART_ClockStructInit(&USART_ClockInitStructure);
   USART_ClockInit(USARTx, &USART_ClockInitStructure);
 
   USART_InitTypeDef USART_InitStructure;
+
   USART_InitStructure.USART_BaudRate = (uint32_t)inf->baudRate;
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No ;
+
+  // 7-bit + 1-bit (parity odd or even) = 8-bit
+  // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and 
+  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case 
+  // the register is 9-bits long.
+
+  if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
+    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+  }
+  else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
+    USART_InitStructure.USART_WordLength = USART_WordLength_9b; 
+  }
+  else {
+    jsError("INTERNAL: Unsupported serial byte size.");
+    return;
+  }
+
+  if(inf->stopbits == 1) {
+    USART_InitStructure.USART_StopBits = USART_StopBits_1;
+  }
+  else if(inf->stopbits == 2) {
+    USART_InitStructure.USART_StopBits = USART_StopBits_2;
+  }
+  else {
+    jsError("INTERNAL: Unsupported serial stopbits length.");
+    return;
+  } // FIXME: How do we handle 1.5 stopbits?
+
+
+  // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2
+  if(inf->parity == 0) { 
+    USART_InitStructure.USART_Parity = USART_Parity_No ;
+  }
+  else if(inf->parity == 1) {
+    USART_InitStructure.USART_Parity = USART_Parity_Odd;
+  }
+  else if(inf->parity == 2) {
+    USART_InitStructure.USART_Parity = USART_Parity_Even;
+  }
+  else {
+    jsError("INTERNAL: Unsupported serial parity mode.");
+    return;
+  }
+
   USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
   USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+
   USART_Init(USARTx, &USART_InitStructure);
 
-  // enable uart interrupt
+  // Enable uart interrupt
   NVIC_InitTypeDef NVIC_InitStructure;
   NVIC_InitStructure.NVIC_IRQChannel = usartIRQ;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = IRQ_PRIOR_USART;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init( &NVIC_InitStructure );
+
   // Enable RX interrupt (TX is done when we have bytes)
   USART_ClearITPendingBit(USARTx, USART_IT_RXNE);
   USART_ITConfig(USARTx, USART_IT_RXNE, ENABLE);
-  //Enable USART
+
+  // Enable USART
   USART_Cmd(USARTx, ENABLE);
 }
 

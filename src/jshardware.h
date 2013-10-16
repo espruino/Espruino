@@ -22,6 +22,8 @@
 #include "jsdevices.h"
 #ifndef LINUX
 #include "jshardware_pininfo.h"
+#else
+#include <inttypes.h>
 #endif
 
 void jshInit();
@@ -118,16 +120,26 @@ bool jshIsDeviceInitialised(IOEventFlags device);
 
 
 #define DEFAULT_BAUD_RATE               9600
+#define DEFAULT_BYTESIZE                8
+#define DEFAULT_PARITY                  0
+#define DEFAULT_STOPBITS                1
 
 typedef struct {
-  int baudRate;
+  int baudRate; // FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
+  unsigned char bytesize;
+  unsigned char parity;
+  unsigned char stopbits;
 } JshUSARTInfo;
+
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
-  inf->pinRX = -1;
-  inf->pinTX = -1;
+  inf->pinRX    = -1;
+  inf->pinTX    = -1;
+  inf->bytesize = DEFAULT_BYTESIZE;
+  inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
+  inf->stopbits = DEFAULT_STOPBITS;
 }
 
 /** Set up a UART, if pins are -1 they will be guessed */
