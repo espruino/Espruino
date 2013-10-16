@@ -37,4 +37,4 @@ var bs = ""+b.test;
 print(as);
 print(bs);
 
-result = as=="function () {this.a=5}" && as=="function () {this.a=8}";
+result = as=="function () {this.a=5}" && bs=="function () {this.a=8}";
