@@ -774,47 +774,89 @@ export GDB=$(CCPREFIX)gdb
 
 all: 	 proj
 
+ifeq ($(V),1)
+        quiet_=
+        Q=
+else
+        quiet_=quiet_
+        Q=@
+	export SILENT=1
+endif
+
+
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
-	echo WRAPPERSOURCES = $(WRAPPERSOURCES)
-	echo DEFINES =  $(DEFINES)
-	python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
+	@echo Generating JS wrappers
+	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
+	$(Q)echo DEFINES =  $(DEFINES)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
 
 ifdef PININFOFILE
 $(PININFOFILE): scripts/build_pininfo.py 
-	python scripts/build_pininfo.py $(BOARD) $(PININFOFILE)
+	@echo Generating pin info
+	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE)
 endif
 
 $(LINKER_FILE): scripts/build_linker.py 
-	python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+	@echo Generating linker scripts
+	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
-	python scripts/build_platform_config.py $(BOARD)
+	@echo Generating platform configs
+	$(Q)python scripts/build_platform_config.py $(BOARD)
+
+compile=$(CC) $(CFLAGS) $(DEFINES) $< -o $@
+link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+obj_dump=$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
+obj_to_bin=$(OBJCOPY) -O $1 $(PROJ_NAME).elf $(PROJ_NAME).$2
+
+quiet_compile= CC $@
+quiet_link= LD $@
+quiet_obj_dump= GEN $(PROJ_NAME).lst
+quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 %.o: %.c $(PLATFORM_CONFIG_FILE)
-	$(CC) $(CFLAGS) $(DEFINES) $< -o $@
+	@echo $($(quiet_)compile)
+	@$(call compile)
 
 .cpp.o: $(PLATFORM_CONFIG_FILE)
-	$(CC) $(CFLAGS) $(DEFINES) $< -o $@
+	@echo $($(quiet_)compile)
+	@$(call compile)
 
 .s.o:
-	$(CC) $(CFLAGS) $(DEFINES) $< -o $@
+	@echo $($(quiet_)compile)
+	@$(call compile)
 	
 ifdef LINUX # ---------------------------------------------------
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 
 $(PROJ_NAME): $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	@echo $($(quiet_)link)
+	@$(call link)
+
 else # embedded, so generate bin, etc ---------------------------
-proj: 	$(PROJ_NAME).elf
 
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
-	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
-	$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
-	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
-	$(OBJCOPY) -O srec $(PROJ_NAME).elf $(PROJ_NAME).srec
-	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
-	bash scripts/check_size.sh $(PROJ_NAME).bin
-	
+	@echo $($(quiet_)link)
+	@$(call link)
+
+$(PROJ_NAME).lst : $(PROJ_NAME).elf
+	@echo $($(quiet_)obj_dump)
+	@$(call obj_dump)
+
+$(PROJ_NAME).hex: $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@$(call obj_to_bin,ihex,hex)
+
+$(PROJ_NAME).srec : $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,srec,srec)
+	@$(call obj_to_bin,srec,srec)
+
+$(PROJ_NAME).bin : $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,binary,bin)
+	@$(call obj_to_bin,binary,bin)
+
+proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
+
 flash: all
 ifdef OLIMEX_BOOTLOADER
 	echo Olimexino Serial bootloader
@@ -844,10 +886,11 @@ gdb:
 endif	    # ---------------------------------------------------
  
 clean:
-	find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
-	rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
-	rm -f $(PROJ_NAME).elf
-	rm -f $(PROJ_NAME).hex
-	rm -f $(PROJ_NAME).bin
-	rm -f $(PROJ_NAME).srec
-	rm -f $(PROJ_NAME).lst
+	@echo Cleaning targets
+	$(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(PROJ_NAME).elf
+	$(Q)rm -f $(PROJ_NAME).hex
+	$(Q)rm -f $(PROJ_NAME).bin
+	$(Q)rm -f $(PROJ_NAME).srec
+	$(Q)rm -f $(PROJ_NAME).lst

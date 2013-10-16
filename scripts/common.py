@@ -19,6 +19,14 @@ import json;
 import sys;
 import os;
 
+silent = os.getenv("SILENT");
+if silent:
+  class Discarder(object):
+    def write(self, text):
+        pass # do nothing
+  # now discard everything coming out of stdout
+  sys.stdout = Discarder()
+
 # Scans files for comments of the form /*JSON......*/ 
 # 
 # Comments look like:
