@@ -933,6 +933,31 @@ JsVar *jspeFactorMember(JsVar *a) {
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *prototypeName);
 
+JsVar *jspeConstruct(JsVar *func, JsVar *funcName) {
+  JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
+  // Make sure the function has a 'prototype' var
+  JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
+  jspEnsureIsPrototype(prototypeName); // make sure it's an object
+  // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
+  jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
+  jsvUnLock(prototypeName);
+
+  JsVar *a = jspeFunctionCall(func, funcName, thisObj, true, 0, 0);
+
+  if (a) {
+    jsvUnLock(thisObj);
+    thisObj = a;
+  } else {
+    jsvUnLock(a);
+    JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
+    if (constructor) {
+      jsvSetValueOfName(constructor, funcName);
+      jsvUnLock(constructor);
+    }
+  }
+  return thisObj;
+}
+
 JsVar *jspeFactorNew() {
   if (execInfo.lex->tk==LEX_R_NEW) {
     JSP_MATCH(LEX_R_NEW);
@@ -958,35 +983,13 @@ JsVar *jspeFactorFunctionCall() {
       parent = jsvLock(parentRef);
     }
 
-    JsVar *thisObj = parent;
-
     if (isConstruct) {
-      thisObj = jsvNewWithFlags(JSV_OBJECT);
-      // Make sure the function has a 'prototype' var
-      JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
-      jspEnsureIsPrototype(prototypeName); // make sure it's an object
-      // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
-      jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
-      jsvUnLock(prototypeName);
+      a = jspeConstruct(func, funcName);
+      isConstruct = false;
     }
+    else
+      a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
-    a = jspeFunctionCall(func, funcName, thisObj, true, 0, 0);
-
-    if (isConstruct) {
-      if (a) {
-        jsvUnLock(thisObj);
-        thisObj = a;
-      } else {
-        jsvUnLock(a);
-        JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
-        if (constructor) {
-          jsvSetValueOfName(constructor, funcName);
-          jsvUnLock(constructor);
-        }
-        a = thisObj;
-      }
-      isConstruct = 0;
-    }
     jsvUnLock(funcName);
     jsvUnLock(func);
     a = jspeFactorMember(a);
