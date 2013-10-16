@@ -206,8 +206,8 @@ void wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
       JsvStringIterator it;
       JsVar *dataString = jsvAsString(data, false);
       jsvStringIteratorNew(&it, dataString, 0);
-      unsigned int toWrite = 0;
-      unsigned int written = 0;
+      size_t toWrite = 0;
+      size_t written = 0;
 
       while (jsvStringIteratorHasChar(&it) && res==FR_OK && written==toWrite) {
 
@@ -272,7 +272,7 @@ JsVar *wrap_fat_readFile(JsVar *path) {
     if (file) {
 #endif
       // re-use pathStr buffer
-      unsigned int bytesRead = JS_DIR_BUF_SIZE;
+      size_t bytesRead = JS_DIR_BUF_SIZE;
       while (res==FR_OK && bytesRead==JS_DIR_BUF_SIZE) {
 #ifndef LINUX
         res = f_read (&file, pathStr, JS_DIR_BUF_SIZE, &bytesRead);

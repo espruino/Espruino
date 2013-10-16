@@ -204,7 +204,7 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
 
     int id_bit_number;
     int last_zero, rom_byte_number;
-    int id_bit, cmp_id_bit;
+    unsigned char id_bit, cmp_id_bit;
     unsigned char rom_byte_mask, search_direction;
 
     // initialize for search
@@ -234,8 +234,8 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
        do
        {
           // read a bit and its complement
-          id_bit = OneWireRead(pin, 1);
-          cmp_id_bit = OneWireRead(pin, 1);
+          id_bit = (unsigned char)OneWireRead(pin, 1);
+          cmp_id_bit = (unsigned char)OneWireRead(pin, 1);
 
           // check for no devices on 1-wire
           if ((id_bit == 1) && (cmp_id_bit == 1))
@@ -271,7 +271,7 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
              if (search_direction == 1)
                ROM_NO[rom_byte_number] |= rom_byte_mask;
              else
-               ROM_NO[rom_byte_number] &= ~rom_byte_mask;
+               ROM_NO[rom_byte_number] &= (unsigned char)~rom_byte_mask;
 
              // serial number search direction write bit
              OneWireWrite(pin, 1, search_direction);
@@ -279,7 +279,7 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
              // increment the byte counter id_bit_number
              // and shift the mask rom_byte_mask
              id_bit_number++;
-             rom_byte_mask <<= 1;
+             rom_byte_mask = (unsigned char)(rom_byte_mask << 1);
 
              // if the mask is 0 then go to new SerialNum byte rom_byte_number and reset mask
              if (rom_byte_mask == 0)
@@ -328,6 +328,8 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
       if (val) jsvArrayPush(array, val);
       jsvUnLock(val);
     }
+
+    NOT_USED(LastFamilyDiscrepancy);
   }
 
   return array;
