@@ -281,7 +281,7 @@ size_t httpStringGet(JsVar *v, char *str, size_t len) {
 }
 
 void httpServerConnectionsIdle() {
-  char buf[256];
+  char buf[64];
   HttpServerConnection *connection = httpServerConnections;
   while (connection) {
     HttpServerConnection *nextConnection = connection->next;
@@ -298,11 +298,10 @@ void httpServerConnectionsIdle() {
       // we probably disconnected so just get rid of this
       connection->closeNow = true;
     } else if (n>0) {
-       char buf[256];
-       int num = 256;
-       while (num==256) {
+       int num = sizeof(buf);
+       while (num==sizeof(buf)) {
           // receive data
-          num = (int)recv(connection->socket,buf,256,0);
+          num = (int)recv(connection->socket,buf,sizeof(buf),0);
           // add it to our request string
           if (num>0) {
             if (!connection->receiveData) connection->receiveData = jsvNewFromEmptyString();
@@ -322,11 +321,11 @@ void httpServerConnectionsIdle() {
        int a=1;
        int len = (int)jsvGetStringLength(connection->sendData);
        if (len>0) {
-         len = (int)httpStringGet(connection->sendData, buf, sizeof(buf));
-         a = (int)send(connection->socket,buf,(size_t)len, MSG_NOSIGNAL);
+         size_t bufLen = httpStringGet(connection->sendData, buf, sizeof(buf));
+         a = (int)send(connection->socket,buf,bufLen, MSG_NOSIGNAL);
          if (a!=len) {
            JsVar *v = jsvNewFromEmptyString();
-           jsvAppendStringVar(v, connection->sendData, a, len-a);
+           jsvAppendStringVar(v, connection->sendData, a, JSVAPPENDSTRINGVAR_MAXLENGTH);
            jsvUnLock(connection->sendData); connection->sendData = v;
          } else {
            jsvUnLock(connection->sendData); connection->sendData = 0;
@@ -349,7 +348,7 @@ void httpServerConnectionsIdle() {
 }
 
 void httpClientConnectionsIdle() {
-  char buf[256];
+  char buf[64];
 
   HttpClientConnection *connection = httpClientConnections;
   while (connection) {
@@ -385,11 +384,11 @@ void httpClientConnectionsIdle() {
           int a=1;
           int len = (int)jsvGetStringLength(connection->sendData);
           if (len>0) {
-            len = (int)httpStringGet(connection->sendData, buf, (size_t)(len+1));
-            a = (int)send(connection->socket,buf,(size_t)len, MSG_NOSIGNAL);
+            size_t bufLen = httpStringGet(connection->sendData, buf, sizeof(buf));
+            a = (int)send(connection->socket,buf,bufLen, MSG_NOSIGNAL);
             if (a!=len) {
               JsVar *v = jsvNewFromEmptyString();
-              jsvAppendStringVar(v, connection->sendData, a, len-a);
+              jsvAppendStringVar(v, connection->sendData, a, JSVAPPENDSTRINGVAR_MAXLENGTH);
               jsvUnLock(connection->sendData); connection->sendData = v;
             } else {
               jsvUnLock(connection->sendData); connection->sendData = 0;
@@ -400,41 +399,45 @@ void httpClientConnectionsIdle() {
             connection->closeNow = true;
           }
         }
-      }
-
-      // Now receive data
-      fd_set s;
-      FD_ZERO(&s);
-      FD_SET(connection->socket,&s);
-      // check for waiting clients
-      struct timeval timeout;
-      timeout.tv_sec = 0;
-      timeout.tv_usec = 0;
-      int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
-      if (n==SOCKET_ERROR) {
-        // we probably disconnected so just get rid of this
-        connection->closeNow = true;
-      } else if (n>0) {
-         char buf[256];
-         int num = 256;
-         while (num==256) {
-            // receive data
-            num = (int)recv(connection->socket,buf,256,0);
-            // add it to our request string
-            if (num>0) {
-              if (!connection->receiveData)
-                connection->receiveData = jsvNewFromEmptyString();
-              if (connection->receiveData) {
-                jsvAppendStringBuf(connection->receiveData, buf, num);
-                if (!connection->hadHeaders) {
-                  if (httpParseHeaders(&connection->receiveData, connection->resVar, false)) {
-                    connection->hadHeaders = true;
-                    jsiQueueObjectCallbacks(connection->reqVar, HTTP_ON_CONNECT, connection->resVar, 0);
+#ifdef USE_CC3000
+      } else { // When in CC3000, write then read (FIXME)
+#else
+      } // When in Linux, just read and write at the same time
+      {
+#endif
+        // Now receive data
+        fd_set s;
+        FD_ZERO(&s);
+        FD_SET(connection->socket,&s);
+        // check for waiting clients
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+        int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+        if (n==SOCKET_ERROR) {
+          // we probably disconnected so just get rid of this
+          connection->closeNow = true;
+        } else if (n>0) {
+           int num = sizeof(buf);
+           while (num==sizeof(buf)) {
+              // receive data
+              num = (int)recv(connection->socket,buf,sizeof(buf),0);
+              // add it to our request string
+              if (num>0) {
+                if (!connection->receiveData)
+                  connection->receiveData = jsvNewFromEmptyString();
+                if (connection->receiveData) {
+                  jsvAppendStringBuf(connection->receiveData, buf, num);
+                  if (!connection->hadHeaders) {
+                    if (httpParseHeaders(&connection->receiveData, connection->resVar, false)) {
+                      connection->hadHeaders = true;
+                      jsiQueueObjectCallbacks(connection->reqVar, HTTP_ON_CONNECT, connection->resVar, 0);
+                    }
                   }
                 }
               }
-            }
-         }
+           }
+        }
       }
     }
 
@@ -661,16 +664,24 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   HttpClientConnection *connection = httpFindHttpClientConnectionFromRequest(httpClientReqVar);
   if (!connection) return;
 
-  connection->socket = socket (AF_INET, SOCK_STREAM, 0);
+  connection->socket = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (connection->socket == INVALID_SOCKET) {
      httpError("Unable to create socket\n");
      connection->closeNow = true;
   }
 
+  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(connection->options, "port", false)));
+
+#ifdef USE_CC3000
+  sockaddr       sin;
+  sin.sa_family = AF_INET;
+  sin.sa_data[0] = (port & 0xFF00) >> 8;
+  sin.sa_data[1] = (port & 0x00FF);
+#else
   sockaddr_in       sin;
   sin.sin_family = AF_INET;
-  sin.sin_port = htons( (unsigned short)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(connection->options, "port", false))) );
-
+  sin.sin_port = htons( port );
+#endif
 
   char hostName[128];
   JsVar *hostNameVar = jsvSkipNameAndUnLock(jsvFindChildFromString(connection->options, "host", false));
@@ -718,7 +729,15 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
      httpError("Unable to set socket descriptor status flags\n");
   #endif
 
+#ifdef USE_CC3000
+  sin.sa_data[5] = (host_addr) & 0xFF;  // First octet of destination IP
+  sin.sa_data[4] = (host_addr>>8) & 0xFF;   // Second Octet of destination IP
+  sin.sa_data[3] = (host_addr>>16) & 0xFF;  // Third Octet of destination IP
+  sin.sa_data[2] = (host_addr>>24) & 0xFF;  // Fourth Octet of destination IP
+#else
   sin.sin_addr.s_addr = host_addr;
+#endif
+
   //uint32_t a = sin.sin_addr.s_addr;
   //_DEBUG_PRINT( cout<<"Port :"<<sin.sin_port<<", Address : "<< sin.sin_addr.s_addr<<endl);
   int res = connect (connection->socket,(const struct sockaddr *)&sin, sizeof(sockaddr_in) );

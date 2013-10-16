@@ -136,7 +136,6 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   }
   jsvUnLock(skippedCallback);
   JsVar *cliReq = jswrap_http_request(options, callback);
-  jswrap_httpCRq_end(cliReq, 0);
   httpClientRequestEnd(cliReq);
   return cliReq;
 }
