@@ -823,7 +823,7 @@ JsVar *jspeFactorMember(JsVar *a) {
                   if (jsvIsObject(aVar) || jsvIsFunction(aVar) || jsvIsArray(aVar)) {
                     JsVar *value = 0;
                     if (jsvIsFunction(aVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0)
-                      value = jsvNewWithFlags(JSV_ARRAY); // prototype is supposed to be an array
+                      value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
                     child = jsvAddNamedChild(aVar, value, name);
                     jsvUnLock(value);
                   } else {
@@ -952,7 +952,7 @@ JsVar *jspeFactorFunctionCall() {
       thisObj = jsvNewWithFlags(JSV_OBJECT);
       // Make sure the function has a 'prototype' var
       JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
-      jspEnsureIsPrototype(prototypeName); // make sure it's an array
+      jspEnsureIsPrototype(prototypeName); // make sure it's an object
       // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
       jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
       jsvUnLock(prototypeName);
@@ -1073,9 +1073,11 @@ JsVar *jspeFactorArray() {
 void jspEnsureIsPrototype(JsVar *prototypeName) {
   if (!prototypeName) return;
   JsVar *prototypeVar = jsvSkipName(prototypeName);
-  if (!jsvIsArray(prototypeVar)) {
+  if (!jsvIsObject(prototypeVar)) {
+    if (!jsvIsUndefined(prototypeVar))
+      jsWarn("Prototype is not an Object, so setting it to {}");    
     jsvUnLock(prototypeVar);
-    prototypeVar = jsvNewWithFlags(JSV_ARRAY); // prototype is supposed to be an array
+    prototypeVar = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
     jsvSetValueOfName(lastName, prototypeVar);
     jsvUnLock(lastName);
@@ -2063,7 +2065,7 @@ JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
   }
 
   JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
-  jspEnsureIsPrototype(prototypeName); // make sure it's an array
+  jspEnsureIsPrototype(prototypeName); // make sure it's an object
   jsvUnLock(objFunc);
   if (!prototypeName) { // out of memory
     jsvUnLock(objFuncName);
