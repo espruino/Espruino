@@ -82,14 +82,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
          "return" : ["JsVar", "The value that is popped off"]
 }*/
 
-/*JSON{ "type":"method", "class": "Array", "name" : "map",
-         "description" : "Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```",
-         "generate" : "jswrap_array_map",
-         "params" : [ [ "function", "JsVar", "Function used to map one item to another"] ,
-                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
-         "return" : ["JsVar", "The value that is popped off"]
-}*/
-JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool isMap) {
   if (!jsvIsFunction(funcVar)) {
     jsError("Array.map's first argument should be a function");
     return 0;
@@ -98,8 +91,10 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
     jsError("Array.map's second argument should be undefined, or an object");
     return 0;
   }
-  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
-  if (array) {
+  JsVar *array = 0;
+  if (isMap)
+    array = jsvNewWithFlags(JSV_ARRAY);
+  if (array || !isMap) {
    JsVarRef childRef = parent->firstChild;
    while (childRef) {
      JsVar *child = jsvLock(childRef);
@@ -113,11 +108,13 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
        jsvUnLock(args[0]);
        jsvUnLock(args[1]);
        if (mapped) {
-         JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
-         if (name) { // out of memory?
-           name->firstChild = jsvGetRef(jsvRef(mapped));
-           jsvAddName(array, name);
-           jsvUnLock(name);
+         if (isMap) {
+           JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
+           if (name) { // out of memory?
+             name->firstChild = jsvGetRef(jsvRef(mapped));
+             jsvAddName(array, name);
+             jsvUnLock(name);
+           }
          }
          jsvUnLock(mapped);
        }
@@ -128,6 +125,18 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   }
   return array;
 }
+
+/*JSON{ "type":"method", "class": "Array", "name" : "map",
+         "description" : "Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```",
+         "generate" : "jswrap_array_map",
+         "params" : [ [ "function", "JsVar", "Function used to map one item to another"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
+         "return" : ["JsVar", "The value that is popped off"]
+}*/
+JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  return _jswrap_array_map_or_forEach(parent, funcVar, thisVar, true);
+}
+
 
 /*JSON{ "type":"method", "class": "Array", "name" : "splice",
          "description" : "Pop a new value off of the end of this array",
@@ -215,3 +224,12 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   return result;
 }
 
+/*JSON{ "type":"method", "class": "Array", "name" : "forEach",
+         "description" : "Executes a provided function once per array element.",
+         "generate" : "jswrap_array_forEach",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
+}*/
+void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
+}
