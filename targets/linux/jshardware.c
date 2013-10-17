@@ -19,6 +19,7 @@
  #include <sys/select.h>
  #include <termios.h>
  #include <signal.h>
+ #include <inttypes.h>
 
 #include "jshardware.h"
 #include "jsutils.h"
