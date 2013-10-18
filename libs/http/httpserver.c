@@ -20,8 +20,8 @@
 #ifdef USE_CC3000
  #include "socket.h"
  #include "cc3000_common.h"
- #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 
+ #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 #else
  #include <sys/stat.h>
  #include <errno.h>
@@ -30,10 +30,10 @@
 #endif
 
 
+#ifdef ARM
 extern void _end;
 char *malloc_mem = (char*)&_end;
 
-#ifdef ARM
 // FIXME
 void * malloc(int s) {
   char * p = malloc_mem;
@@ -298,22 +298,19 @@ void httpServerConnectionsIdle() {
       // we probably disconnected so just get rid of this
       connection->closeNow = true;
     } else if (n>0) {
-       int num = sizeof(buf);
-       while (num==sizeof(buf)) {
-          // receive data
-          num = (int)recv(connection->socket,buf,sizeof(buf),0);
-          // add it to our request string
-          if (num>0) {
-            if (!connection->receiveData) connection->receiveData = jsvNewFromEmptyString();
-            if (connection->receiveData) {
-              jsvAppendStringBuf(connection->receiveData, buf, num);
-              if (!connection->hadHeaders && httpParseHeaders(&connection->receiveData, connection->reqVar, true)) {
-                connection->hadHeaders = true;
-                jsiQueueObjectCallbacks(connection->var, HTTP_ON_CONNECT, connection->reqVar, connection->resVar);
-              }
-            }
+      // receive data
+      int num = (int)recv(connection->socket,buf,sizeof(buf),0);
+      // add it to our request string
+      if (num>0) {
+        if (!connection->receiveData) connection->receiveData = jsvNewFromEmptyString();
+        if (connection->receiveData) {
+          jsvAppendStringBuf(connection->receiveData, buf, num);
+          if (!connection->hadHeaders && httpParseHeaders(&connection->receiveData, connection->reqVar, true)) {
+            connection->hadHeaders = true;
+            jsiQueueObjectCallbacks(connection->var, HTTP_ON_CONNECT, connection->reqVar, connection->resVar);
           }
-       }
+        }
+      }
     }
 
     // send data if possible
@@ -405,40 +402,37 @@ void httpClientConnectionsIdle() {
       } // When in Linux, just read and write at the same time
       {
 #endif
-        // Now receive data
-        fd_set s;
-        FD_ZERO(&s);
-        FD_SET(connection->socket,&s);
-        // check for waiting clients
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 0;
-        int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
-        if (n==SOCKET_ERROR) {
-          // we probably disconnected so just get rid of this
-          connection->closeNow = true;
-        } else if (n>0) {
-           int num = sizeof(buf);
-           while (num==sizeof(buf)) {
-              // receive data
-              num = (int)recv(connection->socket,buf,sizeof(buf),0);
-              // add it to our request string
-              if (num>0) {
-                if (!connection->receiveData)
-                  connection->receiveData = jsvNewFromEmptyString();
-                if (connection->receiveData) {
-                  jsvAppendStringBuf(connection->receiveData, buf, num);
-                  if (!connection->hadHeaders) {
-                    if (httpParseHeaders(&connection->receiveData, connection->resVar, false)) {
-                      connection->hadHeaders = true;
-                      jsiQueueObjectCallbacks(connection->reqVar, HTTP_ON_CONNECT, connection->resVar, 0);
-                    }
-                  }
-                }
+      // Now receive data
+      fd_set s;
+      FD_ZERO(&s);
+      FD_SET(connection->socket,&s);
+      // check for waiting clients
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 0;
+      int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+      if (n==SOCKET_ERROR) {
+        // we probably disconnected so just get rid of this
+        connection->closeNow = true;
+      } else if (n>0) {
+        // receive data
+        int num = (int)recv(connection->socket,buf,sizeof(buf),0);
+        // add it to our request string
+        if (num>0) {
+          if (!connection->receiveData)
+            connection->receiveData = jsvNewFromEmptyString();
+          if (connection->receiveData) {
+            jsvAppendStringBuf(connection->receiveData, buf, num);
+            if (!connection->hadHeaders) {
+              if (httpParseHeaders(&connection->receiveData, connection->resVar, false)) {
+                connection->hadHeaders = true;
+                jsiQueueObjectCallbacks(connection->reqVar, HTTP_ON_CONNECT, connection->resVar, 0);
               }
-           }
+            }
+          }
         }
       }
+    }
     }
 
     if (connection->closeNow) {
@@ -715,9 +709,10 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   u_long n = 1;
   ioctlsocket(connection->socket,FIONBIO,&n);
   #elif defined(USE_CC3000)
-  int zero = 0;
+  int zero = 0, timeout = 10;
   setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
-  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
+  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_TIMEOUT, &timeout, sizeof(timeout)); // set a timeout
+  //setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
   #else
   int flags = fcntl(connection->socket, F_GETFL);
   if (flags < 0) {
