@@ -40,8 +40,8 @@ board = {
 };
 
 devices = {
-  'OSC' : { 'pin_1' :  'D0',
-            'pin_2' : 'D1' },
+  'OSC' : { 'pin_in' :  'D0',
+            'pin_out' : 'D1' },
   'LED1' : { 'pin' : 'B7' },
   'LED2' : { 'pin' : 'B8' },
   'LED3' : { 'pin' : 'B9' },
