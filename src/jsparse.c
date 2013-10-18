@@ -855,6 +855,16 @@ JsVar *jspeFactorMember(JsVar *a) {
           index = jspeBase();
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock(parent);jsvUnLock(index);, a);
           if (JSP_SHOULD_EXECUTE) {
+            /* Index filtering (bug #19) - if we have an array index A that is:
+             is_string(A) && int_to_string(string_to_int(A)) = =A
+             then convert it to an integer. Should be too nasty for performance
+             as we only do this when accessing an array with a string */
+            if (jsvIsString(index) && jsvIsStringNumericStrict(index)) {
+              JsVar *v = jsvNewFromInteger(jsvGetInteger(index));
+              jsvUnLock(index);
+              index = v;
+            }
+
             JsVar *aVar = jsvSkipName(a);
             if (aVar && (jsvIsArrayBuffer(aVar))) {
               // for array buffers, we actually create a NAME, and hand that back - then when we assign (or use SkipName) we pull out the correct data

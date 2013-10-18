@@ -207,8 +207,11 @@ static inline bool jsvIsIterable(const JsVar *v) {
          jsvIsString(v) || jsvIsArrayBuffer(v);
 }
 
-/// Does this string contain only Numeric characters?
-bool jsvIsStringNumeric(JsVar *var);
+/** Does this string contain only Numeric characters? */
+bool jsvIsStringNumeric(const JsVar *var);
+/** Does this string contain only Numeric characters? This is for arrays
+ * and makes the assertion that int_to_string(string_to_int(var))==var */
+bool jsvIsStringNumericStrict(const JsVar *var);
 
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
@@ -255,8 +258,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b);
 bool jsvIsEqual(JsVar *a, JsVar *b);
 
 
-const char *jsvGetConstString(JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
-size_t jsvGetString(JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
+size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
@@ -273,8 +276,8 @@ void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to 
 void jsvAppendPin(JsVar *var, Pin pin); ///< Append the given 'pin' to a string
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
-void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
-void jsvAppendStringVarComplete(JsVar *var, JsVar *str); ///< Append all of str to var. Both must be strings.
+void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
+void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
 char jsvGetCharInString(JsVar *v, int idx);
 
 /// Print the contents of a string var - directly
@@ -425,6 +428,9 @@ typedef struct JsvStringIterator {
   size_t index; ///< index in string
   JsVar *var; ///< current StringExt we're looking at
 } JsvStringIterator;
+
+// slight hack to enure we can use string iterator with const JsVars
+#define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it,(JsVar*)str,startIdx)
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx);
 

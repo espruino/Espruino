@@ -17,6 +17,8 @@
             Add Array.forEach
             Fix searching down >1 prototype to find functions (one more issue posted in #99) 
             Fix "12345"/5 type issues (fix #90)
+            'Consting' some string functions
+            Fixing arrays with string indices that are actually numbers \o/ (fix #19)
 
      1v40 : Ensure that LCD.prototype.setPixel = function actually works
             Refactor LCD driver code to allow lcdInit (and start of making it non-platform-specific)

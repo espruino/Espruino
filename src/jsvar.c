@@ -615,7 +615,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b) {
 }
 
 /// Get a const string representing this variable - if we can. Otherwise return 0
-const char *jsvGetConstString(JsVar *v) {
+const char *jsvGetConstString(const JsVar *v) {
     if (jsvIsUndefined(v)) {
       return "undefined";
     } else if (jsvIsNull(v)) {
@@ -631,7 +631,7 @@ const char *jsvGetConstString(JsVar *v) {
 }
 
 /// Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
-size_t jsvGetString(JsVar *v, char *str, size_t len) {
+size_t jsvGetString(const JsVar *v, char *str, size_t len) {
    const char *s = jsvGetConstString(v);
    if (s) {
      strncpy(str, s, len);
@@ -647,7 +647,7 @@ size_t jsvGetString(JsVar *v, char *str, size_t len) {
         jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
       size_t l = len;
       JsvStringIterator it;
-      jsvStringIteratorNew(&it, v, 0);
+      jsvStringIteratorNewConst(&it, v, 0);
       while (jsvStringIteratorHasChar(&it)) {
         if (l--<=1) {
           *str = 0;
@@ -663,7 +663,7 @@ size_t jsvGetString(JsVar *v, char *str, size_t len) {
       return len-l;
     } else {
       // Try and get as a JsVar string, and try again
-      JsVar *stringVar = jsvAsString(v, false);
+      JsVar *stringVar = jsvAsString((JsVar*)v, false); // we know we're casting to non-const here
       if (stringVar) {
         size_t l = jsvGetString(stringVar, str, len); // call again - but this time with converted var
         jsvUnLock(stringVar);
@@ -922,7 +922,7 @@ void jsvAppendPin(JsVar *var, Pin pin) {
 
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
  *  stridx can be negative to go from end of string */
-void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
+void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength) {
   JsVar *block = jsvLockAgain(var);
   assert(jsvIsString(var));
   // Find the block at end of the string...
@@ -935,7 +935,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
   size_t blockChars = jsvGetCharactersInVar(block);
   // now start appending
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, stridx);
+  jsvStringIteratorNewConst(&it, str, stridx);
   while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
@@ -957,7 +957,7 @@ void jsvAppendStringVar(JsVar *var, JsVar *str, int stridx, int maxLength) {
 }
 
 /** Append all of str to var. Both must be strings.  */
-void jsvAppendStringVarComplete(JsVar *var, JsVar *str) {
+void jsvAppendStringVarComplete(JsVar *var, const JsVar *str) {
   jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
@@ -973,11 +973,11 @@ char jsvGetCharInString(JsVar *v, int idx) {
   return ch;
 }
 
-/// Does this string contain only Numeric characters?
-bool jsvIsStringNumeric(JsVar *var) {
+/** Does this string contain only Numeric characters? */
+bool jsvIsStringNumeric(const JsVar *var) {
   assert(jsvIsString(var));
   JsvStringIterator it;
-  jsvStringIteratorNew(&it, var, 0);
+  jsvStringIteratorNewConst(&it, var, 0); // we know it's non const
   int chars = 0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
@@ -990,6 +990,31 @@ bool jsvIsStringNumeric(JsVar *var) {
   }
   jsvStringIteratorFree(&it);
   return chars>0;
+}
+
+/** Does this string contain only Numeric characters? This is for arrays
+ * and makes the assertion that int_to_string(string_to_int(var))==var */
+bool jsvIsStringNumericStrict(const JsVar *var) {
+  assert(jsvIsString(var));
+  JsvStringIterator it;
+  jsvStringIteratorNewConst(&it, var, 0);  // we know it's non const
+  bool hadNonZero = false;
+  bool hasLeadingZero = false;
+  int chars = 0;
+  while (jsvStringIteratorHasChar(&it)) {
+    chars++;
+    char ch = jsvStringIteratorGetChar(&it);
+    if (!isNumeric(ch)) {
+      // test for leading zero ensures int_to_string(string_to_int(var))==var
+      jsvStringIteratorFree(&it);
+      return false;
+    }
+    if (!hadNonZero && ch=='0') hasLeadingZero=true;
+    if (ch!='0') hadNonZero=true;
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  return chars>0 && (!hasLeadingZero || chars==1);
 }
 
 JsVarInt jsvGetInteger(const JsVar *v) {

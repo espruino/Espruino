@@ -1,4 +1,4 @@
-// maths with strings
+// maths with strings - https://github.com/espruino/Espruino/issues/90
 
 var a = [
 "1234"*1, 
