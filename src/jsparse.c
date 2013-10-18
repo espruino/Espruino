@@ -145,10 +145,12 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
       }
     }
 
-    if (inheritsFrom) {
+    if (inheritsFrom && inheritsFrom!=parent) {
       // we have what it inherits from (this is ACTUALLY the prototype var)
       // https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Object/proto
       JsVar *child = jsvFindChildFromString(inheritsFrom, name, false);
+      if (!child)
+        child = jspeiFindChildFromStringInParents(inheritsFrom, name);
       jsvUnLock(inheritsFrom);
       if (child) return child;
     }
