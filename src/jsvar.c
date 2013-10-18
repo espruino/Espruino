@@ -973,6 +973,25 @@ char jsvGetCharInString(JsVar *v, int idx) {
   return ch;
 }
 
+/// Does this string contain only Numeric characters?
+bool jsvIsStringNumeric(JsVar *var) {
+  assert(jsvIsString(var));
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  int chars = 0;
+  while (jsvStringIteratorHasChar(&it)) {
+    chars++;
+    char ch = jsvStringIteratorGetChar(&it);
+    if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
+      jsvStringIteratorFree(&it);
+      return false;
+    }
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  return chars>0;
+}
+
 JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
@@ -980,6 +999,11 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
+    if (jsvIsString(v) && jsvIsStringNumeric(v)) {
+      char buf[32];
+      jsvGetString(v, buf, sizeof(buf));
+      return stringToInt(buf);
+    }
     return 0;
 }
 
@@ -998,6 +1022,11 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
+    if (jsvIsString(v) && jsvIsStringNumeric(v)) {
+      char buf[32];
+      jsvGetString(v, buf, sizeof(buf));
+      return stringToFloat(buf);
+    }
     return 0; /* or NaN? */
 }
 
@@ -1780,6 +1809,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
         return jsvNewFromBool(!eql);
     }
 
+    bool needsInt = op=='&' || op=='|' || op=='^' || op=='%' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
+    bool needsNumeric = needsInt || op=='*' || op=='/' || op=='%' || op=='-';
+
     // do maths...
     if ((jsvIsUndefined(a) || jsvIsNull(a)) && (jsvIsUndefined(b) || jsvIsNull(b))) {
       if (op == LEX_EQUAL)
@@ -1788,10 +1820,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
         return jsvNewFromBool(false);
       else
         return 0; // undefined
-    } else if ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
-               (jsvIsNumeric(b) || jsvIsUndefined(b))) {
-        bool needsInt = op=='&' || op=='|' || op=='^' || op=='%' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
-
+    } else if (needsNumeric ||
+               ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
+                (jsvIsNumeric(b) || jsvIsUndefined(b)))) {
         if (needsInt || (!jsvIsFloat(a) && !jsvIsFloat(b))) {
             // use ints
             JsVarInt da = jsvGetInteger(a);

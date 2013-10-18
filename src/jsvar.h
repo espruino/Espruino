@@ -206,6 +206,10 @@ static inline bool jsvIsIterable(const JsVar *v) {
   return jsvIsArray(v) || jsvIsObject(v) || jsvIsFunction(v) ||
          jsvIsString(v) || jsvIsArrayBuffer(v);
 }
+
+/// Does this string contain only Numeric characters?
+bool jsvIsStringNumeric(JsVar *var);
+
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
 bool jsvHasStringExt(const JsVar *v);
