@@ -973,7 +973,7 @@ JsVar *jspeFactorNew() {
     a = jspeFactorMember(jspeFactor());
   // Check for a constructor call with no arguments
   if (execInfo.execute & EXEC_CONSTRUCT && execInfo.lex->tk!='(') {
-    JsVar *func = jsvSkipNameKeepParent(a, NULL);
+    JsVar *func = jsvSkipNameKeepParent(a, 0);
     execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
     a = jspeConstruct(func, a, false);
   }
