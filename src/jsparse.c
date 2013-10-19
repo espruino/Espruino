@@ -933,7 +933,7 @@ JsVar *jspeFactorMember(JsVar *a) {
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *prototypeName);
 
-JsVar *jspeConstruct(JsVar *func, JsVar *funcName) {
+JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
@@ -942,7 +942,7 @@ JsVar *jspeConstruct(JsVar *func, JsVar *funcName) {
   jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
   jsvUnLock(prototypeName);
 
-  JsVar *a = jspeFunctionCall(func, funcName, thisObj, true, 0, 0);
+  JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
 
   if (a) {
     jsvUnLock(thisObj);
@@ -959,11 +959,26 @@ JsVar *jspeConstruct(JsVar *func, JsVar *funcName) {
 }
 
 JsVar *jspeFactorNew() {
+  JsVar *a;
   if (execInfo.lex->tk==LEX_R_NEW) {
     JSP_MATCH(LEX_R_NEW);
     execInfo.execute |= EXEC_CONSTRUCT;
   }
-  return jspeFactorMember(jspeFactor());
+  if (execInfo.lex->tk==LEX_R_NEW) {
+    jsError("Nesting 'new' operators is unsupported");
+    jspSetError();
+    return 0;
+  }
+  else
+    a = jspeFactorMember(jspeFactor());
+  // Check for a constructor call with no arguments
+  if (execInfo.execute & EXEC_CONSTRUCT && execInfo.lex->tk!='(') {
+    JsVar *func = jsvSkipNameKeepParent(a, NULL);
+    execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
+    a = jspeConstruct(func, a, false);
+  }
+
+  return a;
 }
 
 JsVar *jspeFactorFunctionCall() {
@@ -984,7 +999,7 @@ JsVar *jspeFactorFunctionCall() {
     }
 
     if (isConstruct) {
-      a = jspeConstruct(func, funcName);
+      a = jspeConstruct(func, funcName, true);
       isConstruct = false;
     }
     else
