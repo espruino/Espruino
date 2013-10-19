@@ -1146,11 +1146,22 @@ JsVar *jspeFactorNewString() {
 
 JsVar *jspeFactorNewId() {
   // TODO: these should be regular constructors
+  bool isArray = false, isString = false;
+  const char *name = jslGetTokenValueAsString(execInfo.lex);
+
+  if (strcmp(name, "Array")==0)
+    isArray = true;
+  else if (strcmp(name, "String")==0)
+    isString = true;
+  else
+    return 0;
+
+  execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
+
   if (JSP_SHOULD_EXECUTE) {
-    const char *name = jslGetTokenValueAsString(execInfo.lex);
-    if (strcmp(name, "Array")==0)
+    if (isArray)
       return jspeFactorNewArray();
-    else if (strcmp(name, "String")==0)
+    if (isString)
       return jspeFactorNewString();
     return 0;
   }
