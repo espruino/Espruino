@@ -47,7 +47,7 @@
 //#define USE_EK_STM32F
 //#define USE_STM32_P103
 
-#if defined(OLIMEXINO_STM32) || defined(OLIMEXINO_STM32_BOOTLOADER) || defined(ESPRUINOBOARD) || defined(ESPRUINOBOARD_R1_0) || defined(ESPRUINOBOARD_R1_1)
+#if defined(OLIMEXINO_STM32) || defined(OLIMEXINO_STM32_BOOTLOADER) || defined(ESPRUINOBOARD)
  #define CARD_SUPPLY_SWITCHABLE   0
  #define SOCKET_WP_CP_CONNECTED   0
  #define SPI_SD                   SPI2
