@@ -7,5 +7,6 @@
 *.bin
 *.pyc
 gen/*
+boards/*.html
 zipcontents
 tmp
