@@ -27,7 +27,7 @@
          "description" : "Create an Array. Either give it one integer argument (>=0) which is the length of the array, or any number of arguments ",
          "generate" : "jswrap_array_constructor",
          "params" : [ [ "args", "JsVarArray", "The length of the array OR any number of items to add to the array" ] ],
-         "return" : [ "JsVar", "An Array object" ]
+         "return" : [ "JsVar", "An Array" ]
 
 }*/
 JsVar *jswrap_array_constructor(JsVar *args) {
