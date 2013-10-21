@@ -12,7 +12,8 @@
 # Set ONE of the following environment variables to compile for that board:
 #
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
-# ESPRUINO_1V1=1          # Espruino board rev 1.1
+# ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
+# ESPRUINO_1V3=1          # Espruino board rev 1.3
 # OLIMEX=1                # Olimexino STM32
 # OLIMEX_BOOTLOADER=1     # Olimexino STM32 with bootloader
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
@@ -94,12 +95,26 @@ DEFINES+=-DESPRUINO_1V1
 USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
 USB=1
+USE_GRAPHICS=1
+USE_FILESYSTEM=1
+FAMILY=STM32F1
+CHIP=STM32F103RC
+BOARD=ESPRUINOBOARD_R1_1
+STLIB=STM32F10X_XL
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
+else ifdef ESPRUINO_1V3
+PROJ_NAME=espruino_espruino_1v3
+DEFINES+=-DESPRUINO_1V3
+USE_BOOTLOADER=1
+BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
+USB=1
 #USE_NET=1
 #USE_CC3000=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
-CHIP=STM32F103RC
+CHIP=STM32F103RD
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
