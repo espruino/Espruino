@@ -80,6 +80,7 @@ def get_surround(jsondata):
     if "params" in jsondata:
       for param in jsondata["params"]:
         args.append(param[0]);
+        if param[1]=="JsVarArray": args.append("...");
     s=s+"("+",".join(args)+")"
   return s
 
@@ -191,7 +192,9 @@ for jsondata in detail:
       desc = ""
       if len(param)>2: desc=param[2]
       if isinstance(desc, list): desc = '<br/>'.join(desc)
-      html("   <p class=\"param\"><b> "+param[0]+"</b> "+htmlify(desc)+"</p>")
+      extra = ""
+      if  param[1]=="JsVarArray": extra = ", ...";
+      html("   <p class=\"param\"><b> "+param[0]+extra+"</b> "+htmlify(desc)+"</p>")
   else:
     html("   <p class=\"param\">No parameters</p>")
   html("  <h4>Returns</h4>")

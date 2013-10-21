@@ -38,7 +38,12 @@ if silent:
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
-#         "params" : [ [ "x" , "float|int|JsVar|JsVarName", "A floating point number"] ],
+#         "params" : [ [ "x" , "float|int|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
+#                               // float - parses into a JsVarFloat which is passed to the function
+#                               // int - parses into a JsVarInt which is passed to the function
+#                               // JsVar - passes a JsVar* to the function (after skipping names)
+#                               // JsVarName - passes a JsVar* to the function (WITHOUT skipping names)
+#                               // JsVarArray - parses this AND ANY SUBSEQUENT ARGUMENTS into a JsVar of type JSV_ARRAY. THIS IS ALWAYS DEFINED, EVEN IF ZERO LENGTH. Currently it must be the only parameter
 #         "return" : ["int|float", "The integer representation of x"],
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
 #         "not_real_object" : "anything",    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT

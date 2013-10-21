@@ -376,6 +376,22 @@ bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, J
   return true;
 }
 
+/// parse a function with any number of argument, and return an array of de-named aruments
+JsVar *jspParseFunctionAsArray() {
+  JSP_MATCH(LEX_ID);
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0; // out of memory
+  JSP_MATCH('(');
+  while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
+    JsVar *arg = jsvSkipNameAndUnLock(jspeBase());
+    jsvArrayPush(arr, arg); // even if undefined
+    jsvUnLock(arg);
+    if (execInfo.lex->tk!=')') JSP_MATCH(',');
+  }
+  JSP_MATCH(')');
+  return arr;
+}
+
 // ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)
@@ -1115,44 +1131,6 @@ void jspEnsureIsPrototype(JsVar *prototypeName) {
   jsvUnLock(prototypeVar);
 }
 
-JsVar *jspeFactorNewArray() {
-  JSP_MATCH(LEX_ID);
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-  if (!arr) return 0; // out of memory
-  if (execInfo.lex->tk == '(') {
-    JsVar *arg = 0;
-    bool moreThanOne = false;
-    JSP_MATCH('(');
-    while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
-      if (arg) {
-        moreThanOne = true;
-        jsvArrayPush(arr, arg);
-        jsvUnLock(arg);
-      }
-      arg = jsvSkipNameAndUnLock(jspeBase());
-      if (execInfo.lex->tk!=')') JSP_MATCH(',');
-    }
-    JSP_MATCH(')');
-    if (arg) {
-      if (!moreThanOne && jsvIsInt(arg) && jsvGetInteger(arg)>=0) { // this is the size of the array
-        JsVarInt count = jsvGetIntegerAndUnLock(arg);
-        // we cheat - no need to fill the array - just the last element
-        if (count>0) {
-          JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
-          if (idx) { // could be out of memory
-            jsvAddName(arr, idx);
-            jsvUnLock(idx);
-          }
-        }
-      } else { // just append to array
-        jsvArrayPush(arr, arg);
-        jsvUnLock(arg);
-      }
-    }
-  }
-  return arr;
-}
-
 JsVar *jspeFactorNewString() {
   JsVar *a = jspParseSingleFunction();
   if (!a) return jsvNewFromEmptyString(); // out of mem, or just no argument!
@@ -1161,12 +1139,10 @@ JsVar *jspeFactorNewString() {
 
 JsVar *jspeFactorNewId() {
   // TODO: these should be regular constructors
-  bool isArray = false, isString = false;
+  bool isString = false;
   const char *name = jslGetTokenValueAsString(execInfo.lex);
 
-  if (strcmp(name, "Array")==0)
-    isArray = true;
-  else if (strcmp(name, "String")==0)
+  if (strcmp(name, "String")==0)
     isString = true;
   else
     return 0;
@@ -1174,8 +1150,6 @@ JsVar *jspeFactorNewId() {
   execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
 
   if (JSP_SHOULD_EXECUTE) {
-    if (isArray)
-      return jspeFactorNewArray();
     if (isString)
       return jspeFactorNewString();
     return 0;

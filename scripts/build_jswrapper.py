@@ -176,11 +176,14 @@ def codeOutFunction(indent, func):
     argNames = ["a","b","c","d"];
     params = []
     if "params" in func: params = func["params"]
+
     if len(params)==0: 
       if func["type"]=="variable" or common.is_property(func):
         codeOut(indent+"jspParseVariableName();")
       else:
         codeOut(indent+"jspParseEmptyFunction();")
+    elif len(params)==1 and params[0][1]=="JsVarArray": 
+      codeOut(indent+"JsVar *"+params[0][0]+" = jspParseFunctionAsArray();")
     elif len(params)==1 and params[0][1]!="JsVarName": 
       codeOut(indent+"JsVar *"+params[0][0]+" = jspParseSingleFunction();")
     elif len(params)<9:
@@ -205,6 +208,7 @@ def codeOutFunction(indent, func):
     else:
       print "ERROR: codeOutFunction unknown number of args "+str(len(params))
       exit(1)
+
     if "generate" in func:
       commandargs = [];
       if hasThis:      
@@ -212,7 +216,7 @@ def codeOutFunction(indent, func):
       if "needs_parentName" in func:
         commandargs.append("parentName")
       for param in params:
-        if param[1]=="JsVar" or param[1]=="JsVarName":
+        if param[1]=="JsVar" or param[1]=="JsVarName" or param[1]=="JsVarArray":
           commandargs.append(param[0]);
         else:
           commandargs.append(getUnLockGetter(param[1], param[0], func["name"]));

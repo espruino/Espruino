@@ -111,6 +111,7 @@ bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, J
 bool jspParseVariableName();     ///< parse single variable name
 bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
+JsVar *jspParseFunctionAsArray(); ///< parse a function with any number of argument, and return an array of de-named aruments
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the

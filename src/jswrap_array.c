@@ -23,6 +23,38 @@
                          "Arrays can be defined with ```[]```, ```new Array()```, or ```new Array(length)```" ]
 }*/
 
+/*JSON{ "type":"constructor", "class": "Array",  "name": "Array",
+         "description" : "Create an Array. Either give it one integer argument (>=0) which is the length of the array, or any number of arguments ",
+         "generate" : "jswrap_array_constructor",
+         "params" : [ [ "args", "JsVarArray", "The length of the array OR any number of items to add to the array" ] ],
+         "return" : [ "JsVar", "An Array object" ]
+
+}*/
+JsVar *jswrap_array_constructor(JsVar *args) {
+  assert(args);
+  if (jsvGetArrayLength(args)==1) {
+    JsVar *firstArg = jsvSkipNameAndUnLock(jsvArrayGetLast(args)); // also the first!
+    if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
+      JsVarInt count = jsvGetInteger(firstArg);
+      // we cheat - no need to fill the array - just the last element
+      if (count>0) {
+        JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+        if (!arr) return 0; // out of memory
+        JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
+        if (idx) { // could be out of memory
+          jsvAddName(arr, idx);
+          jsvUnLock(idx);
+        }
+        jsvUnLock(firstArg);
+        return arr;
+      }
+    }
+    jsvUnLock(firstArg);
+  }
+  // Otherwise, we just return the array!
+  return jsvLockAgain(args);
+}
+
 /*JSON{ "type":"method", "class": "Array", "name" : "contains",
          "description" : "Return true if this array contains the given value",
          "generate" : "jswrap_array_contains",
@@ -88,7 +120,7 @@ JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVa
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Array.map's second argument should be undefined, or an object");
+    jsError("Arraymap's second argument should be undefined, or an object");
     return 0;
   }
   JsVar *array = 0;

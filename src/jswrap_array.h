@@ -13,6 +13,7 @@
  */
 #include "jsvar.h"
 
+JsVar *jswrap_array_constructor(JsVar *args);
 bool jswrap_array_contains(JsVar *parent, JsVar *value);
 JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value);
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler);
