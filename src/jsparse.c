@@ -950,11 +950,11 @@ JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *prototypeName);
 
 JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
+  assert(JSP_SHOULD_EXECUTE);
   JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(prototypeName); // make sure it's an object
-  // TODO: if prototypeName is not an object, set the [[Prototype]] property of Result(1) to the original Object prototype object as described in 15.2.3.1.
   jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
   jsvUnLock(prototypeName);
 
@@ -988,7 +988,8 @@ JsVar *jspeFactorNew() {
   else
     a = jspeFactorMember(jspeFactor());
   // Check for a constructor call with no arguments
-  if (execInfo.execute & EXEC_CONSTRUCT && execInfo.lex->tk!='(') {
+  if (JSP_SHOULD_EXECUTE &&
+      (execInfo.execute & EXEC_CONSTRUCT) && execInfo.lex->tk!='(') {
     JsVar *func = jsvSkipNameKeepParent(a, 0);
     execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
     a = jspeConstruct(func, a, false);
@@ -1014,10 +1015,10 @@ JsVar *jspeFactorFunctionCall() {
       parent = jsvLock(parentRef);
     }
 
-    if (isConstruct) {
+    /* The constructor function doesn't change parsing, so if we're
+     * not executing, just short-cut it. */
+    if (isConstruct && JSP_SHOULD_EXECUTE)
       a = jspeConstruct(func, funcName, true);
-      isConstruct = false;
-    }
     else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
