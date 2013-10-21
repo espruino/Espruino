@@ -106,18 +106,27 @@ void jswrap_interface_trace(JsVar *root) {
 /*JSON{ "type":"function", "name" : "print",
          "description" : "Print the supplied string",
          "generate" : "jswrap_interface_print",
-         "params" : [ [ "text", "JsVar", ""] ]
+         "params" : [ [ "text", "JsVarArray", ""] ]
 }*/
 /*JSON{ "type":"staticmethod", "class":"console", "name" : "log",
-         "description" : "Print the supplied string",
+         "description" : "Print the supplied string(s)",
          "generate" : "jswrap_interface_print",
-         "params" : [ [ "text", "JsVar", ""] ]
+         "params" : [ [ "text", "JsVarArray", "One or more arguments to print"] ]
 }*/
 void jswrap_interface_print(JsVar *v) {
-  v = jsvAsString(v, false);
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrintStringVar(v);
-  jsvUnLock(v);
+  assert(jsvIsArray(v));
+  JsArrayIterator it;
+  jsvArrayIteratorNew(&it, v);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *v = jsvAsString(jsvArrayIteratorGetElement(&it), true);
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrintStringVar(v);
+    jsvUnLock(v);
+    jsvArrayIteratorNext(&it);
+    if (jsvArrayIteratorHasElement(&it))
+      jsiConsolePrint(" ");
+  }
+  jsvArrayIteratorFree(&it);
   jsiConsolePrint("\n");
 }
 
