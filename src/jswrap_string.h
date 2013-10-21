@@ -13,6 +13,7 @@
  */
 #include "jsvar.h"
 
+JsVar *jswrap_string_constructor(JsVar *a);
 JsVar *jswrap_string_fromCharCode(JsVarInt code);
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx);
 JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx);

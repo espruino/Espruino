@@ -22,6 +22,17 @@
                          "Text Strings in Espruino are not zero-terminated, so you can store zeros in them." ]
 }*/
 
+/*JSON{ "type":"constructor", "class": "String",  "name": "String",
+         "description" : "Create a new String",
+         "generate" : "jswrap_string_constructor",
+         "params" : [ [ "str", "JsVar", "A value to turn into a string. If undefined or not supplied, an empty String is created." ] ],
+         "return" : [ "JsVar", "A String" ]
+
+}*/
+JsVar *jswrap_string_constructor(JsVar *a) {
+  if (!a) return jsvNewFromEmptyString(); // no argument - return an empty string
+  return jsvAsString(a, false);
+}
 
 /*JSON{ "type":"staticmethod", "class": "String", "name" : "fromCharCode",
          "description" : "Return the character represented by the given character code.",

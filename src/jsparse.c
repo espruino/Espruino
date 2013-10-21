@@ -1131,36 +1131,6 @@ void jspEnsureIsPrototype(JsVar *prototypeName) {
   jsvUnLock(prototypeVar);
 }
 
-JsVar *jspeFactorNewString() {
-  JsVar *a = jspParseSingleFunction();
-  if (!a) return jsvNewFromEmptyString(); // out of mem, or just no argument!
-  return jsvAsString(a, true);
-}
-
-JsVar *jspeFactorNewId() {
-  // TODO: these should be regular constructors
-  bool isString = false;
-  const char *name = jslGetTokenValueAsString(execInfo.lex);
-
-  if (strcmp(name, "String")==0)
-    isString = true;
-  else
-    return 0;
-
-  execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
-
-  if (JSP_SHOULD_EXECUTE) {
-    if (isString)
-      return jspeFactorNewString();
-    return 0;
-  }
-  else {
-    JSP_MATCH(LEX_ID);
-    jspeParseFunctionCallBrackets();
-    return 0;
-  }
-}
-
 JsVar *jspeFactorTypeOf() {
   JSP_MATCH(LEX_R_TYPEOF);
   JsVar *a = jspeBase();
@@ -1200,11 +1170,6 @@ JsVar *jspeFactor() {
         JSP_MATCH(LEX_R_UNDEFINED);
         return 0;
     } else if (execInfo.lex->tk==LEX_ID) {
-      if (execInfo.execute & EXEC_CONSTRUCT) {
-        JsVar *a = jspeFactorNewId();
-        if (a || !JSP_SHOULD_EXECUTE)
-          return a;
-      }
       return jspeFactorId();
     } else if (execInfo.lex->tk==LEX_INT) {
         // atol works only on decimals
