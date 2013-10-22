@@ -974,39 +974,25 @@ JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   return thisObj;
 }
 
-JsVar *jspeFactorNew() {
-  JsVar *a;
-  if (execInfo.lex->tk==LEX_R_NEW) {
-    JSP_MATCH(LEX_R_NEW);
-    execInfo.execute |= EXEC_CONSTRUCT;
-  }
-  if (execInfo.lex->tk==LEX_R_NEW) {
-    jsError("Nesting 'new' operators is unsupported");
-    jspSetError();
-    return 0;
-  }
-  else
-    a = jspeFactorMember(jspeFactor());
-  // Check for a constructor call with no arguments
-  if (JSP_SHOULD_EXECUTE &&
-      (execInfo.execute & EXEC_CONSTRUCT) && execInfo.lex->tk!='(') {
-    JsVar *func = jsvSkipNameKeepParent(a, 0);
-    execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
-    a = jspeConstruct(func, a, false);
-  }
-
-  return a;
-}
-
 JsVar *jspeFactorFunctionCall() {
   /* The parent if we're executing a method call */
-  JsVar *parent = 0, *a;
+  JsVar *parent = 0;
 
-  a = jspeFactorNew();
-  bool isConstruct = (execInfo.execute & EXEC_CONSTRUCT) ? true : false;
-  execInfo.execute &= (JsExecFlags)~EXEC_CONSTRUCT;
+  bool isConstructor = false;
+  if (execInfo.lex->tk==LEX_R_NEW) {
+    JSP_MATCH(LEX_R_NEW);
+    isConstructor = true;
 
-  while (execInfo.lex->tk=='(') {
+    if (execInfo.lex->tk==LEX_R_NEW) {
+      jsError("Nesting 'new' operators is unsupported");
+      jspSetError();
+      return 0;
+    }
+  }
+
+  JsVar *a = jspeFactorMember(jspeFactor());
+
+  while (execInfo.lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) {
     JsVar *funcName = a;
     JsVarRef parentRef = 0;
     JsVar *func = jsvSkipNameKeepParent(funcName, &parentRef);
@@ -1017,9 +1003,11 @@ JsVar *jspeFactorFunctionCall() {
 
     /* The constructor function doesn't change parsing, so if we're
      * not executing, just short-cut it. */
-    if (isConstruct && JSP_SHOULD_EXECUTE) {
-      a = jspeConstruct(func, funcName, true);
-      isConstruct = false;
+    if (isConstructor && JSP_SHOULD_EXECUTE) {
+      // If we have '(' parse an argument list, otherwise don't look for any args
+      bool parseArgs = execInfo.lex->tk=='(';
+      a = jspeConstruct(func, funcName, parseArgs);
+      isConstructor = false; // don't treat subsequent brackets as constructors
     } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
