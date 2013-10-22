@@ -1017,9 +1017,10 @@ JsVar *jspeFactorFunctionCall() {
 
     /* The constructor function doesn't change parsing, so if we're
      * not executing, just short-cut it. */
-    if (isConstruct && JSP_SHOULD_EXECUTE)
+    if (isConstruct && JSP_SHOULD_EXECUTE) {
       a = jspeConstruct(func, funcName, true);
-    else
+      isConstruct = false;
+    } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
     jsvUnLock(funcName);
