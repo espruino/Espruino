@@ -3,6 +3,7 @@
             Implement 'String' constructor in the normal way (fix #110)
             Fix regression with parsing constructors while not executing
             Allow multiple arguments to print and console.log (fix #92)
+            make 'arguments' array available in functions (fix #100)
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )

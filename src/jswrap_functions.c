@@ -18,6 +18,44 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
+/*JSON{ "type":"variable", "name" : "arguments",
+         "description" : "A variable containing the arguments given to the function",
+         "generate" : "jswrap_arguments",
+         "return" : ["JsVar", "An array containing all the arguments given to the function"]
+}*/
+extern JsExecInfo execInfo;
+JsVar *jswrap_arguments() {
+  JsVar *scope = 0;
+  if (execInfo.scopeCount>0)
+    scope = jsvLock(execInfo.scopes[execInfo.scopeCount-1]);
+  if (!jsvIsFunction(scope)) {
+    jsvUnLock(scope);
+    jsError("Can only use 'arguments' variable inside a function");
+    return 0;
+  }
+
+  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
+  if (!args) return 0; // out of memory
+
+  JsObjectIterator it;
+  jsvObjectIteratorNew(&it, scope);
+  while (jsvObjectIteratorHasElement(&it)) {
+    JsVar *idx = jsvObjectIteratorGetKey(&it);
+    if (jsvIsFunctionParameter(idx)) {
+      JsVar *val = jsvSkipOneName(idx);
+      jsvArrayPush(args, val);
+      jsvUnLock(val);
+    }
+    jsvUnLock(idx);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(scope);
+
+  return args;
+}
+
+
 /*JSON{ "type":"function", "name" : "eval",
          "description" : "Evaluate a string containing JavaScript code",
          "generate" : "jswrap_eval",

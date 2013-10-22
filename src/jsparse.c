@@ -597,8 +597,6 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       }
     }
 
-
-
     if (isParsing) JSP_MATCH('(');
     // create a new symbol table entry for execution of this function
     // OPT: can we cache this function execution environment + param variables?
@@ -613,11 +611,14 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
         thisVar = jsvAddNamedChild(functionRoot, thisArg, JSPARSE_THIS_VAR);
     if (isParsing) {
       int hadParams = 0;
-      // grab in all parameters
+      // grab in all parameters. We go around this loop until we've run out
+      // of named parameters AND we've parsed all the supplied arguments
       v = function->firstChild;
-      while (!JSP_HAS_ERROR && v) {
-        JsVar *param = jsvLock(v);
-        if (jsvIsFunctionParameter(param)) {
+      while (!JSP_HAS_ERROR && (v || execInfo.lex->tk!=')')) {
+        JsVar *param = 0;
+        if (v) param = jsvLock(v);
+        bool paramDefined = jsvIsFunctionParameter(param);
+        if (execInfo.lex->tk!=')' || paramDefined) {
           hadParams++;
           JsVar *value = 0;
           // ONLY parse this if it was supplied, otherwise leave 0 (undefined)
@@ -626,7 +627,9 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
           // and if execute, copy it over
           if (JSP_SHOULD_EXECUTE) {
             value = jsvSkipNameButNotParentAndUnLock(value);
-            JsVar *newValueName = jsvMakeIntoVariableName(jsvCopy(param), value);
+            JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
+            paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+            JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
             if (newValueName) { // could be out of memory
               jsvAddName(functionRoot, newValueName);
             } else
@@ -636,30 +639,29 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
           jsvUnLock(value);
           if (execInfo.lex->tk!=')') JSP_MATCH(',');
         }
-        v = param->nextSibling;
-        jsvUnLock(param);
-      }
-      // throw away extra params
-      while (execInfo.lex->tk != ')') {
-        if (hadParams>0) JSP_MATCH(',');
-        jsvUnLock(jspeBase());
+        if (param) {
+          v = param->nextSibling;
+          jsvUnLock(param);
+        }
       }
       JSP_MATCH(')');
     } else if (JSP_SHOULD_EXECUTE && argCount>0) {  // and NOT isParsing
       int args = 0;
       v = function->firstChild;
-      while (args<argCount && v) {
-        JsVar *param = jsvLock(v);
-        if (jsvIsFunctionParameter(param)) {
-          JsVar *newValueName = 0;
-          newValueName = jsvMakeIntoVariableName(jsvCopy(param), argPtr[args]);
-          if (newValueName) // could be out of memory - or maybe just not supplied!
-            jsvAddName(functionRoot, newValueName);
-          jsvUnLock(newValueName);
-          args++;
+      while (args<argCount) {
+        JsVar *param = v ? jsvLock(v) : 0;
+        bool paramDefined = jsvIsFunctionParameter(param);
+        JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
+        paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+        JsVar *newValueName = jsvMakeIntoVariableName(paramName, argPtr[args]);
+        if (newValueName) // could be out of memory - or maybe just not supplied!
+          jsvAddName(functionRoot, newValueName);
+        jsvUnLock(newValueName);
+        args++;
+        if (param) {
+          v = param->nextSibling;
+          jsvUnLock(param);
         }
-        v = param->nextSibling;
-        jsvUnLock(param);
       }
     } 
     // setup a return variable
