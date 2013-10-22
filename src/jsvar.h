@@ -421,6 +421,9 @@ JsVar *jsvStringTrimRight(JsVar *srcString);
 
 /** If v is the key of a function, return true if it is internal and shouldn't be visible to the user */
 bool jsvIsInternalFunctionKey(JsVar *v);
+
+/// If v is the key of an object, return true if it is internal and shouldn't be visible to the user
+bool jsvIsInternalObjectKey(JsVar *v);
 // --------------------------------------------------------------------------------------------
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var

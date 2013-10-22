@@ -80,14 +80,17 @@ JsVar *jswrap_object_clone(JsVar *parent) {
 }*/
 JsVar *jswrap_object_keys(JsVar *obj) {
   if (jsvIsIterable(obj)) {
-    bool isFunction = jsvIsFunction(obj);
+    bool (*checkerFunction)(JsVar*) = 0;
+    if (jsvIsFunction(obj)) checkerFunction = jsvIsInternalFunctionKey;
+    else if (jsvIsObject(obj)) checkerFunction = jsvIsInternalObjectKey;
+
     JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
     if (!arr) return 0;
     JsvIterator it;
     jsvIteratorNew(&it, obj);
     while (jsvIteratorHasElement(&it)) {
       JsVar *key = jsvIteratorGetKey(&it);
-      if (!(isFunction && jsvIsInternalFunctionKey(key))) {
+      if (!(checkerFunction && checkerFunction(key))) {
         JsVar *name = jsvCopyNameOnly(key,false,false);
         if (name) {
           jsvArrayPush(arr, name);

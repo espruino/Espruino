@@ -1772,14 +1772,16 @@ JsVar *jspeStatementFor() {
     JSP_RESTORE_EXECUTE();
 
     if (jsvIsIterable(array)) {
-      bool isFunction = jsvIsFunction(array);
+      bool (*checkerFunction)(JsVar*) = 0;
+      if (jsvIsFunction(array)) checkerFunction = jsvIsInternalFunctionKey;
+      else if (jsvIsObject(array)) checkerFunction = jsvIsInternalObjectKey;
       JsvIterator it;
       jsvIteratorNew(&it, array);
       bool hasHadBreak = false;
       while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
           bool ignore = false;
-          if (isFunction && jsvIsInternalFunctionKey(loopIndexVar))
+          if (checkerFunction && checkerFunction(loopIndexVar))
             ignore = true;
           if (!ignore) {
             JsVar *indexValue = jsvIsName(loopIndexVar) ?

@@ -2280,10 +2280,20 @@ JsVar *jsvStringTrimRight(JsVar *srcString) {
 
 /// If v is the key of a function, return true if it is internal and shouldn't be visible to the user
 bool jsvIsInternalFunctionKey(JsVar *v) {
-  return (jsvIsString(v) && v->varData.str[0]==JS_HIDDEN_CHAR) ||
+  return (jsvIsString(v) && (
+              v->varData.str[0]==JS_HIDDEN_CHAR)
+                            ) ||
          jsvIsFunctionParameter(v);
 }
 
+/// If v is the key of an object, return true if it is internal and shouldn't be visible to the user
+bool jsvIsInternalObjectKey(JsVar *v) {
+  return (jsvIsString(v) && (
+              v->varData.str[0]==JS_HIDDEN_CHAR ||
+              jsvIsStringEqual(v, JSPARSE_INHERITS_VAR) ||
+              jsvIsStringEqual(v, JSPARSE_CONSTRUCTOR_VAR)
+                            ));
+}
 
 // --------------------------------------------------------------------------------------------
 
