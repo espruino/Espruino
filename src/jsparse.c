@@ -381,14 +381,14 @@ JsVar *jspParseFunctionAsArray() {
   JSP_MATCH(LEX_ID);
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   if (!arr) return 0; // out of memory
-  JSP_MATCH('(');
-  while (execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('(', jsvUnLock(arr), 0);
+  while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
     JsVar *arg = jsvSkipNameAndUnLock(jspeBase());
     jsvArrayPush(arr, arg); // even if undefined
     jsvUnLock(arg);
-    if (execInfo.lex->tk!=')') JSP_MATCH(',');
+    if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock(arr), 0);
   }
-  JSP_MATCH(')');
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(arr), 0);
   return arr;
 }
 
@@ -1653,7 +1653,7 @@ JsVar *jspeStatementSwitch() {
     jsvUnLock(test);
     if (cond && (execInfo.execute&EXEC_RUN_MASK)==EXEC_NO)
       execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
-    while (execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
+    while (!JSP_HAS_ERROR && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
   }
   jsvUnLock(switchOn);
@@ -1666,7 +1666,7 @@ JsVar *jspeStatementSwitch() {
     JSP_MATCH(':');
     JSP_SAVE_EXECUTE();
     if (hasExecuted) jspSetNoExecute();
-    while (execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!='}')
+    while (!JSP_HAS_ERROR && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
     JSP_RESTORE_EXECUTE();
   }

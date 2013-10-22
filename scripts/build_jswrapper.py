@@ -184,6 +184,7 @@ def codeOutFunction(indent, func):
         codeOut(indent+"jspParseEmptyFunction();")
     elif len(params)==1 and params[0][1]=="JsVarArray": 
       codeOut(indent+"JsVar *"+params[0][0]+" = jspParseFunctionAsArray();")
+      codeOut(indent+"if (!"+params[0][0]+") return 0; // if parse error")
     elif len(params)==1 and params[0][1]!="JsVarName": 
       codeOut(indent+"JsVar *"+params[0][0]+" = jspParseSingleFunction();")
     elif len(params)<9:
