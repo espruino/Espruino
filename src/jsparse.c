@@ -57,7 +57,9 @@ bool jspHasError() {
 void jspReplaceWith(JsVar *dst, JsVar *src) {
   // if we have parent info, skip it - we don't need it here
   if (jsvIsParentInfo(dst)) {
-    jspReplaceWith(jsvSkipOneName(dst), src);
+    dst = jsvSkipOneName(dst);
+    assert(!jsvIsParentInfo(dst));
+    jspReplaceWith(dst, src);
     return;
   }
   // If this is an index in an array buffer, write directly into the array buffer
@@ -1465,6 +1467,7 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
         // if we have parent info, skip it - we don't need it here
         if (jsvIsParentInfo(lhs))
           lhs = jsvSkipOneNameAndUnLock(lhs);
+        assert(!jsvIsParentInfo(lhs));
 
         JsVar *rhs;
         /* If we're assigning to this and we don't have a parent,
