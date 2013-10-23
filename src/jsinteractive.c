@@ -121,31 +121,10 @@ void jsiConsolePrintChar(char data) {
   jshTransmit(consoleDevice, (unsigned char)data);
 }
 
-void jsiConsolePrintCharEscaped(char data) {
-  if (data=='\n') {
-    jsiConsolePrintChar('\\');
-    jsiConsolePrintChar('n');
-  } else if (data=='\r') {
-    jsiConsolePrintChar('\\');
-    jsiConsolePrintChar('r');
-  } else if (data=='"') {
-      jsiConsolePrintChar('\\');
-      jsiConsolePrintChar('"');
-  } else
-    jsiConsolePrintChar(data);
-}
-
 void jsiConsolePrint(const char *str) {
   while (*str) {
        if (*str == '\n') jsiConsolePrintChar('\r');
        jsiConsolePrintChar(*(str++));
-  }
-}
-
-void jsiConsolePrintEscaped(const char *str) {
-  while (*str) {
-       if (*str == '\n') jsiConsolePrintCharEscaped('\r');
-       jsiConsolePrintCharEscaped(*(str++));
   }
 }
 

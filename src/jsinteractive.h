@@ -48,10 +48,10 @@ void jsiSetConsoleDevice(IOEventFlags device);
 IOEventFlags jsiGetConsoleDevice();
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
-void jsiConsolePrintCharEscaped(char data); ///< transmit a byte, but escape it
 /// Transmit a string
 void jsiConsolePrint(const char *str);
-void jsiConsolePrintEscaped(const char *str); ///< transmit a string, but escape it
+/// Print the contents of a string var - directly
+void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit an integer
 void jsiConsolePrintInt(JsVarInt d);
 /// Transmit an integer as hex (no '0x')

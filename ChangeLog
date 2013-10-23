@@ -6,6 +6,7 @@
             Make 'arguments' array available in functions (fix #100)
             Fix an assert fail, and handle some potential memory leaks
             Don't show __proto__ and constructor with for..in, keys(), or JSON.stringify
+            Make 'trace()' output more readable debug data for complex structures 
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )
