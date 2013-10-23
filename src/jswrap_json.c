@@ -109,12 +109,18 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     callbackVar(callbackData, jsvAsString(var, false));
     callbackString(callbackData, "])");
   } else if (jsvIsObject(var)) {
+    bool first = true;
     JsVarRef childref = var->firstChild;
     callbackString(callbackData, "{");
     while (childref) {
       JsVar *child = jsvLock(childref);
       bool hidden = jsvIsInternalObjectKey(child);
       if (!hidden) {
+        if (first)
+          first = false;
+        else
+          callbackString(callbackData, ",");
+
         callbackString(callbackData, "\"");
         callbackVar(callbackData, child); // FIXME: escape the string
         callbackString(callbackData, "\":");
@@ -125,7 +131,6 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
 
       if (!hidden) {
         jsfGetJSONWithCallback(childVar, callbackString, callbackVar, callbackData);
-        if (childref) callbackString(callbackData, ",");
       }
       jsvUnLock(childVar);
     }
