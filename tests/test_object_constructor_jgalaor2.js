@@ -35,6 +35,7 @@ var Toto = Class.extend({
   },
 
   getTest : function(){
+    trace(this);
     console.log(b=JSON.stringify(this));
   }
 });
@@ -45,4 +46,4 @@ var t = new Toto();
 t.getTest();
 // print {"test":5}
 
-result = 1;//a=='{"test":5}' && b=='{"test":5}';
+result = a=='{"test":5}' && b=='{"test":5}';
