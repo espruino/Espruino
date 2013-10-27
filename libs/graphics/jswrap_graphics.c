@@ -26,7 +26,8 @@
 /*JSON{ "type":"class",
         "class" : "Graphics",
         "description" : ["This class provides Graphics operations that can be applied to a surface.",
-                         "Use Graphics.createXXX to create a graphics object that renders in the way you want." ]
+                         "Use Graphics.createXXX to create a graphics object that renders in the way you want.",
+                         "NOTE: On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```" ]
 }*/
 
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
