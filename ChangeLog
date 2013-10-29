@@ -8,6 +8,7 @@
             Don't show __proto__ and constructor with for..in, keys(), or JSON.stringify
             Make 'trace()' output more readable debug data for complex structures 
             Fix memory leak whe parsing functions iwht variable numbers of arguments - fix #115
+            Defined NaN
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )

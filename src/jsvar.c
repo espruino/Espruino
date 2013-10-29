@@ -18,6 +18,14 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 
+#ifdef ARM
+#include "mconf.h"
+#include "protos.h"
+#else
+#include <math.h>
+#endif
+
+
 /** Basically, JsVars are stored in one big array, so save the need for
  * lots of memory allocation. On Linux, the arrays are in blocks, so that
  * more blocks can be allocated. We can't use realloc on one big block as
@@ -715,9 +723,13 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       itoa(v->varData.integer, buf, 10);
       str = jsvNewFromString(buf);
     } else if (jsvIsFloat(v)) {
-      char buf[JS_NUMBER_BUFFER_SIZE];
-      ftoa(v->varData.floating, buf);
-      str = jsvNewFromString(buf);
+      if (isnan(v->varData.floating)) {
+        str = jsvNewFromString("NaN");
+      } else {
+        char buf[JS_NUMBER_BUFFER_SIZE];
+        ftoa(v->varData.floating, buf);
+        str = jsvNewFromString(buf);
+      }
     } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
       JsVar *filler = jsvNewFromString(",");
       str = jsvArrayJoin(v, filler);
