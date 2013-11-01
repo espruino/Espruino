@@ -232,7 +232,7 @@ def codeOutFunction(indent, func):
 
     # note: generate_full doesn't use commandargs, so doesn't unlock
     for param in params:
-      if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarName":
+      if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarName" or param[1]=="JsVarArray":
         codeOut(indent+"jsvUnLock("+param[0]+");");
 
     if "return" in func: 

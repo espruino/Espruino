@@ -242,8 +242,8 @@ void spi_send4bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
 // used by jswrap_spi_send8bit
 void spi_send8bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
   // Send each bit as 8 bits, MSB first
-  int i;
-  /*for (i=7;i>=0;i--)
+  /*int i;
+  for (i=7;i>=0;i--)
     jshSPISend(device, (unsigned char)(((data>>i)&1) ? bit1 : bit0));*/
   jshSPISend(device, ((((data>>7)&1) ? bit1 : bit0)<<8) | (((data>>6)&1) ? bit1 : bit0));
   jshSPISend(device, ((((data>>5)&1) ? bit1 : bit0)<<8) | (((data>>4)&1) ? bit1 : bit0));

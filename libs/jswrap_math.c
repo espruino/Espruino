@@ -45,6 +45,10 @@ JsVarInt jswrap_integer_valueOf(JsVar *v) {
     return 0;
   return (int)v->varData.str[0];
 }
+/*JSON{ "type":"variable", "name" : "NaN",
+         "generate_full" : "(((JsVarFloat)0)/(JsVarFloat)0)",
+         "return" : ["float", "Not a  Number"]
+}*/
  // -------------------------------------------------------------------- Double
 /*JSON{ "type":"staticmethod",
          "class" : "Double", "name" : "doubleToIntBits",
