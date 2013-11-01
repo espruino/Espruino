@@ -955,6 +955,12 @@ void jspEnsureIsPrototype(JsVar *prototypeName);
 
 JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   assert(JSP_SHOULD_EXECUTE);
+  if (!jsvIsFunction(func)) {
+    jsErrorAt("Constructor should be a function", execInfo.lex, execInfo.lex->tokenLastEnd);
+    jspSetError();
+    return 0;
+  }
+
   JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
