@@ -38,12 +38,6 @@
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 /* Exported define -----------------------------------------------------------*/
-#define MASS_MEMORY_START     0x04002000
-#define BULK_MAX_PACKET_SIZE  0x00000040
-#define LED_ON                0xF0
-#define LED_OFF               0xFF
-
-#define USART_RX_DATA_SIZE   VIRTUAL_COM_PORT_DATA_SIZE
 /* Exported functions ------------------------------------------------------- */
 void USB_Init_Hardware(void);
 
