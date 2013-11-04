@@ -669,6 +669,11 @@ void jshInit() {
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);    
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
 #endif
+#ifdef ESPRUINOBOARD
+  // reclaim A13 and A14 (do we need the two above now?)
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
+#endif
+
 
   NVIC_InitTypeDef NVIC_InitStructure;
   /* Note, DO NOT set SysTicck priority using NVIC_Init. It is done above by NVIC_SetPriority */
