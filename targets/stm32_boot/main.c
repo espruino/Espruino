@@ -50,12 +50,13 @@ int main(void) {
 
   while (1) {
     if (!jshIsUSBSERIALConnected()) {
-      jshPinOutput(LED2_PININDEX, 0);
+      setLEDs(0b0101);
       // reset, led off
     } else {
       int f = (flashy>>9) & 0x7F;
       if (f&0x40) f=128-f;
-      jshPinOutput(LED3_PININDEX, ((flashy++)&0xFF)<f);
+      setLEDs((((flashy++)&0xFF)<f) ? 4 : 0);
+
       // flash led
       int d = getc();
       if (d>=0) { // if we have data
@@ -125,16 +126,32 @@ int main(void) {
               nBytesMinusOne = getc_blocking();
               for (i=0;i<=nBytesMinusOne;i++)
                 buffer[i] = getc_blocking();
-              chksum = getc_blocking();
+              chksum = getc_blocking(); // FIXME found to be stalled here
               setLEDs(1); // red = write
               // TODO: check checksum and (nBytesMinusOne+1)&3==0
-              FLASH_UnlockBank1();
+              #ifdef STM32API2
+                FLASH_Unlock();
+              #else
+                FLASH_UnlockBank1();
+              #endif
+              #if defined(STM32F2) || defined(STM32F4)
+                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                                FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+              #elif defined(STM32F3)
+                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+              #else
+                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+              #endif
               for (i=0;i<=nBytesMinusOne;i+=4) {
                 unsigned int realaddr = addr+i;
                 if (realaddr >= (FLASH_START+BOOTLOADER_SIZE)) // protect bootloader
                   FLASH_ProgramWord(realaddr, *(unsigned int*)&buffer[i]);
               }
-              FLASH_LockBank1();
+              #ifdef STM32API2
+                FLASH_Lock();
+              #else
+                FLASH_LockBank1();
+              #endif
               setLEDs(0); // off
               putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
               break;
@@ -147,10 +164,28 @@ int main(void) {
               if (nPages == 0xFFFF) {
                 // all pages (except us!)
                 setLEDs(1); // red =  write
-                FLASH_UnlockBank1();
-                for (i=BOOTLOADER_SIZE;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE)
+                #ifdef STM32API2
+                  FLASH_Unlock();
+                #else
+                  FLASH_UnlockBank1();
+                #endif
+                #if defined(STM32F2) || defined(STM32F4)
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+                #elif defined(STM32F3)
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+                #else
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+                #endif
+                for (i=BOOTLOADER_SIZE;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE) {
+                  setLEDs(1 << (i%3)); // R,G,B,etc
                   FLASH_ErasePage((uint32_t)(FLASH_START + i));
-                FLASH_LockBank1();
+                }
+                #ifdef STM32API2
+                  FLASH_Lock();
+                #else
+                  FLASH_LockBank1();
+                #endif
                 setLEDs(0); // off
                 putc(ACK);
               } else {

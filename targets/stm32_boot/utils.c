@@ -27,7 +27,9 @@ int txHead=0, txTail=0;
 
 uint16_t stmPin(Pin ipin) {
   JsvPinInfoPin pin = JSH_PIN0;
-  if (ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
+  if (ipin > JSH_PORTF_OFFSET) pin = ipin-JSH_PORTF_OFFSET;
+  else if (ipin > JSH_PORTE_OFFSET) pin = ipin-JSH_PORTE_OFFSET;
+  else if (ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
   else if (ipin > JSH_PORTC_OFFSET) pin = ipin-JSH_PORTC_OFFSET;
   else if (ipin > JSH_PORTB_OFFSET) pin = ipin-JSH_PORTB_OFFSET;
   else if (ipin > JSH_PORTA_OFFSET) pin = ipin-JSH_PORTA_OFFSET;
@@ -35,7 +37,9 @@ uint16_t stmPin(Pin ipin) {
 }
 
 GPIO_TypeDef *stmPort(Pin ipin) {
-  if (ipin > JSH_PORTD_OFFSET) return GPIOD;
+  if (ipin > JSH_PORTF_OFFSET) return GPIOF;
+  else if (ipin > JSH_PORTE_OFFSET) return GPIOE;
+  else if (ipin > JSH_PORTD_OFFSET) return GPIOD;
   else if (ipin > JSH_PORTC_OFFSET) return GPIOC;
   else if (ipin > JSH_PORTB_OFFSET) return GPIOB;
   //else if (ipin > JSH_PORTA_OFFSET) return GPIOA;
@@ -44,22 +48,41 @@ GPIO_TypeDef *stmPort(Pin ipin) {
 
 bool jshPinGetValue(Pin pin) {
   GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_InitStructure.GPIO_Pin = stmPin(pin);
+#ifdef STM32API2
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
   GPIO_Init(stmPort(pin), &GPIO_InitStructure);
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
 void jshPinOutput(Pin pin, bool value) {
   GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Pin = stmPin(pin);
+#ifdef STM32API2
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+#endif
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(stmPort(pin), &GPIO_InitStructure);
-  if (value)
-    stmPort(pin)->BSRR = stmPin(pin);
-  else
-    stmPort(pin)->BRR = stmPin(pin);
+
+#ifdef STM32API2
+    if (value)
+      GPIO_SetBits(stmPort(pin), stmPin(pin));
+    else
+      GPIO_ResetBits(stmPort(pin), stmPin(pin));
+#else
+    if (value)
+      stmPort(pin)->BSRR = stmPin(pin);
+    else
+      stmPort(pin)->BRR = stmPin(pin);
+#endif
 }
 
 void USB_LP_CAN1_RX0_IRQHandler(void)
@@ -93,6 +116,7 @@ int jshGetCharToTransmit(IOEventFlags device) {
 void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   rxBuffer[rxHead] = charData;
   rxHead = (rxHead+1) & BUFFERMASK;
+  //if (rxHead == rxTail) weHaveOverFlowed();
 }
 
 bool jshHasEventSpaceForChars(int n) {
@@ -101,7 +125,7 @@ bool jshHasEventSpaceForChars(int n) {
 
 int getc() {
   if (rxHead == rxTail) return -1;
-  char d = rxBuffer[rxTail];
+  unsigned char d = (unsigned char)rxBuffer[rxTail];
   rxTail = (rxTail+1) & BUFFERMASK;
   return d;
 }
@@ -118,17 +142,39 @@ void putc(char charData) {
 }
 
 void initHardware() {
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
-  RCC_APB2PeriphClockCmd(
-        RCC_APB2Periph_ADC1 |
-        RCC_APB2Periph_GPIOA |
-        RCC_APB2Periph_GPIOB |
-        RCC_APB2Periph_GPIOC |
-        RCC_APB2Periph_GPIOD |
-        RCC_APB2Periph_GPIOE |
-        RCC_APB2Periph_GPIOF |
-        RCC_APB2Periph_GPIOG |
-        RCC_APB2Periph_AFIO, ENABLE);
+#if defined(STM32F3)
+ RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+ RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
+                        RCC_AHBPeriph_GPIOA |
+                        RCC_AHBPeriph_GPIOB |
+                        RCC_AHBPeriph_GPIOC |
+                        RCC_AHBPeriph_GPIOD |
+                        RCC_AHBPeriph_GPIOE |
+                        RCC_AHBPeriph_GPIOF, ENABLE);
+#elif defined(STM32F2) || defined(STM32F4)
+ RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+ RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
+                        RCC_AHB1Periph_GPIOB |
+                        RCC_AHB1Periph_GPIOC |
+                        RCC_AHB1Periph_GPIOD |
+                        RCC_AHB1Periph_GPIOE |
+                        RCC_AHB1Periph_GPIOF |
+                        RCC_AHB1Periph_GPIOG |
+                        RCC_AHB1Periph_GPIOH, ENABLE);
+#else
+ RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+ RCC_APB2PeriphClockCmd(
+       RCC_APB2Periph_ADC1 |
+       RCC_APB2Periph_GPIOA |
+       RCC_APB2Periph_GPIOB |
+       RCC_APB2Periph_GPIOC |
+       RCC_APB2Periph_GPIOD |
+       RCC_APB2Periph_GPIOE |
+       RCC_APB2Periph_GPIOF |
+       RCC_APB2Periph_GPIOG |
+       RCC_APB2Periph_AFIO, ENABLE);
+#endif
+
   RCC_PCLK1Config(RCC_HCLK_Div8); // PCLK1 must be >8 Mhz for USB to work
   RCC_PCLK2Config(RCC_HCLK_Div16);
 
