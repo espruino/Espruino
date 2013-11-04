@@ -126,7 +126,10 @@ volatile unsigned char ioHead=0, ioTail=0;
 
 
 void jshIOEventOverflowed() {
-  // TODO: error here?
+  // Error here - just light LED as we can't do much else right now
+#ifdef LED1_PININDEX
+  jshPinOutput(LED1_PININDEX, 1);
+#endif
 }
 
 
