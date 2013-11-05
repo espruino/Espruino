@@ -18,6 +18,7 @@ import json;
 import sys;
 import os;
 import importlib;
+import common;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
@@ -196,6 +197,7 @@ else:
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   codeOut("#define FLASH_PAGES                     "+str(flash_pages))
+  codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
 codeOut("");
 codeOut("#define USARTS                          "+str(board.chip["usart"]))
 codeOut("#define SPIS                            "+str(board.chip["spi"]))

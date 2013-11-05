@@ -175,7 +175,7 @@ void initHardware() {
        RCC_APB2Periph_AFIO, ENABLE);
 #endif
 #ifdef ESPRUINOBOARD
-  // reclaim A13 and A14 (do we need the two above now?)
+  // reclaim A13 and A14 for the LEDs
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
 #endif
 
@@ -184,7 +184,7 @@ void initHardware() {
 
   // if button is not set, jump to this address
   if (jshPinGetValue(BTN1_PININDEX) != BTN1_ONSTATE) {
-    unsigned int *ResetHandler = (unsigned int *)(0x08002800 + 4);
+    unsigned int *ResetHandler = (unsigned int *)(0x08000000 + BOOTLOADER_SIZE + 4);
     void (*startPtr)() = *ResetHandler;
     startPtr();
   }

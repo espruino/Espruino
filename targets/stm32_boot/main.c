@@ -24,7 +24,6 @@
 #define CMD_EXTERASE (0x44)
 
 #define FLASH_START 0x08000000
-#define BOOTLOADER_SIZE (10*1024)
 
 #define ACK (0x79)
 #define NACK (0x1F)
@@ -39,7 +38,9 @@ typedef enum {
 void setLEDs(int l) {
   jshPinOutput(LED1_PININDEX, l&1);
   jshPinOutput(LED2_PININDEX, (l>>1)&1);
+#ifdef LED3_PININDEX
   jshPinOutput(LED3_PININDEX, (l>>2)&1);
+#endif
 }
 
 int main(void) {

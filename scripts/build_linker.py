@@ -18,6 +18,7 @@ import json;
 import sys;
 import os;
 import importlib;
+import common;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
@@ -63,7 +64,7 @@ board = importlib.import_module(boardname)
 linkerFile = open(linkerFilename, 'w')
 def codeOut(s): linkerFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
-BOOTLOADER_SIZE = 10*1024
+BOOTLOADER_SIZE = common.get_bootloader_size();
 RAM_BASE = 0x20000000;
 FLASH_BASE = 0x08000000;
 RAM_SIZE = board.chip["ram"]*1024;

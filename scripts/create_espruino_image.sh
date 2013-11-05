@@ -12,18 +12,28 @@
 # Creates a binary file containing both Espruino and the bootloader
 # ----------------------------------------------------------------------------------------
 
-BOOTLOADER=1 RELEASE=1 ESPRUINO_1V1=1 make clean
-BOOTLOADER=1 RELEASE=1 ESPRUINO_1V1=1 make || { echo 'Build failed' ; exit 1; }
-
-# TODO: use RELEASE=1 here
-ESPRUINO_1V1=1 make clean
-ESPRUINO_1V1=1 make || { echo 'Build failed' ; exit 1; }
-
+cd `dirname $0` # scripts
+cd ..            # main dir
+BASEDIR=`pwd`
 
 ESPRUINOFILE=espruino_espruino_1v1.bin
 BOOTLOADERFILE=bootloader_espruino_1v1.bin
 IMGFILE=espruino_full.bin
-BOOTLOADERSIZE=10240
+rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
+
+export ESPRUINO_1V1=1
+# export DEBUG=1
+export RELEASE=1
+
+BOOTLOADER=1 make clean
+BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }
+
+make clean
+make || { echo 'Build failed' ; exit 1; }
+
+cd $BASEDIR/scripts
+BOOTLOADERSIZE=`python -c "import common;print common.get_bootloader_size()"`
+cd $BASEDIR
 IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
 
 echo ---------------------
@@ -32,18 +42,19 @@ echo Image Size = $IMGSIZE
 echo ---------------------
 echo Create blank image
 echo ---------------------
-tr "\000" "\377" < /dev/zero | dd bs=1 count=$IMGSIZE of=$IMGFILE
+tr "\000" "\377" < /dev/zero | dd bs=1 count=$IMGSIZE of=$IMGFILE || { echo 'Build failed' ; exit 1; }
 
 echo Add bootloader
 echo ---------------------
-dd bs=1 if=$BOOTLOADERFILE of=$IMGFILE conv=notrunc
+dd bs=1 if=$BOOTLOADERFILE of=$IMGFILE conv=notrunc || { echo 'Build failed' ; exit 1; }
 
 echo Add espruino
 echo ---------------------
-dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc
+dd bs=1 seek=$BOOTLOADERSIZE if=$ESPRUINOFILE of=$IMGFILE conv=notrunc || { echo 'Build failed' ; exit 1; }
 
 echo ---------------------
 echo Finished! Written to $IMGFILE
 echo ---------------------
 
-python scripts/stm32loader.py -ewv espruino_full.bin
+echo python scripts/stm32loader.py -b 460800 -ewv $IMGFILE
+python scripts/stm32loader.py -b 460800 -ewv $IMGFILE

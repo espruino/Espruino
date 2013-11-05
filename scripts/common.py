@@ -140,3 +140,6 @@ def get_version():
 def get_name_or_space(jsondata):
         if "name" in jsondata: return jsondata["name"]
         return ""
+
+def get_bootloader_size():
+        return 10*1024;
