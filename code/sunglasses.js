@@ -5,24 +5,24 @@ var moveServo = function (p) {
 };
 var on = 0;
 var setOn = function () {
-  on=true; 
+  on=true;
   digitalWrite(LED1,1);
- 
+
   setTimeout("digitalWrite(LED1,0)",1000);
   moveServo(2);
 };
 var setOff = function () {
-  on=false; 
+  on=false;
   digitalWrite(LED2,1);
- 
+
   setTimeout("digitalWrite(LED2,0)",1000);
   moveServo(1);
 };
 var test = function () {
  digitalWrite(A0,0);
- digitalWrite(A2,1); 
+ digitalWrite(A2,1);
  average=average*0.8 + 0.2*analogRead(A1);
- if (!on && average<0.4) setOn(); 
+ if (!on && average<0.4) setOn();
  if (on && average>0.5) setOff();
 };
 

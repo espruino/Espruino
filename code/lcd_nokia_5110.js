@@ -1,7 +1,7 @@
-function LCD() {                          
-  this.DC = B6;                       
-  this.CE = B7;                  
-  this.RST = B8;            
+function LCD() {
+  this.DC = B6;
+  this.CE = B7;
+  this.RST = B8;
   digitalPulse(this.RST, 0, 10); // pulse reset low
   SPI1.setup({ baud: 1000000, sck:B3, mosi:B5 });
 }
@@ -57,8 +57,8 @@ LCD.prototype.clear = function () {
 
 // was working - now not??
 var lcd = new LCD();
-lcd.init() 
-for (var i=0;i<48;i++) lcd.setPixel(47-i,i,1) 
+lcd.init()
+for (var i=0;i<48;i++) lcd.setPixel(47-i,i,1)
 
 
 for (var y=0;y<48;y++) {
@@ -75,17 +75,17 @@ for (var y=0;y<48;y++) {
    Xr=t;
    i++;
   }
-  lcd.setPixel(x,y,i&1);                      
+  lcd.setPixel(x,y,i&1);
  }
-} 
+}
 
 // ---------------------------------------------------------------------------------
 
 var LCD = Graphics.createArrayBuffer(84,48,1,{vertical_byte:true});
 LCD.init = function () {
-  this.DC = B6;                       
-  this.CE = B7;                  
-  this.RST = B8;            
+  this.DC = B6;
+  this.CE = B7;
+  this.RST = B8;
   SPI1.setup({ baud: 200000, sck:B3, mosi:B5 });
   digitalPulse(this.RST, 0, 10); // pulse reset low
   setTimeout(function() {
@@ -99,16 +99,16 @@ LCD.init = function () {
         0x08 | 0x04], this.CE); // dispctl normal
   }, 100);
 };
-LCD.flip = function () {    
- for (var i=0;i<6;i++) {  
+LCD.flip = function () {
+ for (var i=0;i<6;i++) {
   digitalWrite(this.DC,0); // cmd
   SPI1.send(0x40|i, this.CE); // Y addr
-  SPI1.send(0x80, this.CE); // X addr          
+  SPI1.send(0x80, this.CE); // X addr
   digitalWrite(this.DC,1); // data
   SPI1.send(new Uint8Array(this.buffer,i*84,84+2), this.CE);
  }
  // Why +2 in SPI.send? Maybe it needs some time to sort itself out
-}  
+}
 
 LCD.init();
 LCD.clear();LCD.setFontVector(30);LCD.drawString("Hello");LCD.flip();

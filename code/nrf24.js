@@ -7,7 +7,7 @@ function NRF(sck, miso, mosi, csn, ce, payload) {
   this.SPI = SPI1;
   this.SPI.setup({sck:SCK, miso:MISO, mosi:MOSI});
 }
-NRF.prototype.C = { 
+NRF.prototype.C = {
 CONFIG      :0x00,
 STATUS      :0x07,
 CD          :0x09,
@@ -23,12 +23,12 @@ W_TX_PAYLOAD:0xA0,
 FLUSH_TX:0xE1,
 FLUSH_RX:0xE2 };
 NRF.prototype.init = function(rxAddr, txAddr) {
-  digitalWrite(this.CE,0); 
-  digitalWrite(this.CSN,1); 
+  digitalWrite(this.CE,0);
+  digitalWrite(this.CSN,1);
   this.setRXAddr(rxAddr);
   this.setTXAddr(txAddr);
   this.setReg(this.C.RX_PW_P0, this.PAYLOAD);
-  this.setReg(this.C.RX_PW_P1, this.PAYLOAD); 
+  this.setReg(this.C.RX_PW_P1, this.PAYLOAD);
   this.setReg(this.C.CONFIG, this.BASE_CONFIG | 2/*PWR_UP*/ | 1/*PRIM_RX*/); // RX mode
   digitalWrite(this.CE,1); // set active
 }
@@ -48,15 +48,15 @@ NRF.prototype.setTXAddr = function(adr /* 5 byte array*/) {
   this.setAddr(this.C.TX_ADDR,adr);
 }
 NRF.prototype.getReg = function(reg) {
-    return this.SPI.send([this.C.R_REGISTER | reg, 0], this.CSN)[1]; 
+    return this.SPI.send([this.C.R_REGISTER | reg, 0], this.CSN)[1];
 }
 NRF.prototype.getAddr = function(reg) {
-     var data = this.SPI.send([this.C.R_REGISTER | reg, 0,0,0,0,0], this.CSN); 
+     var data = this.SPI.send([this.C.R_REGISTER | reg, 0,0,0,0,0], this.CSN);
      data.splice(0,1); // remove first
      return data;
 }
 NRF.prototype.getStatus = function(reg) {
-    return this.getReg(this.C.STATUS); 
+    return this.getReg(this.C.STATUS);
 }
 NRF.prototype.dataReady = function() {
   return (this.getReg(this.C.STATUS)&14/*RX_P_NO*/)!=14; // next payload
@@ -95,7 +95,7 @@ NRF.prototype.send = function(data/* array of length PAYLOAD */) {
 
 NRF.prototype.slaveHandler = function() {
   while (this.dataReady()) {
-    data = this.getData(); 
+    data = this.getData();
     for (var i in data) {
       var ch = data[i];
       if (ch==0 && this.cmd!="") {
@@ -110,9 +110,9 @@ NRF.prototype.slaveHandler = function() {
       } else if (ch!=0) {
         this.cmd += String.fromCharCode(ch);
       }
-    }                          
+    }
   }
-} 
+}
 NRF.prototype.masterHandler = function() {
   while (this.dataReady()) {
     data = this.getData();

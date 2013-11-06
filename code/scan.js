@@ -23,7 +23,7 @@ function step() {
  } else {
    if (dir>0) str=str+get();
    else str=get()+str;
- } 
+ }
  digitalPulse(servox,1,1+(x/40.0));
  digitalPulse(servoy,1,1+(y/20.0));
 }

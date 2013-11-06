@@ -54,13 +54,13 @@ var MAPS = {
    5,   6,  18,  20,  21,  21,  21,  21,
 ] ),
   fuel : new Float32Array( [
-0x1C, 0x0F, 0x0E, 0x0B, 0x0C, 0x0C, 0x13, 0x12, 
-0x1C, 0x10, 0x0E, 0x0C, 0x16, 0x17, 0x23, 0x2A, 
-0x1C, 0x1F, 0x1B, 0x1E, 0x1D, 0x26, 0x32, 0x33, 
+0x1C, 0x0F, 0x0E, 0x0B, 0x0C, 0x0C, 0x13, 0x12,
+0x1C, 0x10, 0x0E, 0x0C, 0x16, 0x17, 0x23, 0x2A,
+0x1C, 0x1F, 0x1B, 0x1E, 0x1D, 0x26, 0x32, 0x33,
 0x2E, 0x31, 0x27, 0x24, 0x24, 0x30, 0x3F, 0x3D,
 0x37, 0x3E, 0x2F, 0x35, 0x39, 0x49, 0x48, 0x46,
-0x43, 0x45, 0x45, 0x4F, 0x55, 0x52, 0x4C, 0x44, 
-0x4D, 0x45, 0x51, 0x55, 0x58, 0x53, 0x4F, 0x48, 
+0x43, 0x45, 0x45, 0x4F, 0x55, 0x52, 0x4C, 0x44,
+0x4D, 0x45, 0x51, 0x55, 0x58, 0x53, 0x4F, 0x48,
 0x4D, 0x4C, 0x5A, 0x56, 0x55, 0x52, 0x4E, 0x48,
 ] ),
   inl : new Int8Array( [
@@ -81,23 +81,23 @@ var MAPS = {
    0,   7,  10,  12,  17,  11,  10,  10,
    0,   7,  10,  12,  17,  11,  10,  10,
    0,   7,  10,  12,  17,  11,  10,  10,
-   0,   7,  10,  12,  17,  11,  10,  10, 
+   0,   7,  10,  12,  17,  11,  10,  10,
 ] )
 };
 
 
-function watchInlet(e) {                                                               
-  ECU.pInl = Math.wrap(Trig.getPosAtTime(e.time),180);                                 
-  var diff = ECU.pInl - ECU.expInl;                                                    
-  ECU.drvInl = 0.8 + (diff / 10);                                                      
-  analogWrite(PINS.oInl, ECU.drvInl);                                                  
-}                                                                                      
-function watchExhaust(e) {                                                             
-  ECU.pExh = Math.wrap(Trig.getPosAtTime(e.time)+90,180)-90;                           
-  var diff = ECU.expExh - ECU.pExh;                                                    
-  ECU.drvExh = 0.8 + (diff / 10);                                                      
-  analogWrite(PINS.oExh, ECU.drvExh);                                                  
-}    
+function watchInlet(e) {
+  ECU.pInl = Math.wrap(Trig.getPosAtTime(e.time),180);
+  var diff = ECU.pInl - ECU.expInl;
+  ECU.drvInl = 0.8 + (diff / 10);
+  analogWrite(PINS.oInl, ECU.drvInl);
+}
+function watchExhaust(e) {
+  ECU.pExh = Math.wrap(Trig.getPosAtTime(e.time)+90,180)-90;
+  var diff = ECU.expExh - ECU.pExh;
+  ECU.drvExh = 0.8 + (diff / 10);
+  analogWrite(PINS.oExh, ECU.drvExh);
+}
 
 // inl = 46 .. 96 (on)
 // exh = -2.5(off) .. 47(on)
@@ -119,11 +119,11 @@ function onTimer() {
   Trig.setTrigger(0,ECU.spkStart,[LED1,PINS.oCoil1,PINS.oCoil4],ECU.spkLen);
   Trig.setTrigger(1,180+ECU.spkStart,[LED3,PINS.oCoil2,PINS.oCoil3],ECU.spkLen);
   Trig.setTrigger(2,0,[PINS.oInj1,PINS.oInj2,PINS.oInj3,PINS.oInj4],ECU.fuel);
-  Trig.setTrigger(3,180,[PINS.oInj1,PINS.oInj2,PINS.oInj3,PINS.oInj4],ECU.fuel); 
+  Trig.setTrigger(3,180,[PINS.oInj1,PINS.oInj2,PINS.oInj3,PINS.oInj4],ECU.fuel);
   ECU.lambda = 7+15.25*(analogRead(PINS.aLambdaP) - analogRead(PINS.aLambdaM));
   if (ECU.RPM>500 && ECU.lambda>7.5)
-    ECU.trim = (ECU.trim*0.99) + (0.01*Math.clip(ECU.trim*ECU.lambda/15,0.05,0.2)); 
- 
+    ECU.trim = (ECU.trim*0.99) + (0.01*Math.clip(ECU.trim*ECU.lambda/15,0.05,0.2));
+
  var a = Trig.getErrorArray();
   if (a.length>0) print(JSON.stringify(a));
 }
@@ -242,4 +242,4 @@ setInterval(step,500);
         ["TRIG_IN_PAST","MISSED_TRIG_TOOTH","WHEEL_MISSED_TOOTH","WHEEL_GAINED_TOOTH","WHEEL_MISSED_TRIG_TOOTH","TRIG_TOOTH_CHANGED"]
         ["TRIG_IN_PAST","MISSED_TRIG_TOOTH","WHEEL_MISSED_TOOTH","WHEEL_GAINED_TOOTH","WHEEL_MISSED_TRIG_TOOTH","TRIG_TOOTH_CHANGED"]
         ["TRIG_IN_FUTURE","TRIG_IN_PAST","MISSED_TRIG_TOOTH","WHEEL_MISSED_TOOTH","WHEEL_GAINED_TOOTH","WHEEL_MISSED_TRIG_TOOTH","TRIG_TOOTH_CHANGED"]
-        >               
+        >

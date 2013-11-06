@@ -18,9 +18,9 @@ var leds = Graphics.createArrayBuffer(16,16,24,{zigzag:true});
 leds.flip = function() { SPI2.send4bit(leds.buffer, 0b0001, 0b0011); }
 
 function onInit() {
-  I2C1.setup({scl:B6,sda:B7}); 
+  I2C1.setup({scl:B6,sda:B7});
   I2C1.writeTo(0x52, [0xF0,0x55])                                                                                                                   ;
-  I2C1.writeTo(0x52, [0xFB,0x00])         
+  I2C1.writeTo(0x52, [0xFB,0x00])
   SPI2.setup({baud:1600000, mosi:B15});
 }
 onInit();

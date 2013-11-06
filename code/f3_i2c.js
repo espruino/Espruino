@@ -28,10 +28,10 @@ I2C1.setup({scl:B6, sda:B7});var ACC=0x32>>1;
 I2C1.writeTo(ACC, [0x20, 0x27])
 I2C1.writeTo(ACC, 0x28 | 0x80);I2C1.readFrom(ACC, 6)
 
-peek32(0x40005418) // ISR 
+peek32(0x40005418) // ISR
 
 
-#define PERIPH_BASE           ((uint32_t)0x40000000) 
+#define PERIPH_BASE           ((uint32_t)0x40000000)
 #define I2C1_BASE             (APB1PERIPH_BASE + 0x00005400)
 #define I2C_Register_ISR                ((uint8_t)0x18)
 
@@ -56,7 +56,7 @@ I2C.prototype.readAcc = function(reg,count) {
   // reconstruct 16 bit data
   var a = [d[0] | (d[1]<<8), d[2] | (d[3]<<8), d[4] | (d[5]<<8)];
   // deal with sign bit
-  if (a[0]>=32767) a[0]-=65536; 
+  if (a[0]>=32767) a[0]-=65536;
   if (a[1]>=32767) a[1]-=65536;
   if (a[2]>=32767) a[2]-=65536;
   return a;

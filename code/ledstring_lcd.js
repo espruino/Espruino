@@ -3,7 +3,7 @@
 
 var col = {r:127,g:127,b:127};
 
-var onInit = function () {  
+var onInit = function () {
   SPI1.setup({sck:A5,miso:A6,mosi:A7})
   SPI1.send([0x90,0],A4); // just wake the controller up
   SPI2.setup({baud:1600000,mosi:B15});//B14.reset();
@@ -37,8 +37,8 @@ function setBlendedCol() {
 
 var touchFunc = function () {
   if (!digitalRead(B6)) { // touch down
-    var d = SPI1.send([0x90,0,0xD0,0],A4);   
-    var pos = {x:(d[1]*256+d[2])*LCD.WIDTH/0x8000, 
+    var d = SPI1.send([0x90,0,0xD0,0],A4);
+    var pos = {x:(d[1]*256+d[2])*LCD.WIDTH/0x8000,
                y:(d[3]*256+d[4])*LCD.HEIGHT/0x8000};
     touchCallback(pos.x, pos.y);
     lastPos = pos;
@@ -79,7 +79,7 @@ function drawRGB() {
 }
 function getColRect(i) {
   var x = (i/4)|0;
-  var y = i - (x*4);   
+  var y = i - (x*4);
   return [x*60,y*60,(x+1)*60,(y+1)*60];
 }
 

@@ -9,9 +9,9 @@ var anim = [
 [0.6,0.3],
 [0.5,0.5],
 [0.3,0.7],
-[0.1,1],  
-[0.25,1], // press   
-[0,1],  
+[0.1,1],
+[0.25,1], // press
+[0,1],
 [0.3,0.7],
 [1,0],
 ];
@@ -22,7 +22,7 @@ function onPress(e) {
   lastPress = e.time;
   if (inAnim) {
     C6.reset(); // light off
-  } else { 
+  } else {
     // startanim
     C6.set(); // light on
     inAnim = true;
@@ -31,16 +31,16 @@ function onPress(e) {
   }
 }
 function onAnimStep() {
-  pos += 0.02; 
+  pos += 0.02;
   if (pos > anim.length) {
-    clearInterval(0); 
-    digitalWrite([LED1,LED2,LED3], 0); // off status 
+    clearInterval(0);
+    digitalWrite([LED1,LED2,LED3], 0); // off status
     inAnim = false;
-    return; 
-  } 
-  analogWrite(LED1, pos); 
-  analogWrite(LED2, pos-1);  
-  analogWrite(LED3, pos-2);  
+    return;
+  }
+  analogWrite(LED1, pos);
+  analogWrite(LED2, pos-1);
+  analogWrite(LED3, pos-2);
   var i = pos|0;
   var f = pos-i;
   if (i>anim.length-2) {

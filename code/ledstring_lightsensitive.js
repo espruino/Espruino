@@ -6,7 +6,7 @@ onInit();
 
 var light = 0.0; // an average
 
-function getPattern() {    
+function getPattern() {
   var lightInstant = analogRead(C1)*3;
   light = lightInstant*0.1 + light*0.9;
   var cols = [];
@@ -14,20 +14,20 @@ function getPattern() {
      var c = (-Math.abs(i-25)*10) + light*1024 - 200;
      if (c<0) c=0;
      if (c>255) c=255;
-     cols.push(c); 
+     cols.push(c);
      c = (-Math.abs(i-25)*10) + light*1024 - 450;
-     if (c<0) c=0; 
+     if (c<0) c=0;
      if (c>255) c=255;
      cols.push(c);
-     c = (-Math.abs(i-25)*10) + light*1024 - 600; 
-     if (c<0) c=0; 
+     c = (-Math.abs(i-25)*10) + light*1024 - 600;
+     if (c<0) c=0;
      if (c>255) c=255;
      cols.push(c);
   }
   return cols;
 }
 
-function doLights() {    
+function doLights() {
   SPI1.send4bit(getPattern(), 0b0001, 0b0011);
 }
 
@@ -55,10 +55,10 @@ SPI1.send4bit([0,0,255], 0b0001, 0b0011); // blue
 
 SPI1.send4bit([255,255,255], 0b0001, 0b0011); // white
 
-function getPattern() {    
+function getPattern() {
   var cols = [];
   for (var i=0;i<50;i++) {
-     cols.push(i*5); 
+     cols.push(i*5);
      cols.push(i*5);
      cols.push(i*5);
   }
@@ -67,7 +67,7 @@ function getPattern() {
 
 
 
-function doLights() {    
+function doLights() {
   SPI1.send4bit(getPattern(), 0b0001, 0b0011);
 }
 

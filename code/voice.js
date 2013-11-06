@@ -8,8 +8,8 @@ Serial3.onData(function(e) {
   } else {
     print(command);
     if (command=="red") LED1.set();
-    if (command=="green") LED2.set();    
-    if (command=="blue") LED3.set();        
+    if (command=="green") LED2.set();
+    if (command=="blue") LED3.set();
     if (command=="off") { LED1.reset(); LED2.reset(); LED3.reset(); }
   }
 });

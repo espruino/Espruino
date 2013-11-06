@@ -2,7 +2,7 @@
 
 function getTemp() {
   digitalWrite(D0,0);
-  digitalWrite(D2,1);  
+  digitalWrite(D2,1);
   var val = analogRead(D1);
   var ohms = 5600*val/(1-val);
   var A = 0.00128463;

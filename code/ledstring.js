@@ -4,7 +4,7 @@
 C5.reset();
 
 
-SPI1.setup({baud:1600000}); 
+SPI1.setup({baud:1600000});
 
 function handle(data) {
   var l = data.length;
@@ -15,7 +15,7 @@ function handle(data) {
     res = res + chs.charAt((c>>6)&3) + chs.charAt((c>>4)&3)  + chs.charAt((c>>2)&3) + chs.charAt(c&3);
   }
   return res;
-} 
+}
 
 function p(data) {
   var l = data.length;
@@ -49,7 +49,7 @@ setInterval(timer,100);
 
 
 function testspi() {
- SPI1.setup({baud:3200000}); 
+ SPI1.setup({baud:3200000});
  var cols = "";
  for (var i=0;i<50;i++) {
     cols += "\xFF\x7F\x20";
@@ -61,7 +61,7 @@ function testspi() {
 
 
 
-SPI1.setup({baud:3200000}); 
+SPI1.setup({baud:3200000});
 var pos = 0;
 function timer() {
  pos++;
@@ -80,7 +80,7 @@ setInterval(timer,50);
 
 C5.reset();
 SPI1.setup({baud:3200000});
-// SPI1.setup({baud:3200000,mosi:D11});D10.reset();  
+// SPI1.setup({baud:3200000,mosi:D11});D10.reset();
 var pos = 0;
 function timer() {
  pos++;
@@ -118,10 +118,10 @@ function timer() {
  }
 
 
-function getPattern() {    
+function getPattern() {
   var cols = [];
   for (var i=0;i<50;i++) {
-     cols.push(i*5); 
+     cols.push(i*5);
      cols.push(i*5);
      cols.push(i*5);
   }
@@ -129,7 +129,7 @@ function getPattern() {
 }
 
 var pos = 0;
-function getPattern() {    
+function getPattern() {
   pos++;
   var cols = [];
   for (var i=0;i<50;i++) {
@@ -141,28 +141,28 @@ function getPattern() {
 }
 
 
-function doLights() {    
+function doLights() {
   SPI1.send4bit(getPattern(), 0b0001, 0b0011);
 }
 
 var pos = 0;
-function getPattern() {    
+function getPattern() {
   pos++;
   var cols = "";
   for (var i=0;i<50;i++) {
-     cols += String.fromCharCode((1 + Math.sin((i+pos)*0.1324)) * 127) + 
-             String.fromCharCode((1 + Math.sin((i+pos)*0.1654)) * 127) + 
+     cols += String.fromCharCode((1 + Math.sin((i+pos)*0.1324)) * 127) +
+             String.fromCharCode((1 + Math.sin((i+pos)*0.1654)) * 127) +
              String.fromCharCode((1 + Math.sin((i+pos)*0.1)) * 127);
   }
   return cols;
 }
 
-function getPattern() {    
+function getPattern() {
   pos++;
   var cols = "";
   for (var i=0;i<50;i++) {
-     cols += String.fromCharCode(0) + 
-             String.fromCharCode(0) + 
+     cols += String.fromCharCode(0) +
+             String.fromCharCode(0) +
              String.fromCharCode( Math.random()*255 );
   }
   return cols;
@@ -171,12 +171,12 @@ function getPattern() {
 
 
 // haloween
-function () {                  
-  amt += 0.05;     
-  var n = 0;      
-   for(var i=0;i<25;i++) { 
+function () {
+  amt += 0.05;
+  var n = 0;
+   for(var i=0;i<25;i++) {
     arr[n++] = 0;
-    arr[n++] = Math.clip(90*Math.sin(0.5*i+amt) + 128 + 90*Math.sin((0.3*i-amt)*3.2324), 0, 255);                
+    arr[n++] = Math.clip(90*Math.sin(0.5*i+amt) + 128 + 90*Math.sin((0.3*i-amt)*3.2324), 0, 255);
     arr[n++] = 0;
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);

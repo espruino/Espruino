@@ -12,19 +12,19 @@ var IMG = (
 "11111110");
 
 var pos = 0;
-function onDigit(e) { 
+function onDigit(e) {
   digitalWrite(LEDS, (IMG[pos]=="1") ? 255 : 0);
   pos++;
 }
 var digitInterval = setInterval(onDigit, 10);
 
-function onFanMovement(e) { 
+function onFanMovement(e) {
   var d = e.time-lastTime;
-  lastTime = e.time;  
+  lastTime = e.time;
   pos = 0;
   changeInterval(digitInterval, 1000*d/(7*8));
 }
-setWatch(onFanMovement, FAN_SPEED_IN, { repeat: true, edge: 'falling' }); 
+setWatch(onFanMovement, FAN_SPEED_IN, { repeat: true, edge: 'falling' });
 digitalWrite(FAN_SPEED_OUT,0)
 
 var IMG = (

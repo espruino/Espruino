@@ -1,7 +1,7 @@
 function onInit() {
-  I2C1.setup({scl:B6,sda:B7}); 
+  I2C1.setup({scl:B6,sda:B7});
   I2C1.writeTo(0x52, [0xF0,0x55])                                                                                                                   ;
-  I2C1.writeTo(0x52, [0xFB,0x00])         
+  I2C1.writeTo(0x52, [0xFB,0x00])
 }
 
 function read() {

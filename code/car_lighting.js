@@ -1,6 +1,6 @@
 SPI1.setup({baud:3200000, mosi:A7});
-var arr = [255,0,0,255,0,0,255,0,0,255,0,0,255,0,0,255,0,0,255,0,0];   
-setInterval("SPI1.send4bit(arr, 0b0001, 0b0011);", 200) 
+var arr = [255,0,0,255,0,0,255,0,0,255,0,0,255,0,0,255,0,0,255,0,0];
+setInterval("SPI1.send4bit(arr, 0b0001, 0b0011);", 200)
 
 
 SPI1.setup({baud:3200000, mosi:A7});
@@ -29,25 +29,25 @@ function () {
 
 // --------------------------------------------------------------------------------------
 var arr = new Uint8Array(75);
-         
-function () {                  
-  amt += dir;     
+
+function () {
+  amt += dir;
   if (amt < 0) {
     amt = 0;
-  } else if (amt > 1.5 && dir>0) { 
+  } else if (amt > 1.5 && dir>0) {
     amt = 3;
     dir = 0;
   } else {
     if (!BTN1.read()) dir = -0.01;
   }
   if (amt<1 && BTN1.read()) dir = 0.04;
-    
 
-  var n = 0;      
+
+  var n = 0;
    for(var i=0;i<25;i++) {
-    var c = 255*(2*amt - (Math.abs(i-12.5)/12.5 +0.5));    
+    var c = 255*(2*amt - (Math.abs(i-12.5)/12.5 +0.5));
     arr[n++] = Math.clip(256+c*2, 0, 255);
-    arr[n++] = Math.clip(64+c, 0, 255);                
+    arr[n++] = Math.clip(64+c, 0, 255);
     arr[n++] = Math.clip(c/2, 0, 255);
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);

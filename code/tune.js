@@ -22,7 +22,7 @@ function step() {
   else if (ch=='F') freq(698.46);
   else if (ch=='G') freq(783.99);
 }
-function freq(freq) { 
+function freq(freq) {
   if (freq==0) digitalWrite(BUZZER,0);
   else analogWrite(BUZZER, 0.5, { freq: freq } );
 }

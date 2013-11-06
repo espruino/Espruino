@@ -19,36 +19,36 @@ setWatch(function() {
 
 
 
-var count = 0;                                                                                         
-setWatch(function () {                                                                                 
- if (!digitalRead("A0")) return;                                                                       
+var count = 0;
+setWatch(function () {
+ if (!digitalRead("A0")) return;
  print(count);
  count++;
-}, "A0", 1);    
+}, "A0", 1);
 
 // measure the time between button presses
 var downTime = 0;
-setWatch(function(x) { 
-  if (digitalRead("A0")) 
+setWatch(function(x) {
+  if (digitalRead("A0"))
     downTime = x.time;
   else
-    print(x.time - downTime); 
+    print(x.time - downTime);
 }, "A0", true);
 
 // flash 4 lights on stm32f4 around
 var n=1;
-setInterval(function () { 
- n=n>>1; 
- if (n==0) n=16; 
- digitalWrite(["D12","D13","D14","D15"],n); 
+setInterval(function () {
+ n=n>>1;
+ if (n==0) n=16;
+ digitalWrite(["D12","D13","D14","D15"],n);
 },50);
 
 
 // just write different analog values...
 analogWrite("D12",0.5);
-analogWrite("D13",0.25);  
-analogWrite("D14",0.75); 
-analogWrite("D15",1); 
+analogWrite("D13",0.25);
+analogWrite("D14",0.75);
+analogWrite("D15",1);
 
 var ramp = [0,0.05,0.2,0.3,0.5,1,0.5,0.3,0.2,0.05];
 var c = 0;
@@ -71,9 +71,9 @@ setInterval(next,50);
 analogWrite("C9",0.1);
 
 analogWrite("D12",0.5);
-analogWrite("D13",0.25);  
-analogWrite("D14",0.75); 
-analogWrite("D15",1); 
+analogWrite("D13",0.25);
+analogWrite("D14",0.75);
+analogWrite("D15",1);
 
 var ramp = [0,0.05,0.2,0.3,0.5,1,0.5,0.3,0.2,0.05];
 var c = 0;
@@ -146,7 +146,7 @@ setInterval("step();pulse();", 50);
 
 var test = function () {
  digitalWrite(A0,0);digitalWrite(A2,1); average=average*0.9 + 0.1*analogRead(A1);
- if (!on && average<0.4) setOn(); 
+ if (!on && average<0.4) setOn();
  if (on && average>0.5) setOff();
 };
 var on = 1;

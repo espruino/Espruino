@@ -21,14 +21,14 @@ setInterval(function() {
  digitalPulse("A2",1,1+coords[1]);
 },20);
 
-setWatch(function() { 
-  if (digitalRead("A0")) { 
-    digitalWrite("C9",1); 
-    setTimeout(function() { 
+setWatch(function() {
+  if (digitalRead("A0")) {
+    digitalWrite("C9",1);
+    setTimeout(function() {
       digitalWrite("C9", 0);
-      setTimeout(function() { 
+      setTimeout(function() {
         digitalWrite("C9", 1);
-        setTimeout(function() { 
+        setTimeout(function() {
           digitalWrite("C9", 0);
         }, 301);
       }, 302);

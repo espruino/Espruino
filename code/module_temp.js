@@ -19,14 +19,14 @@ function onTimer() {
 }
 
 
-var history = new Float32Array(84); 
+var history = new Float32Array(84);
 
 function onTimer() {
  var t = sensor.getTemp();
  var tStr = ""+t;
  tStr = tStr.substring(0,4);
 
- for (i in history) history[i] = history[i+1]; 
+ for (i in history) history[i] = history[i+1];
  history[history.length-1] = t;
 
  g.clear();

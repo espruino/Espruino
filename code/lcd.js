@@ -7,7 +7,7 @@ function LCD(rs,en,d4,d5,d6,d7) {
  this.en = en;
  digitalWrite(this.rs, 0);
  digitalWrite(this.en, 0);
- this.write(0x33,1); 
+ this.write(0x33,1);
  this.write(0x32,1);
  this.write(0x28,1);
  this.write(0x0C,1);
@@ -32,9 +32,9 @@ LCD.prototype.cursorFull = function() { this.write(0x0F,1); }
 /** small line under the current cursor */
 LCD.prototype.cursorUnder = function() { this.write(0x0E,1); }
 /** set cursor pos, top left = 0,0 */
-LCD.prototype.setCursor = function(x,y) { var l=[0x00,0x40,0x14,0x54];this.write(0x80|(l[y]+x),1); } 
+LCD.prototype.setCursor = function(x,y) { var l=[0x00,0x40,0x14,0x54];this.write(0x80|(l[y]+x),1); }
 /** set special character 0..7, data is an array(8) of bytes, and then return to home addr */
-LCD.prototype.createChar = function(ch, data) { 
+LCD.prototype.createChar = function(ch, data) {
   this.write(0x40 | ((ch&7) << 3), 1);
   for (var i=0; i<8; i++) this.write(data[i]);
   this.write(0x80,1);
@@ -52,28 +52,28 @@ LCD.prototype.bigInit = function() {
   this.createChar(6,[31,31,31,31,30,28,24,16]);
   this.createChar(7,[31,31,31,31,15,7,3,1]);
 }
-LCD.prototype.bigNum = function(x, num) { 
-  for (var y=0;y<4;y++) { 
+LCD.prototype.bigNum = function(x, num) {
+  for (var y=0;y<4;y++) {
     this.setCursor(x,y);
-    for (var n=0;n<3;n++) {   
+    for (var n=0;n<3;n++) {
       var c = this.bigChars[y].charAt(num*3+n);
       this.write(c==" "?32:parseInt(c));
     }
   }
 }
-LCD.prototype.bigDecimal = function(num) { 
+LCD.prototype.bigDecimal = function(num) {
   lcd.clear();lcd.bigNum(17,num%10);
   if (num>9) lcd.bigNum(14,(num/10)%10);
   if (num>99) lcd.bigNum(11,(num/100)%10);
   if (num>999) lcd.bigNum(8,(num/1000)%10);
   if (num>9999) lcd.bigNum(5,(num/10000)%10);
 }
-// ------------------------------------------------------- 
+// -------------------------------------------------------
 var onInit = function () { lcd = new LCD(A4,A5,A0,A1,A2,A3); lcd.bigInit(); };
 num=0;
 setInterval("num++;lcd.bigNum(17,num%10);if (num>9) lcd.bigNum(14,(num/10)%10);if (num>99) lcd.bigNum(11,(num/100)%10);if (num>999) lcd.bigNum(8,(num/1000)%10);if (num>9999) lcd.bigNum(5,(num/10000)%10);",500);
 
-// ------------------------------------------------------- 
+// -------------------------------------------------------
 // see http://arduino.cc/en/uploads/Tutorial/LCD_bb.png for wiring
 // VO can usually be grounded
 var lcd = new LCD(A4,A5,A0,A1,A2,A3);
@@ -82,20 +82,20 @@ lcd.print("Hello World");
 lcd.createChar(0,[
 0b11111,
 0b10001,
-0b10101,  
-0b10101, 
-0b10001, 
-0b10101,  
-0b10001,  
+0b10101,
+0b10101,
+0b10001,
+0b10101,
+0b10001,
 0b11111]);
 lcd.createChar(1,[
 0b11111,
 0b10001,
-0b10001,  
-0b10001, 
-0b10001, 
-0b10001,  
-0b10001,  
+0b10001,
+0b10001,
+0b10001,
+0b10001,
+0b10001,
 0b11111]);
 lcd.write(0);
 lcd.write(1);

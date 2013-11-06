@@ -96,11 +96,11 @@ setWatch(function(e) {
       ];
       var r = parseInt(Math.random()*patterns.length);
       var leds = new Uint8Array(12*3);
-      for (i in patterns[r]) {   
+      for (i in patterns[r]) {
         leds[1+patterns[r][i]*3] = 255; // green
         leds[2+patterns[r][i]*3] = 255; // blue
       }
-      SPI1.send4bit(leds, 0b0001, 0b0011);  
+      SPI1.send4bit(leds, 0b0001, 0b0011);
     }, speed);
   }
 }, FRONT_BUTTON, { repeat: true, edge: "rising" });
@@ -115,7 +115,7 @@ setWatch(function(e) {
     if (mode>3) mode=0;
     print(mode);
     // all LEDs off
-    SPI1.send4bit(new Uint8Array(12*3), 0b0001, 0b0011); 
+    SPI1.send4bit(new Uint8Array(12*3), 0b0001, 0b0011);
   } else {
     // short press - signal for animation to slow down and stop
     running = false;
@@ -146,11 +146,11 @@ setWatch(function(e) {
   // remove any animation that may have been happening
   clearInterval();
   // set up initial values
-  speed = 20; 
+  speed = 20;
   slowdown = 1.1 + Math.random()*0.1;
   running = true;
   // start animation...
-  setInterval(function() { 
+  setInterval(function() {
     if (!running) { // if the button was released...
       speed = speed * slowdown; // slow down
       changeInterval(0,speed); // use this to slow the timer

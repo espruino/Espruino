@@ -21,11 +21,11 @@ function onInit() {
 }
 
 var avrx=0.0, avry=0.0;
-function getAcc() {                                                                           
-  var accx = SPI1.send([0xA9,0], E3)[1];                                                  
-  var accy = SPI1.send([0xAB,0], E3)[1];                                                  
-  if (accx>127) accx-=256;                                                                
-  if (accy>127) accy-=256;                                                                
+function getAcc() {
+  var accx = SPI1.send([0xA9,0], E3)[1];
+  var accy = SPI1.send([0xAB,0], E3)[1];
+  if (accx>127) accx-=256;
+  if (accy>127) accy-=256;
   avrx = 0.1*accx + 0.9*avrx;
   avry = 0.1*accy + 0.9*avry;
   analogWrite(LED2, avrx/128.0);

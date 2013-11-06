@@ -8,13 +8,13 @@ var MOTORS = [B0,B1,A7,A6]; // pins for the motors
 var t1 = 0;
 var dist = 0;
 var inManouver = false;
- 
+
 // Get the distance from the sensor
 setWatch(function(e) { t1=e.time; }, ECHO, { repeat:true, edge:'rising'  });
 setWatch(function(e) { var dt=e.time-t1; dist = (dt*1000000)/57.0; },  ECHO, { repeat:true, edge:'falling' });
 // 20 times a second, trigger the distance sensor
 setInterval("digitalPulse(TRIG,1, 10/1000.0)",50);
- 
+
 // reverse, turn, and go forwards again
 function backup() {
   inManouver = true;
@@ -24,7 +24,7 @@ function backup() {
       setTimeout(function() {
         inManouver = false;
         digitalWrite(MOTORS, 6); // forward again
-      }, 500);       
+      }, 500);
   }, 500);
 }
 function forward() {
@@ -38,7 +38,7 @@ function onInit() {
 }
 function step() {
   // if we detect we're getting too close, turn around
-  if (dist < 20 && !inManouver) 
+  if (dist < 20 && !inManouver)
     backup();
 }
 
@@ -66,7 +66,7 @@ function backup() {
       setTimeout(function() {
         inManouver = false;
         forward();
-      }, 500);       
+      }, 500);
   }, 500);
 }
 function forward() {
@@ -82,7 +82,7 @@ function onInit() {
 }
 function step() {
   if (mode==0) {
-    if (dist < 20 && !inManouver) 
+    if (dist < 20 && !inManouver)
       backup();
   }
   if (mode==1) {
@@ -92,7 +92,7 @@ function step() {
     digitalWrite(MOTORS[0], d<-c);
     digitalWrite(MOTORS[1], d>c);
     digitalWrite(MOTORS[2], d<-c);
-    digitalWrite(MOTORS[3], d>c);  
+    digitalWrite(MOTORS[3], d>c);
   }
 }
 var led = undefined;
@@ -123,8 +123,8 @@ setWatch(onButton, A3, { repeat:true, edge:'rising' });
 // Pins for the motors
 var MOTORS = [B0,B1,A7,A6];
 // Pin values to set
-var GO = { FORWARD: 0b1010, BACK : 0b0101, LEFT : 0b0110, RIGHT : 0b1001 }; 
- 
+var GO = { FORWARD: 0b1010, BACK : 0b0101, LEFT : 0b0110, RIGHT : 0b1001 };
+
 function move(motorState, time) {
    digitalWrite(MOTORS, motorState);
    setTimeout("digitalWrite(MOTORS, 0);", 500);
@@ -133,10 +133,10 @@ function move(motorState, time) {
 Serial3.setup(9600);
 Serial3.onData(function(e) {
   var command = e.data;
-  if (command=="w") move(GO.FORWARD, 500); 
-  if (command=="s") move(GO.BACK, 500);  
-  if (command=="a") move(GO.LEFT, 500);  
-  if (command=="d") move(GO.RIGHT, 500);  
+  if (command=="w") move(GO.FORWARD, 500);
+  if (command=="s") move(GO.BACK, 500);
+  if (command=="a") move(GO.LEFT, 500);
+  if (command=="d") move(GO.RIGHT, 500);
 });
 
 
@@ -144,8 +144,8 @@ Serial3.onData(function(e) {
 // Pins for the motors
 var MOTORS = [B0,B1,A7,A6];
 // Pin values to set
-var GO = { FORWARD: 0b1010, BACK : 0b0101, LEFT : 0b0110, RIGHT : 0b1001 }; 
- 
+var GO = { FORWARD: 0b1010, BACK : 0b0101, LEFT : 0b0110, RIGHT : 0b1001 };
+
 function move(motorState, time) {
    digitalWrite(MOTORS, motorState);
    setTimeout("digitalWrite(MOTORS, 0);", 500);
@@ -159,10 +159,10 @@ Serial3.onData(function(e) {
     command="";
   } else {
     print(command);
-    if (command=="forward") move(GO.FORWARD, 500); 
-    if (command=="back") move(GO.BACK, 500); 
-    if (command=="left") move(GO.LEFT, 500); 
-    if (command=="right") move(GO.RIGHT, 500); 
+    if (command=="forward") move(GO.FORWARD, 500);
+    if (command=="back") move(GO.BACK, 500);
+    if (command=="left") move(GO.LEFT, 500);
+    if (command=="right") move(GO.RIGHT, 500);
   }
 });
 

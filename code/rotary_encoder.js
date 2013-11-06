@@ -1,7 +1,7 @@
 var step = 0;
 var bigStep = 0;
-var r = require("Encoder").connect(A1,A2,function (s) {   
-  step-=s; 
+var r = require("Encoder").connect(A1,A2,function (s) {
+  step-=s;
   while (step>40) step-=40;
   if (step<0) step=0;
   bigStep = step>>2;
@@ -11,7 +11,7 @@ var r = require("Encoder").connect(A1,A2,function (s) {
 var code = [8,1,9,2];
 var codeStep = 0;
 
-function onClick() {  
+function onClick() {
   if (codeStep<code.length && code[codeStep] == bigStep) {
     codeStep++;
     if (codeStep >= code.length) {

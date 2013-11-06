@@ -22,8 +22,8 @@ function onStop(e) {
   }
   LCD.setPixel(x,dist,0xFFFF);
 }
- 
+
 setWatch(onStart, ECHO, { repeat:true, edge:'rising'  });
 setWatch(onStop,  ECHO, { repeat:true, edge:'falling' });
- 
+
 setInterval("digitalPulse(TRIG,1, 10/1000.0)",50);
