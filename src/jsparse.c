@@ -1254,10 +1254,10 @@ JsVar *jspeUnary() {
         return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
       } else if (execInfo.lex->tk=='~') {
         JSP_MATCH('~'); // bitwise not
-        return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jspeUnary()));
+        return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
       } else if (execInfo.lex->tk=='-') {
         JSP_MATCH('-'); // binary not
-        return jsvNegateAndUnLock(jspeUnary());
+        return jsvNegateAndUnLock(jspeUnary()); // names already skipped
       }
       assert(0);
       return 0;
