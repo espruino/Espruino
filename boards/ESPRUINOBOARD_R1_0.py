@@ -24,7 +24,7 @@ chip = {
   'family' : "STM32F1",
   'package' : "LQFP64",
   'ram' : 96,
-  'flash' : 1024,
+  'flash' : 512, # 1024, but in 2 banks
   'speed' : 72,
   'usart' : 5,
   'spi' : 3,
