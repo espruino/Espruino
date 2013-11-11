@@ -18,6 +18,7 @@
             Allowed Object.toString() to take a radix argument for integers (fix #125)
             Fix error message issue - broken strncat (fix #124) 
             Add comma operator (fix #122) 
+            Added some basic code for STM32F429IDISCOVERY - not currently working though
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )
