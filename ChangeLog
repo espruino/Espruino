@@ -16,6 +16,7 @@
             Made bootloader a bit more error tolerate (CRC on write)
             Added %=, /=, and *= operators (fix #121)
             Allowed Object.toString() to take a radix argument for integers (fix #125)
+            Fix error message issue - broken strncat (fix #124) 
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )

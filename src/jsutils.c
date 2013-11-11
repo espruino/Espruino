@@ -167,7 +167,7 @@ void exit(int errcode) {
 
 char * strncat(char *dst, const char *src, size_t c) {
         char *dstx = dst;
-        while (*(dstx++)) c--;
+        while (*(++dstx)) c--;
         while (*src && c>1) {
           *(dstx++) = *(src++);
           c--;
