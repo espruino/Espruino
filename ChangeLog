@@ -13,6 +13,8 @@
             Get A13/A14 working on Espruino board (these were JTAG)
             Get bootloader size direct from Python (remove hard-coding)
 	    Fix '~' operator when acting on variables
+            Made bootloader a bit more error tolerate (CRC on write)
+            Added %=, /=, and *= operators (fix #121)
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )

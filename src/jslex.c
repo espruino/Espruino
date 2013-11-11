@@ -259,32 +259,49 @@ void jslGetNextToken(JsLex *lex) {
               lex->tk = LEX_RSHIFTUNSIGNED;
             }
           }
-      }  else if (lex->tk=='+' && lex->currCh=='=') {
-          lex->tk = LEX_PLUSEQUAL;
-          jslGetNextCh(lex);
-      }  else if (lex->tk=='-' && lex->currCh=='=') {
-          lex->tk = LEX_MINUSEQUAL;
-          jslGetNextCh(lex);
-      }  else if (lex->tk=='+' && lex->currCh=='+') {
-          lex->tk = LEX_PLUSPLUS;
-          jslGetNextCh(lex);
-      }  else if (lex->tk=='-' && lex->currCh=='-') {
-          lex->tk = LEX_MINUSMINUS;
-          jslGetNextCh(lex);
-      } else if (lex->tk=='&' && lex->currCh=='=') {
-          lex->tk = LEX_ANDEQUAL;
-          jslGetNextCh(lex);
-      } else if (lex->tk=='&' && lex->currCh=='&') {
-          lex->tk = LEX_ANDAND;
-          jslGetNextCh(lex);
-      } else if (lex->tk=='|' && lex->currCh=='=') {
-          lex->tk = LEX_OREQUAL;
-          jslGetNextCh(lex);
-      } else if (lex->tk=='|' && lex->currCh=='|') {
-          lex->tk = LEX_OROR;
-          jslGetNextCh(lex);
+      }  else if (lex->tk=='+') {
+          if (lex->currCh=='=') {
+            lex->tk = LEX_PLUSEQUAL;
+            jslGetNextCh(lex);
+          } else if (lex->currCh=='+') {
+            lex->tk = LEX_PLUSPLUS;
+            jslGetNextCh(lex);
+          }
+      }  else if (lex->tk=='-') {
+          if (lex->currCh=='=') {
+            lex->tk = LEX_MINUSEQUAL;
+            jslGetNextCh(lex);
+          } else if (lex->currCh=='-') {
+            lex->tk = LEX_MINUSMINUS;
+            jslGetNextCh(lex);
+          }
+      } else if (lex->tk=='&') {
+          if (lex->currCh=='=') {
+            lex->tk = LEX_ANDEQUAL;
+            jslGetNextCh(lex);
+          } else if (lex->currCh=='&') {
+            lex->tk = LEX_ANDAND;
+            jslGetNextCh(lex);
+          }
+      } else if (lex->tk=='|') {
+          if (lex->currCh=='=') {
+            lex->tk = LEX_OREQUAL;
+            jslGetNextCh(lex);
+          } else if (lex->tk=='|' && lex->currCh=='|') {
+            lex->tk = LEX_OROR;
+            jslGetNextCh(lex);
+          }
       } else if (lex->tk=='^' && lex->currCh=='=') {
           lex->tk = LEX_XOREQUAL;
+          jslGetNextCh(lex);
+      } else if (lex->tk=='*' && lex->currCh=='=') {
+          lex->tk = LEX_MULEQUAL;
+          jslGetNextCh(lex);
+      } else if (lex->tk=='/' && lex->currCh=='=') {
+          lex->tk = LEX_DIVEQUAL;
+          jslGetNextCh(lex);
+      } else if (lex->tk=='%' && lex->currCh=='=') {
+          lex->tk = LEX_MODEQUAL;
           jslGetNextCh(lex);
       }
   }
@@ -368,12 +385,15 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_MINUSEQUAL : strncpy(str, "-=", len); return;
       case LEX_PLUSPLUS : strncpy(str, "++", len); return;
       case LEX_MINUSMINUS : strncpy(str, "--", len); return;
+      case LEX_MULEQUAL : strncpy(str, "*=", len); return;
+      case LEX_DIVEQUAL : strncpy(str, "/=", len); return;
+      case LEX_MODEQUAL : strncpy(str, "%=", len); return;
       case LEX_ANDEQUAL : strncpy(str, "&=", len); return;
       case LEX_ANDAND : strncpy(str, "&&", len); return;
       case LEX_OREQUAL : strncpy(str, "|=", len); return;
       case LEX_OROR : strncpy(str, "||", len); return;
       case LEX_XOREQUAL : strncpy(str, "^=", len); return;
-              // reserved words
+      // reserved words
       case LEX_R_IF : strncpy(str, "if", len); return;
       case LEX_R_ELSE : strncpy(str, "else", len); return;
       case LEX_R_DO : strncpy(str, "do", len); return;

@@ -1467,6 +1467,7 @@ JsVar *jspeTernary() {
 
 __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
     if (execInfo.lex->tk=='=' || execInfo.lex->tk==LEX_PLUSEQUAL || execInfo.lex->tk==LEX_MINUSEQUAL ||
+                                 execInfo.lex->tk==LEX_MULEQUAL || execInfo.lex->tk==LEX_DIVEQUAL || execInfo.lex->tk==LEX_MODEQUAL ||
                                  execInfo.lex->tk==LEX_ANDEQUAL || execInfo.lex->tk==LEX_OREQUAL ||
                                  execInfo.lex->tk==LEX_XOREQUAL || execInfo.lex->tk==LEX_RSHIFTEQUAL ||
                                  execInfo.lex->tk==LEX_LSHIFTEQUAL || execInfo.lex->tk==LEX_RSHIFTUNSIGNEDEQUAL) {
@@ -1496,6 +1497,9 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
             } else {
                 if (op==LEX_PLUSEQUAL) op='+';
                 else if (op==LEX_MINUSEQUAL) op='-';
+                else if (op==LEX_MULEQUAL) op='*';
+                else if (op==LEX_DIVEQUAL) op='/';
+                else if (op==LEX_MODEQUAL) op='%';
                 else if (op==LEX_ANDEQUAL) op='&';
                 else if (op==LEX_OREQUAL) op='|';
                 else if (op==LEX_XOREQUAL) op='^';
