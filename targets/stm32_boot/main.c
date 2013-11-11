@@ -20,10 +20,12 @@
 #define CMD_GET (0x00)
 #define CMD_GET_ID (0x02)
 #define CMD_READ (0x11)
+#define CMD_GO (0x21)
 #define CMD_WRITE (0x31)
 #define CMD_EXTERASE (0x44)
 
 #define FLASH_START 0x08000000
+#define RAM_START 0x20000000
 
 #define ACK (0x79)
 #define NACK (0x1F)
@@ -65,23 +67,24 @@ int main(void) {
 
         } else if (state==BLS_INITED) {
           currentCommand = d;
-          state = BLS_COMMAND_FIRST_BYTE;
+          if (d!=255) state = BLS_COMMAND_FIRST_BYTE;
         } else if (state==BLS_COMMAND_FIRST_BYTE) {
           if (currentCommand == d^0xFF) {
             unsigned int addr,i;
-            char chksum, buffer[256];
+            char chksum, chksumc, buffer[256];
             unsigned int nBytesMinusOne, nPages;
             // confirmed
             switch (currentCommand) {
             case CMD_GET: // get bootloader info
               putc(ACK);
-              putc(5); // 6 bytes
+              putc(6); // 7 bytes
               // now report what we support
               putc(BOOTLOADER_MAJOR_VERSION<<4 | BOOTLOADER_MINOR_VERSION); // Bootloader version
               // list supported commands
               putc(CMD_GET);
               putc(CMD_GET_ID);
               putc(CMD_READ);
+              putc(CMD_GO);
               putc(CMD_WRITE);
               putc(CMD_EXTERASE); // erase
               putc(ACK); // last byte
@@ -114,45 +117,78 @@ int main(void) {
                 putc(((unsigned char*)addr)[i]);
               setLEDs(0); // off
               break;
-            case CMD_WRITE: // write memory
+            case CMD_GO: // read memory
               putc(ACK);
               addr = getc_blocking() << 24;
               addr |= getc_blocking()  << 16;
               addr |= getc_blocking()  << 8;
               addr |= getc_blocking();
               chksum = getc_blocking();
-              // TODO: check checksum and address&3==0
+              // TODO: check checksum
+              putc(ACK);
+              setLEDs(7); // jumping...
+              unsigned int *ResetHandler = (unsigned int *)(addr + 4);
+              void (*startPtr)() = *ResetHandler;
+              startPtr();
+              break;
+            case CMD_WRITE: // write memory
+              putc(ACK);
+              addr = getc_blocking() << 24;
+              addr |= getc_blocking()  << 16;
+              addr |= getc_blocking()  << 8;
+              addr |= getc_blocking();
+              chksumc = ((addr)&0xFF)^((addr>>8)&0xFF)^((addr>>16)&0xFF)^((addr>>24)&0xFF);
+              chksum = getc_blocking();
+              if (chksumc != chksum) {
+                putc(NACK);
+                break;
+              }
               putc(ACK);
               setLEDs(2); // green = wait for data
               nBytesMinusOne = getc_blocking();
-              for (i=0;i<=nBytesMinusOne;i++)
+              chksumc = nBytesMinusOne;
+              for (i=0;i<=nBytesMinusOne;i++) {
                 buffer[i] = getc_blocking();
+                chksumc = chksumc^buffer[i];
+              }
               chksum = getc_blocking(); // FIXME found to be stalled here
               setLEDs(1); // red = write
-              // TODO: check checksum and (nBytesMinusOne+1)&3==0
-              #ifdef STM32API2
-                FLASH_Unlock();
-              #else
-                FLASH_UnlockBank1();
-              #endif
-              #if defined(STM32F2) || defined(STM32F4)
-                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                                FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
-              #elif defined(STM32F3)
-                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
-              #else
-                FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-              #endif
-              for (i=0;i<=nBytesMinusOne;i+=4) {
-                unsigned int realaddr = addr+i;
-                if (realaddr >= (FLASH_START+BOOTLOADER_SIZE)) // protect bootloader
-                  FLASH_ProgramWord(realaddr, *(unsigned int*)&buffer[i]);
+              if (chksumc != chksum || (nBytesMinusOne+1)&3!=0) {
+                putc(NACK);
+                break;
               }
-              #ifdef STM32API2
-                FLASH_Lock();
-              #else
-                FLASH_LockBank1();
-              #endif
+              if (addr>=FLASH_START && addr<RAM_START) {
+                #ifdef STM32API2
+                  FLASH_Unlock();
+                #else
+                  FLASH_UnlockBank1();
+                #endif
+                #if defined(STM32F2) || defined(STM32F4)
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+                #elif defined(STM32F3)
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+                #else
+                  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+                #endif
+                for (i=0;i<=nBytesMinusOne;i+=4) {
+                  unsigned int realaddr = addr+i;
+                  if (realaddr >= (FLASH_START+BOOTLOADER_SIZE)) // protect bootloader
+                    FLASH_ProgramWord(realaddr, *(unsigned int*)&buffer[i]);
+                }
+                #ifdef STM32API2
+                  FLASH_Lock();
+                #else
+                  FLASH_LockBank1();
+                #endif
+              } else { 
+                // normal write
+                for (i=0;i<=nBytesMinusOne;i+=4) {
+                  unsigned int realaddr = addr+i;
+                  *((unsigned int*)realaddr) = *(unsigned int*)&buffer[i];
+                }
+              }
+                
               setLEDs(0); // off
               putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
               break;

@@ -4,6 +4,7 @@
 # vim: sw=4:ts=4:si:et:enc=utf-8
 
 # Author: Ivan A-R <ivan@tuxotronic.org>
+# With hacky error recovery by Gordon Williams <gw@pur3.co.uk>
 # Project page: http://tuxotronic.org/wiki/projects/stm32loader
 #
 # This file is part of stm32loader.
@@ -214,12 +215,23 @@ class CommandInterface(object):
             mdebug(10, "    %s bytes to write" % [lng+1]);
             self.sp.write(chr(lng)) # len really
             crc = 0xFF
-            for c in data:
-                crc = crc ^ c
-                self.sp.write(chr(c))
-            self.sp.write(chr(crc))
-            self._wait_for_ack("0x31 programming failed")
-            mdebug(10, "    Write memory done")
+            try:
+              for c in data:
+                  crc = crc ^ c
+                  self.sp.write(chr(c))
+              self.sp.write(chr(crc))
+              self._wait_for_ack("0x31 programming failed")
+              mdebug(10, "    Write memory done")
+            except:
+              mdebug(5, "    WRITE FAIL - try and recover")
+              for c in data:
+                self.sp.write(chr(255))
+              mdebug(5, "    WRITE FAIL - wait")
+              stop = time.time() + 1
+              while time.time() < stop:
+                if self.sp.inWaiting()>0: self.sp.read(self.sp.inWaiting())
+              mdebug(5, "    WRITE FAIL - retry")
+              self.cmdWriteMemory(addr, data)
         else:
             raise CmdException("Write memory (0x31) failed")
 
