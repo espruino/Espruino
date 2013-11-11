@@ -35,7 +35,7 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ ],
+  'left' : [ ], # fixme
   'left2' : [ ],
   'right2' : [ ],
   'right' : [ ],
@@ -48,13 +48,12 @@ devices = {
   'LED1' : { 'pin' : 'G13' }, # green
   'LED2' : { 'pin' : 'G14' }, # red
   'BTN1' : { 'pin' : 'A0' },
-  'USB' : { 'pin_otg_pwr' : '',
-            'pin_dm' : 'B14',
+  'USB' : { 'pin_dm' : 'B14',
             'pin_bp' : 'B15',
             'pin_vbus' : 'B13',
             'pin_id' : 'B12', 
-            'pin_pso' : 'C4',  #?
-            'pin_qc' : 'C5',   #?
+            'pin_pso' : 'C4',  # Power supply enable
+            'pin_oc' : 'C5',   # Overcurrent
            },
   'MEMS' :  {  'device' : 'L3GD20',
             'pin_cs' :  'C1',
@@ -151,7 +150,7 @@ board_css = """
   width: 680px;
   height: 1020px;
   left: 200px;
-  background-image: url(img/STM32F4DISCOVERY.jpg);
+  background-image: url(img/STM32F429IDISCOVERY.jpg);
 }
 #boardcontainer {
   height: 1020px;
