@@ -21,6 +21,7 @@ JsExecInfo execInfo;
 
 // ----------------------------------------------- Forward decls
 JsVar *jspeBase();
+JsVar *jspeBaseWithComma();
 JsVar *jspeBlock();
 JsVar *jspeStatement();
 // ----------------------------------------------- Utils
@@ -1154,7 +1155,7 @@ JsVar *jspeFactor() {
         JsVar *a = 0;
         JSP_MATCH('(');
         if (jspCheckStackPosition())
-          a = jspeBase();
+          a = jspeBaseWithComma();
         if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
         return a;
     } else if (execInfo.lex->tk==LEX_R_TRUE) {
@@ -1531,8 +1532,21 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
     return lhs;
 }
 
+
 JsVar *jspeBase() {
   return __jspeBase(jspeTernary());
+}
+
+// jspeBase where ',' is allowed to add multiple expressions
+JsVar *jspeBaseWithComma() {
+  while (!JSP_HAS_ERROR) {
+    JsVar *a = jspeBase();
+    if (execInfo.lex->tk!=',') return a;
+    // if we get a comma, we just forget this data and parse the next bit...
+    jsvUnLock(a);
+    JSP_MATCH(',');
+  }
+  return 0;
 }
 
 JsVar *jspeBlock() {
@@ -1978,7 +1992,7 @@ JsVar *jspeStatement() {
         execInfo.lex->tk=='[' ||
         execInfo.lex->tk=='(') {
         /* Execute a simple statement that only contains basic arithmetic... */
-        return jspeBase();
+      return jspeBaseWithComma();
     } else if (execInfo.lex->tk=='{') {
         /* A block of code */
         return jspeBlock();
