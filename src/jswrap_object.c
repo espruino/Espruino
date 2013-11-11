@@ -57,9 +57,18 @@ JsVar *jswrap_object_length(JsVar *parent) {
 /*JSON{ "type":"method", "class": "Object", "name" : "toString",
          "description" : "Convert the Object to a string",
          "generate" : "jswrap_object_toString",
+         "params" : [ [ "radix", "JsVar", "If the object is an integer, the radix (between 2 and 36) to use. NOTE: Setting a radix does not work on floating point numbers."] ],
          "return" : ["JsVar", "A String representing the object"]
 }*/
-JsVar *jswrap_object_toString(JsVar *parent) {
+JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
+  if (jsvIsInt(arg0) && jsvIsInt(parent)) {
+    JsVarInt radix = jsvGetInteger(arg0);
+    if (radix>=2 && radix<=36) {
+      char buf[JS_NUMBER_BUFFER_SIZE];
+      itoa(parent->varData.integer, buf, (unsigned int)radix);
+      return jsvNewFromString(buf);
+    }
+  }
   return jsvAsString(parent, false);
 }
 
