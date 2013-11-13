@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #endif
 
-#define JS_VERSION "1v42"
+#define JS_VERSION "1v43"
 /*
   In code:
   TODO - should be fixed

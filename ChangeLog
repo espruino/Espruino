@@ -1,3 +1,5 @@
+     1v43 : 
+
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
             Implement 'String' constructor in the normal way (fix #110)
@@ -19,6 +21,7 @@
             Fix error message issue - broken strncat (fix #124) 
             Add comma operator (fix #122) 
             Added some basic code for STM32F429IDISCOVERY - not currently working though
+            This version is the one sent off on the Test Harness (so will probably appear on boards)
 
      1v41 : Fix Olimexino compile (https://github.com/espruino/Espruino/issues/6)
             [ebirger] Member constructors (eg. new a.b() )
