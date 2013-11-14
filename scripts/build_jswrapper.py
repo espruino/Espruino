@@ -143,7 +143,7 @@ def getUnLockGetter(varType, name, funcName):
   if varType=="int": return "jsvGetIntegerAndUnLock("+name+")"
   if varType=="bool": return "jsvGetBoolAndUnLock("+name+")"
   if varType=="pin": return "jshGetPinFromVarAndUnLock("+name+")"
-  print "ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name
+  sys.stderr.write("ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
   exit(1)
 
 def getCreator(varType, value, funcName):
@@ -151,7 +151,7 @@ def getCreator(varType, value, funcName):
   if varType=="int": return "jsvNewFromInteger("+value+")"
   if varType=="bool": return "jsvNewFromBool("+value+")"
   if varType=="JsVar": return value
-  print "ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName
+  sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
   exit(1)
 
 def codeOutFunctionObject(indent, obj):
@@ -242,7 +242,7 @@ def codeOutFunction(indent, func):
   elif "wrap" in func:
     codeOut(indent+"return "+func["wrap"]+"(parent, parentName);")
   else:
-    print "ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'"
+    sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
     exit(1)
 
 def codeOutTree(indent, tree, offset):
