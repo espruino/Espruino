@@ -204,11 +204,12 @@ void *memcpy(void *dst, const void *src, size_t size) {
         return dst;
 }
 
-void memset(void *dst, unsigned char val, size_t size) {
+void *memset(void *dst, int val, size_t size) {
   unsigned char *d = (unsigned char*)dst;
   int i;
   for (i=0;i<size;i++)
     d[i]=val;
+  return dst;
 }
 
 unsigned int rand() { 
