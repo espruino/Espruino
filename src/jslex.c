@@ -121,6 +121,7 @@ void jslGetNextToken(JsLex *lex) {
       case 'w': if (jslIsToken(lex,"while", 1)) lex->tk = LEX_R_WHILE;
                 break;
       case 'v': if (jslIsToken(lex,"var", 1)) lex->tk = LEX_R_VAR;
+                else if (jslIsToken(lex,"void", 1)) lex->tk = LEX_R_VOID;
                 break;
       default: break;
       }
@@ -413,6 +414,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_R_IN : strncpy(str, "in", len); return;
       case LEX_R_INSTANCEOF : strncpy(str, "instanceof", len); return;
       case LEX_R_TYPEOF : strncpy(str, "typeof", len); return;
+      case LEX_R_VOID : strncpy(str, "void", len); return;
 #endif
   }
 

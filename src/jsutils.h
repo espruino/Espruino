@@ -268,6 +268,7 @@ typedef enum LEX_TYPES {
     LEX_R_CASE,
     LEX_R_DEFAULT,
     LEX_R_TYPEOF,
+    LEX_R_VOID,
 
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;

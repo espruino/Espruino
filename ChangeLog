@@ -3,6 +3,7 @@
             Fix documentation (and old-fashined Parsing style) for JSON
             build_jswrapper now outputs errors to stderr (more compatible with default (silent) build process)
             Fix issue when parsing quotes in strings
+            Added void operator for closure minification compatibility
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

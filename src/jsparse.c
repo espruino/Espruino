@@ -1212,6 +1212,10 @@ JsVar *jspeFactor() {
       return jspeFunctionDefinition();
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
       return jspeFactorTypeOf();
+    } else if (execInfo.lex->tk==LEX_R_VOID) {
+      JSP_MATCH(LEX_R_VOID);
+      jsvUnLock(jspeBase());
+      return 0;
     }
     // Nothing we can do here... just hope it's the end...
     JSP_MATCH(LEX_EOF);
@@ -1986,6 +1990,7 @@ JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_R_TRUE ||
         execInfo.lex->tk==LEX_R_FALSE ||
         execInfo.lex->tk==LEX_R_TYPEOF ||
+        execInfo.lex->tk==LEX_R_VOID ||
         execInfo.lex->tk=='!' ||
         execInfo.lex->tk=='-' ||
         execInfo.lex->tk=='~' ||
