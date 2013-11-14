@@ -234,3 +234,15 @@ keywordFile = open('function_keywords.js', 'w')
 keywordFile.write(json.dumps(keywords, sort_keys=True, indent=2));
 
 
+# ---------------------------- Just random helper stuff
+builtins = []
+for jsondata in jsondatas:
+  if jsondata["type"]=="staticmethod" or jsondata["type"]=="staticproperty" or jsondata["type"]=="class":
+    if not jsondata["class"] in builtins:
+      builtins.append(jsondata["class"])
+  elif jsondata["type"]=="function" or jsondata["type"]=="variable" or jsondata["type"]=="class":
+      if not jsondata["name"] in builtins:
+        builtins.append(jsondata["name"])
+print "------------------------------------------------------"    
+print('Global classes and functions: '+' '.join(builtins));
+print "------------------------------------------------------"
