@@ -172,8 +172,6 @@ void jslGetNextToken(JsLex *lex) {
               case 'a'  : ch = '\a'; jslGetNextCh(lex); break;
               case 'r'  : ch = '\r'; jslGetNextCh(lex); break;
               case 't'  : ch = '\t'; jslGetNextCh(lex); break;
-              case '\'' : ch = '\''; jslGetNextCh(lex); break;
-              case '\\' : ch = '\\'; jslGetNextCh(lex); break;
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
                             jslGetNextCh(lex);
@@ -196,6 +194,9 @@ void jslGetNextToken(JsLex *lex) {
                          }
                          buf[n]=0;
                          ch = (char)stringToInt(buf);
+                       } else {
+                         // for anything else, just push the character through
+                         jslGetNextCh(lex);
                        }
                        break;
               }
