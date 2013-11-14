@@ -55,7 +55,12 @@
   */ 
 #define USBD_VID                        0x0483
 
+#ifdef USB_PRODUCT_ID
+#define USBD_PID                        USB_PRODUCT_ID
+#else
 #define USBD_PID                        0x5740
+#endif
+
 
 /** @defgroup USB_String_Descriptors
   * @{

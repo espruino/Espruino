@@ -118,7 +118,7 @@ USB=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
-CHIP=STM32F103RD
+CHIP=STM32F103RC
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -348,6 +348,10 @@ else # !BOOTLOADER
   STM32LOADER_FLAGS+=-p /dev/ttyACM0
   BASEADDRESS=$(shell python -c "import sys;sys.path.append('scripts');import common;print hex(0x08000000+common.get_bootloader_size())")
  endif
+endif
+
+ifdef USB_PRODUCT_ID
+DEFINES+=-DUSB_PRODUCT_ID=$(USB_PRODUCT_ID)
 endif
 
 ifdef SAVE_ON_FLASH
