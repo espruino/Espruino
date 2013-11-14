@@ -14,3 +14,8 @@
 #include "jsvar.h"
 
 JsVar *jswrap_require(JsVar *modulename);
+
+JsVar *jswrap_modules_getCached();
+void jswrap_modules_removeCached(JsVar *id);
+void jswrap_modules_removeAllCached();
+void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode);

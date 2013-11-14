@@ -1,4 +1,4 @@
-     1v43 : 
+     1v43 : Added 'Modules' object with support for adding/removing cached modules
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
