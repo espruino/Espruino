@@ -5,6 +5,7 @@
             Fix issue when parsing quotes in strings
             Added void operator for closure minification compatibility
             Ensure that return takes the comma operator
+            Fix issue where printing Infinity would crash Espruino (fix #129)
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

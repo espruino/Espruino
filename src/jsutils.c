@@ -16,6 +16,13 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
+// needed for isnan / isfinite
+#ifdef ARM
+#include "mconf.h"
+#include "protos.h"
+#else
+#include <math.h>
+#endif
 
 extern double pow ( double, double );
 // just for exponentials
@@ -304,32 +311,38 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
 #endif
 
 void ftoa(JsVarFloat val,char *str) {
-  const JsVarFloat base = 10;
-  if (val<0) {
-    *(str++)='-';
-    val = -val;
-  }
-  JsVarFloat d = 1;
-  while (d*base <= val) d*=base;
-  while (d >= 1) {
-    int v = (int)(val / d);
-    val -= v*d;
-    *(str++)=itoch(v);
-    d /= base;
-  }  
-#ifndef USE_NO_FLOATS
-  if (val>0) {
-    *(str++)='.';
-    while (val>0.000001) {
-      int v = (int)((val / d) + 0.0000005);
+  if (isnan(val)) strncpy(str,"NaN",4);
+  else if (!isfinite(val)) {
+    if (val<0) strncpy(str,"-Infinity",10);
+    else strncpy(str,"Infinity",10);
+  } else {
+    const JsVarFloat base = 10;
+    if (val<0) {
+      *(str++)='-';
+      val = -val;
+    }
+    JsVarFloat d = 1;
+    while (d*base <= val) d*=base;
+    while (d >= 1) {
+      int v = (int)(val / d);
       val -= v*d;
       *(str++)=itoch(v);
       d /= base;
     }
-  }
-#endif
+  #ifndef USE_NO_FLOATS
+    if (val>0) {
+      *(str++)='.';
+      while (val>0.000001) {
+        int v = (int)((val / d) + 0.0000005);
+        val -= v*d;
+        *(str++)=itoch(v);
+        d /= base;
+      }
+    }
+  #endif
 
-  *(str++)=0;
+    *(str++)=0;
+  }
 }
 
 
