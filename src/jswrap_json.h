@@ -13,8 +13,8 @@
  */
 #include "jsvar.h"
 
-JsVar *jswrap_json_stringify(JsVar *parent, JsVar *parentName);
-JsVar *jswrap_json_parse(JsVar *parent, JsVar *parentName);
+JsVar *jswrap_json_stringify(JsVar *v);
+JsVar *jswrap_json_parse(JsVar *v);
 
 typedef void (*JsfGetJSONCallbackString)(void *data, const char *string);
 typedef void (*JsfGetJSONCallbackVar)(void *data, JsVar *var);

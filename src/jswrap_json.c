@@ -21,41 +21,34 @@
 /*JSON{ "type":"staticmethod",
          "class" : "JSON", "name" : "stringify",
          "description" : "Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval",
-         "wrap" : "jswrap_json_stringify",
-         "params" : { "data" : ["JsVar", "The data to be converted to a JSON string"] },
-         "return" : ["string", "A JSON string"]
+         "generate" : "jswrap_json_stringify",
+         "params" : [ [ "data", "JsVar", "The data to be converted to a JSON string"] ],
+         "return" : ["JsVar", "A JSON string"]
 }*/
-JsVar *jswrap_json_stringify(JsVar *parent, JsVar *parentName) {
-  NOT_USED(parent);NOT_USED(parentName);
-  JsVar *v = jspParseSingleFunction();
+JsVar *jswrap_json_stringify(JsVar *v) {
   JsVar *result = jsvNewFromEmptyString();
   if (result) // could be out of memory
     jsfGetJSON(v, result);
-  jsvUnLock(v);
   return result;
 }
 
 /*JSON{ "type":"staticmethod",
          "class" : "JSON", "name" : "parse",
          "description" : "Parse the given JSON string into a JavaScript object",
-         "wrap" : "jswrap_json_parse",
-         "params" : { "string" : ["JsVar", "A JSON string"] },
-         "return" : ["string", "The JavaScript object created by pasring the data string"]
+         "generate" : "jswrap_json_parse",
+         "params" : [ [ "string", "JsVar", "A JSON string"] ],
+         "return" : ["JsVar", "The JavaScript object created by parsing the data string"]
 }*/
-JsVar *jswrap_json_parse(JsVar *parent, JsVar *parentName) {
-  NOT_USED(parent);NOT_USED(parentName);
-  JsVar *v = jspParseSingleFunction();
+JsVar *jswrap_json_parse(JsVar *v) {
   JsVar *res = 0;
   JsVar *bracketed = jsvNewFromString("(");
   if (bracketed) { // could be out of memory
     v = jsvAsString(v, true); // try and get this as a string
     jsvAppendStringVarComplete(bracketed, v);
-    jsvUnLock(v);
     jsvAppendString(bracketed, ")");
     res = jspEvaluateVar(jsiGetParser(), bracketed, 0);
     jsvUnLock(bracketed);
-  } else
-    jsvUnLock(v);
+  }
   return res;
 }
 
