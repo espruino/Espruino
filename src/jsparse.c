@@ -1937,7 +1937,7 @@ JsVar *jspeStatementReturn() {
   JSP_MATCH(LEX_R_RETURN);
   if (execInfo.lex->tk != ';') {
     // we only want the value, so skip the name if there was one
-    result = jsvSkipNameAndUnLock(jspeBase());
+    result = jsvSkipNameAndUnLock(jspeBaseWithComma());
   }
   if (JSP_SHOULD_EXECUTE) {
     JsVar *resultVar = jspeiFindOnTop(JSPARSE_RETURN_VAR, false);
