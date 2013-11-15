@@ -409,7 +409,11 @@ void httpClientConnectionsIdle() {
       // check for waiting clients
       struct timeval timeout;
       timeout.tv_sec = 0;
-      timeout.tv_usec = 0;
+#ifdef USE_CC3000      
+      timeout.tv_usec = 5000; // 5 millisec
+#else
+	  timeout.tv_usec = 0;
+#endif      
       int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
       if (n==SOCKET_ERROR) {
         // we probably disconnected so just get rid of this
@@ -447,6 +451,7 @@ void httpClientConnectionsIdle() {
 void httpServerIdle() {
   HttpServer *server = httpServers;
   while (server) {
+#ifndef USE_CC3000
     // TODO: look for unreffed servers?
     fd_set s;
     FD_ZERO(&s);
@@ -456,12 +461,17 @@ void httpServerIdle() {
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
     int n = select(server->listeningSocket+1,&s,NULL,NULL,&timeout);
+#else
+    /* CC3000 works a different way - we set accept as nonblocking,
+     * and then we just call it and see if it works or not...
+     */
+    int n=1;
+#endif
 
     while (n-->0) {
       // we have a client waiting to connect...
-      SOCKET theClient; // connect it
-      theClient = accept(server->listeningSocket,NULL,NULL);
-       if (theClient != INVALID_SOCKET) {
+      int theClient = accept(server->listeningSocket,NULL,NULL); // try and connect
+       if (theClient > -1) {
          JsVar *req = jspNewObject(jsiGetParser(), 0, "httpSRq");
          JsVar *res = jspNewObject(jsiGetParser(), 0, "httpSRs");
          if (res && req) { // out of memory?
@@ -469,7 +479,7 @@ void httpServerIdle() {
            connection->var = jsvLockAgain(server->var);
            connection->reqVar = jsvLockAgain(req);
            connection->resVar = jsvLockAgain(res);
-           connection->socket = theClient;
+           connection->socket = (SOCKET)theClient;
            connection->sendCode = 200;
            connection->sendHeaders = jsvNewWithFlags(JSV_OBJECT);
            connection->sendData = 0;
@@ -543,10 +553,13 @@ JsVar *httpServerNew(JsVar *callback) {
 
 #ifndef USE_CC3000
   int optval = 1;
-  if (setsockopt(server->listeningSocket,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval))==-1)
-    jsWarn("http: setsockopt failed\n");
+  if (setsockopt(server->listeningSocket,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
+#else
+  int optval = SOCK_ON;
+  if (setsockopt(server->listeningSocket,SOL_SOCKET,SOCKOPT_ACCEPT_NONBLOCK,(const char *)&optval,sizeof(optval)) < 0)
 #endif
-
+    jsWarn("http: setsockopt failed\n");
+    
   return serverVar;
 }
 
@@ -558,12 +571,8 @@ void httpServerListen(JsVar *httpServerVar, int port) {
   sockaddr_in serverInfo;
   memset(&serverInfo, 0, sizeof(serverInfo));
   serverInfo.sin_family = AF_INET;
-#ifndef USE_CC3000
-  if (false)
-    serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // allow only LOCAL clients to connect
-  else
-    serverInfo.sin_addr.s_addr = INADDR_ANY; // allow anyone to connect
-#endif
+  //serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // allow only LOCAL clients to connect
+  serverInfo.sin_addr.s_addr = INADDR_ANY; // allow anyone to connect
   serverInfo.sin_port = htons((unsigned short)port); // port
   nret = bind(server->listeningSocket, (struct sockaddr*)&serverInfo, sizeof(serverInfo));
   if (nret == SOCKET_ERROR) {
@@ -573,7 +582,7 @@ void httpServerListen(JsVar *httpServerVar, int port) {
   }
 
   // Make the socket listen
-  nret = listen(server->listeningSocket, 10); // 10 connections
+  nret = listen(server->listeningSocket, 10); // 10 connections (but this ignored on CC30000)
   if (nret == SOCKET_ERROR) {
     httpError("httpServer: listen");
     closesocket(server->listeningSocket);
@@ -709,10 +718,11 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   u_long n = 1;
   ioctlsocket(connection->socket,FIONBIO,&n);
   #elif defined(USE_CC3000)
-  int zero = 0, timeout = 10;
-  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
-  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_TIMEOUT, &timeout, sizeof(timeout)); // set a timeout
-  //setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_ACCEPT_NONBLOCK, &zero, sizeof(zero)); // enable nonblock
+  int param;
+  param = SOCK_ON;
+  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &param, sizeof(param)); // enable nonblock
+  param = 5; // ms
+  setsockopt(connection->socket, SOL_SOCKET, SOCKOPT_RECV_TIMEOUT, &param, sizeof(param)); // set a timeout
   #else
   int flags = fcntl(connection->socket, F_GETFL);
   if (flags < 0) {
