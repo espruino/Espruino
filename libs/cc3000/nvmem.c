@@ -40,9 +40,6 @@
 //
 //*****************************************************************************
 
-//#include <stdio.h>
-//#include <string.h>
-#include "spi.h"
 #include "nvmem.h"
 #include "hci.h"
 #include "socket.h"

@@ -39,7 +39,6 @@
 //! @{
 //
 //*****************************************************************************
-//#include <string.h>
 #include "wlan.h"
 #include "hci.h"
 #include "spi.h"
@@ -119,7 +118,7 @@ static void SimpleLink_Init_Start(unsigned short usPatchesAvailableAtHost)
 	ptr = tSLInformation.pucTxCommandBuffer;
 	args = (unsigned char *)(ptr + HEADERS_SIZE_CMD);
 	
-	UINT8_TO_STREAM(args, ((usPatchesAvailableAtHost) ? SL_PATCHES_REQUEST_FORCE_HOST : SL_PATCHES_REQUEST_DEFAULT));
+	UINT8_TO_STREAM(args, ((usPatchesAvailableAtHost) ? SL_PATCHES_REQUEST_FORCE_NONE : SL_PATCHES_REQUEST_DEFAULT));
 	
 	// IRQ Line asserted - send HCI_CMND_SIMPLE_LINK_START to CC3000
 	hci_command_send(HCI_CMND_SIMPLE_LINK_START, ptr, WLAN_SL_INIT_START_PARAMS_LEN);
@@ -278,7 +277,7 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 	// Check the IRQ line
 	ulSpiIRQState = tSLInformation.ReadWlanInterruptPin();
 	
-	// ASIC 1273 chip enable: toggle WLAN EN line
+	// Chip enable: toggle WLAN EN line
 	tSLInformation.WriteWlanPin( WLAN_ENABLE );
 	
 	if (ulSpiIRQState)
@@ -325,7 +324,7 @@ wlan_start(unsigned short usPatchesAvailableAtHost)
 void
 wlan_stop(void)
 {
-	// ASIC 1273 chip disable
+	// Chip disable
 	tSLInformation.WriteWlanPin( WLAN_DISABLE );
 	
 	// Wait till IRQ line goes high...
@@ -354,7 +353,7 @@ wlan_stop(void)
 //!  @param    ssid       up to 32 bytes and is ASCII SSID of the AP
 //!  @param    ssid_len   length of the SSID
 //!  @param    bssid      6 bytes specified the AP bssid
-//!  @param    key        up to 16 bytes specified the AP security key
+//!  @param    key        up to 32 bytes specified the AP security key
 //!  @param    key_len    key length 
 //!
 //!  @return     On success, zero is returned. On error, negative is returned. 
@@ -559,13 +558,17 @@ wlan_ioctl_set_connection_policy(unsigned long should_connect_to_open_ap,
 //!  @param    ulSsidLen ssid length
 //!  @param    ucBssid   bssid  6 bytes
 //!  @param    ulPriority ulPriority profile priority. Lowest priority:0.
+//!			   Important Note: Smartconfig process (in unencrypted mode) 
+//!			   stores the profile internally with priority 1, so changing  
+//!			   priorities when adding new profiles should be done with extra care
 //!  @param    ulPairwiseCipher_Or_TxKeyLen  key length for WEP security
 //!  @param    ulGroupCipher_TxKeyIndex  key index
 //!  @param    ulKeyMgmt        KEY management 
 //!  @param    ucPf_OrKey       security key
 //!  @param    ulPassPhraseLen  security key length for WPA\WPA2
 //!
-//!  @return    On success, zero is returned. On error, -1 is returned        
+//!  @return    On success, index (1-7) of the stored profile is returned.         
+//!				On error, -1 is returned.
 //!
 //!  @brief     When auto start is enabled, the device connects to
 //!             station from the profiles table. Up to 7 profiles are supported. 

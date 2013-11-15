@@ -169,7 +169,7 @@ extern void wlan_stop(void);
 //!  @param    ssid       up to 32 bytes and is ASCII SSID of the AP
 //!  @param    ssid_len   length of the SSID
 //!  @param    bssid      6 bytes specified the AP bssid
-//!  @param    key        up to 16 bytes specified the AP security key
+//!  @param    key        up to 32 bytes specified the AP security key
 //!  @param    key_len    key length 
 //!
 //!  @return     On success, zero is returned. On error, negative is returned. 

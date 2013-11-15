@@ -21,6 +21,8 @@ extern int errno;
 #define EINPROGRESS (0)
 #define EWOULDBLOCK (0)
 
+#define INADDR_ANY      ((unsigned int) 0x00000000)
+
 #ifndef __BOARD_SPI_H
 #define __BOARD_SPI_H
 

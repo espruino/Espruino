@@ -94,9 +94,6 @@ extern "C" {
 #define  SOCK_ON                0			// socket non-blocking mode	is enabled		
 #define  SOCK_OFF               1			// socket blocking mode is enabled
 
-#define  TCP_NODELAY            0x0001
-#define  TCP_BSDURGENT          0x7000
-
 #define  MAX_PACKET_SIZE        1500
 #define  MAX_LISTEN_QUEUE       4
 

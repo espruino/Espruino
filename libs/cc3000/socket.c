@@ -40,14 +40,12 @@
 //
 //*****************************************************************************
 
-//#include <stdio.h>
-//#include <string.h>
-//#include <stdlib.h>
-#include "spi.h"
+
 #include "hci.h"
 #include "socket.h"
 #include "evnt_handler.h"
 #include "netapp.h"
+#include "jsinteractive.h"
 
 
 
@@ -753,7 +751,7 @@ setsockopt(long sd, long level, long optname, const void *optval,
 	else
 	{
 		errno = ret;
-		return (-1);
+		return ret;
 	}
 }
 #endif
@@ -835,7 +833,7 @@ getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
 	else
 	{
 		errno = tRetParams.iStatus;
-		return (-1);
+		return errno;
 	}
 }
 
@@ -889,8 +887,15 @@ simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
 		SimpleLinkWaitData(buf, (unsigned char *)from, (unsigned char *)fromlen);
 	}
 	
+
+
 	errno = tSocketReadEvent.iNumberOfBytes;
 	
+	int i;
+	for (i=0; i<errno; i++) {
+	  jsiConsolePrintChar(((unsigned char *)buf)[i]);
+	}
+
 	return(tSocketReadEvent.iNumberOfBytes);
 }
 
@@ -1056,7 +1061,7 @@ simple_link_send(long sd, const void *buf, long len, long flags,
             SimpleLinkWaitEvent(HCI_EVNT_SENDTO, &tSocketSendEvent);
          else
             SimpleLinkWaitEvent(HCI_EVNT_SEND, &tSocketSendEvent);
-	
+
 	return	(len);
 }
 
