@@ -52,27 +52,27 @@ void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength
     if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
       //ulSmartConfigFinished = 1;
       jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
-    }
-
-    if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
       //ulCC3000Connected = 1;
       /* Turn On LED */
       SmartConfigLedOn(TRUE);
-    }
-
-    if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
       //ulCC3000Connected = 0;
       /*  Turn Off LED */
       SmartConfigLedOn(FALSE);
-    }
-    if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
       //ulCC3000DHCP = 1;
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
-    }
-    if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
+    } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
       jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
+    } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
+        uint8_t socketnum;
+        socketnum = pcData[0];
+        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
+    } else {
+      jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
     }
 }
 
