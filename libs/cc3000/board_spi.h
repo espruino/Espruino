@@ -64,4 +64,6 @@ void WlanInterruptDisable(void);
 
 void SpiIntGPIOHandler(void);
 
+void CheckInterrupts();
+
 #endif

@@ -29,15 +29,15 @@
         "description" : ""
 }*/
 
+// Bit field containing whether the socket has closed or not
+unsigned int cc3000_socket_closed = 0;
 
-/**
-  * @brief  This function turns the connection LED ON/OFF
-  * @param  None
-  * @retval None
-  */
-void SmartConfigLedOn(uint32_t ulTrueFalse)
-{
-  jshPinOutput(LED1_PININDEX, ulTrueFalse);
+/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
+bool cc3000_socket_has_closed(int socketNum) {
+  if (cc3000_socket_closed & (1<<socketNum)) {
+    cc3000_socket_closed &= ~(1<<socketNum);
+    return true;
+  } else return false;
 }
 
 /**
@@ -55,24 +55,20 @@ void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
       //ulCC3000Connected = 1;
-      /* Turn On LED */
-      SmartConfigLedOn(TRUE);
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
       //ulCC3000Connected = 0;
-      /*  Turn Off LED */
-      SmartConfigLedOn(FALSE);
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
       //ulCC3000DHCP = 1;
       jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
     } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
       jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
     } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
-        uint8_t socketnum;
-        socketnum = pcData[0];
-        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
+        uint8_t socketnum = pcData[0];
+        cc3000_socket_closed |= 1<<socketnum;
+//        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
     } else {
-      jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
+      //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
     }
 }
 

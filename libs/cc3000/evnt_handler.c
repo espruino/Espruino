@@ -51,9 +51,6 @@
 #include "socket.h"
 #include "netapp.h"
 #include "spi.h"
-#include "jsinteractive.h"
-
- 
 
 //*****************************************************************************
 //                  COMMON DEFINES
@@ -442,8 +439,6 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			}
 			else
 			{
-			    jsiConsolePrint("DATA\n");
-
 				pucReceivedParams = pucReceivedData;
 				STREAM_TO_UINT8((char *)pucReceivedData, HCI_PACKET_ARGSIZE_OFFSET, ucArgsize);
 				
@@ -479,7 +474,8 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			{
 				return NULL;
 			}	
-		}
+		} else
+		    CheckInterrupts();
 	}
 
 }

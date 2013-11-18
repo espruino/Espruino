@@ -37,6 +37,9 @@
 #define HI(value)               (((value) & 0xFF00) >> 8)
 #define LO(value)               ((value) & 0x00FF)
 
+volatile bool cc3000_ints_enabled = false;
+volatile bool cc3000_in_interrupt = false;
+
 typedef struct
 {
     gcSpiHandleRx  SPIRxHandler;
@@ -358,35 +361,39 @@ SpiTriggerRxProcessing(void)
 
 void SpiIntGPIOHandler(void)
 {
-        if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
-        {
-            //This means IRQ line was low call a callback of HCI Layer to inform
-            //on event
-            sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
-        }
-        else if (sSpiInformation.ulSpiState == eSPI_STATE_IDLE)
-        {
-            sSpiInformation.ulSpiState = eSPI_STATE_READ_IRQ;
+  if (tSLInformation.usEventOrDataReceived) return; // there's already an interrupt that we haven't handled
 
-            /* IRQ line goes down - we are start reception */
-            ASSERT_CS();
+  cc3000_in_interrupt = true;
+  if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
+  {
+      //This means IRQ line was low call a callback of HCI Layer to inform
+      //on event
+      sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
+  }
+  else if (sSpiInformation.ulSpiState == eSPI_STATE_IDLE)
+  {
+      sSpiInformation.ulSpiState = eSPI_STATE_READ_IRQ;
 
-            // Wait for TX/RX Compete which will come as DMA interrupt
-            SpiReadHeader();
+      /* IRQ line goes down - we are start reception */
+      ASSERT_CS();
 
-            sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
+      // Wait for TX/RX Compete which will come as DMA interrupt
+      SpiReadHeader();
 
-            SSIContReadOperation();
-        }
-        else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
-        {
-            SpiWriteDataSynchronous(sSpiInformation.pTxPacket,
-                                                            sSpiInformation.usTxPacketLength);
+      sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
 
-            sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+      SSIContReadOperation();
+  }
+  else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
+  {
+      SpiWriteDataSynchronous(sSpiInformation.pTxPacket,
+                                                      sSpiInformation.usTxPacketLength);
 
-            DEASSERT_CS();
-        }
+      sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+
+      DEASSERT_CS();
+  }
+  cc3000_in_interrupt = false;
 }
 
 void
@@ -407,10 +414,17 @@ long ReadWlanInterruptPin(void)
 }
 
 void WlanInterruptEnable(void) {
+  cc3000_ints_enabled = true;
   jshPinWatch(WLAN_IRQ_PIN, true);
 }
 
 void WlanInterruptDisable(void) {
+  cc3000_ints_enabled = false;
   jshPinWatch(WLAN_IRQ_PIN, false);
 }
 
+void CheckInterrupts() {
+  if (cc3000_ints_enabled && !cc3000_in_interrupt && !ReadWlanInterruptPin()) {
+    SpiIntGPIOHandler();
+  }
+}

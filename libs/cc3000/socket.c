@@ -45,9 +45,6 @@
 #include "socket.h"
 #include "evnt_handler.h"
 #include "netapp.h"
-#include "jsinteractive.h"
-
-
 
 //Enable this flag if and only if you must comply with BSD socket 
 //close() function
@@ -186,6 +183,8 @@ HostFlowControlConsumeBuff(int sd)
 int
 socket(long domain, long type, long protocol)
 {
+    CheckInterrupts();
+
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -227,6 +226,7 @@ socket(long domain, long type, long protocol)
 long
 closesocket(long sd)
 {
+    CheckInterrupts();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -300,6 +300,7 @@ closesocket(long sd)
 long
 accept(long sd, sockaddr *addr, socklen_t *addrlen)
 {
+    CheckInterrupts();
 	long ret;
 	unsigned char *ptr, *args;
 	tBsdReturnParams tAcceptReturnArguments;
@@ -364,6 +365,7 @@ accept(long sd, sockaddr *addr, socklen_t *addrlen)
 long
 bind(long sd, const sockaddr *addr, long addrlen)
 {
+    CheckInterrupts();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -417,6 +419,7 @@ bind(long sd, const sockaddr *addr, long addrlen)
 long
 listen(long sd, long backlog)
 {
+    CheckInterrupts();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -463,6 +466,7 @@ int
 gethostbyname(char * hostname, unsigned short usNameLen, 
 							unsigned long* out_ip_addr)
 {
+    CheckInterrupts();
 	tBsdGethostbynameParams ret;
 	unsigned char *ptr, *args;
 	
@@ -529,6 +533,7 @@ gethostbyname(char * hostname, unsigned short usNameLen,
 long
 connect(long sd, const sockaddr *addr, long addrlen)
 {
+    CheckInterrupts();
 	long int ret;
 	unsigned char *ptr, *args;
 	
@@ -598,6 +603,7 @@ int
 select(long nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds, 
        struct timeval *timeout)
 {
+    CheckInterrupts();
 	unsigned char *ptr, *args;
 	tBsdSelectRecvParams tParams;
 	unsigned long is_blocking;
@@ -723,6 +729,7 @@ int
 setsockopt(long sd, long level, long optname, const void *optval,
 					 socklen_t optlen)
 {
+    CheckInterrupts();
 	int ret;
 	unsigned char *ptr, *args;
 	
@@ -806,6 +813,7 @@ setsockopt(long sd, long level, long optname, const void *optval,
 int
 getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
 {
+    CheckInterrupts();
 	unsigned char *ptr, *args;
 	tBsdGetSockOptReturnParams  tRetParams;
 	
@@ -862,6 +870,7 @@ int
 simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
                 socklen_t *fromlen, long opcode)
 {
+    CheckInterrupts();
 	unsigned char *ptr, *args;
 	tBsdReadReturnParams tSocketReadEvent;
 	
@@ -890,11 +899,6 @@ simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
 
 
 	errno = tSocketReadEvent.iNumberOfBytes;
-	
-	int i;
-	for (i=0; i<errno; i++) {
-	  jsiConsolePrintChar(((unsigned char *)buf)[i]);
-	}
 
 	return(tSocketReadEvent.iNumberOfBytes);
 }
@@ -987,6 +991,7 @@ int
 simple_link_send(long sd, const void *buf, long len, long flags,
               const sockaddr *to, long tolen, long opcode)
 {    
+    CheckInterrupts();
 	unsigned char uArgSize,  addrlen;
 	unsigned char *ptr, *pDataPtr, *args;
 	unsigned long addr_offset;

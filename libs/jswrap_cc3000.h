@@ -17,3 +17,6 @@ void jswrap_wlan_init();
 void jswrap_wlan_start();
 JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey);
 JsVar *jswrap_wlan_getIP();
+
+/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
+bool cc3000_socket_has_closed(int socketNum);

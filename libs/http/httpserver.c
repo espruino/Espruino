@@ -20,6 +20,7 @@
 #ifdef USE_CC3000
  #include "socket.h"
  #include "cc3000_common.h"
+ #include "libs/jswrap_cc3000.h"
 
  #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 #else
@@ -293,7 +294,11 @@ void httpServerConnectionsIdle() {
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+    int n = SOCKET_ERROR;
+#ifdef USE_CC3000
+    if (!cc3000_socket_has_closed(connection->socket))
+#endif
+      n = select(connection->socket+1,&s,NULL,NULL,&timeout);
     if (n==SOCKET_ERROR) {
       // we probably disconnected so just get rid of this
       connection->closeNow = true;
@@ -371,7 +376,11 @@ void httpClientConnectionsIdle() {
         struct timeval time;
         time.tv_sec = 0;
         time.tv_usec = 0;
-        int n = select(connection->socket+1/* ? */, 0, &writefds, 0, &time);
+        int n = SOCKET_ERROR;
+#ifdef USE_CC3000
+        if (!cc3000_socket_has_closed(connection->socket))
+#endif
+          n = select(connection->socket+1/* ? */, 0, &writefds, 0, &time);
         if (n==SOCKET_ERROR ) {
            // we probably disconnected so just get rid of this
           connection->closeNow = true;
@@ -414,7 +423,11 @@ void httpClientConnectionsIdle() {
 #else
 	  timeout.tv_usec = 0;
 #endif      
-      int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+      int n = SOCKET_ERROR;
+#ifdef USE_CC3000
+        if (!cc3000_socket_has_closed(connection->socket))
+#endif
+        n = select(connection->socket+1,&s,NULL,NULL,&timeout);
       if (n==SOCKET_ERROR) {
         // we probably disconnected so just get rid of this
         connection->closeNow = true;
