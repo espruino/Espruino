@@ -286,6 +286,7 @@ void httpServerConnectionsIdle() {
   HttpServerConnection *connection = httpServerConnections;
   while (connection) {
     HttpServerConnection *nextConnection = connection->next;
+    bool hadData = false;
     // TODO: look for unreffed connections?
     fd_set s;
     FD_ZERO(&s);
@@ -294,15 +295,12 @@ void httpServerConnectionsIdle() {
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 0;
-    int n = SOCKET_ERROR;
-#ifdef USE_CC3000
-    if (!cc3000_socket_has_closed(connection->socket))
-#endif
-      n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+    int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
     if (n==SOCKET_ERROR) {
       // we probably disconnected so just get rid of this
       connection->closeNow = true;
     } else if (n>0) {
+      hadData = true;
       // receive data
       int num = (int)recv(connection->socket,buf,sizeof(buf),0);
       // add it to our request string
@@ -337,6 +335,12 @@ void httpServerConnectionsIdle() {
          httpError("Socket error while sending");
          connection->closeNow = true;
        }
+    } else {
+#ifdef USE_CC3000
+      // nothing to send, nothing to receive, and closed...
+      if (!hadData && cc3000_socket_has_closed(connection->socket))
+        connection->closeNow = true;
+#endif
     }
     if (connection->close && !connection->sendData)
       connection->closeNow = true;
@@ -376,11 +380,7 @@ void httpClientConnectionsIdle() {
         struct timeval time;
         time.tv_sec = 0;
         time.tv_usec = 0;
-        int n = SOCKET_ERROR;
-#ifdef USE_CC3000
-        if (!cc3000_socket_has_closed(connection->socket))
-#endif
-          n = select(connection->socket+1/* ? */, 0, &writefds, 0, &time);
+        int n = select(connection->socket+1/* ? */, 0, &writefds, 0, &time);
         if (n==SOCKET_ERROR ) {
            // we probably disconnected so just get rid of this
           connection->closeNow = true;
@@ -423,11 +423,7 @@ void httpClientConnectionsIdle() {
 #else
 	  timeout.tv_usec = 0;
 #endif      
-      int n = SOCKET_ERROR;
-#ifdef USE_CC3000
-        if (!cc3000_socket_has_closed(connection->socket))
-#endif
-        n = select(connection->socket+1,&s,NULL,NULL,&timeout);
+      int n = select(connection->socket+1,&s,NULL,NULL,&timeout);
       if (n==SOCKET_ERROR) {
         // we probably disconnected so just get rid of this
         connection->closeNow = true;
@@ -448,6 +444,12 @@ void httpClientConnectionsIdle() {
             }
           }
         }
+      } else {
+#ifdef USE_CC3000
+        // Nothing to send or receive, and closed
+        if (!connection->sendData && cc3000_socket_has_closed(connection->socket))
+          connection->closeNow = true;
+#endif
       }
     }
     }

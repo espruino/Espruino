@@ -60,7 +60,6 @@ unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
 
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
-void SpiWriteAsync(const unsigned char *data, unsigned short size);
 void SpiPauseSpi(void);
 void SpiResumeSpi(void);
 void SSIContReadOperation(void);
