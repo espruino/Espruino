@@ -455,10 +455,10 @@ endif
 
 ifdef USE_NET
 DEFINES += -DUSE_NET
-WRAPPERSOURCES += libs/http/jswrap_http.c
-INCLUDE += -I$(ROOT)/libs/http
+WRAPPERSOURCES += libs/network/http/jswrap_http.c
+INCLUDE += -I$(ROOT)/libs/network/http
 SOURCES += \
-libs/http/httpserver.c 
+libs/network/http/httpserver.c 
 ifdef LINUX
 #LIBS += -l... 
 #INCLUDE += -I...
@@ -467,18 +467,18 @@ endif
 
 ifdef USE_CC3000
 DEFINES += -DUSE_CC3000 -DSEND_NON_BLOCKING
-WRAPPERSOURCES += libs/jswrap_cc3000.c
-INCLUDE += -I$(ROOT)/libs/cc3000
+WRAPPERSOURCES += libs/network/cc3000/jswrap_cc3000.c
+INCLUDE += -I$(ROOT)/libs/network/cc3000
 SOURCES += \
-libs/cc3000/board_spi.c \
-libs/cc3000/cc3000_common.c \
-libs/cc3000/evnt_handler.c \
-libs/cc3000/hci.c \
-libs/cc3000/netapp.c \
-libs/cc3000/nvmem.c \
-libs/cc3000/security.c \
-libs/cc3000/socket.c \
-libs/cc3000/wlan.c
+libs/network/cc3000/board_spi.c \
+libs/network/cc3000/cc3000_common.c \
+libs/network/cc3000/evnt_handler.c \
+libs/network/cc3000/hci.c \
+libs/network/cc3000/netapp.c \
+libs/network/cc3000/nvmem.c \
+libs/network/cc3000/security.c \
+libs/network/cc3000/socket.c \
+libs/network/cc3000/wlan.c
 endif
 
 ifdef USE_TRIGGER
