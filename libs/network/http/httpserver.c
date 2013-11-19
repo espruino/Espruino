@@ -497,14 +497,15 @@ void httpClientConnectionsIdle() {
       }
       jsvUnLock(sendData);
     }
-
-
     jsvUnLock(receiveData);
-    jsvArrayIteratorNext(&it);
     if (closeConnectionNow) {
-      jsvRemoveChild(arr, connection);
       _httpClientConnectionKill(connection);
-    }
+      JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
+      jsvArrayIteratorNext(&it);
+      jsvRemoveChild(arr, connectionName);
+      jsvUnLock(connectionName);
+    } else
+      jsvArrayIteratorNext(&it);
     jsvUnLock(connection);
   }
   jsvUnLock(arr);
