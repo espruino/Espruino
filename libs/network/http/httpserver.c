@@ -417,9 +417,7 @@ void httpClientConnectionsIdle() {
         if (n==SOCKET_ERROR ) {
            // we probably disconnected so just get rid of this
           closeConnectionNow = true;
-          return;
-        }
-        if (FD_ISSET(socket, &writefds)) {
+        } else if (FD_ISSET(socket, &writefds)) {
           int a=1;
           int len = (int)jsvGetStringLength(sendData);
           if (len>0) {
@@ -604,6 +602,7 @@ JsVar *httpFindHttpClientConnectionFromRequest(JsVar *httpClientRequestVar) {
     jsvArrayIteratorNext(&it);
   }
   jsvArrayIteratorFree(&it);
+  jsvUnLock(arr);
   return found;
 }
 
