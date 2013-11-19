@@ -83,6 +83,6 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
 void graphicsFillVectorString(JsGraphics *gfx, short x1, short y1, short size, const char *str);
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
-void lcdIdle(); ///< called when idling
+void graphicsIdle(); ///< called when idling
 
 #endif // GRAPHICS_H

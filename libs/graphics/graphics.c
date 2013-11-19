@@ -367,7 +367,7 @@ void graphicsSplash(JsGraphics *gfx) {
   graphicsDrawString(gfx,0,16,"  www.espruino.com");
 }
 
-void lcdIdle() {
+void graphicsIdle() {
 #ifdef USE_LCD_SDL
   lcdIdle_SDL();
 #endif

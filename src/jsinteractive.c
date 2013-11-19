@@ -1506,7 +1506,7 @@ void jsiLoop() {
   jsiIdle();
   // Idle LCD
 #ifdef USE_LCD
-  lcdIdle();
+  graphicsIdle();
 #endif
   
   if (jspIsInterrupted()) {
