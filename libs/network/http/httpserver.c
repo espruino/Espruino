@@ -423,7 +423,6 @@ void httpClientConnectionsIdle() {
           if (len>0) {
             size_t bufLen = httpStringGet(sendData, buf, sizeof(buf));
             a = (int)send(socket,buf,bufLen, MSG_NOSIGNAL);
-            int i;for (i=0;i<bufLen;i++)jsiConsolePrintChar(buf[i]);
             JsVar *newSendData = 0;
             if (a!=len) {
               newSendData = jsvNewFromEmptyString();
