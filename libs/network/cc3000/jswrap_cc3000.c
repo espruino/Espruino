@@ -72,37 +72,7 @@ void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength
     }
 }
 
-/**
-  * @brief  This function returns a pointer to the driver patch.
-  * @param  The length of the patch.
-  * @retval None
-  */
-const unsigned char *sendDriverPatch(unsigned long *Length)
-{
-    *Length = 0;
-    return NULL;
-}
-
-
-/**
-  * @brief  This function returns a pointer to the bootloader patch.
-  * @param  The length of the patch.
-  * @retval None
-  */
-const unsigned char  *sendBootLoaderPatch(unsigned long *Length)
-{
-    *Length = 0;
-    return NULL;
-}
-
-
-/**
-  * @brief  This function returns a pointer to the firmware patch.
-  * @param  The length of the patch.
-  * @retval None
-  */
-const unsigned char *sendWLFWPatch(unsigned long *Length)
-{
+const unsigned char *sendNoPatch(unsigned long *Length) {
     *Length = 0;
     return NULL;
 }
@@ -122,21 +92,16 @@ void WriteWlanPin( unsigned char val )
          "class" : "WLAN", "name" : "init",
          "generate" : "jswrap_wlan_init",
          "description" : "",
-         "params" : [  ]
+         "params" : [ ]
 }*/
 void jswrap_wlan_init() {
-  SpiInit();
-  wlan_init(CC3000_UsynchCallback, sendWLFWPatch, sendDriverPatch, sendBootLoaderPatch, ReadWlanInterruptPin, WlanInterruptEnable, WlanInterruptDisable, WriteWlanPin);
-}
-
-/*JSON{ "type":"staticmethod",
-         "class" : "WLAN", "name" : "start",
-         "generate" : "jswrap_wlan_start",
-         "description" : "",
-         "params" : [  ]
-}*/
-void jswrap_wlan_start() {
-  wlan_start(0);
+  cc3000_spi_open();
+  wlan_init(CC3000_UsynchCallback,
+            sendNoPatch/*sendWLFWPatch*/,
+            sendNoPatch/*sendDriverPatch*/,
+            sendNoPatch/*sendBootLoaderPatch*/,
+            cc3000_read_irq_pin, cc3000_irq_enable, cc3000_irq_disable, WriteWlanPin);
+  wlan_start(0/* No patches */);
   // Mask out all non-required events from CC3000
   wlan_set_event_mask(
       HCI_EVNT_WLAN_KEEPALIVE |
@@ -152,10 +117,15 @@ void jswrap_wlan_start() {
          "generate" : "jswrap_wlan_connect",
          "description" : "Connect to a wireless network",
          "params" : [ [ "ap", "JsVar", "Access point name" ],
-                      [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ] ],
+                      [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
+                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connected'/'dhcp'" ] ],
          "return" : ["int", ""]
 }*/
-JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey) {
+JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
+  if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
+    jsError("Expecting callback function");
+    return 0;
+  }
   char ap[32];
   char key[32];
   unsigned long security = WLAN_SEC_UNSEC;
@@ -203,10 +173,8 @@ void _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip
 JsVar *jswrap_wlan_getIP() {
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
-
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
-
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
   _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP, 4, 10, '.');
   _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask, 4, 10, '.');
@@ -214,7 +182,5 @@ JsVar *jswrap_wlan_getIP() {
   _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer, 4, 10, '.');
   _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer, 4, 10, '.');
   _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr, 6, 16, 0);
-  // unsigned char uaSSID[32];
-
   return data;
 }

@@ -61,9 +61,9 @@ extern unsigned char wlan_tx_buffer[];
 //
 //*****************************************************************************
 extern void SpiOpen(gcSpiHandleRx pfRxHandler);
-extern void SpiClose(void);
-extern long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength);
-extern void SpiResumeSpi(void);
+extern void cc3000_spi_close(void);
+extern long cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength);
+extern void cc3000_spi_resume(void);
 extern void SpiConfigureHwMapping(	void /*unsigned long ulPioPortAddress,
 									unsigned long ulPort, 
 									unsigned long ulSpiCs, 

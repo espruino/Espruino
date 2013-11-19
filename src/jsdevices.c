@@ -199,7 +199,7 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
   IOEvent event;
   event.flags = channel;
   if (!state && jshIsEventForPin(&event, WLAN_IRQ_PIN)) {
-    SpiIntGPIOHandler();
+    cc3000_irq_handler();
   }
 #endif
  // Otherwise add this event

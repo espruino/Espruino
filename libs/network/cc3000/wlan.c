@@ -338,7 +338,7 @@ wlan_stop(void)
 		tSLInformation.pucTxCommandBuffer = 0;
 	}
 	
-	SpiClose();
+	cc3000_spi_close();
 }
 
 

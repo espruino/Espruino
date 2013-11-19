@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * CC3000 WiFi Interface
+ * CC3000 WiFi SPI wrappers
  * ----------------------------------------------------------------------------
  */
 
@@ -42,28 +42,18 @@ extern int errno;
 #define NULL							(uint32_t)0x00
 #endif
 
-void SpiInit(void);
-void SpiFlushRxFifo(void);
+void cc3000_spi_open(void);
+void cc3000_spi_close(void);
 
-void SpiReadWriteString(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
-void SpiReadWriteStringInt(uint32_t ulTrueFalse, const uint8_t *ptrData, uint32_t ulDataSize);
+long cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength);
+void cc3000_spi_resume(void);
 
-void SpiClearInterruptFlag(void);
-void SpiInterruptDisable(void);
-void SpiInterruptEnable(void);
-void SpiRxInterruptClkInit(void);
+long cc3000_read_irq_pin(void);
+void cc3000_irq_enable(void);
+void cc3000_irq_disable(void);
 
-void SpiDelayOneSecond(void);
-void SysCtlDelay(unsigned long ulDelay);
-void SpiClose(void);
-long SpiWrite(unsigned char *pUserBuffer, unsigned short usLength);
-void SpiResumeSpi(void);
-long ReadWlanInterruptPin(void);
-void WlanInterruptEnable(void);
-void WlanInterruptDisable(void);
+void cc3000_irq_handler(void);
 
-void SpiIntGPIOHandler(void);
-
-void CheckInterrupts();
+void cc3000_check_irq_pin();
 
 #endif

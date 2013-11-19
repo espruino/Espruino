@@ -20,7 +20,7 @@
 #ifdef USE_CC3000
  #include "socket.h"
  #include "cc3000_common.h"
- #include "libs/jswrap_cc3000.h"
+ #include "jswrap_cc3000.h"
 
  #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 #else

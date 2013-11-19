@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * CC3000 WiFi Interface
+ * CC3000 WiFi SPI wrappers
  * ----------------------------------------------------------------------------
  */
 
@@ -61,8 +61,8 @@ unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiPauseSpi(void);
-void SpiResumeSpi(void);
-void SSIContReadOperation(void);
+void cc3000_spi_resume(void);
+void cc3000_continue_read(void);
 #define ASSERT_CS()          jshPinSetValue(WLAN_CS_PIN, 0)
 #define DEASSERT_CS()        jshPinSetValue(WLAN_CS_PIN, 1)
 
@@ -78,7 +78,7 @@ char spi_buffer[CC3000_RX_BUFFER_SIZE];
 unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
 
 
-void  SpiInit(void)
+void  cc3000_spi_open(void)
 {
   // SPI config
   JshSPIInfo inf;
@@ -102,12 +102,12 @@ void  SpiInit(void)
   jshDelayMicroseconds(500*1000); // force a 500ms delay! FIXME
 }
 
-void SpiClose(void)
+void cc3000_spi_close(void)
 {
     if (sSpiInformation.pRxPacket)
         sSpiInformation.pRxPacket = 0;
     //  Disable Interrupt
-    WlanInterruptDisable();
+    cc3000_irq_disable();
 }
 
 void SpiOpen(gcSpiHandleRx pfRxHandler)
@@ -152,7 +152,7 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 }
 
 long
-SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
+cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
 {
     unsigned char ucPad = 0;
 
@@ -325,15 +325,11 @@ long SpiReadDataCont(void) {
 
 
 void
-SpiPauseSpi(void)
-{
-    // FIXME
+SpiPauseSpi(void) {
 }
 
 void
-SpiResumeSpi(void)
-{
-  // FIXME
+cc3000_spi_resume(void) {
 }
 
 void
@@ -358,7 +354,7 @@ SpiTriggerRxProcessing(void)
     sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
 
-void SpiIntGPIOHandler(void)
+void cc3000_irq_handler(void)
 {
   if (tSLInformation.usEventOrDataReceived) return; // there's already an interrupt that we haven't handled
 
@@ -381,7 +377,7 @@ void SpiIntGPIOHandler(void)
 
       sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
 
-      SSIContReadOperation();
+      cc3000_continue_read();
   }
   else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
   {
@@ -396,7 +392,7 @@ void SpiIntGPIOHandler(void)
 }
 
 void
-SSIContReadOperation(void)
+cc3000_continue_read(void)
 {
     // The header was read - continue with  the payload read
     if (!SpiReadDataCont())
@@ -407,23 +403,23 @@ SSIContReadOperation(void)
     }
 }
 
-long ReadWlanInterruptPin(void)
+long cc3000_read_irq_pin(void)
 {
     return jshPinGetValue(WLAN_IRQ_PIN);
 }
 
-void WlanInterruptEnable(void) {
+void cc3000_irq_enable(void) {
   cc3000_ints_enabled = true;
   jshPinWatch(WLAN_IRQ_PIN, true);
 }
 
-void WlanInterruptDisable(void) {
+void cc3000_irq_disable(void) {
   cc3000_ints_enabled = false;
   jshPinWatch(WLAN_IRQ_PIN, false);
 }
 
-void CheckInterrupts() {
-  if (cc3000_ints_enabled && !cc3000_in_interrupt && !ReadWlanInterruptPin()) {
-    SpiIntGPIOHandler();
+void cc3000_check_irq_pin() {
+  if (cc3000_ints_enabled && !cc3000_in_interrupt && !cc3000_read_irq_pin()) {
+    cc3000_irq_handler();
   }
 }

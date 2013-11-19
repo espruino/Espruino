@@ -183,7 +183,7 @@ HostFlowControlConsumeBuff(int sd)
 int
 socket(long domain, long type, long protocol)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 
 	long ret;
 	unsigned char *ptr, *args;
@@ -226,7 +226,7 @@ socket(long domain, long type, long protocol)
 long
 closesocket(long sd)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -300,7 +300,7 @@ closesocket(long sd)
 long
 accept(long sd, sockaddr *addr, socklen_t *addrlen)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	long ret;
 	unsigned char *ptr, *args;
 	tBsdReturnParams tAcceptReturnArguments;
@@ -365,7 +365,7 @@ accept(long sd, sockaddr *addr, socklen_t *addrlen)
 long
 bind(long sd, const sockaddr *addr, long addrlen)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -419,7 +419,7 @@ bind(long sd, const sockaddr *addr, long addrlen)
 long
 listen(long sd, long backlog)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	long ret;
 	unsigned char *ptr, *args;
 	
@@ -466,7 +466,7 @@ int
 gethostbyname(char * hostname, unsigned short usNameLen, 
 							unsigned long* out_ip_addr)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	tBsdGethostbynameParams ret;
 	unsigned char *ptr, *args;
 	
@@ -533,7 +533,7 @@ gethostbyname(char * hostname, unsigned short usNameLen,
 long
 connect(long sd, const sockaddr *addr, long addrlen)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	long int ret;
 	unsigned char *ptr, *args;
 	
@@ -603,7 +603,7 @@ int
 select(long nfds, fd_set *readsds, fd_set *writesds, fd_set *exceptsds, 
        struct timeval *timeout)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	unsigned char *ptr, *args;
 	tBsdSelectRecvParams tParams;
 	unsigned long is_blocking;
@@ -729,7 +729,7 @@ int
 setsockopt(long sd, long level, long optname, const void *optval,
 					 socklen_t optlen)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	int ret;
 	unsigned char *ptr, *args;
 	
@@ -813,7 +813,7 @@ setsockopt(long sd, long level, long optname, const void *optval,
 int
 getsockopt (long sd, long level, long optname, void *optval, socklen_t *optlen)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	unsigned char *ptr, *args;
 	tBsdGetSockOptReturnParams  tRetParams;
 	
@@ -870,7 +870,7 @@ int
 simple_link_recv(long sd, void *buf, long len, long flags, sockaddr *from,
                 socklen_t *fromlen, long opcode)
 {
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	unsigned char *ptr, *args;
 	tBsdReadReturnParams tSocketReadEvent;
 	
@@ -991,7 +991,7 @@ int
 simple_link_send(long sd, const void *buf, long len, long flags,
               const sockaddr *to, long tolen, long opcode)
 {    
-    CheckInterrupts();
+    cc3000_check_irq_pin();
 	unsigned char uArgSize,  addrlen;
 	unsigned char *ptr, *pDataPtr, *args;
 	unsigned long addr_offset;

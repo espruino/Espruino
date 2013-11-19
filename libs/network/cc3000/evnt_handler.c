@@ -460,7 +460,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 		
 			tSLInformation.usEventOrDataReceived = 0;
 			
-			SpiResumeSpi();
+			cc3000_spi_resume();
 			
 			// Since we are going to TX - we need to handle this event after the 
 			// ResumeSPi since we need interrupts
@@ -475,7 +475,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 				return NULL;
 			}	
 		} else
-		    CheckInterrupts();
+		    cc3000_check_irq_pin();
 	}
 
 }
@@ -677,7 +677,7 @@ hci_unsolicited_event_handler(void)
 				tSLInformation.usEventOrDataReceived = 0;
 				
 				res = 1;
-				SpiResumeSpi();
+				cc3000_spi_resume();
 			}
 		}
 	}
