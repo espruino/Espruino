@@ -23,14 +23,10 @@ espruino_#v##_hystm32_28_rb.bin
 espruino_#v##_hystm32_32_vc.bin 
    - 'HY'STM32F103VCT6 ARM with 3.2" LCD display
      This is available from eBay
-
-espruino_#v##_olimexino_bootloader_stm32
-   - FOR BOARDS WHERE THE BOOTLOADER IS KEPT INSTALLED
-   - Olimexino-STM32 Arduino form factor board
-   - Leaf Labs Maple Arduino form factor board
       
 espruino_#v##_olimexino_stm32.bin
-   - FOR BOARDS WHERE THE BOOTLOADER IS OVERWRITTEN (Gives Espruino more memory)
+   - You will need to overwrite the Maple bootloader to install this.
+     Espruino is now too large to fit in flash alongside it.
    - Olimexino-STM32 Arduino form factor board
    - Leaf Labs Maple Arduino form factor board
 
