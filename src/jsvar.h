@@ -389,6 +389,11 @@ static inline void jsvRemoveNamedChild(JsVar *parent, const char *name) {
   }
 }
 
+/// Get the named child of an object. If createChild!=0 then create the child
+JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
+/// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
+JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing

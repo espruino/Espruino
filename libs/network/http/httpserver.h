@@ -60,20 +60,6 @@
 
 #define HTTP_CLIENT_MAX_HOST_NAME 64
 
- typedef struct HttpClientConnection {
-   struct HttpClientConnection *prev;
-   struct HttpClientConnection *next;
-   JsVar *resVar; // response
-   JsVar *reqVar; // request
-   SOCKET socket;
-   JsVar *sendData; // data to send
-   JsVar *receiveData; // data that has been received
-   bool closeNow; // close connection right now!
-   bool hadHeaders; // have we already parsed the headers?
-
-   JsVar *options;
- } HttpClientConnection;
-
 // -----------------------------
 void httpServerInit();
 void httpServerKill();
@@ -81,7 +67,7 @@ void httpServerIdle();
 // -----------------------------
 HttpServer *httpFindServer(JsVar *httpServerVar);
 HttpServerConnection *httpFindServerConnectionFromResponse(JsVar *httpServerResponseVar);
-HttpClientConnection *httpFindHttpClientConnectionFromRequest(JsVar *httpClientRequestVar);
+//HttpClientConnection *httpFindHttpClientConnectionFromRequest(JsVar *httpClientRequestVar);
 // -----------------------------
 JsVar *httpServerNew(JsVar *callback);
 void httpServerListen(JsVar *httpServerVar, int port);

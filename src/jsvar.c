@@ -1535,6 +1535,33 @@ void jsvRemoveAllChildren(JsVar *parent) {
     }
 }
 
+/// Get the named child of an object. If createChild!=0 then create the child
+JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
+  if (!obj) return 0;
+  assert(jsvIsObject(obj));
+  JsVar *childName = jsvFindChildFromString(obj, name, createChild);
+  if (!childName && createChild) {
+    JsVar *child = jsvNewWithFlags(createChild);
+    jsvSetValueOfName(childName, child);
+    jsvUnLock(childName);
+    return child;
+  }
+  if (childName)
+    return jsvSkipNameAndUnLock(childName);
+  return 0;
+}
+
+/// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
+JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
+  assert(jsvIsObject(obj));
+  assert(!jsvIsName(child));
+  JsVar *childName = jsvFindChildFromString(obj, name, true);
+  if (!childName) return 0; // out of memory
+  jsvSetValueOfName(childName, child);
+  jsvUnLock(childName);
+  return child;
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;

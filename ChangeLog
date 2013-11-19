@@ -7,6 +7,8 @@
             Ensure that return takes the comma operator
             Fix issue where printing Infinity would crash Espruino (fix #129)
             Finally some working (extremely beta) cc3000 code
+            Added jsvObjectGet/SetChild to simplify some wrappers
+            Moved http client over to using JsVars for storage
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
