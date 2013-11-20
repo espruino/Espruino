@@ -61,7 +61,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
   }
 
   // Now check if it is built-in
-  char moduleNameBuf[16];
+  char moduleNameBuf[32];
   jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf));
   if (jswIsBuiltInLibrary(moduleNameBuf)) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
