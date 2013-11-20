@@ -354,8 +354,20 @@ void httpServerConnectionsIdle() {
     // send data if possible
     JsVar *sendData = jsvObjectGetChild(connectReponse,HTTP_NAME_SEND_DATA,0);
     if (sendData) {
-      if (!_http_send(sckt, &sendData))
+      fd_set writefds;
+      FD_ZERO(&writefds);
+      FD_SET(sckt, &writefds);
+      struct timeval time;
+      time.tv_sec = 0;
+      time.tv_usec = 0;
+      int n = select(sckt+1, 0, &writefds, 0, &time);
+      if (n==SOCKET_ERROR ) {
+         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
+      } else if (FD_ISSET(sckt, &writefds)) {
+        if (!_http_send(sckt, &sendData))
+          closeConnectionNow = true;
+      }
       jsvObjectSetChild(connectReponse, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
     } else {
 #ifdef USE_CC3000
