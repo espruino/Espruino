@@ -383,7 +383,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // 'claim' anything we are using
 void jsiSoftInit() {
 #ifdef USE_NET
-  httpServerInit();
+  httpInit();
 #endif
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject(jsiGetParser(), "LCD", "Graphics");
@@ -594,7 +594,7 @@ void jsiSoftKill() {
   jsvUnLock(initName);
 
 #ifdef USE_NET
-  httpServerKill();
+  httpKill();
 #endif
 }
 
@@ -1417,7 +1417,7 @@ void jsiIdle() {
 
   // Check for network events
 #ifdef USE_NET
-  httpServerIdle();
+  httpIdle();
 #endif
 
   // Just in case we got any events to do and didn't clear loopsIdling before

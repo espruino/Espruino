@@ -35,39 +35,10 @@
  #endif
 #endif
 
- typedef struct HttpServer {
-   struct HttpServer *prev;
-   struct HttpServer *next;
-   JsVar *var;
-   SOCKET listeningSocket;
- } HttpServer;
-
- typedef struct HttpServerConnection {
-   struct HttpServerConnection *prev;
-   struct HttpServerConnection *next;
-   JsVar *var; // server var
-   JsVar *resVar; // response
-   JsVar *reqVar; // request
-   SOCKET socket;
-   int sendCode; // http response code
-   JsVar *sendHeaders; // object representing headers to send
-   JsVar *sendData; // data to send
-   JsVar *receiveData; // data that has been received
-   bool close; // close connection after all data sent
-   bool closeNow; // close connection right now!
-   bool hadHeaders; // have we already parsed the headers?
- } HttpServerConnection;
-
-#define HTTP_CLIENT_MAX_HOST_NAME 64
-
 // -----------------------------
-void httpServerInit();
-void httpServerKill();
-void httpServerIdle();
-// -----------------------------
-HttpServer *httpFindServer(JsVar *httpServerVar);
-HttpServerConnection *httpFindServerConnectionFromResponse(JsVar *httpServerResponseVar);
-//HttpClientConnection *httpFindHttpClientConnectionFromRequest(JsVar *httpClientRequestVar);
+void httpInit();
+void httpKill();
+void httpIdle();
 // -----------------------------
 JsVar *httpServerNew(JsVar *callback);
 void httpServerListen(JsVar *httpServerVar, int port);

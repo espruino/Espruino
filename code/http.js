@@ -1,4 +1,5 @@
-/*http.createServer(function (req, res) {
+/*
+http.createServer(function (req, res) {
   console.log("Connected");
   res.writeHead(200, {'Content-Type': 'text/plain'});
   res.write('Hello World - ');
@@ -29,7 +30,10 @@ var options = {
 http.get("http://www.pur3.co.uk", function(res) {
   console.log("Got response: " + JSON.stringify(res));
   res.on('data', function(data) {
-	  console.log(">" + data);
+	  console.log("->" + data);
+	});
+  res.on('close', function(data) {
+	  console.log("[[[CLOSED]]]");
 	});
 });/*.on('error', function(e) {
   console.log("Got error: " + e.message);
