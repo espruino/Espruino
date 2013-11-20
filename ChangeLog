@@ -10,6 +10,7 @@
             Added jsvObjectGet/SetChild to simplify some wrappers
             'http' now uses JsVars for storage (so is suitable for non-linux devices)
             Turned 'http' into a library
+            Added process.version and process.env
 
 
      1v42 : [ebirger] allowing 'new' with no brackets

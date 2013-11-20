@@ -119,6 +119,12 @@ codeOut("""
 
 """);
 
+codeOut("#define PC_BOARD_ID \""+boardname+"\"")
+codeOut("#define PC_BOARD_CHIP \""+board.chip["part"]+"\"")
+codeOut("#define PC_BOARD_CHIP_FAMILY \""+board.chip["family"]+"\"")
+
+codeOut("")
+
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
 elif board.chip["family"]=="STM32F1":

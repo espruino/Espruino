@@ -306,6 +306,7 @@ WRAPPERSOURCES = \
 src/jswrap_pin.c \
 src/jswrap_functions.c \
 src/jswrap_modules.c \
+src/jswrap_process.c \
 src/jswrap_interactive.c \
 src/jswrap_json.c \
 src/jswrap_object.c \
