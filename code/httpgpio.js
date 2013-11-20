@@ -9,5 +9,7 @@ function onPageRequest(req, res) {
   if (req.url=="/on") digitalWrite(LED1, 1);
   if (req.url=="/off") digitalWrite(LED1, 0);
 }
-http.createServer(onPageRequest).listen(8080);
+require('http').createServer(onPageRequest).listen(8080);
 
+
+setTimeout("result=0;", 200000); //timeout

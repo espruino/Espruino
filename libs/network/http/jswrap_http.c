@@ -27,7 +27,7 @@ http.createServer(function (req, res) {
  */
 
 
-/*JSON{ "type":"class",
+/*JSON{ "type":"library",
         "class" : "http",
         "description" : [
                          "This library allows you to create http servers and make http requests",
