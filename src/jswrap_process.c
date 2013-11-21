@@ -45,6 +45,5 @@ JsVar *jswrap_process_env() {
   jsvUnLock(jsvObjectSetChild(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL)));
   jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
 
-
   return obj;
 }
