@@ -1214,7 +1214,7 @@ JsVar *jspeFactor() {
       return jspeFactorTypeOf();
     } else if (execInfo.lex->tk==LEX_R_VOID) {
       JSP_MATCH(LEX_R_VOID);
-      jsvUnLock(jspeBase());
+      jsvUnLock(jspeFactor());
       return 0;
     }
     // Nothing we can do here... just hope it's the end...
