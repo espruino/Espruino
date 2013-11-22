@@ -11,6 +11,7 @@
             'http' now uses JsVars for storage (so is suitable for non-linux devices)
             Turned 'http' into a library
             Added process.version and process.env (fix #131)
+            Changed handling of 2nd arg of << so that precedence is correct
 
 
      1v42 : [ebirger] allowing 'new' with no brackets

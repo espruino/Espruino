@@ -1314,7 +1314,7 @@ __attribute((noinline)) JsVar *__jspeShift(JsVar *a) {
     JsVar *b;
     int op = execInfo.lex->tk;
     JSP_MATCH(op);
-    b = jspeBase();
+    b = jspeExpression();
     if (JSP_SHOULD_EXECUTE) {
       JsVar *res = jsvMathsOpSkipNames(a, b, op);
       jsvUnLock(a); a = res;
