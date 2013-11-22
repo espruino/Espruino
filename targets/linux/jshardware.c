@@ -116,7 +116,7 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 // ----------------------------------------------------------------------------
 // for non-blocking IO
 struct termios orig_termios;
-static int terminal_set;
+static int terminal_set = 0;
 
 void reset_terminal_mode()
 {
