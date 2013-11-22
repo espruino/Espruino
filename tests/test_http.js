@@ -2,6 +2,7 @@
 
 var result = 0;
 var timeout = setTimeout("print('done');", 10000000);
+var http = require("http");
 
 http.createServer(function (req, res) {
   console.log("Connected " + JSON.stringify(req));
