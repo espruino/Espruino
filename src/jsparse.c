@@ -1773,7 +1773,11 @@ JsVar *jspeStatementFor() {
   JSP_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
   execInfo.execute |= EXEC_FOR_INIT;
-  JsVar *forStatement = jspeStatement(); // initialisation
+  // initialisation
+  JsVar *forStatement = 0;
+  // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
+  if (execInfo.lex->tk != ';') 
+    forStatement = jspeStatement(); 
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
   if (execInfo.lex->tk == LEX_R_IN) {
     // for (i in array)
@@ -1864,12 +1868,14 @@ JsVar *jspeStatementFor() {
     jsvUnLock(forStatement);
     JSP_MATCH(';');
     JslCharPos forCondStart = execInfo.lex->tokenStart;
-    JsVar *cond = jspeBase(); // condition
-    loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
-    jsvUnLock(cond);
+    if (execInfo.lex->tk != ';') {
+      JsVar *cond = jspeBase(); // condition
+      loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
+      jsvUnLock(cond);
+    }
     JSP_MATCH(';');
     JslCharPos forIterStart = execInfo.lex->tokenStart;
-    {
+    if (execInfo.lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
       jsvUnLock(jspeBase()); // iterator
@@ -1893,7 +1899,7 @@ JsVar *jspeStatementFor() {
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
         jslSeekTo(execInfo.lex, forIterStart);
-        jsvUnLock(jspeBase());
+        if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
     }
     while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -1901,9 +1907,14 @@ JsVar *jspeStatementFor() {
 #endif
            ) {
         jslSeekTo(execInfo.lex, forCondStart);
-        cond = jspeBase();
-        loopCond = jsvGetBoolAndUnLock(jsvSkipName(cond));
-        jsvUnLock(cond);
+        ;
+        if (execInfo.lex->tk == ';') {
+          loopCond = true;
+        } else {
+          JsVar *cond = jspeBase();
+          loopCond = jsvGetBoolAndUnLock(jsvSkipName(cond));
+          jsvUnLock(cond);
+        }
         if (JSP_SHOULD_EXECUTE && loopCond) {
             jslSeekTo(execInfo.lex, forBodyStart);
             execInfo.execute |= EXEC_IN_LOOP;
@@ -1918,7 +1929,7 @@ JsVar *jspeStatementFor() {
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
             jslSeekTo(execInfo.lex, forIterStart);
-            jsvUnLock(jspeBase());
+            if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
         }
     }
     jslSeekTo(execInfo.lex, forBodyEnd);
