@@ -171,7 +171,7 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 
 
 /*JSON{ "type":"method", "class": "Array", "name" : "splice",
-         "description" : "Pop a new value off of the end of this array",
+         "description" : "Both remove and add items to an array",
          "generate" : "jswrap_array_splice",
          "params" : [ [ "index", "int", "Index at which to start changing the array. If negative, will begin that many elements from the end"],
                       [ "howMany", "JsVar", "An integer indicating the number of old array elements to remove. If howMany is 0, no elements are removed."],
