@@ -21,6 +21,7 @@
 #include "jsinteractive.h"
 
 
+
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
 
 #define SPI_HEADER_SIZE         (5)
@@ -393,26 +394,35 @@ bool cc3000_socket_has_closed(int socketNum) {
   } else return false;
 }
 
+static void cc3000_state_change(const char *data) {
+  JsVar *wlanObj = jsvObjectGetChild(jsiGetParser()->root, CC3000_OBJ_NAME, 0);
+  JsVar *dataVar = jsvNewFromString(data);
+  if (wlanObj)
+    jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, dataVar, 0);
+  jsvUnLock(dataVar);
+  jsvUnLock(wlanObj);
+}
+
 void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength)
 {
     if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
       //ulSmartConfigFinished = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
+      //jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
-      //ulCC3000Connected = 1;
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
+      cc3000_state_change("connect");
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
-      //ulCC3000Connected = 0;
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
+      cc3000_state_change("disconnect");
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
-      //ulCC3000DHCP = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
+      cc3000_state_change("dhcp");
     } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
       jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
     } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
         uint8_t socketnum = pcData[0];
         cc3000_socket_closed |= 1<<socketnum;
-//        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
+      //jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
     } else {
       //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
     }
@@ -428,7 +438,9 @@ void cc3000_write_en_pin( unsigned char val )
   jshPinOutput(WLAN_EN_PIN, val == WLAN_ENABLE);
 }
 
-void cc3000_initialise() {
+void cc3000_initialise(JsVar *wlanObj) {
+  jsvObjectSetChild(jsiGetParser()->root, CC3000_OBJ_NAME, wlanObj);
+
   cc3000_spi_open();
   wlan_init(cc3000_usynch_callback,
             sendNoPatch/*sendWLFWPatch*/,

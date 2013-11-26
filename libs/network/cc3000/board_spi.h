@@ -56,6 +56,11 @@ void cc3000_irq_handler(void);
 
 void cc3000_check_irq_pin();
 
-void cc3000_initialise();
+#include "jsvar.h"
+
+#define CC3000_OBJ_NAME JS_HIDDEN_CHAR_STR"cc3000"
+#define CC3000_ON_STATE_CHANGE "#onstate"
+
+void cc3000_initialise(JsVar *wlanObj);
 
 #endif

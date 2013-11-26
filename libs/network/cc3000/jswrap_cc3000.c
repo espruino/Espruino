@@ -24,34 +24,46 @@
 #include "netapp.h"
 #include "hci.h"
 
-/*JSON{ "type":"class",
-        "class" : "WLAN",
+
+/*JSON{ "type":"library",
+        "class" : "CC3000",
         "description" : ""
 }*/
-
 /*JSON{ "type":"staticmethod", 
-         "class" : "WLAN", "name" : "init",
-         "generate" : "jswrap_wlan_init",
-         "description" : "",
-         "params" : [ ]
+         "class" : "CC3000", "name" : "connect",
+         "generate" : "jswrap_cc3000_connect",
+         "description" : "Initialise the CC3000 and return a WLAN object",
+         "params" : [ ],
+         "return" : ["JsVar", "A WLAN Object"]
 }*/
-void jswrap_wlan_init() {
-  cc3000_initialise();
+JsVar *jswrap_cc3000_connect() {
+  JsVar *wlanObj = jspNewObject(jsiGetParser(), 0, "WLAN");
+  cc3000_initialise(wlanObj);
+  return wlanObj;
 }
 
-/*JSON{ "type":"staticmethod",
+
+/*JSON{ "type":"class",
+        "class" : "WLAN",
+        "description" : "An instantiation of a WiFi network adaptor"
+}*/
+
+/*JSON{ "type":"method",
          "class" : "WLAN", "name" : "connect",
          "generate" : "jswrap_wlan_connect",
          "description" : "Connect to a wireless network",
          "params" : [ [ "ap", "JsVar", "Access point name" ],
                       [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
-                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connected'/'dhcp'" ] ],
+                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connected'/'disconnected'/'dhcp'" ] ],
          "return" : ["int", ""]
 }*/
-JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
+JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
     jsError("Expecting callback function");
     return 0;
+  }
+  if (jsvIsFunction(callback)) {
+    jsvObjectSetChild(wlanObj, CC3000_ON_STATE_CHANGE, callback);
   }
   char ap[32];
   char key[32];
@@ -91,13 +103,13 @@ void _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip
   jsvUnLock(v);
 }
 
-/*JSON{ "type":"staticmethod",
+/*JSON{ "type":"method",
          "class" : "WLAN", "name" : "getIP",
          "generate" : "jswrap_wlan_getIP",
          "description" : "Get the current IP address",
          "return" : ["JsVar", ""]
 }*/
-JsVar *jswrap_wlan_getIP() {
+JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
   /* If byte 1 is 0 we don't have a valid address */
