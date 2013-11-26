@@ -56,4 +56,6 @@ void cc3000_irq_handler(void);
 
 void cc3000_check_irq_pin();
 
+void cc3000_initialise();
+
 #endif

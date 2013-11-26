@@ -29,65 +29,6 @@
         "description" : ""
 }*/
 
-// Bit field containing whether the socket has closed or not
-unsigned int cc3000_socket_closed = 0;
-
-/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
-bool cc3000_socket_has_closed(int socketNum) {
-  if (cc3000_socket_closed & (1<<socketNum)) {
-    cc3000_socket_closed &= ~(1<<socketNum);
-    return true;
-  } else return false;
-}
-
-/**
-  * @brief  This function handles asynchronous events that come from CC3000 device
-  *         and operates to indicate exchange of data
-  * @param  The type of event we just received.
-  * @retval None
-  */
-
-void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength)
-{
-    if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
-      //ulSmartConfigFinished = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
-      //ulCC3000Connected = 1;
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
-      //ulCC3000Connected = 0;
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
-      //ulCC3000DHCP = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
-    } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
-    } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
-        uint8_t socketnum = pcData[0];
-        cc3000_socket_closed |= 1<<socketnum;
-//        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
-    } else {
-      //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
-    }
-}
-
-const unsigned char *sendNoPatch(unsigned long *Length) {
-    *Length = 0;
-    return NULL;
-}
-
-/**
-  * @brief  This function returns enables or disables CC3000 .
-  * @param  None
-  * @retval None
-  */
-void WriteWlanPin( unsigned char val )
-{
-  jshPinOutput(WLAN_EN_PIN, val == WLAN_ENABLE);
-}
-
-
 /*JSON{ "type":"staticmethod", 
          "class" : "WLAN", "name" : "init",
          "generate" : "jswrap_wlan_init",
@@ -95,21 +36,7 @@ void WriteWlanPin( unsigned char val )
          "params" : [ ]
 }*/
 void jswrap_wlan_init() {
-  cc3000_spi_open();
-  wlan_init(cc3000_usynch_callback,
-            sendNoPatch/*sendWLFWPatch*/,
-            sendNoPatch/*sendDriverPatch*/,
-            sendNoPatch/*sendBootLoaderPatch*/,
-            cc3000_read_irq_pin, cc3000_irq_enable, cc3000_irq_disable, WriteWlanPin);
-  wlan_start(0/* No patches */);
-  // Mask out all non-required events from CC3000
-  wlan_set_event_mask(
-      HCI_EVNT_WLAN_KEEPALIVE |
-      HCI_EVNT_WLAN_UNSOL_INIT);
-
-  // TODO: check return value !=0
-  wlan_ioctl_set_connection_policy(0, 0, 0); // don't auto-connect
-  wlan_ioctl_del_profile(255); // delete stored eeprom data
+  cc3000_initialise();
 }
 
 /*JSON{ "type":"staticmethod",
