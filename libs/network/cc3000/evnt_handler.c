@@ -230,10 +230,10 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 	unsigned char *pucReceivedParams;
 	unsigned short usReceivedEventOpcode = 0;
 	unsigned long retValue32;
-  unsigned char * RecvParams;
-  unsigned char *RetParams;
+    unsigned char * RecvParams;
+    unsigned char *RetParams;
 	
-	
+	cc3000_irq_disable();
 	while (1)
 	{
 		if (tSLInformation.usEventOrDataReceived != 0)
@@ -472,12 +472,13 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			
 			if ((tSLInformation.usRxEventOpcode == 0) && (tSLInformation.usRxDataPending == 0))
 			{
-				return NULL;
+			  cc3000_irq_enable();
+		      return NULL;
 			}	
 		} else
 		    cc3000_check_irq_pin();
 	}
-
+	cc3000_irq_enable();
 }
 
 //*****************************************************************************

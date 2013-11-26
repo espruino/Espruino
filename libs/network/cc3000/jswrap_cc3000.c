@@ -47,7 +47,7 @@ bool cc3000_socket_has_closed(int socketNum) {
   * @retval None
   */
 
-void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength)
+void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength)
 {
     if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
       //ulSmartConfigFinished = 1;
@@ -96,7 +96,7 @@ void WriteWlanPin( unsigned char val )
 }*/
 void jswrap_wlan_init() {
   cc3000_spi_open();
-  wlan_init(CC3000_UsynchCallback,
+  wlan_init(cc3000_usynch_callback,
             sendNoPatch/*sendWLFWPatch*/,
             sendNoPatch/*sendDriverPatch*/,
             sendNoPatch/*sendBootLoaderPatch*/,
