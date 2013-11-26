@@ -13,6 +13,7 @@
             Added process.version and process.env (fix #131)
             Changed handling of 2nd arg of << so that precedence is correct
             Fixed handling of 'for (;;)'
+            Fix lock leak in Module handling
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

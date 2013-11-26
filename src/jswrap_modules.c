@@ -57,7 +57,8 @@ JsVar *jswrap_require(JsVar *moduleName) {
   JsVar *moduleExport = jsvSkipName(moduleExportName);
   if (moduleExport) {
     // Found the module!
-    return jsvSkipNameAndUnLock(moduleExportName);
+    jsvUnLock(moduleExportName);
+    return moduleExport;
   }
 
   // Now check if it is built-in
