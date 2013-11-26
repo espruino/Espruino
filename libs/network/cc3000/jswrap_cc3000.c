@@ -54,7 +54,7 @@ JsVar *jswrap_cc3000_connect() {
          "description" : "Connect to a wireless network",
          "params" : [ [ "ap", "JsVar", "Access point name" ],
                       [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
-                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connected'/'disconnected'/'dhcp'" ] ],
+                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'" ] ],
          "return" : ["int", ""]
 }*/
 JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
