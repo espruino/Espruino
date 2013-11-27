@@ -2,21 +2,28 @@
   ******************************************************************************
   * @file    stm32f10x_fsmc.c
   * @author  MCD Application Team
-  * @version V3.3.0
-  * @date    04/16/2010
+  * @version V3.6.1
+  * @date    05-March-2012
   * @brief   This file provides all the FSMC firmware functions.
   ******************************************************************************
-  * @copy
+  * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
-  */ 
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  ******************************************************************************
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_fsmc.h"
@@ -89,7 +96,7 @@
 
 /**
   * @brief  Deinitializes the FSMC NOR/SRAM Banks registers to their default 
-  *   reset values.
+  *         reset values.
   * @param  FSMC_Bank: specifies the FSMC Bank to be used
   *   This parameter can be one of the following values:
   *     @arg FSMC_Bank1_NORSRAM1: FSMC Bank1 NOR/SRAM1  
@@ -166,10 +173,10 @@ void FSMC_PCCARDDeInit(void)
 
 /**
   * @brief  Initializes the FSMC NOR/SRAM Banks according to the specified
-  *   parameters in the FSMC_NORSRAMInitStruct.
+  *         parameters in the FSMC_NORSRAMInitStruct.
   * @param  FSMC_NORSRAMInitStruct : pointer to a FSMC_NORSRAMInitTypeDef
-  *   structure that contains the configuration information for 
-  *   the FSMC NOR/SRAM specified Banks.                       
+  *         structure that contains the configuration information for 
+  *        the FSMC NOR/SRAM specified Banks.                       
   * @retval None
   */
 void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
@@ -180,6 +187,7 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
   assert_param(IS_FSMC_MEMORY(FSMC_NORSRAMInitStruct->FSMC_MemoryType));
   assert_param(IS_FSMC_MEMORY_WIDTH(FSMC_NORSRAMInitStruct->FSMC_MemoryDataWidth));
   assert_param(IS_FSMC_BURSTMODE(FSMC_NORSRAMInitStruct->FSMC_BurstAccessMode));
+  assert_param(IS_FSMC_ASYNWAIT(FSMC_NORSRAMInitStruct->FSMC_AsynchronousWait));
   assert_param(IS_FSMC_WAIT_POLARITY(FSMC_NORSRAMInitStruct->FSMC_WaitSignalPolarity));
   assert_param(IS_FSMC_WRAP_MODE(FSMC_NORSRAMInitStruct->FSMC_WrapMode));
   assert_param(IS_FSMC_WAIT_SIGNAL_ACTIVE(FSMC_NORSRAMInitStruct->FSMC_WaitSignalActive));
@@ -201,6 +209,7 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
             FSMC_NORSRAMInitStruct->FSMC_MemoryType |
             FSMC_NORSRAMInitStruct->FSMC_MemoryDataWidth |
             FSMC_NORSRAMInitStruct->FSMC_BurstAccessMode |
+            FSMC_NORSRAMInitStruct->FSMC_AsynchronousWait |
             FSMC_NORSRAMInitStruct->FSMC_WaitSignalPolarity |
             FSMC_NORSRAMInitStruct->FSMC_WrapMode |
             FSMC_NORSRAMInitStruct->FSMC_WaitSignalActive |
@@ -208,10 +217,12 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
             FSMC_NORSRAMInitStruct->FSMC_WaitSignal |
             FSMC_NORSRAMInitStruct->FSMC_ExtendedMode |
             FSMC_NORSRAMInitStruct->FSMC_WriteBurst;
+
   if(FSMC_NORSRAMInitStruct->FSMC_MemoryType == FSMC_MemoryType_NOR)
   {
     FSMC_Bank1->BTCR[FSMC_NORSRAMInitStruct->FSMC_Bank] |= (uint32_t)BCR_FACCEN_Set;
   }
+  
   /* Bank1 NOR/SRAM timing register configuration */
   FSMC_Bank1->BTCR[FSMC_NORSRAMInitStruct->FSMC_Bank+1] = 
             (uint32_t)FSMC_NORSRAMInitStruct->FSMC_ReadWriteTimingStruct->FSMC_AddressSetupTime |
@@ -248,9 +259,10 @@ void FSMC_NORSRAMInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
 
 /**
   * @brief  Initializes the FSMC NAND Banks according to the specified 
-  *   parameters in the FSMC_NANDInitStruct.
+  *         parameters in the FSMC_NANDInitStruct.
   * @param  FSMC_NANDInitStruct : pointer to a FSMC_NANDInitTypeDef 
-  *   structure that contains the configuration information for the FSMC NAND specified Banks.                       
+  *         structure that contains the configuration information for the FSMC 
+  *         NAND specified Banks.                       
   * @retval None
   */
 void FSMC_NANDInit(FSMC_NANDInitTypeDef* FSMC_NANDInitStruct)
@@ -313,9 +325,10 @@ void FSMC_NANDInit(FSMC_NANDInitTypeDef* FSMC_NANDInitStruct)
 
 /**
   * @brief  Initializes the FSMC PCCARD Bank according to the specified 
-  *   parameters in the FSMC_PCCARDInitStruct.
+  *         parameters in the FSMC_PCCARDInitStruct.
   * @param  FSMC_PCCARDInitStruct : pointer to a FSMC_PCCARDInitTypeDef
-  *   structure that contains the configuration information for the FSMC PCCARD Bank.                       
+  *         structure that contains the configuration information for the FSMC 
+  *         PCCARD Bank.                       
   * @retval None
   */
 void FSMC_PCCARDInit(FSMC_PCCARDInitTypeDef* FSMC_PCCARDInitStruct)
@@ -367,7 +380,7 @@ void FSMC_PCCARDInit(FSMC_PCCARDInitTypeDef* FSMC_PCCARDInitStruct)
 /**
   * @brief  Fills each FSMC_NORSRAMInitStruct member with its default value.
   * @param  FSMC_NORSRAMInitStruct: pointer to a FSMC_NORSRAMInitTypeDef 
-  *   structure which will be initialized.
+  *         structure which will be initialized.
   * @retval None
   */
 void FSMC_NORSRAMStructInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
@@ -378,6 +391,7 @@ void FSMC_NORSRAMStructInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
   FSMC_NORSRAMInitStruct->FSMC_MemoryType = FSMC_MemoryType_SRAM;
   FSMC_NORSRAMInitStruct->FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_8b;
   FSMC_NORSRAMInitStruct->FSMC_BurstAccessMode = FSMC_BurstAccessMode_Disable;
+  FSMC_NORSRAMInitStruct->FSMC_AsynchronousWait = FSMC_AsynchronousWait_Disable;
   FSMC_NORSRAMInitStruct->FSMC_WaitSignalPolarity = FSMC_WaitSignalPolarity_Low;
   FSMC_NORSRAMInitStruct->FSMC_WrapMode = FSMC_WrapMode_Disable;
   FSMC_NORSRAMInitStruct->FSMC_WaitSignalActive = FSMC_WaitSignalActive_BeforeWaitState;
@@ -404,7 +418,7 @@ void FSMC_NORSRAMStructInit(FSMC_NORSRAMInitTypeDef* FSMC_NORSRAMInitStruct)
 /**
   * @brief  Fills each FSMC_NANDInitStruct member with its default value.
   * @param  FSMC_NANDInitStruct: pointer to a FSMC_NANDInitTypeDef 
-  *   structure which will be initialized.
+  *         structure which will be initialized.
   * @retval None
   */
 void FSMC_NANDStructInit(FSMC_NANDInitTypeDef* FSMC_NANDInitStruct)
@@ -430,7 +444,7 @@ void FSMC_NANDStructInit(FSMC_NANDInitTypeDef* FSMC_NANDInitStruct)
 /**
   * @brief  Fills each FSMC_PCCARDInitStruct member with its default value.
   * @param  FSMC_PCCARDInitStruct: pointer to a FSMC_PCCARDInitTypeDef 
-  *   structure which will be initialized.
+  *         structure which will be initialized.
   * @retval None
   */
 void FSMC_PCCARDStructInit(FSMC_PCCARDInitTypeDef* FSMC_PCCARDInitStruct)
@@ -723,7 +737,7 @@ FlagStatus FSMC_GetFlagStatus(uint32_t FSMC_Bank, uint32_t FSMC_FLAG)
 }
 
 /**
-  * @brief  Clears the FSMC’s pending flags.
+  * @brief  Clears the FSMC's pending flags.
   * @param  FSMC_Bank: specifies the FSMC Bank to be used
   *   This parameter can be one of the following values:
   *     @arg FSMC_Bank2_NAND: FSMC Bank2 NAND 
@@ -809,7 +823,7 @@ ITStatus FSMC_GetITStatus(uint32_t FSMC_Bank, uint32_t FSMC_IT)
 }
 
 /**
-  * @brief  Clears the FSMC’s interrupt pending bits.
+  * @brief  Clears the FSMC's interrupt pending bits.
   * @param  FSMC_Bank: specifies the FSMC Bank to be used
   *   This parameter can be one of the following values:
   *     @arg FSMC_Bank2_NAND: FSMC Bank2 NAND 
@@ -855,4 +869,4 @@ void FSMC_ClearITPendingBit(uint32_t FSMC_Bank, uint32_t FSMC_IT)
   * @}
   */
 
-/******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

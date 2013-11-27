@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_regs.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Interface functions to USB cell registers
   ******************************************************************************
   * @attention
@@ -24,8 +24,6 @@
   *
   ******************************************************************************
   */
-
-#ifndef STM32F10X_CL
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -758,7 +756,5 @@ uint16_t ByteSwap(uint16_t wSwW)
   wRet =  (wSwW >> 8) | ((uint16_t)bTemp << 8);
   return(wRet);
 }
-
-#endif /* STM32F10X_CL */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

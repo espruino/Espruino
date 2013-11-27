@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_core.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Standard protocol processing (USB v2.0)
   ******************************************************************************
   * @attention
@@ -33,14 +33,9 @@
 #define ValBit(VAR,Place)    (VAR & (1 << Place))
 #define SetBit(VAR,Place)    (VAR |= (1 << Place))
 #define ClrBit(VAR,Place)    (VAR &= ((1 << Place) ^ 255))
-
-#ifdef STM32F10X_CL
- #define Send0LengthData()  {PCD_EP_Write (0, 0, 0) ; vSetEPTxStatus(EP_TX_VALID);}
-#else
 #define Send0LengthData() { _SetEPTxCount(ENDP0, 0); \
     vSetEPTxStatus(EP_TX_VALID); \
   }
-#endif /* STM32F10X_CL */
 
 #define vSetEPRxStatus(st) (SaveRState = st)
 #define vSetEPTxStatus(st) (SaveTState = st)
@@ -307,9 +302,7 @@ RESULT Standard_ClearFeature(void)
       /* IN endpoint */
       if (_GetTxStallStatus(Related_Endpoint ))
       {
-      #ifndef STM32F10X_CL
         ClearDTOG_TX(Related_Endpoint);
-      #endif /* STM32F10X_CL */
         SetEPTxStatus(Related_Endpoint, EP_TX_VALID);
       }
     }
@@ -326,9 +319,7 @@ RESULT Standard_ClearFeature(void)
         }
         else
         {
-        #ifndef STM32F10X_CL
           ClearDTOG_RX(Related_Endpoint);
-        #endif /* STM32F10X_CL */
           _SetEPRxStatus(Related_Endpoint, EP_RX_VALID);
         }
       }
@@ -470,12 +461,8 @@ void DataStageOut(void)
     Buffer = (*pEPinfo->CopyData)(Length);
     pEPinfo->Usb_rLength -= Length;
     pEPinfo->Usb_rOffset += Length;
-
-  #ifdef STM32F10X_CL  
-    PCD_EP_Read(ENDP0, Buffer, Length); 
-  #else  
     PMAToUserBufferCopy(Buffer, GetEPRxAddr(ENDP0), Length);
-  #endif  /* STM32F10X_CL */
+
   }
 
   if (pEPinfo->Usb_rLength != 0)
@@ -532,14 +519,8 @@ void DataStageIn(void)
     {
       /* No more data to send so STALL the TX Status*/
       ControlState = WAIT_STATUS_OUT;
-
-    #ifdef STM32F10X_CL      
-      PCD_EP_Read (ENDP0, 0, 0);
-    #endif  /* STM32F10X_CL */ 
-    
-    #ifndef STM32F10X_CL 
       vSetEPTxStatus(EP_TX_STALL);
-    #endif  /* STM32F10X_CL */ 
+ 
     }
     
     goto Expect_Status_Out;
@@ -554,12 +535,8 @@ void DataStageIn(void)
   }
 
   DataBuffer = (*pEPinfo->CopyData)(Length);
-
-#ifdef STM32F10X_CL
-  PCD_EP_Write (ENDP0, DataBuffer, Length);
-#else   
+  
   UserToPMABufferCopy(DataBuffer, GetEPTxAddr(ENDP0), Length);
-#endif /* STM32F10X_CL */ 
 
   SetEPTxCount(ENDP0, Length);
 
@@ -609,10 +586,6 @@ void NoData_Setup0(void)
       else
       {
         Result = USB_SUCCESS;
-
-      #ifdef STM32F10X_CL
-         SetDeviceAddress(pInformation->USBwValue0);
-      #endif  /* STM32F10X_CL */
       }
     }
     /*SET FEATURE for Device*/
@@ -894,18 +867,9 @@ uint8_t Setup0_Process(void)
     uint8_t* b;
     uint16_t* w;
   } pBuf;
-
-#ifdef STM32F10X_CL
-  USB_OTG_EP *ep;
-  uint16_t offset = 0;
- 
-  ep = PCD_GetOutEP(ENDP0);
-  pBuf.b = ep->xfer_buff;
-#else  
   uint16_t offset = 1;
   
   pBuf.b = PMAAddr + (uint8_t *)(_GetEPRxAddr(ENDP0) * 2); /* *2 for 32 bits addr */
-#endif /* STM32F10X_CL */
 
   if (pInformation->ControlState != PAUSE)
   {
@@ -998,9 +962,7 @@ uint8_t Out0_Process(void)
   else if (ControlState == WAIT_STATUS_OUT)
   {
     (*pProperty->Process_Status_OUT)();
-  #ifndef STM32F10X_CL
     ControlState = STALLED;
-  #endif /* STM32F10X_CL */
   }
 
 
@@ -1025,10 +987,7 @@ uint8_t Out0_Process(void)
 *******************************************************************************/
 uint8_t Post0_Process(void)
 {
-#ifdef STM32F10X_CL  
-  USB_OTG_EP *ep;
-#endif /* STM32F10X_CL */
-      
+   
   SetEPRxCount(ENDP0, Device_Property.MaxPacketSize);
 
   if (pInformation->ControlState == STALLED)
@@ -1036,26 +995,6 @@ uint8_t Post0_Process(void)
     vSetEPRxStatus(EP_RX_STALL);
     vSetEPTxStatus(EP_TX_STALL);
   }
-
-#ifdef STM32F10X_CL
-  else if ((pInformation->ControlState == OUT_DATA) ||
-      (pInformation->ControlState == WAIT_STATUS_OUT))
-  {
-    ep = PCD_GetInEP(0);
-    ep->is_in = 0;
-    OTGD_FS_EP0StartXfer(ep);
-    
-    vSetEPTxStatus(EP_TX_VALID);
-  }
-  
-  else if ((pInformation->ControlState == IN_DATA) || 
-      (pInformation->ControlState == WAIT_STATUS_IN))
-  {
-    ep = PCD_GetInEP(0);
-    ep->is_in = 1;
-    OTGD_FS_EP0StartXfer(ep);    
-  }  
-#endif /* STM32F10X_CL */
 
   return (pInformation->ControlState == PAUSE);
 }
@@ -1069,9 +1008,6 @@ uint8_t Post0_Process(void)
 *******************************************************************************/
 void SetDeviceAddress(uint8_t Val)
 {
-#ifdef STM32F10X_CL 
-  PCD_EP_SetAddress ((uint8_t)Val);
-#else 
   uint32_t i;
   uint32_t nEP = Device_Table.Total_Endpoint;
 
@@ -1080,8 +1016,7 @@ void SetDeviceAddress(uint8_t Val)
   {
     _SetEPAddress((uint8_t)i, (uint8_t)i);
   } /* for */
-  _SetDADDR(Val | DADDR_EF); /* set device address and enable function */
-#endif  /* STM32F10X_CL */  
+  _SetDADDR(Val | DADDR_EF); /* set device address and enable function */ 
 }
 
 /*******************************************************************************

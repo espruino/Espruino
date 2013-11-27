@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_int.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Endpoint CTR (Low and High) interrupt's service routines
   ******************************************************************************
   * @attention
@@ -24,8 +24,6 @@
   *
   ******************************************************************************
   */
-
-#ifndef STM32F10X_CL
 
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
@@ -68,8 +66,7 @@ void CTR_LP(void)
 
       /* save RX & TX status */
       /* and set both to NAK */
-
-
+      
 	    SaveRState = _GetENDPOINT(ENDP0);
 	    SaveTState = SaveRState & EPTX_STAT;
 	    SaveRState &=  EPRX_STAT;	
@@ -84,7 +81,6 @@ void CTR_LP(void)
 
         /* DIR = 0      => IN  int */
         /* DIR = 0 implies that (EP_CTR_TX = 1) always  */
-
 
         _ClearEP_CTR_TX(ENDP0);
         In0_Process();
@@ -195,7 +191,5 @@ void CTR_HP(void)
 
   }/* while(...) */
 }
-
-#endif  /* STM32F10X_CL */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

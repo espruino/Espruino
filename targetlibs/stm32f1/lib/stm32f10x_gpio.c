@@ -2,21 +2,28 @@
   ******************************************************************************
   * @file    stm32f10x_gpio.c
   * @author  MCD Application Team
-  * @version V3.3.0
-  * @date    04/16/2010
+  * @version V3.6.1
+  * @date    05-March-2012
   * @brief   This file provides all the GPIO firmware functions.
   ******************************************************************************
-  * @copy
+  * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
-  */ 
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  ******************************************************************************
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_gpio.h"
@@ -163,10 +170,10 @@ void GPIO_AFIODeInit(void)
 
 /**
   * @brief  Initializes the GPIOx peripheral according to the specified
-  *   parameters in the GPIO_InitStruct.
+  *         parameters in the GPIO_InitStruct.
   * @param  GPIOx: where x can be (A..G) to select the GPIO peripheral.
   * @param  GPIO_InitStruct: pointer to a GPIO_InitTypeDef structure that
-  *   contains the configuration information for the specified GPIO peripheral.
+  *         contains the configuration information for the specified GPIO peripheral.
   * @retval None
   */
 void GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_InitStruct)
@@ -259,7 +266,7 @@ void GPIO_Init(GPIO_TypeDef* GPIOx, GPIO_InitTypeDef* GPIO_InitStruct)
 /**
   * @brief  Fills each GPIO_InitStruct member with its default value.
   * @param  GPIO_InitStruct : pointer to a GPIO_InitTypeDef structure which will
-  *   be initialized.
+  *         be initialized.
   * @retval None
   */
 void GPIO_StructInit(GPIO_InitTypeDef* GPIO_InitStruct)
@@ -491,49 +498,56 @@ void GPIO_EventOutputCmd(FunctionalState NewState)
   * @brief  Changes the mapping of the specified pin.
   * @param  GPIO_Remap: selects the pin to remap.
   *   This parameter can be one of the following values:
-  *     @arg GPIO_Remap_SPI1
-  *     @arg GPIO_Remap_I2C1
-  *     @arg GPIO_Remap_USART1
-  *     @arg GPIO_Remap_USART2
-  *     @arg GPIO_PartialRemap_USART3
-  *     @arg GPIO_FullRemap_USART3
-  *     @arg GPIO_PartialRemap_TIM1
-  *     @arg GPIO_FullRemap_TIM1
-  *     @arg GPIO_PartialRemap1_TIM2
-  *     @arg GPIO_PartialRemap2_TIM2
-  *     @arg GPIO_FullRemap_TIM2
-  *     @arg GPIO_PartialRemap_TIM3
-  *     @arg GPIO_FullRemap_TIM3
-  *     @arg GPIO_Remap_TIM4
-  *     @arg GPIO_Remap1_CAN1
-  *     @arg GPIO_Remap2_CAN1
-  *     @arg GPIO_Remap_PD01
-  *     @arg GPIO_Remap_TIM5CH4_LSI
-  *     @arg GPIO_Remap_ADC1_ETRGINJ
-  *     @arg GPIO_Remap_ADC1_ETRGREG
-  *     @arg GPIO_Remap_ADC2_ETRGINJ
-  *     @arg GPIO_Remap_ADC2_ETRGREG
-  *     @arg GPIO_Remap_ETH
-  *     @arg GPIO_Remap_CAN2  
-  *     @arg GPIO_Remap_SWJ_NoJTRST
-  *     @arg GPIO_Remap_SWJ_JTAGDisable
-  *     @arg GPIO_Remap_SWJ_Disable
-  *     @arg GPIO_Remap_SPI3
-  *     @arg GPIO_Remap_TIM2ITR1_PTP_SOF
-  *     @arg GPIO_Remap_PTP_PPS
-  *     @arg GPIO_Remap_TIM15
-  *     @arg GPIO_Remap_TIM16
-  *     @arg GPIO_Remap_TIM17
-  *     @arg GPIO_Remap_CEC
-  *     @arg GPIO_Remap_TIM1_DMA 
-  *     @arg GPIO_Remap_TIM9
-  *     @arg GPIO_Remap_TIM10
-  *     @arg GPIO_Remap_TIM11
-  *     @arg GPIO_Remap_TIM13
-  *     @arg GPIO_Remap_TIM14
-  *     @arg GPIO_Remap_FSMC_NADV               
-  * @note  If the GPIO_Remap_TIM2ITR1_PTP_SOF is enabled the TIM2 ITR1 is connected 
-  *        to Ethernet PTP output. When Reset TIM2 ITR1 is connected to USB OTG SOF output.       
+  *     @arg GPIO_Remap_SPI1             : SPI1 Alternate Function mapping
+  *     @arg GPIO_Remap_I2C1             : I2C1 Alternate Function mapping
+  *     @arg GPIO_Remap_USART1           : USART1 Alternate Function mapping
+  *     @arg GPIO_Remap_USART2           : USART2 Alternate Function mapping
+  *     @arg GPIO_PartialRemap_USART3    : USART3 Partial Alternate Function mapping
+  *     @arg GPIO_FullRemap_USART3       : USART3 Full Alternate Function mapping
+  *     @arg GPIO_PartialRemap_TIM1      : TIM1 Partial Alternate Function mapping
+  *     @arg GPIO_FullRemap_TIM1         : TIM1 Full Alternate Function mapping
+  *     @arg GPIO_PartialRemap1_TIM2     : TIM2 Partial1 Alternate Function mapping
+  *     @arg GPIO_PartialRemap2_TIM2     : TIM2 Partial2 Alternate Function mapping
+  *     @arg GPIO_FullRemap_TIM2         : TIM2 Full Alternate Function mapping
+  *     @arg GPIO_PartialRemap_TIM3      : TIM3 Partial Alternate Function mapping
+  *     @arg GPIO_FullRemap_TIM3         : TIM3 Full Alternate Function mapping
+  *     @arg GPIO_Remap_TIM4             : TIM4 Alternate Function mapping
+  *     @arg GPIO_Remap1_CAN1            : CAN1 Alternate Function mapping
+  *     @arg GPIO_Remap2_CAN1            : CAN1 Alternate Function mapping
+  *     @arg GPIO_Remap_PD01             : PD01 Alternate Function mapping
+  *     @arg GPIO_Remap_TIM5CH4_LSI      : LSI connected to TIM5 Channel4 input capture for calibration
+  *     @arg GPIO_Remap_ADC1_ETRGINJ     : ADC1 External Trigger Injected Conversion remapping
+  *     @arg GPIO_Remap_ADC1_ETRGREG     : ADC1 External Trigger Regular Conversion remapping
+  *     @arg GPIO_Remap_ADC2_ETRGINJ     : ADC2 External Trigger Injected Conversion remapping
+  *     @arg GPIO_Remap_ADC2_ETRGREG     : ADC2 External Trigger Regular Conversion remapping
+  *     @arg GPIO_Remap_ETH              : Ethernet remapping (only for Connectivity line devices)
+  *     @arg GPIO_Remap_CAN2             : CAN2 remapping (only for Connectivity line devices)
+  *     @arg GPIO_Remap_SWJ_NoJTRST      : Full SWJ Enabled (JTAG-DP + SW-DP) but without JTRST
+  *     @arg GPIO_Remap_SWJ_JTAGDisable  : JTAG-DP Disabled and SW-DP Enabled
+  *     @arg GPIO_Remap_SWJ_Disable      : Full SWJ Disabled (JTAG-DP + SW-DP)
+  *     @arg GPIO_Remap_SPI3             : SPI3/I2S3 Alternate Function mapping (only for Connectivity line devices)
+  *                                        When the SPI3/I2S3 is remapped using this function, the SWJ is configured
+  *                                        to Full SWJ Enabled (JTAG-DP + SW-DP) but without JTRST.   
+  *     @arg GPIO_Remap_TIM2ITR1_PTP_SOF : Ethernet PTP output or USB OTG SOF (Start of Frame) connected
+  *                                        to TIM2 Internal Trigger 1 for calibration (only for Connectivity line devices)
+  *                                        If the GPIO_Remap_TIM2ITR1_PTP_SOF is enabled the TIM2 ITR1 is connected to 
+  *                                        Ethernet PTP output. When Reset TIM2 ITR1 is connected to USB OTG SOF output.    
+  *     @arg GPIO_Remap_PTP_PPS          : Ethernet MAC PPS_PTS output on PB05 (only for Connectivity line devices)
+  *     @arg GPIO_Remap_TIM15            : TIM15 Alternate Function mapping (only for Value line devices)
+  *     @arg GPIO_Remap_TIM16            : TIM16 Alternate Function mapping (only for Value line devices)
+  *     @arg GPIO_Remap_TIM17            : TIM17 Alternate Function mapping (only for Value line devices)
+  *     @arg GPIO_Remap_CEC              : CEC Alternate Function mapping (only for Value line devices)
+  *     @arg GPIO_Remap_TIM1_DMA         : TIM1 DMA requests mapping (only for Value line devices)
+  *     @arg GPIO_Remap_TIM9             : TIM9 Alternate Function mapping (only for XL-density devices)
+  *     @arg GPIO_Remap_TIM10            : TIM10 Alternate Function mapping (only for XL-density devices)
+  *     @arg GPIO_Remap_TIM11            : TIM11 Alternate Function mapping (only for XL-density devices)
+  *     @arg GPIO_Remap_TIM13            : TIM13 Alternate Function mapping (only for High density Value line and XL-density devices)
+  *     @arg GPIO_Remap_TIM14            : TIM14 Alternate Function mapping (only for High density Value line and XL-density devices)
+  *     @arg GPIO_Remap_FSMC_NADV        : FSMC_NADV Alternate Function mapping (only for High density Value line and XL-density devices)
+  *     @arg GPIO_Remap_TIM67_DAC_DMA    : TIM6/TIM7 and DAC DMA requests remapping (only for High density Value line devices)
+  *     @arg GPIO_Remap_TIM12            : TIM12 Alternate Function mapping (only for High density Value line devices)
+  *     @arg GPIO_Remap_MISC             : Miscellaneous Remap (DMA2 Channel5 Position and DAC Trigger remapping, 
+  *                                        only for High density Value line devices)     
   * @param  NewState: new state of the port pin remapping.
   *   This parameter can be: ENABLE or DISABLE.
   * @retval None
@@ -639,4 +653,4 @@ void GPIO_ETH_MediaInterfaceConfig(uint32_t GPIO_ETH_MediaInterface)
   * @}
   */
 
-/******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
