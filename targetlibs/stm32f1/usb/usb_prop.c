@@ -2,13 +2,13 @@
   ******************************************************************************
   * @file    usb_prop.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    21-January-2013
   * @brief   All processing related to Virtual Com Port Demo
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT 2013 STMicroelectronics</center></h2>
   *
   * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
   * You may not use this file except in compliance with the License.
@@ -204,7 +204,7 @@ void Virtual_Com_Port_Reset(void)
   /* Set this device to response on default address */
   SetDeviceAddress(0);
 #endif /* STM32F10X_CL */
-
+  
   bDeviceState = ATTACHED;
 }
 

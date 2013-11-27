@@ -15,6 +15,7 @@
             Fixed handling of 'for (;;)'
             Fix lock leak in Module handling
             Update ST's library for the STM32F1
+            Update ST's VCP implementation
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
