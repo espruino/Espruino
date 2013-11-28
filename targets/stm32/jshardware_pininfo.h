@@ -168,41 +168,20 @@ typedef enum {
 } PACKED_FLAGS JshPinFunction;
 
 #define JSH_PINFUNCTION_IS_TIMER(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER1) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER2) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER3) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER4) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER5) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER6) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER7) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER8) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER9) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER10) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER11) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER12) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER13) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER14) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER15) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER16) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER17) || \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER18) || \
-0 )
+  (((F)&JSH_MASK_TYPE)>=JSH_TIMER1) && \
+  (((F)&JSH_MASK_TYPE)==JSH_TIMER18))
 #define JSH_PINFUNCTION_IS_DAC(F) ( \
   (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
 0 )
 #define JSH_PINFUNCTION_IS_USART(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_USART1) || \
-  (((F)&JSH_MASK_TYPE)==JSH_USART2) || \
-  (((F)&JSH_MASK_TYPE)==JSH_USART3) || \
-  (((F)&JSH_MASK_TYPE)==JSH_USART4) || \
-  (((F)&JSH_MASK_TYPE)==JSH_USART5) || \
-  (((F)&JSH_MASK_TYPE)==JSH_USART6) || \
-0 )
+  (((F)&JSH_MASK_TYPE)>=JSH_USART1) || \
+  (((F)&JSH_MASK_TYPE)<=JSH_USART6))
 #define JSH_PINFUNCTION_IS_I2C(F) ( \
-  (((F)&JSH_MASK_TYPE)==JSH_I2C1) || \
-  (((F)&JSH_MASK_TYPE)==JSH_I2C2) || \
-  (((F)&JSH_MASK_TYPE)==JSH_I2C3) || \
-0 )
+  (((F)&JSH_MASK_TYPE)>=JSH_I2C1) && \
+  (((F)&JSH_MASK_TYPE)<=JSH_I2CMAX))
+#define JSH_PINFUNCTION_IS_SPI(F) ( \
+  (((F)&JSH_MASK_TYPE)>=JSH_SPI1) && \
+  (((F)&JSH_MASK_TYPE)<=JSH_SPIMAX))
 
 
 #define JSH_PININFO_FUNCTIONS 6
