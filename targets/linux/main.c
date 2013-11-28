@@ -28,27 +28,31 @@ void nativeInterrupt(JsVarRef var) {
   jspSetInterrupted(true);
 }
 
-bool run_test(const char *filename) {
-  printf("----------------------------------\r\n");
-  printf("----------------------------- TEST %s \r\n", filename);
+const char *read_file(const char *filename) {
   struct stat results;
   if (!stat(filename, &results) == 0) {
     printf("Cannot stat file! '%s'\r\n", filename);
-    return false;
+    return "";
   }
   int size = (int)results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
      printf("Unable to open file! '%s'\r\n", filename);
-     return false;
+     return "";
   }
   char *buffer = malloc(size+1);
   size_t actualRead = fread(buffer,1,size,file);
   buffer[actualRead]=0;
   buffer[size]=0;
   fclose(file);
+  return buffer;
+}
 
+bool run_test(const char *filename) {
+  printf("----------------------------------\r\n");
+  printf("----------------------------- TEST %s \r\n", filename);
+  char *buffer = read_file(filename);
 
   jshInit();
   jsiInit(false /* do not autoload!!! */);
@@ -59,9 +63,7 @@ bool run_test(const char *filename) {
   jsvUnLock(jspEvaluate(jsiGetParser(), buffer ));
 
   isRunning = true;
-  while (isRunning && jsiHasTimers()) {
-    jsiLoop();
-  }
+  while (isRunning && jsiHasTimers()) jsiLoop();
 
   JsVar *result = jsvSkipNameAndUnLock(jsvFindChildFromString(jsiGetParser()->root, "result", false/*no create*/));
   bool pass = jsvGetBool(result);
@@ -184,34 +186,86 @@ void sig_handler(int sig)
       jspSetInterrupted(true);
 }
 
+void show_help() {
+    printf("Usage:\n");
+    printf("   ./espruino                           : JavaScript immdeiate mode (REPL)\n");
+    printf("   ./espruino script.js                 : Load and run script.js\n");
+    printf("   ./espruino -e \"print('Hello World')\" : Print 'Hello World'\n");
+    printf("\n");
+    printf("Options:\n");
+    printf("   -h, --help              Print this help screen\n");
+    printf("   -e, --eval script       Evaluate the JavaScript supplied on the command-line\n");
+    printf("   --test-all              Run all tests (in 'tests' directory)\n");
+    printf("   --test test.js          Run the supplied test\n");
+    printf("   --test-mem-all          Run all Exhaustive Memory crash tests\n");
+    printf("   --test-mem test.js      Run the supplied Exhaustive Memory crash test\n");
+    printf("   --test-mem-n test.js #  Run the supplied Exhaustive Memory crash test with # vars\n");
+}
+
+void die(const char *txt) {
+  printf("%s", txt);
+  exit(1);
+}
 
 int main(int argc, char **argv) {
+  int i;
+  for (i=1;i<argc;i++) {
+    if (argv[i][0]=='-') {
+      // option
+      char *a = argv[i];
+      if (!strcmp(a,"-h") || !strcmp(a,"--help")) {
+        show_help();
+        exit(1);
+      } else if (!strcmp(a,"-e") || !strcmp(a,"--eval")) {
+        if (i+1>=argc) die("Expecting an extra argument");
+        jshInit();
+        jsiInit(true);
+        jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
+        jsvUnLock(jspEvaluate(jsiGetParser(), argv[i+1]));
+        isRunning = true;
+        while (isRunning && jsiHasTimers()) jsiLoop();
+        jsiKill();
+        jshKill();
+        exit(0);
+      } else if (!strcmp(a,"--test-all")) {
+        bool ok = run_all_tests();
+        exit(ok ? 0 : 1);
+      } else if (!strcmp(a,"--test-mem-all")) {
+        bool ok = run_memory_tests(0);
+        exit(ok ? 0 : 1);
+      } else if (!strcmp(a,"--test-mem")) {
+        if (i+1>=argc) die("Expecting an extra argument");
+        bool ok = run_memory_test(argv[i+1], 0);
+        exit(ok ? 0 : 1);
+      } else if (!strcmp(a,"--test-mem-n")) {
+        if (i+2>=argc) die("Expecting an extra 2 arguments");
+        bool ok = run_memory_test(argv[i+1], atoi(argv[i+2]));
+        exit(ok ? 0 : 1);
+      } else {
+        printf("Unknown Argument %s\n", a);
+        show_help();
+        exit(1);
+      }
+    }
+  }
 
   if (argc==1) {
     printf("Interactive mode.\n");
-  } else if (argc==2 && strcmp(argv[1],"test")==0) {
-    bool ok = run_all_tests();
-    exit(ok ? 0 : 1);
-  } else if (argc==3 && strcmp(argv[1],"test")==0) {
-    bool ok = run_test(argv[2]);
-    exit(ok ? 0 : 1);
-  } else if (argc==2 && strcmp(argv[1],"mem")==0) {
-    bool ok = run_memory_tests(0);
-    exit(ok ? 0 : 1);
-  } else if (argc==3 && strcmp(argv[1],"mem")==0) {
-      bool ok = run_memory_test(argv[2], 0);
-      exit(ok ? 0 : 1);
-  } else if (argc==4 && strcmp(argv[1],"mem")==0) {
-      bool ok = run_memory_test(argv[2], atoi(argv[3]));
-      exit(ok ? 0 : 1);
+  } else if (argc==2) {
+    char *buffer = read_file(argv[1]);
+    jshInit();
+    jsiInit(false /* do not autoload!!! */);
+    jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
+    jsvUnLock(jspEvaluate(jsiGetParser(), buffer ));
+    free(buffer);
+    isRunning = true;
+    while (isRunning && jsiHasTimers()) jsiLoop();
+    jsiKill();
+    jshKill();
+    exit(0);
   } else {
-    printf("USAGE:\n");
-    printf("./TinyJSC            : JavaScript imemdiate mode\n");
-    printf("./TinyJSC test       : Run Tests\n");
-    printf("./TinyJSC test x.js  : Run Single Test\n");
-    printf("./TinyJSC mem        : Run Exhaustive Memory crash test\n");
-    printf("./TinyJSC mem x.js   : Run Exhaustive Memory crash test for Single test\n");
-    printf("./TinyJSC mem x.js # : Run Memory crash test for one amount of vars\n");
+    printf("Unknown arguments!\n");
+    show_help();
     exit(1);
   }
 
