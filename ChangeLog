@@ -17,6 +17,7 @@
             Update ST's library for the STM32F1
             Update ST's VCP implementation
             Added prefix operator (fix #130)
+            Allow espruino for linux to be run with '#!' in scripts
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

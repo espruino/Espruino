@@ -252,11 +252,18 @@ int main(int argc, char **argv) {
   if (argc==1) {
     printf("Interactive mode.\n");
   } else if (argc==2) {
+    // single file - just run it
     char *buffer = read_file(argv[1]);
+    // check for '#' as the first char, and if so, skip the first line
+    char *cmd = buffer;
+    if (cmd[0]=='#') {
+      while (cmd[0] && cmd[0]!='\n') cmd++;
+      if (cmd[0]=='\n') cmd++;
+    }
     jshInit();
     jsiInit(false /* do not autoload!!! */);
     jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-    jsvUnLock(jspEvaluate(jsiGetParser(), buffer ));
+    jsvUnLock(jspEvaluate(jsiGetParser(), cmd ));
     free(buffer);
     isRunning = true;
     while (isRunning && jsiHasTimers()) jsiLoop();
