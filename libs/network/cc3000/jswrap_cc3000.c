@@ -24,107 +24,46 @@
 #include "netapp.h"
 #include "hci.h"
 
-/*JSON{ "type":"class",
-        "class" : "WLAN",
+
+/*JSON{ "type":"library",
+        "class" : "CC3000",
         "description" : ""
 }*/
-
-// Bit field containing whether the socket has closed or not
-unsigned int cc3000_socket_closed = 0;
-
-/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
-bool cc3000_socket_has_closed(int socketNum) {
-  if (cc3000_socket_closed & (1<<socketNum)) {
-    cc3000_socket_closed &= ~(1<<socketNum);
-    return true;
-  } else return false;
-}
-
-/**
-  * @brief  This function handles asynchronous events that come from CC3000 device
-  *         and operates to indicate exchange of data
-  * @param  The type of event we just received.
-  * @retval None
-  */
-
-void CC3000_UsynchCallback(long lEventType, char *pcData, unsigned char ucLength)
-{
-    if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
-      //ulSmartConfigFinished = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
-      //ulCC3000Connected = 1;
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
-      //ulCC3000Connected = 0;
-    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
-      //ulCC3000DHCP = 1;
-      jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
-    } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
-      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
-    } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
-        uint8_t socketnum = pcData[0];
-        cc3000_socket_closed |= 1<<socketnum;
-//        jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
-    } else {
-      //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
-    }
-}
-
-const unsigned char *sendNoPatch(unsigned long *Length) {
-    *Length = 0;
-    return NULL;
-}
-
-/**
-  * @brief  This function returns enables or disables CC3000 .
-  * @param  None
-  * @retval None
-  */
-void WriteWlanPin( unsigned char val )
-{
-  jshPinOutput(WLAN_EN_PIN, val == WLAN_ENABLE);
-}
-
-
 /*JSON{ "type":"staticmethod", 
-         "class" : "WLAN", "name" : "init",
-         "generate" : "jswrap_wlan_init",
-         "description" : "",
-         "params" : [ ]
+         "class" : "CC3000", "name" : "connect",
+         "generate" : "jswrap_cc3000_connect",
+         "description" : "Initialise the CC3000 and return a WLAN object",
+         "params" : [ ],
+         "return" : ["JsVar", "A WLAN Object"]
 }*/
-void jswrap_wlan_init() {
-  cc3000_spi_open();
-  wlan_init(CC3000_UsynchCallback,
-            sendNoPatch/*sendWLFWPatch*/,
-            sendNoPatch/*sendDriverPatch*/,
-            sendNoPatch/*sendBootLoaderPatch*/,
-            cc3000_read_irq_pin, cc3000_irq_enable, cc3000_irq_disable, WriteWlanPin);
-  wlan_start(0/* No patches */);
-  // Mask out all non-required events from CC3000
-  wlan_set_event_mask(
-      HCI_EVNT_WLAN_KEEPALIVE |
-      HCI_EVNT_WLAN_UNSOL_INIT);
-
-  // TODO: check return value !=0
-  wlan_ioctl_set_connection_policy(0, 0, 0); // don't auto-connect
-  wlan_ioctl_del_profile(255); // delete stored eeprom data
+JsVar *jswrap_cc3000_connect() {
+  JsVar *wlanObj = jspNewObject(jsiGetParser(), 0, "WLAN");
+  cc3000_initialise(wlanObj);
+  return wlanObj;
 }
 
-/*JSON{ "type":"staticmethod",
+
+/*JSON{ "type":"class",
+        "class" : "WLAN",
+        "description" : "An instantiation of a WiFi network adaptor"
+}*/
+
+/*JSON{ "type":"method",
          "class" : "WLAN", "name" : "connect",
          "generate" : "jswrap_wlan_connect",
          "description" : "Connect to a wireless network",
          "params" : [ [ "ap", "JsVar", "Access point name" ],
                       [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
-                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connected'/'dhcp'" ] ],
+                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'" ] ],
          "return" : ["int", ""]
 }*/
-JsVarInt jswrap_wlan_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
+JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
     jsError("Expecting callback function");
     return 0;
+  }
+  if (jsvIsFunction(callback)) {
+    jsvObjectSetChild(wlanObj, CC3000_ON_STATE_CHANGE, callback);
   }
   char ap[32];
   char key[32];
@@ -164,13 +103,13 @@ void _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip
   jsvUnLock(v);
 }
 
-/*JSON{ "type":"staticmethod",
+/*JSON{ "type":"method",
          "class" : "WLAN", "name" : "getIP",
          "generate" : "jswrap_wlan_getIP",
          "description" : "Get the current IP address",
          "return" : ["JsVar", ""]
 }*/
-JsVar *jswrap_wlan_getIP() {
+JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
   /* If byte 1 is 0 we don't have a valid address */

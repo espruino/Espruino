@@ -12,11 +12,15 @@
  * ----------------------------------------------------------------------------
  */
 
+#include "board_spi.h"
 #include "hci.h"
 #include "spi.h"
+#include "wlan.h"
 
 #include "jshardware.h"
-#include "board_spi.h"
+#include "jsinteractive.h"
+
+
 
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
 
@@ -25,9 +29,6 @@
 #define     eSPI_STATE_POWERUP               (0)
 #define     eSPI_STATE_INITIALIZED           (1)
 #define     eSPI_STATE_IDLE                  (2)
-#define     eSPI_STATE_WRITE_IRQ             (3)
-#define     eSPI_STATE_WRITE_FIRST_PORTION   (4)
-#define     eSPI_STATE_WRITE_EOT             (5)
 #define     eSPI_STATE_READ_IRQ              (6)
 #define     eSPI_STATE_READ_FIRST_PORTION    (7)
 #define     eSPI_STATE_READ_EOT              (8)
@@ -97,6 +98,7 @@ void  cc3000_spi_open(void)
   jshPinOutput(WLAN_EN_PIN, 0); // disable WLAN
   jshSetPinStateIsManual(WLAN_IRQ_PIN, true);
   jshPinSetState(WLAN_IRQ_PIN, JSHPINSTATE_GPIO_IN_PULLUP); // flip into read mode with pullup
+  jshPinWatch(WLAN_IRQ_PIN, true); // watch IRQ pin
 
   // wait a little (ensure that WLAN takes effect)
   jshDelayMicroseconds(500*1000); // force a 500ms delay! FIXME
@@ -132,7 +134,7 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
     ASSERT_CS();
 
     // 50 microsecond delay
-    jshDelayMicroseconds(50);
+     jshDelayMicroseconds(50);
 
     // SPI writes first 4 bytes of data
     SpiWriteDataSynchronous(ucBuf, 4);
@@ -154,6 +156,9 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 long
 cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
 {
+
+    cc3000_irq_disable();
+
     unsigned char ucPad = 0;
 
     // Figure out the total length of the packet in order to figure out if there
@@ -195,42 +200,15 @@ cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
     }
     else
     {
-        // We need to prevent here race that can occur in case 2 back to back
-        // packets are sent to the  device, so the state will move to IDLE and once
-        //again to not IDLE due to IRQ
-        tSLInformation.WlanInterruptDisable();
-
-        while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
-        {
-            ;
-        }
-
-        sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
-        sSpiInformation.pTxPacket = pUserBuffer;
-        sSpiInformation.usTxPacketLength = usLength;
-
         // Assert the CS line and wait till SSI IRQ line is active and then
         // initialize write operation
         ASSERT_CS();
-
-        // Re-enable IRQ - if it was not disabled - this is not a problem...
-        tSLInformation.WlanInterruptEnable();
-
-        // check for a missing interrupt between the CS assertion and enabling back the interrupts
-        if (tSLInformation.ReadWlanInterruptPin() == 0)
-        {
-            SpiWriteDataSynchronous(sSpiInformation.pTxPacket, sSpiInformation.usTxPacketLength);
-
-            sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-
-            DEASSERT_CS();
-        }
+        while (cc3000_read_irq_pin()) ; // wait for the IRQ line to go low
+        SpiWriteDataSynchronous(pUserBuffer, usLength);
+        DEASSERT_CS();
     }
 
-    // Due to the fact that we are currently implementing a blocking situation
-    // here we will wait till end of transaction
-    while (eSPI_STATE_IDLE != sSpiInformation.ulSpiState)
-        ;
+    cc3000_irq_enable();
 
     return(0);
 }
@@ -258,8 +236,8 @@ SpiReadDataSynchronous(unsigned char *data, unsigned short size)
     bSend++;
     if (bSend>0 && r>=0) data[bRecv++] = r;
   }
+  jshDelayMicroseconds(10); // because of final clock pulse
 
-  jshDelayMicroseconds(10); // because of final clock pulse
 }
 
 void
@@ -268,7 +246,7 @@ SpiReadHeader(void)
     SpiReadDataSynchronous(sSpiInformation.pRxPacket, 10);
 }
 
-long SpiReadDataCont(void) {
+void SpiReadDataCont(void) {
     long data_to_recv;
     unsigned char *evnt_buff, type;
 
@@ -319,8 +297,6 @@ long SpiReadDataCont(void) {
             break;
         }
     }
-
-    return (0);
 }
 
 
@@ -332,29 +308,7 @@ void
 cc3000_spi_resume(void) {
 }
 
-void
-SpiTriggerRxProcessing(void)
-{
-
-    // Trigger Rx processing
-    SpiPauseSpi();
-    DEASSERT_CS();
-
-    // The magic number that resides at the end of the TX/RX buffer (1 byte after
-    // the allocated size) for the purpose of detection of the overrun. If the
-    // magic number is overwritten - buffer overrun occurred - and we will stuck
-    // here forever!
-    if (sSpiInformation.pRxPacket[CC3000_RX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
-    {
-        while (1)
-            ;
-    }
-
-    sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-    sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
-}
-
-void cc3000_irq_handler(void)
+void cc3000_irq_handler_x(void)
 {
   if (tSLInformation.usEventOrDataReceived) return; // there's already an interrupt that we haven't handled
 
@@ -372,35 +326,38 @@ void cc3000_irq_handler(void)
       /* IRQ line goes down - we are start reception */
       ASSERT_CS();
 
-      // Wait for TX/RX Compete which will come as DMA interrupt
       SpiReadHeader();
 
       sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
 
-      cc3000_continue_read();
-  }
-  else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
-  {
-      SpiWriteDataSynchronous(sSpiInformation.pTxPacket,
-                                                      sSpiInformation.usTxPacketLength);
+      // The header was read - continue with  the payload read
+      SpiReadDataCont();
+      // All the data was read - finalize handling by switching to the task
+      //  and calling from task Event Handler
+      // Trigger Rx processing
+      SpiPauseSpi();
+      DEASSERT_CS();
+
+      // The magic number that resides at the end of the TX/RX buffer (1 byte after
+      // the allocated size) for the purpose of detection of the overrun. If the
+      // magic number is overwritten - buffer overrun occurred - and we will stuck
+      // here forever!
+      if (sSpiInformation.pRxPacket[CC3000_RX_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+      {
+          while (1)
+              ;
+      }
 
       sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-
-      DEASSERT_CS();
+      sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
   }
   cc3000_in_interrupt = false;
 }
 
-void
-cc3000_continue_read(void)
+void cc3000_irq_handler(void)
 {
-    // The header was read - continue with  the payload read
-    if (!SpiReadDataCont())
-    {
-        // All the data was read - finalize handling by switching to the task
-        //  and calling from task Event Handler
-        SpiTriggerRxProcessing();
-    }
+  if (!cc3000_ints_enabled) return; // no ints enabled
+  cc3000_irq_handler_x();
 }
 
 long cc3000_read_irq_pin(void)
@@ -409,17 +366,94 @@ long cc3000_read_irq_pin(void)
 }
 
 void cc3000_irq_enable(void) {
+  cc3000_check_irq_pin();
   cc3000_ints_enabled = true;
-  jshPinWatch(WLAN_IRQ_PIN, true);
 }
 
 void cc3000_irq_disable(void) {
   cc3000_ints_enabled = false;
-  jshPinWatch(WLAN_IRQ_PIN, false);
 }
 
 void cc3000_check_irq_pin() {
-  if (cc3000_ints_enabled && !cc3000_in_interrupt && !cc3000_read_irq_pin()) {
-    cc3000_irq_handler();
+  if (!cc3000_in_interrupt && !cc3000_read_irq_pin()) {
+    bool ints = cc3000_ints_enabled;
+    cc3000_ints_enabled = false;
+    cc3000_irq_handler_x();
+    cc3000_ints_enabled = ints;
   }
+}
+
+// Bit field containing whether the socket has closed or not
+unsigned int cc3000_socket_closed = 0;
+
+/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
+bool cc3000_socket_has_closed(int socketNum) {
+  if (cc3000_socket_closed & (1<<socketNum)) {
+    cc3000_socket_closed &= ~(1<<socketNum);
+    return true;
+  } else return false;
+}
+
+static void cc3000_state_change(const char *data) {
+  JsVar *wlanObj = jsvObjectGetChild(jsiGetParser()->root, CC3000_OBJ_NAME, 0);
+  JsVar *dataVar = jsvNewFromString(data);
+  if (wlanObj)
+    jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, dataVar, 0);
+  jsvUnLock(dataVar);
+  jsvUnLock(wlanObj);
+}
+
+void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength)
+{
+    if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
+      //ulSmartConfigFinished = 1;
+      //jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_CONNECT) {
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_CONNECT\n");
+      cc3000_state_change("connect");
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
+      cc3000_state_change("disconnect");
+    } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
+      //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");
+      cc3000_state_change("dhcp");
+    } else if (lEventType == HCI_EVNT_WLAN_ASYNC_PING_REPORT) {
+      jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
+    } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
+        uint8_t socketnum = pcData[0];
+        cc3000_socket_closed |= 1<<socketnum;
+      //jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
+    } else {
+      //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
+    }
+}
+
+const unsigned char *sendNoPatch(unsigned long *Length) {
+    *Length = 0;
+    return NULL;
+}
+
+void cc3000_write_en_pin( unsigned char val )
+{
+  jshPinOutput(WLAN_EN_PIN, val == WLAN_ENABLE);
+}
+
+void cc3000_initialise(JsVar *wlanObj) {
+  jsvObjectSetChild(jsiGetParser()->root, CC3000_OBJ_NAME, wlanObj);
+
+  cc3000_spi_open();
+  wlan_init(cc3000_usynch_callback,
+            sendNoPatch/*sendWLFWPatch*/,
+            sendNoPatch/*sendDriverPatch*/,
+            sendNoPatch/*sendBootLoaderPatch*/,
+            cc3000_read_irq_pin, cc3000_irq_enable, cc3000_irq_disable, cc3000_write_en_pin);
+  wlan_start(0/* No patches */);
+  // Mask out all non-required events from CC3000
+  wlan_set_event_mask(
+      HCI_EVNT_WLAN_KEEPALIVE |
+      HCI_EVNT_WLAN_UNSOL_INIT);
+
+  // TODO: check return value !=0
+  wlan_ioctl_set_connection_policy(0, 0, 0); // don't auto-connect
+  wlan_ioctl_del_profile(255); // delete stored eeprom data
 }

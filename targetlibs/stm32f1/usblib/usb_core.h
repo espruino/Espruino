@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_core.h
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Standard protocol processing functions prototypes
   ******************************************************************************
   * @attention

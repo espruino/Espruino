@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_mem.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Utility functions for memory transfers to/from PMA
   ******************************************************************************
   * @attention
@@ -25,8 +25,6 @@
   ******************************************************************************
   */
 
-#ifndef STM32F10X_CL
-
 /* Includes ------------------------------------------------------------------*/
 #include "usb_lib.h"
 
@@ -37,6 +35,7 @@
 /* Extern variables ----------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
+
 /*******************************************************************************
 * Function Name  : UserToPMABufferCopy
 * Description    : Copy a buffer from user memory area to packet memory area (PMA)
@@ -62,6 +61,7 @@ void UserToPMABufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNByt
     pbUsrBuf++;
   }
 }
+
 /*******************************************************************************
 * Function Name  : PMAToUserBufferCopy
 * Description    : Copy a buffer from user memory area to packet memory area (PMA)
@@ -83,7 +83,5 @@ void PMAToUserBufferCopy(uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNByt
     pbUsrBuf++;
   }
 }
-
-#endif /* STM32F10X_CL */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

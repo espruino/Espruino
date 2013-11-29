@@ -7,29 +7,39 @@ ESPRUINODOCS=$DIR/../EspruinoDocs
 CMSDIR=$DIR/../espruinowebsite/cms
 REFERENCEDIR=$DIR/../espruinowebsite/reference
 BOARDIMGDIR=$WEBSITEDIR/www/img
+JSONDIR=$WEBSITEDIR/www/json
 
+function create_info() {
+  NICENAME=`python scripts/get_board_name.py $BOARDNAME`
+  echo $BOARDNAME = $NICENAME 
+  # the board's image
+  cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}
+  # the individual board reference
+  python scripts/build_board_docs.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }  
+  grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${REFERENCEDIR}/Reference${BOARDNAME}.html
+  # the board JSON
+  python scripts/build_board_json.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
+  cp boards/${BOARDNAME}.json ${JSONDIR}
+}
+
+mkdir $BOARDIMGDIR
+mkdir $JSONDIR
+
+# -------------------------------------------- Create the text up the top of the reference
 echo Updating Board Docs
 echo "<h1>Espruino Hardware Reference</h1>" > NewReference.html
 echo "<p>The Espruino Software will run on a variety of boards. The Espruino Board, <a href=\"/kick\">currently on KickStarter</a>, has been specially designed to complement our software and is the only board that we actively support. Please click on the thumbnails below to see diagrams of each board with all pins and their capabilities marked</p>" >> NewReference.html
 echo "<h2>Espruino Board - Supported</h2>" >> NewReference.html
  BOARDNAME=ESPRUINOBOARD
- NICENAME=`python scripts/get_board_name.py $BOARDNAME`
- echo $BOARDNAME = $NICENAME 
- python scripts/build_board_docs.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
- grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${REFERENCEDIR}/Reference${BOARDNAME}.html
- cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}
+ create_info $BOARDNAME
  convert boards/img/${BOARDNAME}.* -resize 256x256 ${BOARDIMGDIR}/${BOARDNAME}_thumb.jpg
  echo -e "<center><span style=\"text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span></center>" >> NewReference.html
 echo "<h2>Other Boards - Unsupported</h2>" >> NewReference.html
 echo "<div id=\"boards\" style=\"display:inline-block;\">" >> NewReference.html
-mkdir $BOARDIMGDIR
+
 for BOARDNAME in STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32
 do
- NICENAME=`python scripts/get_board_name.py $BOARDNAME`
- echo $BOARDNAME = $NICENAME 
- python scripts/build_board_docs.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
- grep boards/${BOARDNAME}.html -v -f scripts/website_banned_lines.txt > ${REFERENCEDIR}/Reference${BOARDNAME}.html
- cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}
+ create_info $BOARDNAME
  convert boards/img/${BOARDNAME}.* -resize 128x128 ${BOARDIMGDIR}/${BOARDNAME}_thumb.jpg
  echo -e "<span style=\"display:inline-block;text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span>" >> NewReference.html
 done

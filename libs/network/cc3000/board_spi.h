@@ -34,9 +34,9 @@ extern int errno;
 #define WLAN_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define WLAN_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define WLAN_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
-#define WLAN_EN_PIN       (Pin)(JSH_PORTB_OFFSET + 7) // high to enable
+#define WLAN_EN_PIN       (Pin)(JSH_PORTB_OFFSET + 7) // active high
 #define WLAN_IRQ_PIN      (Pin)(JSH_PORTB_OFFSET + 8) // active low
-#define WLAN_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 6)
+#define WLAN_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 6) // active low
 
 #ifndef NULL
 #define NULL							(uint32_t)0x00
@@ -55,5 +55,12 @@ void cc3000_irq_disable(void);
 void cc3000_irq_handler(void);
 
 void cc3000_check_irq_pin();
+
+#include "jsvar.h"
+
+#define CC3000_OBJ_NAME JS_HIDDEN_CHAR_STR"cc3000"
+#define CC3000_ON_STATE_CHANGE "#onstate"
+
+void cc3000_initialise(JsVar *wlanObj);
 
 #endif

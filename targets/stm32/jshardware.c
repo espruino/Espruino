@@ -531,8 +531,10 @@ static inline void jshPinSetFunction(Pin pin, JshPinFunction func) {
       jshPinSetState(pin,JSHPINSTATE_USART_OUT);
   } else if (JSH_PINFUNCTION_IS_I2C(func)) {
     jshPinSetState(pin, JSHPINSTATE_I2C);
+  } else if (JSH_PINFUNCTION_IS_SPI(func) && ((func&JSH_MASK_INFO)==JSH_SPI_MISO)) {
+    jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
   } else
-    jshPinSetState(pin, JSHPINSTATE_AF_OUT);
+    jshPinSetState(pin, JSHPINSTATE_AF_OUT); // otherwise general AF out!
   // now 'connect' the pin up
 #if defined(STM32F2) || defined(STM32F3) || defined(STM32F4)
   GPIO_PinAFConfig(stmPort(pin), stmPinSource(pin), functionToAF(func));

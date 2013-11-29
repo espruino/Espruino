@@ -2,21 +2,28 @@
   ******************************************************************************
   * @file    stm32f10x_sdio.c
   * @author  MCD Application Team
-  * @version V3.3.0
-  * @date    04/16/2010
+  * @version V3.6.1
+  * @date    05-March-2012
   * @brief   This file provides all the SDIO firmware functions.
   ******************************************************************************
-  * @copy
+  * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2010 STMicroelectronics</center></h2>
-  */ 
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
+  ******************************************************************************
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_sdio.h"
@@ -172,9 +179,9 @@ void SDIO_DeInit(void)
 
 /**
   * @brief  Initializes the SDIO peripheral according to the specified 
-  *   parameters in the SDIO_InitStruct.
+  *         parameters in the SDIO_InitStruct.
   * @param  SDIO_InitStruct : pointer to a SDIO_InitTypeDef structure 
-  *   that contains the configuration information for the SDIO peripheral.
+  *         that contains the configuration information for the SDIO peripheral.
   * @retval None
   */
 void SDIO_Init(SDIO_InitTypeDef* SDIO_InitStruct)
@@ -252,8 +259,7 @@ void SDIO_SetPowerState(uint32_t SDIO_PowerState)
   /* Check the parameters */
   assert_param(IS_SDIO_POWER_STATE(SDIO_PowerState));
   
-  SDIO->POWER &= PWR_PWRCTRL_MASK;
-  SDIO->POWER |= SDIO_PowerState;
+  SDIO->POWER = SDIO_PowerState;
 }
 
 /**
@@ -337,9 +343,9 @@ void SDIO_DMACmd(FunctionalState NewState)
 
 /**
   * @brief  Initializes the SDIO Command according to the specified 
-  *   parameters in the SDIO_CmdInitStruct and send the command.
+  *         parameters in the SDIO_CmdInitStruct and send the command.
   * @param  SDIO_CmdInitStruct : pointer to a SDIO_CmdInitTypeDef 
-  *   structure that contains the configuration information for the SDIO command.
+  *         structure that contains the configuration information for the SDIO command.
   * @retval None
   */
 void SDIO_SendCommand(SDIO_CmdInitTypeDef *SDIO_CmdInitStruct)
@@ -375,7 +381,7 @@ void SDIO_SendCommand(SDIO_CmdInitTypeDef *SDIO_CmdInitStruct)
 /**
   * @brief  Fills each SDIO_CmdInitStruct member with its default value.
   * @param  SDIO_CmdInitStruct: pointer to an SDIO_CmdInitTypeDef 
-  *   structure which will be initialized.
+  *         structure which will be initialized.
   * @retval None
   */
 void SDIO_CmdStructInit(SDIO_CmdInitTypeDef* SDIO_CmdInitStruct)
@@ -465,7 +471,7 @@ void SDIO_DataConfig(SDIO_DataInitTypeDef* SDIO_DataInitStruct)
 /**
   * @brief  Fills each SDIO_DataInitStruct member with its default value.
   * @param  SDIO_DataInitStruct: pointer to an SDIO_DataInitTypeDef structure which
-  *   will be initialized.
+  *         will be initialized.
   * @retval None
   */
 void SDIO_DataStructInit(SDIO_DataInitTypeDef* SDIO_DataInitStruct)
@@ -550,7 +556,7 @@ void SDIO_StopSDIOReadWait(FunctionalState NewState)
 /**
   * @brief  Sets one of the two options of inserting read wait interval.
   * @param  SDIO_ReadWaitMode: SD I/O Read Wait operation mode.
-  *   This parametre can be:
+  *   This parameter can be:
   *     @arg SDIO_ReadWaitMode_CLK: Read Wait control by stopping SDIOCLK
   *     @arg SDIO_ReadWaitMode_DATA2: Read Wait control using SDIO_DATA2
   * @retval None
@@ -757,7 +763,7 @@ ITStatus SDIO_GetITStatus(uint32_t SDIO_IT)
 }
 
 /**
-  * @brief  Clears the SDIO’s interrupt pending bits.
+  * @brief  Clears the SDIO's interrupt pending bits.
   * @param  SDIO_IT: specifies the interrupt pending bit to clear. 
   *   This parameter can be one or a combination of the following values:
   *     @arg SDIO_IT_CCRCFAIL: Command response received (CRC check failed) interrupt
@@ -795,4 +801,4 @@ void SDIO_ClearITPendingBit(uint32_t SDIO_IT)
   * @}
   */
 
-/******************* (C) COPYRIGHT 2010 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

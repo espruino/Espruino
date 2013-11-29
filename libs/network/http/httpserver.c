@@ -769,7 +769,6 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
     httpError("Unable to locate host");
     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
     jsvUnLock(options);
-    jsvUnLock(httpClientReqVar);
     return;
   }
 

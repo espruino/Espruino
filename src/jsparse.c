@@ -1222,7 +1222,6 @@ JsVar *jspeFactor() {
     return 0;
 }
 
-
 __attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
   while (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
     int op = execInfo.lex->tk;
@@ -1245,7 +1244,22 @@ __attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
 }
 
 JsVar *jspePostfix() {
-  return __jspePostfix(jspeFactorFunctionCall());
+  JsVar *a;
+  if (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
+      int op = execInfo.lex->tk;
+      JSP_MATCH(execInfo.lex->tk);
+      a = jspePostfix();
+      if (JSP_SHOULD_EXECUTE) {
+          JsVar *one = jsvNewFromInteger(1);
+          JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
+          jsvUnLock(one);
+          // in-place add/subtract
+          jspReplaceWith(a, res);
+          jsvUnLock(res);
+      }
+  } else
+    a = jspeFactorFunctionCall();
+  return __jspePostfix(a);
 }
 
 JsVar *jspeUnary() {
@@ -2002,6 +2016,8 @@ JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_R_FALSE ||
         execInfo.lex->tk==LEX_R_TYPEOF ||
         execInfo.lex->tk==LEX_R_VOID ||
+        execInfo.lex->tk==LEX_PLUSPLUS ||
+        execInfo.lex->tk==LEX_MINUSMINUS ||
         execInfo.lex->tk=='!' ||
         execInfo.lex->tk=='-' ||
         execInfo.lex->tk=='~' ||

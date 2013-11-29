@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_lib.h
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   USB library include files
   ******************************************************************************
   * @attention
@@ -38,19 +38,8 @@
 #include "usb_core.h"
 #include "usb_init.h"
 #include "usb_sil.h"
-
-#ifndef STM32F10X_CL
- #include "usb_mem.h"
- #include "usb_int.h"
-#endif /* STM32F10X_CL */
-
-#ifdef STM32F10X_CL
- #include "otgd_fs_cal.h"
- #include "otgd_fs_pcd.h"
- #include "otgd_fs_dev.h"
- #include "otgd_fs_int.h"
-#endif /* STM32F10X_CL */
-
+#include "usb_mem.h"
+#include "usb_int.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

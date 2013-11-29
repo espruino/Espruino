@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usb_int.h
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    28-August-2012
   * @brief   Endpoint CTR (Low and High) interrupt's service routines prototypes
   ******************************************************************************
   * @attention

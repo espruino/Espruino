@@ -2,13 +2,13 @@
   ******************************************************************************
   * @file    usb_endp.c
   * @author  MCD Application Team
-  * @version V3.4.0
-  * @date    29-June-2012
+  * @version V4.0.0
+  * @date    21-January-2013
   * @brief   Endpoint routines
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; COPYRIGHT 2012 STMicroelectronics</center></h2>
+  * <h2><center>&copy; COPYRIGHT 2013 STMicroelectronics</center></h2>
   *
   * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
   * You may not use this file except in compliance with the License.
@@ -106,23 +106,19 @@ void EP1_IN_Callback (void)
            ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
       USB_TX_Buffer[USB_Tx_length++] = c;
     }
-
+        
     // if nothing, set state to 0
     if (USB_Tx_length==0) {
       USB_Tx_State = 0; 
       return;
-    }
-
+      }
+        
     // else send data and keep going      
-#ifdef USE_STM3210C_EVAL
-      USB_SIL_Write(EP1_IN, &USB_TX_Buffer[0], USB_Tx_length);  
-#else
       UserToPMABufferCopy(&USB_TX_Buffer[0], ENDP1_TXADDR, USB_Tx_length);
       SetEPTxCount(ENDP1, USB_Tx_length);
       SetEPTxValid(ENDP1); 
-#endif  
+    }
   }
-}
 
 /*******************************************************************************
 * Function Name  : EP3_OUT_Callback
@@ -135,22 +131,19 @@ void EP3_OUT_Callback(void)
 {
   uint8_t USB_Rx_Buffer[VIRTUAL_COM_PORT_DATA_SIZE];
   int USB_Rx_Cnt;
-
+  
   /* Get the received data buffer and update the counter */
   USB_Rx_Cnt = USB_SIL_Read(EP3_OUT, USB_Rx_Buffer);
   
   /* USB data will be immediately processed, this allow next USB traffic being 
   NAKed till the end of the USART Xfer */
-
+  
   int i=0;
   for (i=0;i<USB_Rx_Cnt;i++)
     jshPushIOCharEvent(EV_USBSERIAL, USB_Rx_Buffer[i]);
-
-  #ifndef STM32F10X_CL
-    /* Enable the receive of data on EP3 */
-//    SetEPRxValid(ENDP3);
-    SetEPRxStatus(ENDP3, jshHasEventSpaceForChars(VIRTUAL_COM_PORT_DATA_SIZE) ? EP_RX_VALID : EP_RX_NAK);
-  #endif /* STM32F10X_CL */
+ 
+  /* Enable the receive of data on EP3 */
+  SetEPRxStatus(ENDP3, jshHasEventSpaceForChars(VIRTUAL_COM_PORT_DATA_SIZE) ? EP_RX_VALID : EP_RX_NAK);
 }
 
 
@@ -161,11 +154,7 @@ void EP3_OUT_Callback(void)
 * Output         : None.
 * Return         : None.
 *******************************************************************************/
-#ifdef STM32F10X_CL
-void INTR_SOFINTR_Callback(void)
-#else
 void SOF_Callback(void)
-#endif /* STM32F10X_CL */
 {
   jshKickUSBWatchdog();
   /* If this times out, then we know that USB has disconnected */
