@@ -115,6 +115,7 @@ Directories and Files
 * `targetlibs/`:        Libraries for targeted architectures
 * `targets/`:           Specific code for targeted architectures
 * `tests/`:             Testcases
+* `benchmark/`:         Benchmark code
 * `dist_*`:             files to be copied into distribution zip file
 
 Adding more devices
