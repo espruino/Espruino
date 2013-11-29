@@ -34,7 +34,7 @@ extern int errno;
 #define WLAN_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define WLAN_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define WLAN_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
-#define WLAN_EN_PIN       (Pin)(JSH_PORTB_OFFSET + 7)
+#define WLAN_EN_PIN       (Pin)(JSH_PORTB_OFFSET + 7) // high to enable
 #define WLAN_IRQ_PIN      (Pin)(JSH_PORTB_OFFSET + 8) // active low
 #define WLAN_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 6)
 
