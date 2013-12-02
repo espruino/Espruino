@@ -90,7 +90,7 @@ JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v) {
    if (!v) return 0; // out of memory
    int idx = -1;
    int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
-   for (idx=0;idx<l;idx++) {
+   for (idx=0;idx<=l;idx++) {
      if (jsvCompareString(parent, v, idx, 0, true)==0) {
        jsvUnLock(v);
        return idx;

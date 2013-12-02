@@ -18,6 +18,7 @@
             Update ST's VCP implementation
             Added prefix operator (fix #130)
             Allow espruino for linux to be run with '#!' in scripts
+            Fix indexOf on final element of strings (fix #133)
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
