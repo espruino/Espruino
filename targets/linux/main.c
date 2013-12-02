@@ -227,6 +227,10 @@ int main(int argc, char **argv) {
         jsiKill();
         jshKill();
         exit(0);
+      } else if (!strcmp(a,"--test")) {
+        if (i+1>=argc) die("Expecting an extra argument");
+        bool ok = run_test(argv[i+1]);
+        exit(ok ? 0 : 1);
       } else if (!strcmp(a,"--test-all")) {
         bool ok = run_all_tests();
         exit(ok ? 0 : 1);
