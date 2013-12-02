@@ -91,20 +91,14 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
   if (jsvIsObject(options)) {
+    inf.pinSCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
+    inf.pinMISO = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "miso", 0));
+    inf.pinMOSI = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "mosi", 0));
     JsVar *v;
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "sck", false));
-    inf.pinSCK = jshGetPinFromVar(v);
-    jsvUnLock(v);
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "miso", false));
-    inf.pinMISO = jshGetPinFromVar(v);
-    jsvUnLock(v);
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "mosi", false));
-    inf.pinMOSI = jshGetPinFromVar(v);
-    jsvUnLock(v);
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "baud", false));
+    v = jsvObjectGetChild(options, "baud", 0);
     if (jsvIsNumeric(v))
       inf.baudRate = (int)jsvGetInteger(v);
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "mode", false));
+    v = jsvObjectGetChild(options, "mode", 0);
     if (jsvIsNumeric(v))
       inf.spiMode = ((int)jsvGetInteger(v))&3;;
     jsvUnLock(v);
@@ -385,13 +379,8 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   JshI2CInfo inf;
   jshI2CInitInfo(&inf);
   if (jsvIsObject(options)) {
-    JsVar *v;
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "scl", false));
-    inf.pinSCL = jshGetPinFromVar(v);
-    jsvUnLock(v);
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "sda", false));
-    inf.pinSDA = jshGetPinFromVar(v);
-    jsvUnLock(v);
+    inf.pinSCL = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "scl", 0));
+    inf.pinSDA = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sda", 0));
   }
   jshI2CSetup(device, &inf);
   // Set up options, so we can initialise it on startup
