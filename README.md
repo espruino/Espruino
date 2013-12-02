@@ -114,8 +114,8 @@ Directories and Files
 * `src/`:               Main source code
 * `targetlibs/`:        Libraries for targeted architectures
 * `targets/`:           Specific code for targeted architectures
-* `tests/`:             Testcases
-* `benchmark/`:         Benchmark code
+* `tests/`:             JavaScript Testcases
+* `benchmark/`:         JavaScript Benchmarks
 * `dist_*`:             files to be copied into distribution zip file
 
 Adding more devices
