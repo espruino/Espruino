@@ -13,7 +13,6 @@
  */
 #include "jsvar.h"
 
-Pin onewire_getpin(JsVar *parent);
 JsVar *jswrap_onewire_constructor(Pin pin);
 bool jswrap_onewire_reset(JsVar *parent);
 void jswrap_onewire_select(JsVar *parent, JsVarInt rom);

@@ -74,7 +74,7 @@
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   JsVarFloat freq = 0;
   if (jsvIsObject(options)) {
-    freq = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(options, "freq", false)));
+    freq = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "freq", 0));
   }
 
   jshPinAnalogOutput(pin, value, freq);
@@ -262,8 +262,8 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
   int edge = 0;
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
-    repeat = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(repeatOrObject, "repeat", false)));
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(repeatOrObject, "edge", false));
+    repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
+    v = jsvObjectGetChild(repeatOrObject, "edge", 0);
     if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
       else if (jsvIsStringEqual(v, "falling")) edge=-1;
@@ -410,7 +410,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       jsvArrayIteratorNew(&it, watchArrayPtr);
       while (jsvArrayIteratorHasElement(&it)) {
         JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
-        JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromString(watchPtr, "pin", false));
+        JsVar *pinVar = jsvObjectGetChild(watchPtr, "pin", 0);
         if (jshGetPinFromVar(pinVar) == pin)
           stillWatched = true;
         jsvUnLock(pinVar);

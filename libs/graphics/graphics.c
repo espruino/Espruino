@@ -70,7 +70,7 @@ void graphicsFallbackBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned sh
 
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
   gfx->graphicsVar = parent;
-  JsVar *data = jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JS_HIDDEN_CHAR_STR"gfx", false));
+  JsVar *data = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"gfx", 0);
   assert(data);
   if (data) {
     jsvGetString(data, (char*)&gfx->data, sizeof(JsGraphicsData)+1/*trailing zero*/);

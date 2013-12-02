@@ -20,9 +20,9 @@
 
 void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
   // look up setPixel and execute it!
-//  JsVar *lcdProto = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, JSPARSE_PROTOTYPE_VAR, false));
+//  JsVar *lcdProto = jsvObjectGetChild(gfx->graphicsVar, JSPARSE_PROTOTYPE_VAR, 0);
  // if (lcdProto) {
-    JsVar *setPixel = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar/*lcdProto*/, "setPixel", false));
+    JsVar *setPixel = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "setPixel", 0);
     if (setPixel) {
       JsVar *args[3];
       args[0] = jsvNewFromInteger(x);

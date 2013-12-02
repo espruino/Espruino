@@ -473,7 +473,7 @@ void jsiSoftInit() {
 
 /** Append the code required to initialise a serial port to this string */
 void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addCallbacks) {
-  JsVar *serialVar = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, serialName, false));
+  JsVar *serialVar = jsvObjectGetChild(p.root, serialName, 0);
   if (serialVar) {
     if (addCallbacks) {
       JsVar *onData = jsvSkipOneNameAndUnLock(jsvFindChildFromString(serialVar, USART_CALLBACK_NAME, false));
@@ -486,8 +486,8 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
         jsvUnLock(onDataStr);
       }
     }
-    JsVar *baud = jsvSkipNameAndUnLock(jsvFindChildFromString(serialVar, USART_BAUDRATE_NAME, false));
-    JsVar *options = jsvSkipNameAndUnLock(jsvFindChildFromString(serialVar, DEVICE_OPTIONS_NAME, false));
+    JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
+    JsVar *options = jsvObjectGetChild(serialVar, DEVICE_OPTIONS_NAME, 0);
     if (baud || options) {
       jsvAppendString(str, serialName);
       jsvAppendString(str, ".setup(");
@@ -508,9 +508,9 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
 
 /** Append the code required to initialise a SPI port to this string */
 void jsiAppendSPIInitialisation(JsVar *str, const char *spiName) {
-  JsVar *spiVar = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, spiName, false));
+  JsVar *spiVar = jsvObjectGetChild(p.root, spiName, 0);
   if (spiVar) {
-    JsVar *options = jsvSkipNameAndUnLock(jsvFindChildFromString(spiVar, DEVICE_OPTIONS_NAME, false));
+    JsVar *options = jsvObjectGetChild(spiVar, DEVICE_OPTIONS_NAME, 0);
     if (options) {
       jsvAppendString(str, spiName);
       jsvAppendString(str, ".setup(");
@@ -690,7 +690,7 @@ int jsiCountBracketsInInput() {
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
-  JsVar *history = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
   if (!history) return 0;
   JsVar *item = jsvArrayPopFirst(history);
   bool freed = item!=0;
@@ -729,7 +729,7 @@ void jsiHistoryAddLine(JsVar *newLine) {
 }
 
 JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
-  JsVar *history = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
   JsVar *historyLine = 0;
   if (history) {
     JsVar *idx = jsvGetArrayIndexOf(history, inputLine, true/*exact*/); // get index of current line
@@ -751,7 +751,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
 }
 
 bool jsiIsInHistory(JsVar *line) {
-  JsVar *history = jsvSkipNameAndUnLock(jsvFindChildFromString(p.root, JSI_HISTORY_NAME, false));
+  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
   if (!history) return false;
   JsVar *historyFound = jsvGetArrayIndexOf(history, line, true/*exact*/);
   bool inHistory = historyFound!=0;
@@ -1128,7 +1128,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
 }
 
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1) {
-  JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromString(object, callbackName, false));
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
   if (!callback) return;
   jsiQueueEvents(jsvGetRef(callback), arg0, arg1);
   jsvUnLock(callback);
@@ -1141,10 +1141,10 @@ void jsiExecuteEvents() {
   while (!jsvArrayIsEmpty(events)) {
     JsVar *event = jsvSkipNameAndUnLock(jsvArrayPopFirst(events));
     // Get function to execute
-    JsVar *func = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "func", false));
+    JsVar *func = jsvObjectGetChild(event, "func", 0);
     JsVar *args[2];
-    args[0] = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "arg0", false));
-    args[1] = jsvSkipNameAndUnLock(jsvFindChildFromString(event, "arg1", false));
+    args[0] = jsvObjectGetChild(event, "arg0", 0);
+    args[1] = jsvObjectGetChild(event, "arg1", 0);
     // free
     jsvUnLock(event);
 
@@ -1250,14 +1250,11 @@ void jsiIdle() {
 #ifdef STM32
           unsigned char bytesize = 8;
           unsigned char parity   = 0;
-          JsVar *options    = jsvSkipNameAndUnLock(jsvFindChildFromString(usartClass, DEVICE_OPTIONS_NAME, false));
+          JsVar *options    = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
 
           if(jsvIsObject(options)) {
-            JsVar *v;
-            v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
-            bytesize = (unsigned char)jsvGetInteger(v);
-            jsvUnLock(v);
-            v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
+            bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+            JsVar *v = jsvObjectGetChild(options, "parity", 0);
 
             if(jsvIsString(v)) {
               parity = 0xFF;
@@ -1583,7 +1580,7 @@ void jsiDumpState() {
         jsfPrintJSONForFunction(data);
         jsiConsolePrint("\n");
         // print any prototypes we had
-        JsVar *proto = jsvSkipNameAndUnLock(jsvFindChildFromString(data, JSPARSE_PROTOTYPE_VAR, false));
+        JsVar *proto = jsvObjectGetChild(data, JSPARSE_PROTOTYPE_VAR, 0);
         if (proto) {
           JsVarRef protoRef = proto->firstChild;
           jsvUnLock(proto);

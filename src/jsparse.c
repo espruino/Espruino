@@ -137,13 +137,13 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
 JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   if (jsvIsObject(parent)) {
     // If an object, look for an 'inherits' var
-    JsVar *inheritsFrom = jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_INHERITS_VAR, false));
+    JsVar *inheritsFrom = jsvObjectGetChild(parent, JSPARSE_INHERITS_VAR, 0);
 
     // if there's no inheritsFrom, just default to 'Object.prototype'
     if (!inheritsFrom) {
-      JsVar *obj = jsvSkipNameAndUnLock(jsvFindChildFromString(execInfo.parse->root, "Object", false));
+      JsVar *obj = jsvObjectGetChild(execInfo.parse->root, "Object", 0);
       if (obj) {
-        inheritsFrom = jsvSkipNameAndUnLock(jsvFindChildFromString(obj, JSPARSE_PROTOTYPE_VAR, false));
+        inheritsFrom = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
         jsvUnLock(obj);
       }
     }
@@ -166,7 +166,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
         JsVar *obj = jsvSkipNameAndUnLock(objName);
         if (obj) {
           // We have found an object with this name - search for the prototype var
-          JsVar *proto = jsvSkipNameAndUnLock(jsvFindChildFromString(obj, JSPARSE_PROTOTYPE_VAR, false));
+          JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
           if (proto) {
             result = jsvFindChildFromString(proto, name, false);
             jsvUnLock(proto);
@@ -1374,7 +1374,7 @@ __attribute((noinline)) JsVar *__jspeCondition(JsVar *a) {
               jspSetError();
             } else {
               if (jsvIsObject(av)) {
-                JsVar *constructor = jsvSkipNameAndUnLock(jsvFindChildFromString(av, JSPARSE_CONSTRUCTOR_VAR, false));
+                JsVar *constructor = jsvObjectGetChild(av, JSPARSE_CONSTRUCTOR_VAR, 0);
                 if (constructor==bv) inst=true;
                 else inst = jspIsConstructor(bv,"Object");
                 jsvUnLock(constructor);
@@ -2134,7 +2134,7 @@ JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
-  JsVar *objFunc = jsvSkipNameAndUnLock(jsvFindChildFromString(execInfo.parse->root, constructorName, false));
+  JsVar *objFunc = jsvObjectGetChild(execInfo.parse->root, constructorName, 0);
   if (!objFunc) return false;
   bool isConstructor = objFunc == constructor;
   jsvUnLock(objFunc);

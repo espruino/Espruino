@@ -64,9 +64,9 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   gfx.data.bpp = (unsigned char)bpp;
 
   if (jsvIsObject(options)) {
-    if (jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(options, "zigzag", false))))
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "zigzag", 0)))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
-    if (jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromString(options, "vertical_byte", false)))) {
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else

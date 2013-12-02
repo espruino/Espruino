@@ -149,7 +149,7 @@ JsVar *jswrap_interface_memory() {
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   if (obj) {
     unsigned int history = 0;
-    JsVar *historyVar = jsvSkipNameAndUnLock(jsvFindChildFromString(jsiGetParser()->root, JSI_HISTORY_NAME, false));
+    JsVar *historyVar = jsvObjectGetChild(jsiGetParser()->root, JSI_HISTORY_NAME, 0);
     if (historyVar) {
       history = (unsigned int)jsvCountJsVarsUsed(historyVar); // vars used to store history
       jsvUnLock(historyVar);

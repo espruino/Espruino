@@ -1538,7 +1538,7 @@ void jsvRemoveAllChildren(JsVar *parent) {
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   if (!obj) return 0;
-  assert(jsvIsObject(obj) || jsvIsRoot(obj));
+  assert(jsvHasChildren(obj));
   JsVar *childName = jsvFindChildFromString(obj, name, createChild);
   if (!childName && createChild) {
     JsVar *child = jsvNewWithFlags(createChild);
@@ -1553,7 +1553,7 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
 
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
-  assert(jsvIsObject(obj) || jsvIsRoot(obj));
+  assert(jsvHasChildren(obj));
   // child can actually be a name (for instance if it is a named function)
   JsVar *childName = jsvFindChildFromString(obj, name, true);
   if (!childName) return 0; // out of memory

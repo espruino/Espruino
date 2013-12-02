@@ -75,21 +75,13 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
   if (baud>0) inf.baudRate = (int)baud;
 
   if (jsvIsObject(options)) {
+
+    inf.pinRX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "rx", 0));
+    inf.pinTX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "tx", 0));
+    inf.bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+
     JsVar *v;
-
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "rx", false));
-    inf.pinRX = jshGetPinFromVar(v);
-    jsvUnLock(v);
-
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "tx", false));
-    inf.pinTX = jshGetPinFromVar(v);
-    jsvUnLock(v);
-
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "bytesize", false));
-    inf.bytesize = (unsigned char)jsvGetInteger(v);
-    jsvUnLock(v);
-
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "parity", false));
+    v = jsvObjectGetChild(options, "parity", 0);
     
     if(jsvIsNull(v)) {
       inf.parity = 0;
@@ -113,7 +105,7 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
 
     jsvUnLock(v);
 
-    v = jsvSkipNameAndUnLock(jsvFindChildFromString(options, "stopbits", false));
+    v = jsvObjectGetChild(options, "stopbits", 0);
     inf.stopbits = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
   }

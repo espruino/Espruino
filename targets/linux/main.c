@@ -65,7 +65,7 @@ bool run_test(const char *filename) {
   isRunning = true;
   while (isRunning && jsiHasTimers()) jsiLoop();
 
-  JsVar *result = jsvSkipNameAndUnLock(jsvFindChildFromString(jsiGetParser()->root, "result", false/*no create*/));
+  JsVar *result = jsvObjectGetChild(jsiGetParser()->root, "result", 0/*no create*/);
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 
@@ -254,6 +254,9 @@ int main(int argc, char **argv) {
   } else if (argc==2) {
     // single file - just run it
     char *buffer = read_file(argv[1]);
+    if (buffer) {
+      exit(1);
+    }
     // check for '#' as the first char, and if so, skip the first line
     char *cmd = buffer;
     if (cmd[0]=='#') {

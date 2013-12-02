@@ -27,7 +27,7 @@ int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, short x, short y) {
 
 unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
   unsigned int col = 0;
-  JsVar *buf = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, "buffer", false));
+  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
     int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y);
     JsvArrayBufferIterator it;
@@ -51,7 +51,7 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
 
 
 void lcdSetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y, unsigned int col) {
-  JsVar *buf = jsvSkipNameAndUnLock(jsvFindChildFromString(gfx->graphicsVar, "buffer", false));
+  JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
     int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y);
     JsvArrayBufferIterator it;
