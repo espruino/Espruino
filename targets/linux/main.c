@@ -32,14 +32,14 @@ const char *read_file(const char *filename) {
   struct stat results;
   if (!stat(filename, &results) == 0) {
     printf("Cannot stat file! '%s'\r\n", filename);
-    return "";
+    return 0;
   }
   int size = (int)results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
      printf("Unable to open file! '%s'\r\n", filename);
-     return "";
+     return 0;
   }
   char *buffer = malloc(size+1);
   size_t actualRead = fread(buffer,1,size,file);
@@ -53,6 +53,7 @@ bool run_test(const char *filename) {
   printf("----------------------------------\r\n");
   printf("----------------------------- TEST %s \r\n", filename);
   char *buffer = read_file(filename);
+  if (!buffer) exit(1);
 
   jshInit();
   jsiInit(false /* do not autoload!!! */);
@@ -217,7 +218,7 @@ int main(int argc, char **argv) {
         show_help();
         exit(1);
       } else if (!strcmp(a,"-e") || !strcmp(a,"--eval")) {
-        if (i+1>=argc) die("Expecting an extra argument");
+        if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
         jsiInit(true);
         jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
@@ -228,7 +229,7 @@ int main(int argc, char **argv) {
         jshKill();
         exit(0);
       } else if (!strcmp(a,"--test")) {
-        if (i+1>=argc) die("Expecting an extra argument");
+        if (i+1>=argc) die("Expecting an extra argument\n");
         bool ok = run_test(argv[i+1]);
         exit(ok ? 0 : 1);
       } else if (!strcmp(a,"--test-all")) {
@@ -238,11 +239,11 @@ int main(int argc, char **argv) {
         bool ok = run_memory_tests(0);
         exit(ok ? 0 : 1);
       } else if (!strcmp(a,"--test-mem")) {
-        if (i+1>=argc) die("Expecting an extra argument");
+        if (i+1>=argc) die("Expecting an extra argument\n");
         bool ok = run_memory_test(argv[i+1], 0);
         exit(ok ? 0 : 1);
       } else if (!strcmp(a,"--test-mem-n")) {
-        if (i+2>=argc) die("Expecting an extra 2 arguments");
+        if (i+2>=argc) die("Expecting an extra 2 arguments\n");
         bool ok = run_memory_test(argv[i+1], atoi(argv[i+2]));
         exit(ok ? 0 : 1);
       } else {
@@ -258,9 +259,7 @@ int main(int argc, char **argv) {
   } else if (argc==2) {
     // single file - just run it
     char *buffer = read_file(argv[1]);
-    if (buffer) {
-      exit(1);
-    }
+    if (!buffer) exit(1);
     // check for '#' as the first char, and if so, skip the first line
     char *cmd = buffer;
     if (cmd[0]=='#') {
