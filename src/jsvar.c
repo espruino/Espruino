@@ -216,7 +216,7 @@ bool jsvHasChildren(const JsVar *v) {
 
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v) {
-  return jsvIsParentInfo(v) || jsvIsName(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v);
+  return jsvIsName(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v);
 }
 
 
@@ -267,14 +267,6 @@ void jsvFreePtr(JsVar *var) {
       if (var->firstChild) {
         JsVar *child = jsvLock(var->firstChild);
         jsvUnRef(child); var->firstChild = 0; // unlink the child
-        jsvUnLock(child); // unlock should trigger a free
-      }
-    }
-    // Refs use lastChild to store the 'parent'
-    if (jsvIsParentInfo(var)) {
-      if (var->lastChild) {
-        JsVar *child = jsvLock(var->lastChild);
-        jsvUnRef(child); var->lastChild = 0; // unlink the child
         jsvUnLock(child); // unlock should trigger a free
       }
     }
@@ -458,14 +450,6 @@ JsVar *jsvNewFromString(const char *str) {
   return first;
 }
 
-JsVar *jsvNewParentInfo(JsVar *parent, JsVar *value) {
-  JsVar *ref = jsvNewWithFlags(JSV_PARENT_INFO);
-  if (!ref) return 0;
-  ref->firstChild = jsvGetRef(jsvRef(value));
-  ref->lastChild = jsvGetRef(jsvRef(parent));
-  return ref;
-}
-
 JsVar *jsvNewStringOfLength(unsigned int byteLength) {
   // Create a var
     JsVar *first = jsvNewWithFlags(JSV_STRING);
@@ -623,10 +607,10 @@ const char *jsvGetConstString(const JsVar *v) {
       return "null";
     } else if (jsvIsBoolean(v)) {
       return jsvGetBool(v) ? "true" : "false";
+    } else if (jsvIsRoot(v)) {
+      return "[object Hardware]";
     } else if (jsvIsObject(v)) {
       return "[object Object]";
-    } else if (jsvIsRoot(v)) {
-      return "[ROOT]";
     }
     return 0;
 }
@@ -1103,7 +1087,7 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  while (jsvIsName(pa) || jsvIsParentInfo(pa)) {
+  while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);
     if (!n) return 0;
@@ -1111,41 +1095,6 @@ JsVar *jsvSkipName(JsVar *a) {
   }
   if (pa==a) jsvLockAgain(pa);
   return pa;
-}
-
-/** If a is a name skip it and go to what it points to - and so on.
- * ALWAYS locks - so must unlock what it returns. It MAY
- * return 0. If parentRef is non-null, also sets this to
- * the parent from a JSV_PARENTINFO JsVar if it is encountered. */
-JsVar *jsvSkipNameKeepParent(JsVar *a, JsVarRef *parentRef) {
-  JsVar *pa = a;
-  if (!a) return 0;
-  if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  while (jsvIsName(pa) || jsvIsParentInfo(pa)) {
-    if (parentRef && jsvIsParentInfo(pa))
-      *parentRef = pa->lastChild;
-    JsVarRef n = pa->firstChild;
-    if (pa!=a) jsvUnLock(pa);
-    if (!n) return 0;
-    pa = jsvLock(n);
-  }
-  if (pa==a) jsvLockAgain(pa);
-  return pa;
-}
-
-/** A bit crazy, but basically we skip all names and check to see if a
- * 'parent' has been set. If so we keep it (but not the names). */
-JsVar *jsvSkipNameButNotParentAndUnLock(JsVar *a) {
-  JsVarRef parentRef = 0;
-  JsVar *b = jsvSkipNameKeepParent(a, &parentRef);
-  jsvUnLock(a);
-  if (!parentRef) return b;
-
-  JsVar *parent = jsvLock(parentRef);
-  JsVar *c = jsvNewParentInfo(parent, b);
-  jsvUnLock(parent);
-  jsvUnLock(b);
-  return c;
 }
 
 /** If a is a name skip it and go to what it points to.
@@ -1155,7 +1104,7 @@ JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsName(pa) || jsvIsParentInfo(pa)) {
+  if (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);
     if (!n) return 0;
@@ -2096,16 +2045,6 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
       jsvUnLock(var);
       return;
     }
-    if (jsvIsParentInfo(var)) {
-      jsiConsolePrint("ParentInfo (parent ");
-      JsVar *parent = jsvLock(var->lastChild);
-      jsvTraceLockInfo(parent);
-      jsvUnLock(parent);
-      jsiConsolePrint(")\n");
-      _jsvTrace(var->firstChild, indent+2, baseRef, level+1);
-      jsvUnLock(var);
-      return;
-    }
     if (jsvIsObject(var)) jsiConsolePrint("Object {");
     else if (jsvIsArray(var)) jsiConsolePrint("Array [");
     else if (jsvIsPin(var)) jsiConsolePrint("Pin ");
@@ -2186,7 +2125,7 @@ void jsvTrace(JsVarRef ref, int indent) {
 static void jsvGarbageCollectMarkUsed(JsVar *var) {
   var->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
 
-  if (jsvHasCharacterData(var) || jsvIsParentInfo(var)) {
+  if (jsvHasCharacterData(var)) {
       if (var->lastChild) {
         JsVar *childVar = jsvGetAddressOf(var->lastChild);
         if (childVar->flags & JSV_GARBAGE_COLLECT)

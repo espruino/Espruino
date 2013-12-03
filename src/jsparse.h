@@ -85,6 +85,8 @@ typedef struct {
   // TODO: could store scopes as JsVar array for speed
   JsVarRef scopes[JSPARSE_MAX_SCOPES];
   int scopeCount;
+  /// Value of 'this' reserved word
+  JsVar *thisVar;
 
   JsExecFlags execute;
 } JsExecInfo;

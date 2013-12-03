@@ -1,4 +1,9 @@
 // using 'this' in callback
+// Heavily modified now, so it actually works like proper JavaScript
 result = 0;
-Pin.prototype.foo = function() { this.set(); setTimeout(function() { print(this); this.reset(); result=1; }, 10); } 
-LED1.foo()
+function A() { }
+A.prototype.set = function() { console.log("set"); };
+function unset() { console.log("unset");  };
+A.prototype.foo = function() { console.log(this); this.set(); setTimeout(function() { console.log(this); this.unset(); result=1; }, 10); };
+var a = new A();
+a.foo()

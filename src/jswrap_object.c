@@ -18,6 +18,11 @@
 #include "jsinteractive.h"
 
 /*JSON{ "type":"class",
+        "class" : "Hardware",
+        "check" : "jsvIsRoot(var)",
+        "description" : ["This is the built-in class for the Espruino device. It is the 'root scope', as 'Window' is for JavaScript on the desktop." ]
+}*/
+/*JSON{ "type":"class",
         "class" : "Object",
         "check" : "jsvIsObject(var)",
         "description" : ["This is the built-in class for Objects" ]

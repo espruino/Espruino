@@ -6,9 +6,10 @@ a.num = 42;
 
 function runCallback(cb) { return cb(); }
 cb = a.b;
-var res = runCallback(cb);
+var res = runCallback(a.b);
 
-result = res==42;
+// This is really the case, as the execution scope is not preserved in JS
+result = res===undefined;
 
-
+console.log(res);
 

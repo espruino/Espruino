@@ -112,8 +112,7 @@ typedef long long JsSysTime;
 #define NOT_USED(x) ( (void)(x) )
 
 // javascript specific names
-#define JSPARSE_RETURN_VAR "return"
-#define JSPARSE_THIS_VAR "this"
+#define JSPARSE_RETURN_VAR "return" // variable name used for returning function results
 #define JSPARSE_PROTOTYPE_VAR "prototype"
 #define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
@@ -185,8 +184,7 @@ typedef enum {
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
     JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_PARENT_INFO   = JSV_FUNCTION+1, ///< Parent info is used when we say 'foo.bar' and we need to know that bar was a member of fee
-    JSV_NUMERICSTART = JSV_PARENT_INFO+1, ///< --------- Start of numeric variable types
+    JSV_NUMERICSTART = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
     JSV_INTEGER     = JSV_NUMERICSTART, ///< integer number (note JSV_NUMERICMASK)
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
@@ -257,6 +255,7 @@ typedef enum LEX_TYPES {
     LEX_R_FUNCTION,
     LEX_R_RETURN,
     LEX_R_VAR,
+    LEX_R_THIS,
     LEX_R_TRUE,
     LEX_R_FALSE,
     LEX_R_NULL,

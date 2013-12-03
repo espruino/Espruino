@@ -8,7 +8,8 @@ function runCallback(cb) { return cb(); }
 var cb = a.b;
 var res = runCallback(cb);
 
-result = res==42;
+// This is really the case, as the execution scope is not preserved in JS
+result = res===undefined;
 
 
 

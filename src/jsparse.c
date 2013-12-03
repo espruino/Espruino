@@ -56,13 +56,6 @@ bool jspHasError() {
 
 ///< Same as jsvSetValueOfName, but nice error message
 void jspReplaceWith(JsVar *dst, JsVar *src) {
-  // if we have parent info, skip it - we don't need it here
-  if (jsvIsParentInfo(dst)) {
-    dst = jsvSkipOneName(dst);
-    assert(!jsvIsParentInfo(dst));
-    jspReplaceWith(dst, src);
-    return;
-  }
   // If this is an index in an array buffer, write directly into the array buffer
   if (jsvIsArrayBufferName(dst)) {
     JsVarInt idx = jsvGetInteger(dst);
@@ -609,9 +602,8 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       jspSetError();
       return 0;
     }
-    JsVar *thisVar = 0;
-    if (thisArg)
-        thisVar = jsvAddNamedChild(functionRoot, thisArg, JSPARSE_THIS_VAR);
+    JsVar *oldThisVar = execInfo.thisVar;
+    execInfo.thisVar = thisArg;
     if (isParsing) {
       int hadParams = 0;
       // grab in all parameters. We go around this loop until we've run out
@@ -629,7 +621,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
             value = jspeBase();
           // and if execute, copy it over
           if (JSP_SHOULD_EXECUTE) {
-            value = jsvSkipNameButNotParentAndUnLock(value);
+            value = jsvSkipNameAndUnLock(value);
             JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
             paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
             JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
@@ -672,9 +664,6 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
     if (!returnVarName) // out of memory
       jspSetError();
     //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
-#ifdef JSPARSE_CALL_STACK
-    call_stack.push_back(function->name + " from " + l->getPosition());
-#endif
 
     if (!JSP_HAS_ERROR) {
       if (jsvIsNative(function)) {
@@ -753,13 +742,10 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
         execInfo.scopeCount = oldScopeCount;
       }
     }
-#ifdef JSPARSE_CALL_STACK
-    if (!call_stack.empty()) call_stack.pop_back();
-#endif
 
-    /* do not remove 'this' var (just unlock), as it may be needed later if we have
-     * issued a setTimeout from this scope/etc */
-    jsvUnLock(thisVar);
+    /* Return to old 'this' var. No need to unlock as we never locked before */
+    execInfo.thisVar = oldThisVar;
+
     /* get the real return var before we remove it from our function */
     returnVar = jsvSkipNameAndUnLock(returnVarName);
     if (returnVarName) // could have failed with out of memory
@@ -802,7 +788,7 @@ JsVar *jspeFactorSingleId() {
   return a;
 }
 
-JsVar *jspeFactorMember(JsVar *a) {
+JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   /* The parent if we're executing a method call */
   JsVar *parent = 0;
 
@@ -835,8 +821,7 @@ JsVar *jspeFactorMember(JsVar *a) {
                  * in functions (eg. Person.prototype.toString). HOWEVER if we did
                  * this for 'this' then we couldn't say 'this.toString()'
                  * */
-                if (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)/* &&
-                                        !jsvIsStringEqual(a, JSPARSE_THIS_VAR)*/)) // don't try and use builtins on the prototype var!
+                if (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR))) // don't try and use builtins on the prototype var!
                   child = jswHandleFunctionCall(aVar, a/*name*/, name);
                 else
                   child = JSW_HANDLEFUNCTIONCALL_UNHANDLED;
@@ -934,20 +919,8 @@ JsVar *jspeFactorMember(JsVar *a) {
       }
   }
 
-  if (parent && a) {
-    JsVar *asub = jsvSkipName(a);
-    bool isFunc = jsvIsFunction(asub);
-    jsvUnLock(asub);
-    if (isFunc) {
-      // ... only store parent info for functions
-      JsVar *ref = jsvNewParentInfo(parent, a);
-      jsvUnLock(parent);
-      jsvUnLock(a);
-      return ref;
-    }
-  }
-
-  jsvUnLock(parent);
+  if (parentResult) *parentResult = parent;
+  else jsvUnLock(parent);
   return a;
 }
 
@@ -987,8 +960,6 @@ JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
 
 JsVar *jspeFactorFunctionCall() {
   /* The parent if we're executing a method call */
-  JsVar *parent = 0;
-
   bool isConstructor = false;
   if (execInfo.lex->tk==LEX_R_NEW) {
     JSP_MATCH(LEX_R_NEW);
@@ -1001,16 +972,12 @@ JsVar *jspeFactorFunctionCall() {
     }
   }
 
-  JsVar *a = jspeFactorMember(jspeFactor());
+  JsVar *parent = 0;
+  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
 
   while (execInfo.lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) {
     JsVar *funcName = a;
-    JsVarRef parentRef = 0;
-    JsVar *func = jsvSkipNameKeepParent(funcName, &parentRef);
-    if (parentRef) {
-      jsvUnLock(parent);
-      parent = jsvLock(parentRef);
-    }
+    JsVar *func = jsvSkipName(funcName);
 
     /* The constructor function doesn't change parsing, so if we're
      * not executing, just short-cut it. */
@@ -1024,7 +991,9 @@ JsVar *jspeFactorFunctionCall() {
 
     jsvUnLock(funcName);
     jsvUnLock(func);
-    a = jspeFactorMember(a);
+
+    jsvUnLock(parent); parent=0;
+    a = jspeFactorMember(a, &parent);
   }
 
   jsvUnLock(parent);
@@ -1210,6 +1179,9 @@ JsVar *jspeFactor() {
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
       JSP_MATCH(LEX_R_FUNCTION);
       return jspeFunctionDefinition();
+    } else if (execInfo.lex->tk==LEX_R_THIS) {
+      JSP_MATCH(LEX_R_THIS);
+      return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.parse->root );
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
       return jspeFactorTypeOf();
     } else if (execInfo.lex->tk==LEX_R_VOID) {
@@ -1490,11 +1462,6 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
                                  execInfo.lex->tk==LEX_ANDEQUAL || execInfo.lex->tk==LEX_OREQUAL ||
                                  execInfo.lex->tk==LEX_XOREQUAL || execInfo.lex->tk==LEX_RSHIFTEQUAL ||
                                  execInfo.lex->tk==LEX_LSHIFTEQUAL || execInfo.lex->tk==LEX_RSHIFTUNSIGNEDEQUAL) {
-        // if we have parent info, skip it - we don't need it here
-        if (jsvIsParentInfo(lhs))
-          lhs = jsvSkipOneNameAndUnLock(lhs);
-        assert(!jsvIsParentInfo(lhs));
-
         JsVar *rhs;
         /* If we're assigning to this and we don't have a parent,
          * add it to the symbol table root as per JavaScript. */
@@ -1509,7 +1476,7 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         rhs = jspeBase();
-        rhs = jsvSkipNameButNotParentAndUnLock(rhs); // ensure we get rid of any references on the RHS
+        rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
         if (JSP_SHOULD_EXECUTE && lhs) {
             if (op=='=') {
                 jspReplaceWith(lhs, rhs);
@@ -1636,7 +1603,7 @@ JsVar *jspeStatementVar() {
      if (execInfo.lex->tk == '=') {
          JsVar *var;
          JSP_MATCH_WITH_CLEANUP_AND_RETURN('=', jsvUnLock(a), lastDefined);
-         var = jsvSkipNameButNotParentAndUnLock(jspeBase());
+         var = jsvSkipNameAndUnLock(jspeBase());
          if (JSP_SHOULD_EXECUTE)
              jspReplaceWith(a, var);
          jsvUnLock(var);
@@ -2014,6 +1981,7 @@ JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_R_UNDEFINED ||
         execInfo.lex->tk==LEX_R_TRUE ||
         execInfo.lex->tk==LEX_R_FALSE ||
+        execInfo.lex->tk==LEX_R_THIS ||
         execInfo.lex->tk==LEX_R_TYPEOF ||
         execInfo.lex->tk==LEX_R_VOID ||
         execInfo.lex->tk==LEX_PLUSPLUS ||

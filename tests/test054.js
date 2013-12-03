@@ -8,5 +8,7 @@ print("---------------------------");
 // shouldn't work - but used to assert fail!
 
 //setTimeout("a.foo()",100); // works
-setTimeout(a.foo,100);
+//setTimeout(a.foo,100); // shouldn't work
+setTimeout(function() { a.foo(); },100);
+
 

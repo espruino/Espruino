@@ -1172,8 +1172,7 @@ void jsiExecuteEvents() {
 
 void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
   bool wasInterrupted = jspIsInterrupted();
-  JsVarRef parentRef = 0;
-  JsVar *callbackNoNames = jsvSkipNameKeepParent(callbackVar, &parentRef);
+  JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
   if (callbackNoNames) {
     if (jsvIsArray(callbackNoNames)) {
@@ -1186,9 +1185,8 @@ void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // 
       }
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
-       JsVar *parent = parentRef ? jsvLock(parentRef) : 0;
+       JsVar *parent = 0;
        jspExecuteFunction(&p, callbackNoNames, parent, 2, args);
-       jsvUnLock(parent);
     } else if (jsvIsString(callbackNoNames))
       jsvUnLock(jspEvaluateVar(&p, callbackNoNames, 0));
     else 

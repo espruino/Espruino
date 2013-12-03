@@ -113,7 +113,8 @@ void jslGetNextToken(JsLex *lex) {
                 break;
       case 's': if (jslIsToken(lex,"switch", 1)) lex->tk = LEX_R_SWITCH;
                 break;
-      case 't': if (jslIsToken(lex,"true", 1)) lex->tk = LEX_R_TRUE;
+      case 't': if (jslIsToken(lex,"this", 1)) lex->tk = LEX_R_THIS;
+                else if (jslIsToken(lex,"true", 1)) lex->tk = LEX_R_TRUE;
                 else if (jslIsToken(lex,"typeof", 1)) lex->tk = LEX_R_TYPEOF;
                 break;
       case 'u': if (jslIsToken(lex,"undefined", 1)) lex->tk = LEX_R_UNDEFINED;
@@ -406,6 +407,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_R_FUNCTION : strncpy(str, "function", len); return;
       case LEX_R_RETURN : strncpy(str, "return", len); return;
       case LEX_R_VAR : strncpy(str, "var", len); return;
+      case LEX_R_THIS : strncpy(str, "this", len); return;
       case LEX_R_TRUE : strncpy(str, "true", len); return;
       case LEX_R_FALSE : strncpy(str, "false", len); return;
       case LEX_R_NULL : strncpy(str, "null", len); return;

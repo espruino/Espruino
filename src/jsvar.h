@@ -138,7 +138,6 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewWithFlags(JsVarFlags flags);
-JsVar *jsvNewParentInfo(JsVar *parent, JsVar *value); ///< create a new variable of type REF
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
@@ -191,7 +190,7 @@ static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VA
 static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NUMERICSTART && (v->flags&JSV_VARTYPEMASK)<=JSV_NUMERICEND; }
 static inline bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
 static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
-static inline bool jsvIsObject(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_OBJECT; }
+static inline bool jsvIsObject(const JsVar *v) { return v && (((v->flags&JSV_VARTYPEMASK)==JSV_OBJECT) || ((v->flags&JSV_VARTYPEMASK)==JSV_ROOT)); }
 static inline bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 static inline bool jsvIsArrayBuffer(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAYBUFFER; }
 static inline bool jsvIsArrayBufferName(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK|JSV_NAME))==JSV_ARRAYBUFFERNAME; }
@@ -200,7 +199,6 @@ static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
-static inline bool jsvIsParentInfo(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PARENT_INFO; } ///< REFs store a variable with scope information (eg. foo.bar)
 
 static inline bool jsvIsIterable(const JsVar *v) {
   return jsvIsArray(v) || jsvIsObject(v) || jsvIsFunction(v) ||
@@ -312,16 +310,6 @@ JsVar *jsvArrayBufferGetFromName(JsVar *name);
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0.  */
 JsVar *jsvSkipName(JsVar *a);
-
-/** If a is a name skip it and go to what it points to - and so on.
- * ALWAYS locks - so must unlock what it returns. It MAY
- * return 0. If parentRef is non-null, also sets this to
- * the parent from a JSV_PARENTINFO JsVar if it is encountered. */
-JsVar *jsvSkipNameKeepParent(JsVar *a, JsVarRef *parentRef);
-
-/** A bit crazy, but basically we skip all names and check to see if a
- * 'parent' has been set. If so we keep it (but not the names). */
-JsVar *jsvSkipNameButNotParentAndUnLock(JsVar *a);
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY
