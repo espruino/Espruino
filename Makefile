@@ -35,6 +35,7 @@
 # RELEASE=1               # Force release-style compile (no asserts, etc)
 # SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
+# PROFILE=1               # Compile with gprof profiling info
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -294,13 +295,17 @@ LINUX=1
 USE_FILESYSTEM=1
 USB=1
 USE_GRAPHICS=1
-USE_LCD_SDL=1
+#USE_LCD_SDL=1
 USE_NET=1
 endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
 OPTIMIZEFLAGS=-g
+endif
+
+ifdef PROFILE
+OPTIMIZEFLAGS+=-pg
 endif
 
 WRAPPERFILE=gen/jswrapper.c
