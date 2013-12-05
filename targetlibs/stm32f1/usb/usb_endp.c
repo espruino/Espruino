@@ -138,9 +138,7 @@ void EP3_OUT_Callback(void)
   /* USB data will be immediately processed, this allow next USB traffic being 
   NAKed till the end of the USART Xfer */
   
-  int i=0;
-  for (i=0;i<USB_Rx_Cnt;i++)
-    jshPushIOCharEvent(EV_USBSERIAL, USB_Rx_Buffer[i]);
+  jshPushIOCharEvents(EV_USBSERIAL, USB_Rx_Buffer, USB_Rx_Cnt);
  
   /* Enable the receive of data on EP3 */
   SetEPRxStatus(ENDP3, jshHasEventSpaceForChars(VIRTUAL_COM_PORT_DATA_SIZE) ? EP_RX_VALID : EP_RX_NAK);

@@ -55,12 +55,12 @@ typedef enum {
  EV_I2C_MAX = EV_I2C3,
  EV_DEVICE_MAX = EV_I2C_MAX,
  // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
-
+ // Also helps if we're under 32 so we can fit IOEventFlags into a byte
+ EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
+ EV_CHARS_MASK = 7 * NEXT_POWER_2(EV_DEVICE_MAX),
+ // -----------------------------------------
  // if the pin we're watching is high, the handler sets this
- EV_EXTI_IS_HIGH = 32,
-
- EV_TYPE_MASK = 31,
- EV_CHARS_MASK = 7 << 5,
+ EV_EXTI_IS_HIGH = NEXT_POWER_2(EV_DEVICE_MAX),
 } PACKED_FLAGS IOEventFlags;
 
 #define DEVICE_IS_USART(X) (((X)>=EV_USBSERIAL)&& ((X)<=EV_SERIAL_MAX))
@@ -86,7 +86,14 @@ typedef struct IOEvent {
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time);
 void jshPushIOWatchEvent(IOEventFlags channel); // push an even when a pin changes state
+/// Push a single character event (for example USART RX)
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
+/// Push many character events at once (for example USB RX)
+static void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
+  // TODO: optimise me!
+  unsigned int i;
+  for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
+}
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();

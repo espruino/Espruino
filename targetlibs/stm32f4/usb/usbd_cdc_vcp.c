@@ -176,13 +176,8 @@ static uint16_t VCP_Ctrl (uint32_t Cmd, uint8_t* Buf, uint32_t Len)
   */
 static uint16_t VCP_DataRx (uint8_t* Buf, uint32_t Len)
 {
-  uint32_t i;
+  jshPushIOCharEvents(EV_USBSERIAL, Buf, Len);
   
-  for (i = 0; i < Len; i++)
-  {
-    jshPushIOCharEvent(EV_USBSERIAL, *(Buf + i));
-  } 
- 
   return USBD_OK;
 }
 
