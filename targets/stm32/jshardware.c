@@ -2152,7 +2152,6 @@ typedef enum {
   UT_NONE,
   UT_PULSE_ON,
   UT_PULSE_OFF,
-  UT_ONEWIRE,
   UT_PIN_SET_RELOAD_EVENT,
   UT_PIN_SET,
 } PACKED_FLAGS UtilTimerType;
@@ -2231,25 +2230,6 @@ void _utilTimerSetPinStateAndReload() {
   } else if (utilTimerType == UT_PULSE_OFF) {
     jshPinSetValue(utilTimerPin, !utilTimerState);
      _utilTimerDisable();
-  } else if (utilTimerType == UT_ONEWIRE) {
-    bool bit = (utilTimerData & (1 << utilTimerBit))!=0;
-    // setup output and timeout
-    jshPinSetValue(utilTimerPin, !utilTimerState);
-    if (utilTimerState) {
-      TIM_SetAutoreload(UTIL_TIMER, (uint16_t)(bit ? utilTimerReload1H : utilTimerReload0H));
-    } else {
-      TIM_SetAutoreload(UTIL_TIMER, (uint16_t)(bit ? utilTimerReload1L : utilTimerReload0L));
-    }
-    // increment state
-    utilTimerState = !utilTimerState;
-    if (utilTimerState) {
-      utilTimerBit++;
-      if (utilTimerBit>7) {
-        utilTimerBit = 0;
-        utilTimerData = (unsigned int)jshGetCharToTransmit(EV_BITBANG);
-         if (utilTimerData>255) _utilTimerDisable();
-      }
-    }
   /*} else if (utilTimerType == UT_PIN_SET_INITIAL_HACK) {
     utilTimerType = UT_PIN_SET;*/
   } else if (utilTimerType == UT_PIN_SET) {
@@ -2305,67 +2285,6 @@ void UTIL_TIMER_IRQHandler(void) {
 
 void _utilTimerWait() {
   WAIT_UNTIL(utilTimerType == UT_NONE, "Utility Timer");
-}
-
-
-
-void jshBitBang(Pin pin, JsVarFloat t0h, JsVarFloat t0l, JsVarFloat t1h, JsVarFloat t1l, JsVar *str) {
-  // NOT CURRENTLY USED
-  if (!jsvIsString(str)) {
-    jsError("Expecting a String");
-    return;
-  }
-  int i;
-
-  _utilTimerWait();
-
-  unsigned int timerFreq = getUtilTimerFreq();
-  int times[4] = {
-      (int)(((JsVarFloat)timerFreq * t0h) / 1000),
-      (int)(((JsVarFloat)timerFreq * t0l) / 1000),
-      (int)(((JsVarFloat)timerFreq * t1h) / 1000),
-      (int)(((JsVarFloat)timerFreq * t1l) / 1000),
-  };
-  int maxTime = 0;
-  for (i=0;i<4;i++) {
-    //jsiConsolePrintInt(times[i]);jsiConsolePrint(",");
-    if (times[i] > maxTime) maxTime = times[i];
-  }
-
-  int prescale = maxTime/65536; // ensure that maxTime isn't greater than the timer can count to
-
-  utilTimerReload0H = (uint16_t)(times[0]/(prescale+1));
-  utilTimerReload0L = (uint16_t)(times[1]/(prescale+1));
-  utilTimerReload1H = (uint16_t)(times[2]/(prescale+1));
-  utilTimerReload1L = (uint16_t)(times[3]/(prescale+1));
-
-  /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
-  jsiConsolePrintInt(utilTimerReload0H);jsiConsolePrint(",");
-  jsiConsolePrintInt(utilTimerReload0L);jsiConsolePrint(",");
-  jsiConsolePrintInt(utilTimerReload1H);jsiConsolePrint(",");
-  jsiConsolePrintInt(utilTimerReload1L);jsiConsolePrint(",");
-  jsiConsolePrintInt(prescale);jsiConsolePrint("\n");*/
-
-
-
-  utilTimerType = UT_ONEWIRE;
-  utilTimerState = true;
-  utilTimerBit = 0;
-  utilTimerPin = pin;
-
-  // preload data
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, str, 0);
-  utilTimerData = jsvStringIteratorGetChar(&it);
-  jsvStringIteratorNext(&it);
-
-  _utilTimerEnable((uint16_t)prescale, (uint16_t)maxTime);
-
-  while (jsvStringIteratorHasChar(&it)) {
-    jshTransmit(EV_BITBANG, jsvStringIteratorGetChar(&it));
-    jsvStringIteratorNext(&it);
-  }
-  jsvStringIteratorFree(&it);
 }
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {

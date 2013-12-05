@@ -53,8 +53,7 @@ typedef enum {
  EV_I2C2,
  EV_I2C3,
  EV_I2C_MAX = EV_I2C3,
- EV_BITBANG,
- EV_DEVICE_MAX = EV_BITBANG,
+ EV_DEVICE_MAX = EV_I2C_MAX,
  // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
 
  // if the pin we're watching is high, the handler sets this

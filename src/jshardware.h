@@ -220,9 +220,6 @@ bool jshFlashContainsCode();
 /// Enter simple sleep mode (can be woken up by interrupts)
 void jshSleep();
 
-/// Crazy one-wire bitbang code
-void jshBitBang(Pin pin, JsVarFloat t0h, JsVarFloat t0l, JsVarFloat t1h, JsVarFloat t1l, JsVar *str);
-
 // ---------------------------------------------- LOW LEVEL
 #ifdef ARM
 // ----------------------------------------------------------------------------
