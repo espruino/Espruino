@@ -22,6 +22,7 @@
             Remove JSV_PARENTINFO, as it turns out JS doesn't keep track of function scopes anyway (fix #109)
             Make 'this' a keyword (now faster, more memory efficient)
             Make 'Hardware' (root) the default value of 'this'
+            Increased variable count for HY32 board (not sure why it was lower?)
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
