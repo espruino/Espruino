@@ -85,7 +85,7 @@ typedef enum {
   JSHPINSTATE_USART_OUT,
   JSHPINSTATE_DAC_OUT,
   JSHPINSTATE_I2C,
-} JshPinState;
+} PACKED_FLAGS JshPinState;
 
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
              state==JSHPINSTATE_GPIO_OUT ||               \
@@ -131,7 +131,7 @@ typedef struct {
   unsigned char bytesize;
   unsigned char parity;
   unsigned char stopbits;
-} JshUSARTInfo;
+} PACKED_FLAGS JshUSARTInfo;
 
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
@@ -162,7 +162,7 @@ typedef enum {
         3   1     1
     */
 
-} JshSPIFlags;
+} PACKED_FLAGS JshSPIFlags;
 
 typedef struct {
   int baudRate;
@@ -170,8 +170,7 @@ typedef struct {
   Pin pinMISO;
   Pin pinMOSI;
   unsigned char spiMode;
-
-} JshSPIInfo;
+} PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 1000000;
   inf->pinSCK = -1;
@@ -197,7 +196,7 @@ typedef struct {
   char slaveAddr; // or -1 if it is master!
   // speed? 100khz std
   // timeout?
-} JshI2CInfo;
+} PACKED_FLAGS JshI2CInfo;
 static inline void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = -1;
   inf->pinSDA = -1;
