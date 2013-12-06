@@ -372,51 +372,70 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_INT : strncpy(str, "INT", len); return;
       case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
       case LEX_STR : strncpy(str, "STRING", len); return;
+  }
 #ifndef SAVE_ON_FLASH
-      case LEX_EQUAL : strncpy(str, "==", len); return;
-      case LEX_TYPEEQUAL : strncpy(str, "===", len); return;
-      case LEX_NEQUAL : strncpy(str, "!=", len); return;
-      case LEX_NTYPEEQUAL : strncpy(str, "!==", len); return;
-      case LEX_LEQUAL : strncpy(str, "<=", len); return;
-      case LEX_LSHIFT : strncpy(str, "<<", len); return;
-      case LEX_LSHIFTEQUAL : strncpy(str, "<<=", len); return;
-      case LEX_GEQUAL : strncpy(str, ">=", len); return;
-      case LEX_RSHIFT : strncpy(str, ">>", len); return;
-      case LEX_RSHIFTUNSIGNED : strncpy(str, ">>", len); return;
-      case LEX_RSHIFTEQUAL : strncpy(str, ">>=", len); return;
-      case LEX_PLUSEQUAL : strncpy(str, "+=", len); return;
-      case LEX_MINUSEQUAL : strncpy(str, "-=", len); return;
-      case LEX_PLUSPLUS : strncpy(str, "++", len); return;
-      case LEX_MINUSMINUS : strncpy(str, "--", len); return;
-      case LEX_MULEQUAL : strncpy(str, "*=", len); return;
-      case LEX_DIVEQUAL : strncpy(str, "/=", len); return;
-      case LEX_MODEQUAL : strncpy(str, "%=", len); return;
-      case LEX_ANDEQUAL : strncpy(str, "&=", len); return;
-      case LEX_ANDAND : strncpy(str, "&&", len); return;
-      case LEX_OREQUAL : strncpy(str, "|=", len); return;
-      case LEX_OROR : strncpy(str, "||", len); return;
-      case LEX_XOREQUAL : strncpy(str, "^=", len); return;
+  if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
+    const char tokenNames[] =
+      /* LEX_EQUAL      :   */ "==\0"
+      /* LEX_TYPEEQUAL  :   */ "===\0"
+      /* LEX_NEQUAL     :   */ "!=\0"
+      /* LEX_NTYPEEQUAL :   */ "!==\0"
+      /* LEX_LEQUAL    :    */ "<=\0"
+      /* LEX_LSHIFT     :   */ "<<\0"
+      /* LEX_LSHIFTEQUAL :  */ "<<=\0"
+      /* LEX_GEQUAL      :  */ ">=\0"
+      /* LEX_RSHIFT      :  */ ">>\0"
+      /* LEX_RSHIFTUNSIGNED */ ">>>\0"
+      /* LEX_RSHIFTEQUAL :  */ ">>=\0"
+      /* LEX_RSHIFTUNSIGNEDEQUAL */ ">>>=\0"
+      /* LEX_PLUSEQUAL   :  */ "+=\0"
+      /* LEX_MINUSEQUAL  :  */ "-=\0"
+      /* LEX_PLUSPLUS :     */ "++\0"
+      /* LEX_MINUSMINUS     */ "--\0"
+      /* LEX_MULEQUAL :     */ "*=\0"
+      /* LEX_DIVEQUAL :     */ "/=\0"
+      /* LEX_MODEQUAL :     */ "%=\0"
+      /* LEX_ANDEQUAL :     */ "&=\0"
+      /* LEX_ANDAND :       */ "&&\0"
+      /* LEX_OREQUAL :      */ "|=\0"
+      /* LEX_OROR :         */ "||\0"
+      /* LEX_XOREQUAL :     */ "^=\0"
+
       // reserved words
-      case LEX_R_IF : strncpy(str, "if", len); return;
-      case LEX_R_ELSE : strncpy(str, "else", len); return;
-      case LEX_R_DO : strncpy(str, "do", len); return;
-      case LEX_R_WHILE : strncpy(str, "while", len); return;
-      case LEX_R_FOR : strncpy(str, "for", len); return;
-      case LEX_R_BREAK : strncpy(str, "return", len); return;
-      case LEX_R_CONTINUE : strncpy(str, "continue", len); return;
-      case LEX_R_FUNCTION : strncpy(str, "function", len); return;
-      case LEX_R_RETURN : strncpy(str, "return", len); return;
-      case LEX_R_VAR : strncpy(str, "var", len); return;
-      case LEX_R_THIS : strncpy(str, "this", len); return;
-      case LEX_R_TRUE : strncpy(str, "true", len); return;
-      case LEX_R_FALSE : strncpy(str, "false", len); return;
-      case LEX_R_NULL : strncpy(str, "null", len); return;
-      case LEX_R_UNDEFINED : strncpy(str, "undefined", len); return;
-      case LEX_R_NEW : strncpy(str, "new", len); return;
-      case LEX_R_IN : strncpy(str, "in", len); return;
-      case LEX_R_INSTANCEOF : strncpy(str, "instanceof", len); return;
-      case LEX_R_TYPEOF : strncpy(str, "typeof", len); return;
-      case LEX_R_VOID : strncpy(str, "void", len); return;
+      /*LEX_R_IF :       */ "if\0"
+      /*LEX_R_ELSE :     */ "else\0"
+      /*LEX_R_DO :       */ "do\0"
+      /*LEX_R_WHILE :    */ "while\0"
+      /*LEX_R_FOR :      */ "for\0"
+      /*LEX_R_BREAK :    */ "return\0"
+      /*LEX_R_CONTINUE   */ "continue\0"
+      /*LEX_R_FUNCTION   */ "function\0"
+      /*LEX_R_RETURN     */ "return\0"
+      /*LEX_R_VAR :      */ "var\0"
+      /*LEX_R_THIS :     */ "this\0"
+      /*LEX_R_TRUE :     */ "true\0"
+      /*LEX_R_FALSE :    */ "false\0"
+      /*LEX_R_NULL :     */ "null\0"
+      /*LEX_R_UNDEFINED  */ "undefined\0"
+      /*LEX_R_NEW :      */ "new\0"
+      /*LEX_R_IN :       */ "in\0"
+      /*LEX_R_INSTANCEOF */ "instanceof\0"
+      /*LEX_R_SWITCH */     "switch\0"
+      /*LEX_R_CASE */       "case\0"
+      /*LEX_R_DEFAULT */    "default\0"
+      /*LEX_R_TYPEOF :   */ "typeof\0"
+      /*LEX_R_VOID :     */ "void\0"
+        ;
+    unsigned int p = 0;
+    int n = token-LEX_EQUAL;
+    while (n>0 && p<sizeof(tokenNames)) {
+      while (tokenNames[p] && p<sizeof(tokenNames)) p++;
+      p++; // skip the zero
+      n--; // next token
+    }
+    assert(n==0);
+    strncpy(str, &tokenNames[p], len);
+    return;
 #endif
   }
 
