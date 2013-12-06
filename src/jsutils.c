@@ -24,8 +24,7 @@
 #include <math.h>
 #endif
 
-extern double pow ( double, double );
-// just for exponentials
+extern double jswrap_math_pow(double x, double y); // for pow
 
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
@@ -273,7 +272,7 @@ JsVarFloat stringToFloat(const char *s) {
       s++;
     }
     if (isENegated) e=-e;
-    v = v * pow(10, e);
+    v = v * jswrap_math_pow(10, e);
   }
   // check we have parsed everything
   assert(*s==0);

@@ -25,4 +25,5 @@
 JsVarInt jswrap_integer_stringToInt(JsVar *v);
 JsVarInt jswrap_integer_valueOf(JsVar *v);
 JsVarFloat jswrap_math_abs(JsVarFloat x);
+double jswrap_math_pow(double x, double y);
 JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);

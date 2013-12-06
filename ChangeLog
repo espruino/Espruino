@@ -24,6 +24,7 @@
             Make 'Hardware' (root) the default value of 'this'
             Add jsvArrayPushAndUnLock and modified code to use it (fix #135)
             Now remember I2C state (partial fix for #13)
+            Replace 'pow' function with a smaller version - save ~2kb
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  
