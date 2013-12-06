@@ -507,12 +507,12 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
 }
 
 /** Append the code required to initialise a SPI port to this string */
-void jsiAppendSPIInitialisation(JsVar *str, const char *spiName) {
-  JsVar *spiVar = jsvObjectGetChild(p.root, spiName, 0);
-  if (spiVar) {
-    JsVar *options = jsvObjectGetChild(spiVar, DEVICE_OPTIONS_NAME, 0);
+void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
+  JsVar *deviceVar = jsvObjectGetChild(p.root, deviceName, 0);
+  if (deviceVar) {
+    JsVar *options = jsvObjectGetChild(deviceVar, DEVICE_OPTIONS_NAME, 0);
     if (options) {
-      jsvAppendString(str, spiName);
+      jsvAppendString(str, deviceName);
       jsvAppendString(str, ".setup(");
       if (jsvIsObject(options)) {
         jsfGetJSON(options, str);
@@ -520,7 +520,7 @@ void jsiAppendSPIInitialisation(JsVar *str, const char *spiName) {
       jsvAppendString(str, ");\n");
     }
     jsvUnLock(options);
-    jsvUnLock(spiVar);
+    jsvUnLock(deviceVar);
   }
 }
 
@@ -543,7 +543,9 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
   for (i=0;i<USARTS;i++)
     jsiAppendSerialInitialisation(str, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
   for (i=0;i<SPIS;i++)
-     jsiAppendSPIInitialisation(str, jshGetDeviceString(EV_SPI1+i));
+    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_SPI1+i));
+  for (i=0;i<I2CS;i++)
+    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_I2C1+i));
 }
 
 // Used when shutting down before flashing
