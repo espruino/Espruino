@@ -160,10 +160,12 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
 }*/
 void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   JshPinState m = JSHPINSTATE_UNDEFINED;
-  if (jsvIsStringEqual(mode, "input")) m = JSHPINSTATE_GPIO_IN;
-  if (jsvIsStringEqual(mode, "input_pullup")) m = JSHPINSTATE_GPIO_IN_PULLUP;
-  if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
-  if (jsvIsStringEqual(mode, "output")) m = JSHPINSTATE_GPIO_OUT;
+  if (jsvIsString(mode)) {
+    if (jsvIsStringEqual(mode, "input")) m = JSHPINSTATE_GPIO_IN;
+    if (jsvIsStringEqual(mode, "input_pullup")) m = JSHPINSTATE_GPIO_IN_PULLUP;
+    if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
+    if (jsvIsStringEqual(mode, "output")) m = JSHPINSTATE_GPIO_OUT;
+  }
   if (m != JSHPINSTATE_UNDEFINED) {
     jshSetPinStateIsManual(pin, true);
     jshPinSetState(pin, m);

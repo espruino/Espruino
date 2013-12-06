@@ -85,6 +85,9 @@ typedef enum {
   JSHPINSTATE_USART_OUT,
   JSHPINSTATE_DAC_OUT,
   JSHPINSTATE_I2C,
+  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C)-1,
+
+  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,
 } PACKED_FLAGS JshPinState;
 
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
@@ -96,9 +99,15 @@ typedef enum {
              state==JSHPINSTATE_I2C                       \
 )
 
+/// Is the pin state manual (has the user asked us explicitly to change it?)
 bool jshGetPinStateIsManual(Pin pin);
+/// Is the pin state manual (has the user asked us explicitly to change it?)
 void jshSetPinStateIsManual(Pin pin, bool manual);
+/// Set the pin state
 void jshPinSetState(Pin pin, JshPinState state);
+/** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
+ * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
+JshPinState jshPinGetState(Pin pin);
 
 
 bool jshPinInput(Pin pin);

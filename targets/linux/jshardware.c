@@ -284,6 +284,13 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
 }
 
+JshPinState jshPinGetState(Pin pin) {
+#ifdef SYSFS_GPIO_DIR
+  return gpioState[pin] = state;
+#endif
+  return JSHPINSTATE_UNDEFINED;
+}
+
 void jshPinSetValue(Pin pin, bool value) {
 #ifdef SYSFS_GPIO_DIR
   char path[64] = SYSFS_GPIO_DIR"/gpio";

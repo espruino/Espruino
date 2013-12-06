@@ -216,21 +216,38 @@ codeOut("");
 codeOut("#define IOBUFFERMASK 31 // (max 255) amount of items in event buffer - events take ~9 bytes each")
 codeOut("#define TXBUFFERMASK 31 // (max 255)")
 codeOut("");
-codeOutDevice("LED1")
-codeOutDevice("LED2")
-codeOutDevice("LED3")
-codeOutDevice("LED4")
-codeOutDevice("LED5")
-codeOutDevice("LED6")
-codeOutDevice("LED7")
-codeOutDevice("LED8")
-codeOutDevice("BTN1")
-codeOutDevice("BTN2")
-codeOutDevice("BTN3")
-codeOutDevice("BTN4")
+
+simpleDevices = [
+ "LED1","LED2","LED3","LED4","LED5","LED6","LED7","LED8",
+ "BTN1","BTN2","BTN3","BTN4"];
+usedPinChecks = ["false"];
+ledChecks = ["false"];
+btnChecks = ["false"];
+for device in simpleDevices:  
+  if device in board.devices: 
+    codeOutDevice(device)
+    check = "(PIN)==" + toPinDef(board.devices[device]["pin"])
+    if device[:3]=="LED": ledChecks.append(check)
+    if device[:3]=="BTN": btnChecks.append(check)
+#   usedPinChecks.append(check)
+# Actually we don't care about marking used pins for LEDs/Buttons
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+
+
+for device in ["USB","SD","LCD"]:
+  if device in board.devices:
+    for entry in board.devices[device]: 
+      if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
+
+codeOut("")
+
+codeOut("// definition to avoid compilation when Pin/platform config is not defined")
+codeOut("#define IS_PIN_USED_INTERNALLY(PIN) ("+")||(".join(usedPinChecks)+")")
+codeOut("#define IS_PIN_A_LED(PIN) ("+")||(".join(ledChecks)+")")
+codeOut("#define IS_PIN_A_BUTTON(PIN) ("+")||(".join(btnChecks)+")")
+
 
 codeOut("""
 #endif // _PLATFORM_CONFIG_H

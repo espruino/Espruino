@@ -480,9 +480,9 @@ bool jshGetPinStateIsManual(Pin pin) {
 
 void jshSetPinStateIsManual(Pin pin, bool manual) { 
   if (manual)
-    jshPinStateIsManual |= 1<<pin;
+    jshPinStateIsManual = jshPinStateIsManual | (1ULL<<pin);
   else
-    jshPinStateIsManual &= ~(1<<pin);  
+    jshPinStateIsManual = jshPinStateIsManual & ~(1ULL<<pin);
 }
 
 void jshPinSetState(Pin pin, JshPinState state) {
@@ -521,6 +521,47 @@ void jshPinSetState(Pin pin, JshPinState state) {
 #endif
   GPIO_InitStructure.GPIO_Pin = stmPin(pin);
   GPIO_Init(stmPort(pin), &GPIO_InitStructure);
+}
+
+JshPinState jshPinGetState(Pin pin) {
+  GPIO_TypeDef* port = stmPort(pin);
+  uint16_t pinn = stmPin(pin);
+  int pinNumber = pinInfo[pin].pin;
+  bool isOn = (port->ODR&pinn) != 0;
+#ifdef STM32F1
+  unsigned int crBits = ((pinNumber < 8) ? (port->CRL>>(pinNumber*4)) : (port->CRH>>((pinNumber-8)*4))) & 15;
+  unsigned int mode = crBits &3;
+  unsigned int cnf = (crBits>>2)&3;
+  if (mode==0) { // input
+    if (cnf==0) return JSHPINSTATE_ADC_IN;
+    else if (cnf==1) return JSHPINSTATE_GPIO_IN;
+    else /* cnf==2, 3=reserved */
+      return isOn ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
+  } else { // output
+    if (cnf&2) // af
+      return (cnf&1) ? JSHPINSTATE_AF_OUT/*_OPENDRAIN*/ : JSHPINSTATE_AF_OUT;
+    else { // normal
+      return ((cnf&1) ? JSHPINSTATE_GPIO_OUT_OPENDRAIN : JSHPINSTATE_GPIO_OUT) |
+             (isOn ? JSHPINSTATE_PIN_IS_ON : 0);
+    }
+  }
+#else
+  int mode = (port->MODER >> (pinNumber*2)) & 3;
+  if (mode==0) { // input
+    int pupd = (port->PUPDR >> (pinNumber*2)) & 3;
+    if (pupd==1) return JSHPINSTATE_GPIO_IN_PULLUP;
+    if (pupd==2) return JSHPINSTATE_GPIO_IN_PULLDOWN;
+    return JSHPINSTATE_GPIO_IN;
+  } else if (mode==1) { // output
+    return ((port->OTYPER&pinn) ? JSHPINSTATE_GPIO_OUT_OPENDRAIN : JSHPINSTATE_GPIO_OUT) |
+            (isOn ? JSHPINSTATE_PIN_IS_ON : 0);
+  } else if (mode==2) { // AF
+    return JSHPINSTATE_AF_OUT;
+  } else { // 3, analog
+    return JSHPINSTATE_ADC_IN;
+  }
+#endif
+  // GPIO_ReadOutputDataBit(port, pinn);
 }
 
 static inline void jshPinSetFunction(Pin pin, JshPinFunction func) {
@@ -1334,7 +1375,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Enable; // for negated
   TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
   TIM_OCInitStructure.TIM_Pulse = (uint16_t)(value*TIM_TimeBaseStructure.TIM_Period);
-  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = TIM_TimeBaseStructure.TIM_Period-(TIM_OCInitStructure.TIM_Pulse+1);
+  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-(TIM_OCInitStructure.TIM_Pulse+1));
 
   if ((func&JSH_MASK_TIMER_CH)==JSH_TIMER_CH1) {
     TIM_OC1Init(TIMx, &TIM_OCInitStructure);

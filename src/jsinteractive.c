@@ -546,6 +546,30 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_SPI1+i));
   for (i=0;i<I2CS;i++)
     jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_I2C1+i));
+  // pins
+  Pin pin;
+  for (pin=0;jshIsPinValid(pin) && pin<255;pin++) {
+    if (IS_PIN_USED_INTERNALLY(pin)) continue;
+    JshPinState state = jshPinGetState(pin);
+    JshPinState statem = state&JSHPINSTATE_MASK;
+    if (statem == JSHPINSTATE_GPIO_OUT) {
+      bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
+      if (!isOn && IS_PIN_A_LED(pin)) continue;
+      jsvAppendString(str, "digitalWrite(");
+      jsvAppendPin(str, pin);
+      jsvAppendString(str, ",");
+      jsvAppendInteger(str, isOn?1:0);
+      jsvAppendString(str, ");\n");
+    } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
+      // don't bother with normal inputs, as they come up in this state (ish) anyway
+      jsvAppendString(str, "pinMode(");
+      jsvAppendPin(str, pin);
+      jsvAppendString(str, ",\"input");
+      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) jsvAppendString(str, "_pullup");
+      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) jsvAppendString(str, "_pulldown");
+      jsvAppendString(str, "\");\n");
+    }
+  }
 }
 
 // Used when shutting down before flashing
