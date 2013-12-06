@@ -43,8 +43,7 @@ JsVar *jswrap_arguments() {
     JsVar *idx = jsvObjectIteratorGetKey(&it);
     if (jsvIsFunctionParameter(idx)) {
       JsVar *val = jsvSkipOneName(idx);
-      jsvArrayPush(args, val);
-      jsvUnLock(val);
+      jsvArrayPushAndUnLock(args, val);
     }
     jsvUnLock(idx);
     jsvObjectIteratorNext(&it);

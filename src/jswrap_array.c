@@ -215,8 +215,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
       } else if (idx<index+howMany) { // must delete
         if (result) { // append to result array
           JsVar *el = jsvArrayIteratorGetElement(&it);
-          jsvArrayPush(result, el);
-          jsvUnLock(el);
+          jsvArrayPushAndUnLock(result, el);
         }
         // delete
         goToNext = false;

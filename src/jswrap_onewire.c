@@ -321,8 +321,7 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
           (((JsVarInt)ROM_NO[1])<<(1*8)) |
            ((JsVarInt)ROM_NO[0])
           );
-      if (val) jsvArrayPush(array, val);
-      jsvUnLock(val);
+      if (val) jsvArrayPushAndUnLock(array, val);
     }
 
     NOT_USED(LastFamilyDiscrepancy);

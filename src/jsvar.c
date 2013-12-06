@@ -1650,6 +1650,13 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   return jsvArrayPushWithInitialSize(arr, value, 0);
 }
 
+/// Adds a new element to the end of an array, unlocks it, and returns the new length
+JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
+  JsVarInt l = jsvArrayPushWithInitialSize(arr, value, 0);
+  jsvUnLock(value);
+  return l;
+}
+
 /// Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPop(JsVar *arr) {
   assert(jsvIsArray(arr));

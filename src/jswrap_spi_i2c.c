@@ -63,8 +63,7 @@ JsVar *map_var_as_unsigned_char(JsVar *src, IOEventFlags device, unsigned_char_m
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       unsigned char out = map(device, in);
       JsVar *outVar = jsvNewFromInteger(out);
-      jsvArrayPush(dst, outVar);
-      jsvUnLock(outVar);
+      jsvArrayPushAndUnLock(dst, outVar);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
@@ -152,8 +151,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
       if (out>=0) {
         outcount++;
         JsVar *outVar = jsvNewFromInteger(out);
-        jsvArrayPush(dst, outVar);
-        jsvUnLock(outVar);
+        jsvArrayPushAndUnLock(dst, outVar);
       }
       jsvArrayIteratorNext(&it);
     }
@@ -163,8 +161,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
       outcount++;
       int out = jshSPISend(device, -1);
       JsVar *outVar = jsvNewFromInteger(out);
-      jsvArrayPush(dst, outVar);
-      jsvUnLock(outVar);
+      jsvArrayPushAndUnLock(dst, outVar);
     }
   } else if (jsvIsString(srcdata)) {
     dst = jsvNewFromEmptyString();
@@ -447,8 +444,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
     int i;
     for (i=0;i<nBytes;i++) {
       JsVar *v = jsvNewFromInteger(buf[i]);
-      jsvArrayPush(array, v);
-      jsvUnLock(v);
+      jsvArrayPushAndUnLock(array, v);
     }
   }
   return array;

@@ -380,8 +380,7 @@ JsVar *jspParseFunctionAsArray() {
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('(', jsvUnLock(arr), 0);
   while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
     JsVar *arg = jsvSkipNameAndUnLock(jspeBase());
-    jsvArrayPush(arr, arg); // even if undefined
-    jsvUnLock(arg);
+    jsvArrayPushAndUnLock(arr, arg); // even if undefined
     if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock(arr), 0);
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(arr), 0);

@@ -724,7 +724,6 @@ void jsiHistoryAddLine(JsVar *newLine) {
   }
   // put it back in front
   jsvArrayPush(history, newLine);
-  
   jsvUnLock(history);
 }
 
@@ -1097,8 +1096,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
       jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
       if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
       if (arg1) jsvUnLock(jsvAddNamedChild(event, arg1, "arg1"));
-      jsvArrayPush(events, event);
-      jsvUnLock(event);
+      jsvArrayPushAndUnLock(events, event);
     }
     jsvUnLock(callbackVar);
   } else {
@@ -1117,8 +1115,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
         if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
         if (arg1) jsvUnLock(jsvAddNamedChild(event, arg1, "arg1"));
         // add event to the events list
-        jsvArrayPush(events, event);
-        jsvUnLock(event);
+        jsvArrayPushAndUnLock(events, event);
         // go to next callback
       }
       next = child->nextSibling;

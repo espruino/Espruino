@@ -107,8 +107,7 @@ JsVar *jswrap_object_keys(JsVar *obj) {
       if (!(checkerFunction && checkerFunction(key))) {
         JsVar *name = jsvCopyNameOnly(key,false,false);
         if (name) {
-          jsvArrayPush(arr, name);
-          jsvUnLock(name);
+          jsvArrayPushAndUnLock(arr, name);
         }
       }
       jsvUnLock(key);

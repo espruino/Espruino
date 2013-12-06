@@ -183,9 +183,7 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   if (v) {
     for (i=0;i<TRIGGERPOINT_TRIGGERS_COUNT;i++)
       if (tp->pins[i]>=0) {
-        JsVar *pin = jsvNewFromPin(tp->pins[i]);
-        jsvArrayPush(v, pin);
-        jsvUnLock(pin);
+        jsvArrayPushAndUnLock(v, jsvNewFromPin(tp->pins[i]));
       }
   }
   jsvUnLock(jsvAddNamedChild(obj, v, "pins"));
@@ -234,9 +232,7 @@ JsVar* jswrap_trig_getErrorArray() {
       if (errors & i) {
         const char *s = trigGetErrorString(i);
         if (s) {
-          JsVar *v = jsvNewFromString(s);
-          jsvArrayPush(arr, v);
-          jsvUnLock(v);
+          jsvArrayPushAndUnLock(arr, jsvNewFromString(s));
         }
       }
     }
