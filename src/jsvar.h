@@ -439,7 +439,7 @@ static inline int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
 
 /// Do we have a character, or are we at the end?
 static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
-  return it->var && it->charIdx < it->charsInVar;
+  return it->charIdx < it->charsInVar;
 }
 
 /// Sets a character (will not extend the string - just overwrites)
