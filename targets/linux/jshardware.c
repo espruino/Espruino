@@ -286,7 +286,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
 
 JshPinState jshPinGetState(Pin pin) {
 #ifdef SYSFS_GPIO_DIR
-  return gpioState[pin] = state;
+  return gpioState[pin];
 #endif
   return JSHPINSTATE_UNDEFINED;
 }
