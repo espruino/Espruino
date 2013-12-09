@@ -373,7 +373,6 @@ void jslTokenAsString(int token, char *str, size_t len) {
       case LEX_FLOAT : strncpy(str, "FLOAT", len); return;
       case LEX_STR : strncpy(str, "STRING", len); return;
   }
-#ifndef SAVE_ON_FLASH
   if (token>=LEX_EQUAL && token<LEX_R_LIST_END) {
     const char tokenNames[] =
       /* LEX_EQUAL      :   */ "==\0"
@@ -436,7 +435,6 @@ void jslTokenAsString(int token, char *str, size_t len) {
     assert(n==0);
     strncpy(str, &tokenNames[p], len);
     return;
-#endif
   }
 
   assert(len>=10);
