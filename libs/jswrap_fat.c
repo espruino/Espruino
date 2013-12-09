@@ -217,7 +217,6 @@ void wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
           pathStr[toWrite++] = jsvStringIteratorGetChar(&it);
           jsvStringIteratorNext(&it);
         }
-        //jsiConsolePrint("Write ");jsiConsolePrintInt(toWrite);jsiConsolePrint("\n");
 #ifndef LINUX
         res = f_write(&file, pathStr, toWrite, &written);
 #else
@@ -279,7 +278,6 @@ JsVar *wrap_fat_readFile(JsVar *path) {
 #else
         bytesRead = fread(pathStr,1,JS_DIR_BUF_SIZE,file);
 #endif
-        //jsiConsolePrint("Read ");jsiConsolePrintInt(bytesRead);jsiConsolePrint("\n");
         jsvAppendStringBuf(result, pathStr, (int)bytesRead);
       }
 #ifndef LINUX

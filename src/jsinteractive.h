@@ -56,8 +56,6 @@ void jsiConsolePrintf(const char *fmt, ...);
 void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit an integer
 void jsiConsolePrintInt(JsVarInt d);
-/// Transmit an integer as hex (no '0x')
-void jsiConsolePrintHexInt(JsVarInt d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)

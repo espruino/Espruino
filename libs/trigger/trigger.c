@@ -62,13 +62,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
   if (timeDiff < 0) {
     data->errors |= TRIGERR_WRONG_TIME;
     timeDiff = 0;
-/*    jsiConsolePrint("0x");
-    jsiConsolePrintHexInt(data->lastTime2);
-    jsiConsolePrint(" 0x");
-    jsiConsolePrintHexInt(data->lastTime);
-    jsiConsolePrint(" 0x");
-    jsiConsolePrintHexInt(pulseTime);
-    jsiConsolePrint("\n");*/
+//    jsiConsolePrintf("0x%Lx 0x%Lx 0x%Lx\n",data->lastTime2, data->lastTime, pulseTime);
     pulseTime = data->lastTime + data->avrTrigger; // just make it up and hope!
   }
 
@@ -159,7 +153,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
             int j;
             for (j=0;j<TRIGGERPOINT_TRIGGERS_COUNT;j++) {
               if (trig->pins[j]>=0) {
-                //jsiConsolePrintInt(tooth);jsiConsolePrint(",");jsiConsolePrintInt(tooth-currTooth);jsiConsolePrint(",");jsiConsolePrintInt(j);jsiConsolePrint("\n");
+                //jsiConsolePrintf("%d,%d,%d\n", tooth,tooth-currTooth,j);
                 if (!jshPinOutputAtTime(trigTime, trig->pins[j], 1)) data->errors |= TRIGERR_TIMER_FULL;
                 if (trig->pulseLength>0) {
                   if (!jshPinOutputAtTime(trigTime+trig->pulseLength, trig->pins[j], 0))

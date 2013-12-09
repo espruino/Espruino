@@ -405,10 +405,7 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     jsvUnLock(val);
   }
   if (idx==maxVerts) {
-    jsWarn("Maximum number of points exceeded for fillPoly");
-    jsiConsolePrint("Maximum is ");
-    jsiConsolePrintInt(maxVerts/2);
-    jsiConsolePrint("\n");
+    jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }
   graphicsFillPoly(&gfx, idx/2, verts);
 }

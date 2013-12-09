@@ -404,10 +404,6 @@ void jsvTrace(JsVarRef ref, int indent);
 /** Run a garbage collection sweep - return true if things have been freed */
 bool jsvGarbageCollect();
 
-/** Dotty output for the graphviz package - helps
- *  visualize the data structure  */
-void jsvDottyOutput();
-
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);
 

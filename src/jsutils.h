@@ -346,7 +346,8 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  * Supported are:
  *   %d = int
  *   %x = int as hex
- *   %l = JsVarInt
+ *   %L = JsVarInt
+ *   %Lx = JsVarInt as hex
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char

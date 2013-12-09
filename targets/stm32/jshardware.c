@@ -375,8 +375,7 @@ void setDeviceClockCmd(IOEventFlags device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C3, DISABLE);
 #endif
   } else {
-    jsErrorInternal("setDeviceClockCmd: Unknown Device");
-    jsiConsolePrintInt(device);jsiConsolePrint("\n");
+    jsErrorInternal("setDeviceClockCmd: Unknown Device %d", (int)device);
   }
 }
 
@@ -386,13 +385,7 @@ void setDeviceClockCmd(IOEventFlags device, FunctionalState cmd) {
 // jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs
 static void jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs) {
   if (functionName) {
-    char buf[100];
-    strncpy(buf, "Pin ", 100);
-    jshGetPinString(&buf[strlen(buf)], existingPin);
-    strncat(buf, " is not capable of ", 100);
-    strncpy(&buf[strlen(buf)], functionName, 100-strlen(buf)); // why doesn't cat work???
-    strncat(buf, "\nSuitable pins are:", 100);
-    jsError(buf);
+    jsError("Pin %p is not capable of %s\nSuitable pins are:", existingPin, functionName);
   }
 
   Pin pin;
@@ -416,9 +409,7 @@ static void jshPrintCapablePins(Pin existingPin, const char *functionName, JshPi
       }
     }
     if (has) {
-      char buf[8];
-      jshGetPinString(buf, pin);
-      jsiConsolePrint(buf);
+      jsiConsolePrintf("%p",pin);
 #ifdef STM32F1
       if (af!=JSH_AF0) jsiConsolePrint("(AF)");
 #endif
@@ -764,16 +755,16 @@ void jshInit() {
   // AVERAGE OUT OF 3
   JsSysTime tStart = jshGetSystemTime();
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
-  JsSysTime tEnd1 = jshGetSystemTime();
+  /*JsSysTime tEnd1 = */jshGetSystemTime();
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
-  JsSysTime tEnd2 = jshGetSystemTime();
+  /*JsSysTime tEnd2 = */jshGetSystemTime();
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
   JsSysTime tEnd3 = jshGetSystemTime();
   // AVERAGE OUT OF 3
   jshDelayMicroseconds(2048);
-  JsSysTime tEnd4 = jshGetSystemTime();
+  /*JsSysTime tEnd4 = */jshGetSystemTime();
   jshDelayMicroseconds(2048);
-  JsSysTime tEnd5 = jshGetSystemTime();
+  /*JsSysTime tEnd5 = */jshGetSystemTime();
   jshDelayMicroseconds(2048);
   JsSysTime tEnd6 = jshGetSystemTime();
   JsSysTime tIter = ((tEnd6 - tEnd3) - (tEnd3 - tStart))/3; // ticks taken to iterate JSH_DELAY_MULTIPLIER times
@@ -2042,9 +2033,7 @@ void jshSaveToFlash() {
   }
 
   if (errors) {
-      jsiConsolePrint("\nThere were ");
-      jsiConsolePrintInt(errors);
-      jsiConsolePrint(" errors!\n>");
+      jsiConsolePrintf("\nThere were %d errors!\n>", errors);
   } else
       jsiConsolePrint("\nDone!\n>");
 
@@ -2093,9 +2082,7 @@ void jshSaveToFlash() {
 
 void jshLoadFromFlash() {
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrint("\nLoading ");
-  jsiConsolePrintInt(dataSize);
-  jsiConsolePrint(" bytes from flash...");
+  jsiConsolePrintf("\nLoading %d  bytes from flash...", dataSize);
 
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
@@ -2403,9 +2390,9 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
       if (utilTimerTasks[insertPos].pins[i]==-1) {
         utilTimerTasks[insertPos].pins[i] = pin;
         if (value) 
-          utilTimerTasks[insertPos].value |= 1 << i;
+          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value | (uint8_t)(1 << i);
         else
-          utilTimerTasks[insertPos].value &= ~(1 << i);
+          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value & (uint8_t)~(1 << i);
         break; // all done
       }
   } else {
@@ -2431,7 +2418,7 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
     if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
       //jsiConsolePrint("Starting\n");
       unsigned int timerFreq = getUtilTimerFreq();
-      int clockTicks = (int)(((JsVarFloat)timerFreq * (utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
+      int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
       if (clockTicks<0) clockTicks=0;
       int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
       int ticks = (uint16_t)(clockTicks/(prescale+1));

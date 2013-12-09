@@ -491,9 +491,7 @@ void jshSaveToFlash() {
   FILE *f = fopen("espruino.state","wb");
   if (f) {
     unsigned int jsVarCount = jsvGetMemoryTotal();
-    jsiConsolePrint("\nSaving ");
-    jsiConsolePrintInt(jsVarCount*sizeof(JsVar));
-    jsiConsolePrint(" bytes...");
+    jsiConsolePrintf("\nSaving %d bytes...", jsVarCount*sizeof(JsVar));
     JsVarRef i;
 
     for (i=1;i<=jsVarCount;i++) {
@@ -513,9 +511,7 @@ void jshLoadFromFlash() {
     unsigned int fileSize = ftell(f);
     fseek(f, 0L, SEEK_SET);
 
-    jsiConsolePrint("\nLoading ");
-    jsiConsolePrintInt(fileSize);
-    jsiConsolePrint(" bytes...\n>");
+    jsiConsolePrintf("\nLoading %d bytes...\n>", fileSize);
 
     unsigned int jsVarCount = fileSize / sizeof(JsVar);
     jsvSetMemoryTotal(jsVarCount);

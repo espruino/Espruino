@@ -159,15 +159,10 @@ void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
 void jsAssertFail(const char *file, int line, const char *expr) {
   jsiConsoleRemoveInputLine();
   if (expr) {
-    jsiConsolePrint("ASSERT(");
-    jsiConsolePrint(expr);
-    jsiConsolePrint(") FAILED AT ");
+    jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
   } else
     jsiConsolePrint("ASSERT FAILED AT ");
-  jsiConsolePrint(file);
-  jsiConsolePrint(":");
-  jsiConsolePrintInt(line);
-  jsiConsolePrint("\n");
+  jsiConsolePrintf("%s:%d\n",file,line);
 
   jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
   exit(1);
@@ -372,7 +367,8 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  * Supported are:
  *   %d = int
  *   %x = int as hex
- *   %l = JsVarInt
+ *   %L = JsVarInt
+ *   %Lx = JsVarInt as hex
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char
@@ -390,7 +386,11 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
       switch (*fmt++) {
       case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
       case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
-      case 'l': itoa(va_arg(argp, JsVarInt), buf, 10); user_callback(buf,user_data);  break;
+      case 'L': {
+        int rad = 10;
+        if (*fmt=='x') { rad=16; fmt++; }
+        itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
+      } break;
       case 'f': ftoa(va_arg(argp, JsVarFloat), buf); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;
       case 'c': buf[0]=(char)va_arg(argp, int/*char*/);buf[1]=0; user_callback(buf, user_data); break;

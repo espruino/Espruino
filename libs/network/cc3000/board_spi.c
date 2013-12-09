@@ -424,7 +424,7 @@ void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLengt
         cc3000_socket_closed |= 1<<socketnum;
       //jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
     } else {
-      //jsiConsolePrintHexInt(lEventType);jsiConsolePrint("-usync\n");
+      //jsiConsolePrintf("%x-usync", lEventType);
     }
 }
 

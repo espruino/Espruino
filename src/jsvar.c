@@ -173,11 +173,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
    * is 0 (because jsiFreeMoreMemory returned 0) so we can just assign it.  */
   assert(!jsVarFirstEmpty);
   jsVarFirstEmpty = jsvInitJsVars(oldSize+1, jsVarsSize-oldSize);
-  /*jsiConsolePrint("Resized memory from ");
-  jsiConsolePrintInt(oldBlockCount);
-  jsiConsolePrint(" blocks to ");
-  jsiConsolePrintInt(newBlockCount);
-  jsiConsolePrint("\n");*/
+  // jsiConsolePrintf("Resized memory from %d blocks to %d\n", oldBlockCount, newBlockCount);
 #else
   NOT_USED(jsNewVarCount);
   assert(0);
@@ -194,9 +190,7 @@ void jsvShowAllocated() {
   JsVarRef i;
   for (i=1;i<=jsVarsSize;i++) {
     if ((jsvGetAddressOf(i)->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
-      jsiConsolePrint("USED VAR #");
-      jsiConsolePrintInt(i);
-      jsiConsolePrint(":");
+      jsiConsolePrintf("USED VAR #%d:",i);
       jsvTrace(i, 2);
     }
   }
@@ -1945,13 +1939,7 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
 }
 
 void jsvTraceLockInfo(JsVar *v) {
-    jsiConsolePrint("#");
-    jsiConsolePrintInt(jsvGetRef(v));
-    jsiConsolePrint("[r");
-    jsiConsolePrintInt(v->refs);
-    jsiConsolePrint(",l");
-    jsiConsolePrintInt(jsvGetLocks(v)-1);
-    jsiConsolePrint("] ");
+    jsiConsolePrintf("#%d[r%d,l%d] ",jsvGetRef(v),v->refs,jsvGetLocks(v)-1);
 }
 
 /** Get the lowest level at which searchRef appears */
@@ -2016,21 +2004,13 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
         jsiConsolePrint("Param ");
       JsVar *str = jsvAsString(var, false);
       if (jsvIsInt(var)) {
-        jsiConsolePrint("Name: int ");
-        jsiConsolePrintStringVar(str);
-        jsiConsolePrint("  ");
+        jsiConsolePrintf("Name: int %v  ", str);
       } else if (jsvIsFloat(var)) {
-        jsiConsolePrint("Name: flt ");
-        jsiConsolePrintStringVar(str);
-        jsiConsolePrint("  ");
+        jsiConsolePrintf("Name: flt %v  ", str);
       } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
-        jsiConsolePrint("Name: '");
-        jsiConsolePrintStringVar(str);
-        jsiConsolePrint("'  ");
+        jsiConsolePrintf("Name: '%v'  ", str);
       } else if (jsvIsArrayBufferName(var)) {
-        jsiConsolePrint("ArrayBufferName[");
-        jsiConsolePrintInt(jsvGetInteger(var));
-        jsiConsolePrint("] ");
+        jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
       } else {
         assert(0);
       }
@@ -2077,16 +2057,13 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
     else if (jsvIsFloat(var)) jsiConsolePrint("Double ");
     else if (jsvIsString(var)) jsiConsolePrint("String ");
     else if (jsvIsArrayBuffer(var)) {
-      jsiConsolePrint(jswGetBasicObjectName(var)); // way to get nice name
-      jsiConsolePrint(" ");
+      jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
       _jsvTrace(var->firstChild, indent+1, baseRef, level+1);
       jsvUnLock(var);
       return;
     } else if (jsvIsFunction(var)) jsiConsolePrint("Function {");
     else {
-        jsiConsolePrint("Flags ");
-        jsiConsolePrintInt(var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
-        jsiConsolePrint("\n");
+        jsiConsolePrintf("Flags %d\n", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
     }
 
     if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
@@ -2206,107 +2183,6 @@ bool jsvGarbageCollect() {
     }
   }
   return freedSomething;
-}
-
-/** Dotty output for the graphviz package - helps
- *  visualize the data structure  */
-void jsvDottyOutput() {
-  JsVarRef i;
-  bool ignoreStringExt = true;
-  char buf[256];
-  jsiConsolePrint("digraph G {\n");
-  //jsiConsolePrint("  rankdir=LR;\n");
-  for (i=1;i<=jsVarsSize;i++) {
-    if ((jsvGetAddressOf(i)->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
-      JsVar *var = jsvLock(i);
-      if (ignoreStringExt && jsvIsStringExt(var)) {
-        jsvUnLock(var);
-        continue;
-      }
-      jsiConsolePrint("V");
-      jsiConsolePrintInt(i);
-      jsiConsolePrint(" [shape=box,label=\"");
-      jsvTraceLockInfo(var);
-      jsiConsolePrint(":");
-      if (jsvIsName(var)) jsiConsolePrint("Name");
-      else if (jsvIsObject(var)) jsiConsolePrint("Object");
-      else if (jsvIsArray(var)) jsiConsolePrint("Array");
-      else if (jsvIsPin(var)) jsiConsolePrint("Pin");
-      else if (jsvIsInt(var)) jsiConsolePrint("Integer");
-      else if (jsvIsFloat(var)) jsiConsolePrint("Double");
-      else if (jsvIsString(var)) jsiConsolePrint("String");
-      else if (jsvIsStringExt(var)) jsiConsolePrint("StringExt");
-      else if (jsvIsFunction(var)) jsiConsolePrint("Function");
-      else {
-          jsiConsolePrint("Flags ");
-          jsiConsolePrintInt(var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
-      }
-      if (!jsvIsStringExt(var) && !jsvIsObject(var) && !jsvIsArray(var)) {
-        jsiConsolePrint(":");
-        jsvGetString(var,buf,256);
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, var, 0);
-        while (jsvStringIteratorHasChar(&it)) {
-          char ch = jsvStringIteratorGetChar(&it);
-          jsiConsolePrint(escapeCharacter(ch));
-          jsvStringIteratorNext(&it);
-        }
-        jsvStringIteratorFree(&it);
-      }
-      jsiConsolePrint("\"];\n");
-
-      if (jsvHasChildren(var)) {
-        if (var->firstChild) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(i+1);
-          jsiConsolePrint(":n -> V");
-          jsiConsolePrintInt(var->firstChild);
-          jsiConsolePrint(":n [label=\"first\"]\n");
-        }
-        if (var->lastChild) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(var->lastChild);
-          jsiConsolePrint(":s -> V");
-          jsiConsolePrintInt(i);
-          jsiConsolePrint(":s [label=\"last\"]\n");
-        }
-      }
-      if (jsvIsName(var)) {
-        if (var->nextSibling) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(i);
-          jsiConsolePrint(":s -> V");
-          jsiConsolePrintInt(var->nextSibling);
-          jsiConsolePrint(":n [weight=5,label=\"next\"]\n");
-        }
-        if (var->prevSibling) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(i);
-          jsiConsolePrint(":n -> V");
-          jsiConsolePrintInt(var->prevSibling);
-          jsiConsolePrint(":s [weight=5,style=dotted,label=\"prev\"]\n");
-        }
-        if (var->firstChild) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(i);
-          jsiConsolePrint(":e -> V");
-          jsiConsolePrintInt(var->firstChild);
-          jsiConsolePrint(":w [style=bold]\n");
-        }
-      }
-      if (!ignoreStringExt && jsvHasCharacterData(var)) {
-        if (var->lastChild) {
-          jsiConsolePrint("V");
-          jsiConsolePrintInt(i);
-          jsiConsolePrint(":e -> V");
-          jsiConsolePrintInt(var->lastChild);
-          jsiConsolePrint(":w\n");
-        }
-      }
-      jsvUnLock(var);
-    }
-  }
-  jsiConsolePrint("}\n");
 }
 
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */

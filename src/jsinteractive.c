@@ -142,12 +142,6 @@ void jsiConsolePrintInt(JsVarInt d) {
     jsiConsolePrint(buf);
 }
 
-void jsiConsolePrintHexInt(JsVarInt d) {
-    char buf[32];    
-    itoa(d, buf, 16);
-    jsiConsolePrint(buf);
-}
-
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBackup) {
@@ -318,14 +312,7 @@ void jsiReturnInputLine() {
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
   int line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  jsiConsolePrint("line ");
-  jsiConsolePrintInt(line);
-  jsiConsolePrint(" col ");
-  jsiConsolePrintInt(col);
-  jsiConsolePrint("\n");
-/*  jsiConsolePrint(" (char ");
-  jsiConsolePrintInt(tokenPos);
-  jsiConsolePrint(")\n");*/
+  jsiConsolePrintf("line %d col %d\n",line,col);
 }
 
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
@@ -923,7 +910,7 @@ bool jsiAtEndOfInputLine() {
 }
 
 void jsiHandleChar(char ch) {
-  //jsiConsolePrint("  ["); jsiConsolePrintInt(inputState);jsiConsolePrint(":");jsiConsolePrintInt(ch); jsiConsolePrint("]  \n");
+  //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
   // 27 then 91 then 68 - left

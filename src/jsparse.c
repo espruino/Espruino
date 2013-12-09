@@ -220,11 +220,7 @@ bool jspCheckStackPosition() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
   if ((char*)frame < ((char*)&_end)+1024/*so many bytes leeway*/) {
-/*    jsiConsolePrint("frame:");
-    jsiConsolePrintInt((int)frame);
-    jsiConsolePrint(",end:");
-    jsiConsolePrintInt((int)&_end);
-    jsiConsolePrint("\n");*/
+//   jsiConsolePrintf("frame: %d,end:%d\n",(int)frame,(int)&_end);
     jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenStart );
     jspSetInterrupted(true);
     return false;
