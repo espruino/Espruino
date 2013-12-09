@@ -234,20 +234,23 @@ void jslGetNextToken(JsLex *lex) {
             lex->tk = LEX_NTYPEEQUAL;
             jslGetNextCh(lex);
           }
-      } else if (lex->tk=='<' && lex->currCh=='=') {
+      } else if (lex->tk=='<') {
+        if (lex->currCh=='=') {
           lex->tk = LEX_LEQUAL;
           jslGetNextCh(lex);
-      } else if (lex->tk=='<' && lex->currCh=='<') {
-          lex->tk = LEX_LSHIFT;
-          jslGetNextCh(lex);
-          if (lex->currCh=='=') { // <<=
-            lex->tk = LEX_LSHIFTEQUAL;
+        } else if (lex->currCh=='<') {
+            lex->tk = LEX_LSHIFT;
             jslGetNextCh(lex);
-          }
-      } else if (lex->tk=='>' && lex->currCh=='=') {
+            if (lex->currCh=='=') { // <<=
+              lex->tk = LEX_LSHIFTEQUAL;
+              jslGetNextCh(lex);
+            }
+        }
+      } else if (lex->tk=='>') {
+        if (lex->currCh=='=') {
           lex->tk = LEX_GEQUAL;
           jslGetNextCh(lex);
-      } else if (lex->tk=='>' && lex->currCh=='>') {
+        } else if (lex->currCh=='>') {
           lex->tk = LEX_RSHIFT;
           jslGetNextCh(lex);
           if (lex->currCh=='=') { // >>=
@@ -262,6 +265,7 @@ void jslGetNextToken(JsLex *lex) {
               lex->tk = LEX_RSHIFTUNSIGNED;
             }
           }
+        }
       }  else if (lex->tk=='+') {
           if (lex->currCh=='=') {
             lex->tk = LEX_PLUSEQUAL;
