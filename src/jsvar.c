@@ -2255,22 +2255,7 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {
-  if (!it->var) return;
-  it->charIdx++;
-  it->index++;
-  if (it->charIdx >= it->charsInVar) {
-    it->charIdx -= it->charsInVar;
-    if (it->var->lastChild) {
-      JsVar *next = jsvLock(it->var->lastChild);
-      jsvUnLock(it->var);
-      it->var = next;
-      it->charsInVar = jsvGetCharactersInVar(it->var);
-    } else {
-      jsvUnLock(it->var);
-      it->var = 0;
-      it->charsInVar = 0;
-    }
-  }
+  jsvStringIteratorNextInline(it);
 }
 
 void jsvStringIteratorGotoEnd(JsvStringIterator *it) {

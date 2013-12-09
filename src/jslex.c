@@ -20,11 +20,11 @@ void jslSeek(JsLex *lex, JslCharPos seekToChar) {
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
 }
 
-void jslGetNextCh(JsLex *lex) {
+void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
   if (jsvStringIteratorHasChar(&lex->it)) {
     lex->nextCh = jsvStringIteratorGetChar(&lex->it);
-    jsvStringIteratorNext(&lex->it);
+    jsvStringIteratorNextInline(&lex->it);
   } else
     lex->nextCh = 0;
   lex->currentPos++;

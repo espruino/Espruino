@@ -456,6 +456,26 @@ static inline size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
 /// Move to next character
 void jsvStringIteratorNext(JsvStringIterator *it);
 
+/// Move to next character (this one is inlined where speed is needed)
+static inline void jsvStringIteratorNextInline(JsvStringIterator *it) {
+  if (!it->var) return;
+  it->charIdx++;
+  it->index++;
+  if (it->charIdx >= it->charsInVar) {
+    it->charIdx -= it->charsInVar;
+    if (it->var->lastChild) {
+      JsVar *next = jsvLock(it->var->lastChild);
+      jsvUnLock(it->var);
+      it->var = next;
+      it->charsInVar = jsvGetCharactersInVar(it->var);
+    } else {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->charsInVar = 0;
+    }
+  }
+}
+
 
 /// Go to the end of the string iterator - for use with jsvStringIteratorAppend
 void jsvStringIteratorGotoEnd(JsvStringIterator *it);
