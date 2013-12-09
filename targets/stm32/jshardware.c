@@ -389,7 +389,7 @@ void setDeviceClockCmd(IOEventFlags device, FunctionalState cmd) {
 // jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
 // jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
 // jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs
-static void jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs) {
+static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs) {
   if (functionName) {
     jsError("Pin %p is not capable of %s\nSuitable pins are:", existingPin, functionName);
   }
@@ -482,7 +482,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
     jshPinStateIsManual = jshPinStateIsManual & ~(1ULL<<pin);
 }
 
-void jshPinSetState(Pin pin, JshPinState state) {
+void NO_INLINE jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -1499,7 +1499,7 @@ JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
 }
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
-JshPinFunction getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
+JshPinFunction NO_INLINE getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
   if (pin<0 || pin>=pinInfoCount) return 0;
   int i;
   for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
@@ -1510,7 +1510,7 @@ JshPinFunction getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
 }
 
 /** Try and find the best pin suitable for the given function. Can return -1. */
-Pin findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo) {
+Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo) {
 #ifdef OLIMEXINO_STM32
   /** Hack, as you can't mix AFs on the STM32F1, and Olimexino reordered the pins
    * such that D4(AF1) is before D11(AF0) - and there are no SCK/MISO for AF1! */
