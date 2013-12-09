@@ -29,6 +29,7 @@
             Now store Pin state (fix for #13 on F1 parts, F4 still looks broken)
             Added Graphics.stringWidth
             Added internal Printf function
+	    Misc speed and code size improvements
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

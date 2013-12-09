@@ -37,7 +37,6 @@ typedef struct JsLex
      * to the next jsVar...
      */
     JsVar *sourceVar; // the actual string var
-    JslCharPos currentPos; // current position in the string
     JsvStringIterator it; // Iterator for the string
 } JsLex;
 
