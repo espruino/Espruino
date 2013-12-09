@@ -258,6 +258,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 
 
 const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
+const char *jsvGetTypeOf(const JsVar *v); ///< Return the 'type' of the JS variable (eg. JS's typeof operator)
 size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
@@ -272,7 +273,6 @@ int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>v
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 void jsvAppendStringBuf(JsVar *var, const char *str, int length); ///< Append the given string to this one - but does not use null-terminated strings
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
-void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string

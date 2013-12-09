@@ -74,7 +74,7 @@ http.createServer(function (req, res) {
 JsVar *jswrap_http_createServer(JsVar *callback) {
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function");
+    jsError("Expecting Callback Function but got %t", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }
@@ -98,12 +98,12 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
     unlockOptions = true;
   }
   if (!jsvIsObject(options)) {
-    jsError("Expecting Options to be an Object");
+    jsError("Expecting Options to be an Object but it was %t", options);
     return 0;
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function");
+    jsError("Expecting Callback Function but got %t", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }
@@ -130,7 +130,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback) && !jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function");
+    jsError("Expecting Callback Function but got %t", skippedCallback);
     jsvUnLock(skippedCallback);
     return 0;
   }

@@ -590,7 +590,7 @@ JsVar *httpServerNew(JsVar *callback) {
                        SOCK_STREAM,       // This is a stream-oriented socket
                        IPPROTO_TCP);      // Use TCP rather than UDP
   if (sckt == INVALID_SOCKET) {
-    httpError("httpServer: socket");
+    httpError("socket creation failed");
     return 0;
   }
 
@@ -613,7 +613,7 @@ JsVar *httpServerNew(JsVar *callback) {
   int optval = SOCK_ON;
   if (setsockopt(sckt,SOL_SOCKET,SOCKOPT_ACCEPT_NONBLOCK,(const char *)&optval,sizeof(optval)) < 0)
 #endif
-    jsWarn("http: setsockopt failed\n");
+    jsWarn("setsockopt failed\n");
 
   // add to list of servers
   jsvArrayPush(arr, server);
@@ -634,7 +634,7 @@ void httpServerListen(JsVar *server, int port) {
   serverInfo.sin_port = htons((unsigned short)port); // port
   nret = bind(sckt, (struct sockaddr*)&serverInfo, sizeof(serverInfo));
   if (nret == SOCKET_ERROR) {
-    httpError("httpServer: bind");
+    httpError("socket bind failed");
     closesocket(sckt);
     return;
   }
@@ -642,7 +642,7 @@ void httpServerListen(JsVar *server, int port) {
   // Make the socket listen
   nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
   if (nret == SOCKET_ERROR) {
-    httpError("httpServer: listen");
+    httpError("socket listen failed");
     closesocket(sckt);
     return;
   }
@@ -674,13 +674,10 @@ void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
     if (options) {
       sendData = jsvNewFromString("");
       JsVar *method = jsvObjectGetChild(options, "method", false);
-      jsvAppendStringVarComplete(sendData, method);
-      jsvUnLock(method);
-      jsvAppendString(sendData, " ");
       JsVar *path = jsvObjectGetChild(options, "path", false);
-      jsvAppendStringVarComplete(sendData, path);
+      jsvAppendPrintf(sendData, "%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
+      jsvUnLock(method);
       jsvUnLock(path);
-      jsvAppendString(sendData, " HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n");
       JsVar *headers = jsvObjectGetChild(options, "headers", false);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
@@ -693,13 +690,10 @@ void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
       if (!hasHostHeader) {
         JsVar *host = jsvObjectGetChild(options, "host", false);
         JsVarInt port = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
-        jsvAppendString(sendData, "Host: ");
-        jsvAppendStringVarComplete(sendData, host);
-        if (port>0 && port!=80) {
-          jsvAppendString(sendData, ":");
-          jsvAppendInteger(sendData, port);
-        }
-        jsvAppendString(sendData, "\r\n");
+        if (port>0 && port!=80)
+          jsvAppendPrintf(sendData, "Host: %v:%d\r\n", host, port);
+        else
+          jsvAppendPrintf(sendData, "Host: %v\r\n", host);
         jsvUnLock(host);
       }
       // finally add ending newline
@@ -850,9 +844,8 @@ void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data) {
     // no sendData, so no headers - add them!
     JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
     if (sendHeaders) {
-      sendData = jsvNewFromString("HTTP/1.0 ");
-      jsvAppendInteger(sendData, jsvGetIntegerAndUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
-      jsvAppendString(sendData, " OK\r\nServer: Espruino "JS_VERSION"\r\n");
+      sendData = jsvNewFromEmptyString();
+      jsvAppendPrintf(sendData, "HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
       httpAppendHeaders(sendData, sendHeaders);
       jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
       jsvUnLock(sendHeaders);

@@ -100,7 +100,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   JsVar *callbackFn = jsvSkipName(callback);
   if (!jsvIsFunction(callbackFn)) {
     jsvUnLock(callbackFn);
-    jsWarn("Expecting a function as the 4th argument");
+    jsError("Expecting Callback Function but got %t", callbackFn);
     return 0;
   }
 

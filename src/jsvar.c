@@ -615,6 +615,18 @@ const char *jsvGetConstString(const JsVar *v) {
     return 0;
 }
 
+/// Return the 'type' of the JS variable (eg. JS's typeof operator)
+const char *jsvGetTypeOf(const JsVar *v) {
+  if (jsvIsNull(v)) return "null";
+  if (jsvIsUndefined(v)) return "undefined";
+  if (jsvIsFunction(v)) return "function";
+  if (jsvIsObject(v) || jsvIsArray(v)) return "object";
+  if (jsvIsString(v)) return "string";
+  if (jsvIsBoolean(v)) return "boolean";
+  if (jsvIsNumeric(v)) return "number";
+  return "?";
+}
+
 /// Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
 size_t jsvGetString(const JsVar *v, char *str, size_t len) {
    const char *s = jsvGetConstString(v);
@@ -629,7 +641,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
      return strlen(str);
    } else if (jsvHasCharacterData(v)) {
        if (jsvIsStringExt(v))
-        jsWarn("INTERNAL: Calling jsvGetString on a JSV_STRING_EXT");
+         jsErrorInternal("Calling jsvGetString on a JSV_STRING_EXT");
       size_t l = len;
       JsvStringIterator it;
       jsvStringIteratorNewConst(&it, v, 0);
@@ -655,7 +667,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
         return l;
       } else {
         strncpy(str, "", len);
-        jsWarn("INTERNAL: variable type cannot be converted to string");
+        jsErrorInternal("Variable type cannot be converted to string");
         return 0;
       }
     }
@@ -711,7 +723,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       str = jsvNewFromEmptyString();
       if (str) jsfGetJSON(v, str);
     } else {
-      jsWarn("INTERNAL: variable type cannot be converted to string");
+      jsErrorInternal("Variable type cannot be converted to string");
       str = 0;
     }
   }
@@ -910,13 +922,6 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
 
   jsvStringIteratorFree(&it);
 }
-
-void jsvAppendInteger(JsVar *var, JsVarInt i) {
-  char buf[32];
-  itoa(i,buf,10);
-  jsvAppendString(var, buf);
-}
-
 
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
  *  stridx can be negative to go from end of string */

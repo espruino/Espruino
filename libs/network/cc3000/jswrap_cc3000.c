@@ -59,7 +59,7 @@ JsVar *jswrap_cc3000_connect() {
 }*/
 JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
-    jsError("Expecting callback function");
+    jsError("Expecting callback Function but got %t", callback);
     return 0;
   }
   if (jsvIsFunction(callback)) {

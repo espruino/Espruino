@@ -98,7 +98,7 @@ bool jspeiAddScope(JsVarRef scope) {
 
 void jspeiRemoveScope() {
   if (execInfo.scopeCount <= 0) {
-    jsError("INTERNAL: Too many scopes removed");
+    jsErrorInternal("Too many scopes removed");
     jspSetError();
     return;
   }
@@ -1106,13 +1106,7 @@ JsVar *jspeFactorTypeOf() {
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
     a = jsvSkipNameAndUnLock(a);
-    if (jsvIsNull(a)) result=jsvNewWithFlags(JSV_NULL);
-    else if (jsvIsUndefined(a)) result=jsvNewFromString("undefined");
-    else if (jsvIsFunction(a)) result=jsvNewFromString("function");
-    else if (jsvIsObject(a) || jsvIsArray(a)) result=jsvNewFromString("object");
-    else if (jsvIsString(a)) result=jsvNewFromString("string");
-    else if (jsvIsBoolean(a)) result=jsvNewFromString("boolean");
-    else if (jsvIsNumeric(a)) result=jsvNewFromString("number");
+    result=jsvNewFromString(jsvGetTypeOf(a));
   }
   jsvUnLock(a);
   return result;

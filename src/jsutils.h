@@ -305,9 +305,10 @@ JsVarInt stringToInt(const char *s);
 struct JsLex;
 // ------------
 
-void jsError(const char *message);
+void jsError(const char *fmt, ...);
+void jsErrorInternal(const char *fmt, ...);
 void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos);
-void jsWarn(const char *message);
+void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 

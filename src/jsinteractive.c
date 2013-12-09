@@ -497,11 +497,9 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
     JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
     JsVar *options = jsvObjectGetChild(serialVar, DEVICE_OPTIONS_NAME, 0);
     if (baud || options) {
-      jsvAppendString(str, serialName);
-      jsvAppendString(str, ".setup(");
       JsVarInt baudrate = jsvGetInteger(baud);
       if (baudrate <= 0) baudrate = DEFAULT_BAUD_RATE;
-      jsvAppendInteger(str, baudrate);
+      jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         jsvAppendString(str, ", ");
         jsfGetJSON(options, str);

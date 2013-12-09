@@ -109,10 +109,23 @@ JsVarInt stringToInt(const char *s) {
     return stringToIntWithRadix(s,0);
 }
 
-void jsError(const char *message) {
+void jsError(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
-  jsiConsolePrint(message);
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+
+void jsErrorInternal(const char *fmt, ...) {
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("INTERNAL ERROR: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  va_end(argp);
   jsiConsolePrint("\n");
 }
 
@@ -125,10 +138,13 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   jsiConsolePrintTokenLineMarker(lex, tokenPos);
 }
 
-void jsWarn(const char *message) {
+void jsWarn(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
-  jsiConsolePrint(message);
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  va_end(argp);
   jsiConsolePrint("\n");
 }
 
@@ -360,7 +376,8 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char
- *   %v = JsVar *
+ *   %v = JsVar * (prints var as string)
+ *   %t = JsVar * (prints type of var)
  *   %p = Pin
  *
  * Anything else will assert
@@ -378,7 +395,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
       case 's': user_callback(va_arg(argp, char *), user_data); break;
       case 'c': buf[0]=(char)va_arg(argp, int/*char*/);buf[1]=0; user_callback(buf, user_data); break;
       case 'v': {
-        JsVar *v = jsvAsString(va_arg(argp, JsVar*), true);
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
         buf[1] = 0;
         JsvStringIterator it;
         jsvStringIteratorNew(&it, v, 0);
@@ -391,6 +408,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         jsvStringIteratorFree(&it);
         jsvUnLock(v);
       } break;
+      case 't': user_callback(jsvGetTypeOf(va_arg(argp, JsVar*)), user_data); break;
       case 'p': jshGetPinString(buf, (Pin)va_arg(argp, int/*Pin*/)); user_callback(buf, user_data); break;
       default: assert(0); return; // eep
       }

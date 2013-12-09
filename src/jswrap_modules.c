@@ -44,7 +44,7 @@ static JsVar *jswrap_modules_getModuleList() {
 }*/
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
-    jsWarn("Expecting a module name as a string");
+    jsWarn("Expecting a module name as a string, but got %t", moduleName);
     return 0;
   }
   // Search to see if we have already loaded this module
