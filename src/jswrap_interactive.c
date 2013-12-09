@@ -50,7 +50,6 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
     if (pinSleepIndicator<0)
       jsError("Invalid pin!");
   }
-  jsvUnLock(pinVar);
 }
 
 /*JSON{ "type":"function", "name" : "setDeepSleep",
