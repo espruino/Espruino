@@ -43,7 +43,7 @@ static inline void jslTokenAppendChar(JsLex *lex, char ch) {
 #endif
 }
 
-static inline bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
+static bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
   int i;
   for (i=startOffset;i<lex->tokenl;i++) {
     if (lex->token[i]!=token[i]) return false;
