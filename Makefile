@@ -79,8 +79,6 @@ BASEADDRESS=0x08000000
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 ifdef ESPRUINO_1V0
 PROJ_NAME=espruino_espruino_1v0
-USE_BOOTLOADER=1
-BOOTLOADER_PROJ_NAME=bootloader_espruino_1v0
 USB=1
 #USE_NET=1
 #USE_CC3000=1
