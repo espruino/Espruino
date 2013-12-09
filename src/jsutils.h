@@ -134,8 +134,11 @@ typedef long long JsSysTime;
  #define assert(X) 
 #endif
 
-// Used when we have enums we want to squash down
+/// Used when we have enums we want to squash down
 #define PACKED_FLAGS  __attribute__ ((__packed__))  
+
+/// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
+#define NO_INLINE __attribute__ ((noinline))
 
 /// Maximum amount of locks we ever expect to have on a variable (this could limit recursion) must be 2^n-1
 #define JSV_LOCK_MAX  15

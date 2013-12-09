@@ -78,7 +78,7 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
 }
 
 
-void _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, int base, char separator) {
+static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, int base, char separator) {
   char data[64] = "";
   int i, l = 0;
   for (i=nBytes-1;i>=0;i--) {
