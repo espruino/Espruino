@@ -8,5 +8,6 @@
 *.pyc
 gen/*
 boards/*.html
+boards/*.json
 zipcontents
 tmp
