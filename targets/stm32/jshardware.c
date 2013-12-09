@@ -85,9 +85,10 @@ unsigned long long jshPinStateIsManual = 0;
 
 
 
-uint8_t pinToEVEXTI(Pin ipin) {
+static inline uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return EV_EXTI0;
+  return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
+  /*if (pin==JSH_PIN0 ) return EV_EXTI0;
   if (pin==JSH_PIN1 ) return EV_EXTI1;
   if (pin==JSH_PIN2 ) return EV_EXTI2;
   if (pin==JSH_PIN3 ) return EV_EXTI3;
@@ -104,12 +105,13 @@ uint8_t pinToEVEXTI(Pin ipin) {
   if (pin==JSH_PIN14) return EV_EXTI14;
   if (pin==JSH_PIN15) return EV_EXTI15;
   jsErrorInternal("pinToEVEXTI");
-  return EV_NONE;
+  return EV_NONE;*/
 }
 
-uint16_t stmPin(Pin ipin) {
+static inline uint16_t stmPin(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
+  return (uint16_t)(1 << (pin-JSH_PIN0));
+/*  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
   if (pin==JSH_PIN1 ) return GPIO_Pin_1;
   if (pin==JSH_PIN2 ) return GPIO_Pin_2;
   if (pin==JSH_PIN3 ) return GPIO_Pin_3;
@@ -126,11 +128,12 @@ uint16_t stmPin(Pin ipin) {
   if (pin==JSH_PIN14) return GPIO_Pin_14;
   if (pin==JSH_PIN15) return GPIO_Pin_15;
   jsErrorInternal("stmPin");
-  return GPIO_Pin_0;
+  return GPIO_Pin_0;*/
 }
-uint32_t stmExtI(Pin ipin) {
+static inline uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return EXTI_Line0;
+  return (uint32_t)(1 << (pin-JSH_PIN0));
+/*  if (pin==JSH_PIN0 ) return EXTI_Line0;
   if (pin==JSH_PIN1 ) return EXTI_Line1;
   if (pin==JSH_PIN2 ) return EXTI_Line2;
   if (pin==JSH_PIN3 ) return EXTI_Line3;
@@ -147,12 +150,13 @@ uint32_t stmExtI(Pin ipin) {
   if (pin==JSH_PIN14) return EXTI_Line14;
   if (pin==JSH_PIN15) return EXTI_Line15;
   jsErrorInternal("stmExtI");
-  return EXTI_Line0;
+  return EXTI_Line0;*/
 }
 
-GPIO_TypeDef *stmPort(Pin pin) {
+static inline GPIO_TypeDef *stmPort(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
-  if (port == JSH_PORTA) return GPIOA;
+  return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
+  /*if (port == JSH_PORTA) return GPIOA;
   if (port == JSH_PORTB) return GPIOB;
   if (port == JSH_PORTC) return GPIOC;
   if (port == JSH_PORTD) return GPIOD;
@@ -163,12 +167,13 @@ GPIO_TypeDef *stmPort(Pin pin) {
   if (port == JSH_PORTH) return GPIOH;
 #endif
   jsErrorInternal("stmPort");
-  return GPIOA;
+  return GPIOA;*/
 }
 
-uint8_t stmPinSource(JsvPinInfoPin ipin) {
+static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
-  if (pin==JSH_PIN0 ) return GPIO_PinSource0;
+  return (uint8_t)(pin-JSH_PIN0);
+  /*if (pin==JSH_PIN0 ) return GPIO_PinSource0;
   if (pin==JSH_PIN1 ) return GPIO_PinSource1;
   if (pin==JSH_PIN2 ) return GPIO_PinSource2;
   if (pin==JSH_PIN3 ) return GPIO_PinSource3;
@@ -185,12 +190,13 @@ uint8_t stmPinSource(JsvPinInfoPin ipin) {
   if (pin==JSH_PIN14) return GPIO_PinSource14;
   if (pin==JSH_PIN15) return GPIO_PinSource15;
   jsErrorInternal("stmPinSource");
-  return GPIO_PinSource0;
+  return GPIO_PinSource0;*/
 }
 
-uint8_t stmPortSource(Pin pin) {
+static inline uint8_t stmPortSource(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
-#ifdef STM32API2
+  return (uint8_t)(port-JSH_PORTA);
+/*#ifdef STM32API2
   if (port == JSH_PORTA) return EXTI_PortSourceGPIOA;
   if (port == JSH_PORTB) return EXTI_PortSourceGPIOB;
   if (port == JSH_PORTC) return EXTI_PortSourceGPIOC;
@@ -213,7 +219,7 @@ uint8_t stmPortSource(Pin pin) {
   if (port == JSH_PORTG) return GPIO_PortSourceGPIOG;
   jsErrorInternal("stmPortSource");
   return GPIO_PortSourceGPIOA;
-#endif
+#endif*/
 }
 
 static inline ADC_TypeDef *stmADC(Pin pin) {
