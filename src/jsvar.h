@@ -458,12 +458,11 @@ void jsvStringIteratorNext(JsvStringIterator *it);
 
 /// Move to next character (this one is inlined where speed is needed)
 static inline void jsvStringIteratorNextInline(JsvStringIterator *it) {
-  if (!it->var) return;
   it->charIdx++;
   it->index++;
   if (it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
-    if (it->var->lastChild) {
+    if (it->var && it->var->lastChild) {
       JsVar *next = jsvLock(it->var->lastChild);
       jsvUnLock(it->var);
       it->var = next;
