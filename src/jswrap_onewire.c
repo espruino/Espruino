@@ -28,7 +28,7 @@ static inline Pin onewire_getpin(JsVar *parent) {
 
 
 /** Reset one-wire, return true if a device was present */
-bool OneWireReset(Pin pin) {
+static bool NO_INLINE OneWireReset(Pin pin) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
   //jshInterruptOff();
   jshPinSetValue(pin, 0);
@@ -42,7 +42,7 @@ bool OneWireReset(Pin pin) {
 }
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
-JsVarInt OneWireRead(Pin pin, int bits) {
+static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
   JsVarInt result = 0;
   JsVarInt mask = 1;
@@ -63,7 +63,7 @@ JsVarInt OneWireRead(Pin pin, int bits) {
 }
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
-void OneWireWrite(Pin pin, int bits, JsVarInt data) {
+static void NO_INLINE OneWireWrite(Pin pin, int bits, JsVarInt data) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
   JsVarInt mask = 1;
   while (bits-- > 0) {
