@@ -482,7 +482,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
     jshPinStateIsManual = jshPinStateIsManual & ~(1ULL<<pin);
 }
 
-void NO_INLINE jshPinSetState(Pin pin, JshPinState state) {
+void inline jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -561,7 +561,7 @@ JshPinState jshPinGetState(Pin pin) {
   // GPIO_ReadOutputDataBit(port, pinn);
 }
 
-static inline void jshPinSetFunction(Pin pin, JshPinFunction func) {
+static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   if (JSH_PINFUNCTION_IS_USART(func)) {
     if ((func&JSH_MASK_INFO)==JSH_USART_RX)
       jshPinSetState(pin, JSHPINSTATE_USART_IN);
