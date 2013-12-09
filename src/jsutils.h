@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #endif
+#include <stdarg.h> // for va_args
 
 #define JS_VERSION "1v43"
 /*
@@ -337,5 +338,23 @@ void ftoa(JsVarFloat val,char *str);
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size);
+
+
+typedef void (*vcbprintf_callback)(const char *str, void *user_data);
+/** Espruino-special printf with a callback
+ * Supported are:
+ *   %d = int
+ *   %x = int as hex
+ *   %l = JsVarInt
+ *   %f = JsVarFloat
+ *   %s = string (char *)
+ *   %c = char
+ *   %v = JsVar *
+ *   %p = Pin
+ *
+ * Anything else will assert
+ */
+void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, va_list argp);
+
 
 #endif /* JSUTILS_H_ */

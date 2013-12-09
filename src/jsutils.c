@@ -351,3 +351,55 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
   val = val - (int)val;
   return val * size;
 }
+
+/** Espruino-special printf with a callback
+ * Supported are:
+ *   %d = int
+ *   %x = int as hex
+ *   %l = JsVarInt
+ *   %f = JsVarFloat
+ *   %s = string (char *)
+ *   %c = char
+ *   %v = JsVar *
+ *   %p = Pin
+ *
+ * Anything else will assert
+ */
+void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, va_list argp) {
+  char buf[32];
+  while (*fmt) {
+    if (*fmt == '%') {
+      fmt++;
+      switch (*fmt++) {
+      case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
+      case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
+      case 'l': itoa(va_arg(argp, JsVarInt), buf, 10); user_callback(buf,user_data);  break;
+      case 'f': ftoa(va_arg(argp, JsVarFloat), buf); user_callback(buf,user_data);  break;
+      case 's': user_callback(va_arg(argp, char *), user_data); break;
+      case 'c': buf[0]=(char)va_arg(argp, int/*char*/);buf[1]=0; user_callback(buf, user_data); break;
+      case 'v': {
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*), true);
+        buf[1] = 0;
+        JsvStringIterator it;
+        jsvStringIteratorNew(&it, v, 0);
+        // OPT: this could be faster than it is (sending whole blocks at once)
+        while (jsvStringIteratorHasChar(&it)) {
+          buf[0] = jsvStringIteratorGetChar(&it);
+          user_callback(buf,user_data);
+          jsvStringIteratorNext(&it);
+        }
+        jsvStringIteratorFree(&it);
+        jsvUnLock(v);
+      } break;
+      case 'p': jshGetPinString(buf, (Pin)va_arg(argp, int/*Pin*/)); user_callback(buf, user_data); break;
+      default: assert(0); return; // eep
+      }
+    } else {
+      buf[0] = *(fmt++);
+      buf[1] = 0;
+      user_callback(&buf[0], user_data);
+    }
+  }
+}
+
+

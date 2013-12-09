@@ -28,6 +28,7 @@
             Shaved another 1200 bytes off jslTokenAsString
             Now store Pin state (fix for #13 on F1 parts, F4 still looks broken)
             Added Graphics.stringWidth
+            Added internal Printf function
 
      1v42 : [ebirger] allowing 'new' with no brackets
             Allow built-in functions with variable numbers of arguments (fix #83)  

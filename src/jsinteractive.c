@@ -128,6 +128,14 @@ void jsiConsolePrint(const char *str) {
   }
 }
 
+void jsiConsolePrintf(const char *fmt, ...) {
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  va_end(argp);
+}
+
+
 void jsiConsolePrintInt(JsVarInt d) {
     char buf[32];
     itoa(d, buf, 10);
@@ -528,14 +536,10 @@ void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
 void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
   if (!echo) jsvAppendString(str, "echo(0);");
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
-    jsvAppendString(str, "setBusyIndicator(");
-    jsvAppendPin(str, pinBusyIndicator);
-    jsvAppendString(str, ");\n");
+    jsvAppendPrintf(str, "setBusyIndicator(%p);\n", pinBusyIndicator);
   }
   if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
-    jsvAppendString(str, "setSleepIndicator(");
-    jsvAppendPin(str, pinSleepIndicator);
-    jsvAppendString(str, ");\n");
+    jsvAppendPrintf(str, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
 
   jsiAppendSerialInitialisation(str, "USB", addCallbacks);
@@ -555,19 +559,13 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     if (statem == JSHPINSTATE_GPIO_OUT) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
-      jsvAppendString(str, "digitalWrite(");
-      jsvAppendPin(str, pin);
-      jsvAppendString(str, ",");
-      jsvAppendInteger(str, isOn?1:0);
-      jsvAppendString(str, ");\n");
+      jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
     } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
       // don't bother with normal inputs, as they come up in this state (ish) anyway
-      jsvAppendString(str, "pinMode(");
-      jsvAppendPin(str, pin);
-      jsvAppendString(str, ",\"input");
-      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) jsvAppendString(str, "_pullup");
-      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) jsvAppendString(str, "_pulldown");
-      jsvAppendString(str, "\");\n");
+      const char *s = "";
+      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
+      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
+      jsvAppendPrintf(str, "pinMode(%p,input%s);\n",pin,s);
     }
   }
 }

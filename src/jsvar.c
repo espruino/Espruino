@@ -893,17 +893,30 @@ void jsvAppendStringBuf(JsVar *var, const char *str, int length) {
   jsvUnLock(block);
 }
 
+static void _jsvAppendPrintf(const char *str, void *user_data) {
+  while (*str)
+    jsvStringIteratorAppend((JsvStringIterator *)user_data, *(str++));
+}
+
+void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  jsvStringIteratorGotoEnd(&it);
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)&_jsvAppendPrintf,&it, fmt, argp);
+  va_end(argp);
+
+  jsvStringIteratorFree(&it);
+}
+
 void jsvAppendInteger(JsVar *var, JsVarInt i) {
   char buf[32];
   itoa(i,buf,10);
   jsvAppendString(var, buf);
 }
 
-void jsvAppendPin(JsVar *var, Pin pin) {
-  char buf[8];
-  jshGetPinString(buf, pin);
-  jsvAppendString(var, buf);
-}
 
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
  *  stridx can be negative to go from end of string */
@@ -2377,6 +2390,19 @@ void jsvStringIteratorNext(JsvStringIterator *it) {
       it->charsInVar = 0;
     }
   }
+}
+
+void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
+  assert(it->var);
+  while (it->var->lastChild) {
+     it->index += it->charsInVar;
+     JsVar *next = jsvLock(it->var->lastChild);
+     jsvUnLock(it->var);
+     it->var = next;
+     it->charsInVar = jsvGetCharactersInVar(it->var);
+   }
+  if (it->charsInVar) it->charIdx = it->charsInVar-1;
+  else it->charIdx = 0;
 }
 
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {

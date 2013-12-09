@@ -271,8 +271,8 @@ int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtE
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 void jsvAppendStringBuf(JsVar *var, const char *str, int length); ///< Append the given string to this one - but does not use null-terminated strings
+void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
 void jsvAppendInteger(JsVar *var, JsVarInt i); ///< Append the given integer to this string as a decimal
-void jsvAppendPin(JsVar *var, Pin pin); ///< Append the given 'pin' to a string
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
@@ -459,6 +459,10 @@ static inline size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
 
 /// Move to next character
 void jsvStringIteratorNext(JsvStringIterator *it);
+
+
+/// Go to the end of the string iterator - for use with jsvStringIteratorAppend
+void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);

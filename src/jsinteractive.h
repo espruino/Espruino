@@ -50,6 +50,8 @@ IOEventFlags jsiGetConsoleDevice();
 void jsiConsolePrintChar(char data);
 /// Transmit a string
 void jsiConsolePrint(const char *str);
+/// Write the formatted string to the console (see vcbprintf)
+void jsiConsolePrintf(const char *fmt, ...);
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit an integer
