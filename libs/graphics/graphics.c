@@ -352,6 +352,14 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
   return (vector.width * (unsigned int)size)/96;
 }
 
+// returns the width of a character
+unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
+  if (size<0) return 0;
+  if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
+  VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
+  return (vector.width * (unsigned int)size)/96;
+}
+
 void graphicsFillVectorString(JsGraphics *gfx, short x1, short y1, short size, const char *str) {
   while (*str) {
     unsigned int w = graphicsFillVectorChar(gfx,x1,y1,size,*(str++));

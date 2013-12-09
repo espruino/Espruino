@@ -208,7 +208,7 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 }*/
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  return graphicsGetPixel(&gfx, (short)x, (short)y);
+  return (int)graphicsGetPixel(&gfx, (short)x, (short)y);
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setPixel",
@@ -220,9 +220,9 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
 }*/
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, int color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  graphicsSetPixel(&gfx, (short)x, (short)y, color);
-  gfx.data.cursorX = x;
-  gfx.data.cursorY = y;
+  graphicsSetPixel(&gfx, (short)x, (short)y, (unsigned int)color);
+  gfx.data.cursorX = (short)x;
+  gfx.data.cursorY = (short)y;
 }
 
 
@@ -254,16 +254,16 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
     if (gi<0) gi=0;
     if (bi<0) bi=0;
     if (gfx.data.bpp==16) {
-      color = (bi>>3) | (gi>>2)<<5 | (ri>>3)<<11;
+      color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
     } else if (gfx.data.bpp==32) {
-      color = 0xFF000000 | bi | (gi<<8) | (ri<<16);
+      color = 0xFF000000 | (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else if (gfx.data.bpp==24) {
-      color = bi | (gi<<8) | (ri<<16);
+      color = (unsigned int)(bi | (gi<<8) | (ri<<16));
     } else
-      color = ((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0;
+      color = (unsigned int)(((ri+gi+bi)>=384) ? 0xFFFFFFFF : 0);
   } else {
     // just rgb
-    color = jsvGetInteger(r);
+    color = (unsigned int)jsvGetInteger(r);
   }
   if (isForeground)
     gfx.data.fgColor = color;
@@ -288,7 +288,7 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, JsVarInt size, bool checkValid)
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
-  gfx.data.fontSize = size;
+  gfx.data.fontSize = (short)size;
   graphicsSetVar(&gfx);
 }
 
@@ -308,16 +308,42 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
-      int w = graphicsFillVectorChar(&gfx, x,y,gfx.data.fontSize,ch);
+      int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_8X8) {
-      graphicsDrawChar(&gfx, x,y,ch);
+      graphicsDrawChar(&gfx, (short)x, (short)y, ch);
       x+=8;
     }
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
+}
+
+/*JSON{ "type":"method", "class": "Graphics", "name" : "stringWidth",
+         "description" : "Return the size in pixels of a string of text in the current font",
+         "generate" : "jswrap_graphics_stringWidth",
+         "params" : [ [ "str", "JsVar", "The string" ] ],
+         "return" : [ "int", "The length of the string in pixels" ]
+}*/
+JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  JsVar *str = jsvAsString(var, false);
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  int width = 0;
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (gfx.data.fontSize>0) {
+      width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_8X8) {
+      width += 8;
+    }
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  jsvUnLock(str);
+  return width;
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "drawLine",
@@ -330,7 +356,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 }*/
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  graphicsDrawLine(&gfx, x1,y1,x2,y2);
+  graphicsDrawLine(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "lineTo",
@@ -341,9 +367,9 @@ void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 }*/
 void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, x, y);
-  gfx.data.cursorX = x;
-  gfx.data.cursorY = y;
+  graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)x, (short)y);
+  gfx.data.cursorX = (short)x;
+  gfx.data.cursorY = (short)y;
   graphicsSetVar(&gfx);
 }
 
@@ -355,8 +381,8 @@ void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
 }*/
 void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  gfx.data.cursorX = x;
-  gfx.data.cursorY = y;
+  gfx.data.cursorX = (short)x;
+  gfx.data.cursorY = (short)y;
   graphicsSetVar(&gfx);
 }
 
