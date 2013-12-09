@@ -74,16 +74,16 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
     jsvGetString(vKey, key, sizeof(key));
   }
   // might want to set wlan_ioctl_set_connection_policy
-  return wlan_connect(security, ap, strlen(ap), NULL, key, strlen(key));
+  return wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key));
 }
 
 
-static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, int base, char separator) {
+static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";
   int i, l = 0;
   for (i=nBytes-1;i>=0;i--) {
-    itoa(ip[i], &data[l], base);
-    l = strlen(data);
+    itoa((int)ip[i], &data[l], base);
+    l = (int)strlen(data);
     if (i>0 && separator) {
       data[l++] = separator;
       data[l] = 0;
@@ -110,16 +110,17 @@ static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  
          "return" : ["JsVar", ""]
 }*/
 JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
+  NOT_USED(wlanObj);
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-  _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP, 4, 10, '.');
-  _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask, 4, 10, '.');
-  _wlan_getIP_get_address(data, "gateway", &ipconfig.aucDefaultGateway, 4, 10, '.');
-  _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer, 4, 10, '.');
-  _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer, 4, 10, '.');
-  _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr, 6, 16, 0);
+  _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP[0], 4, 10, '.');
+  _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask[0], 4, 10, '.');
+  _wlan_getIP_get_address(data, "gateway", &ipconfig.aucDefaultGateway[0], 4, 10, '.');
+  _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer[0], 4, 10, '.');
+  _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer[0], 4, 10, '.');
+  _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr[0], 6, 16, 0);
   return data;
 }
