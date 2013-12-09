@@ -913,6 +913,7 @@ $(PROJ_NAME).srec : $(PROJ_NAME).elf
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,binary,bin)
 	@$(call obj_to_bin,binary,bin)
+	bash scripts/check_size.sh $(PROJ_NAME).bin
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
