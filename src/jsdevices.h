@@ -89,7 +89,7 @@ void jshPushIOWatchEvent(IOEventFlags channel); // push an even when a pin chang
 /// Push a single character event (for example USART RX)
 void jshPushIOCharEvent(IOEventFlags channel, char charData);
 /// Push many character events at once (for example USB RX)
-static void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
+static inline void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigned int count) {
   // TODO: optimise me!
   unsigned int i;
   for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
