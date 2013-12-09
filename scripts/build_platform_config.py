@@ -49,6 +49,10 @@ LINUX = board.chip["family"]=="LINUX"
 if not "default_console" in board.info:
   board.info["default_console"] = "EV_SERIAL1"
 
+has_bootloader = False
+if "bootloader" in board.info and board.info["bootloader"]!=0:
+  has_bootloader = True
+
 if not LINUX:
   if board.chip["part"]=="STM32F100RB" or board.chip["part"]=="STM32F103RB" or board.chip["part"]=="STM32F103TB": board.chip["subfamily"]="MD";
 
@@ -78,6 +82,7 @@ if not LINUX:
   flash_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
   flash_available_for_code = total_flash - (flash_pages*flash_page_size)
+  if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
 
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
@@ -203,7 +208,7 @@ else:
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   codeOut("#define FLASH_PAGES                     "+str(flash_pages))
-  codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
+  if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
 codeOut("");
 codeOut("#define USARTS                          "+str(board.chip["usart"]))
 codeOut("#define SPIS                            "+str(board.chip["spi"]))

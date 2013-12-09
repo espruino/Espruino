@@ -18,6 +18,7 @@ info = {
  'name' : "Espruino Board rev 1.3",
  'link' : [ "http://www.espruino.com/kick" ],
  'variables' : 2000,
+ 'bootloader' : 1,
 };
 chip = {
   'part' : "STM32F103RCT6",
