@@ -77,7 +77,7 @@ if not LINUX:
   if board.chip["family"]=="STM32F4": flash_page_size = 128*1024
   flash_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
-  flash_available_for_code = total_flash - flash_pages*flash_page_size
+  flash_available_for_code = total_flash - (flash_pages*flash_page_size)
 
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
@@ -244,9 +244,9 @@ for device in ["USB","SD","LCD"]:
 codeOut("")
 
 codeOut("// definition to avoid compilation when Pin/platform config is not defined")
-codeOut("#define IS_PIN_USED_INTERNALLY(PIN) ("+")||(".join(usedPinChecks)+")")
-codeOut("#define IS_PIN_A_LED(PIN) ("+")||(".join(ledChecks)+")")
-codeOut("#define IS_PIN_A_BUTTON(PIN) ("+")||(".join(btnChecks)+")")
+codeOut("#define IS_PIN_USED_INTERNALLY(PIN) (("+")||(".join(usedPinChecks)+"))")
+codeOut("#define IS_PIN_A_LED(PIN) (("+")||(".join(ledChecks)+"))")
+codeOut("#define IS_PIN_A_BUTTON(PIN) (("+")||(".join(btnChecks)+"))")
 
 
 codeOut("""
