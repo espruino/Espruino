@@ -19,6 +19,8 @@ info = {
  'link' : [ "http://www.espruino.com/kick" ],
  'variables' : 2000,
  'bootloader' : 1,
+ 'serial_bootloader' : True,
+ 'binary_name' : 'espruino_%v_espruino_1r3.bin',
 };
 chip = {
   'part' : "STM32F103RCT6",

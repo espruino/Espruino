@@ -19,6 +19,7 @@ info = {
  'name' : "MBed LPC1768",
  'link' : [ "http://www.espruino.com/kick" ],
  'variables' : 2000, #?
+ 'binary_name' : 'espruino_%v_lpc1768.bin',
 };
 chip = {
   'part' : "LPC1768",

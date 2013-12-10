@@ -14,8 +14,8 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
-# OLIMEX=1                # Olimexino STM32
-# OLIMEX_BOOTLOADER=1     # Olimexino STM32 with bootloader
+# OLIMEXINO_STM32=1                # Olimexino STM32
+# OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
 # HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
@@ -78,7 +78,6 @@ BASEADDRESS=0x08000000
 ###################################################
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 ifdef ESPRUINO_1V0
-PROJ_NAME=espruino_espruino_1v0
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -92,7 +91,6 @@ STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
-PROJ_NAME=espruino_espruino_1v1
 DEFINES+=-DESPRUINO_1V1
 USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
@@ -109,7 +107,6 @@ STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V3
-PROJ_NAME=espruino_espruino_1v3
 DEFINES+=-DESPRUINO_1V3
 USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
@@ -124,8 +121,7 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
-else ifdef OLIMEX
-PROJ_NAME=espruino_olimexino_stm32
+else ifdef OLIMEXINO_STM32
 USB=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -134,8 +130,7 @@ BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
-else ifdef OLIMEX_BOOTLOADER
-PROJ_NAME=espruino_olimexino_bootloader_stm32
+else ifdef OLIMEXINO_STM32_BOOTLOADER
 USB=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -147,7 +142,6 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef HYSTM32_24
-PROJ_NAME=espruino_hystm32_24_ve
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -160,7 +154,6 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef HYSTM32_28
-PROJ_NAME=espruino_hystm32_28_rb
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -174,7 +167,6 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
 else ifdef HYSTM32_32
-PROJ_NAME=espruino_hystm32_32_vc
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -187,7 +179,6 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
-PROJ_NAME=espruino_stm32f4discovery
 USB=1
 #USE_NET=1
 #USE_CC3000=1
@@ -200,7 +191,6 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
-PROJ_NAME=espruino_stm32f429idiscovery
 USB=1
 USE_GRAPHICS=1
 #USE_LCD_FSMC=1
@@ -212,7 +202,6 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
-PROJ_NAME=espruino_smartwatch
 DEFINES+=-DHSE_VALUE=26000000UL
 USB=1
 FAMILY=STM32F2
@@ -222,7 +211,6 @@ STLIB=STM32F2XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F3DISCOVERY
-PROJ_NAME=espruino_stm32f3discovery
 #USE_BOOTLOADER=1
 #BOOTLOADER_PROJ_NAME=bootloader_espruino_stm32f3discovery
 USB=1
@@ -233,7 +221,6 @@ STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
-PROJ_NAME=espruino_stm32vldiscovery
 FAMILY=STM32F1
 CHIP=STM32F100RB
 BOARD=STM32VLDISCOVERY
@@ -241,7 +228,6 @@ STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef TINYCHIP
-PROJ_NAME=espruino_stm32f103tbu
 FAMILY=STM32F1
 CHIP=STM32F103TB
 BOARD=TINYCHIP
@@ -249,7 +235,6 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef LPC1768
-PROJ_NAME=espruino_LPC1768
 MBED=1
 FAMILY=LPC1768
 CHIP=LPC1768
@@ -259,7 +244,7 @@ PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBE
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed 
 OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
-PROJ_NAME=espruino_carambola
+BOARD=CARAMBOLA
 DEFINES += -DCARAMBOLA
 LINUX=1
 USE_FILESYSTEM=1
@@ -267,8 +252,7 @@ USB=1
 USE_GRAPHICS=1
 USE_NET=1
 else ifdef RASPBERRYPI
-PROJ_NAME=espruino
-BOARD=LINUX
+BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI
 LINUX=1
 USE_FILESYSTEM=1
@@ -277,7 +261,6 @@ USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
 else ifdef LCTECH_STM32F103RBT6
-PROJ_NAME=espruino_lctechstm32f103rbt6
 USB=1
 SAVE_ON_FLASH=1
 FAMILY=STM32F1
@@ -287,7 +270,6 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
 else
-PROJ_NAME=espruino
 BOARD=LINUX
 LINUX=1
 USE_FILESYSTEM=1
@@ -295,6 +277,11 @@ USB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+endif
+
+PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
+ifeq ($(PROJ_NAME),)
+$(error Unable to work out binary name (PROJ_NAME)) 
 endif
 
 ifdef DEBUG
@@ -772,7 +759,9 @@ ifdef RASPBERRYPI
   ifneq ($(shell uname -m),armv6l)
     # eep. let's cross compile
     export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
-    PROJ_NAME=espruino_raspberrypi
+  else
+    # compiling in-place, so give it a normal name
+    PROJ_NAME=espruino
   endif
 endif
 
@@ -913,10 +902,11 @@ $(PROJ_NAME).bin : $(PROJ_NAME).elf
 	@$(call obj_to_bin,binary,bin)
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 
-proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+#proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
-ifdef OLIMEX_BOOTLOADER
+ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else

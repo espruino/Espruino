@@ -96,7 +96,7 @@ def dump_pin(pin, pinstrip):
           
           if cls=="DEVICE" and funcdata[:4]=="pin_":
             title = title + " ("+funcdata[4:]+")";
-            print title
+#            print title
           if func in pinutils.NAMES: name = pinutils.NAMES[func]
           writeHTML('<!-- '+func+' -->')
           if name in pinfuncs:

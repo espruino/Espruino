@@ -15,10 +15,11 @@
 
 import pinutils;
 info = {
- 'name' : "STM32 F4 Discovery",
- 'link' :  [ "http://www.st.com/stm32f4-discovery" ],
+ 'name' : "STM32 F429 Discovery",
+ 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1199/PF259090" ],
  'default_console' : "EV_SERIAL1",
  'variables' : 5450,
+ 'binary_name' : 'espruino_%v_stm32f429idiscovery.bin',
 };
 chip = {
   'part' : "STM32F429ZIT6",

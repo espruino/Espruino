@@ -101,7 +101,7 @@ def get_jsondata(is_for_document):
 
           for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
             jsonstring = comment[6:-2]
-            print "Parsing "+jsonstring
+#            print "Parsing "+jsonstring
             try:
               jsondata = json.loads(jsonstring)
               jsondata["filename"] = jswrap
@@ -132,8 +132,10 @@ def get_includes_from_jsondata(jsondatas):
 def is_property(jsondata):
   return jsondata["type"]=="property" or jsondata["type"]=="staticproperty"
 
+def get_script_dir():
+        return os.path.dirname(os.path.realpath(__file__))
 def get_version():
-        scriptdir = os.path.dirname	(os.path.realpath(__file__))
+        scriptdir = get_script_dir()
         jsutils = scriptdir+"/../src/jsutils.h"
         return subprocess.check_output(["sed", "-ne", "s/^.*JS_VERSION.*\"\(.*\)\"/\\1/p", jsutils]).strip()
 
@@ -143,3 +145,6 @@ def get_name_or_space(jsondata):
 
 def get_bootloader_size():
         return 10*1024;
+
+def get_board_binary_name(board):
+        return board.info["binary_name"].replace("%v", get_version());

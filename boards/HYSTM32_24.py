@@ -17,6 +17,8 @@ import pinutils;
 info = {
  'name' : "STM32 2.4 inch LCD Board (VET6)",
  'variables' : 2800,
+ 'serial_bootloader' : True,
+ 'binary_name' : 'espruino_%v_hystm32_24_ve.bin',
 };
 chip = {
   'part' : "STM32F103VE", #T6

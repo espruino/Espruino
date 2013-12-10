@@ -26,42 +26,14 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-RELEASE=1 OLIMEX=1 make clean
-RELEASE=1 OLIMEX=1 make || { echo 'Build failed' ; exit 1; }
-cp espruino_olimexino_stm32.bin  $ZIPDIR/espruino_${VERSION}_olimexino_stm32.bin || { echo 'Build failed' ; exit 1; }
-
-# Don't bother now - this is too big to fit sensibly in flash
-#RELEASE=1 OLIMEX_BOOTLOADER=1 make clean
-#RELEASE=1 OLIMEX_BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }
-#cp espruino_olimexino_bootloader_stm32.bin  $ZIPDIR/espruino_${VERSION}_olimexino_bootloader_stm32.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 HYSTM32_24=1 make clean
-RELEASE=1 HYSTM32_24=1 make || { echo 'Build failed' ; exit 1; }
-cp espruino_hystm32_24_ve.bin  $ZIPDIR/espruino_${VERSION}_hystm32_24_ve.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 HYSTM32_28=1 make clean
-RELEASE=1 HYSTM32_28=1 make || { echo 'Build failed' ; exit 1; }
-cp espruino_hystm32_28_rb.bin  $ZIPDIR/espruino_${VERSION}_hystm32_28_rb.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 HYSTM32_32=1 make clean
-RELEASE=1 HYSTM32_32=1 make || { echo 'Build failed' ; exit 1; }
-cp espruino_hystm32_32_vc.bin  $ZIPDIR/espruino_${VERSION}_hystm32_32_vc.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 STM32VLDISCOVERY=1 make clean
-RELEASE=1 STM32VLDISCOVERY=1 make || { echo 'Build failed' ; exit 1; }
-cp espruino_stm32vldiscovery.bin  $ZIPDIR/espruino_${VERSION}_stm32vldiscovery.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 STM32F3DISCOVERY=1 make clean
-RELEASE=1 STM32F3DISCOVERY=1 make || { echo 'Build failed' ; exit 1; } 
-cp espruino_stm32f3discovery.bin  $ZIPDIR/espruino_${VERSION}_stm32f3discovery.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 STM32F4DISCOVERY=1 make clean
-RELEASE=1 STM32F4DISCOVERY=1 make || { echo 'Build failed' ; exit 1; } 
-cp espruino_stm32f4discovery.bin  $ZIPDIR/espruino_${VERSION}_stm32f4discovery.bin  || { echo 'Build failed' ; exit 1; }
-
-RELEASE=1 RASPBERRYPI=1 make clean
-RELEASE=1 RASPBERRYPI=1 make || { echo 'Build failed' ; exit 1; } 
-cp espruino_raspberrypi  $ZIPDIR/espruino_${VERSION}_raspberrypi  || { echo 'Build failed' ; exit 1; }
+for BOARDNAME in ESPRUINO_1V3 STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
+do
+  BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAME`
+  rm $BINARY_NAME
+  bash -c "RELEASE=1 $BOARDNAME=1 make clean"
+  bash -c "RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
+  cp $BINARY_NAME $ZIPDIR/$BINARY_NAME || { echo 'Build failed' ; exit 1; }
+done
 
 cd $DIR
 

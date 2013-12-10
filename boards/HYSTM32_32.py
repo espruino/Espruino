@@ -18,6 +18,8 @@ info = {
  'name' : "HY-MiniSTM32V 3.2 inch LCD Board (VCT6)",
  'link' : [ "http://www.hotmcu.com/hyministm32v-dev-board-32-tft-lcd-module-p-5.html" ],
  'variables' : 2000,
+ 'serial_bootloader' : True,
+  'binary_name' : 'espruino_%v_hystm32_32_vc.bin',
 };
 chip = {
   'part' : "STM32F103VC",

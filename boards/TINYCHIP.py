@@ -18,6 +18,7 @@ info = {
  'name' : "Single Chip",
  'link' :  [ "http://www.st.com/stm32-discovery" ],
  'variables' : 700,
+ 'binary_name' : 'espruino_%v_stm32f103tb.bin',
 };
 chip = {
   'part' : "STM32F103TBU6",

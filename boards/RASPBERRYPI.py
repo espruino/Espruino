@@ -15,12 +15,12 @@
 
 import pinutils;
 info = {
- 'name' : "Normal Linux Compile",
+ 'name' : "Raspberry Pi",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_linux',
+ 'binary_name' : 'espruino_%v_raspberrypi',
 };
 chip = {
-  'part' : "LINUX",
+  'part' : "RASPBERRYPI",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,

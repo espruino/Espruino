@@ -26,6 +26,7 @@ basedir = scriptdir+"/../"
 sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
 
+import common;
 import pinutils;
 
 # -----------------------------------------------------------------------------------------
@@ -45,6 +46,11 @@ board = importlib.import_module(boardname)
 pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
 
+# -----------------------------------------------------------------------------------------
+board.info["image_url"] = "http://www.espruino.com/img/"+boardname+".jpg"
+board.info["thumb_url"] = "http://www.espruino.com/img/"+boardname+"_thumb.jpg"
+board.info["binary_version"] = common.get_version();
+board.info["binary_url"] = "http://www.espruino.com/binaries/"+common.get_board_binary_name(board)
 # -----------------------------------------------------------------------------------------
 pinperipherals = {}
 

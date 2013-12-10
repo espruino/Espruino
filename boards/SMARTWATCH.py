@@ -18,6 +18,7 @@ info = {
  'name' : "Sony Smartwatch",
  'link' : [ "http://developer.sonymobile.com/services/open-smartwatch-project/smartwatch-hacker-guide/" ],
  'variables' : 4000,
+ 'binary_name' : 'espruino_%v_smartwatch.bin',
 };
 chip = {
   'part' : "STM32F205RG",
