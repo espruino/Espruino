@@ -276,6 +276,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   if (jsvIsNumeric(srcdata)) {
     spi_send4bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
   } else if (jsvIsIterable(srcdata)) {
+    jshInterruptOff();
     JsvIterator it;
     jsvIteratorNew(&it, srcdata);
     while (jsvIteratorHasElement(&it)) {
@@ -284,6 +285,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
+    jshInterruptOn();
   } else {
     jsError("Variable type not suited to transmit operation");
   }
@@ -327,6 +329,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   if (jsvIsNumeric(srcdata)) {
     spi_send8bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
   } else if (jsvIsIterable(srcdata)) {
+    jshInterruptOff();
     JsvIterator it;
     jsvIteratorNew(&it, srcdata);
     while (jsvIteratorHasElement(&it)) {
@@ -335,6 +338,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
+    jshInterruptOn();
   } else {
     jsError("Variable type not suited to transmit operation");
   }
