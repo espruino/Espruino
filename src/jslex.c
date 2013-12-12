@@ -21,11 +21,8 @@ void jslSeek(JsLex *lex, JslCharPos seekToChar) {
 
 void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = lex->nextCh;
-  if (jsvStringIteratorHasChar(&lex->it)) {
-    lex->nextCh = jsvStringIteratorGetChar(&lex->it);
-    jsvStringIteratorNextInline(&lex->it);
-  } else
-    lex->nextCh = 0;
+  lex->nextCh = jsvStringIteratorGetChar(&lex->it);
+  jsvStringIteratorNextInline(&lex->it);
 }
 
 static inline void jslTokenAppendChar(JsLex *lex, char ch) {
@@ -217,7 +214,7 @@ void jslGetNextToken(JsLex *lex) {
   } else {
       // single chars
       lex->tk = lex->currCh;
-      if (lex->currCh) jslGetNextCh(lex);
+      jslGetNextCh(lex);
       if (lex->tk=='=' && lex->currCh=='=') { // ==
           lex->tk = LEX_EQUAL;
           jslGetNextCh(lex);
