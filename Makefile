@@ -105,7 +105,7 @@ BOARD=ESPRUINOBOARD_R1_1
 DEFINES+=-DESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os # not that short on memory, but Travis compiler is old and uses more
 else ifdef ESPRUINO_1V3
 DEFINES+=-DESPRUINO_1V3
 USE_BOOTLOADER=1
