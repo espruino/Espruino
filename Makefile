@@ -283,6 +283,11 @@ PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME)) 
 endif
+ifeq ($(BOARD),LINUX)
+PROJ_NAME=espruino
+endif
+
+
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
