@@ -159,6 +159,10 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
          "params" : [ [ "pin", "pin", "The pin to use"], [ "mode", "JsVar", "The mode - a string that is either input, output, input_pullup, or input_pulldown. Do not include this argument if you want to revert to automatic pin mode setting."] ]
 }*/
 void jswrap_io_pinMode(Pin pin, JsVar *mode) {
+  if (!jshIsPinValid(pin)) {
+    jsError("Invalid pin");
+    return;
+  }
   JshPinState m = JSHPINSTATE_UNDEFINED;
   if (jsvIsString(mode)) {
     if (jsvIsStringEqual(mode, "input")) m = JSHPINSTATE_GPIO_IN;

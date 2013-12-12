@@ -1,5 +1,6 @@
      1v44 : Modified build system to store binary names in the python definition
             Fix nasty regression involving losing code at the end of Strings
+            Fix segfault when pinMode is called on an invalid pin
 
      1v43 : Added 'Modules' object with support for adding/removing cached modules
             Allow product ID to be changed via Makefile
