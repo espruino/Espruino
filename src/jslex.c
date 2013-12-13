@@ -65,7 +65,13 @@ void jslGetNextToken(JsLex *lex) {
   }
   // block comments
   if (lex->currCh=='/' && lex->nextCh=='*') {
-      while (lex->currCh && (lex->currCh!='*' || lex->nextCh!='/')) jslGetNextCh(lex);
+      while (lex->currCh && !(lex->currCh=='*' && lex->nextCh=='/'))
+        jslGetNextCh(lex);
+      if (!lex->currCh) {
+        lex->tk = LEX_UNFINISHED_COMMENT;
+        return; /* an unfinished multi-line comment. When in interactive console,
+                   detect this and make sure we accept new lines */
+      }
       jslGetNextCh(lex);
       jslGetNextCh(lex);
       jslGetNextToken(lex);

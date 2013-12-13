@@ -686,12 +686,14 @@ int jsiCountBracketsInInput() {
 
   JsLex lex;
   jslInit(&lex, inputLine);
-  while (lex.tk!=LEX_EOF) {
+  while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
     if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
     if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
     if (brackets<0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
+  if (lex.tk==LEX_UNFINISHED_COMMENT)
+    brackets=1000; // if there's an unfinished comment, we're in the middle of something
   jslKill(&lex);
 
   return brackets;
@@ -1019,7 +1021,7 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
     } else if (ch == '\r' || ch == '\n') { 
-      if (jsiAtEndOfInputLine()) { // ignore unless at EOL
+      if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
         if (ch == '\r') inputState = IS_HAD_R;
         if (jsiCountBracketsInInput()<=0) { // actually execute!
           if (jsiShowInputLine()) {
@@ -1047,6 +1049,8 @@ void jsiHandleChar(char ch) {
           jsvUnLock(v);
           // console will be returned next time around the input loop
         } else {
+          // Brackets aren't all closed, so we're going to append a newline
+          // without executing
           if (jsiShowInputLine()) jsiConsolePrint("\n:");
           jsiIsAboutToEditInputLine();
           jsvAppendCharacter(inputLine, '\n');
