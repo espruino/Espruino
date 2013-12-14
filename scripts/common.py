@@ -121,6 +121,43 @@ def get_jsondata(is_for_document):
         print "Scanning finished."
         return jsondatas
 
+# Takes the data from get_jsondata and restructures it in prepartion for output as JS
+# 
+# Results look like:, 
+#{
+#  "Pin": {
+#    "desc": [
+#      "This is the built-in class for Pins, such as D0,D1,LED1, or BTN", 
+#      "You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite"
+#    ], 
+#    "methods": {
+#      "read": {
+#        "desc": "Returns the input state of the pin as a boolean", 
+#        "params": [], 
+#        "return": [
+#          "bool", 
+#          "Whether pin is a logical 1 or 0"
+#        ]
+#      }, 
+#      "reset": {
+#        "desc": "Sets the output state of the pin to a 0", 
+#        "params": [], 
+#        "return": []
+#      }, 
+#      ...
+#    }, 
+#    "props": {}, 
+#    "staticmethods": {}, 
+#    "staticprops": {}
+#  },
+#  "print": {
+#    "desc": "Print the supplied string", 
+#    "return": []
+#  },
+#  ...
+#}
+#
+
 def get_struct_from_jsondata(jsondata):
   context = dict()
 
