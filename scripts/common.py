@@ -121,6 +121,66 @@ def get_jsondata(is_for_document):
         print "Scanning finished."
         return jsondatas
 
+def get_struct_from_jsondata(jsondata):
+  context = dict()
+
+  def checkClass(details):
+    cl = details["class"]
+    if not cl in context:
+      context[cl] = {"methods": {}, "props": {}, "staticmethods": {}, "staticprops": {}, "desc": details.get("description", "")}
+    return cl
+
+  def addConstructor(details):
+    cl = checkClass(details)
+    context[cl]["constructor"] = {"params": details.get("params", []), "return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addMethod(details, type = ""):
+    cl = checkClass(details)
+    context[cl][type + "methods"][details["name"]] = {"params": details.get("params", []), "return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addProp(details, type = ""):
+    cl = checkClass(details)
+    context[cl][type + "props"][details["name"]] = {"return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addFunc(details):
+    context[details["name"]] = {"return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addObj(details):
+    context[details["name"]] = {"instanceof": details.get("instanceof", ""), "desc": details.get("description", "")}
+
+  def addLib(details):
+    context["require('" + details["class"] + "')"] = {"desc": details.get("description", "")}
+
+  def addVar(details):
+    return
+
+  for data in jsondata:
+    type = data["type"]
+    if type=="class":
+      checkClass(data)
+    elif type=="constructor":
+      addConstructor(data)
+    elif type=="method":
+      addMethod(data)
+    elif type=="property":
+      addProp(data)
+    elif type=="staticmethod":
+      addMethod(data, "static")
+    elif type=="staticproperty":
+      addProp(data, "static")
+    elif type=="function":
+      addFunc(data)
+    elif type=="object":
+      addObj(data)
+    elif type=="library":
+      addLib(data)
+    elif type=="variable":
+      addVar(data)
+    else:
+      print(json.dumps(data, sort_keys=True, indent=2))
+
+  return context
+
 def get_includes_from_jsondata(jsondatas):
         includes = []
         for jsondata in jsondatas:
