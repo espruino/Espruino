@@ -21,7 +21,7 @@ info = {
  'binary_name' : 'espruino_%v_stm32vldiscovery.bin',
 };
 chip = {
-  'part' : "STM32F100RBT6",
+  'part' : "STM32F100RBT6", 
   'family' : "STM32F1",
   'package' : "LQFP64",
   'ram' : 8,

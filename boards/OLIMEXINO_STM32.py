@@ -22,7 +22,7 @@ info = {
  'binary_name' : 'espruino_%v_olimexino_stm32.bin',
 };
 chip = {
-  'part' : "STM32F103RB", #T6
+  'part' : "STM32F103RBT6", 
   'family' : "STM32F1",
   'package' : "LQFP64",
   'ram' : 20,

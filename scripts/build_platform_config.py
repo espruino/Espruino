@@ -54,7 +54,8 @@ if "bootloader" in board.info and board.info["bootloader"]!=0:
   has_bootloader = True
 
 if not LINUX:
-  if board.chip["part"]=="STM32F100RB" or board.chip["part"]=="STM32F103RB" or board.chip["part"]=="STM32F103TB": board.chip["subfamily"]="MD";
+  # 100xB and 103xB are mid-density, so have 1k page sizes
+  if board.chip["part"][:7]=="STM32F1" and board.chip["part"][10]=="B": board.chip["subfamily"]="MD";
 
   # how much room for stack (and EVERYTHING else)
   space_for_stack = 4 #kB
@@ -87,6 +88,7 @@ if not LINUX:
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
   print "VarCache size = "+str(var_cache_size)
+  print "Flash page size = "+str(flash_page_size)
   print "Flash pages = "+str(flash_pages)
   print "Total flash = "+str(total_flash)
   print "Flash available for code = "+str(flash_available_for_code)

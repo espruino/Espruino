@@ -3,6 +3,7 @@
             Fix segfault when pinMode is called on an invalid pin
             Now disable interrupts during 4 bit SPI send - it's just too much otherwise
             Detect unfinished block comments in console (fix #138)
+            Fix flash write on most 10XxB boards
 
      1v43 : Added 'Modules' object with support for adding/removing cached modules
             Allow product ID to be changed via Makefile
