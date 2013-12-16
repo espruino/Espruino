@@ -121,6 +121,103 @@ def get_jsondata(is_for_document):
         print "Scanning finished."
         return jsondatas
 
+# Takes the data from get_jsondata and restructures it in prepartion for output as JS
+# 
+# Results look like:, 
+#{
+#  "Pin": {
+#    "desc": [
+#      "This is the built-in class for Pins, such as D0,D1,LED1, or BTN", 
+#      "You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite"
+#    ], 
+#    "methods": {
+#      "read": {
+#        "desc": "Returns the input state of the pin as a boolean", 
+#        "params": [], 
+#        "return": [
+#          "bool", 
+#          "Whether pin is a logical 1 or 0"
+#        ]
+#      }, 
+#      "reset": {
+#        "desc": "Sets the output state of the pin to a 0", 
+#        "params": [], 
+#        "return": []
+#      }, 
+#      ...
+#    }, 
+#    "props": {}, 
+#    "staticmethods": {}, 
+#    "staticprops": {}
+#  },
+#  "print": {
+#    "desc": "Print the supplied string", 
+#    "return": []
+#  },
+#  ...
+#}
+#
+
+def get_struct_from_jsondata(jsondata):
+  context = dict()
+
+  def checkClass(details):
+    cl = details["class"]
+    if not cl in context:
+      context[cl] = {"methods": {}, "props": {}, "staticmethods": {}, "staticprops": {}, "desc": details.get("description", "")}
+    return cl
+
+  def addConstructor(details):
+    cl = checkClass(details)
+    context[cl]["constructor"] = {"params": details.get("params", []), "return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addMethod(details, type = ""):
+    cl = checkClass(details)
+    context[cl][type + "methods"][details["name"]] = {"params": details.get("params", []), "return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addProp(details, type = ""):
+    cl = checkClass(details)
+    context[cl][type + "props"][details["name"]] = {"return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addFunc(details):
+    context[details["name"]] = {"return": details.get("return", []), "desc": details.get("description", "")}
+
+  def addObj(details):
+    context[details["name"]] = {"instanceof": details.get("instanceof", ""), "desc": details.get("description", "")}
+
+  def addLib(details):
+    context["require('" + details["class"] + "')"] = {"desc": details.get("description", "")}
+
+  def addVar(details):
+    return
+
+  for data in jsondata:
+    type = data["type"]
+    if type=="class":
+      checkClass(data)
+    elif type=="constructor":
+      addConstructor(data)
+    elif type=="method":
+      addMethod(data)
+    elif type=="property":
+      addProp(data)
+    elif type=="staticmethod":
+      addMethod(data, "static")
+    elif type=="staticproperty":
+      addProp(data, "static")
+    elif type=="function":
+      addFunc(data)
+    elif type=="object":
+      addObj(data)
+    elif type=="library":
+      addLib(data)
+    elif type=="variable":
+      addVar(data)
+    else:
+      print(json.dumps(data, sort_keys=True, indent=2))
+
+  return context
+
 def get_includes_from_jsondata(jsondatas):
         includes = []
         for jsondata in jsondatas:
