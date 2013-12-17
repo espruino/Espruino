@@ -482,7 +482,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
     jshPinStateIsManual = jshPinStateIsManual & ~(1ULL<<pin);
 }
 
-void inline jshPinSetState(Pin pin, JshPinState state) {
+inline void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||

@@ -174,7 +174,7 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
 0 )
 #define JSH_PINFUNCTION_IS_USART(F) ( \
-  (((F)&JSH_MASK_TYPE)>=JSH_USART1) || \
+  (((F)&JSH_MASK_TYPE)>=JSH_USART1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_USART6))
 #define JSH_PINFUNCTION_IS_I2C(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_I2C1) && \
