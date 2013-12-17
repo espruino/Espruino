@@ -169,7 +169,7 @@ typedef enum {
 
 #define JSH_PINFUNCTION_IS_TIMER(F) ( \
   (((F)&JSH_MASK_TYPE)>=JSH_TIMER1) && \
-  (((F)&JSH_MASK_TYPE)==JSH_TIMER18))
+  (((F)&JSH_MASK_TYPE)<=JSH_TIMER18))
 #define JSH_PINFUNCTION_IS_DAC(F) ( \
   (((F)&JSH_MASK_TYPE)==JSH_DAC) || \
 0 )
