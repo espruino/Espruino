@@ -1391,9 +1391,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 
   // enable the timer
   TIM_Cmd(TIMx, ENABLE);
-#ifdef STM32API2
   TIM_CtrlPWMOutputs(TIMx, ENABLE);
-#endif
   // Set the pin to output this special function
   jshPinSetFunction(pin, func);
 }
