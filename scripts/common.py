@@ -58,7 +58,7 @@ if silent:
 #
 
 
-def get_jsondata(is_for_document):
+def get_jsondata(is_for_document, parseArgs = True):
         scriptdir = os.path.dirname	(os.path.realpath(__file__))
         print "Script location "+scriptdir
         os.chdir(scriptdir+"/..")
@@ -66,7 +66,7 @@ def get_jsondata(is_for_document):
         jswraps = []
         defines = []
 
-        if len(sys.argv)>1:
+        if parseArgs and len(sys.argv)>1:
           print "Using files from command line"
           for i in range(1,len(sys.argv)):
             arg = sys.argv[i]
