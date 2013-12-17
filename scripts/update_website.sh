@@ -12,6 +12,7 @@ BINARYDIR=$WEBSITEDIR/www/binaries
 BOARDJSON=$WEBSITEDIR/www/json/boards.json
 
 function create_info() {
+  BOARDNAME=$1
   NICENAME=`python scripts/get_board_name.py $BOARDNAME`
   echo $BOARDNAME = $NICENAME 
   # the board's image
@@ -23,7 +24,7 @@ function create_info() {
   python scripts/build_board_json.py ${BOARDNAME}  || { echo 'Build failed' ; exit 1; }
   cp boards/${BOARDNAME}.json ${JSONDIR}
   # add link to the boards list
-  echo "  \"BOARDNAME\" : {" >> $BOARDJSON
+  echo "  \"${BOARDNAME}\" : {" >> $BOARDJSON
   echo "    \"json\" : \"${BOARDNAME}.json\"," >> $BOARDJSON
   echo "    \"thumb\" : \"http://www.espruino.com/img/${BOARDNAME}_thumb.jpg\"," >> $BOARDJSON
   echo "    \"image\" : \"http://www.espruino.com/img/${BOARDNAME}.jpg\"," >> $BOARDJSON
@@ -60,6 +61,10 @@ echo "<h2>Espruino Board - Supported</h2>" >> NewReference.html
  echo -e "<center><span style=\"text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span></center>" >> NewReference.html
 echo "<h2>Other Boards - Unsupported</h2>" >> NewReference.html
 echo "<div id=\"boards\" style=\"display:inline-block;\">" >> NewReference.html
+# TEMPORARY for old board support
+create_info ESPRUINOBOARD_R1_0
+create_info ESPRUINOBOARD_R1_1
+# ------------------
 
 for BOARDNAME in STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32
 do
