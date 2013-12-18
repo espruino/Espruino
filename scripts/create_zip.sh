@@ -28,7 +28,11 @@ echo ------------------------------------------------------
 
 for BOARDNAME in ESPRUINO_1V3 STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
 do
-  BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAME`
+  BOARDNAMEX=$BOARDNAME
+  if [ "$BOARDNAMEX" == "ESPRUINO_1V3" ]; then
+    BOARDNAMEX=ESPRUINOBOARD
+  fi
+  BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAMEX`
   rm $BINARY_NAME
   bash -c "RELEASE=1 $BOARDNAME=1 make clean"
   bash -c "RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
