@@ -456,6 +456,64 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   return ptr;
 }
 
+USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SERIAL1 : return USART1;
+   case EV_SERIAL2 : return USART2;
+   case EV_SERIAL3 : return USART3;
+#if USARTS>=4
+   case EV_SERIAL4 : return UART4;
+#endif
+#if USARTS>=5
+   case EV_SERIAL5 : return UART5;
+#endif
+#if USARTS>=6
+   case EV_SERIAL6 : return USART6;
+#endif
+   default: return 0;
+ }
+}
+
+SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SPI1 : return SPI1;
+   case EV_SPI2 : return SPI2;
+   case EV_SPI3 : return SPI3;
+   default: return 0;
+ }
+}
+
+I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_I2C1 : return I2C1;
+   case EV_I2C2 : return I2C2;
+#if I2CS>=3
+   case EV_I2C3 : return I2C3;
+#endif
+   default: return 0;
+ }
+}
+
+JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
+ switch (device) {
+   case EV_SERIAL1 : return JSH_USART1;
+   case EV_SERIAL2 : return JSH_USART2;
+   case EV_SERIAL3 : return JSH_USART3;
+   case EV_SERIAL4 : return JSH_USART4;
+   case EV_SERIAL5 : return JSH_USART5;
+   case EV_SERIAL6 : return JSH_USART6;
+
+   case EV_SPI1    : return JSH_SPI1;
+   case EV_SPI2    : return JSH_SPI2;
+   case EV_SPI3    : return JSH_SPI3;
+
+   case EV_I2C1    : return JSH_I2C1;
+   case EV_I2C2    : return JSH_I2C2;
+   case EV_I2C3    : return JSH_I2C3;
+   default: return 0;
+ }
+}
+
 // Prints a list of capable pins, eg:
 // jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
 // jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
@@ -784,6 +842,7 @@ void jshInit() {
   // reclaim A13 and A14 (do we need the two above now?)
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
 #endif
+
   NVIC_InitTypeDef NVIC_InitStructure;
   /* Note, DO NOT set SysTicck priority using NVIC_Init. It is done above by NVIC_SetPriority */
   /* Enable and set EXTI Line0 Interrupt to the lowest priority */
@@ -1447,64 +1506,6 @@ bool jshGetWatchedPinState(IOEventFlags device) {
 
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
   return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
-}
-
-USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_SERIAL1 : return USART1;
-   case EV_SERIAL2 : return USART2;
-   case EV_SERIAL3 : return USART3;
-#if USARTS>=4
-   case EV_SERIAL4 : return UART4;
-#endif
-#if USARTS>=5
-   case EV_SERIAL5 : return UART5;
-#endif
-#if USARTS>=6
-   case EV_SERIAL6 : return USART6;
-#endif
-   default: return 0;
- }
-}
-
-SPI_TypeDef* getSPIFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_SPI1 : return SPI1;
-   case EV_SPI2 : return SPI2;
-   case EV_SPI3 : return SPI3;
-   default: return 0;
- }
-}
-
-I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_I2C1 : return I2C1;
-   case EV_I2C2 : return I2C2;
-#if I2CS>=3
-   case EV_I2C3 : return I2C3;
-#endif
-   default: return 0;
- }
-}
-
-JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
- switch (device) {
-   case EV_SERIAL1 : return JSH_USART1;
-   case EV_SERIAL2 : return JSH_USART2;
-   case EV_SERIAL3 : return JSH_USART3;
-   case EV_SERIAL4 : return JSH_USART4;
-   case EV_SERIAL5 : return JSH_USART5;
-   case EV_SERIAL6 : return JSH_USART6;
-
-   case EV_SPI1    : return JSH_SPI1;
-   case EV_SPI2    : return JSH_SPI2;
-   case EV_SPI3    : return JSH_SPI3;
-
-   case EV_I2C1    : return JSH_I2C1;
-   case EV_I2C2    : return JSH_I2C2;
-   case EV_I2C3    : return JSH_I2C3;
-   default: return 0;
- }
 }
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
