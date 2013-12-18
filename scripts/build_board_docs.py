@@ -150,7 +150,7 @@ writeHTML("""
    .DAC { background-color: #0CC; }
    .PWM { background-color: #8FF; }
    .USART { background-color: #FF8; }
-   .CAN { background-color: #F8F; }
+   .CAN { background-color: #8CC; }
    .I2C { background-color: #F88; }
    .DEVICE { background-color: #F8F; }
    .NOT_5V { background-color: #FDD; }
