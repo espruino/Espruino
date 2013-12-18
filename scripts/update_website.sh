@@ -27,7 +27,7 @@ function create_info() {
   echo "  \"${BOARDNAME}\" : {" >> $BOARDJSON
   echo "    \"json\" : \"${BOARDNAME}.json\"," >> $BOARDJSON
   echo "    \"thumb\" : \"http://www.espruino.com/img/${BOARDNAME}_thumb.jpg\"," >> $BOARDJSON
-  echo "    \"image\" : \"http://www.espruino.com/img/${BOARDNAME}.jpg\"," >> $BOARDJSON
+  echo "    \"image\" : \"http://www.espruino.com/img/${BOARDNAME}.jpg\"" >> $BOARDJSON
   echo "  }," >> $BOARDJSON
   # copy in binary
   BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAME`
@@ -75,6 +75,9 @@ done
 echo "</div>"
 echo "<p>&nbsp;</p>"
 
+# remove last line of $BOARDJSON, which is ' },'
+sed -i '$ d' $BOARDJSON
+echo "  }" >> $BOARDJSON
 echo "}" >> $BOARDJSON
 
 echo Updating Reference.html
