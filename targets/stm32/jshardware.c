@@ -328,24 +328,24 @@ void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
 
 void setDeviceClockCmd(IOEventFlags device, FunctionalState cmd) {
   if (device == EV_SERIAL1) {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, cmd);
   } else if (device == EV_SERIAL2) {
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
 #if USARTS>= 3
   } else if (device == EV_SERIAL3) {
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
 #endif
 #if USARTS>= 4
   } else if (device == EV_SERIAL4) {
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
 #endif
 #if USARTS>= 5
   } else if (device == EV_SERIAL5) {
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
 #endif
 #if USARTS>= 6
   } else if (device == EV_SERIAL6) {
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
 #endif
 #if SPIS>= 1
   } else if (device==EV_SPI1) {
@@ -1532,6 +1532,65 @@ Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction fun
   return -1;
 }
 
+const char *jshPinFunctionInfoToString(JshPinFunction device, JshPinFunction info) {
+  if (JSH_PINFUNCTION_IS_USART(device)) {
+    if (info==JSH_USART_RX) return "USART RX";
+    if (info==JSH_USART_TX) return "USART TX";
+  }
+  if (JSH_PINFUNCTION_IS_SPI(device)) {
+    if (info==JSH_SPI_MISO) return "SPI MISO";
+    if (info==JSH_SPI_MOSI) return "SPI MOSI";
+    if (info==JSH_SPI_SCK) return "SPI SCK";
+  }
+  if (JSH_PINFUNCTION_IS_I2C(device)) {
+    if (info==JSH_I2C_SCL) return "I2C SCL";
+    if (info==JSH_I2C_SDA) return "I2C SDA";
+  }
+  return 0;
+}
+
+/** Usage:
+ *  checkPinsForDevice(EV_SERIAL1, 2, [inf->pinRX, inf->pinTX], [JSH_USART_RX,JSH_USART_TX]);
+ *
+ *  If all pins -1 then they will be figured out, otherwise only the pins that are not -1 will be checked
+ *
+ *  This will not only check pins but will start the clock to the device and
+ *  set up the relevant pin states.
+ */
+bool NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, JshPinFunction *functions) {
+  // check if all pins are -1
+  bool findAllPins = true;
+  int i;
+  for (i=0;i<count;i++)
+    if (pins[i]<0) findAllPins=false;
+  // now try and find missing pins
+  if (findAllPins)
+    for (i=0;i<count;i++)
+      if (pins[i]<0)
+        pins[i] = findPinForFunction(device, functions[i]);
+  // now find pin functions
+  for (i=0;i<count;i++)
+    if (pins[i]>=0) {
+      // try and find correct pin
+      JshPinFunction fType = getPinFunctionForPin(pins[i], device);
+      // print info about what pins are supported
+      if (!fType || (fType&JSH_MASK_INFO)!=functions[i]) {
+        jshPrintCapablePins(pins[i], jshPinFunctionInfoToString(device, functions[i]), device, device,  JSH_MASK_INFO, functions[i], false);
+        return false;
+      }
+      functions[i] = fType;
+    }
+  // Set device clock
+  setDeviceClockCmd(device, ENABLE);
+  // now set up correct states
+  for (i=0;i<count;i++)
+      if (pins[i]>=0) {
+        //pinState[pins[i]] = functions[i];
+        jshPinSetFunction(pins[i], functions[i]);
+      }
+  // all ok
+  return true;
+}
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_TypeDef *USARTx;
@@ -1547,28 +1606,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   funcType = getPinFunctionFromDevice(device);
   USARTx   = getUsartFromDevice(device);
 
-  // Find pins if not given
-  if (inf->pinRX<0) inf->pinRX = findPinForFunction(funcType, JSH_USART_RX);
-  if (inf->pinTX<0) inf->pinTX = findPinForFunction(funcType, JSH_USART_TX);
-
-  // Find and check pin functions
-  JshPinFunction pinRXfunc = getPinFunctionForPin(inf->pinRX, funcType);
-  JshPinFunction pinTXfunc = getPinFunctionForPin(inf->pinTX, funcType);
-
-  if (!pinRXfunc || ((pinRXfunc&JSH_MASK_INFO)!=JSH_USART_RX)) {
-    jshPrintCapablePins(inf->pinRX, "USART RX", funcType, funcType,  JSH_MASK_INFO, JSH_USART_RX, false);
+  enum {pinRX, pinTX};
+  Pin pins[2] = { inf->pinRX, inf->pinTX };
+  JshPinFunction functions[2] = { JSH_USART_RX, JSH_USART_TX };
+  if (!checkPinsForDevice(funcType, 2, pins, functions))
     return;
-  }
-
-  if (!pinTXfunc || ((pinTXfunc&JSH_MASK_INFO)!=JSH_USART_TX)) {
-    jshPrintCapablePins(inf->pinTX, "USART TX", funcType, funcType,  JSH_MASK_INFO, JSH_USART_TX, false);
-    return;
-  }
-
-  /*if (device==EV_SERIAL3) {
-    // this will fail for serial1 now (as we call this fn on init)
-    jsiConsolePrint("UART Init ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint(", ");jsiConsolePrintInt(inf->pinRX);jsiConsolePrint(", ");jsiConsolePrintInt(inf->pinTX);jsiConsolePrint("\n");
-  }*/
 
   if (device == EV_SERIAL1) {
     usartIRQ = USART1_IRQn;
@@ -1594,12 +1636,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     jsErrorInternal("Unknown serial port device.");
     return;
   }
-
-  setDeviceClockCmd(device, ENABLE);
-
-  // Set input/output state
-  jshPinSetFunction(inf->pinRX, pinRXfunc);
-  jshPinSetFunction(inf->pinTX, pinTXfunc);
 
   USART_ClockInitTypeDef USART_ClockInitStructure;
 
@@ -1692,34 +1728,12 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   jshSetDeviceInitialised(device, true);
   JshPinFunction funcType = getPinFunctionFromDevice(device);
   SPI_TypeDef *SPI = getSPIFromDevice(device);
-  // Find pins if not given
-  if (inf->pinSCK<0 && inf->pinMISO<0 && inf->pinMOSI<0) {
-    inf->pinSCK = findPinForFunction(funcType, JSH_SPI_SCK);
-    inf->pinMISO = findPinForFunction(funcType, JSH_SPI_MISO);
-    inf->pinMOSI = findPinForFunction(funcType, JSH_SPI_MOSI);
-  }
-  // find + check pin functions
-  JshPinFunction pinSCKfunc = getPinFunctionForPin(inf->pinSCK, funcType);
-  JshPinFunction pinMISOfunc = getPinFunctionForPin(inf->pinMISO, funcType);
-  JshPinFunction pinMOSIfunc = getPinFunctionForPin(inf->pinMOSI, funcType);
-  if ((inf->pinSCK>=0) && (!pinSCKfunc || ((pinSCKfunc&JSH_MASK_INFO)!=JSH_SPI_SCK))) {
-    jshPrintCapablePins(inf->pinSCK, "SPI SCK", funcType, funcType,  JSH_MASK_INFO, JSH_SPI_SCK, false);
-    return;
-  }
-  if ((inf->pinMISO>=0) && (!pinMISOfunc || ((pinMISOfunc&JSH_MASK_INFO)!=JSH_SPI_MISO))) {
-    jshPrintCapablePins(inf->pinMISO, "SPI MISO", funcType, funcType,  JSH_MASK_INFO, JSH_SPI_MISO, false);
-    return;
-  }
-  if ((inf->pinMOSI>=0) && (!pinMOSIfunc || ((pinMOSIfunc&JSH_MASK_INFO)!=JSH_SPI_MOSI))) {
-    jshPrintCapablePins(inf->pinMOSI, "SPI MOSI", funcType, funcType,  JSH_MASK_INFO, JSH_SPI_MOSI, false);
-    return;
-  }
 
-  if (inf->pinSCK>=0) jshPinSetFunction(inf->pinSCK, pinSCKfunc);
-  if (inf->pinMISO>=0) jshPinSetFunction(inf->pinMISO, pinMISOfunc);
-  if (inf->pinMOSI>=0) jshPinSetFunction(inf->pinMOSI, pinMOSIfunc);
-
-  setDeviceClockCmd(device, ENABLE);
+  enum {pinSCK, pinMISO, pinMOSI};
+  Pin pins[3] = { inf->pinSCK, inf->pinMISO, inf->pinMOSI };
+  JshPinFunction functions[3] = { JSH_SPI_SCK, JSH_SPI_MISO, JSH_SPI_MOSI };
+  if (!checkPinsForDevice(funcType, 3, pins, functions))
+    return;
 
   SPI_InitTypeDef SPI_InitStructure;
   SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
@@ -1848,26 +1862,12 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   jshSetDeviceInitialised(device, true);
   JshPinFunction funcType = getPinFunctionFromDevice(device);
   I2C_TypeDef *I2C = getI2CFromDevice(device);
-  // Find pins if not given
-  if (inf->pinSCL<0) inf->pinSCL = findPinForFunction(funcType, JSH_I2C_SCL);
-  if (inf->pinSDA<0) inf->pinSDA = findPinForFunction(funcType, JSH_I2C_SDA);
-  //jsiConsolePrintInt(funcType);jsiConsolePrint(",");jsiConsolePrintInt(inf->pinSCL);jsiConsolePrint(",");jsiConsolePrintInt(inf->pinSDA);
-  // find + check pin functions
-  JshPinFunction pinSCLfunc = getPinFunctionForPin(inf->pinSCL, funcType);
-  JshPinFunction pinSDAfunc = getPinFunctionForPin(inf->pinSDA, funcType);
-  if (!pinSCLfunc || ((pinSCLfunc&JSH_MASK_INFO)!=JSH_I2C_SCL)) {
-    jshPrintCapablePins(inf->pinSCL, "I2C SCL", funcType, funcType,  JSH_MASK_INFO, JSH_I2C_SCL, false);
-    return;
-  }
-  if (!pinSDAfunc || ((pinSDAfunc&JSH_MASK_INFO)!=JSH_I2C_SDA)) {
-    jshPrintCapablePins(inf->pinSDA, "I2C SDA", funcType, funcType,  JSH_MASK_INFO, JSH_I2C_SDA, false);
-    return;
-  }
 
-  jshPinSetFunction(inf->pinSCL, pinSCLfunc);
-  jshPinSetFunction(inf->pinSDA, pinSDAfunc);
-
-  setDeviceClockCmd(device, ENABLE);
+  enum {pinSCL, pinSDA };
+  Pin pins[2] = { inf->pinSCL, inf->pinSDA };
+  JshPinFunction functions[2] = { JSH_I2C_SCL, JSH_I2C_SDA };
+  if (!checkPinsForDevice(funcType, 2, pins, functions))
+    return;
 
   /* I2C configuration -------------------------------------------------------*/
   I2C_InitTypeDef I2C_InitStructure;
