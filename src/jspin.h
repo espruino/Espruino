@@ -17,6 +17,9 @@
 
 #include "jsutils.h"
 
+typedef unsigned char Pin; ///< for specifying pins for hardware
+#define PIN_UNDEFINED 0xFF
+
 typedef enum {
   JSH_PORT_NONE,
   JSH_PORTA=1,

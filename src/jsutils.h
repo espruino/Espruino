@@ -83,9 +83,6 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #endif
 #endif
 
-/// TODO: make this unsigned char and fix checks/warnings
-typedef short Pin; ///< for specifying pins for hardware
-
 typedef long long JsVarInt;
 typedef unsigned long long JsVarIntUnsigned;
 #ifdef USE_FLOATS

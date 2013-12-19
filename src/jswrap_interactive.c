@@ -23,17 +23,11 @@
 }*/
 void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
   Pin oldPin = pinBusyIndicator;
-  if (jsvIsUndefined(pinVar)) {
-    pinBusyIndicator = -1;
-  } else {
-    pinBusyIndicator = jshGetPinFromVar(pinVar);
-    if (pinBusyIndicator<0)
-      jsError("Invalid pin!");
-  }
+  pinBusyIndicator = jshGetPinFromVar(pinVar);
   // we should be busy right now anyway, so set stuff up right
   if (pinBusyIndicator!=oldPin) {
-    if (oldPin>=0) jshPinOutput(oldPin, 0);
-    if (pinBusyIndicator>=0) jshPinOutput(pinBusyIndicator, 1);
+    if (oldPin!=PIN_UNDEFINED) jshPinOutput(oldPin, 0);
+    if (pinBusyIndicator!=PIN_UNDEFINED) jshPinOutput(pinBusyIndicator, 1);
   }
 }
 
@@ -43,13 +37,7 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
          "params" : [ [ "pin", "JsVar", ""] ]
 }*/
 void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
-  if (jsvIsUndefined(pinVar)) {
-    pinSleepIndicator = -1;
-  } else {
-    pinSleepIndicator = jshGetPinFromVar(pinVar);
-    if (pinSleepIndicator<0)
-      jsError("Invalid pin!");
-  }
+  pinSleepIndicator = jshGetPinFromVar(pinVar);
 }
 
 /*JSON{ "type":"function", "name" : "setDeepSleep",
@@ -141,7 +129,7 @@ void jswrap_interface_print(JsVar *v) {
         "return" : ["JsVar", "Information about memory usage"]
 }*/
 #ifdef ARM
-extern void _end;
+extern int _end;
 #endif
 JsVar *jswrap_interface_memory() {
   jsvGarbageCollect();

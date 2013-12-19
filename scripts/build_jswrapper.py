@@ -141,6 +141,7 @@ def codeOut(s):
 def getUnLockGetter(varType, name, funcName):
   if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
   if varType=="int": return "jsvGetIntegerAndUnLock("+name+")"
+  if varType=="int32": return "(int)jsvGetIntegerAndUnLock("+name+")"
   if varType=="bool": return "jsvGetBoolAndUnLock("+name+")"
   if varType=="pin": return "jshGetPinFromVarAndUnLock("+name+")"
   sys.stderr.write("ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
@@ -149,6 +150,7 @@ def getUnLockGetter(varType, name, funcName):
 def getCreator(varType, value, funcName):
   if varType=="float": return "jsvNewFromFloat("+value+")"
   if varType=="int": return "jsvNewFromInteger("+value+")"
+  if varType=="int32": return "(int)jsvNewFromInteger("+value+")"
   if varType=="bool": return "jsvNewFromBool("+value+")"
   if varType=="JsVar": return value
   sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
@@ -336,8 +338,8 @@ codeOut('    }')
 codeOut('  } else { /* if (!parent) */')
 codeOut('    // ------------------------------------------ FUNCTIONS')
 codeOut('    // Handle pin names - eg LED1 or D5 (this is hardcoded in build_jsfunctions.py)')
-codeOut('    int pin = jshGetPinFromString(name);')
-codeOut('    if (pin>=0) {')
+codeOut('    Pin pin = jshGetPinFromString(name);')
+codeOut('    if (pin != PIN_UNDEFINED) {')
 codeOut('      jspParseVariableName();')
 codeOut('      return jsvNewFromPin(pin);')
 codeOut('    }')

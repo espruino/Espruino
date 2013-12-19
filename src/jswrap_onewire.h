@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jspin.h"
 
 JsVar *jswrap_onewire_constructor(Pin pin);
 bool jswrap_onewire_reset(JsVar *parent);

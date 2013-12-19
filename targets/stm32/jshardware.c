@@ -735,7 +735,8 @@ inline bool jshPinGetValue(Pin pin) {
 }
 
 bool jshIsPinValid(Pin pin) {
-  return pin>=0 && pin < JSH_PIN_COUNT && pinInfo[pin].port!=JSH_PORT_NONE;
+  // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
+  return pin < JSH_PIN_COUNT && pinInfo[pin].port!=JSH_PORT_NONE;
 }
 
 
@@ -1137,24 +1138,36 @@ Pin jshGetPinFromString(const char *s) {
       if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
     } else if (port == JSH_PORTD) {
       if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
+#if JSH_PORTE_OFFSET!=-1
     } else if (port == JSH_PORTE) {
       if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
+#endif
+#if JSH_PORTF_OFFSET!=-1
     } else if (port == JSH_PORTF) {
       if (pin<JSH_PORTF_COUNT) return (Pin)(JSH_PORTF_OFFSET + pin);
+#endif
+#if JSH_PORTG_OFFSET!=-1
     } else if (port == JSH_PORTG) {
       if (pin<JSH_PORTG_COUNT) return (Pin)(JSH_PORTG_OFFSET + pin);
+#endif
+#if JSH_PORTH_OFFSET!=-1
     } else if (port == JSH_PORTH) {
       if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
+#endif
     }
   }
 
-  return -1;
+  return PIN_UNDEFINED;
 }
 
 /** Write the pin name to a string. String must have at least 8 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
-  if (pin>=JSH_PORTA_OFFSET && pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
+  if (
+#if JSH_PORTA_OFFSET!=0
+      pin>=JSH_PORTA_OFFSET &&
+#endif
+      pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
     result[0]='A';
     itoa(pin-JSH_PORTA_OFFSET,&result[1],10);
   } else if (pin>=JSH_PORTB_OFFSET && pin<JSH_PORTB_OFFSET+JSH_PORTB_COUNT) {
@@ -1166,18 +1179,26 @@ void jshGetPinString(char *result, Pin pin) {
   } else if (pin>=JSH_PORTD_OFFSET && pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
     result[0]='D';
     itoa(pin-JSH_PORTD_OFFSET,&result[1],10);
+#if JSH_PORTE_OFFSET!=-1
   } else if (pin>=JSH_PORTE_OFFSET && pin<JSH_PORTE_OFFSET+JSH_PORTE_COUNT) {
     result[0]='E';
     itoa(pin-JSH_PORTE_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTF_OFFSET!=-1
   } else if (pin>=JSH_PORTF_OFFSET && pin<JSH_PORTF_OFFSET+JSH_PORTF_COUNT) {
     result[0]='F';
     itoa(pin-JSH_PORTF_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTG_OFFSET!=-1
   } else if (pin>=JSH_PORTG_OFFSET && pin<JSH_PORTG_OFFSET+JSH_PORTG_COUNT) {
     result[0]='G';
     itoa(pin-JSH_PORTG_OFFSET,&result[1],10);
+#endif
+#if JSH_PORTH_OFFSET!=-1
   } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
     result[0]='H';
     itoa(pin-JSH_PORTH_OFFSET,&result[1],10);
+#endif
   } else {
     strncpy(result, "UNKNOWN", 8);
   }
@@ -1198,7 +1219,7 @@ bool jshPinInput(Pin pin) {
 
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
-  if (pin<0 || pin >= JSH_PIN_COUNT || pinInfo[pin].analog==JSH_ANALOG_NONE) {
+  if (pin >= JSH_PIN_COUNT /* inc PIN_UNDEFINED */ || pinInfo[pin].analog==JSH_ANALOG_NONE) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
   }
@@ -1350,7 +1371,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   if (value<0) value=0;
   if (value>1) value=1;
   JshPinFunction func = 0;
-  if (pin>=0 && pin < JSH_PIN_COUNT) {
+  if (jshIsPinValid(pin)) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
@@ -1537,7 +1558,7 @@ Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction fun
       if ((pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
           (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
         return i;
-  return -1;
+  return PIN_UNDEFINED;
 }
 
 const char *jshPinFunctionInfoToString(JshPinFunction device, JshPinFunction info) {
@@ -1572,15 +1593,15 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   bool findAllPins = true;
   int i;
   for (i=0;i<count;i++)
-    if (pins[i]>=0) findAllPins=false;
+    if (jshIsPinValid(pins[i])) findAllPins=false;
   // now try and find missing pins
   if (findAllPins)
     for (i=0;i<count;i++)
-      if (pins[i]<0)
+      if (!jshIsPinValid(pins[i]))
         pins[i] = findPinForFunction(device, functions[i]);
   // now find pin functions
   for (i=0;i<count;i++)
-    if (pins[i]>=0) {
+    if (jshIsPinValid(pins[i])) {
       // try and find correct pin
       JshPinFunction fType = getPinFunctionForPin(pins[i], device);
       // print info about what pins are supported
@@ -1594,7 +1615,7 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   void *ptr = setDeviceClockCmd(device, ENABLE);
   // now set up correct states
   for (i=0;i<count;i++)
-      if (pins[i]>=0) {
+      if (jshIsPinValid(pins[i])) {
         //pinState[pins[i]] = functions[i];
         jshPinSetFunction(pins[i], functions[i]);
       }
@@ -2276,7 +2297,7 @@ void _utilTimerSetPinStateAndReload() {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
       int j;
       for (j=0;j<UTILTIMERTASK_PIN_COUNT;j++) {
-        if (task->pins[j]<0) break;
+        if (task->pins[j] == PIN_UNDEFINED) break;
         jshPinSetValue(task->pins[j], (task->value >> j)&1);
       }          
       utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
@@ -2390,12 +2411,12 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
   while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < time)
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
 
-  if (utilTimerTasks[insertPos].time==time && utilTimerTasks[insertPos].pins[UTILTIMERTASK_PIN_COUNT-1]==-1) {
+  if (utilTimerTasks[insertPos].time==time && utilTimerTasks[insertPos].pins[UTILTIMERTASK_PIN_COUNT-1]==PIN_UNDEFINED) {
     // TODO: can we modify the call to jshPinOutputAtTime to do this without the seek with interrupts disabled?
     // if the time is correct, and there is a free pin...
     int i;
     for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-      if (utilTimerTasks[insertPos].pins[i]==-1) {
+      if (utilTimerTasks[insertPos].pins[i]==PIN_UNDEFINED) {
         utilTimerTasks[insertPos].pins[i] = pin;
         if (value) 
           utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value | (uint8_t)(1 << i);
@@ -2418,7 +2439,7 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
     //jsiConsolePrint("Time is ");jsiConsolePrintInt(utilTimerTasks[insertPos].time);jsiConsolePrint("\n");
     utilTimerTasks[insertPos].pins[0] = pin;
     for (i=1;i<UTILTIMERTASK_PIN_COUNT;i++)
-      utilTimerTasks[insertPos].pins[i] = -1;
+      utilTimerTasks[insertPos].pins[i] = PIN_UNDEFINED;
     utilTimerTasks[insertPos].value = value?0xFF:0;
     utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
     //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");

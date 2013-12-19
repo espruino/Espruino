@@ -49,13 +49,11 @@ Pin jshGetPinFromString(const char *s);
 void jshGetPinString(char *result, Pin pin);
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
 static inline Pin jshGetPinFromVar(JsVar *pinv) {
-  Pin pin=-1;
   if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    pin = jshGetPinFromString(&pinv->varData.str[0]);
+    return jshGetPinFromString(&pinv->varData.str[0]);
   } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
-    pin = (Pin)jsvGetInteger(pinv);
-  }
-  return pin;
+    return (Pin)jsvGetInteger(pinv);
+  } else return PIN_UNDEFINED;
 }
 
 static inline Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
@@ -145,8 +143,8 @@ typedef struct {
 
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
-  inf->pinRX    = -1;
-  inf->pinTX    = -1;
+  inf->pinRX    = PIN_UNDEFINED;
+  inf->pinTX    = PIN_UNDEFINED;
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
@@ -183,9 +181,9 @@ typedef struct {
 } PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 1000000;
-  inf->pinSCK = -1;
-  inf->pinMISO = -1;
-  inf->pinMOSI = -1;
+  inf->pinSCK = PIN_UNDEFINED;
+  inf->pinMISO = PIN_UNDEFINED;
+  inf->pinMOSI = PIN_UNDEFINED;
   inf->spiMode = SPIF_SPI_MODE_0;
 }
 
@@ -208,8 +206,8 @@ typedef struct {
   // timeout?
 } PACKED_FLAGS JshI2CInfo;
 static inline void jshI2CInitInfo(JshI2CInfo *inf) {
-  inf->pinSCL = -1;
-  inf->pinSDA = -1;
+  inf->pinSCL = PIN_UNDEFINED;
+  inf->pinSDA = PIN_UNDEFINED;
   inf->slaveAddr = (char)-1; // master
 }
 /** Set up I2C, if pins are -1 they will be guessed */

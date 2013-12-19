@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jspin.h"
 
 void jswrap_spi_setup(JsVar *parent, JsVar *options);
 JsVar *jswrap_spi_send(JsVar *parent, JsVar *data, Pin nss_pin);

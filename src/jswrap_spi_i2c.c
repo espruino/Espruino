@@ -133,7 +133,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   JsVar *dst = 0;
 
   // assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, false);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
   // send data
   if (jsvIsNumeric(srcdata)) {
@@ -209,7 +209,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   }
 
   // de-assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, true);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
   return dst;
 }
 
@@ -270,7 +270,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   }
 
   // assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, false);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
   // send data
   if (jsvIsNumeric(srcdata)) {
@@ -291,7 +291,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   }
 
   // de-assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, true);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
   jshSPISet16(device, false); // back to 8 bit
 }
 
@@ -323,7 +323,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   }
 
   // assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, false);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
   // send data
   if (jsvIsNumeric(srcdata)) {
@@ -344,7 +344,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   }
 
   // de-assert NSS
-  if (nss_pin>=0) jshPinOutput(nss_pin, true);
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
   jshSPISet16(device, false); // back to 8 bit
 }
 

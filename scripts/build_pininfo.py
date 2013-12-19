@@ -85,7 +85,7 @@ for pin in pins:
       adc = function[3:inpos]
       channel = function[inpos+3:]
       analog = "JSH_ANALOG"+adc+"|JSH_ANALOG_CH"+channel;
-  function = pin["jshFunctions"]
+  functions = pin["jshFunctions"]
   while len(functions)<pinInfoFunctionCount: functions.append("0")
 
   writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+", JSH_PIN"+pin["num"]+", "+analog+", "+', '.join(functions)+" },")

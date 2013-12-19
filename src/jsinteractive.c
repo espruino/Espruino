@@ -347,12 +347,12 @@ void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
   else
     business &= (JsiBusyDevice)~device;
 
-  if (pinBusyIndicator >= 0)
+  if (pinBusyIndicator != PIN_UNDEFINED)
     jshPinOutput(pinBusyIndicator, business!=0);
 }
 
 void jsiSetSleep(bool isSleep) {
-  if (pinSleepIndicator >= 0)
+  if (pinSleepIndicator != PIN_UNDEFINED)
     jshPinOutput(pinSleepIndicator, isSleep);
 }
 
