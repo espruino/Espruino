@@ -34,6 +34,7 @@
 
 
 #include "platform_config.h"
+#include "jsutils.h"
 #include "diskio.h"
 
 
@@ -254,13 +255,13 @@ static inline socket_state_t socket_wp_cp_state(void)
 
 static inline BOOL socket_is_empty( socket_state_t st )
 {
-	st = st;
+	NOT_USED(st);
 	return FALSE; /* fake inserted */
 }
 
 static inline BOOL socket_is_write_protected( socket_state_t st )
 {
-	st = st;
+    NOT_USED(st);
 	return FALSE; /* fake not protected */
 }
 
@@ -304,7 +305,7 @@ static int chk_power(void)		/* Socket power state: 0=off, 1=on */
 
 static void card_power(BYTE on)
 {
-	on=on;
+  NOT_USED(on);
 }
 
 static int chk_power(void) 
