@@ -277,6 +277,12 @@ typedef enum LEX_TYPES {
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;
 
+// To handle variable size bit fields
+#define BITFIELD_DECL(BITFIELD, N) unsigned int BITFIELD[(N+31)/32]
+#define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
+#define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (unsigned int)~(1 << ((N)&31))) | (unsigned int)((VALUE)?(1 << ((N)&31)):0)  )
+
+
 static inline bool isWhitespace(char ch) {
     return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
 }

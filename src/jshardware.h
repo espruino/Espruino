@@ -20,8 +20,9 @@
 #include "jsutils.h"
 #include "jsvar.h"
 #include "jsdevices.h"
+#include "jspin.h"
 #ifndef LINUX
-#include "jshardware_pininfo.h"
+#include "jspininfo.h"
 #else
 #include <inttypes.h>
 #endif

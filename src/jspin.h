@@ -1,24 +1,21 @@
-#ifndef JSHARDWARE_PININFO
-#define JSHARDWARE_PININFO
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Utilities and definitions for handling Pins
+ * ----------------------------------------------------------------------------
+ */
+
+#ifndef JSPIN_H
+#define JSPIN_H
 
 #include "jsutils.h"
-
-extern const int JSH_PORTA_COUNT;
-extern const int JSH_PORTB_COUNT;
-extern const int JSH_PORTC_COUNT;
-extern const int JSH_PORTD_COUNT;
-extern const int JSH_PORTE_COUNT;
-extern const int JSH_PORTF_COUNT;
-extern const int JSH_PORTG_COUNT;
-extern const int JSH_PORTH_COUNT;
-extern const int JSH_PORTA_OFFSET;
-extern const int JSH_PORTB_OFFSET;
-extern const int JSH_PORTC_OFFSET;
-extern const int JSH_PORTD_OFFSET;
-extern const int JSH_PORTE_OFFSET;
-extern const int JSH_PORTF_OFFSET;
-extern const int JSH_PORTG_OFFSET;
-extern const int JSH_PORTH_OFFSET;
 
 typedef enum {
   JSH_PORT_NONE,
@@ -141,6 +138,7 @@ typedef enum {
   JSH_USARTMAX = JSH_USART6,
 
   // ---------------------------- JSH_MASK_INFO
+
   JSH_TIMER_CH1 = 0x0000,
   JSH_TIMER_CH2 = 0x1000,
   JSH_TIMER_CH3 = 0x2000,
@@ -184,16 +182,4 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)<=JSH_SPIMAX))
 
 
-#define JSH_PININFO_FUNCTIONS 6
-
-typedef struct JshPinInfo {
-  JsvPinInfoPort port;
-  JsvPinInfoPin pin;
-  JsvPinInfoAnalog analog; // TODO: maybe we don't need to store analogs separately
-  JshPinFunction functions[JSH_PININFO_FUNCTIONS];
-} PACKED_FLAGS JshPinInfo;
-
-extern const int pinInfoCount;
-extern const JshPinInfo pinInfo[];
-
-#endif //JSHARDWARE_PININFO
+#endif //JSPIN_H

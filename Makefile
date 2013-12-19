@@ -732,7 +732,7 @@ endif
 
 ifdef ARM
 LINKER_FILE = gen/linker.ld
-PININFOFILE=$(ROOT)/gen/jshardware_pininfo.c
+PININFOFILE=$(ROOT)/gen/jspininfo
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
@@ -751,7 +751,7 @@ export CCPREFIX=arm-none-eabi-
 endif # ARM
 
 ifdef PININFOFILE
-SOURCES += $(PININFOFILE) 
+SOURCES += $(PININFOFILE).c
 endif
 
 ifdef CARAMBOLA
@@ -842,9 +842,9 @@ $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
 
 ifdef PININFOFILE
-$(PININFOFILE): scripts/build_pininfo.py 
+$(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py 
 	@echo Generating pin info
-	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE)
+	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
 $(LINKER_FILE): scripts/build_linker.py 

@@ -28,7 +28,6 @@
 #endif
 #include "jsinteractive.h"
 #include "jshardware.h"
-#include "jshardware_pininfo.h"
 
 extern void _VECTOR_TABLE;
 

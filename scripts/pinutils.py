@@ -19,7 +19,6 @@ import json;
 import sys;
 import os;
 
-MAX_ALLOWED_FUNCTIONS = 6
 ALLOWED_PORTS = "ABCDEFGH";
 ALLOWED_FUNCTIONS = {}
 CLASSES = {}

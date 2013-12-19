@@ -32,12 +32,14 @@ import pinutils;
 
 # Now scan AF file
 print "Script location "+scriptdir
-if len(sys.argv)!=3:
-  print "ERROR, USAGE: build_pininfo.py BOARD_NAME PININFO_FILENAME"
+if len(sys.argv)!=4:
+  print "ERROR, USAGE: build_pininfo.py BOARD_NAME jspininfo.c jspininfo.h"
   exit(1)
 boardname = sys.argv[1]
-pininfoFilename = sys.argv[2] 
-print "PININFO_FILENAME"+pininfoFilename
+pininfoSourceFilename = sys.argv[2]
+pininfoHeaderFilename = sys.argv[3]  
+print "PININFO_SOURCE_FILENAME"+pininfoSourceFilename
+print "PININFO_HEADER_FILENAME"+pininfoHeaderFilename
 print "BOARD "+boardname
 # import the board def
 
@@ -50,15 +52,31 @@ pins = board.get_pins()
 
 # -----------------------------------------------------------------------------------------
 
-pininfoFile = open(pininfoFilename, 'w')
-def writepininfo(s): pininfoFile.write(s+"\n");
+pininfoSourceFile = open(pininfoSourceFilename, 'w')
+pininfoHeaderFile = open(pininfoHeaderFilename, 'w')
+def writesource(s): pininfoSourceFile.write(s+"\n");
+def writeheader(s): pininfoHeaderFile.write(s+"\n");
 
-writepininfo("// auto-generated pin info file")
-writepininfo("// for board "+boardname)
-writepininfo("#include \"jshardware_pininfo.h\"")
-writepininfo("")
-writepininfo("const int pinInfoCount = "+str(len(pins))+";")
-writepininfo("const JshPinInfo pinInfo[] = {")
+# -----------------------------------------------------------------------------------------
+
+pinInfoFunctionCount = 0
+# work out pin functions (and how many we need)
+for pin in pins:
+  functions = [ ]
+  for afname in pin["functions"]:
+    af = pin["functions"][afname]
+    if afname in pinutils.ALLOWED_FUNCTIONS:
+      functions.append("JSH_AF"+str(af)+"|"+pinutils.ALLOWED_FUNCTIONS[afname]);
+  pin["jshFunctions"] = functions
+  if len(functions)>pinInfoFunctionCount: pinInfoFunctionCount = len(functions)
+
+
+writesource("// auto-generated pin info file")
+writesource("// for board "+boardname)
+writesource("#include \"jspininfo.h\"")
+writesource("")
+writesource("const JshPinInfo pinInfo[JSH_PIN_COUNT] = {")
+
 for pin in pins:
   analog = "JSH_ANALOG_NONE";
   for function in pin["functions"]:
@@ -67,20 +85,11 @@ for pin in pins:
       adc = function[3:inpos]
       channel = function[inpos+3:]
       analog = "JSH_ANALOG"+adc+"|JSH_ANALOG_CH"+channel;
+  function = pin["jshFunctions"]
+  while len(functions)<pinInfoFunctionCount: functions.append("0")
 
-  functions = [ ]
-  for afname in pin["functions"]:
-    af = pin["functions"][afname]
-    if afname in pinutils.ALLOWED_FUNCTIONS:
-      functions.append("JSH_AF"+str(af)+"|"+pinutils.ALLOWED_FUNCTIONS[afname]);
-
-  if len(functions)>pinutils.MAX_ALLOWED_FUNCTIONS:
-    print "ERROR: Too many functions for pin "+pin["name"]+" ("+str(len(functions))+" functions)";
-    exit(1)
-  while len(functions)<pinutils.MAX_ALLOWED_FUNCTIONS: functions.append("0")
-
-  writepininfo("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+", JSH_PIN"+pin["num"]+", "+analog+", "+', '.join(functions)+" },")
-writepininfo("};")
+  writesource("/* "+pin["name"].ljust(4)+" */ { JSH_PORT"+pin["port"]+", JSH_PIN"+pin["num"]+", "+analog+", "+', '.join(functions)+" },")
+writesource("};")
 
 portinfo = {}
 
@@ -99,9 +108,29 @@ if boardname=="OLIMEXINO_STM32":
     elif port=="D": portinfo[port] = { 'count' : 39, 'offset' : 0 }
     else: portinfo[port] = { 'count' : 0, 'offset' : -1 }   
 
-for port in pinutils.ALLOWED_PORTS:
-  writepininfo("const int JSH_PORT"+port+"_COUNT = "+str(portinfo[port]['count'])+";")
-for port in pinutils.ALLOWED_PORTS:
-  writepininfo("const int JSH_PORT"+port+"_OFFSET = "+str(portinfo[port]['offset'])+";")
+writesource("")
 
+
+writeheader("// auto-generated pin info file")
+writeheader("// for board "+boardname)
+writeheader("")
+writeheader("#include \"jspin.h\"")
+writeheader("")
+writeheader("#define JSH_PIN_COUNT "+str(len(pins)));
+writeheader("")
+for port in pinutils.ALLOWED_PORTS:
+  writeheader("#define JSH_PORT"+port+"_COUNT "+str(portinfo[port]['count']))
+for port in pinutils.ALLOWED_PORTS:
+  writeheader("#define JSH_PORT"+port+"_OFFSET "+str(portinfo[port]['offset']))
+writeheader("")
+writeheader("#define JSH_PININFO_FUNCTIONS "+str(pinInfoFunctionCount))
+writeheader("")
+writeheader("typedef struct JshPinInfo {")
+writeheader("  JsvPinInfoPort port;")
+writeheader("  JsvPinInfoPin pin;")
+writeheader("  JsvPinInfoAnalog analog; // TODO: maybe we don't need to store analogs separately")
+writeheader("  JshPinFunction functions[JSH_PININFO_FUNCTIONS];")
+writeheader("} PACKED_FLAGS JshPinInfo;")
+writeheader("")
+writeheader("extern const JshPinInfo pinInfo[JSH_PIN_COUNT];");
 

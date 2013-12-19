@@ -24,7 +24,6 @@
 #endif
 
 #include "jshardware.h"
-#include "jshardware_pininfo.h"
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -53,7 +52,7 @@
 Pin watchedPins[16];
 
 // NOTE: Only works up to 64 IO pins
-unsigned long long jshPinStateIsManual = 0;
+BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 #ifdef STM32F4
 #define WAIT_UNTIL_N_CYCLES 10000000
@@ -525,7 +524,7 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 
   Pin pin;
   int i,n=0;
-  for (pin=0;pin<pinInfoCount;pin++) {
+  for (pin=0;pin<JSH_PIN_COUNT;pin++) {
     bool has = false;
 #ifdef STM32F1
     int af = 0;
@@ -601,14 +600,11 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 bool jshGetPinStateIsManual(Pin pin) { 
-  return (jshPinStateIsManual>>pin)&1; 
+  return BITFIELD_GET(jshPinStateIsManual, pin);
 }
 
-void jshSetPinStateIsManual(Pin pin, bool manual) { 
-  if (manual)
-    jshPinStateIsManual = jshPinStateIsManual | (1ULL<<pin);
-  else
-    jshPinStateIsManual = jshPinStateIsManual & ~(1ULL<<pin);
+void jshSetPinStateIsManual(Pin pin, bool manual) {
+  BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
 
 inline void jshPinSetState(Pin pin, JshPinState state) {
@@ -739,7 +735,7 @@ inline bool jshPinGetValue(Pin pin) {
 }
 
 bool jshIsPinValid(Pin pin) {
-  return pin>=0 && pin < pinInfoCount && pinInfo[pin].port!=JSH_PORT_NONE;
+  return pin>=0 && pin < JSH_PIN_COUNT && pinInfo[pin].port!=JSH_PORT_NONE;
 }
 
 
@@ -1202,7 +1198,7 @@ bool jshPinInput(Pin pin) {
 
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
-  if (pin<0 || pin >= pinInfoCount || pinInfo[pin].analog==JSH_ANALOG_NONE) {
+  if (pin<0 || pin >= JSH_PIN_COUNT || pinInfo[pin].analog==JSH_ANALOG_NONE) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
   }
@@ -1354,7 +1350,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   if (value<0) value=0;
   if (value>1) value=1;
   JshPinFunction func = 0;
-  if (pin>=0 && pin < pinInfoCount) {
+  if (pin>=0 && pin < JSH_PIN_COUNT) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
@@ -1467,7 +1463,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 }
 
 void jshPinWatch(Pin pin, bool shouldWatch) {
-  if (pin>=0 && pin < pinInfoCount && pinInfo[pin].port!=JSH_PORT_NONE) {
+  if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
     if (pinInterrupt[idx].pin>PININTERRUPTS) jsError("Interrupt already used");
@@ -1499,7 +1495,7 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
 bool jshGetWatchedPinState(IOEventFlags device) {
   int exti = IOEVENTFLAGS_GETTYPE(device) - EV_EXTI0;
   Pin pin = watchedPins[exti];
-  if (pin>=0 && pin < pinInfoCount)
+  if (jshIsPinValid(pin))
     return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin));
   return false;
 }
@@ -1510,7 +1506,7 @@ bool jshIsEventForPin(IOEvent *event, Pin pin) {
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE getPinFunctionForPin(Pin pin, JshPinFunction functionType) {
-  if (pin<0 || pin>=pinInfoCount) return 0;
+  if (!jshIsPinValid(pin)) return 0;
   int i;
   for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
     if ((pinInfo[pin].functions[i]&JSH_MASK_TYPE) == functionType)
@@ -1529,14 +1525,14 @@ Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction fun
   Pin i;
   int j;
   // first, try and find the pin with an AF of 0 - this is usually the 'default'
-  for (i=0;i<pinInfoCount;i++)
+  for (i=0;i<JSH_PIN_COUNT;i++)
     for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
       if ((pinInfo[i].functions[j]&JSH_MASK_AF) == JSH_AF0 &&
           (pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
           (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
         return i;
   // otherwise just try and find anything
-  for (i=0;i<pinInfoCount;i++)
+  for (i=0;i<JSH_PIN_COUNT;i++)
     for (j=0;j<JSH_PININFO_FUNCTIONS;j++)
       if ((pinInfo[i].functions[j]&JSH_MASK_TYPE) == functionType &&
           (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
@@ -2331,7 +2327,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- SOFTWARE PULSE
   /* JsSysTime ticks = jshGetTimeFromMilliseconds(time);
  //jsPrintInt(ticks);jsPrint("\n");
-  if (pin>=0 && pin < pinInfoCount && pinInfo[pin].port!=JSH_PORT_NONE) {
+  if (jshIsPinValid(pin) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
     JsSysTime starttime = jshGetSystemTime();
@@ -2345,7 +2341,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
     jshPinSetValue(pin, !value);
   } else jsError("Invalid pin!"); */
   // ---- USE TIMER FOR PULSE
-  if (!(pin>=0 && pin < pinInfoCount && pinInfo[pin].port!=JSH_PORT_NONE)) {
+  if (!jshIsPinValid(pin)) {
        jsError("Invalid pin!");
        return;
   }
