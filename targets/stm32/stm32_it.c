@@ -256,7 +256,7 @@ static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
      /* Clear the USART Receive interrupt */
      USART_ClearITPendingBit(USART, USART_IT_RXNE);
      /* Read one byte from the receive data register */
-     jshPushIOCharEvent(device, USART_ReceiveData(USART));
+     jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
    }
    /* If overrun condition occurs, clear the ORE flag and recover communication */
    if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
@@ -267,7 +267,7 @@ static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
      /* If we have other data to send, send it */
      int c = jshGetCharToTransmit(device);
      if (c >= 0) {
-       USART_SendData(USART, c);
+       USART_SendData(USART, (uint16_t)c);
      } else
        USART_ITConfig(USART, USART_IT_TXE, DISABLE);
    }
