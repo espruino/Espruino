@@ -410,6 +410,17 @@ void jsiSoftInit() {
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
+  // Now run initialisation code
+  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, false);
+  if (initName && initName->firstChild) {
+    //jsiConsolePrint("Running initialisation code...\n");
+    JsVar *initCode = jsvLock(initName->firstChild);
+    jsvUnLock(jspEvaluateVar(&p, initCode, 0));
+    jsvUnLock(initCode);
+    jsvRemoveChild(p.root, initName);
+  }
+  jsvUnLock(initName);
+
   // Check any existing watches and set up interrupts for them
   if (watchArray) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
@@ -441,16 +452,6 @@ void jsiSoftInit() {
     }
     jsvUnLock(timerArrayPtr);
   }
-  // Now run initialisation code
-  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, false);
-  if (initName && initName->firstChild) {
-    //jsiConsolePrint("Running initialisation code...\n");
-    JsVar *initCode = jsvLock(initName->firstChild);
-    jsvUnLock(jspEvaluateVar(&p, initCode, 0));
-    jsvUnLock(initCode);
-    jsvRemoveChild(p.root, initName);
-  }
-  jsvUnLock(initName);
   // And look for onInit function
   JsVar *onInit = jsvFindChildFromString(p.root, JSI_ONINIT_NAME, false);
   if (onInit && onInit->firstChild) {

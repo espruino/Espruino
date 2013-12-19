@@ -6,6 +6,7 @@
             Fix flash write on most 10XxB boards
             Fix PWM output on all STM32 boards
 	    General hardware tidy in prep for more intelligent device management
+            Run initialisation code before setWatch, to make sure pullup/down is set beforehand
 
      1v43 : Added 'Modules' object with support for adding/removing cached modules
             Allow product ID to be changed via Makefile
