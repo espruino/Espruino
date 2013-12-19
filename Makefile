@@ -245,7 +245,7 @@ LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
 OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
 BOARD=CARAMBOLA
-DEFINES += -DCARAMBOLA
+DEFINES += -DCARAMBOLA -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
 USE_FILESYSTEM=1
 USB=1
@@ -253,7 +253,7 @@ USE_GRAPHICS=1
 USE_NET=1
 else ifdef RASPBERRYPI
 BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI
+DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
 USE_FILESYSTEM=1
 USB=1
@@ -322,6 +322,7 @@ src/jslex.c \
 src/jsvar.c \
 src/jsutils.c \
 src/jsparse.c \
+src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
 $(WRAPPERFILE)
@@ -732,7 +733,6 @@ endif
 
 ifdef ARM
 LINKER_FILE = gen/linker.ld
-PININFOFILE=$(ROOT)/gen/jspininfo
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
@@ -750,6 +750,7 @@ OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 export CCPREFIX=arm-none-eabi-
 endif # ARM
 
+PININFOFILE=$(ROOT)/gen/jspininfo
 ifdef PININFOFILE
 SOURCES += $(PININFOFILE).c
 endif

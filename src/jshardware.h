@@ -43,32 +43,12 @@ JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 /// Convert ticks to a time in Milliseconds
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
-/// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
-Pin jshGetPinFromString(const char *s);
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
-void jshGetPinString(char *result, Pin pin);
-/// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
-static inline Pin jshGetPinFromVar(JsVar *pinv) {
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    return jshGetPinFromString(&pinv->varData.str[0]);
-  } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
-    return (Pin)jsvGetInteger(pinv);
-  } else return PIN_UNDEFINED;
-}
-
-static inline Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
-  Pin pin = jshGetPinFromVar(pinv);
-  jsvUnLock(pinv);
-  return pin;
-}
-
 // software IO functions...
 void jshInterruptOff();
 void jshInterruptOn();
 void jshDelayMicroseconds(int microsec);
 void jshPinSetValue(Pin pin, bool value);
 bool jshPinGetValue(Pin pin);
-bool jshIsPinValid(Pin pin); // is the specific pin actually valid?
 // ------
 
 typedef enum {

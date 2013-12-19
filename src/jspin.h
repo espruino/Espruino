@@ -16,6 +16,7 @@
 #define JSPIN_H
 
 #include "jsutils.h"
+#include "jsvar.h"
 
 typedef unsigned char Pin; ///< for specifying pins for hardware
 #define PIN_UNDEFINED 0xFF
@@ -49,6 +50,24 @@ typedef enum {
   JSH_PIN13,
   JSH_PIN14,
   JSH_PIN15,
+#ifndef ARM
+  JSH_PIN16,
+  JSH_PIN17,
+  JSH_PIN18,
+  JSH_PIN19,
+  JSH_PIN20,
+  JSH_PIN21,
+  JSH_PIN22,
+  JSH_PIN23,
+  JSH_PIN24,
+  JSH_PIN25,
+  JSH_PIN26,
+  JSH_PIN27,
+  JSH_PIN28,
+  JSH_PIN29,
+  JSH_PIN30,
+  JSH_PIN31,
+#endif
 } PACKED_FLAGS JsvPinInfoPin;
 
 typedef enum {
@@ -184,5 +203,26 @@ typedef enum {
   (((F)&JSH_MASK_TYPE)>=JSH_SPI1) && \
   (((F)&JSH_MASK_TYPE)<=JSH_SPIMAX))
 
+bool jshIsPinValid(Pin pin); ///< is the specific pin actually valid?
+
+/// Given a string, convert it to a pin ID (or -1 if it doesn't exist)
+Pin jshGetPinFromString(const char *s);
+/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
+void jshGetPinString(char *result, Pin pin);
+
+/// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
+static inline Pin jshGetPinFromVar(JsVar *pinv) {
+  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
+    return jshGetPinFromString(&pinv->varData.str[0]);
+  } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
+    return (Pin)jsvGetInteger(pinv);
+  } else return PIN_UNDEFINED;
+}
+
+static inline Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
+  Pin pin = jshGetPinFromVar(pinv);
+  jsvUnLock(pinv);
+  return pin;
+}
 
 #endif //JSPIN_H

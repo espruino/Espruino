@@ -15,12 +15,12 @@
 
 import pinutils;
 info = {
- 'name' : "Raspberry Pi",
+ 'name' : "Carambola",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_raspberrypi',
 };
 chip = {
-  'part' : "RASPBERRYPI",
+  'part' : "CARAMBOLA",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,
@@ -42,14 +42,13 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31)  
-  pinutils.findpin(pins, "PD0", True)["functions"]["I2C1_SDA"]=0; # Rev 1
-  pinutils.findpin(pins, "PD1", True)["functions"]["I2C1_SCL"]=0; # Rev 1
-  pinutils.findpin(pins, "PD2", True)["functions"]["I2C1_SDA"]=0; # Rev 2
-  pinutils.findpin(pins, "PD3", True)["functions"]["I2C1_SCL"]=0; # Rev 2
-  pinutils.findpin(pins, "PD9", True)["functions"]["SPI1_MISO"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD11", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["UART1_TX"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["UART1_RX"]=0;
+  pins = pinutils.generate_pins(0,14)  
+  pinutils.findpin(pins, "PD1", True)["functions"]["I2C_SDA"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["I2C_SCK"]=0;
+  pinutils.findpin(pins, "PD4", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD5", True)["functions"]["SPI1_MOSI"]=0;
+  pinutils.findpin(pins, "PD6", True)["functions"]["SPI1_MISO"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["UART1_TX"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["UART1_RX"]=0;
+
   return pins

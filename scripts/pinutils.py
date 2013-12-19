@@ -174,6 +174,13 @@ def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset)
 #    print pin["name"]+" : "+', '.join(pin["functions"])
   return pins
 
+# Create a simple list of pins
+def generate_pins(min_pin, max_pin):
+  pins = []
+  for n in range(min_pin, max_pin+1):
+    findpin(pins, "PD"+str(n), False)
+  return pins
+
 # fill in gaps - eg. put A2 in A0,A1,A3,A4
 def fill_gaps_in_pin_list(pins):
   # first sort
