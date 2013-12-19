@@ -60,7 +60,7 @@ devices = {
   'BTN1' : { 'pin' : 'D38' }, # 'C9'
   'USB' : { 'pin_disc' :  'D39',
             'pin_dm' : 'D40',
-            'pin_bp' : 'D41' 
+            'pin_dp' : 'D41' 
           },
   'SD' :  { 'pin_cs' :  'D25',#'D2',
             'pin_di' :  'D34',#'B15',

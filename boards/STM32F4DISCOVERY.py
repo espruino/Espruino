@@ -53,7 +53,7 @@ devices = {
   'BTN1' : { 'pin' : 'A0' },
   'USB' : { 'pin_otg_pwr' : 'C0',
             'pin_dm' : 'A11',
-            'pin_bp' : 'A12',
+            'pin_dp' : 'A12',
             'pin_vbus' : 'A9',
             'pin_id' : 'A10', },
   'MEMS' :  {  'device' : 'LIS302DL',

@@ -55,7 +55,7 @@ devices = {
   'BTN2' : { 'pin' : 'C1' }, #TODO: Make pinMode(BTN2, "input_pullup");
   'USB' : { 'pin_disc' :  'D2',
             'pin_dm' : 'A11',
-            'pin_bp' : 'A12' },
+            'pin_dp' : 'A12' },
 };
 #TODO: Calculate this numbers..
 board_css = """

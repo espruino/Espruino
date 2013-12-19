@@ -58,7 +58,7 @@ devices = {
 
   'USB' : { 'pin_otg_pwr' : 'C0',#
             'pin_dm' : 'A11',
-            'pin_bp' : 'A12',
+            'pin_dp' : 'A12',
             'pin_vbus' : 'A9',#
             'pin_id' : 'A10', },#
   'GYRO' : { 'device' : 'L3GD20',

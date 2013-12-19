@@ -54,7 +54,7 @@ devices = {
   'BTN2' : { 'pin' : 'B2' }, # TODO inverted?
   'USB' : { 'pin_disc' :  'B7',
             'pin_dm' : 'A11',
-            'pin_bp' : 'A12' },
+            'pin_dp' : 'A12' },
   'SD' :  { 'pin_cmd' :  'D2',
             'pin_cd' :  'D3',
             'pin_d0' :  'C8',

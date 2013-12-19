@@ -50,7 +50,7 @@ devices = {
   'LED2' : { 'pin' : 'G14' }, # red
   'BTN1' : { 'pin' : 'A0' },
   'USB' : { 'pin_dm' : 'B14',
-            'pin_bp' : 'B15',
+            'pin_dp' : 'B15',
             'pin_vbus' : 'B13',
             'pin_id' : 'B12', 
             'pin_pso' : 'C4',  # Power supply enable
