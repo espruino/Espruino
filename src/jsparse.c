@@ -214,7 +214,7 @@ void jspeiLoadScopesFromVar(JsVar *arr) {
 }
 // -----------------------------------------------
 #ifdef ARM
-extern void _end;
+extern int _end;
 #endif
 bool jspCheckStackPosition() {
 #ifdef ARM
