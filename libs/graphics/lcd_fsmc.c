@@ -17,7 +17,6 @@
 
 #include "platform_config.h"
 #include "jshardware.h"
-#include "jshardware_pininfo.h"
 #include "jsinteractive.h" // for debug
 #include "graphics.h"
 
