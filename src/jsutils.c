@@ -178,6 +178,7 @@ void exit(int errcode) {dst;
 int __errno;
 
 void exit(int errcode) {
+    NOT_USED(errcode);
     jsiConsolePrint("EXIT CALLED.\n");
     while (1);
 }
@@ -223,9 +224,9 @@ void *memcpy(void *dst, const void *src, size_t size) {
 
 void *memset(void *dst, int val, size_t size) {
   unsigned char *d = (unsigned char*)dst;
-  int i;
+  unsigned int i;
   for (i=0;i<size;i++)
-    d[i]=val;
+    d[i]=(unsigned char)val;
   return dst;
 }
 
@@ -387,7 +388,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
       case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
       case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
       case 'L': {
-        int rad = 10;
+        unsigned int rad = 10;
         if (*fmt=='x') { rad=16; fmt++; }
         itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
       } break;
