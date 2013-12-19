@@ -736,7 +736,12 @@ inline bool jshPinGetValue(Pin pin) {
 
 // ----------------------------------------------------------------------------
 void jshInit() {
-  /* Enable UART and  GPIOx Clock */
+  int i;
+  // reset some vars
+  for (i=0;i<16;i++)
+    watchedPins[i] = PIN_UNDEFINED;
+
+  // enable clocks
  #if defined(STM32F3)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
   RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
@@ -1365,7 +1370,7 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
 #else
     GPIO_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
 #endif
-    watchedPins[pinInfo[pin].pin] = pin;
+    watchedPins[pinInfo[pin].pin] = shouldWatch ? pin : PIN_UNDEFINED;
 
     EXTI_InitTypeDef s;
     EXTI_StructInit(&s);
@@ -2023,20 +2028,24 @@ void jshSleep() {
     ADC_Cmd(ADC2, DISABLE); // ADC off
     ADC_Cmd(ADC3, DISABLE); // ADC off
 #ifdef USB
-//    PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
-    USB_Cable_Config(DISABLE); // turn off USB pull
+    //PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
 #endif
 
     /* Add EXTI for Serial port */
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
     /* add exti for USB */
-    // USB has 15k pull-down resistors - might be able to detect this
+    // USB has 15k pull-down resistors (and STM32 has 40k pull up)
+    Pin usbPin = JSH_PORTA_OFFSET+11;
+    Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
+    jshPinWatch(usbPin, true);
+    // -----------------------------------------------
     /* Request to enter STOP mode with regulator in low power mode*/
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
-    // recover
-    //jshPinWatch(JSH_PORTA_OFFSET+10, false);
-    //jshPinSetState(JSH_PORTA_OFFSET+10, JSHPINSTATE_USART_IN);
-
+    // -----------------------------------------------
+    // remove watches on pins
+    jshPinWatch(usbPin, false);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
+    // recover oscillator
     RCC_HSEConfig(RCC_HSE_ON);
     if( RCC_WaitForHSEStartUp() == SUCCESS) {
       RCC_PLLCmd(ENABLE);
@@ -2046,7 +2055,6 @@ void jshSleep() {
     }
 #ifdef USB
     //PowerOn(); // USB on
-    USB_Cable_Config(ENABLE); // turn on USB pull
 #endif
     //allowDeepSleep = false;
   } else
