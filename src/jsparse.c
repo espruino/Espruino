@@ -1832,7 +1832,7 @@ JsVar *jspeStatementFor() {
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
 #endif
-    bool loopCond;
+    bool loopCond = true;
     bool hasHadBreak = false;
 
     jsvUnLock(forStatement);
