@@ -98,39 +98,6 @@ JsSysTime jshGetSystemTime() {
 
 // ----------------------------------------------------------------------------
 
-Pin jshGetPinFromString(const char *s) {
-#ifdef SYSFS_GPIO_DIR
-  if ((s[0]=='D') && s[1]) { // first 6 are analogs
-    Pin pin = 127;
-    if (!s[2] && (s[1]>='0' && s[1]<='9')) { // D0-D9
-      pin = (Pin)(s[1]-'0');
-    } else if (!s[3] && (s[1]>='1' && s[1]<='3' && s[2]>='0' && s[2]<='9')) { // D1X-D3X
-      pin = (Pin)((s[1]-'0')*10 + (s[2]-'0'));
-    }
-    if (pin>=SYSFS_GPIO_MIN && pin<=SYSFS_GPIO_MAX)
-      return pin;
-  }
-#endif
-#ifndef CARAMBOLA
-  if (!strcmp(s,"D0")) return (Pin)0;
-  if (!strcmp(s,"D1")) return (Pin)1;
-  if (!strcmp(s,"D2")) return (Pin)2;
-  if (!strcmp(s,"D3")) return (Pin)3;
-  if (!strcmp(s,"LED1")) return (Pin)1; 
-  if (!strcmp(s,"LED2")) return (Pin)2; 
-  if (!strcmp(s,"LED3")) return (Pin)3; 
-  if (!strcmp(s,"LED4")) return (Pin)4; 
-  if (!strcmp(s,"BTN")) return (Pin)5; 
-#endif
-  return -1;
-}
-
-/** Write the pin name to a string. String must have at least 8 characters (to be safe) */
-void jshGetPinString(char *result, Pin pin) {
-  result[0]='D';
-  itoa(pin,&result[1],10);
-}
-
 bool jshPinInput(Pin pin) {
   bool value = false;
   if (jshIsPinValid(pin)) {
