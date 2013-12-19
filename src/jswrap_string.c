@@ -44,7 +44,7 @@ JsVar *jswrap_string_fromCharCode(JsVarInt code) {
   // We do this so we can handle '/0' in a string
   JsVar *r = jsvNewFromEmptyString();
   if (r) { // out of mem?
-    char ch = code;
+    char ch = (char)code;
     jsvAppendStringBuf(r, &ch, 1);
   }
   return r;

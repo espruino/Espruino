@@ -292,12 +292,12 @@ JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, J
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/
 JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
-  int i;
+  unsigned int i;
   JsVar **args = 0;
   size_t argC = 0;
 
   if (jsvIsArray(argsArray)) {
-    argC = jsvGetArrayLength(argsArray);
+    argC = (unsigned int)jsvGetArrayLength(argsArray);
     if (argC>64) argC=64; // sanity
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
 

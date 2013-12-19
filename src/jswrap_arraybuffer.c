@@ -95,7 +95,7 @@
 
 }*/
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
-  if (byteLength <= 0) {
+  if (byteLength <= 0 || byteLength>65535) {
     jsError("Invalid length for ArrayBuffer\n");
     return 0;
   }
@@ -103,7 +103,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
     jsError("ArrayBuffer too long\n");
     return 0;
   }
-  JsVar *arrData = jsvNewStringOfLength(byteLength);
+  JsVar *arrData = jsvNewStringOfLength((unsigned int)byteLength);
   if (!arrData) return 0;
   JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (!arr) {
@@ -114,7 +114,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   jsvUnLock(arrData);
   arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
   arr->varData.arraybuffer.byteOffset = 0;
-  arr->varData.arraybuffer.length = byteLength;
+  arr->varData.arraybuffer.length = (unsigned short)byteLength;
   return arr;
 }
 
@@ -288,7 +288,7 @@ JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, J
   int yidx = (int)y;
   JsVarFloat ay = y-yidx;
 
-  JsVarFloat findex = x + yidx*width;
+  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
   int idx = (int)findex;
   JsVarFloat ax = findex-idx;
 
