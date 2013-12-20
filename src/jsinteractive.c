@@ -527,6 +527,9 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
   if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     jsvAppendPrintf(str, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
+  if (allowDeepSleep) {
+      jsvAppendPrintf(str, "setDeepSleep(1);\n");
+    }
 
   jsiAppendSerialInitialisation(str, "USB", addCallbacks);
   int i;
