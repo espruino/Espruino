@@ -204,8 +204,8 @@ void jshLoadFromFlash();
 /// Returns true if flash contains something useful
 bool jshFlashContainsCode();
 
-/// Enter simple sleep mode (can be woken up by interrupts)
-void jshSleep();
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake);
 
 // ---------------------------------------------- LOW LEVEL
 #ifdef ARM

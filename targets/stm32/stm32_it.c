@@ -251,6 +251,14 @@ void EXTI15_10_IRQHandler(void) {
     }
 }
 
+void RTC_IRQHandler(void) {
+  RTC_ClearITPendingBit(RTC_IT_ALR);
+}
+
+void RTCAlarm_IRQHandler(void) {
+  EXTI_ClearITPendingBit(EXTI_Line17);
+}
+
 static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
      /* Clear the USART Receive interrupt */

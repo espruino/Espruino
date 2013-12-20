@@ -479,8 +479,8 @@ bool jshFlashContainsCode() {
   return f!=0;
 }
 
-/// Enter simple sleep mode (can be woken up by interrupts)
-void jshSleep() {
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake) {
   bool hasWatches = false;
 #ifdef SYSFS_GPIO_DIR
   Pin pin;
@@ -489,4 +489,5 @@ void jshSleep() {
 #endif
 
   usleep(hasWatches ? 1000 : (10*1000)); // don't sleep much if we have watches - we need to keep polling them
+  return true;
 }

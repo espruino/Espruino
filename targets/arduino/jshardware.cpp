@@ -208,8 +208,9 @@ bool jshFlashContainsCode() {
   return false;
 }
 
-/// Enter simple sleep mode (can be woken up by interrupts)
-void jshSleep() {
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake) {
+  return false;
 }
 
 void jshBitBang(Pin pin, JsVarFloat t0h, JsVarFloat t0l, JsVarFloat t1h, JsVarFloat t1l, JsVar *str) {
