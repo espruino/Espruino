@@ -1370,7 +1370,7 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
 #else
     GPIO_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
 #endif
-    watchedPins[pinInfo[pin].pin] = shouldWatch ? pin : PIN_UNDEFINED;
+    watchedPins[pinInfo[pin].pin] = (Pin)(shouldWatch ? pin : PIN_UNDEFINED);
 
     EXTI_InitTypeDef s;
     EXTI_StructInit(&s);
@@ -2022,29 +2022,38 @@ void jshSleep() {
 #endif*/
 
 #ifdef ESPRUINOBOARD
+  /* TODO:
+       Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
+       Check that we're not using EXTI 11 for something else
+       Check we're not using PWM/Utility timer as these will stop
+       What about EXTI line 18 - USB Wakeup event
+   */
   if (allowDeepSleep && !jsiHasTimers() && !jshHasTransmitData()) {
     // deep sleep!
     ADC_Cmd(ADC1, DISABLE); // ADC off
     ADC_Cmd(ADC2, DISABLE); // ADC off
     ADC_Cmd(ADC3, DISABLE); // ADC off
 #ifdef USB
-    //PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
+ //   PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
+    USB_Cable_Config(DISABLE);
 #endif
 
     /* Add EXTI for Serial port */
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
     /* add exti for USB */
     // USB has 15k pull-down resistors (and STM32 has 40k pull up)
-    Pin usbPin = JSH_PORTA_OFFSET+11;
+    /*Pin usbPin = JSH_PORTA_OFFSET+11;
+    jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
-    jshPinWatch(usbPin, true);
+    jshPinWatch(usbPin, true);*/
     // -----------------------------------------------
     /* Request to enter STOP mode with regulator in low power mode*/
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
     // -----------------------------------------------
     // remove watches on pins
-    jshPinWatch(usbPin, false);
+    /*jshPinWatch(usbPin, false);
     if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
+    jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);*/
     // recover oscillator
     RCC_HSEConfig(RCC_HSE_ON);
     if( RCC_WaitForHSEStartUp() == SUCCESS) {
@@ -2054,7 +2063,8 @@ void jshSleep() {
       while(RCC_GetSYSCLKSource() != 0x08);
     }
 #ifdef USB
-    //PowerOn(); // USB on
+    USB_Cable_Config(ENABLE);
+  //  PowerOn(); // USB on
 #endif
     //allowDeepSleep = false;
   } else

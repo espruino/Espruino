@@ -318,6 +318,11 @@ void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   USB_Istr();
 }
+
+void USBWakeUp_IRQHandler(void)
+{
+  EXTI_ClearITPendingBit(EXTI_Line18);
+}
 #endif // STM32F1
 
 #ifdef STM32F3
