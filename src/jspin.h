@@ -19,7 +19,7 @@
 #include "jsvar.h"
 
 typedef unsigned char Pin; ///< for specifying pins for hardware
-#define PIN_UNDEFINED 0xFF
+#define PIN_UNDEFINED ((Pin)0xFF)
 
 typedef enum {
   JSH_PORT_NONE,
