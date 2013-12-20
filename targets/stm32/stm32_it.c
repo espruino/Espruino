@@ -252,7 +252,11 @@ void EXTI15_10_IRQHandler(void) {
 }
 
 void RTC_IRQHandler(void) {
+#ifdef STM32F1
   RTC_ClearITPendingBit(RTC_IT_ALR);
+#else
+  RTC_ClearITPendingBit(RTC_IT_ALRA);
+#endif
 }
 
 void RTCAlarm_IRQHandler(void) {

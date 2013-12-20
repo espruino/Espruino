@@ -29,13 +29,20 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 
+#ifdef STM32F1
+#define USE_RTC
+#endif
+
+
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
 #define IRQ_PRIOR_MED 7
 #define IRQ_PRIOR_LOW 15
 
+#ifdef USE_RTC
 #define JSSYSTIME_SECOND 40000 // 0x1000000
 #define JSSYSTIME_RTC 0x8000
+#endif
 
 
 #if defined(STM32F4) || defined(STM32F3) || defined(STM32F2)
@@ -563,7 +570,16 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 }
 
 // ----------------------------------------------------------------------------
-//volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
+#ifdef USE_RTC
+// Average time between SysTicks
+JsSysTime averageSysTickTime;
+// last system time there was a systick
+JsSysTime lastSysTickTime;
+// whether we have slept since the last SysTick
+bool hasSystemSlept;
+#else
+volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
+#endif
 
 #ifdef USB
 unsigned int SysTickUSBWatchdog = 0;
@@ -572,15 +588,9 @@ void jshKickUSBWatchdog() {
 }
 #endif //USB
 
-// Average time between SysTicks
-JsSysTime averageSysTickTime;
-// last system time there was a systick
-JsSysTime lastSysTickTime;
-// whether we have slept since the last SysTick
-bool hasSystemSlept;
 
 void jshDoSysTick() {
-//  SysTickMajor += SYSTICK_RANGE;
+#ifdef USE_RTC
   JsSysTime time = jshGetSystemTime();
   if (!hasSystemSlept) {
     averageSysTickTime = (averageSysTickTime*7 + (time-lastSysTickTime)) >> 3;
@@ -588,6 +598,9 @@ void jshDoSysTick() {
     hasSystemSlept = false;
   }
   lastSysTickTime = time;
+#else
+  SysTickMajor += SYSTICK_RANGE;
+#endif
 
 #ifdef USB
   if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
@@ -826,6 +839,7 @@ void jshInit() {
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, 1);
 #endif
+#ifdef USE_RTC
   // allow access to backup domain, and reset it
   PWR_BackupAccessCmd(ENABLE);
   RCC_BackupResetCmd(ENABLE);
@@ -840,7 +854,7 @@ void jshInit() {
   RTC_WaitForSynchro();
   RTC_SetPrescaler(JSSYSTIME_RTC);
   RTC_WaitForLastTask();
-
+#endif
 
   // initialise button
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
@@ -897,10 +911,10 @@ void jshInit() {
   NVIC_Init(&NVIC_InitStructure);
   NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
   NVIC_Init(&NVIC_InitStructure);
+#ifdef USE_RTC
   // Set the RTC alarm (waking up from sleep)
   NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
   NVIC_Init(&NVIC_InitStructure);
-
   /* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
   EXTI_InitTypeDef EXTI_InitStructure;
   EXTI_ClearITPendingBit(EXTI_Line17);
@@ -909,6 +923,7 @@ void jshInit() {
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
+#endif
 
 #ifdef STM32F4
   ADC_CommonInitTypeDef ADC_CommonInitStructure;
@@ -1103,27 +1118,24 @@ static inline unsigned int getSystemTimerFreq() {
 
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+#ifdef USE_RTC
   return (JsSysTime)(ms*(JSSYSTIME_SECOND/(JsVarFloat)1000));
-  //return (JsSysTime)((ms*getSystemTimerFreq())/1000);
+#else
+  return (JsSysTime)((ms*getSystemTimerFreq())/1000);
+#endif
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+#ifdef USE_RTC
   return (JsVarFloat)time*(1000/(JsVarFloat)JSSYSTIME_SECOND);
-  //return ((JsVarFloat)time)*1000/getSystemTimerFreq();
+#else
+  return ((JsVarFloat)time)*1000/getSystemTimerFreq();
+#endif
 }
 
 
 JsSysTime jshGetSystemTime() {
-  /*JsSysTime major1, major2, major3, major4;
-  unsigned int minor;
-  do {
-    major1 = SysTickMajor;
-    major2 = SysTickMajor;
-    minor = SysTick->VAL;
-    major3 = SysTickMajor;
-    major4 = SysTickMajor;
-  } while (major1!=major2 || major2!=major3 || major3!=major4);
-  return major1 - (JsSysTime)minor;*/
+#ifdef USE_RTC
   uint16_t dl1 = RTC->DIVL;
   uint16_t ch1 = RTC->CNTH;
   uint16_t cl1 = RTC->CNTL;
@@ -1139,6 +1151,18 @@ JsSysTime jshGetSystemTime() {
     // overflow, but prob didn't happen before
     return ((JsSysTime)(ch1)<<31)|(cl1<<15) | (JSSYSTIME_RTC - dl1);
   }
+#else
+  JsSysTime major1, major2, major3, major4;
+  unsigned int minor;
+  do {
+    major1 = SysTickMajor;
+    major2 = SysTickMajor;
+    minor = SysTick->VAL;
+    major3 = SysTickMajor;
+    major4 = SysTickMajor;
+  } while (major1!=major2 || major2!=major3 || major3!=major4);
+  return major1 - (JsSysTime)minor;
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -2165,7 +2189,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(false);
   } else
 #endif
-  if (timeUntilWake > averageSysTickTime*2) {
+#ifdef USE_RTC
+  if (timeUntilWake > averageSysTickTime*5/4) {
+#else
+  if (timeUntilWake > SYSTICK_RANGE*5/4) {
+#endif
     // TODO: we can do better than this. look at lastSysTickTime
     jsiSetSleep(true);
     __WFI(); // Wait for Interrupt
