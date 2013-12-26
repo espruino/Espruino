@@ -16,12 +16,12 @@ cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
 
-ESPRUINOFILE=espruino_espruino_1v3.bin
-BOOTLOADERFILE=bootloader_espruino_1v3.bin
+ESPRUINOFILE=espruino_espruino_1v0.bin
+BOOTLOADERFILE=bootloader_espruino_1v0.bin
 IMGFILE=espruino_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export ESPRUINO_1V3=1
+export ESPRUINO_1V0=1
 # export USB_PRODUCT_ID=0x5741 # For test harness board only
 # export DEBUG=1
 export RELEASE=1
