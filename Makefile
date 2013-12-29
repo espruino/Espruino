@@ -866,11 +866,11 @@ quiet_link= LD $@
 quiet_obj_dump= GEN $(PROJ_NAME).lst
 quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
-%.o: %.c $(PLATFORM_CONFIG_FILE)
+%.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
-.cpp.o: $(PLATFORM_CONFIG_FILE)
+.cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
 	@$(call compile)
 
