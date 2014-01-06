@@ -62,7 +62,6 @@
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
-// NOTE: Only works up to 64 IO pins
 BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 #ifdef USB
