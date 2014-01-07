@@ -29,7 +29,8 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 
-#ifdef STM32F1
+#ifdef ESPRUINOBOARD
+// STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
 
