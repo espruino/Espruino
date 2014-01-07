@@ -9,6 +9,7 @@
             Run initialisation code before setWatch, to make sure pullup/down is set beforehand
             Change 'Pin' datatype to be an unsigned char - makes tests easier
             Now use the hardware RTC for keeping system time. Allows proper deep sleep on Espruino board
+            FINALLY - fix the USB VCP lost characters issue (#94)
 
      1v43 : Added 'Modules' object with support for adding/removing cached modules
             Allow product ID to be changed via Makefile
