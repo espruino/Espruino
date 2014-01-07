@@ -92,11 +92,9 @@ int main(void) {
             case CMD_GET_ID: // get chip ID
               putc(ACK);
               putc(1); // 2 bytes
-              // now report what we support
-              putc(0x04);
-              // 0x30 F1 XL density
-              // 0x14 F1 high density
-              putc(0x30); // TODO: really?
+              // 0x430 F1 XL density
+              // 0x414 F1 high density
+              putc(0x04); putc(0x14);
               putc(ACK); // last byte
               break;
             case CMD_READ: // read memory
