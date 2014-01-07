@@ -863,11 +863,11 @@ void jshInit() {
   // Slow the IO clocks down - we don't need them going so fast!
   // see getUtilTimerFreq - that will need changing if these are changed
 #ifdef STM32VLDISCOVERY
-  RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >8 Mhz for USB to work
+  RCC_PCLK1Config(RCC_HCLK_Div2);
   RCC_PCLK2Config(RCC_HCLK_Div4);
 #else
-  RCC_PCLK1Config(RCC_HCLK_Div8); // PCLK1 must be >8 Mhz for USB to work
-  RCC_PCLK2Config(RCC_HCLK_Div16);
+  RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
+  RCC_PCLK2Config(RCC_HCLK_Div4);
 #endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
