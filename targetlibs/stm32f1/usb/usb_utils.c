@@ -125,27 +125,47 @@ void USB_Init_Hardware(void)
 
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 
-#if defined(STM32L1XX_MD) || defined(STM32L1XX_HD) || defined(STM32L1XX_MD_PLUS) 
+#if defined(STM32L1XX_MD)|| defined(STM32L1XX_HD) || defined(STM32L1XX_MD_PLUS)
+  /* Enable the USB interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USB_LP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Enable the USB Wake-up interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USB_FS_WKUP_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+#elif defined(STM32F37X)
+  /* Enable the USB interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USB_LP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
   
-#elif defined(STM32F10X_CL) || defined(STM32F4)  
-  /* Enable the USB Interrupts */
-  NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
+  /* Enable the USB Wake-up interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);  
+  NVIC_Init(&NVIC_InitStructure);
+
 #else
+  /* Enable the USB interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-#endif /* STM32L1XX_XD */
+
+  /* Enable the USB Wake-up interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_Init(&NVIC_InitStructure);
+#endif
 
 }
 
