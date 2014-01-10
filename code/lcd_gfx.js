@@ -65,7 +65,7 @@ setInterval(touchFunc, 100);
 
 
 LCD.fillCircle = function(x,y,rad,col) {
-  var pts = Integer.parseInt(rad)/2;
+  var pts = parseInt(rad)/2;
   var a = [];
   for (var i=0;i<pts;i++) {
     var t = 2*i*Math.PI/pts;

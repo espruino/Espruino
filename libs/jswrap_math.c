@@ -22,18 +22,6 @@
 
 // -------------------------------------------------------------------- Integer
 /*JSON{ "type":"staticmethod",
-         "class" : "Integer", "name" : "parseInt",
-         "generate" : "jswrap_integer_stringToInt",
-         "description" : "Convert a string representing a number into a number",
-         "params" : [ [ "x", "JsVar", "A string to convert to an Integer"] ],
-         "return" : ["int", "The integer value of x"]
-}*/
-JsVarInt jswrap_integer_stringToInt(JsVar *v) {
-  char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
-  return stringToInt(buffer);
-}
-/*JSON{ "type":"staticmethod",
          "class" : "Integer", "name" : "valueOf",
          "generate" : "jswrap_integer_valueOf",
          "description" : "Given a string containing a single character, return the numeric value of it",

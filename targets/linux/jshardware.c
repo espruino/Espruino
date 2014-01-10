@@ -212,7 +212,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
       if (strncmp(line, "Serial", 6) == 0) {
         char serial_string[16 + 1];
         strcpy(serial_string, strchr(line, ':') + 2);
-        serial = stringToIntWithRadix(serial_string, 16);
+        serial = stringToIntWithRadix(serial_string, 16, 0);
       }
     }
     fclose(f);

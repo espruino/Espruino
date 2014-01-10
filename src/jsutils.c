@@ -67,7 +67,7 @@ const char *escapeCharacter(char ch) {
 }
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
+JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   bool isNegated = false;
   JsVarInt v = 0;
   JsVarInt radix = 10;
@@ -86,19 +86,25 @@ JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
       s++;
     }
   }
-  if (forceRadix)
+  if (forceRadix>0 && forceRadix<=36)
     radix = forceRadix;
 
   while (*s) {
+    int digit = 0;
     if (*s >= '0' && *s <= '9')
-      v = (v*radix) + (*s - '0');
+      digit = (*s - '0');
     else if (*s >= 'a' && *s <= 'f')
-      v = (v*radix) + (10 + *s - 'a');
+      digit = (10 + *s - 'a');
     else if (*s >= 'A' && *s <= 'F')
-      v = (v*radix) + (10 + *s - 'A');
+      digit = (10 + *s - 'A');
     else break;
+    if (digit>=radix)
+      break;
+    v = v*radix + digit;
     s++;
   }
+
+  if (hasError) *hasError = *s!=0; // we're ok if we reached the end of the string
 
   if (isNegated) return -v;
   return v;
@@ -106,7 +112,7 @@ JsVarInt stringToIntWithRadix(const char *s, JsVarInt forceRadix) {
 
 /* convert hex, binary, octal or decimal string into an int */
 JsVarInt stringToInt(const char *s) {
-    return stringToIntWithRadix(s,0);
+    return stringToIntWithRadix(s,0,0);
 }
 
 void jsError(const char *fmt, ...) {

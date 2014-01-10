@@ -3,7 +3,7 @@
 foo = "foo bar stuff";
 r = Math.random();
 
-parsed = Integer.parseInt("42");
+parsed = parseInt("42");
 
 aStr = "ABCD";
 aChar = aStr.charAt(0);

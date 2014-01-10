@@ -1,4 +1,6 @@
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
+            Remove Integer.parseInt
+            Fix parseInt("bar") - fix #150
 
      1v44 : Modified build system to store binary names in the python definition
             Fix nasty regression involving losing code at the end of Strings

@@ -305,7 +305,7 @@ bool isIDString(const char *s);
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, JsVarInt radix);
+JsVarInt stringToIntWithRadix(const char *s, int radix, bool *hasError);
 /* convert hex, binary, octal or decimal string into an int */
 JsVarInt stringToInt(const char *s);
 

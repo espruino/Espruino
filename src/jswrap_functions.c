@@ -73,13 +73,20 @@ JsVar *jswrap_eval(JsVar *v) {
          "description" : "Convert a string representing a number into an integer",
          "generate" : "jswrap_parseInt",
          "params" :  [ [ "string", "JsVar", ""],
-                       [ "radix", "int", "The Radix of the string (optional)"] ],
-         "return" : ["int", "The value of the string"]
+                       [ "radix", "JsVar", "The Radix of the string (optional)"] ],
+         "return" : ["JsVar", "The integer value of the string (or NaN)"]
 }*/
-JsVarInt jswrap_parseInt(JsVar *v, JsVarInt radix) {
+JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
+  int radix = 0/*don't force radix*/;
+  if (jsvIsNumeric(radixVar))
+    radix = (int)jsvGetInteger(radixVar);
+
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
-  return stringToIntWithRadix(buffer, (int)radix);
+  bool hasError;
+  JsVarInt i = stringToIntWithRadix(buffer, radix, &hasError);
+  if (hasError) return jsvNewFromFloat(NAN);
+  return jsvNewFromInteger(i);
 }
 
 /*JSON{ "type":"function", "name" : "parseFloat",
