@@ -1841,7 +1841,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     bool needsNumeric = needsInt || op=='*' || op=='/' || op=='%' || op=='-';
 
     // do maths...
-    if ((jsvIsUndefined(a) || jsvIsNull(a)) && (jsvIsUndefined(b) || jsvIsNull(b))) {
+    if (jsvIsUndefined(a) && jsvIsUndefined(b)) {
       if (op == LEX_EQUAL)
         return jsvNewFromBool(true);
       else if (op == LEX_NEQUAL)
@@ -1849,8 +1849,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       else
         return 0; // undefined
     } else if (needsNumeric ||
-               ((jsvIsNumeric(a) || jsvIsUndefined(a)) &&
-                (jsvIsNumeric(b) || jsvIsUndefined(b)))) {
+               ((jsvIsNumeric(a) || jsvIsUndefined(a) || jsvIsNull(a)) &&
+                (jsvIsNumeric(b) || jsvIsUndefined(b) || jsvIsNull(b)))) {
         if (needsInt || (!jsvIsFloat(a) && !jsvIsFloat(b))) {
             // use ints
             JsVarInt da = jsvGetInteger(a);
