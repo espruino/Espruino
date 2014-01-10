@@ -2225,7 +2225,7 @@ typedef struct UtilTimerTask {
   uint8_t value; // value to set pins to
 } PACKED_FLAGS UtilTimerTask;
 
-#define UTILTIMERTASK_TASKS (64) // MUST BE POWER OF 2
+#define UTILTIMERTASK_TASKS (16) // MUST BE POWER OF 2
 UtilTimerTask utilTimerTasks[UTILTIMERTASK_TASKS];
 volatile unsigned char utilTimerTasksHead = 0;
 volatile unsigned char utilTimerTasksTail = 0;
