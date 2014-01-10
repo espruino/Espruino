@@ -853,7 +853,6 @@ void jshInit() {
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); 
   // Slow the IO clocks down - we don't need them going so fast!
-  // see getUtilTimerFreq - that will need changing if these are changed
 #ifdef STM32VLDISCOVERY
   RCC_PCLK1Config(RCC_HCLK_Div2);
   RCC_PCLK2Config(RCC_HCLK_Div4);
@@ -1319,6 +1318,25 @@ void jshPinOutput(Pin pin, bool value) {
   } else jsError("Invalid pin!");
 }
 
+static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
+  // TIM2-7, 12-14  on APB1, everything else is on APB2
+  RCC_ClocksTypeDef clocks;
+  RCC_GetClocksFreq(&clocks);
+
+  // This (oddly) looks the same on F1/2/3/4. It's probably not
+  bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
+              TIMx==TIM5 || TIMx==TIM6 || TIMx==TIM7 ||
+              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14;
+
+  unsigned int freq = APB1 ? clocks.PCLK1_Frequency : clocks.PCLK2_Frequency;
+  // If APB1 clock divisor is 1x, this is only 1x
+  if (clocks.HCLK_Frequency == freq)
+    return freq;
+  // else it's 2x (???)
+  return freq*2;
+}
+
+
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
@@ -1389,7 +1407,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   // Set up timer frequency...
   TIM_TimeBaseStructure.TIM_Period = 0xFFFF;
   if (freq>0) {
-    int clockTicks = (int)((JsVarFloat)SystemCoreClock / (4*freq));
+    int clockTicks = (int)((JsVarFloat)jshGetTimerFreq(TIMx) / freq);
     int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
     TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)prescale;
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(clockTicks/(prescale+1));
@@ -2270,18 +2288,6 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
   TIM_Cmd(UTIL_TIMER, ENABLE);  /* enable counter */
 }
 
-unsigned int getUtilTimerFreq() {
-  // TIM2-7, 12-14  on APB1, everything else is on APB2
-  RCC_ClocksTypeDef clocks;
-  RCC_GetClocksFreq(&clocks);
-  // If APB1 clock divisor is 1x, this is only 1x
-  if (clocks.HCLK_Frequency == clocks.PCLK1_Frequency)
-    return clocks.PCLK1_Frequency;
-  // else it's 2x (???)
-  return clocks.PCLK1_Frequency*2;
-}
-
-
 void _utilTimerSetPinStateAndReload() {
   if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
     // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
@@ -2311,7 +2317,7 @@ void _utilTimerSetPinStateAndReload() {
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
       utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      unsigned int timerFreq = getUtilTimerFreq();
+      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
       int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-time)) / getSystemTimerFreq());
       if (clockTicks<0) clockTicks=0;
       int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
@@ -2373,7 +2379,7 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   }
   _utilTimerWait();
 
-  unsigned int timerFreq = getUtilTimerFreq();
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
   int clockTicks = (int)(((JsVarFloat)timerFreq * pulseTime) / 1000);
   int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
 
@@ -2451,7 +2457,7 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
     // now set up timer if not already set up...
     if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
       //jsiConsolePrint("Starting\n");
-      unsigned int timerFreq = getUtilTimerFreq();
+      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
       int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
       if (clockTicks<0) clockTicks=0;
       int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
