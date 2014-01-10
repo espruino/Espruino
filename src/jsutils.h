@@ -23,7 +23,7 @@
 #endif
 #include <stdarg.h> // for va_args
 
-#define JS_VERSION "1v44"
+#define JS_VERSION "1v45"
 /*
   In code:
   TODO - should be fixed

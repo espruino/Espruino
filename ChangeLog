@@ -1,3 +1,5 @@
+     1v45 : 
+
      1v44 : Modified build system to store binary names in the python definition
             Fix nasty regression involving losing code at the end of Strings
             Fix segfault when pinMode is called on an invalid pin
@@ -5,7 +7,7 @@
             Detect unfinished block comments in console (fix #138)
             Fix flash write on most 10XxB boards
             Fix PWM output on all STM32 boards
-	    General hardware tidy in prep for more intelligent device management
+            General hardware tidy in prep for more intelligent device management
             Run initialisation code before setWatch, to make sure pullup/down is set beforehand
             Change 'Pin' datatype to be an unsigned char - makes tests easier
             Now use the hardware RTC for keeping system time. Allows proper deep sleep on Espruino board
