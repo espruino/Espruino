@@ -117,55 +117,6 @@ void jswrap_interface_print(JsVar *v) {
   jsiConsolePrint("\n");
 }
 
-
-/*JSON{ "type":"function", "name" : "memory",
-        "description" : ["Run a Garbage Collection pass, and return an object containing information on memory usage.",
-                         "free : Memory that is available to be used",
-                         "usage : Memory that has been used",
-                         "total : Total memory",
-                         "history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'.",
-                         "On ARM, stackEndAddress is the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion, the bytes above this can be used."],
-        "generate" : "jswrap_interface_memory",
-        "return" : ["JsVar", "Information about memory usage"]
-}*/
-#ifdef ARM
-extern int _end;
-#endif
-JsVar *jswrap_interface_memory() {
-  jsvGarbageCollect();
-  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
-  if (obj) {
-    unsigned int history = 0;
-    JsVar *historyVar = jsvObjectGetChild(jsiGetParser()->root, JSI_HISTORY_NAME, 0);
-    if (historyVar) {
-      history = (unsigned int)jsvCountJsVarsUsed(historyVar); // vars used to store history
-      jsvUnLock(historyVar);
-    }
-    unsigned int usage = jsvGetMemoryUsage() - history;
-    unsigned int total = jsvGetMemoryTotal();
-    JsVar *v;
-    v = jsvNewFromInteger(total-usage);
-    jsvUnLock(jsvAddNamedChild(obj, v, "free"));
-    jsvUnLock(v);
-    v = jsvNewFromInteger(usage);
-    jsvUnLock(jsvAddNamedChild(obj, v, "usage"));
-    jsvUnLock(v);
-    v = jsvNewFromInteger(total);
-    jsvUnLock(jsvAddNamedChild(obj, v, "total"));
-    jsvUnLock(v);
-    v = jsvNewFromInteger(history);
-    jsvUnLock(jsvAddNamedChild(obj, v, "history"));
-    jsvUnLock(v);
-
-#ifdef ARM
-    v = jsvNewFromInteger((JsVarInt)(unsigned int)&_end);
-    jsvUnLock(jsvAddNamedChild(obj, v, "stackEndAddress"));
-    jsvUnLock(v);
-#endif
-  }
-  return obj;
-}
-
 /*JSON{ "type":"function", "name" : "edit",
         "description" : ["Fill the console with the contents of the given function, so you can edit it.",
                          "NOTE: This is a convenience function - it will not edit 'inner functions'. For that, you must edit the 'outer function' and re-execute it."],

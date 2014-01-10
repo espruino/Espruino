@@ -50,15 +50,6 @@
   #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
 #endif
 
-#define FLASH_LENGTH (FLASH_PAGE_SIZE*FLASH_PAGES)
-
-#if FLASH_LENGTH < 4+JSVAR_CACHE_SIZE*JSVAR_SIZE
-#error NOT ENOUGH ROOM IN FLASH - FLASH_PAGES pages at FLASH_PAGE_SIZE bytes
-#endif
-
-#define FLASH_START (0x08000000 + FLASH_TOTAL - FLASH_LENGTH)
-#define FLASH_MAGIC_LOCATION (FLASH_START+FLASH_LENGTH-4)
-#define FLASH_MAGIC 0xDEADBEEF
 
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
@@ -1973,8 +1964,8 @@ void jshSaveToFlash() {
   FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
 #else
   /* Erase the FLASH pages */
-  for(i=0;i<FLASH_PAGES;i++) {
-    FLASH_ErasePage((uint32_t)(FLASH_START + (FLASH_PAGE_SIZE * i)));
+  for(i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
+    FLASH_ErasePage((uint32_t)(FLASH_SAVED_CODE_START + (FLASH_PAGE_SIZE * i)));
     jsiConsolePrint(".");
   }
 #endif
@@ -1988,14 +1979,14 @@ void jshSaveToFlash() {
   jsvUnLock(firstData);
 #if defined(STM32F2) || defined(STM32F4) 
   for (i=0;i<dataSize;i+=4) {
-      while (FLASH_ProgramWord((uint32_t)(FLASH_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
+      while (FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
       if ((i&1023)==0) jsiConsolePrint(".");
   }
   while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
 #else
   /* Program Flash Bank */  
   for (i=0;i<dataSize;i+=4) {
-      FLASH_ProgramWord((uint32_t)(FLASH_START+i), basePtr[i>>2]);
+      FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]);
       if ((i&1023)==0) jsiConsolePrint(".");
   }
   FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
@@ -2014,7 +2005,7 @@ void jshSaveToFlash() {
 
   int errors = 0;
   for (i=0;i<dataSize;i+=4)
-    if ((*(uint32_t*)(FLASH_START+i)) != basePtr[i>>2])
+    if ((*(uint32_t*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
       errors++;
 
   if (FLASH_MAGIC != *(unsigned int*)FLASH_MAGIC_LOCATION) {
@@ -2036,10 +2027,10 @@ void jshSaveToFlash() {
 //  int *basePtr = jsvGetVarDataPointer();
 //
 //  int page;
-//  for(page=0;page<FLASH_PAGES;page++) {
+//  for(page=0;page<FLASH_SAVED_CODE_PAGES;page++) {
 //    jsPrint("Flashing Page ");jsPrintInt(page);jsPrint("...\n");
 //    size_t pageOffset = (FLASH_PAGE_SIZE * page);
-//    size_t pagePtr = FLASH_START + pageOffset;
+//    size_t pagePtr = FLASH_SAVED_CODE_START + pageOffset;
 //    size_t pageSize = varDataSize-pageOffset;
 //    if (pageSize>FLASH_PAGE_SIZE) pageSize = FLASH_PAGE_SIZE;
 //    jsPrint("Offset ");jsPrintInt(pageOffset);jsPrint(", Size ");jsPrintInt(pageSize);jsPrint(" bytes\n");
@@ -2047,7 +2038,7 @@ void jshSaveToFlash() {
 //    int errors = 0;
 //    int i;
 //    for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//      if ((*(int*)(FLASH_START+i)) != basePtr[i>>2])
+//      if ((*(int*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
 //        errors++;
 //    while (errors && !jspIsInterrupted()) {
 //      if (!first) { jsPrintInt(errors);jsPrint(" errors - retrying...\n"); }
@@ -2056,7 +2047,7 @@ void jshSaveToFlash() {
 //      FLASH_ErasePage(pagePtr);
 //      /* Program Flash Bank1 */
 //      for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//          FLASH_ProgramWord(FLASH_START+i, basePtr[i>>2]);
+//          FLASH_ProgramWord(FLASH_SAVED_CODE_START+i, basePtr[i>>2]);
 //      FLASH_WaitForLastOperation(0x20000);
 //    }
 //  }
@@ -2078,7 +2069,7 @@ void jshLoadFromFlash() {
   uint32_t *basePtr = (uint32_t *)firstData;
   jsvUnLock(firstData);
 
-  memcpy(basePtr, (int*)FLASH_START, dataSize);
+  memcpy(basePtr, (int*)FLASH_SAVED_CODE_START, dataSize);
   jsiConsolePrint(" Done!\n>");
 }
 

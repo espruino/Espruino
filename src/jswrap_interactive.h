@@ -19,7 +19,6 @@ void jswrap_interface_setSleepIndicator(JsVar *pinVar);
 void jswrap_interface_setDeepSleep(bool sleep);
 void jswrap_interface_trace(JsVar *root);
 void jswrap_interface_print(JsVar *v);
-JsVar *jswrap_interface_memory();
 void jswrap_interface_edit(JsVar *funcName);
 void jswrap_interface_echo(bool echoOn);
 JsVar *jswrap_interface_getSerial();

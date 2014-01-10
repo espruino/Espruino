@@ -72,7 +72,7 @@ void sysfs_read(const char *path, char *data, unsigned int len) {
 JsVarInt sysfs_read_int(const char *path) {
   char buf[20];
   sysfs_read(path, buf, sizeof(buf));
-  return stringToIntWithRadix(buf, 10);
+  return stringToIntWithRadix(buf, 10, 0);
 }
 
 // ----------------------------------------------------------------------------

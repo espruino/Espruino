@@ -16,3 +16,4 @@
 #include "jsvar.h"
 
 JsVar *jswrap_process_env();
+JsVar *jswrap_process_memory();
