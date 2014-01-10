@@ -73,12 +73,12 @@ bool jswrap_array_contains(JsVar *parent, JsVar *value) {
          "description" : "Return the index of the value in the array, or -1",
          "generate" : "jswrap_array_indexOf",
          "params" : [ [ "value", "JsVar", "The value to check for"] ],
-         "return" : ["JsVar", "the index of the value in the array, or undefined"]
+         "return" : ["JsVar", "the index of the value in the array, or -1"]
 }*/
 JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value) {
   JsVar *idxName = jsvGetArrayIndexOf(parent, value, false/*not exact*/);
   // but this is the name - we must turn it into a var
-  if (idxName == 0) return 0; // not found!
+  if (idxName == 0) return jsvNewFromInteger(-1); // not found!
   JsVar *idx = jsvCopyNameOnly(idxName, false/* no children */, false/* Make sure this is not a name*/);
   jsvUnLock(idxName);
   return idx;

@@ -10,5 +10,5 @@ var r = [
   a.indexOf(42)
 ];
 
-result = r[0]==0 && r[1]==2 && r[2]==undefined;
+result = r[0]==0 && r[1]==2 && r[2]==-1;
 
