@@ -1015,7 +1015,7 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
 }
 
 JsVarInt jsvGetInteger(const JsVar *v) {
-    if (!v) return 0;
+    if (!v) return 0; // undefined
     /* strtol understands about hex and octal */
     if (jsvIsInt(v) || jsvIsBoolean(v) || jsvIsPin(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
@@ -1039,7 +1039,7 @@ bool jsvGetBool(const JsVar *v) {
 }
 
 JsVarFloat jsvGetFloat(const JsVar *v) {
-    if (!v) return 0;
+    if (!v) return NAN; // undefined
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
@@ -1048,7 +1048,6 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
       jsvGetString(v, buf, sizeof(buf));
       return stringToFloat(buf);
     }
-    //if (jsvIsUndefined(v)) return NAN;
     return NAN;
 }
 
@@ -1851,7 +1850,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     } else if (needsNumeric ||
                ((jsvIsNumeric(a) || jsvIsUndefined(a) || jsvIsNull(a)) &&
                 (jsvIsNumeric(b) || jsvIsUndefined(b) || jsvIsNull(b)))) {
-        if (needsInt || (!jsvIsFloat(a) && !jsvIsFloat(b))) {
+      if (needsInt || !(jsvIsFloat(a) || jsvIsFloat(b))) {
             // use ints
             JsVarInt da = jsvGetInteger(a);
             JsVarInt db = jsvGetInteger(b);
