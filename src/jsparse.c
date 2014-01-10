@@ -1224,20 +1224,20 @@ JsVar *jspePostfix() {
 }
 
 JsVar *jspeUnary() {
-    if (execInfo.lex->tk=='!' || execInfo.lex->tk=='~' || execInfo.lex->tk=='-') {
+    if (execInfo.lex->tk=='!' || execInfo.lex->tk=='~' || execInfo.lex->tk=='-' || execInfo.lex->tk=='+') {
+      short tk = execInfo.lex->tk;
+      JSP_MATCH(execInfo.lex->tk);
       if (!JSP_SHOULD_EXECUTE) {
-        JSP_MATCH(execInfo.lex->tk);
         return jspePostfix();
       }
-      if (execInfo.lex->tk=='!') {
-        JSP_MATCH('!'); // logical not
+      if (tk=='!') { // logical not
         return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
-      } else if (execInfo.lex->tk=='~') {
-        JSP_MATCH('~'); // bitwise not
+      } else if (tk=='~') { // bitwise not
         return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
-      } else if (execInfo.lex->tk=='-') {
-        JSP_MATCH('-'); // binary not
+      } else if (tk=='-') { // unary minus
         return jsvNegateAndUnLock(jspeUnary()); // names already skipped
+      }  else if (tk=='+') { // unary plus (convert to number)
+        return jsvAsNumber(jspeUnary()); // names already skipped
       }
       assert(0);
       return 0;
@@ -1977,6 +1977,7 @@ JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_MINUSMINUS ||
         execInfo.lex->tk=='!' ||
         execInfo.lex->tk=='-' ||
+        execInfo.lex->tk=='+' ||
         execInfo.lex->tk=='~' ||
         execInfo.lex->tk=='[' ||
         execInfo.lex->tk=='(') {

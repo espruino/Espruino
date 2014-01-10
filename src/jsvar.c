@@ -1017,7 +1017,7 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
 JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0;
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v) || jsvIsBoolean(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
+    if (jsvIsInt(v) || jsvIsBoolean(v) || jsvIsPin(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
@@ -1043,13 +1043,20 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
-    if (jsvIsUndefined(v)) return 0;
     if (jsvIsString(v) && jsvIsStringNumeric(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
       return stringToFloat(buf);
     }
-    return 0; /* or NaN? */
+    //if (jsvIsUndefined(v)) return NAN;
+    return NAN;
+}
+
+/// Convert the given variable to a number
+JsVar *jsvAsNumber(JsVar *var) {
+  if (jsvIsInt(var) || jsvIsFloat(var)) return jsvLockAgain(var);
+  if (jsvIsBoolean(var) || jsvIsPin(var)) return jsvNewFromInteger(var->varData.integer);
+  return jsvNewFromFloat(jsvGetFloat(var));
 }
 
 #ifdef SAVE_ON_FLASH
@@ -2054,6 +2061,7 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
     else if (jsvIsArray(var)) jsiConsolePrint("Array [");
     else if (jsvIsPin(var)) jsiConsolePrint("Pin ");
     else if (jsvIsInt(var)) jsiConsolePrint("Integer ");
+    else if (jsvIsBoolean(var)) jsiConsolePrint("Bool ");
     else if (jsvIsFloat(var)) jsiConsolePrint("Double ");
     else if (jsvIsString(var)) jsiConsolePrint("String ");
     else if (jsvIsArrayBuffer(var)) {

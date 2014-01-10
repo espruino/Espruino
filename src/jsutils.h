@@ -46,6 +46,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 #define true (1)
 #define false (0)
+#define NAN (((JsVarFloat)0)/(JsVarFloat)0)
 
 /* Number of Js Variables allowed and Js Reference format. 
 
