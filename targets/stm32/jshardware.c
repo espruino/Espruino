@@ -519,6 +519,31 @@ JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
  }
 }
 
+static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
+  // TIM2-7, 12-14  on APB1, everything else is on APB2
+  RCC_ClocksTypeDef clocks;
+  RCC_GetClocksFreq(&clocks);
+
+  // This (oddly) looks the same on F1/2/3/4. It's probably not
+  bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
+              TIMx==TIM5 || TIMx==TIM6 || TIMx==TIM7 ||
+              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14;
+
+  unsigned int freq = APB1 ? clocks.PCLK1_Frequency : clocks.PCLK2_Frequency;
+  // If APB1 clock divisor is 1x, this is only 1x
+  if (clocks.HCLK_Frequency == freq)
+    return freq;
+  // else it's 2x (???)
+  return freq*2;
+}
+
+static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
+  RCC_ClocksTypeDef clocks;
+  RCC_GetClocksFreq(&clocks);
+  bool APB2 = SPIx == SPIx;
+  return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
+}
+
 // Prints a list of capable pins, eg:
 // jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
 // jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
@@ -1318,24 +1343,6 @@ void jshPinOutput(Pin pin, bool value) {
   } else jsError("Invalid pin!");
 }
 
-static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
-  // TIM2-7, 12-14  on APB1, everything else is on APB2
-  RCC_ClocksTypeDef clocks;
-  RCC_GetClocksFreq(&clocks);
-
-  // This (oddly) looks the same on F1/2/3/4. It's probably not
-  bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
-              TIMx==TIM5 || TIMx==TIM6 || TIMx==TIM7 ||
-              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14;
-
-  unsigned int freq = APB1 ? clocks.PCLK1_Frequency : clocks.PCLK2_Frequency;
-  // If APB1 clock divisor is 1x, this is only 1x
-  if (clocks.HCLK_Frequency == freq)
-    return freq;
-  // else it's 2x (???)
-  return freq*2;
-}
-
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
@@ -1752,7 +1759,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   //jsiConsolePrint("BaudRate ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint("\n");
   for (i=0;i<sizeof(baudRatesDivisors)/sizeof(int);i++) {
     //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
-    int rate = (int)RCC_ClocksStatus.PCLK2_Frequency / baudRatesDivisors[i];
+    int rate = (int)jshGetSPIFreq(SPIx) / baudRatesDivisors[i];
     //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
     int rateDiff = inf->baudRate - rate;
     if (rateDiff<0) rateDiff *= -1;
