@@ -287,7 +287,7 @@ JsVarFloat stringToFloat(const char *s) {
     v = v * jswrap_math_pow(10, e);
   }
   // check we have parsed everything
-  assert(*s==0);
+  if (*s!=0) return NAN;
 
   if (isNegated) return -v;
   return v;
