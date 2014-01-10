@@ -541,7 +541,7 @@ static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
   RCC_ClocksTypeDef clocks;
   RCC_GetClocksFreq(&clocks);
   bool APB2 = SPIx == SPIx;
-  return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
+  return (APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency) * 2;
 }
 
 // Prints a list of capable pins, eg:
