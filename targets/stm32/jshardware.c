@@ -2280,14 +2280,14 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
 }
 
 unsigned int getUtilTimerFreq() {
-  // HCLK_Frequency * APB1 prescaler * (APB1 prescaler=1)?1:2;
-  // PCLK1_Frequency * (APB1 prescaler=1)?1:2;
-  // TODO FIXME WRONG for VL board -= hard coding this is nasty. See jshInit
-#ifdef STM32VLDISCOVERY
-  return SystemCoreClock;
-#else
-  return SystemCoreClock / 4;
-#endif
+  // TIM2-7, 12-14  on APB1, everything else is on APB2
+  RCC_ClocksTypeDef clocks;
+  RCC_GetClocksFreq(&clocks);
+  // If APB1 clock divisor is 1x, this is only 1x
+  if (clocks.HCLK_Frequency == clocks.PCLK1_Frequency)
+    return clocks.PCLK1_Frequency;
+  // else it's 2x (???)
+  return clocks.PCLK1_Frequency*2;
 }
 
 
