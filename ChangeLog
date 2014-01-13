@@ -7,7 +7,8 @@
             Fix Array.indexOf() returns undefined instead of -1 - fix #155
             Moved memory() to process.memory() - added more info too    
             Try and improve handling of PWM timer speeds
-            Fixed varying SPI baud rates depending on device        
+            Fixed varying SPI baud rates depending on device
+            Makefile changes for OSX compile        
 
      1v44 : Modified build system to store binary names in the python definition
             Fix nasty regression involving losing code at the end of Strings

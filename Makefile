@@ -55,6 +55,9 @@ ifeq ($(shell uname -m),armv6l)
 RASPBERRYPI=1 # just a guess
 endif
 
+ifeq ($(shell uname),Darwin)
+MACOSX=1
+endif
 
 # Gordon's car ECU (extremely beta!)
 ifdef ECU
@@ -276,7 +279,10 @@ USE_FILESYSTEM=1
 USB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
+ifndef MACOSX
+# http libs need some tweaks before net can compile
 USE_NET=1
+endif
 endif
 
 PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
@@ -807,7 +813,10 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) -Wl,--gc-sections
+LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ifndef MACOSX
+LDFLAGS += -Wl,--gc-sections
+endif
 
 ifdef LINKER_FILE 
 LDFLAGS += -T$(LINKER_FILE)
