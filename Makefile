@@ -16,6 +16,7 @@
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
 # OLIMEXINO_STM32=1                # Olimexino STM32
 # OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
+# EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
 # HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
@@ -141,6 +142,15 @@ CHIP=STM32F103RB_MAPLE
 DEFINES += -DSTM32F103RB
 SAVE_ON_FLASH=1
 BOARD=OLIMEXINO_STM32_BOOTLOADER
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef EMBEDDED_PI
+USB=1
+# USE_FILESYSTEM=1 # no SD-CARD READER
+FAMILY=STM32F1
+CHIP=STM32F103RB
+BOARD=EMBEDDED_PI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
