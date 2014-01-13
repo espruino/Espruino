@@ -15,6 +15,7 @@
 
 import pinutils;
 import json;
+import copy;
 info = {
  'name' : "Embedded PI / COOCOX",
  'link' :  [ "http://coocox.org" ],
@@ -171,8 +172,8 @@ def get_pins():
   };
   newpins = []
   for newname in pinmapping:
-#    print newname
-    pin = pinutils.findpin(pins, pinmapping[newname], True)
+    print newname+" => "+pinmapping[newname]
+    pin = copy.deepcopy(pinutils.findpin(pins, pinmapping[newname], True))
     pin["name"] = "P"+newname
     pin["sortingname"] = newname[0] + newname[1:].rjust(2,'0')
     newpins.append(pin) 
