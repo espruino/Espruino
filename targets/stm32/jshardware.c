@@ -526,8 +526,14 @@ static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
 
   // This (oddly) looks the same on F1/2/3/4. It's probably not
   bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
-              TIMx==TIM5 || TIMx==TIM6 || TIMx==TIM7 ||
-              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14;
+#ifndef STM32F3
+              TIMx==TIM5 || 
+#endif
+              TIMx==TIM6 || TIMx==TIM7 ||
+#ifndef STM32F3
+              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14 ||
+#endif
+              false;
 
   unsigned int freq = APB1 ? clocks.PCLK1_Frequency : clocks.PCLK2_Frequency;
   // If APB1 clock divisor is 1x, this is only 1x
