@@ -16,6 +16,10 @@
 #include "jswrap_array.h"
 #include "jsparse.h"
 
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
+
+
 /*JSON{ "type":"class",
         "class" : "Array",
         "check" : "jsvIsArray(var)",
@@ -254,6 +258,64 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
 
   return result;
 }
+
+
+/*JSON{ "type":"method", "class": "Array", "name" : "slice",
+         "description" : "Return a copy of a portion of the calling array",
+         "generate" : "jswrap_array_slice",
+         "params" : [ [ "start", "JsVar", "Start index"],
+                      [ "end", "JsVar", "End index (optional)"] ],
+         "return" : ["JsVar", "A new array"]
+}*/
+JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
+  JsVarInt len = jsvGetArrayLength(parent);
+  JsVarInt start = 0;
+  JsVarInt end = len;
+
+  if (!jsvIsUndefined(startVar))
+    start = jsvGetInteger(startVar);
+
+  if (!jsvIsUndefined(endVar))
+    end = jsvGetInteger(endVar);
+
+  JsVarInt k = 0;
+  JsVarInt final = len;
+  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+
+  if (!array) return 0;
+
+  if (start<0) k = max((len + start), 0);
+  else k = min(start, len);
+
+  if (end<0) final = max((len + end), 0);
+  else final = min(end, len);
+
+  bool isDone = false;
+
+  JsArrayIterator it;
+  jsvArrayIteratorNew(&it, parent);
+
+  while (jsvArrayIteratorHasElement(&it) && !isDone) {
+    JsVarInt idx = jsvGetInteger(jsvArrayIteratorGetIndex(&it));
+
+    if (idx < k) {
+      jsvArrayIteratorNext(&it);
+    } else {
+      if (k < final) {
+        jsvArrayPushAndUnLock(array, jsvArrayIteratorGetElement(&it));
+        jsvArrayIteratorNext(&it);
+        k++;
+      } else {
+        isDone = true;
+      }
+    }
+  }
+
+  jsvArrayIteratorFree(&it);
+
+  return array;
+}
+
 
 /*JSON{ "type":"method", "class": "Array", "name" : "forEach",
          "description" : "Executes a provided function once per array element.",
