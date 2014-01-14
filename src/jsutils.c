@@ -37,7 +37,7 @@ bool isIDString(const char *s) {
     return true;
 }
 
-/** escape a character - if it is required. This may return a reference to a static array, 
+/** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch) {
   if (ch=='\b') return "\\b";
@@ -49,7 +49,7 @@ const char *escapeCharacter(char ch) {
   if (ch=='\\') return "\\\\";
   if (ch=='"') return "\\\"";
   static char buf[5];
-  if (ch<32) {  
+  if (ch<32) {
     /** just encode as hex - it's more understandable
      * and doesn't have the issue of "\16"+"1" != "\161" */
     buf[0]='\\';
@@ -78,10 +78,10 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   if (*s == '0') {
     radix = 8;
     s++;
-    if (*s == 'x') {
+    if (*s == 'x' || *s == 'X') {
       radix = 16;
       s++;
-    } else if (*s == 'b') {
+    } else if (*s == 'b' || *s == 'B') {
       radix = 2;
       s++;
     }
@@ -236,7 +236,7 @@ void *memset(void *dst, int val, size_t size) {
   return dst;
 }
 
-unsigned int rand() { 
+unsigned int rand() {
     static unsigned int m_w = 0xDEADBEEF;    /* must not be zero */
     static unsigned int m_z = 0xCAFEBABE;    /* must not be zero */
 
@@ -250,7 +250,7 @@ JsVarFloat stringToFloat(const char *s) {
   bool isNegated = false;
   JsVarFloat v = 0;
   JsVarFloat mul = 0.1;
-  if (*s == '-') { 
+  if (*s == '-') {
     isNegated = true;
     s++;
   }
@@ -321,7 +321,7 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
     val -= v*d;
     *(str++) = itoch((int)v);
     d /= base;
-  }  
+  }
   *(str++)=itoch((int)val);
   *(str++)=0;
 }

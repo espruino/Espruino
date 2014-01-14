@@ -130,11 +130,12 @@ void jslGetNextToken(JsLex *lex) {
   } else if (isNumeric(lex->currCh)) { // Numbers
       // TODO: check numbers aren't the wrong format
       bool canBeFloating = true;
-      if (lex->currCh=='0') { 
-        jslTokenAppendChar(lex, lex->currCh); 
-        jslGetNextCh(lex); 
+      if (lex->currCh=='0') {
+        jslTokenAppendChar(lex, lex->currCh);
+        jslGetNextCh(lex);
       }
-      if (lex->currCh=='x' || lex->currCh=='b') {
+      if ((lex->currCh=='x' || lex->currCh=='X') ||
+          (lex->currCh=='b' || lex->currCh=='B')) {
         canBeFloating = false;
         jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
       }
@@ -182,7 +183,7 @@ void jslGetNextToken(JsLex *lex) {
                             buf[3] = lex->currCh; jslGetNextCh(lex);
                             ch = (char)stringToInt(buf);
                          } break;
-              default: 
+              default:
                        if (lex->currCh>='0' && lex->currCh<='7') {
                          // octal digits
                          char buf[5] = "0";
