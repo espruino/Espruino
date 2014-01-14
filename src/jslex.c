@@ -134,8 +134,10 @@ void jslGetNextToken(JsLex *lex) {
         jslTokenAppendChar(lex, lex->currCh);
         jslGetNextCh(lex);
       }
+
       if ((lex->currCh=='x' || lex->currCh=='X') ||
-          (lex->currCh=='b' || lex->currCh=='B')) {
+          (lex->currCh=='b' || lex->currCh=='B') ||
+          (lex->currCh=='o' || lex->currCh=='O')) {
         canBeFloating = false;
         jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
       }

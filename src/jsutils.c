@@ -78,9 +78,18 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   if (*s == '0') {
     radix = 8;
     s++;
-    if (*s == 'x' || *s == 'X') {
+
+    // OctalIntegerLiteral: 0o01, 0O01
+    if (*s == 'o' || *s == 'O') {
+      radix = 8;
+      s++;
+
+    // HexIntegerLiteral: 0x01, 0X01
+    } else if (*s == 'x' || *s == 'X') {
       radix = 16;
       s++;
+
+    // BinaryIntegerLiteral: 0b01, 0B01
     } else if (*s == 'b' || *s == 'B') {
       radix = 2;
       s++;
