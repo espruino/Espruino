@@ -23,7 +23,7 @@ typedef unsigned char Pin; ///< for specifying pins for hardware
 
 typedef enum {
   JSH_PORT_NONE,
-  JSH_PORTA=1,
+  JSH_PORTA = 1,
   JSH_PORTB,
   JSH_PORTC,
   JSH_PORTD,
@@ -76,9 +76,9 @@ typedef enum {
   JSH_ANALOG2     = 64,
   JSH_ANALOG3     = 128,
   JSH_ANALOG4     = 256,
-  JSH_ANALOG12    = JSH_ANALOG1|JSH_ANALOG2,
-  JSH_ANALOG123   = JSH_ANALOG1|JSH_ANALOG2|JSH_ANALOG3,
-  JSH_ANALOG34    = JSH_ANALOG3|JSH_ANALOG4,
+  JSH_ANALOG12    = JSH_ANALOG1 | JSH_ANALOG2,
+  JSH_ANALOG123   = JSH_ANALOG1 | JSH_ANALOG2 | JSH_ANALOG3,
+  JSH_ANALOG34    = JSH_ANALOG3 | JSH_ANALOG4,
 
   JSH_ANALOG_CH0 = 0,
   JSH_ANALOG_CH1,
@@ -99,7 +99,7 @@ typedef enum {
   JSH_ANALOG_CH16,
 
   JSH_MASK_ANALOG_CH  = 31,
-  JSH_MASK_ANALOG_ADC = JSH_ANALOG1|JSH_ANALOG2|JSH_ANALOG3|JSH_ANALOG4,
+  JSH_MASK_ANALOG_ADC = JSH_ANALOG1 | JSH_ANALOG2 | JSH_ANALOG3 | JSH_ANALOG4,
 
 } PACKED_FLAGS JsvPinInfoAnalog;
 
@@ -212,7 +212,7 @@ void jshGetPinString(char *result, Pin pin);
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
 static inline Pin jshGetPinFromVar(JsVar *pinv) {
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
+  if (jsvIsString(pinv) && pinv->varData.str[5] == 0/*should never be more than 4 chars!*/) {
     return jshGetPinFromString(&pinv->varData.str[0]);
   } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
     return (Pin)jsvGetInteger(pinv);

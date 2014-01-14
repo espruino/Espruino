@@ -86,18 +86,18 @@ JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
 }*/
 JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v) {
   // slow, but simple!
-   v = jsvAsString(v, false);
-   if (!v) return 0; // out of memory
-   int idx = -1;
-   int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
-   for (idx=0;idx<=l;idx++) {
-     if (jsvCompareString(parent, v, idx, 0, true)==0) {
-       jsvUnLock(v);
-       return idx;
-     }
-   }
-   jsvUnLock(v);
-   return -1;
+  v = jsvAsString(v, false);
+  if (!v) return 0; // out of memory
+  int idx = -1;
+  int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
+  for (idx = 0; idx <= l; idx++) {
+    if (jsvCompareString(parent, v, idx, 0, true) == 0) {
+      jsvUnLock(v);
+      return idx;
+    }
+  }
+  jsvUnLock(v);
+  return -1;
 }
 
 /*JSON{ "type":"method", "class": "String", "name" : "substring",
@@ -109,16 +109,16 @@ JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v) {
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   JsVar *res;
   JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
-  if (pStart<0) pStart=0;
-  if (pEnd<0) pEnd=0;
-  if (pEnd<pStart) {
+  if (pStart < 0) pStart = 0;
+  if (pEnd < 0) pEnd = 0;
+  if (pEnd < pStart) {
     JsVarInt l = pStart;
     pStart = pEnd;
     pEnd = l;
   }
   res = jsvNewWithFlags(JSV_STRING);
   if (!res) return 0; // out of memory
-  jsvAppendStringVar(res, parent, (int)pStart, (int)(pEnd-pStart));
+  jsvAppendStringVar(res, parent, (int)pStart, (int)(pEnd - pStart));
   return res;
 }
 
@@ -131,7 +131,7 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   JsVar *res;
   JsVarInt pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
-  if (pLen<0) pLen=0;
+  if (pLen < 0) pLen = 0;
   res = jsvNewWithFlags(JSV_STRING);
   if (!res) return 0; // out of memory
   jsvAppendStringVar(res, parent, (int)pStart, (int)pLen);
@@ -146,7 +146,7 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
 }*/
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   JsVar *array;
-  int last, idx, arraylen=0;
+  int last, idx, arraylen = 0;
   int splitlen =  (int)jsvGetStringLength(split);
   int l = (int)jsvGetStringLength(parent) - splitlen;
   last = 0;
@@ -154,16 +154,16 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   array = jsvNewWithFlags(JSV_ARRAY);
   if (!array) return 0; // out of memory
 
-  for (idx=0;idx<=l;idx++) {
-    if (idx==l || jsvCompareString(parent, split, idx, 0, true)==0) {
+  for (idx = 0; idx <= l; idx++) {
+    if (idx == l || jsvCompareString(parent, split, idx, 0, true) == 0) {
       JsVar *part = jsvNewFromEmptyString();
       if (!part) break; // out of memory
       JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
       if (idxvar) { // could be out of memory
-        if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
-        jsvAppendStringVar(part, parent, last, idx-last);
+        if (idx == l) idx = l + splitlen; // if the last element, do to the end of the string
+        jsvAppendStringVar(part, parent, last, idx - last);
         jsvAddName(array, idxvar);
-        last = idx+splitlen;
+        last = idx + splitlen;
         jsvUnLock(idxvar);
       }
       jsvUnLock(part);

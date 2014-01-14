@@ -95,7 +95,7 @@
 
 }*/
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
-  if (byteLength <= 0 || byteLength>65535) {
+  if (byteLength <= 0 || byteLength > 65535) {
     jsError("Invalid length for ArrayBuffer\n");
     return 0;
   }
@@ -201,18 +201,18 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   } else if (jsvIsInt(arr)) {
     length = jsvGetInteger(arr);
     byteOffset = 0;
-    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type)*length);
+    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type) * length);
   } else if (jsvIsArray(arr)) {
     length = jsvGetArrayLength(arr);
     byteOffset = 0;
-    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type)*length);
+    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type) * length);
     // later on we'll populate this
   }
   if (!arrayBuffer) {
     jsError("Unsupported first argument\n");
     return 0;
   }
-  if (length<=0) length = (JsVarInt)jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type);
+  if (length <= 0) length = (JsVarInt)jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type);
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (typedArr) {
     typedArr->varData.arraybuffer.type = type;
@@ -266,15 +266,15 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
 }*/
 JsVarFloat jswrap_arraybufferview_interpolate(JsVar *parent, JsVarFloat findex) {
   int idx = (int)findex;
-  JsVarFloat a = findex-idx;
+  JsVarFloat a = findex - idx;
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, parent, idx);
   JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
   jsvArrayBufferIteratorNext(&it);
   JsVarFloat fb = jsvArrayBufferIteratorGetFloatValue(&it);
   jsvArrayBufferIteratorFree(&it);
-  return fa*(1-a) + fb*a;
-} 
+  return fa * (1 - a) + fb * a;
+}
 
 /*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "interpolate2d",
          "description" : "Interpolate between two adjacent values in the Typed Array",
@@ -286,30 +286,30 @@ JsVarFloat jswrap_arraybufferview_interpolate(JsVar *parent, JsVarFloat findex) 
 }*/
 JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, JsVarFloat x, JsVarFloat y) {
   int yidx = (int)y;
-  JsVarFloat ay = y-yidx;
+  JsVarFloat ay = y - yidx;
 
-  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
+  JsVarFloat findex = x + (JsVarFloat)(yidx * width);
   int idx = (int)findex;
-  JsVarFloat ax = findex-idx;
+  JsVarFloat ax = findex - idx;
 
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, parent, idx);
 
-  JsVarFloat xa,xb;
+  JsVarFloat xa, xb;
   int i;
 
   xa = jsvArrayBufferIteratorGetFloatValue(&it);
   jsvArrayBufferIteratorNext(&it);
   xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  JsVarFloat ya = xa*(1-ax) + xb*ax;
+  JsVarFloat ya = xa * (1 - ax) + xb * ax;
 
-  for (i=1;i<width;i++) jsvArrayBufferIteratorNext(&it);
+  for (i = 1; i < width; i++) jsvArrayBufferIteratorNext(&it);
 
   xa = jsvArrayBufferIteratorGetFloatValue(&it);
   jsvArrayBufferIteratorNext(&it);
   xb = jsvArrayBufferIteratorGetFloatValue(&it);
   jsvArrayBufferIteratorFree(&it);
-  JsVarFloat yb = xa*(1-ax) + xb*ax;
+  JsVarFloat yb = xa * (1 - ax) + xb * ax;
 
-  return ya*(1-ay) + yb*ay;
+  return ya * (1 - ay) + yb * ay;
 }

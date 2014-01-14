@@ -68,6 +68,6 @@ void jswrap_pin_write(JsVar *parent, bool value) {
 }*/
 void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
   Pin pin = jshGetPinFromVar(parent);
-  JsSysTime sTime = jshGetTimeFromMilliseconds(time*1000);
+  JsSysTime sTime = jshGetTimeFromMilliseconds(time * 1000);
   jshPinOutputAtTime(sTime, pin, value);
 }

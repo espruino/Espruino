@@ -77,7 +77,7 @@ JsVar *jswrap_process_memory() {
     }
     unsigned int usage = jsvGetMemoryUsage() - history;
     unsigned int total = jsvGetMemoryTotal();
-    jsvUnLock(jsvObjectSetChild(obj, "free", jsvNewFromInteger(total-usage)));
+    jsvUnLock(jsvObjectSetChild(obj, "free", jsvNewFromInteger(total - usage)));
     jsvUnLock(jsvObjectSetChild(obj, "usage", jsvNewFromInteger(usage)));
     jsvUnLock(jsvObjectSetChild(obj, "total", jsvNewFromInteger(total)));
     jsvUnLock(jsvObjectSetChild(obj, "history", jsvNewFromInteger(history)));

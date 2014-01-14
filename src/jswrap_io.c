@@ -90,7 +90,7 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
                       [ "time", "float", "A time in milliseconds"] ]
 }*/
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
-  if (time<=0) {
+  if (time <= 0) {
     jsWarn("Pulse Time given for digitalPulse is less that or equal to 0");
   } else {
     //jsPrintInt((JsVarInt)(time*1000));
@@ -111,15 +111,15 @@ void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
+      jshPinOutput(jshGetPinFromVar(pinPtr), value & 1);
       jsvUnLock(pinPtr);
       pinName = pinNamePtr->prevSibling;
       jsvUnLock(pinNamePtr);
-      value = value>>1; // next bit down
+      value = value >> 1; // next bit down
     }
   } else {
     Pin pin = jshGetPinFromVar(pinVar);
-    jshPinOutput(pin, value!=0);
+    jshPinOutput(pin, value != 0);
   }
 }
 
@@ -139,13 +139,13 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+      value = (value << 1) | jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
       pinName = pinNamePtr->nextSibling;
       jsvUnLock(pinNamePtr);
       pins++;
     }
-    if (pins==0) return 0; // return undefined if array empty
+    if (pins == 0) return 0; // return undefined if array empty
     return value;
   } else {
     Pin pin = jshGetPinFromVar(pinVar);
@@ -222,7 +222,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   } else {
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-    if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+    if (interval < TIMER_MIN_INTERVAL) interval = TIMER_MIN_INTERVAL;
     JsVar *v;
     v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
     jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
@@ -271,9 +271,9 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
     if (jsvIsString(v)) {
-      if (jsvIsStringEqual(v, "rising")) edge=1;
-      else if (jsvIsStringEqual(v, "falling")) edge=-1;
-      else if (jsvIsStringEqual(v, "both")) edge=0;
+      if (jsvIsStringEqual(v, "rising")) edge = 1;
+      else if (jsvIsStringEqual(v, "falling")) edge = -1;
+      else if (jsvIsStringEqual(v, "both")) edge = 0;
       else jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
     } else if (!jsvIsUndefined(v))
       jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
@@ -306,7 +306,7 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     jshPinWatch(pin, true);
   }
   jsvUnLock(skippedFunc);
-  return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
+  return (itemIndex >= 0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
 }
 
 /*JSON{ "type":"function", "name" : "clearInterval",
@@ -359,7 +359,7 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
                       [ "time","float","The new time period in ms" ] ]
 }*/
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
-  if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+  if (interval < TIMER_MIN_INTERVAL) interval = TIMER_MIN_INTERVAL;
   JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVarRef(timerArray, idVar, false) : 0;
 
   if (timerName) {

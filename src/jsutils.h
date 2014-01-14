@@ -48,40 +48,40 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #define false (0)
 #define NAN (((JsVarFloat)0)/(JsVarFloat)0)
 
-/* Number of Js Variables allowed and Js Reference format. 
+/* Number of Js Variables allowed and Js Reference format.
 
    JsVarRef = char -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
    JsVarRef = short -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
    JsVarRef = int -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
 
-   NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
+   NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef
          See jshardware.c FLASH constants - all this must be able to fit in flash
 
 
 */
 
 #ifdef RESIZABLE_JSVARS
- //  probably linux - allow us to allocate more blocks of variables
-  typedef unsigned int JsVarRef;
-  #define JSVAR_SIZE 30
-  #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-  #define JSVAR_DATA_STRING_MAX_LEN 24 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
+//  probably linux - allow us to allocate more blocks of variables
+typedef unsigned int JsVarRef;
+#define JSVAR_SIZE 30
+#define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+#define JSVAR_DATA_STRING_MAX_LEN 24 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
 #else
-   /** JsVerRef stores References for variables - We treat 0 as null
-   *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
-   *
-   */
-  #if JSVAR_CACHE_SIZE <= 254
-    typedef unsigned char JsVarRef;
-    #define JSVAR_SIZE 15
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 12 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too
-  #else
-    typedef unsigned short JsVarRef;
-    #define JSVAR_SIZE 20
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 16 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
-  #endif
+/** JsVerRef stores References for variables - We treat 0 as null
+*  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
+*
+*/
+#if JSVAR_CACHE_SIZE <= 254
+typedef unsigned char JsVarRef;
+#define JSVAR_SIZE 15
+#define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+#define JSVAR_DATA_STRING_MAX_LEN 12 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too
+#else
+typedef unsigned short JsVarRef;
+#define JSVAR_SIZE 20
+#define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+#define JSVAR_DATA_STRING_MAX_LEN 16 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
+#endif
 #endif
 
 typedef long long JsVarInt;
@@ -123,17 +123,17 @@ typedef long long JsSysTime;
 #define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
 
 #if !defined(NO_ASSERT)
- #ifdef __STRING
-   #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X));
- #else
-   #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,"");
- #endif
+#ifdef __STRING
+#define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X));
 #else
- #define assert(X) 
+#define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,"");
+#endif
+#else
+#define assert(X)
 #endif
 
 /// Used when we have enums we want to squash down
-#define PACKED_FLAGS  __attribute__ ((__packed__))  
+#define PACKED_FLAGS  __attribute__ ((__packed__))
 
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
@@ -172,42 +172,42 @@ typedef long long JsSysTime;
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
 typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
-    JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
-    // UNDEFINED is now just stored using '0' as the variable Ref
-    JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
-    JSV_STRING      = JSV_NULL+1, ///< string
-    JSV_STRING_0    = JSV_STRING, // string of length 0
-    JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
-    JSV_STRING_EXT  = JSV_STRING_MAX+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
-    JSV_STRING_EXT_0 = JSV_STRING_EXT,
-    JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
-    JSV_ARRAY = JSV_STRING_EXT_MAX+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
-    JSV_ARRAYBUFFER  = JSV_ARRAY+1,
-    JSV_OBJECT      = JSV_ARRAYBUFFER+1,
-    JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_NUMERICSTART = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
-    JSV_INTEGER     = JSV_NUMERICSTART, ///< integer number (note JSV_NUMERICMASK)
-    JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
-    JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
-    JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
-    JSV_NUMERICEND  = JSV_PIN, ///< --------- End of numeric variable types
-    JSV_VAR_END     = JSV_NUMERICEND, ///< End of numeric variable types
+  JSV_UNUSED      = 0, ///< Variable not used for anything
+  JSV_ROOT        = JSV_UNUSED + 1, ///< The root of everything - there is only one of these
+  // UNDEFINED is now just stored using '0' as the variable Ref
+  JSV_NULL        = JSV_ROOT + 1, ///< it seems null is its own data type
+  JSV_STRING      = JSV_NULL + 1, ///< string
+  JSV_STRING_0    = JSV_STRING, // string of length 0
+  JSV_STRING_MAX  = JSV_STRING_0 + JSVAR_DATA_STRING_LEN,
+  JSV_STRING_EXT  = JSV_STRING_MAX + 1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+  JSV_STRING_EXT_0 = JSV_STRING_EXT,
+  JSV_STRING_EXT_MAX = JSV_STRING_EXT_0 + JSVAR_DATA_STRING_MAX_LEN,
+  JSV_ARRAY = JSV_STRING_EXT_MAX + 1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
+  JSV_ARRAYBUFFER  = JSV_ARRAY + 1,
+  JSV_OBJECT      = JSV_ARRAYBUFFER + 1,
+  JSV_FUNCTION    = JSV_OBJECT + 1,
+  JSV_NUMERICSTART = JSV_FUNCTION + 1, ///< --------- Start of numeric variable types
+  JSV_INTEGER     = JSV_NUMERICSTART, ///< integer number (note JSV_NUMERICMASK)
+  JSV_FLOAT       = JSV_INTEGER + 1, ///< floating point double (note JSV_NUMERICMASK)
+  JSV_BOOLEAN     = JSV_FLOAT + 1, ///< boolean (note JSV_NUMERICMASK)
+  JSV_PIN         = JSV_BOOLEAN + 1, ///< pin (note JSV_NUMERICMASK)
+  JSV_NUMERICEND  = JSV_PIN, ///< --------- End of numeric variable types
+  JSV_VAR_END     = JSV_NUMERICEND, ///< End of numeric variable types
 
-    JSV_VARTYPEMASK = NEXT_POWER_2(JSV_VAR_END)-1,
+  JSV_VARTYPEMASK = NEXT_POWER_2(JSV_VAR_END) - 1,
 
-    // names can be STRING,
-    JSV_NAME        = JSV_VARTYPEMASK+1, ///< a NAME of a variable - this isn't a variable itself (and can be an int/string/etc.)
-    JSV_NATIVE      = JSV_NAME<<1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
-    JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
-    JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
-    JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
-    JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
+  // names can be STRING,
+  JSV_NAME        = JSV_VARTYPEMASK + 1, ///< a NAME of a variable - this isn't a variable itself (and can be an int/string/etc.)
+  JSV_NATIVE      = JSV_NAME << 1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
+  JSV_GARBAGE_COLLECT = JSV_NATIVE << 1, ///< When garbage collecting, this flag is true IF we should GC!
+  JSV_IS_RECURSING = JSV_GARBAGE_COLLECT << 1, ///< used to stop recursive loops in jsvTrace
+  JSV_LOCK_ONE    = JSV_IS_RECURSING << 1,
+  JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
 
 
 
-    JSV_ARRAYBUFFERNAME = JSV_NAME|JSV_ARRAYBUFFER, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
-    JSV_FUNCTION_PARAMETER = JSV_NATIVE | JSV_NAME, ///< this is inside a function, so it should be quite obvious
+  JSV_ARRAYBUFFERNAME = JSV_NAME | JSV_ARRAYBUFFER, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+  JSV_FUNCTION_PARAMETER = JSV_NATIVE | JSV_NAME, ///< this is inside a function, so it should be quite obvious
 
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
@@ -215,64 +215,64 @@ typedef enum {
 static const int JSV_LOCK_SHIFT = GET_BIT_NUMBER(JSV_LOCK_ONE);
 
 typedef enum LEX_TYPES {
-    LEX_EOF = 0,
-    LEX_ID = 256,
-    LEX_INT,
-    LEX_FLOAT,
-    LEX_STR,
-    LEX_UNFINISHED_COMMENT,
+  LEX_EOF = 0,
+  LEX_ID = 256,
+  LEX_INT,
+  LEX_FLOAT,
+  LEX_STR,
+  LEX_UNFINISHED_COMMENT,
 
-    LEX_EQUAL,
-    LEX_TYPEEQUAL,
-    LEX_NEQUAL,
-    LEX_NTYPEEQUAL,
-    LEX_LEQUAL,
-    LEX_LSHIFT,
-    LEX_LSHIFTEQUAL,
-    LEX_GEQUAL,
-    LEX_RSHIFT,
-    LEX_RSHIFTUNSIGNED,
-    LEX_RSHIFTEQUAL,
-    LEX_RSHIFTUNSIGNEDEQUAL,
-    LEX_PLUSEQUAL,
-    LEX_MINUSEQUAL,
-    LEX_PLUSPLUS,
-    LEX_MINUSMINUS,
-    LEX_MULEQUAL,
-    LEX_DIVEQUAL,
-    LEX_MODEQUAL,
-    LEX_ANDEQUAL,
-    LEX_ANDAND,
-    LEX_OREQUAL,
-    LEX_OROR,
-    LEX_XOREQUAL,
-    // reserved words
+  LEX_EQUAL,
+  LEX_TYPEEQUAL,
+  LEX_NEQUAL,
+  LEX_NTYPEEQUAL,
+  LEX_LEQUAL,
+  LEX_LSHIFT,
+  LEX_LSHIFTEQUAL,
+  LEX_GEQUAL,
+  LEX_RSHIFT,
+  LEX_RSHIFTUNSIGNED,
+  LEX_RSHIFTEQUAL,
+  LEX_RSHIFTUNSIGNEDEQUAL,
+  LEX_PLUSEQUAL,
+  LEX_MINUSEQUAL,
+  LEX_PLUSPLUS,
+  LEX_MINUSMINUS,
+  LEX_MULEQUAL,
+  LEX_DIVEQUAL,
+  LEX_MODEQUAL,
+  LEX_ANDEQUAL,
+  LEX_ANDAND,
+  LEX_OREQUAL,
+  LEX_OROR,
+  LEX_XOREQUAL,
+  // reserved words
 #define LEX_R_LIST_START LEX_R_IF
-    LEX_R_IF,
-    LEX_R_ELSE,
-    LEX_R_DO,
-    LEX_R_WHILE,
-    LEX_R_FOR,
-    LEX_R_BREAK,
-    LEX_R_CONTINUE,
-    LEX_R_FUNCTION,
-    LEX_R_RETURN,
-    LEX_R_VAR,
-    LEX_R_THIS,
-    LEX_R_TRUE,
-    LEX_R_FALSE,
-    LEX_R_NULL,
-    LEX_R_UNDEFINED,
-    LEX_R_NEW,
-    LEX_R_IN,
-    LEX_R_INSTANCEOF,
-    LEX_R_SWITCH,
-    LEX_R_CASE,
-    LEX_R_DEFAULT,
-    LEX_R_TYPEOF,
-    LEX_R_VOID,
+  LEX_R_IF,
+  LEX_R_ELSE,
+  LEX_R_DO,
+  LEX_R_WHILE,
+  LEX_R_FOR,
+  LEX_R_BREAK,
+  LEX_R_CONTINUE,
+  LEX_R_FUNCTION,
+  LEX_R_RETURN,
+  LEX_R_VAR,
+  LEX_R_THIS,
+  LEX_R_TRUE,
+  LEX_R_FALSE,
+  LEX_R_NULL,
+  LEX_R_UNDEFINED,
+  LEX_R_NEW,
+  LEX_R_IN,
+  LEX_R_INSTANCEOF,
+  LEX_R_SWITCH,
+  LEX_R_CASE,
+  LEX_R_DEFAULT,
+  LEX_R_TYPEOF,
+  LEX_R_VOID,
 
-    LEX_R_LIST_END /* always the last entry */
+  LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;
 
 // To handle variable size bit fields
@@ -282,26 +282,26 @@ typedef enum LEX_TYPES {
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
+  return (ch == ' ') || (ch == '\t') || (ch == '\n') || (ch == '\r');
 }
 
 static inline bool isNumeric(char ch) {
-    return (ch>='0') && (ch<='9');
+  return (ch >= '0') && (ch <= '9');
 }
 
 static inline bool isHexadecimal(char ch) {
-    return ((ch>='0') && (ch<='9')) ||
-           ((ch>='a') && (ch<='f')) ||
-           ((ch>='A') && (ch<='F'));
+  return ((ch >= '0') && (ch <= '9')) ||
+         ((ch >= 'a') && (ch <= 'f')) ||
+         ((ch >= 'A') && (ch <= 'F'));
 }
 static inline bool isAlpha(char ch) {
-    return ((ch>='a') && (ch<='z')) || ((ch>='A') && (ch<='Z')) || ch=='_';
+  return ((ch >= 'a') && (ch <= 'z')) || ((ch >= 'A') && (ch <= 'Z')) || ch == '_';
 }
 
 
 bool isIDString(const char *s);
 
-/** escape a character - if it is required. This may return a reference to a static array, 
+/** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
@@ -340,10 +340,10 @@ unsigned int rand();
 JsVarFloat stringToFloat(const char *str);
 
 #ifndef HAS_STDLIB
-void itoa(JsVarInt val,char *str,unsigned int base);
+void itoa(JsVarInt val, char *str, unsigned int base);
 #endif
 char itoch(int val);
-void ftoa(JsVarFloat val,char *str);
+void ftoa(JsVarFloat val, char *str);
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size);

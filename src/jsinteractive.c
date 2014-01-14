@@ -40,16 +40,16 @@ typedef struct TimerState {
 } TimerState;
 
 typedef enum {
- IS_NONE,
- IS_HAD_R,
- IS_HAD_27,
- IS_HAD_27_79,
- IS_HAD_27_91,
- IS_HAD_27_91_49,
- IS_HAD_27_91_51,
- IS_HAD_27_91_52,
- IS_HAD_27_91_53,
- IS_HAD_27_91_54,
+  IS_NONE,
+  IS_HAD_R,
+  IS_HAD_27,
+  IS_HAD_27_79,
+  IS_HAD_27_91,
+  IS_HAD_27_91_49,
+  IS_HAD_27_91_51,
+  IS_HAD_27_91_52,
+  IS_HAD_27_91_53,
+  IS_HAD_27_91_54,
 } InputState;
 
 TODOFlags todo = TODO_NOTHING;
@@ -123,23 +123,23 @@ void jsiConsolePrintChar(char data) {
 
 void jsiConsolePrint(const char *str) {
   while (*str) {
-       if (*str == '\n') jsiConsolePrintChar('\r');
-       jsiConsolePrintChar(*(str++));
+    if (*str == '\n') jsiConsolePrintChar('\r');
+    jsiConsolePrintChar(*(str++));
   }
 }
 
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsiConsolePrint, 0, fmt, argp);
   va_end(argp);
 }
 
 
 void jsiConsolePrintInt(JsVarInt d) {
-    char buf[32];
-    itoa(d, buf, 10);
-    jsiConsolePrint(buf);
+  char buf[32];
+  itoa(d, buf, 10);
+  jsiConsolePrint(buf);
 }
 
 
@@ -157,7 +157,8 @@ void jsiConsolePrintStringVarUntilEOL(JsVar *v, int fromCharacter, bool andBacku
   }
   jsvStringIteratorFree(&it);
   if (andBackup) {
-    jsiConsolePrintChar(' ');chars++;
+    jsiConsolePrintChar(' ');
+    chars++;
     while (chars--) jsiConsolePrintChar(0x08); //delete
   }
 }
@@ -179,7 +180,7 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, int fromCharacter, char n
 
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v) {
-  jsiConsolePrintStringVarWithNewLineChar(v,0,0);
+  jsiConsolePrintStringVarWithNewLineChar(v, 0, 0);
 }
 
 /** Assuming that we are at the end of the string, this backs up
@@ -188,20 +189,20 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
   assert(jsvHasCharacterData(v));
 
   int line, lines = jsvGetLinesInString(v);
-  for (line=lines;line>0;line--) {
-    int i,chars = jsvGetCharsOnLine(v, line);
-    if (line==lines) {
-      for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+  for (line = lines; line > 0; line--) {
+    int i, chars = jsvGetCharsOnLine(v, line);
+    if (line == lines) {
+      for (i = 0; i < chars; i++) jsiConsolePrintChar(0x08); // move cursor back
     }
-    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
-    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) { 
+    for (i = 0; i < chars; i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
+    for (i = 0; i < chars; i++) jsiConsolePrintChar(0x08); // move cursor back
+    if (line > 1) {
       // clear the character before - this would have had a colon
       jsiConsolePrintChar(0x08);
       jsiConsolePrintChar(' ');
-      // move cursor up      
+      // move cursor up
       jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91); 
+      jsiConsolePrintChar(91);
       jsiConsolePrintChar(65);
     }
   }
@@ -216,30 +217,30 @@ void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCha
   jsvGetLineAndCol(v, fromCharacter, &cursorLine, &cursorCol);
   // delete contents of current line
   int i, chars = jsvGetCharsOnLine(v, cursorLine);
-  for (i=cursorCol;i<=chars;i++) jsiConsolePrintChar(' ');
-  for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+  for (i = cursorCol; i <= chars; i++) jsiConsolePrintChar(' ');
+  for (i = 0; i < chars; i++) jsiConsolePrintChar(0x08); // move cursor back
 
   int line, lines = jsvGetLinesInString(v);
-  for (line=cursorLine+1;line<=lines;line++) {
+  for (line = cursorLine + 1; line <= lines; line++) {
     jsiConsolePrintChar(27);
     jsiConsolePrintChar(91);
     jsiConsolePrintChar(66); // move down
     chars = jsvGetCharsOnLine(v, line);
-    for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
-    for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
+    for (i = 0; i < chars; i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
+    for (i = 0; i < chars; i++) jsiConsolePrintChar(0x08); // move cursor back
     if (erasePrevCharacter) {
       jsiConsolePrintChar(0x08); // move cursor back
       jsiConsolePrintChar(' ');
     }
   }
   // move the cursor back up
-  for (line=cursorLine+1;line<=lines;line++) {
+  for (line = cursorLine + 1; line <= lines; line++) {
     jsiConsolePrintChar(27);
     jsiConsolePrintChar(91);
     jsiConsolePrintChar(65);
   }
   // move the cursor forwards
-  for (i=1;i<cursorCol;i++) {
+  for (i = 1; i < cursorCol; i++) {
     jsiConsolePrintChar(27);
     jsiConsolePrintChar(91);
     jsiConsolePrintChar(67);
@@ -276,7 +277,7 @@ void jsiMoveCursor(int oldX, int oldY, int newX, int newY) {
 }
 
 void jsiMoveCursorChar(JsVar *v, int fromCharacter, int toCharacter) {
-  if (fromCharacter==toCharacter) return;
+  if (fromCharacter == toCharacter) return;
   int oldX, oldY;
   jsvGetLineAndCol(v, fromCharacter, &oldY, &oldX);
   int newX, newY;
@@ -310,13 +311,13 @@ void jsiReturnInputLine() {
 }
 
 void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos) {
-  int line,col;
+  int line, col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  jsiConsolePrintf("line %d col %d\n",line,col);
+  jsiConsolePrintf("line %d col %d\n", line, col);
 }
 
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
-  int line = 1,col = 1;
+  int line = 1, col = 1;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   int startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
   jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, false);
@@ -348,7 +349,7 @@ void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
     business &= (JsiBusyDevice)~device;
 
   if (pinBusyIndicator != PIN_UNDEFINED)
-    jshPinOutput(pinBusyIndicator, business!=0);
+    jshPinOutput(pinBusyIndicator, business != 0);
 }
 
 void jsiSetSleep(bool isSleep) {
@@ -528,33 +529,33 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     jsvAppendPrintf(str, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
   if (allowDeepSleep) {
-      jsvAppendPrintf(str, "setDeepSleep(1);\n");
-    }
+    jsvAppendPrintf(str, "setDeepSleep(1);\n");
+  }
 
   jsiAppendSerialInitialisation(str, "USB", addCallbacks);
   int i;
-  for (i=0;i<USARTS;i++)
-    jsiAppendSerialInitialisation(str, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
-  for (i=0;i<SPIS;i++)
-    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_SPI1+i));
-  for (i=0;i<I2CS;i++)
-    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_I2C1+i));
+  for (i = 0; i < USARTS; i++)
+    jsiAppendSerialInitialisation(str, jshGetDeviceString(EV_SERIAL1 + i), addCallbacks);
+  for (i = 0; i < SPIS; i++)
+    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_SPI1 + i));
+  for (i = 0; i < I2CS; i++)
+    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_I2C1 + i));
   // pins
   Pin pin;
-  for (pin=0;jshIsPinValid(pin) && pin<255;pin++) {
+  for (pin = 0; jshIsPinValid(pin) && pin < 255; pin++) {
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
-    JshPinState statem = state&JSHPINSTATE_MASK;
+    JshPinState statem = state & JSHPINSTATE_MASK;
     if (statem == JSHPINSTATE_GPIO_OUT) {
-      bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
+      bool isOn = (state & JSHPINSTATE_PIN_IS_ON) != 0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
-      jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
+      jsvAppendPrintf(str, "digitalWrite(%p,%d);\n", pin, isOn ? 1 : 0);
     } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
-      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
-      jsvAppendPrintf(str, "pinMode(%p,input%s);\n",pin,s);
+      if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s = "_pullup";
+      if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s = "_pulldown";
+      jsvAppendPrintf(str, "pinMode(%p,input%s);\n", pin, s);
     }
   }
 }
@@ -563,17 +564,17 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
 // 'release' anything we are using, but ensure that it doesn't get freed
 void jsiSoftKill() {
   jsvUnLock(inputLine);
-  inputLine=0;
+  inputLine = 0;
   inputCursorPos = 0;
 
   // Unref Watches/etc
   if (events) {
     jsvUnLock(events);
-    events=0;
+    events = 0;
   }
   if (timerArray) {
     jsvUnRefRef(timerArray);
-    timerArray=0;
+    timerArray = 0;
   }
   if (watchArray) {
     // Check any existing watches and disable interrupts for them
@@ -590,12 +591,12 @@ void jsiSoftKill() {
     jsvUnLock(watchArrayPtr);
 
     jsvUnRefRef(watchArray);
-    watchArray=0;
+    watchArray = 0;
   }
   // Save initialisation information
   JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, true);
   if (initName->firstChild) {
-    jsvUnRefRef(initName->firstChild); 
+    jsvUnRefRef(initName->firstChild);
     initName->firstChild = 0;
   }
   JsVar *initCode = jsvNewFromEmptyString();
@@ -616,7 +617,7 @@ void jsiInit(bool autoLoad) {
   jspInit(&p);
 
 #ifdef USE_LCD
- lcdInit_Main(&LCD);
+  lcdInit_Main(&LCD);
 #ifdef USE_LCD_ILI9325
   lcdInit_FSMC_ILI9325(&LCD, LCD_WIDTH, LCD_HEIGHT);
 #endif
@@ -662,16 +663,16 @@ void jsiInit(bool autoLoad) {
 #endif
     // rectangles @ http://www.network-science.de/ascii/
     jsiConsolePrint("\n"
-              "   _____                 _ \n"
-              "  |   __|___ ___ ___ _ _|_|___ ___ \n"
-              "  |   __|_ -| . |  _| | | |   | . |\n"
-              "  |_____|___|  _|_| |___|_|_|_|___|");
+                    "   _____                 _ \n"
+                    "  |   __|___ ___ ___ _ _|_|___ ___ \n"
+                    "  |   __|_ -| . |  _| | | |   | . |\n"
+                    "  |_____|___|  _|_| |___|_|_|_|___|");
     jsiConsolePrint("\n"
-              "            |_|   http://www.espruino.com\n"
-              "  "JS_VERSION" Copyright 2013 Gordon Williams\n"
-              "-------------------------------------------\n"
-              "                       KickStarter Version\n"
-              "-------------------------------------------\n");
+                    "            |_|   http://www.espruino.com\n"
+                    "  "JS_VERSION" Copyright 2013 Gordon Williams\n"
+                    "-------------------------------------------\n"
+                    "                       KickStarter Version\n"
+                    "-------------------------------------------\n");
     jsiConsolePrint("\n>");
   }
 }
@@ -690,25 +691,25 @@ int jsiCountBracketsInInput() {
 
   JsLex lex;
   jslInit(&lex, inputLine);
-  while (lex.tk!=LEX_EOF && lex.tk!=LEX_UNFINISHED_COMMENT) {
-    if (lex.tk=='{' || lex.tk=='[' || lex.tk=='(') brackets++;
-    if (lex.tk=='}' || lex.tk==']' || lex.tk==')') brackets--;
-    if (brackets<0) break; // closing bracket before opening!
+  while (lex.tk != LEX_EOF && lex.tk != LEX_UNFINISHED_COMMENT) {
+    if (lex.tk == '{' || lex.tk == '[' || lex.tk == '(') brackets++;
+    if (lex.tk == '}' || lex.tk == ']' || lex.tk == ')') brackets--;
+    if (brackets < 0) break; // closing bracket before opening!
     jslGetNextToken(&lex);
   }
-  if (lex.tk==LEX_UNFINISHED_COMMENT)
-    brackets=1000; // if there's an unfinished comment, we're in the middle of something
+  if (lex.tk == LEX_UNFINISHED_COMMENT)
+    brackets = 1000; // if there's an unfinished comment, we're in the middle of something
   jslKill(&lex);
 
   return brackets;
-} 
+}
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
   JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
   if (!history) return 0;
   JsVar *item = jsvArrayPopFirst(history);
-  bool freed = item!=0;
+  bool freed = item != 0;
   jsvUnLock(item);
   jsvUnLock(history);
   // TODO: could also free the array structure?
@@ -717,7 +718,7 @@ bool jsiFreeMoreMemory() {
 
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
-  if (!newLine || jsvGetStringLength(newLine)==0) return;
+  if (!newLine || jsvGetStringLength(newLine) == 0) return;
   JsVar *history = jsvFindChildFromString(p.root, JSI_HISTORY_NAME, true);
   if (!history) return; // out of memory
   // ensure we actually have the history array
@@ -758,7 +759,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
       if (previous) historyLine = jsvSkipNameAndUnLock(jsvArrayGetLast(history));
       // if next, we weren't using history so couldn't go forwards
     }
-    
+
     jsvUnLock(history);
   }
   return historyLine;
@@ -768,7 +769,7 @@ bool jsiIsInHistory(JsVar *line) {
   JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
   if (!history) return false;
   JsVar *historyFound = jsvGetArrayIndexOf(history, line, true/*exact*/);
-  bool inHistory = historyFound!=0;
+  bool inHistory = historyFound != 0;
   jsvUnLock(historyFound);
   jsvUnLock(history);
   return inHistory;
@@ -779,7 +780,7 @@ void jsiReplaceInputLine(JsVar *newLine) {
     int oldLen =  (int)jsvGetStringLength(inputLine);
     jsiMoveCursorChar(inputLine, inputCursorPos, oldLen); // move cursor to end
     jsiConsoleEraseStringVarBackwards(inputLine);
-    jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
+    jsiConsolePrintStringVarWithNewLineChar(newLine, 0, ':');
   }
   jsvUnLock(inputLine);
   inputLine = jsvLockAgain(newLine);
@@ -819,11 +820,11 @@ void jsiIsAboutToEditInputLine() {
 
 void jsiHandleDelete(bool isBackspace) {
   int l = (int)jsvGetStringLength(inputLine);
-  if (isBackspace && inputCursorPos<=0) return; // at beginning of line
-  if (!isBackspace && inputCursorPos>=l) return; // at end of line
+  if (isBackspace && inputCursorPos <= 0) return; // at beginning of line
+  if (!isBackspace && inputCursorPos >= l) return; // at end of line
   // work out if we are deleting a newline
-  bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine,inputCursorPos-1)=='\n') ||
-                       (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
+  bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine, inputCursorPos - 1) == '\n') ||
+                       (!isBackspace && jsvGetCharInString(inputLine, inputCursorPos) == '\n');
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
   if (deleteNewline && jsiShowInputLine()) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
@@ -831,17 +832,17 @@ void jsiHandleDelete(bool isBackspace) {
       // delete newline char
       jsiConsolePrintChar(0x08);
       jsiConsolePrintChar(' ');
-      jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
+      jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos - 1); // move cursor back
     }
   }
 
   JsVar *v = jsvNewFromEmptyString();
   int p = inputCursorPos;
   if (isBackspace) p--;
-  if (p>0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
-  if (p+1<l) jsvAppendStringVar(v, inputLine, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+  if (p > 0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
+  if (p + 1 < l) jsvAppendStringVar(v, inputLine, p + 1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
   jsvUnLock(inputLine);
-  inputLine=v;
+  inputLine = v;
   if (isBackspace)
     inputCursorPos--; // move cursor back
 
@@ -860,7 +861,7 @@ void jsiHandleDelete(bool isBackspace) {
 }
 
 void jsiHandleHome() {
-  while (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
+  while (inputCursorPos > 0 && jsvGetCharInString(inputLine, inputCursorPos - 1) != '\n') {
     if (jsiShowInputLine()) jsiConsolePrintChar(0x08);
     inputCursorPos--;
   }
@@ -868,40 +869,40 @@ void jsiHandleHome() {
 
 void jsiHandleEnd() {
   int l = (int)jsvGetStringLength(inputLine);
-  while (inputCursorPos<l && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
+  while (inputCursorPos < l && jsvGetCharInString(inputLine, inputCursorPos) != '\n') {
     if (jsiShowInputLine())
-      jsiConsolePrintChar(jsvGetCharInString(inputLine,inputCursorPos));
+      jsiConsolePrintChar(jsvGetCharInString(inputLine, inputCursorPos));
     inputCursorPos++;
   }
 }
 
 /** Page up/down move cursor to beginnint or end */
 void jsiHandlePageUpDown(bool isDown) {
-  int x,y;
+  int x, y;
   jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x);
   if (!isDown) { // up
     inputCursorPos = 0;
   } else { // down
     inputCursorPos = (int)jsvGetStringLength(inputLine);
   }
-  int newX=x,newY=y;
+  int newX = x, newY = y;
   jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
-  jsiMoveCursor(x,y,newX,newY);
+  jsiMoveCursor(x, y, newX, newY);
 }
 
 void jsiHandleMoveUpDown(int direction) {
-  int x,y, lines=jsvGetLinesInString(inputLine);
+  int x, y, lines = jsvGetLinesInString(inputLine);
   jsvGetLineAndCol(inputLine, inputCursorPos, &y, &x);
-  int newX=x,newY=y;
-  newY+=direction;
-  if (newY<1) newY=1;
-  if (newY>lines) newY=lines;
+  int newX = x, newY = y;
+  newY += direction;
+  if (newY < 1) newY = 1;
+  if (newY > lines) newY = lines;
   // work out cursor pos and feed back through - we might not be able to get right to the same place
   // if we move up
   inputCursorPos = jsvGetIndexFromLineAndCol(inputLine, newY, newX);
   jsvGetLineAndCol(inputLine, inputCursorPos, &newY, &newX);
   if (jsiShowInputLine()) {
-    jsiMoveCursor(x,y,newX,newY);
+    jsiMoveCursor(x, y, newX, newY);
   }
 }
 
@@ -909,7 +910,7 @@ bool jsiAtEndOfInputLine() {
   int i = inputCursorPos, l = (int)jsvGetStringLength(inputLine);
   while (i < l) {
     if (!isWhitespace(jsvGetCharInString(inputLine, i)))
-        return false;
+      return false;
     i++;
   }
   return true;
@@ -935,13 +936,13 @@ void jsiHandleChar(char ch) {
     inputState = IS_NONE; // ignore 0 - it's scary
   } else if (ch == 27) {
     inputState = IS_HAD_27;
-  } else if (inputState==IS_HAD_27) {
+  } else if (inputState == IS_HAD_27) {
     inputState = IS_NONE;
     if (ch == 79)
       inputState = IS_HAD_27_79;
     else if (ch == 91)
       inputState = IS_HAD_27_91;
-  } else if (inputState==IS_HAD_27_79) { // Numpad
+  } else if (inputState == IS_HAD_27_79) { // Numpad
     inputState = IS_NONE;
     if (ch == 70) jsiHandleEnd();
     else if (ch == 72) jsiHandleHome();
@@ -950,10 +951,10 @@ void jsiHandleChar(char ch) {
     else if (ch == 109) jsiHandleChar('-');
     else if (ch == 107) jsiHandleChar('+');
     else if (ch == 77) jsiHandleChar('\r');
-  } else if (inputState==IS_HAD_27_91) {
+  } else if (inputState == IS_HAD_27_91) {
     inputState = IS_NONE;
-    if (ch==68) { // left
-      if (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
+    if (ch == 68) { // left
+      if (inputCursorPos > 0 && jsvGetCharInString(inputLine, inputCursorPos - 1) != '\n') {
         inputCursorPos--;
         if (jsiShowInputLine()) {
           jsiConsolePrintChar(27);
@@ -961,8 +962,8 @@ void jsiHandleChar(char ch) {
           jsiConsolePrintChar(68);
         }
       }
-    } else if (ch==67) { // right
-      if (inputCursorPos<(int)jsvGetStringLength(inputLine) && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
+    } else if (ch == 67) { // right
+      if (inputCursorPos < (int)jsvGetStringLength(inputLine) && jsvGetCharInString(inputLine, inputCursorPos) != '\n') {
         inputCursorPos++;
         if (jsiShowInputLine()) {
           jsiConsolePrintChar(27);
@@ -970,64 +971,64 @@ void jsiHandleChar(char ch) {
           jsiConsolePrintChar(67);
         }
       }
-    } else if (ch==65) { // up
+    } else if (ch == 65) { // up
       int l = (int)jsvGetStringLength(inputLine);
-      if ((l==0 || jsiIsInHistory(inputLine)) && inputCursorPos==l)
+      if ((l == 0 || jsiIsInHistory(inputLine)) && inputCursorPos == l)
         jsiChangeToHistory(true); // if at end of line
       else
         jsiHandleMoveUpDown(-1);
-    } else if (ch==66) { // down
+    } else if (ch == 66) { // down
       int l = (int)jsvGetStringLength(inputLine);
-      if ((l==0 || jsiIsInHistory(inputLine)) && inputCursorPos==l)
+      if ((l == 0 || jsiIsInHistory(inputLine)) && inputCursorPos == l)
         jsiChangeToHistory(false); // if at end of line
       else
         jsiHandleMoveUpDown(1);
-    } else if (ch==49) {
-      inputState=IS_HAD_27_91_49;
-    } else if (ch==51) {
-      inputState=IS_HAD_27_91_51;
-    } else if (ch==52) {
-      inputState=IS_HAD_27_91_52;
-    } else if (ch==53) {
-      inputState=IS_HAD_27_91_53;
-    } else if (ch==54) {
-      inputState=IS_HAD_27_91_54;
+    } else if (ch == 49) {
+      inputState = IS_HAD_27_91_49;
+    } else if (ch == 51) {
+      inputState = IS_HAD_27_91_51;
+    } else if (ch == 52) {
+      inputState = IS_HAD_27_91_52;
+    } else if (ch == 53) {
+      inputState = IS_HAD_27_91_53;
+    } else if (ch == 54) {
+      inputState = IS_HAD_27_91_54;
     }
-  } else if (inputState==IS_HAD_27_91_49) {
+  } else if (inputState == IS_HAD_27_91_49) {
     inputState = IS_NONE;
-    if (ch==126) { // Numpad Home
+    if (ch == 126) { // Numpad Home
       jsiHandleHome();
     }
-  } else if (inputState==IS_HAD_27_91_51) {
+  } else if (inputState == IS_HAD_27_91_51) {
     inputState = IS_NONE;
-    if (ch==126) { // Numpad (forwards) Delete
+    if (ch == 126) { // Numpad (forwards) Delete
       jsiHandleDelete(false/*not backspace*/);
     }
-  } else if (inputState==IS_HAD_27_91_52) {
+  } else if (inputState == IS_HAD_27_91_52) {
     inputState = IS_NONE;
-    if (ch==126) { // Numpad End
+    if (ch == 126) { // Numpad End
       jsiHandleEnd();
     }
-  } else if (inputState==IS_HAD_27_91_53) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Up
-        jsiHandlePageUpDown(0);
-      }
-  } else if (inputState==IS_HAD_27_91_54) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Down
-        jsiHandlePageUpDown(1);
-      }
-  } else {  
+  } else if (inputState == IS_HAD_27_91_53) {
+    inputState = IS_NONE;
+    if (ch == 126) { // Page Up
+      jsiHandlePageUpDown(0);
+    }
+  } else if (inputState == IS_HAD_27_91_54) {
+    inputState = IS_NONE;
+    if (ch == 126) { // Page Down
+      jsiHandlePageUpDown(1);
+    }
+  } else {
     inputState = IS_NONE;
     if (ch == 0x08 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
-    } else if (ch == '\r' || ch == '\n') { 
+    } else if (ch == '\r' || ch == '\n') {
       if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
         if (ch == '\r') inputState = IS_HAD_R;
-        if (jsiCountBracketsInInput()<=0) { // actually execute!
+        if (jsiCountBracketsInInput() <= 0) { // actually execute!
           if (jsiShowInputLine()) {
             jsiConsolePrintChar('\r');
             jsiConsolePrintChar('\n');
@@ -1058,39 +1059,39 @@ void jsiHandleChar(char ch) {
           if (jsiShowInputLine()) jsiConsolePrint("\n:");
           jsiIsAboutToEditInputLine();
           jsvAppendCharacter(inputLine, '\n');
-          inputCursorPos++; 
+          inputCursorPos++;
         }
       } else { // new line - but not at end of line!
         jsiIsAboutToEditInputLine();
         if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
         JsVar *v = jsvNewFromEmptyString();
-        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+        if (inputCursorPos > 0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         jsvAppendCharacter(v, '\n');
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputLine);
-        inputLine=v;
+        inputLine = v;
         if (jsiShowInputLine()) { // now print the rest
           jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
-          jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
+          jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos + 1); // move cursor back
         }
         inputCursorPos++;
       }
-    } else if (ch>=32 || ch=='\t') {
+    } else if (ch >= 32 || ch == '\t') {
       // Add the character to our input line
       jsiIsAboutToEditInputLine();
       int l = (int)jsvGetStringLength(inputLine);
-      bool hasTab = ch=='\t';
-      if (inputCursorPos>=l) {
+      bool hasTab = ch == '\t';
+      if (inputCursorPos >= l) {
         if (hasTab) jsvAppendString(inputLine, "    ");
         else jsvAppendCharacter(inputLine, ch);
       } else {
         JsVar *v = jsvNewFromEmptyString();
-        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+        if (inputCursorPos > 0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         if (hasTab) jsvAppendString(v, "    ");
         else jsvAppendCharacter(v, ch);
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputLine);
-        inputLine=v;
+        inputLine = v;
         if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
       }
       inputCursorPos += hasTab ? 4 : 1;
@@ -1124,7 +1125,7 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
     while (next) {
       //jsPrint("Queue Event\n");
       JsVar *child = jsvLock(next);
-      
+
       // for each callback...
       JsVar *event = jsvNewWithFlags(JSV_OBJECT);
       if (event) { // Could be out of memory error!
@@ -1169,7 +1170,7 @@ void jsiExecuteEvents() {
         jspExecuteFunction(&p, func, 0, 2, args);
       else if (jsvIsString(func))
         jsvUnLock(jspEvaluateVar(&p, func, 0));
-      else 
+      else
         jsError("Unknown type of callback in Event Queue");
     }
     //jsPrint("Event Done\n");
@@ -1198,12 +1199,12 @@ void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // 
         jsvUnLock(child);
       }
     } else if (jsvIsFunction(callbackNoNames)) {
-       JsVar *args[2] = { arg0, arg1 };
-       JsVar *parent = 0;
-       jspExecuteFunction(&p, callbackNoNames, parent, 2, args);
+      JsVar *args[2] = { arg0, arg1 };
+      JsVar *parent = 0;
+      jspExecuteFunction(&p, callbackNoNames, parent, 2, args);
     } else if (jsvIsString(callbackNoNames))
       jsvUnLock(jspEvaluateVar(&p, callbackNoNames, 0));
-    else 
+    else
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
   }
@@ -1216,7 +1217,7 @@ bool jsiHasTimers() {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsVarInt c = jsvGetArrayLength(timerArrayPtr);
   jsvUnLock(timerArrayPtr);
-  return c>0;
+  return c > 0;
 }
 
 void jsiPrintUnregisteredMessage(const char *desc) {
@@ -1228,7 +1229,7 @@ void jsiPrintUnregisteredMessage(const char *desc) {
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
-  if (loopsIdling<255) loopsIdling++;
+  if (loopsIdling < 255) loopsIdling++;
 
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
@@ -1243,7 +1244,7 @@ void jsiIdle() {
     if (eventType == consoleDevice) {
       int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
       jsiSetBusy(BUSY_INTERACTIVE, true);
-      for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
+      for (i = 0; i < c; i++) jsiHandleChar(event.data.chars[i]);
       jsiSetBusy(BUSY_INTERACTIVE, false);
     }
 
@@ -1276,12 +1277,10 @@ void jsiIdle() {
 
               if(!strcmp(s, "o") || !strcmp(s, "odd")) {
                 parity = 1;
-              }
-              else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+              } else if(!strcmp(s, "e") || !strcmp(s, "even")) {
                 parity = 2;
               }
-            }
-            else if(jsvIsInt(v)) {
+            } else if(jsvIsInt(v)) {
               parity = (unsigned char)jsvGetInteger(v);
             }
 
@@ -1291,20 +1290,18 @@ void jsiIdle() {
           jsvUnLock(options);
 #endif
 
-          for (i=0; i<c; i++) {
+          for (i = 0; i < c; i++) {
             JsVar *data = jsvNewWithFlags(JSV_OBJECT);
 
             if (data) {
               JsVar *dataTime = jsvNewFromString("X");
 
-#ifdef STM32 
+#ifdef STM32
               if(bytesize == 7 && parity > 0) {
                 dataTime->varData.str[0] = event.data.chars[i] & 0x7F;
-              }
-              else if(bytesize == 8 && parity > 0) {
+              } else if(bytesize == 8 && parity > 0) {
                 dataTime->varData.str[0] = event.data.chars[i] & 0xFF;
-              }
-              else {
+              } else {
                 dataTime->varData.str[0] = event.data.chars[i];
               }
 #else
@@ -1314,7 +1311,7 @@ void jsiIdle() {
               if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "data"));
               jsvUnLock(dataTime);
             }
-            
+
             jsiExecuteEventCallback(callback, data, 0);
             jsvUnLock(data);
           }
@@ -1334,14 +1331,14 @@ void jsiIdle() {
         jsvUnLock(watchPin);
 
         if (jshIsEventForPin(&event, pin)) {
-          bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
+          bool pinIsHigh = (event.flags & EV_EXTI_IS_HIGH) != 0;
           int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
-          if (watchEdge==0 || (pinIsHigh && watchEdge>0) || (!pinIsHigh && watchEdge<0)) { // edge triggering
+          if (watchEdge == 0 || (pinIsHigh && watchEdge > 0) || (!pinIsHigh && watchEdge < 0)) { // edge triggering
             JsVar *watchCallback = jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false);
             bool watchRecurring = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
             JsVar *data = jsvNewWithFlags(JSV_OBJECT);
             if (data) {
-              JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000);
+              JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time) / 1000);
               if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
               jsvUnLock(dataTime);
               JsVar *dataState = jsvNewFromBool(pinIsHigh);
@@ -1365,10 +1362,10 @@ void jsiIdle() {
   }
 
   // Reset Flow control if it was set...
-  if (jshGetEventsUsed() < IOBUFFER_XON) { 
+  if (jshGetEventsUsed() < IOBUFFER_XON) {
     int i;
-    for (i=0;i<USARTS;i++)
-      jshSetFlowControlXON(EV_SERIAL1+i, true);
+    for (i = 0; i < USARTS; i++)
+      jshSetFlowControlXON(EV_SERIAL1 + i, true);
   }
 
   // Check timers
@@ -1384,7 +1381,7 @@ void jsiIdle() {
     JsSysTime timeUntilNext = jsvGetInteger(timerTime) - time;
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
-    if (timerTime && timeUntilNext<=0) {
+    if (timerTime && timeUntilNext <= 0) {
       // we're now doing work
       jsiSetBusy(BUSY_INTERACTIVE, true);
       wasBusy = true;
@@ -1393,7 +1390,7 @@ void jsiIdle() {
       JsVar *timerRecurring = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "recur", false));
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
       if (data) {
-        JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000);
+        JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime)) / 1000);
         if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
         jsvUnLock(dataTime);
       }
@@ -1401,10 +1398,10 @@ void jsiIdle() {
       jsvUnLock(data);
       if (jsvGetBool(timerRecurring)) {
         JsVarFloat interval = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false)));
-        if (interval<=0)
+        if (interval <= 0)
           jsvSetInteger(timerTime, time); // just set to current system time
         else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jshGetTimeFromMilliseconds(interval));
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime) + jshGetTimeFromMilliseconds(interval));
       } else {
         // free all
         JsVar *foundChild = jsvFindChildFromVar(timerArrayPtr, timerNamePtr, false);
@@ -1488,14 +1485,14 @@ void jsiIdle() {
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
    * just in case. */
-  if (loopsIdling==1 &&
+  if (loopsIdling == 1 &&
       minTimeUntilNext > jshGetTimeFromMilliseconds(10)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
   // Go to sleep!
-  if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
+  if (loopsIdling > 1 && // once around the idle loop without having done any work already (just in case)
 #ifdef USB
       !jshIsUSBSERIALConnected() && // if USB is on, no point sleeping (later, sleep might be more drastic)
 #endif
@@ -1515,7 +1512,7 @@ void jsiLoop() {
 #ifdef USE_LCD
   graphicsIdle();
 #endif
-  
+
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
     jsiConsoleRemoveInputLine();
@@ -1537,18 +1534,18 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
     if (jsvIsStringEqual(child, JSPARSE_PROTOTYPE_VAR)) {
       JsVarRef protoRef = data->firstChild;
       while (protoRef) {
-         JsVar *proto = jsvLock(protoRef);
-         jsiConsolePrintStringVar(parentName);
-         jsiConsolePrint(".prototype.");
-         jsiConsolePrintStringVar(proto);
-         jsiConsolePrint(" = ");
-         JsVar *protoData = jsvSkipName(proto);
-         jsfPrintJSON(protoData);
-         jsvUnLock(protoData);
-         jsiConsolePrint(";\n");
-         protoRef = proto->nextSibling;
-         jsvUnLock(proto);
-       }
+        JsVar *proto = jsvLock(protoRef);
+        jsiConsolePrintStringVar(parentName);
+        jsiConsolePrint(".prototype.");
+        jsiConsolePrintStringVar(proto);
+        jsiConsolePrint(" = ");
+        JsVar *protoData = jsvSkipName(proto);
+        jsfPrintJSON(protoData);
+        jsvUnLock(protoData);
+        jsiConsolePrint(";\n");
+        protoRef = proto->nextSibling;
+        jsvUnLock(proto);
+      }
     } else {
       jsiConsolePrintStringVar(parentName);
       jsiConsolePrint(".");
@@ -1579,8 +1576,8 @@ void jsiDumpState() {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
-    } else if (child->varData.str[0]==JS_HIDDEN_CHAR ||
-               jshFromDeviceString(childName)!=EV_NONE) {
+    } else if (child->varData.str[0] == JS_HIDDEN_CHAR ||
+               jshFromDeviceString(childName) != EV_NONE) {
       // skip - don't care about this stuff
     } else if (!jsvIsNative(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
@@ -1643,32 +1640,32 @@ void jsiDumpState() {
   }
   // Now do watches
   {
-   JsVar *watchArrayPtr = jsvLock(watchArray);
-   JsVarRef watchRef = watchArrayPtr->firstChild;
-   jsvUnLock(watchArrayPtr);
-   while (watchRef) {
-     JsVar *watchNamePtr = jsvLock(watchRef);
-     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false));
-     bool watchRecur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
-     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
-     JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-     jsiConsolePrint("setWatch(");
-     jsfPrintJSON(watchCallback);
-     jsiConsolePrint(", ");
-     jsfPrintJSON(watchPin);
-     jsiConsolePrint(", { repeat:");
-     jsiConsolePrint(watchRecur?"true":"false");
-     jsiConsolePrint(", edge:");
-     if (watchEdge<0) jsiConsolePrint("'falling'");
-     else if (watchEdge>0) jsiConsolePrint("'rising'");
-     else jsiConsolePrint("'both'");
-     jsiConsolePrint(" });\n");
-     jsvUnLock(watchPin);
-     jsvUnLock(watchCallback);
-     // next
-     watchRef = watchNamePtr->nextSibling;
-     jsvUnLock(watchNamePtr);
-   }
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVarRef watchRef = watchArrayPtr->firstChild;
+    jsvUnLock(watchArrayPtr);
+    while (watchRef) {
+      JsVar *watchNamePtr = jsvLock(watchRef);
+      JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false));
+      bool watchRecur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
+      int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
+      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
+      jsiConsolePrint("setWatch(");
+      jsfPrintJSON(watchCallback);
+      jsiConsolePrint(", ");
+      jsfPrintJSON(watchPin);
+      jsiConsolePrint(", { repeat:");
+      jsiConsolePrint(watchRecur ? "true" : "false");
+      jsiConsolePrint(", edge:");
+      if (watchEdge < 0) jsiConsolePrint("'falling'");
+      else if (watchEdge > 0) jsiConsolePrint("'rising'");
+      else jsiConsolePrint("'both'");
+      jsiConsolePrint(" });\n");
+      jsvUnLock(watchPin);
+      jsvUnLock(watchCallback);
+      // next
+      watchRef = watchNamePtr->nextSibling;
+      jsvUnLock(watchNamePtr);
+    }
   }
   // and now serial
   JsVar *str = jsvNewFromEmptyString();

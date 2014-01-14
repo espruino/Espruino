@@ -81,10 +81,10 @@ void jsiSetSleep(bool isSleep);
 
 // for jswrap_interactive/io.c ----------------------------------------------------
 typedef enum {
- TODO_NOTHING = 0,
- TODO_FLASH_SAVE = 1,
- TODO_FLASH_LOAD = 2,
- TODO_RESET = 4,
+  TODO_NOTHING = 0,
+  TODO_FLASH_SAVE = 1,
+  TODO_FLASH_LOAD = 2,
+  TODO_RESET = 4,
 } TODOFlags;
 #define USART_CALLBACK_NAME "_callback"
 #define USART_BAUDRATE_NAME "_baudrate"

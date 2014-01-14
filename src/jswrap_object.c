@@ -52,7 +52,7 @@ JsVar *jswrap_object_length(JsVar *parent) {
   if (jsvIsArray(parent)) {
     return jsvNewFromInteger(jsvGetArrayLength(parent));
   } else if (jsvIsArrayBuffer(parent)) {
-      return jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
+    return jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
   } else if (jsvIsString(parent)) {
     return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
   }
@@ -68,7 +68,7 @@ JsVar *jswrap_object_length(JsVar *parent) {
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
   if (jsvIsInt(arg0) && jsvIsInt(parent)) {
     JsVarInt radix = jsvGetInteger(arg0);
-    if (radix>=2 && radix<=36) {
+    if (radix >= 2 && radix <= 36) {
       char buf[JS_NUMBER_BUFFER_SIZE];
       itoa(parent->varData.integer, buf, (unsigned int)radix);
       return jsvNewFromString(buf);
@@ -105,7 +105,7 @@ JsVar *jswrap_object_keys(JsVar *obj) {
     while (jsvIteratorHasElement(&it)) {
       JsVar *key = jsvIteratorGetKey(&it);
       if (!(checkerFunction && checkerFunction(key))) {
-        JsVar *name = jsvCopyNameOnly(key,false,false);
+        JsVar *name = jsvCopyNameOnly(key, false, false);
         if (name) {
           jsvArrayPushAndUnLock(arr, name);
         }
@@ -129,19 +129,19 @@ JsVar *jswrap_object_keys(JsVar *obj) {
 }*/
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (!jsvIsObject(parent)) {
-      jsWarn("Parent must be a proper object - not a String, Integer, etc.");
-      return;
-    }
+    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+    return;
+  }
   if (!jsvIsString(event)) {
-      jsWarn("First argument to EventEmitter.on(..) must be a string");
-      return;
-    }
+    jsWarn("First argument to EventEmitter.on(..) must be a string");
+    return;
+  }
   if (!jsvIsFunction(listener) && !jsvIsString(listener)) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
   char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  jsvGetString(event, &eventName[3], sizeof(eventName) - 4);
 
   JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
   JsVar *eventListeners = jsvSkipName(eventList);
@@ -174,15 +174,15 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
 }*/
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2) {
   if (!jsvIsObject(parent)) {
-      jsWarn("Parent must be a proper object - not a String, Integer, etc.");
-      return;
-    }
+    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+    return;
+  }
   if (!jsvIsString(event)) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
   char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  jsvGetString(event, &eventName[3], sizeof(eventName) - 4);
   jsiQueueObjectCallbacks(parent, eventName, v1, v2);
 }
 
@@ -193,13 +193,13 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2) {
 }*/
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   if (!jsvIsObject(parent)) {
-      jsWarn("Parent must be a proper object - not a String, Integer, etc.");
-      return;
-    }
+    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+    return;
+  }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
     char eventName[16] = "#on";
-    jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+    jsvGetString(event, &eventName[3], sizeof(eventName) - 4);
     JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
     if (eventList) {
       jsvRemoveChild(parent, eventList);
@@ -213,9 +213,9 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
       if (jsvIsString(key) &&
-          key->varData.str[0]=='#' &&
-          key->varData.str[1]=='o' &&
-          key->varData.str[2]=='n') {
+          key->varData.str[0] == '#' &&
+          key->varData.str[1] == 'o' &&
+          key->varData.str[2] == 'n') {
         // begins with #on - we must kill it
         jsvRemoveChild(parent, key);
       }
@@ -277,9 +277,9 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/
 JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d) {
-  JsVar *args[4] = {a,b,c,d};
+  JsVar *args[4] = {a, b, c, d};
   int argC = 0;
-  while (argC<4 && args[argC]!=0) argC++;
+  while (argC < 4 && args[argC] != 0) argC++;
   return jspeFunctionCall(parent, 0, thisArg, false, argC, args);
 }
 
@@ -298,16 +298,16 @@ JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
 
   if (jsvIsArray(argsArray)) {
     argC = (unsigned int)jsvGetArrayLength(argsArray);
-    if (argC>64) argC=64; // sanity
+    if (argC > 64) argC = 64; // sanity
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
 
 
-    for (i=0;i<argC;i++) args[i] = 0;
+    for (i = 0; i < argC; i++) args[i] = 0;
     JsArrayIterator it;
     jsvArrayIteratorNew(&it, argsArray);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
-      if (idx>=0 && idx<argC) {
+      if (idx >= 0 && idx < argC) {
         assert(!args[idx]); // just in case there were dups
         args[idx] = jsvArrayIteratorGetElement(&it);
       }
@@ -319,6 +319,6 @@ JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   }
 
   JsVar *r = jspeFunctionCall(parent, 0, thisArg, false, (int)argC, args);
-  for (i=0;i<argC;i++) jsvUnLock(args[i]);
+  for (i = 0; i < argC; i++) jsvUnLock(args[i]);
   return r;
 }
