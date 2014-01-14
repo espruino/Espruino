@@ -70,7 +70,7 @@ void jsvSetMaxVarsUsed(unsigned int size) {
 void jsvSoftInit() {
   jsVarFirstEmpty = 0;
   JsVar *lastEmpty = 0;
-  JsVarRef i;  
+  JsVarRef i;
   for (i=1;i<=jsVarsSize;i++) {
     if ((jsvGetAddressOf(i)->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
       jsvGetAddressOf(i)->nextSibling = 0;
@@ -611,7 +611,7 @@ const char *jsvGetConstString(const JsVar *v) {
 
 /// Return the 'type' of the JS variable (eg. JS's typeof operator)
 const char *jsvGetTypeOf(const JsVar *v) {
-  if (jsvIsNull(v)) return "null";
+  if (jsvIsNull(v)) return "object";
   if (jsvIsUndefined(v)) return "undefined";
   if (jsvIsFunction(v)) return "function";
   if (jsvIsObject(v) || jsvIsArray(v)) return "object";
@@ -1226,7 +1226,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   if (!keepAsName) flags &= (JsVarFlags)~JSV_NAME; // make sure this is NOT a name
   JsVar *dst = jsvNewWithFlags(flags);
   if (!dst) return 0; // out of memory
-  
+
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
 
   dst->lastChild = 0;
@@ -1610,7 +1610,7 @@ JsVar *jsvGetArrayItem(JsVar *arr, int index) {
   while (childref) {
     JsVarInt childIndex;
     JsVar *child = jsvLock(childref);
-    
+
     assert(jsvIsInt(child));
     childIndex = jsvGetInteger(child);
     if (childIndex == index) {
@@ -1640,7 +1640,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
         return childIndex;
       }
       jsvUnLock(childValue);
-    } else if (jsvIsUndefined(value)) 
+    } else if (jsvIsUndefined(value))
       return childIndex; // both are undefined, so we return the index
     indexref = childIndex->nextSibling;
     jsvUnLock(childIndex);
@@ -1697,7 +1697,7 @@ JsVar *jsvArrayPop(JsVar *arr) {
   }
 }
 
-/// Removes the first element of an array, and returns that element (or 0 if empty). 
+/// Removes the first element of an array, and returns that element (or 0 if empty).
 JsVar *jsvArrayPopFirst(JsVar *arr) {
   assert(jsvIsArray(arr));
   if (arr->firstChild) {
@@ -1724,7 +1724,7 @@ JsVar *jsvArrayGetLast(JsVar *arr) {
   assert(jsvIsArray(arr));
   if (arr->lastChild) {
     return jsvLock(arr->lastChild);
-  } else { // no children!    
+  } else { // no children!
     return 0;
   }
 }
@@ -1959,7 +1959,7 @@ int _jsvTraceGetLowestLevel(JsVarRef ref, JsVarRef searchRef) {
     jsvUnLock(var);
     return -1;
   }
-  var->flags |= JSV_IS_RECURSING; 
+  var->flags |= JSV_IS_RECURSING;
 
   if (jsvHasSingleChild(var) && var->firstChild) {
     int f = _jsvTraceGetLowestLevel(var->firstChild, searchRef);
@@ -1967,7 +1967,7 @@ int _jsvTraceGetLowestLevel(JsVarRef ref, JsVarRef searchRef) {
   }
   if (jsvHasChildren(var)) {
     JsVarRef childRef = var->firstChild;
-    while (childRef) {       
+    while (childRef) {
       int f = _jsvTraceGetLowestLevel(childRef, searchRef);
       if (f>=0 && (found<0 || f<found)) found=f+1;
 
@@ -1999,7 +1999,7 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
     jsiConsolePrint(":");
     jsiConsolePrintInt(_jsvTraceGetLowestLevel(baseRef, ref));
     jsiConsolePrint("> ");*/
-    
+
 
     JsVar *var = jsvLock(ref);
     jsvTraceLockInfo(var);
