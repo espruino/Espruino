@@ -71,9 +71,9 @@ typedef enum  {
   EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
   EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
 
-  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
-  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
-  EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
+  EXEC_RUN_MASK = EXEC_YES | EXEC_BREAK | EXEC_CONTINUE | EXEC_INTERRUPTED,
+  EXEC_ERROR_MASK = EXEC_INTERRUPTED | EXEC_ERROR,
+  EXEC_SAVE_RESTORE_MASK = EXEC_YES | EXEC_IN_LOOP | EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains

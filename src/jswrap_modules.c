@@ -29,7 +29,10 @@ static JsVar *jswrap_modules_getModuleList() {
   JsVar *moduleList = jsvSkipName(moduleListName);
   if (!moduleList) {
     moduleList = jsvNewWithFlags(JSV_OBJECT);
-    if (!moduleList) { jsvUnLock(moduleListName); return 0; } // out of memory
+    if (!moduleList) {
+      jsvUnLock(moduleListName);  // out of memory
+      return 0;
+    }
     jsvSetValueOfName(moduleListName, moduleList); // no need to unlock
   }
   jsvUnLock(moduleListName);
@@ -72,21 +75,24 @@ JsVar *jswrap_require(JsVar *moduleName) {
     JsVar *fileContents = 0;
     //if (jsvIsStringEqual(moduleName,"http")) {}
     //if (jsvIsStringEqual(moduleName,"fs")) {}
-  #ifdef USE_FILESYSTEM
+#ifdef USE_FILESYSTEM
     JsVar *modulePath = jsvNewFromString(
-  #ifdef LINUX
-        "node_modules/"
-  #else
-        "NODE_M~1/"
-  #endif
-        );
-    if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
+#ifdef LINUX
+                          "node_modules/"
+#else
+                          "NODE_M~1/"
+#endif
+                        );
+    if (!modulePath) {
+      jsvUnLock(moduleExportName);  // out of memory
+      return 0;
+    }
     jsvAppendStringVarComplete(modulePath, moduleName);
-    jsvAppendString(modulePath,".js");
+    jsvAppendString(modulePath, ".js");
     fileContents = wrap_fat_readFile(modulePath);
     jsvUnLock(modulePath);
-  #endif
-    if (!fileContents || jsvIsStringEqual(fileContents,"")) {
+#endif
+    if (!fileContents || jsvIsStringEqual(fileContents, "")) {
       jsvUnLock(moduleExportName);
       jsvUnLock(fileContents);
       jsWarn("Module not found");

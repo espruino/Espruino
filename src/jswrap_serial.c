@@ -72,7 +72,7 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
 
-  if (baud>0) inf.baudRate = (int)baud;
+  if (baud > 0) inf.baudRate = (int)baud;
 
   if (jsvIsObject(options)) {
 
@@ -82,11 +82,10 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
 
     JsVar *v;
     v = jsvObjectGetChild(options, "parity", 0);
-    
+
     if(jsvIsNull(v)) {
       inf.parity = 0;
-    }
-    else if(jsvIsString(v)) {
+    } else if(jsvIsString(v)) {
       inf.parity = 0xFF;
       char s[8] = "";
 
@@ -94,12 +93,10 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
 
       if(!strcmp(s, "o") || !strcmp(s, "odd")) {
         inf.parity = 1;
-      }
-      else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+      } else if(!strcmp(s, "e") || !strcmp(s, "even")) {
         inf.parity = 2;
       }
-    }
-    else if(jsvIsInt(v)) {
+    } else if(jsvIsInt(v)) {
       inf.parity = (unsigned char)jsvGetInteger(v);
     }
 
@@ -139,7 +136,7 @@ void _jswrap_serial_print(JsVar *parent, JsVar *str, bool newLine) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   str = jsvAsString(str, false);
-  jsiTransmitStringVar(device,str);
+  jsiTransmitStringVar(device, str);
   jsvUnLock(str);
   if (newLine) {
     jshTransmit(device, (unsigned char)'\r');

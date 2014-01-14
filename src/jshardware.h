@@ -64,9 +64,9 @@ typedef enum {
   JSHPINSTATE_USART_OUT,
   JSHPINSTATE_DAC_OUT,
   JSHPINSTATE_I2C,
-  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C)-1,
+  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C) - 1,
 
-  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,
+  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK + 1,
 } PACKED_FLAGS JshPinState;
 
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
@@ -188,7 +188,7 @@ typedef struct {
 static inline void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
-  inf->slaveAddr = (char)-1; // master
+  inf->slaveAddr = (char) - 1; // master
 }
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);

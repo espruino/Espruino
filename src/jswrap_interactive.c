@@ -25,9 +25,9 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
   Pin oldPin = pinBusyIndicator;
   pinBusyIndicator = jshGetPinFromVar(pinVar);
   // we should be busy right now anyway, so set stuff up right
-  if (pinBusyIndicator!=oldPin) {
-    if (oldPin!=PIN_UNDEFINED) jshPinOutput(oldPin, 0);
-    if (pinBusyIndicator!=PIN_UNDEFINED) jshPinOutput(pinBusyIndicator, 1);
+  if (pinBusyIndicator != oldPin) {
+    if (oldPin != PIN_UNDEFINED) jshPinOutput(oldPin, 0);
+    if (pinBusyIndicator != PIN_UNDEFINED) jshPinOutput(pinBusyIndicator, 1);
   }
 }
 
@@ -194,8 +194,8 @@ JsVar *jswrap_interface_getSerial() {
   JsVar *str = jsvNewFromEmptyString();
   if (!str) return 0;
 
-  for (i=0;i<serialSize;i++) {
-    if ((i&3)==0 && i) jsvAppendString(str, "-");
+  for (i = 0; i < serialSize; i++) {
+    if ((i & 3) == 0 && i) jsvAppendString(str, "-");
     itoa(serial[i] | 0x100, buf, 16);
     jsvAppendString(str, &buf[1]);
   }

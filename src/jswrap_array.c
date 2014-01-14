@@ -32,15 +32,15 @@
 }*/
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
-  if (jsvGetArrayLength(args)==1) {
+  if (jsvGetArrayLength(args) == 1) {
     JsVar *firstArg = jsvSkipNameAndUnLock(jsvArrayGetLast(args)); // also the first!
-    if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
+    if (jsvIsInt(firstArg) && jsvGetInteger(firstArg) >= 0) {
       JsVarInt count = jsvGetInteger(firstArg);
       // we cheat - no need to fill the array - just the last element
-      if (count>0) {
+      if (count > 0) {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
-        JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
+        JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count - 1), 0);
         if (idx) { // could be out of memory
           jsvAddName(arr, idx);
           jsvUnLock(idx);
@@ -64,7 +64,7 @@ JsVar *jswrap_array_constructor(JsVar *args) {
 bool jswrap_array_contains(JsVar *parent, JsVar *value) {
   // ArrayIndexOf will return 0 if not found
   JsVar *arrElement = jsvGetArrayIndexOf(parent, value, false/*not exact*/);
-  bool contains = arrElement!=0;
+  bool contains = arrElement != 0;
   jsvUnLock(arrElement);
   return contains;
 }
@@ -127,33 +127,33 @@ JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVa
   if (isMap)
     array = jsvNewWithFlags(JSV_ARRAY);
   if (array || !isMap) {
-   JsVarRef childRef = parent->firstChild;
-   while (childRef) {
-     JsVar *child = jsvLock(childRef);
-     if (jsvIsInt(child)) {
-       JsVar *args[3], *mapped;
-       args[0] = jsvLock(child->firstChild);
-       // child is a variable name, create a new variable for the index
-       args[1] = jsvNewFromInteger(jsvGetInteger(child));
-       args[2] = parent;
-       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-       jsvUnLock(args[0]);
-       jsvUnLock(args[1]);
-       if (mapped) {
-         if (isMap) {
-           JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
-           if (name) { // out of memory?
-             name->firstChild = jsvGetRef(jsvRef(mapped));
-             jsvAddName(array, name);
-             jsvUnLock(name);
-           }
-         }
-         jsvUnLock(mapped);
-       }
-     }
-     childRef = child->nextSibling;
-     jsvUnLock(child);
-   }
+    JsVarRef childRef = parent->firstChild;
+    while (childRef) {
+      JsVar *child = jsvLock(childRef);
+      if (jsvIsInt(child)) {
+        JsVar *args[3], *mapped;
+        args[0] = jsvLock(child->firstChild);
+        // child is a variable name, create a new variable for the index
+        args[1] = jsvNewFromInteger(jsvGetInteger(child));
+        args[2] = parent;
+        mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
+        jsvUnLock(args[0]);
+        jsvUnLock(args[1]);
+        if (mapped) {
+          if (isMap) {
+            JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
+            if (name) { // out of memory?
+              name->firstChild = jsvGetRef(jsvRef(mapped));
+              jsvAddName(array, name);
+              jsvUnLock(name);
+            }
+          }
+          jsvUnLock(mapped);
+        }
+      }
+      childRef = child->nextSibling;
+      jsvUnLock(child);
+    }
   }
   return array;
 }
@@ -185,12 +185,12 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 }*/
 JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *element1, JsVar *element2, JsVar *element3, JsVar *element4, JsVar *element5, JsVar *element6) {
   JsVarInt len = jsvGetArrayLength(parent);
-  if (index<0) index+=len;
-  if (index<0) index=0;
-  if (index>len) index=len;
+  if (index < 0) index += len;
+  if (index < 0) index = 0;
+  if (index > len) index = len;
   JsVarInt howMany = len; // how many to delete!
   if (jsvIsInt(howManyVar)) howMany = jsvGetInteger(howManyVar);
-  if (howMany > len-index) howMany = len-index;
+  if (howMany > len - index) howMany = len - index;
   JsVarInt newItems = 0;
   if (element1) newItems++;
   if (element2) newItems++;
@@ -198,7 +198,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   if (element4) newItems++;
   if (element5) newItems++;
   if (element6) newItems++;
-  JsVarInt shift = newItems-howMany;
+  JsVarInt shift = newItems - howMany;
 
   bool needToAdd = false;
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
@@ -210,9 +210,9 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
     JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
     if (idxVar && jsvIsInt(idxVar)) {
       JsVarInt idx = jsvGetInteger(idxVar);
-      if (idx<index) {
+      if (idx < index) {
         // do nothing...
-      } else if (idx<index+howMany) { // must delete
+      } else if (idx < index + howMany) { // must delete
         if (result) { // append to result array
           JsVar *el = jsvArrayIteratorGetElement(&it);
           jsvArrayPushAndUnLock(result, el);
@@ -242,13 +242,13 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   jsvUnLock(beforeIndex);
   // And finally renumber
   while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
-      if (idxVar && jsvIsInt(idxVar)) {
-        jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
-      }
-      jsvUnLock(idxVar);
-      jsvArrayIteratorNext(&it);
+    JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
+    if (idxVar && jsvIsInt(idxVar)) {
+      jsvSetInteger(idxVar, jsvGetInteger(idxVar) + shift);
     }
+    jsvUnLock(idxVar);
+    jsvArrayIteratorNext(&it);
+  }
   // free
   jsvArrayIteratorFree(&it);
 
