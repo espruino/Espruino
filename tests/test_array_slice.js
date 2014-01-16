@@ -1,3 +1,11 @@
+var tests=0, testpass=0;
+function t(x) {
+ console.log(x);
+ tests++;
+ if (x) testpass++;
+}
+
+
 var a = [1, 2, 3, 4, 5, 6];
 var b = a.slice();
 var c = a.slice(0);
@@ -9,26 +17,26 @@ var h = a.slice(-1, 1);
 var i = a.slice(-1);
 var j = a.slice(0, -1);
 
-console.log( b !== a );
+t( b !== a );
 
-console.log( b.length === a.length );
-console.log( c.length === a.length );
-console.log( d.length === 2 );
-console.log( e.length === 1 );
-console.log( f.length === 2 );
-console.log( g.length === 0 );
-console.log( h.length === 0 );
-console.log( i.length === 1 );
-console.log( j.length === 5 );
+t( b.length === a.length );
+t( c.length === a.length );
+t( d.length === 2 );
+t( e.length === 1 );
+t( f.length === 2 );
+t( g.length === 0 );
+t( h.length === 0 );
+t( i.length === 1 );
+t( j.length === 5 );
 
-console.log( d[0] === 1 );
-console.log( d[1] === 2 );
-console.log( e[0] === 3 );
-console.log( f[0] === 5 );
-console.log( f[1] === 6 );
-console.log( i[0] === 6 );
-console.log( j[0] === 1 );
-console.log( j[2] === 3 );
-console.log( j[4] === 5 );
+t( d[0] === 1 );
+t( d[1] === 2 );
+t( e[0] === 3 );
+t( f[0] === 5 );
+t( f[1] === 6 );
+t( i[0] === 6 );
+t( j[0] === 1 );
+t( j[2] === 3 );
+t( j[4] === 5 );
 
-
+result = tests==testpass;
