@@ -56,7 +56,7 @@
             Now store Pin state (fix for #13 on F1 parts, F4 still looks broken)
             Added Graphics.stringWidth
             Added internal Printf function
-	    Misc speed and code size improvements
+	           Misc speed and code size improvements
             This version has gone to Seeed for use on the KickStarter boards
 
      1v42 : [ebirger] allowing 'new' with no brackets
@@ -73,7 +73,7 @@
             Stop 'new undefined()' crashing Espruino - fix #120
             Get A13/A14 working on Espruino board (these were JTAG)
             Get bootloader size direct from Python (remove hard-coding)
-	    Fix '~' operator when acting on variables
+	           Fix '~' operator when acting on variables
             Made bootloader a bit more error tolerate (CRC on write)
             Added %=, /=, and *= operators (fix #121)
             Allowed Object.toString() to take a radix argument for integers (fix #125)
@@ -135,10 +135,10 @@
             Special-case jsvArrayBufferIteratorSetIntegerValue
             Make SPI output an ArrayBuffer
             Use best out of 3 for DelayMicroseconds calibration - something seems flaky right after bootup
-	    Lines now drawn from p1 to p2 inclusive
-	    Events now use jshPushIOWatchEvent (should cut down on code) also fixed bug with watching pin #11
-	    Now remember if pinMode was set or not
-	    Transform ```code``` in JSON into a code tag in the documentation
+	           Lines now drawn from p1 to p2 inclusive
+	           Events now use jshPushIOWatchEvent (should cut down on code) also fixed bug with watching pin #11
+	           Now remember if pinMode was set or not
+       	    Transform ```code``` in JSON into a code tag in the documentation
             Graphics now supports FSMC for HY boards again
             Drawing vector fonts is now roughly the right size and position (still not 100%)
             Remove registration code
