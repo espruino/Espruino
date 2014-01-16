@@ -1,3 +1,5 @@
+     1v46 : ...
+
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt
             Fix parseInt("bar") - fix #150
