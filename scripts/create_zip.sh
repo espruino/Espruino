@@ -26,16 +26,25 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in ESPRUINO_1V3 STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V1 STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
 do
   BOARDNAMEX=$BOARDNAME
   if [ "$BOARDNAMEX" == "ESPRUINO_1V3" ]; then
     BOARDNAMEX=ESPRUINOBOARD
   fi
+  if [ "$BOARDNAMEX" == "ESPRUINO_1V1" ]; then
+    BOARDNAMEX=ESPRUINOBOARD_R1_1
+  fi
   BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAMEX`
   rm $BINARY_NAME
-  bash -c "RELEASE=1 $BOARDNAME=1 make clean"
-  bash -c "RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
+  if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
+   scripts/create_espruino_image_1v3.sh
+  elif [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then      
+   scripts/create_espruino_image_1v1.sh
+  else 
+    bash -c "RELEASE=1 $BOARDNAME=1 make clean"
+    bash -c "RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
+  fi
   cp $BINARY_NAME $ZIPDIR/$BINARY_NAME || { echo 'Build failed' ; exit 1; }
 done
 
