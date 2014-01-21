@@ -59,20 +59,6 @@ JsVar *jswrap_array_constructor(JsVar *args) {
   return jsvLockAgain(args);
 }
 
-/*JSON{ "type":"method", "class": "Array", "name" : "contains",
-         "description" : "Return true if this array contains the given value",
-         "generate" : "jswrap_array_contains",
-         "params" : [ [ "value", "JsVar", "The value to check for"] ],
-         "return" : ["bool", "Whether value is in the array or not"]
-}*/
-bool jswrap_array_contains(JsVar *parent, JsVar *value) {
-  // ArrayIndexOf will return 0 if not found
-  JsVar *arrElement = jsvGetArrayIndexOf(parent, value, false/*not exact*/);
-  bool contains = arrElement!=0;
-  jsvUnLock(arrElement);
-  return contains;
-}
-
 /*JSON{ "type":"method", "class": "Array", "name" : "indexOf",
          "description" : "Return the index of the value in the array, or -1",
          "generate" : "jswrap_array_indexOf",
