@@ -341,15 +341,16 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
 }
 #endif
 
-void ftoa(JsVarFloat val,char *str) {
-  if (isnan(val)) strncpy(str,"NaN",4);
+void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
+  if (isnan(val)) strncpy(str,"NaN",len);
   else if (!isfinite(val)) {
-    if (val<0) strncpy(str,"-Infinity",10);
-    else strncpy(str,"Infinity",10);
+    if (val<0) strncpy(str,"-Infinity",len);
+    else strncpy(str,"Infinity",len);
   } else {
     const JsVarFloat base = 10;
     if (val<0) {
-      *(str++)='-';
+      if (--len <= 0) { *str=0; return; } // bounds check
+      *(str++) = '-';
       val = -val;
     }
     JsVarFloat d = 1;
@@ -357,15 +358,18 @@ void ftoa(JsVarFloat val,char *str) {
     while (d >= 1) {
       int v = (int)(val / d);
       val -= v*d;
-      *(str++)=itoch(v);
+      if (--len <= 0) { *str=0; return; } // bounds check
+      *(str++) = itoch(v);
       d /= base;
     }
   #ifndef USE_NO_FLOATS
     if (val>0) {
+      if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
       while (val>0.000001) {
         int v = (int)((val / d) + 0.0000005);
         val -= v*d;
+        if (--len <= 0) { *str=0; return; } // bounds check
         *(str++)=itoch(v);
         d /= base;
       }
@@ -412,7 +416,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         if (*fmt=='x') { rad=16; fmt++; }
         itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
       } break;
-      case 'f': ftoa(va_arg(argp, JsVarFloat), buf); user_callback(buf,user_data);  break;
+      case 'f': ftoa_bounded(va_arg(argp, JsVarFloat), buf, sizeof(buf)); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;
       case 'c': buf[0]=(char)va_arg(argp, int/*char*/);buf[1]=0; user_callback(buf, user_data); break;
       case 'v': {

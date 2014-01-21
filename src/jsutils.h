@@ -332,11 +332,6 @@ void *memcpy(void *dst, const void *src, size_t size);
 void *memset(void *dst, int val, size_t size);
 #define RAND_MAX (0xFFFFFFFFU)
 unsigned int rand();
-#else
-// FIXME: use itoa/ftoa direct - sprintf is huge
-//#define itoa(val,str,base) sprintf(str,"%d",(int)val)
-//#define ftoa(val,str) sprintf(str,"%f",val)
-
 #endif
 
 JsVarFloat stringToFloat(const char *str);
@@ -345,7 +340,7 @@ JsVarFloat stringToFloat(const char *str);
 void itoa(JsVarInt val,char *str,unsigned int base);
 #endif
 char itoch(int val);
-void ftoa(JsVarFloat val,char *str);
+void ftoa_bounded(JsVarFloat val,char *str, size_t len);
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))
 JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size);

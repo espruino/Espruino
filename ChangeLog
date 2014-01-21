@@ -2,6 +2,7 @@
             Added isNaN() function (fix #184)
             Fix parse order for 'typeof' (fix #172)
             Added Number object (fix #165)
+            Bounded ftoa (stops crash when printing Number.MAX_VALUE) - helps with #185
 
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt

@@ -2420,7 +2420,7 @@ bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
       jsiConsolePrintInt(utilTimerTasks[nextHead].value);
       jsiConsolePrint(" at ");
       char buf[32];
-      ftoa(jshGetMillisecondsFromTime(utilTimerTasks[nextHead].time-t)/1000, buf);
+      ftoa_bounded(jshGetMillisecondsFromTime(utilTimerTasks[nextHead].time-t)/1000, buf, sizeof(buf));
       jsiConsolePrint(buf);
       jsiConsolePrint("s\n");
       nextHead = (nextHead+1) & (UTILTIMERTASK_TASKS-1);

@@ -631,7 +631,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
      itoa(v->varData.integer, str, 10);
      return strlen(str);
    } else if (jsvIsFloat(v)) {
-     ftoa(v->varData.floating, str);
+     ftoa_bounded(v->varData.floating, str, len);
      return strlen(str);
    } else if (jsvHasCharacterData(v)) {
        if (jsvIsStringExt(v))
@@ -694,20 +694,18 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     str = jsvLockAgain(v);
   } else {
     const char *constChar = jsvGetConstString(v);
+    char buf[JS_NUMBER_BUFFER_SIZE];
     if (constChar) {
       // if we could get this as a simple const char, do that..
       str = jsvNewFromString(constChar);
     } else if (jsvIsPin(v)) {
-      char buf[8];
       jshGetPinString(buf, (Pin)v->varData.integer);
       str = jsvNewFromString(buf);
     } else if (jsvIsInt(v)) {
-      char buf[JS_NUMBER_BUFFER_SIZE];
       itoa(v->varData.integer, buf, 10);
       str = jsvNewFromString(buf);
     } else if (jsvIsFloat(v)) {
-      char buf[JS_NUMBER_BUFFER_SIZE];
-      ftoa(v->varData.floating, buf);
+      ftoa_bounded(v->varData.floating, buf, sizeof(buf));
       str = jsvNewFromString(buf);
     } else if (jsvIsArray(v) || jsvIsArrayBuffer(v)) {
       JsVar *filler = jsvNewFromString(",");
