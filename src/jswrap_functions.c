@@ -18,6 +18,10 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
+
+// for jswrap_isNaN
+extern int isnan(double x);
+
 /*JSON{ "type":"variable", "name" : "arguments",
          "description" : "A variable containing the arguments given to the function",
          "generate" : "jswrap_arguments",
@@ -99,4 +103,33 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   return stringToFloat(buffer);
+}
+
+/*JSON{ "type":"function", "name" : "isNaN",
+         "description" : "Whether the x is NaN (Not a Number) or not",
+         "generate" : "jswrap_isNaN",
+         "params" :  [ [ "x", "JsVar", ""] ],
+         "return" : ["bool", "True is the value is NaN, false if not."]
+}*/
+bool jswrap_isNaN(JsVar *v) {
+  if (jsvIsUndefined(v) ||
+      jsvIsObject(v) ||
+      (jsvIsFloat(v) && isnan(jsvGetFloat(v)))) return true;
+  if (jsvIsString(v)) {
+    // this is where is can get a bit crazy
+    bool allWhiteSpace = true;
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it,v,0);
+    while (jsvStringIteratorHasChar(&it)) {
+      if (!isWhitespace(jsvStringIteratorGetChar(&it))) {
+        allWhiteSpace = false;
+        break;
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&it);
+    if (allWhiteSpace) return false;
+    return isnan(jsvGetFloat(v));
+  }
+  return false;
 }

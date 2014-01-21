@@ -1,4 +1,5 @@
      1v46 : Fix parseFloat("") not returning NaN, and parseFloat(" \t 5 £$%^&(*$") returning NaN
+            Added isNaN() function (fix #184)
 
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt

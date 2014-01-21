@@ -1043,7 +1043,7 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (jsvIsFloat(v)) return v->varData.floating;
     if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsNull(v)) return 0;
-    if (jsvIsString(v) && jsvIsStringNumeric(v)) {
+    if (jsvIsString(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
       return stringToFloat(buf);

@@ -258,8 +258,8 @@ unsigned int rand() {
 JsVarFloat stringToFloat(const char *s) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
-  // if no  number data, return NaN
-  if (!*s) return NAN;
+
+  const char *numberStart = s;
 
   bool isNegated = false;
   JsVarFloat v = 0;
@@ -306,8 +306,8 @@ JsVarFloat stringToFloat(const char *s) {
     if (isENegated) e=-e;
     v = v * jswrap_math_pow(10, e);
   }
-  // actually it doesn't matter if we've parsed everything... parseFloat will return a number
-  // even if it is followed by rubbish
+  // check that we managed to parse something at least
+  if (numberStart==s) return NAN;
 
   if (isNegated) return -v;
   return v;

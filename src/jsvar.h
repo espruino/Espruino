@@ -205,7 +205,7 @@ static inline bool jsvIsIterable(const JsVar *v) {
          jsvIsString(v) || jsvIsArrayBuffer(v);
 }
 
-/** Does this string contain only Numeric characters? */
+/** Does this string contain only Numeric characters? NOT '.'/'e' and similar */
 bool jsvIsStringNumeric(const JsVar *var);
 /** Does this string contain only Numeric characters? This is for arrays
  * and makes the assertion that int_to_string(string_to_int(var))==var */
