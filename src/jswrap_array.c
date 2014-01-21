@@ -326,3 +326,10 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
 }
+
+/*JSON{ "type":"staticmethod", "class": "Array", "name" : "isArray",
+         "description" : "Returns true if the provided object is an array",
+         "generate_full" : "jsvIsArray(var)",
+         "params" : [ [ "var", "JsVar", "The variable to be tested"] ],
+         "return" : ["bool", "True if var is an array, false if not."]
+}*/
