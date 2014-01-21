@@ -22,6 +22,7 @@ JsExecInfo execInfo;
 // ----------------------------------------------- Forward decls
 JsVar *jspeBase();
 JsVar *jspeBaseWithComma();
+JsVar *jspeUnary();
 JsVar *jspeBlock();
 JsVar *jspeStatement();
 // ----------------------------------------------- Utils
@@ -1098,7 +1099,7 @@ void jspEnsureIsPrototype(JsVar *prototypeName) {
 
 JsVar *jspeFactorTypeOf() {
   JSP_MATCH(LEX_R_TYPEOF);
-  JsVar *a = jspeBase();
+  JsVar *a = jspeUnary();
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
     a = jsvSkipNameAndUnLock(a);
