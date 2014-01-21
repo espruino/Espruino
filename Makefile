@@ -324,6 +324,7 @@ src/jswrap_interactive.c \
 src/jswrap_json.c \
 src/jswrap_object.c \
 src/jswrap_string.c \
+src/jswrap_number.c \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
 src/jswrap_serial.c \

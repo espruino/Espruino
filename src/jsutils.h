@@ -47,6 +47,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #define true (1)
 #define false (0)
 #define NAN (((JsVarFloat)0)/(JsVarFloat)0)
+#define DBL_MIN 2.2250738585072014e-308
+#define DBL_MAX 1.7976931348623157e+308
 
 /* Number of Js Variables allowed and Js Reference format. 
 
