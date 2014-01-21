@@ -96,8 +96,6 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
          "return" : ["float", "The cosine of theta"]
 }*/
 
-#define DBL_MAX    1.7976931348623157E+308
-
 double fs_fmod(double x, double y)
 {
   double a, b;
