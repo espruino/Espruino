@@ -4,6 +4,7 @@
             Added Number object (fix #165)
             Bounded ftoa (stops crash when printing Number.MAX_VALUE) - helps with #185
             Added Array.isArray() (fix #160)
+            Add do...while (fix #151)
 
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt

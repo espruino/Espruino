@@ -1676,22 +1676,25 @@ JsVar *jspeStatementSwitch() {
   return 0;
 }
 
-JsVar *jspeStatementWhile() {
+JsVar *jspeStatementDoOrWhile(bool isWhile) {
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
 #endif
   JsVar *cond;
-  bool loopCond;
+  bool loopCond = true; // true for do...while loops
   bool hasHadBreak = false;
+  JslCharPos whileCondStart;
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
-  JSP_MATCH(LEX_R_WHILE);
-  JSP_MATCH('(');
-  JslCharPos whileCondStart = execInfo.lex->tokenStart;
-  cond = jspeBase();
-  loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
-  jsvUnLock(cond);
-  JSP_MATCH(')');
+  JSP_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
+  if (isWhile) { // while loop
+    JSP_MATCH('(');
+    whileCondStart = execInfo.lex->tokenStart;
+    cond = jspeBase();
+    loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
+    jsvUnLock(cond);
+    JSP_MATCH(')');
+  }
   JslCharPos whileBodyStart = execInfo.lex->tokenStart;
   JSP_SAVE_EXECUTE();
   // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
@@ -1707,6 +1710,16 @@ JsVar *jspeStatementWhile() {
     hasHadBreak = true; // fail loop condition, so we exit
   }
   if (!loopCond) JSP_RESTORE_EXECUTE();
+
+  if (!isWhile) { // do..while loop
+    JSP_MATCH(LEX_R_WHILE);
+    JSP_MATCH('(');
+    whileCondStart = execInfo.lex->tokenStart;
+    cond = jspeBase();
+    loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
+    jsvUnLock(cond);
+    JSP_MATCH(')');
+  }
 
   while (!hasHadBreak && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -1995,8 +2008,10 @@ JsVar *jspeStatement() {
         return jspeStatementVar();
     } else if (execInfo.lex->tk==LEX_R_IF) {
         return jspeStatementIf();
+    } else if (execInfo.lex->tk==LEX_R_DO) {
+        return jspeStatementDoOrWhile(false);
     } else if (execInfo.lex->tk==LEX_R_WHILE) {
-        return jspeStatementWhile();
+        return jspeStatementDoOrWhile(true);
     } else if (execInfo.lex->tk==LEX_R_FOR) {
         return jspeStatementFor();
     } else if (execInfo.lex->tk==LEX_R_RETURN) {
