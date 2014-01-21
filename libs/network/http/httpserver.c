@@ -16,6 +16,7 @@
 #define SOCKET_ERROR (-1)
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "../network.h"
 
 #ifdef USE_CC3000
  #include "socket.h"
@@ -524,6 +525,7 @@ void httpClientConnectionsIdle() {
 
 
 void httpIdle() {
+  if (networkState != NETWORKSTATE_ONLINE) return;
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
     JsArrayIterator it;

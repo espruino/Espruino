@@ -19,6 +19,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "board_spi.h"
+#include "../network.h"
 // ti driver
 #include "wlan.h"
 #include "netapp.h"
@@ -42,7 +43,6 @@ JsVar *jswrap_cc3000_connect() {
   return wlanObj;
 }
 
-
 /*JSON{ "type":"class",
         "class" : "WLAN",
         "description" : "An instantiation of a WiFi network adaptor"
@@ -62,6 +62,12 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
     jsError("Expecting callback Function but got %t", callback);
     return 0;
   }
+  // if previously completely disconnected, try and reconnect
+  if (jsvGetBoolAndUnLock(jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC",0))) {
+    cc3000_initialise(wlanObj);
+    jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(false)));
+  }
+
   if (jsvIsFunction(callback)) {
     jsvObjectSetChild(wlanObj, CC3000_ON_STATE_CHANGE, callback);
   }
@@ -75,8 +81,20 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
   }
   // might want to set wlan_ioctl_set_connection_policy
   return wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key));
+  // note that we're only online (for networkState) when DHCP succeeds
 }
 
+/*JSON{ "type":"method",
+         "class" : "WLAN", "name" : "disconnect",
+         "generate" : "jswrap_wlan_disconnect",
+         "description" : "Completely uninitialise and power down the CC3000. After this you'll have to use ```require(\"CC3000\").connect()``` again."
+}*/
+void jswrap_wlan_disconnect(JsVar *wlanObj) {
+  jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(true)));
+  networkState = NETWORKSTATE_OFFLINE; // force offline
+  //wlan_disconnect();
+  wlan_stop();
+}
 
 static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";

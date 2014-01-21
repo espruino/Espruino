@@ -474,6 +474,7 @@ DEFINES += -DUSE_NET
 WRAPPERSOURCES += libs/network/http/jswrap_http.c
 INCLUDE += -I$(ROOT)/libs/network/http
 SOURCES += \
+libs/network/network.c \
 libs/network/http/httpserver.c 
 ifdef LINUX
 #LIBS += -l... 

@@ -327,10 +327,11 @@ wlan_stop(void)
 	// Chip disable
 	tSLInformation.WriteWlanPin( WLAN_DISABLE );
 	
+	// Why do we care? We just want to stop!
 	// Wait till IRQ line goes high...
-	while(tSLInformation.ReadWlanInterruptPin() == 0)
+	/*while(tSLInformation.ReadWlanInterruptPin() == 0)
 	{
-	}
+	}*/
 	
 	// Free the used by WLAN Driver memory
 	if (tSLInformation.pucTxCommandBuffer)

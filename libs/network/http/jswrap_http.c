@@ -15,6 +15,7 @@
  */
 #include "jswrap_http.h"
 #include "httpserver.h"
+#include "../network.h"
 
 /*
 
@@ -59,6 +60,14 @@ http.createServer(function (req, res) {
         "description" : ["This class helps to convert URLs into Objects of information ready for http.request/get" ]
 }*/
 
+bool checkOnline() {
+  if (networkState != NETWORKSTATE_ONLINE) {
+    jsError("Not connected to the internet");
+    return false;
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------
@@ -72,6 +81,7 @@ http.createServer(function (req, res) {
 }*/
 
 JsVar *jswrap_http_createServer(JsVar *callback) {
+  if (!checkOnline()) return 0;
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
     jsError("Expecting Callback Function but got %t", skippedCallback);
@@ -92,6 +102,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
 }*/
 
 JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
+  if (!checkOnline()) return 0;
   bool unlockOptions = false;
   if (jsvIsString(options)) {
     options = jswrap_url_parse(options);
@@ -122,6 +133,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
          "return" : ["JsVar", "Returns a new httpCRq object"]
 }*/
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
+  if (!checkOnline()) return 0;
   if (jsvIsObject(options)) {
     // if options is a string - it will be parsed, and GET will be set automatically
     JsVar *method = jsvNewFromString("GET");
@@ -151,6 +163,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 }*/
 
 void jswrap_httpSrv_listen(JsVar *parent, int port) {
+  if (!checkOnline()) return;
   httpServerListen(parent, port);
 }
 
@@ -164,6 +177,7 @@ void jswrap_httpSrv_listen(JsVar *parent, int port) {
          "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
 }*/
 void jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
+  if (!checkOnline()) return;
   httpServerResponseData(parent, data);
 }
 
@@ -173,6 +187,7 @@ void jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
          "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
 }*/
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
+  if (!checkOnline()) return;
   if (!jsvIsUndefined(data)) jswrap_httpSRs_write(parent, data);
   httpServerResponseEnd(parent);
 }
@@ -185,6 +200,7 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
                       [ "headers", "JsVar", "An object containing the headers"] ]
 }*/
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
+  if (!checkOnline()) return;
   httpServerResponseWriteHead(parent, statusCode, headers);
 }
 
@@ -198,6 +214,7 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
          "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
 }*/
 void jswrap_httpCRq_write(JsVar *parent, JsVar *data) {
+  if (!checkOnline()) return;
   httpClientRequestWrite(parent, data);
 }
 
@@ -208,6 +225,7 @@ void jswrap_httpCRq_write(JsVar *parent, JsVar *data) {
          "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
 }*/
 void jswrap_httpCRq_end(JsVar *parent, JsVar *data) {
+  if (!checkOnline()) return;
   if (!jsvIsUndefined(data)) jswrap_httpCRq_write(parent, data);
   httpClientRequestEnd(parent);
 }
