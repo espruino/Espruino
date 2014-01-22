@@ -129,6 +129,12 @@ static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  
 }*/
 JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
+
+  if (networkState != NETWORKSTATE_ONLINE) {
+    jsError("Not connected to the internet");
+    return 0;
+  }
+
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
   /* If byte 1 is 0 we don't have a valid address */
