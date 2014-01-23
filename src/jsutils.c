@@ -304,7 +304,15 @@ JsVarFloat stringToFloat(const char *s) {
       s++;
     }
     if (isENegated) e=-e;
-    v = v * jswrap_math_pow(10, e);
+    // TODO: faster INTEGER pow? Normal pow has floating point inaccuracies
+    while (e>0) { 
+      v*=10; 
+      e--;
+    }
+    while (e<0) { 
+      v/=10; 
+      e++;
+    }
   }
   // check that we managed to parse something at least
   if (numberStart==s) return NAN;
