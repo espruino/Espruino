@@ -342,6 +342,7 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
 #endif
 
 void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
+  const JsVarFloat stopAtError = 0.0000001;
   if (isnan(val)) strncpy(str,"NaN",len);
   else if (!isfinite(val)) {
     if (val<0) strncpy(str,"-Infinity",len);
@@ -353,6 +354,11 @@ void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
       *(str++) = '-';
       val = -val;
     }
+
+    // what if we're really close to an integer? Just use that...      
+    if (((JsVarInt)(val+stopAtError)) == (1+(JsVarInt)val))
+      val = (JsVarFloat)(1+(JsVarInt)val);
+
     JsVarFloat d = 1;
     while (d*base <= val) d*=base;
     while (d >= 1) {
@@ -366,12 +372,15 @@ void ftoa_bounded(JsVarFloat val,char *str, size_t len) {
     if (val>0) {
       if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
-      while (val>0.000001) {
-        int v = (int)((val / d) + 0.0000005);
-        val -= v*d;
+      val*=10;
+      while (val > stopAtError) {         
+        int v = (int)(val+0.00000001);
+        val = (val-v)*10;
         if (--len <= 0) { *str=0; return; } // bounds check
-        *(str++)=itoch(v);
-        d /= base;
+        if (v==10) {
+          *(str++)='9';  
+        } else
+          *(str++)=itoch(v);
       }
     }
   #endif
