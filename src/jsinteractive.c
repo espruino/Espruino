@@ -1419,7 +1419,13 @@ void jsiIdle() {
 
     }
     jsvUnLock(timerTime);
+    JsVarRef currentTimer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
+    if (currentTimer != timer) {
+      // Whoa! the timer list has changed!
+      minTimeUntilNext = 0; // make sure we don't sleep
+      break; // get out of here, sort it out next time around idle loop
+    }
   }
   jsvUnLock(timerArrayPtr);
 

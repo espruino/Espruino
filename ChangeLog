@@ -7,6 +7,7 @@
             Add do...while (fix #151)
             Stop Espruino board from crashing if you try to create a web server without a connected CC3k (fix #182)
             Remove Array.contains as it's not in the spec (use indexOf instead if you need it) (fix #161)
+            Fix nasty bug where adding/removing intervals/timeouts while in one could cause issues
 
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt
