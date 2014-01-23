@@ -68,7 +68,7 @@
          "params" : [ [ "pin", "pin", "The pin to use"],
                       [ "value", "float", "A value between 0 and 1"],
                       [ "options", "JsVar", ["An object containing options.",
-                                            "Currently only freq (pulse frequency in Hz) is available: ```analogWrite(LED1,0.5,{ freq : 10 });``` ",
+                                            "Currently only freq (pulse frequency in Hz) is available: ```analogWrite(A0,0.5,{ freq : 10 });``` ",
                                             "Note that specifying a frequency will force PWM output, even if the pin has a DAC"] ]  ]
 }*/
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
