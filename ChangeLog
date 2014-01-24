@@ -1,3 +1,5 @@
+     1v47 : ...
+
      1v46 : Fix parseFloat("") not returning NaN, and parseFloat(" \t 5 £$%^&(*$") returning NaN
             Added isNaN() function (fix #184)
             Fix parse order for 'typeof' (fix #172)
