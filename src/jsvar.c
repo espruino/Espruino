@@ -1603,21 +1603,64 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
 }
 
 
-JsVar *jsvGetArrayItem(JsVar *arr, int index) {
-  JsVarRef childref = arr->firstChild;
+JsVar *jsvGetArrayItem(JsVar *arr, JsVarInt index) {
+  JsVarRef childref = arr->lastChild;
+  JsVarInt lastArrayIndex = 0;
+  // Look at last non-string element!
   while (childref) {
-    JsVarInt childIndex;
     JsVar *child = jsvLock(childref);
-
-    assert(jsvIsInt(child));
-    childIndex = jsvGetInteger(child);
-    if (childIndex == index) {
-      JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
+    if (jsvIsInt(child)) {
+      lastArrayIndex = jsvGetInteger(child);
+      // it was the last element... sorted!
+      if (lastArrayIndex == index) {
+        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
+        jsvUnLock(child);
+        return item;
+      }
       jsvUnLock(child);
-      return item;
+      break;
     }
-    childref = child->nextSibling;
+    // if not an int, keep going
+    childref = child->prevSibling;
     jsvUnLock(child);
+  }
+  // it's not in this array - don't search the whole lot...
+  if (index > lastArrayIndex)
+    return 0;
+  // otherwise is it more than halfway through?
+  if (index > lastArrayIndex/2) {
+    // it's in the final half of the array (probably) - search backwards
+    while (childref) {
+      JsVarInt childIndex;
+      JsVar *child = jsvLock(childref);
+
+      assert(jsvIsInt(child));
+      childIndex = jsvGetInteger(child);
+      if (childIndex == index) {
+        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
+        jsvUnLock(child);
+        return item;
+      }
+      childref = child->prevSibling;
+      jsvUnLock(child);
+    }
+  } else {
+    // it's in the first half of the array (probably) - search forwards
+    childref = arr->firstChild;
+    while (childref) {
+      JsVarInt childIndex;
+      JsVar *child = jsvLock(childref);
+
+      assert(jsvIsInt(child));
+      childIndex = jsvGetInteger(child);
+      if (childIndex == index) {
+        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
+        jsvUnLock(child);
+        return item;
+      }
+      childref = child->nextSibling;
+      jsvUnLock(child);
+    }
   }
   return 0; // undefined
 }
