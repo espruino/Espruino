@@ -1,4 +1,4 @@
-     1v47 : ...
+     1v47 : Fix issue with dump() and input_pullup not being quoted
 
      1v46 : Fix parseFloat("") not returning NaN, and parseFloat(" \t 5 £$%^&(*$") returning NaN
             Added isNaN() function (fix #184)

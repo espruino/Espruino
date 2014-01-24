@@ -554,7 +554,7 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
       if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
-      jsvAppendPrintf(str, "pinMode(%p,input%s);\n",pin,s);
+      jsvAppendPrintf(str, "pinMode(%p,\"input%s\");\n",pin,s);
     }
   }
 }
