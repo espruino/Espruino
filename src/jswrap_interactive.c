@@ -32,17 +32,24 @@ void jswrap_interface_setBusyIndicator(JsVar *pinVar) {
 }
 
 /*JSON{ "type":"function", "name" : "setSleepIndicator",
-         "description" : "When Espruino is asleep, set the pin specified here high. Set this to undefined to disable the feature.",
+         "description" : ["When Espruino is asleep, set the pin specified here low (when it's awake, set it high). Set this to undefined to disable the feature.",
+                         "Please see [http://www.espruino.com/Power+Consumption] for more details on this."],
          "generate" : "jswrap_interface_setSleepIndicator",
          "params" : [ [ "pin", "JsVar", ""] ]
 }*/
 void jswrap_interface_setSleepIndicator(JsVar *pinVar) {
+  Pin oldPin = pinSleepIndicator;
   pinSleepIndicator = jshGetPinFromVar(pinVar);
+  // we should be awake right now anyway, so set stuff up right
+  if (pinSleepIndicator!=oldPin) {
+    if (oldPin!=PIN_UNDEFINED) jshPinOutput(oldPin, 0);
+    if (pinSleepIndicator!=PIN_UNDEFINED) jshPinOutput(pinSleepIndicator, 1);
+  }
 }
 
 /*JSON{ "type":"function", "name" : "setDeepSleep",
-         "description" : [ "Set whether we can enter deep sleep mode, which reduces power consumption to around 1mA. This only works on the Espruino Board.",
-                           "Deep Sleep is currently beta. Espruino will only enter Deep Sleep when there are no timers and it is not connected to USB. USB will not wake Espruino from Deep Sleep, nor will Serial comms (only setWatch will wake it). The System Timer will also pause." ],
+         "description" : [ "Set whether we can enter deep sleep mode, which reduces power consumption to around 100uA. This only works on the Espruino Board.",
+                           "Please see [http://www.espruino.com/Power+Consumption] for more details on this." ],
          "generate" : "jswrap_interface_setDeepSleep",
          "params" : [ [ "sleep", "bool", ""] ]
 }*/
