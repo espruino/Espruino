@@ -93,10 +93,26 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
 
 /*JSON{ "type":"method", "class": "Array", "name" : "push",
          "description" : "Push a new value onto the end of this array'",
-         "generate_full" : "jsvArrayPush(parent, value)",
-         "params" : [ [ "value", "JsVar", "The value to add"] ],
+         "generate" : "jswrap_array_push",
+         "params" : [ [ "arguments", "JsVarArray", "One or more arguments to add"] ],
          "return" : ["int", "The new size of the array"]
 }*/
+JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
+  JsVarInt len = -1;
+  JsArrayIterator it;
+  jsvArrayIteratorNew(&it, args);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *el = jsvArrayIteratorGetElement(&it);
+    len = jsvArrayPush(parent, el);
+    jsvUnLock(el);
+    jsvArrayIteratorNext(&it);
+  }
+  jsvArrayIteratorFree(&it);
+  if (len<0) 
+    len = jsvGetArrayLength(parent);
+  return len;
+}
+
 
 /*JSON{ "type":"method", "class": "Array", "name" : "pop",
          "description" : "Pop a new value off of the end of this array",

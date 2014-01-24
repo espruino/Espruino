@@ -11,6 +11,7 @@
             Fix bug when printing 1.999999999 and similar (fix #190)
             Remove need for pow for exponentiation. Not great but it fixes some tests that failed on FP inaccuracies
             Change polarity of setSleepIndicator (fix #194)
+            Allow array.push with multiple arguments (fix #189)
 
      1v45 : Fix parseFloat("foo") not returning NaN (and assert) - fix #149
             Remove Integer.parseInt
