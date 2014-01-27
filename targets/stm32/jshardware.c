@@ -791,6 +791,10 @@ inline bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
+static inline unsigned int getSystemTimerFreq() {
+  return SystemCoreClock;
+}
+
 // ----------------------------------------------------------------------------
 void jshInit() {
   int i;
@@ -959,31 +963,33 @@ void jshInit() {
   /*jsiConsolePrint("\r\n\r\n");
   jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n\r\n");*/
 
-  // Work out microsecond delay...
+  /* Work out microsecond delay for jshDelayMicroseconds...
+
+   Different compilers/different architectures may run at different speeds so
+   we'll just time ourselves to see how fast we are at startup. We use SysTick
+   timer here because sadly it looks like the RC oscillator used by default
+   for the RTC on the Espruino board hasn't settled down by this point
+   (or it just may not be accurate enough).
+   */
 //  JSH_DELAY_OVERHEAD = 0;
   JSH_DELAY_MULTIPLIER = 1024;
   /* NOTE: we disable interrupts, so we can't spend longer than SYSTICK_RANGE in here
    * as we'll overflow! */
 
-
   jshInterruptOff();
   jshDelayMicroseconds(1024); // just wait for stuff to settle
   // AVERAGE OUT OF 3
-  JsSysTime tStart = jshGetSystemTime();
+  int tStart = -(int)SysTick->VAL;
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
-  /*JsSysTime tEnd1 = */jshGetSystemTime();
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
-  /*JsSysTime tEnd2 = */jshGetSystemTime();
   jshDelayMicroseconds(1024); // 1024 because we divide by 1024 in jshDelayMicroseconds
-  JsSysTime tEnd3 = jshGetSystemTime();
+  int tEnd3 = -(int)SysTick->VAL;
   // AVERAGE OUT OF 3
   jshDelayMicroseconds(2048);
-  /*JsSysTime tEnd4 = */jshGetSystemTime();
   jshDelayMicroseconds(2048);
-  /*JsSysTime tEnd5 = */jshGetSystemTime();
   jshDelayMicroseconds(2048);
-  JsSysTime tEnd6 = jshGetSystemTime();
-  JsSysTime tIter = ((tEnd6 - tEnd3) - (tEnd3 - tStart))/3; // ticks taken to iterate JSH_DELAY_MULTIPLIER times
+  int tEnd6 = -(int)SysTick->VAL;
+  int tIter = ((tEnd6 - tEnd3) - (tEnd3 - tStart))/3; // ticks taken to iterate JSH_DELAY_MULTIPLIER times
   //JsSysTime tOverhead = (tEnd1 - tStart) - tIter; // ticks that are ALWAYS taken
   /* So: ticks per iteration = tIter / JSH_DELAY_MULTIPLIER
    *     iterations per tick = JSH_DELAY_MULTIPLIER / tIter
@@ -994,7 +1000,7 @@ void jshInit() {
    *     iterations always taken = ticks always taken * iterations per tick
    *                             = tOverhead * JSH_DELAY_MULTIPLIER / tIter
    */
-  JSH_DELAY_MULTIPLIER = (int)(jshGetTimeFromMilliseconds(1024) * JSH_DELAY_MULTIPLIER / (tIter*1000));
+  JSH_DELAY_MULTIPLIER = (int)(1.024 * getSystemTimerFreq() * JSH_DELAY_MULTIPLIER / (tIter*1000));
 //  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
   jshInterruptOn();
 
@@ -1132,11 +1138,6 @@ bool jshIsUSBSERIALConnected() {
   return false;
 #endif
 }
-
-static inline unsigned int getSystemTimerFreq() {
-  return SystemCoreClock;
-}
-
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 #ifdef USE_RTC
