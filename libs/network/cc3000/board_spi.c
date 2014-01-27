@@ -19,6 +19,7 @@
 
 #include "jshardware.h"
 #include "jsinteractive.h"
+#include "jsparse.h" // for jspIsInterrupted
 
 #include "../network.h"
 
@@ -213,6 +214,8 @@ cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
 void
 SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
+  if (jspIsInterrupted()) return;
+
   int bSend = 0, bRecv = 0;
   while (bSend<size || bRecv<size) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?data[bSend]:-1);
@@ -227,6 +230,8 @@ SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 void
 SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
+  if (jspIsInterrupted()) return;
+
   int bSend = 0, bRecv = 0;
   while (bSend<size || bRecv<size) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);

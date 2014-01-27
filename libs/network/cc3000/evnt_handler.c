@@ -52,6 +52,8 @@
 #include "netapp.h"
 #include "spi.h"
 
+#include "jsparse.h" // for jspIsInterrupted
+
 //*****************************************************************************
 //                  COMMON DEFINES
 //*****************************************************************************
@@ -234,7 +236,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
     unsigned char *RetParams;
 	
 	cc3000_irq_disable();
-	while (1)
+	while (!jspIsInterrupted())
 	{
 		if (tSLInformation.usEventOrDataReceived != 0)
 		{				

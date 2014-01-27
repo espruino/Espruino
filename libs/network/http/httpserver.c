@@ -551,7 +551,9 @@ void httpIdle() {
   #endif
       while (n-->0) {
         // we have a client waiting to connect...
-        int theClient = accept(socket,NULL,NULL); // try and connect
+        sockaddr addr;
+        socklen_t addrlen = sizeof(addr);
+        int theClient = accept(socket,&addr,&addrlen); // try and connect
         if (theClient > -1) {
           JsVar *req = jspNewObject(jsiGetParser(), 0, "httpSRq");
           JsVar *res = jspNewObject(jsiGetParser(), 0, "httpSRs");
