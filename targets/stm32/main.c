@@ -77,7 +77,6 @@ int main(void){
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
   jsiInit(!buttonState); // pressing USER button skips autoload
 
-  int counter = 0;
   while (1) {
     jsiLoop();
 
