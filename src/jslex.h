@@ -18,9 +18,8 @@
 #include "jsvar.h"
 
 typedef struct JslCharPos {
-  size_t index;
-  size_t charIdx;
-  JsVar *var;
+  JsvStringIterator it;
+  char currCh;
 } JslCharPos;
 
 void jslCharPosFree(JslCharPos *pos);
@@ -29,7 +28,7 @@ JslCharPos jslCharPosClone(JslCharPos *pos);
 typedef struct JsLex
 {
   // Actual Lexing related stuff
-  char currCh, nextCh;
+  char currCh;
   short tk; ///< The type of the token that we have
 
   JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
@@ -55,7 +54,7 @@ void jslInit(JsLex *lex, JsVar *var);
 void jslKill(JsLex *lex);
 void jslReset(JsLex *lex);
 void jslSeekTo(JsLex *lex, size_t seekToChar);
-void jslSeekToP(JsLex *lex, JslCharPos seekToChar);
+void jslSeekToP(JsLex *lex, JslCharPos *seekToChar);
 
 bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on success, false on failure
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
@@ -65,7 +64,8 @@ JsVar *jslGetTokenValueAsVar(JsLex *lex);
 
 // Only for more 'internal' use
 void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
-void jslGetNextCh(JsLex *lex);
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
+
+JsVar *jslNewFromLexer(struct JsLex *lex,  JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
 
 #endif /* JSLEX_H_ */

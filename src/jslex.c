@@ -14,37 +14,31 @@
 #include "jslex.h"
 
 void jslCharPosFree(JslCharPos *pos) {
-  jsvUnLock(pos->var);
+  jsvStringIteratorFree(&pos->it);
 }
 
 JslCharPos jslCharPosClone(JslCharPos *pos) {
   JslCharPos p;
-  p.index = pos->index;
-  p.charIdx = pos->charIdx;
-  p.var = pos->var ? jsvLockAgain(pos->var) : 0;
+  p.it = jsvStringIteratorClone(&pos->it);
+  p.currCh = pos->currCh;
   return p;
 }
 
-JslCharPos jslGetSecondLastCharPos(JsLex *lex) {
+static JslCharPos jslGetLastCharPos(JsLex *lex) {
   JslCharPos p;
-  p.index = lex->it.index - 2;
-  if (lex->it.charIdx>=2) {
-    p.charIdx = lex->it.charIdx-2;
-    p.var = lex->it.var ? jsvLockAgain(lex->it.var) : 0;
-  } else if (lex->lastVar) {
-    p.charIdx = jsvGetCharactersInVar(lex->lastVar)+lex->it.charIdx-2;
-    p.var = jsvLockAgain(lex->lastVar);
-  } else {
-    p.charIdx = 0;
-    p.var = 0;
-  }
+  p.it = jsvStringIteratorClone(&lex->it);
+  p.currCh = lex->currCh;
   return p;
 }
 
-void NO_INLINE jslGetNextCh(JsLex *lex) {
-  lex->currCh = lex->nextCh;
-  lex->nextCh = jsvStringIteratorGetChar(&lex->it);
+/// Return the next character (do not move to the next character)
+static inline char jslNextCh(JsLex *lex) {
+  return lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0;
+}
 
+/// Move on to the next character
+static void NO_INLINE jslGetNextCh(JsLex *lex) {
+  lex->currCh = jslNextCh(lex);
 
   lex->it.charIdx++;
   lex->it.index++;
@@ -96,15 +90,15 @@ void jslGetNextToken(JsLex *lex) {
   }
   while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // newline comments
-  if (lex->currCh=='/' && lex->nextCh=='/') {
+  if (lex->currCh=='/' && jslNextCh(lex)=='/') {
       while (lex->currCh && lex->currCh!='\n') jslGetNextCh(lex);
       jslGetNextCh(lex);
       jslGetNextToken(lex);
       return;
   }
   // block comments
-  if (lex->currCh=='/' && lex->nextCh=='*') {
-      while (lex->currCh && !(lex->currCh=='*' && lex->nextCh=='/'))
+  if (lex->currCh=='/' && jslNextCh(lex)=='*') {
+      while (lex->currCh && !(lex->currCh=='*' && jslNextCh(lex)=='/'))
         jslGetNextCh(lex);
       if (!lex->currCh) {
         lex->tk = LEX_UNFINISHED_COMMENT;
@@ -117,9 +111,9 @@ void jslGetNextToken(JsLex *lex) {
       return;
   }
   // record beginning of this token
-  lex->tokenLastStart = lex->tokenStart.index;
+  lex->tokenLastStart = lex->tokenStart.it.index;
   jslCharPosFree(&lex->tokenStart);
-  lex->tokenStart = jslGetSecondLastCharPos(lex);
+  lex->tokenStart = jslGetLastCharPos(lex);
   // tokens
   if (isAlpha(lex->currCh) || lex->currCh=='$') { //  IDs
       while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
@@ -358,12 +352,11 @@ void jslGetNextToken(JsLex *lex) {
   }
   /* This isn't quite right yet */
   lex->tokenLastEnd = lex->tokenEnd;
-  lex->tokenEnd = lex->it.index-3;// because of nextCh/currCh/etc
+  lex->tokenEnd = lex->it.index-2;// because of nextCh/currCh/etc
 }
 
 static inline void jslPreload(JsLex *lex) {
   // set up..
-  jslGetNextCh(lex);
   jslGetNextCh(lex);
   jslGetNextToken(lex);
 }
@@ -372,7 +365,7 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->sourceVar = jsvLockAgain(var);
   // reset stuff
   lex->tk = 0;
-  lex->tokenStart.var = 0;
+  lex->tokenStart.it.var = 0;
   lex->tokenEnd = 0;
   lex->tokenLastStart = 0;
   lex->tokenLastEnd = 0;
@@ -402,13 +395,11 @@ void jslSeekTo(JsLex *lex, size_t seekToChar) {
   jslPreload(lex);
 }
 
-void jslSeekToP(JsLex *lex, JslCharPos seekToChar) {
+void jslSeekToP(JsLex *lex, JslCharPos *seekToChar) {
   jsvStringIteratorFree(&lex->it);
-  lex->it.charIdx = seekToChar.charIdx;
-  lex->it.charsInVar = seekToChar.var ? jsvGetCharactersInVar(seekToChar.var) : 0;
-  lex->it.index = seekToChar.index;
-  lex->it.var = seekToChar.var ? jsvLockAgain(seekToChar.var) : 0;
-  jslPreload(lex);
+  lex->it = jsvStringIteratorClone(&seekToChar->it);
+  lex->currCh = seekToChar->currCh;
+  jslGetNextToken(lex);
 }
 
 void jslReset(JsLex *lex) {
@@ -543,7 +534,7 @@ bool jslMatch(JsLex *lex, int expected_tk) {
       strncpy(&buf[bufpos], " expected ", JS_ERROR_BUF_SIZE-bufpos);
       bufpos = strlen(buf);
       jslTokenAsString(expected_tk, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
-      jsErrorAt(buf, lex, lex->tokenStart.index);
+      jsErrorAt(buf, lex, lex->tokenStart.it.index);
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);
       return false;
@@ -552,3 +543,39 @@ bool jslMatch(JsLex *lex, int expected_tk) {
   return true;
 }
 
+JsVar *jslNewFromLexer(struct JsLex *lex, JslCharPos *charFrom, size_t charTo) {
+  // Create a var
+  JsVar *var = jsvNewFromEmptyString();
+  if (!var) { // out of memory
+    return 0;
+  }
+
+  //jsvAppendStringVar(var, lex->sourceVar, charFrom->it->index, (int)(charTo-charFrom));
+  size_t maxLength = charTo - charFrom->it.index;
+  JsVar *block = jsvLockAgain(var);
+  block->varData.str[0] = charFrom->currCh;
+  size_t blockChars = 1;
+
+  // now start appending
+  JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
+  while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (blockChars >= jsvGetMaxCharactersInVar(block)) {
+      jsvSetCharactersInVar(block, blockChars);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      if (!next) break; // out of memory
+      // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
+      block->lastChild = jsvGetRef(next);
+      jsvUnLock(block);
+      block = next;
+      blockChars=0; // it's new, so empty
+    }
+    block->varData.str[blockChars++] = ch;
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  jsvSetCharactersInVar(block, blockChars);
+  jsvUnLock(block);
+
+  return var;
+}

@@ -503,7 +503,7 @@ JsVar *jspeFunctionDefinition() {
     return 0;
   }
   // Get the code - first parse it so we know where it stops
-  size_t funcBegin = execInfo.lex->tokenStart.index;
+  JslCharPos funcBegin = jslCharPosClone(&execInfo.lex->tokenStart);
   JSP_SAVE_EXECUTE();
   jspSetNoExecute();
   jsvUnLock(jspeBlock());
@@ -511,7 +511,7 @@ JsVar *jspeFunctionDefinition() {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE) {
     // code var
-    JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, (size_t)(execInfo.lex->tokenLastEnd+1));
+    JsVar *funcCodeVar = jslNewFromLexer(execInfo.lex, &funcBegin, (size_t)(execInfo.lex->tokenLastEnd+1));
     jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
@@ -521,6 +521,7 @@ JsVar *jspeFunctionDefinition() {
       jsvUnLock(funcScopeVar);
     }
   }
+  jslCharPosFree(&funcBegin);
   return funcVar;
 }
 
@@ -579,7 +580,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       if (isParsing && !functionCode) {
         char buf[32];
         jsvGetString(functionName, buf, sizeof(buf));
-        size_t pos = execInfo.lex->tokenStart.index;
+        size_t pos = execInfo.lex->tokenStart.it.index;
         jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
@@ -1726,12 +1727,12 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
          && loopCount-->0
 #endif
          ) {
-      jslSeekToP(execInfo.lex, whileCondStart);
+      jslSeekToP(execInfo.lex, &whileCondStart);
       cond = jspeBase();
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
       if (loopCond) {
-          jslSeekToP(execInfo.lex, whileBodyStart);
+          jslSeekToP(execInfo.lex, &whileBodyStart);
           execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
           execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1743,7 +1744,7 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
           }
       }
   }
-  jslSeekToP(execInfo.lex, whileBodyEnd);
+  jslSeekToP(execInfo.lex, &whileBodyEnd);
   jslCharPosFree(&whileCondStart);
   jslCharPosFree(&whileBodyStart);
   jslCharPosFree(&whileBodyEnd);
@@ -1816,7 +1817,7 @@ JsVar *jspeStatementFor() {
   
               jsvIteratorNext(&it);
  
-              jslSeekToP(execInfo.lex, forBodyStart);
+              jslSeekToP(execInfo.lex, &forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
               jsvUnLock(jspeBlockOrStatement());
               execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1837,7 +1838,7 @@ JsVar *jspeStatementFor() {
       jsErrorAt("FOR loop can only iterate over Arrays, Strings or Objects", execInfo.lex, execInfo.lex->tokenLastEnd);
       jspSetError();
     }
-    jslSeekToP(execInfo.lex, forBodyEnd);
+    jslSeekToP(execInfo.lex, &forBodyEnd);
     jslCharPosFree(&forBodyStart);
     jslCharPosFree(&forBodyEnd);
 
@@ -1886,7 +1887,7 @@ JsVar *jspeStatementFor() {
     }
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
-        jslSeekToP(execInfo.lex, forIterStart);
+        jslSeekToP(execInfo.lex, &forIterStart);
         if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
     }
     while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond
@@ -1894,7 +1895,7 @@ JsVar *jspeStatementFor() {
            && loopCount-->0
 #endif
            ) {
-        jslSeekToP(execInfo.lex, forCondStart);
+        jslSeekToP(execInfo.lex, &forCondStart);
         ;
         if (execInfo.lex->tk == ';') {
           loopCond = true;
@@ -1904,7 +1905,7 @@ JsVar *jspeStatementFor() {
           jsvUnLock(cond);
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
-            jslSeekToP(execInfo.lex, forBodyStart);
+            jslSeekToP(execInfo.lex, &forBodyStart);
             execInfo.execute |= EXEC_IN_LOOP;
             jsvUnLock(jspeBlockOrStatement());
             execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1916,11 +1917,11 @@ JsVar *jspeStatementFor() {
             }
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
-            jslSeekToP(execInfo.lex, forIterStart);
+            jslSeekToP(execInfo.lex, &forIterStart);
             if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
         }
     }
-    jslSeekToP(execInfo.lex, forBodyEnd);
+    jslSeekToP(execInfo.lex, &forBodyEnd);
 
     jslCharPosFree(&forCondStart);
     jslCharPosFree(&forIterStart);
