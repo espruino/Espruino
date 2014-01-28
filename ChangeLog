@@ -1,3 +1,5 @@
+     1v48 : ...
+
      1v47 : Fix issue with dump() and input_pullup not being quoted
             Fix regression that broke OneWire in Espruino Board (#197)
             Fix clock speed issue on SPI1 (https://github.com/espruino/EspruinoDocs/issues/18)
