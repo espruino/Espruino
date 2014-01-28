@@ -222,7 +222,7 @@ bool jspCheckStackPosition() {
   void *frame = __builtin_frame_address(0);
   if ((char*)frame < ((char*)&_end)+1024/*so many bytes leeway*/) {
 //   jsiConsolePrintf("frame: %d,end:%d\n",(int)frame,(int)&_end);
-    jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenStart );
+    jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenLastEnd );
     jspSetInterrupted(true);
     return false;
   }
@@ -503,7 +503,7 @@ JsVar *jspeFunctionDefinition() {
     return 0;
   }
   // Get the code - first parse it so we know where it stops
-  JslCharPos funcBegin = execInfo.lex->tokenStart;
+  size_t funcBegin = execInfo.lex->tokenStart.index;
   JSP_SAVE_EXECUTE();
   jspSetNoExecute();
   jsvUnLock(jspeBlock());
@@ -511,7 +511,7 @@ JsVar *jspeFunctionDefinition() {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE) {
     // code var
-    JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, (JslCharPos)(execInfo.lex->tokenLastEnd+1));
+    JsVar *funcCodeVar = jsvNewFromLexer(execInfo.lex, funcBegin, (size_t)(execInfo.lex->tokenLastEnd+1));
     jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
@@ -579,7 +579,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       if (isParsing && !functionCode) {
         char buf[32];
         jsvGetString(functionName, buf, sizeof(buf));
-        JslCharPos pos = execInfo.lex->tokenStart;
+        size_t pos = execInfo.lex->tokenStart.index;
         jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
@@ -1689,19 +1689,19 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
   JSP_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
   if (isWhile) { // while loop
     JSP_MATCH('(');
-    whileCondStart = execInfo.lex->tokenStart;
+    whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
     cond = jspeBase();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     JSP_MATCH(')');
   }
-  JslCharPos whileBodyStart = execInfo.lex->tokenStart;
+  JslCharPos whileBodyStart = jslCharPosClone(&execInfo.lex->tokenStart);
   JSP_SAVE_EXECUTE();
   // actually try and execute first bit of while loop (we'll do the rest in the actual loop later)
   if (!loopCond) jspSetNoExecute();
   execInfo.execute |= EXEC_IN_LOOP;
   jsvUnLock(jspeBlockOrStatement());
-  JslCharPos whileBodyEnd = execInfo.lex->tokenStart;
+  JslCharPos whileBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
   execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
   if (execInfo.execute == EXEC_CONTINUE)
     execInfo.execute = EXEC_YES;
@@ -1714,7 +1714,7 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!isWhile) { // do..while loop
     JSP_MATCH(LEX_R_WHILE);
     JSP_MATCH('(');
-    whileCondStart = execInfo.lex->tokenStart;
+    whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
     cond = jspeBase();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
@@ -1726,12 +1726,12 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
          && loopCount-->0
 #endif
          ) {
-      jslSeekTo(execInfo.lex, whileCondStart);
+      jslSeekToP(execInfo.lex, whileCondStart);
       cond = jspeBase();
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
       if (loopCond) {
-          jslSeekTo(execInfo.lex, whileBodyStart);
+          jslSeekToP(execInfo.lex, whileBodyStart);
           execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
           execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1743,7 +1743,10 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
           }
       }
   }
-  jslSeekTo(execInfo.lex, whileBodyEnd);
+  jslSeekToP(execInfo.lex, whileBodyEnd);
+  jslCharPosFree(&whileCondStart);
+  jslCharPosFree(&whileBodyStart);
+  jslCharPosFree(&whileBodyEnd);
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   if (loopCount<=0) {
     jsErrorAt("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")", execInfo.lex, execInfo.lex->tokenLastEnd);
@@ -1781,12 +1784,12 @@ JsVar *jspeStatementFor() {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(forStatement);jsvUnLock(array), 0);
-    JslCharPos forBodyStart = execInfo.lex->tokenStart;
+    JslCharPos forBodyStart = jslCharPosClone(&execInfo.lex->tokenStart);
     JSP_SAVE_EXECUTE();
     jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
-    JslCharPos forBodyEnd = execInfo.lex->tokenStart;
+    JslCharPos forBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
     execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
 
@@ -1813,7 +1816,7 @@ JsVar *jspeStatementFor() {
   
               jsvIteratorNext(&it);
  
-              jslSeekTo(execInfo.lex, forBodyStart);
+              jslSeekToP(execInfo.lex, forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
               jsvUnLock(jspeBlockOrStatement());
               execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1834,8 +1837,9 @@ JsVar *jspeStatementFor() {
       jsErrorAt("FOR loop can only iterate over Arrays, Strings or Objects", execInfo.lex, execInfo.lex->tokenLastEnd);
       jspSetError();
     }
-
-    jslSeekTo(execInfo.lex, forBodyEnd);
+    jslSeekToP(execInfo.lex, forBodyEnd);
+    jslCharPosFree(&forBodyStart);
+    jslCharPosFree(&forBodyEnd);
 
     if (addedIteratorToScope) {
       jsvRemoveChild(execInfo.parse->root, forStatement);
@@ -1851,14 +1855,14 @@ JsVar *jspeStatementFor() {
 
     jsvUnLock(forStatement);
     JSP_MATCH(';');
-    JslCharPos forCondStart = execInfo.lex->tokenStart;
+    JslCharPos forCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
     if (execInfo.lex->tk != ';') {
       JsVar *cond = jspeBase(); // condition
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
     JSP_MATCH(';');
-    JslCharPos forIterStart = execInfo.lex->tokenStart;
+    JslCharPos forIterStart = jslCharPosClone(&execInfo.lex->tokenStart);
     if (execInfo.lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
@@ -1867,12 +1871,12 @@ JsVar *jspeStatementFor() {
     }
     JSP_MATCH(')');
 
-    JslCharPos forBodyStart = execInfo.lex->tokenStart; // actual for body
+    JslCharPos forBodyStart = jslCharPosClone(&execInfo.lex->tokenStart); // actual for body
     JSP_SAVE_EXECUTE();
     if (!loopCond) jspSetNoExecute();
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
-    JslCharPos forBodyEnd = execInfo.lex->tokenStart;
+    JslCharPos forBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
     execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     if (execInfo.execute == EXEC_CONTINUE)
       execInfo.execute = EXEC_YES;
@@ -1882,7 +1886,7 @@ JsVar *jspeStatementFor() {
     }
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
-        jslSeekTo(execInfo.lex, forIterStart);
+        jslSeekToP(execInfo.lex, forIterStart);
         if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
     }
     while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond
@@ -1890,7 +1894,7 @@ JsVar *jspeStatementFor() {
            && loopCount-->0
 #endif
            ) {
-        jslSeekTo(execInfo.lex, forCondStart);
+        jslSeekToP(execInfo.lex, forCondStart);
         ;
         if (execInfo.lex->tk == ';') {
           loopCond = true;
@@ -1900,7 +1904,7 @@ JsVar *jspeStatementFor() {
           jsvUnLock(cond);
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
-            jslSeekTo(execInfo.lex, forBodyStart);
+            jslSeekToP(execInfo.lex, forBodyStart);
             execInfo.execute |= EXEC_IN_LOOP;
             jsvUnLock(jspeBlockOrStatement());
             execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
@@ -1912,11 +1916,17 @@ JsVar *jspeStatementFor() {
             }
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
-            jslSeekTo(execInfo.lex, forIterStart);
+            jslSeekToP(execInfo.lex, forIterStart);
             if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
         }
     }
-    jslSeekTo(execInfo.lex, forBodyEnd);
+    jslSeekToP(execInfo.lex, forBodyEnd);
+
+    jslCharPosFree(&forCondStart);
+    jslCharPosFree(&forIterStart);
+    jslCharPosFree(&forBodyStart);
+    jslCharPosFree(&forBodyEnd);
+
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     if (loopCount<=0) {
         jsErrorAt("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")", execInfo.lex, execInfo.lex->tokenLastEnd);

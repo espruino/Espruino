@@ -17,33 +17,46 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
+typedef struct JslCharPos {
+  size_t index;
+  size_t charIdx;
+  JsVar *var;
+} JslCharPos;
+
+void jslCharPosFree(JslCharPos *pos);
+JslCharPos jslCharPosClone(JslCharPos *pos);
+
 typedef struct JsLex
 {
-    // Actual Lexing related stuff
-    char currCh, nextCh;
-    short tk; ///< The type of the token that we have
-    JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
-    JslCharPos tokenEnd; ///< Position in the data at the last character of the token we have here
-    JslCharPos tokenLastStart; ///< Position in the data of the first character of the last token
-    JslCharPos tokenLastEnd; ///< Position in the data of the last character of the last token
-    char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
-    JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
-    unsigned char tokenl; ///< the current length of token
+  // Actual Lexing related stuff
+  char currCh, nextCh;
+  short tk; ///< The type of the token that we have
 
-    /* Where we get our data from...
-     *
-     * This is a bit more tricky than normal because the data comes from JsVars,
-     * which only have fixed length strings. If we go past this, we have to go
-     * to the next jsVar...
-     */
-    JsVar *sourceVar; // the actual string var
-    JsvStringIterator it; // Iterator for the string
+  JslCharPos prevCh,prevPrevCh;
+
+  JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
+  size_t tokenEnd; ///< Position in the data at the last character of the token we have here
+  size_t tokenLastStart; ///< Position in the data of the first character of the last token
+  size_t tokenLastEnd; ///< Position in the data of the last character of the last token
+  char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
+  JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
+  unsigned char tokenl; ///< the current length of token
+
+  /* Where we get our data from...
+   *
+   * This is a bit more tricky than normal because the data comes from JsVars,
+   * which only have fixed length strings. If we go past this, we have to go
+   * to the next jsVar...
+   */
+  JsVar *sourceVar; // the actual string var
+  JsvStringIterator it; // Iterator for the string
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var);
 void jslKill(JsLex *lex);
 void jslReset(JsLex *lex);
-void jslSeekTo(JsLex *lex, JslCharPos seekToChar); // like jslSeek, but pre-fills characters
+void jslSeekTo(JsLex *lex, size_t seekToChar);
+void jslSeekToP(JsLex *lex, JslCharPos seekToChar);
 
 bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on success, false on failure
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging

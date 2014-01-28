@@ -141,7 +141,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
-JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo); // Create a new STRING from part of the lexer
+JsVar *jsvNewFromLexer(struct JsLex *lex, size_t charFrom, size_t charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
