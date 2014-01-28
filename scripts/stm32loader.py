@@ -370,6 +370,28 @@ class CommandInterface(object):
             mdebug(5, "Write %(len)d bytes at 0x%(addr)X" % {'addr': addr, 'len': 256})
         self.cmdWriteMemory(addr, data[offs:offs+lng] + ([0xFF] * (256-lng)) )
 
+    def PCLKHack(self):
+        RCC_CFGR = 0x40021004
+        mdebug(5, "Modifying PCLK speed at 0x%(addr)X" % {'addr': RCC_CFGR})
+#        reg = self.cmdReadMemory(RCC_CFGR, 4)
+#        reg[1] = (reg[1] & 0xF8) | 0x04
+        reg = [10, 60, 29, 0]
+#        self.cmdWriteMemory(RCC_CFGR, reg)
+        if self.cmdGeneric(0x31):
+          self.sp.write(self._encode_addr(RCC_CFGR))
+          self._wait_for_ack("0x31 address failed")
+          self.sp.write(chr(3)) # len really
+          crc = 0xFF^reg[0]^reg[1]^reg[2]^reg[3];
+          crc = 40 # FIXME - Why is CRC different to what I'd expect? Python says 212 above
+          print("      CHKSUM: "+str(crc))
+          self.sp.write(chr(reg[0]))
+          self.sp.write(chr(reg[1]))
+          self.sp.write(chr(reg[2]))
+          self.sp.write(chr(reg[3]))            
+          self.sp.write(chr(crc))
+          self._wait_for_ack("0x31 programming failed")
+          mdebug(10, "    PCLK write memory done")
+
 
 def usage():
     print("""Usage: %s [-hqVewvr] [-l length] [-p port] [-b baud] [-a addr] [file.bin]
@@ -384,6 +406,7 @@ def usage():
     -p port     Serial port (default: first USB-like port in /dev)
     -b baud     Baud speed (default: 115200)
     -a addr     Target address
+    -k          Change PCLK frequency to make USB stable on Espruino 1v43 bootloaders
 
     ./stm32loader.py -e -w -v example/main.bin
 
@@ -430,12 +453,13 @@ if __name__ == "__main__":
             'read': 0,
             'len': 1000,
             'fname':'',
+            'pclk_hack':0,
         }
 
 # http://www.python.org/doc/2.5.2/lib/module-getopt.html
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrp:b:a:l:")
+        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrp:b:a:l:k")
     except getopt.GetoptError as err:
         # print help information and exit:
         print(str(err)) # will print something like "option -a not recognized"
@@ -466,6 +490,8 @@ if __name__ == "__main__":
             conf['address'] = eval(a)
         elif o == '-l':
             conf['len'] = eval(a)
+        elif o == '-k':
+            conf['pclk_hack'] = 1
         else:
             assert False, "unhandled option"
 
@@ -513,6 +539,9 @@ if __name__ == "__main__":
             mdebug(0, 'Warning: unrecognised chip ID 0x%x' % chip_id_num)
         else:
             mdebug(0, "Chip id 0x%x, %s" % (chip_id_num, chip_id_str))
+
+        if conf['pclk_hack']:
+            cmd.PCLKHack()
 
         if conf['erase']:
             # Pre-3.0 bootloaders use the erase memory
