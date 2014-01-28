@@ -546,8 +546,8 @@ static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
 static unsigned int jshGetSPIFreq(SPI_TypeDef *SPIx) {
   RCC_ClocksTypeDef clocks;
   RCC_GetClocksFreq(&clocks);
-  bool APB2 = SPIx == SPIx;
-  return (APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency) * 2;
+  bool APB2 = SPIx == SPI1;
+  return APB2 ? clocks.PCLK2_Frequency : clocks.PCLK1_Frequency;
 }
 
 // Prints a list of capable pins, eg:
@@ -1743,7 +1743,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   Pin pins[3] = { inf->pinSCK, inf->pinMISO, inf->pinMOSI };
   JshPinFunction functions[3] = { JSH_SPI_SCK, JSH_SPI_MISO, JSH_SPI_MOSI };
   SPI_TypeDef *SPIx = (SPI_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
-  if (!SPIx) { jsiConsolePrint("!!!\n"); return;}
+  if (!SPIx) return; // failed to find matching pins
 
   SPI_InitTypeDef SPI_InitStructure;
   SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
@@ -1755,8 +1755,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   SPI_InitStructure.SPI_CRCPolynomial = 7;
   SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
   // try and find the best baud rate
-  RCC_ClocksTypeDef RCC_ClocksStatus;
-  RCC_GetClocksFreq(&RCC_ClocksStatus);
+  int spiFreq = jshGetSPIFreq(SPIx);
   const int baudRatesDivisors[] = { 2,4,8,16,32,64,128,256 };
   const uint16_t baudRatesIds[] = { SPI_BaudRatePrescaler_2,SPI_BaudRatePrescaler_4,
       SPI_BaudRatePrescaler_8,SPI_BaudRatePrescaler_16,SPI_BaudRatePrescaler_32,
@@ -1766,7 +1765,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   //jsiConsolePrint("BaudRate ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint("\n");
   for (i=0;i<sizeof(baudRatesDivisors)/sizeof(int);i++) {
     //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
-    int rate = (int)jshGetSPIFreq(SPIx) / baudRatesDivisors[i];
+    int rate = spiFreq / baudRatesDivisors[i];
     //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
     int rateDiff = inf->baudRate - rate;
     if (rateDiff<0) rateDiff *= -1;
