@@ -216,9 +216,11 @@ class CommandInterface(object):
             self.sp.write(chr(lng)) # len really
             crc = 0xFF
             try:
+              datastr = ""
               for c in data:
                   crc = crc ^ c
-                  self.sp.write(chr(c))
+                  datastr = datastr+chr(c)
+              self.sp.write(datastr)
               self.sp.write(chr(crc))
               self._wait_for_ack("0x31 programming failed")
               mdebug(10, "    Write memory done")
