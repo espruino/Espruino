@@ -668,9 +668,7 @@ void jsiInit(bool autoLoad) {
               "  |_____|___|  _|_| |___|_|_|_|___|");
     jsiConsolePrint("\n"
               "            |_|   http://www.espruino.com\n"
-              "  "JS_VERSION" Copyright 2013 Gordon Williams\n"
-              "-------------------------------------------\n"
-              "                       KickStarter Version\n"
+              "  "JS_VERSION" Copyright 2014 Gordon Williams\n"
               "-------------------------------------------\n");
     jsiConsolePrint("\n>");
   }

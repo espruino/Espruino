@@ -2,6 +2,7 @@
             Fix regression that broke OneWire in Espruino Board (#197)
             Fix clock speed issue on SPI1 (https://github.com/espruino/EspruinoDocs/issues/18)
             Don't interrupt on USB ESOF or ERR  - allows 'normal' sleep without interrupting every 1ms (fix #195)
+            Remove pointless KickStarter line printed on startup
 
      1v46 : Fix parseFloat("") not returning NaN, and parseFloat(" \t 5 £$%^&(*$") returning NaN
             Added isNaN() function (fix #184)
