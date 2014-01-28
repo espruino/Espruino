@@ -383,7 +383,6 @@ class CommandInterface(object):
           self.sp.write(chr(3)) # len really
           crc = 0xFF^reg[0]^reg[1]^reg[2]^reg[3];
           crc = 40 # FIXME - Why is CRC different to what I'd expect? Python says 212 above
-          print("      CHKSUM: "+str(crc))
           self.sp.write(chr(reg[0]))
           self.sp.write(chr(reg[1]))
           self.sp.write(chr(reg[2]))
