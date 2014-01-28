@@ -1585,7 +1585,6 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
     }
   }
   if (jsvHasCharacterData(v)) {
-    size_t count = 0;
     JsVarRef childref = v->lastChild;
     while (childref) {
       JsVar *child = jsvLock(childref);

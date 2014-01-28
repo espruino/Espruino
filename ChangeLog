@@ -1,4 +1,4 @@
-     1v48 : ...
+     1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
 
      1v47 : Fix issue with dump() and input_pullup not being quoted
             Fix regression that broke OneWire in Espruino Board (#197)
