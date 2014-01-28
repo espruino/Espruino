@@ -32,8 +32,6 @@ typedef struct JsLex
   char currCh, nextCh;
   short tk; ///< The type of the token that we have
 
-  JslCharPos prevCh,prevPrevCh;
-
   JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
   size_t tokenEnd; ///< Position in the data at the last character of the token we have here
   size_t tokenLastStart; ///< Position in the data of the first character of the last token
@@ -50,6 +48,7 @@ typedef struct JsLex
    */
   JsVar *sourceVar; // the actual string var
   JsvStringIterator it; // Iterator for the string
+  JsVar *lastVar; ///< Last var referenced by the iterator
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var);
