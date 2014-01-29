@@ -2,6 +2,9 @@
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)
             Faster string iteration which doesn't involve incrementing it->index
             Swapped to jumptable to lexer (should be a bit faster)
+            Added the 'E' class, with getAnalogVRef and getTemperature (fix #60)
+            Deprecated Math.clip (not in spec) and introduced E.clip 
+            Fixed bug in common.py that meant that ifndefs in JSON were sometimes not obeyed (better mem usage on small chips)
 
      1v47 : Fix issue with dump() and input_pullup not being quoted
             Fix regression that broke OneWire in Espruino Board (#197)

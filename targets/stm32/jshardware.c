@@ -227,19 +227,19 @@ static inline uint8_t stmPortSource(Pin pin) {
 #endif*/
 }
 
-static inline ADC_TypeDef *stmADC(Pin pin) {
-  if (pinInfo[pin].analog & JSH_ANALOG1) return ADC1;
-  if (pinInfo[pin].analog & JSH_ANALOG2) return ADC2;
-  if (pinInfo[pin].analog & JSH_ANALOG3) return ADC3;
+static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
+  if (analog & JSH_ANALOG1) return ADC1;
+  if (analog & JSH_ANALOG2) return ADC2;
+  if (analog & JSH_ANALOG3) return ADC3;
 #if ADCS>3
-  if (pinInfo[pin].analog & JSH_ANALOG4) return ADC4;
+  if (analog & JSH_ANALOG4) return ADC4;
 #endif
   jsErrorInternal("stmADC");
   return ADC1;
 }
 
-static inline uint8_t stmADCChannel(Pin pin) {
-  switch (pinInfo[pin].analog & JSH_MASK_ANALOG_CH) {
+static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
+  switch (analog & JSH_MASK_ANALOG_CH) {
 #ifndef STM32F3XX
   case JSH_ANALOG_CH0  : return ADC_Channel_0;
 #endif
@@ -259,6 +259,7 @@ static inline uint8_t stmADCChannel(Pin pin) {
   case JSH_ANALOG_CH14  : return ADC_Channel_14;
   case JSH_ANALOG_CH15  : return ADC_Channel_15;
   case JSH_ANALOG_CH16  : return ADC_Channel_16;
+  case JSH_ANALOG_CH17  : return ADC_Channel_17;
   default: jsErrorInternal("stmADCChannel"); return 0;
   }
 }
@@ -1200,147 +1201,179 @@ bool jshPinInput(Pin pin) {
   return value;
 }
 
+static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
+  ADC_TypeDef *ADCx = stmADC(analog);
+    bool needs_init = false;
+    if (ADCx == ADC1) {
+      static bool inited = false;
+      if (!inited) {
+        inited = true;
+        needs_init = true;
+        #if defined(STM32F3)
+          RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
+        #elif defined(STM32F4)
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+        #else
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+        #endif
+      }
+    } else if (ADCx == ADC2) {
+      static bool inited = false;
+      if (!inited) {
+        inited = true;
+        needs_init = true;
+        #if defined(STM32F3)
+          RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
+        #elif defined(STM32F4)
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
+        #else
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
+        #endif
+      }
+    } else if (ADCx == ADC3) {
+      static bool inited = false;
+      if (!inited) {
+        inited = true;
+        needs_init = true;
+        #if defined(STM32F3)
+          RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
+        #elif defined(STM32F4)
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
+        #else
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
+        #endif
+      }
+  #if ADCS>3
+    } else if (ADCx == ADC4) {
+      static bool inited = false;
+      if (!inited) {
+        inited = true;
+        needs_init = true;
+        #if defined(STM32F3)
+          RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
+        #elif defined(STM32F4)
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC4, ENABLE);
+        #else
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC4, ENABLE);
+        #endif
+      }
+  #endif
+    } else {
+      jsErrorInternal("couldn't find ADC!");
+      return -1;
+    }
+
+    if (needs_init) {
+  #ifdef STM32F3
+      ADC_CommonInitTypeDef ADC_CommonInitStructure;
+      ADC_CommonStructInit(&ADC_CommonInitStructure);
+      ADC_CommonInitStructure.ADC_Mode          = ADC_Mode_Independent;
+      ADC_CommonInitStructure.ADC_Clock         = ADC_Clock_SynClkModeDiv2;
+      ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
+      ADC_CommonInitStructure.ADC_TwoSamplingDelay          = ADC_SampleTime_1Cycles5;
+      ADC_CommonInit(ADCx, &ADC_CommonInitStructure);
+  #endif
+
+      // ADC Structure Initialization
+      ADC_InitTypeDef ADC_InitStructure;
+      ADC_StructInit(&ADC_InitStructure);
+      // Preinit
+      ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+      ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Left;
+    #ifndef STM32F3
+      ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+    #if defined(STM32F2) || defined(STM32F4)
+      ADC_InitStructure.ADC_ExternalTrigConvEdge        = ADC_ExternalTrigConvEdge_None;
+    #else
+      ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
+      ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
+      ADC_InitStructure.ADC_NbrOfChannel = 1;
+    #endif
+    #endif
+      ADC_Init(ADCx, &ADC_InitStructure);
+
+      // Enable the ADC
+      ADC_Cmd(ADCx, ENABLE);
+
+    #ifdef STM32API2
+      // No calibration??
+    #else
+      // Calibrate
+      ADC_ResetCalibration(ADCx);
+      while(ADC_GetResetCalibrationStatus(ADCx));
+      ADC_StartCalibration(ADCx);
+      while(ADC_GetCalibrationStatus(ADCx));
+    #endif
+    }
+    // Configure channel
+
+  #if defined(STM32F2) || defined(STM32F4)
+    uint8_t sampleTime = ADC_SampleTime_480Cycles;
+  #elif defined(STM32F3)
+    uint8_t sampleTime = ADC_SampleTime_601Cycles5;
+  #else
+    uint8_t sampleTime = ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/;
+  #endif
+    ADC_RegularChannelConfig(ADCx, stmADCChannel(analog), 1, sampleTime);
+
+    // Start the conversion
+  #if defined(STM32F2) || defined(STM32F4)
+    ADC_SoftwareStartConv(ADCx);
+  #elif defined(STM32F3)
+    ADC_StartConversion(ADCx);
+  #else
+    ADC_SoftwareStartConvCmd(ADCx, ENABLE);
+  #endif
+
+    // Wait until conversion completion
+
+
+    WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
+
+    // Get the conversion value
+    return ADC_GetConversionValue(ADCx) / (JsVarFloat)65535;
+}
+
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
   if (pin >= JSH_PIN_COUNT /* inc PIN_UNDEFINED */ || pinInfo[pin].analog==JSH_ANALOG_NONE) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
   }
-
-  ADC_TypeDef *ADCx = stmADC(pin);
-  bool needs_init = false;
-  if (pinInfo[pin].analog & JSH_ANALOG1) {
-    static bool inited = false;
-    if (!inited) {
-      inited = true;
-      needs_init = true;
-      #if defined(STM32F3)
-        RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
-      #elif defined(STM32F4)
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-      #else
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-      #endif
-    }
-  } else if (pinInfo[pin].analog & JSH_ANALOG2) {
-    static bool inited = false;
-    if (!inited) {
-      inited = true;
-      needs_init = true;
-      #if defined(STM32F3)
-        RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
-      #elif defined(STM32F4)
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
-      #else
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
-      #endif
-    }
-  } else if (pinInfo[pin].analog & JSH_ANALOG3) {
-    static bool inited = false;
-    if (!inited) {
-      inited = true;
-      needs_init = true;
-      #if defined(STM32F3)
-        RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
-      #elif defined(STM32F4)
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
-      #else
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
-      #endif
-    }
-#if ADCS>3
-  } else if (pinInfo[pin].analog & JSH_ANALOG4) {
-    static bool inited = false;
-    if (!inited) {
-      inited = true;
-      needs_init = true;
-      #if defined(STM32F3)
-        RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
-      #elif defined(STM32F4)
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC4, ENABLE);
-      #else
-        RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC4, ENABLE);
-      #endif
-    }
-#endif
-  } else {
-    jsErrorInternal("couldn't find ADC!");
-    return -1;
-  }
-
-  if (needs_init) {
-#ifdef STM32F3
-    ADC_CommonInitTypeDef ADC_CommonInitStructure;
-    ADC_CommonStructInit(&ADC_CommonInitStructure);
-    ADC_CommonInitStructure.ADC_Mode          = ADC_Mode_Independent;
-    ADC_CommonInitStructure.ADC_Clock         = ADC_Clock_SynClkModeDiv2;
-    ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
-    ADC_CommonInitStructure.ADC_TwoSamplingDelay          = ADC_SampleTime_1Cycles5;
-    ADC_CommonInit(ADCx, &ADC_CommonInitStructure);
-#endif
-
-    // ADC Structure Initialization
-    ADC_InitTypeDef ADC_InitStructure;
-    ADC_StructInit(&ADC_InitStructure);
-    // Preinit
-    ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
-    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Left;
-  #ifndef STM32F3
-    ADC_InitStructure.ADC_ScanConvMode = DISABLE;
-  #if defined(STM32F2) || defined(STM32F4)
-    ADC_InitStructure.ADC_ExternalTrigConvEdge        = ADC_ExternalTrigConvEdge_None;
-  #else
-    ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
-    ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-    ADC_InitStructure.ADC_NbrOfChannel = 1;
-  #endif
-  #endif
-    ADC_Init(ADCx, &ADC_InitStructure);
-
-    // Enable the ADC
-    ADC_Cmd(ADCx, ENABLE);
-
-  #ifdef STM32API2
-    // No calibration??
-  #else
-    // Calibrate
-    ADC_ResetCalibration(ADCx);
-    while(ADC_GetResetCalibrationStatus(ADCx));
-    ADC_StartCalibration(ADCx);
-    while(ADC_GetCalibrationStatus(ADCx));
-  #endif
-  }
   jshSetPinStateIsManual(pin, false);
   jshPinSetState(pin, JSHPINSTATE_ADC_IN);
-  // Configure channel
 
-#if defined(STM32F2) || defined(STM32F4)
-  uint8_t sampleTime = ADC_SampleTime_480Cycles;
-#elif defined(STM32F3) 
-  uint8_t sampleTime = ADC_SampleTime_601Cycles5;
-#else
-  uint8_t sampleTime = ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/;
-#endif
-  ADC_RegularChannelConfig(ADCx, stmADCChannel(pin), 1, sampleTime);
-
-  // Start the conversion
-#if defined(STM32F2) || defined(STM32F4)
-  ADC_SoftwareStartConv(ADCx);
-#elif defined(STM32F3)
-  ADC_StartConversion(ADCx);
-#else
-  ADC_SoftwareStartConvCmd(ADCx, ENABLE);
-#endif
-
-  // Wait until conversion completion
-
-
-  WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
-
-  // Get the conversion value
-  value = ADC_GetConversionValue(ADCx) / (JsVarFloat)65535;
-  return value;
+  return jshAnalogRead(pinInfo[pin].analog);
 }
+
+#ifdef STM32F1
+// the temperature from the internal temperature sensor
+JsVarFloat jshReadTemperature() {
+  // enable sensor
+  ADC1->CR2 |= ADC_CR2_TSVREFE;
+  jshDelayMicroseconds(10);
+  // read
+  JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
+  JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16);
+  JsVarFloat vSense = valTemp * 1.2 / varVolts;
+  // disable sensor
+  ADC1->CR2 &= ~ADC_CR2_TSVREFE;
+  return ((1.43/*V25*/ - vSense) / 0.0043/*Avg_Slope*/) + 25;
+}
+
+// The voltage that a reading of 1 from `analogRead` actually represents
+JsVarFloat jshReadVRef() {
+  // enable sensor
+  ADC1->CR2 |= ADC_CR2_TSVREFE;
+  jshDelayMicroseconds(10);
+  // read
+  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
+  // disable sensor
+  ADC1->CR2 &= ~ADC_CR2_TSVREFE;
+  return 1.20 / r;
+}
+#endif
+
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {

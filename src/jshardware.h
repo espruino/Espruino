@@ -220,4 +220,11 @@ void jshKickUSBWatchdog();
 
 #endif // ARM
 
+#ifdef STM32F1
+// the temperature from the internal temperature sensor
+JsVarFloat jshReadTemperature();
+// The voltage that a reading of 1 from `analogRead` actually represents
+JsVarFloat jshReadVRef();
+#endif
+
 #endif /* JSHARDWARE_H_ */

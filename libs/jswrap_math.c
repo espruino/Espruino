@@ -204,7 +204,7 @@ double jswrap_math_pow(double x, double y)
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
          "class" : "Math", "name" : "clip",
          "generate" : "jswrap_math_clip",
-         "description" : "Clip a number to be between min and max (inclusive)",
+         "description" : "DEPRECATED - Please use `E.clip()` instead. Clip a number to be between min and max (inclusive)",
          "params" : [ [ "x", "float", "A floating point value to clip"],
                       [ "min", "float", "The smallest the value should be"],
                       [ "max", "float", "The largest the value should be"] ],

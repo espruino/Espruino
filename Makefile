@@ -317,6 +317,7 @@ endif
 WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
 src/jswrap_pin.c \
+src/jswrap_espruino.c \
 src/jswrap_functions.c \
 src/jswrap_modules.c \
 src/jswrap_process.c \

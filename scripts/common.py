@@ -108,7 +108,7 @@ def get_jsondata(is_for_document, parseArgs = True):
               jsondata["include"] = jswrap[:-2]+".h"
               if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
                 print "Dropped because of #ifndef "+jsondata["ifndef"]
-              if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+              elif ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
                 print "Dropped because of #ifdef "+jsondata["ifdef"]
               else:
                 jsondatas.append(jsondata)
