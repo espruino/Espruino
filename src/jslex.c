@@ -75,6 +75,7 @@ static bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
 }
 
 void jslGetNextToken(JsLex *lex) {
+jslGetNextToken_start:
   // Skip whitespace
   while (isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // Search for comments
@@ -83,8 +84,7 @@ void jslGetNextToken(JsLex *lex) {
     if (jslNextCh(lex)=='/') {
       while (lex->currCh && lex->currCh!='\n') jslGetNextCh(lex);
       jslGetNextCh(lex);
-      jslGetNextToken(lex);
-      return;
+      goto jslGetNextToken_start;
     }
     // block comments
     if (jslNextCh(lex)=='*') {
@@ -97,8 +97,7 @@ void jslGetNextToken(JsLex *lex) {
       }
       jslGetNextCh(lex);
       jslGetNextCh(lex);
-      jslGetNextToken(lex);
-      return;
+      goto jslGetNextToken_start;
     }
   }
   lex->tk = LEX_EOF;
