@@ -75,12 +75,6 @@ static bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
 }
 
 void jslGetNextToken(JsLex *lex) {
-  lex->tk = LEX_EOF;
-  lex->tokenl = 0; // clear token string
-  if (lex->tokenValue) {
-    jsvUnLock(lex->tokenValue);
-    lex->tokenValue = 0;
-  }
   // Skip whitespace
   while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // Search for comments
@@ -106,6 +100,12 @@ void jslGetNextToken(JsLex *lex) {
       jslGetNextToken(lex);
       return;
     }
+  }
+  lex->tk = LEX_EOF;
+  lex->tokenl = 0; // clear token string
+  if (lex->tokenValue) {
+    jsvUnLock(lex->tokenValue);
+    lex->tokenValue = 0;
   }
   // record beginning of this token
   lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it) - 1;
