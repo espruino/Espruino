@@ -1,6 +1,7 @@
      1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)
             Faster string iteration which doesn't involve incrementing it->index
+            Swapped to jumptable to lexer (should be a bit faster)
 
      1v47 : Fix issue with dump() and input_pullup not being quoted
             Fix regression that broke OneWire in Espruino Board (#197)
