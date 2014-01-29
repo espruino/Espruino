@@ -81,16 +81,19 @@ void jslGetNextToken(JsLex *lex) {
     jsvUnLock(lex->tokenValue);
     lex->tokenValue = 0;
   }
+  // Skip whitespace
   while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
-  // newline comments
-  if (lex->currCh=='/' && jslNextCh(lex)=='/') {
+  // Search for comments
+  if (lex->currCh=='/') {
+    // newline comments
+    if (jslNextCh(lex)=='/') {
       while (lex->currCh && lex->currCh!='\n') jslGetNextCh(lex);
       jslGetNextCh(lex);
       jslGetNextToken(lex);
       return;
-  }
-  // block comments
-  if (lex->currCh=='/' && jslNextCh(lex)=='*') {
+    }
+    // block comments
+    if (jslNextCh(lex)=='*') {
       while (lex->currCh && !(lex->currCh=='*' && jslNextCh(lex)=='/'))
         jslGetNextCh(lex);
       if (!lex->currCh) {
@@ -102,6 +105,7 @@ void jslGetNextToken(JsLex *lex) {
       jslGetNextCh(lex);
       jslGetNextToken(lex);
       return;
+    }
   }
   // record beginning of this token
   lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it) - 1;
