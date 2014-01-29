@@ -2285,10 +2285,12 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
         jsvUnLock(it->var);
         it->var = 0;
         it->charsInVar = 0;
-        return; // get out of loop
+        it->varIndex = (size_t)(startIdx - it->charIdx);
+        return; // at end of string - get out of loop
       }
     }
   }
+  it->varIndex = (size_t)(startIdx - it->charIdx);
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {
@@ -2316,7 +2318,6 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   } else
     assert(it->charIdx == 0);
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
-    it->varIndex += jsvGetMaxCharactersInVar(it->var);
     assert(!it->var->lastChild);
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
     if (!next) return; // out of memory
@@ -2324,7 +2325,7 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     it->var->lastChild = jsvGetRef(next);
     jsvUnLock(it->var);
     it->var = next;
-
+    it->varIndex += it->charIdx;
     it->charIdx = 0; // it's new, so empty
   }
 
