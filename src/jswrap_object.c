@@ -207,7 +207,7 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
     }
   } else if (jsvIsUndefined(event)) {
     // Eep. We must remove everything beginning with '#on'
-    JsObjectIterator it;
+    JsvObjectIterator it;
     jsvObjectIteratorNew(&it, parent);
     while (jsvObjectIteratorHasElement(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
@@ -248,7 +248,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   jsvAddName(oldFunc, scope);
   jsvUnLock(scope);
   // now re-add other entries
-  JsObjectIterator it;
+  JsvObjectIterator it;
   jsvObjectIteratorNew(&it, newFunc);
   while (jsvObjectIteratorHasElement(&it)) {
     JsVar *el = jsvObjectIteratorGetKey(&it);
@@ -303,7 +303,7 @@ JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
 
 
     for (i=0;i<argC;i++) args[i] = 0;
-    JsArrayIterator it;
+    JsvArrayIterator it;
     jsvArrayIteratorNew(&it, argsArray);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));

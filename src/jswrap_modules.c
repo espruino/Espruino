@@ -115,7 +115,7 @@ JsVar *jswrap_modules_getCached() {
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return arr; // out of memory
 
-  JsObjectIterator it;
+  JsvObjectIterator it;
   jsvObjectIteratorNew(&it, moduleList);
   while (jsvObjectIteratorHasElement(&it)) {
     JsVar *idx = jsvObjectIteratorGetKey(&it);

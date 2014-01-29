@@ -58,7 +58,7 @@ static void httpError(const char *msg) {
 
 static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
   // append headers
-  JsObjectIterator it;
+  JsvObjectIterator it;
   jsvObjectIteratorNew(&it, headerObject);
   while (jsvObjectIteratorHasElement(&it)) {
     JsVar *k = jsvAsString(jsvObjectIteratorGetKey(&it), true);
@@ -112,7 +112,7 @@ void httpKill() {
   {
       JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
       if (arr) {
-        JsArrayIterator it;
+        JsvArrayIterator it;
         jsvArrayIteratorNew(&it, arr);
         while (jsvArrayIteratorHasElement(&it)) {
           JsVar *connection = jsvArrayIteratorGetElement(&it);
@@ -128,7 +128,7 @@ void httpKill() {
   {
     JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
     if (arr) {
-      JsArrayIterator it;
+      JsvArrayIterator it;
       jsvArrayIteratorNew(&it, arr);
       while (jsvArrayIteratorHasElement(&it)) {
         JsVar *connection = jsvArrayIteratorGetElement(&it);
@@ -145,7 +145,7 @@ void httpKill() {
   {
       JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
       if (arr) {
-        JsArrayIterator it;
+        JsvArrayIterator it;
         jsvArrayIteratorNew(&it, arr);
         while (jsvArrayIteratorHasElement(&it)) {
           JsVar *connection = jsvArrayIteratorGetElement(&it);
@@ -304,7 +304,7 @@ void httpServerConnectionsIdle() {
 
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
   if (!arr) return;
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
     JsVar *connection = jsvArrayIteratorGetElement(&it);
@@ -407,7 +407,7 @@ void httpClientConnectionsIdle() {
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
   if (!arr) return;
 
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
     JsVar *connection = jsvArrayIteratorGetElement(&it);
@@ -528,7 +528,7 @@ void httpIdle() {
   if (networkState != NETWORKSTATE_ONLINE) return;
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
-    JsArrayIterator it;
+    JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVar *server = jsvArrayIteratorGetElement(&it);

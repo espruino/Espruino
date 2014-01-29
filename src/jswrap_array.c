@@ -99,7 +99,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
 }*/
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   JsVarInt len = -1;
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, args);
   while (jsvArrayIteratorHasElement(&it)) {
     JsVar *el = jsvArrayIteratorGetElement(&it);
@@ -209,7 +209,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   bool needToAdd = false;
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
 
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, parent);
   while (jsvArrayIteratorHasElement(&it) && !needToAdd) {
     bool goToNext = true;
@@ -294,7 +294,7 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
 
   bool isDone = false;
 
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, parent);
 
   while (jsvArrayIteratorHasElement(&it) && !isDone) {

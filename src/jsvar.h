@@ -495,34 +495,34 @@ static inline void jsvStringIteratorFree(JsvStringIterator *it) {
 }
 
 // --------------------------------------------------------------------------------------------
-typedef struct JsArrayIterator {
+typedef struct JsvArrayIterator {
   JsVar *var;
-} JsArrayIterator;
+} JsvArrayIterator;
 
-static inline void jsvArrayIteratorNew(JsArrayIterator *it, JsVar *arr) {
+static inline void jsvArrayIteratorNew(JsvArrayIterator *it, JsVar *arr) {
   assert(jsvIsArray(arr));
   it->var = arr->firstChild ? jsvLock(arr->firstChild) : 0;
 }
 
 /// Gets the current array element (or 0)
-static inline JsVar *jsvArrayIteratorGetElement(JsArrayIterator *it) {
+static inline JsVar *jsvArrayIteratorGetElement(JsvArrayIterator *it) {
   if (!it->var) return 0; // end of array
   return it->var->firstChild ? jsvLock(it->var->firstChild) : 0; // might even be undefined
 }
 
 /// Gets the current array element index (or 0)
-static inline JsVar *jsvArrayIteratorGetIndex(JsArrayIterator *it) {
+static inline JsVar *jsvArrayIteratorGetIndex(JsvArrayIterator *it) {
   if (!it->var) return 0;
   return jsvLockAgain(it->var);
 }
 
 /// Do we have a character, or are we at the end?
-static inline bool jsvArrayIteratorHasElement(JsArrayIterator *it) {
+static inline bool jsvArrayIteratorHasElement(JsvArrayIterator *it) {
   return it->var != 0;
 }
 
 /// Move to next character
-static inline void jsvArrayIteratorNext(JsArrayIterator *it) {
+static inline void jsvArrayIteratorNext(JsvArrayIterator *it) {
   if (it->var) {
     JsVarRef next = it->var->nextSibling;
     jsvUnLock(it->var);
@@ -530,38 +530,38 @@ static inline void jsvArrayIteratorNext(JsArrayIterator *it) {
   }
 }
 
-static inline void jsvArrayIteratorFree(JsArrayIterator *it) {
+static inline void jsvArrayIteratorFree(JsvArrayIterator *it) {
   jsvUnLock(it->var);
 }
 // --------------------------------------------------------------------------------------------
-typedef struct JsObjectIterator {
+typedef struct JsvObjectIterator {
   JsVar *var;
-} JsObjectIterator;
+} JsvObjectIterator;
 
-static inline void jsvObjectIteratorNew(JsObjectIterator *it, JsVar *obj) {
+static inline void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
   assert(jsvIsObject(obj) || jsvIsFunction(obj));
   it->var = obj->firstChild ? jsvLock(obj->firstChild) : 0;
 }
 
 /// Gets the current object element key (or 0)
-static inline JsVar *jsvObjectIteratorGetKey(JsObjectIterator *it) {
+static inline JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
   if (!it->var) return 0; // end of object
   return jsvLockAgain(it->var);
 }
 
 /// Gets the current object element value (or 0)
-static inline JsVar *jsvObjectIteratorGetValue(JsObjectIterator *it) {
+static inline JsVar *jsvObjectIteratorGetValue(JsvObjectIterator *it) {
   if (!it->var) return 0; // end of object
   return it->var->firstChild ? jsvLock(it->var->firstChild) : 0; // might even be undefined
 }
 
 /// Do we have a key, or are we at the end?
-static inline bool jsvObjectIteratorHasElement(JsObjectIterator *it) {
+static inline bool jsvObjectIteratorHasElement(JsvObjectIterator *it) {
   return it->var != 0;
 }
 
 /// Move to next character
-static inline void jsvObjectIteratorNext(JsObjectIterator *it) {
+static inline void jsvObjectIteratorNext(JsvObjectIterator *it) {
   if (it->var) {
     JsVarRef next = it->var->nextSibling;
     jsvUnLock(it->var);
@@ -569,7 +569,7 @@ static inline void jsvObjectIteratorNext(JsObjectIterator *it) {
   }
 }
 
-static inline void jsvObjectIteratorFree(JsObjectIterator *it) {
+static inline void jsvObjectIteratorFree(JsvObjectIterator *it) {
   jsvUnLock(it->var);
 }
 // --------------------------------------------------------------------------------------------
@@ -595,8 +595,8 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it);
 // --------------------------------------------------------------------------------------------
 union JsvIteratorUnion {
   JsvStringIterator str;
-  JsObjectIterator obj;
-  JsArrayIterator arr;
+  JsvObjectIterator obj;
+  JsvArrayIterator arr;
   JsvArrayBufferIterator buf;
 };
 

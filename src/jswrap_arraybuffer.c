@@ -222,7 +222,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
 
     if (jsvIsArray(arr)) {
       // if we were given an array, populate this ArrayBuffer
-      JsArrayIterator it;
+      JsvArrayIterator it;
       jsvArrayIteratorNew(&it, arr);
       while (jsvArrayIteratorHasElement(&it)) {
         JsVar *idx = jsvArrayIteratorGetIndex(&it);

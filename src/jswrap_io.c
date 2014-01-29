@@ -412,7 +412,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
 
       // Now check if this pin is still being watched
       bool stillWatched = false;
-      JsArrayIterator it;
+      JsvArrayIterator it;
       jsvArrayIteratorNew(&it, watchArrayPtr);
       while (jsvArrayIteratorHasElement(&it)) {
         JsVar *watchPtr = jsvArrayIteratorGetElement(&it);

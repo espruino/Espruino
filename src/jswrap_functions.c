@@ -41,7 +41,7 @@ JsVar *jswrap_arguments() {
   JsVar *args = jsvNewWithFlags(JSV_ARRAY);
   if (!args) return 0; // out of memory
 
-  JsObjectIterator it;
+  JsvObjectIterator it;
   jsvObjectIteratorNew(&it, scope);
   while (jsvObjectIteratorHasElement(&it)) {
     JsVar *idx = jsvObjectIteratorGetKey(&it);

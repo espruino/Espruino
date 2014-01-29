@@ -109,7 +109,7 @@ void jswrap_interface_trace(JsVar *root) {
 }*/
 void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
-  JsArrayIterator it;
+  JsvArrayIterator it;
   jsvArrayIteratorNew(&it, v);
   while (jsvArrayIteratorHasElement(&it)) {
     JsVar *v = jsvAsString(jsvArrayIteratorGetElement(&it), true);
