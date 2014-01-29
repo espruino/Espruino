@@ -76,7 +76,7 @@ static bool jslIsToken(JsLex *lex, const char *token, int startOffset) {
 
 void jslGetNextToken(JsLex *lex) {
   // Skip whitespace
-  while (lex->currCh && isWhitespace(lex->currCh)) jslGetNextCh(lex);
+  while (isWhitespace(lex->currCh)) jslGetNextCh(lex);
   // Search for comments
   if (lex->currCh=='/') {
     // newline comments
