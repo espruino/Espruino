@@ -321,7 +321,7 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
   int startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
   jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, false);
   jsiConsolePrint("\n");
-  while (col-- > 1) jsiConsolePrintChar(' ');
+  while (col-- > 0) jsiConsolePrintChar(' ');
   jsiConsolePrintChar('^');
   jsiConsolePrint("\n");
 }

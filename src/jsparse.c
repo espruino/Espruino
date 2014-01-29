@@ -67,7 +67,7 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   }
   // if destination isn't there, isn't a 'name', or is used, give an error
   if (!jsvIsName(dst)) {
-    jsErrorAt("Unable to assign value to non-reference", execInfo.lex, execInfo.lex->tokenLastEnd);
+    jsErrorAt("Unable to assign value to non-reference", execInfo.lex, execInfo.lex->tokenLastStart);
     jspSetError();
     return;
   }
@@ -222,7 +222,7 @@ bool jspCheckStackPosition() {
   void *frame = __builtin_frame_address(0);
   if ((char*)frame < ((char*)&_end)+1024/*so many bytes leeway*/) {
 //   jsiConsolePrintf("frame: %d,end:%d\n",(int)frame,(int)&_end);
-    jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenLastEnd );
+    jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenLastStart );
     jspSetInterrupted(true);
     return false;
   }
@@ -511,7 +511,7 @@ JsVar *jspeFunctionDefinition() {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(execInfo.lex, &funcBegin, (size_t)(execInfo.lex->tokenLastEnd+1));
+    JsVar *funcCodeVar = jslNewFromLexer(execInfo.lex, &funcBegin, (size_t)(execInfo.lex->tokenLastStart+1));
     jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
@@ -581,7 +581,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
         char buf[32];
         jsvGetString(functionName, buf, sizeof(buf));
         JslCharPos pos = jslCharPosClone(&execInfo.lex->tokenStart);
-        jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart-1); // NASTY! because jswHandleFunctionCall expects to parse IDs
+        jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
         if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED)
@@ -721,7 +721,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
               }
               jsiConsolePrint("called from ");
               if (execInfo.lex)
-                jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
+                jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
               else
                 jsiConsolePrint("system\n");
               jspSetError();
@@ -834,14 +834,14 @@ JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                     jsvUnLock(value);
                   } else {
                     // could have been a string...
-                    jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastEnd);
+                    jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                     jspSetError();
                   }
                   JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
                 }
               }
             } else {
-                jsErrorAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastEnd);
+                jsErrorAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                 jspSetError();
                 JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
             }
@@ -903,7 +903,7 @@ JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 jsvUnLock(a);
                 a = child;
             } else {
-                jsWarnAt("Variable is not an Array or Object", execInfo.lex, execInfo.lex->tokenLastEnd);
+                jsWarnAt("Variable is not an Array or Object", execInfo.lex, execInfo.lex->tokenLastStart);
                 jsvUnLock(parent);
                 parent = 0;
                 jsvUnLock(a);
@@ -928,7 +928,7 @@ void jspEnsureIsPrototype(JsVar *prototypeName);
 JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   assert(JSP_SHOULD_EXECUTE);
   if (!jsvIsFunction(func)) {
-    jsErrorAt("Constructor should be a function", execInfo.lex, execInfo.lex->tokenLastEnd);
+    jsErrorAt("Constructor should be a function", execInfo.lex, execInfo.lex->tokenLastStart);
     jspSetError();
     return 0;
   }
@@ -1334,7 +1334,7 @@ __attribute((noinline)) JsVar *__jspeCondition(JsVar *a) {
             JsVar *av = jsvSkipName(a);
             JsVar *bv = jsvSkipName(b);
             if (!jsvIsFunction(bv)) {
-              jsErrorAt("Expecting a function on RHS in instanceof check", execInfo.lex, execInfo.lex->tokenLastEnd);
+              jsErrorAt("Expecting a function on RHS in instanceof check", execInfo.lex, execInfo.lex->tokenLastStart);
               jspSetError();
             } else {
               if (jsvIsObject(av)) {
@@ -1462,7 +1462,7 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
             if (!jsvIsArrayBufferName(lhs))
               jsvAddName(execInfo.parse->root, lhs);
           } else // TODO: Why was this here? can it happen?
-            jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastEnd);
+            jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastStart);
         }
 
         int op = execInfo.lex->tk;
@@ -1535,8 +1535,8 @@ JsVar *jspeBlock() {
           if (execInfo.lex && !(execInfo.execute&EXEC_ERROR_LINE_REPORTED)) {
             execInfo.execute = (JsExecFlags)(execInfo.execute | EXEC_ERROR_LINE_REPORTED);
             jsiConsolePrint("at ");
-            jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastEnd);
-            jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastEnd);
+            jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
+            jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastStart);
           }
           return 0;
         }
@@ -1751,7 +1751,7 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
   jslCharPosFree(&whileBodyEnd);
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   if (loopCount<=0) {
-    jsErrorAt("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")", execInfo.lex, execInfo.lex->tokenLastEnd);
+    jsErrorAt("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")", execInfo.lex, execInfo.lex->tokenLastStart);
     jspSetError();
   }
 #endif
@@ -1773,7 +1773,7 @@ JsVar *jspeStatementFor() {
     // where i = jsvUnLock(forStatement);
     if (!jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
-      jsErrorAt("FOR a IN b - 'a' must be a variable name", execInfo.lex, execInfo.lex->tokenLastEnd);
+      jsErrorAt("FOR a IN b - 'a' must be a variable name", execInfo.lex, execInfo.lex->tokenLastStart);
       jspSetError();
       return 0;
     }
@@ -1836,7 +1836,7 @@ JsVar *jspeStatementFor() {
       }
       jsvIteratorFree(&it);
     } else {
-      jsErrorAt("FOR loop can only iterate over Arrays, Strings or Objects", execInfo.lex, execInfo.lex->tokenLastEnd);
+      jsErrorAt("FOR loop can only iterate over Arrays, Strings or Objects", execInfo.lex, execInfo.lex->tokenLastStart);
       jspSetError();
     }
     jslSeekToP(execInfo.lex, &forBodyEnd);
@@ -1931,7 +1931,7 @@ JsVar *jspeStatementFor() {
 
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     if (loopCount<=0) {
-        jsErrorAt("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")", execInfo.lex, execInfo.lex->tokenLastEnd);
+        jsErrorAt("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")", execInfo.lex, execInfo.lex->tokenLastStart);
         jspSetError();
     }
 #endif
@@ -1952,7 +1952,7 @@ JsVar *jspeStatementReturn() {
       jspReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
     } else {
-      jsErrorAt("RETURN statement, but not in a function.\n", execInfo.lex, execInfo.lex->tokenLastEnd);
+      jsErrorAt("RETURN statement, but not in a function.\n", execInfo.lex, execInfo.lex->tokenLastStart);
       jspSetError();
     }
     jspSetNoExecute(); // Stop anything else in this function executing
@@ -2034,7 +2034,7 @@ JsVar *jspeStatement() {
       JSP_MATCH(LEX_R_CONTINUE);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & EXEC_IN_LOOP))
-          jsErrorAt("CONTINUE statement outside of FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastEnd);
+          jsErrorAt("CONTINUE statement outside of FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastStart);
         else
           execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) |  EXEC_CONTINUE;
       }
@@ -2042,7 +2042,7 @@ JsVar *jspeStatement() {
       JSP_MATCH(LEX_R_BREAK);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & (EXEC_IN_LOOP|EXEC_IN_SWITCH)))
-          jsErrorAt("BREAK statement outside of SWITCH, FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastEnd);
+          jsErrorAt("BREAK statement outside of SWITCH, FOR or WHILE loop", execInfo.lex, execInfo.lex->tokenLastStart);
         else
           execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_BREAK;
       }

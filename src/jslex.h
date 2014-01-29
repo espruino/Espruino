@@ -32,9 +32,7 @@ typedef struct JsLex
   short tk; ///< The type of the token that we have
 
   JslCharPos tokenStart; ///< Position in the data at the beginning of the token we have here
-  size_t tokenEnd; ///< Position in the data at the last character of the token we have here
   size_t tokenLastStart; ///< Position in the data of the first character of the last token
-  size_t tokenLastEnd; ///< Position in the data of the last character of the last token
   char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
   JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
   unsigned char tokenl; ///< the current length of token

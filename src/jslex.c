@@ -111,7 +111,7 @@ void jslGetNextToken(JsLex *lex) {
       return;
   }
   // record beginning of this token
-  lex->tokenLastStart = lex->tokenStart.it.index;
+  lex->tokenLastStart = lex->tokenStart.it.index-1;
   jslCharPosFree(&lex->tokenStart);
   lex->tokenStart = jslGetLastCharPos(lex);
   // tokens
@@ -350,9 +350,6 @@ void jslGetNextToken(JsLex *lex) {
           jslGetNextCh(lex);
       }
   }
-  /* This isn't quite right yet */
-  lex->tokenLastEnd = lex->tokenEnd;
-  lex->tokenEnd = lex->it.index-2;// because of nextCh/currCh/etc
 }
 
 static inline void jslPreload(JsLex *lex) {
@@ -366,9 +363,7 @@ void jslInit(JsLex *lex, JsVar *var) {
   // reset stuff
   lex->tk = 0;
   lex->tokenStart.it.var = 0;
-  lex->tokenEnd = 0;
   lex->tokenLastStart = 0;
-  lex->tokenLastEnd = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
   // set up iterator
