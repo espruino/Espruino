@@ -45,7 +45,6 @@ typedef struct JsLex
    */
   JsVar *sourceVar; // the actual string var
   JsvStringIterator it; // Iterator for the string
-  JsVar *lastVar; ///< Last var referenced by the iterator
 } JsLex;
 
 void jslInit(JsLex *lex, JsVar *var);

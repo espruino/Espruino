@@ -24,13 +24,6 @@ JslCharPos jslCharPosClone(JslCharPos *pos) {
   return p;
 }
 
-static JslCharPos jslGetLastCharPos(JsLex *lex) {
-  JslCharPos p;
-  p.it = jsvStringIteratorClone(&lex->it);
-  p.currCh = lex->currCh;
-  return p;
-}
-
 /// Return the next character (do not move to the next character)
 static inline char jslNextCh(JsLex *lex) {
   return lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0;
@@ -46,8 +39,7 @@ static void NO_INLINE jslGetNextCh(JsLex *lex) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && lex->it.var->lastChild) {
       JsVar *next = jsvLock(lex->it.var->lastChild);
-      jsvUnLock(lex->lastVar);
-      lex->lastVar = lex->it.var;
+      jsvUnLock(lex->it.var);
       lex->it.var = next;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
@@ -112,8 +104,10 @@ void jslGetNextToken(JsLex *lex) {
   }
   // record beginning of this token
   lex->tokenLastStart = lex->tokenStart.it.index-1;
-  jslCharPosFree(&lex->tokenStart);
-  lex->tokenStart = jslGetLastCharPos(lex);
+  /* we don't lock here, because we know that the string itself will be locked
+   * because of lex->sourceVar */
+  lex->tokenStart.it = lex->it;
+  lex->tokenStart.currCh = lex->currCh;
   // tokens
   if (isAlpha(lex->currCh) || lex->currCh=='$') { //  IDs
       while (isAlpha(lex->currCh) || isNumeric(lex->currCh) || lex->currCh=='$') {
@@ -363,11 +357,11 @@ void jslInit(JsLex *lex, JsVar *var) {
   // reset stuff
   lex->tk = 0;
   lex->tokenStart.it.var = 0;
+  lex->tokenStart.currCh = 0;
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
   // set up iterator
-  lex->lastVar = 0;
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jslPreload(lex);
 }
@@ -380,13 +374,15 @@ void jslKill(JsLex *lex) {
     lex->tokenValue = 0;
   }
   jsvUnLock(lex->sourceVar);
-  jslCharPosFree(&lex->tokenStart);
-  jsvUnLock(lex->lastVar);
+  lex->tokenStart.it.var = 0;
+  lex->tokenStart.currCh = 0;
 }
 
 void jslSeekTo(JsLex *lex, size_t seekToChar) {
   jsvStringIteratorFree(&lex->it);
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
+  lex->tokenStart.it.var = 0;
+  lex->tokenStart.currCh = 0;
   jslPreload(lex);
 }
 
@@ -394,6 +390,8 @@ void jslSeekToP(JsLex *lex, JslCharPos *seekToChar) {
   jsvStringIteratorFree(&lex->it);
   lex->it = jsvStringIteratorClone(&seekToChar->it);
   lex->currCh = seekToChar->currCh;
+  lex->tokenStart.it.var = 0;
+  lex->tokenStart.currCh = 0;
   jslGetNextToken(lex);
 }
 
