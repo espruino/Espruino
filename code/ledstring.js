@@ -176,7 +176,7 @@ function () {
   var n = 0;
    for(var i=0;i<25;i++) {
     arr[n++] = 0;
-    arr[n++] = Math.clip(90*Math.sin(0.5*i+amt) + 128 + 90*Math.sin((0.3*i-amt)*3.2324), 0, 255);
+    arr[n++] = E.clip(90*Math.sin(0.5*i+amt) + 128 + 90*Math.sin((0.3*i-amt)*3.2324), 0, 255);
     arr[n++] = 0;
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);

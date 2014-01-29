@@ -15,9 +15,9 @@ function step() {
   var n = 0;
    for(var i=0;i<25;i++) {
     var c = 255*(2*amt - (Math.abs(i-12.5)/12.5 +0.5));
-    arr[n++] = Math.clip(256+c*2, 0, 255);
-    arr[n++] = Math.clip(64+c, 0, 255);
-    arr[n++] = Math.clip(c/2, 0, 255);
+    arr[n++] = E.clip(256+c*2, 0, 255);
+    arr[n++] = E.clip(64+c, 0, 255);
+    arr[n++] = E.clip(c/2, 0, 255);
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);
 }
@@ -42,9 +42,9 @@ SPI1.setup({"baud":3200000,"mosi":A7});
 :  var n = 0;
 :   for(var i=0;i<25;i++) {
 :    var c = 255*(Math.sin(r[i]*220+amt) +0.5);
-:    arr[n++] = Math.clip(256+c*2, 0, 255);
-:    arr[n++] = Math.clip(64+c, 0, 255);
-:    arr[n++] = Math.clip(c/2, 0, 255);
+:    arr[n++] = E.clip(256+c*2, 0, 255);
+:    arr[n++] = E.clip(64+c, 0, 255);
+:    arr[n++] = E.clip(c/2, 0, 255);
 :  }
 :  SPI1.send4bit(arr, 0b0001, 0b0011);
 :};
@@ -63,8 +63,8 @@ function () {
   var n = 0;
    for(var i=0;i<25;i++) {
     var c = 255*(Math.sin(r[i]*220+amt)*0.5 +0.5);
-    arr[n++] = Math.clip(c*2, 0, 255);
-    arr[n++] = Math.clip(c*2-256, 0, 255);
+    arr[n++] = E.clip(c*2, 0, 255);
+    arr[n++] = E.clip(c*2-256, 0, 255);
     arr[n++] = 0;
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);
@@ -77,9 +77,9 @@ function () {
   var n = 0;
    for(var i=0;i<25;i++) {
     var c = Math.sin(i*0.2+amt)*0.5+0.5;
-    arr[n++] = Math.clip(64+c*128, 0, 255);
+    arr[n++] = E.clip(64+c*128, 0, 255);
     arr[n++] = 0;
-    arr[n++] = Math.clip(255-c*128,0,255);
+    arr[n++] = E.clip(255-c*128,0,255);
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);
 }
@@ -106,7 +106,7 @@ function () {
   var n = 0;
    for(var i=0;i<25;i++) {
     var c = Math.abs(i-pos);
-    arr[n++] = Math.clip((4-c)*63,0,255);
+    arr[n++] = E.clip((4-c)*63,0,255);
     arr[n++] = 0;
     arr[n++] = 0;
   }

@@ -47,8 +47,8 @@ function onAnimStep() {
     i=anim.length-2;
     f=1;
   }
-  digitalPulse(B12, 1, 2-Math.clip(anim[i][0]*(1-f) + anim[i+1][0]*f,0,1));
-  digitalPulse(B13, 1, 2-Math.clip(anim[i][1]*(1-f) + anim[i+1][1]*f,0,1));
+  digitalPulse(B12, 1, 2-E.clip(anim[i][0]*(1-f) + anim[i+1][0]*f,0,1));
+  digitalPulse(B13, 1, 2-E.clip(anim[i][1]*(1-f) + anim[i+1][1]*f,0,1));
 }
 setWatch(onPress, B15, { repeat:true, edge:'falling' });
 

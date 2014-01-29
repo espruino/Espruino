@@ -106,12 +106,12 @@ function watchExhaust(e) {
 function onTimer() {
   ECU.RPM = Trig.getRPM();
   ECU.TPS = analogRead(PINS.aTPS);
-  ECU.MAP = Math.clip((0.1449 / (1.125-analogRead(PINS.aMAP))) - 0.125,0,1);
+  ECU.MAP = E.clip((0.1449 / (1.125-analogRead(PINS.aMAP))) - 0.125,0,1);
   ECU.vBat = analogRead(PINS.aBat)*18.804;
-  ECU.mapx = Math.clip(ECU.RPM/1000, 0, 7);
-  ECU.mapy = Math.clip(ECU.TPS*10-1,0,8);
+  ECU.mapx = E.clip(ECU.RPM/1000, 0, 7);
+  ECU.mapy = E.clip(ECU.TPS*10-1,0,8);
   ECU.spk = -MAPS.spk.interpolate2d(8,ECU.mapx, ECU.mapy);
-  ECU.spkLen = 1.5 + Math.clip((13.5-ECU.vBat)*0.1,0,0.5);
+  ECU.spkLen = 1.5 + E.clip((13.5-ECU.vBat)*0.1,0,0.5);
   ECU.expInl = 90+MAPS.inl.interpolate2d(8,ECU.mapx, ECU.mapy);
   ECU.expExh = MAPS.exh.interpolate2d(8,ECU.mapx, ECU.mapy);
   ECU.spkStart = ECU.spk - (ECU.RPM*ECU.spkLen*6/1000);
@@ -122,7 +122,7 @@ function onTimer() {
   Trig.setTrigger(3,180,[PINS.oInj1,PINS.oInj2,PINS.oInj3,PINS.oInj4],ECU.fuel);
   ECU.lambda = 7+15.25*(analogRead(PINS.aLambdaP) - analogRead(PINS.aLambdaM));
   if (ECU.RPM>500 && ECU.lambda>7.5)
-    ECU.trim = (ECU.trim*0.99) + (0.01*Math.clip(ECU.trim*ECU.lambda/15,0.05,0.2));
+    ECU.trim = (ECU.trim*0.99) + (0.01*E.clip(ECU.trim*ECU.lambda/15,0.05,0.2));
 
  var a = Trig.getErrorArray();
   if (a.length>0) print(JSON.stringify(a));

@@ -1,8 +1,8 @@
 var servo = [0.75,0.730152,0.717071];
 function servoTimer() {
-  digitalPulse(B12,1,1+Math.clip(servo[0],0,1));
-  digitalPulse(B13,1,1+Math.clip(servo[1],0,1));
-  digitalPulse(B14,1,1+Math.clip(servo[2],0,1));
+  digitalPulse(B12,1,1+E.clip(servo[0],0,1));
+  digitalPulse(B13,1,1+E.clip(servo[1],0,1));
+  digitalPulse(B14,1,1+E.clip(servo[2],0,1));
 }
 function moveTo(x,y) {
 //  print(x+","+y);return;
@@ -34,9 +34,9 @@ setInterval(step, 50);
 
 var servo = [0.9,0.505683,0.57334];
 function servoTimer() {
-  digitalPulse(B12,1,1+Math.clip(servo[0],0,1));
-  digitalPulse(B13,1,1+Math.clip(servo[1],0,1));
-  digitalPulse(B14,1,1+Math.clip(servo[2],0,1));
+  digitalPulse(B12,1,1+E.clip(servo[0],0,1));
+  digitalPulse(B13,1,1+E.clip(servo[1],0,1));
+  digitalPulse(B14,1,1+E.clip(servo[2],0,1));
 }
 function moveTo(x,y) {
 //  print(x+","+y);return;

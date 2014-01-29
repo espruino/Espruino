@@ -46,9 +46,9 @@ function () {
   var n = 0;
    for(var i=0;i<25;i++) {
     var c = 255*(2*amt - (Math.abs(i-12.5)/12.5 +0.5));
-    arr[n++] = Math.clip(256+c*2, 0, 255);
-    arr[n++] = Math.clip(64+c, 0, 255);
-    arr[n++] = Math.clip(c/2, 0, 255);
+    arr[n++] = E.clip(256+c*2, 0, 255);
+    arr[n++] = E.clip(64+c, 0, 255);
+    arr[n++] = E.clip(c/2, 0, 255);
   }
   SPI1.send4bit(arr, 0b0001, 0b0011);
 }

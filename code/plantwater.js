@@ -3,7 +3,7 @@ Pin.prototype.moveTo = function (pos,time) {
   var pin = this;
   var t = 0;
   var int = setInterval(function() {
-    digitalPulse(pin, 1, 1+Math.clip(pos,0,1));
+    digitalPulse(pin, 1, 1+E.clip(pos,0,1));
     t += 20;
     if (t>time) clearInterval(int);
   }, 20);
@@ -26,7 +26,7 @@ Pin.prototype.moveTo = function (pos,time) {
       servoPos[pin] = pos;
       amt = 1;
     }
-    digitalPulse(pin, 1, 1+Math.clip(pos*amt + servoPos[pin]*(1-amt),0,1));
+    digitalPulse(pin, 1, 1+E.clip(pos*amt + servoPos[pin]*(1-amt),0,1));
     amt += 1000.0 / (20*time);
   }, 20);
 };
