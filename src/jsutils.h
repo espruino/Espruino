@@ -94,7 +94,6 @@ typedef float JsVarFloat;
 typedef double JsVarFloat;
 #endif
 
-typedef short JslCharPos;
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef long long JsSysTime;
 

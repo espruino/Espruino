@@ -484,17 +484,6 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength) {
     return first;
 }
 
-JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo) {
-  // Create a var
-  JsVar *var = jsvNewFromEmptyString();
-  if (!var) { // out of memory
-    return 0;
-  }
-
-  jsvAppendStringVar(var, lex->sourceVar, charFrom, (JslCharPos)charTo-charFrom);
-  return var;
-}
-
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   JsVar *var = jsvNew();
   if (!var) return 0; // no memory

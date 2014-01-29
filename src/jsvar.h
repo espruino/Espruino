@@ -141,7 +141,6 @@ JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
-JsVar *jsvNewFromLexer(struct JsLex *lex, JslCharPos charFrom, JslCharPos charTo); // Create a new STRING from part of the lexer
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
@@ -425,6 +424,14 @@ typedef struct JsvStringIterator {
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it,(JsVar*)str,startIdx)
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx);
+
+/// Clone the string iterator
+static inline JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
+  JsvStringIterator i = *it;
+  if (i.var) jsvLockAgain(i.var);
+  return i;
+}
+
 
 /// Gets the current character (or 0)
 static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
