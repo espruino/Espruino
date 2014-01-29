@@ -5,6 +5,7 @@
             Added the 'E' class, with getAnalogVRef and getTemperature (fix #60)
             Deprecated Math.clip (not in spec) and introduced E.clip 
             Fixed bug in common.py that meant that ifndefs in JSON were sometimes not obeyed (better mem usage on small chips)
+            Fix deep sleep breaking ADCs
 
      1v47 : Fix issue with dump() and input_pullup not being quoted
             Fix regression that broke OneWire in Espruino Board (#197)

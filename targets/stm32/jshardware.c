@@ -1201,13 +1201,14 @@ bool jshPinInput(Pin pin) {
   return value;
 }
 
+static unsigned char jshADCInitialised = 0;
+
 static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
   ADC_TypeDef *ADCx = stmADC(analog);
     bool needs_init = false;
     if (ADCx == ADC1) {
-      static bool inited = false;
-      if (!inited) {
-        inited = true;
+      if (!jshADCInitialised&1) {
+        jshADCInitialised |= 1;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
@@ -1218,9 +1219,8 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
         #endif
       }
     } else if (ADCx == ADC2) {
-      static bool inited = false;
-      if (!inited) {
-        inited = true;
+      if (!jshADCInitialised&1) {
+        jshADCInitialised |= 1;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
@@ -1231,9 +1231,8 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
         #endif
       }
     } else if (ADCx == ADC3) {
-      static bool inited = false;
-      if (!inited) {
-        inited = true;
+      if (!jshADCInitialised&4) {
+        jshADCInitialised |= 4;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
@@ -1245,9 +1244,8 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
       }
   #if ADCS>3
     } else if (ADCx == ADC4) {
-      static bool inited = false;
-      if (!inited) {
-        inited = true;
+      if (!jshADCInitialised&8) {
+        jshADCInitialised |= 8;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC34, ENABLE);
@@ -2183,9 +2181,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
       ) {
     jsiSetSleep(true);
     // deep sleep!
+    jshADCInitialised = 0;
     ADC_Cmd(ADC1, DISABLE); // ADC off
     ADC_Cmd(ADC2, DISABLE); // ADC off
     ADC_Cmd(ADC3, DISABLE); // ADC off
+#if ADCS>3
+    ADC_Cmd(ADC4, DISABLE); // ADC off
+#endif
 #ifdef USB
  //   PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
     USB_Cable_Config(DISABLE);
