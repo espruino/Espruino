@@ -416,7 +416,7 @@ bool jsvIsInternalObjectKey(JsVar *v);
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var
   size_t charsInVar; ///< total characters in var
-  size_t index; ///< index in string
+  size_t varIndex; ///< index in string of the start of this var
   JsVar *var; ///< current StringExt we're looking at
 } JsvStringIterator;
 
@@ -458,7 +458,7 @@ static inline void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
 
 /// Gets the current index in the string
 static inline size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
-  return  it->index;
+  return it->varIndex + it->charIdx;
 }
 
 /// Move to next character
@@ -467,17 +467,18 @@ void jsvStringIteratorNext(JsvStringIterator *it);
 /// Move to next character (this one is inlined where speed is needed)
 static inline void jsvStringIteratorNextInline(JsvStringIterator *it) {
   it->charIdx++;
-  it->index++;
   if (it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
     if (it->var && it->var->lastChild) {
       JsVar *next = jsvLock(it->var->lastChild);
       jsvUnLock(it->var);
       it->var = next;
+      it->varIndex += it->charsInVar;
       it->charsInVar = jsvGetCharactersInVar(it->var);
     } else {
       jsvUnLock(it->var);
       it->var = 0;
+      it->varIndex += it->charsInVar;
       it->charsInVar = 0;
     }
   }

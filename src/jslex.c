@@ -34,17 +34,18 @@ static void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = jslNextCh(lex);
 
   lex->it.charIdx++;
-  lex->it.index++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && lex->it.var->lastChild) {
       JsVar *next = jsvLock(lex->it.var->lastChild);
       jsvUnLock(lex->it.var);
       lex->it.var = next;
+      lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       jsvUnLock(lex->it.var);
       lex->it.var = 0;
+      lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
     }
   }
@@ -103,7 +104,7 @@ void jslGetNextToken(JsLex *lex) {
       return;
   }
   // record beginning of this token
-  lex->tokenLastStart = lex->tokenStart.it.index-1;
+  lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it) - 1;
   /* we don't lock here, because we know that the string itself will be locked
    * because of lex->sourceVar */
   lex->tokenStart.it = lex->it;
@@ -527,7 +528,7 @@ bool jslMatch(JsLex *lex, int expected_tk) {
       strncpy(&buf[bufpos], " expected ", JS_ERROR_BUF_SIZE-bufpos);
       bufpos = strlen(buf);
       jslTokenAsString(expected_tk, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
-      jsErrorAt(buf, lex, lex->tokenStart.it.index);
+      jsErrorAt(buf, lex, jsvStringIteratorGetIndex(&lex->tokenStart.it));
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);
       return false;
@@ -544,7 +545,7 @@ JsVar *jslNewFromLexer(struct JsLex *lex, JslCharPos *charFrom, size_t charTo) {
   }
 
   //jsvAppendStringVar(var, lex->sourceVar, charFrom->it->index, (int)(charTo-charFrom));
-  size_t maxLength = charTo - charFrom->it.index;
+  size_t maxLength = charTo - jsvStringIteratorGetIndex(&charFrom->it);
   JsVar *block = jsvLockAgain(var);
   block->varData.str[0] = charFrom->currCh;
   size_t blockChars = 1;
