@@ -580,13 +580,14 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       if (isParsing && !functionCode) {
         char buf[32];
         jsvGetString(functionName, buf, sizeof(buf));
-        size_t pos = execInfo.lex->tokenStart.it.index;
-        jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
+        JslCharPos pos = jslCharPosClone(&execInfo.lex->tokenStart);
+        jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart-1); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
         if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED)
           return res;
-        jslSeekTo(execInfo.lex, pos); // NASTY!
+        jslSeekToP(execInfo.lex, &pos); // NASTY!
+        jslCharPosFree(&pos);
       }
     }
 
