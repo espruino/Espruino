@@ -528,8 +528,8 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     jsvAppendPrintf(str, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
   if (allowDeepSleep) {
-      jsvAppendPrintf(str, "setDeepSleep(1);\n");
-    }
+    jsvAppendPrintf(str, "setDeepSleep(1);\n");
+  }
 
   jsiAppendSerialInitialisation(str, "USB", addCallbacks);
   int i;
@@ -593,18 +593,12 @@ void jsiSoftKill() {
     watchArray=0;
   }
   // Save initialisation information
-  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, true);
-  if (initName->firstChild) {
-    jsvUnRefRef(initName->firstChild); 
-    initName->firstChild = 0;
-  }
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
-    initName->firstChild = jsvGetRef(jsvRef(initCode));
     jsiAppendHardwareInitialisation(initCode, false);
+    jsvObjectSetChild(p.root, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
-  jsvUnLock(initName);
 
 #ifdef USE_NET
   httpKill();
