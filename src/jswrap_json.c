@@ -34,7 +34,8 @@ JsVar *jswrap_json_stringify(JsVar *v) {
 
 /*JSON{ "type":"staticmethod",
          "class" : "JSON", "name" : "parse",
-         "description" : "Parse the given JSON string into a JavaScript object",
+         "description" : [ "Parse the given JSON string into a JavaScript object",
+                           "NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed."],
          "generate" : "jswrap_json_parse",
          "params" : [ [ "string", "JsVar", "A JSON string"] ],
          "return" : ["JsVar", "The JavaScript object created by parsing the data string"]
