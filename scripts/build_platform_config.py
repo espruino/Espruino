@@ -226,8 +226,15 @@ codeOut("#define DACS                            "+str(board.chip["dac"]))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
 codeOut("");
-codeOut("#define IOBUFFERMASK 31 // (max 255) amount of items in event buffer - events take ~9 bytes each")
-codeOut("#define TXBUFFERMASK 31 // (max 255)")
+if LINUX:
+  bufferSizeIO = 256
+  bufferSizeTX = 256
+else:
+  bufferSizeIO = 32
+  bufferSizeTX = 32
+codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
+codeOut("#define TXBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255)")
+
 codeOut("");
 
 simpleDevices = [
