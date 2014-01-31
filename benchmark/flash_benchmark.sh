@@ -34,5 +34,7 @@ sleep 1s
 
 # Run all benchmarks
 for fn in `ls *.js`; do
+  echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester
+  sleep 1s
   /usr/bin/python benchmark.py /dev/espruino $fn
 done
