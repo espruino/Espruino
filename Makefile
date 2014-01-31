@@ -755,12 +755,9 @@ ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
-OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
-# -flto -fuse-linker-plugin
-# -flto  - link time optimisation - could be good for ST's libs
-#          GCC suggests use of -fuse-linker-plugin with flto
-#          Does not work - get errors like : `sqrt' referenced in section `.text.asin' of /tmp/ccJheOub.ltrans9.ltrans.o: defined in discarded section `.text' of libs/math/sqrt.o (symbol from plugin)
-
+OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections 
+# Enable link-time optimisations (inlining across files)
+OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

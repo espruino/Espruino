@@ -18,6 +18,8 @@
 #include "jsinteractive.h"
 #include "../network.h"
 
+#include <string.h> // for memset
+
 #ifdef USE_CC3000
  #include "socket.h"
  #include "cc3000_common.h"

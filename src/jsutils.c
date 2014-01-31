@@ -237,14 +237,6 @@ void *memcpy(void *dst, const void *src, size_t size) {
         return dst;
 }
 
-void *memset(void *dst, int val, size_t size) {
-  unsigned char *d = (unsigned char*)dst;
-  unsigned int i;
-  for (i=0;i<size;i++)
-    d[i]=(unsigned char)val;
-  return dst;
-}
-
 unsigned int rand() {
     static unsigned int m_w = 0xDEADBEEF;    /* must not be zero */
     static unsigned int m_z = 0xCAFEBABE;    /* must not be zero */
