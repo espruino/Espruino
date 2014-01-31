@@ -19,11 +19,15 @@
 cd `dirname $0`
 # Now in benchmark dir
 
+BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
+
+echo Using Binary $BINARY
+
 echo "Resetting device into boot mode"
 echo "var RST=A0,BT=A1;digitalWrite(BT,1);digitalPulse(RST,0,10);setTimeout(function() { digitalRead(BT); }, 100);\n" > /dev/espruino_tester
 sleep 1s
 echo "Flashing"
-python ../scripts/stm32loader.py -k -b 460800 -a 0x8002800 -ew -p /dev/espruino ../espruino_1v47_espruino_1r3.bin
+python ../scripts/stm32loader.py -k -b 460800 -a 0x8002800 -ew -p /dev/espruino $BINARY
 echo "Resetting device out of boot mode"
 echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester
 sleep 1s
