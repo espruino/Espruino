@@ -637,7 +637,8 @@ void jsiInit(bool autoLoad) {
 
   /* If flash contains any code, then we should
      Try and load from it... */
-  if (autoLoad && jshFlashContainsCode()) {
+  bool loadFlash = autoLoad && jshFlashContainsCode();
+  if (loadFlash) {
     jspSoftKill(&p);
     jsvSoftKill();
     jshLoadFromFlash();
@@ -650,18 +651,21 @@ void jsiInit(bool autoLoad) {
   jsiSoftInit();
 
   if (echo) { // intentionally not using jsiShowInputLine()
+    if (!loadFlash) {
+      jsiConsolePrint(
 #ifndef LINUX
-    // set up terminal to avoid word wrap
-    jsiConsolePrint("\e[?7l");
+              // set up terminal to avoid word wrap
+              "\e[?7l"
 #endif
-    // rectangles @ http://www.network-science.de/ascii/
-    jsiConsolePrint("\n"
+              // rectangles @ http://www.network-science.de/ascii/
+              "\n"
               " _____                 _ \n"
               "|   __|___ ___ ___ _ _|_|___ ___ \n"
               "|   __|_ -| . |  _| | | |   | . |\n"
               "|_____|___|  _|_| |___|_|_|_|___|\n"    
               "          |_| http://espruino.com\n"
               " "JS_VERSION" Copyright 2014 G.Williams\n");
+    }
     jsiConsolePrint("\n>");
   }
 }
