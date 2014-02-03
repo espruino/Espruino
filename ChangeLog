@@ -1,5 +1,8 @@
      1v49 : Change compiler flags to allow link-time optimisation
             Increase buffer sizes on Linux
+            Increase buffer sizes on boards with >= 20kB RAM
+            Made Startup banner smaller
+            Less printing when loading from flash
 
      1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)

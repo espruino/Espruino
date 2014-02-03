@@ -230,8 +230,8 @@ if LINUX:
   bufferSizeIO = 256
   bufferSizeTX = 256
 else:
-  bufferSizeIO = 32
-  bufferSizeTX = 32
+  bufferSizeIO = 32 if total_flash<20480 else 64
+  bufferSizeTX = 32 if total_flash<20480 else 128
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255)")
 
