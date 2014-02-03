@@ -2125,14 +2125,13 @@ void jshSaveToFlash() {
 
 void jshLoadFromFlash() {
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrintf("\nLoading %d  bytes from flash...", dataSize);
+  jsiConsolePrintf("Loading from flash...\n");
 
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
   jsvUnLock(firstData);
 
   memcpy(basePtr, (int*)FLASH_SAVED_CODE_START, dataSize);
-  jsiConsolePrint(" Done!\n>");
 }
 
 bool jshFlashContainsCode() {
