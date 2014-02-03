@@ -656,14 +656,12 @@ void jsiInit(bool autoLoad) {
 #endif
     // rectangles @ http://www.network-science.de/ascii/
     jsiConsolePrint("\n"
-              "   _____                 _ \n"
-              "  |   __|___ ___ ___ _ _|_|___ ___ \n"
-              "  |   __|_ -| . |  _| | | |   | . |\n"
-              "  |_____|___|  _|_| |___|_|_|_|___|");
-    jsiConsolePrint("\n"
-              "            |_|   http://www.espruino.com\n"
-              "  "JS_VERSION" Copyright 2014 Gordon Williams\n"
-              "-------------------------------------------\n");
+              " _____                 _ \n"
+              "|   __|___ ___ ___ _ _|_|___ ___ \n"
+              "|   __|_ -| . |  _| | | |   | . |\n"
+              "|_____|___|  _|_| |___|_|_|_|___|\n"    
+              "          |_| http://espruino.com\n"
+              " "JS_VERSION" Copyright 2014 G.Williams\n");
     jsiConsolePrint("\n>");
   }
 }
