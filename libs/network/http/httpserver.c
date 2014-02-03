@@ -856,7 +856,7 @@ void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data) {
     JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
     if (sendHeaders) {
       sendData = jsvNewFromEmptyString();
-      jsvAppendPrintf(sendData, "HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
+      jsvAppendPrintf(sendData, "HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
       httpAppendHeaders(sendData, sendHeaders);
       jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
       jsvUnLock(sendHeaders);
