@@ -65,7 +65,7 @@ board_css = """
   width: 431px;
   height: 585px;
   left: 300px;
-  background-image: url(img/ESPRUINOBOARD.jpg);
+  background-image: url(img/ESPRUINOBOARD_R1_1.jpg);
 }
 #boardcontainer {
   height: 585px;

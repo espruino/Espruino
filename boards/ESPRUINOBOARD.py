@@ -82,7 +82,7 @@ board_css = """
 }
 #bottom {
   top: 280px;
-  left: 128px;
+  left: 124px;
 }
 .leftpin { height: 24px; }
 .rightpin { height: 24px; }
