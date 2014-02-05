@@ -163,8 +163,6 @@ void USB_Init_Hardware(void)
 
   NVIC_InitTypeDef NVIC_InitStructure;
 
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-
 #if defined(STM32L1XX_MD) || defined(STM32L1XX_HD) || defined(STM32L1XX_MD_PLUS) 
   NVIC_InitStructure.NVIC_IRQChannel = USB_LP_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
