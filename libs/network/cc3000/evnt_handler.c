@@ -53,6 +53,7 @@
 #include "spi.h"
 
 #include "jsparse.h" // for jspIsInterrupted
+#include "jshardware.h" // for checking timeouts
 
 //*****************************************************************************
 //                  COMMON DEFINES
@@ -234,7 +235,9 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 	unsigned long retValue32;
     unsigned char * RecvParams;
     unsigned char *RetParams;
-	
+
+    JsSysTime timeout = jshGetSystemTime() + jshGetTimeFromMilliseconds(10000); // blocking for 10 seconds (!!!)
+
 	cc3000_irq_disable();
 	while (!jspIsInterrupted())
 	{
@@ -454,7 +457,8 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 					memcpy(from, (pucReceivedData + HCI_DATA_HEADER_SIZE + BSD_RECV_FROM_FROM_OFFSET) ,*fromlen);
 				}
 				
-				memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
+				if (pRetParams) // GW: just in case. It'll probably still crash though :(
+				  memcpy(pRetParams, pucReceivedParams + HCI_DATA_HEADER_SIZE + ucArgsize,
 							 usLength - ucArgsize);
 				
 				tSLInformation.usRxDataPending = 0;
@@ -479,8 +483,15 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 			}	
 		} else
 		    cc3000_check_irq_pin();
+
+		if (jshGetSystemTime() > timeout) {
+                  jspSetInterrupted(true);
+		  jsError("Timeout in CC3000 driver (%d)", tSLInformation.usRxEventOpcode);
+		  break;
+		}
 	}
 	cc3000_irq_enable();
+        return NULL;
 }
 
 //*****************************************************************************

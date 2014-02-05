@@ -5,6 +5,7 @@
             Less printing when loading from flash
             Don't display startup banner if loading from flash (an easy way to fix #213)
             Fix HTTP response code of 0 (fix #212)
+            Add timeouts to TI's CC3000 driver
 
      1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)
