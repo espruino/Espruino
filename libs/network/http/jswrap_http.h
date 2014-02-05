@@ -30,4 +30,4 @@ void jswrap_httpCRq_end(JsVar *parent, JsVar *data);
 
 void jswrap_httpCRs_on(JsVar *parent, JsVar *event, JsVar *callback);
 
-JsVar *jswrap_url_parse(JsVar *url);
+JsVar *jswrap_url_parse(JsVar *url, bool parseQuery);

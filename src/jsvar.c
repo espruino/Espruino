@@ -934,6 +934,14 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength)
   jsvUnLock(block);
 }
 
+/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
+ *  stridx can be negative to go from end of string */
+JsVar *jsvNewFromStringVar(const JsVar *str, int stridx, int maxLength) {
+  JsVar *var = jsvNewFromEmptyString();
+  if (var) jsvAppendStringVar(var, str, stridx, maxLength);
+  return var;
+}
+
 /** Append all of str to var. Both must be strings.  */
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str) {
   jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);

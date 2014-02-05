@@ -105,7 +105,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
   if (!checkOnline()) return 0;
   bool unlockOptions = false;
   if (jsvIsString(options)) {
-    options = jswrap_url_parse(options);
+    options = jswrap_url_parse(options, false);
     unlockOptions = true;
   }
   if (!jsvIsObject(options)) {
@@ -237,10 +237,11 @@ void jswrap_httpCRq_end(JsVar *parent, JsVar *data) {
 /*JSON{ "type":"staticmethod",
          "class" : "url", "name" : "parse",
          "generate" : "jswrap_url_parse",
-         "params" : [ [ "urlStr", "JsVar", "A URL to be parsed"] ],
-         "return" : ["JsVar", "An object containing options for ```http.request``` or ```http.get```"]
+         "params" : [ [ "urlStr", "JsVar", "A URL to be parsed"],
+                      [ "parseQuery", "bool", "Whether to parse the query string or not (default = false)"] ],
+         "return" : ["JsVar", ["An object containing options for ```http.request``` or ```http.get```"] ]
 }*/
-JsVar *jswrap_url_parse(JsVar *url) {
+JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   if (!jsvIsString(url)) return 0;
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   if (!obj) return 0; // out of memory
@@ -253,16 +254,19 @@ JsVar *jswrap_url_parse(JsVar *url) {
   int addrStart = -1;
   int portStart = -1;
   int pathStart = -1;
+  int searchStart = -1;
   int charIdx = 0;
   int portNumber = 0;
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (ch == '/') {
       slashes++;
-      if (addrStart>=0)
-        pathStart = charIdx;
-      if (colons==1 && slashes==2 && addrStart<0)
+      pathStart = charIdx;
+      if (colons==1 && slashes==2 && addrStart<0) {
         addrStart = charIdx;
+        pathStart = -1;
+        searchStart = -1;
+      }
     }
     if (ch == ':') {
       colons++;
@@ -274,6 +278,10 @@ JsVar *jswrap_url_parse(JsVar *url) {
       portNumber = portNumber*10 + (ch-'0');
     }
 
+    if (ch == '?' && pathStart>=0) {
+      searchStart = charIdx;
+    }
+
     jsvStringIteratorNext(&it);
     charIdx++;
   }
@@ -283,23 +291,67 @@ JsVar *jswrap_url_parse(JsVar *url) {
   if (pathStart<0) pathStart = charIdx;
   int addrEnd = (portStart>=0) ? portStart : pathStart;
   // pull out details
-  JsVar *method = jsvNewFromString("GET");
-  jsvUnLock(jsvAddNamedChild(obj, method, "method"));
-  jsvUnLock(method);
-  JsVar *host = jsvNewFromEmptyString();
-  jsvAppendStringVar(host, url, addrStart+1, addrEnd-(addrStart+1));
-  jsvUnLock(jsvAddNamedChild(obj, host, "host"));
-  jsvUnLock(host);
-  JsVar *path = jsvNewFromEmptyString();
-  jsvAppendStringVar(path, url, pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
-  if (jsvGetStringLength(path)==0) jsvAppendString(path, "/");
-  jsvUnLock(jsvAddNamedChild(obj, path, "path"));
-  jsvUnLock(path);
+  jsvUnLock(jsvObjectSetChild(obj, "method", jsvNewFromString("GET")));
+  jsvUnLock(jsvObjectSetChild(obj, "host", jsvNewFromStringVar(url, addrStart+1, addrEnd-(addrStart+1))));
+
+  JsVar *v;
+
+  v= jsvNewFromStringVar(url, pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
+  jsvUnLock(jsvObjectSetChild(obj, "path", v));
+
+  v = jsvNewFromStringVar(url, pathStart, (searchStart>=0)?(searchStart-pathStart):JSVAPPENDSTRINGVAR_MAXLENGTH);
+  if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
+  jsvUnLock(jsvObjectSetChild(obj, "pathname", v));
+
+  jsvUnLock(jsvObjectSetChild(obj, "search", (searchStart>=0)?jsvNewFromStringVar(url, searchStart, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull()));
+
   if (portNumber<=0 || portNumber>65535) portNumber=80;
-  JsVar *port = jsvNewFromInteger(portNumber);
-  jsvUnLock(jsvAddNamedChild(obj, port, "port"));
-  jsvUnLock(port);
+  jsvUnLock(jsvObjectSetChild(obj, "port", jsvNewFromInteger(portNumber)));
+
+  JsVar *query = (searchStart>=0)?jsvNewFromStringVar(url, searchStart+1, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull();
+  if (parseQuery && !jsvIsNull(query)) {
+    jsvStringIteratorNew(&it, query, 0);
+    jsvUnLock(query);
+    query = jsvNewWithFlags(JSV_OBJECT);
+
+    JsVar *key = jsvNewFromEmptyString();
+    JsVar *val = jsvNewFromEmptyString();
+    bool hadEquals = false;
+
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (ch=='&') {
+        if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
+          jsvMakeIntoVariableName(key, val);
+          jsvAddName(query, key);
+          jsvUnLock(key);
+          jsvUnLock(val);
+          key = jsvNewFromEmptyString();
+          val = jsvNewFromEmptyString();
+          hadEquals = false;
+        }
+      } else if (!hadEquals && ch=='=') {
+        hadEquals = true;
+      } else {
+        if (hadEquals) jsvAppendCharacter(val, ch);
+        else jsvAppendCharacter(key, ch);
+      }
+      jsvStringIteratorNext(&it);
+      charIdx++;
+    }
+    jsvStringIteratorFree(&it);
+
+    if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
+      jsvMakeIntoVariableName(key, val);
+      jsvAddName(query, key);
+    }
+    jsvUnLock(key);
+    jsvUnLock(val);
+  }
+  jsvUnLock(jsvObjectSetChild(obj, "query", query));
 
   return obj;
 }
+
 
