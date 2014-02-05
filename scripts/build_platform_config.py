@@ -210,7 +210,7 @@ else:
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_pages))
-  codeOut("#define FLASH_START                     "+str(0x08000000))
+  codeOut("#define FLASH_START                     "+hex(0x08000000))
   if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
