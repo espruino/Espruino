@@ -68,7 +68,7 @@ JsSysTime jshLastWokenByUSB = 0;
 #define WAIT_UNTIL(CONDITION, REASON) { \
     int timeout = WAIT_UNTIL_N_CYCLES;                                              \
     while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) jsErrorInternal("Timeout on "REASON);   \
+    if (timeout<=0 || jspIsInterrupted()) { jspSetInterrupted(true); jsErrorInternal("Timeout on "REASON); }  \
 }
 
 // ----------------------------------------------------------------------------
@@ -914,7 +914,7 @@ void jshInit() {
 #endif
 #ifdef ESPRUINOBOARD
   // reclaim A13 and A14 (do we need the two above now?)
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
+  //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
 #endif
 
   NVIC_InitTypeDef NVIC_InitStructure;

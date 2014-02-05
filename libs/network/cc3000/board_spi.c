@@ -233,12 +233,13 @@ SpiReadDataSynchronous(unsigned char *data, unsigned short size)
   if (jspIsInterrupted()) return;
 
   int bSend = 0, bRecv = 0;
-  while (bSend<size || bRecv<size) {
+  while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);
     bSend++;
     if (bSend>0 && r>=0) data[bRecv++] = r;
   }
-  jshDelayMicroseconds(10); // because of final clock pulse
+
+  jshDelayMicroseconds(10); // because of final clock pulse
 
 }
 
