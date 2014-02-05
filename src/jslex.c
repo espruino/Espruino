@@ -57,11 +57,6 @@ static inline void jslTokenAppendChar(JsLex *lex, char ch) {
   if (lex->tokenl < JSLEX_MAX_TOKEN_LENGTH-1) {
     lex->token[lex->tokenl++] = ch;
   }
-#ifdef DEBUG
-  else {
-    jsWarnAt("Token name is too long! skipping character", lex, lex->tokenStart);
-  }
-#endif
 }
 
 static bool jslIsToken(JsLex *lex, const char *token, int startOffset) {

@@ -308,6 +308,7 @@ endif
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
 OPTIMIZEFLAGS=-g
+DEFINES+=-DDEBUG
 endif
 
 ifdef PROFILE

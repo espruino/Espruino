@@ -344,12 +344,6 @@ JsVar *jsvLockAgain(JsVar *var) {
   assert(var);
   assert(jsvGetLocks(var) < JSV_LOCK_MAX);
   var->flags += JSV_LOCK_ONE;
-#ifdef DEBUG
-  if (var->locks==0) {
-    jsError("Too many locks to Variable!");
-    //jsPrint("Var #");jsPrintInt(ref);jsPrint("\n");
-  }
-#endif
   return var;
 }
 
