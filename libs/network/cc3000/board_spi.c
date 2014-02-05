@@ -217,7 +217,7 @@ SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
   if (jspIsInterrupted()) return;
 
   int bSend = 0, bRecv = 0;
-  while (bSend<size || bRecv<size) {
+  while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?data[bSend]:-1);
     bSend++;
     if (bSend>0 && r>=0) bRecv++;
@@ -232,12 +232,14 @@ SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
   if (jspIsInterrupted()) return;
 
+  jshInterruptOff(); // just in case, sometimes IRQs break the SPI receive
   int bSend = 0, bRecv = 0;
   while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);
     bSend++;
     if (bSend>0 && r>=0) data[bRecv++] = r;
   }
+  jshInterruptOn();
 
   jshDelayMicroseconds(10); // because of final clock pulse
 
