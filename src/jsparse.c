@@ -896,7 +896,7 @@ JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(aVar)) {
                   char ch = jsvGetCharInString(aVar, (int)idx);
                   child = jsvNewFromEmptyString();
-                  if (child) jsvAppendStringBuf(child, &ch, 1);
+                  if (child) jsvAppendCharacter(child, ch);
                 }
                 jsvUnLock(parent);
                 parent = jsvLockAgain(aVar);

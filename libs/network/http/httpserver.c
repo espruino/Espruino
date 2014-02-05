@@ -289,8 +289,7 @@ bool _http_send(SOCKET sckt, JsVar **sendData) {
     a = (int)send(sckt,buf,bufLen, MSG_NOSIGNAL);
     JsVar *newSendData = 0;
     if (a!=len) {
-      newSendData = jsvNewFromEmptyString();
-      jsvAppendStringVar(newSendData, *sendData, a, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      newSendData = jsvNewFromStringVar(*sendData, a, JSVAPPENDSTRINGVAR_MAXLENGTH);
     }
     jsvUnLock(*sendData);
     *sendData = newSendData;

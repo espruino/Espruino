@@ -671,8 +671,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   JsVar *str = 0;
   // If it is string-ish, but not quite a string, copy it
   if (jsvHasCharacterData(v) && jsvIsName(v)) {
-    str = jsvNewFromEmptyString();
-    if (str) jsvAppendStringVarComplete(str,v);
+    str = jsvNewFromStringVar(v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
   } else {
