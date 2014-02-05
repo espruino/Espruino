@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_interactive.h"
+#include "jswrap_json.h" // for print/console.log
 #include "jsinteractive.h"
 
 /*JSON{ "type":"function", "name" : "setBusyIndicator",
@@ -109,12 +110,13 @@ void jswrap_interface_trace(JsVar *root) {
 }*/
 void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
+
+  jsiConsoleRemoveInputLine();
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, v);
   while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *v = jsvAsString(jsvArrayIteratorGetElement(&it), true);
-    jsiConsoleRemoveInputLine();
-    jsiConsolePrintStringVar(v);
+    JsVar *v = jsvArrayIteratorGetElement(&it);
+    jsfPrintJSON(v);
     jsvUnLock(v);
     jsvArrayIteratorNext(&it);
     if (jsvArrayIteratorHasElement(&it))

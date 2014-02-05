@@ -9,6 +9,7 @@
             Add timeouts for SPI, and other timeouts now interrupt execution
             Lower USB interrupt priority, remove pesky PriorityGroupConfig that was breaking other IRQ priorities
             Until we sort out SPI RX and IRQs, lower default SPI baud rate to stop timeouts
+            console.log and print output JSON now (part of #206)
 
      1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)
