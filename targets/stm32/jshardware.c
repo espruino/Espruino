@@ -914,7 +914,12 @@ void jshInit() {
 #endif
 #ifdef ESPRUINOBOARD
   // reclaim A13 and A14 (do we need the two above now?)
-  //GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
+#ifndef DEBUG
+  // don't disable this when compiling with DEBUG=1, because we need SWD
+  // for in-circuit debugging and we probably don't care about the LEDs
+  // see http://www.espruino.com/AdvancedDebug
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
+#endif
 #endif
 
   NVIC_InitTypeDef NVIC_InitStructure;
