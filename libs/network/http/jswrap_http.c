@@ -237,9 +237,12 @@ void jswrap_httpCRq_end(JsVar *parent, JsVar *data) {
 /*JSON{ "type":"staticmethod",
          "class" : "url", "name" : "parse",
          "generate" : "jswrap_url_parse",
+         "description" : ["A utility function to split a URL into parts", 
+                          "This is useful in web servers for instance when handling a request.",
+                          "For instance `url.parse(\"/a?b=c&d=e\",true)` returns `{\"method\":\"GET\",\"host\":\"\",\"path\":\"/a?b=c&d=e\",\"pathname\":\"/a\",\"search\":\"?b=c&d=e\",\"port\":80,\"query\":{\"b\":\"c\",\"d\":\"e\"}}`"],
          "params" : [ [ "urlStr", "JsVar", "A URL to be parsed"],
-                      [ "parseQuery", "bool", "Whether to parse the query string or not (default = false)"] ],
-         "return" : ["JsVar", ["An object containing options for ```http.request``` or ```http.get```"] ]
+                      [ "parseQuery", "bool", "Whether to parse the query string into an object not (default = false)"] ],
+         "return" : ["JsVar", "An object containing options for ```http.request``` or ```http.get```. Contains `method`, `host`, `path`, `pathname`, `search`, `port` and `query`" ]
 }*/
 JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   if (!jsvIsString(url)) return 0;
