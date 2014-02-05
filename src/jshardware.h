@@ -160,7 +160,7 @@ typedef struct {
   unsigned char spiMode;
 } PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
-  inf->baudRate = 1000000;
+  inf->baudRate = 100000;
   inf->pinSCK = PIN_UNDEFINED;
   inf->pinMISO = PIN_UNDEFINED;
   inf->pinMOSI = PIN_UNDEFINED;

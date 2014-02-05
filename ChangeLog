@@ -8,6 +8,7 @@
             Add timeouts to TI's CC3000 driver
             Add timeouts for SPI, and other timeouts now interrupt execution
             Lower USB interrupt priority, remove pesky PriorityGroupConfig that was breaking other IRQ priorities
+            Until we sort out SPI RX and IRQs, lower default SPI baud rate to stop timeouts
 
      1v48 : Fix issue where the size of command history is being reported wrong and so process.memory().free is reported wrong too
             We now loop without a seek to position inside the string (much faster if loop is not near the start of a fn) (fix #53)
