@@ -311,6 +311,33 @@ void USART6_IRQHandler(void) {
 }
 #endif
 
+
+static inline void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
+   while (SPI_I2S_GetITStatus(SPIx, SPI_I2S_IT_RXNE) != RESET) {
+      // Read one byte/word from the receive data register
+      jshSPIPush(device, SPI_I2S_ReceiveData(SPIx));
+    }
+}
+
+#if SPIS>=1
+void SPI1_IRQHandler(void) {
+  SPI_IRQHandler(SPI1, EV_SPI1);
+}
+#endif
+
+#if SPIS>=2
+void SPI2_IRQHandler(void) {
+  SPI_IRQHandler(SPI2, EV_SPI2);
+}
+#endif
+
+#if SPIS>=3
+void SPI3_IRQHandler(void) {
+  SPI_IRQHandler(SPI3, EV_SPI3);
+}
+#endif
+
+
 /** The 'utility' timer - used for pulse generation and shifting data */
 // void UTIL_TIMER_IRQHandler(void)
 // Defined in jshardware.c

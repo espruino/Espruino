@@ -37,6 +37,7 @@
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
+#define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_MED 7
 #define IRQ_PRIOR_LOW 15
 
@@ -53,6 +54,12 @@
 
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
+
+// simple 4 byte buffers for SPI
+#define JSH_SPIBUF_MASK 3 // 4 bytes
+volatile unsigned char jshSPIBufHead[SPIS];
+volatile unsigned char jshSPIBufTail[SPIS];
+volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
 
 BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
@@ -86,6 +93,8 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_USART6 GPIO_AF_0 // FIXME is this right?
 #define GPIO_AF_SPI1 GPIO_AF_5
 #define GPIO_AF_SPI2 GPIO_AF_5
+#define SPI_I2S_SendData SPI_I2S_SendData16
+#define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #endif
 
 
@@ -1080,6 +1089,12 @@ void jshInit() {
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
+  // reset SPI buffers
+  for (i=0;i<SPIS;i++) {
+    jshSPIBufHead[i] = 0;
+    jshSPIBufTail[i] = 0;
+  }
+
 #ifdef LED1_PININDEX
   // now hardware is initialised, turn led off
   jshPinOutput(LED1_PININDEX, 0);
@@ -1814,82 +1829,83 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     //jsiConsolePrint("\n");
   }
 
+  uint8_t spiIRQ;
+  switch (device) {
+    case EV_SPI1: spiIRQ = SPI1_IRQn; break;
+    case EV_SPI2: spiIRQ = SPI2_IRQn; break;
+#if SPIS>= 3
+    case EV_SPI3: spiIRQ = SPI3_IRQn; break;
+#endif
+    default: assert(0); break;
+  }
+
+  // Enable SPI interrupt
+  NVIC_InitTypeDef NVIC_InitStructure;
+  NVIC_InitStructure.NVIC_IRQChannel = spiIRQ;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = IRQ_PRIOR_SPI;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init( &NVIC_InitStructure );
+
+  // Enable RX interrupt (No TX IRQ wanted)
+  SPI_I2S_ITConfig(SPIx, SPI_I2S_IT_RXNE, ENABLE);
+
   /* Enable SPI  */
   SPI_Init(SPIx, &SPI_InitStructure);
   SPI_Cmd(SPIx, ENABLE);
 }
+
+// push a byte into SPI buffers
+void jshSPIPush(IOEventFlags device, uint16_t data) {
+  int n = device-EV_SPI1;
+  jshSPIBuf[n][jshSPIBufHead[n]] = (unsigned char)data;
+  jshSPIBufHead[n] = (jshSPIBufHead[n]+1)&JSH_SPIBUF_MASK;
+}
+
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data)
 {
+  int n = device-EV_SPI1;
   SPI_TypeDef *SPI = getSPIFromDevice(device);
-
-  int returnData = -1;
-
-  /** We need hundreds of checks here, because - especially on the HY boards,
-   * at some very specific baud rates we can end up losing bytes. */
-
-  // check for returned data
-  if (SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_RXNE) != RESET)
-#ifdef STM32F3
-    returnData = (uint16_t)SPI_I2S_ReceiveData16(SPI);
-#else
-    returnData = (uint16_t)SPI_I2S_ReceiveData(SPI);
-#endif
 
   /* Loop while DR register in not empty */
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_TXE) != RESET, "SPI TX");
 
-  // check for returned data
-  if (returnData==-1 && SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_RXNE) != RESET)
-#ifdef STM32F3
-    returnData = (uint16_t)SPI_I2S_ReceiveData16(SPI);
-#else
-    returnData = (uint16_t)SPI_I2S_ReceiveData(SPI);
-#endif
-
   if (data >= 0) {
     /* Send a Byte through the SPI peripheral */
-#ifdef STM32F3
-    SPI_I2S_SendData16(SPI, (uint16_t)data); // I guess this is ok if we're just in 8 bit mode?
-#else
     SPI_I2S_SendData(SPI, (uint16_t)data);
-#endif
-  } else if (returnData==-1) {
+  } else {
     // we were actually waiting for a byte to receive - let's hope we get it!
-    WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_RXNE) != RESET, "SPI RX");
+    WAIT_UNTIL(jshSPIBufHead[n]!=jshSPIBufTail[n], "SPI RX");
   }
 
   /* Return the Byte read from the SPI bus - or -1 if no byte */
-  if (returnData==-1 && SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_RXNE) != RESET) {
-#ifdef STM32F3
-    returnData = (uint16_t)SPI_I2S_ReceiveData16(SPI);
-#else
-    returnData = (uint16_t)SPI_I2S_ReceiveData(SPI);
-#endif
+  if (jshSPIBufHead[n]!=jshSPIBufTail[n]) {
+    int data = jshSPIBuf[n][jshSPIBufTail[n]];
+    jshSPIBufTail[n] = (jshSPIBufTail[n]+1)&JSH_SPIBUF_MASK;
+    return data;
+  } else {
+    return -1;
   }
-
-  // TODO: when data=-1, returns just before final clock pulse
-
-  return returnData;
 }
 
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data)
 {
+  int n = device-EV_SPI1;
   SPI_TypeDef *SPI = getSPIFromDevice(device);
 
   /* Loop while DR register in not empty */
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_TXE) != RESET, "SPI TX");
 
   /* Send a Byte through the SPI peripheral */
-#ifdef STM32F3
-    SPI_I2S_SendData16(SPI, (uint16_t)data);
-#else
-    SPI_I2S_SendData(SPI, (uint16_t)data);
-#endif
+  SPI_I2S_SendData(SPI, (uint16_t)data);
+
+  // Throw away any bytes we got
+  jshSPIBufTail[n] = jshSPIBufHead[n];
 }
 
 /** Set whether to send 16 bits or 8 over SPI */

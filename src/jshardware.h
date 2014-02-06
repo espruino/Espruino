@@ -220,6 +220,11 @@ void jshKickUSBWatchdog();
 
 #endif // ARM
 
+#ifdef STM32
+// push a byte into SPI buffers
+void jshSPIPush(IOEventFlags device, uint16_t data);
+#endif
+
 #ifdef STM32F1
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature();
