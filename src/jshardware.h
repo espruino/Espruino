@@ -232,4 +232,9 @@ JsVarFloat jshReadTemperature();
 JsVarFloat jshReadVRef();
 #endif
 
+#ifdef STM32F3
+#define SPI_I2S_SendData SPI_I2S_SendData16
+#define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
+#endif
+
 #endif /* JSHARDWARE_H_ */

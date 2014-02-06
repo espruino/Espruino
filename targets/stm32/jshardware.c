@@ -93,8 +93,6 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_USART6 GPIO_AF_0 // FIXME is this right?
 #define GPIO_AF_SPI1 GPIO_AF_5
 #define GPIO_AF_SPI2 GPIO_AF_5
-#define SPI_I2S_SendData SPI_I2S_SendData16
-#define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #endif
 
 
