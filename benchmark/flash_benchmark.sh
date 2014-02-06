@@ -19,7 +19,8 @@
 cd `dirname $0`
 # Now in benchmark dir
 
-BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
+#BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
+BINARY=../`python ../scripts/get_binary_name.py ESPRUINOBOARD`
 
 echo Using Binary $BINARY
 
