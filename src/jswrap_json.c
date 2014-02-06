@@ -82,6 +82,19 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JsfGetJSONCallbackString call
   } else callbackString(callbackData, "{}");
 }
 
+void jsfGetEscapedString(JsVar *var, JsfGetJSONCallbackString callbackString, void *callbackData) {
+  callbackString(callbackData, "\"");
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    char ch = jsvStringIteratorGetChar(&it);
+    callbackString(callbackData, escapeCharacter(ch));
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  callbackString(callbackData, "\"");
+}
+
 void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData) {
   if (jsvIsUndefined(var)) {
     callbackString(callbackData, "undefined");
@@ -100,7 +113,9 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     callbackString(callbackData, "new ");
     callbackString(callbackData, jswGetBasicObjectName(var));
     callbackString(callbackData, "([");
-    callbackVar(callbackData, jsvAsString(var, false));
+    JsVar *str = jsvAsString(var, false);
+    callbackVar(callbackData, str);
+    jsvUnLock(str);
     callbackString(callbackData, "])");
   } else if (jsvIsObject(var)) {
     bool first = true;
@@ -115,9 +130,10 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
         else
           callbackString(callbackData, ",");
 
-        callbackString(callbackData, "\"");
-        callbackVar(callbackData, child); // FIXME: escape the string
-        callbackString(callbackData, "\":");
+        JsVar *str = jsvAsString(child, false);
+        jsfGetEscapedString(str, callbackString, callbackData);
+        jsvUnLock(str);
+        callbackString(callbackData, ":");
       }
       JsVar *childVar = child->firstChild ? jsvLock(child->firstChild) : 0;
       childref = child->nextSibling;
@@ -133,17 +149,7 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
     callbackString(callbackData, "function ");
     jsfGetJSONForFunctionWithCallback(var, callbackString, callbackVar, callbackData);
   } else if (jsvIsString(var) && !jsvIsName(var)) {
-    // escape the string
-    callbackString(callbackData, "\"");
-    JsvStringIterator it;
-    jsvStringIteratorNew(&it, var, 0);
-    while (jsvStringIteratorHasChar(&it)) {
-      char ch = jsvStringIteratorGetChar(&it);
-      callbackString(callbackData, escapeCharacter(ch));
-      jsvStringIteratorNext(&it);
-    }
-    jsvStringIteratorFree(&it);
-    callbackString(callbackData, "\"");
+    jsfGetEscapedString(var, callbackString, callbackData);
   } else {
     JsVar *str = jsvAsString(var, false);
     if (str) {
