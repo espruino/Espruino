@@ -1,7 +1,7 @@
 // From TiCPU, http://forum.espruino.com/conversations/568
 
 // Non-nested quick sort - minified
-Array.prototype.qsort=function(d){var f,c=0,a,b;void 0===d&&(d=parseInt(Math.floor(this.length/5),10));var g=new Uint16Array(d),e=new Uint16Array(d);g[0]=0;for(e[0]=this.length;0<=c;)if(a=g[c],b=e[c]-1,a<b){f=this[a];if(c===d-1)return!1;for(;a<b;){for(;this[b]>=f&&a<b;)b--;for(a<b&&(this[a++]=this[b]);this[a]<=f&&a<b;)a++;a<b&&(this[b--]=this[a])}this[a]=f;g[c+1]=a+1;e[c+1]=e[c];e[c++]=a}else c--;return!0};
+Array.prototype.nqsort=function(d){var f,c=0,a,b;void 0===d&&(d=parseInt(Math.floor(this.length/5),10));var g=new Uint16Array(d),e=new Uint16Array(d);g[0]=0;for(e[0]=this.length;0<=c;)if(a=g[c],b=e[c]-1,a<b){f=this[a];if(c===d-1)return!1;for(;a<b;){for(;this[b]>=f&&a<b;)b--;for(a<b&&(this[a++]=this[b]);this[a]<=f&&a<b;)a++;a<b&&(this[b--]=this[a])}this[a]=f;g[c+1]=a+1;e[c+1]=e[c];e[c++]=a}else c--;return!0};
 Uint16Array.prototype.nqsort = Array.prototype.nqsort;
 
 // Tests

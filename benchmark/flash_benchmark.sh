@@ -33,6 +33,8 @@ echo "Resetting device out of boot mode"
 echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester
 sleep 1s
 
+# Clear previous results
+rm *.result.json
 # Run all benchmarks
 for fn in `ls *.js`; do
   echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester

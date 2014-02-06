@@ -40,8 +40,7 @@ def run_benchmark(device, filename):
             ser.read(1) 
           time.sleep(0.1)
 
-
-        command = "function __bench() { "+benchmark+" }\n var ___start = getTime();__bench()var ___end = getTime();print('<<'+'<<<'+(___end-___start)+'>>>'+'>>');\n"
+        command = "echo(0);\nvar ___start = getTime();{"+benchmark+"}\nvar ___end = getTime();print('<<'+'<<<',JSON.stringify({time:___end-___start,mem:process.memory().usage}),'>>>'+'>>');\necho(1);\n"
         
 	#ser.write(command)
         for c in command:
@@ -53,7 +52,7 @@ def run_benchmark(device, filename):
               sys.stdout.flush()
             result=result+c
 
-	endtime = time.time()+60 # wait 60 sec
+	endtime = time.time()+30 # wait 30 sec
         finished = False
         while time.time() < endtime and not finished:
           while ser.inWaiting() > 0:
@@ -64,7 +63,17 @@ def run_benchmark(device, filename):
             result=result+c
           finished = "<<<<<" in result and ">>>>>" in result
 	ser.close()
-        return result[result.find("<<<<<")+5:result.find(">>>>>")];
+
+        test = {}
+        test["log"] = result
+        if finished:
+          test["json"] = result[result.find("<<<<<")+5:result.find(">>>>>")]
+
+        f = open(filename+".result.json", 'w')
+        json.dump(test, f)
+        f.close()
+
+        return test["json"] if finished else "FAIL"
 
 
 # Read 1 analog
