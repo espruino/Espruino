@@ -116,7 +116,10 @@ void jswrap_interface_print(JsVar *v) {
   jsvArrayIteratorNew(&it, v);
   while (jsvArrayIteratorHasElement(&it)) {
     JsVar *v = jsvArrayIteratorGetElement(&it);
-    jsfPrintJSON(v);
+    if (jsvIsString(v)) 
+      jsiConsolePrintStringVar(v);
+    else
+      jsfPrintJSON(v);
     jsvUnLock(v);
     jsvArrayIteratorNext(&it);
     if (jsvArrayIteratorHasElement(&it))
