@@ -1014,17 +1014,18 @@ JsVar *jspeFactorObject() {
     JSP_MATCH_WITH_RETURN('{', contents);
     while (!JSP_HAS_ERROR && execInfo.lex->tk != '}') {
       JsVar *varName = 0;
-      if (JSP_SHOULD_EXECUTE) {
-        varName = jslGetTokenValueAsVar(execInfo.lex);
-        if (!varName) { // out of memory
-          return contents;
-        }
-      }
       // we only allow strings or IDs on the left hand side of an initialisation
-      if (execInfo.lex->tk==LEX_STR) {
-        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_STR, jsvUnLock(varName), contents);
+      if (execInfo.lex->tk==LEX_ID ||
+          execInfo.lex->tk==LEX_STR ||
+          execInfo.lex->tk==LEX_FLOAT ||
+          execInfo.lex->tk==LEX_INT ||
+          execInfo.lex->tk==LEX_R_TRUE ||
+          execInfo.lex->tk==LEX_R_FALSE ||
+          execInfo.lex->tk==LEX_R_NULL ||
+          execInfo.lex->tk==LEX_R_UNDEFINED) {
+        varName = jspeFactor();
       } else {
-        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(varName), contents);
+        JSP_MATCH_WITH_RETURN(LEX_ID, contents);
       }
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
       if (JSP_SHOULD_EXECUTE) {
