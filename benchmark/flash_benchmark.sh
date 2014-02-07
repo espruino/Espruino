@@ -19,25 +19,29 @@
 cd `dirname $0`
 # Now in benchmark dir
 
-#BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
-BINARY=../`python ../scripts/get_binary_name.py ESPRUINOBOARD`
+BINARY=$1
+if [ -z "$BINARY" ]; then
+    #BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
+    BINARY=../`python ../scripts/get_binary_name.py ESPRUINOBOARD`
+fi  
+
 
 echo Using Binary $BINARY
 
 echo "Resetting device into boot mode"
-echo "var RST=A0,BT=A1;digitalWrite(BT,1);digitalPulse(RST,0,10);setTimeout(function() { digitalRead(BT); }, 100);\n" > /dev/espruino_tester
+python sendcommand.py /dev/espruino_tester "var RST=A0,BT=A1;digitalWrite(BT,1);digitalPulse(RST,0,10);setTimeout(function() { digitalRead(BT); }, 100);" 
 sleep 1s
 echo "Flashing"
 python ../scripts/stm32loader.py -k -b 460800 -a 0x8002800 -ew -p /dev/espruino $BINARY
 echo "Resetting device out of boot mode"
-echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester
+python sendcommand.py /dev/espruino_tester "var RST=A0;digitalPulse(RST,0,10);"
 sleep 1s
 
 # Clear previous results
 rm *.result.json
 # Run all benchmarks
 for fn in `ls *.js`; do
-  echo "var RST=A0;digitalPulse(RST,0,10);\n" > /dev/espruino_tester
+  python sendcommand.py /dev/espruino_tester "var RST=A0;digitalPulse(RST,0,10);" 
   sleep 1s
   /usr/bin/python benchmark.py /dev/espruino $fn
 done
