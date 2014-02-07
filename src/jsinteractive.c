@@ -1213,12 +1213,6 @@ bool jsiHasTimers() {
   return c>0;
 }
 
-void jsiPrintUnregisteredMessage(const char *desc) {
-  jsiConsolePrint("\n You must have registered Espruino in order to ");
-  jsiConsolePrint(desc);
-  jsiConsolePrint(".\n\n Please type register() for more information.\n\n");
-}
-
 /// Is the given watch object meant to be executed when the current value of the pin is pinIsHigh
 bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
   int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "edge", 0));
