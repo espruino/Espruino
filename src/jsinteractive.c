@@ -1219,6 +1219,14 @@ void jsiPrintUnregisteredMessage(const char *desc) {
   jsiConsolePrint(".\n\n Please type register() for more information.\n\n");
 }
 
+/// Is the given watch object meant to be executed when the current value of the pin is pinIsHigh
+bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
+  int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "edge", 0));
+  return watchEdge==0 || // any edge
+         (pinIsHigh && watchEdge>0) || // rising edge
+         (!pinIsHigh && watchEdge<0); // falling edge
+}
+
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -1320,38 +1328,61 @@ void jsiIdle() {
       // we have an event... find out what it was for...
       // Check everything in our Watch array
       JsVar *watchArrayPtr = jsvLock(watchArray);
-      JsVarRef watch = watchArrayPtr->firstChild;
-      while (watch) {
-        JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
-        JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
+      JsVarRef watchName = watchArrayPtr->firstChild;
+      while (watchName) {
+        JsVar *watchNamePtr = jsvLock(watchName); // effectively the array index
+        JsVar *watchPtr = jsvSkipName(watchNamePtr);
+        JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
         Pin pin = jshGetPinFromVar(watchPin); // TODO: could be faster?
         jsvUnLock(watchPin);
 
         if (jshIsEventForPin(&event, pin)) {
           bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
-          int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
-          if (watchEdge==0 || (pinIsHigh && watchEdge>0) || (!pinIsHigh && watchEdge<0)) { // edge triggering
-            JsVar *watchCallback = jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false);
-            bool watchRecurring = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
-            JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-            if (data) {
-              JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000);
-              if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
-              jsvUnLock(dataTime);
-              JsVar *dataState = jsvNewFromBool(pinIsHigh);
-              if (dataState) jsvUnLock(jsvAddNamedChild(data, dataState, "state"));
-              jsvUnLock(dataState);
+
+          JsVarInt debounce = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
+          if (debounce>0) {
+            JsVar *timeout = jsvObjectGetChild(watchPtr, "timeout", 0);
+            if (timeout) { // if we had a timeout, update the callback time
+              JsVar *timerTime = jsvObjectGetChild(timeout, "time", JSV_INTEGER);
+              jsvSetInteger(timerTime, event.data.time+debounce);
+              jsvUnLock(timerTime);
+            } else { // else create a new timeout
+              timeout = jsvNewWithFlags(JSV_OBJECT);
+              if (timeout) {
+                jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
+                jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger(event.data.time+debounce)));
+                jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
+                // Add to timer array
+                jsiTimerAdd(timeout);
+                // Add to our watch
+                jsvObjectSetChild(watchPtr, "timeout", timeout); // no unlock
+              }
             }
-            jsiExecuteEventCallback(watchCallback, data, 0);
-            jsvUnLock(data);
-            if (!watchRecurring) {
-              // free all
-              jsvRemoveChild(watchArrayPtr, watchNamePtr);
+            jsvUnLock(timeout);
+            // store the current state here
+            jsvUnLock(jsvObjectSetChild(watchPtr, "state", jsvNewFromBool(pinIsHigh)));
+          } else { // Not debouncing - just execute normally
+            if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
+              JsVar *watchCallback = jsvObjectGetChild(watchPtr, "callback", 0);
+              bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
+              JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+              if (data) {
+                jsvUnLock(jsvObjectSetChild(data, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000)));
+                jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
+              }
+              jsiExecuteEventCallback(watchCallback, data, 0);
+              jsvUnLock(data);
+              if (!watchRecurring) {
+                // free all
+                jsvRemoveChild(watchArrayPtr, watchNamePtr);
+              }
+              jsvUnLock(watchCallback);
             }
-            jsvUnLock(watchCallback);
           }
         }
-        watch = watchNamePtr->nextSibling;
+
+        jsvUnLock(watchPtr);
+        watchName = watchNamePtr->nextSibling;
         jsvUnLock(watchNamePtr);
       }
       jsvUnLock(watchArrayPtr);
@@ -1374,7 +1405,8 @@ void jsiIdle() {
   while (timer) {
     JsVar *timerNamePtr = jsvLock(timer);
     timer = timerNamePtr->nextSibling; // ptr to next
-    JsVar *timerTime = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "time", false));
+    JsVar *timerPtr = jsvSkipName(timerNamePtr);
+    JsVar *timerTime = jsvObjectGetChild(timerPtr, "time", 0);
     JsSysTime timeUntilNext = jsvGetInteger(timerTime) - time;
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
@@ -1382,23 +1414,31 @@ void jsiIdle() {
       // we're now doing work
       jsiSetBusy(BUSY_INTERACTIVE, true);
       wasBusy = true;
-
-      JsVar *timerCallback = jsvFindChildFromStringRef(timerNamePtr->firstChild, "callback", false);
-      JsVar *timerRecurring = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "recur", false));
+      JsVar *timerCallback = jsvObjectGetChild(timerPtr, "callback", 0);
+      JsVar *watchPtr = jsvObjectGetChild(timerPtr, "watch", 0); // for debounce - may be undefined
+      bool exec = true;
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
       if (data) {
-        JsVar *dataTime = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000);
-        if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "time"));
-        jsvUnLock(dataTime);
+        jsvUnLock(jsvObjectSetChild(data, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000)));
+        // if it was a watch, set the last state up
+        if (watchPtr) {
+          bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
+          exec = jsiShouldExecuteWatch(watchPtr, state);
+        }
       }
-      jsiExecuteEventCallback(timerCallback, data, 0);
+      if (exec) jsiExecuteEventCallback(timerCallback, data, 0);
       jsvUnLock(data);
-      if (jsvGetBool(timerRecurring)) {
-        JsVarFloat interval = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false)));
+      if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
+        jsvObjectSetChild(watchPtr, "timeout", 0);
+      }
+      jsvUnLock(watchPtr);
+
+      if (jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "recur", 0))) {
+        JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
         if (interval<=0)
           jsvSetInteger(timerTime, time); // just set to current system time
         else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jshGetTimeFromMilliseconds(interval));
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
       } else {
         // free all
         JsVar *foundChild = jsvFindChildFromVar(timerArrayPtr, timerNamePtr, false);
@@ -1409,10 +1449,10 @@ void jsiIdle() {
         }
       }
       jsvUnLock(timerCallback);
-      jsvUnLock(timerRecurring);
 
     }
     jsvUnLock(timerTime);
+    jsvUnLock(timerPtr);
     JsVarRef currentTimer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
     if (currentTimer != timer) {
@@ -1683,4 +1723,11 @@ void jsiSetTodo(TODOFlags newTodo) {
 
 JsParse *jsiGetParser() {
   return &p;
+}
+
+JsVarInt jsiTimerAdd(JsVar *timerPtr) {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  JsVarInt itemIndex = jsvArrayPushWithInitialSize(timerArrayPtr, timerPtr, 1) - 1;
+  jsvUnLock(timerArrayPtr);
+  return itemIndex;
 }

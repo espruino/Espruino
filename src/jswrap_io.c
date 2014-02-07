@@ -16,6 +16,8 @@
 #include "jswrap_io.h"
 #include "jsvar.h"
 
+// for jswrap_isNaN
+extern int isnan(double x);
 
 /*JSON{ "type":"function", "name" : "peek8",
          "description" : [ "Read 8 bits of memory at the given location - DANGEROUS!" ],
@@ -223,22 +225,14 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    JsVar *v;
-    v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
-    jsvUnLock(jsvAddNamedChild(timerPtr, v, "time"));
-    jsvUnLock(v);
-    v = jsvNewFromFloat(interval);
-    jsvUnLock(jsvAddNamedChild(timerPtr, v, "interval"));
-    jsvUnLock(v);
-    v = jsvNewFromBool(!isTimeout);
-    jsvUnLock(jsvAddNamedChild(timerPtr, v, "recur"));
-    jsvUnLock(v);
-    jsvUnLock(jsvAddNamedChild(timerPtr, func, "callback"));
-    //jsPrint("TIMER BEFORE ADD\n"); jsvTrace(timerArray,5);
-    JsVar *timerArrayPtr = jsvLock(timerArray);
-    itemIndex = jsvNewFromInteger(jsvArrayPushWithInitialSize(timerArrayPtr, timerPtr, 1) - 1);
-    //jsPrint("TIMER AFTER ADD\n"); jsvTrace(timerArray,5);
-    jsvUnLock(timerArrayPtr);
+    JsVarInt intervalInt = jshGetTimeFromMilliseconds(interval);
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(jshGetSystemTime() + intervalInt)));
+    jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
+    if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
+    jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
+
+    // Add to array
+    itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
     jsvUnLock(timerPtr);
   }
   jsvUnLock(skippedFunc);
@@ -260,15 +254,18 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
          "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
                       [ "pin", "pin", "The pin to watch" ],
                       [ "options", "JsVar", ["If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)",
-                                             "If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default)}```" ] ]  ],
+                                             "If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0." ] ]  ],
          "return" : ["JsVar", "An ID that can be passed to clearWatch"]
 }*/
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject) {
   bool repeat = false;
+  JsVarFloat debounce = 0;
   int edge = 0;
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
+    debounce = jsvGetFloatAndUnLock(jsvObjectGetChild(repeatOrObject, "debounce", 0));
+    if (isnan(debounce)) debounce=0;
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
     if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
@@ -288,17 +285,14 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
   } else {
     // Create a new watch
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
-    JsVar *v;
-    v = jsvNewFromPin(pin);
-    jsvUnLock(jsvAddNamedChild(watchPtr, v, "pin"));
-    jsvUnLock(v);
-    v = jsvNewFromBool(repeat);
-    jsvUnLock(jsvAddNamedChild(watchPtr, v, "recur"));
-    jsvUnLock(v);
-    v = jsvNewFromInteger(edge);
-    jsvUnLock(jsvAddNamedChild(watchPtr, v, "edge"));
-    jsvUnLock(v);
-    jsvUnLock(jsvAddNamedChild(watchPtr, funcVar, "callback"));
+    if (watchPtr) {
+      jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
+      if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
+      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
+      jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
+      jsvObjectSetChild(watchPtr, "callback", funcVar); // no unlock intentionally
+    }
+
     JsVar *watchArrayPtr = jsvLock(watchArray);
     itemIndex = jsvArrayPushWithInitialSize(watchArrayPtr, watchPtr, 1) - 1;
     jsvUnLock(watchArrayPtr);
