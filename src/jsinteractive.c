@@ -46,6 +46,7 @@ typedef enum {
  IS_HAD_27_79,
  IS_HAD_27_91,
  IS_HAD_27_91_49,
+ IS_HAD_27_91_50,
  IS_HAD_27_91_51,
  IS_HAD_27_91_52,
  IS_HAD_27_91_53,
@@ -337,6 +338,13 @@ void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
+}
+
+void jsiClearInputLine() {
+  jsiConsoleRemoveInputLine();
+  // clear input line
+  jsvUnLock(inputLine);
+  inputLine = jsvNewFromEmptyString();
 }
 
 void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
@@ -917,6 +925,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 67 - right
   // 27 then 91 then 65 - up
   // 27 then 91 then 66 - down
+  // 27 then 91 then 50 then 75 - Erases the entire current line.
   // 27 then 91 then 51 then 126 - backwards delete
   // 27 then 91 then 52 then 126 - numpad end
   // 27 then 91 then 49 then 126 - numpad home
@@ -924,6 +933,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 54 then 126 - pgdn
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
+
 
   if (ch == 0) {
     inputState = IS_NONE; // ignore 0 - it's scary
@@ -978,6 +988,8 @@ void jsiHandleChar(char ch) {
         jsiHandleMoveUpDown(1);
     } else if (ch==49) {
       inputState=IS_HAD_27_91_49;
+    } else if (ch==50) {
+      inputState=IS_HAD_27_91_50;
     } else if (ch==51) {
       inputState=IS_HAD_27_91_51;
     } else if (ch==52) {
@@ -991,6 +1003,11 @@ void jsiHandleChar(char ch) {
     inputState = IS_NONE;
     if (ch==126) { // Numpad Home
       jsiHandleHome();
+    }
+  } else if (inputState==IS_HAD_27_91_50) {
+    inputState = IS_NONE;
+    if (ch==75) { // Erase current line
+      jsiClearInputLine();
     }
   } else if (inputState==IS_HAD_27_91_51) {
     inputState = IS_NONE;
@@ -1552,10 +1569,7 @@ void jsiLoop() {
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);
-    jsiConsoleRemoveInputLine();
-    // clear input line
-    jsvUnLock(inputLine);
-    inputLine = jsvNewFromEmptyString();
+    jsiClearInputLine();
   }
 
   // return console (if it was gone!)
