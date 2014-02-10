@@ -32,7 +32,8 @@ echo "Resetting device into boot mode"
 python sendcommand.py /dev/espruino_tester "var RST=A0,BT=A1;digitalWrite(BT,1);digitalPulse(RST,0,10);setTimeout(function() { digitalRead(BT); }, 100);" 
 sleep 1s
 echo "Flashing"
-python ../scripts/stm32loader.py -k -b 460800 -a 0x8002800 -ew -p /dev/espruino $BINARY
+#python ../scripts/stm32loader.py -k -b 460800 -a 0x8002800 -ew -p /dev/espruino $BINARY
+python ../scripts/stm32loader.py -k -b 460800 -a 0x8000000 -ew -p /dev/espruino $BINARY
 echo "Resetting device out of boot mode"
 python sendcommand.py /dev/espruino_tester "var RST=A0;digitalPulse(RST,0,10);"
 sleep 1s
