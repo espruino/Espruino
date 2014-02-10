@@ -187,7 +187,10 @@ void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
     jsWarn("Unable to load module");
   } else {
     JsVar *moduleName = jsvFindChildFromVar(moduleList, id, true);
-    if (moduleName) jsvSetValueOfName(moduleName, moduleExport);
+    if (moduleName) {
+      jsvSetValueOfName(moduleName, moduleExport);
+      jsvUnLock(moduleName);
+    }
     jsvUnLock(moduleExport);
   }
   jsvUnLock(moduleList);
