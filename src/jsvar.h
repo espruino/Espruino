@@ -427,6 +427,7 @@ typedef struct JsvStringIterator {
 // slight hack to enure we can use string iterator with const JsVars
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it,(JsVar*)str,startIdx)
 
+/// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx);
 
 /// Clone the string iterator

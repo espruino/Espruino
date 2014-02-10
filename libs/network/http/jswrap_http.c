@@ -299,7 +299,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
   JsVar *v;
 
-  v= jsvNewFromStringVar(url, pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  v = jsvNewFromStringVar(url, pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
   if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
   jsvUnLock(jsvObjectSetChild(obj, "path", v));
 
@@ -314,8 +314,8 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
   JsVar *query = (searchStart>=0)?jsvNewFromStringVar(url, searchStart+1, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull();
   if (parseQuery && !jsvIsNull(query)) {
+    JsVar *queryStr = query;
     jsvStringIteratorNew(&it, query, 0);
-    jsvUnLock(query);
     query = jsvNewWithFlags(JSV_OBJECT);
 
     JsVar *key = jsvNewFromEmptyString();
@@ -344,6 +344,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
       charIdx++;
     }
     jsvStringIteratorFree(&it);
+    jsvUnLock(queryStr);
 
     if (jsvGetStringLength(key)>0 || jsvGetStringLength(val)>0) {
       jsvMakeIntoVariableName(key, val);
