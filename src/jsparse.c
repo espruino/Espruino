@@ -1015,7 +1015,11 @@ JsVar *jspeFactorObject() {
     while (!JSP_HAS_ERROR && execInfo.lex->tk != '}') {
       JsVar *varName = 0;
       // we only allow strings or IDs on the left hand side of an initialisation
-      if (execInfo.lex->tk==LEX_ID ||
+      if (execInfo.lex->tk==LEX_ID) {
+        if (JSP_SHOULD_EXECUTE)
+          varName = jslGetTokenValueAsVar(execInfo.lex);
+        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(varName), contents);
+      } else if (
           execInfo.lex->tk==LEX_STR ||
           execInfo.lex->tk==LEX_FLOAT ||
           execInfo.lex->tk==LEX_INT ||
