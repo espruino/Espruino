@@ -487,7 +487,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
   for (pin=0;pin<JSH_PIN_COUNT;pin++)
     if (gpioShouldWatch[pin]) hasWatches = true;
 #endif
-
-  usleep(hasWatches ? 1000 : (10*1000)); // don't sleep much if we have watches - we need to keep polling them
+ 
+  unsigned int usecs = (unsigned int)(jshGetMillisecondsFromTime(timeUntilWake)*1000);
+  if (hasWatches && usecs>1000) 
+    usecs=1000; // don't sleep much if we have watches - we need to keep polling them
+  if (usecs >= 1000)  
+    usleep(usecs); 
   return true;
 }
