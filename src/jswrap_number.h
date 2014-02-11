@@ -13,3 +13,4 @@
  */
 #include "jsvar.h"
 
+JsVar *jswrap_number_toFixed(JsVar *parent, int decimals);

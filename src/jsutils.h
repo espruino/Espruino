@@ -338,6 +338,10 @@ JsVarFloat stringToFloat(const char *str);
 void itoa(JsVarInt val,char *str,unsigned int base);
 #endif
 char itoch(int val);
+
+// super ftoa that does fixed point and radix
+void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits);
+// normal ftoa with bounds checking
 void ftoa_bounded(JsVarFloat val,char *str, size_t len);
 
 /// Wrap a value so it is always between 0 and size (eg. wrapAround(angle, 360))

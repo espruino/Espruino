@@ -49,3 +49,17 @@
          "generate_full" : "(((JsVarFloat)1)/(JsVarFloat)0)",
          "return" : ["float", "Smallest representable value"]
 }*/
+
+/*JSON{ "type":"method", "class": "Number", "name" : "toFixed",
+         "description" : "Format the number as a fixed point number",
+         "generate" : "jswrap_number_toFixed",
+         "params" : [ [ "arguments", "int", "A number between 0 and 20 specifying the number of decimal digits after the decimal point"] ],
+         "return" : ["JsVar", "A string"]
+}*/
+JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
+  if (decimals<0) decimals=0;
+  if (decimals>20) decimals=20;
+  char buf[JS_NUMBER_BUFFER_SIZE];
+  ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), 10, decimals);
+  return jsvNewFromString(buf);
+}
