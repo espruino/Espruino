@@ -66,11 +66,14 @@ JsVar *jswrap_object_length(JsVar *parent) {
          "return" : ["JsVar", "A String representing the object"]
 }*/
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
-  if (jsvIsInt(arg0) && jsvIsInt(parent)) {
+  if (jsvIsInt(arg0) && jsvIsNumeric(parent)) {
     JsVarInt radix = jsvGetInteger(arg0);
     if (radix>=2 && radix<=36) {
       char buf[JS_NUMBER_BUFFER_SIZE];
-      itoa(parent->varData.integer, buf, (unsigned int)radix);
+      if (jsvIsInt(parent))
+        itoa(jsvGetInteger(parent), buf, (unsigned int)radix);
+      else
+        ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), (unsigned int)radix, -1);
       return jsvNewFromString(buf);
     }
   }
