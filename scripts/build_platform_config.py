@@ -41,7 +41,7 @@ print "HEADER_FILENAME "+headerFilename
 print "BOARD "+boardname
 # import the board def
 board = importlib.import_module(boardname)
-
+pins = board.get_pins()
 # -----------------------------------------------------------------------------------------
 
 LINUX = board.chip["family"]=="LINUX"
@@ -254,6 +254,20 @@ for device in simpleDevices:
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+
+if "SD" in board.devices:
+  if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
+    if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
+    if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
+    if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
+    if "pin_clk" in board.devices["SD"]: 
+      codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
+      sdClkPin = pinutils.findpin(pins, "P"+board.devices["SD"]["pin_clk"], False)
+      spiNum = 0
+      for func in sdClkPin["functions"]:
+        if func[:3]=="SPI": spiNum = int(func[3])
+      if spiNum==0: die("No SPI peripheral found for SD card's CLK pin")
+      codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
 
 for device in ["USB","SD","LCD"]:
