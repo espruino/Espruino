@@ -14,7 +14,6 @@
 #include "trigger.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
-#include "jshardware_pininfo.h"
 
 const int TRIGGER_LOOKAHEAD = 4;
 
