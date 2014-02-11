@@ -756,9 +756,14 @@ ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM 
 INCLUDE += -I$(ROOT)/targetlibs/arm
-OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections 
+OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
+
+# I've no idea why this breaks the bootloader, but it does. 
+# Given we've left 10k for it, there's no real reason to enable LTO anyway. 
+ifndef BOOTLOADER
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+endif
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

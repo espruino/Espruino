@@ -187,12 +187,17 @@ void initHardware() {
     startPtr();
   }
 
+  // PREEMPTION
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+
   RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
   RCC_PCLK2Config(RCC_HCLK_Div4);
 
 #ifdef ESPRUINOBOARD
+#ifndef DEBUG
   // reclaim A13 and A14 for the LEDs
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available
+#endif
 #endif
 
 
