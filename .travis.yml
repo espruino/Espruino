@@ -11,6 +11,7 @@ compiler:
 env:
   global:
     - RELEASE=1
+    - TRAVIS=1
   matrix:
     - ESPRUINO_1V0=1
     - ESPRUINO_1V1=1

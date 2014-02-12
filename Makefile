@@ -288,7 +288,7 @@ LINUX=1
 USE_FILESYSTEM=1
 USB=1
 USE_GRAPHICS=1
-#USE_LCD_SDL=1
+USE_LCD_SDL=1
 ifndef MACOSX
 # http libs need some tweaks before net can compile
 USE_NET=1
@@ -932,7 +932,9 @@ $(PROJ_NAME).srec : $(PROJ_NAME).elf
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,binary,bin)
 	@$(call obj_to_bin,binary,bin)
+ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
+endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
