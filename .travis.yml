@@ -14,6 +14,7 @@ env:
   matrix:
     - ESPRUINO_1V0=1
     - ESPRUINO_1V1=1
+    - ESPRUINO_1V3=1
     - OLIMEX=1
     - HYSTM32_24=1
     - HYSTM32_28=1
