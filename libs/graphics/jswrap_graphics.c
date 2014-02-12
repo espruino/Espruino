@@ -228,11 +228,14 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
          "generate" : "jswrap_graphics_setPixel",
          "params" : [ [ "x", "int", "The left" ],
                       [ "y", "int", "The top" ],
-                      [ "col", "int", "The color" ] ]
+                      [ "col", "JsVar", "The color" ] ]
 }*/
-void jswrap_graphics_setPixel(JsVar *parent, int x, int y, int color) {
+void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  graphicsSetPixel(&gfx, (short)x, (short)y, (unsigned int)color);
+  unsigned int col = gfx.data.fgColor;
+  if (!jsvIsUndefined(color)) 
+    col = (unsigned int)jsvGetInteger(color);
+  graphicsSetPixel(&gfx, (short)x, (short)y, col);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
 }
