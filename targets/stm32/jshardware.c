@@ -19,9 +19,6 @@
   #include "usb_pwr.h"
  #endif
 #endif
-#if USE_FILESYSTEM
-#include "diskio.h"
-#endif
 
 #include "jshardware.h"
 #include "jsutils.h"
@@ -637,9 +634,6 @@ void jshDoSysTick() {
     SysTickUSBWatchdog++;
   }
 #endif //USB
-#ifdef USE_FILESYSTEM
-  disk_timerproc();
-#endif
 }
 
 // ----------------------------------------------------------------------------

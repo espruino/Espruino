@@ -157,13 +157,3 @@ DRESULT disk_ioctl (
 
   return res;
 }
-
-
-/*-----------------------------------------------------------------------*/
-/* Device Timer Interrupt Procedure  (Platform dependent)                */
-/*-----------------------------------------------------------------------*/
-/* This function must be called in period of 10ms                        */
-
-RAMFUNC void disk_timerproc (void)
-{
-}

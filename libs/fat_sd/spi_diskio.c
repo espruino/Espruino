@@ -38,6 +38,14 @@
 #include "jshardware.h"
 #include "diskio.h"
 
+/* Card type flags (CardType) */
+#define CT_MMC                         0x01
+#define CT_SD1                         0x02
+#define CT_SD2                         0x04
+#define CT_SDC                         (CT_SD1|CT_SD2)
+#define CT_BLOCK                       0x08
+
+
 /* Definitions for MMC/SDC command */
 #define CMD0	(0x40+0)	/* GO_IDLE_STATE */
 #define CMD1	(0x40+1)	/* SEND_OP_COND (MMC) */
@@ -77,46 +85,12 @@ typedef DWORD socket_state_t;
 static volatile
 DSTATUS Stat = STA_NOINIT;	/* Disk status */
 
-static volatile
-DWORD Timer1, Timer2;	/* 100Hz decrement timers */
-
 static
 BYTE CardType;			/* Card type flags */
 
 enum speed_setting { INTERFACE_SLOW, INTERFACE_FAST };
 
-static void socket_wp_cp_init(void)
-{
-	return;
-}
-
-static inline socket_state_t socket_wp_cp_state(void)
-{
-	return 0;
-}
-
-static inline BOOL socket_is_empty( socket_state_t st )
-{
-	NOT_USED(st);
-	return FALSE; /* fake inserted */
-}
-
-static inline BOOL socket_is_write_protected( socket_state_t st )
-{
-    NOT_USED(st);
-	return FALSE; /* fake not protected */
-}
-
-static void card_power(BYTE on)
-{
-  NOT_USED(on);
-}
-
-static int chk_power(void) 
-{
-	return 1;
-}
-
+static inline bool chk_power() { return 1; }
 
 /*-----------------------------------------------------------------------*/
 /* Transmit/Receive a byte to MMC via SPI  (Platform dependent)          */
@@ -125,7 +99,7 @@ static BYTE stm32_spi_rw( BYTE out )
 {
     int b = jshSPISend(SD_SPI, (unsigned char)out);
     if (b<0) b = jshSPISend(SD_SPI, -1);
-    return b;
+    return (BYTE)b;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -159,11 +133,11 @@ BYTE wait_ready (void)
 	BYTE res;
 
 
-	Timer2 = 50;	/* Wait for ready in timeout of 500ms */
+	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(500);	/* Wait for ready in timeout of 500ms */
 	rcvr_spi();
 	do
 		res = rcvr_spi();
-	while ((res != 0xFF) && Timer2);
+	while ((res != 0xFF) && (jshGetSystemTime() < endTime));
 
 	return res;
 }
@@ -190,15 +164,6 @@ void release_spi (void)
 static
 void power_on (void)
 {
-	SPI_InitTypeDef  SPI_InitStructure;
-	GPIO_InitTypeDef GPIO_InitStructure;
-	volatile BYTE dummyread;
-
-	card_power(1);
-	socket_wp_cp_init();
-
-	for (Timer1 = 25; Timer1; );	/* Wait for 250ms */
-
 	/* Deselect the Card: Chip Select high */
 	DESELECT();
 
@@ -227,8 +192,6 @@ void power_off (void)
 	jshPinInput(SD_DO_PIN);
 	jshPinInput(SD_DI_PIN);
 	jshPinInput(SD_CLK_PIN);
-
-	card_power(0);
 	
 	Stat |= STA_NOINIT;		/* Set STA_NOINIT */
 }
@@ -239,7 +202,7 @@ void power_off (void)
 /*-----------------------------------------------------------------------*/
 
 static
-BOOL rcvr_datablock (
+bool rcvr_datablock (
 	BYTE *buff,			/* Data buffer to store received data */
 	UINT btr			/* Byte count (must be multiple of 4) */
 )
@@ -247,10 +210,10 @@ BOOL rcvr_datablock (
 	BYTE token;
 
 
-	Timer1 = 10;
-	do {							/* Wait for data packet in timeout of 100ms */
+	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(100); /* Wait for data packet in timeout of 100ms */
+	do {
 		token = rcvr_spi();
-	} while ((token == 0xFF) && Timer1);
+	} while ((token == 0xFF) && (jshGetSystemTime() < endTime));
 	if(token != 0xFE) return FALSE;	/* If not valid data token, return with error */
 
 	do {							/* Receive the data block into buffer */
@@ -274,7 +237,7 @@ BOOL rcvr_datablock (
 
 #if _READONLY == 0
 static
-BOOL xmit_datablock (
+bool xmit_datablock (
 	const BYTE *buff,	/* 512 byte data block to be transmitted */
 	BYTE token			/* Data/Stop token */
 )
@@ -382,12 +345,12 @@ DSTATUS disk_initialize (
 
 	ty = 0;
 	if (send_cmd(CMD0, 0) == 1) {			/* Enter Idle state */
-		Timer1 = 100;						/* Initialization timeout of 1000 msec */
+	    JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000); /* Initialization timeout of 1000 msec */
 		if (send_cmd(CMD8, 0x1AA) == 1) {	/* SDHC */
 			for (n = 0; n < 4; n++) ocr[n] = rcvr_spi();		/* Get trailing return value of R7 resp */
 			if (ocr[2] == 0x01 && ocr[3] == 0xAA) {			/* The card can work at vdd range of 2.7-3.6V */
-				while (Timer1 && send_cmd(ACMD41, 1UL << 30));	/* Wait for leaving idle state (ACMD41 with HCS bit) */
-				if (Timer1 && send_cmd(CMD58, 0) == 0) {		/* Check CCS bit in the OCR */
+				while ((jshGetSystemTime()<endTime) && send_cmd(ACMD41, 1UL << 30));	/* Wait for leaving idle state (ACMD41 with HCS bit) */
+				if ((jshGetSystemTime()<endTime) && send_cmd(CMD58, 0) == 0) {		/* Check CCS bit in the OCR */
 					for (n = 0; n < 4; n++) ocr[n] = rcvr_spi();
 					ty = (ocr[0] & 0x40) ? CT_SD2 | CT_BLOCK : CT_SD2;
 				}
@@ -398,8 +361,8 @@ DSTATUS disk_initialize (
 			} else {
 				ty = CT_MMC; cmd = CMD1;	/* MMC */
 			}
-			while (Timer1 && send_cmd(cmd, 0));			/* Wait for leaving idle state */
-			if (!Timer1 || send_cmd(CMD16, 512) != 0)	/* Set R/W block length to 512 */
+			while ((jshGetSystemTime()<endTime) && send_cmd(cmd, 0));			/* Wait for leaving idle state */
+			if (!(jshGetSystemTime()<endTime) || send_cmd(CMD16, 512) != 0)	/* Set R/W block length to 512 */
 				ty = 0;
 		}
 	}
@@ -440,7 +403,7 @@ DRESULT disk_read (
 	BYTE drv,			/* Physical drive number (0) */
 	BYTE *buff,			/* Pointer to the data buffer to store read data */
 	DWORD sector,		/* Start sector number (LBA) */
-	BYTE count			/* Sector count (1..255) */
+	BYTE count			/* Sector count */
 )
 {
 	if (drv || !count) return RES_PARERR;
@@ -482,7 +445,7 @@ DRESULT disk_write (
 	BYTE drv,			/* Physical drive number (0) */
 	const BYTE *buff,	/* Pointer to the data to be written */
 	DWORD sector,		/* Start sector number (LBA) */
-	BYTE count			/* Sector count (1..255) */
+	BYTE count			/* Sector count */
 )
 {
 	if (drv || !count) return RES_PARERR;
@@ -647,41 +610,3 @@ DRESULT disk_ioctl (
 	return res;
 }
 #endif /* _USE_IOCTL != 0 */
-
-
-/*-----------------------------------------------------------------------*/
-/* Device Timer Interrupt Procedure  (Platform dependent)                */
-/*-----------------------------------------------------------------------*/
-/* This function must be called in period of 10ms                        */
-
-RAMFUNC void disk_timerproc (void)
-{
-	static socket_state_t pv;
-	socket_state_t ns;
-	BYTE n, s;
-
-
-	/* 100Hz decrement timer  - ish*/
-	Timer1 = (Timer1>10) ? (Timer1-10) : 0;
-        Timer2 = (Timer2>10) ? (Timer2-10) : 0;
-
-	ns = pv;
-	pv = socket_wp_cp_state();	/* Sample socket switch */
-
-	if (ns == pv) {				/* Have contacts stabled? */
-		s = Stat;
-
-		if (socket_is_write_protected(pv))	/* WP is H (write protected) */
-			s |= STA_PROTECT;
-		else								/* WP is L (write enabled) */
-			s &= ~STA_PROTECT;
-
-		if (socket_is_empty(pv))			/* INS = H (Socket empty) */
-			s |= (STA_NODISK | STA_NOINIT);
-		else								/* INS = L (Card inserted) */
-			s &= ~STA_NODISK;
-
-		Stat = s;
-	}
-}
-
