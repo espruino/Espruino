@@ -38,6 +38,8 @@ typedef unsigned int size_t;
 #endif
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) // it is defined in this file too!
+#undef FALSE
+#undef TRUE
 typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 //typedef unsigned char bool;
 //#define TRUE (1)
