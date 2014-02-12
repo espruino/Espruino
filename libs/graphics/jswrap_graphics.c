@@ -46,7 +46,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==24 || bpp==32)) {
+  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
     jsWarn("Invalid BPP");
     return 0;
   }
@@ -93,7 +93,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==24 || bpp==32)) {
+  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
     jsWarn("Invalid BPP");
     return 0;
   }
