@@ -1475,7 +1475,9 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 //  PrescalerValue = (uint16_t) ((SystemCoreClock /2) / 28000000) - 1;
 //  TIM_TimeBaseStructure.TIM_Prescaler = PrescalerValue;
   TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIMx, &TIM_TimeBaseStructure);
+  if (TIMx->ARR != TIM_TimeBaseStructure.TIM_Period ||
+      TIMx->PSC != TIM_TimeBaseStructure.TIM_Prescaler)
+    TIM_TimeBaseInit(TIMx, &TIM_TimeBaseStructure);
 
   /* PWM1 Mode configuration*/
   TIM_OCInitTypeDef  TIM_OCInitStructure;
