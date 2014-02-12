@@ -384,8 +384,8 @@ ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/fat_sd
 SOURCES += \
 libs/fat_sd/fattime.c \
-libs/fat_sd/ff.c
-#libs/fat_sd/option/ccsbcs.c # for LFN support (see _USE_LFN in ff.h)
+libs/fat_sd/ff.c \
+libs/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
 ifdef USE_FILESYSTEM_SDIO
 DEFINES += -DUSE_FILESYSTEM_SDIO

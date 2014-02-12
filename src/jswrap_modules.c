@@ -73,13 +73,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     //if (jsvIsStringEqual(moduleName,"http")) {}
     //if (jsvIsStringEqual(moduleName,"fs")) {}
   #ifdef USE_FILESYSTEM
-    JsVar *modulePath = jsvNewFromString(
-  #ifdef LINUX
-        "node_modules/"
-  #else
-        "NODE_M~1/"
-  #endif
-        );
+    JsVar *modulePath = jsvNewFromString("node_modules/");
     if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
     jsvAppendString(modulePath,".js");
