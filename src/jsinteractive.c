@@ -223,7 +223,7 @@ void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCha
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
     if (erasePrevCharacter) {
-      jsiConsolePrint("/x08 "); // move cursor back and insert space
+      jsiConsolePrint("\x08 "); // move cursor back and insert space
     }
   }
   // move the cursor back up
@@ -808,7 +808,7 @@ void jsiHandleDelete(bool isBackspace) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
     if (isBackspace) {
       // delete newline char
-      jsiConsolePrint("/x08 "); // delete and then send space
+      jsiConsolePrint("\x08 "); // delete and then send space
       jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
     }
   }
