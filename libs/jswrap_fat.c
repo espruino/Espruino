@@ -109,18 +109,17 @@ bool jsfsInit() {
          "generate" : "wrap_fat_readdir",
          "description" : [ "List all files in the supplied directory, returning them as an array of strings.", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
          "params" : [ [ "path", "JsVar", "The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory" ] ],
-         "return" : [ "JsVar", "An array of filename strings" ]
+         "return" : [ "JsVar", "An array of filename strings (or undefined if the directory couldn't be listed)" ]
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readdirSync", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "wrap_fat_readdir",
          "description" : [ "List all files in the supplied directory, returning them as an array of strings." ],
          "params" : [ [ "path", "JsVar", "The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory" ] ],
-         "return" : [ "JsVar", "An array of filename strings" ]
+         "return" : [ "JsVar", "An array of filename strings (or undefined if the directory couldn't be listed)" ]
 }*/
 
 JsVar *wrap_fat_readdir(JsVar *path) {
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-  if (!arr) return 0; // out of memory
+  JsVar *arr = 0; // undefined unless we can open card
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
@@ -135,18 +134,24 @@ JsVar *wrap_fat_readdir(JsVar *path) {
     DIR dirs;
     if ((res=f_opendir(&dirs, pathStr)) == FR_OK) {
       FILINFO Finfo;
-      while (((res=f_readdir(&dirs, &Finfo)) == FR_OK) && Finfo.fname[0]) {
-        char *fn = GET_FILENAME(Finfo);
 #else
     DIR *dir = opendir(pathStr);
     if(dir) {
-      struct dirent *pDir=NULL;
-      while((pDir = readdir(dir)) != NULL) {
-        char *fn = (*pDir).d_name;
 #endif
-        JsVar *fnVar = jsvNewFromString(fn);
-        if (fnVar) // out of memory?
-          jsvArrayPush(arr, fnVar);
+      arr = jsvNewWithFlags(JSV_ARRAY);
+      if (arr) { // could be out of memory
+#ifndef LINUX
+        while (((res=f_readdir(&dirs, &Finfo)) == FR_OK) && Finfo.fname[0]) {
+          char *fn = GET_FILENAME(Finfo);
+#else
+        struct dirent *pDir=NULL;
+        while((pDir = readdir(dir)) != NULL) {
+          char *fn = (*pDir).d_name;
+#endif
+          JsVar *fnVar = jsvNewFromString(fn);
+          if (fnVar) // out of memory?
+            jsvArrayPush(arr, fnVar);
+        }
       }
 #ifdef LINUX
       closedir(dir);
@@ -245,21 +250,20 @@ void wrap_fat_appendFile(JsVar *path, JsVar *data) {
          "generate" : "wrap_fat_readFile",
          "description" : [ "Read all data from a file and return as a string", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
          "params" : [ [ "path", "JsVar", "The path of the file to read" ] ],
-         "return" : [ "JsVar", "A string containing the contents of the file" ]
+         "return" : [ "JsVar", "A string containing the contents of the file (or undefined if the file doesn't exist)" ]
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFileSync", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "wrap_fat_readFile",
          "description" : [ "Read all data from a file and return as a string" ],
          "params" : [ [ "path", "JsVar", "The path of the file to read" ] ],
-         "return" : [ "JsVar", "A string containing the contents of the file" ]
+         "return" : [ "JsVar", "A string containing the contents of the file (or undefined if the file doesn't exist)" ]
 }*/
 JsVar *wrap_fat_readFile(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
     jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
 
-  JsVar *result = jsvNewFromEmptyString();
-  if (!result) return 0; // out of memory
+  JsVar *result = 0; // undefined unless we read the file
 
   FRESULT res = 0;
   if (jsfsInit()) {
@@ -270,15 +274,18 @@ JsVar *wrap_fat_readFile(JsVar *path) {
     FILE *file = fopen(pathStr, "r");
     if (file) {
 #endif
-      // re-use pathStr buffer
-      size_t bytesRead = JS_DIR_BUF_SIZE;
-      while (res==FR_OK && bytesRead==JS_DIR_BUF_SIZE) {
+      result = jsvNewFromEmptyString();
+      if (result) { // out of memory?
+        // re-use pathStr buffer
+        size_t bytesRead = JS_DIR_BUF_SIZE;
+        while (res==FR_OK && bytesRead==JS_DIR_BUF_SIZE) {
 #ifndef LINUX
-        res = f_read (&file, pathStr, JS_DIR_BUF_SIZE, &bytesRead);
+          res = f_read (&file, pathStr, JS_DIR_BUF_SIZE, &bytesRead);
 #else
-        bytesRead = fread(pathStr,1,JS_DIR_BUF_SIZE,file);
+          bytesRead = fread(pathStr,1,JS_DIR_BUF_SIZE,file);
 #endif
-        jsvAppendStringBuf(result, pathStr, (int)bytesRead);
+          jsvAppendStringBuf(result, pathStr, (int)bytesRead);
+        }
       }
 #ifndef LINUX
       f_close(&file);
