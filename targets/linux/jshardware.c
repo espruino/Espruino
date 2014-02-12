@@ -491,6 +491,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
   unsigned int usecs = (unsigned int)(jshGetMillisecondsFromTime(timeUntilWake)*1000);
   if (hasWatches && usecs>1000) 
     usecs=1000; // don't sleep much if we have watches - we need to keep polling them
+  if (usecs > 50000)
+    usecs = 50000; // don't want to sleep too much (user input/HTTP/etc)
   if (usecs >= 1000)  
     usleep(usecs); 
   return true;
