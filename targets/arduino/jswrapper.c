@@ -664,19 +664,19 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
           // Object I2C1  (src/jswrap_spi_i2c.c)
           #if I2CS>=1
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "I2C1", "I2C");
+          return jspNewObject("I2C1", "I2C");
           #endif //I2CS>=1
         } else if (CMP2(name[3],'3','\0')) {
           // Object I2C3  (src/jswrap_spi_i2c.c)
           #if I2CS>=3
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "I2C3", "I2C");
+          return jspNewObject("I2C3", "I2C");
           #endif //I2CS>=3
         } else if (CMP2(name[3],'2','\0')) {
           // Object I2C2  (src/jswrap_spi_i2c.c)
           #if I2CS>=2
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "I2C2", "I2C");
+          return jspNewObject("I2C2", "I2C");
           #endif //I2CS>=2
         }
       } else if (CMP2(name[1],'n','t')) {
@@ -895,7 +895,7 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
         // Object USB  (src/jswrap_serial.c)
         #if defined(USB)
         jspParseVariableName();
-        return jspNewObject(jsiGetParser(), "USB", "Serial");
+        return jspNewObject("USB", "Serial");
         #endif //defined(USB)
       }
     } else if (CMP4(name[0],'t','r','a','c') && CMP2(name[4],'e','\0')) {
@@ -911,19 +911,19 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
           // Object SPI1  (src/jswrap_spi_i2c.c)
           #if SPIS>=1
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "SPI1", "SPI");
+          return jspNewObject("SPI1", "SPI");
           #endif //SPIS>=1
         } else if (CMP2(name[3],'3','\0')) {
           // Object SPI3  (src/jswrap_spi_i2c.c)
           #if SPIS>=3
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "SPI3", "SPI");
+          return jspNewObject("SPI3", "SPI");
           #endif //SPIS>=3
         } else if (CMP2(name[3],'2','\0')) {
           // Object SPI2  (src/jswrap_spi_i2c.c)
           #if SPIS>=2
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "SPI2", "SPI");
+          return jspNewObject("SPI2", "SPI");
           #endif //SPIS>=2
         }
       } else if (CMP4(name[1],'e','r','i','a') && name[5]=='l') {
@@ -931,37 +931,37 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
           // Object Serial1  (src/jswrap_serial.c)
           #if USARTS>=1
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial1", "Serial");
+          return jspNewObject("Serial1", "Serial");
           #endif //USARTS>=1
         } else if (CMP2(name[6],'3','\0')) {
           // Object Serial3  (src/jswrap_serial.c)
           #if USARTS>=3
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial3", "Serial");
+          return jspNewObject("Serial3", "Serial");
           #endif //USARTS>=3
         } else if (CMP2(name[6],'2','\0')) {
           // Object Serial2  (src/jswrap_serial.c)
           #if USARTS>=2
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial2", "Serial");
+          return jspNewObject("Serial2", "Serial");
           #endif //USARTS>=2
         } else if (CMP2(name[6],'5','\0')) {
           // Object Serial5  (src/jswrap_serial.c)
           #if USARTS>=5
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial5", "Serial");
+          return jspNewObject("Serial5", "Serial");
           #endif //USARTS>=5
         } else if (CMP2(name[6],'4','\0')) {
           // Object Serial4  (src/jswrap_serial.c)
           #if USARTS>=4
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial4", "Serial");
+          return jspNewObject("Serial4", "Serial");
           #endif //USARTS>=4
         } else if (CMP2(name[6],'6','\0')) {
           // Object Serial6  (src/jswrap_serial.c)
           #if USARTS>=6
           jspParseVariableName();
-          return jspNewObject(jsiGetParser(), "Serial6", "Serial");
+          return jspNewObject("Serial6", "Serial");
           #endif //USARTS>=6
         }
       }

@@ -74,8 +74,7 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   jsvSetValueOfName(dst, src);
 }
 
-void jspeiInit(JsParse *parse, JsLex *lex) {
-  execInfo.parse = parse;
+void jspeiInit(JsLex *lex) {
   execInfo.lex = lex;
   execInfo.scopeCount = 0;
   execInfo.execute = EXEC_YES;
@@ -83,7 +82,6 @@ void jspeiInit(JsParse *parse, JsLex *lex) {
 }
 
 void jspeiKill() {
-  execInfo.parse = 0;
   execInfo.lex = 0;
   assert(execInfo.scopeCount==0);
 }
@@ -113,18 +111,18 @@ JsVar *jspeiFindInScopes(const char *name) {
     JsVar *ref = jsvFindChildFromStringRef(execInfo.scopes[i], name, false);
     if (ref) return ref;
   }
-  return jsvFindChildFromString(execInfo.parse->root, name, false);
+  return jsvFindChildFromString(execInfo.root, name, false);
 }
 
 JsVar *jspeiFindOnTop(const char *name, bool createIfNotFound) {
   if (execInfo.scopeCount>0)
     return jsvFindChildFromStringRef(execInfo.scopes[execInfo.scopeCount-1], name, createIfNotFound);
-  return jsvFindChildFromString(execInfo.parse->root, name, createIfNotFound);
+  return jsvFindChildFromString(execInfo.root, name, createIfNotFound);
 }
 JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
   if (execInfo.scopeCount>0)
     return jsvFindChildFromVarRef(execInfo.scopes[execInfo.scopeCount-1], childName, createIfNotFound);
-  return jsvFindChildFromVar(execInfo.parse->root, childName, createIfNotFound);
+  return jsvFindChildFromVar(execInfo.root, childName, createIfNotFound);
 }
 
 /** Here we assume that we have already looked in the parent itself -
@@ -136,7 +134,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
 
     // if there's no inheritsFrom, just default to 'Object.prototype'
     if (!inheritsFrom) {
-      JsVar *obj = jsvObjectGetChild(execInfo.parse->root, "Object", 0);
+      JsVar *obj = jsvObjectGetChild(execInfo.root, "Object", 0);
       if (obj) {
         inheritsFrom = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
         jsvUnLock(obj);
@@ -155,7 +153,7 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
   } else { // Not actually an object - but might be an array/string/etc
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
-      JsVar *objName = jsvFindChildFromString(execInfo.parse->root, objectName, false);
+      JsVar *objName = jsvFindChildFromString(execInfo.root, objectName, false);
       if (objName) {
         JsVar *result = 0;
         JsVar *obj = jsvSkipNameAndUnLock(objName);
@@ -410,7 +408,7 @@ bool jspeFunctionArguments(JsVar *funcVar) {
 bool jspeParseNativeFunction(JsCallback callbackPtr) {
     char funcName[JSLEX_MAX_TOKEN_LENGTH];
     JsVar *funcVar;
-    JsVar *base = jsvLockAgain(execInfo.parse->root);
+    JsVar *base = jsvLockAgain(execInfo.root);
     JSP_MATCH(LEX_R_FUNCTION);
     // not too bothered about speed/memory here as only called on init :)
     strncpy(funcName, jslGetTokenValueAsString(execInfo.lex), JSLEX_MAX_TOKEN_LENGTH);
@@ -457,7 +455,7 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
     return true;
 }
 
-bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr) {
+bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
     JsVar *fncode = jsvNewFromString(funcDesc);
     if (!fncode) return false; // out of memory!
 
@@ -471,7 +469,7 @@ bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callb
     jsvUnLock(fncode);
 
     
-    jspeiInit(parse, &lex);
+    jspeiInit(&lex);
 
     // Parse
     bool success = jspeParseNativeFunction(callbackPtr);
@@ -772,7 +770,7 @@ JsVar *jspeFactorSingleId() {
     if (jswIsBuiltInObject(tokenName)) {
       JsVar *obj = jspNewBuiltin(tokenName);
       if (obj) { // not out of memory
-        a = jsvAddNamedChild(execInfo.parse->root, obj, tokenName);
+        a = jsvAddNamedChild(execInfo.root, obj, tokenName);
         jsvUnLock(obj);
       }
     } else {
@@ -1181,7 +1179,7 @@ JsVar *jspeFactor() {
       return jspeFunctionDefinition();
     } else if (execInfo.lex->tk==LEX_R_THIS) {
       JSP_MATCH(LEX_R_THIS);
-      return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.parse->root );
+      return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
       return jspeFactorTypeOf();
     } else if (execInfo.lex->tk==LEX_R_VOID) {
@@ -1468,7 +1466,7 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
         if (JSP_SHOULD_EXECUTE && lhs && !lhs->refs) {
           if (jsvIsName(lhs)/* && jsvGetStringLength(lhs)>0*/) {
             if (!jsvIsArrayBufferName(lhs))
-              jsvAddName(execInfo.parse->root, lhs);
+              jsvAddName(execInfo.root, lhs);
           } else // TODO: Why was this here? can it happen?
             jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastStart);
         }
@@ -1789,7 +1787,7 @@ JsVar *jspeStatementFor() {
     if (JSP_SHOULD_EXECUTE && !forStatement->refs) {
       // if the variable did not exist, add it to the scope
       addedIteratorToScope = true;
-      jsvAddName(execInfo.parse->root, forStatement);
+      jsvAddName(execInfo.root, forStatement);
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
     JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
@@ -1852,7 +1850,7 @@ JsVar *jspeStatementFor() {
     jslCharPosFree(&forBodyEnd);
 
     if (addedIteratorToScope) {
-      jsvRemoveChild(execInfo.parse->root, forStatement);
+      jsvRemoveChild(execInfo.root, forStatement);
     }
     jsvUnLock(forStatement);
     jsvUnLock(array);
@@ -2074,8 +2072,8 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
 }
 
 
-JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
-  JsVar *objFuncName = jsvFindChildFromString(parse->root, instanceOf, true);
+JsVar *jspNewObject(const char *name, const char *instanceOf) {
+  JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
   if (!objFuncName) // out of memory
     return 0;
 
@@ -2115,7 +2113,7 @@ JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
   jsvUnLock(jsvAddNamedChild(obj, objFuncName, JSPARSE_CONSTRUCTOR_VAR));
   jsvUnLock(objFuncName);
   if (name) {
-    JsVar *objName = jsvAddNamedChild(parse->root, obj, name);
+    JsVar *objName = jsvAddNamedChild(execInfo.root, obj, name);
     jsvUnLock(obj);
     if (!objName) { // out of memory
       return 0;
@@ -2128,7 +2126,7 @@ JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf) {
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
-  JsVar *objFunc = jsvObjectGetChild(execInfo.parse->root, constructorName, 0);
+  JsVar *objFunc = jsvObjectGetChild(execInfo.root, constructorName, 0);
   if (!objFunc) return false;
   bool isConstructor = objFunc == constructor;
   jsvUnLock(objFunc);
@@ -2137,28 +2135,29 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
 
 // -----------------------------------------------------------------------------
 
-void jspSoftInit(JsParse *parse) {
-  parse->root = jsvFindOrCreateRoot();
+void jspSoftInit() {
+  execInfo.root = jsvFindOrCreateRoot();
   // Root now has a lock and a ref
 }
 
 /** Is v likely to have been created by this parser? */
-bool jspIsCreatedObject(JsParse *parse, JsVar *v) {
+bool jspIsCreatedObject(JsVar *v) {
   return
-      v==parse->root;
+      v==execInfo.root;
 }
 
-void jspSoftKill(JsParse *parse) {
-  jsvUnLock(parse->root);
-  // Root now has just a ref
+void jspSoftKill() {
+  jsvUnLock(execInfo.root);
+  execInfo.root = 0;
+  // Root is now left with just a ref
 }
 
-void jspInit(JsParse *parse) {
-  jspSoftInit(parse);
+void jspInit() {
+  jspSoftInit();
 }
 
-void jspKill(JsParse *parse) {
-  jspSoftKill(parse);
+void jspKill() {
+  jspSoftKill();
   // Unreffing this should completely kill everything attached to root
   JsVar *r = jsvFindOrCreateRoot();
   jsvUnRef(r);
@@ -2167,7 +2166,7 @@ void jspKill(JsParse *parse) {
 
 
 
-JsVar *jspEvaluateVar(JsParse *parse, JsVar *str, JsVar *scope) {
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope) {
   JsLex lex;
   JsVar *v = 0;
   JSP_SAVE_EXECUTE();
@@ -2176,7 +2175,7 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str, JsVar *scope) {
   assert(jsvIsString(str));
   jslInit(&lex, str);
 
-  jspeiInit(parse, &lex);
+  jspeiInit(&lex);
   bool scopeAdded = false;
   if (scope)
     scopeAdded = jspeiAddScope(jsvGetRef(scope));
@@ -2202,22 +2201,22 @@ JsVar *jspEvaluateVar(JsParse *parse, JsVar *str, JsVar *scope) {
   return 0;
 }
 
-JsVar *jspEvaluate(JsParse *parse, const char *str) {
+JsVar *jspEvaluate(const char *str) {
   JsVar *v = 0;
 
   JsVar *evCode = jsvNewFromString(str);
   if (!jsvIsMemoryFull())
-    v = jspEvaluateVar(parse, evCode, 0);
+    v = jspEvaluateVar(evCode, 0);
   jsvUnLock(evCode);
 
   return v;
 }
 
-bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *parent, int argCount, JsVar **argPtr) {
+bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr) {
   JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
-  jspeiInit(parse, 0);
+  jspeiInit(0);
   JsVar *resultVar = jspeFunctionCall(func, 0, parent, false, argCount, argPtr);
   bool result = jsvGetBool(resultVar);
   jsvUnLock(resultVar);
@@ -2234,7 +2233,7 @@ bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *parent, int argCount
 
 
 /// Evaluate a JavaScript module and return its exports
-JsVar *jspEvaluateModule(JsParse *parse, JsVar *moduleContents) {
+JsVar *jspEvaluateModule(JsVar *moduleContents) {
   assert(jsvIsString(moduleContents));
   JsVar *scope = jsvNewWithFlags(JSV_OBJECT);
   if (!scope) return 0; // out of mem
@@ -2242,7 +2241,7 @@ JsVar *jspEvaluateModule(JsParse *parse, JsVar *moduleContents) {
   if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
   jsvUnLock(jsvAddNamedChild(scope, scopeExports, "exports"));
 
-  jsvUnLock(jspEvaluateVar(parse, moduleContents, scope));
+  jsvUnLock(jspEvaluateVar(moduleContents, scope));
 
   jsvUnLock(scope);
   return scopeExports;

@@ -68,7 +68,7 @@ JsVar *jswrap_arguments() {
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(jsiGetParser(), s, 0);
+  JsVar *result = jspEvaluateVar(s, 0);
   jsvUnLock(s);
   return result;
 }

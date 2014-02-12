@@ -78,7 +78,7 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
 }
 
 static JsVar *httpGetArray(const char *name, bool create) {
-  JsVar *arrayName = jsvFindChildFromString(jsiGetParser()->root, name, create);
+  JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, create);
   JsVar *arr = jsvSkipName(arrayName);
   if (!arr && create) {
     arr = jsvNewWithFlags(JSV_ARRAY);
@@ -561,8 +561,8 @@ void httpIdle() {
         int theClient = accept(socket,0,0);
   #endif
         if (theClient > -1) {
-          JsVar *req = jspNewObject(jsiGetParser(), 0, "httpSRq");
-          JsVar *res = jspNewObject(jsiGetParser(), 0, "httpSRs");
+          JsVar *req = jspNewObject(0, "httpSRq");
+          JsVar *res = jspNewObject(0, "httpSRs");
           if (res && req) { // out of memory?
             JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS, true);
             if (arr) {
@@ -607,7 +607,7 @@ JsVar *httpServerNew(JsVar *callback) {
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return 0; // out of memory
 
-  JsVar *server = jspNewObject(jsiGetParser(),0,"httpSrv");
+  JsVar *server = jspNewObject(0, "httpSrv");
   if (!server) {
     jsvUnLock(arr);
     return 0; // out of memory
@@ -662,8 +662,8 @@ void httpServerListen(JsVar *server, int port) {
 JsVar *httpClientRequestNew(JsVar *options, JsVar *callback) {
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,true);
   if (!arr) return 0;
-  JsVar *req = jspNewObject(jsiGetParser(), 0, "httpCRq");
-  JsVar *res = jspNewObject(jsiGetParser(), 0, "httpCRs");
+  JsVar *req = jspNewObject(0, "httpCRq");
+  JsVar *res = jspNewObject(0, "httpCRs");
   if (res && req) { // out of memory?
    jsvUnLock(jsvAddNamedChild(req, callback, HTTP_NAME_ON_CONNECT));
 

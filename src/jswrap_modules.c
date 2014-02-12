@@ -24,7 +24,7 @@
 #endif
 
 static JsVar *jswrap_modules_getModuleList() {
-  JsVar *moduleListName = jsvFindChildFromString(jsiGetParser()->root, JSPARSE_MODULE_CACHE_NAME, true);
+  JsVar *moduleListName = jsvFindChildFromString(execInfo.root, JSPARSE_MODULE_CACHE_NAME, true);
   if (!moduleListName) return 0; // out of memory
   JsVar *moduleList = jsvSkipName(moduleListName);
   if (!moduleList) {
@@ -86,7 +86,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
       jsWarn("Module not found");
       return 0;
     }
-    moduleExport = jspEvaluateModule(jsiGetParser(), fileContents);
+    moduleExport = jspEvaluateModule(fileContents);
     jsvUnLock(fileContents);
   }
 
@@ -176,7 +176,7 @@ void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return; // out of memory
 
-  JsVar *moduleExport = jspEvaluateModule(jsiGetParser(), sourceCode);
+  JsVar *moduleExport = jspEvaluateModule(sourceCode);
   if (!moduleExport) {
     jsWarn("Unable to load module");
   } else {

@@ -38,7 +38,7 @@
          "return" : ["JsVar", "A WLAN Object"]
 }*/
 JsVar *jswrap_cc3000_connect() {
-  JsVar *wlanObj = jspNewObject(jsiGetParser(), 0, "WLAN");
+  JsVar *wlanObj = jspNewObject(0, "WLAN");
   cc3000_initialise(wlanObj);
   return wlanObj;
 }

@@ -236,7 +236,6 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     jsvUnLock(timerPtr);
   }
   jsvUnLock(skippedFunc);
-  //jsvTrace(jsiGetParser()->root, 0);
   return itemIndex;
 }
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {

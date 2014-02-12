@@ -33,7 +33,6 @@ void jsiLoop();
 bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
-JsParse *jsiGetParser();
 
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1);

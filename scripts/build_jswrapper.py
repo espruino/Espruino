@@ -160,7 +160,7 @@ def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
   if "#if" in obj: codeOut(indent+"#if "+obj["#if"]);
   codeOut(indent+"jspParseVariableName();")
-  codeOut(indent+"return jspNewObject(jsiGetParser(), \""+obj["name"]+"\", \""+obj["instanceof"]+"\");");
+  codeOut(indent+"return jspNewObject(\""+obj["name"]+"\", \""+obj["instanceof"]+"\");");
   if "#if" in obj: codeOut(indent+"#endif //"+obj["#if"]);
 
 def codeOutFunction(indent, func):

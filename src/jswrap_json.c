@@ -47,7 +47,7 @@ JsVar *jswrap_json_parse(JsVar *v) {
     v = jsvAsString(v, true); // try and get this as a string
     jsvAppendStringVarComplete(bracketed, v);
     jsvAppendString(bracketed, ")");
-    res = jspEvaluateVar(jsiGetParser(), bracketed, 0);
+    res = jspEvaluateVar(bracketed, 0);
     jsvUnLock(bracketed);
   }
   return res;

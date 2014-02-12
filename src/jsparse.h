@@ -17,18 +17,13 @@
 #include "jsvar.h"
 #include "jslex.h"
 
-
-typedef struct {
-  JsVar  *root;   ///< root of symbol table
-} JsParse;
-
-void jspInit(JsParse *parse);
-void jspKill(JsParse *parse);
+void jspInit();
+void jspKill();
 
 // jspSoft* - 'release' or 'claim' anything we are using, but ensure that it doesn't get freed
-void jspSoftInit(JsParse *parse); ///< used when recovering from or saving to flash
-void jspSoftKill(JsParse *parse); ///< used when recovering from or saving to flash
-bool jspIsCreatedObject(JsParse *parse, JsVar *v); ///< Is v likely to have been created by this parser?
+void jspSoftInit(); ///< used when recovering from or saving to flash
+void jspSoftKill(); ///< used when recovering from or saving to flash
+bool jspIsCreatedObject(JsVar *v); ///< Is v likely to have been created by this parser?
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName);
@@ -38,7 +33,7 @@ JsVar *jspNewBuiltin(const char *name);
 /** Create a new object of the given instance and add it to root with name 'name'.
  * If name!=0, added to root with name, and the name is returned
  * If name==0, not added to root and Object itself returned */
-JsVar *jspNewObject(JsParse *parse, const char *name, const char *instanceOf);
+JsVar *jspNewObject(const char *name, const char *instanceOf);
 
 /// if interrupting execution, this is set
 bool jspIsInterrupted();
@@ -47,13 +42,13 @@ void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
 
-bool jspAddNativeFunction(JsParse *parse, const char *funcDesc, JsCallback callbackPtr);
-JsVar *jspEvaluateVar(JsParse *parse, JsVar *str, JsVar *scope);
-JsVar *jspEvaluate(JsParse *parse, const char *str);
-bool jspExecuteFunction(JsParse *parse, JsVar *func, JsVar *parent, int argCount, JsVar **argPtr);
+bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr);
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
+JsVar *jspEvaluate(const char *str);
+bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
-JsVar *jspEvaluateModule(JsParse *parse, JsVar *moduleContents);
+JsVar *jspEvaluateModule(JsVar *moduleContents);
 
 /** When parsing, this enum defines whether
  we are executing or not */
@@ -79,7 +74,7 @@ typedef enum  {
 /** This structure is used when parsing the JavaScript. It contains
  * everything that should be needed. */
 typedef struct {
-  JsParse *parse;
+  JsVar  *root;   ///< root of symbol table
   JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed
@@ -90,6 +85,10 @@ typedef struct {
 
   JsExecFlags execute;
 } JsExecInfo;
+
+/* Info about execution when Parsing - this saves passing it on the stack
+ * for each call */
+extern JsExecInfo execInfo;
 
 /// flags for jspParseFunction
 typedef enum {

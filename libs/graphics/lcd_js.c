@@ -28,7 +28,7 @@ void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
       args[0] = jsvNewFromInteger(x);
       args[1] = jsvNewFromInteger(y);
       args[2] = jsvNewFromInteger(col);
-      jspExecuteFunction(jsiGetParser(), setPixel, gfx->graphicsVar, 3, args);
+      jspExecuteFunction(setPixel, gfx->graphicsVar, 3, args);
       jsvUnLock(args[0]);
       jsvUnLock(args[1]);
       jsvUnLock(args[2]);

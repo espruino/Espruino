@@ -397,7 +397,7 @@ bool cc3000_socket_has_closed(int socketNum) {
 }
 
 static void cc3000_state_change(const char *data) {
-  JsVar *wlanObj = jsvObjectGetChild(jsiGetParser()->root, CC3000_OBJ_NAME, 0);
+  JsVar *wlanObj = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
   JsVar *dataVar = jsvNewFromString(data);
   if (wlanObj)
     jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, dataVar, 0);
@@ -444,7 +444,7 @@ void cc3000_write_en_pin( unsigned char val )
 }
 
 void cc3000_initialise(JsVar *wlanObj) {
-  jsvObjectSetChild(jsiGetParser()->root, CC3000_OBJ_NAME, wlanObj);
+  jsvObjectSetChild(execInfo.root, CC3000_OBJ_NAME, wlanObj);
 
   cc3000_spi_open();
   wlan_init(cc3000_usynch_callback,

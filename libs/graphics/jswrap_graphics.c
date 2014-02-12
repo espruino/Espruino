@@ -51,7 +51,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     return 0;
   }
 
-  JsVar *parent = jspNewObject(jsiGetParser(), 0, "Graphics");
+  JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
@@ -104,7 +104,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     return 0;
   }
 
-  JsVar *parent = jspNewObject(jsiGetParser(), 0, "Graphics");
+  JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) return 0; // low memory
 
   JsGraphics gfx;
@@ -134,7 +134,7 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
     return 0;
   }
 
-  JsVar *parent = jspNewObject(jsiGetParser(), 0, "Graphics");
+  JsVar *parent = jspNewObject(0, "Graphics");
   if (!parent) return 0; // low memory
   JsGraphics gfx;
   graphicsStructInit(&gfx);

@@ -64,7 +64,6 @@ Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 bool echo;                  ///< do we provide any user feedback?
 bool allowDeepSleep;
 // ----------------------------------------------------------------------------
-JsParse p; ///< The parser we're using for interactiveness
 JsVar *inputLine = 0; ///< The current input line
 bool inputLineRemoved = false;
 int inputCursorPos = 0; ///< The position of the cursor in the input line
@@ -81,7 +80,7 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
   const char *deviceName = jshGetDeviceString(device);
-  return jsvFindChildFromString(p.root, deviceName, false);
+  return jsvFindChildFromString(execInfo.root, deviceName, false);
 }
 
 static inline bool jsiShowInputLine() {
@@ -343,7 +342,7 @@ void jsiSetSleep(bool isSleep) {
 }
 
 static JsVarRef _jsiInitNamedArray(const char *name) {
-  JsVar *arrayName = jsvFindChildFromString(p.root, name, true);
+  JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, true);
   if (!arrayName) return 0; // out of memory
   if (!arrayName->firstChild) {
     JsVar *array = jsvNewWithFlags(JSV_ARRAY);
@@ -367,7 +366,7 @@ void jsiSoftInit() {
   httpInit();
 #endif
 #ifdef USE_LCD_FSMC
-  JsVar *parent = jspNewObject(jsiGetParser(), "LCD", "Graphics");
+  JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
     JsVar *parentObj = jsvSkipName(parent);
     JsGraphics gfx;
@@ -397,13 +396,13 @@ void jsiSoftInit() {
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
   // Now run initialisation code
-  JsVar *initName = jsvFindChildFromString(p.root, JSI_INIT_CODE_NAME, false);
+  JsVar *initName = jsvFindChildFromString(execInfo.root, JSI_INIT_CODE_NAME, false);
   if (initName && initName->firstChild) {
     //jsiConsolePrint("Running initialisation code...\n");
     JsVar *initCode = jsvLock(initName->firstChild);
-    jsvUnLock(jspEvaluateVar(&p, initCode, 0));
+    jsvUnLock(jspEvaluateVar(initCode, 0));
     jsvUnLock(initCode);
-    jsvRemoveChild(p.root, initName);
+    jsvRemoveChild(execInfo.root, initName);
   }
   jsvUnLock(initName);
 
@@ -439,14 +438,14 @@ void jsiSoftInit() {
     jsvUnLock(timerArrayPtr);
   }
   // And look for onInit function
-  JsVar *onInit = jsvFindChildFromString(p.root, JSI_ONINIT_NAME, false);
+  JsVar *onInit = jsvFindChildFromString(execInfo.root, JSI_ONINIT_NAME, false);
   if (onInit && onInit->firstChild) {
     if (echo) jsiConsolePrint("Running onInit()...\n");
     JsVar *func = jsvSkipName(onInit);
     if (jsvIsFunction(func))
-      jspExecuteFunction(&p, func, 0, 0, (JsVar**)0);
+      jspExecuteFunction(func, 0, 0, (JsVar**)0);
     else if (jsvIsString(func))
-      jsvUnLock(jspEvaluateVar(&p, func, 0));
+      jsvUnLock(jspEvaluateVar(func, 0));
     else
       jsError("onInit is not a Function or a String");
   }
@@ -455,7 +454,7 @@ void jsiSoftInit() {
 
 /** Append the code required to initialise a serial port to this string */
 void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addCallbacks) {
-  JsVar *serialVar = jsvObjectGetChild(p.root, serialName, 0);
+  JsVar *serialVar = jsvObjectGetChild(execInfo.root, serialName, 0);
   if (serialVar) {
     if (addCallbacks) {
       JsVar *onData = jsvSkipOneNameAndUnLock(jsvFindChildFromString(serialVar, USART_CALLBACK_NAME, false));
@@ -488,7 +487,7 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
 
 /** Append the code required to initialise a SPI port to this string */
 void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
-  JsVar *deviceVar = jsvObjectGetChild(p.root, deviceName, 0);
+  JsVar *deviceVar = jsvObjectGetChild(execInfo.root, deviceName, 0);
   if (deviceVar) {
     JsVar *options = jsvObjectGetChild(deviceVar, DEVICE_OPTIONS_NAME, 0);
     if (options) {
@@ -582,7 +581,7 @@ void jsiSoftKill() {
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
     jsiAppendHardwareInitialisation(initCode, false);
-    jsvObjectSetChild(p.root, JSI_INIT_CODE_NAME, initCode);
+    jsvObjectSetChild(execInfo.root, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
 
@@ -593,7 +592,7 @@ void jsiSoftKill() {
 
 void jsiInit(bool autoLoad) {
   jsvInit();
-  jspInit(&p);
+  jspInit();
 
 #ifdef USE_LCD
  lcdInit_Main(&LCD);
@@ -625,13 +624,13 @@ void jsiInit(bool autoLoad) {
      Try and load from it... */
   bool loadFlash = autoLoad && jshFlashContainsCode();
   if (loadFlash) {
-    jspSoftKill(&p);
+    jspSoftKill();
     jsvSoftKill();
     jshLoadFromFlash();
     jsvSoftInit();
-    jspSoftInit(&p);
+    jspSoftInit();
   }
-  //jsvTrace(jsvGetRef(jsiGetParser()->root), 0)
+  //jsvTrace(jsvGetRef(execInfo.root), 0)
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
@@ -661,7 +660,7 @@ void jsiInit(bool autoLoad) {
 void jsiKill() {
   jsiSoftKill();
 
-  jspKill(&p);
+  jspKill();
   jsvKill();
 }
 
@@ -685,7 +684,7 @@ int jsiCountBracketsInInput() {
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
-  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
   if (!history) return 0;
   JsVar *item = jsvArrayPopFirst(history);
   bool freed = item!=0;
@@ -698,7 +697,7 @@ bool jsiFreeMoreMemory() {
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
   if (!newLine || jsvGetStringLength(newLine)==0) return;
-  JsVar *history = jsvFindChildFromString(p.root, JSI_HISTORY_NAME, true);
+  JsVar *history = jsvFindChildFromString(execInfo.root, JSI_HISTORY_NAME, true);
   if (!history) return; // out of memory
   // ensure we actually have the history array
   if (!history->firstChild) {
@@ -723,7 +722,7 @@ void jsiHistoryAddLine(JsVar *newLine) {
 }
 
 JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
-  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
   JsVar *historyLine = 0;
   if (history) {
     JsVar *idx = jsvGetArrayIndexOf(history, inputLine, true/*exact*/); // get index of current line
@@ -745,7 +744,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
 }
 
 bool jsiIsInHistory(JsVar *line) {
-  JsVar *history = jsvObjectGetChild(p.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
   if (!history) return false;
   JsVar *historyFound = jsvGetArrayIndexOf(history, line, true/*exact*/);
   bool inHistory = historyFound!=0;
@@ -1023,7 +1022,7 @@ void jsiHandleChar(char ch) {
           inputLine = jsvNewFromEmptyString();
           inputCursorPos = 0;
           // execute!
-          JsVar *v = jspEvaluateVar(&p, lineToExecute, 0);
+          JsVar *v = jspEvaluateVar(lineToExecute, 0);
           // add input line to history
           jsiHistoryAddLine(lineToExecute);
           jsvUnLock(lineToExecute);
@@ -1149,9 +1148,9 @@ void jsiExecuteEvents() {
     // now run..
     if (func) {
       if (jsvIsFunction(func))
-        jspExecuteFunction(&p, func, 0, 2, args);
+        jspExecuteFunction(func, 0, 2, args);
       else if (jsvIsString(func))
-        jsvUnLock(jspEvaluateVar(&p, func, 0));
+        jsvUnLock(jspEvaluateVar(func, 0));
       else 
         jsError("Unknown type of callback in Event Queue");
     }
@@ -1183,9 +1182,9 @@ void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // 
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
        JsVar *parent = 0;
-       jspExecuteFunction(&p, callbackNoNames, parent, 2, args);
+       jspExecuteFunction(callbackNoNames, parent, 2, args);
     } else if (jsvIsString(callbackNoNames))
-      jsvUnLock(jspEvaluateVar(&p, callbackNoNames, 0));
+      jsvUnLock(jspEvaluateVar(callbackNoNames, 0));
     else 
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
@@ -1487,22 +1486,22 @@ void jsiIdle() {
 
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
-      jspSoftKill(&p);
+      jspSoftKill();
       jsvSoftKill();
       jshSaveToFlash();
       jsvSoftInit();
-      jspSoftInit(&p);
+      jspSoftInit();
       jsiSoftInit();
     }
     if (todo & TODO_FLASH_LOAD) {
       todo &= (TODOFlags)~TODO_FLASH_LOAD;
 
       jsiSoftKill();
-      jspSoftKill(&p);
+      jspSoftKill();
       jsvSoftKill();
       jshLoadFromFlash();
       jsvSoftInit();
-      jspSoftInit(&p);
+      jspSoftInit();
       jsiSoftInit();
     }
     jsiSetBusy(BUSY_INTERACTIVE, false);
@@ -1586,14 +1585,14 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
 
 /** Output current interpreter state such that it can be copied to a new device */
 void jsiDumpState() {
-  JsVarRef childRef = p.root->firstChild;
+  JsVarRef childRef = execInfo.root->firstChild;
   while (childRef) {
     JsVar *child = jsvLock(childRef);
     char childName[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(child, childName, JSLEX_MAX_TOKEN_LENGTH);
 
     JsVar *data = jsvSkipName(child);
-    if (jspIsCreatedObject(&p, data) || jswIsBuiltInObject(childName)) {
+    if (jspIsCreatedObject(data) || jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(child, data);
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
@@ -1699,10 +1698,6 @@ void jsiDumpState() {
 
 void jsiSetTodo(TODOFlags newTodo) {
   todo = newTodo;
-}
-
-JsParse *jsiGetParser() {
-  return &p;
 }
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {

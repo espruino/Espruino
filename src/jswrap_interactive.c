@@ -66,7 +66,7 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 }*/
 void jswrap_interface_trace(JsVar *root) {
   if (jsvIsUndefined(root)) {
-    jsvTrace(jsvGetRef(jsiGetParser()->root), 0);
+    jsvTrace(jsvGetRef(execInfo.root), 0);
   } else {
     jsvTrace(jsvGetRef(root), 0);
   }
@@ -141,7 +141,7 @@ void jswrap_interface_edit(JsVar *funcName) {
     if (jsvIsName(funcName))
       func = jsvSkipName(funcName);
     else
-      func = jsvSkipNameAndUnLock(jsvFindChildFromVar(jsiGetParser()->root, funcName, 0));
+      func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
       JsVarRef scope = jsvGetRef(scopeVar);

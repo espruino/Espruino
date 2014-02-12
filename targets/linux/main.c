@@ -58,15 +58,15 @@ bool run_test(const char *filename) {
   jshInit();
   jsiInit(false /* do not autoload!!! */);
 
-  jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-  jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);
+  jspAddNativeFunction("function quit()", nativeQuit);
+  jspAddNativeFunction("function interrupt()", nativeInterrupt);
 
-  jsvUnLock(jspEvaluate(jsiGetParser(), buffer ));
+  jsvUnLock(jspEvaluate(buffer ));
 
   isRunning = true;
   while (isRunning && jsiHasTimers()) jsiLoop();
 
-  JsVar *result = jsvObjectGetChild(jsiGetParser()->root, "result", 0/*no create*/);
+  JsVar *result = jsvObjectGetChild(execInfo.root, "result", 0/*no create*/);
   bool pass = jsvGetBool(result);
   jsvUnLock(result);
 
@@ -75,12 +75,12 @@ bool run_test(const char *filename) {
   else {
     printf("----------------------------------\r\n");
     printf("----------------------------- FAIL %s <-------\r\n", filename);
-    jsvTrace(jsvGetRef(jsiGetParser()->root), 0);
+    jsvTrace(jsvGetRef(execInfo.root), 0);
     printf("----------------------------- FAIL %s <-------\r\n", filename);
     printf("----------------------------------\r\n");
   }
   printf("BEFORE: %d Memory Records Used\r\n", jsvGetMemoryUsage());
- // jsvTrace(jsiGetParser()->root, 0);
+ // jsvTrace(execInfo.root, 0);
   jsiKill();
   printf("AFTER: %d Memory Records Used\r\n", jsvGetMemoryUsage());
   jsvGarbageCollect();
@@ -221,8 +221,8 @@ int main(int argc, char **argv) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
         jsiInit(true);
-        jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-        jsvUnLock(jspEvaluate(jsiGetParser(), argv[i+1]));
+        jspAddNativeFunction("function quit()", nativeQuit);
+        jsvUnLock(jspEvaluate(argv[i+1]));
         isRunning = true;
         while (isRunning && jsiHasTimers()) jsiLoop();
         jsiKill();
@@ -268,8 +268,8 @@ int main(int argc, char **argv) {
     }
     jshInit();
     jsiInit(false /* do not autoload!!! */);
-    jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-    jsvUnLock(jspEvaluate(jsiGetParser(), cmd ));
+    jspAddNativeFunction("function quit()", nativeQuit);
+    jsvUnLock(jspEvaluate(cmd ));
     free(buffer);
     isRunning = true;
     while (isRunning && jsiHasTimers()) jsiLoop();
@@ -305,8 +305,8 @@ int main(int argc, char **argv) {
   jshInit();
   jsiInit(true);
 
-  jspAddNativeFunction(jsiGetParser(), "function quit()", nativeQuit);
-  jspAddNativeFunction(jsiGetParser(), "function interrupt()", nativeInterrupt);
+  jspAddNativeFunction("function quit()", nativeQuit);
+  jspAddNativeFunction("function interrupt()", nativeInterrupt);
 
   while (isRunning) {
     jsiLoop();
