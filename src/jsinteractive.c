@@ -118,14 +118,14 @@ IOEventFlags jsiGetConsoleDevice() {
   return consoleDevice;
 }
 
-void jsiConsolePrintChar(char data) {
+NO_INLINE void jsiConsolePrintChar(char data) {
   jshTransmit(consoleDevice, (unsigned char)data);
 }
 
-void jsiConsolePrint(const char *str) {
+NO_INLINE void jsiConsolePrint(const char *str) {
   while (*str) {
-       if (*str == '\n') jsiConsolePrintChar('\r');
-       jsiConsolePrintChar(*(str++));
+    if (*str == '\n') jsiConsolePrintChar('\r');
+    jsiConsolePrintChar(*(str++));
   }
 }
 
@@ -137,7 +137,7 @@ void jsiConsolePrintf(const char *fmt, ...) {
 }
 
 
-void jsiConsolePrintInt(JsVarInt d) {
+NO_INLINE void jsiConsolePrintInt(JsVarInt d) {
     char buf[32];
     itoa(d, buf, 10);
     jsiConsolePrint(buf);
@@ -198,12 +198,9 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
     if (line>1) { 
       // clear the character before - this would have had a colon
-      jsiConsolePrintChar(0x08);
-      jsiConsolePrintChar(' ');
+      jsiConsolePrint("\x08 ");
       // move cursor up      
-      jsiConsolePrintChar(27);
-      jsiConsolePrintChar(91); 
-      jsiConsolePrintChar(65);
+      jsiConsolePrint("\x1B[A"); // 27,91,65 - up
     }
   }
 }
@@ -222,56 +219,39 @@ void jsiConsoleEraseStringVarFrom(JsVar *v, int fromCharacter, bool erasePrevCha
 
   int line, lines = jsvGetLinesInString(v);
   for (line=cursorLine+1;line<=lines;line++) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(66); // move down
+    jsiConsolePrint("\x1B[B"); // move down
     chars = jsvGetCharsOnLine(v, line);
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
     if (erasePrevCharacter) {
-      jsiConsolePrintChar(0x08); // move cursor back
-      jsiConsolePrintChar(' ');
+      jsiConsolePrint("/x08 "); // move cursor back and insert space
     }
   }
   // move the cursor back up
-  for (line=cursorLine+1;line<=lines;line++) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(65);
-  }
+  for (line=cursorLine+1;line<=lines;line++)
+    jsiConsolePrint("\x1B[A"); // 27,91,65 - up
   // move the cursor forwards
-  for (i=1;i<cursorCol;i++) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(67);
-  }
+  for (i=1;i<cursorCol;i++)
+    jsiConsolePrint("\x1B[C"); // 27,91,67 - right
 }
 
 void jsiMoveCursor(int oldX, int oldY, int newX, int newY) {
   // see http://www.termsys.demon.co.uk/vtansi.htm - we could do this better
   // move cursor
   while (oldX < newX) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(67);
+    jsiConsolePrint("\x1B[C"); // 27,91,67 - right
     oldX++;
   }
   while (oldX > newX) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(68);
+    jsiConsolePrint("\x1B[D"); // 27,91,68 - left
     oldX--;
   }
   while (oldY < newY) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(66);
+    jsiConsolePrint("\x1B[B"); // 27,91,66 - down
     oldY++;
   }
   while (oldY > newY) {
-    jsiConsolePrintChar(27);
-    jsiConsolePrintChar(91);
-    jsiConsolePrintChar(65);
+    jsiConsolePrint("\x1B[A"); // 27,91,65 - up
     oldY--;
   }
 }
@@ -302,8 +282,7 @@ void jsiReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (echo) { // intentionally not using jsiShowInputLine()
-      jsiConsolePrintChar('\r'); // carriage return
-      jsiConsolePrintChar('>');
+      jsiConsolePrint("\r>"); // carriage return and '>'
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, (int)jsvGetStringLength(inputLine), inputCursorPos);
     }
@@ -323,8 +302,7 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos) {
   jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, false);
   jsiConsolePrint("\n");
   while (col-- > 0) jsiConsolePrintChar(' ');
-  jsiConsolePrintChar('^');
-  jsiConsolePrint("\n");
+  jsiConsolePrint("^\n");
 }
 
 
@@ -831,8 +809,7 @@ void jsiHandleDelete(bool isBackspace) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
     if (isBackspace) {
       // delete newline char
-      jsiConsolePrintChar(0x08);
-      jsiConsolePrintChar(' ');
+      jsiConsolePrint("/x08 "); // delete and then send space
       jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
     }
   }
@@ -960,18 +937,14 @@ void jsiHandleChar(char ch) {
       if (inputCursorPos>0 && jsvGetCharInString(inputLine,inputCursorPos-1)!='\n') {
         inputCursorPos--;
         if (jsiShowInputLine()) {
-          jsiConsolePrintChar(27);
-          jsiConsolePrintChar(91);
-          jsiConsolePrintChar(68);
+          jsiConsolePrint("\x1B[D"); // 27,91,68 - left
         }
       }
     } else if (ch==67) { // right
       if (inputCursorPos<(int)jsvGetStringLength(inputLine) && jsvGetCharInString(inputLine,inputCursorPos)!='\n') {
         inputCursorPos++;
         if (jsiShowInputLine()) {
-          jsiConsolePrintChar(27);
-          jsiConsolePrintChar(91);
-          jsiConsolePrintChar(67);
+          jsiConsolePrint("\x1B[C"); // 27,91,67 - right
         }
       }
     } else if (ch==65) { // up
@@ -1040,8 +1013,7 @@ void jsiHandleChar(char ch) {
         if (ch == '\r') inputState = IS_HAD_R;
         if (jsiCountBracketsInInput()<=0) { // actually execute!
           if (jsiShowInputLine()) {
-            jsiConsolePrintChar('\r');
-            jsiConsolePrintChar('\n');
+            jsiConsolePrint("\r\n");
           }
           inputLineRemoved = true;
 
