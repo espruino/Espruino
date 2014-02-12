@@ -79,6 +79,7 @@ void jspeiInit(JsParse *parse, JsLex *lex) {
   execInfo.lex = lex;
   execInfo.scopeCount = 0;
   execInfo.execute = EXEC_YES;
+  execInfo.thisVar = 0;
 }
 
 void jspeiKill() {
@@ -601,6 +602,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       return 0;
     }
     JsVar *oldThisVar = execInfo.thisVar;
+    if (thisArg) jsvRef(thisArg);
     execInfo.thisVar = thisArg;
     if (isParsing) {
       int hadParams = 0;
@@ -742,6 +744,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
     }
 
     /* Return to old 'this' var. No need to unlock as we never locked before */
+    if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
     execInfo.thisVar = oldThisVar;
 
     /* get the real return var before we remove it from our function */

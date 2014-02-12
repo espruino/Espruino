@@ -9,6 +9,7 @@
             Make number.toString(base) work for floating point (fix #232)
             Fix Linux jshSleep so that timeouts are handled at <10ms if required (fixes test056)
             Now use jshardware's SPI for SD filesystems - more multiplatform
+            Now ref thisVar, which stops it being repurposed into a Name for array accesses (fix #233)
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}
