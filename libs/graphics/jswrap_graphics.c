@@ -85,7 +85,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
          "params" : [ [ "width", "int", "Pixels wide" ],
                       [ "height", "int", "Pixels high" ],
                       [ "bpp", "int", "Number of bits per pixel" ],
-                      [ "callback", "JsVar", "A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn" ] ],
+                      [ "callback", "JsVar", "A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked." ] ],
          "return" : [ "JsVar", "The new Graphics object" ]
 }*/
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
@@ -97,10 +97,22 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     jsWarn("Invalid BPP");
     return 0;
   }
-  JsVar *callbackFn = jsvSkipName(callback);
-  if (!jsvIsFunction(callbackFn)) {
-    jsvUnLock(callbackFn);
-    jsError("Expecting Callback Function but got %t", callbackFn);
+  JsVar *callbackSetPixel = 0;
+  JsVar *callbackFillRect = 0;
+  if (jsvIsObject(callback)) {
+    jsvUnLock(callbackSetPixel);
+    callbackSetPixel = jsvObjectGetChild(callback, "setPixel", 0);
+    callbackFillRect = jsvObjectGetChild(callback, "fillRect", 0);
+  } else
+    callbackSetPixel = jsvLockAgain(callback);
+  if (!jsvIsFunction(callbackSetPixel)) {
+    jsError("Expecting Callback Function or an Object but got %t", callbackSetPixel);
+    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    return 0;
+  }
+  if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
+    jsError("Expecting Callback Function or an Object but got %t", callbackFillRect);
+    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
     return 0;
   }
 
@@ -114,9 +126,9 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   gfx.data.width = (unsigned short)width;
   gfx.data.height = (unsigned short)height;
   gfx.data.bpp = (unsigned char)bpp;
-  lcdInit_JS(&gfx, callbackFn);
+  lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
-  jsvUnLock(callbackFn);
+  jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
   return parent;
 }
 

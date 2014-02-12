@@ -13,5 +13,5 @@
  */
 #include "graphics.h"
 
-void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback);
+void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback, JsVar *fillRectCallback);
 void lcdSetCallbacks_JS(JsGraphics *gfx);

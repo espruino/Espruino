@@ -21,6 +21,7 @@
             Stop repeated analogWrite with messing up PWM waveform (fix #56)
             Swap open and close brackets in bitmap font (fix #191)
             Graphics arraybuffer/callback now accepts 16bpp
+            Added ability to specify a JS function for Graphics fillRect
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}
