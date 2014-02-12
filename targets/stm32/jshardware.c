@@ -1225,7 +1225,7 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
   ADC_TypeDef *ADCx = stmADC(analog);
     bool needs_init = false;
     if (ADCx == ADC1) {
-      if (!jshADCInitialised&1) {
+      if (!(jshADCInitialised&1)) {
         jshADCInitialised |= 1;
         needs_init = true;
         #if defined(STM32F3)
@@ -1237,7 +1237,7 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
         #endif
       }
     } else if (ADCx == ADC2) {
-      if (!jshADCInitialised&1) {
+      if (!(jshADCInitialised&1)) {
         jshADCInitialised |= 1;
         needs_init = true;
         #if defined(STM32F3)
@@ -1249,7 +1249,7 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
         #endif
       }
     } else if (ADCx == ADC3) {
-      if (!jshADCInitialised&4) {
+      if (!(jshADCInitialised&4)) {
         jshADCInitialised |= 4;
         needs_init = true;
         #if defined(STM32F3)
@@ -1262,7 +1262,7 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
       }
   #if ADCS>3
     } else if (ADCx == ADC4) {
-      if (!jshADCInitialised&8) {
+      if (!(jshADCInitialised&8)) {
         jshADCInitialised |= 8;
         needs_init = true;
         #if defined(STM32F3)
@@ -1351,7 +1351,6 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
-  JsVarFloat value = 0;
   if (pin >= JSH_PIN_COUNT /* inc PIN_UNDEFINED */ || pinInfo[pin].analog==JSH_ANALOG_NONE) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
@@ -1804,19 +1803,19 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   SPI_InitStructure.SPI_CRCPolynomial = 7;
   SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
   // try and find the best baud rate
-  int spiFreq = jshGetSPIFreq(SPIx);
-  const int baudRatesDivisors[] = { 2,4,8,16,32,64,128,256 };
+  unsigned int spiFreq = jshGetSPIFreq(SPIx);
+  const unsigned int baudRatesDivisors[] = { 2,4,8,16,32,64,128,256 };
   const uint16_t baudRatesIds[] = { SPI_BaudRatePrescaler_2,SPI_BaudRatePrescaler_4,
       SPI_BaudRatePrescaler_8,SPI_BaudRatePrescaler_16,SPI_BaudRatePrescaler_32,
       SPI_BaudRatePrescaler_64,SPI_BaudRatePrescaler_128,SPI_BaudRatePrescaler_256 };
   int bestDifference = 0x7FFFFFFF;
   unsigned int i;
   //jsiConsolePrint("BaudRate ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint("\n");
-  for (i=0;i<sizeof(baudRatesDivisors)/sizeof(int);i++) {
+  for (i=0;i<sizeof(baudRatesDivisors)/sizeof(unsigned int);i++) {
     //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
-    int rate = spiFreq / baudRatesDivisors[i];
+    unsigned int rate = spiFreq / baudRatesDivisors[i];
     //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
-    int rateDiff = inf->baudRate - rate;
+    int rateDiff = inf->baudRate - (int)rate;
     if (rateDiff<0) rateDiff *= -1;
     //jsiConsolePrint(" diff "); jsiConsolePrintInt(rateDiff);
     if (rateDiff < bestDifference) {
