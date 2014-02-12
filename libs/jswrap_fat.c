@@ -85,7 +85,7 @@ bool jsfsInit() {
 
   if (!inited) {
     FRESULT res;
-    if ((res = f_mount(0, &jsfsFAT)) != FR_OK) {
+    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
       jsfsReportError("Unable to mount SD card", res);
       return false;
     }
