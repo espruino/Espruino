@@ -148,9 +148,11 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   jsiConsolePrint(message);
-  jsiConsolePrint(" at ");
-  jsiConsolePrintPosition(lex, tokenPos);
-  jsiConsolePrintTokenLineMarker(lex, tokenPos);
+  if (lex) {
+    jsiConsolePrint(" at ");
+    jsiConsolePrintPosition(lex, tokenPos);
+    jsiConsolePrintTokenLineMarker(lex, tokenPos);
+  }
 }
 
 void jsWarn(const char *fmt, ...) {
@@ -167,8 +169,10 @@ void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
   jsiConsolePrint(message);
-  jsiConsolePrint(" at ");
-  jsiConsolePrintPosition(lex, tokenPos);
+  if (lex) {
+    jsiConsolePrint(" at ");
+    jsiConsolePrintPosition(lex, tokenPos);
+  }
 }
 
 void jsAssertFail(const char *file, int line, const char *expr) {

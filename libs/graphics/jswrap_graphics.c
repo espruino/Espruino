@@ -329,6 +329,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
       graphicsDrawChar(&gfx, (short)x, (short)y, ch);
       x+=8;
     }
+    if (jspIsInterrupted()) break;
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);

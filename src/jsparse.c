@@ -219,7 +219,7 @@ extern int _end;
 bool jspCheckStackPosition() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
-  if ((char*)frame < ((char*)&_end)+1024/*so many bytes leeway*/) {
+  if ((char*)frame < ((char*)&_end)+512/*so many bytes leeway*/) {
 //   jsiConsolePrintf("frame: %d,end:%d\n",(int)frame,(int)&_end);
     jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenLastStart );
     jspSetInterrupted(true);
@@ -550,7 +550,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
       jspSetError();
   }
 
-  if (JSP_SHOULD_EXECUTE) jspCheckStackPosition(); // try and ensure that we won't overflow our stack
+  if (JSP_SHOULD_EXECUTE) if (!jspCheckStackPosition()) return 0; // try and ensure that we won't overflow our stack
 
   if (JSP_SHOULD_EXECUTE && function) {
     JsVar *functionRoot;
@@ -974,7 +974,7 @@ JsVar *jspeFactorFunctionCall() {
   JsVar *parent = 0;
   JsVar *a = jspeFactorMember(jspeFactor(), &parent);
 
-  while (execInfo.lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) {
+  while ((execInfo.lex->tk=='(' || (isConstructor && JSP_SHOULD_EXECUTE)) && !jspIsInterrupted()) {
     JsVar *funcName = a;
     JsVar *func = jsvSkipName(funcName);
 
@@ -1121,8 +1121,8 @@ JsVar *jspeFactor() {
     if (execInfo.lex->tk=='(') {
         JsVar *a = 0;
         JSP_MATCH('(');
-        if (jspCheckStackPosition())
-          a = jspeBaseWithComma();
+        if (!jspCheckStackPosition()) return 0;
+        a = jspeBaseWithComma();
         if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
         return a;
     } else if (execInfo.lex->tk==LEX_R_TRUE) {
@@ -1577,7 +1577,7 @@ JsVar *jspeStatementVar() {
     * set and then we parse as if we're doing a normal equals.*/
    JSP_MATCH(LEX_R_VAR);
    bool hasComma = true; // for first time in loop
-   while (hasComma && execInfo.lex->tk == LEX_ID) {
+   while (hasComma && execInfo.lex->tk == LEX_ID && !jspIsInterrupted()) {
      JsVar *a = 0;
      if (JSP_SHOULD_EXECUTE) {
        a = jspeiFindOnTop(jslGetTokenValueAsString(execInfo.lex), true);
@@ -1772,7 +1772,11 @@ JsVar *jspeStatementFor() {
   JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
   if (execInfo.lex->tk != ';') 
-    forStatement = jspeStatement(); 
+    forStatement = jspeStatement();
+  if (jspIsInterrupted()) {
+    jsvUnLock(forStatement);
+    return 0;
+  }
   execInfo.execute &= (JsExecFlags)~EXEC_FOR_INIT;
   if (execInfo.lex->tk == LEX_R_IN) {
     // for (i in array)

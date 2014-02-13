@@ -17,6 +17,7 @@
 #include "vector_font.h"
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsparse.h"
 
 #include "lcd_arraybuffer.h"
 #include "lcd_js.h"
@@ -296,6 +297,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
       if (minx[y]<0) minx[y]=0;
       if (maxx[y]>=gfx->data.width) maxx[y]=gfx->data.width-1;
       graphicsFillRect(gfx,minx[y],y,maxx[y],y);
+      if (jspIsInterrupted()) break;
     }
   }
 #else
@@ -326,6 +328,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
       if (miny[x]<0) miny[x]=0;
       if (maxy[x]>=gfx->data.height) maxy[x]=(short)(gfx->data.height-1);
       graphicsFillRect(gfx,x,miny[x],x,maxy[x]);
+      if (jspIsInterrupted()) break;
     }
   }
 #endif
@@ -346,6 +349,7 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
     idx+=2;
     if (vectorFontPolys[vector.vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
+      if (jspIsInterrupted()) break;
       idx=0;
     }
   }
@@ -359,14 +363,6 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
   VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
   return (vector.width * (unsigned int)size)/96;
 }
-
-void graphicsFillVectorString(JsGraphics *gfx, short x1, short y1, short size, const char *str) {
-  while (*str) {
-    unsigned int w = graphicsFillVectorChar(gfx,x1,y1,size,*(str++));
-    x1 = (short)(x1+w);
-  }
-}
-
 
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
