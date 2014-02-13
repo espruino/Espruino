@@ -73,7 +73,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
       if (jsvIsInt(parent))
         itoa(jsvGetInteger(parent), buf, (unsigned int)radix);
       else
-        ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), (unsigned int)radix, -1);
+        ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), (int)radix, -1);
       return jsvNewFromString(buf);
     }
   }
