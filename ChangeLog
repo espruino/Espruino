@@ -25,6 +25,7 @@
             Graphics setPixel(x,y,undefined) to use foreground colour (fix #215)
             Make sure that interruptions are handled better while drawing to graphics
             Make sure that stack overflow errors are handled more tidily (and increase limit for warning)
+            Increase available stack on Espruino Board
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}

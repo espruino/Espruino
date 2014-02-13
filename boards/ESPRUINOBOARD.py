@@ -17,7 +17,7 @@ import pinutils;
 info = {
  'name' : "Espruino Board rev 1.3",
  'link' : [ "http://www.espruino.com/kick" ],
- 'variables' : 2000,
+ 'variables' : 1800,
  'bootloader' : 1,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
