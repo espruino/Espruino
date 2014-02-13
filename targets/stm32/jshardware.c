@@ -39,9 +39,15 @@
 #define IRQ_PRIOR_LOW 15
 
 #ifdef USE_RTC
-#define JSSYSTIME_SECOND 40000 // Internal LSI = around 40kHz
-#define JSSYSTIME_RTC 0x8000 // RTC counts to 32768
-#define JSSYSTIME_RTC_SHIFT 15 // 2^JSSYSTIME_RTC_SHIFT = JSSYSTIME_RTC
+#define RTC_PRESCALER 0x8000 // RTC counts to 32768
+#define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
+#define JSSYSTIME_SECOND (40000<<JSSYSTIME_EXTRA_BITS) // Internal LSI = around 40kHz
+#define JSSYSTIME_RTC (RTC_PRESCALER<<JSSYSTIME_EXTRA_BITS) // JsSysTime for a single RTC 'tick'
+#define JSSYSTIME_RTC_SHIFT (15+JSSYSTIME_EXTRA_BITS) // 2^JSSYSTIME_RTC_SHIFT = JSSYSTIME_RTC
+
+JsSysTime jshGetRTCSystemTime();
+#else
+#define jshGetRTCSystemTime jshGetSystemTime
 #endif
 
 
@@ -600,9 +606,9 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 // ----------------------------------------------------------------------------
 #ifdef USE_RTC
 // Average time between SysTicks
-JsSysTime averageSysTickTime;
+unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
-JsSysTime lastSysTickTime;
+JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
 bool hasSystemSlept;
 #else
@@ -619,11 +625,26 @@ void jshKickUSBWatchdog() {
 
 void jshDoSysTick() {
 #ifdef USE_RTC
-  JsSysTime time = jshGetSystemTime();
+  JsSysTime time = jshGetRTCSystemTime();
   if (!hasSystemSlept) {
-    averageSysTickTime = (averageSysTickTime*7 + (time-lastSysTickTime)) >> 3;
+    /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
+     * working off of the SysTick again to get the accuracy. But this means
+     * that we can't just change lastSysTickTime to the current time, because
+     * there will be an apparent glitch if SysTick happens when measuring the
+     * length of a pulse.
+     */
+    smoothLastSysTickTime += averageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+    // work out the 'real' average sysTickTime
+    averageSysTickTime = (averageSysTickTime*3 + (unsigned int)(time-lastSysTickTime)) >> 2;
+    // what do we expect the RTC time to be on the next SysTick?
+    JsSysTime nextSysTickTime = time+averageSysTickTime;
+    // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
+    smoothAverageSysTickTime = (averageSysTickTime*3 + (unsigned int)(nextSysTickTime-smoothLastSysTickTime)) >> 2;
   } else {
     hasSystemSlept = false;
+    smoothLastSysTickTime = time;
+    smoothAverageSysTickTime = averageSysTickTime;
+    // and don't touch the real average
   }
   lastSysTickTime = time;
 #else
@@ -881,7 +902,7 @@ void jshInit() {
   RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source
   RCC_RTCCLKCmd(ENABLE); // enable!
   RTC_WaitForSynchro();
-  RTC_SetPrescaler(JSSYSTIME_RTC);
+  RTC_SetPrescaler(RTC_PRESCALER);
   RTC_WaitForLastTask();
 #endif
 
@@ -1169,9 +1190,8 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 #endif
 }
 
-
-JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
+JsSysTime jshGetRTCSystemTime() {
   uint16_t dl1 = RTC->DIVL;
   uint16_t ch1 = RTC->CNTH;
   uint16_t cl1 = RTC->CNTL;
@@ -1182,11 +1202,34 @@ JsSysTime jshGetSystemTime() {
 
   if(cl1 == cl2) {
     // no overflow
-    return ((JsSysTime)(ch2)<<(JSSYSTIME_RTC_SHIFT+8))|(cl2<<JSSYSTIME_RTC_SHIFT) | (JSSYSTIME_RTC - dl2);
+    return ((JsSysTime)(ch2)<<(JSSYSTIME_RTC_SHIFT+8))|(cl2<<JSSYSTIME_RTC_SHIFT) | ((RTC_PRESCALER - dl2)<<JSSYSTIME_EXTRA_BITS);
   } else {
     // overflow, but prob didn't happen before
-    return ((JsSysTime)(ch1)<<(JSSYSTIME_RTC_SHIFT+8))|(cl1<<JSSYSTIME_RTC_SHIFT) | (JSSYSTIME_RTC - dl1);
+    return ((JsSysTime)(ch1)<<(JSSYSTIME_RTC_SHIFT+8))|(cl1<<JSSYSTIME_RTC_SHIFT) | ((RTC_PRESCALER - dl1)<<JSSYSTIME_EXTRA_BITS);
   }
+}
+#endif
+
+JsSysTime jshGetSystemTime() {
+#ifdef USE_RTC
+  if (hasSystemSlept) {
+    // reset SysTick counter. This will hopefully cause it
+    // to fire off a SysTick IRQ, which will reset lastSysTickTime
+    SysTick->VAL = 0;
+  }
+  // Try and fix potential glitch caused by rollover of SysTick
+  JsSysTime last1, last2;
+  unsigned int avr1,avr2;
+  unsigned int sysTick;
+  do {
+    avr1 = smoothAverageSysTickTime;
+    last1 = smoothLastSysTickTime;
+    sysTick = SYSTICK_RANGE - SysTick->VAL;
+    last2 = smoothLastSysTickTime;
+    avr2 = smoothAverageSysTickTime;
+  } while (last1!=last2 || avr1!=avr2);
+  // Now work out time...
+  return last2 + ((JsSysTime)sysTick*(JsSysTime)avr2/SYSTICK_RANGE);
 #else
   JsSysTime major1, major2, major3, major4;
   unsigned int minor;
@@ -2190,7 +2233,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
   if (allowDeepSleep &&  // from setDeepSleep
       (timeUntilWake > (JSSYSTIME_RTC*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't wake
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
-      jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
+      jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
       ) {
     jsiSetSleep(true);
@@ -2255,7 +2298,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     USB_Cable_Config(ENABLE);
   //  PowerOn(); // USB on
     if (wokenByUSB)
-      jshLastWokenByUSB = jshGetSystemTime();
+      jshLastWokenByUSB = jshGetRTCSystemTime();
 #endif
     jsiSetSleep(false);
   } else
@@ -2418,22 +2461,6 @@ void _utilTimerWait() {
 }
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
-  // ---- SOFTWARE PULSE
-  /* JsSysTime ticks = jshGetTimeFromMilliseconds(time);
- //jsPrintInt(ticks);jsPrint("\n");
-  if (jshIsPinValid(pin) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    JsSysTime starttime = jshGetSystemTime();
-    JsSysTime endtime = starttime + ticks;
-    //jsPrint("----------- ");jsPrintInt(endtime>>16);jsPrint("\n");
-    JsSysTime stime = jshGetSystemTime();
-    while (stime>=starttime && stime<endtime && !jspIsInterrupted()) { // this stops rollover issue
-      stime = jshGetSystemTime();
-      //jsPrintInt(stime>>16);jsPrint("\n");
-    }
-    jshPinSetValue(pin, !value);
-  } else jsError("Invalid pin!"); */
   // ---- USE TIMER FOR PULSE
   if (!jshIsPinValid(pin)) {
        jsError("Invalid pin!");
@@ -2446,10 +2473,6 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
 
   uint16_t ticks = (uint16_t)(clockTicks/(prescale+1));
-
-  /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
-  jsiConsolePrintInt(ticks);jsiConsolePrint(",");
-  jsiConsolePrintInt(prescale);jsiConsolePrint("\n");*/
 
   utilTimerType = UT_PULSE_ON;
   utilTimerState = pulsePolarity;
