@@ -39,8 +39,9 @@
 #define IRQ_PRIOR_LOW 15
 
 #ifdef USE_RTC
-#define JSSYSTIME_SECOND 40000 // 0x1000000
-#define JSSYSTIME_RTC 0x8000
+#define JSSYSTIME_SECOND 40000 // Internal LSI = around 40kHz
+#define JSSYSTIME_RTC 0x8000 // RTC counts to 32768
+#define JSSYSTIME_RTC_SHIFT 15 // 2^JSSYSTIME_RTC_SHIFT = JSSYSTIME_RTC
 #endif
 
 
@@ -1181,10 +1182,10 @@ JsSysTime jshGetSystemTime() {
 
   if(cl1 == cl2) {
     // no overflow
-    return ((JsSysTime)(ch2)<<31)|(cl2<<15) | (JSSYSTIME_RTC - dl2);
+    return ((JsSysTime)(ch2)<<(JSSYSTIME_RTC_SHIFT+8))|(cl2<<JSSYSTIME_RTC_SHIFT) | (JSSYSTIME_RTC - dl2);
   } else {
     // overflow, but prob didn't happen before
-    return ((JsSysTime)(ch1)<<31)|(cl1<<15) | (JSSYSTIME_RTC - dl1);
+    return ((JsSysTime)(ch1)<<(JSSYSTIME_RTC_SHIFT+8))|(cl1<<JSSYSTIME_RTC_SHIFT) | (JSSYSTIME_RTC - dl1);
   }
 #else
   JsSysTime major1, major2, major3, major4;
@@ -2250,7 +2251,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
     RTC_WaitForSynchro(); // make sure any RTC reads will be
 #ifdef USB
-    _SetCNTR(_GetCNTR() & ~CNTR_PDWN);
+    _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);
   //  PowerOn(); // USB on
     if (wokenByUSB)
