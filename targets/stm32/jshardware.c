@@ -633,7 +633,7 @@ void jshDoSysTick() {
      * there will be an apparent glitch if SysTick happens when measuring the
      * length of a pulse.
      */
-    smoothLastSysTickTime += averageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+    smoothLastSysTickTime += smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
     averageSysTickTime = (averageSysTickTime*3 + (unsigned int)(time-lastSysTickTime)) >> 2;
     // what do we expect the RTC time to be on the next SysTick?
@@ -1229,7 +1229,7 @@ JsSysTime jshGetSystemTime() {
     avr2 = smoothAverageSysTickTime;
   } while (last1!=last2 || avr1!=avr2);
   // Now work out time...
-  return last2 + ((JsSysTime)sysTick*(JsSysTime)avr2/SYSTICK_RANGE);
+  return last2 + (((JsSysTime)sysTick*(JsSysTime)avr2)/SYSTICK_RANGE);
 #else
   JsSysTime major1, major2, major3, major4;
   unsigned int minor;
