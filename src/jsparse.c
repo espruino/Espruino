@@ -242,7 +242,7 @@ bool jspParseVariableName() {
 }
 
 // parse function with no arguments
-bool jspParseEmptyFunction() {
+NO_INLINE bool jspParseEmptyFunction() {
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
@@ -257,7 +257,7 @@ bool jspParseEmptyFunction() {
 }
 
 // parse function with a single argument, return its value (no names!)
-JsVar *jspParseSingleFunction() {
+NO_INLINE JsVar *jspParseSingleFunction() {
   JsVar *v = 0;
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
@@ -273,7 +273,7 @@ JsVar *jspParseSingleFunction() {
 }
 
 /// parse function with max 4 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
-bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d) {
+NO_INLINE bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d) {
   if (a) *a = 0;
   if (b) *b = 0;
   if (c) *c = 0; 
@@ -309,7 +309,7 @@ bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, Js
 }
 
 /// parse function with max 8 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
-bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d, JsVar **e, JsVar **f, JsVar **g, JsVar **h) {
+NO_INLINE bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d, JsVar **e, JsVar **f, JsVar **g, JsVar **h) {
   if (a) *a = 0;
   if (b) *b = 0;
   if (c) *c = 0;
@@ -369,7 +369,7 @@ bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, J
 }
 
 /// parse a function with any number of argument, and return an array of de-named aruments
-JsVar *jspParseFunctionAsArray() {
+NO_INLINE JsVar *jspParseFunctionAsArray() {
   JSP_MATCH(LEX_ID);
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   if (!arr) return 0; // out of memory
@@ -386,7 +386,7 @@ JsVar *jspParseFunctionAsArray() {
 // ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)
-bool jspeFunctionArguments(JsVar *funcVar) {
+NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   JSP_MATCH('(');
   while (execInfo.lex->tk!=')') {
       if (funcVar) {
@@ -405,7 +405,7 @@ bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-bool jspeParseNativeFunction(JsCallback callbackPtr) {
+NO_INLINE bool jspeParseNativeFunction(JsCallback callbackPtr) {
     char funcName[JSLEX_MAX_TOKEN_LENGTH];
     JsVar *funcVar;
     JsVar *base = jsvLockAgain(execInfo.root);
@@ -455,7 +455,7 @@ bool jspeParseNativeFunction(JsCallback callbackPtr) {
     return true;
 }
 
-bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
+NO_INLINE bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
     JsVar *fncode = jsvNewFromString(funcDesc);
     if (!fncode) return false; // out of memory!
 
@@ -489,7 +489,7 @@ bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
     return success;
 }
 
-JsVar *jspeFunctionDefinition() {
+NO_INLINE JsVar *jspeFunctionDefinition() {
   // actually parse a function... We assume that the LEX_FUNCTION and name
   // have already been parsed
   JsVar *funcVar = 0;
@@ -526,7 +526,7 @@ JsVar *jspeFunctionDefinition() {
 
 /* Parse just the brackets of a function - and throw
  * everything away */
-bool jspeParseFunctionCallBrackets() {
+NO_INLINE bool jspeParseFunctionCallBrackets() {
   JSP_MATCH('(');
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     jsvUnLock(jspeBase());
@@ -544,7 +544,7 @@ bool jspeParseFunctionCallBrackets() {
  *
  * functionName is used only for error reporting - and can be 0
  */
-JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
+NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
   if (JSP_SHOULD_EXECUTE && !function) {
       jsErrorAt("Function not found! Skipping.", execInfo.lex, execInfo.lex->tokenLastStart );
       jspSetError();
@@ -761,7 +761,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
   } else return 0;
 }
 
-JsVar *jspeFactorSingleId() {
+NO_INLINE JsVar *jspeFactorSingleId() {
   JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex)) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
     const char *tokenName = jslGetTokenValueAsString(execInfo.lex); // BEWARE - this won't hang around forever!
@@ -787,7 +787,7 @@ JsVar *jspeFactorSingleId() {
   return a;
 }
 
-JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
+NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   /* The parent if we're executing a method call */
   JsVar *parent = 0;
 
@@ -926,7 +926,7 @@ JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *prototypeName);
 
-JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
+NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   assert(JSP_SHOULD_EXECUTE);
   if (!jsvIsFunction(func)) {
     jsErrorAt("Constructor should be a function", execInfo.lex, execInfo.lex->tokenLastStart);
@@ -957,7 +957,7 @@ JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   return thisObj;
 }
 
-JsVar *jspeFactorFunctionCall() {
+NO_INLINE JsVar *jspeFactorFunctionCall() {
   /* The parent if we're executing a method call */
   bool isConstructor = false;
   if (execInfo.lex->tk==LEX_R_NEW) {
@@ -999,12 +999,12 @@ JsVar *jspeFactorFunctionCall() {
   return a;
 }
 
-JsVar *jspeFactorId() {
+NO_INLINE JsVar *jspeFactorId() {
   return jspeFactorSingleId();
 }
 
 
-JsVar *jspeFactorObject() {
+NO_INLINE JsVar *jspeFactorObject() {
   if (JSP_SHOULD_EXECUTE) {
     JsVar *contents = jsvNewWithFlags(JSV_OBJECT);
     if (!contents) { // out of memory
@@ -1053,7 +1053,7 @@ JsVar *jspeFactorObject() {
   }
 }
 
-JsVar *jspeFactorArray() {
+NO_INLINE JsVar *jspeFactorArray() {
   int idx = 0;
   JsVar *contents = 0;
   if (JSP_SHOULD_EXECUTE) {
@@ -1090,7 +1090,7 @@ JsVar *jspeFactorArray() {
   return contents;
 }
 
-void jspEnsureIsPrototype(JsVar *prototypeName) {
+NO_INLINE void jspEnsureIsPrototype(JsVar *prototypeName) {
   if (!prototypeName) return;
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
@@ -1105,7 +1105,7 @@ void jspEnsureIsPrototype(JsVar *prototypeName) {
   jsvUnLock(prototypeVar);
 }
 
-JsVar *jspeFactorTypeOf() {
+NO_INLINE JsVar *jspeFactorTypeOf() {
   JSP_MATCH(LEX_R_TYPEOF);
   JsVar *a = jspeUnary();
   JsVar *result = 0;
@@ -1117,7 +1117,7 @@ JsVar *jspeFactorTypeOf() {
   return result;
 }
 
-JsVar *jspeFactor() {
+NO_INLINE JsVar *jspeFactor() {
     if (execInfo.lex->tk=='(') {
         JsVar *a = 0;
         JSP_MATCH('(');
@@ -1192,7 +1192,7 @@ JsVar *jspeFactor() {
     return 0;
 }
 
-__attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
+NO_INLINE JsVar *__jspePostfix(JsVar *a) {
   while (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
     int op = execInfo.lex->tk;
     JSP_MATCH(execInfo.lex->tk);
@@ -1213,7 +1213,7 @@ __attribute((noinline)) JsVar *__jspePostfix(JsVar *a) {
   return a;
 }
 
-JsVar *jspePostfix() {
+NO_INLINE JsVar *jspePostfix() {
   JsVar *a;
   if (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
       int op = execInfo.lex->tk;
@@ -1232,7 +1232,7 @@ JsVar *jspePostfix() {
   return __jspePostfix(a);
 }
 
-JsVar *jspeUnary() {
+NO_INLINE JsVar *jspeUnary() {
     if (execInfo.lex->tk=='!' || execInfo.lex->tk=='~' || execInfo.lex->tk=='-' || execInfo.lex->tk=='+') {
       short tk = execInfo.lex->tk;
       JSP_MATCH(execInfo.lex->tk);
@@ -1254,7 +1254,7 @@ JsVar *jspeUnary() {
       return jspePostfix();
 }
 
-__attribute((noinline)) JsVar *__jspeTerm(JsVar *a) {
+NO_INLINE JsVar *__jspeTerm(JsVar *a) {
     while (execInfo.lex->tk=='*' || execInfo.lex->tk=='/' || execInfo.lex->tk=='%') {
         JsVar *b;
         int op = execInfo.lex->tk;
@@ -1269,11 +1269,11 @@ __attribute((noinline)) JsVar *__jspeTerm(JsVar *a) {
     return a;
 }
 
-JsVar *jspeTerm() {
+NO_INLINE JsVar *jspeTerm() {
     return __jspeTerm(jspeUnary());
 }
 
-__attribute((noinline)) JsVar *__jspeExpression(JsVar *a) {
+NO_INLINE JsVar *__jspeExpression(JsVar *a) {
   while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-') {
       int op = execInfo.lex->tk;
       JSP_MATCH(execInfo.lex->tk);
@@ -1289,11 +1289,11 @@ __attribute((noinline)) JsVar *__jspeExpression(JsVar *a) {
 }
 
 
-JsVar *jspeExpression() {
+NO_INLINE JsVar *jspeExpression() {
     return __jspeExpression(jspeTerm());
 }
 
-__attribute((noinline)) JsVar *__jspeShift(JsVar *a) {
+NO_INLINE JsVar *__jspeShift(JsVar *a) {
   if (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
     JsVar *b;
     int op = execInfo.lex->tk;
@@ -1308,11 +1308,11 @@ __attribute((noinline)) JsVar *__jspeShift(JsVar *a) {
   return a;
 }
 
-JsVar *jspeShift() {
+NO_INLINE JsVar *jspeShift() {
   return __jspeShift(jspeExpression());
 }
 
-__attribute((noinline)) JsVar *__jspeCondition(JsVar *a) {
+NO_INLINE JsVar *__jspeCondition(JsVar *a) {
     JsVar *b;
     while (execInfo.lex->tk==LEX_EQUAL || execInfo.lex->tk==LEX_NEQUAL ||
            execInfo.lex->tk==LEX_TYPEEQUAL || execInfo.lex->tk==LEX_NTYPEEQUAL ||
@@ -1369,11 +1369,11 @@ __attribute((noinline)) JsVar *__jspeCondition(JsVar *a) {
     return a;
 }
 
-JsVar *jspeCondition() {
+NO_INLINE JsVar *jspeCondition() {
   return __jspeCondition(jspeShift());
 }
 
-__attribute((noinline)) JsVar *__jspeLogic(JsVar *a) {
+NO_INLINE JsVar *__jspeLogic(JsVar *a) {
     JsVar *b = 0;
     while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
         bool shortCircuit = false;
@@ -1414,11 +1414,11 @@ __attribute((noinline)) JsVar *__jspeLogic(JsVar *a) {
     return a;
 }
 
-JsVar *jspeLogic() {
+NO_INLINE JsVar *jspeLogic() {
   return __jspeLogic(jspeCondition());
 }
 
-__attribute((noinline)) JsVar *__jspeTernary(JsVar *lhs) {
+NO_INLINE JsVar *__jspeTernary(JsVar *lhs) {
   if (execInfo.lex->tk=='?') {
     JSP_MATCH('?');
     if (!JSP_SHOULD_EXECUTE) {
@@ -1450,11 +1450,11 @@ __attribute((noinline)) JsVar *__jspeTernary(JsVar *lhs) {
   return lhs;
 }
 
-JsVar *jspeTernary() {
+NO_INLINE JsVar *jspeTernary() {
   return __jspeTernary(jspeLogic());
 }
 
-__attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
+NO_INLINE JsVar *__jspeBase(JsVar *lhs) {
     if (execInfo.lex->tk=='=' || execInfo.lex->tk==LEX_PLUSEQUAL || execInfo.lex->tk==LEX_MINUSEQUAL ||
                                  execInfo.lex->tk==LEX_MULEQUAL || execInfo.lex->tk==LEX_DIVEQUAL || execInfo.lex->tk==LEX_MODEQUAL ||
                                  execInfo.lex->tk==LEX_ANDEQUAL || execInfo.lex->tk==LEX_OREQUAL ||
@@ -1516,12 +1516,12 @@ __attribute((noinline)) JsVar *__jspeBase(JsVar *lhs) {
 }
 
 
-JsVar *jspeBase() {
+NO_INLINE JsVar *jspeBase() {
   return __jspeBase(jspeTernary());
 }
 
 // jspeBase where ',' is allowed to add multiple expressions
-JsVar *jspeBaseWithComma() {
+NO_INLINE JsVar *jspeBaseWithComma() {
   while (!JSP_HAS_ERROR) {
     JsVar *a = jspeBase();
     if (execInfo.lex->tk!=',') return a;
@@ -1532,7 +1532,7 @@ JsVar *jspeBaseWithComma() {
   return 0;
 }
 
-JsVar *jspeBlock() {
+NO_INLINE JsVar *jspeBlock() {
     JSP_MATCH('{');
     if (JSP_SHOULD_EXECUTE) {
       while (execInfo.lex->tk && execInfo.lex->tk!='}') {
@@ -1560,7 +1560,7 @@ JsVar *jspeBlock() {
     return 0;
 }
 
-JsVar *jspeBlockOrStatement() {
+NO_INLINE JsVar *jspeBlockOrStatement() {
     if (execInfo.lex->tk=='{') 
        return jspeBlock();
     else {
@@ -1570,7 +1570,7 @@ JsVar *jspeBlockOrStatement() {
     }
 }
 
-JsVar *jspeStatementVar() {
+NO_INLINE JsVar *jspeStatementVar() {
   JsVar *lastDefined = 0;
    /* variable creation. TODO - we need a better way of parsing the left
     * hand side. Maybe just have a flag called can_create_var that we
@@ -1614,7 +1614,7 @@ JsVar *jspeStatementVar() {
    return lastDefined;
 }
 
-JsVar *jspeStatementIf() {
+NO_INLINE JsVar *jspeStatementIf() {
   bool cond;
   JsVar *var;
   JSP_MATCH(LEX_R_IF);
@@ -1639,7 +1639,7 @@ JsVar *jspeStatementIf() {
   return 0;
 }
 
-JsVar *jspeStatementSwitch() {
+NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
   JsVar *switchOn = jspeBase();
@@ -1684,7 +1684,7 @@ JsVar *jspeStatementSwitch() {
   return 0;
 }
 
-JsVar *jspeStatementDoOrWhile(bool isWhile) {
+NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
 #endif
@@ -1764,7 +1764,7 @@ JsVar *jspeStatementDoOrWhile(bool isWhile) {
   return 0;
 }
 
-JsVar *jspeStatementFor() {
+NO_INLINE JsVar *jspeStatementFor() {
   JSP_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
   execInfo.execute |= EXEC_FOR_INIT;
@@ -1949,7 +1949,7 @@ JsVar *jspeStatementFor() {
   return 0;
 }
 
-JsVar *jspeStatementReturn() {
+NO_INLINE JsVar *jspeStatementReturn() {
   JsVar *result = 0;
   JSP_MATCH(LEX_R_RETURN);
   if (execInfo.lex->tk != ';') {
@@ -1971,7 +1971,7 @@ JsVar *jspeStatementReturn() {
   return 0;
 }
 
-JsVar *jspeStatementFunctionDecl() {
+NO_INLINE JsVar *jspeStatementFunctionDecl() {
   JsVar *funcName = 0;
   JsVar *funcVar;
   JSP_MATCH(LEX_R_FUNCTION);
@@ -1996,7 +1996,7 @@ JsVar *jspeStatementFunctionDecl() {
   return funcName;
 }
 
-JsVar *jspeStatement() {
+NO_INLINE JsVar *jspeStatement() {
     if (execInfo.lex->tk==LEX_ID ||
         execInfo.lex->tk==LEX_INT ||
         execInfo.lex->tk==LEX_FLOAT ||
@@ -2076,7 +2076,7 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
 }
 
 
-JsVar *jspNewObject(const char *name, const char *instanceOf) {
+NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
   if (!objFuncName) // out of memory
     return 0;
