@@ -1215,7 +1215,8 @@ JsSysTime jshGetSystemTime() {
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
     // to fire off a SysTick IRQ, which will reset lastSysTickTime
-    SysTick->VAL = 0;
+    SysTick->VAL = 0; // this doesn't itself fire an IRQ it seems
+    jshDoSysTick();
   }
   // Try and fix potential glitch caused by rollover of SysTick
   JsSysTime last1, last2;
