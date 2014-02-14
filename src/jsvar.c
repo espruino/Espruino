@@ -1023,6 +1023,8 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 }
 
 bool jsvGetBool(const JsVar *v) {
+  if (jsvIsString(v))
+    return jsvGetStringLength(v)!=0;
   return jsvGetInteger(v)!=0;
 }
 
