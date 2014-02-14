@@ -60,6 +60,7 @@ typedef enum {
   JSHPINSTATE_GPIO_IN_PULLDOWN,
   JSHPINSTATE_ADC_IN,
   JSHPINSTATE_AF_OUT,
+  JSHPINSTATE_AF_OUT_OPENDRAIN,
   JSHPINSTATE_USART_IN,
   JSHPINSTATE_USART_OUT,
   JSHPINSTATE_DAC_OUT,
@@ -70,13 +71,19 @@ typedef enum {
 } PACKED_FLAGS JshPinState;
 
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
-             state==JSHPINSTATE_GPIO_OUT ||               \
-             state==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
-             state==JSHPINSTATE_AF_OUT ||                 \
-             state==JSHPINSTATE_USART_OUT ||              \
-             state==JSHPINSTATE_DAC_OUT ||                \
-             state==JSHPINSTATE_I2C                       \
-)
+             (state)==JSHPINSTATE_GPIO_OUT ||               \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_AF_OUT ||                 \
+             (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
+             (state)==JSHPINSTATE_USART_OUT ||              \
+             (state)==JSHPINSTATE_DAC_OUT ||                \
+             (state)==JSHPINSTATE_I2C ||                    \
+0)
+#define JSHPINSTATE_IS_OPENDRAIN(state) ( \
+             (state)==JSHPINSTATE_GPIO_OUT_OPENDRAIN ||     \
+             (state)==JSHPINSTATE_AF_OUT_OPENDRAIN ||       \
+             (state)==JSHPINSTATE_I2C              ||       \
+0)
 
 /// Is the pin state manual (has the user asked us explicitly to change it?)
 bool jshGetPinStateIsManual(Pin pin);

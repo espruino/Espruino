@@ -530,7 +530,7 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     if (IS_PIN_USED_INTERNALLY(pin)) continue;
     JshPinState state = jshPinGetState(pin);
     JshPinState statem = state&JSHPINSTATE_MASK;
-    if (statem == JSHPINSTATE_GPIO_OUT) {
+    if (statem == JSHPINSTATE_GPIO_OUT || statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
       jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
@@ -541,6 +541,9 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
       jsvAppendPrintf(str, "pinMode(%p,\"input%s\");\n",pin,s);
     }
+
+    if (JSHPINSTATE_IS_OPENDRAIN(statem))
+      jsvAppendPrintf(str, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }
 

@@ -158,7 +158,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
 /*JSON{ "type":"function", "name" : "pinMode",
          "description" : ["Set the mode of the given pin - note that digitalRead/digitalWrite/etc set this automatically unless pinMode has been called first. If you want digitalRead/etc to set the pin mode automatically after you have called pinMode, simply call it again with no mode argument: ```pinMode(pin)```" ],
          "generate" : "jswrap_io_pinMode",
-         "params" : [ [ "pin", "pin", "The pin to use"], [ "mode", "JsVar", "The mode - a string that is either 'input', 'output', 'input_pullup', or 'input_pulldown'. Do not include this argument if you want to revert to automatic pin mode setting."] ]
+         "params" : [ [ "pin", "pin", "The pin to use"], [ "mode", "JsVar", "The mode - a string that is either 'input', 'input_pullup', 'input_pulldown', 'output', or 'opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."] ]
 }*/
 void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   if (!jshIsPinValid(pin)) {
@@ -171,6 +171,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
     if (jsvIsStringEqual(mode, "input_pullup")) m = JSHPINSTATE_GPIO_IN_PULLUP;
     if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
     if (jsvIsStringEqual(mode, "output")) m = JSHPINSTATE_GPIO_OUT;
+    if (jsvIsStringEqual(mode, "opendrain")) m = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
   }
   if (m != JSHPINSTATE_UNDEFINED) {
     jshSetPinStateIsManual(pin, true);

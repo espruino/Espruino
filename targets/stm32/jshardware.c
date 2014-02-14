@@ -692,12 +692,13 @@ inline void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
+            state==JSHPINSTATE_AF_OUT_OPENDRAIN ||
             state==JSHPINSTATE_USART_IN ||
             state==JSHPINSTATE_USART_OUT ||
             state==JSHPINSTATE_I2C;
   bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP;
   bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
-  bool opendrain = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_I2C;
+  bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
   if (out) {
   #ifdef STM32API2
@@ -742,7 +743,7 @@ JshPinState jshPinGetState(Pin pin) {
       return isOn ? JSHPINSTATE_GPIO_IN_PULLUP : JSHPINSTATE_GPIO_IN_PULLDOWN;
   } else { // output
     if (cnf&2) // af
-      return (cnf&1) ? JSHPINSTATE_AF_OUT/*_OPENDRAIN*/ : JSHPINSTATE_AF_OUT;
+      return (cnf&1) ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT;
     else { // normal
       return ((cnf&1) ? JSHPINSTATE_GPIO_OUT_OPENDRAIN : JSHPINSTATE_GPIO_OUT) |
              (isOn ? JSHPINSTATE_PIN_IS_ON : 0);
@@ -759,7 +760,7 @@ JshPinState jshPinGetState(Pin pin) {
     return ((port->OTYPER&pinn) ? JSHPINSTATE_GPIO_OUT_OPENDRAIN : JSHPINSTATE_GPIO_OUT) |
             (isOn ? JSHPINSTATE_PIN_IS_ON : 0);
   } else if (mode==2) { // AF
-    return JSHPINSTATE_AF_OUT;
+    return (port->OTYPER&pinn) ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT;
   } else { // 3, analog
     return JSHPINSTATE_ADC_IN;
   }
@@ -777,8 +778,10 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
     jshPinSetState(pin, JSHPINSTATE_I2C);
   } else if (JSH_PINFUNCTION_IS_SPI(func) && ((func&JSH_MASK_INFO)==JSH_SPI_MISO)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
-  } else
-    jshPinSetState(pin, JSHPINSTATE_AF_OUT); // otherwise general AF out!
+  } else {
+    bool opendrain = JSHPINSTATE_IS_OPENDRAIN(jshPinGetState(pin)&JSHPINSTATE_MASK);
+    jshPinSetState(pin, opendrain ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT); // otherwise general AF out!
+  }
   // now 'connect' the pin up
 #if defined(STM32F2) || defined(STM32F3) || defined(STM32F4)
   GPIO_PinAFConfig(stmPort(pin), stmPinSource(pin), functionToAF(func));
