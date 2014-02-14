@@ -74,7 +74,7 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
          "return" : ["int", "The integer value of a character in the string"]
 }*/
 JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
-  return jsvGetCharInString(parent, (int)idx);
+  return (unsigned char)jsvGetCharInString(parent, (int)idx);
 }
 
 

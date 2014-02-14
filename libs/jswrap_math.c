@@ -45,13 +45,13 @@ JsVarInt jswrap_integer_valueOf(JsVar *v) {
 // -------------------------------------------------------------------- Math
 /*JSON{ "type":"staticproperty",
          "class" : "Math", "name" : "E",
-         "generate_full" : "2.71828182846",
-         "return" : ["float", "The value of E - 2.71828182846"]
+         "generate_full" : "2.718281828459045",
+         "return" : ["float", "The value of E - 2.718281828459045"]
 }*/
 /*JSON{ "type":"staticproperty",
          "class" : "Math", "name" : "PI",
-         "generate_full" : "3.14159265359",
-         "return" : ["float", "The value of PI - 3.14159265359"]
+         "generate_full" : "3.141592653589793",
+         "return" : ["float", "The value of PI - 3.141592653589793"]
 }*/
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "abs",
