@@ -159,7 +159,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 /*JSON{ "type":"method",
          "class" : "httpSrv", "name" : "listen",
          "generate" : "jswrap_httpSrv_listen",
-         "params" : [ [ "port", "int", "The port to listen on"] ]
+         "params" : [ [ "port", "int32", "The port to listen on"] ]
 }*/
 
 void jswrap_httpSrv_listen(JsVar *parent, int port) {
@@ -196,7 +196,7 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
 /*JSON{ "type":"method",
          "class" : "httpSRs", "name" : "writeHead",
          "generate" : "jswrap_httpSRs_writeHead",
-         "params" : [ [ "statusCode", "int", "The HTTP status code"],
+         "params" : [ [ "statusCode", "int32", "The HTTP status code"],
                       [ "headers", "JsVar", "An object containing the headers"] ]
 }*/
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {

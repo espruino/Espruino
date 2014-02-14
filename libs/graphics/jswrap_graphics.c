@@ -33,9 +33,9 @@
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
          "description" : "Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself",
          "generate" : "jswrap_graphics_createArrayBuffer",
-         "params" : [ [ "width", "int", "Pixels wide" ],
-                      [ "height", "int", "Pixels high" ],
-                      [ "bpp", "int", "Number of bits per pixel" ],
+         "params" : [ [ "width", "int32", "Pixels wide" ],
+                      [ "height", "int32", "Pixels high" ],
+                      [ "bpp", "int32", "Number of bits per pixel" ],
                       [ "options", "JsVar", ["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```",
                                              "zigzag = whether to alternate the direction of scanlines for rows",
                                              "vertical_byte = whether to align bits in a byte vertically or not"] ] ],
@@ -82,9 +82,9 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createCallback",
          "description" : "Create a Graphics object that renders by calling a JavaScript callback function",
          "generate" : "jswrap_graphics_createCallback",
-         "params" : [ [ "width", "int", "Pixels wide" ],
-                      [ "height", "int", "Pixels high" ],
-                      [ "bpp", "int", "Number of bits per pixel" ],
+         "params" : [ [ "width", "int32", "Pixels wide" ],
+                      [ "height", "int32", "Pixels high" ],
+                      [ "bpp", "int32", "Number of bits per pixel" ],
                       [ "callback", "JsVar", "A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked." ] ],
          "return" : [ "JsVar", "The new Graphics object" ]
 }*/
@@ -188,10 +188,10 @@ void jswrap_graphics_clear(JsVar *parent) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "fillRect",
          "description" : "Fill a rectangular area in the Foreground Color",
          "generate" : "jswrap_graphics_fillRect",
-         "params" : [ [ "x1", "int", "The left" ],
-                      [ "y1", "int", "The top" ],
-                      [ "x2", "int", "The right" ],
-                      [ "y2", "int", "The bottom" ] ]
+         "params" : [ [ "x1", "int32", "The left" ],
+                      [ "y1", "int32", "The top" ],
+                      [ "x2", "int32", "The right" ],
+                      [ "y2", "int32", "The bottom" ] ]
 }*/
 void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -201,10 +201,10 @@ void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "drawRect",
          "description" : "Draw an unfilled rectangle 1px wide in the Foreground Color",
          "generate" : "jswrap_graphics_drawRect",
-         "params" : [ [ "x1", "int", "The left" ],
-                      [ "y1", "int", "The top" ],
-                      [ "x2", "int", "The right" ],
-                      [ "y2", "int", "The bottom" ]]
+         "params" : [ [ "x1", "int32", "The left" ],
+                      [ "y1", "int32", "The top" ],
+                      [ "x2", "int32", "The right" ],
+                      [ "y2", "int32", "The bottom" ]]
 }*/
 void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -214,9 +214,9 @@ void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "getPixel",
          "description" : "Get a pixel's color",
          "generate" : "jswrap_graphics_getPixel",
-         "params" : [ [ "x", "int", "The left" ],
-                      [ "y", "int", "The top" ] ],
-         "return" : [ "int", "The color" ]
+         "params" : [ [ "x", "int32", "The left" ],
+                      [ "y", "int32", "The top" ] ],
+         "return" : [ "int32", "The color" ]
 }*/
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
@@ -226,8 +226,8 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setPixel",
          "description" : "Set a pixel's color",
          "generate" : "jswrap_graphics_setPixel",
-         "params" : [ [ "x", "int", "The left" ],
-                      [ "y", "int", "The top" ],
+         "params" : [ [ "x", "int32", "The left" ],
+                      [ "y", "int32", "The top" ],
                       [ "col", "JsVar", "The color" ] ]
 }*/
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
@@ -293,10 +293,10 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 }*/
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, jsvGetInteger(size), true)",
-         "params" : [ [ "size", "int", "The size as an integer" ] ]
+         "generate_full" : "jswrap_graphics_setFontSizeX(parent, (int)jsvGetInteger(size), true)",
+         "params" : [ [ "size", "int32", "The size as an integer" ] ]
 }*/
-void jswrap_graphics_setFontSizeX(JsVar *parent, JsVarInt size, bool checkValid) {
+void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
   if (checkValid) {
@@ -312,8 +312,8 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, JsVarInt size, bool checkValid)
          "description" : "Draw a string of text in the current font",
          "generate" : "jswrap_graphics_drawString",
          "params" : [ [ "str", "JsVar", "The string" ],
-                      [ "x", "int", "The left" ],
-                      [ "y", "int", "The top" ] ]
+                      [ "x", "int32", "The left" ],
+                      [ "y", "int32", "The top" ] ]
 }*/
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -365,10 +365,10 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "drawLine",
          "description" : "Draw a line between x1,y1 and x2,y2 in the current foreground color",
          "generate" : "jswrap_graphics_drawLine",
-         "params" : [ [ "x1", "int", "The left" ],
-                      [ "y1", "int", "The top" ],
-                      [ "x2", "int", "The right" ],
-                      [ "y2", "int", "The bottom" ] ]
+         "params" : [ [ "x1", "int32", "The left" ],
+                      [ "y1", "int32", "The top" ],
+                      [ "x2", "int32", "The right" ],
+                      [ "y2", "int32", "The bottom" ] ]
 }*/
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -378,8 +378,8 @@ void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "lineTo",
          "description" : "Draw a line from the last position of lineTo or moveTo to this position",
          "generate" : "jswrap_graphics_lineTo",
-         "params" : [ [ "x", "int", "X value" ],
-                      [ "y", "int", "Y value" ] ]
+         "params" : [ [ "x", "int32", "X value" ],
+                      [ "y", "int32", "Y value" ] ]
 }*/
 void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
@@ -392,8 +392,8 @@ void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
 /*JSON{ "type":"method", "class": "Graphics", "name" : "moveTo",
          "description" : "Move the cursor to a position - see lineTo",
          "generate" : "jswrap_graphics_moveTo",
-         "params" : [ [ "x", "int", "X value" ],
-                      [ "y", "int", "Y value" ] ]
+         "params" : [ [ "x", "int32", "X value" ],
+                      [ "y", "int32", "Y value" ] ]
 }*/
 void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;

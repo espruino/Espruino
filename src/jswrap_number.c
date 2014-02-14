@@ -60,7 +60,7 @@
 /*JSON{ "type":"method", "class": "Number", "name" : "toFixed",
          "description" : "Format the number as a fixed point number",
          "generate" : "jswrap_number_toFixed",
-         "params" : [ [ "arguments", "int", "A number between 0 and 20 specifying the number of decimal digits after the decimal point"] ],
+         "params" : [ [ "arguments", "int32", "A number between 0 and 20 specifying the number of decimal digits after the decimal point"] ],
          "return" : ["JsVar", "A string"]
 }*/
 JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {

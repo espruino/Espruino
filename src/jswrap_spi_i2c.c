@@ -247,8 +247,8 @@ void spi_send8bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
                           "Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds."],
          "generate" : "jswrap_spi_send4bit",
          "params" : [ [ "data", "JsVar", "The data to send - either an integer, array, or string" ],
-                      [ "bit0", "int", "The 4 bits to send for a 0 (MSB first)" ],
-                      [ "bit1", "int", "The 4 bits to send for a 1 (MSB first)" ],
+                      [ "bit0", "int32", "The 4 bits to send for a 0 (MSB first)" ],
+                      [ "bit1", "int32", "The 4 bits to send for a 1 (MSB first)" ],
                       [ "nss_pin", "pin", "An nSS pin - this will be lowered before SPI output and raised afterwards (optional). There will be a small delay between when this is lowered and when sending starts, and also between sending finishing and it being raised." ] ]
 }*/
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
@@ -300,8 +300,8 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 "Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds."],
          "generate" : "jswrap_spi_send8bit",
          "params" : [ [ "data", "JsVar", "The data to send - either an integer, array, or string" ],
-                      [ "bit0", "int", "The 8 bits to send for a 0 (MSB first)" ],
-                      [ "bit1", "int", "The 8 bits to send for a 1 (MSB first)" ],
+                      [ "bit0", "int32", "The 8 bits to send for a 0 (MSB first)" ],
+                      [ "bit1", "int32", "The 8 bits to send for a 1 (MSB first)" ],
                       [ "nss_pin", "pin", "An nSS pin - this will be lowered before SPI output and raised afterwards (optional). There will be a small delay between when this is lowered and when sending starts, and also between sending finishing and it being raised" ] ]
 }*/
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
@@ -397,7 +397,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
 /*JSON{ "type":"method", "class": "I2C", "name" : "writeTo",
          "description" : "Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.",
          "generate" : "jswrap_i2c_writeTo",
-         "params" : [ [ "address", "int", "The 7 bit address of the device to transmit to" ],
+         "params" : [ [ "address", "int32", "The 7 bit address of the device to transmit to" ],
                       [ "data", "JsVar", "The Data to send - either a byte, an array of bytes, or a string" ]]
 }*/
 #define I2C_BUFSIZE 32
@@ -428,8 +428,8 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
 /*JSON{ "type":"method", "class": "I2C", "name" : "readFrom",
          "description" : "Request bytes from the given slave device, and return them as an array. This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP",
          "generate" : "jswrap_i2c_readFrom",
-         "params" : [ [ "address", "int", "The 7 bit address of the device to request bytes from" ],
-                      [ "quantity", "int", "The number of bytes to request" ] ],
+         "params" : [ [ "address", "int32", "The 7 bit address of the device to request bytes from" ],
+                      [ "quantity", "int32", "The number of bytes to request" ] ],
          "return" : [ "JsVar", "The data that was returned - an array of bytes" ]
 }*/
 JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {

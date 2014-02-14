@@ -150,7 +150,7 @@ def getUnLockGetter(varType, name, funcName):
 def getCreator(varType, value, funcName):
   if varType=="float": return "jsvNewFromFloat("+value+")"
   if varType=="int": return "jsvNewFromInteger("+value+")"
-  if varType=="int32": return "(int)jsvNewFromInteger("+value+")"
+  if varType=="int32": return "jsvNewFromInteger((JsVarInt)"+value+")"
   if varType=="bool": return "jsvNewFromBool("+value+")"
   if varType=="JsVar": return value
   sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
@@ -303,9 +303,9 @@ codeOut("#endif")
 codeOut('// beware big endian!');
 codeOut('#define CH2(a,b) ( ((b)<<8) | (a) )');
 codeOut('#define CH4(a,b,c,d) ( ((d)<<24) | ((c)<<16) | ((b)<<8) | (a) )');
-codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&var)==CH2(a,b))');
-codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&var)&0x00FFFFFF)==CH4(a,b,c,0))');
-codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&var)==CH4(a,b,c,d))');
+codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&(var))==CH2(a,b))');
+codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,b,c,0))');
+codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
 codeOut('JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name) {')
 codeOut('  if (parent) {')

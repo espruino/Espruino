@@ -144,7 +144,7 @@ void jswrap_onewire_skip(JsVar *parent) {
 /*JSON{ "type":"method", "class": "OneWire", "name" : "write",
          "description" : "Write a byte",
          "generate" : "jswrap_onewire_write",
-         "params" : [ [ "data", "int", "A byte to write" ],
+         "params" : [ [ "data", "int32", "A byte to write" ],
                       [ "power", "bool", "Whether to leave power on after write (default is false)" ] ]
 }*/
 void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
