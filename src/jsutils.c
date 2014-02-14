@@ -93,6 +93,13 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
     } else if (*s == 'b' || *s == 'B') {
       radix = 2;
       s++;
+    } else {
+      // check for digits 8 or 9 - if so it's decimal
+      const char *p;
+      for (p=s;*p;p++)
+        if (*p<'0' || *p>'9') break;
+        else if (*p>='8')
+          radix = 10;
     }
   }
   if (forceRadix>0 && forceRadix<=36)
