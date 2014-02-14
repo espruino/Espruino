@@ -306,6 +306,7 @@ accept(long sd, sockaddr *addr, socklen_t *addrlen)
 	tBsdReturnParams tAcceptReturnArguments;
 	
 	ret = EFAIL;
+	tAcceptReturnArguments.iStatus = EFAIL; // in case of timeout
 	ptr = tSLInformation.pucTxCommandBuffer;
 	args = (ptr + HEADERS_SIZE_CMD);
 	

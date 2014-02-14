@@ -22,6 +22,7 @@
 
 #ifdef USE_CC3000
  #include "socket.h"
+ #include "board_spi.h"
  #include "cc3000_common.h"
  #include "jswrap_cc3000.h"
 
@@ -99,68 +100,76 @@ void httpInit() {
 #endif
 }
 
-void _httpServerConnectionKill(JsVar *connection) {
-  SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-    if (socket!=INVALID_SOCKET) closesocket(socket);
-}
-
-void _httpClientConnectionKill(JsVar *connection) {
+static void _httpServerConnectionKill(JsVar *connection) {
+  if (networkState != NETWORKSTATE_ONLINE) return;
   SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (socket!=INVALID_SOCKET) closesocket(socket);
 }
 
-void httpKill() {
+static void _httpClientConnectionKill(JsVar *connection) {
+  if (networkState != NETWORKSTATE_ONLINE) return;
+  SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+  if (socket!=INVALID_SOCKET) closesocket(socket);
+}
+
+static void _httpCloseAllConnections() {
   // shut down connections
-  {
-      JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
-      if (arr) {
-        JsvArrayIterator it;
-        jsvArrayIteratorNew(&it, arr);
-        while (jsvArrayIteratorHasElement(&it)) {
-          JsVar *connection = jsvArrayIteratorGetElement(&it);
-          _httpServerConnectionKill(connection);
-          jsvUnLock(connection);
-          jsvArrayIteratorNext(&it);
-        }
-        jsvArrayIteratorFree(&it);
-        jsvRemoveAllChildren(arr);
-        jsvUnLock(arr);
-      }
-    }
-  {
-    JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
-    if (arr) {
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, arr);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *connection = jsvArrayIteratorGetElement(&it);
-        _httpClientConnectionKill(connection);
-        jsvUnLock(connection);
-        jsvArrayIteratorNext(&it);
-      }
-      jsvArrayIteratorFree(&it);
-      jsvRemoveAllChildren(arr);
-      jsvUnLock(arr);
-    }
-  }
-  // shut down our listeners, unlock objects, free data
-  {
-      JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
-      if (arr) {
-        JsvArrayIterator it;
-        jsvArrayIteratorNew(&it, arr);
-        while (jsvArrayIteratorHasElement(&it)) {
-          JsVar *connection = jsvArrayIteratorGetElement(&it);
-          SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-          if (socket!=INVALID_SOCKET) closesocket(socket);
-          jsvUnLock(connection);
-          jsvArrayIteratorNext(&it);
-        }
-        jsvArrayIteratorFree(&it);
-        jsvRemoveAllChildren(arr);
-        jsvUnLock(arr);
-      }
-    }
+   {
+       JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
+       if (arr) {
+         JsvArrayIterator it;
+         jsvArrayIteratorNew(&it, arr);
+         while (jsvArrayIteratorHasElement(&it)) {
+           JsVar *connection = jsvArrayIteratorGetElement(&it);
+           _httpServerConnectionKill(connection);
+           jsvUnLock(connection);
+           jsvArrayIteratorNext(&it);
+         }
+         jsvArrayIteratorFree(&it);
+         jsvRemoveAllChildren(arr);
+         jsvUnLock(arr);
+       }
+     }
+   {
+     JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
+     if (arr) {
+       JsvArrayIterator it;
+       jsvArrayIteratorNew(&it, arr);
+       while (jsvArrayIteratorHasElement(&it)) {
+         JsVar *connection = jsvArrayIteratorGetElement(&it);
+         _httpClientConnectionKill(connection);
+         jsvUnLock(connection);
+         jsvArrayIteratorNext(&it);
+       }
+       jsvArrayIteratorFree(&it);
+       jsvRemoveAllChildren(arr);
+       jsvUnLock(arr);
+     }
+   }
+   // shut down our listeners, unlock objects, free data
+   {
+       JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
+       if (arr) {
+         JsvArrayIterator it;
+         jsvArrayIteratorNew(&it, arr);
+         while (jsvArrayIteratorHasElement(&it)) {
+           JsVar *connection = jsvArrayIteratorGetElement(&it);
+           if (networkState == NETWORKSTATE_ONLINE) {
+             SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+             if (socket!=INVALID_SOCKET) closesocket(socket);
+           }
+           jsvUnLock(connection);
+           jsvArrayIteratorNext(&it);
+         }
+         jsvArrayIteratorFree(&it);
+         jsvRemoveAllChildren(arr);
+         jsvUnLock(arr);
+       }
+     }
+}
+
+void httpKill() {
+  _httpCloseAllConnections();
 #ifdef WIN32
    // Shutdown Winsock
    WSACleanup();
@@ -526,7 +535,14 @@ void httpClientConnectionsIdle() {
 
 
 void httpIdle() {
-  if (networkState != NETWORKSTATE_ONLINE) return;
+#ifdef USE_CC3000
+  cc3000_spi_check();
+#endif
+  if (networkState != NETWORKSTATE_ONLINE) {
+    // clear all clients and servers
+    _httpCloseAllConnections();
+    return;
+  }
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
     JsvArrayIterator it;
@@ -591,6 +607,21 @@ void httpIdle() {
 
   httpServerConnectionsIdle();
   httpClientConnectionsIdle();
+#ifdef USE_CC3000
+  if (jspIsInterrupted()) {
+    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
+    jspSetInterrupted(false);
+    // remove all existing connections
+    networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
+    _httpCloseAllConnections();
+    // power cycle
+    JsVar *wlan = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
+    if (wlan) {
+      jswrap_wlan_reconnect(wlan);
+      jsvUnLock(wlan);
+    } else jsErrorInternal("No CC3000 object!\n");
+  }
+#endif
 }
 
 // -----------------------------

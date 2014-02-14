@@ -21,9 +21,6 @@
 #ifdef USE_TRIGGER
 #include "trigger.h"
 #endif
-#ifdef USE_CC3000
-#include "board_spi.h"
-#endif
 
 // ----------------------------------------------------------------------------
 //                                                                     BUFFERS
@@ -191,13 +188,6 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
 #ifdef USE_TRIGGER
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
     return;
-#endif
-#ifdef USE_CC3000
-  IOEvent event;
-  event.flags = channel;
-  if (!state && jshIsEventForPin(&event, WLAN_IRQ_PIN)) {
-    cc3000_irq_handler();
-  }
 #endif
  // Otherwise add this event
  jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);

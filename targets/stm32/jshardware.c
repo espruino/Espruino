@@ -674,7 +674,7 @@ void jshInterruptOn() {
 //int JSH_DELAY_OVERHEAD = 0;
 int JSH_DELAY_MULTIPLIER = 1;
 void jshDelayMicroseconds(int microsec) {
-  int iter = (microsec * JSH_DELAY_MULTIPLIER) >> 10;
+  int iter = (int)(((long long)microsec * (long long)JSH_DELAY_MULTIPLIER) >> 10);
 //  iter -= JSH_DELAY_OVERHEAD;
   if (iter<0) iter=0;
   while (iter--) __NOP();

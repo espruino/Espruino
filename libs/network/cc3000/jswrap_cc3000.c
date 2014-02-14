@@ -71,6 +71,10 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
   if (jsvIsFunction(callback)) {
     jsvObjectSetChild(wlanObj, CC3000_ON_STATE_CHANGE, callback);
   }
+
+  jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"AP", vAP); // no unlock intended
+  jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"KEY", vKey); // no unlock intended
+
   char ap[32];
   char key[32];
   unsigned long security = WLAN_SEC_UNSEC;
@@ -94,6 +98,22 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
   networkState = NETWORKSTATE_OFFLINE; // force offline
   //wlan_disconnect();
   wlan_stop();
+}
+
+/*JSON{ "type":"method",
+         "class" : "WLAN", "name" : "reconnect",
+         "generate" : "jswrap_wlan_reconnect",
+         "description" : "Completely uninitialise and power down the CC3000, then reconnect to the old access point."
+}*/
+void jswrap_wlan_reconnect(JsVar *wlanObj) {
+  JsVar *ap = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"AP", 0);
+  JsVar *key = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"KEY", 0);
+  JsVar *cb = jsvObjectGetChild(wlanObj,CC3000_ON_STATE_CHANGE, 0);
+  jswrap_wlan_disconnect(wlanObj);
+  jswrap_wlan_connect(wlanObj, ap, key, cb);
+  jsvUnLock(ap);
+  jsvUnLock(key);
+  jsvUnLock(cb);
 }
 
 static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {

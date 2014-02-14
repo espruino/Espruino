@@ -491,7 +491,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 		}
 	}
 	cc3000_irq_enable();
-        return NULL;
+    return NULL;
 }
 
 //*****************************************************************************

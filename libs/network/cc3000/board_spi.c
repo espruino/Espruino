@@ -41,9 +41,6 @@
 #define HI(value)               (((value) & 0xFF00) >> 8)
 #define LO(value)               ((value) & 0x00FF)
 
-volatile bool cc3000_ints_enabled = false;
-volatile bool cc3000_in_interrupt = false;
-
 typedef struct
 {
     gcSpiHandleRx  SPIRxHandler;
@@ -75,7 +72,7 @@ void cc3000_spi_resume(void);
 
 char spi_buffer[CC3000_RX_BUFFER_SIZE];
 unsigned char wlan_tx_buffer[CC3000_TX_BUFFER_SIZE];
-
+bool cc3000_spi_inited = false;
 
 void  cc3000_spi_open(void)
 {
@@ -85,7 +82,7 @@ void  cc3000_spi_open(void)
   inf.pinSCK =  WLAN_CLK_PIN;
   inf.pinMISO = WLAN_MISO_PIN;
   inf.pinMOSI = WLAN_MOSI_PIN;
-  inf.baudRate = 100000; // FIXME - just slow for debug
+  inf.baudRate = 4000000;
   inf.spiMode = SPIF_SPI_MODE_1;  // Mode 1   CPOL= 0  CPHA= 1
   jshSPISetup(WLAN_SPI, &inf);
 
@@ -96,18 +93,24 @@ void  cc3000_spi_open(void)
   jshPinOutput(WLAN_EN_PIN, 0); // disable WLAN
   jshSetPinStateIsManual(WLAN_IRQ_PIN, true);
   jshPinSetState(WLAN_IRQ_PIN, JSHPINSTATE_GPIO_IN_PULLUP); // flip into read mode with pullup
-  jshPinWatch(WLAN_IRQ_PIN, true); // watch IRQ pin
 
   // wait a little (ensure that WLAN takes effect)
   jshDelayMicroseconds(500*1000); // force a 500ms delay! FIXME
+  cc3000_spi_inited = true;
 }
 
 void cc3000_spi_close(void)
 {
-    if (sSpiInformation.pRxPacket)
-        sSpiInformation.pRxPacket = 0;
-    //  Disable Interrupt
-    cc3000_irq_disable();
+  cc3000_spi_inited = false;
+  if (sSpiInformation.pRxPacket)
+    sSpiInformation.pRxPacket = 0;
+  //  Disable Interrupt
+  cc3000_irq_disable();
+}
+
+void cc3000_spi_check() {
+  if (cc3000_spi_inited)
+    cc3000_check_irq_pin();
 }
 
 void SpiOpen(gcSpiHandleRx pfRxHandler)
@@ -187,7 +190,7 @@ cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
     if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
     {
         while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED)
-            ;
+          cc3000_check_irq_pin();
     }
 
     if (sSpiInformation.ulSpiState == eSPI_STATE_INITIALIZED)
@@ -314,7 +317,6 @@ void cc3000_irq_handler_x(void)
 {
   if (tSLInformation.usEventOrDataReceived) return; // there's already an interrupt that we haven't handled
 
-  cc3000_in_interrupt = true;
   if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
   {
       //This means IRQ line was low call a callback of HCI Layer to inform
@@ -353,13 +355,6 @@ void cc3000_irq_handler_x(void)
       sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
       sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
   }
-  cc3000_in_interrupt = false;
-}
-
-void cc3000_irq_handler(void)
-{
-  if (!cc3000_ints_enabled) return; // no ints enabled
-  cc3000_irq_handler_x();
 }
 
 long cc3000_read_irq_pin(void)
@@ -369,19 +364,14 @@ long cc3000_read_irq_pin(void)
 
 void cc3000_irq_enable(void) {
   cc3000_check_irq_pin();
-  cc3000_ints_enabled = true;
 }
 
 void cc3000_irq_disable(void) {
-  cc3000_ints_enabled = false;
 }
 
 void cc3000_check_irq_pin() {
-  if (!cc3000_in_interrupt && !cc3000_read_irq_pin()) {
-    bool ints = cc3000_ints_enabled;
-    cc3000_ints_enabled = false;
+  if (!cc3000_read_irq_pin()) {
     cc3000_irq_handler_x();
-    cc3000_ints_enabled = ints;
   }
 }
 
@@ -457,7 +447,6 @@ void cc3000_initialise(JsVar *wlanObj) {
   wlan_set_event_mask(
       HCI_EVNT_WLAN_KEEPALIVE |
       HCI_EVNT_WLAN_UNSOL_INIT);
-
   // TODO: check return value !=0
   wlan_ioctl_set_connection_policy(0, 0, 0); // don't auto-connect
   wlan_ioctl_del_profile(255); // delete stored eeprom data

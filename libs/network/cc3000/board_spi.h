@@ -44,6 +44,7 @@ extern int errno;
 
 void cc3000_spi_open(void);
 void cc3000_spi_close(void);
+void cc3000_spi_check(void);
 
 long cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength);
 void cc3000_spi_resume(void);
@@ -51,8 +52,6 @@ void cc3000_spi_resume(void);
 long cc3000_read_irq_pin(void);
 void cc3000_irq_enable(void);
 void cc3000_irq_disable(void);
-
-void cc3000_irq_handler(void);
 
 void cc3000_check_irq_pin();
 
