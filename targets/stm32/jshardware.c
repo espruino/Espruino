@@ -924,6 +924,13 @@ void jshInit() {
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_MASSIVE); // Super high priority
 
+#ifdef USE_RTC
+  // work out initial values for RTC, and reset SysTick
+  SysTick->VAL=0;
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)JSSYSTIME_SECOND * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
+  lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
+#endif
+
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
