@@ -38,6 +38,7 @@
             setWatch now reports lastTime - time of last state change #238
             analogWrite now respects pinMode (fix #234)
             Add Open Drain support to pinMode (fix #225)
+            Fix calling Number([value]) always returns undefined (fix #186)
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}
