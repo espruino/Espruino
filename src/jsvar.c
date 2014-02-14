@@ -1853,8 +1853,12 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     if (op == LEX_TYPEEQUAL || op == LEX_NTYPEEQUAL) {
       // check type first, then call again to check data
       bool eql = (a==0) == (b==0);
-      if (a && b) eql = ((a->flags & JSV_VARTYPEMASK) ==
-                         (b->flags & JSV_VARTYPEMASK));
+      if (a && b) {
+        // Check whether both are numbers, otherwise check the variable
+        // type flags themselves
+        eql = ((jsvIsInt(a)||jsvIsFloat(a)) == (jsvIsInt(b)||jsvIsFloat(b))) ||
+              ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
+      }
       if (eql) {
         JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
         if (!jsvGetBool(contents)) eql = false;
