@@ -26,7 +26,7 @@ JslCharPos jslCharPosClone(JslCharPos *pos) {
 
 /// Return the next character (do not move to the next character)
 static inline char jslNextCh(JsLex *lex) {
-  return lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0;
+  return (char)(lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0);
 }
 
 /// Move on to the next character
@@ -686,7 +686,7 @@ bool jslMatch(JsLex *lex, int expected_tk) {
   return true;
 }
 
-JsVar *jslNewFromLexer(struct JsLex *lex, JslCharPos *charFrom, size_t charTo) {
+JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   // Create a var
   JsVar *var = jsvNewFromEmptyString();
   if (!var) { // out of memory

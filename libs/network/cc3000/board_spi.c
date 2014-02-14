@@ -61,7 +61,7 @@ tSpiInformation sSpiInformation;
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiPauseSpi(void);
 void cc3000_spi_resume(void);
-void cc3000_continue_read(void);
+
 #define ASSERT_CS()          jshPinSetValue(WLAN_CS_PIN, 0)
 #define DEASSERT_CS()        jshPinSetValue(WLAN_CS_PIN, 1)
 

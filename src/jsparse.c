@@ -59,7 +59,7 @@ bool jspHasError() {
 void jspReplaceWith(JsVar *dst, JsVar *src) {
   // If this is an index in an array buffer, write directly into the array buffer
   if (jsvIsArrayBufferName(dst)) {
-    JsVarInt idx = jsvGetInteger(dst);
+    size_t idx = (size_t)jsvGetInteger(dst);
     JsVar *arrayBuffer = jsvLock(dst->firstChild);
     jsvArrayBufferSet(arrayBuffer, idx, src);
     jsvUnLock(arrayBuffer);
@@ -510,7 +510,7 @@ NO_INLINE JsVar *jspeFunctionDefinition() {
   // Then create var and set
   if (JSP_SHOULD_EXECUTE) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(execInfo.lex, &funcBegin, (size_t)(execInfo.lex->tokenLastStart+1));
+    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)(execInfo.lex->tokenLastStart+1));
     jsvUnLock(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(funcCodeVar);
     // scope var
@@ -895,7 +895,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 JsVarInt idx = jsvGetIntegerAndUnLock(jsvSkipName(index));
                 JsVar *child = 0;
                 if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(aVar)) {
-                  char ch = jsvGetCharInString(aVar, (int)idx);
+                  char ch = jsvGetCharInString(aVar, (size_t)idx);
                   child = jsvNewFromEmptyString();
                   if (child) jsvAppendCharacter(child, ch);
                 }

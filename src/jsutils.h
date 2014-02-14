@@ -318,9 +318,9 @@ struct JsLex;
 
 void jsError(const char *fmt, ...);
 void jsErrorInternal(const char *fmt, ...);
-void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos);
+void jsErrorAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsWarn(const char *fmt, ...);
-void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos);
+void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 
 #ifdef FAKE_STDLIB

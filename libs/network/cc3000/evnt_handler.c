@@ -433,7 +433,7 @@ hci_event_handler(void *pRetParams, unsigned char *from, unsigned char *fromlen)
 						
 						//Read SSID
 						STREAM_TO_STREAM(RecvParams,RetParams,NETAPP_IPCONFIG_SSID_LENGTH);
-	
+						break;
 					}
 				}
 				

@@ -63,6 +63,6 @@ JsVar *jslGetTokenValueAsVar(JsLex *lex);
 void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
-JsVar *jslNewFromLexer(struct JsLex *lex,  JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
+JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
 
 #endif /* JSLEX_H_ */

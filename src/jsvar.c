@@ -727,8 +727,8 @@ size_t jsvGetStringLength(JsVar *v) {
 }
 
 //  IN A STRING  get the number of lines in the string (min=1)
-int jsvGetLinesInString(JsVar *v) {
-  int lines = 1;
+size_t jsvGetLinesInString(JsVar *v) {
+  size_t lines = 1;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -740,9 +740,9 @@ int jsvGetLinesInString(JsVar *v) {
 }
 
 // IN A STRING Get the number of characters on a line - lines start at 1
-int jsvGetCharsOnLine(JsVar *v, int line) {
-  int currentLine = 1;
-  int chars = 0;
+size_t jsvGetCharsOnLine(JsVar *v, size_t line) {
+  size_t currentLine = 1;
+  size_t chars = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -757,10 +757,10 @@ int jsvGetCharsOnLine(JsVar *v, int line) {
 }
 
 //  IN A STRING, get the line and column of the given character. Both values must be non-null
-void jsvGetLineAndCol(JsVar *v, int charIdx, int* line, int *col) {
-  int x = 1;
-  int y = 1;
-  int n = 0;
+void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col) {
+  size_t x = 1;
+  size_t y = 1;
+  size_t n = 0;
   assert(line && col);
 
   JsvStringIterator it;
@@ -787,10 +787,10 @@ void jsvGetLineAndCol(JsVar *v, int charIdx, int* line, int *col) {
 }
 
 //  IN A STRING, get a character index from a line and column
-int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col) {
-  int x = 1;
-  int y = 1;
-  int n = 0;
+size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col) {
+  size_t x = 1;
+  size_t y = 1;
+  size_t n = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -897,9 +897,8 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
   jsvStringIteratorFree(&it);
 }
 
-/** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
- *  stridx can be negative to go from end of string */
-void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength) {
+/** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
+void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength) {
   JsVar *block = jsvLockAgain(var);
   assert(jsvIsString(var));
   // Find the block at end of the string...
@@ -933,9 +932,8 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength)
   jsvUnLock(block);
 }
 
-/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
- *  stridx can be negative to go from end of string */
-JsVar *jsvNewFromStringVar(const JsVar *str, int stridx, int maxLength) {
+/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
+JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength) {
   JsVar *var = jsvNewFromEmptyString();
   if (var) jsvAppendStringVar(var, str, stridx, maxLength);
   return var;
@@ -946,10 +944,8 @@ void jsvAppendStringVarComplete(JsVar *var, const JsVar *str) {
   jsvAppendStringVar(var, str, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
 }
 
-char jsvGetCharInString(JsVar *v, int idx) {
+char jsvGetCharInString(JsVar *v, size_t idx) {
   if (!jsvIsString(v)) return 0;
-  if (idx<0) idx += (int)jsvGetStringLength(v); // <0 goes from end of string
-  if (idx<0) return 0;
 
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, idx);
@@ -1070,7 +1066,7 @@ size_t jsvGetArrayBufferLength(JsVar *arrayBuffer) {
 }
 
 /** Get the item at the given location in the array buffer and return the result */
-JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, JsVarInt idx) {
+JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t idx) {
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arrayBuffer, idx);
   JsVar *v = jsvArrayBufferIteratorGetValue(&it);
@@ -1079,7 +1075,7 @@ JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, JsVarInt idx) {
 }
 
 /** Set the item at the given location in the array buffer */
-void jsvArrayBufferSet(JsVar *arrayBuffer, JsVarInt idx, JsVar *value) {
+void jsvArrayBufferSet(JsVar *arrayBuffer, size_t idx, JsVar *value) {
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, arrayBuffer, idx);
   jsvArrayBufferIteratorSetValue(&it, value);
@@ -1090,7 +1086,7 @@ void jsvArrayBufferSet(JsVar *arrayBuffer, JsVarInt idx, JsVar *value) {
 /** Given an integer name that points to an arraybuffer or an arraybufferview, evaluate it and return the result */
 JsVar *jsvArrayBufferGetFromName(JsVar *name) {
   assert(jsvIsArrayBufferName(name));
-  JsVarInt idx = jsvGetInteger(name);
+  size_t idx = (size_t)jsvGetInteger(name);
   JsVar *arrayBuffer = jsvLock(name->firstChild);
   JsVar *value = jsvArrayBufferGet(arrayBuffer, idx);
   jsvUnLock(arrayBuffer);
@@ -1178,7 +1174,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
  * if one of the strings ends, we treat them as equal.
  * For a basic strcmp, do: jsvCompareString(a,b,0,0,false)
  *  */
-int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString) {
+int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString) {
   JsvStringIterator ita, itb;
   jsvStringIteratorNew(&ita, va, starta);
   jsvStringIteratorNew(&itb, vb, startb);
@@ -2282,11 +2278,11 @@ bool jsvIsInternalObjectKey(JsVar *v) {
 
 // --------------------------------------------------------------------------------------------
 
-void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
+void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
   it->charsInVar = jsvGetCharactersInVar(str);
-  it->charIdx = (size_t)startIdx;
+  it->charIdx = startIdx;
   it->varIndex = 0;
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
@@ -2301,12 +2297,12 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
         jsvUnLock(it->var);
         it->var = 0;
         it->charsInVar = 0;
-        it->varIndex = (size_t)startIdx - it->charIdx;
+        it->varIndex = startIdx - it->charIdx;
         return; // at end of string - get out of loop
       }
     }
   }
-  it->varIndex = (size_t)startIdx - it->charIdx;
+  it->varIndex = startIdx - it->charIdx;
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {
@@ -2352,7 +2348,7 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
 
 
 // --------------------------------------------------------------------------------------------
-void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, JsVarInt index) {
+void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index) {
   assert(jsvIsArrayBuffer(arrayBuffer));
   it->index = index;
   it->type = arrayBuffer->varData.arraybuffer.type;
@@ -2368,12 +2364,12 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
 
   it->byteLength += it->byteOffset; // because we'll check if we have more bytes using this
   it->byteOffset = it->byteOffset + index*JSV_ARRAYBUFFER_GET_SIZE(it->type);
-  if (it->byteOffset<0 || (it->byteLength>=0 && it->byteOffset>=(it->byteLength+1-JSV_ARRAYBUFFER_GET_SIZE(it->type)))) {
+  if (it->byteOffset>=(it->byteLength+1-JSV_ARRAYBUFFER_GET_SIZE(it->type))) {
     jsvUnLock(arrayBufferData);
     it->type = ARRAYBUFFERVIEW_UNDEFINED;
     return;
   }
-  jsvStringIteratorNew(&it->it, arrayBufferData, (int)it->byteOffset);
+  jsvStringIteratorNew(&it->it, arrayBufferData, (size_t)it->byteOffset);
   jsvUnLock(arrayBufferData);
   it->hasAccessedElement = false;
 }
@@ -2480,16 +2476,13 @@ void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarIn
 }
 
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
-  return jsvNewFromInteger(it->index);
+  return jsvNewFromInteger((JsVarInt)it->index);
 }
 
 bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return false;
   if (it->hasAccessedElement) return true;
-  if (it->byteLength>=0)
-    return it->byteOffset <= (it->byteLength-JSV_ARRAYBUFFER_GET_SIZE(it->type));
-  else
-    return jsvStringIteratorHasChar(&it->it);
+  return it->byteOffset <= (it->byteLength-JSV_ARRAYBUFFER_GET_SIZE(it->type));
 }
 
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it) {

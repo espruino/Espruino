@@ -217,11 +217,11 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
         if (lineNumber>0 && colonPos>lastLineStart && lastLineStart<strIdx) {
           JsVar *hVal = jsvNewFromEmptyString();
           if (hVal)
-            jsvAppendStringVar(hVal, *receiveData, colonPos+2, strIdx-(colonPos+2));
+            jsvAppendStringVar(hVal, *receiveData, (size_t)colonPos+2, (size_t)(strIdx-(colonPos+2)));
           JsVar *hKey = jsvNewFromEmptyString();
           if (hKey) {
             jsvMakeIntoVariableName(hKey, hVal);
-            jsvAppendStringVar(hKey, *receiveData, lastLineStart, colonPos-lastLineStart);
+            jsvAppendStringVar(hKey, *receiveData, (size_t)lastLineStart, (size_t)(colonPos-lastLineStart));
             jsvAddName(vHeaders, hKey);
             jsvUnLock(hKey);
           }
@@ -243,13 +243,13 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   if (isServer) {
     JsVar *vMethod = jsvNewFromEmptyString();
     if (vMethod) {
-      jsvAppendStringVar(vMethod, *receiveData, 0, firstSpace);
+      jsvAppendStringVar(vMethod, *receiveData, 0, (size_t)firstSpace);
       jsvUnLock(jsvAddNamedChild(objectForData, vMethod, "method"));
       jsvUnLock(vMethod);
     }
     JsVar *vUrl = jsvNewFromEmptyString();
     if (vUrl) {
-      jsvAppendStringVar(vUrl, *receiveData, firstSpace+1, secondSpace-(firstSpace+1));
+      jsvAppendStringVar(vUrl, *receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)));
       jsvUnLock(jsvAddNamedChild(objectForData, vUrl, "url"));
       jsvUnLock(vUrl);
     }
@@ -257,7 +257,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   // strip out the header
   JsVar *afterHeaders = jsvNewFromEmptyString();
   if (!afterHeaders) return true;
-  jsvAppendStringVar(afterHeaders, *receiveData, headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  jsvAppendStringVar(afterHeaders, *receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
   jsvUnLock(*receiveData);
   *receiveData = afterHeaders;
   return true;
@@ -289,7 +289,7 @@ bool _http_send(SOCKET sckt, JsVar **sendData) {
     a = (int)send(sckt,buf,bufLen, MSG_NOSIGNAL);
     JsVar *newSendData = 0;
     if (a!=len) {
-      newSendData = jsvNewFromStringVar(*sendData, a, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      newSendData = jsvNewFromStringVar(*sendData, (size_t)a, JSVAPPENDSTRINGVAR_MAXLENGTH);
     }
     jsvUnLock(*sendData);
     *sendData = newSendData;

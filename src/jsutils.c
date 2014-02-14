@@ -24,8 +24,6 @@
 #include <math.h>
 #endif
 
-extern double jswrap_math_pow(double x, double y); // for pow
-
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
         return false;
@@ -131,7 +129,7 @@ JsVarInt stringToInt(const char *s) {
     return stringToIntWithRadix(s,0,0);
 }
 
-void jsError(const char *fmt, ...) {
+NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   va_list argp;
@@ -141,7 +139,7 @@ void jsError(const char *fmt, ...) {
   jsiConsolePrint("\n");
 }
 
-void jsErrorInternal(const char *fmt, ...) {
+NO_INLINE void jsErrorInternal(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("INTERNAL ERROR: ");
   va_list argp;
@@ -151,7 +149,7 @@ void jsErrorInternal(const char *fmt, ...) {
   jsiConsolePrint("\n");
 }
 
-void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
+NO_INLINE void jsErrorAt(const char *message, struct JsLex *lex, size_t tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   jsiConsolePrint(message);
@@ -162,7 +160,7 @@ void jsErrorAt(const char *message, struct JsLex *lex, int tokenPos) {
   }
 }
 
-void jsWarn(const char *fmt, ...) {
+NO_INLINE void jsWarn(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
   va_list argp;
@@ -172,7 +170,7 @@ void jsWarn(const char *fmt, ...) {
   jsiConsolePrint("\n");
 }
 
-void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
+NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
   jsiConsolePrint(message);
@@ -182,7 +180,7 @@ void jsWarnAt(const char *message, struct JsLex *lex, int tokenPos) {
   }
 }
 
-void jsAssertFail(const char *file, int line, const char *expr) {
+NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   jsiConsoleRemoveInputLine();
   if (expr) {
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);

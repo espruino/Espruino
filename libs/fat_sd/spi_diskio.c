@@ -515,6 +515,7 @@ DRESULT disk_ioctl (
 			break;
 		default :
 			res = RES_PARERR;
+			break;
 		}
 	}
 	else {
@@ -602,6 +603,7 @@ DRESULT disk_ioctl (
 
 		default:
 			res = RES_PARERR;
+			break;
 		}
 
 		release_spi();

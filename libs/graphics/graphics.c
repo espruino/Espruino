@@ -32,12 +32,14 @@
 
 
 void graphicsFallbackSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
+  NOT_USED(gfx);
   NOT_USED(x);
   NOT_USED(y);
   NOT_USED(col);
 }
 
 unsigned int graphicsFallbackGetPixel(JsGraphics *gfx, short x, short y) {
+  NOT_USED(gfx);
   NOT_USED(x);
   NOT_USED(y);
   return 0;
@@ -61,8 +63,8 @@ void graphicsFallbackBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned sh
   unsigned int x,y;
   for(x=0;x<width;x++) {
     for(y=0;y<height;y++) {
-      int bitOffset = x1+x+((y+y1)*width);
-      graphicsSetPixel(gfx,x,y, ((data[bitOffset>>3]>>(bitOffset&7))&1) ? gfx->data.fgColor : gfx->data.bgColor);
+      int bitOffset = x1+(int)x+(((int)y+y1)*width);
+      graphicsSetPixel(gfx,(short)x,(short)y, (unsigned int)(((data[bitOffset>>3]>>(bitOffset&7))&1) ? gfx->data.fgColor : gfx->data.bgColor));
     }
   }
 }
@@ -121,7 +123,7 @@ void graphicsSetVar(JsGraphics *gfx) {
 
 void graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
-  gfx->setPixel(gfx,x,y,col & ((1<<gfx->data.bpp)-1));
+  gfx->setPixel(gfx,x,y,col & (unsigned int)((1<<gfx->data.bpp)-1));
 }
 
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y) {
@@ -195,7 +197,7 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
     int step = ((y2-y1)<<8) / xl;
     short x;
     for (x=x1;x<=x2;x++) {
-      graphicsSetPixel(gfx, x, pos>>8, gfx->data.fgColor);
+      graphicsSetPixel(gfx, x, (short)(pos>>8), gfx->data.fgColor);
       pos += step;
     }
   } else {
@@ -208,12 +210,13 @@ void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
     int step = ((x2-x1)<<8) / yl;
     short y;
     for (y=y1;y<=y2;y++) {
-      graphicsSetPixel(gfx, pos>>8, y, gfx->data.fgColor);
+      graphicsSetPixel(gfx, (short)(pos>>8), y, gfx->data.fgColor);
       pos += step;
     }
   }
 }
 
+#ifdef HORIZONTAL_SCANLINE
 static inline void graphicsFillPolyCreateHorizScanLines(JsGraphics *gfx, short *minx, short *maxx, short x1, short y1,short x2, short y2) {
     if (y2 < y1) {
         short t;
@@ -240,7 +243,7 @@ static inline void graphicsFillPolyCreateHorizScanLines(JsGraphics *gfx, short *
         xh += stepx;
     }
 }
-
+#else
 static inline void graphicsFillPolyCreateVertScanLines(JsGraphics *gfx, short *miny, short *maxy, short x1, short y1,short x2, short y2) {
     if (x2 < x1) {
         short t;
@@ -267,6 +270,7 @@ static inline void graphicsFillPolyCreateVertScanLines(JsGraphics *gfx, short *m
         yh += stepy;
     }
 }
+#endif
 
 void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
 #ifdef HORIZONTAL_SCANLINE
@@ -358,6 +362,7 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
 
 // returns the width of a character
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
+  NOT_USED(gfx);
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
   VectorFontChar vector = vectorFonts[ch-vectorFontOffset];

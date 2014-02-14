@@ -300,7 +300,7 @@ JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   size_t argC = 0;
 
   if (jsvIsArray(argsArray)) {
-    argC = (unsigned int)jsvGetArrayLength(argsArray);
+    argC = (size_t)jsvGetArrayLength(argsArray);
     if (argC>64) argC=64; // sanity
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
 
@@ -310,7 +310,7 @@ JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
     jsvArrayIteratorNew(&it, argsArray);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
-      if (idx>=0 && idx<argC) {
+      if (idx>=0 && idx<(int)argC) {
         assert(!args[idx]); // just in case there were dups
         args[idx] = jsvArrayIteratorGetElement(&it);
       }

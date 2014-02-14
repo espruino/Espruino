@@ -56,9 +56,9 @@ void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit an integer
 void jsiConsolePrintInt(JsVarInt d);
 /// Transmit a position in the lexer (for reporting errors)
-void jsiConsolePrintPosition(struct JsLex *lex, int tokenPos);
+void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)
-void jsiConsolePrintTokenLineMarker(struct JsLex *lex, int tokenPos);
+void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos);
 /// Print the contents of a string var to a device - directly
 void jsiTransmitStringVar(IOEventFlags device, JsVar *v);
 /// If the input line was shown in the console, remove it

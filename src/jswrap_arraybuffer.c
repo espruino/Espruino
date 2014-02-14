@@ -201,18 +201,18 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   } else if (jsvIsInt(arr)) {
     length = jsvGetInteger(arr);
     byteOffset = 0;
-    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type)*length);
+    arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
   } else if (jsvIsArray(arr)) {
-    length = jsvGetArrayLength(arr);
+    length = (JsVarInt)jsvGetArrayLength(arr);
     byteOffset = 0;
-    arrayBuffer = jswrap_arraybuffer_constructor(JSV_ARRAYBUFFER_GET_SIZE(type)*length);
+    arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
     // later on we'll populate this
   }
   if (!arrayBuffer) {
     jsError("Unsupported first argument\n");
     return 0;
   }
-  if (length<=0) length = (JsVarInt)jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type);
+  if (length==0) length = (JsVarInt)(jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type));
   JsVar *typedArr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (typedArr) {
     typedArr->varData.arraybuffer.type = type;
@@ -228,7 +228,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
         JsVar *idx = jsvArrayIteratorGetIndex(&it);
         if (jsvIsInt(idx)) {
           JsVar *val = jsvArrayIteratorGetElement(&it);
-          jsvArrayBufferSet(typedArr, jsvGetInteger(idx), val);
+          jsvArrayBufferSet(typedArr, (size_t)jsvGetInteger(idx), val);
           jsvUnLock(val);
         }
         jsvUnLock(idx);
@@ -249,7 +249,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
 }*/
 /*JSON{ "type":"property", "class": "ArrayBufferView",  "name": "byteLength",
          "description" : "The length, in bytes, of the view",
-         "generate_full" : "parent->varData.arraybuffer.length * JSV_ARRAYBUFFER_GET_SIZE(parent->varData.arraybuffer.type)",
+         "generate_full" : "(JsVarInt)(parent->varData.arraybuffer.length * JSV_ARRAYBUFFER_GET_SIZE(parent->varData.arraybuffer.type))",
          "return" : [ "int", "The Length" ]
 }*/
 /*JSON{ "type":"property", "class": "ArrayBufferView",  "name": "byteOffset",
@@ -265,8 +265,8 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
          "return" : [ "float", "The result of interpolating between (int)index and (int)(index+1)" ]
 }*/
 JsVarFloat jswrap_arraybufferview_interpolate(JsVar *parent, JsVarFloat findex) {
-  int idx = (int)findex;
-  JsVarFloat a = findex-idx;
+  size_t idx = (size_t)findex;
+  JsVarFloat a = findex - (int)idx;
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, parent, idx);
   JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
@@ -289,8 +289,8 @@ JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, J
   JsVarFloat ay = y-yidx;
 
   JsVarFloat findex = x + (JsVarFloat)(yidx*width);
-  int idx = (int)findex;
-  JsVarFloat ax = findex-idx;
+  size_t idx = (size_t)findex;
+  JsVarFloat ax = findex-(int)idx;
 
   JsvArrayBufferIterator it;
   jsvArrayBufferIteratorNew(&it, parent, idx);

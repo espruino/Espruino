@@ -47,7 +47,7 @@ typedef enum {
   ARRAYBUFFERVIEW_FLOAT32 = 4 | ARRAYBUFFERVIEW_FLOAT,
   ARRAYBUFFERVIEW_FLOAT64 = 8 | ARRAYBUFFERVIEW_FLOAT,
 } PACKED_FLAGS JsVarDataArrayBufferViewType;
-#define JSV_ARRAYBUFFER_GET_SIZE(T) ((T)&ARRAYBUFFERVIEW_MASK_SIZE)
+#define JSV_ARRAYBUFFER_GET_SIZE(T) (size_t)((T)&ARRAYBUFFERVIEW_MASK_SIZE)
 #define JSV_ARRAYBUFFER_IS_SIGNED(T) (((T)&ARRAYBUFFERVIEW_SIGNED)!=0)
 #define JSV_ARRAYBUFFER_IS_FLOAT(T) (((T)&ARRAYBUFFERVIEW_FLOAT)!=0)
 
@@ -142,9 +142,8 @@ JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
 static inline JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
-/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH).
- *  stridx can be negative to go from end of string */
-JsVar *jsvNewFromStringVar(const JsVar *str, int stridx, int maxLength);
+/** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
+JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength);
 JsVar *jsvNewFromInteger(JsVarInt value);
 JsVar *jsvNewFromBool(bool value);
 JsVar *jsvNewFromFloat(JsVarFloat value);
@@ -266,21 +265,21 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var a
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
-int jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
-int jsvGetCharsOnLine(JsVar *v, int line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
-void jsvGetLineAndCol(JsVar *v, int charIdx, int* line, int *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null
-int jsvGetIndexFromLineAndCol(JsVar *v, int line, int col); ///<  IN A STRING, get a character index from a line and column
+size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
+size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
+void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null
+size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 bool jsvIsStringEqual(JsVar *var, const char *str);
-int jsvCompareString(JsVar *va, JsVar *vb, int starta, int startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
+int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 void jsvAppendStringBuf(JsVar *var, const char *str, int length); ///< Append the given string to this one - but does not use null-terminated strings
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
-void jsvAppendStringVar(JsVar *var, const JsVar *str, int stridx, int maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH). stridx can be negative to go from end of string
+void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
-char jsvGetCharInString(JsVar *v, int idx);
+char jsvGetCharInString(JsVar *v, size_t idx);
 
 JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
@@ -304,9 +303,9 @@ bool jsvGetBoolAndUnLock(JsVar *v);
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
-JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, JsVarInt index);
+JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t index);
 /** Set the item at the given location in the array buffer */
-void jsvArrayBufferSet(JsVar *arrayBuffer, JsVarInt index, JsVar *value);
+void jsvArrayBufferSet(JsVar *arrayBuffer, size_t index, JsVar *value);
 /** Given an integer name that points to an arraybuffer or an arraybufferview, evaluate it and return the result */
 JsVar *jsvArrayBufferGetFromName(JsVar *name);
 
@@ -428,7 +427,7 @@ typedef struct JsvStringIterator {
 #define jsvStringIteratorNewConst(it,str,startIdx) jsvStringIteratorNew(it,(JsVar*)str,startIdx)
 
 /// Create a new String iterator from a string, starting from a specific character. NOTE: This does not keep a lock to the first element, so make sure you do or the string will be freed!
-void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx);
+void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Clone the string iterator
 static inline JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
@@ -582,13 +581,13 @@ static inline void jsvObjectIteratorFree(JsvObjectIterator *it) {
 typedef struct JsvArrayBufferIterator {
   JsvStringIterator it;
   JsVarDataArrayBufferViewType type;
-  JsVarInt byteLength;
-  JsVarInt byteOffset;
-  JsVarInt index;
+  size_t byteLength;
+  size_t byteOffset;
+  size_t index;
   bool hasAccessedElement;
 } JsvArrayBufferIterator;
 
-void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, JsVarInt index);
+void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index);
 JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it);
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it);
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
