@@ -113,10 +113,10 @@ def get_jsondata(is_for_document, parseArgs = True):
               else:
                 jsondatas.append(jsondata)
             except ValueError as e:
-              sys.stderr.write( "JSON PARSE FAILED -",  e , "\n")
+              sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
               exit(1)
             except:
-              sys.stderr.write( "JSON PARSE FAILED",  sys.exc_info()[0], "\n" )
+              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+sys.exc_info()[0] + "\n" )
               exit(1)
         print "Scanning finished."
         return jsondatas
