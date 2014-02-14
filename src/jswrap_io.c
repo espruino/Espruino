@@ -21,37 +21,37 @@ extern int isnan(double x);
 
 /*JSON{ "type":"function", "name" : "peek8",
          "description" : [ "Read 8 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned char*)(unsigned int)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned char*)(size_t)jsvGetInteger(addr)",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke8",
          "description" : [ "Write 8 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned char*)(unsigned int)jsvGetInteger(addr)) = (unsigned char)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned char*)(size_t)jsvGetInteger(addr)) = (unsigned char)jsvGetInteger(value)",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/
 /*JSON{ "type":"function", "name" : "peek16",
          "description" : [ "Read 16 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned short*)(unsigned int)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned short*)(size_t)jsvGetInteger(addr)",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke16",
          "description" : [ "Write 16 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned short*)(unsigned int)jsvGetInteger(addr)) = (unsigned short)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned short*)(size_t)jsvGetInteger(addr)) = (unsigned short)jsvGetInteger(value)",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/
 /*JSON{ "type":"function", "name" : "peek32",
          "description" : [ "Read 32 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned int*)(unsigned int)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned int*)(size_t)jsvGetInteger(addr)",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke32",
          "description" : [ "Write 32 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned int*)(unsigned int)jsvGetInteger(addr)) = (unsigned int)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned int*)(size_t)jsvGetInteger(addr)) = (unsigned int)jsvGetInteger(value)",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/

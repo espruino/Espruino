@@ -136,8 +136,8 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createSDL", "ifdef" : "USE_LCD_SDL",
          "description" : "Create a Graphics object that renders to SDL window (Linux-based devices only)",
          "generate" : "jswrap_graphics_createSDL",
-         "params" : [ [ "width", "int", "Pixels wide" ],
-                      [ "height", "int", "Pixels high" ] ],
+         "params" : [ [ "width", "int32", "Pixels wide" ],
+                      [ "height", "int32", "Pixels high" ] ],
          "return" : [ "JsVar", "The new Graphics object" ]
 }*/
 JsVar *jswrap_graphics_createSDL(int width, int height) {
