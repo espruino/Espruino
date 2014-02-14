@@ -1322,7 +1322,7 @@ void jsiIdle() {
           bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
 
           JsVarInt debounce = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
-          if (debounce>0) {
+          if (debounce>0) { // Debouncing - use timeouts to ensure we only fire at the right time
             JsVar *timeout = jsvObjectGetChild(watchPtr, "timeout", 0);
             if (timeout) { // if we had a timeout, update the callback time
               JsVar *timerTime = jsvObjectGetChild(timeout, "time", JSV_INTEGER);
@@ -1334,6 +1334,7 @@ void jsiIdle() {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
                 jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger(event.data.time+debounce)));
                 jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
+                jsvUnLock(jsvObjectSetChild(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
                 // Add to timer array
                 jsiTimerAdd(timeout);
                 // Add to our watch
@@ -1344,12 +1345,15 @@ void jsiIdle() {
             // store the current state here
             jsvUnLock(jsvObjectSetChild(watchPtr, "state", jsvNewFromBool(pinIsHigh)));
           } else { // Not debouncing - just execute normally
+            JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000);
             if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
               JsVar *watchCallback = jsvObjectGetChild(watchPtr, "callback", 0);
               bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
               JsVar *data = jsvNewWithFlags(JSV_OBJECT);
               if (data) {
-                jsvUnLock(jsvObjectSetChild(data, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000)));
+                jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
+                // set both data.time, and watch.lastTime in one go
+                jsvObjectSetChild(data, "time", timePtr); // no unlock
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
               jsiExecuteEventCallback(watchCallback, data, 0);
@@ -1360,6 +1364,7 @@ void jsiIdle() {
               }
               jsvUnLock(watchCallback);
             }
+            jsvUnLock(jsvObjectSetChild(watchPtr, "lastTime", timePtr));
           }
         }
 
@@ -1401,12 +1406,17 @@ void jsiIdle() {
       bool exec = true;
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
       if (data) {
-        jsvUnLock(jsvObjectSetChild(data, "time", jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000)));
+        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000);
         // if it was a watch, set the last state up
         if (watchPtr) {
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
           exec = jsiShouldExecuteWatch(watchPtr, state);
+          // set up the lastTime variable of data to what was in the watch
+          jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
+          // set up the watches lastTime to this one
+          jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
         }
+        jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
       }
       if (exec) jsiExecuteEventCallback(timerCallback, data, 0);
       jsvUnLock(data);

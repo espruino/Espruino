@@ -247,8 +247,10 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
 
 /*JSON{ "type":"function", "name" : "setWatch",
          "description" : ["Call the function specified when the pin changes",
-                          "The function may also take an argument, which is an object containing a field called 'time', which is the time in seconds at which the pin changed state, and 'state', which is the current state of the pin",
-                          " This can also be removed using clearWatch" ],
+                          "The function may also take an argument, which is an object of type `{time:float, lastTime:float, state:bool}`.",
+                          "`time` is the time in seconds at which the pin changed state, `lastTime` is the time in seconds at which the pin last changed state, and `state` is the current state of the pin.",
+                          "For instance, if you want to measure the length of a positive pusle you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```",
+                          "This can also be removed using clearWatch" ],
          "generate" : "jswrap_interface_setWatch",
          "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
                       [ "pin", "pin", "The pin to watch" ],

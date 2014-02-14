@@ -37,6 +37,7 @@ def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d):
   d = re.sub(r'```([^`]+)```', r'<code>\1</code>', d) # code tags
+  d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'(http://[^ ]+)', r'<a href="\1">\1</a>', d) # links tags
   return d
 

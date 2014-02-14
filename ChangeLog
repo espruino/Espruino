@@ -35,6 +35,7 @@
             Fix charCodeAt being signed (should be unsigned)
             When casting Strings to booleans, so s.length!=0
             Guess initial values for average SysTick time - means that getTime is more accurate for the first 1-2 seconds after startup
+            setWatch now reports lastTime - time of last state change #238
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}
