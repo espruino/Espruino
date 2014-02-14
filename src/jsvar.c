@@ -959,7 +959,7 @@ char jsvGetCharInString(JsVar *v, int idx) {
 }
 
 /** Does this string contain only Numeric characters? */
-bool jsvIsStringNumeric(const JsVar *var) {
+bool jsvIsStringNumericInt(const JsVar *var) {
   assert(jsvIsString(var));
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, var, 0); // we know it's non const
@@ -1009,7 +1009,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
-    if (jsvIsString(v) && jsvIsStringNumeric(v)) {
+    if (jsvIsString(v) && jsvIsStringNumericInt(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
       return stringToInt(buf);
@@ -1024,7 +1024,7 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
-    return jsvGetStringLength(v)!=0;
+    return jsvGetStringLength((JsVar*)v)!=0;
   return jsvGetInteger(v)!=0;
 }
 
@@ -1043,8 +1043,17 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
 
 /// Convert the given variable to a number
 JsVar *jsvAsNumber(JsVar *var) {
+  // stuff that we can just keep
   if (jsvIsInt(var) || jsvIsFloat(var)) return jsvLockAgain(var);
-  if (jsvIsBoolean(var) || jsvIsPin(var)) return jsvNewFromInteger(var->varData.integer);
+  // stuff that can be converted to an int
+  if (jsvIsBoolean(var) ||
+      jsvIsPin(var) ||
+      jsvIsNull(var) ||
+      jsvIsBoolean(var) ||
+      jsvIsArrayBufferName(var) ||
+      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var))))
+    return jsvNewFromInteger(jsvGetInteger(var));
+  // Else just try and get a float
   return jsvNewFromFloat(jsvGetFloat(var));
 }
 
@@ -2292,12 +2301,12 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, int startIdx) {
         jsvUnLock(it->var);
         it->var = 0;
         it->charsInVar = 0;
-        it->varIndex = (size_t)(startIdx - it->charIdx);
+        it->varIndex = (size_t)startIdx - it->charIdx;
         return; // at end of string - get out of loop
       }
     }
   }
-  it->varIndex = (size_t)(startIdx - it->charIdx);
+  it->varIndex = (size_t)startIdx - it->charIdx;
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {

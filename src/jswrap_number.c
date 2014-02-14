@@ -21,6 +21,21 @@
         "description" : ["This is the built-in JavaScript class for numbers." ]
 }*/
 
+/*JSON{ "type":"constructor",
+        "class" : "Number",
+        "name" : "Number",
+        "generate" : "jswrap_number_constructor",
+        "description" : [ "Creates a number" ],
+        "params" : [ [ "value", "JsVar", "A value to be converted to a number"] ],
+        "return" : ["JsVar", "A Number object"]
+}*/
+JsVar *jswrap_number_constructor(JsVar *val) {
+  // FIXME: difference between Number()==0 and Number(udefined)==NaN
+  if (jsvIsUndefined(val)) return jsvNewFromInteger(0);
+  return jsvAsNumber(val);
+}
+
+
 /*JSON{ "type":"variable", "name" : "NaN",
          "generate_full" : "NAN",
          "return" : ["float", "Not a  Number"]
@@ -60,7 +75,7 @@
 /*JSON{ "type":"method", "class": "Number", "name" : "toFixed",
          "description" : "Format the number as a fixed point number",
          "generate" : "jswrap_number_toFixed",
-         "params" : [ [ "arguments", "int32", "A number between 0 and 20 specifying the number of decimal digits after the decimal point"] ],
+         "params" : [ [ "decimalPlaces", "int32", "A number between 0 and 20 specifying the number of decimal digits after the decimal point"] ],
          "return" : ["JsVar", "A string"]
 }*/
 JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
