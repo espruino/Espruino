@@ -15,6 +15,7 @@
  */
 #include "jsvar.h"
 #include "jswrap_process.h"
+#include "jswrap_interactive.h"
 #include "jsinteractive.h"
 
 /*JSON{ "type":"class",
@@ -45,6 +46,8 @@ JsVar *jswrap_process_env() {
   jsvUnLock(jsvObjectSetChild(obj, "CHIP_FAMILY", jsvNewFromString(PC_BOARD_CHIP_FAMILY)));
   jsvUnLock(jsvObjectSetChild(obj, "FLASH", jsvNewFromInteger(FLASH_TOTAL)));
   jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
+  jsvUnLock(jsvObjectSetChild(obj, "SERIAL", jswrap_interface_getSerial()));
+  jsvUnLock(jsvObjectSetChild(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice()))));
 
   return obj;
 }
