@@ -43,6 +43,8 @@
             Completely remove IRQs from CC3k code
             Speed up CC3k code, try and make it automatically power cycle it on timeouts
             Fix SPI MISO on F4 board
+            Move CC3000 to SPI3 (same pins) so SPI1 can be used for other things
+            Compile CC3000 support in for the F4 (untested)
 
      1v50 : Fix broken Web IDE caused by change to printing JSON for console.log (part of #206)
             Fix bug when trying to stringify {5:5}

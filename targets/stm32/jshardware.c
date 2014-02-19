@@ -1883,7 +1883,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   switch (device) {
     case EV_SPI1: spiIRQ = SPI1_IRQn; break;
     case EV_SPI2: spiIRQ = SPI2_IRQn; break;
-#if SPIS>= 3
+#if SPIS>=3
     case EV_SPI3: spiIRQ = SPI3_IRQn; break;
 #endif
     default: assert(0); break;

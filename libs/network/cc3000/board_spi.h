@@ -30,7 +30,7 @@ extern int errno;
 
 #include <stdint.h>
 
-#define WLAN_SPI          EV_SPI1
+#define WLAN_SPI          EV_SPI3
 #define WLAN_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define WLAN_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define WLAN_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)

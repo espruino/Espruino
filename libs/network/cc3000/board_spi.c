@@ -82,7 +82,7 @@ void  cc3000_spi_open(void)
   inf.pinSCK =  WLAN_CLK_PIN;
   inf.pinMISO = WLAN_MISO_PIN;
   inf.pinMOSI = WLAN_MOSI_PIN;
-  inf.baudRate = 4000000;
+  inf.baudRate = 1000000;
   inf.spiMode = SPIF_SPI_MODE_1;  // Mode 1   CPOL= 0  CPHA= 1
   jshSPISetup(WLAN_SPI, &inf);
 
@@ -142,7 +142,7 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 
     jshDelayMicroseconds(50);
 
-    SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
+    SpiWriteDataSynchronous(ucBuf + 4, (unsigned short)(usLength - 4));
 
     // From this point on - operate in a regular way
     sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
@@ -170,12 +170,12 @@ cc3000_spi_write(unsigned char *pUserBuffer, unsigned short usLength)
     }
 
     pUserBuffer[0] = WRITE;
-    pUserBuffer[1] = HI(usLength + ucPad);
-    pUserBuffer[2] = LO(usLength + ucPad);
+    pUserBuffer[1] = (unsigned char)HI(usLength + ucPad);
+    pUserBuffer[2] = (unsigned char)LO(usLength + ucPad);
     pUserBuffer[3] = 0;
     pUserBuffer[4] = 0;
 
-    usLength += (SPI_HEADER_SIZE + ucPad);
+    usLength = (unsigned short)(usLength + SPI_HEADER_SIZE + ucPad);
 
     // The magic number that resides at the end of the TX/RX buffer (1 byte after
     // the allocated size) for the purpose of detection of the overrun. If the
@@ -239,7 +239,7 @@ SpiReadDataSynchronous(unsigned char *data, unsigned short size)
   while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
     int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);
     bSend++;
-    if (bSend>0 && r>=0) data[bRecv++] = r;
+    if (bSend>0 && r>=0) data[bRecv++] = (unsigned char)r;
   }
 
   jshDelayMicroseconds(10); // because of final clock pulse
@@ -275,7 +275,7 @@ void SpiReadDataCont(void) {
 
             if (data_to_recv)
             {
-                SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+                SpiReadDataSynchronous(evnt_buff + 10, (unsigned short)data_to_recv);
             }
             break;
         }
@@ -295,7 +295,7 @@ void SpiReadDataCont(void) {
 
             if (data_to_recv)
             {
-                SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+                SpiReadDataSynchronous(evnt_buff + 10, (unsigned short)data_to_recv);
             }
 
             sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
@@ -380,8 +380,8 @@ unsigned int cc3000_socket_closed = 0;
 
 /// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
 bool cc3000_socket_has_closed(int socketNum) {
-  if (cc3000_socket_closed & (1<<socketNum)) {
-    cc3000_socket_closed &= ~(1<<socketNum);
+  if (cc3000_socket_closed & (unsigned int)(1<<socketNum)) {
+    cc3000_socket_closed &= (unsigned int)~(1<<socketNum);
     return true;
   } else return false;
 }
@@ -395,8 +395,8 @@ static void cc3000_state_change(const char *data) {
   jsvUnLock(wlanObj);
 }
 
-void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength)
-{
+void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength) {
+    NOT_USED(ucLength);
     if (lEventType == HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE) {
       //ulSmartConfigFinished = 1;
       //jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_SIMPLE_CONFIG_DONE\n");
@@ -416,7 +416,7 @@ void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLengt
       jsiConsolePrint("HCI_EVNT_WLAN_ASYNC_PING_REPORT\n");
     } else if (lEventType == HCI_EVNT_BSD_TCP_CLOSE_WAIT) {
         uint8_t socketnum = pcData[0];
-        cc3000_socket_closed |= 1<<socketnum;
+        cc3000_socket_closed |= (unsigned int)(1<<socketnum);
       //jsiConsolePrint("HCI_EVNT_BSD_TCP_CLOSE_WAIT\n");
     } else {
       //jsiConsolePrintf("%x-usync", lEventType);
@@ -438,9 +438,9 @@ void cc3000_initialise(JsVar *wlanObj) {
 
   cc3000_spi_open();
   wlan_init(cc3000_usynch_callback,
-            sendNoPatch/*sendWLFWPatch*/,
-            sendNoPatch/*sendDriverPatch*/,
-            sendNoPatch/*sendBootLoaderPatch*/,
+            (tFWPatches)sendNoPatch/*sendWLFWPatch*/,
+            (tDriverPatches)sendNoPatch/*sendDriverPatch*/,
+            (tBootLoaderPatches)sendNoPatch/*sendBootLoaderPatch*/,
             cc3000_read_irq_pin, cc3000_irq_enable, cc3000_irq_disable, cc3000_write_en_pin);
   wlan_start(0/* No patches */);
   // Mask out all non-required events from CC3000
