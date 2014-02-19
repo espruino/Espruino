@@ -298,7 +298,7 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
   jsvArrayIteratorNew(&it, parent);
 
   while (jsvArrayIteratorHasElement(&it) && !isDone) {
-    JsVarInt idx = jsvGetInteger(jsvArrayIteratorGetIndex(&it));
+    JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
 
     if (idx < k) {
       jsvArrayIteratorNext(&it);
