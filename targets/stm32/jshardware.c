@@ -776,8 +776,10 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
       jshPinSetState(pin,JSHPINSTATE_USART_OUT);
   } else if (JSH_PINFUNCTION_IS_I2C(func)) {
     jshPinSetState(pin, JSHPINSTATE_I2C);
+#ifdef STM32F1  // F4 needs SPI MOSI to be set as AF out
   } else if (JSH_PINFUNCTION_IS_SPI(func) && ((func&JSH_MASK_INFO)==JSH_SPI_MISO)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_IN_PULLUP); // input pullup for MISO
+#endif
   } else {
     bool opendrain = JSHPINSTATE_IS_OPENDRAIN(jshPinGetState(pin)&JSHPINSTATE_MASK);
     jshPinSetState(pin, opendrain ? JSHPINSTATE_AF_OUT_OPENDRAIN : JSHPINSTATE_AF_OUT); // otherwise general AF out!
