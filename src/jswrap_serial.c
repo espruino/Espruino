@@ -64,7 +64,7 @@
          "generate" : "jswrap_serial_setup",
          "params" : [ [ "baudrate", "int", "The baud rate - the default is 9600"],
                       [ "options", "JsVar", ["An optional structure containing extra information on initialising the serial port.",
-                                             "```{rx:pin,tx:pin}```",
+                                             "```{rx:pin,tx:pin,bytesize:8,parity:null/'none'/'o'/'odd'/'e'/'even',stopbits:1}```",
                                              "Note that even after changing the RX and TX pins, if you have called setup before then the previous RX and TX pins will still be connected to the Serial port as well - until you set them to something else using digitalWrite" ] ] ]
 }*/
 void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
@@ -75,14 +75,18 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
   if (baud>0) inf.baudRate = (int)baud;
 
   if (jsvIsObject(options)) {
+    int i;
 
     inf.pinRX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "rx", 0));
-    inf.pinTX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "tx", 0));
-    inf.bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+    inf.pinTX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "tx", 0));    
 
     JsVar *v;
-    v = jsvObjectGetChild(options, "parity", 0);
+    v = jsvObjectGetChild(options, "bytesize", 0);
+    if (jsvIsInt(v)) 
+      inf.bytesize = (unsigned char)jsvGetInteger(v);
+    jsvUnLock(v);
     
+    v = jsvObjectGetChild(options, "parity", 0);    
     if(jsvIsNull(v)) {
       inf.parity = 0;
     }
@@ -102,11 +106,11 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
     else if(jsvIsInt(v)) {
       inf.parity = (unsigned char)jsvGetInteger(v);
     }
-
     jsvUnLock(v);
 
     v = jsvObjectGetChild(options, "stopbits", 0);
-    inf.stopbits = (unsigned char)jsvGetInteger(v);
+    if (jsvIsInt(v)) 
+      inf.stopbits = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
   }
 
