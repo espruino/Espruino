@@ -1,3 +1,5 @@
+     1v52 : 
+
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval
             Fix crash in url.parse (string free)
