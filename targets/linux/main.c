@@ -163,19 +163,24 @@ bool run_memory_tests(int vars) {
   int count = 0;
   int passed = 0;
 
-  while (test_num<1000) {
-    char fn[32];
-    sprintf(fn, TEST_DIR"test%03d.js", test_num);
-    // check if the file exists - if not, assume we're at the end of our tests
-    FILE *f = fopen(fn,"r");
-    if (!f) break;
-    fclose(f);
-
-    run_memory_test(fn, vars);
-    test_num++;
+  DIR *dir = opendir(TEST_DIR);
+  if(dir) {
+    struct dirent *pDir=NULL;
+    while((pDir = readdir(dir)) != NULL) {
+      char *fn = (*pDir).d_name;
+      int l = strlen(fn);
+      if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
+        char *full_fn = malloc(1+l+strlen(TEST_DIR));
+        strcpy(full_fn, TEST_DIR);
+        strcat(full_fn, fn);
+        run_memory_test(full_fn, vars);
+        count++;
+      }
+    }
+    closedir(dir);
+  } else {
+    printf(TEST_DIR" directory not found");
   }
-
-  if (count==0) printf("No tests found in "TEST_DIR"test*.js!\n");
   return true;
 }
 
