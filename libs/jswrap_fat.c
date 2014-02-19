@@ -287,7 +287,8 @@ JsVar *wrap_fat_readFile(JsVar *path) {
 #else
           bytesRead = fread(pathStr,1,JS_DIR_BUF_SIZE,file);
 #endif
-          jsvAppendStringBuf(result, pathStr, (int)bytesRead);
+          if (!jsvAppendStringBuf(result, pathStr, (int)bytesRead))
+            break; // was out of memory
         }
       }
 #ifndef LINUX

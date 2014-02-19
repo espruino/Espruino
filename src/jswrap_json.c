@@ -131,8 +131,10 @@ void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString,
           callbackString(callbackData, ",");
 
         JsVar *str = jsvAsString(child, false);
-        jsfGetEscapedString(str, callbackString, callbackData);
-        jsvUnLock(str);
+        if (str) { // out of memory?
+          jsfGetEscapedString(str, callbackString, callbackData);
+          jsvUnLock(str);
+        }
         callbackString(callbackData, ":");
       }
       JsVar *childVar = child->firstChild ? jsvLock(child->firstChild) : 0;

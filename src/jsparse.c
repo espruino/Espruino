@@ -621,7 +621,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (JSP_SHOULD_EXECUTE) {
             value = jsvSkipNameAndUnLock(value);
             JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-            paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+            if (paramName) // low memory?
+              paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
             JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
             if (newValueName) { // could be out of memory
               jsvAddName(functionRoot, newValueName);
@@ -935,6 +936,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   }
 
   JsVar *thisObj = jsvNewWithFlags(JSV_OBJECT);
+  if (!thisObj) return 0; // out of memory
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(prototypeName); // make sure it's an object

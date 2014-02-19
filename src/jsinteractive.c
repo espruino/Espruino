@@ -1029,8 +1029,8 @@ void jsiHandleChar(char ch) {
           // add input line to history
           jsiHistoryAddLine(lineToExecute);
           jsvUnLock(lineToExecute);
-          // print result
-          if (echo) { // intentionally not using jsiShowInputLine()
+          // print result (but NOT if we had an error)
+          if (echo && !jspHasError()) {
             jsiConsolePrintChar('=');
             jsfPrintJSON(v);
             jsiConsolePrint("\n");

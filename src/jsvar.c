@@ -251,6 +251,13 @@ JsVar *jsvNew() {
 #endif
 }
 
+static inline void jsvFreePtrInternal(JsVar *var) {
+  var->flags = (var->flags & ~JSV_VARTYPEMASK) | JSV_UNUSED;
+  // add this to our free list
+  var->nextSibling = jsVarFirstEmpty;
+  jsVarFirstEmpty = jsvGetRef(var);
+}
+
 void jsvFreePtr(JsVar *var) {
     /* To be here, we're not supposed to be part of anything else. If
      * we were, we'd have been freed by jsvGarbageCollect */
@@ -269,13 +276,14 @@ void jsvFreePtr(JsVar *var) {
 
     /* Now, free children - see jsvar.h comments for how! */
     if (jsvHasStringExt(var)) {
-      // TODO: make string free this non-recursive
+      // Free the string without recursing
       JsVarRef stringDataRef = var->lastChild;
       var->lastChild = 0;
-      if (stringDataRef) {
+      while (stringDataRef) {
         JsVar *child = jsvLock(stringDataRef);
         assert(jsvIsStringExt(child));
-        jsvFreePtr(child);
+        stringDataRef = child->lastChild;
+        jsvFreePtrInternal(child);
         jsvUnLock(child);
       }
     } else if (jsvHasChildren(var)) {
@@ -295,12 +303,8 @@ void jsvFreePtr(JsVar *var) {
       assert(!var->firstChild);
       assert(!var->lastChild);
     }
-
     // free!
-    var->flags = (var->flags & ~JSV_VARTYPEMASK) | JSV_UNUSED;
-    // add this to our free list
-    var->nextSibling = jsVarFirstEmpty;
-    jsVarFirstEmpty = jsvGetRef(var);
+    jsvFreePtrInternal(var);
 }
 
 /// Get a reference from a var - SAFE for null vars
@@ -844,7 +848,8 @@ void jsvAppendString(JsVar *var, const char *str) {
   jsvUnLock(block);
 }
 
-void jsvAppendStringBuf(JsVar *var, const char *str, int length) {
+// Append the given string to this one - but does not use null-terminated strings. returns false on failure (from out of memory)
+bool jsvAppendStringBuf(JsVar *var, const char *str, int length) {
   assert(jsvIsString(var));
   JsVar *block = jsvLockAgain(var);
   // Find the block at end of the string...
@@ -868,7 +873,11 @@ void jsvAppendStringBuf(JsVar *var, const char *str, int length) {
     // make a new one, link it in, and unlock the old one.
     if (length) {
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
-      if (!next) break;
+      if (!next) {
+        block->lastChild = 0;
+        jsvUnLock(block);
+        return false;
+      }
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       block->lastChild = jsvGetRef(next);
       jsvUnLock(block);
@@ -877,6 +886,7 @@ void jsvAppendStringBuf(JsVar *var, const char *str, int length) {
     }
   }
   jsvUnLock(block);
+  return true;
 }
 
 static void _jsvAppendPrintf(const char *str, void *user_data) {
