@@ -116,7 +116,8 @@ USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
 USB=1
 USE_NET=1
-USE_CC3000=1
+#USE_CC3000=1
+USE_WIZNET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -499,6 +500,18 @@ libs/network/cc3000/nvmem.c \
 libs/network/cc3000/security.c \
 libs/network/cc3000/socket.c \
 libs/network/cc3000/wlan.c
+endif
+
+ifdef USE_WIZNET
+DEFINES += -DUSE_WIZNET
+WRAPPERSOURCES += libs/network/wiznet/jswrap_wiznet.c
+INCLUDE += -I$(ROOT)/libs/network/wiznet -I$(ROOT)/libs/network/wiznet/Ethernet
+SOURCES += \
+libs/network/wiznet/DNS/dns_parse.c \
+libs/network/wiznet/DNS/dns.c \
+libs/network/wiznet/Ethernet/wizchip_conf.c \
+libs/network/wiznet/Ethernet/socket.c \
+libs/network/wiznet/W5500/w5500.c
 endif
 
 ifdef USE_TRIGGER
