@@ -264,7 +264,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
     char ch = jsvStringIteratorGetChar(&it);
     if (ch == '/') {
       slashes++;
-      pathStart = charIdx;
+      if (pathStart<0) pathStart = charIdx;
       if (colons==1 && slashes==2 && addrStart<0) {
         addrStart = charIdx;
         pathStart = -1;
