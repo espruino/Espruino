@@ -3,6 +3,7 @@
             Add fs.unlink (for deleting files)
             Fix url parsing when there are two slashes
             Fix recent changeInterval regression
+            Making CC3000 recover properly in the case of repeated HTTP GET
 
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval

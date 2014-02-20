@@ -533,6 +533,24 @@ void httpClientConnectionsIdle() {
   jsvUnLock(arr);
 }
 
+static void httpCheckAndRecover() {
+#ifdef USE_CC3000
+  if (jspIsInterrupted()) {
+    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
+    jspSetInterrupted(false);
+    // remove all existing connections
+    networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
+    _httpCloseAllConnections();
+    // power cycle
+    JsVar *wlan = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
+    if (wlan) {
+      jswrap_wlan_reconnect(wlan);
+      jsvUnLock(wlan);
+    } else jsErrorInternal("No CC3000 object!\n");
+  }
+#endif
+}
+
 
 void httpIdle() {
 #ifdef USE_CC3000
@@ -607,21 +625,7 @@ void httpIdle() {
 
   httpServerConnectionsIdle();
   httpClientConnectionsIdle();
-#ifdef USE_CC3000
-  if (jspIsInterrupted()) {
-    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
-    jspSetInterrupted(false);
-    // remove all existing connections
-    networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
-    _httpCloseAllConnections();
-    // power cycle
-    JsVar *wlan = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
-    if (wlan) {
-      jswrap_wlan_reconnect(wlan);
-      jsvUnLock(wlan);
-    } else jsErrorInternal("No CC3000 object!\n");
-  }
-#endif
+  httpCheckAndRecover();
 }
 
 // -----------------------------
@@ -855,6 +859,8 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   }
 
   jsvUnLock(options);
+
+  httpCheckAndRecover();
 }
 
 
