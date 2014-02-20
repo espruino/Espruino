@@ -1433,7 +1433,7 @@ void jsiIdle() {
         if (interval<=0)
           jsvSetInteger(timerTime, time); // just set to current system time
         else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+jshGetTimeFromMilliseconds(interval));
       } else {
         // free all
         JsVar *foundChild = jsvFindChildFromVar(timerArrayPtr, timerNamePtr, false);
