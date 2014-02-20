@@ -16,6 +16,7 @@
 #define SOCKET_ERROR (-1)
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jshardware.h"
 #include "../network.h"
 
 #include <string.h> // for memset
@@ -43,6 +44,7 @@
  #define closesocket(SOCK) close(SOCK)
 #endif
 
+#define HTTP_NAME_PORT "port"
 #define HTTP_NAME_SOCKET "sckt"
 #define HTTP_NAME_HAD_HEADERS "hdrs"
 #define HTTP_NAME_RECEIVE_DATA "dRcv"
@@ -109,10 +111,31 @@ void httpInit() {
 #endif
 }
 
-static void _httpServerConnectionKill(JsVar *connection) {
+static void _httpServerConnectionKill(JsVar *connection, bool permanently) {
   if (networkState != NETWORKSTATE_ONLINE) return;
   SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-  if (sckt!=INVALID_SOCKET) closesocket(sckt);
+  if (sckt!=INVALID_SOCKET) {
+#if defined(USE_WIZNET)
+    // close gracefully
+    disconnect(sckt);
+    JsSysTime t = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000);
+    uint8_t status;
+    while ((status=getSn_SR(sckt)) != SOCK_CLOSED &&
+           jshGetSystemTime()<t) ;
+    // if that didn't work, force it
+    if (status != SOCK_CLOSED)
+      closesocket(sckt);
+    // Wiznet is a bit strange in that it uses the same socket for server and client
+    if (!permanently) {
+      JsVar *server = jsvObjectGetChild(connection, HTTP_NAME_SERVER_VAR, 0);
+      int port = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(server, HTTP_NAME_PORT, 0));
+      httpServerListen(server, port);
+      jsvUnLock(server);
+    }
+#else
+    closesocket(sckt);
+#endif
+  }
 }
 
 static void _httpClientConnectionKill(JsVar *connection) {
@@ -130,7 +153,7 @@ static void _httpCloseAllConnections() {
          jsvArrayIteratorNew(&it, arr);
          while (jsvArrayIteratorHasElement(&it)) {
            JsVar *connection = jsvArrayIteratorGetElement(&it);
-           _httpServerConnectionKill(connection);
+           _httpServerConnectionKill(connection, true);
            jsvUnLock(connection);
            jsvArrayIteratorNext(&it);
          }
@@ -333,96 +356,103 @@ void httpServerConnectionsIdle() {
     JsVar *connection = jsvArrayIteratorGetElement(&it);
     JsVar *connectReponse = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
     SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     bool hadData = false;
     // TODO: look for unreffed connections?
 
+    if (!closeConnectionNow
+#if defined(USE_WIZNET)
+        && getSn_SR(sckt)!=SOCK_LISTEN
+#endif
+        ) {
 #if !defined(USE_WIZNET)
-    fd_set s;
-    FD_ZERO(&s);
-    FD_SET(sckt,&s);
-    // check for waiting clients
-    struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 0;
-    int n = select(sckt+1,&s,NULL,NULL,&timeout);
-    if (n==SOCKET_ERROR) {
-      // we probably disconnected so just get rid of this
-      closeConnectionNow = true;
-    } else if (n>0) {
-      // receive data
+      fd_set s;
+      FD_ZERO(&s);
+      FD_SET(sckt,&s);
+      // check for waiting clients
+      struct timeval timeout;
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 0;
+      int n = select(sckt+1,&s,NULL,NULL,&timeout);
+      if (n==SOCKET_ERROR) {
+        // we probably disconnected so just get rid of this
+        closeConnectionNow = true;
+      } else if (n>0) {
+        // receive data
+        int num = (int)recv(sckt,buf,sizeof(buf),0);
+#else // defined(USE_WIZNET)
+      // receive data - if none available it'll just return SOCK_BUSY
       int num = (int)recv(sckt,buf,sizeof(buf),0);
-#else // defined(USE_WIZNET)
-    // receive data - if none available it'll just return SOCK_BUSY
-    int num = (int)recv(sckt,buf,sizeof(buf),0);
-    if (num<0 && num!=SOCK_BUSY) {
-      // we probably disconnected so just get rid of this
-      closeConnectionNow = true;
-    } else {
+      if (num<0 && num!=SOCK_BUSY) {
+        // we probably disconnected so just get rid of this
+        closeConnectionNow = true;
+      } else {
 #endif
-      hadData = true;
-      // add it to our request string
-      if (num>0) {
-        JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
-        if (!receiveData) {
-          receiveData = jsvNewFromEmptyString();
-          jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
-        }
-        if (receiveData) {
-          jsvAppendStringBuf(receiveData, buf, num);
-          bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
-          if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
-            hadHeaders = true;
-            jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
-            JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
-            JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
-            jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, connection, resVar);
-            jsvUnLock(server);
-            jsvUnLock(resVar);
+        hadData = true;
+        // add it to our request string
+        if (num>0) {
+          JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+          if (!receiveData) {
+            receiveData = jsvNewFromEmptyString();
+            jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
           }
-          jsvUnLock(receiveData);
+          if (receiveData) {
+            jsvAppendStringBuf(receiveData, buf, num);
+            bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
+            if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
+              hadHeaders = true;
+              jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
+              JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
+              JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
+              jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, connection, resVar);
+              jsvUnLock(server);
+              jsvUnLock(resVar);
+            }
+            jsvUnLock(receiveData);
+          }
         }
       }
-    }
 
-    // send data if possible
-    JsVar *sendData = jsvObjectGetChild(connectReponse,HTTP_NAME_SEND_DATA,0);
-    if (sendData) {
+      // send data if possible
+      JsVar *sendData = jsvObjectGetChild(connectReponse,HTTP_NAME_SEND_DATA,0);
+      if (sendData) {
 #if !defined(USE_WIZNET)
-      fd_set writefds;
-      FD_ZERO(&writefds);
-      FD_SET(sckt, &writefds);
-      struct timeval time;
-      time.tv_sec = 0;
-      time.tv_usec = 0;
-      int n = select(sckt+1, 0, &writefds, 0, &time);
-      if (n==SOCKET_ERROR ) {
-         // we probably disconnected so just get rid of this
-        closeConnectionNow = true;
-      } else if (FD_ISSET(sckt, &writefds)) {
-#else // defined(USE_WIZNET)
-      {
-#endif
-        if (!_http_send(sckt, &sendData))
+        fd_set writefds;
+        FD_ZERO(&writefds);
+        FD_SET(sckt, &writefds);
+        struct timeval time;
+        time.tv_sec = 0;
+        time.tv_usec = 0;
+        int n = select(sckt+1, 0, &writefds, 0, &time);
+        if (n==SOCKET_ERROR ) {
+           // we probably disconnected so just get rid of this
           closeConnectionNow = true;
-      }
-      jsvObjectSetChild(connectReponse, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
-    } else {
-#ifdef USE_CC3000
-      // nothing to send, nothing to receive, and closed...
-      if (!hadData && cc3000_socket_has_closed(sckt))
-        closeConnectionNow = true;
+        } else if (FD_ISSET(sckt, &writefds)) {
+#else // defined(USE_WIZNET)
+        {
 #endif
+          if (!_http_send(sckt, &sendData))
+            closeConnectionNow = true;
+        }
+        jsvObjectSetChild(connectReponse, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
+      } else {
+#ifdef USE_CC3000
+        // nothing to send, nothing to receive, and closed...
+        if (!hadData && cc3000_socket_has_closed(sckt))
+          closeConnectionNow = true;
+#endif
+      }
+      if (jsvGetBoolAndUnLock(jsvObjectGetChild(connectReponse,HTTP_NAME_CLOSE,0)) && !sendData)
+        closeConnectionNow = true;
+      jsvUnLock(sendData);
     }
-    if (jsvGetBoolAndUnLock(jsvObjectGetChild(connectReponse,HTTP_NAME_CLOSE,0)) && !sendData)
-      closeConnectionNow = true;
-    jsvUnLock(sendData);
     if (closeConnectionNow) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
 
-      _httpServerConnectionKill(connection);
+      _httpServerConnectionKill(connection, false);
       JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
       jsvArrayIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
@@ -721,6 +751,7 @@ JsVar *httpServerNew(JsVar *callback) {
 }
 
 void httpServerListen(JsVar *server, int port) {
+  jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_PORT, jsvNewFromInteger(port)));
 #if !defined(USE_WIZNET)
   SOCKET sckt = (SOCKET)(jsvGetIntegerAndUnLock(jsvObjectGetChild(server, HTTP_NAME_SOCKET, 0))-1);
 
