@@ -111,14 +111,14 @@ void httpInit() {
 
 static void _httpServerConnectionKill(JsVar *connection) {
   if (networkState != NETWORKSTATE_ONLINE) return;
-  SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-  if (socket!=INVALID_SOCKET) closesocket(socket);
+  SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+  if (sckt!=INVALID_SOCKET) closesocket(sckt);
 }
 
 static void _httpClientConnectionKill(JsVar *connection) {
   if (networkState != NETWORKSTATE_ONLINE) return;
-  SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-  if (socket!=INVALID_SOCKET) closesocket(socket);
+  SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+  if (sckt!=INVALID_SOCKET) closesocket(sckt);
 }
 
 static void _httpCloseAllConnections() {
@@ -164,8 +164,8 @@ static void _httpCloseAllConnections() {
          while (jsvArrayIteratorHasElement(&it)) {
            JsVar *connection = jsvArrayIteratorGetElement(&it);
            if (networkState == NETWORKSTATE_ONLINE) {
-             SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-             if (socket!=INVALID_SOCKET) closesocket(socket);
+             SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+             if (sckt!=INVALID_SOCKET) closesocket(sckt);
            }
            jsvUnLock(connection);
            jsvArrayIteratorNext(&it);
@@ -611,18 +611,18 @@ void httpIdle() {
     jsvArrayIteratorNew(&it, arr);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVar *server = jsvArrayIteratorGetElement(&it);
-      SOCKET socket = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+      SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
   #if !defined(USE_CC3000) && !defined(USE_WIZNET)
       // TODO: look for unreffed servers?
       fd_set s;
       FD_ZERO(&s);
-      FD_SET(socket,&s);
+      FD_SET(sckt,&s);
       // check for waiting clients
       struct timeval timeout;
       timeout.tv_sec = 0;
       timeout.tv_usec = 0;
-      int n = select(socket+1,&s,NULL,NULL,&timeout);
+      int n = select(sckt+1,&s,NULL,NULL,&timeout);
   #else
       /* CC3000/WIZnet works a different way - we set accept as nonblocking,
        * and then we just call it and see if it works or not...
@@ -635,13 +635,13 @@ void httpIdle() {
         // CC3000's implementation doesn't accept NULL like everyone else's :(
         sockaddr addr;
         socklen_t addrlen = sizeof(addr);
-        int theClient = accept(socket,&addr,&addrlen);
+        int theClient = accept(sckt,&addr,&addrlen);
   #elif defined(USE_WIZNET)
         // WIZnet's implementation doesn't use accept, it uses listen
-        int theClient = listen(socket);
-        if (theClient==SOCK_OK) theClient = socket; // we deal with the client on the same socket
+        int theClient = listen(sckt);
+        if (theClient==SOCK_OK) theClient = sckt; // we deal with the client on the same socket
   #else
-        int theClient = accept(socket,0,0);
+        int theClient = accept(sckt,0,0);
   #endif
         if (theClient > -1) {
           JsVar *req = jspNewObject(0, "httpSRq");
