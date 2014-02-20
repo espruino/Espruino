@@ -2,6 +2,7 @@
             Fix broken Serial initialisation (partial fix for #241)
             Add fs.unlink (for deleting files)
             Fix url parsing when there are two slashes
+            Fix recent changeInterval regression
 
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval

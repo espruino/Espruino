@@ -361,7 +361,7 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
-    v = jsvNewFromFloat(interval);
+    v = jsvNewFromInteger(jshGetTimeFromMilliseconds(interval));
     jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
     jsvUnLock(v);
     v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
