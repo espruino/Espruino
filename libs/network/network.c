@@ -7,7 +7,7 @@
 #include "network.h"
 
 JsNetworkState networkState =
-#ifdef USE_CC3000
+#if defined(USE_CC3000) || defined(USE_WIZNET)
     NETWORKSTATE_OFFLINE
 #else
     NETWORKSTATE_ONLINE

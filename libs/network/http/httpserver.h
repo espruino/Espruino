@@ -14,10 +14,14 @@
 #include "jsutils.h"
 #include "jsvar.h"
 
-#ifdef USE_CC3000
+
+#if defined(USE_CC3000)
  #include "spi.h"
  #include "socket.h"
  typedef int SOCKET;
+#elif defined(USE_WIZNET)
+ #include "Ethernet/socket.h"
+ typedef struct sockaddr_in sockaddr_in;
 #else
  #ifdef WIN32
   #include <winsock.h>
@@ -30,8 +34,8 @@
   #include <fcntl.h>
   #include <stdio.h>
   #include <resolv.h>
-  typedef int SOCKET;
   typedef struct sockaddr_in sockaddr_in;
+  typedef int SOCKET;
  #endif
 #endif
 
