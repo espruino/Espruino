@@ -17,3 +17,4 @@ JsVar *wrap_fat_readdir(JsVar *path);
 void wrap_fat_writeFile(JsVar *path, JsVar *data);
 void wrap_fat_appendFile(JsVar *path, JsVar *data);
 JsVar *wrap_fat_readFile(JsVar *path);
+bool wrap_fat_unlink(JsVar *path);

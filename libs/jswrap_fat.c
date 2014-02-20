@@ -302,3 +302,37 @@ JsVar *wrap_fat_readFile(JsVar *path) {
   if (res) jsfsReportError("Unable to read file", res);
   return result;
 }
+
+  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlink",
+           "generate" : "wrap_fat_unlink",
+           "description" : [ "Delete the given file", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
+           "params" : [ [ "path", "JsVar", "The path of the file to delete" ] ],
+           "return" : [ "bool", "True on success, or false on failure" ]
+  }*/
+  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlinkSync", "ifndef" : "SAVE_ON_FLASH",
+           "generate" : "wrap_fat_unlink",
+           "description" : [ "Delete the given file" ],
+           "params" : [ [ "path", "JsVar", "The path of the file to delete" ] ],
+           "return" : [ "bool", "True on success, or false on failure" ]
+  }*/
+bool wrap_fat_unlink(JsVar *path) {
+    char pathStr[JS_DIR_BUF_SIZE] = "";
+    if (!jsvIsUndefined(path))
+      jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+
+#ifndef LINUX
+    FRESULT res = 0;
+    if (jsfsInit()) {
+      f_unlink(pathStr);
+    }
+#else
+    FRESULT res = remove(pathStr);
+#endif
+
+    if (res) {
+      jsfsReportError("Unable to delete file", res);
+      return false;
+    }
+    return true;
+  }
+

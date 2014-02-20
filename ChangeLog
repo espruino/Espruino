@@ -1,5 +1,6 @@
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)
+            Add fs.unlink (for deleting files)
 
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval
