@@ -463,7 +463,7 @@ void httpClientConnectionsIdle() {
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
     }
 
-    if (sckt!=INVALID_SOCKET) {
+    if (!closeConnectionNow && sckt!=INVALID_SOCKET) {
       JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
       // send data if possible
       if (sendData) {
@@ -541,10 +541,13 @@ void httpClientConnectionsIdle() {
                 jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
               }
             }
-          } else if (num==0) {
+          }
+#if !defined(USE_WIZNET) // no select on WIZnet, so this is not an issue :)
+          else if (num==0) {
             // select says data, but recv says 0 means connection is closed
             closeConnectionNow = true;
           }
+#endif
         }
   #ifdef USE_CC3000
         else {
@@ -812,26 +815,29 @@ void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
   jsvUnLock(sendData);
 }
 
+unsigned long parseIPAddress(const char *ip) {
+  int n = 0;
+  unsigned long addr = 0;
+  while (*ip) {
+    if (*ip>='0' && *ip<='9') {
+      n = n*10 + (*ip-'0');
+    } else if (*ip>='.') {
+      addr = (addr>>8) | (n<<24);
+      n=0;
+    } else {
+      return 0; // not an ip address
+    }
+    ip++;
+  }
+  addr = (addr>>8) | (n<<24);
+  return addr;
+}
 
 void httpClientRequestEnd(JsVar *httpClientReqVar) {
   httpClientRequestWrite(httpClientReqVar, 0); // force sendData to be made
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
-
-#if !defined(USE_WIZNET)
-  SOCKET sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#else
-  SOCKET sckt = socket(1/*SOCKET NUMBER FIXME*/, Sn_MR_TCP, port, SF_IO_NONBLOCK);
-#endif
-  if (sckt == INVALID_SOCKET) {
-     httpError("Unable to create socket\n");
-     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
-  }
-  jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
-
-
-
 
 #if defined(USE_CC3000)
   sockaddr       sin;
@@ -854,7 +860,8 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
 #if defined(USE_CC3000)
   gethostbyname(hostName, strlen(hostName), &host_addr);
 #elif defined(USE_WIZNET)
-  if (dns_query(0, 7/*DNS SOCKET FIXME*/, (uint8_t*)hostName) == 1) {
+  host_addr = parseIPAddress(hostName); // first try and simply parse the IP address
+  if (!host_addr && dns_query(0, 7/*DNS SOCKET FIXME*/, (uint8_t*)hostName) == 1) {
     host_addr = *(unsigned long*)&Server_IP_Addr[0];
   }
 #else
@@ -874,8 +881,25 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
     httpError("Unable to locate host");
     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
     jsvUnLock(options);
+    httpCheckAndRecover();
     return;
   }
+
+
+#if !defined(USE_WIZNET)
+  SOCKET sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#else
+  SOCKET sckt = socket(1/*SOCKET NUMBER FIXME*/, Sn_MR_TCP, port, SF_IO_NONBLOCK);
+#endif
+  if (sckt == INVALID_SOCKET) {
+     httpError("Unable to create socket\n");
+     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+     jsvUnLock(options);
+     httpCheckAndRecover();
+     return;
+  }
+
+  jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
 
   // turn on non-blocking mode
   #ifdef WIN_OS

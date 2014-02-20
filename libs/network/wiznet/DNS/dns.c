@@ -145,10 +145,6 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 
 	for(;socket(s, Sn_MR_UDP, rand() % 63535 + 2000, 0) != s;)
 	{
-#ifdef IWDG
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-#endif
 	}
 	len = dns_makequery(0, (char *)name, dns_buf, MAX_DNS_BUF_SIZE);
 	cnt = sendto(s, dns_buf, len, gWIZNETINFO.dns, IPPORT_DOMAIN);
@@ -156,11 +152,6 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 
 	while (1)
 	{
-#ifdef IWDG
-		/* Reload IWDG counter */
-		IWDG_ReloadCounter();
-
-#endif	  
 		if ((len = getSn_RX_RSR(s)) > 0)
 		{
 			if (len > MAX_DNS_BUF_SIZE) len = MAX_DNS_BUF_SIZE;
