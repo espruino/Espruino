@@ -62,17 +62,24 @@
 /*JSON{ "type":"method", "class": "Serial", "name" : "setup",
          "description" : "Setup this Serial port with the given baud rate and options",
          "generate" : "jswrap_serial_setup",
-         "params" : [ [ "baudrate", "int", "The baud rate - the default is 9600"],
+         "params" : [ [ "baudrate", "JsVar", "The baud rate - the default is 9600"],
                       [ "options", "JsVar", ["An optional structure containing extra information on initialising the serial port.",
                                              "```{rx:pin,tx:pin,bytesize:8,parity:null/'none'/'o'/'odd'/'e'/'even',stopbits:1}```",
                                              "Note that even after changing the RX and TX pins, if you have called setup before then the previous RX and TX pins will still be connected to the Serial port as well - until you set them to something else using digitalWrite" ] ] ]
 }*/
-void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
+void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
 
-  if (baud>0) inf.baudRate = (int)baud;
+  if (!jsvIsUndefined(baud)) {
+    int b = (int)jsvGetInteger(baud);
+    if (b<=100 || b > 10000000)
+      jsError("Invalid baud rate specified");
+    else
+      inf.baudRate = b;
+  }
+
 
   if (jsvIsObject(options)) {
     int i;
@@ -116,8 +123,8 @@ void jswrap_serial_setup(JsVar *parent, JsVarInt baud, JsVar *options) {
 
   jshUSARTSetup(device, &inf);
   // Set baud rate in object, so we can initialise it on startup
-  if (baud != DEFAULT_BAUD_RATE) {
-    JsVar *baudVar = jsvNewFromInteger(baud);
+  if (inf.baudRate != DEFAULT_BAUD_RATE) {
+    JsVar *baudVar = jsvNewFromInteger(inf.baudRate);
     jsvUnLock(jsvSetNamedChild(parent, baudVar, USART_BAUDRATE_NAME));
     jsvUnLock(baudVar);
   } else
