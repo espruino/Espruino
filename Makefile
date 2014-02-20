@@ -37,6 +37,7 @@
 # SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
+# WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -84,7 +85,6 @@ BASEADDRESS=0x08000000
 ifdef ESPRUINO_1V0
 USB=1
 #USE_NET=1
-#USE_CC3000=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -100,7 +100,6 @@ USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
 USB=1
 USE_NET=1
-USE_CC3000=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -116,8 +115,6 @@ USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
 USB=1
 USE_NET=1
-USE_CC3000=1
-#USE_WIZNET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -195,7 +192,6 @@ OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 USB=1
 USE_NET=1
-USE_CC3000=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
@@ -304,7 +300,16 @@ ifeq ($(BOARD),LINUX)
 PROJ_NAME=espruino
 endif
 
-
+# If we're not on Linux and we want internet, we need either CC3000 or WIZnet support
+ifdef USE_NET
+ifndef LINUX
+ifdef WIZNET
+USE_WIZNET=1
+else
+USE_CC3000=1
+endif
+endif
+endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
