@@ -896,8 +896,59 @@ bool jsiAtEndOfInputLine() {
   return true;
 }
 
+void jsiHandleNewLine(bool execute) {
+  if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
+    if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
+      if (jsiShowInputLine()) {
+        jsiConsolePrint("\r\n");
+      }
+      inputLineRemoved = true;
+
+      // Get line to execute, and reset inputLine
+      JsVar *lineToExecute = jsvStringTrimRight(inputLine);
+      jsvUnLock(inputLine);
+      inputLine = jsvNewFromEmptyString();
+      inputCursorPos = 0;
+      // execute!
+      JsVar *v = jspEvaluateVar(lineToExecute, 0);
+      // add input line to history
+      jsiHistoryAddLine(lineToExecute);
+      jsvUnLock(lineToExecute);
+      // print result (but NOT if we had an error)
+      if (echo && !jspHasError()) {
+        jsiConsolePrintChar('=');
+        jsfPrintJSON(v);
+        jsiConsolePrint("\n");
+      }
+      jsvUnLock(v);
+      // console will be returned next time around the input loop
+    } else {
+      // Brackets aren't all closed, so we're going to append a newline
+      // without executing
+      if (jsiShowInputLine()) jsiConsolePrint("\n:");
+      jsiIsAboutToEditInputLine();
+      jsvAppendCharacter(inputLine, '\n');
+      inputCursorPos++;
+    }
+  } else { // new line - but not at end of line!
+    jsiIsAboutToEditInputLine();
+    if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
+    JsVar *v = jsvNewFromEmptyString();
+    if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+    jsvAppendCharacter(v, '\n');
+    jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    jsvUnLock(inputLine);
+    inputLine=v;
+    if (jsiShowInputLine()) { // now print the rest
+      jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
+      jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
+    }
+    inputCursorPos++;
+  }
+}
+
 void jsiHandleChar(char ch) {
-  //jsiConsolePrintf("[%d:%d]\n", inputState, ch);
+  // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
   // 27 then 91 then 68 - left
@@ -912,6 +963,7 @@ void jsiHandleChar(char ch) {
   // 27 then 91 then 54 then 126 - pgdn
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
+  // 27 then 10 - alt enter
 
 
   if (ch == 0) {
@@ -924,6 +976,8 @@ void jsiHandleChar(char ch) {
       inputState = IS_HAD_27_79;
     else if (ch == 91)
       inputState = IS_HAD_27_91;
+    else if (ch == 10)
+      jsiHandleNewLine(false);
   } else if (inputState==IS_HAD_27_79) { // Numpad
     inputState = IS_NONE;
     if (ch == 70) jsiHandleEnd();
@@ -1011,55 +1065,8 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
     } else if (ch == '\r' || ch == '\n') { 
-      if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
-        if (ch == '\r') inputState = IS_HAD_R;
-        if (jsiCountBracketsInInput()<=0) { // actually execute!
-          if (jsiShowInputLine()) {
-            jsiConsolePrint("\r\n");
-          }
-          inputLineRemoved = true;
-
-          // Get line to execute, and reset inputLine
-          JsVar *lineToExecute = jsvStringTrimRight(inputLine);
-          jsvUnLock(inputLine);
-          inputLine = jsvNewFromEmptyString();
-          inputCursorPos = 0;
-          // execute!
-          JsVar *v = jspEvaluateVar(lineToExecute, 0);
-          // add input line to history
-          jsiHistoryAddLine(lineToExecute);
-          jsvUnLock(lineToExecute);
-          // print result (but NOT if we had an error)
-          if (echo && !jspHasError()) {
-            jsiConsolePrintChar('=');
-            jsfPrintJSON(v);
-            jsiConsolePrint("\n");
-          }
-          jsvUnLock(v);
-          // console will be returned next time around the input loop
-        } else {
-          // Brackets aren't all closed, so we're going to append a newline
-          // without executing
-          if (jsiShowInputLine()) jsiConsolePrint("\n:");
-          jsiIsAboutToEditInputLine();
-          jsvAppendCharacter(inputLine, '\n');
-          inputCursorPos++; 
-        }
-      } else { // new line - but not at end of line!
-        jsiIsAboutToEditInputLine();
-        if (jsiShowInputLine()) jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, false/*no need to erase the char before*/); // erase all in front
-        JsVar *v = jsvNewFromEmptyString();
-        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
-        jsvAppendCharacter(v, '\n');
-        jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-        jsvUnLock(inputLine);
-        inputLine=v;
-        if (jsiShowInputLine()) { // now print the rest
-          jsiConsolePrintStringVarWithNewLineChar(inputLine, inputCursorPos, ':');
-          jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
-        }
-        inputCursorPos++;
-      }
+      if (ch == '\r') inputState = IS_HAD_R;
+      jsiHandleNewLine(true);
     } else if (ch>=32 || ch=='\t') {
       // Add the character to our input line
       jsiIsAboutToEditInputLine();
