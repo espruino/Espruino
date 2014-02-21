@@ -281,7 +281,7 @@ void jsiReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (echo) { // intentionally not using jsiShowInputLine()
-      jsiConsolePrint("\r>"); // carriage return and '>'
+      jsiConsolePrintChar('>'); // show the prompt
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
     }
@@ -900,7 +900,7 @@ void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
       if (jsiShowInputLine()) {
-        jsiConsolePrint("\r\n");
+        jsiConsolePrint("\n");
       }
       inputLineRemoved = true;
 

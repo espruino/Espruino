@@ -8,7 +8,8 @@
             Added preliminary WIZnet W5500 support (see http://www.espruino.com/WIZnet)
             Alt Enter (27 + 10) now always inserts a newline: (eg. for `if (X) \n Y`)
             Fix digitalPulse with not a number
-            Make digitalPulse(... 0) wait until the last pulse is complete
+            Make digitalPulse(... 0) wait until the last pulse is complete 
+            Stop Espruino sending out so many carriage return characters (fix #243)
 
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval
