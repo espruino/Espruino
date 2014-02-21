@@ -16,6 +16,10 @@ espruino_#v##_espruino_1r3.bin
    - The firmware image for the latest Espruino Boards.
      We'd strongly suggest that you use the Web IDE to flash this.
 
+espruino_#v##_espruino_1r3_wiznet.bin  
+   - The firmware image for the latest Espruino Boards, that works with WIZnet W5500 ethernet
+     We'd strongly suggest that you use the Web IDE to flash this.
+
 espruino_#v##_espruino_1r1.bin  
    - The firmware image for older, rev 1v1 and 1v2 boards
 
