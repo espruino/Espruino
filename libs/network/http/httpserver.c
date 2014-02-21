@@ -634,7 +634,7 @@ void httpClientConnectionsIdle() {
 
 static void httpCheckAndRecover() {
 #ifdef USE_CC3000
-  if (jspIsInterrupted()) {
+  while (jspIsInterrupted()) {
     jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
     jspSetInterrupted(false);
     // remove all existing connections
@@ -646,6 +646,7 @@ static void httpCheckAndRecover() {
       jswrap_wlan_reconnect(wlan);
       jsvUnLock(wlan);
     } else jsErrorInternal("No CC3000 object!\n");
+    // jswrap_wlan_reconnect could fail, which would mean we have to do this all over again
   }
 #endif
 }
