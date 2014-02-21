@@ -281,6 +281,7 @@ typedef enum LEX_TYPES {
     LEX_R_SWITCH,
     LEX_R_CASE,
     LEX_R_DEFAULT,
+    LEX_R_DELETE,
     LEX_R_TYPEOF,
     LEX_R_VOID,
 

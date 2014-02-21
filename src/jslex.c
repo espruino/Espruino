@@ -258,6 +258,7 @@ jslGetNextToken_start:
                     else if (jslIsToken(lex,"continue", 1)) lex->tk = LEX_R_CONTINUE;
                     break;
           case 'd': if (jslIsToken(lex,"default", 1)) lex->tk = LEX_R_DEFAULT;
+                    else if (jslIsToken(lex,"delete", 1)) lex->tk = LEX_R_DELETE;
                     else if (jslIsToken(lex,"do", 1)) lex->tk = LEX_R_DO;
                     break;
           case 'e': if (jslIsToken(lex,"else", 1)) lex->tk = LEX_R_ELSE;
@@ -616,6 +617,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
       /*LEX_R_SWITCH */     "switch\0"
       /*LEX_R_CASE */       "case\0"
       /*LEX_R_DEFAULT */    "default\0"
+      /*LEX_R_DELETE */     "delete\0"
       /*LEX_R_TYPEOF :   */ "typeof\0"
       /*LEX_R_VOID :     */ "void\0"
         ;

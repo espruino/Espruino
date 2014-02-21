@@ -1507,6 +1507,24 @@ void jsvRemoveAllChildren(JsVar *parent) {
     }
 }
 
+
+/// Check if the given name is a child of the parent
+bool jsvIsChild(JsVar *parent, JsVar *child) {
+  assert(jsvIsArray(parent) || jsvIsObject(parent));
+  assert(jsvIsName(child));
+  JsVarRef childref = jsvGetRef(child);
+  JsVarRef indexref;
+  indexref = parent->firstChild;
+  while (indexref) {
+    if (indexref == childref) return true;
+    // get next
+    JsVar *indexVar = jsvLock(indexref);
+    indexref = indexVar->nextSibling;
+    jsvUnLock(indexVar);
+  }
+  return false; // not found undefined
+}
+
 /// Get the named child of an object. If createChild!=0 then create the child
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   if (!obj) return 0;

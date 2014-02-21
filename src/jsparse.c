@@ -762,7 +762,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   } else return 0;
 }
 
-NO_INLINE JsVar *jspeFactorSingleId() {
+JsVar *jspeFactorSingleId() {
   JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex)) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
     const char *tokenName = jslGetTokenValueAsString(execInfo.lex); // BEWARE - this won't hang around forever!
@@ -1119,6 +1119,31 @@ NO_INLINE JsVar *jspeFactorTypeOf() {
   return result;
 }
 
+NO_INLINE JsVar *jspeFactorDelete() {
+  JSP_MATCH(LEX_R_DELETE);
+  JsVar *parent = 0;
+  JsVar *a = jspeFactorMember(jspeFactor(), &parent);
+  JsVar *result = 0;
+  if (JSP_SHOULD_EXECUTE) {
+    bool ok = false;
+    if (jsvIsName(a)) {
+      // if no parent, check in root?
+      if (!parent && jsvIsChild(execInfo.root, a))
+        parent = jsvLockAgain(execInfo.root);
+
+      if (parent && !jsvIsFunction(parent)) {
+        jsvRemoveChild(parent, a);
+        ok = true;
+      }
+    }
+
+    result = jsvNewFromBool(ok);
+  }
+  jsvUnLock(a);
+  jsvUnLock(parent);
+  return result;
+}
+
 NO_INLINE JsVar *jspeFactor() {
     if (execInfo.lex->tk=='(') {
         JsVar *a = 0;
@@ -1182,6 +1207,8 @@ NO_INLINE JsVar *jspeFactor() {
     } else if (execInfo.lex->tk==LEX_R_THIS) {
       JSP_MATCH(LEX_R_THIS);
       return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
+    } else if (execInfo.lex->tk==LEX_R_DELETE) {
+      return jspeFactorDelete();
     } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
       return jspeFactorTypeOf();
     } else if (execInfo.lex->tk==LEX_R_VOID) {
@@ -2009,6 +2036,7 @@ NO_INLINE JsVar *jspeStatement() {
         execInfo.lex->tk==LEX_R_TRUE ||
         execInfo.lex->tk==LEX_R_FALSE ||
         execInfo.lex->tk==LEX_R_THIS ||
+        execInfo.lex->tk==LEX_R_DELETE ||
         execInfo.lex->tk==LEX_R_TYPEOF ||
         execInfo.lex->tk==LEX_R_VOID ||
         execInfo.lex->tk==LEX_PLUSPLUS ||

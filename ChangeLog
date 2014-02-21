@@ -10,6 +10,7 @@
             Fix digitalPulse with not a number
             Make digitalPulse(... 0) wait until the last pulse is complete 
             Stop Espruino sending out so many carriage return characters (fix #243)
+            Added 'delete' keyword (fix #39)
 
      1v51 : Added debounce to setWatch (fix #14)
             Tidy up timeout/watch code and now store an integer for interval

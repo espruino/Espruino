@@ -386,6 +386,8 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
 
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
+/// Check if the given name is a child of the parent
+bool jsvIsChild(JsVar *parent, JsVar *child);
 JsVarInt jsvGetArrayLength(JsVar *arr); ///< Not the same as GetChildren, as it can be a sparse array
 JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does the 'right' thing
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging

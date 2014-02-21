@@ -2,7 +2,7 @@ break jsAssertFail
 break jsErrorAt
 break jsError
 define trace
-  print jsvTrace(jsvGetRef(jsiGetParser()->root), 0)
+  print jsvTrace(jsvGetRef(execInfo.root), 0)
 end   
 define whereami
   print jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenStart)
