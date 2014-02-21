@@ -290,6 +290,7 @@ int main(int argc, char **argv) {
   printf("Size of JsVar is now %d bytes\n", (int)sizeof(JsVar));
   printf("Size of JsVarRef is now %d bytes\n", (int)sizeof(JsVarRef));
 
+#ifndef __MINGW32__
   struct sigaction sa;
   sa.sa_handler = sig_handler;
   sa.sa_flags = 0;
@@ -306,6 +307,7 @@ int main(int argc, char **argv) {
     printf("Adding SIGTERM hook failed\n");
   else
     printf("Added SIGTERM hook\n");
+#endif//!__MINGW32__
 
   jshInit();
   jsiInit(true);

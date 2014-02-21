@@ -16,8 +16,12 @@
  #include <stdio.h>
  #include <unistd.h>
  #include <sys/time.h>
+#ifdef __MINGW32__
+ #include <conio.h>
+#else//!__MINGW32__
  #include <sys/select.h>
  #include <termios.h>
+#endif//__MINGW32__
  #include <signal.h>
  #include <inttypes.h>
 
@@ -104,11 +108,26 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 
 // ----------------------------------------------------------------------------
 // for non-blocking IO
+#ifdef __MINGW32__
+void reset_terminal_mode() {}
+void set_conio_terminal_mode() {}
+int kbhit()
+{
+  return _kbhit();
+}
+
+int getch()
+{
+  return _getch();
+}
+
+#else//!__MINGW32__
 struct termios orig_termios;
 static int terminal_set = 0;
 
 void reset_terminal_mode()
 {
+
     tcsetattr(0, TCSANOW, &orig_termios);
 }
 
@@ -146,8 +165,11 @@ int getch()
         return c;
     }
 }
+#endif//__MINGW32__
+
 
 void jshInit() {
+#ifndef __MINGW32__
   if (!terminal_set) {
     struct termios new_termios;
 
@@ -161,7 +183,7 @@ void jshInit() {
     tcsetattr(0, TCSANOW, &new_termios);
     terminal_set = 1;
   }
-
+#endif//!__MINGW32__
 #ifdef SYSFS_GPIO_DIR
   int i;
   for (i=0;i<JSH_PIN_COUNT;i++) {

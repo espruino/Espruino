@@ -16,6 +16,9 @@
 #include "jswrap_object.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#ifdef __MINGW32__
+#include "malloc.h" // needed for alloca
+#endif//__MINGW32__
 
 /*JSON{ "type":"class",
         "class" : "Hardware",

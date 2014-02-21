@@ -61,6 +61,10 @@ ifeq ($(shell uname),Darwin)
 MACOSX=1
 endif
 
+ifeq ($(OS),Windows_NT)
+MINGW=1
+endif
+
 # Gordon's car ECU (extremely beta!)
 ifdef ECU
 STM32F4DISCOVERY=1
@@ -286,10 +290,16 @@ USE_FILESYSTEM=1
 USB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
-ifndef MACOSX
-# http libs need some tweaks before net can compile
+
+ifdef MACOSX
+#USE_NET=1 # http libs need some tweaks before net can compile
+else ifdef MINGW
+#USE_NET=1 # http libs need some tweaks before net can compile
+#LIBS += -lwsock32
+DEFINES += -DHAS_STDLIB=1
+else  # Linux
 USE_NET=1
-endif
+endif 
 endif
 
 PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
