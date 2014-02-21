@@ -16,14 +16,6 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
-// needed for isnan / isfinite
-#ifdef ARM
-#include "mconf.h"
-#include "protos.h"
-#else
-#include <math.h>
-#endif
-
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
         return false;

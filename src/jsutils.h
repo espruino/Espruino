@@ -23,6 +23,16 @@
 #endif
 #include <stdarg.h> // for va_args
 
+#ifdef LINUX
+#include <math.h>
+#else
+// these are in maths, but are used all over the place
+extern int isnan ( double );
+extern int isfinite ( double );
+#define NAN (((JsVarFloat)0)/(JsVarFloat)0)
+#endif
+
+
 #define JS_VERSION "1v52"
 /*
   In code:
@@ -48,7 +58,6 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 #define true (1)
 #define false (0)
-#define NAN (((JsVarFloat)0)/(JsVarFloat)0)
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
 

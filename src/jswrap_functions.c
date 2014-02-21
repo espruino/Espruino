@@ -19,9 +19,6 @@
 #include "jsinteractive.h"
 
 
-// for jswrap_isNaN
-extern int isnan(double x);
-
 /*JSON{ "type":"variable", "name" : "arguments",
          "description" : "A variable containing the arguments given to the function",
          "generate" : "jswrap_arguments",

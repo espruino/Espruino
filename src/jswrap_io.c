@@ -16,9 +16,6 @@
 #include "jswrap_io.h"
 #include "jsvar.h"
 
-// for jswrap_isNaN
-extern int isnan(double x);
-
 /*JSON{ "type":"function", "name" : "peek8",
          "description" : [ "Read 8 bits of memory at the given location - DANGEROUS!" ],
          "generate_full" : "(JsVarInt)*(unsigned char*)(size_t)jsvGetInteger(addr)",
@@ -83,17 +80,17 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
 }
 
 /*JSON{ "type":"function", "name" : "digitalPulse",
-         "description" : ["Pulse the pin with the value for the given time in milliseconds",
-                          "eg. ```pulse(A0,1,5);``` pulses A0 high for 5ms",
-                          "digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead" ],
+         "description" : ["Pulse the pin with the value for the given time in milliseconds. It uses a hardware timer to produce accurate pulses, and returns immediately (before the pulse has finished). Use `digitalPulse(A0,1,0)` to wait until a previous pulse has finished.",
+                          "eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms",
+                          "digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead." ],
          "generate" : "jswrap_io_digitalPulse",
          "params" : [ [ "pin", "pin", "The pin to use"],
                       [ "value", "bool", "Whether to pulse high (true) or low (false)"],
                       [ "time", "float", "A time in milliseconds"] ]
 }*/
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
-  if (time<=0) {
-    jsWarn("Pulse Time given for digitalPulse is less that or equal to 0");
+  if (time<0 || isnan(time)) {
+    jsWarn("Pulse Time given for digitalPulse is less than 0, or not a number");
   } else {
     //jsPrintInt((JsVarInt)(time*1000));
     jshPinPulse(pin, value, time);

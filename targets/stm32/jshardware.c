@@ -2483,19 +2483,20 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
        return;
   }
   _utilTimerWait();
+  if (pulseTime>0) {
+    unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+    int clockTicks = (int)(((JsVarFloat)timerFreq * pulseTime) / 1000);
+    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
 
-  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-  int clockTicks = (int)(((JsVarFloat)timerFreq * pulseTime) / 1000);
-  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+    uint16_t ticks = (uint16_t)(clockTicks/(prescale+1));
 
-  uint16_t ticks = (uint16_t)(clockTicks/(prescale+1));
-
-  utilTimerType = UT_PULSE_ON;
-  utilTimerState = pulsePolarity;
-  utilTimerPin = pin;
+    utilTimerType = UT_PULSE_ON;
+    utilTimerState = pulsePolarity;
+    utilTimerPin = pin;
 
 
-  _utilTimerEnable((uint16_t)prescale, ticks);
+    _utilTimerEnable((uint16_t)prescale, ticks);
+  }
 }
 
 bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
