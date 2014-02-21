@@ -234,7 +234,12 @@ def get_script_dir():
 def get_version():
         scriptdir = get_script_dir()
         jsutils = scriptdir+"/../src/jsutils.h"
-        return subprocess.check_output(["sed", "-ne", "s/^.*JS_VERSION.*\"\(.*\)\"/\\1/p", jsutils]).strip()
+        version = re.compile("^.*JS_VERSION.*\"(.*)\"");
+        for line in open(jsutils):
+            match = version.search(line);
+            if (match != None):
+                return match.group(1);
+               
 
 def get_name_or_space(jsondata):
         if "name" in jsondata: return jsondata["name"]
