@@ -474,7 +474,7 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
     JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
     JsVar *options = jsvObjectGetChild(serialVar, DEVICE_OPTIONS_NAME, 0);
     if (baud || options) {
-      JsVarInt baudrate = jsvGetInteger(baud);
+      int baudrate = (int)jsvGetInteger(baud);
       if (baudrate <= 0) baudrate = DEFAULT_BAUD_RATE;
       jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
@@ -1675,9 +1675,7 @@ void jsiDumpState() {
     JsVar *timerInterval = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
     jsfPrintJSON(timerCallback);
-    jsiConsolePrint(", ");
-    jsfPrintJSON(timerInterval);
-    jsiConsolePrint(");\n");
+    jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
     jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next

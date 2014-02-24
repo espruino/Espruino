@@ -1,5 +1,6 @@
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving
+            Fix issue with saving Serial baud rates
 
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)
