@@ -2534,7 +2534,10 @@ void _utilTimerWait() {
 /// Return the latest task for a pin (false if not found)
 bool jshGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
   unsigned char ptr = utilTimerTasksHead;
-  while (ptr != utilTimerTasksTail) {
+  if (ptr == utilTimerTasksTail) return false; // nothing in here
+  ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+  while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
     if (utilTimerTasks[ptr].type == UET_SET) {
       int i;
       for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
@@ -2607,7 +2610,7 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
 
   //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
   // now set up timer if not already set up...
-  if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
+  if ((utilTimerType != UT_PIN_SET && utilTimerType != UT_PIN_SET_RELOAD_EVENT) || haveChangedTimer) {
     //jsiConsolePrint("Starting\n");
     unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
     int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
