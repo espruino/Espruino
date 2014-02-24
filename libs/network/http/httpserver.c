@@ -96,6 +96,24 @@ static JsVar *httpGetArray(const char *name, bool create) {
   return arr;
 }
 
+unsigned long parseIPAddress(const char *ip) {
+  int n = 0;
+  unsigned long addr = 0;
+  while (*ip) {
+    if (*ip>='0' && *ip<='9') {
+      n = n*10 + (*ip-'0');
+    } else if (*ip>='.') {
+      addr = (addr>>8) | (n<<24);
+      n=0;
+    } else {
+      return 0; // not an ip address
+    }
+    ip++;
+  }
+  addr = (addr>>8) | (n<<24);
+  return addr;
+}
+
 #if defined(USE_WIZNET)
 uint8_t getFreeSocket() {
   uint8_t i;
@@ -110,20 +128,177 @@ uint8_t getFreeSocket() {
 #endif
 // -----------------------------
 
-void httpInit() {
-#ifdef WIN32
-  // Init winsock 1.1
-  WORD sockVersion;
-  WSADATA wsaData;
-  sockVersion = MAKEWORD(1, 1);
-  WSAStartup(sockVersion, &wsaData);
+/// Called on idle. Do any checks required for this device
+void net_idle(struct JsNetwork *gfx) {
+#ifdef USE_CC3000
+  cc3000_spi_check();
 #endif
 }
 
-static void _httpServerConnectionKill(JsVar *connection, bool permanently) {
-  if (networkState != NETWORKSTATE_ONLINE) return;
-  SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-  if (sckt!=INVALID_SOCKET) {
+/// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.
+bool net_checkError(struct JsNetwork *gfx) {
+#ifdef USE_CC3000
+  while (jspIsInterrupted()) {
+    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
+    jspSetInterrupted(false);
+    // remove all existing connections
+    networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
+    _httpCloseAllConnections();
+    // power cycle
+    JsVar *wlan = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
+    if (wlan) {
+      jswrap_wlan_reconnect(wlan);
+      jsvUnLock(wlan);
+    } else jsErrorInternal("No CC3000 object!\n");
+    // jswrap_wlan_reconnect could fail, which would mean we have to do this all over again
+  }
+#endif
+}
+
+/// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
+int net_createsocket(struct JsNetwork *gfx, unsigned long host, unsigned short port) {
+ if (host!=0) {
+#if defined(USE_CC3000)
+  sockaddr       sin;
+  sin.sa_family = AF_INET;
+  sin.sa_data[0] = (port & 0xFF00) >> 8;
+  sin.sa_data[1] = (port & 0x00FF);
+#elif defined(USE_WIZNET)
+#else
+  sockaddr_in       sin;
+  sin.sin_family = AF_INET;
+  sin.sin_port = htons( port );
+#endif
+
+
+#if !defined(USE_WIZNET)
+  SOCKET sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#else
+  SOCKET sckt = socket(getFreeSocket(), Sn_MR_TCP, port, 0); // we set nonblocking later
+#endif
+  if (sckt<0) return sckt; // error
+
+  // turn on non-blocking mode
+  #ifdef WIN_OS
+  u_long n = 1;
+  ioctlsocket(sckt,FIONBIO,&n);
+  #elif defined(USE_CC3000)
+  int param;
+  param = SOCK_ON;
+  setsockopt(sckt, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &param, sizeof(param)); // enable nonblock
+  param = 5; // ms
+  setsockopt(sckt, SOL_SOCKET, SOCKOPT_RECV_TIMEOUT, &param, sizeof(param)); // set a timeout
+  #elif defined(USE_WIZNET)
+  // ...
+  #else
+  int flags = fcntl(sckt, F_GETFL);
+  if (flags < 0) {
+    jsError("Unable to retrieve socket descriptor status flags (%d)", flags);
+    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+    jsvUnLock(options);
+    return;
+  }
+  if (fcntl(sckt, F_SETFL, flags | O_NONBLOCK) < 0)
+    jsError("Unable to set socket descriptor status flags");
+  #endif
+
+#if defined(USE_CC3000)
+  sin.sa_data[5] = (host_addr) & 0xFF;  // First octet of destination IP
+  sin.sa_data[4] = (host_addr>>8) & 0xFF;   // Second Octet of destination IP
+  sin.sa_data[3] = (host_addr>>16) & 0xFF;  // Third Octet of destination IP
+  sin.sa_data[2] = (host_addr>>24) & 0xFF;  // Fourth Octet of destination IP
+#elif defined(USE_WIZNET)
+#else
+  sin.sin_addr.s_addr = host_addr;
+#endif
+
+  //uint32_t a = sin.sin_addr.s_addr;
+  //_DEBUG_PRINT( cout<<"Port :"<<sin.sin_port<<", Address : "<< sin.sin_addr.s_addr<<endl);
+#ifdef USE_WIZNET
+  int res = connect(sckt,(uint8_t*)&host_addr, port);
+  // now we set nonblocking - so that connect waited for the connection
+  uint8_t ctl = SOCK_IO_NONBLOCK;
+  ctlsocket(sckt, CS_SET_IOMODE, &ctl);
+#else
+  int res = connect(sckt,(const struct sockaddr *)&sin, sizeof(sockaddr_in) );
+#endif
+
+  if (res == SOCKET_ERROR) {
+  #ifdef WIN_OS
+   int err = WSAGetLastError();
+  #elif defined(USE_WIZNET)
+   int err = res;
+  #else
+   int err = errno;
+  #endif
+  #if !defined(USE_WIZNET)
+   if (err != EINPROGRESS &&
+       err != EWOULDBLOCK) {
+  #else
+   {
+  #endif
+     jsError("Connect failed (err %d)\n", err );
+     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+   }
+  }
+
+
+ } else {
+
+  #if !defined(USE_WIZNET)
+    SOCKET sckt = socket(AF_INET,           // Go over TCP/IP
+                         SOCK_STREAM,       // This is a stream-oriented socket
+                         IPPROTO_TCP);      // Use TCP rather than UDP
+    if (sckt == INVALID_SOCKET) {
+      jsError("Socket creation failed");
+      return 0;
+    }
+  #endif
+  #if !defined(USE_WIZNET)
+    jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
+
+  #if !defined(USE_CC3000)
+    int optval = 1;
+    if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
+  #else
+    int optval = SOCK_ON;
+    if (setsockopt(sckt,SOL_SOCKET,SOCKOPT_ACCEPT_NONBLOCK,(const char *)&optval,sizeof(optval)) < 0)
+  #endif
+      jsWarn("setsockopt failed\n");
+  #endif
+  #if !defined(USE_WIZNET)
+    SOCKET sckt = (SOCKET)(jsvGetIntegerAndUnLock(jsvObjectGetChild(server, HTTP_NAME_SOCKET, 0))-1);
+
+    int nret;
+    sockaddr_in serverInfo;
+    memset(&serverInfo, 0, sizeof(serverInfo));
+    serverInfo.sin_family = AF_INET;
+    //serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // allow only LOCAL clients to connect
+    serverInfo.sin_addr.s_addr = INADDR_ANY; // allow anyone to connect
+    serverInfo.sin_port = htons((unsigned short)port); // port
+    nret = bind(sckt, (struct sockaddr*)&serverInfo, sizeof(serverInfo));
+    if (nret == SOCKET_ERROR) {
+      jsError("Socket bind failed");
+      closesocket(sckt);
+      return -1;
+    }
+
+    // Make the socket listen
+    nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
+    if (nret == SOCKET_ERROR) {
+      jsError("Socket listen failed");
+      closesocket(sckt);
+      return -1;
+    }
+  #else
+    SOCKET sckt = socket(getFreeSocket(), Sn_MR_TCP, port, SF_IO_NONBLOCK);
+  #endif
+ }
+  return sckt;
+}
+
+/// destroys the given socket
+void net_closesocket(struct JsNetwork *gfx, int sckt) {
 #if defined(USE_WIZNET)
     // close gracefully
     disconnect(sckt);
@@ -144,6 +319,142 @@ static void _httpServerConnectionKill(JsVar *connection, bool permanently) {
 #else
     closesocket(sckt);
 #endif
+}
+
+/// If the given server socket can accept a connection, return it (or return < 0)
+int net_accept(struct JsNetwork *gfx, int sckt) {
+#if !defined(USE_CC3000) && !defined(USE_WIZNET)
+  // TODO: look for unreffed servers?
+  fd_set s;
+  FD_ZERO(&s);
+  FD_SET(sckt,&s);
+  // check for waiting clients
+  struct timeval timeout;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+  int n = select(sckt+1,&s,NULL,NULL,&timeout);
+  #else
+  /* CC3000/WIZnet works a different way - we set accept as nonblocking,
+   * and then we just call it and see if it works or not...
+   */
+  int n=1;
+  #endif
+  if (n>0) {
+    // we have a client waiting to connect... try to connect and see what happens
+  #if defined(USE_CC3000)
+    // CC3000's implementation doesn't accept NULL like everyone else's :(
+    sockaddr addr;
+    socklen_t addrlen = sizeof(addr);
+    int theClient = accept(sckt,&addr,&addrlen);
+  #elif defined(USE_WIZNET)
+    // WIZnet's implementation doesn't use accept, it uses listen
+    int theClient = listen(sckt);
+    if (theClient==SOCK_OK) theClient = sckt; // we deal with the client on the same socket
+  #else
+    int theClient = accept(sckt,0,0);
+  #endif
+    return theClient;
+  }
+  return -1;
+}
+
+/// Get an IP address from a name. Sets out_ip_addr to 0 on failure
+void net_gethostbyname(struct JsNetwork *gfx, char * hostname, unsigned long* out_ip_addr) {
+  assert(out_ip_addr);
+  *out_ip_addr = 0;
+#if defined(USE_CC3000)
+  gethostbyname(hostName, strlen(hostName), &host_addr);
+#elif defined(USE_WIZNET)
+  host_addr = parseIPAddress(hostName); // first try and simply parse the IP address
+  if (!host_addr && dns_query(0, getFreeSocket(), (uint8_t*)hostName) == 1) {
+    host_addr = *(unsigned long*)&Server_IP_Addr[0];
+  }
+#else
+  struct hostent * host_addr_p = gethostbyname(hostName);
+  if (host_addr_p)
+    *out_ip_addr = *(unsigned long*)*host_addr_p->h_addr_list;
+#endif
+  /* getaddrinfo is newer than this?
+  *
+  * struct addrinfo * result;
+  * error = getaddrinfo("www.example.com", NULL, NULL, &result);
+  * if (0 != error)
+  *   fprintf(stderr, "error %s\n", gai_strerror(error));
+  *
+  */
+}
+
+/// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
+int net_recv(struct JsNetwork *gfx, int sckt, void *buf, long len) {
+  int num = 0;
+  if (true
+#if defined(USE_WIZNET)
+      && getSn_SR(sckt)!=SOCK_LISTEN
+#endif
+        ) {
+#if !defined(USE_WIZNET)
+    fd_set s;
+    FD_ZERO(&s);
+    FD_SET(sckt,&s);
+    // check for waiting clients
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    int n = select(sckt+1,&s,NULL,NULL,&timeout);
+    if (n==SOCKET_ERROR) {
+      // we probably disconnected
+      return -1;
+    } else if (n>0) {
+      // receive data
+      num = (int)recv(sckt,buf,sizeof(buf),0);
+      if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
+#else // defined(USE_WIZNET)
+    // receive data - if none available it'll just return SOCK_BUSY
+    num = (int)recv(sckt,buf,sizeof(buf),0);
+    if (num==SOCK_BUSY) num=0;
+#endif
+  }
+
+  return num;
+}
+
+/// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
+int net_send(struct JsNetwork *gfx, int sckt, const void *buf, long len) {
+#if !defined(USE_WIZNET)
+        fd_set writefds;
+        FD_ZERO(&writefds);
+        FD_SET(sckt, &writefds);
+        struct timeval time;
+        time.tv_sec = 0;
+        time.tv_usec = 0;
+        int n = select(sckt+1, 0, &writefds, 0, &time);
+        if (n==SOCKET_ERROR ) {
+           // we probably disconnected so just get rid of this
+          closeConnectionNow = true;
+        } else if (FD_ISSET(sckt, &writefds)) {
+#else // defined(USE_WIZNET)
+        {
+#endif
+}
+
+
+// -----------------------------
+
+void httpInit() {
+#ifdef WIN32
+  // Init winsock 1.1
+  WORD sockVersion;
+  WSADATA wsaData;
+  sockVersion = MAKEWORD(1, 1);
+  WSAStartup(sockVersion, &wsaData);
+#endif
+}
+
+static void _httpServerConnectionKill(JsVar *connection, bool permanently) {
+  if (networkState != NETWORKSTATE_ONLINE) return;
+  SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+  if (sckt!=INVALID_SOCKET) {
+    net_closesocket(0, sckt)
   }
 }
 
@@ -347,12 +658,11 @@ bool _http_send(SOCKET sckt, JsVar **sendData) {
   char buf[64];
 
   int a=1;
-  int len = (int)jsvGetStringLength(*sendData);
-  if (len>0) {
+  if (jsvGetCharactersInVar(*sednData)>0) {
     size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
-    a = (int)send(sckt,buf,bufLen, MSG_NOSIGNAL);
+    a = net_send(0,sckt,buf,bufLen);
     JsVar *newSendData = 0;
-    if (a!=len && a>0) {
+    if (a>0 && a!=(int)jsvGetStringLength(*sendData)) {
       newSendData = jsvNewFromStringVar(*sendData, (size_t)a, JSVAPPENDSTRINGVAR_MAXLENGTH);
     }
     jsvUnLock(*sendData);
@@ -384,34 +694,12 @@ void httpServerConnectionsIdle() {
     bool hadData = false;
     // TODO: look for unreffed connections?
 
-    if (!closeConnectionNow
-#if defined(USE_WIZNET)
-        && getSn_SR(sckt)!=SOCK_LISTEN
-#endif
-        ) {
-#if !defined(USE_WIZNET)
-      fd_set s;
-      FD_ZERO(&s);
-      FD_SET(sckt,&s);
-      // check for waiting clients
-      struct timeval timeout;
-      timeout.tv_sec = 0;
-      timeout.tv_usec = 0;
-      int n = select(sckt+1,&s,NULL,NULL,&timeout);
-      if (n==SOCKET_ERROR) {
-        // we probably disconnected so just get rid of this
-        closeConnectionNow = true;
-      } else if (n>0) {
-        // receive data
-        int num = (int)recv(sckt,buf,sizeof(buf),0);
-#else // defined(USE_WIZNET)
-      // receive data - if none available it'll just return SOCK_BUSY
-      int num = (int)recv(sckt,buf,sizeof(buf),0);
-      if (num<0 && num!=SOCK_BUSY) {
+    if (!closeConnectionNow) {
+      int num = net_recv(0, sckt, buf,sizeof(buf));
+      if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
       } else {
-#endif
         hadData = true;
         // add it to our request string
         if (num>0) {
@@ -440,21 +728,6 @@ void httpServerConnectionsIdle() {
       // send data if possible
       JsVar *sendData = jsvObjectGetChild(connectReponse,HTTP_NAME_SEND_DATA,0);
       if (sendData) {
-#if !defined(USE_WIZNET)
-        fd_set writefds;
-        FD_ZERO(&writefds);
-        FD_SET(sckt, &writefds);
-        struct timeval time;
-        time.tv_sec = 0;
-        time.tv_usec = 0;
-        int n = select(sckt+1, 0, &writefds, 0, &time);
-        if (n==SOCKET_ERROR ) {
-           // we probably disconnected so just get rid of this
-          closeConnectionNow = true;
-        } else if (FD_ISSET(sckt, &writefds)) {
-#else // defined(USE_WIZNET)
-        {
-#endif
           if (!_http_send(sckt, &sendData))
             closeConnectionNow = true;
         }
@@ -522,23 +795,6 @@ void httpClientConnectionsIdle() {
       JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
       // send data if possible
       if (sendData) {
-#if !defined(USE_WIZNET)
-        // this will wait to see if we can write any more, but ALSO
-        // will wait for connection
-        fd_set writefds;
-        FD_ZERO(&writefds);
-        FD_SET(sckt, &writefds);
-        struct timeval time;
-        time.tv_sec = 0;
-        time.tv_usec = 0;
-        int n = select(sckt+1, 0, &writefds, 0, &time);
-        if (n==SOCKET_ERROR ) {
-           // we probably disconnected so just get rid of this
-          closeConnectionNow = true;
-        } else if (FD_ISSET(sckt, &writefds)) {
-#else // defined(USE_WIZNET)
-        {
-#endif
           if (!_http_send(sckt, &sendData))
             closeConnectionNow = true;
           jsvObjectSetChild(connection, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
@@ -549,34 +805,11 @@ void httpClientConnectionsIdle() {
       } // When in Linux, just read and write at the same time
       {
 #endif
-#if !defined(USE_WIZNET)
-        // Now receive data
-        fd_set s;
-        FD_ZERO(&s);
-        FD_SET(sckt,&s);
-        // check for waiting clients
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-  #ifdef USE_CC3000
-        timeout.tv_usec = 5000; // 5 millisec
-  #else
-        timeout.tv_usec = 0;
-  #endif
-        int n = select(sckt+1,&s,NULL,NULL,&timeout);
-        if (n==SOCKET_ERROR) {
-          // we probably disconnected so just get rid of this
-          closeConnectionNow = true;
-        } else if (n>0) {
-          // receive data
-          int num = (int)recv(sckt,buf,sizeof(buf),0);
-#else // defined(USE_WIZNET)
-        // receive data - if none available it'll just return SOCK_BUSY
-        int num = (int)recv(sckt,buf,sizeof(buf),0);
-        if (num<0 && num!=SOCK_BUSY) {
+        int num = net_recv(0, sckt, buf,sizeof(buf));
+        if (num<0) {
           // we probably disconnected so just get rid of this
           closeConnectionNow = true;
         } else {
-#endif
           // add it to our request string
           if (num>0) {
             if (!receiveData) {
@@ -597,12 +830,6 @@ void httpClientConnectionsIdle() {
               }
             }
           }
-#if !defined(USE_WIZNET) // no select on WIZnet, so this is not an issue :)
-          else if (num==0) {
-            // select says data, but recv says 0 means connection is closed
-            closeConnectionNow = true;
-          }
-#endif
         }
   #ifdef USE_CC3000
         else {
@@ -632,30 +859,8 @@ void httpClientConnectionsIdle() {
   jsvUnLock(arr);
 }
 
-static void httpCheckAndRecover() {
-#ifdef USE_CC3000
-  while (jspIsInterrupted()) {
-    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
-    jspSetInterrupted(false);
-    // remove all existing connections
-    networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
-    _httpCloseAllConnections();
-    // power cycle
-    JsVar *wlan = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
-    if (wlan) {
-      jswrap_wlan_reconnect(wlan);
-      jsvUnLock(wlan);
-    } else jsErrorInternal("No CC3000 object!\n");
-    // jswrap_wlan_reconnect could fail, which would mean we have to do this all over again
-  }
-#endif
-}
-
-
 void httpIdle() {
-#ifdef USE_CC3000
-  cc3000_spi_check();
-#endif
+  net_idle(0);
   if (networkState != NETWORKSTATE_ONLINE) {
     // clear all clients and servers
     _httpCloseAllConnections();
@@ -669,37 +874,8 @@ void httpIdle() {
       JsVar *server = jsvArrayIteratorGetElement(&it);
       SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
-  #if !defined(USE_CC3000) && !defined(USE_WIZNET)
-      // TODO: look for unreffed servers?
-      fd_set s;
-      FD_ZERO(&s);
-      FD_SET(sckt,&s);
-      // check for waiting clients
-      struct timeval timeout;
-      timeout.tv_sec = 0;
-      timeout.tv_usec = 0;
-      int n = select(sckt+1,&s,NULL,NULL,&timeout);
-  #else
-      /* CC3000/WIZnet works a different way - we set accept as nonblocking,
-       * and then we just call it and see if it works or not...
-       */
-      int n=1;
-  #endif
-      while (n-->0) {
-        // we have a client waiting to connect... try to connect and see what happens
-  #if defined(USE_CC3000)
-        // CC3000's implementation doesn't accept NULL like everyone else's :(
-        sockaddr addr;
-        socklen_t addrlen = sizeof(addr);
-        int theClient = accept(sckt,&addr,&addrlen);
-  #elif defined(USE_WIZNET)
-        // WIZnet's implementation doesn't use accept, it uses listen
-        int theClient = listen(sckt);
-        if (theClient==SOCK_OK) theClient = sckt; // we deal with the client on the same socket
-  #else
-        int theClient = accept(sckt,0,0);
-  #endif
-        if (theClient > -1) {
+        int theClient = net_accept(0, sckt)
+        if (theClient >= 0) {
           JsVar *req = jspNewObject(0, "httpSRq");
           JsVar *res = jspNewObject(0, "httpSRs");
           if (res && req) { // out of memory?
@@ -730,22 +906,12 @@ void httpIdle() {
 
   httpServerConnectionsIdle();
   httpClientConnectionsIdle();
-  httpCheckAndRecover();
+  net_checkError(0);
 }
 
 // -----------------------------
 
 JsVar *httpServerNew(JsVar *callback) {
-#if !defined(USE_WIZNET)
-  SOCKET sckt = socket(AF_INET,           // Go over TCP/IP
-                       SOCK_STREAM,       // This is a stream-oriented socket
-                       IPPROTO_TCP);      // Use TCP rather than UDP
-  if (sckt == INVALID_SOCKET) {
-    jsError("Socket creation failed");
-    return 0;
-  }
-#endif
-
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return 0; // out of memory
 
@@ -756,18 +922,6 @@ JsVar *httpServerNew(JsVar *callback) {
   }
 
   jsvObjectSetChild(server, HTTP_NAME_ON_CONNECT, callback); // no unlock needed
-#if !defined(USE_WIZNET)
-  jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
-
-#if !defined(USE_CC3000)
-  int optval = 1;
-  if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
-#else
-  int optval = SOCK_ON;
-  if (setsockopt(sckt,SOL_SOCKET,SOCKOPT_ACCEPT_NONBLOCK,(const char *)&optval,sizeof(optval)) < 0)
-#endif
-    jsWarn("setsockopt failed\n");
-#endif
 
   // add to list of servers
   jsvArrayPush(arr, server);
@@ -778,34 +932,10 @@ JsVar *httpServerNew(JsVar *callback) {
 
 void httpServerListen(JsVar *server, int port) {
   jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_PORT, jsvNewFromInteger(port)));
-#if !defined(USE_WIZNET)
-  SOCKET sckt = (SOCKET)(jsvGetIntegerAndUnLock(jsvObjectGetChild(server, HTTP_NAME_SOCKET, 0))-1);
 
-  int nret;
-  sockaddr_in serverInfo;
-  memset(&serverInfo, 0, sizeof(serverInfo));
-  serverInfo.sin_family = AF_INET;
-  //serverInfo.sin_addr.s_addr = htonl(INADDR_LOOPBACK); // allow only LOCAL clients to connect
-  serverInfo.sin_addr.s_addr = INADDR_ANY; // allow anyone to connect
-  serverInfo.sin_port = htons((unsigned short)port); // port
-  nret = bind(sckt, (struct sockaddr*)&serverInfo, sizeof(serverInfo));
-  if (nret == SOCKET_ERROR) {
-    jsError("Socket bind failed");
-    closesocket(sckt);
-    return;
-  }
+  int sckt = net_createsocket(0, 0/*server*/, port);
 
-  // Make the socket listen
-  nret = listen(sckt, 10); // 10 connections (but this ignored on CC30000)
-  if (nret == SOCKET_ERROR) {
-    jsError("Socket listen failed");
-    closesocket(sckt);
-    return;
-  }
-#else
-  SOCKET sckt = socket(getFreeSocket(), Sn_MR_TCP, port, SF_IO_NONBLOCK);
   jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
-#endif
 }
 
 
@@ -872,41 +1002,11 @@ void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
   jsvUnLock(sendData);
 }
 
-unsigned long parseIPAddress(const char *ip) {
-  int n = 0;
-  unsigned long addr = 0;
-  while (*ip) {
-    if (*ip>='0' && *ip<='9') {
-      n = n*10 + (*ip-'0');
-    } else if (*ip>='.') {
-      addr = (addr>>8) | (n<<24);
-      n=0;
-    } else {
-      return 0; // not an ip address
-    }
-    ip++;
-  }
-  addr = (addr>>8) | (n<<24);
-  return addr;
-}
-
 void httpClientRequestEnd(JsVar *httpClientReqVar) {
   httpClientRequestWrite(httpClientReqVar, 0); // force sendData to be made
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
-
-#if defined(USE_CC3000)
-  sockaddr       sin;
-  sin.sa_family = AF_INET;
-  sin.sa_data[0] = (port & 0xFF00) >> 8;
-  sin.sa_data[1] = (port & 0x00FF);
-#elif defined(USE_WIZNET)
-#else
-  sockaddr_in       sin;
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons( port );
-#endif
 
   char hostName[128];
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", false);
@@ -914,117 +1014,27 @@ void httpClientRequestEnd(JsVar *httpClientReqVar) {
   jsvUnLock(hostNameVar);
 
   unsigned long host_addr = 0;
-#if defined(USE_CC3000)
-  gethostbyname(hostName, strlen(hostName), &host_addr);
-#elif defined(USE_WIZNET)
-  host_addr = parseIPAddress(hostName); // first try and simply parse the IP address
-  if (!host_addr && dns_query(0, getFreeSocket(), (uint8_t*)hostName) == 1) {
-    host_addr = *(unsigned long*)&Server_IP_Addr[0];
-  }
-#else
-  struct hostent * host_addr_p = gethostbyname(hostName);
-  if (host_addr_p)
-    host_addr = *((int*)*host_addr_p->h_addr_list);
-#endif
-  /* getaddrinfo is newer than this?
-  *
-  * struct addrinfo * result;
-  * error = getaddrinfo("www.example.com", NULL, NULL, &result);
-  * if (0 != error)
-  *   fprintf(stderr, "error %s\n", gai_strerror(error));
-  *
-  */
+  net_gethostbyname(0, hostName, &host_addr);
+
   if(!host_addr) {
     jsError("Unable to locate host");
     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
     jsvUnLock(options);
-    httpCheckAndRecover();
+    net_checkError(0);
     return;
   }
 
-
-#if !defined(USE_WIZNET)
-  SOCKET sckt = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-#else
-  SOCKET sckt = socket(getFreeSocket(), Sn_MR_TCP, port, 0); // we set nonblocking later
-#endif
-  if (sckt == INVALID_SOCKET) {
+  SOCKET sckt =  net_createsocket(0, host_addr, port);
+  if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
-    jsvUnLock(options);
-    httpCheckAndRecover();
-    return;
-  }
-
-  jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
-
-  // turn on non-blocking mode
-  #ifdef WIN_OS
-  u_long n = 1;
-  ioctlsocket(sckt,FIONBIO,&n);
-  #elif defined(USE_CC3000)
-  int param;
-  param = SOCK_ON;
-  setsockopt(sckt, SOL_SOCKET, SOCKOPT_RECV_NONBLOCK, &param, sizeof(param)); // enable nonblock
-  param = 5; // ms
-  setsockopt(sckt, SOL_SOCKET, SOCKOPT_RECV_TIMEOUT, &param, sizeof(param)); // set a timeout
-  #elif defined(USE_WIZNET)
-  // ...
-  #else
-  int flags = fcntl(sckt, F_GETFL);
-  if (flags < 0) {
-    jsError("Unable to retrieve socket descriptor status flags (%d)", flags);
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
-    jsvUnLock(options);
-    return;
-  }
-  if (fcntl(sckt, F_SETFL, flags | O_NONBLOCK) < 0)
-    jsError("Unable to set socket descriptor status flags");
-  #endif
-
-#if defined(USE_CC3000)
-  sin.sa_data[5] = (host_addr) & 0xFF;  // First octet of destination IP
-  sin.sa_data[4] = (host_addr>>8) & 0xFF;   // Second Octet of destination IP
-  sin.sa_data[3] = (host_addr>>16) & 0xFF;  // Third Octet of destination IP
-  sin.sa_data[2] = (host_addr>>24) & 0xFF;  // Fourth Octet of destination IP
-#elif defined(USE_WIZNET)
-#else
-  sin.sin_addr.s_addr = host_addr;
-#endif
-
-  //uint32_t a = sin.sin_addr.s_addr;
-  //_DEBUG_PRINT( cout<<"Port :"<<sin.sin_port<<", Address : "<< sin.sin_addr.s_addr<<endl);
-#ifdef USE_WIZNET
-  int res = connect(sckt,(uint8_t*)&host_addr, port);
-  // now we set nonblocking - so that connect waited for the connection
-  uint8_t ctl = SOCK_IO_NONBLOCK;
-  ctlsocket(sckt, CS_SET_IOMODE, &ctl);
-#else
-  int res = connect(sckt,(const struct sockaddr *)&sin, sizeof(sockaddr_in) );
-#endif
-
-  if (res == SOCKET_ERROR) {
-  #ifdef WIN_OS
-   int err = WSAGetLastError();
-  #elif defined(USE_WIZNET)
-   int err = res;
-  #else
-   int err = errno;
-  #endif
-  #if !defined(USE_WIZNET)
-   if (err != EINPROGRESS &&
-       err != EWOULDBLOCK) {
-  #else
-   {
-  #endif
-     jsError("Connect failed (err %d)\n", err );
-     jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
-   }
+  } else {
+    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
   }
 
   jsvUnLock(options);
 
-  httpCheckAndRecover();
+  net_checkError(0);
 }
 
 
