@@ -409,15 +409,17 @@ void jsiSoftInit() {
   // Check any existing watches and set up interrupts for them
   if (watchArray) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch);
-      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, watchArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *watch = jsvArrayIteratorGetElement(&it);
+      JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), true);
       jsvUnLock(watchPin);
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+      jsvUnLock(watch);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
     jsvUnLock(watchArrayPtr);
   }
 
@@ -425,16 +427,18 @@ void jsiSoftInit() {
   if (timerArray) {
     JsSysTime currentTime = jshGetSystemTime();
     JsVar *timerArrayPtr = jsvLock(timerArray);
-    JsVarRef timer = timerArrayPtr->firstChild;
-    while (timer) {
-      JsVar *timerNamePtr = jsvLock(timer);
-      JsVar *timerTime = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "time", false));
-      JsVarFloat interval = jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false)));
-      jsvSetInteger(timerTime, currentTime + jshGetTimeFromMilliseconds(interval));
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, timerArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *timer = jsvArrayIteratorGetElement(&it);
+      JsVar *timerTime = jsvObjectGetChild(timer, "time", 0);
+      JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
+      jsvSetInteger(timerTime, currentTime + interval);
       jsvUnLock(timerTime);
-      timer = timerNamePtr->nextSibling;
-      jsvUnLock(timerNamePtr);
+      jsvUnLock(timer);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
     jsvUnLock(timerArrayPtr);
   }
   // And look for onInit function
