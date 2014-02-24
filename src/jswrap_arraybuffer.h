@@ -17,3 +17,4 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength);
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length);
 JsVarFloat jswrap_arraybufferview_interpolate(JsVar *parent, JsVarFloat index);
 JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, JsVarFloat x, JsVarFloat y);
+void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset);

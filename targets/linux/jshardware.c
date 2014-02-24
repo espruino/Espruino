@@ -369,7 +369,7 @@ void jshPinOutput(Pin pin, bool value) {
   } else jsError("Invalid pin!");
 }
 
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
+bool jshPinOutputAtTime(JsSysTime time, Pin pins, int pinCount, uint8_t value) {
  // FIXME
 }
 

@@ -2351,17 +2351,39 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
 typedef enum {
   UT_NONE,
-  UT_PULSE_ON,
-  UT_PULSE_OFF,
   UT_PIN_SET_RELOAD_EVENT,
   UT_PIN_SET,
 } PACKED_FLAGS UtilTimerType;
 
+typedef enum {
+  UET_SET, ///< Set a pin to a value
+  UET_WRITE_BYTE, ///< Write a byte to an address
+} PACKED_FLAGS UtilTimerEventType;
+
 #define UTILTIMERTASK_PIN_COUNT (4)
+
+typedef struct UtilTimerTaskSet {
+  Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set
+  uint8_t value; ///< value to set pins to
+} PACKED_FLAGS UtilTimerTaskSet;
+
+
+typedef struct UtilTimerTaskWrite {
+  void *addr; ///< Address to write to (some peripheral?)
+  JsVar *var; ///< variable to get data from
+  unsigned char charIdx; ///< Index of character in variable
+} PACKED_FLAGS UtilTimerTaskWrite;
+
+typedef union UtilTimerTaskData {
+  UtilTimerTaskSet set;
+  UtilTimerTaskWrite write;
+} UtilTimerTaskData;
+
 typedef struct UtilTimerTask {
   JsSysTime time; // time at which to set pins
-  Pin pins[UTILTIMERTASK_PIN_COUNT]; // pins to set
-  uint8_t value; // value to set pins to
+  unsigned int repeatInterval; // if nonzero, repeat the timer
+  UtilTimerEventType type;
+  UtilTimerTaskData data; // data used when timer is hit
 } PACKED_FLAGS UtilTimerTask;
 
 #define UTILTIMERTASK_TASKS (16) // MUST BE POWER OF 2
@@ -2413,26 +2435,60 @@ void _utilTimerSetPinStateAndReload() {
   if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
     // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
     utilTimerType = UT_PIN_SET;
-  } else if (utilTimerType == UT_PULSE_ON) {
-    utilTimerType = UT_PULSE_OFF;
-    jshPinSetValue(utilTimerPin, utilTimerState);
-  } else if (utilTimerType == UT_PULSE_OFF) {
-    jshPinSetValue(utilTimerPin, !utilTimerState);
-     _utilTimerDisable();
-  /*} else if (utilTimerType == UT_PIN_SET_INITIAL_HACK) {
-    utilTimerType = UT_PIN_SET;*/
   } else if (utilTimerType == UT_PIN_SET) {
-    //jshPinSetValue(LED4_PININDEX,1);
     JsSysTime time = jshGetSystemTime();
     // execute any timers that are due
     while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time<time) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
-      int j;
-      for (j=0;j<UTILTIMERTASK_PIN_COUNT;j++) {
-        if (task->pins[j] == PIN_UNDEFINED) break;
-        jshPinSetValue(task->pins[j], (task->value >> j)&1);
-      }          
-      utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
+      // actually perform the task
+      switch (task->type) {
+        case UET_SET: {
+          int j;
+          for (j=0;j<UTILTIMERTASK_PIN_COUNT;j++) {
+            if (task->data.set.pins[j] == PIN_UNDEFINED) break;
+            jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
+          }
+        } break;
+        case UET_WRITE_BYTE: {
+          // write data into var
+          *((unsigned int*)task->data.write.addr) = (unsigned int)(unsigned char)task->data.write.var->varData.str[task->data.write.charIdx];
+          // move to next element in var
+          task->data.write.charIdx++;
+          unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.write.var);
+          if (task->data.write.charIdx >= maxChars) {
+            task->data.write.charIdx = (unsigned char)(task->data.write.charIdx - maxChars);
+            if (task->data.write.var->lastChild) {
+              JsVar *next = jsvLock(task->data.write.var->lastChild);
+              jsvUnLock(task->data.write.var);
+              task->data.write.var = next;
+            } else {
+              // No more data - make sure we don't repeat!
+              task->repeatInterval = 0;
+            }
+          }
+        } break;
+        default: break;
+      }
+      // If we need to repeat
+      if (task->repeatInterval) {
+        // update time
+        task->time += task->repeatInterval;
+        // do an in-place bubble sort to ensure that times are still in the right order
+        unsigned char ta = utilTimerTasksTail;
+        unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
+        while (tb != utilTimerTasksHead) {
+          if (utilTimerTasks[ta].time > utilTimerTasks[tb].time) {
+            UtilTimerTask task = utilTimerTasks[ta];
+            utilTimerTasks[ta] = utilTimerTasks[tb];
+            utilTimerTasks[tb] = task;
+          }
+          ta = tb;
+          tb = (tb+1) & (UTILTIMERTASK_TASKS-1);
+        }
+      } else {
+        // Otherwise no repeat - just go straight to the next one!
+        utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
+      }
     }
 
     // re-schedule the timer if there is something left to do
@@ -2454,9 +2510,8 @@ void _utilTimerSetPinStateAndReload() {
     } else {
       _utilTimerDisable();
     }
-    //jshPinSetValue(LED4_PININDEX,0);
   } else {
-    // What the??
+    // Nothing left to do - disable the timer
     _utilTimerDisable();
   }
 
@@ -2476,104 +2531,125 @@ void _utilTimerWait() {
   WAIT_UNTIL(utilTimerType == UT_NONE, "Utility Timer");
 }
 
+/// Return the latest task for a pin (false if not found)
+bool jshGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
+  unsigned char ptr = utilTimerTasksHead;
+  while (ptr != utilTimerTasksTail) {
+    if (utilTimerTasks[ptr].type == UET_SET) {
+      int i;
+      for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+        if (utilTimerTasks[ptr].data.set.pins[i] == pin) {
+          *task = utilTimerTasks[ptr];
+          return true;
+        } else if (utilTimerTasks[ptr].data.set.pins[i]==PIN_UNDEFINED)
+          break;
+    }
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  }
+  return false;
+}
+
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
   if (!jshIsPinValid(pin)) {
        jsError("Invalid pin!");
        return;
   }
-  _utilTimerWait();
-  if (pulseTime>0) {
-    unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-    int clockTicks = (int)(((JsVarFloat)timerFreq * pulseTime) / 1000);
-    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-
-    uint16_t ticks = (uint16_t)(clockTicks/(prescale+1));
-
-    utilTimerType = UT_PULSE_ON;
-    utilTimerState = pulsePolarity;
-    utilTimerPin = pin;
-
-
-    _utilTimerEnable((uint16_t)prescale, ticks);
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    _utilTimerWait();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jshGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jshPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
 }
 
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
+/// Is the timer full - can it accept any other signals?
+bool utilTimerIsFull() {
   unsigned char nextHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-  if (nextHead == utilTimerTasksTail) { 
-/*    JsSysTime t = jshGetSystemTime();
-    jsiConsolePrint("Timer Queue full\n");
-    while (nextHead!=utilTimerTasksHead) {
-      jsiConsolePrint("Task ");
-      jsiConsolePrintInt(utilTimerTasks[nextHead].value);
-      jsiConsolePrint(" at ");
-      char buf[32];
-      ftoa_bounded(jshGetMillisecondsFromTime(utilTimerTasks[nextHead].time-t)/1000, buf, sizeof(buf));
-      jsiConsolePrint(buf);
-      jsiConsolePrint("s\n");
-      nextHead = (nextHead+1) & (UTILTIMERTASK_TASKS-1);
-    }*/
+  return nextHead == utilTimerTasksTail;
+}
 
-    return false;
-  }
+// Queue a task up to be executed when a timer fires... return false on failure
+bool utilTimerInsertTask(UtilTimerTask *task) {
+  // check if queue is full or not
+  if (utilTimerIsFull()) return false;
 
-  jshInterruptOff();  
-  int insertPos = utilTimerTasksTail;
+
+  jshInterruptOff();
+
   // find out where to insert
-  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < time)
+  unsigned char insertPos = utilTimerTasksTail;
+  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < task->time)
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
 
-  if (utilTimerTasks[insertPos].time==time && utilTimerTasks[insertPos].pins[UTILTIMERTASK_PIN_COUNT-1]==PIN_UNDEFINED) {
-    // TODO: can we modify the call to jshPinOutputAtTime to do this without the seek with interrupts disabled?
-    // if the time is correct, and there is a free pin...
-    int i;
-    for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-      if (utilTimerTasks[insertPos].pins[i]==PIN_UNDEFINED) {
-        utilTimerTasks[insertPos].pins[i] = pin;
-        if (value) 
-          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value | (uint8_t)(1 << i);
-        else
-          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value & (uint8_t)~(1 << i);
-        break; // all done
-      }
-  } else {
-    bool haveChangedTimer = insertPos==utilTimerTasksTail;
-    //jsiConsolePrint("Insert at ");jsiConsolePrintInt(insertPos);jsiConsolePrint(", Tail is ");jsiConsolePrintInt(utilTimerTasksTail);jsiConsolePrint("\n");
-    // shift items forward
-    int i = utilTimerTasksHead;
-    while (i != insertPos) {
-      unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-      utilTimerTasks[i] = utilTimerTasks[next];
-      i = next;
-    }
-    // add new item
-    utilTimerTasks[insertPos].time = time;
-    //jsiConsolePrint("Time is ");jsiConsolePrintInt(utilTimerTasks[insertPos].time);jsiConsolePrint("\n");
-    utilTimerTasks[insertPos].pins[0] = pin;
-    for (i=1;i<UTILTIMERTASK_PIN_COUNT;i++)
-      utilTimerTasks[insertPos].pins[i] = PIN_UNDEFINED;
-    utilTimerTasks[insertPos].value = value?0xFF:0;
-    utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-    //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
-    // now set up timer if not already set up...
-    if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
-      //jsiConsolePrint("Starting\n");
-      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-      int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
-      if (clockTicks<0) clockTicks=0;
-      int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-      int ticks = (uint16_t)(clockTicks/(prescale+1));
-      if (ticks<1) ticks=1;
-      if (ticks>65535) ticks=65535;
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      _utilTimerEnable((uint16_t)prescale, (uint16_t)ticks);
-      //jsiConsolePrintInt(utilTimerType);jsiConsolePrint("\n");
-    }
+  bool haveChangedTimer = insertPos==utilTimerTasksTail;
+  //jsiConsolePrint("Insert at ");jsiConsolePrintInt(insertPos);jsiConsolePrint(", Tail is ");jsiConsolePrintInt(utilTimerTasksTail);jsiConsolePrint("\n");
+  // shift items forward
+  int i = utilTimerTasksHead;
+  while (i != insertPos) {
+    unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    utilTimerTasks[i] = utilTimerTasks[next];
+    i = next;
   }
+  // add new item
+  utilTimerTasks[insertPos] = *task;
+  // increase task list size
+  utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
+
+  //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
+  // now set up timer if not already set up...
+  if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
+    //jsiConsolePrint("Starting\n");
+    unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+    int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
+    if (clockTicks<0) clockTicks=0;
+    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+    int ticks = (uint16_t)(clockTicks/(prescale+1));
+    if (ticks<1) ticks=1;
+    if (ticks>65535) ticks=65535;
+    utilTimerType = UT_PIN_SET_RELOAD_EVENT;
+    _utilTimerEnable((uint16_t)prescale, (uint16_t)ticks);
+    //jsiConsolePrintInt(utilTimerType);jsiConsolePrint("\n");
+  }
+
   jshInterruptOn();
   return true;
 }
 
-// timer enabled  p *(unsigned int *)0x40001400
-// timer period  p *(unsigned int *)0x4000142C
+bool jshPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) {
+  assert(pinCount<UTILTIMERTASK_PIN_COUNT);
+  UtilTimerTask task;
+  task.time = time;
+  task.repeatInterval = 0;
+  task.type = UET_SET;
+  int i;
+  for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+    task.data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
+  task.data.set.value = value?0xFF:0;
+
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
+  return utilTimerInsertTask(&task);
+}
+
+#define DHR12R1_OFFSET             ((uint32_t)0x00000008)
+#define DAC_Align_8b_R                     ((uint32_t)0x00000008)
+
+bool jshSignalWrite(JsSysTime period, Pin pin, JsVar *data) {
+  UtilTimerTask task;
+  task.repeatInterval = (unsigned int)period;
+  task.time = jshGetSystemTime() + period;
+  task.type = UET_WRITE_BYTE;
+  task.data.write.addr = (void*)(DAC_BASE + DHR12R1_OFFSET + DAC_Align_8b_R);
+  task.data.write.charIdx = 0;
+  task.data.write.var = jsvLockAgain(data);
+  return utilTimerInsertTask(&task);
+}

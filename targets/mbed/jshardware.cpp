@@ -170,7 +170,7 @@ void jshPinOutput(Pin pin, bool value) {
     jshPinSetValue(pin, value);
 }
 
-void jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
+void jshPinOutputAtTime(JsSysTime time, Pin pins, int pinCount, uint8_t value) {
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used

@@ -348,6 +348,7 @@ src/jswrap_arraybuffer.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_onewire.c \
+src/jswrap_waveform.c \
 src/jswrap_io.c
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)

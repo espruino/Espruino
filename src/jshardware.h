@@ -102,8 +102,11 @@ void jshPinOutput(Pin pin, bool value);
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 void jshPinWatch(Pin pin, bool shouldWatch);
-/// returns false if timer queue was full...
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value);
+/// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
+bool jshPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
+
+
+bool jshSignalWrite(JsSysTime period, Pin pin, JsVar *data);
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device);

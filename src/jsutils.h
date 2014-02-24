@@ -107,6 +107,7 @@ typedef double JsVarFloat;
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef long long JsSysTime;
+#define JSSYSTIME_INVALID ((JsSysTime)-1)
 
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
