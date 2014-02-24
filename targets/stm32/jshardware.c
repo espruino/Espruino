@@ -2152,7 +2152,7 @@ void jshSaveToFlash() {
   if (errors) {
       jsiConsolePrintf("\nThere were %d errors!\n>", errors);
   } else
-      jsiConsolePrint("\nDone!\n>");
+      jsiConsolePrint("\nDone!\n");
 
 //  This is nicer, but also broken!
 //  FLASH_UnlockBank1();
