@@ -313,3 +313,30 @@ JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, J
 
   return ya*(1-ay) + yb*ay;
 }
+
+/*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "set",
+         "description" : "Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`",
+         "generate" : "jswrap_arraybufferview_set",
+         "params" : [ [ "arr", "JsVar", "Floating point index to access" ], ["offset","int32","The offset in this array at which to write the values (optional)"] ]
+}*/
+void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
+  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
+    jsError("Expecting first argument to be an array, not %t", arr);
+    return;
+  }
+  // OPT: implement fast path for arraybuffer->arraybuffer?
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  JsvArrayBufferIterator itdst;
+  jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
+
+  while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
+    JsVar *value = jsvIteratorGetValue(&itsrc);
+    jsvArrayBufferIteratorSetValue(&itdst, value);
+    jsvUnLock(value);
+    jsvArrayBufferIteratorNext(&itdst);
+    jsvIteratorNext(&itsrc);
+  }
+  jsvArrayBufferIteratorFree(&itdst);
+  jsvIteratorFree(&itsrc);
+}
