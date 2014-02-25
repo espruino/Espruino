@@ -15,4 +15,5 @@
 
 
 JsVar *jswrap_waveform_constructor(Pin pin, int samples);
-void jswrap_waveform_startOutput(JsVar *parent, JsVarFloat freq);
+void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq, bool repeat);
+bool jswrap_waveform_idle();

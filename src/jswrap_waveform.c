@@ -17,6 +17,9 @@
 #include "jswrap_arraybuffer.h"
 #include "jsvar.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
+
+#define JSI_WAVEFORM_NAME JS_HIDDEN_CHAR_STR"wave"
 
 
 /*JSON{ "type":"class",
@@ -52,9 +55,13 @@ JsVar *jswrap_waveform_constructor(Pin pin, int samples) {
 /*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput",
          "description" : "Return the index of the value in the array, or -1",
          "generate" : "jswrap_waveform_startOutput",
-         "params" : [ [ "freq", "float", "The frequency to putput at"] ]
+         "params" : [ [ "freq", "float", "The frequency to putput at"],
+                      [ "repeat", "bool", "Whether to repeat" ] ]
 }*/
-void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq) {
+void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq, bool repeat) {
+  bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.root, "running", 0));
+  if (running) return;
+
   Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(waveform, "pin", 0));
   JsVar *arrayBuffer = jsvObjectGetChild(waveform, "buffer", 0);
   // plough through to get array buffer data
@@ -67,4 +74,45 @@ void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq) {
   // And finally set it up
   jshSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), 0, arrayBuffer);
   jsvUnLock(arrayBuffer);
+
+  jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(true)));
+  // Add to our list of active waveforms
+  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, JSVI_ARRAY);
+  if (waveforms) {
+    jsvArrayPush(waveforms, waveform);
+    jsvUnLock(waveform);
+  }
+}
+
+/*JSON{ "type":"idle", "generate" : "jswrap_waveform_idle" }*/
+bool jswrap_waveform_idle() {
+  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, 0);
+  if (waveforms) {
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, waveforms);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *waveform = jsvArrayIteratorGetElement(&it);
+
+      bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.root, "running", 0));
+      if (running) {
+        Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(waveform, "pin", 0));
+        UtilTimerTask task;
+        // if the timer task is now gone...
+        if (!jshGetLastPinTimerTask(pin, &task)) {
+          jsiQueueObjectCallbacks(waveform, "finish", 0, 0);
+          running = false;
+          jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(running)));
+        }
+      }
+      jsvUnLock(waveform);
+      // if not running, remove waveform from this list
+      if (!running)
+        jsvArrayIteratorRemoveAndGotoNext(&it, waveforms);
+      else
+        jsvArrayIteratorNext(&it);
+    }
+    jsvArrayIteratorFree(&it);
+    jsvUnLock(waveforms);
+  }
+  return false; // no need to stay awake - an IRQ will wake us
 }

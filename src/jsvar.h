@@ -528,10 +528,20 @@ static inline bool jsvArrayIteratorHasElement(JsvArrayIterator *it) {
   return it->var != 0;
 }
 
-/// Move to next character
+/// Move to next element
 static inline void jsvArrayIteratorNext(JsvArrayIterator *it) {
   if (it->var) {
     JsVarRef next = it->var->nextSibling;
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
+
+/// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvArrayIteratorNew) as we don't store it
+static inline void jsvArrayIteratorRemoveAndGotoNext(JsvArrayIterator *it, JsVar *parent) {
+  if (it->var) {
+    JsVarRef next = it->var->nextSibling;
+    jsvRemoveChild(parent, it->var);
     jsvUnLock(it->var);
     it->var = next ? jsvLock(next) : 0;
   }
