@@ -3,6 +3,7 @@
             Fix issue with saving Serial baud rates
             Added ArrayBuffer.set
             Use jswrapper.c for executing idle/init/kill events for libraries (cleans up jsinteractive.c)
+            Added beta 'Waveform' API to allow simple audio output
 
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)
