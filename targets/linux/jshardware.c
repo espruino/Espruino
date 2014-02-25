@@ -525,3 +525,10 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
 }
 
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  return JSH_NOTHING;
+}
+
+void jshSetOutputValue(JshPinFunction func, int value) {
+}
+

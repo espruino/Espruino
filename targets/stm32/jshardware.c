@@ -463,6 +463,52 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   return ptr;
 }
 
+TIM_TypeDef* getTimerFromPinFunction(JshPinFunction device) {
+  switch (device&JSH_MASK_TYPE) {
+    case JSH_TIMER1:
+      return TIM1;
+    case JSH_TIMER2:
+      return TIM2;
+    case JSH_TIMER3:
+      return TIM3;
+    case JSH_TIMER4:
+      return TIM4;
+#ifndef STM32F3
+    case JSH_TIMER5:
+      return TIM5;
+#endif
+/*        case JSH_TIMER6: // Not used for outputs
+      return TIM6;
+    case JSH_TIMER7: // Not used for outputs
+      return TIM7; */
+    case JSH_TIMER8:
+      return TIM8;
+#ifndef STM32F3
+    case JSH_TIMER9:
+      return TIM9;
+    case JSH_TIMER10:
+      return TIM10;
+    case JSH_TIMER11:
+      return TIM11;
+    case JSH_TIMER12:
+      return TIM12;
+    case JSH_TIMER13:
+      return TIM13;
+    case JSH_TIMER14:
+      return TIM14;
+#else
+    case JSH_TIMER15:
+      return TIM15;
+    case JSH_TIMER16:
+      return TIM16;
+    case JSH_TIMER17:
+      return TIM17;
+#endif
+
+  }
+  return 0;
+}
+
 USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
@@ -2236,6 +2282,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   if (allowDeepSleep &&  // from setDeepSleep
       (timeUntilWake > (JSSYSTIME_RTC*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't wake
+      !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
       jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
@@ -2307,17 +2354,26 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(false);
   } else
 #endif
+  {
+    JsSysTime sysTickTime;
 #ifdef USE_RTC
-  if (timeUntilWake > averageSysTickTime*5/4) {
+    sysTickTime = averageSysTickTime*5/4;
 #else
-  if (timeUntilWake > SYSTICK_RANGE*5/4) {
+    sysTickTime = SYSTICK_RANGE*5/4;
 #endif
+    if (timeUntilWake < sysTickTime) {
+      jstSetWakeUp(timeUntilWake);
+    } else {
+      // we're going to wake on a System Tick timer anyway, so don't bother
+    }
+
     // TODO: we can do better than this. look at lastSysTickTime
     jsiSetSleep(true);
     __WFI(); // Wait for Interrupt
     jsiSetSleep(false);
     return true;
   }
+
 
   return false;
 
@@ -2423,4 +2479,42 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
     // Now set the end of the pulse to happen on a timer
     jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
+}
+
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  // FIXME: This isn't actually right - we need to look at the hardware or store this info somewhere.
+  if (jshIsPinValid(pin)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      JshPinFunction func = pinInfo[pin].functions[i];
+      if (JSH_PINFUNCTION_IS_TIMER(func) ||
+          JSH_PINFUNCTION_IS_DAC(func))
+        return func;
+    }
+  }
+  return JSH_NOTHING;
+}
+
+// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+  if (JSH_PINFUNCTION_IS_DAC(func)) {
+    uint16_t dacVal = (uint16_t)(value<<8);
+    switch (func & JSH_MASK_INFO) {
+    case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
+    case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
+    }
+  } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
+    TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
+    if (TIMx) {
+      uint16_t period = TIMx->ARR; // No getter available
+      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 8);
+      switch (func & JSH_MASK_TIMER_CH) {
+      case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;
+      case JSH_TIMER_CH2:  TIM_SetCompare2(TIMx, timerVal); break;
+      case JSH_TIMER_CH3:  TIM_SetCompare3(TIMx, timerVal); break;
+      case JSH_TIMER_CH4:  TIM_SetCompare4(TIMx, timerVal); break;
+      }
+    }
+  } else
+    assert(0); // can't handle this yet...
 }

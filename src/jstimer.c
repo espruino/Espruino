@@ -47,7 +47,7 @@ void jstUtilTimerInterruptHandler() {
         } break;
         case UET_WRITE_BYTE: {
           // write data into var
-          *((unsigned int*)task->data.write.addr) = (unsigned int)(unsigned char)task->data.write.var->varData.str[task->data.write.charIdx];
+          jshSetOutputValue(task->data.write.pinFunction, (unsigned char)task->data.write.var->varData.str[task->data.write.charIdx]);
           // move to next element in var
           task->data.write.charIdx++;
           unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.write.var);
@@ -58,11 +58,22 @@ void jstUtilTimerInterruptHandler() {
               jsvUnLock(task->data.write.var);
               task->data.write.var = next;
             } else {
-              // No more data - make sure we don't repeat!
-              task->repeatInterval = 0;
+              jsvUnLock(task->data.write.var);
+              task->data.write.var = 0;
+              if (task->data.write.nextBuffer) {
+                task->data.write.var = jsvLock(task->data.write.nextBuffer);
+                // flip buffers
+                JsVarRef t = task->data.write.nextBuffer;
+                task->data.write.nextBuffer = task->data.write.currentBuffer;
+                task->data.write.currentBuffer = t;
+              } else {
+                // No more data - make sure we don't repeat!
+                task->repeatInterval = 0;
+              }
             }
           }
         } break;
+        case UET_WAKEUP: // we've already done our job by waking the device up
         default: break;
       }
       // If we need to repeat
@@ -103,9 +114,13 @@ void jstUtilTimerInterruptHandler() {
 
 }
 
+/// Return true if the utility timer is running
+bool jstUtilTimerIsRunning() {
+  return utilTimerType != UT_NONE;
+}
 
 void jstUtilTimerWaitEmpty() {
-  WAIT_UNTIL(utilTimerType == UT_NONE, "Utility Timer");
+  WAIT_UNTIL(!jstUtilTimerIsRunning(), "Utility Timer");
 }
 
 /// Return the latest task for a pin (false if not found)
@@ -188,20 +203,28 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
   return utilTimerInsertTask(&task);
 }
 
-#define DHR12R1_OFFSET             ((uint32_t)0x00000008)
-#define DAC_Align_8b_R                     ((uint32_t)0x00000008)
+/// Set the utility timer so we're woken up in whatever time period
+bool jstSetWakeUp(JsSysTime period) {
+  UtilTimerTask task;
+  task.repeatInterval = 0;
+  task.time = jshGetSystemTime() + period;
+  task.type = UET_WAKEUP;
+  bool ok = utilTimerInsertTask(&task);
+  // We wait until the timer is out of the reload event, because the reload event itself would wake us up
+  WAIT_UNTIL(utilTimerType != UT_PIN_SET_RELOAD_EVENT, "Utility Timer Init");
+  return ok;
+}
 
 bool jstSignalWrite(JsSysTime period, Pin pin, JsVar *data) {
-#ifdef STM32F1
   UtilTimerTask task;
   task.repeatInterval = (unsigned int)period;
   task.time = jshGetSystemTime() + period;
   task.type = UET_WRITE_BYTE;
-  task.data.write.addr = (void*)(DAC_BASE + DHR12R1_OFFSET + DAC_Align_8b_R);
+  task.data.write.pinFunction = jshGetCurrentPinFunction(pin);
+  if (!task.data.write.pinFunction) return false; // no pin function found...
   task.data.write.charIdx = 0;
   task.data.write.var = jsvLockAgain(data);
+  task.data.write.currentBuffer = 0;
+  task.data.write.nextBuffer = 0;
   return utilTimerInsertTask(&task);
-#else
-  return false;
-#endif
 }

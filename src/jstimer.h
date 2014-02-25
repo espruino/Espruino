@@ -16,6 +16,7 @@
 
 #include "jsutils.h"
 #include "jshardware.h"
+#include "jspin.h"
 
 typedef enum {
   UT_NONE,
@@ -24,6 +25,7 @@ typedef enum {
 } PACKED_FLAGS UtilTimerType;
 
 typedef enum {
+  UET_WAKEUP, ///< Does nothing except wake the device up!
   UET_SET, ///< Set a pin to a value
   UET_WRITE_BYTE, ///< Write a byte to an address
 } PACKED_FLAGS UtilTimerEventType;
@@ -35,11 +37,17 @@ typedef struct UtilTimerTaskSet {
   uint8_t value; ///< value to set pins to
 } PACKED_FLAGS UtilTimerTaskSet;
 
-
+/** Task to write to a specific pin function - eg. a DAC or Timer.
+ * To send once, set var=buffer1, currentBuffer==nextBuffer==0
+ * To repeat, set var=buffer1, currentBuffer==nextBuffer==buffer
+ * To repeat, flipping between 2 buffers, set var=buffer1, currentBuffer==buffer1, nextBuffer=buffer2
+ */
 typedef struct UtilTimerTaskWrite {
-  void *addr; ///< Address to write to (some peripheral?)
-  JsVar *var; ///< variable to get data from
+  JshPinFunction pinFunction; ///< Pin function to write to
+  JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
+  JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
   unsigned char charIdx; ///< Index of character in variable
+  JsVar *var; ///< variable to get data from
 } PACKED_FLAGS UtilTimerTaskWrite;
 
 typedef union UtilTimerTaskData {
@@ -59,11 +67,17 @@ void jstUtilTimerInterruptHandler();
 /// Wait until the utility timer is totally empty (use with care as timers can repeat)
 void jstUtilTimerWaitEmpty();
 
+/// Return true if the utility timer is running
+bool jstUtilTimerIsRunning();
+
 /// Return true if a timer task for the given pin exists (and set 'task' to it)
 bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task);
 
 /// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
+
+/// Set the utility timer so we're woken up in whatever time period
+bool jstSetWakeUp(JsSysTime period);
 
 /// Start writing a string out at the given period between samples
 bool jstSignalWrite(JsSysTime period, Pin pin, JsVar *data);

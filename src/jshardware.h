@@ -103,6 +103,12 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 void jshPinWatch(Pin pin, bool shouldWatch);
 
+/// Given a Pin, return the current pin function associated with it
+JshPinFunction jshGetCurrentPinFunction(Pin pin);
+
+/// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value);
+
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device);
 

@@ -124,6 +124,7 @@ typedef enum {
   JSH_AF15,
 
   // ---------------------------- JSH_MASK_TYPE
+  JSH_NOTHING = 0,
   JSH_TIMER1  = 0x0010,
   JSH_TIMER2  = 0x0020,
   JSH_TIMER3  = 0x0030,

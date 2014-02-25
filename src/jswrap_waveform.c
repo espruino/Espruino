@@ -73,10 +73,12 @@ void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq) {
   }
   assert(jsvIsString(arrayBuffer));
   // And finally set it up
-  jstSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), 0, arrayBuffer);
+  if (!jstSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), pin, arrayBuffer))
+    jsWarn("Unable to schedule a timer");
   jsvUnLock(arrayBuffer);
 
   jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(true)));
+  jsvUnLock(jsvObjectSetChild(waveform, "freq", jsvNewFromFloat(freq)));
   // Add to our list of active waveforms
   JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {
@@ -98,12 +100,18 @@ bool jswrap_waveform_idle() {
       if (running) {
         Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(waveform, "pin", 0));
         UtilTimerTask task;
-        // if the timer task is now gone...
-        if (!jstGetLastPinTimerTask(pin, &task)) {
+        // Search for a timer task
+        // FIXME jstGetLastPinTimerTask does not check the right stuff
+        /*if (!jstGetLastPinTimerTask(pin, &task)) {
+          // if the timer task is now gone...
           jsiQueueObjectCallbacks(waveform, "#onfinish", 0, 0);
           running = false;
           jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(running)));
-        }
+        } else {
+          // If the timer task is still there
+
+
+        }*/
       }
       jsvUnLock(waveform);
       // if not running, remove waveform from this list
