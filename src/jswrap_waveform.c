@@ -23,13 +23,13 @@
 #define JSI_WAVEFORM_NAME JS_HIDDEN_CHAR_STR"wave"
 
 
-/*JSON{ "type":"class",
+/*JSON{ "type":"class", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Waveform",
         "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.",
                           "NOTE: This API is beta and is very likely to change." ]
 }*/
 
-/*JSON{ "type":"constructor", "class": "Waveform",  "name": "Waveform",
+/*JSON{ "type":"constructor", "class": "Waveform",  "name": "Waveform", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Create a waveform class",
          "generate" : "jswrap_waveform_constructor",
          "params" : [ [ "output", "pin", "The pin to output on" ],
@@ -54,7 +54,7 @@ JsVar *jswrap_waveform_constructor(Pin pin, int samples) {
   return waveform;
 }
 
-/*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput",
+/*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Will start outputting the waveform on the given pin. If not repeating, it'll emit a `finish` event when it is done.",
          "generate" : "jswrap_waveform_startOutput",
          "params" : [ [ "freq", "float", "The frequency to output each sample at"] ]
@@ -87,7 +87,7 @@ void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq) {
   }
 }
 
-/*JSON{ "type":"idle", "generate" : "jswrap_waveform_idle" }*/
+/*JSON{ "type":"idle", "generate" : "jswrap_waveform_idle", "ifndef" : "SAVE_ON_FLASH" }*/
 bool jswrap_waveform_idle() {
   JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
