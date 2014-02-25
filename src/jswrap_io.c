@@ -181,19 +181,6 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   }
 }
 
-
-/*XXXX{ "type":"function", "name" : "bitBang",
-         "description" : ["bitBang out a message in a one-wire style BROKEN CURRENTLY" ],
-         "generate" : "jshBitBang",
-         "params" : [ [ "pin", "pin", "The pin to use"],
-                      [ "t0h", "float", "The time (in milliseconds) to spend high for a 0"],
-                      [ "t0l", "float", "The time (in milliseconds) to spend low for a 0"],
-                      [ "t1h", "float", "The time (in milliseconds) to spend high for a 1"],
-                      [ "t1l", "float", "The time (in milliseconds) to spend low for a 1"],
-                      [ "data", "JsVar", "A string representing the data"] ]
-}*/
-
-
 /*JSON{ "type":"function", "name" : "setInterval",
          "description" : ["Call the function specified REPEATEDLY after the timeout in milliseconds.",
                           "The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)",

@@ -18,6 +18,7 @@
 #include "jsvar.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 
 #define JSI_WAVEFORM_NAME JS_HIDDEN_CHAR_STR"wave"
 
@@ -72,7 +73,7 @@ void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq, bool repeat) 
   }
   assert(jsvIsString(arrayBuffer));
   // And finally set it up
-  jshSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), 0, arrayBuffer);
+  jstSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), 0, arrayBuffer);
   jsvUnLock(arrayBuffer);
 
   jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(true)));
@@ -98,7 +99,7 @@ bool jswrap_waveform_idle() {
         Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(waveform, "pin", 0));
         UtilTimerTask task;
         // if the timer task is now gone...
-        if (!jshGetLastPinTimerTask(pin, &task)) {
+        if (!jstGetLastPinTimerTask(pin, &task)) {
           jsiQueueObjectCallbacks(waveform, "finish", 0, 0);
           running = false;
           jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(running)));

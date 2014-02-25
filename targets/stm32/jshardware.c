@@ -21,6 +21,7 @@
 #endif
 
 #include "jshardware.h"
+#include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -70,17 +71,6 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
 #endif
-
-#ifdef STM32F4
-#define WAIT_UNTIL_N_CYCLES 10000000
-#else
-#define WAIT_UNTIL_N_CYCLES 2000000
-#endif
-#define WAIT_UNTIL(CONDITION, REASON) { \
-    int timeout = WAIT_UNTIL_N_CYCLES;                                              \
-    while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) { jspSetInterrupted(true); jsErrorInternal("Timeout on "REASON); }  \
-}
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -2217,8 +2207,6 @@ bool jshFlashContainsCode() {
   return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
 }
 
-extern void SetSysClock(void);
-
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 
@@ -2349,70 +2337,52 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif*/
 }
 
-typedef enum {
-  UT_NONE,
-  UT_PIN_SET_RELOAD_EVENT,
-  UT_PIN_SET,
-} PACKED_FLAGS UtilTimerType;
-
-typedef enum {
-  UET_SET, ///< Set a pin to a value
-  UET_WRITE_BYTE, ///< Write a byte to an address
-} PACKED_FLAGS UtilTimerEventType;
-
-#define UTILTIMERTASK_PIN_COUNT (4)
-
-typedef struct UtilTimerTaskSet {
-  Pin pins[UTILTIMERTASK_PIN_COUNT]; ///< pins to set
-  uint8_t value; ///< value to set pins to
-} PACKED_FLAGS UtilTimerTaskSet;
 
 
-typedef struct UtilTimerTaskWrite {
-  void *addr; ///< Address to write to (some peripheral?)
-  JsVar *var; ///< variable to get data from
-  unsigned char charIdx; ///< Index of character in variable
-} PACKED_FLAGS UtilTimerTaskWrite;
 
-typedef union UtilTimerTaskData {
-  UtilTimerTaskSet set;
-  UtilTimerTaskWrite write;
-} UtilTimerTaskData;
+/// Called when the timer is fired
+void UTIL_TIMER_IRQHandler(void) {
+  // clear interrupt flag
+  if (TIM_GetITStatus(UTIL_TIMER, TIM_IT_Update) != RESET) {
+    TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+    jstUtilTimerInterruptHandler();
+  }
+}
 
-typedef struct UtilTimerTask {
-  JsSysTime time; // time at which to set pins
-  unsigned int repeatInterval; // if nonzero, repeat the timer
-  UtilTimerEventType type;
-  UtilTimerTaskData data; // data used when timer is hit
-} PACKED_FLAGS UtilTimerTask;
-
-#define UTILTIMERTASK_TASKS (16) // MUST BE POWER OF 2
-UtilTimerTask utilTimerTasks[UTILTIMERTASK_TASKS];
-volatile unsigned char utilTimerTasksHead = 0;
-volatile unsigned char utilTimerTasksTail = 0;
-
-
-volatile UtilTimerType utilTimerType = UT_NONE;
-unsigned int utilTimerBit;
-bool utilTimerState;
-unsigned int utilTimerData;
-uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
-Pin utilTimerPin;
-
-void _utilTimerDisable() {
-  utilTimerType = UT_NONE;
+void jshUtilTimerDisable() {
   TIM_Cmd(UTIL_TIMER, DISABLE);
 }
 
-void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
-  if (utilTimerType != UT_PIN_SET) {
-    jshSetPinStateIsManual(utilTimerPin, false);
-    jshPinSetState(utilTimerPin, JSHPINSTATE_GPIO_OUT);
-  }
+void jshUtilTimerReschedule(JsSysTime period) {
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+  if (clockTicks<0) clockTicks=0;
+  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+  if (prescale>65535) prescale=65535;
+  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+  TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
+  TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
+  TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
+  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
+  TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+  //jsiConsolePrint("Starting\n");
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+  if (clockTicks<0) clockTicks=0;
+  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+
+  // set up actual hardware
 
   /* TIM6 Periph clock enable */
   RCC_APB1PeriphClockCmd(UTIL_TIMER_APB1, ENABLE);
-
 
   /*Timer configuration------------------------------------------------*/
   TIM_ITConfig(UTIL_TIMER, TIM_IT_Update, DISABLE);
@@ -2422,8 +2392,8 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
 
   TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
   TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
-  TIM_TimeBaseInitStruct.TIM_Prescaler = prescale;
-  TIM_TimeBaseInitStruct.TIM_Period = initialPeriod;
+  TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
+  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
 
   //TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
@@ -2431,126 +2401,6 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
   TIM_Cmd(UTIL_TIMER, ENABLE);  /* enable counter */
 }
 
-void _utilTimerSetPinStateAndReload() {
-  if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
-    // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
-    utilTimerType = UT_PIN_SET;
-  } else if (utilTimerType == UT_PIN_SET) {
-    JsSysTime time = jshGetSystemTime();
-    // execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time<time) {
-      UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
-      // actually perform the task
-      switch (task->type) {
-        case UET_SET: {
-          int j;
-          for (j=0;j<UTILTIMERTASK_PIN_COUNT;j++) {
-            if (task->data.set.pins[j] == PIN_UNDEFINED) break;
-            jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
-          }
-        } break;
-        case UET_WRITE_BYTE: {
-          // write data into var
-          *((unsigned int*)task->data.write.addr) = (unsigned int)(unsigned char)task->data.write.var->varData.str[task->data.write.charIdx];
-          // move to next element in var
-          task->data.write.charIdx++;
-          unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.write.var);
-          if (task->data.write.charIdx >= maxChars) {
-            task->data.write.charIdx = (unsigned char)(task->data.write.charIdx - maxChars);
-            if (task->data.write.var->lastChild) {
-              JsVar *next = jsvLock(task->data.write.var->lastChild);
-              jsvUnLock(task->data.write.var);
-              task->data.write.var = next;
-            } else {
-              // No more data - make sure we don't repeat!
-              task->repeatInterval = 0;
-            }
-          }
-        } break;
-        default: break;
-      }
-      // If we need to repeat
-      if (task->repeatInterval) {
-        // update time
-        task->time += task->repeatInterval;
-        // do an in-place bubble sort to ensure that times are still in the right order
-        unsigned char ta = utilTimerTasksTail;
-        unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
-        while (tb != utilTimerTasksHead) {
-          if (utilTimerTasks[ta].time > utilTimerTasks[tb].time) {
-            UtilTimerTask task = utilTimerTasks[ta];
-            utilTimerTasks[ta] = utilTimerTasks[tb];
-            utilTimerTasks[tb] = task;
-          }
-          ta = tb;
-          tb = (tb+1) & (UTILTIMERTASK_TASKS-1);
-        }
-      } else {
-        // Otherwise no repeat - just go straight to the next one!
-        utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
-      }
-    }
-
-    // re-schedule the timer if there is something left to do
-    if (utilTimerTasksTail != utilTimerTasksHead) {
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-      int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-time)) / getSystemTimerFreq());
-      if (clockTicks<0) clockTicks=0;
-      int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-      if (prescale>65535) prescale=65535;
-      int ticks = (uint16_t)(clockTicks/(prescale+1));
-      if (ticks<1) ticks=1;
-      if (ticks>65535) ticks=65535;
-      TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
-      TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
-      TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
-      TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
-      TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
-    } else {
-      _utilTimerDisable();
-    }
-  } else {
-    // Nothing left to do - disable the timer
-    _utilTimerDisable();
-  }
-
-}
-
-/// Called when the timer is fired
-void UTIL_TIMER_IRQHandler(void) {
-  // clear interrupt flag
-  if (TIM_GetITStatus(UTIL_TIMER, TIM_IT_Update) != RESET) {
-    TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
-    // handle
-    _utilTimerSetPinStateAndReload();
-  }
-}
-
-void _utilTimerWait() {
-  WAIT_UNTIL(utilTimerType == UT_NONE, "Utility Timer");
-}
-
-/// Return the latest task for a pin (false if not found)
-bool jshGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
-  unsigned char ptr = utilTimerTasksHead;
-  if (ptr == utilTimerTasksTail) return false; // nothing in here
-  ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-  // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
-  while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_SET) {
-      int i;
-      for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-        if (utilTimerTasks[ptr].data.set.pins[i] == pin) {
-          *task = utilTimerTasks[ptr];
-          return true;
-        } else if (utilTimerTasks[ptr].data.set.pins[i]==PIN_UNDEFINED)
-          break;
-    }
-    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-  }
-  return false;
-}
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
@@ -2560,99 +2410,17 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   }
   if (pulseTime<=0) {
     // just wait for everything to complete
-    _utilTimerWait();
+    jstUtilTimerWaitEmpty();
     return;
   } else {
     // find out if we already had a timer scheduled
     UtilTimerTask task;
-    if (!jshGetLastPinTimerTask(pin, &task)) {
+    if (!jstGetLastPinTimerTask(pin, &task)) {
       // no timer - just start the pulse now!
       jshPinOutput(pin, pulsePolarity);
       task.time = jshGetSystemTime();
     }
     // Now set the end of the pulse to happen on a timer
-    jshPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
-}
-
-/// Is the timer full - can it accept any other signals?
-bool utilTimerIsFull() {
-  unsigned char nextHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-  return nextHead == utilTimerTasksTail;
-}
-
-// Queue a task up to be executed when a timer fires... return false on failure
-bool utilTimerInsertTask(UtilTimerTask *task) {
-  // check if queue is full or not
-  if (utilTimerIsFull()) return false;
-
-
-  jshInterruptOff();
-
-  // find out where to insert
-  unsigned char insertPos = utilTimerTasksTail;
-  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < task->time)
-    insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
-
-  bool haveChangedTimer = insertPos==utilTimerTasksTail;
-  //jsiConsolePrint("Insert at ");jsiConsolePrintInt(insertPos);jsiConsolePrint(", Tail is ");jsiConsolePrintInt(utilTimerTasksTail);jsiConsolePrint("\n");
-  // shift items forward
-  int i = utilTimerTasksHead;
-  while (i != insertPos) {
-    unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    utilTimerTasks[i] = utilTimerTasks[next];
-    i = next;
-  }
-  // add new item
-  utilTimerTasks[insertPos] = *task;
-  // increase task list size
-  utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-
-  //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
-  // now set up timer if not already set up...
-  if ((utilTimerType != UT_PIN_SET && utilTimerType != UT_PIN_SET_RELOAD_EVENT) || haveChangedTimer) {
-    //jsiConsolePrint("Starting\n");
-    unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-    int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
-    if (clockTicks<0) clockTicks=0;
-    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-    int ticks = (uint16_t)(clockTicks/(prescale+1));
-    if (ticks<1) ticks=1;
-    if (ticks>65535) ticks=65535;
-    utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-    _utilTimerEnable((uint16_t)prescale, (uint16_t)ticks);
-    //jsiConsolePrintInt(utilTimerType);jsiConsolePrint("\n");
-  }
-
-  jshInterruptOn();
-  return true;
-}
-
-bool jshPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) {
-  assert(pinCount<UTILTIMERTASK_PIN_COUNT);
-  UtilTimerTask task;
-  task.time = time;
-  task.repeatInterval = 0;
-  task.type = UET_SET;
-  int i;
-  for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-    task.data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
-  task.data.set.value = value?0xFF:0;
-
-  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
-  return utilTimerInsertTask(&task);
-}
-
-#define DHR12R1_OFFSET             ((uint32_t)0x00000008)
-#define DAC_Align_8b_R                     ((uint32_t)0x00000008)
-
-bool jshSignalWrite(JsSysTime period, Pin pin, JsVar *data) {
-  UtilTimerTask task;
-  task.repeatInterval = (unsigned int)period;
-  task.time = jshGetSystemTime() + period;
-  task.type = UET_WRITE_BYTE;
-  task.data.write.addr = (void*)(DAC_BASE + DHR12R1_OFFSET + DAC_Align_8b_R);
-  task.data.write.charIdx = 0;
-  task.data.write.var = jsvLockAgain(data);
-  return utilTimerInsertTask(&task);
 }

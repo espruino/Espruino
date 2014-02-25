@@ -369,10 +369,6 @@ void jshPinOutput(Pin pin, bool value) {
   } else jsError("Invalid pin!");
 }
 
-bool jshPinOutputAtTime(JsSysTime time, Pin pins, int pinCount, uint8_t value) {
- // FIXME
-}
-
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
 }
 
@@ -519,3 +515,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
     usleep(usecs); 
   return true;
 }
+
+void jshUtilTimerDisable() {
+}
+
+void jshUtilTimerReschedule(JsSysTime period) {
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+}
+
