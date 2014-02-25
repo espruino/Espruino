@@ -27,7 +27,7 @@ http.createServer(function (req, res) {
 
  */
 
-/*JSON{ "type":"idle", "generate" : "jswrap_waveform_idle" }*/
+/*JSON{ "type":"idle", "generate" : "jswrap_http_idle" }*/
 bool jswrap_http_idle() {
   return httpIdle();
 }

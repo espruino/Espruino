@@ -1529,16 +1529,16 @@ bool jsvIsChild(JsVar *parent, JsVar *child) {
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   if (!obj) return 0;
   assert(jsvHasChildren(obj));
-  JsVar *childName = jsvFindChildFromString(obj, name, createChild);
-  if (!childName && createChild) {
-    JsVar *child = jsvNewWithFlags(createChild);
+  JsVar *childName = jsvFindChildFromString(obj, name, createChild!=0);
+  JsVar *child = jsvSkipName(childName);
+  if (!child && createChild) {
+    child = jsvNewWithFlags(createChild);
     jsvSetValueOfName(childName, child);
     jsvUnLock(childName);
     return child;
   }
-  if (childName)
-    return jsvSkipNameAndUnLock(childName);
-  return 0;
+  jsvUnLock(childName);
+  return child;
 }
 
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
