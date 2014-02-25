@@ -25,7 +25,8 @@
 
 /*JSON{ "type":"class",
         "class" : "Waveform",
-        "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to output." ]
+        "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.",
+                          "NOTE: This API is beta and is very likely to change." ]
 }*/
 
 /*JSON{ "type":"constructor", "class": "Waveform",  "name": "Waveform",
@@ -56,10 +57,9 @@ JsVar *jswrap_waveform_constructor(Pin pin, int samples) {
 /*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput",
          "description" : "Will start outputting the waveform on the given pin. If not repeating, it'll emit a `finish` event when it is done.",
          "generate" : "jswrap_waveform_startOutput",
-         "params" : [ [ "freq", "float", "The frequency to putput at"],
-                      [ "repeat", "bool", "Whether to repeat" ] ]
+         "params" : [ [ "freq", "float", "The frequency to output each sample at"] ]
 }*/
-void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq, bool repeat) {
+void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.root, "running", 0));
   if (running) return;
 
