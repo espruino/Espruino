@@ -17,9 +17,7 @@
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
-#ifdef USE_NET
-#include "httpserver.h"
-#endif
+
 #ifdef USE_LCD_FSMC
 #include "graphics.h"
 #include "lcd_fsmc.h"
@@ -362,9 +360,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
-#ifdef USE_NET
-  httpInit();
-#endif
+  jswInit();
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
@@ -592,9 +588,7 @@ void jsiSoftKill() {
     jsvUnLock(initCode);
   }
 
-#ifdef USE_NET
-  httpKill();
-#endif
+  jswKill();
 }
 
 void jsiInit(bool autoLoad) {
@@ -1469,11 +1463,8 @@ void jsiIdle() {
   }
   jsvUnLock(timerArrayPtr);
 
-
-  // Check for network events
-#ifdef USE_NET
-  httpIdle();
-#endif
+  // Check for events that might need to be processed from other libraries
+  if (jswIdle()) wasBusy = true;
 
   // Just in case we got any events to do and didn't clear loopsIdling before
   if (wasBusy || !jsvArrayIsEmpty(events) )

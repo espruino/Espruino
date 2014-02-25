@@ -382,7 +382,10 @@ codeOut('')
 
 
 codeOut('bool jswIsBuiltInLibrary(const char *name) {') 
-codeOut('  return\n'+" ||\n    ".join(builtinLibraryChecks)+';')
+if len(builtinLibraryChecks)==0:
+  codeOut('  return false;')
+else:
+  codeOut('  return\n'+" ||\n    ".join(builtinLibraryChecks)+';')
 codeOut('}')
 
 codeOut('')
@@ -414,6 +417,38 @@ for jsondata in jsondatas:
       #print json.dumps(jsondata, sort_keys=True, indent=2)
       codeOut("  if (!strcmp(objectName, \""+jsondata["class"]+"\")) return \""+jsondata["prototype"]+"\";")
 codeOut('  return strcmp(objectName,"Object") ? "Object" : 0;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Idle. Returns true if either one of the tasks returned true (eg. they're doing something and want to avoid sleeping) */")
+codeOut('bool jswIdle() {')
+codeOut('  bool wasBusy = false;')  
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="idle":
+    codeOut("  if ("+jsondata["generate"]+"()) wasBusy = true;")
+codeOut('  return wasBusy;')
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Initialisation */")
+codeOut('void jswInit() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="init":
+    codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Tasks to run on Deinitialisation */")
+codeOut('void jswKill() {')
+for jsondata in jsondatas:
+  if "type" in jsondata and jsondata["type"]=="kill":
+    codeOut("  "+jsondata["generate"]+"();")
 codeOut('}')
 
 codeOut('')

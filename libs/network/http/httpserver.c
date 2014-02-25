@@ -368,14 +368,17 @@ bool _http_send(SOCKET sckt, JsVar **sendData) {
   } return true;
 }
 
-void httpServerConnectionsIdle() {
+bool httpServerConnectionsIdle() {
   char buf[64];
 
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
-  if (!arr) return;
+  if (!arr) return false;
+
+  bool hadSockets = false;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
+    hadSockets = true;
     JsVar *connection = jsvArrayIteratorGetElement(&it);
     JsVar *connectReponse = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
     SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
@@ -487,19 +490,23 @@ void httpServerConnectionsIdle() {
   }
   jsvArrayIteratorFree(&it);
   jsvUnLock(arr);
+
+  return hadSockets;
 }
 
 
 
-void httpClientConnectionsIdle() {
+bool httpClientConnectionsIdle() {
   char buf[64];
 
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
-  if (!arr) return;
+  if (!arr) return false;
 
+  bool hadSockets = false;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
+    hadSockets = true;
     JsVar *connection = jsvArrayIteratorGetElement(&it);
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
@@ -630,6 +637,8 @@ void httpClientConnectionsIdle() {
     jsvUnLock(connection);
   }
   jsvUnLock(arr);
+
+  return hadSockets;
 }
 
 static void httpCheckAndRecover() {
@@ -652,20 +661,23 @@ static void httpCheckAndRecover() {
 }
 
 
-void httpIdle() {
+bool httpIdle() {
 #ifdef USE_CC3000
   cc3000_spi_check();
 #endif
   if (networkState != NETWORKSTATE_ONLINE) {
     // clear all clients and servers
     _httpCloseAllConnections();
-    return;
+    return false;
   }
+  bool hadSockets = false;
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
     while (jsvArrayIteratorHasElement(&it)) {
+      hadSockets = true;
+
       JsVar *server = jsvArrayIteratorGetElement(&it);
       SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
@@ -728,9 +740,10 @@ void httpIdle() {
     jsvUnLock(arr);
   }
 
-  httpServerConnectionsIdle();
-  httpClientConnectionsIdle();
+  if (httpServerConnectionsIdle()) hadSockets = true;
+  if (httpClientConnectionsIdle()) hadSockets = true;
   httpCheckAndRecover();
+  return hadSockets;
 }
 
 // -----------------------------

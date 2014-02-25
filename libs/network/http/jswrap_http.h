@@ -13,6 +13,10 @@
  */
 #include "jsvar.h"
 
+bool jswrap_http_idle();
+void jswrap_http_init();
+void jswrap_http_kill();
+
 JsVar *jswrap_http_createServer(JsVar *callback);
 
 JsVar *jswrap_http_request(JsVar *options, JsVar *callback);
@@ -31,3 +35,6 @@ void jswrap_httpCRq_end(JsVar *parent, JsVar *data);
 void jswrap_httpCRs_on(JsVar *parent, JsVar *event, JsVar *callback);
 
 JsVar *jswrap_url_parse(JsVar *url, bool parseQuery);
+
+
+
