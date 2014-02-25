@@ -54,7 +54,7 @@ JsVar *jswrap_waveform_constructor(Pin pin, int samples) {
 }
 
 /*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput",
-         "description" : "Return the index of the value in the array, or -1",
+         "description" : "Will start outputting the waveform on the given pin. If not repeating, it'll emit a `finish` event when it is done.",
          "generate" : "jswrap_waveform_startOutput",
          "params" : [ [ "freq", "float", "The frequency to putput at"],
                       [ "repeat", "bool", "Whether to repeat" ] ]
@@ -76,12 +76,12 @@ void jswrap_waveform_startOutput(JsVar *waveform, JsVarFloat freq, bool repeat) 
   jstSignalWrite(jshGetTimeFromMilliseconds(1000.0 / freq), 0, arrayBuffer);
   jsvUnLock(arrayBuffer);
 
-  jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(true)));
+  jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(true)));
   // Add to our list of active waveforms
-  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, JSVI_ARRAY);
+  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {
     jsvArrayPush(waveforms, waveform);
-    jsvUnLock(waveform);
+    jsvUnLock(waveforms);
   }
 }
 
@@ -94,15 +94,15 @@ bool jswrap_waveform_idle() {
     while (jsvArrayIteratorHasElement(&it)) {
       JsVar *waveform = jsvArrayIteratorGetElement(&it);
 
-      bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(execInfo.root, "running", 0));
+      bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
       if (running) {
         Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(waveform, "pin", 0));
         UtilTimerTask task;
         // if the timer task is now gone...
         if (!jstGetLastPinTimerTask(pin, &task)) {
-          jsiQueueObjectCallbacks(waveform, "finish", 0, 0);
+          jsiQueueObjectCallbacks(waveform, "#onfinish", 0, 0);
           running = false;
-          jsvUnLock(jsvObjectSetChild(execInfo.root, "running", jsvNewFromBool(running)));
+          jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(running)));
         }
       }
       jsvUnLock(waveform);
