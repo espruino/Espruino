@@ -42,7 +42,7 @@
 // -----------------------------
 void httpInit();
 void httpKill();
-void httpIdle();
+bool httpIdle();
 // -----------------------------
 JsVar *httpServerNew(JsVar *callback);
 void httpServerListen(JsVar *httpServerVar, int port);

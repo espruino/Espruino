@@ -34,3 +34,12 @@ const char *jswGetBasicObjectName(JsVar *var);
  * jswGetBasicObjectPrototypeName("Uint8Array")=="ArrayBufferView"
  *  */
 const char *jswGetBasicObjectPrototypeName(const char *name);
+
+/** Tasks to run on Idle. Returns true if either one of the tasks returned true (eg. they're doing something and want to avoid sleeping) */
+bool jswIdle();
+
+/** Tasks to run on Initialisation */
+void jswInit();
+
+/** Tasks to run on Deinitialisation */
+void jswKill();
