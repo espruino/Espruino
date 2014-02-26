@@ -1802,7 +1802,8 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
   JsVarInt index = 0;
   JsvIterator it;
   jsvIteratorNew(&it, arr);
-  while (jsvIteratorHasElement(&it)) {
+  bool hasMemory = true;
+  while (hasMemory && jsvIteratorHasElement(&it)) {
     JsVar *key = jsvIteratorGetKey(&it);
     if (jsvIsInt(key)) {
       JsVarInt thisIndex = jsvGetInteger(key);
@@ -1820,6 +1821,8 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
+        } else {
+          hasMemory = false;
         }
       }
     }
@@ -2204,11 +2207,14 @@ static void jsvGarbageCollectMarkUsed(JsVar *var) {
   var->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
 
   if (jsvHasCharacterData(var)) {
-      if (var->lastChild) {
-        JsVar *childVar = jsvGetAddressOf(var->lastChild);
-        if (childVar->flags & JSV_GARBAGE_COLLECT)
-          jsvGarbageCollectMarkUsed(childVar);
-      }
+    // non-recursively scan strings
+    JsVarRef child = var->lastChild;
+    while (child) {
+      JsVar *childVar;
+      childVar = jsvGetAddressOf(child);
+      childVar->flags &= (JsVarFlags)~JSV_GARBAGE_COLLECT;
+      child = childVar->lastChild;
+    }
   }
   // intentionally no else
   if (jsvHasSingleChild(var)) {
