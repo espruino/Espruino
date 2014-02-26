@@ -1,3 +1,5 @@
+     1v54 : ...
+
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving
             Fix issue with saving Serial baud rates
