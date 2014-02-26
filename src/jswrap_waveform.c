@@ -25,8 +25,7 @@
 
 /*JSON{ "type":"class", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Waveform",
-        "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output.",
-                          "NOTE: This API is beta and is very likely to change." ]
+        "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output." ]
 }*/
 
 static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber) {
@@ -58,7 +57,9 @@ bool jswrap_waveform_idle() {
         // Search for a timer task
         if (!jstGetLastBufferTimerTask(buffer, &task)) {
           // if the timer task is now gone...
-          jsiQueueObjectCallbacks(waveform, "#onfinish", 0, 0);
+          JsVar *arrayBuffer = jsvObjectGetChild(waveform, "buffer", 0);
+          jsiQueueObjectCallbacks(waveform, "#onfinish", arrayBuffer, 0);
+          jsvUnLock(arrayBuffer);
           running = false;
           jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(running)));
         } else {
@@ -121,7 +122,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
 
 /*JSON{ "type":"constructor", "class": "Waveform",  "name": "Waveform", "ifndef" : "SAVE_ON_FLASH",
          "description" : [ "Create a waveform class. This allows high speed input and output of waveforms. It has an internal variable called `buffer` (as well as `buffer2` when double-buffered - see `options` below) which contains the data to input/output.",
-                           "When double-buffered, a 'buffer' event will be emitted each time a buffer is finished with (the argument is that buffer)" ],
+                           "When double-buffered, a 'buffer' event will be emitted each time a buffer is finished with (the argument is that buffer). When the recording stops, a 'finish' event will be emitted (with the first argument as the buffer)." ],
          "generate" : "jswrap_waveform_constructor",
          "params" : [ [ "samples", "int32", "The number of samples" ],
                       [ "options", "JsVar", "Optional options struct `{doubleBuffer:bool}` where: `doubleBuffer` is whether to allocate two buffers or not." ] ],

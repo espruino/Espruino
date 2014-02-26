@@ -52,7 +52,7 @@ void jstUtilTimerInterruptHandler() {
           if (task->type==UET_WRITE_BYTE)
             jshSetOutputValue(task->data.buffer.pinFunction, *ptr);
           else
-            *ptr = jshPinAnalogFast(task->data.buffer.pin)>>8;
+            *ptr = (unsigned char)(jshPinAnalogFast(task->data.buffer.pin)>>8);
           // move to next element in var
           task->data.buffer.charIdx++;
           unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
@@ -84,7 +84,7 @@ void jstUtilTimerInterruptHandler() {
       // If we need to repeat
       if (task->repeatInterval) {
         // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
-        unsigned int t = (int)(time+task->repeatInterval - task->time) / (int)task->repeatInterval;
+        unsigned int t = (unsigned int)(time+task->repeatInterval - task->time) / task->repeatInterval;
         if (t<1) t=1;
         task->time += task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order
@@ -251,7 +251,9 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
     task.data.buffer.pinFunction = jshGetCurrentPinFunction(pin);
     if (!task.data.buffer.pinFunction) return false; // no pin function found...
   } else if (type==UET_READ_BYTE) {
+#ifndef LINUX
     if (pinInfo[pin].analog == JSH_ANALOG_NONE) return false; // no analog...
+#endif
     task.data.buffer.pin = pin;
   } else {
     assert(0);
