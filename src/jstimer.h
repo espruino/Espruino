@@ -73,6 +73,9 @@ bool jstUtilTimerIsRunning();
 /// Return true if a timer task for the given pin exists (and set 'task' to it)
 bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task);
 
+/// Return true if a timer task for the given variable exists (and set 'task' to it)
+bool jstGetLastWriteTimerTask(JsVar *var, UtilTimerTask *task);
+
 /// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 
@@ -80,7 +83,10 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 bool jstSetWakeUp(JsSysTime period);
 
 /// Start writing a string out at the given period between samples
-bool jstSignalWrite(JsSysTime period, Pin pin, JsVar *data);
+bool jstSignalWrite(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData);
+
+/// Stop a timer task
+bool jstStopWriteTimerTask(JsVar *var);
 
 #endif /* JSTIMER_H_ */
 

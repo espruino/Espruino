@@ -144,6 +144,25 @@ bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
   return false;
 }
 
+/// Return true if a timer task for the given variable exists (and set 'task' to it)
+bool jstGetLastWriteTimerTask(JsVar *var, UtilTimerTask *task) {
+  JsVarRef ref = jsvGetRef(var);
+  unsigned char ptr = utilTimerTasksHead;
+  if (ptr == utilTimerTasksTail) return false; // nothing in here
+  ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+  while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
+    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE) {
+      if (utilTimerTasks[ptr].data.write.currentBuffer==ref || utilTimerTasks[ptr].data.write.nextBuffer==ref) {
+        *task = utilTimerTasks[ptr];
+        return true;
+      }
+    }
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  }
+  return false;
+}
+
 /// Is the timer full - can it accept any other signals?
 static bool utilTimerIsFull() {
   unsigned char nextHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
@@ -215,16 +234,46 @@ bool jstSetWakeUp(JsSysTime period) {
   return ok;
 }
 
-bool jstSignalWrite(JsSysTime period, Pin pin, JsVar *data) {
+bool jstSignalWrite(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData) {
   UtilTimerTask task;
   task.repeatInterval = (unsigned int)period;
-  task.time = jshGetSystemTime() + period;
+  task.time = startTime + period;
   task.type = UET_WRITE_BYTE;
   task.data.write.pinFunction = jshGetCurrentPinFunction(pin);
   if (!task.data.write.pinFunction) return false; // no pin function found...
   task.data.write.charIdx = 0;
-  task.data.write.var = jsvLockAgain(data);
-  task.data.write.currentBuffer = 0;
-  task.data.write.nextBuffer = 0;
+  task.data.write.var = jsvLockAgain(currentData);
+  task.data.write.currentBuffer = jsvGetRef(currentData);
+  if (nextData) {
+    // then we're repeating!
+    task.data.write.nextBuffer = jsvGetRef(nextData);
+  } else {
+    // then we're not repeating
+    task.data.write.nextBuffer = 0;
+  }
   return utilTimerInsertTask(&task);
+}
+
+/// Return true if a timer task for the given variable exists (and set 'task' to it)
+bool jstStopWriteTimerTask(JsVar *var) {
+  JsVarRef ref = jsvGetRef(var);
+  jshInterruptOff();
+  bool found = false;
+  unsigned char ptr = utilTimerTasksHead;
+  if (ptr == utilTimerTasksTail) return false; // nothing in here
+  ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+  while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
+    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE) {
+      if (utilTimerTasks[ptr].data.write.currentBuffer==ref || utilTimerTasks[ptr].data.write.nextBuffer==ref) {
+        found = true;
+        // FIXME shift tail back along
+        utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
+        break;
+      }
+    }
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+  }
+  jshInterruptOn();
+  return found;
 }
