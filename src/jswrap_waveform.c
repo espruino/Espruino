@@ -131,7 +131,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
 }*/
 JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   if (samples<=0) {
-    jsError("samples must be greater than 0");
+    jsError("Samples must be greater than 0");
     return 0;
   }
 
@@ -181,8 +181,8 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   bool repeat = false;
   if (jsvIsObject(options)) {
     JsVarFloat t = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "time", 0));
-    if (!isfinite(t) && t>0)
-       startTime = jshGetTimeFromMilliseconds(t/1000);
+    if (isfinite(t) && t>0)
+       startTime = jshGetTimeFromMilliseconds(t*1000);
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "repeat", 0));
   } else if (!jsvIsUndefined(options)) {
     jsError("Expecting options to be undefined or an Object, not %t", options);
