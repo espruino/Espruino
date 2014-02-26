@@ -9,6 +9,7 @@
             Improve auto-generated documentation
             Speed up ArrayBuffer.set and allow Strings to be used properly
             Fix jsvArrayJoin if memory runs out
+            Added E.sum and E.variance array operations
 
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)
