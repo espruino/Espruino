@@ -361,6 +361,8 @@ JsVarFloat jshPinAnalog(Pin pin) {
   return value;
 }
 
+int jshPinAnalogFast(Pin pin) {
+}
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {

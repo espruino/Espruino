@@ -56,17 +56,17 @@ bool jswrap_waveform_idle() {
         JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
         UtilTimerTask task;
         // Search for a timer task
-        if (!jstGetLastWriteTimerTask(buffer, &task)) {
+        if (!jstGetLastBufferTimerTask(buffer, &task)) {
           // if the timer task is now gone...
           jsiQueueObjectCallbacks(waveform, "#onfinish", 0, 0);
           running = false;
           jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(running)));
         } else {
           // If the timer task is still there...
-          if (task.data.write.nextBuffer &&
-              task.data.write.nextBuffer != task.data.write.currentBuffer) {
+          if (task.data.buffer.nextBuffer &&
+              task.data.buffer.nextBuffer != task.data.buffer.currentBuffer) {
             // if it is a double-buffered task
-            int currentBuffer = (jsvGetRef(buffer)==task.data.write.currentBuffer) ? 0 : 1;
+            int currentBuffer = (jsvGetRef(buffer)==task.data.buffer.currentBuffer) ? 0 : 1;
             JsVar *oldBuffer = jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER);
             if (jsvGetInteger(oldBuffer) !=currentBuffer) {
               // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
@@ -91,6 +91,31 @@ bool jswrap_waveform_idle() {
     jsvUnLock(waveforms);
   }
   return false; // no need to stay awake - an IRQ will wake us
+}
+
+/*JSON{ "type":"kill", "generate" : "jswrap_waveform_kill", "ifndef" : "SAVE_ON_FLASH" }*/
+void jswrap_waveform_kill() { // be sure to remove all waveforms...
+  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, 0);
+  if (waveforms) {
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, waveforms);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *waveform = jsvArrayIteratorGetElement(&it);
+      bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
+      if (running) {
+        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
+        if (!jstStopBufferTimerTask(buffer)) {
+          jsError("Waveform couldn't be stopped");
+        }
+        jsvUnLock(buffer);
+      }
+      jsvUnLock(waveform);
+      // if not running, remove waveform from this list
+      jsvArrayIteratorRemoveAndGotoNext(&it, waveforms);
+    }
+    jsvArrayIteratorFree(&it);
+    jsvUnLock(waveforms);
+  }
 }
 
 
@@ -136,14 +161,7 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   return waveform;
 }
 
-/*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Will start outputting the waveform on the given pin. If not repeating, it'll emit a `finish` event when it is done.",
-         "generate" : "jswrap_waveform_startOutput",
-         "params" : [ [ "output", "pin", "The pin to output on" ],
-                      [ "freq", "float", "The frequency to output each sample at"],
-                      [ "options", "JsVar", "Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"] ]
-}*/
-void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
+static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options, UtilTimerEventType eventType) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
   if (running) {
     jsError("Waveform is already running");
@@ -151,6 +169,10 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
   }
   if (!jshIsPinValid(pin)) {
     jsError("Invalid pin");
+    return;
+  }
+  if (!isfinite(freq) || freq<1) {
+    jsError("Frequency must be above 1Hz");
     return;
   }
 
@@ -168,7 +190,7 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
   JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
   JsVar *buffer2 = jswrap_waveform_getBuffer(waveform,1);
   // And finally set it up
-  if (!jstSignalWrite(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0))
+  if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
     jsWarn("Unable to schedule a timer");
   jsvUnLock(buffer);
   jsvUnLock(buffer2);
@@ -183,6 +205,31 @@ void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVa
   }
 }
 
+/*JSON{ "type":"method", "class": "Waveform", "name" : "startOutput", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Will start outputting the waveform on the given pin - the pin must have previously been initialised with analogWrite. If not repeating, it'll emit a `finish` event when it is done.",
+         "generate" : "jswrap_waveform_startOutput",
+         "params" : [ [ "output", "pin", "The pin to output on" ],
+                      [ "freq", "float", "The frequency to output each sample at"],
+                      [ "options", "JsVar", "Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"] ]
+}*/
+void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
+  jswrap_waveform_start(waveform, pin, freq, options, UET_WRITE_BYTE);
+}
+
+/*JSON{ "type":"method", "class": "Waveform", "name" : "startInput", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Will start inputting the waveform on the given pin that supports analog. If not repeating, it'll emit a `finish` event when it is done.",
+         "generate" : "jswrap_waveform_startInput",
+         "params" : [ [ "output", "pin", "The pin to output on" ],
+                      [ "freq", "float", "The frequency to output each sample at"],
+                      [ "options", "JsVar", "Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"] ]
+}*/
+void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
+  // Setup analog, and also bail out on failure
+  if (jshPinAnalog(pin)<0) return;
+  // start!
+  jswrap_waveform_start(waveform, pin, freq, options, UET_READ_BYTE);
+}
+
 /*JSON{ "type":"method", "class": "Waveform", "name" : "stop", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Stop a waveform that is currently outputting",
          "generate" : "jswrap_waveform_stop"
@@ -194,7 +241,7 @@ void jswrap_waveform_stop(JsVar *waveform) {
     return;
   }
   JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
-  if (!jstStopWriteTimerTask(buffer)) {
+  if (!jstStopBufferTimerTask(buffer)) {
     jsError("Waveform couldn't be stopped");
   }
   jsvUnLock(buffer);

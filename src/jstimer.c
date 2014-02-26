@@ -45,27 +45,32 @@ void jstUtilTimerInterruptHandler() {
             jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
           }
         } break;
+        case UET_READ_BYTE:
         case UET_WRITE_BYTE: {
-          // write data into var
-          jshSetOutputValue(task->data.write.pinFunction, (unsigned char)task->data.write.var->varData.str[task->data.write.charIdx]);
+          unsigned char *ptr = (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
+          // write/read data into var
+          if (task->type==UET_WRITE_BYTE)
+            jshSetOutputValue(task->data.buffer.pinFunction, *ptr);
+          else
+            *ptr = jshPinAnalogFast(task->data.buffer.pin)>>8;
           // move to next element in var
-          task->data.write.charIdx++;
-          unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.write.var);
-          if (task->data.write.charIdx >= maxChars) {
-            task->data.write.charIdx = (unsigned char)(task->data.write.charIdx - maxChars);
-            if (task->data.write.var->lastChild) {
-              JsVar *next = jsvLock(task->data.write.var->lastChild);
-              jsvUnLock(task->data.write.var);
-              task->data.write.var = next;
-            } else {
-              jsvUnLock(task->data.write.var);
-              task->data.write.var = 0;
-              if (task->data.write.nextBuffer) {
-                task->data.write.var = jsvLock(task->data.write.nextBuffer);
+          task->data.buffer.charIdx++;
+          unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
+          if (task->data.buffer.charIdx >= maxChars) {
+            task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
+            if (task->data.buffer.var->lastChild) {
+              JsVar *next = jsvLock(task->data.buffer.var->lastChild);
+              jsvUnLock(task->data.buffer.var);
+              task->data.buffer.var = next;
+            } else { // else no more... move on to the next
+              jsvUnLock(task->data.buffer.var);
+              task->data.buffer.var = 0;
+              if (task->data.buffer.nextBuffer) {
+                task->data.buffer.var = jsvLock(task->data.buffer.nextBuffer);
                 // flip buffers
-                JsVarRef t = task->data.write.nextBuffer;
-                task->data.write.nextBuffer = task->data.write.currentBuffer;
-                task->data.write.currentBuffer = t;
+                JsVarRef t = task->data.buffer.nextBuffer;
+                task->data.buffer.nextBuffer = task->data.buffer.currentBuffer;
+                task->data.buffer.currentBuffer = t;
               } else {
                 // No more data - make sure we don't repeat!
                 task->repeatInterval = 0;
@@ -78,8 +83,10 @@ void jstUtilTimerInterruptHandler() {
       }
       // If we need to repeat
       if (task->repeatInterval) {
-        // update time
-        task->time += task->repeatInterval;
+        // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
+        unsigned int t = (int)(time+task->repeatInterval - task->time) / (int)task->repeatInterval;
+        if (t<1) t=1;
+        task->time += task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order
         unsigned char ta = utilTimerTasksTail;
         unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
@@ -145,15 +152,15 @@ bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
 }
 
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
-bool jstGetLastWriteTimerTask(JsVar *var, UtilTimerTask *task) {
+bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   JsVarRef ref = jsvGetRef(var);
   unsigned char ptr = utilTimerTasksHead;
   if (ptr == utilTimerTasksTail) return false; // nothing in here
   ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
   // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
   while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE) {
-      if (utilTimerTasks[ptr].data.write.currentBuffer==ref || utilTimerTasks[ptr].data.write.nextBuffer==ref) {
+    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE || utilTimerTasks[ptr].type == UET_READ_BYTE) {
+      if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
         *task = utilTimerTasks[ptr];
         return true;
       }
@@ -234,28 +241,37 @@ bool jstSetWakeUp(JsSysTime period) {
   return ok;
 }
 
-bool jstSignalWrite(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData) {
+bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
+  if (!jshIsPinValid(pin)) return false;
   UtilTimerTask task;
   task.repeatInterval = (unsigned int)period;
   task.time = startTime + period;
-  task.type = UET_WRITE_BYTE;
-  task.data.write.pinFunction = jshGetCurrentPinFunction(pin);
-  if (!task.data.write.pinFunction) return false; // no pin function found...
-  task.data.write.charIdx = 0;
-  task.data.write.var = jsvLockAgain(currentData);
-  task.data.write.currentBuffer = jsvGetRef(currentData);
+  task.type = type;
+  if (type==UET_WRITE_BYTE) {
+    task.data.buffer.pinFunction = jshGetCurrentPinFunction(pin);
+    if (!task.data.buffer.pinFunction) return false; // no pin function found...
+  } else if (type==UET_READ_BYTE) {
+    if (pinInfo[pin].analog == JSH_ANALOG_NONE) return false; // no analog...
+    task.data.buffer.pin = pin;
+  } else {
+    assert(0);
+    return false;
+  }
+  task.data.buffer.charIdx = 0;
+  task.data.buffer.var = jsvLockAgain(currentData);
+  task.data.buffer.currentBuffer = jsvGetRef(currentData);
   if (nextData) {
     // then we're repeating!
-    task.data.write.nextBuffer = jsvGetRef(nextData);
+    task.data.buffer.nextBuffer = jsvGetRef(nextData);
   } else {
     // then we're not repeating
-    task.data.write.nextBuffer = 0;
+    task.data.buffer.nextBuffer = 0;
   }
   return utilTimerInsertTask(&task);
 }
 
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
-bool jstStopWriteTimerTask(JsVar *var) {
+bool jstStopBufferTimerTask(JsVar *var) {
   JsVarRef ref = jsvGetRef(var);
   jshInterruptOff();
   bool found = false;
@@ -264,8 +280,8 @@ bool jstStopWriteTimerTask(JsVar *var) {
   ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
   // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
   while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE) {
-      if (utilTimerTasks[ptr].data.write.currentBuffer==ref || utilTimerTasks[ptr].data.write.nextBuffer==ref) {
+    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE || utilTimerTasks[ptr].type == UET_READ_BYTE) {
+      if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
         found = true;
         // FIXME shift tail back along
         utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);

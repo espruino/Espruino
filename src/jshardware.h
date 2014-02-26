@@ -97,7 +97,12 @@ JshPinState jshPinGetState(Pin pin);
 
 
 bool jshPinInput(Pin pin);
+
+//s Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin);
+/// Returns a quickly-read analog value in the range 0-65535
+int jshPinAnalogFast(Pin pin);
+
 void jshPinOutput(Pin pin, bool value);
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);

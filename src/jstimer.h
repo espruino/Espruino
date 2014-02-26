@@ -27,7 +27,8 @@ typedef enum {
 typedef enum {
   UET_WAKEUP, ///< Does nothing except wake the device up!
   UET_SET, ///< Set a pin to a value
-  UET_WRITE_BYTE, ///< Write a byte to an address
+  UET_WRITE_BYTE, ///< Write a byte to a DAC/Timer
+  UET_READ_BYTE, ///< Read a byte from an analog input
 } PACKED_FLAGS UtilTimerEventType;
 
 #define UTILTIMERTASK_PIN_COUNT (4)
@@ -37,22 +38,26 @@ typedef struct UtilTimerTaskSet {
   uint8_t value; ///< value to set pins to
 } PACKED_FLAGS UtilTimerTaskSet;
 
-/** Task to write to a specific pin function - eg. a DAC or Timer.
+/** Task to write to a specific pin function - eg. a DAC or Timer or to read from an Analog
  * To send once, set var=buffer1, currentBuffer==nextBuffer==0
  * To repeat, set var=buffer1, currentBuffer==nextBuffer==buffer
  * To repeat, flipping between 2 buffers, set var=buffer1, currentBuffer==buffer1, nextBuffer=buffer2
  */
-typedef struct UtilTimerTaskWrite {
-  JshPinFunction pinFunction; ///< Pin function to write to
+typedef struct UtilTimerTaskBuffer {
+  union {
+    JshPinFunction pinFunction; ///< Pin function to write to
+    Pin pin; ///< Pin to read from
+  };
   JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
   JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
   unsigned char charIdx; ///< Index of character in variable
   JsVar *var; ///< variable to get data from
-} PACKED_FLAGS UtilTimerTaskWrite;
+} PACKED_FLAGS UtilTimerTaskBuffer;
+
 
 typedef union UtilTimerTaskData {
   UtilTimerTaskSet set;
-  UtilTimerTaskWrite write;
+  UtilTimerTaskBuffer buffer;
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
@@ -74,7 +79,7 @@ bool jstUtilTimerIsRunning();
 bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task);
 
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
-bool jstGetLastWriteTimerTask(JsVar *var, UtilTimerTask *task);
+bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task);
 
 /// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
@@ -83,10 +88,10 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 bool jstSetWakeUp(JsSysTime period);
 
 /// Start writing a string out at the given period between samples
-bool jstSignalWrite(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData);
+bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
 /// Stop a timer task
-bool jstStopWriteTimerTask(JsVar *var);
+bool jstStopBufferTimerTask(JsVar *var);
 
 #endif /* JSTIMER_H_ */
 

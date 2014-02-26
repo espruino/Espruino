@@ -1311,9 +1311,10 @@ bool jshPinInput(Pin pin) {
 
 static unsigned char jshADCInitialised = 0;
 
-static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
+static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
   ADC_TypeDef *ADCx = stmADC(analog);
-    bool needs_init = false;
+  bool needs_init = false;
+  if (!fastConversion) {
     if (ADCx == ADC1) {
       if (!(jshADCInitialised&1)) {
         jshADCInitialised |= 1;
@@ -1411,33 +1412,34 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
       while(ADC_GetCalibrationStatus(ADCx));
     #endif
     }
-    // Configure channel
+  }
+  // Configure channel
 
-  #if defined(STM32F2) || defined(STM32F4)
-    uint8_t sampleTime = ADC_SampleTime_480Cycles;
-  #elif defined(STM32F3)
-    uint8_t sampleTime = ADC_SampleTime_601Cycles5;
-  #else
-    uint8_t sampleTime = ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/;
-  #endif
-    ADC_RegularChannelConfig(ADCx, stmADCChannel(analog), 1, sampleTime);
+#if defined(STM32F2) || defined(STM32F4)
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_3Cycles : ADC_SampleTime_480Cycles;
+#elif defined(STM32F3)
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_7Cycles5 : ADC_SampleTime_601Cycles5;
+#else
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_7Cycles5 : ADC_SampleTime_239Cycles5;
+#endif
+  ADC_RegularChannelConfig(ADCx, stmADCChannel(analog), 1, sampleTime);
 
-    // Start the conversion
-  #if defined(STM32F2) || defined(STM32F4)
-    ADC_SoftwareStartConv(ADCx);
-  #elif defined(STM32F3)
-    ADC_StartConversion(ADCx);
-  #else
-    ADC_SoftwareStartConvCmd(ADCx, ENABLE);
-  #endif
+  // Start the conversion
+#if defined(STM32F2) || defined(STM32F4)
+  ADC_SoftwareStartConv(ADCx);
+#elif defined(STM32F3)
+  ADC_StartConversion(ADCx);
+#else
+  ADC_SoftwareStartConvCmd(ADCx, ENABLE);
+#endif
 
-    // Wait until conversion completion
+  // Wait until conversion completion
 
 
-    WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
+  WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
 
-    // Get the conversion value
-    return ADC_GetConversionValue(ADCx) / (JsVarFloat)65535;
+  // Get the conversion value
+  return (int)ADC_GetConversionValue(ADCx);
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
@@ -1448,7 +1450,12 @@ JsVarFloat jshPinAnalog(Pin pin) {
   jshSetPinStateIsManual(pin, false);
   jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 
-  return jshAnalogRead(pinInfo[pin].analog);
+  return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65535;
+}
+
+/// Returns a quickly-read analog value in the range 0-65535
+int jshPinAnalogFast(Pin pin) {
+  return jshAnalogRead(pinInfo[pin].analog, true);
 }
 
 #ifdef STM32F1
@@ -1458,8 +1465,8 @@ JsVarFloat jshReadTemperature() {
   ADC1->CR2 |= ADC_CR2_TSVREFE;
   jshDelayMicroseconds(10);
   // read
-  JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
-  JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16);
+  JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
+  JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16, false) / (JsVarFloat)65535;
   JsVarFloat vSense = valTemp * 1.2 / varVolts;
   // disable sensor
   ADC1->CR2 &= ~ADC_CR2_TSVREFE;
@@ -1472,7 +1479,7 @@ JsVarFloat jshReadVRef() {
   ADC1->CR2 |= ADC_CR2_TSVREFE;
   jshDelayMicroseconds(10);
   // read
-  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
+  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false);
   // disable sensor
   ADC1->CR2 &= ~ADC_CR2_TSVREFE;
   return 1.20 / r;
