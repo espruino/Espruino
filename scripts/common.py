@@ -109,9 +109,9 @@ def get_jsondata(is_for_document, parseArgs = True):
               jsondata = json.loads(jsonstring)
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
-              if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
+              if (not is_for_document) and("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
                 print "Dropped because of #ifndef "+jsondata["ifndef"]
-              elif ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+              elif (not is_for_document) and ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
                 print "Dropped because of #ifdef "+jsondata["ifdef"]
               else:
                 jsondatas.append(jsondata)
@@ -230,7 +230,25 @@ def get_includes_from_jsondata(jsondatas):
         return includes
 
 def is_property(jsondata):
-  return jsondata["type"]=="property" or jsondata["type"]=="staticproperty"
+  return jsondata["type"]=="property" or jsondata["type"]=="staticproperty" or jsondata["type"]=="variable"
+
+def is_function(jsondata):
+  return jsondata["type"]=="function" or jsondata["type"]=="method"
+
+def get_prefix_name(jsondata):
+  if jsondata["type"]=="constructor": return "constructor"
+  if jsondata["type"]=="function": return "function"
+  if jsondata["type"]=="method": return "function"
+  if jsondata["type"]=="variable": return "variable"
+  if jsondata["type"]=="property": return "property"
+  return ""
+
+def get_ifdef_description(d):
+  if d=="SAVE_ON_FLASH": return "devices with low flash memory"
+  if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
+  if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
+  print "WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description"
+  return d
 
 def get_script_dir():
         return os.path.dirname(os.path.realpath(__file__))

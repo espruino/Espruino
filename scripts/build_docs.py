@@ -59,22 +59,19 @@ def get_prefixed_name(jsondata):
   return s
 
 def get_fullname(jsondata):
-  if jsondata["type"]=="constructor":
-    s = "constructor "
-  else:
-    s = "function "
+  s = common.get_prefix_name(jsondata)
+  if s!="": s = s + " "
+  if jsondata["type"]!="constructor":
     if "class" in jsondata:
       s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
   return s
 
 def get_surround(jsondata):
-  if jsondata["type"]=="constructor":
-    s = "constructor "
-  else:
-    s = "function "
-    if "class" in jsondata:
-      s=s+jsondata["class"]+"."
+  s = common.get_prefix_name(jsondata)
+  if s!="": s = s + " "
+  if jsondata["type"]!="constructor":
+    if "class" in jsondata: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
   if not common.is_property(jsondata):
     args = [];
@@ -115,7 +112,7 @@ html(" <body>")
 html("  <h1>Espruino Software Reference</h1>")
 html("  <p style=\"text-align:right;\">Version "+common.get_version()+"</p>")
 html("  <h2><a name=\"contents\">Contents</a></h2>")
-html("  <h3><a href=\"#_global\">Global Functions</A></h3>")
+html("  <h3><a href=\"#_global\">Globals</A></h3>")
 html("  <ul>")
 detail = []
 links = {}
@@ -183,10 +180,19 @@ for jsondata in detail:
   html("  <h3 class=\"detail\"><a name=\""+get_link(jsondata)+"\">"+get_fullname(jsondata)+"</a></h3>")
   html("  <p class=\"top\"><a href=\"#top\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
-  html("   <p class=\"call\">"+get_surround(jsondata)+"</p>")
+  html("   <p class=\"call\"><code>"+get_surround(jsondata)+"</code></p>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
-    html_description(jsondata["description"], jsondata["name"])
+    desc = jsondata["description"]
+    if not isinstance(desc, list): desc = [ desc ]
+    if ("ifdef" in jsondata) or ("ifndef" in jsondata):
+      conds = ""
+      if "ifdef" in jsondata: conds = common.get_ifdef_description(jsondata["ifdef"])
+      if "ifndef" in jsondata: 
+        if conds!="": conds += " and "
+        conds = "not "+common.get_ifdef_description(jsondata["ifndef"])
+      desc.append("<b>Note:</b> This is only available in some devices: "+conds);
+    html_description(desc, jsondata["name"])
   html("  <h4>Parameters</h4>")
   if "params" in jsondata:
     for param in jsondata["params"]:
