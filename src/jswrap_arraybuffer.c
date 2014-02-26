@@ -324,16 +324,21 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
     jsError("Expecting first argument to be an array, not %t", arr);
     return;
   }
-  // OPT: implement fast path for arraybuffer->arraybuffer?
   JsvIterator itsrc;
   jsvIteratorNew(&itsrc, arr);
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
+  bool useInts = JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
+
   while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
-    JsVar *value = jsvIteratorGetValue(&itsrc);
-    jsvArrayBufferIteratorSetValue(&itdst, value);
-    jsvUnLock(value);
+    if (useInts) {
+      jsvArrayBufferIteratorSetIntegerValue(&itdst, jsvIteratorGetIntegerValue(&itsrc));
+    } else {
+      JsVar *value = jsvIteratorGetValue(&itsrc);
+      jsvArrayBufferIteratorSetValue(&itdst, value);
+      jsvUnLock(value);
+    }
     jsvArrayBufferIteratorNext(&itdst);
     jsvIteratorNext(&itsrc);
   }

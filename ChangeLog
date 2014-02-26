@@ -7,6 +7,7 @@
             Improved non-deep-sleep power draw by allowing Espruino to wake itself on the Utility timer (rather than SysTick)
             Allowed Waveform API to output on both DAC and PWM
             Improve auto-generated documentation
+            Speed up ArrayBuffer.set and allow Strings to be used properly
 
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)
