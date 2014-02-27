@@ -1,4 +1,5 @@
      1v54 : Add 4x6 font (instead of 8x8)
+            Fix occasional instability with Waveform read/write
 
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving

@@ -58,20 +58,22 @@ void jstUtilTimerInterruptHandler() {
           unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
           if (task->data.buffer.charIdx >= maxChars) {
             task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
+            /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
+             * referenced elsewhere (in the Waveform class) so won't get freed. Why? Because
+             * we can't lock easily. We could get an IRQ right as some other code was in the
+             * middle of read/modify/write of the flags member, and then the locks would get
+             * out of sync. */
             if (task->data.buffer.var->lastChild) {
-              JsVar *next = jsvLock(task->data.buffer.var->lastChild);
-              jsvUnLock(task->data.buffer.var);
-              task->data.buffer.var = next;
+              task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
             } else { // else no more... move on to the next
-              jsvUnLock(task->data.buffer.var);
-              task->data.buffer.var = 0;
               if (task->data.buffer.nextBuffer) {
-                task->data.buffer.var = jsvLock(task->data.buffer.nextBuffer);
+                task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
                 // flip buffers
                 JsVarRef t = task->data.buffer.nextBuffer;
                 task->data.buffer.nextBuffer = task->data.buffer.currentBuffer;
                 task->data.buffer.currentBuffer = t;
               } else {
+                task->data.buffer.var = 0;
                 // No more data - make sure we don't repeat!
                 task->repeatInterval = 0;
               }
@@ -260,7 +262,7 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
     return false;
   }
   task.data.buffer.charIdx = 0;
-  task.data.buffer.var = jsvLockAgain(currentData);
+  task.data.buffer.var = currentData; // no locks (this needs to already be reffed)
   task.data.buffer.currentBuffer = jsvGetRef(currentData);
   if (nextData) {
     // then we're repeating!
