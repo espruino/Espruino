@@ -2,7 +2,7 @@
 
 mystructure = { a:39, b:3, addStuff : function(c,d) { return c+d; }, d:undefined, e: [ undefined ] };
 
-mystring = JSON.stringify(mystructure); 
+mystring = "{ a:39, b:3, addStuff : function(c,d) { return c+d; }, d:undefined, e: [ undefined ] }"; 
 
 // 42-tiny-js change begin --->
 // in JavaScript eval is not JSON.parse

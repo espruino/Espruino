@@ -699,7 +699,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(filler);
     } else if (jsvIsFunction(v)) {
       str = jsvNewFromEmptyString();
-      if (str) jsfGetJSON(v, str);
+      if (str) jsfGetJSON(v, str, JSON_NONE);
     } else {
       jsErrorInternal("Variable type cannot be converted to string");
       str = 0;
@@ -889,7 +889,8 @@ bool jsvAppendStringBuf(JsVar *var, const char *str, int length) {
   return true;
 }
 
-static void _jsvAppendPrintf(const char *str, void *user_data) {
+/// Special version of append designed for use with vcbprintf_callback (See jsvAppendPrintf)
+void jsvStringIteratorPrintfCallback(const char *str, void *user_data) {
   while (*str)
     jsvStringIteratorAppend((JsvStringIterator *)user_data, *(str++));
 }
@@ -901,7 +902,7 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
 
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)&_jsvAppendPrintf,&it, fmt, argp);
+  vcbprintf((vcbprintf_callback)&jsvStringIteratorPrintfCallback,&it, fmt, argp);
   va_end(argp);
 
   jsvStringIteratorFree(&it);
@@ -1574,6 +1575,7 @@ JsVarInt jsvGetArrayLength(JsVar *arr) {
     if (jsvIsInt(child)) {
       JsVarInt lastIdx = jsvGetInteger(child);
       jsvUnLock(child);
+      if (lastIdx<0) lastIdx=-1;
       return lastIdx+1;
     }
     // if not an int, keep going

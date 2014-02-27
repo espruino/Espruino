@@ -371,12 +371,16 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char
- *   %v = JsVar *
+ *   %v = JsVar * (doesn't have to be a string - it'll be converted)
+ *   %q = JsVar * (in quotes, and escaped)
  *   %p = Pin
  *
  * Anything else will assert
  */
 void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, va_list argp);
+
+/// This one is directly usable..
+void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
 
 #endif /* JSUTILS_H_ */

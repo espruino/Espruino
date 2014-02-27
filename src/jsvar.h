@@ -501,6 +501,9 @@ static inline void jsvStringIteratorFree(JsvStringIterator *it) {
   jsvUnLock(it->var);
 }
 
+/// Special version of append designed for use with vcbprintf_callback (See jsvAppendPrintf)
+void jsvStringIteratorPrintfCallback(const char *str, void *user_data);
+
 // --------------------------------------------------------------------------------------------
 typedef struct JsvArrayIterator {
   JsVar *var;

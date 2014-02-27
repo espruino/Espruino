@@ -475,7 +475,7 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
       jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         jsvAppendString(str, ", ");
-        jsfGetJSON(options, str);
+        jsfGetJSON(options, str, JSON_NONE);
       }
       jsvAppendString(str, ");\n");
     }
@@ -494,7 +494,7 @@ void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
       jsvAppendString(str, deviceName);
       jsvAppendString(str, ".setup(");
       if (jsvIsObject(options)) {
-        jsfGetJSON(options, str);
+        jsfGetJSON(options, str, JSON_NONE);
       }
       jsvAppendString(str, ");\n");
     }
@@ -915,7 +915,7 @@ void jsiHandleNewLine(bool execute) {
       // print result (but NOT if we had an error)
       if (echo && !jspHasError()) {
         jsiConsolePrintChar('=');
-        jsfPrintJSON(v);
+        jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY);
         jsiConsolePrint("\n");
       }
       jsvUnLock(v);
@@ -1577,7 +1577,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
          jsiConsolePrintStringVar(proto);
          jsiConsolePrint(" = ");
          JsVar *protoData = jsvSkipName(proto);
-         jsfPrintJSON(protoData);
+         jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
          jsvUnLock(protoData);
          jsiConsolePrint(";\n");
          protoRef = proto->nextSibling;
@@ -1588,7 +1588,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
       jsiConsolePrint(".");
       jsiConsolePrintStringVar(child);
       jsiConsolePrint(" = ");
-      jsfPrintJSON(data);
+      jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
       jsiConsolePrint(";\n");
 
     }
@@ -1621,7 +1621,7 @@ void jsiDumpState() {
         // function-specific output
         jsiConsolePrint("function ");
         jsiConsolePrintStringVar(child);
-        jsfPrintJSONForFunction(data);
+        jsfPrintJSONForFunction(data, JSON_NONE);
         jsiConsolePrint("\n");
         // print any prototypes we had
         JsVar *proto = jsvObjectGetChild(data, JSPARSE_PROTOTYPE_VAR, 0);
@@ -1635,7 +1635,7 @@ void jsiDumpState() {
             jsiConsolePrint(".prototype.");
             jsiConsolePrintStringVar(protoName);
             jsiConsolePrint(" = ");
-            jsfPrintJSON(protoData);
+            jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
             jsiConsolePrint(";\n");
             jsvUnLock(protoData);
             protoRef = protoName->nextSibling;
@@ -1647,7 +1647,7 @@ void jsiDumpState() {
         jsiConsolePrint("var ");
         jsiConsolePrintStringVar(child);
         jsiConsolePrint(" = ");
-        jsfPrintJSON(data);
+        jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
         jsiConsolePrint(";\n");
       }
     }
@@ -1665,7 +1665,7 @@ void jsiDumpState() {
     bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "recur", false)));
     JsVar *timerInterval = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
-    jsfPrintJSON(timerCallback);
+    jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY);
     jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
     jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
@@ -1685,9 +1685,9 @@ void jsiDumpState() {
      int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
      jsiConsolePrint("setWatch(");
-     jsfPrintJSON(watchCallback);
+     jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY);
      jsiConsolePrint(", ");
-     jsfPrintJSON(watchPin);
+     jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY);
      jsiConsolePrint(", { repeat:");
      jsiConsolePrint(watchRecur?"true":"false");
      jsiConsolePrint(", edge:");

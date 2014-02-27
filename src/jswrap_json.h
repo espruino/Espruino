@@ -19,15 +19,24 @@ JsVar *jswrap_json_parse(JsVar *v);
 typedef void (*JsfGetJSONCallbackString)(void *data, const char *string);
 typedef void (*JsfGetJSONCallbackVar)(void *data, JsVar *var);
 
+typedef enum {
+  JSON_NONE,
+  JSON_NEWLINES          = 1, // insert newlines in non-simple arrays and objects
+  JSON_PRETTY            = 2, // insert extra spaces between commas
+  JSON_LIMIT             = 4, // limit the amount we print (for the console)
+  JSON_IGNORE_FUNCTIONS  = 8, // don't output functions
+  JSON_INDENT            = 16, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
+} JSONFlags;
+
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
-void jsfGetJSONForFunctionWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData);
+void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
 /* Dump to JSON, using the given callbacks for printing data */
-void jsfGetJSONWithCallback(JsVar *var, JsfGetJSONCallbackString callbackString, JsfGetJSONCallbackVar callbackVar, void *callbackData);
+void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data);
 
 /* Convenience function for using jsfGetJSONWithCallback - print to var */
-void jsfGetJSON(JsVar *var, JsVar *result);
+void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags);
 
 /* Convenience function for using jsfGetJSONWithCallback - print to console */
-void jsfPrintJSON(JsVar *var);
+void jsfPrintJSON(JsVar *var, JSONFlags flags);
 /* Convenience function for using jsfGetJSONForFunctionWithCallback - print to console */
-void jsfPrintJSONForFunction(JsVar *var);
+void jsfPrintJSONForFunction(JsVar *var, JSONFlags flags);
