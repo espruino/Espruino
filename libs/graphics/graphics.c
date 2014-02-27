@@ -13,7 +13,7 @@
  */
 
 #include "graphics.h"
-#include "bitmap_font_8x8.h"
+#include "bitmap_font_4x6.h"
 #include "vector_font.h"
 #include "jsutils.h"
 #include "jsvar.h"
@@ -142,24 +142,6 @@ void graphicsClear(JsGraphics *gfx) {
   gfx->data.fgColor = c;
 }
 
-
-/* Output a 1 bit bitmap */
-void graphicsBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data) {
-  /*if (LCD.bitmap1bit) {
-    LCD.bitmap1bit(&LCD, x1, y1, width, height, data, col0, col1);
-  } else */{
-    short x,y;
-    for (y=0;y<=height;y++) {
-      for (x=0;x<=width;x++) {
-        unsigned int col;
-        int bitOffset = width-(x+1)+(y*width);
-        col  = ((data[bitOffset>>3]>>(bitOffset&7))&1) ? gfx->data.fgColor : gfx->data.bgColor;
-        graphicsSetPixel(gfx,(short)(x+x1),(short)(y+y1),col);
-      }
-    }
-  }
-}
-
 // ----------------------------------------------------------------------------------------------
 
 
@@ -171,14 +153,10 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   graphicsFillRect(gfx,x1,y2,x1,y1);
 }
 
-void graphicsDrawChar(JsGraphics *gfx, short x1, short y1, char ch) {
-  graphicsBitmap1bit(gfx,x1,y1,8,8,(unsigned char *)&LCD_FONT_8X8[ch&127][0]);
-}
-
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str) {
   while (*str) {
-    graphicsDrawChar(gfx,x1,y1,*(str++));
-    x1 = (short)(x1 + 8);
+    graphicsDrawChar4x6(gfx,x1,y1,*(str++));
+    x1 = (short)(x1 + 4);
   }
 }
 
@@ -372,8 +350,8 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
 // Splash screen
 void graphicsSplash(JsGraphics *gfx) {
   graphicsDrawString(gfx,0,0,"Espruino "JS_VERSION);
-  graphicsDrawString(gfx,0,8,"  Embedded JavaScript");
-  graphicsDrawString(gfx,0,16,"  www.espruino.com");
+  graphicsDrawString(gfx,0,6,"  Embedded JavaScript");
+  graphicsDrawString(gfx,0,12,"  www.espruino.com");
 }
 
 void graphicsIdle() {

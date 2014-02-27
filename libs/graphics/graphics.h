@@ -31,7 +31,7 @@ typedef enum {
   JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE = 2, ///< ArrayBuffer: if 1 bpp, treat bytes as stacked vertically
 } JsGraphicsFlags;
 
-#define JSGRAPHICS_FONTSIZE_8X8 (-1) // a bitmap font
+#define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
 // Positive font sizes are Vector fonts
 
 typedef struct {
@@ -58,7 +58,7 @@ typedef struct JsGraphics {
 static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
-  gfx->data.fontSize = JSGRAPHICS_FONTSIZE_8X8;
+  gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
   gfx->data.cursorX = 0;
   gfx->data.cursorY = 0;
 }
@@ -75,7 +75,6 @@ void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void         graphicsBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data);
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void graphicsDrawChar(JsGraphics *gfx, short x1, short y1, char ch);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices);

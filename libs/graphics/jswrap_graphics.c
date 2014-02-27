@@ -22,6 +22,7 @@
 #ifdef USE_LCD_SDL
 #include "lcd_sdl.h"
 #endif
+#include "bitmap_font_4x6.h"
 
 /*JSON{ "type":"class",
         "class" : "Graphics",
@@ -289,7 +290,7 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
          "description" : "Set Graphics to draw with a Bitmapped Font",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_8X8, false)"
+         "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }*/
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
@@ -325,9 +326,9 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     if (gfx.data.fontSize>0) {
       int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
-    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_8X8) {
-      graphicsDrawChar(&gfx, (short)x, (short)y, ch);
-      x+=8;
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
+      graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
+      x+=4;
     }
     if (jspIsInterrupted()) break;
     jsvStringIteratorNext(&it);
@@ -352,8 +353,8 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
-    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_8X8) {
-      width += 8;
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
+      width += 4;
     }
     jsvStringIteratorNext(&it);
   }
