@@ -652,7 +652,8 @@ void jsiInit(bool autoLoad) {
               "          |_| http://espruino.com\n"
               " "JS_VERSION" Copyright 2014 G.Williams\n");
     }
-    jsiConsolePrint("\n>");
+    jsiConsolePrint("\n"); // output new line
+    inputLineRemoved = true; // we need to put the input line back...
   }
 }
 
@@ -1656,52 +1657,54 @@ void jsiDumpState() {
     jsvUnLock(child);
   }
   // Now do timers
+  JsvArrayIterator it;
+
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarRef timerRef = timerArrayPtr->firstChild;
+  jsvArrayIteratorNew(&it, timerArrayPtr);
   jsvUnLock(timerArrayPtr);
-  while (timerRef) {
-    JsVar *timerNamePtr = jsvLock(timerRef);
-    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "callback", false));
-    bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "recur", false)));
-    JsVar *timerInterval = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false));
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *timer = jsvArrayIteratorGetElement(&it);
+    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
+    bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
+    JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
     jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY);
     jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
-    jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next
-    timerRef = timerNamePtr->nextSibling;
-    jsvUnLock(timerNamePtr);
+    jsvUnLock(timer);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
   // Now do watches
-  {
-   JsVar *watchArrayPtr = jsvLock(watchArray);
-   JsVarRef watchRef = watchArrayPtr->firstChild;
-   jsvUnLock(watchArrayPtr);
-   while (watchRef) {
-     JsVar *watchNamePtr = jsvLock(watchRef);
-     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false));
-     bool watchRecur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
-     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
-     JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-     jsiConsolePrint("setWatch(");
-     jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY);
-     jsiConsolePrint(", ");
-     jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY);
-     jsiConsolePrint(", { repeat:");
-     jsiConsolePrint(watchRecur?"true":"false");
-     jsiConsolePrint(", edge:");
-     if (watchEdge<0) jsiConsolePrint("'falling'");
-     else if (watchEdge>0) jsiConsolePrint("'rising'");
-     else jsiConsolePrint("'both'");
-     jsiConsolePrint(" });\n");
-     jsvUnLock(watchPin);
-     jsvUnLock(watchCallback);
-     // next
-     watchRef = watchNamePtr->nextSibling;
-     jsvUnLock(watchNamePtr);
-   }
+  JsVar *watchArrayPtr = jsvLock(watchArray);
+  jsvArrayIteratorNew(&it, watchArrayPtr);
+  jsvUnLock(watchArrayPtr);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *watch = jsvArrayIteratorGetElement(&it);
+    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback", false));
+    bool watchRecur = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "recur", 0));
+    int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
+    JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
+    jsiConsolePrint("setWatch(");
+    jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY);
+    jsiConsolePrint(", ");
+    jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY);
+    jsiConsolePrint(", { repeat:");
+    jsiConsolePrint(watchRecur?"true":"false");
+    jsiConsolePrint(", edge:");
+    if (watchEdge<0) jsiConsolePrint("'falling'");
+    else if (watchEdge>0) jsiConsolePrint("'rising'");
+    else jsiConsolePrint("'both'");
+    jsiConsolePrint(" });\n");
+    jsvUnLock(watchPin);
+    jsvUnLock(watchCallback);
+    // next
+    jsvUnLock(watch);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
+
   // and now serial
   JsVar *str = jsvNewFromEmptyString();
   jsiAppendHardwareInitialisation(str, true);
