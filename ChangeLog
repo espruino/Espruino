@@ -6,6 +6,7 @@
             Refectoring jsparse.c to name functions after their JS Grammar names
             IF statement now accepts commas
             Ensure that undefined+0 == NaN (only worked for floats previously)
+            Fix assert fail (issue unlocking when executing built-in functions)
 
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving

@@ -583,8 +583,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
-        if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED)
+        if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED) {
+          jslCharPosFree(&pos);
           return res;
+        }
         jslSeekToP(execInfo.lex, &pos); // NASTY!
         jslCharPosFree(&pos);
       }
