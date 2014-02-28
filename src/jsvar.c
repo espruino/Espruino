@@ -1924,7 +1924,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     } else if (needsNumeric ||
                ((jsvIsNumeric(a) || jsvIsUndefined(a) || jsvIsNull(a)) &&
                 (jsvIsNumeric(b) || jsvIsUndefined(b) || jsvIsNull(b)))) {
-      if (needsInt || !(jsvIsFloat(a) || jsvIsFloat(b))) {
+      if (needsInt || !(jsvIsFloat(a) || jsvIsFloat(b) || jsvIsUndefined(a) || jsvIsUndefined(b))) {
+            // note that int+undefined should be handled as a double
             // use ints
             JsVarInt da = jsvGetInteger(a);
             JsVarInt db = jsvGetInteger(b);
@@ -1957,8 +1958,12 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 case '-': return jsvNewFromFloat(da-db);
                 case '*': return jsvNewFromFloat(da*db);
                 case '/': return jsvNewFromFloat(da/db);
-                case LEX_EQUAL:     return jsvNewFromBool(da==db);
-                case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
+                case LEX_EQUAL:
+                case LEX_NEQUAL:  { bool equal = da==db;
+                                    if ((jsvIsNull(a) && jsvIsUndefined(b)) ||
+                                        (jsvIsNull(b) && jsvIsUndefined(a))) equal = true; // JS quirk :)
+                                    return jsvNewFromBool((op==LEX_EQUAL) ? equal : ((bool)!equal));
+                                  }
                 case '<':           return jsvNewFromBool(da<db);
                 case LEX_LEQUAL:    return jsvNewFromBool(da<=db);
                 case '>':           return jsvNewFromBool(da>db);

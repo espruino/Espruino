@@ -5,6 +5,7 @@
             JSON.stringify now doesn't print functions (fix #207)
             Refectoring jsparse.c to name functions after their JS Grammar names
             IF statement now accepts commas
+            Ensure that undefined+0 == NaN (only worked for floats previously)
 
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving
