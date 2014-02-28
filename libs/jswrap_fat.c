@@ -79,17 +79,17 @@ void jsfsReportError(const char *msg, FRESULT res) {
   jsError(buf);
 }
 
-bool jsfsInit() {
-#ifndef LINUX
-  static bool inited = false;
+bool fat_initialised = false;
 
-  if (!inited) {
+static bool jsfsInit() {
+#ifndef LINUX
+  if (!fat_initialised) {
     FRESULT res;
     if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
       jsfsReportError("Unable to mount SD card", res);
       return false;
     }
-    inited = true;
+    fat_initialised = true;
   }
 #endif
   return true;
@@ -103,6 +103,16 @@ bool jsfsInit() {
       res = f_mount(0, 0);
     }
  */
+
+/*JSON{ "type":"kill", "generate" : "wrap_fat_kill", "ifndef" : "SAVE_ON_FLASH" }*/
+void wrap_fat_kill() { // Uninitialise fat
+#ifndef LINUX
+  if (fat_initialised) {
+    fat_initialised = false;
+    f_mount(0, 0, 0);
+  }
+#endif
+}
 
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readdir",

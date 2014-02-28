@@ -13,6 +13,7 @@
  */
 #include "jsvar.h"
 
+void wrap_fat_kill();
 JsVar *wrap_fat_readdir(JsVar *path);
 void wrap_fat_writeFile(JsVar *path, JsVar *data);
 void wrap_fat_appendFile(JsVar *path, JsVar *data);
