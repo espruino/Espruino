@@ -215,4 +215,3 @@ JsVar *jswrap_string_toUpperCase(JsVar *parent) {
   }
   return res;
 }
-
