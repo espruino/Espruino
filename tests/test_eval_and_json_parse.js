@@ -1,7 +1,10 @@
 /* Javascript eval */
 
+
 mystructure = { a:39, b:3, addStuff : function(c,d) { return c+d; }, d:undefined, e: [ undefined ] };
 
+// Note: this is invalid JSON and should not actually be parsed by JSON.parse()
+// See Issse #249: https://github.com/espruino/Espruino/issues/249
 mystring = "{ a:39, b:3, addStuff : function(c,d) { return c+d; }, d:undefined, e: [ undefined ] }"; 
 
 // 42-tiny-js change begin --->
