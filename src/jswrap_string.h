@@ -21,3 +21,6 @@ JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v);
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen);
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split);
+JsVar *jswrap_string_toLowerCase(JsVar *parent);
+JsVar *jswrap_string_toUpperCase(JsVar *parent);
+
