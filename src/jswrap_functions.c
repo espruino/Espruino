@@ -82,6 +82,10 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   if (jsvIsNumeric(radixVar))
     radix = (int)jsvGetInteger(radixVar);
 
+  // shortcut for values that are already numbers
+  if ((radix==0 || radix==10) && jsvIsNumeric(v))
+    return jsvNewFromInteger(jsvGetInteger(v));
+  // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError;

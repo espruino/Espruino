@@ -58,6 +58,12 @@ const char *escapeCharacter(char ch) {
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
 JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+
+  // skip whitespace (strange parseInt behaviour)
+  while (isWhitespace(*s)) s++;
+
+  const char *numberStart = s;
+
   bool isNegated = false;
   JsVarInt v = 0;
   JsVarInt radix = 10;
@@ -110,7 +116,8 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
     s++;
   }
 
-  if (hasError) *hasError = *s!=0; // we're ok if we reached the end of the string
+  if (hasError)
+    *hasError = s==numberStart; // we had an error if we didn't manage to parse any chars at all
 
   if (isNegated) return -v;
   return v;
