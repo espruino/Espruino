@@ -1027,6 +1027,8 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
+    if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
+      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
     if (jsvIsFloat(v)) return isfinite(v->varData.floating) ? (JsVarInt)v->varData.floating : 0;
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
@@ -1050,8 +1052,12 @@ bool jsvGetBool(const JsVar *v) {
 JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return NAN; // undefined
     if (jsvIsFloat(v)) return v->varData.floating;
-    if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
-    if (jsvIsNull(v)) return 0;
+    if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
+    if (jsvIsArray(v)) {
+      JsVarInt l = jsvGetArrayLength(v);
+      if (l==0) return 0; // zero element array==0 (not undefined)
+      if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
+    }
     if (jsvIsString(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
