@@ -675,7 +675,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
   } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
-    return jspObjectToString(v);
+    str = jspObjectToString(v);
   } else {
     const char *constChar = jsvGetConstString(v);
     char buf[JS_NUMBER_BUFFER_SIZE];
