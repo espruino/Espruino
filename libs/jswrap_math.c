@@ -50,7 +50,7 @@ JsVarInt jswrap_integer_valueOf(JsVar *v) {
 }*/
 /*JSON{ "type":"staticproperty",
          "class" : "Math", "name" : "PI",
-         "generate_full" : "3.141592653589793",
+         "generate_full" : "PI",
          "return" : ["float", "The value of PI - 3.141592653589793"]
 }*/
 /*JSON{ "type":"staticmethod",
@@ -91,7 +91,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 /* we use sin here, not cos, to try and save a bit of code space */
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "cos",
-         "generate_full" : "sin(jsvGetFloat(theta) + (3.14159265359/2.0))",
+         "generate_full" : "sin(jsvGetFloat(theta) + (PI/2))",
          "params" : [ [ "theta", "float", "The angle to get the cosine of"] ],
          "return" : ["float", "The cosine of theta"]
 }*/
@@ -168,10 +168,10 @@ double jswrap_math_pow(double x, double y)
 }*/
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "tan",
-         "generate_full" : "sin(jsvGetFloat(theta)) / cos(jsvGetFloat(theta))",
+         "generate_full" : "sin(jsvGetFloat(theta)) / sin(jsvGetFloat(theta)+(PI/2))",
          "params" : [ [ "theta", "float", "The angle to get the tangent of"] ],
          "return" : ["float", "The tangent of theta"]
-}*/
+}*/ // note - we're trying to avoid having to use cos here
 
 /* we could use the real sqrt - but re-use pow to save on code space */
 /*JSON{ "type":"staticmethod",

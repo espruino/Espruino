@@ -11,6 +11,7 @@
             Fix issues with Numbers as Strings in maths (eg. '-5'|0)
             Make sure NaN|0 == 0 (and not some huge number)
             Ensure that [1.23]*1.0 == 1.23 (fix #91)
+            Don't pull in cos (use sin(x+PI/2))
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write
