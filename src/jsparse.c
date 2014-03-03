@@ -665,7 +665,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
     if (!returnVarName) // out of memory
       jspSetError();
-    //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
 
     if (!JSP_HAS_ERROR) {
       if (jsvIsNative(function)) {
@@ -684,7 +683,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
         if (functionScope) {
             JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-            //jsvTrace(jsvGetRef(functionScopeVar),5);
             jspeiLoadScopesFromVar(functionScopeVar);
             jsvUnLock(functionScopeVar);
             jsvUnLock(functionScope);
