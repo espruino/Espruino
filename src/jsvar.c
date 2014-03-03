@@ -971,16 +971,22 @@ char jsvGetCharInString(JsVar *v, size_t idx) {
   return ch;
 }
 
-/** Does this string contain only Numeric characters? */
-bool jsvIsStringNumericInt(const JsVar *var) {
+/** Does this string contain only Numeric characters (with optional '-' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
+bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   assert(jsvIsString(var));
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, var, 0); // we know it's non const
+  // skip a minus. if there was one
+  if (jsvStringIteratorHasChar(&it) && jsvStringIteratorGetChar(&it)=='-')
+    jsvStringIteratorNext(&it);
+  // now check...
   int chars = 0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
     char ch = jsvStringIteratorGetChar(&it);
-    if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
+    if (ch=='.' && allowDecimalPoint) {
+      allowDecimalPoint = false; // there can be only one
+    } else if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
       jsvStringIteratorFree(&it);
       return false;
     }
@@ -1018,11 +1024,11 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
 JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0; // undefined
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v) || jsvIsBoolean(v) || jsvIsPin(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
+    if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
-    if (jsvIsString(v) && jsvIsStringNumericInt(v)) {
+    if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
       return stringToInt(buf);
@@ -1064,7 +1070,7 @@ JsVar *jsvAsNumber(JsVar *var) {
       jsvIsNull(var) ||
       jsvIsBoolean(var) ||
       jsvIsArrayBufferName(var) ||
-      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var))))
+      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))))
     return jsvNewFromInteger(jsvGetInteger(var));
   // Else just try and get a float
   return jsvNewFromFloat(jsvGetFloat(var));
@@ -1930,7 +1936,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     } else if (needsNumeric ||
                ((jsvIsNumeric(a) || jsvIsUndefined(a) || jsvIsNull(a)) &&
                 (jsvIsNumeric(b) || jsvIsUndefined(b) || jsvIsNull(b)))) {
-      if (needsInt || !(jsvIsFloat(a) || jsvIsFloat(b) || jsvIsUndefined(a) || jsvIsUndefined(b))) {
+      if (needsInt || (jsvIsIntegerish(a) && jsvIsIntegerish(b))) {
             // note that int+undefined should be handled as a double
             // use ints
             JsVarInt da = jsvGetInteger(a);

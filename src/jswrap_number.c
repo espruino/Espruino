@@ -41,12 +41,16 @@ JsVar *jswrap_number_constructor(JsVar *val) {
          "return" : ["float", "Not a  Number"]
 }*/
 
-
 /*JSON{ "type":"variable", "name" : "Infinity",
          "generate_full" : "(((JsVarFloat)1)/(JsVarFloat)0)",
          "return" : ["float", "Positive Infinity (1/0)"]
 }*/
 
+/*JSON{ "type":"staticproperty",
+         "class": "Number","name" : "NaN",
+         "generate_full" : "NAN",
+         "return" : ["float", "Not a  Number"]
+}*/
 
 /*JSON{ "type":"staticproperty",
          "class": "Number", "name" : "MAX_VALUE",
