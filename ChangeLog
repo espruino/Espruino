@@ -9,6 +9,7 @@
             `.toString` is now called when a String is needed from an Object (fix #57)
             Fixed reference count error when looking for functions in an Object's prototype
             Fix issues with Numbers as Strings in maths (eg. '-5'|0)
+            Make sure NaN|0 == 0 (and not some huge number)
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write

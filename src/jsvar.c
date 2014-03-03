@@ -1027,7 +1027,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
-    if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
+    if (jsvIsFloat(v)) return isfinite(v->varData.floating) ? (JsVarInt)v->varData.floating : 0;
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
