@@ -79,7 +79,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
      jsvIteratorNext(&itsrc);
    }
    jsvIteratorFree(&itsrc);
-   return useInts ? sumi : sum;
+   return useInts ? (JsVarFloat)sumi : sum;
 }
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",

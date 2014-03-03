@@ -2522,6 +2522,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
       case JSH_TIMER_CH4:  TIM_SetCompare4(TIMx, timerVal); break;
       }
     }
-  } else
+  } else {
     assert(0); // can't handle this yet...
+  }
 }
