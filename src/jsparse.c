@@ -149,7 +149,8 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
         child = jspeiFindChildFromStringInParents(inheritsFrom, name);
       jsvUnLock(inheritsFrom);
       if (child) return child;
-    }
+    } else
+      jsvUnLock(inheritsFrom);
   } else { // Not actually an object - but might be an array/string/etc
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
