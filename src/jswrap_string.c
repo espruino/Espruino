@@ -173,45 +173,37 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 }
 
 /*JSON { "type":"method", "class": "String", "name": "toLowerCase",
-         "generate": "jswrap_string_toLowerCase",
+         "generate_full": "jswrap_string_toUpperLowerCase(parent, false)",
          "params": [],
          "return": ["JsVar", "The lowercase version of this string"]
 }*/
-JsVar *jswrap_string_toLowerCase(JsVar *parent) {
-  JsVar *res;
-  int l = (int)jsvGetStringLength(parent);
-  int i = 0;
-  char *ch;
-
-  res = jsvNewWithFlags(JSV_STRING);
-  if (!res) return 0; // out of memory
-
-  for (i=0;i<l;i++) {
-    ch = (unsigned char)jsvGetCharInString(parent, i);
-    if (ch >= 65 && ch <= 90) ch += 32; // A-Z
-    jsvAppendStringBuf(res, &ch, 1);
-  }
-  return res;
-}
-
 /*JSON { "type":"method", "class": "String", "name": "toUpperCase",
-         "generate": "jswrap_string_toUpperCase",
+         "generate_full": "jswrap_string_toUpperLowerCase(parent, true)",
          "params": [],
          "return": ["JsVar", "The uppercase version of this string"]
 }*/
-JsVar *jswrap_string_toUpperCase(JsVar *parent) {
-  JsVar *res;
-  int l = (int)jsvGetStringLength(parent);
-  int i = 0;
-  char *ch;
-
-  res = jsvNewWithFlags(JSV_STRING);
+JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
+  JsVar *res = jsvNewWithFlags(JSV_STRING);
   if (!res) return 0; // out of memory
 
-  for (i=0;i<l;i++) {
-    ch = (unsigned char)jsvGetCharInString(parent, i);
-    if (ch >= 97 && ch <= 122) ch -= 32;
-    jsvAppendStringBuf(res, &ch, 1);
+  JsvStringIterator itsrc, itdst;
+  jsvStringIteratorNew(&itsrc, parent, 0);
+  jsvStringIteratorNew(&itdst, res, 0);
+
+  while (jsvStringIteratorHasChar(&itsrc)) {
+    char ch = jsvStringIteratorGetChar(&itsrc);
+    if (upper) {
+      if (ch >= 97 && ch <= 122) ch = (char)(ch - 32);
+    } else {
+      if (ch >= 65 && ch <= 90) ch = (char)(ch + 32); // A-Z
+    }
+    jsvStringIteratorAppend(&itdst, ch);
+    jsvStringIteratorNext(&itsrc);
   }
+
+  jsvStringIteratorFree(&itsrc);
+  jsvStringIteratorFree(&itdst);
+
   return res;
 }
+
