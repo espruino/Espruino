@@ -710,6 +710,12 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   return str;
 }
 
+/// Returns true if the string is empty - faster than jsvGetStringLength(v)==0
+bool jsvIsEmptyString(JsVar *v) {
+  if (!jsvHasCharacterData(v)) return true;
+  return jsvGetCharactersInVar(v)==0;
+}
+
 size_t jsvGetStringLength(JsVar *v) {
   size_t strLength = 0;
   JsVar *var = v;
@@ -729,6 +735,8 @@ size_t jsvGetStringLength(JsVar *v) {
   if (ref) jsvUnLock(var); // note use of if (ref), not var
   return strLength;
 }
+
+
 
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {

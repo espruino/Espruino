@@ -40,3 +40,15 @@ require('http').get("http://www.pur3.co.uk", function(res) {
 });*/
 
 setTimeout("print('done');", 10000000);
+
+
+
+function onPageRequest(req, res) {
+  req.on('data', function(d) { console.log(">>> "+JSON.stringify(d)); });
+  res.writeHead(200, {'Content-Type': 'text/html'});
+  res.write('<html><body><form method="post">');
+  res.write('<textarea name="foo">Hello There</textarea><input type="submit">');
+  res.end('</form></body></html>');
+}
+require('http').createServer(onPageRequest).listen(8080);
+
