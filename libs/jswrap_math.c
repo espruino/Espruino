@@ -166,6 +166,12 @@ double jswrap_math_pow(double x, double y)
          "params" : [ [ "theta", "float", "The angle to get the sine of"] ],
          "return" : ["float", "The sine of theta"]
 }*/
+/*JSON{ "type":"staticmethod",
+         "class" : "Math", "name" : "tan",
+         "generate_full" : "sin(jsvGetFloat(theta)) / cos(jsvGetFloat(theta))",
+         "params" : [ [ "theta", "float", "The angle to get the tangent of"] ],
+         "return" : ["float", "The tangent of theta"]
+}*/
 
 /* we could use the real sqrt - but re-use pow to save on code space */
 /*JSON{ "type":"staticmethod",

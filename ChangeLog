@@ -1,5 +1,6 @@
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression
+            Add Math.tan()
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write
