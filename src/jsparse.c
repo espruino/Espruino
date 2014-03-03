@@ -1405,42 +1405,35 @@ NO_INLINE JsVar *jspeRelationalExpression() {
 }
 
 NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a) {
-    JsVar *b = 0;
     while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
-        bool shortCircuit = false;
-        bool boolean = false;
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         
         // if we have short-circuit ops, then if we know the outcome
         // we don't bother to execute the other op. Even if not
         // we need to tell mathsOp it's an & or |
-        if (op==LEX_ANDAND) {
-            op = '&';
-            shortCircuit = !jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        } else if (op==LEX_OROR) {
-            op = '|';
-            shortCircuit = jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        }
-        
-        JSP_SAVE_EXECUTE();
-        if (shortCircuit) jspSetNoExecute(); 
-        b = jspeRelationalExpression();
-        if (shortCircuit) JSP_RESTORE_EXECUTE();
-        if (JSP_SHOULD_EXECUTE && !shortCircuit) {
-            JsVar *res;
-            if (boolean) {
-              JsVar *newa = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(a)));
-              JsVar *newb = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(b)));
-              jsvUnLock(a); a = newa;
-              jsvUnLock(b); b = newb;
+        if (op==LEX_ANDAND || op==LEX_OROR) {
+            bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+            if ((!aValue && op==LEX_ANDAND) ||
+                (aValue && op==LEX_OROR)) {
+              // use first argument (A)
+              JSP_SAVE_EXECUTE();
+              jspSetNoExecute();
+              jsvUnLock(jspeRelationalExpression());
+              JSP_RESTORE_EXECUTE();
+            } else {
+              // use second argument (B)
+              jsvUnLock(a);
+              a = jspeRelationalExpression();
             }
-            res = jsvMathsOpSkipNames(a, b, op);
-            jsvUnLock(a); a = res;
+        } else { // else it's a more 'normal' logical expression - just use Maths
+          JsVar *b = jspeRelationalExpression();
+          if (JSP_SHOULD_EXECUTE) {
+              JsVar *res = jsvMathsOpSkipNames(a, b, op);
+              jsvUnLock(a); a = res;
+          }
+          jsvUnLock(b);
         }
-        jsvUnLock(b);
     }
     return a;
 }

@@ -2,6 +2,7 @@
             Fix E.getAnalogVRef() regression
             Add Math.tan()
             Ensure Double/Integer have Number as a prototype (fixes: Number.prototype.n=function();(5.0).n() )
+            ||/&& now doesn't use booleans (fix #251)
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write
