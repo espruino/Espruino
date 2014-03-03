@@ -588,10 +588,6 @@ const char *jsvGetConstString(const JsVar *v) {
       return "null";
     } else if (jsvIsBoolean(v)) {
       return jsvGetBool(v) ? "true" : "false";
-    } else if (jsvIsRoot(v)) {
-      return "[object Hardware]";
-    } else if (jsvIsObject(v)) {
-      return "[object Object]";
     }
     return 0;
 }
@@ -678,6 +674,8 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     str = jsvNewFromStringVar(v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
+  } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
+    return jspObjectToString(v);
   } else {
     const char *constChar = jsvGetConstString(v);
     char buf[JS_NUMBER_BUFFER_SIZE];
