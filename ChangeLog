@@ -6,6 +6,7 @@
             More resilient parseInt behaviour
             Allow data listener for HTTP POST (fix #226)
             Stop JSON.parse using eval (fix #249, fix #208)
+            `.toString` is now called when a String is needed from an Object (fix #57)
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write
