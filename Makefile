@@ -358,6 +358,7 @@ SOURCES = \
 src/jslex.c \
 src/jsvar.c \
 src/jsutils.c \
+src/jsnative.c \
 src/jsparse.c \
 src/jspin.c \
 src/jsinteractive.c \

@@ -59,6 +59,11 @@ typedef struct {
   JsVarDataArrayBufferViewType type;
 } PACKED_FLAGS JsVarDataArrayBufferView;
 
+typedef struct {
+  void (*ptr)(void); ///< Function pointer
+  unsigned int arguments; ///< Actually a list of JsnArgumentType
+} PACKED_FLAGS JsVarDataNative;
+
 typedef union {
     char str[JSVAR_DATA_STRING_LEN]; ///< The contents of this variable if it is a string
     /* NOTE: For str above, we INTENTIONALLY OVERFLOW str (and hence data) in the case of STRING_EXTS
@@ -68,6 +73,7 @@ typedef union {
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsCallback callback; ///< Callback for native functions, or 0
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
+    JsVarDataNative native; ///< A native function
 } PACKED_FLAGS JsVarData;
 
 typedef struct {

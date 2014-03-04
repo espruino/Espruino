@@ -113,3 +113,19 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
    jsvIteratorFree(&itsrc);
    return variance;
 }
+
+
+
+// TESTING ONLY
+#include "jsnative.h"
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "sin",
+         "generate" : "jswrap_espruino_sin",
+         "description" : "",
+         "params" : [ [ "arr", "JsVar", "The array to sum"] ],
+         "return" : ["JsVar", "The sum of the given buffer"]
+}*/
+JsVar *jswrap_espruino_sin(JsVar *o) {
+  return jsnCallFunction(sin, JSNAT_JSVARFLOAT | (JSNAT_JSVARFLOAT<<JSNAT_BITS), &o, 1);
+}
+// TESTING ONLY
