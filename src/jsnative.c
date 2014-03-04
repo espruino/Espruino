@@ -66,8 +66,8 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
 #if __WORDSIZE == 64
         argData[argCount++] = i;
 #else
-        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
 #endif
         break;
       }
@@ -77,8 +77,8 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
 #if __WORDSIZE == 64
         argData[argCount++] = i;
 #else
-        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
 #endif
         break;
       }
