@@ -17,8 +17,8 @@
 #define MAX_ARGS 10
 
 
-typedef uint32_t (*fn_4_32)(uint32_t,uint32_t,uint32_t,uint32_t);
-typedef uint64_t (*fn_4_64)(uint32_t,uint32_t,uint32_t,uint32_t);
+typedef uint32_t (*fn_4_32)(size_t,size_t,size_t,size_t);
+typedef uint64_t (*fn_4_64)(size_t,size_t,size_t,size_t);
 
 JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount) {
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSNAT_MASK);
@@ -26,7 +26,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
   argumentSpecifier >>= JSNAT_BITS;
   int paramNumber = 0;
   int argCount = 0;
-  uint32_t argData[MAX_ARGS];
+  size_t argData[MAX_ARGS];
   while (argumentSpecifier) {
     // Get the parameter data
     JsVar *param = (paramNumber<paramCount) ? paramData[paramNumber] : (JsVar *)0;
@@ -35,13 +35,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
     JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSNAT_MASK);
     switch (argType) {
       case JSNAT_JSVAR: { // standard variable
-#if __WORDSIZE == 64
-        uint64_t i = (uint64_t)param;
-        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
-        argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
-#else
         argData[argCount++] = param;
-#endif
         break;
       }
       case JSNAT_ARGUMENT_ARRAY: { // a JsVar array containing all subsequent arguments
@@ -55,13 +49,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
           }
         }
         // push the array
-#if __WORDSIZE == 64
-        uint64_t i = (uint64_t)argsArray;
-        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
-        argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
-#else
         argData[argCount++] = argsArray;
-#endif
         break;
       }
       case JSNAT_BOOL: // boolean
@@ -75,15 +63,23 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
         break;
       case JSNAT_JSVARINT: { // 64 bit int
         uint64_t i = (uint64_t)jsvGetInteger(param);
+#if __WORDSIZE == 64
+        argData[argCount++] = i;
+#else
         argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+#endif
         break;
       }
       case JSNAT_JSVARFLOAT: { // 64 bit float
         JsVarFloat f = jsvGetFloat(param);;
         uint64_t i = *(uint64_t*)&f;
+#if __WORDSIZE == 64
+        argData[argCount++] = i;
+#else
         argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+#endif
         break;
       }
       default:
