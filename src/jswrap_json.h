@@ -16,9 +16,6 @@
 JsVar *jswrap_json_stringify(JsVar *v);
 JsVar *jswrap_json_parse(JsVar *v);
 
-typedef void (*JsfGetJSONCallbackString)(void *data, const char *string);
-typedef void (*JsfGetJSONCallbackVar)(void *data, JsVar *var);
-
 typedef enum {
   JSON_NONE,
   JSON_NEWLINES          = 1, // insert newlines in non-simple arrays and objects
