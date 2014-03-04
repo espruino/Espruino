@@ -319,9 +319,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
     }
   }
   // strip out the header
-  JsVar *afterHeaders = jsvNewFromEmptyString();
-  if (!afterHeaders) return true;
-  jsvAppendStringVar(afterHeaders, *receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  JsVar *afterHeaders = jsvNewFromStringVar(*receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
   jsvUnLock(*receiveData);
   *receiveData = afterHeaders;
   return true;
@@ -419,10 +417,8 @@ bool httpServerConnectionsIdle() {
         // add it to our request string
         if (num>0) {
           JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
-          if (!receiveData) {
-            receiveData = jsvNewFromEmptyString();
-            jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
-          }
+          JsVar *oldReceiveData = receiveData;
+          if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
             jsvAppendStringBuf(receiveData, buf, num);
             bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
@@ -435,6 +431,16 @@ bool httpServerConnectionsIdle() {
               jsvUnLock(server);
               jsvUnLock(resVar);
             }
+            if (hadHeaders && !jsvIsEmptyString(receiveData) && jsiObjectHasCallbacks(connection, HTTP_NAME_ON_DATA)) {
+              // Execute 'data' callback with the data that we have
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+              // clear received data
+              jsvUnLock(receiveData);
+              receiveData = 0;
+            }
+            // if received data changed, update it
+            if (receiveData != oldReceiveData)
+              jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
             jsvUnLock(receiveData);
           }
         }
@@ -474,6 +480,15 @@ bool httpServerConnectionsIdle() {
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
+      // send out any data that we were POSTed
+      JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
+      if (hadHeaders && !jsvIsEmptyString(receiveData)) {
+         // Execute 'data' callback with the data that we have
+         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+      }
+      jsvUnLock(receiveData);
+      // fire the close listener
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);

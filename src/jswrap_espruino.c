@@ -24,7 +24,7 @@
          "class": "E", "name" : "getTemperature",
          "generate_full" : "jshReadTemperature()",
          "description" : ["Use the STM32's internal thermistor to work out the temperature.",
-                          "NOTE: This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
+                          "**Note:** This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
          "return" : ["float", "The temperature in degrees C"]
 }*/
 
@@ -79,7 +79,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
      jsvIteratorNext(&itsrc);
    }
    jsvIteratorFree(&itsrc);
-   return useInts ? sumi : sum;
+   return useInts ? (JsVarFloat)sumi : sum;
 }
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",

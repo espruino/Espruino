@@ -149,7 +149,8 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
         child = jspeiFindChildFromStringInParents(inheritsFrom, name);
       jsvUnLock(inheritsFrom);
       if (child) return child;
-    }
+    } else
+      jsvUnLock(inheritsFrom);
   } else { // Not actually an object - but might be an array/string/etc
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
@@ -664,7 +665,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
     if (!returnVarName) // out of memory
       jspSetError();
-    //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
 
     if (!JSP_HAS_ERROR) {
       if (jsvIsNative(function)) {
@@ -683,7 +683,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
         if (functionScope) {
             JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-            //jsvTrace(jsvGetRef(functionScopeVar),5);
             jspeiLoadScopesFromVar(functionScopeVar);
             jsvUnLock(functionScopeVar);
             jsvUnLock(functionScope);
@@ -814,7 +813,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
 
               if (child) {
                 // it was found - no need for name ptr now, so match!
-                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
               } else { // NOT FOUND...
                 /* Check for builtins via separate function
                  * This way we save on RAM for built-ins because all comes out of program code.
@@ -841,13 +840,13 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                     jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                     jspSetError();
                   }
-                  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
                 }
               }
             } else {
                 jsErrorAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                 jspSetError();
-                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
             }
             jsvUnLock(parent);
             parent = aVar;
@@ -1405,42 +1404,35 @@ NO_INLINE JsVar *jspeRelationalExpression() {
 }
 
 NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a) {
-    JsVar *b = 0;
     while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
-        bool shortCircuit = false;
-        bool boolean = false;
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         
         // if we have short-circuit ops, then if we know the outcome
         // we don't bother to execute the other op. Even if not
         // we need to tell mathsOp it's an & or |
-        if (op==LEX_ANDAND) {
-            op = '&';
-            shortCircuit = !jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        } else if (op==LEX_OROR) {
-            op = '|';
-            shortCircuit = jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        }
-        
-        JSP_SAVE_EXECUTE();
-        if (shortCircuit) jspSetNoExecute(); 
-        b = jspeRelationalExpression();
-        if (shortCircuit) JSP_RESTORE_EXECUTE();
-        if (JSP_SHOULD_EXECUTE && !shortCircuit) {
-            JsVar *res;
-            if (boolean) {
-              JsVar *newa = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(a)));
-              JsVar *newb = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(b)));
-              jsvUnLock(a); a = newa;
-              jsvUnLock(b); b = newb;
+        if (op==LEX_ANDAND || op==LEX_OROR) {
+            bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+            if ((!aValue && op==LEX_ANDAND) ||
+                (aValue && op==LEX_OROR)) {
+              // use first argument (A)
+              JSP_SAVE_EXECUTE();
+              jspSetNoExecute();
+              jsvUnLock(jspeRelationalExpression());
+              JSP_RESTORE_EXECUTE();
+            } else {
+              // use second argument (B)
+              jsvUnLock(a);
+              a = jspeRelationalExpression();
             }
-            res = jsvMathsOpSkipNames(a, b, op);
-            jsvUnLock(a); a = res;
+        } else { // else it's a more 'normal' logical expression - just use Maths
+          JsVar *b = jspeRelationalExpression();
+          if (JSP_SHOULD_EXECUTE) {
+              JsVar *res = jsvMathsOpSkipNames(a, b, op);
+              jsvUnLock(a); a = res;
+          }
+          jsvUnLock(b);
         }
-        jsvUnLock(b);
     }
     return a;
 }
@@ -2281,4 +2273,32 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
 
   jsvUnLock(scope);
   return scopeExports;
+}
+
+/// Execute the Object.toString function on an object (if we can find it)
+JsVar *jspObjectToString(JsVar *obj) {
+  assert(jsvIsObject(obj));
+  JsVar *toStringFn = 0;
+
+  toStringFn = jsvFindChildFromString(obj, "toString", false);
+
+  if (!toStringFn)
+    toStringFn = jspeiFindChildFromStringInParents(obj, "toString");
+
+   /* TODO: what about searching for builtins here? We can't at the moment
+    * because https://github.com/espruino/Espruino/issues/79 and
+    * https://github.com/espruino/Espruino/issues/188 mean that we actually
+    * *have* to parse brackets rather than just executing the function.
+    */
+
+   if (toStringFn) {
+     // Function found - execute it
+     JsVar *fn = jsvSkipName(toStringFn);
+     JsVar *result = jspeFunctionCall(fn, 0, obj, false, 0, 0);
+     jsvUnLock(fn);
+     jsvUnLock(toStringFn);
+     return result;
+   } else {
+     return jsvNewFromString(jsvIsRoot(obj) ? "[object Hardware]":"[object Object]");
+   }
 }

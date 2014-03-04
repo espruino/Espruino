@@ -34,6 +34,8 @@ bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
 
+/// Return true if the object has callbacks...
+bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1);
 

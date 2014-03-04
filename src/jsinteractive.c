@@ -1132,6 +1132,13 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
   }
 }
 
+bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName) {
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
+  bool hasCallbacks = !jsvIsUndefined(callback);
+  jsvUnLock(callback);
+  return hasCallbacks;
+}
+
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1) {
   JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
   if (!callback) return;

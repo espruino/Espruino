@@ -36,12 +36,12 @@
         "description" : ["This is the built-in class for Functions" ]
 }*/
 /*JSON{ "type":"class",
-        "class" : "Integer",
+        "class" : "Integer", "prototype" : "Number",
         "check" : "jsvIsInt(var)",
         "description" : ["This is the built-in class for Integer values" ]
 }*/
 /*JSON{ "type":"class",
-        "class" : "Double",
+        "class" : "Double", "prototype" : "Number",
         "check" : "jsvIsFloat(var)",
         "description" : ["This is the built-in class for Floating Point values" ]
 }*/

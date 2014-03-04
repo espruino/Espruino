@@ -588,10 +588,6 @@ const char *jsvGetConstString(const JsVar *v) {
       return "null";
     } else if (jsvIsBoolean(v)) {
       return jsvGetBool(v) ? "true" : "false";
-    } else if (jsvIsRoot(v)) {
-      return "[object Hardware]";
-    } else if (jsvIsObject(v)) {
-      return "[object Object]";
     }
     return 0;
 }
@@ -678,6 +674,8 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     str = jsvNewFromStringVar(v,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
+  } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
+    str = jspObjectToString(v);
   } else {
     const char *constChar = jsvGetConstString(v);
     char buf[JS_NUMBER_BUFFER_SIZE];
@@ -710,6 +708,12 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   return str;
 }
 
+/// Returns true if the string is empty - faster than jsvGetStringLength(v)==0
+bool jsvIsEmptyString(JsVar *v) {
+  if (!jsvHasCharacterData(v)) return true;
+  return jsvGetCharactersInVar(v)==0;
+}
+
 size_t jsvGetStringLength(JsVar *v) {
   size_t strLength = 0;
   JsVar *var = v;
@@ -729,6 +733,8 @@ size_t jsvGetStringLength(JsVar *v) {
   if (ref) jsvUnLock(var); // note use of if (ref), not var
   return strLength;
 }
+
+
 
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {
@@ -965,16 +971,22 @@ char jsvGetCharInString(JsVar *v, size_t idx) {
   return ch;
 }
 
-/** Does this string contain only Numeric characters? */
-bool jsvIsStringNumericInt(const JsVar *var) {
+/** Does this string contain only Numeric characters (with optional '-' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
+bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   assert(jsvIsString(var));
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, var, 0); // we know it's non const
+  // skip a minus. if there was one
+  if (jsvStringIteratorHasChar(&it) && jsvStringIteratorGetChar(&it)=='-')
+    jsvStringIteratorNext(&it);
+  // now check...
   int chars = 0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
     char ch = jsvStringIteratorGetChar(&it);
-    if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
+    if (ch=='.' && allowDecimalPoint) {
+      allowDecimalPoint = false; // there can be only one
+    } else if (!isNumeric(ch)) { // FIXME: should check for non-integer values (floating point?)
       jsvStringIteratorFree(&it);
       return false;
     }
@@ -1012,11 +1024,13 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
 JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0; // undefined
     /* strtol understands about hex and octal */
-    if (jsvIsInt(v) || jsvIsBoolean(v) || jsvIsPin(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if (jsvIsFloat(v)) return (JsVarInt)v->varData.floating;
-    if (jsvIsString(v) && jsvIsStringNumericInt(v)) {
+    if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
+    if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
+      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
+    if (jsvIsFloat(v)) return isfinite(v->varData.floating) ? (JsVarInt)v->varData.floating : 0;
+    if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
       return stringToInt(buf);
@@ -1038,8 +1052,12 @@ bool jsvGetBool(const JsVar *v) {
 JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return NAN; // undefined
     if (jsvIsFloat(v)) return v->varData.floating;
-    if (jsvIsInt(v)) return (JsVarFloat)v->varData.integer;
-    if (jsvIsNull(v)) return 0;
+    if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
+    if (jsvIsArray(v)) {
+      JsVarInt l = jsvGetArrayLength(v);
+      if (l==0) return 0; // zero element array==0 (not undefined)
+      if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
+    }
     if (jsvIsString(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
@@ -1058,7 +1076,7 @@ JsVar *jsvAsNumber(JsVar *var) {
       jsvIsNull(var) ||
       jsvIsBoolean(var) ||
       jsvIsArrayBufferName(var) ||
-      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var))))
+      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))))
     return jsvNewFromInteger(jsvGetInteger(var));
   // Else just try and get a float
   return jsvNewFromFloat(jsvGetFloat(var));
@@ -1924,7 +1942,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     } else if (needsNumeric ||
                ((jsvIsNumeric(a) || jsvIsUndefined(a) || jsvIsNull(a)) &&
                 (jsvIsNumeric(b) || jsvIsUndefined(b) || jsvIsNull(b)))) {
-      if (needsInt || !(jsvIsFloat(a) || jsvIsFloat(b) || jsvIsUndefined(a) || jsvIsUndefined(b))) {
+      if (needsInt || (jsvIsIntegerish(a) && jsvIsIntegerish(b))) {
             // note that int+undefined should be handled as a double
             // use ints
             JsVarInt da = jsvGetInteger(a);

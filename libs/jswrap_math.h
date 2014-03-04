@@ -21,6 +21,8 @@
 #include <math.h>
 #endif
 
+#define PI (3.141592653589793)
+
 
 JsVarInt jswrap_integer_valueOf(JsVar *v);
 JsVarFloat jswrap_math_abs(JsVarFloat x);

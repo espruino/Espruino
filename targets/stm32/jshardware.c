@@ -1479,7 +1479,7 @@ JsVarFloat jshReadVRef() {
   ADC1->CR2 |= ADC_CR2_TSVREFE;
   jshDelayMicroseconds(10);
   // read
-  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false);
+  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
   // disable sensor
   ADC1->CR2 &= ~ADC_CR2_TSVREFE;
   return 1.20 / r;
@@ -2522,6 +2522,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
       case JSH_TIMER_CH4:  TIM_SetCompare4(TIMx, timerVal); break;
       }
     }
-  } else
+  } else {
     assert(0); // can't handle this yet...
+  }
 }

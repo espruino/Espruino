@@ -1,4 +1,20 @@
-     1v55 : ...
+     1v56 :  ...
+
+     1v55 : Add String.toUpperCase/LowerCase
+            Fix E.getAnalogVRef() regression
+            Add Math.tan()
+            Ensure Double/Integer have Number as a prototype (fixes: Number.prototype.n=function();(5.0).n() )
+            ||/&& now doesn't use booleans (fix #251)
+            More resilient parseInt behaviour
+            Allow data listener for HTTP POST (fix #226)
+            Stop JSON.parse using eval (fix #249, fix #208)
+            `.toString` is now called when a String is needed from an Object (fix #57)
+            Fixed reference count error when looking for functions in an Object's prototype
+            Fix issues with Numbers as Strings in maths (eg. '-5'|0)
+            Make sure NaN|0 == 0 (and not some huge number)
+            Ensure that [1.23]*1.0 == 1.23 (fix #91)
+            Don't pull in cos (use sin(x+PI/2))
+            Try and save flash memory on Olimexino board
      
      1v54 : Add 4x6 font (instead of 8x8)
             Fix occasional instability with Waveform read/write
