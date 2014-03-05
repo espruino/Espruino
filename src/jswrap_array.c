@@ -335,3 +335,111 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "params" : [ [ "var", "JsVar", "The variable to be tested"] ],
          "return" : ["bool", "True if var is an array, false if not."]
 }*/
+
+
+NO_INLINE static bool _jswrap_array_sort_leq(JsVar *a, JsVar *b, JsVar *compareFn) {
+  if (compareFn) {
+    JsVar *args[2] = {a,b};
+    JsVarInt r = jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
+    return r<0;
+  } else {
+    return jsvGetBoolAndUnLock(jsvMathsOp(a,b,LEX_LEQUAL));
+  }
+}
+
+NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compareFn) {
+  if (n < 2) return; // sort done!
+
+  JsvIterator pivot = jsvIteratorClone(head);
+  JsVar *pivotValue = jsvIteratorGetValue(&pivot);
+  /* We're just going to use the first entry (head) as the pivot...
+   * We'll move along with our iterator 'it', and if it < pivot then we'll
+   * swap the values over (hence moving pivot forwards)  */
+
+  int nlo = 0, nhigh = 0;
+  JsvIterator it = jsvIteratorClone(head); //
+  jsvIteratorNext(&it);
+
+  /* Partition and count sizes. */
+  while (--n && !jspIsInterrupted()) {
+    JsVar *itValue = jsvIteratorGetValue(&it);
+    if (_jswrap_array_sort_leq(itValue, pivotValue, compareFn)) {
+      nlo++;
+      /* 'it' <= 'pivot', so we need to move it behind.
+         In this diagram, P=pivot, L=it
+
+               l l l l l P h h h h h L
+                         |  \       /
+                          \  \_____/_
+                          _\______/  \
+                         / |         |
+                         | |         |
+               l l l l l L P h h h h h
+
+         It makes perfect sense now...
+      */
+      // first, get the old pivot value and overwrite it with the iterator value
+      jsvIteratorSetValue(&pivot, itValue); // no unlock needed
+      // now move pivot forwards, and set 'it' to the value the new pivot has
+      jsvIteratorNext(&pivot);
+      jsvUnLock(jsvIteratorSetValue(&it, jsvIteratorGetValue(&pivot)));
+      // finally set the pivot iterator to the pivot's value again
+      jsvIteratorSetValue(&pivot, pivotValue); // no unlock needed
+    } else {
+      nhigh++;
+      // Great, 'it' > 'pivot' so it's in the right place
+    }
+    jsvUnLock(itValue);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  jsvUnLock(pivotValue);
+
+  if (jspIsInterrupted()) return;
+
+  // now recurse
+  _jswrap_array_sort(head, nlo, compareFn);
+  jsvIteratorNext(&pivot);
+  _jswrap_array_sort(&pivot, nhigh, compareFn);
+  jsvIteratorFree(&pivot);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "sort",
+         "description" : "Do an in-place quicksort of the array",
+         "generate" : "jswrap_array_sort",
+         "params" : [ [ "var", "JsVar", "A function to use to compare array elements (or undefined)"] ],
+         "return" : [ "JsVar", "This array object" ]
+}*/
+JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
+  if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {
+    jsError("Expecting compare function, got %t", compareFn);
+    return 0;
+  }
+  JsvIterator it;
+
+  /* Arrays can be sparse and the iterators don't handle this
+    (we're not going to mess with indices) so we have to count
+     up the number of elements manually.
+
+     FIXME: sort is broken for sparse arrays anyway (it basically
+     ignores all the 'undefined' entries). I wonder whether just
+     compacting the array down to start from 0 before we start would
+     fix this?
+   */
+  int n=0;
+  if (jsvIsArray(array) || jsvIsObject(array)) {
+    jsvIteratorNew(&it, array);
+    while (jsvIteratorHasElement(&it)) {
+      n++;
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else {
+    n = (int)jsvGetLength(array);
+  }
+
+  jsvIteratorNew(&it, array);
+  _jswrap_array_sort(&it, n, compareFn);
+  jsvIteratorFree(&it);
+  return jsvLockAgain(array);
+}

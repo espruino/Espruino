@@ -345,3 +345,11 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   jsvArrayBufferIteratorFree(&itdst);
   jsvIteratorFree(&itsrc);
 }
+
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "sort",
+         "description" : "Do an in-place quicksort of the array",
+         "generate" : "jswrap_array_sort",
+         "params" : [ [ "var", "JsVar", "A function to use to compare array elements (or undefined)"] ],
+         "return" : [ "JsVar", "This array object" ]
+}*/
+// Steal the normal array's sort function for this
