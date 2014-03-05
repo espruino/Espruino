@@ -404,7 +404,7 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
   jsvIteratorFree(&pivot);
 }
 
-/*JSON{ "type":"method", "class": "Array", "name" : "sort",
+/*JSON{ "type":"method", "class": "Array", "name" : "sort", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Do an in-place quicksort of the array",
          "generate" : "jswrap_array_sort",
          "params" : [ [ "var", "JsVar", "A function to use to compare array elements (or undefined)"] ],
