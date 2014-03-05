@@ -1,4 +1,4 @@
-     1v56 :  ...
+     1v56 : Added atob and btoa (for base64 encode/decode) - fix #244
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

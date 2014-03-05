@@ -134,3 +134,121 @@ bool jswrap_isNaN(JsVar *v) {
   }
   return false;
 }
+
+
+NO_INLINE static int jswrap_btoa_encode(int c) {
+  c = c & 0x3F;
+  if (c<26) return 'A'+c;
+  if (c<52) return 'a'+c-26;
+  if (c<62) return '0'+c-52;
+  if (c==62) return '+';
+  return '/'; // c==63
+}
+
+NO_INLINE static int jswrap_atob_decode(int c) {
+  c = c & 0xFF;
+  if (c>='A' && c<='Z') return c-'A';
+  if (c>='a' && c<='z') return 26+c-'a';
+  if (c>='0' && c<='9') return 52+c-'0';
+  if (c=='+') return 62;
+  if (c=='/') return 63;
+  return -1; // not found
+}
+
+/*JSON{ "type":"function", "name" : "btoa", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Convert the supplied string (or array) into a base64 string",
+         "generate" : "jswrap_btoa",
+         "params" :  [ [ "binaryData", "JsVar", "A string of data to encode"] ],
+         "return" : ["JsVar", "A base64 encoded string"]
+}*/
+JsVar *jswrap_btoa(JsVar *binaryData) {
+  if (!jsvIsIterable(binaryData)) {
+    jsError("Expecting a string or array, got %t", binaryData);
+    return 0;
+  }
+  JsVar* base64Data = jsvNewFromEmptyString();
+  if (!base64Data) return 0;
+  JsvIterator itsrc;
+  JsvStringIterator itdst;
+  jsvIteratorNew(&itsrc, binaryData);
+  jsvStringIteratorNew(&itdst, base64Data, 0);
+
+
+  int padding = 0;
+  while (jsvIteratorHasElement(&itsrc)) {
+    int octet_a = (unsigned char)jsvIteratorGetIntegerValue(&itsrc)&255;
+    jsvIteratorNext(&itsrc);
+    int octet_b = 0, octet_c = 0;
+    if (jsvIteratorHasElement(&itsrc)) {
+      octet_b = jsvIteratorGetIntegerValue(&itsrc)&255;
+      jsvIteratorNext(&itsrc);
+      if (jsvIteratorHasElement(&itsrc)) {
+        octet_c = jsvIteratorGetIntegerValue(&itsrc)&255;
+        jsvIteratorNext(&itsrc);
+        padding = 0;
+      } else
+        padding = 1;
+    } else
+      padding = 2;
+
+    int triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+
+    jsvStringIteratorAppend(&itdst, (char)jswrap_btoa_encode(triple >> 18));
+    jsvStringIteratorAppend(&itdst, (char)jswrap_btoa_encode(triple >> 12));
+    jsvStringIteratorAppend(&itdst, (char)((padding>1)?'=':jswrap_btoa_encode(triple >> 6)));
+    jsvStringIteratorAppend(&itdst, (char)((padding>0)?'=':jswrap_btoa_encode(triple)));
+  }
+
+  jsvIteratorFree(&itsrc);
+  jsvStringIteratorFree(&itdst);
+
+  return base64Data;
+}
+
+
+/*JSON{ "type":"function", "name" : "atob", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Convert the supplied base64 string into a base64 string",
+         "generate" : "jswrap_atob",
+         "params" :  [ [ "binaryData", "JsVar", "A string of base64 data to decode"] ],
+         "return" : ["JsVar", "A string containing the decoded data"]
+}*/
+JsVar *jswrap_atob(JsVar *base64Data) {
+  if (!jsvIsString(base64Data)) {
+    jsError("Expecting a string, got %t", base64Data);
+    return 0;
+  }
+  JsVar* binaryData = jsvNewFromEmptyString();
+  if (!binaryData) return 0;
+  JsvStringIterator itsrc;
+  JsvStringIterator itdst;
+  jsvStringIteratorNew(&itsrc, base64Data, 0);
+  jsvStringIteratorNew(&itdst, binaryData, 0);
+  // skip whitespace
+  while (jsvStringIteratorHasChar(&itsrc) &&
+        isWhitespace(jsvStringIteratorGetChar(&itsrc)))
+    jsvStringIteratorNext(&itsrc);
+
+  while (jsvStringIteratorHasChar(&itsrc)) {
+    uint32_t triple = 0;
+    int i, valid=0;
+    for (i=0;i<4;i++) {
+      if (jsvStringIteratorHasChar(&itsrc)) {
+        int sextet = jswrap_atob_decode(jsvStringIteratorGetChar(&itsrc));
+        jsvStringIteratorNext(&itsrc);
+        if (sextet>=0) {
+          triple |= (unsigned int)(sextet) << ((3-i)*6);
+          valid=i;
+        }
+      }
+    }
+
+    if (valid>0) jsvStringIteratorAppend(&itdst, (char)(triple >> 16));
+    if (valid>1) jsvStringIteratorAppend(&itdst, (char)(triple >> 8));
+    if (valid>2) jsvStringIteratorAppend(&itdst, (char)(triple));
+  }
+
+  jsvStringIteratorFree(&itsrc);
+  jsvStringIteratorFree(&itdst);
+
+  return binaryData;
+}
