@@ -141,6 +141,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
       dst = jsvNewFromInteger(jshSPISend(device, -1)); // retrieve the byte (no send!)
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
+    if (!dst) return 0;
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, srcdata);
     int incount = 0, outcount = 0;
@@ -190,6 +191,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     JsVar *lenVar = jsvNewFromInteger(jsvGetLength(srcdata));
     dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, lenVar,0,0);
     jsvUnLock(lenVar);
+    if (!dst) return 0;
     JsvIterator it;
     JsvArrayBufferIterator dstit;
     jsvIteratorNew(&it, srcdata);
