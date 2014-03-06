@@ -361,16 +361,14 @@ JsVarFloat jshPinAnalog(Pin pin) {
   return value;
 }
 
+int jshPinAnalogFast(Pin pin) {
+}
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
   } else jsError("Invalid pin!");
-}
-
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
- // FIXME
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
@@ -519,3 +517,20 @@ bool jshSleep(JsSysTime timeUntilWake) {
     usleep(usecs); 
   return true;
 }
+
+void jshUtilTimerDisable() {
+}
+
+void jshUtilTimerReschedule(JsSysTime period) {
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+}
+
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  return JSH_NOTHING;
+}
+
+void jshSetOutputValue(JshPinFunction func, int value) {
+}
+

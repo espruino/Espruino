@@ -132,6 +132,7 @@ USB=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
 CHIP=STM32F103RB
+SAVE_ON_FLASH=1
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
@@ -205,9 +206,8 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
-USB=1
+#USB=1
 USE_GRAPHICS=1
-#USE_LCD_FSMC=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
 CHIP=STM32F429
@@ -348,6 +348,7 @@ src/jswrap_arraybuffer.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_onewire.c \
+src/jswrap_waveform.c \
 src/jswrap_io.c
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
@@ -360,6 +361,7 @@ src/jsparse.c \
 src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
+src/jstimer.c \
 $(WRAPPERFILE)
 CPPSOURCES =
 
@@ -469,7 +471,7 @@ DEFINES += -DUSE_GRAPHICS
 WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 INCLUDE += -I$(ROOT)/libs/graphics
 SOURCES += \
-libs/graphics/bitmap_font_8x8.c \
+libs/graphics/bitmap_font_4x6.c \
 libs/graphics/graphics.c \
 libs/graphics/lcd_arraybuffer.c \
 libs/graphics/lcd_js.c

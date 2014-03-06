@@ -50,6 +50,9 @@ bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents);
 
+/// Execute the Object.toString function on an object (if we can find it)
+JsVar *jspObjectToString(JsVar *obj);
+
 /** When parsing, this enum defines whether
  we are executing or not */
 typedef enum  {

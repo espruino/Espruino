@@ -8,14 +8,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for SD card access
+ * 3x5 LCD font
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
 
-void wrap_fat_kill();
-JsVar *wrap_fat_readdir(JsVar *path);
-void wrap_fat_writeFile(JsVar *path, JsVar *data);
-void wrap_fat_appendFile(JsVar *path, JsVar *data);
-JsVar *wrap_fat_readFile(JsVar *path);
-bool wrap_fat_unlink(JsVar *path);
+#include "graphics.h"
+
+void graphicsDrawChar4x6(JsGraphics *gfx, short x1, short y1, char ch);

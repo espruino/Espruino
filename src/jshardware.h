@@ -97,13 +97,22 @@ JshPinState jshPinGetState(Pin pin);
 
 
 bool jshPinInput(Pin pin);
+
+//s Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin);
+/// Returns a quickly-read analog value in the range 0-65535
+int jshPinAnalogFast(Pin pin);
+
 void jshPinOutput(Pin pin, bool value);
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 void jshPinWatch(Pin pin, bool shouldWatch);
-/// returns false if timer queue was full...
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value);
+
+/// Given a Pin, return the current pin function associated with it
+JshPinFunction jshGetCurrentPinFunction(Pin pin);
+
+/// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value);
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device);
@@ -214,6 +223,15 @@ bool jshFlashContainsCode();
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake);
 
+/// Utility timer handling functions ------------------------------
+
+/// Start the timer and get it to interrupt after 'period'
+void jshUtilTimerStart(JsSysTime period);
+/// Reschedult the timer (it should already be running) to interrupt after 'period'
+void jshUtilTimerReschedule(JsSysTime period);
+/// Stop the timer
+void jshUtilTimerDisable();
+
 // ---------------------------------------------- LOW LEVEL
 #ifdef ARM
 // ----------------------------------------------------------------------------
@@ -243,5 +261,16 @@ JsVarFloat jshReadVRef();
 #define SPI_I2S_SendData SPI_I2S_SendData16
 #define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #endif
+
+#ifdef STM32F4
+#define WAIT_UNTIL_N_CYCLES 10000000
+#else
+#define WAIT_UNTIL_N_CYCLES 2000000
+#endif
+#define WAIT_UNTIL(CONDITION, REASON) { \
+    int timeout = WAIT_UNTIL_N_CYCLES;                                              \
+    while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
+    if (timeout<=0 || jspIsInterrupted()) { jspSetInterrupted(true); jsErrorInternal("Timeout on "REASON); }  \
+}
 
 #endif /* JSHARDWARE_H_ */

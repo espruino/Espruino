@@ -313,3 +313,43 @@ JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, J
 
   return ya*(1-ay) + yb*ay;
 }
+
+/*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "set",
+         "description" : "Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`",
+         "generate" : "jswrap_arraybufferview_set",
+         "params" : [ [ "arr", "JsVar", "Floating point index to access" ], ["offset","int32","The offset in this array at which to write the values (optional)"] ]
+}*/
+void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
+  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
+    jsError("Expecting first argument to be an array, not %t", arr);
+    return;
+  }
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  JsvArrayBufferIterator itdst;
+  jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
+
+  bool useInts = JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
+
+  while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
+    if (useInts) {
+      jsvArrayBufferIteratorSetIntegerValue(&itdst, jsvIteratorGetIntegerValue(&itsrc));
+    } else {
+      JsVar *value = jsvIteratorGetValue(&itsrc);
+      jsvArrayBufferIteratorSetValue(&itdst, value);
+      jsvUnLock(value);
+    }
+    jsvArrayBufferIteratorNext(&itdst);
+    jsvIteratorNext(&itsrc);
+  }
+  jsvArrayBufferIteratorFree(&itdst);
+  jsvIteratorFree(&itsrc);
+}
+
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "sort", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Do an in-place quicksort of the array",
+         "generate" : "jswrap_array_sort",
+         "params" : [ [ "var", "JsVar", "A function to use to compare array elements (or undefined)"] ],
+         "return" : [ "JsVar", "This array object" ]
+}*/
+// Steal the normal array's sort function for this

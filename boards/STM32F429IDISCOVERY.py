@@ -90,18 +90,18 @@ devices = {
             'pin_d16' : 'B1',
             'pin_d16' : 'G6',
             'pin_rd' : 'D12', # RDX
-            'pin_wr' : 'D13',# WRQ
-            'pin_cs' : 'C2', # CSX
+            'pin_wr' : 'D13',# WRQ (or SPI DC - data=1/command=0)
+            'pin_cs' : 'C2', # SPI CS (enable=0) 
             'pin_en' : 'F10',
             'pin_vsync' : 'A4',
             'pin_hsync' : 'C6',
             'pin_dotlck' : 'G7',
-            'pin_dc' : 'F7', # DCX
-            'pin_sda' : 'F9',
-            'pin_im0' : 'D2', # pulled to 0
-            'pin_im1' : 'D4', # pulled to 1
-            'pin_im2' : 'D5', # pulled to 1
-            'pin_im3' : 'D7', # pulled to 0
+            'pin_dc' : 'F7', # SPI CLK
+            'pin_sda' : 'F9', # SPI SDI/SDO
+            'pin_im0' : 'D2', # solder bridge normally open, pulled to 0
+            'pin_im1' : 'D4', # solder bridge normally open, pulled to 1
+            'pin_im2' : 'D5', # solder bridge normally open, pulled to 1
+            'pin_im3' : 'D7', # solder bridge normally open, pulled to 0
           },
   'SDRAM' : {
             'pin_sdcke1' : 'B5', 

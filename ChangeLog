@@ -1,6 +1,47 @@
+     1v56 : Added atob and btoa (for base64 encode/decode) - fix #244
+            Added Array.sort() - fix #220
+
+     1v55 : Add String.toUpperCase/LowerCase
+            Fix E.getAnalogVRef() regression
+            Add Math.tan()
+            Ensure Double/Integer have Number as a prototype (fixes: Number.prototype.n=function();(5.0).n() )
+            ||/&& now doesn't use booleans (fix #251)
+            More resilient parseInt behaviour
+            Allow data listener for HTTP POST (fix #226)
+            Stop JSON.parse using eval (fix #249, fix #208)
+            `.toString` is now called when a String is needed from an Object (fix #57)
+            Fixed reference count error when looking for functions in an Object's prototype
+            Fix issues with Numbers as Strings in maths (eg. '-5'|0)
+            Make sure NaN|0 == 0 (and not some huge number)
+            Ensure that [1.23]*1.0 == 1.23 (fix #91)
+            Don't pull in cos (use sin(x+PI/2))
+            Try and save flash memory on Olimexino board
+     
+     1v54 : Add 4x6 font (instead of 8x8)
+            Fix occasional instability with Waveform read/write
+            Refactor JSON to improve speed and code size (using cbprintf)
+            Now print special 'short' JSON for console.log (and the REPL) (fix #47)
+            JSON.stringify now doesn't print functions (fix #207)
+            Refectoring jsparse.c to name functions after their JS Grammar names
+            IF statement now accepts commas
+            Ensure that undefined+0 == NaN (only worked for floats previously)
+            Fix assert fail (issue unlocking when executing built-in functions)
+            Fix setInterval regression in dump (and tidy up code)
+            FS lib now resets when issuing the reset() command (fix #200)
+
      1v53 : Attempt to deal with the case where CC3000 crashes on initialization
             Fix regression with setInterval/timeout and saving
             Fix issue with saving Serial baud rates
+            Added ArrayBuffer.set
+            Use jswrapper.c for executing idle/init/kill events for libraries (cleans up jsinteractive.c)
+            Added beta 'Waveform' API to allow simple audio output
+            Improved non-deep-sleep power draw by allowing Espruino to wake itself on the Utility timer (rather than SysTick)
+            Allowed Waveform API to output on both DAC and PWM
+            Improve auto-generated documentation
+            Speed up ArrayBuffer.set and allow Strings to be used properly
+            Fix jsvArrayJoin if memory runs out
+            Added E.sum and E.variance array operations
+            Added Waveform Analog Input 
 
      1v52 : Fix memory leak in Array.slice
             Fix broken Serial initialisation (partial fix for #241)

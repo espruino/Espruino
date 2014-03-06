@@ -21,6 +21,7 @@
 #endif
 
 #include "jshardware.h"
+#include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -70,17 +71,6 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
 #endif
-
-#ifdef STM32F4
-#define WAIT_UNTIL_N_CYCLES 10000000
-#else
-#define WAIT_UNTIL_N_CYCLES 2000000
-#endif
-#define WAIT_UNTIL(CONDITION, REASON) { \
-    int timeout = WAIT_UNTIL_N_CYCLES;                                              \
-    while (!(CONDITION) && !jspIsInterrupted() && (timeout--)>0);                  \
-    if (timeout<=0 || jspIsInterrupted()) { jspSetInterrupted(true); jsErrorInternal("Timeout on "REASON); }  \
-}
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
@@ -471,6 +461,52 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     jsErrorInternal("setDeviceClockCmd: Unknown Device %d", (int)device);
   }
   return ptr;
+}
+
+TIM_TypeDef* getTimerFromPinFunction(JshPinFunction device) {
+  switch (device&JSH_MASK_TYPE) {
+    case JSH_TIMER1:
+      return TIM1;
+    case JSH_TIMER2:
+      return TIM2;
+    case JSH_TIMER3:
+      return TIM3;
+    case JSH_TIMER4:
+      return TIM4;
+#ifndef STM32F3
+    case JSH_TIMER5:
+      return TIM5;
+#endif
+/*        case JSH_TIMER6: // Not used for outputs
+      return TIM6;
+    case JSH_TIMER7: // Not used for outputs
+      return TIM7; */
+    case JSH_TIMER8:
+      return TIM8;
+#ifndef STM32F3
+    case JSH_TIMER9:
+      return TIM9;
+    case JSH_TIMER10:
+      return TIM10;
+    case JSH_TIMER11:
+      return TIM11;
+    case JSH_TIMER12:
+      return TIM12;
+    case JSH_TIMER13:
+      return TIM13;
+    case JSH_TIMER14:
+      return TIM14;
+#else
+    case JSH_TIMER15:
+      return TIM15;
+    case JSH_TIMER16:
+      return TIM16;
+    case JSH_TIMER17:
+      return TIM17;
+#endif
+
+  }
+  return 0;
 }
 
 USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
@@ -1275,9 +1311,10 @@ bool jshPinInput(Pin pin) {
 
 static unsigned char jshADCInitialised = 0;
 
-static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
+static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
   ADC_TypeDef *ADCx = stmADC(analog);
-    bool needs_init = false;
+  bool needs_init = false;
+  if (!fastConversion) {
     if (ADCx == ADC1) {
       if (!(jshADCInitialised&1)) {
         jshADCInitialised |= 1;
@@ -1375,33 +1412,34 @@ static NO_INLINE JsVarFloat jshAnalogRead(JsvPinInfoAnalog analog) {
       while(ADC_GetCalibrationStatus(ADCx));
     #endif
     }
-    // Configure channel
+  }
+  // Configure channel
 
-  #if defined(STM32F2) || defined(STM32F4)
-    uint8_t sampleTime = ADC_SampleTime_480Cycles;
-  #elif defined(STM32F3)
-    uint8_t sampleTime = ADC_SampleTime_601Cycles5;
-  #else
-    uint8_t sampleTime = ADC_SampleTime_239Cycles5/*ADC_SampleTime_55Cycles5*/;
-  #endif
-    ADC_RegularChannelConfig(ADCx, stmADCChannel(analog), 1, sampleTime);
+#if defined(STM32F2) || defined(STM32F4)
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_3Cycles : ADC_SampleTime_480Cycles;
+#elif defined(STM32F3)
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_7Cycles5 : ADC_SampleTime_601Cycles5;
+#else
+  uint8_t sampleTime = fastConversion ? ADC_SampleTime_7Cycles5 : ADC_SampleTime_239Cycles5;
+#endif
+  ADC_RegularChannelConfig(ADCx, stmADCChannel(analog), 1, sampleTime);
 
-    // Start the conversion
-  #if defined(STM32F2) || defined(STM32F4)
-    ADC_SoftwareStartConv(ADCx);
-  #elif defined(STM32F3)
-    ADC_StartConversion(ADCx);
-  #else
-    ADC_SoftwareStartConvCmd(ADCx, ENABLE);
-  #endif
+  // Start the conversion
+#if defined(STM32F2) || defined(STM32F4)
+  ADC_SoftwareStartConv(ADCx);
+#elif defined(STM32F3)
+  ADC_StartConversion(ADCx);
+#else
+  ADC_SoftwareStartConvCmd(ADCx, ENABLE);
+#endif
 
-    // Wait until conversion completion
+  // Wait until conversion completion
 
 
-    WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
+  WAIT_UNTIL(ADC_GetFlagStatus(ADCx, ADC_FLAG_EOC) != RESET, "ADC");
 
-    // Get the conversion value
-    return ADC_GetConversionValue(ADCx) / (JsVarFloat)65535;
+  // Get the conversion value
+  return (int)ADC_GetConversionValue(ADCx);
 }
 
 JsVarFloat jshPinAnalog(Pin pin) {
@@ -1412,7 +1450,12 @@ JsVarFloat jshPinAnalog(Pin pin) {
   jshSetPinStateIsManual(pin, false);
   jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 
-  return jshAnalogRead(pinInfo[pin].analog);
+  return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65535;
+}
+
+/// Returns a quickly-read analog value in the range 0-65535
+int jshPinAnalogFast(Pin pin) {
+  return jshAnalogRead(pinInfo[pin].analog, true);
 }
 
 #ifdef STM32F1
@@ -1422,8 +1465,8 @@ JsVarFloat jshReadTemperature() {
   ADC1->CR2 |= ADC_CR2_TSVREFE;
   jshDelayMicroseconds(10);
   // read
-  JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
-  JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16);
+  JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
+  JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16, false) / (JsVarFloat)65535;
   JsVarFloat vSense = valTemp * 1.2 / varVolts;
   // disable sensor
   ADC1->CR2 &= ~ADC_CR2_TSVREFE;
@@ -1436,7 +1479,7 @@ JsVarFloat jshReadVRef() {
   ADC1->CR2 |= ADC_CR2_TSVREFE;
   jshDelayMicroseconds(10);
   // read
-  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17);
+  JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
   // disable sensor
   ADC1->CR2 &= ~ADC_CR2_TSVREFE;
   return 1.20 / r;
@@ -2217,8 +2260,6 @@ bool jshFlashContainsCode() {
   return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
 }
 
-extern void SetSysClock(void);
-
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 
@@ -2248,6 +2289,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
    */
   if (allowDeepSleep &&  // from setDeepSleep
       (timeUntilWake > (JSSYSTIME_RTC*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't wake
+      !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
       jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
@@ -2319,17 +2361,26 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jsiSetSleep(false);
   } else
 #endif
+  {
+    JsSysTime sysTickTime;
 #ifdef USE_RTC
-  if (timeUntilWake > averageSysTickTime*5/4) {
+    sysTickTime = averageSysTickTime*5/4;
 #else
-  if (timeUntilWake > SYSTICK_RANGE*5/4) {
+    sysTickTime = SYSTICK_RANGE*5/4;
 #endif
+    if (timeUntilWake < sysTickTime) {
+      jstSetWakeUp(timeUntilWake);
+    } else {
+      // we're going to wake on a System Tick timer anyway, so don't bother
+    }
+
     // TODO: we can do better than this. look at lastSysTickTime
     jsiSetSleep(true);
     __WFI(); // Wait for Interrupt
     jsiSetSleep(false);
     return true;
   }
+
 
   return false;
 
@@ -2349,48 +2400,52 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif*/
 }
 
-typedef enum {
-  UT_NONE,
-  UT_PULSE_ON,
-  UT_PULSE_OFF,
-  UT_PIN_SET_RELOAD_EVENT,
-  UT_PIN_SET,
-} PACKED_FLAGS UtilTimerType;
-
-#define UTILTIMERTASK_PIN_COUNT (4)
-typedef struct UtilTimerTask {
-  JsSysTime time; // time at which to set pins
-  Pin pins[UTILTIMERTASK_PIN_COUNT]; // pins to set
-  uint8_t value; // value to set pins to
-} PACKED_FLAGS UtilTimerTask;
-
-#define UTILTIMERTASK_TASKS (16) // MUST BE POWER OF 2
-UtilTimerTask utilTimerTasks[UTILTIMERTASK_TASKS];
-volatile unsigned char utilTimerTasksHead = 0;
-volatile unsigned char utilTimerTasksTail = 0;
 
 
-volatile UtilTimerType utilTimerType = UT_NONE;
-unsigned int utilTimerBit;
-bool utilTimerState;
-unsigned int utilTimerData;
-uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
-Pin utilTimerPin;
 
-void _utilTimerDisable() {
-  utilTimerType = UT_NONE;
+/// Called when the timer is fired
+void UTIL_TIMER_IRQHandler(void) {
+  // clear interrupt flag
+  if (TIM_GetITStatus(UTIL_TIMER, TIM_IT_Update) != RESET) {
+    TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+    jstUtilTimerInterruptHandler();
+  }
+}
+
+void jshUtilTimerDisable() {
   TIM_Cmd(UTIL_TIMER, DISABLE);
 }
 
-void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
-  if (utilTimerType != UT_PIN_SET) {
-    jshSetPinStateIsManual(utilTimerPin, false);
-    jshPinSetState(utilTimerPin, JSHPINSTATE_GPIO_OUT);
-  }
+void jshUtilTimerReschedule(JsSysTime period) {
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+  if (clockTicks<0) clockTicks=0;
+  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+  if (prescale>65535) prescale=65535;
+  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+  TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
+  TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
+  TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
+  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
+  TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+  //jsiConsolePrint("Starting\n");
+  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+  if (clockTicks<0) clockTicks=0;
+  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+
+  // set up actual hardware
 
   /* TIM6 Periph clock enable */
   RCC_APB1PeriphClockCmd(UTIL_TIMER_APB1, ENABLE);
-
 
   /*Timer configuration------------------------------------------------*/
   TIM_ITConfig(UTIL_TIMER, TIM_IT_Update, DISABLE);
@@ -2400,8 +2455,8 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
 
   TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
   TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
-  TIM_TimeBaseInitStruct.TIM_Prescaler = prescale;
-  TIM_TimeBaseInitStruct.TIM_Period = initialPeriod;
+  TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
+  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
 
   //TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
@@ -2409,72 +2464,6 @@ void _utilTimerEnable(uint16_t prescale, uint16_t initialPeriod) {
   TIM_Cmd(UTIL_TIMER, ENABLE);  /* enable counter */
 }
 
-void _utilTimerSetPinStateAndReload() {
-  if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
-    // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
-    utilTimerType = UT_PIN_SET;
-  } else if (utilTimerType == UT_PULSE_ON) {
-    utilTimerType = UT_PULSE_OFF;
-    jshPinSetValue(utilTimerPin, utilTimerState);
-  } else if (utilTimerType == UT_PULSE_OFF) {
-    jshPinSetValue(utilTimerPin, !utilTimerState);
-     _utilTimerDisable();
-  /*} else if (utilTimerType == UT_PIN_SET_INITIAL_HACK) {
-    utilTimerType = UT_PIN_SET;*/
-  } else if (utilTimerType == UT_PIN_SET) {
-    //jshPinSetValue(LED4_PININDEX,1);
-    JsSysTime time = jshGetSystemTime();
-    // execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time<time) {
-      UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
-      int j;
-      for (j=0;j<UTILTIMERTASK_PIN_COUNT;j++) {
-        if (task->pins[j] == PIN_UNDEFINED) break;
-        jshPinSetValue(task->pins[j], (task->value >> j)&1);
-      }          
-      utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
-    }
-
-    // re-schedule the timer if there is something left to do
-    if (utilTimerTasksTail != utilTimerTasksHead) {
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-      int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-time)) / getSystemTimerFreq());
-      if (clockTicks<0) clockTicks=0;
-      int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-      if (prescale>65535) prescale=65535;
-      int ticks = (uint16_t)(clockTicks/(prescale+1));
-      if (ticks<1) ticks=1;
-      if (ticks>65535) ticks=65535;
-      TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
-      TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
-      TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
-      TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
-      TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
-    } else {
-      _utilTimerDisable();
-    }
-    //jshPinSetValue(LED4_PININDEX,0);
-  } else {
-    // What the??
-    _utilTimerDisable();
-  }
-
-}
-
-/// Called when the timer is fired
-void UTIL_TIMER_IRQHandler(void) {
-  // clear interrupt flag
-  if (TIM_GetITStatus(UTIL_TIMER, TIM_IT_Update) != RESET) {
-    TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
-    // handle
-    _utilTimerSetPinStateAndReload();
-  }
-}
-
-void _utilTimerWait() {
-  WAIT_UNTIL(utilTimerType == UT_NONE, "Utility Timer");
-}
 
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
@@ -2482,98 +2471,58 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
        jsError("Invalid pin!");
        return;
   }
-  _utilTimerWait();
-  if (pulseTime>0) {
-    unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-    int clockTicks = (int)(((JsVarFloat)timerFreq * pulseTime) / 1000);
-    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-
-    uint16_t ticks = (uint16_t)(clockTicks/(prescale+1));
-
-    utilTimerType = UT_PULSE_ON;
-    utilTimerState = pulsePolarity;
-    utilTimerPin = pin;
-
-
-    _utilTimerEnable((uint16_t)prescale, ticks);
-  }
-}
-
-bool jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
-  unsigned char nextHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-  if (nextHead == utilTimerTasksTail) { 
-/*    JsSysTime t = jshGetSystemTime();
-    jsiConsolePrint("Timer Queue full\n");
-    while (nextHead!=utilTimerTasksHead) {
-      jsiConsolePrint("Task ");
-      jsiConsolePrintInt(utilTimerTasks[nextHead].value);
-      jsiConsolePrint(" at ");
-      char buf[32];
-      ftoa_bounded(jshGetMillisecondsFromTime(utilTimerTasks[nextHead].time-t)/1000, buf, sizeof(buf));
-      jsiConsolePrint(buf);
-      jsiConsolePrint("s\n");
-      nextHead = (nextHead+1) & (UTILTIMERTASK_TASKS-1);
-    }*/
-
-    return false;
-  }
-
-  jshInterruptOff();  
-  int insertPos = utilTimerTasksTail;
-  // find out where to insert
-  while (insertPos != utilTimerTasksHead && utilTimerTasks[insertPos].time < time)
-    insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
-
-  if (utilTimerTasks[insertPos].time==time && utilTimerTasks[insertPos].pins[UTILTIMERTASK_PIN_COUNT-1]==PIN_UNDEFINED) {
-    // TODO: can we modify the call to jshPinOutputAtTime to do this without the seek with interrupts disabled?
-    // if the time is correct, and there is a free pin...
-    int i;
-    for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-      if (utilTimerTasks[insertPos].pins[i]==PIN_UNDEFINED) {
-        utilTimerTasks[insertPos].pins[i] = pin;
-        if (value) 
-          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value | (uint8_t)(1 << i);
-        else
-          utilTimerTasks[insertPos].value = utilTimerTasks[insertPos].value & (uint8_t)~(1 << i);
-        break; // all done
-      }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
   } else {
-    bool haveChangedTimer = insertPos==utilTimerTasksTail;
-    //jsiConsolePrint("Insert at ");jsiConsolePrintInt(insertPos);jsiConsolePrint(", Tail is ");jsiConsolePrintInt(utilTimerTasksTail);jsiConsolePrint("\n");
-    // shift items forward
-    int i = utilTimerTasksHead;
-    while (i != insertPos) {
-      unsigned char next = (i+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-      utilTimerTasks[i] = utilTimerTasks[next];
-      i = next;
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
     }
-    // add new item
-    utilTimerTasks[insertPos].time = time;
-    //jsiConsolePrint("Time is ");jsiConsolePrintInt(utilTimerTasks[insertPos].time);jsiConsolePrint("\n");
-    utilTimerTasks[insertPos].pins[0] = pin;
-    for (i=1;i<UTILTIMERTASK_PIN_COUNT;i++)
-      utilTimerTasks[insertPos].pins[i] = PIN_UNDEFINED;
-    utilTimerTasks[insertPos].value = value?0xFF:0;
-    utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
-    //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
-    // now set up timer if not already set up...
-    if (utilTimerType != UT_PIN_SET || haveChangedTimer) {
-      //jsiConsolePrint("Starting\n");
-      unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-      int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)(utilTimerTasks[utilTimerTasksTail].time-jshGetSystemTime())) / getSystemTimerFreq());
-      if (clockTicks<0) clockTicks=0;
-      int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-      int ticks = (uint16_t)(clockTicks/(prescale+1));
-      if (ticks<1) ticks=1;
-      if (ticks>65535) ticks=65535;
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      _utilTimerEnable((uint16_t)prescale, (uint16_t)ticks);
-      //jsiConsolePrintInt(utilTimerType);jsiConsolePrint("\n");
-    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
   }
-  jshInterruptOn();
-  return true;
 }
 
-// timer enabled  p *(unsigned int *)0x40001400
-// timer period  p *(unsigned int *)0x4000142C
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  // FIXME: This isn't actually right - we need to look at the hardware or store this info somewhere.
+  if (jshIsPinValid(pin)) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      JshPinFunction func = pinInfo[pin].functions[i];
+      if (JSH_PINFUNCTION_IS_TIMER(func) ||
+          JSH_PINFUNCTION_IS_DAC(func))
+        return func;
+    }
+  }
+  return JSH_NOTHING;
+}
+
+// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+  if (JSH_PINFUNCTION_IS_DAC(func)) {
+    uint16_t dacVal = (uint16_t)(value<<8);
+    switch (func & JSH_MASK_INFO) {
+    case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
+    case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
+    }
+  } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
+    TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
+    if (TIMx) {
+      uint16_t period = TIMx->ARR; // No getter available
+      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 8);
+      switch (func & JSH_MASK_TIMER_CH) {
+      case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;
+      case JSH_TIMER_CH2:  TIM_SetCompare2(TIMx, timerVal); break;
+      case JSH_TIMER_CH3:  TIM_SetCompare3(TIMx, timerVal); break;
+      case JSH_TIMER_CH4:  TIM_SetCompare4(TIMx, timerVal); break;
+      }
+    }
+  } else {
+    assert(0); // can't handle this yet...
+  }
+}

@@ -20,9 +20,9 @@
 JsExecInfo execInfo;
 
 // ----------------------------------------------- Forward decls
-JsVar *jspeBase();
-JsVar *jspeBaseWithComma();
-JsVar *jspeUnary();
+JsVar *jspeAssignmentExpression();
+JsVar *jspeExpression();
+JsVar *jspeUnaryExpression();
 JsVar *jspeBlock();
 JsVar *jspeStatement();
 // ----------------------------------------------- Utils
@@ -149,7 +149,8 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
         child = jspeiFindChildFromStringInParents(inheritsFrom, name);
       jsvUnLock(inheritsFrom);
       if (child) return child;
-    }
+    } else
+      jsvUnLock(inheritsFrom);
   } else { // Not actually an object - but might be an array/string/etc
     const char *objectName = jswGetBasicObjectName(parent);
     while (objectName) {
@@ -246,11 +247,11 @@ NO_INLINE bool jspParseEmptyFunction() {
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
   }
   JSP_MATCH(')');
   return true;
@@ -262,11 +263,11 @@ NO_INLINE JsVar *jspParseSingleFunction() {
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (execInfo.lex->tk != ')')
-    v = jsvSkipNameAndUnLock(jspeBase());
+    v = jsvSkipNameAndUnLock(jspeAssignmentExpression());
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH_WITH_RETURN(',', v);
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
   }
   JSP_MATCH_WITH_RETURN(')', v);
   return v;
@@ -281,28 +282,28 @@ NO_INLINE bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsV
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (a && execInfo.lex->tk != ')') {
-    *a = jspeBase();
+    *a = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnLock(*a);
   }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *b = jspeBase();
+    *b = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnLock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *c = jspeBase();
+    *c = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnLock(*c);
   }
   if (d && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *d = jspeBase();
+    *d = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnLock(*d);
   }
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
   }
   JSP_MATCH(')');
   return true;
@@ -321,48 +322,48 @@ NO_INLINE bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, Js
   JSP_MATCH(LEX_ID);
   JSP_MATCH('(');
   if (a && execInfo.lex->tk != ')') {
-    *a = jspeBase();
+    *a = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_A)) *a = jsvSkipNameAndUnLock(*a);
   }
   if (b && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *b = jspeBase();
+    *b = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_B)) *b = jsvSkipNameAndUnLock(*b);
   }
   if (c && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *c = jspeBase();
+    *c = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_C)) *c = jsvSkipNameAndUnLock(*c);
   }
   if (d && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *d = jspeBase();
+    *d = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_D)) *d = jsvSkipNameAndUnLock(*d);
   }
   if (e && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *e = jspeBase();
+    *e = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_E)) *e = jsvSkipNameAndUnLock(*e);
   }
   if (f && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *f = jspeBase();
+    *f = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_F)) *f = jsvSkipNameAndUnLock(*f);
   }
   if (g && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *g = jspeBase();
+    *g = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_G)) *g = jsvSkipNameAndUnLock(*g);
   }
   if (h && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    *h = jspeBase();
+    *h = jspeAssignmentExpression();
     if (!(skipName&JSP_NOSKIP_H)) *h = jsvSkipNameAndUnLock(*h);
   }
   // throw away extra params
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
     JSP_MATCH(',');
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
   }
   JSP_MATCH(')');
   return true;
@@ -375,7 +376,7 @@ NO_INLINE JsVar *jspParseFunctionAsArray() {
   if (!arr) return 0; // out of memory
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('(', jsvUnLock(arr), 0);
   while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
-    JsVar *arg = jsvSkipNameAndUnLock(jspeBase());
+    JsVar *arg = jsvSkipNameAndUnLock(jspeAssignmentExpression());
     jsvArrayPushAndUnLock(arr, arg); // even if undefined
     if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',', jsvUnLock(arr), 0);
   }
@@ -529,7 +530,7 @@ NO_INLINE JsVar *jspeFunctionDefinition() {
 NO_INLINE bool jspeParseFunctionCallBrackets() {
   JSP_MATCH('(');
   while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
-    jsvUnLock(jspeBase());
+    jsvUnLock(jspeAssignmentExpression());
     if (execInfo.lex->tk!=')') JSP_MATCH(',');
   }
   if (!JSP_HAS_ERROR) JSP_MATCH(')');
@@ -583,8 +584,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jslSeekTo(execInfo.lex, execInfo.lex->tokenLastStart); // NASTY! because jswHandleFunctionCall expects to parse IDs
         JsVar *res = jswHandleFunctionCall(0, 0, buf);
         // but we didn't find anything - so just carry on...
-        if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED)
+        if (res!=JSW_HANDLEFUNCTIONCALL_UNHANDLED) {
+          jslCharPosFree(&pos);
           return res;
+        }
         jslSeekToP(execInfo.lex, &pos); // NASTY!
         jslCharPosFree(&pos);
       }
@@ -616,7 +619,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           JsVar *value = 0;
           // ONLY parse this if it was supplied, otherwise leave 0 (undefined)
           if (execInfo.lex->tk!=')')
-            value = jspeBase();
+            value = jspeAssignmentExpression();
           // and if execute, copy it over
           if (JSP_SHOULD_EXECUTE) {
             value = jsvSkipNameAndUnLock(value);
@@ -662,7 +665,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
     if (!returnVarName) // out of memory
       jspSetError();
-    //jsvTrace(jsvGetRef(functionRoot), 5); // debugging
 
     if (!JSP_HAS_ERROR) {
       if (jsvIsNative(function)) {
@@ -681,7 +683,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
         if (functionScope) {
             JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-            //jsvTrace(jsvGetRef(functionScopeVar),5);
             jspeiLoadScopesFromVar(functionScopeVar);
             jsvUnLock(functionScopeVar);
             jsvUnLock(functionScope);
@@ -812,7 +813,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
 
               if (child) {
                 // it was found - no need for name ptr now, so match!
-                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
               } else { // NOT FOUND...
                 /* Check for builtins via separate function
                  * This way we save on RAM for built-ins because all comes out of program code.
@@ -839,13 +840,13 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                     jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                     jspSetError();
                   }
-                  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
                 }
               }
             } else {
                 jsErrorAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastStart);
                 jspSetError();
-                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);, child);
+                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
             }
             jsvUnLock(parent);
             parent = aVar;
@@ -858,7 +859,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
       } else if (execInfo.lex->tk == '[') { // ------------------------------------- Array Access
           JsVar *index;
           JSP_MATCH('[');
-          index = jspeBase();
+          index = jspeAssignmentExpression();
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock(parent);jsvUnLock(index);, a);
           if (JSP_SHOULD_EXECUTE) {
             /* Index filtering (bug #19) - if we have an array index A that is:
@@ -1037,7 +1038,7 @@ NO_INLINE JsVar *jspeFactorObject() {
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
       if (JSP_SHOULD_EXECUTE) {
         JsVar *valueVar;
-        JsVar *value = jspeBase(); // value can be 0 (could be undefined!)
+        JsVar *value = jspeAssignmentExpression(); // value can be 0 (could be undefined!)
         valueVar = jsvSkipNameAndUnLock(value);
         varName = jsvMakeIntoVariableName(varName, valueVar);
         jsvAddName(contents, varName);
@@ -1073,7 +1074,7 @@ NO_INLINE JsVar *jspeFactorArray() {
       JsVar *a;
       JsVar *aVar;
       JsVar *indexName;
-      a = jspeBase();
+      a = jspeAssignmentExpression();
       aVar = jsvSkipNameAndUnLock(a);
       indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
       if (indexName) { // could be out of memory
@@ -1082,7 +1083,7 @@ NO_INLINE JsVar *jspeFactorArray() {
       }
       jsvUnLock(aVar);
     } else {
-      jsvUnLock(jspeBase());
+      jsvUnLock(jspeAssignmentExpression());
     }
     // no need to clean here, as it will definitely be used
     if (execInfo.lex->tk != ']') JSP_MATCH_WITH_RETURN(',', contents);
@@ -1109,7 +1110,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *prototypeName) {
 
 NO_INLINE JsVar *jspeFactorTypeOf() {
   JSP_MATCH(LEX_R_TYPEOF);
-  JsVar *a = jspeUnary();
+  JsVar *a = jspeUnaryExpression();
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
     a = jsvSkipNameAndUnLock(a);
@@ -1149,7 +1150,7 @@ NO_INLINE JsVar *jspeFactor() {
         JsVar *a = 0;
         JSP_MATCH('(');
         if (!jspCheckStackPosition()) return 0;
-        a = jspeBaseWithComma();
+        a = jspeExpression();
         if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
         return a;
     } else if (execInfo.lex->tk==LEX_R_TRUE) {
@@ -1221,7 +1222,7 @@ NO_INLINE JsVar *jspeFactor() {
     return 0;
 }
 
-NO_INLINE JsVar *__jspePostfix(JsVar *a) {
+NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
   while (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
     int op = execInfo.lex->tk;
     JSP_MATCH(execInfo.lex->tk);
@@ -1242,12 +1243,12 @@ NO_INLINE JsVar *__jspePostfix(JsVar *a) {
   return a;
 }
 
-NO_INLINE JsVar *jspePostfix() {
+NO_INLINE JsVar *jspePostfixExpression() {
   JsVar *a;
   if (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
       int op = execInfo.lex->tk;
       JSP_MATCH(execInfo.lex->tk);
-      a = jspePostfix();
+      a = jspePostfixExpression();
       if (JSP_SHOULD_EXECUTE) {
           JsVar *one = jsvNewFromInteger(1);
           JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
@@ -1258,37 +1259,37 @@ NO_INLINE JsVar *jspePostfix() {
       }
   } else
     a = jspeFactorFunctionCall();
-  return __jspePostfix(a);
+  return __jspePostfixExpression(a);
 }
 
-NO_INLINE JsVar *jspeUnary() {
+NO_INLINE JsVar *jspeUnaryExpression() {
     if (execInfo.lex->tk=='!' || execInfo.lex->tk=='~' || execInfo.lex->tk=='-' || execInfo.lex->tk=='+') {
       short tk = execInfo.lex->tk;
       JSP_MATCH(execInfo.lex->tk);
       if (!JSP_SHOULD_EXECUTE) {
-        return jspePostfix();
+        return jspePostfixExpression();
       }
       if (tk=='!') { // logical not
-        return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
+        return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
       } else if (tk=='~') { // bitwise not
-        return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jspeUnary())));
+        return jsvNewFromInteger(~jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
       } else if (tk=='-') { // unary minus
-        return jsvNegateAndUnLock(jspeUnary()); // names already skipped
+        return jsvNegateAndUnLock(jspeUnaryExpression()); // names already skipped
       }  else if (tk=='+') { // unary plus (convert to number)
-        return jsvAsNumber(jspeUnary()); // names already skipped
+        return jsvAsNumber(jspeUnaryExpression()); // names already skipped
       }
       assert(0);
       return 0;
     } else
-      return jspePostfix();
+      return jspePostfixExpression();
 }
 
-NO_INLINE JsVar *__jspeTerm(JsVar *a) {
+NO_INLINE JsVar *__MultiplicativeExpression(JsVar *a) {
     while (execInfo.lex->tk=='*' || execInfo.lex->tk=='/' || execInfo.lex->tk=='%') {
         JsVar *b;
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
-        b = jspeUnary();
+        b = jspeUnaryExpression();
         if (JSP_SHOULD_EXECUTE) {
           JsVar *res = jsvMathsOpSkipNames(a, b, op);
           jsvUnLock(a); a = res;
@@ -1298,15 +1299,15 @@ NO_INLINE JsVar *__jspeTerm(JsVar *a) {
     return a;
 }
 
-NO_INLINE JsVar *jspeTerm() {
-    return __jspeTerm(jspeUnary());
+NO_INLINE JsVar *jspeMultiplicativeExpression() {
+    return __MultiplicativeExpression(jspeUnaryExpression());
 }
 
-NO_INLINE JsVar *__jspeExpression(JsVar *a) {
+NO_INLINE JsVar *__jspeAdditiveExpression(JsVar *a) {
   while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-') {
       int op = execInfo.lex->tk;
       JSP_MATCH(execInfo.lex->tk);
-      JsVar *b = jspeTerm();
+      JsVar *b = jspeMultiplicativeExpression();
       if (JSP_SHOULD_EXECUTE) {
           // not in-place, so just replace
         JsVar *res = jsvMathsOpSkipNames(a, b, op);
@@ -1318,16 +1319,16 @@ NO_INLINE JsVar *__jspeExpression(JsVar *a) {
 }
 
 
-NO_INLINE JsVar *jspeExpression() {
-    return __jspeExpression(jspeTerm());
+NO_INLINE JsVar *jspeAdditiveExpression() {
+    return __jspeAdditiveExpression(jspeMultiplicativeExpression());
 }
 
-NO_INLINE JsVar *__jspeShift(JsVar *a) {
+NO_INLINE JsVar *__jspeShiftExpression(JsVar *a) {
   if (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
     JsVar *b;
     int op = execInfo.lex->tk;
     JSP_MATCH(op);
-    b = jspeExpression();
+    b = jspeAdditiveExpression();
     if (JSP_SHOULD_EXECUTE) {
       JsVar *res = jsvMathsOpSkipNames(a, b, op);
       jsvUnLock(a); a = res;
@@ -1337,11 +1338,11 @@ NO_INLINE JsVar *__jspeShift(JsVar *a) {
   return a;
 }
 
-NO_INLINE JsVar *jspeShift() {
-  return __jspeShift(jspeExpression());
+NO_INLINE JsVar *jspeShiftExpression() {
+  return __jspeShiftExpression(jspeAdditiveExpression());
 }
 
-NO_INLINE JsVar *__jspeCondition(JsVar *a) {
+NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
     JsVar *b;
     while (execInfo.lex->tk==LEX_EQUAL || execInfo.lex->tk==LEX_NEQUAL ||
            execInfo.lex->tk==LEX_TYPEEQUAL || execInfo.lex->tk==LEX_NTYPEEQUAL ||
@@ -1351,7 +1352,7 @@ NO_INLINE JsVar *__jspeCondition(JsVar *a) {
            (execInfo.lex->tk==LEX_R_IN && !(execInfo.execute&EXEC_FOR_INIT))) {
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
-        b = jspeShift();
+        b = jspeShiftExpression();
         if (JSP_SHOULD_EXECUTE) {
           JsVar *res = 0;
           if (op==LEX_R_IN) {
@@ -1398,80 +1399,73 @@ NO_INLINE JsVar *__jspeCondition(JsVar *a) {
     return a;
 }
 
-NO_INLINE JsVar *jspeCondition() {
-  return __jspeCondition(jspeShift());
+NO_INLINE JsVar *jspeRelationalExpression() {
+  return __jspeRelationalExpression(jspeShiftExpression());
 }
 
-NO_INLINE JsVar *__jspeLogic(JsVar *a) {
-    JsVar *b = 0;
+NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a) {
     while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
-        bool shortCircuit = false;
-        bool boolean = false;
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
         
         // if we have short-circuit ops, then if we know the outcome
         // we don't bother to execute the other op. Even if not
         // we need to tell mathsOp it's an & or |
-        if (op==LEX_ANDAND) {
-            op = '&';
-            shortCircuit = !jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        } else if (op==LEX_OROR) {
-            op = '|';
-            shortCircuit = jsvGetBoolAndUnLock(jsvSkipName(a));
-            boolean = true;
-        }
-        
-        JSP_SAVE_EXECUTE();
-        if (shortCircuit) jspSetNoExecute(); 
-        b = jspeCondition();
-        if (shortCircuit) JSP_RESTORE_EXECUTE();
-        if (JSP_SHOULD_EXECUTE && !shortCircuit) {
-            JsVar *res;
-            if (boolean) {
-              JsVar *newa = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(a)));
-              JsVar *newb = jsvNewFromBool(jsvGetBoolAndUnLock(jsvSkipName(b)));
-              jsvUnLock(a); a = newa;
-              jsvUnLock(b); b = newb;
+        if (op==LEX_ANDAND || op==LEX_OROR) {
+            bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+            if ((!aValue && op==LEX_ANDAND) ||
+                (aValue && op==LEX_OROR)) {
+              // use first argument (A)
+              JSP_SAVE_EXECUTE();
+              jspSetNoExecute();
+              jsvUnLock(jspeRelationalExpression());
+              JSP_RESTORE_EXECUTE();
+            } else {
+              // use second argument (B)
+              jsvUnLock(a);
+              a = jspeRelationalExpression();
             }
-            res = jsvMathsOpSkipNames(a, b, op);
-            jsvUnLock(a); a = res;
+        } else { // else it's a more 'normal' logical expression - just use Maths
+          JsVar *b = jspeRelationalExpression();
+          if (JSP_SHOULD_EXECUTE) {
+              JsVar *res = jsvMathsOpSkipNames(a, b, op);
+              jsvUnLock(a); a = res;
+          }
+          jsvUnLock(b);
         }
-        jsvUnLock(b);
     }
     return a;
 }
 
-NO_INLINE JsVar *jspeLogic() {
-  return __jspeLogic(jspeCondition());
+NO_INLINE JsVar *jspeLogicalExpression() {
+  return __jspeLogicalExpression(jspeRelationalExpression());
 }
 
-NO_INLINE JsVar *__jspeTernary(JsVar *lhs) {
+NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
   if (execInfo.lex->tk=='?') {
     JSP_MATCH('?');
     if (!JSP_SHOULD_EXECUTE) {
       // just let lhs pass through
-      jsvUnLock(jspeBase());
+      jsvUnLock(jspeAssignmentExpression());
       JSP_MATCH(':');
-      jsvUnLock(jspeBase());
+      jsvUnLock(jspeAssignmentExpression());
     } else {
       bool first = jsvGetBoolAndUnLock(jsvSkipName(lhs));
       jsvUnLock(lhs);
       if (first) {
-        lhs = jspeBase();
+        lhs = jspeAssignmentExpression();
         JSP_MATCH(':');
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
-        jsvUnLock(jspeBase());
+        jsvUnLock(jspeAssignmentExpression());
         JSP_RESTORE_EXECUTE();
       } else {
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
-        jsvUnLock(jspeBase());
+        jsvUnLock(jspeAssignmentExpression());
         JSP_RESTORE_EXECUTE();
         JSP_MATCH(':');
-        lhs = jspeBase();
+        lhs = jspeAssignmentExpression();
       }
     }
   }
@@ -1479,11 +1473,11 @@ NO_INLINE JsVar *__jspeTernary(JsVar *lhs) {
   return lhs;
 }
 
-NO_INLINE JsVar *jspeTernary() {
-  return __jspeTernary(jspeLogic());
+NO_INLINE JsVar *jspeConditionalExpression() {
+  return __jspeConditionalExpression(jspeLogicalExpression());
 }
 
-NO_INLINE JsVar *__jspeBase(JsVar *lhs) {
+NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
     if (execInfo.lex->tk=='=' || execInfo.lex->tk==LEX_PLUSEQUAL || execInfo.lex->tk==LEX_MINUSEQUAL ||
                                  execInfo.lex->tk==LEX_MULEQUAL || execInfo.lex->tk==LEX_DIVEQUAL || execInfo.lex->tk==LEX_MODEQUAL ||
                                  execInfo.lex->tk==LEX_ANDEQUAL || execInfo.lex->tk==LEX_OREQUAL ||
@@ -1502,7 +1496,7 @@ NO_INLINE JsVar *__jspeBase(JsVar *lhs) {
 
         int op = execInfo.lex->tk;
         JSP_MATCH(execInfo.lex->tk);
-        rhs = jspeBase();
+        rhs = jspeAssignmentExpression();
         rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
         if (JSP_SHOULD_EXECUTE && lhs) {
             if (op=='=') {
@@ -1545,14 +1539,14 @@ NO_INLINE JsVar *__jspeBase(JsVar *lhs) {
 }
 
 
-NO_INLINE JsVar *jspeBase() {
-  return __jspeBase(jspeTernary());
+NO_INLINE JsVar *jspeAssignmentExpression() {
+  return __jspeAssignmentExpression(jspeConditionalExpression());
 }
 
-// jspeBase where ',' is allowed to add multiple expressions
-NO_INLINE JsVar *jspeBaseWithComma() {
+// jspeAssignmentExpression where ',' is allowed to add multiple expressions
+NO_INLINE JsVar *jspeExpression() {
   while (!JSP_HAS_ERROR) {
-    JsVar *a = jspeBase();
+    JsVar *a = jspeAssignmentExpression();
     if (execInfo.lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
     jsvUnLock(a);
@@ -1630,7 +1624,7 @@ NO_INLINE JsVar *jspeStatementVar() {
      if (execInfo.lex->tk == '=') {
          JsVar *var;
          JSP_MATCH_WITH_CLEANUP_AND_RETURN('=', jsvUnLock(a), lastDefined);
-         var = jsvSkipNameAndUnLock(jspeBase());
+         var = jsvSkipNameAndUnLock(jspeAssignmentExpression());
          if (JSP_SHOULD_EXECUTE)
              jspReplaceWith(a, var);
          jsvUnLock(var);
@@ -1648,7 +1642,7 @@ NO_INLINE JsVar *jspeStatementIf() {
   JsVar *var;
   JSP_MATCH(LEX_R_IF);
   JSP_MATCH('(');
-  var = jspeBase();
+  var = jspeExpression();
   JSP_MATCH(')');
   cond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(var));
   jsvUnLock(var);
@@ -1671,7 +1665,7 @@ NO_INLINE JsVar *jspeStatementIf() {
 NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
-  JsVar *switchOn = jspeBase();
+  JsVar *switchOn = jspeAssignmentExpression();
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
   JSP_SAVE_EXECUTE();
@@ -1682,7 +1676,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_CASE, jsvUnLock(switchOn), 0);
     JsExecFlags oldFlags = execInfo.execute;
     if (execute) execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
-    JsVar *test = jspeBase();
+    JsVar *test = jspeAssignmentExpression();
     execInfo.execute = oldFlags|EXEC_IN_SWITCH;;
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(switchOn);jsvUnLock(test), 0);
     bool cond = false;
@@ -1727,7 +1721,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (isWhile) { // while loop
     JSP_MATCH('(');
     whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
-    cond = jspeBase();
+    cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     JSP_MATCH(')');
@@ -1752,7 +1746,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     JSP_MATCH(LEX_R_WHILE);
     JSP_MATCH('(');
     whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
-    cond = jspeBase();
+    cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
     JSP_MATCH(')');
@@ -1764,7 +1758,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 #endif
          ) {
       jslSeekToP(execInfo.lex, &whileCondStart);
-      cond = jspeBase();
+      cond = jspeAssignmentExpression();
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
       if (loopCond) {
@@ -1823,7 +1817,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       jsvAddName(execInfo.root, forStatement);
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
-    JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
+    JsVar *array = jsvSkipNameAndUnLock(jspeAdditiveExpression());
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(forStatement);jsvUnLock(array), 0);
     JslCharPos forBodyStart = jslCharPosClone(&execInfo.lex->tokenStart);
     JSP_SAVE_EXECUTE();
@@ -1898,7 +1892,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     JSP_MATCH(';');
     JslCharPos forCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
     if (execInfo.lex->tk != ';') {
-      JsVar *cond = jspeBase(); // condition
+      JsVar *cond = jspeAssignmentExpression(); // condition
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
@@ -1907,7 +1901,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (execInfo.lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
-      jsvUnLock(jspeBase()); // iterator
+      jsvUnLock(jspeAssignmentExpression()); // iterator
       JSP_RESTORE_EXECUTE();
     }
     JSP_MATCH(')');
@@ -1928,7 +1922,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
         jslSeekToP(execInfo.lex, &forIterStart);
-        if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
+        if (execInfo.lex->tk != ')') jsvUnLock(jspeAssignmentExpression());
     }
     while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -1940,7 +1934,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         if (execInfo.lex->tk == ';') {
           loopCond = true;
         } else {
-          JsVar *cond = jspeBase();
+          JsVar *cond = jspeAssignmentExpression();
           loopCond = jsvGetBoolAndUnLock(jsvSkipName(cond));
           jsvUnLock(cond);
         }
@@ -1958,7 +1952,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
             jslSeekToP(execInfo.lex, &forIterStart);
-            if (execInfo.lex->tk != ')') jsvUnLock(jspeBase());
+            if (execInfo.lex->tk != ')') jsvUnLock(jspeAssignmentExpression());
         }
     }
     jslSeekToP(execInfo.lex, &forBodyEnd);
@@ -1983,7 +1977,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
   JSP_MATCH(LEX_R_RETURN);
   if (execInfo.lex->tk != ';') {
     // we only want the value, so skip the name if there was one
-    result = jsvSkipNameAndUnLock(jspeBaseWithComma());
+    result = jsvSkipNameAndUnLock(jspeExpression());
   }
   if (JSP_SHOULD_EXECUTE) {
     JsVar *resultVar = jspeiFindOnTop(JSPARSE_RETURN_VAR, false);
@@ -2048,7 +2042,7 @@ NO_INLINE JsVar *jspeStatement() {
         execInfo.lex->tk=='[' ||
         execInfo.lex->tk=='(') {
         /* Execute a simple statement that only contains basic arithmetic... */
-      return jspeBaseWithComma();
+      return jspeExpression();
     } else if (execInfo.lex->tk=='{') {
         /* A block of code */
         return jspeBlock();
@@ -2279,4 +2273,32 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
 
   jsvUnLock(scope);
   return scopeExports;
+}
+
+/// Execute the Object.toString function on an object (if we can find it)
+JsVar *jspObjectToString(JsVar *obj) {
+  assert(jsvIsObject(obj));
+  JsVar *toStringFn = 0;
+
+  toStringFn = jsvFindChildFromString(obj, "toString", false);
+
+  if (!toStringFn)
+    toStringFn = jspeiFindChildFromStringInParents(obj, "toString");
+
+   /* TODO: what about searching for builtins here? We can't at the moment
+    * because https://github.com/espruino/Espruino/issues/79 and
+    * https://github.com/espruino/Espruino/issues/188 mean that we actually
+    * *have* to parse brackets rather than just executing the function.
+    */
+
+   if (toStringFn) {
+     // Function found - execute it
+     JsVar *fn = jsvSkipName(toStringFn);
+     JsVar *result = jspeFunctionCall(fn, 0, obj, false, 0, 0);
+     jsvUnLock(fn);
+     jsvUnLock(toStringFn);
+     return result;
+   } else {
+     return jsvNewFromString(jsvIsRoot(obj) ? "[object Hardware]":"[object Object]");
+   }
 }

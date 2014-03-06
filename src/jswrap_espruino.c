@@ -24,7 +24,7 @@
          "class": "E", "name" : "getTemperature",
          "generate_full" : "jshReadTemperature()",
          "description" : ["Use the STM32's internal thermistor to work out the temperature.",
-                          "NOTE: This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
+                          "**Note:** This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
          "return" : ["float", "The temperature in degrees C"]
 }*/
 
@@ -49,4 +49,67 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   if (x<min) x=min;
   if (x>max) x=max;
   return x;
+}
+
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "sum",
+         "generate" : "jswrap_espruino_sum",
+         "description" : "Sum the contents of the given Array, String or ArrayBuffer and return the result",
+         "params" : [ [ "arr", "JsVar", "The array to sum"] ],
+         "return" : ["float", "The sum of the given buffer"]
+}*/
+JsVarFloat jswrap_espruino_sum(JsVar *arr) {
+  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
+     jsError("Expecting first argument to be an array, not %t", arr);
+     return NAN;
+   }
+   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
+   JsVarFloat sum = 0;
+   JsVarInt sumi = 0;
+
+   JsvIterator itsrc;
+   jsvIteratorNew(&itsrc, arr);
+   while (jsvIteratorHasElement(&itsrc)) {
+     if (useInts) {
+       sumi += jsvIteratorGetIntegerValue(&itsrc);
+     } else {
+       sum += jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
+     }
+     jsvIteratorNext(&itsrc);
+   }
+   jsvIteratorFree(&itsrc);
+   return useInts ? (JsVarFloat)sumi : sum;
+}
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "variance",
+         "generate" : "jswrap_espruino_variance",
+         "description" : "Work out the variance of the contents of the given Array, String or ArrayBuffer and return the result. This is equivalent to `v=0;for (i in arr) v+=Math.pow(mean-arr[i],2)`",
+         "params" : [ [ "arr", "JsVar", "The array to work out the variance for"], ["mean", "float", "The mean value of the array" ] ],
+         "return" : ["float", "The variance of the given buffer"]
+}*/
+JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
+  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
+     jsError("Expecting first argument to be an array, not %t", arr);
+     return NAN;
+   }
+   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
+   JsVarFloat variance = 0;
+
+   JsvIterator itsrc;
+   jsvIteratorNew(&itsrc, arr);
+   while (jsvIteratorHasElement(&itsrc)) {
+     JsVarFloat val;
+     if (useInts) {
+       val = (JsVarFloat)jsvIteratorGetIntegerValue(&itsrc);
+     } else {
+       val = jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
+     }
+     val -= mean;
+     variance += val*val;
+     jsvIteratorNext(&itsrc);
+   }
+   jsvIteratorFree(&itsrc);
+   return variance;
 }

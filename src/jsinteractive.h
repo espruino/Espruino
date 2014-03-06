@@ -17,10 +17,10 @@
 #include "jsparse.h"
 #include "jshardware.h"
 
-#define JSI_WATCHES_NAME ">watches"
-#define JSI_TIMERS_NAME ">timers"
-#define JSI_HISTORY_NAME ">history"
-#define JSI_INIT_CODE_NAME ">init"
+#define JSI_WATCHES_NAME JS_HIDDEN_CHAR_STR"watches"
+#define JSI_TIMERS_NAME JS_HIDDEN_CHAR_STR"timers"
+#define JSI_HISTORY_NAME JS_HIDDEN_CHAR_STR"history"
+#define JSI_INIT_CODE_NAME JS_HIDDEN_CHAR_STR"init"
 #define JSI_ONINIT_NAME "onInit"
 
 /// autoLoad = do we load the current state if it exists?
@@ -34,6 +34,8 @@ bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
 
+/// Return true if the object has callbacks...
+bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1);
 

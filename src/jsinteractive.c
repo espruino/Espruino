@@ -17,9 +17,7 @@
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
-#ifdef USE_NET
-#include "httpserver.h"
-#endif
+
 #ifdef USE_LCD_FSMC
 #include "graphics.h"
 #include "lcd_fsmc.h"
@@ -362,9 +360,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
-#ifdef USE_NET
-  httpInit();
-#endif
+  jswInit();
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
   if (parent) {
@@ -479,7 +475,7 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
       jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         jsvAppendString(str, ", ");
-        jsfGetJSON(options, str);
+        jsfGetJSON(options, str, JSON_NONE);
       }
       jsvAppendString(str, ");\n");
     }
@@ -498,7 +494,7 @@ void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
       jsvAppendString(str, deviceName);
       jsvAppendString(str, ".setup(");
       if (jsvIsObject(options)) {
-        jsfGetJSON(options, str);
+        jsfGetJSON(options, str, JSON_NONE);
       }
       jsvAppendString(str, ");\n");
     }
@@ -592,9 +588,7 @@ void jsiSoftKill() {
     jsvUnLock(initCode);
   }
 
-#ifdef USE_NET
-  httpKill();
-#endif
+  jswKill();
 }
 
 void jsiInit(bool autoLoad) {
@@ -658,7 +652,8 @@ void jsiInit(bool autoLoad) {
               "          |_| http://espruino.com\n"
               " "JS_VERSION" Copyright 2014 G.Williams\n");
     }
-    jsiConsolePrint("\n>");
+    jsiConsolePrint("\n"); // output new line
+    inputLineRemoved = true; // we need to put the input line back...
   }
 }
 
@@ -921,7 +916,7 @@ void jsiHandleNewLine(bool execute) {
       // print result (but NOT if we had an error)
       if (echo && !jspHasError()) {
         jsiConsolePrintChar('=');
-        jsfPrintJSON(v);
+        jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY);
         jsiConsolePrint("\n");
       }
       jsvUnLock(v);
@@ -1135,6 +1130,13 @@ void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of 
       jsvUnLock(child);
     }
   }
+}
+
+bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName) {
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
+  bool hasCallbacks = !jsvIsUndefined(callback);
+  jsvUnLock(callback);
+  return hasCallbacks;
 }
 
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1) {
@@ -1469,11 +1471,8 @@ void jsiIdle() {
   }
   jsvUnLock(timerArrayPtr);
 
-
-  // Check for network events
-#ifdef USE_NET
-  httpIdle();
-#endif
+  // Check for events that might need to be processed from other libraries
+  if (jswIdle()) wasBusy = true;
 
   // Just in case we got any events to do and didn't clear loopsIdling before
   if (wasBusy || !jsvArrayIsEmpty(events) )
@@ -1586,7 +1585,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
          jsiConsolePrintStringVar(proto);
          jsiConsolePrint(" = ");
          JsVar *protoData = jsvSkipName(proto);
-         jsfPrintJSON(protoData);
+         jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
          jsvUnLock(protoData);
          jsiConsolePrint(";\n");
          protoRef = proto->nextSibling;
@@ -1597,7 +1596,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
       jsiConsolePrint(".");
       jsiConsolePrintStringVar(child);
       jsiConsolePrint(" = ");
-      jsfPrintJSON(data);
+      jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
       jsiConsolePrint(";\n");
 
     }
@@ -1630,7 +1629,7 @@ void jsiDumpState() {
         // function-specific output
         jsiConsolePrint("function ");
         jsiConsolePrintStringVar(child);
-        jsfPrintJSONForFunction(data);
+        jsfPrintJSONForFunction(data, JSON_NONE);
         jsiConsolePrint("\n");
         // print any prototypes we had
         JsVar *proto = jsvObjectGetChild(data, JSPARSE_PROTOTYPE_VAR, 0);
@@ -1644,7 +1643,7 @@ void jsiDumpState() {
             jsiConsolePrint(".prototype.");
             jsiConsolePrintStringVar(protoName);
             jsiConsolePrint(" = ");
-            jsfPrintJSON(protoData);
+            jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
             jsiConsolePrint(";\n");
             jsvUnLock(protoData);
             protoRef = protoName->nextSibling;
@@ -1656,7 +1655,7 @@ void jsiDumpState() {
         jsiConsolePrint("var ");
         jsiConsolePrintStringVar(child);
         jsiConsolePrint(" = ");
-        jsfPrintJSON(data);
+        jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
         jsiConsolePrint(";\n");
       }
     }
@@ -1665,52 +1664,54 @@ void jsiDumpState() {
     jsvUnLock(child);
   }
   // Now do timers
+  JsvArrayIterator it;
+
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarRef timerRef = timerArrayPtr->firstChild;
+  jsvArrayIteratorNew(&it, timerArrayPtr);
   jsvUnLock(timerArrayPtr);
-  while (timerRef) {
-    JsVar *timerNamePtr = jsvLock(timerRef);
-    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "callback", false));
-    bool recur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "recur", false)));
-    JsVar *timerInterval = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(timerNamePtr->firstChild, "interval", false));
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *timer = jsvArrayIteratorGetElement(&it);
+    JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
+    bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
+    JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
-    jsfPrintJSON(timerCallback);
+    jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY);
     jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
-    jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next
-    timerRef = timerNamePtr->nextSibling;
-    jsvUnLock(timerNamePtr);
+    jsvUnLock(timer);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
   // Now do watches
-  {
-   JsVar *watchArrayPtr = jsvLock(watchArray);
-   JsVarRef watchRef = watchArrayPtr->firstChild;
-   jsvUnLock(watchArrayPtr);
-   while (watchRef) {
-     JsVar *watchNamePtr = jsvLock(watchRef);
-     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "callback", false));
-     bool watchRecur = jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "recur", false)));
-     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "edge", false)));
-     JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-     jsiConsolePrint("setWatch(");
-     jsfPrintJSON(watchCallback);
-     jsiConsolePrint(", ");
-     jsfPrintJSON(watchPin);
-     jsiConsolePrint(", { repeat:");
-     jsiConsolePrint(watchRecur?"true":"false");
-     jsiConsolePrint(", edge:");
-     if (watchEdge<0) jsiConsolePrint("'falling'");
-     else if (watchEdge>0) jsiConsolePrint("'rising'");
-     else jsiConsolePrint("'both'");
-     jsiConsolePrint(" });\n");
-     jsvUnLock(watchPin);
-     jsvUnLock(watchCallback);
-     // next
-     watchRef = watchNamePtr->nextSibling;
-     jsvUnLock(watchNamePtr);
-   }
+  JsVar *watchArrayPtr = jsvLock(watchArray);
+  jsvArrayIteratorNew(&it, watchArrayPtr);
+  jsvUnLock(watchArrayPtr);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *watch = jsvArrayIteratorGetElement(&it);
+    JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback", false));
+    bool watchRecur = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "recur", 0));
+    int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
+    JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
+    jsiConsolePrint("setWatch(");
+    jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY);
+    jsiConsolePrint(", ");
+    jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY);
+    jsiConsolePrint(", { repeat:");
+    jsiConsolePrint(watchRecur?"true":"false");
+    jsiConsolePrint(", edge:");
+    if (watchEdge<0) jsiConsolePrint("'falling'");
+    else if (watchEdge>0) jsiConsolePrint("'rising'");
+    else jsiConsolePrint("'both'");
+    jsiConsolePrint(" });\n");
+    jsvUnLock(watchPin);
+    jsvUnLock(watchCallback);
+    // next
+    jsvUnLock(watch);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
+
   // and now serial
   JsVar *str = jsvNewFromEmptyString();
   jsiAppendHardwareInitialisation(str, true);

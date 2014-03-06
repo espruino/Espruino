@@ -32,7 +32,7 @@ Found a Bug?
 ------------
 
 Please check that:
-* It hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](www.espruino.com/Forum)
+* It hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](http://www.espruino.com/Forum)
 * You're not just looking at outdated documentation (See the [Building](#Building) section to see how to build documentation)
 
 Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (and ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues (some quite large), so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
@@ -55,7 +55,7 @@ Please note that this is BETA. We've been working hard on the Espruino Board sup
 * STM32VLDISCOVERY - WORKING
 * STM32F3DISCOVERY - WORKING
 * STM32F4DISCOVERY - WORKING
-* STM32F429IDISCOVERY - not working, currently no LCD support
+* STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
 * HY STM32 2.4" - NOT WORKING - appears to crash after startup
 * HY STM32 2.8" - WORKING, but screen is not black at startup
 * HY STM32 3.2" - WORKING

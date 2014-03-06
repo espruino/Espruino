@@ -33,7 +33,7 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v53"
+#define JS_VERSION "1v56"
 /*
   In code:
   TODO - should be fixed
@@ -107,6 +107,7 @@ typedef double JsVarFloat;
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
 typedef long long JsSysTime;
+#define JSSYSTIME_INVALID ((JsSysTime)-1)
 
 #define JSLEX_MAX_TOKEN_LENGTH  64
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
@@ -370,12 +371,16 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char
- *   %v = JsVar *
+ *   %v = JsVar * (doesn't have to be a string - it'll be converted)
+ *   %q = JsVar * (in quotes, and escaped)
  *   %p = Pin
  *
  * Anything else will assert
  */
 void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, va_list argp);
+
+/// This one is directly usable..
+void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
 
 #endif /* JSUTILS_H_ */

@@ -149,16 +149,12 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
               data->errors |= TRIGERR_TRIG_IN_PAST;
               //jsiConsolePrint("Trigger already passed\n");
             }
-            int j;
-            for (j=0;j<TRIGGERPOINT_TRIGGERS_COUNT;j++) {
-              if (trig->pins[j]>=0) {
-                //jsiConsolePrintf("%d,%d,%d\n", tooth,tooth-currTooth,j);
-                if (!jshPinOutputAtTime(trigTime, trig->pins[j], 1)) data->errors |= TRIGERR_TIMER_FULL;
-                if (trig->pulseLength>0) {
-                  if (!jshPinOutputAtTime(trigTime+trig->pulseLength, trig->pins[j], 0))
-                    data->errors |= TRIGERR_TIMER_FULL;
-                }
-              }
+
+            if (!jshPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 1))
+              data->errors |= TRIGERR_TIMER_FULL;
+            if (trig->pulseLength>0) {
+              if (!jshPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
+                data->errors |= TRIGERR_TIMER_FULL;
             }
             // trigger fired, so update it
             trig->tooth  = trig->newTooth;

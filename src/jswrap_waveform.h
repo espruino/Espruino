@@ -8,14 +8,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for SD card access
+ * JavaScript methods for Waveforms (eg. Audio)
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
+#include "jshardware.h"
 
-void wrap_fat_kill();
-JsVar *wrap_fat_readdir(JsVar *path);
-void wrap_fat_writeFile(JsVar *path, JsVar *data);
-void wrap_fat_appendFile(JsVar *path, JsVar *data);
-JsVar *wrap_fat_readFile(JsVar *path);
-bool wrap_fat_unlink(JsVar *path);
+bool jswrap_waveform_idle();
+void jswrap_waveform_kill();
+JsVar *jswrap_waveform_constructor(int samples, JsVar *options);
+void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options);
+void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options);
+void jswrap_waveform_stop(JsVar *waveform);
+

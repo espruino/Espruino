@@ -170,9 +170,6 @@ void jshPinOutput(Pin pin, bool value) {
     jshPinSetValue(pin, value);
 }
 
-void jshPinOutputAtTime(JsSysTime time, Pin pin, bool value) {
-}
-
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
 }
 
@@ -241,8 +238,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
    return true;
 }
 
-void jshBitBang(Pin pin, JsVarFloat t0h, JsVarFloat t0l, JsVarFloat t1h, JsVarFloat t1l, JsVar *str) {
-  jsError("Bit banging not implemented");
+void jshUtilTimerDisable() {
+}
+
+void jshUtilTimerReschedule(JsSysTime period) {
+}
+
+void jshUtilTimerStart(JsSysTime period) {
 }
 
 // ----------------------------------------------------------------------------

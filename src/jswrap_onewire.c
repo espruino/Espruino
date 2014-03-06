@@ -95,15 +95,8 @@ static void NO_INLINE OneWireWrite(Pin pin, int bits, JsVarInt data) {
 }*/
 JsVar *jswrap_onewire_constructor(Pin pin) {
   JsVar *ow = jspNewObject(0, "OneWire");
-  if (ow) {
-    JsVar *pinVar = jsvFindChildFromString(ow, "pin", true);
-    if (pinVar) {
-      JsVar *pv = jsvNewFromPin(pin);
-      jsvSetValueOfName(pinVar, pv);
-      jsvUnLock(pv);
-    }
-    jsvUnLock(pinVar);
-  }
+  if (!ow) return 0;
+  jsvUnLock(jsvObjectSetChild(ow, "pin", jsvNewFromPin(pin)));
   return ow;
 }
 

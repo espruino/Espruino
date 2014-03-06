@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "STM32 2.8 inch LCD Board (RBT6)",
- 'variables' : 510, # FIXME we could get 700, but we don't have enough flash
+ 'variables' : 400, # FIXME we could get 700, but we don't have enough flash
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_28_rb.bin',
 };

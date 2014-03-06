@@ -630,9 +630,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
     }
   }
   // strip out the header
-  JsVar *afterHeaders = jsvNewFromEmptyString();
-  if (!afterHeaders) return true;
-  jsvAppendStringVar(afterHeaders, *receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
+  JsVar *afterHeaders = jsvNewFromStringVar(*receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
   jsvUnLock(*receiveData);
   *receiveData = afterHeaders;
   return true;
@@ -678,14 +676,17 @@ bool _http_send(SOCKET sckt, JsVar **sendData) {
   } return true;
 }
 
-void httpServerConnectionsIdle() {
+bool httpServerConnectionsIdle() {
   char buf[64];
 
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
-  if (!arr) return;
+  if (!arr) return false;
+
+  bool hadSockets = false;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
+    hadSockets = true;
     JsVar *connection = jsvArrayIteratorGetElement(&it);
     JsVar *connectReponse = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
     SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
@@ -704,10 +705,8 @@ void httpServerConnectionsIdle() {
         // add it to our request string
         if (num>0) {
           JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
-          if (!receiveData) {
-            receiveData = jsvNewFromEmptyString();
-            jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
-          }
+          JsVar *oldReceiveData = receiveData;
+          if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
             jsvAppendStringBuf(receiveData, buf, num);
             bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
@@ -720,6 +719,16 @@ void httpServerConnectionsIdle() {
               jsvUnLock(server);
               jsvUnLock(resVar);
             }
+            if (hadHeaders && !jsvIsEmptyString(receiveData) && jsiObjectHasCallbacks(connection, HTTP_NAME_ON_DATA)) {
+              // Execute 'data' callback with the data that we have
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+              // clear received data
+              jsvUnLock(receiveData);
+              receiveData = 0;
+            }
+            // if received data changed, update it
+            if (receiveData != oldReceiveData)
+              jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,receiveData);
             jsvUnLock(receiveData);
           }
         }
@@ -744,6 +753,15 @@ void httpServerConnectionsIdle() {
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
+      // send out any data that we were POSTed
+      JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
+      if (hadHeaders && !jsvIsEmptyString(receiveData)) {
+         // Execute 'data' callback with the data that we have
+         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+      }
+      jsvUnLock(receiveData);
+      // fire the close listener
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
@@ -760,19 +778,23 @@ void httpServerConnectionsIdle() {
   }
   jsvArrayIteratorFree(&it);
   jsvUnLock(arr);
+
+  return hadSockets;
 }
 
 
 
-void httpClientConnectionsIdle() {
+bool httpClientConnectionsIdle() {
   char buf[64];
 
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
-  if (!arr) return;
+  if (!arr) return false;
 
+  bool hadSockets = false;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, arr);
   while (jsvArrayIteratorHasElement(&it)) {
+    hadSockets = true;
     JsVar *connection = jsvArrayIteratorGetElement(&it);
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
@@ -857,20 +879,26 @@ void httpClientConnectionsIdle() {
     jsvUnLock(connection);
   }
   jsvUnLock(arr);
+
+  return hadSockets;
 }
 
-void httpIdle() {
+
+bool httpIdle() {
   net_idle(0);
   if (networkState != NETWORKSTATE_ONLINE) {
     // clear all clients and servers
     _httpCloseAllConnections();
-    return;
+    return false;
   }
+  bool hadSockets = false;
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
     while (jsvArrayIteratorHasElement(&it)) {
+      hadSockets = true;
+
       JsVar *server = jsvArrayIteratorGetElement(&it);
       SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
@@ -907,6 +935,7 @@ void httpIdle() {
   httpServerConnectionsIdle();
   httpClientConnectionsIdle();
   net_checkError(0);
+  return hadSockets;
 }
 
 // -----------------------------

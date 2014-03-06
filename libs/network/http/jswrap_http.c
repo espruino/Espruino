@@ -27,6 +27,21 @@ http.createServer(function (req, res) {
 
  */
 
+/*JSON{ "type":"idle", "generate" : "jswrap_http_idle" }*/
+bool jswrap_http_idle() {
+  return httpIdle();
+}
+
+/*JSON{ "type":"init", "generate" : "jswrap_http_init" }*/
+void jswrap_http_init() {
+  httpInit();
+}
+
+/*JSON{ "type":"kill", "generate" : "jswrap_http_kill" }*/
+void jswrap_http_kill() {
+  httpKill();
+}
+
 
 /*JSON{ "type":"library",
         "class" : "http",
@@ -75,8 +90,8 @@ bool checkOnline() {
 /*JSON{ "type":"staticmethod",
          "class" : "http", "name" : "createServer",
          "generate" : "jswrap_http_createServer",
-         "description" : ["Create an HTTP Server" ],
-         "params" : [ [ "callback", "JsVarName", "A function(req,res) that will be called when a connection is made"] ],
+         "description" : ["Create an HTTP Server", "When a request to the server is made, the callback is called. In the callback you can use the methods on the response (httpSRs) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data" ],
+         "params" : [ [ "callback", "JsVarName", "A function(request,response) that will be called when a connection is made"] ],
          "return" : ["JsVar", "Returns a new httpSrv object"]
 }*/
 
