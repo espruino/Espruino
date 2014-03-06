@@ -25,10 +25,10 @@
 #endif
 
 JsNetworkState networkState =
-#if defined(USE_CC3000) || defined(USE_WIZNET)
-    NETWORKSTATE_OFFLINE
-#else
+#ifdef LINUX
     NETWORKSTATE_ONLINE
+#else
+    NETWORKSTATE_OFFLINE
 #endif
     ;
 
@@ -62,9 +62,11 @@ void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip
 
 
 
-void networkCreate(JsNetwork *net) {
+void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
+  net->data.type = type;
   jsvUnLock(jsvObjectSetChild(execInfo.root, NETWORK_VAR_NAME, net->networkVar));
+  networkSet(net);
   networkGetFromVar(net);
 }
 
@@ -72,9 +74,7 @@ bool networkGetFromVar(JsNetwork *net) {
   net->networkVar = jsvObjectGetChild(execInfo.root, NETWORK_VAR_NAME, 0);
   if (!net->networkVar) {
 #ifdef LINUX
-    networkCreate(net);
-    net->data.type = JSNETWORKTYPE_SOCKET;
-    networkSet(net);
+    networkCreate(net, JSNETWORKTYPE_SOCKET);
     return true;
 #else
     return false;
@@ -82,13 +82,21 @@ bool networkGetFromVar(JsNetwork *net) {
   }
   jsvGetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData)+1/*trailing zero*/);
 
+  switch (net->data.type) {
 #if defined(USE_CC3000)
-  netSetCallbacks_cc3000(net);
-#elif defined(USE_WIZNET)
-  netSetCallbacks_wiznet(net);
-#else
-  netSetCallbacks_linux(net);
+  case JSNETWORKTYPE_CC3000 : netSetCallbacks_cc3000(net); break;
 #endif
+#if defined(USE_WIZNET)
+  case JSNETWORKTYPE_W5500 : netSetCallbacks_wiznet(net); break;
+#endif
+#if defined(LINUX)
+  case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
+#endif
+  default:
+    jsError("Unknown network device %d", net->data.type);
+    networkFree(net);
+    return false;
+  }
   return true;
 }
 

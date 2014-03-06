@@ -106,11 +106,8 @@ JsVar *jswrap_wiznet_connect() {
   } while (tmp == PHY_LINK_OFF);
 
   JsNetwork net;
-  networkCreate(&net);
-  net.data.type = JSNETWORKTYPE_W5500;
-  networkSet(&net);
+  networkCreate(&net, JSNETWORKTYPE_W5500);
   networkFree(&net);
-
 
   networkState = NETWORKSTATE_ONLINE;
 

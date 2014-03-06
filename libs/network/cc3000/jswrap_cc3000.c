@@ -18,12 +18,12 @@
 #include "jswrap_cc3000.h"
 #include "jshardware.h"
 #include "jsinteractive.h"
-#include "board_spi.h"
+#include "cc3000/board_spi.h"
 #include "network.h"
 // ti driver
-#include "wlan.h"
-#include "netapp.h"
-#include "hci.h"
+#include "cc3000/wlan.h"
+#include "cc3000/netapp.h"
+#include "cc3000/hci.h"
 
 
 /*JSON{ "type":"library",
@@ -88,9 +88,7 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
 
   if (connected) {
     JsNetwork net;
-    networkCreate(&net);
-    net.data.type = JSNETWORKTYPE_CC3000;
-    networkSet(&net);
+    networkCreate(&net, JSNETWORKTYPE_CC3000);
     networkFree(&net);
   }
   // note that we're only online (for networkState) when DHCP succeeds

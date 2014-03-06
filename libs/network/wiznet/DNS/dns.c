@@ -3,8 +3,8 @@
 
 
 #include "dns.h"
-#include "socket.h"
-#include "dns_parse.h"
+#include "wiznet/Ethernet/socket.h"
+#include "wiznet/DNS/dns_parse.h"
 
 
 extern struct _CHCONF ChConf;
