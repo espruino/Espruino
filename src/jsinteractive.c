@@ -18,11 +18,6 @@
 #include "jswrap_json.h"
 #include "jswrap_io.h"
 
-#ifdef USE_LCD_FSMC
-#include "graphics.h"
-#include "lcd_fsmc.h"
-#endif
-
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
 #else
@@ -361,26 +356,6 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // 'claim' anything we are using
 void jsiSoftInit() {
   jswInit();
-#ifdef USE_LCD_FSMC
-  JsVar *parent = jspNewObject("LCD", "Graphics");
-  if (parent) {
-    JsVar *parentObj = jsvSkipName(parent);
-    JsGraphics gfx;
-    graphicsStructInit(&gfx);
-    gfx.data.type = JSGRAPHICSTYPE_FSMC;
-    gfx.graphicsVar = parentObj;
-    gfx.data.width = 320;
-    gfx.data.height = 240;
-    gfx.data.bpp = 16;
-    lcdInit_FSMC(&gfx);
-    lcdSetCallbacks_FSMC(&gfx);
-    graphicsSplash(&gfx);
-    graphicsSetVar(&gfx);
-    jsvUnLock(parentObj);
-    jsvUnLock(parent);
-  }
-#endif
-
 
   events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromEmptyString();
@@ -1556,10 +1531,6 @@ void jsiLoop() {
   jshIdle();
   // Do general idle stuff
   jsiIdle();
-  // Idle LCD
-#ifdef USE_LCD
-  graphicsIdle();
-#endif
   
   if (jspIsInterrupted()) {
     jspSetInterrupted(false);

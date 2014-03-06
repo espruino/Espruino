@@ -17,6 +17,9 @@
 #include "jsvar.h"
 #include "graphics.h"
 
+bool jswrap_graphics_idle();
+void jswrap_graphics_init();
+
 // For creating graphics classes
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp,  JsVar *options);
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback);

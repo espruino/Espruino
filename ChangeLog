@@ -1,6 +1,7 @@
      1v56 : Added atob and btoa (for base64 encode/decode) - fix #244
             Added Array.sort() - fix #220
             fs.writeFile/appendFile now return false if they fail for some reason
+            Move Graphics init and idle functions out of jsinterface.c
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression
