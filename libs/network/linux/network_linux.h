@@ -8,16 +8,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for CC3000 WiFi Access
+ * Implementation of JsNetwork for Linux
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
+#include "network.h"
 
-JsVar *jswrap_cc3000_connect();
-bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback);
-void jswrap_wlan_disconnect(JsVar *wlanObj);
-void jswrap_wlan_reconnect(JsVar *wlanObj);
-JsVar *jswrap_wlan_getIP(JsVar *wlanObj);
-
-/// Check if the cc3000's socket has disconnected (clears flag as soon as is called)
-bool cc3000_socket_has_closed(int socketNum);
+void netSetCallbacks_linux(JsNetwork *net);

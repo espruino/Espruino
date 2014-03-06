@@ -8,7 +8,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Network access globals
+ * Contains functions for handling JsNetwork and doing common networking tasks
  * ----------------------------------------------------------------------------
  */
 
@@ -29,7 +29,7 @@ typedef enum {
 
 extern JsNetworkState networkState; // FIXME put this in JsNetwork
 
-// This is all potential code for handling multiple types of network access with one binary
+// This is all code for handling multiple types of network access with one binary
 typedef enum {
   JSNETWORKTYPE_SOCKET,  ///< Standard linux socket API
   JSNETWORKTYPE_CC3000,  ///< TI CC3000 support
@@ -40,8 +40,8 @@ typedef enum {
 typedef struct {
   JsNetworkType type;
   // Info for accessing specific devices
-  IOEventFlags spi;
-  Pin pinCS, pinIRQ, pinEN;
+  //IOEventFlags spi;
+  //Pin pinCS, pinIRQ, pinEN;
 } PACKED_FLAGS JsNetworkData;
 
 typedef struct JsNetwork {
@@ -70,12 +70,14 @@ typedef struct JsNetwork {
 
 // ---------------------------------- these are in network.c
 // Get the relevant info for JsNetwork (done from a var in root scope)
+void networkCreate(JsNetwork *net); // create the network object (ONLY to be used by network drivers)
 bool networkGetFromVar(JsNetwork *net);
 bool networkGetFromVarIfOnline(JsNetwork *net); // only return true (and network) if we're online, otherwise warn
 void networkSet(JsNetwork *net);
 void networkFree(JsNetwork *net);
 // ---------------------------------------------------------
 
+/// Use this for getting the hostname, as it parses the name to see if it is an IP address first
 void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
 
 #endif // _NETWORK_H
