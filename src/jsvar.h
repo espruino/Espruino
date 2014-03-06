@@ -373,7 +373,7 @@ static inline JsVar *jsvFindChildFromVarRef(JsVarRef parentref, JsVar *childName
   jsvUnLock(p);
   return v;
 }
-/// Remove a child - note that the child MUST ACTUALLY BE A CHILD!
+/// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
 static inline void jsvRemoveNamedChild(JsVar *parent, const char *name) {

@@ -176,30 +176,34 @@ JsVar *wrap_fat_readdir(JsVar *path) {
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "writeFile",
-         "generate" : "wrap_fat_writeFile",
+         "generate_full" : " wrap_fat_writeOrAppendFile(path, data, false)",
          "description" : [ "Write the data to the given file", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
          "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ]
+                      [ "data", "JsVar", "The data to write to the file" ] ],
+         "return" : [ "bool", "True on success, false on failure" ]
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "writeFileSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "wrap_fat_writeFile",
+         "generate_full" : " wrap_fat_writeOrAppendFile(path, data, false)",
          "description" : [ "Write the data to the given file" ],
          "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ]
+                      [ "data", "JsVar", "The data to write to the file" ] ],
+         "return" : [ "bool", "True on success, false on failure" ]
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "appendFile",
-         "generate" : "wrap_fat_appendFile",
+         "generate_full" : " wrap_fat_writeOrAppendFile(path, data, true)",
          "description" : [ "Append the data to the given file, created a new file if it doesn't exist", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
          "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ]
+                      [ "data", "JsVar", "The data to write to the file" ] ],
+         "return" : [ "bool", "True on success, false on failure" ]
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "appendFileSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "wrap_fat_appendFile",
+         "generate_full" : "wrap_fat_writeOrAppendFile(path, data, true)",
          "description" : [ "Append the data to the given file, created a new file if it doesn't exist" ],
          "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ]
+                      [ "data", "JsVar", "The data to write to the file" ] ],
+         "return" : [ "bool", "True on success, false on failure" ]
 }*/
-void wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
+bool wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
     jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
@@ -250,13 +254,11 @@ void wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
 #endif
     }
   }
-  if (res) jsfsReportError("Unable to write file", res);
-}
-void wrap_fat_writeFile(JsVar *path, JsVar *data) {
-  wrap_fat_writeOrAppendFile(path, data, false);
-}
-void wrap_fat_appendFile(JsVar *path, JsVar *data) {
-  wrap_fat_writeOrAppendFile(path, data, true);
+  if (res) {
+    jsfsReportError("Unable to write file", res);
+    return false;
+  }
+  return true;
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFile",

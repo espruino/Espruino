@@ -22,6 +22,9 @@
 #ifdef USE_LCD_SDL
 #include "lcd_sdl.h"
 #endif
+#ifdef USE_LCD_FSMC
+#include "lcd_fsmc.h"
+#endif
 #include "bitmap_font_4x6.h"
 
 /*JSON{ "type":"class",
@@ -30,6 +33,35 @@
                          "Use Graphics.createXXX to create a graphics object that renders in the way you want.",
                          "NOTE: On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```" ]
 }*/
+
+/*JSON{ "type":"idle", "generate" : "jswrap_graphics_idle" }*/
+bool jswrap_graphics_idle() {
+  graphicsIdle();
+  return false;
+}
+
+/*JSON{ "type":"init", "generate" : "jswrap_graphics_init" }*/
+void jswrap_graphics_init() {
+#ifdef USE_LCD_FSMC
+  JsVar *parent = jspNewObject("LCD", "Graphics");
+  if (parent) {
+    JsVar *parentObj = jsvSkipName(parent);
+    JsGraphics gfx;
+    graphicsStructInit(&gfx);
+    gfx.data.type = JSGRAPHICSTYPE_FSMC;
+    gfx.graphicsVar = parentObj;
+    gfx.data.width = 320;
+    gfx.data.height = 240;
+    gfx.data.bpp = 16;
+    lcdInit_FSMC(&gfx);
+    lcdSetCallbacks_FSMC(&gfx);
+    graphicsSplash(&gfx);
+    graphicsSetVar(&gfx);
+    jsvUnLock(parentObj);
+    jsvUnLock(parent);
+  }
+#endif
+}
 
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
          "description" : "Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself",

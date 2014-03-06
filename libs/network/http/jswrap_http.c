@@ -173,6 +173,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 // ---------------------------------------------------------------------------------
 /*JSON{ "type":"method",
          "class" : "httpSrv", "name" : "listen",
+         "description" : [ "Start listening for new HTTP connections on the given port" ],
          "generate" : "jswrap_httpSrv_listen",
          "params" : [ [ "port", "int32", "The port to listen on"] ]
 }*/
@@ -180,6 +181,17 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
 void jswrap_httpSrv_listen(JsVar *parent, int port) {
   if (!checkOnline()) return;
   httpServerListen(parent, port);
+}
+
+/*JSON{ "type":"method",
+         "class" : "httpSrv", "name" : "close",
+         "description" : [ "Stop listening for new HTTP connections" ],
+         "generate" : "jswrap_httpSrv_close"
+}*/
+
+void jswrap_httpSrv_close(JsVar *parent) {
+  if (!checkOnline()) return;
+  httpServerClose(parent);
 }
 
 // ---------------------------------------------------------------------------------
