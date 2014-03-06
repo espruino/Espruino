@@ -64,7 +64,9 @@ bool run_test(const char *filename) {
   jsvUnLock(jspEvaluate(buffer ));
 
   isRunning = true;
-  while (isRunning && jsiHasTimers()) jsiLoop();
+  bool isBusy = true;
+  while (isRunning && (jsiHasTimers() || isBusy))
+    isBusy = jsiLoop();
 
   JsVar *result = jsvObjectGetChild(execInfo.root, "result", 0/*no create*/);
   bool pass = jsvGetBool(result);
@@ -229,7 +231,9 @@ int main(int argc, char **argv) {
         jspAddNativeFunction("function quit()", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1]));
         isRunning = true;
-        while (isRunning && jsiHasTimers()) jsiLoop();
+        bool isBusy = true;
+        while (isRunning && (jsiHasTimers() || isBusy))
+          isBusy = jsiLoop();
         jsiKill();
         jshKill();
         exit(0);
@@ -277,7 +281,9 @@ int main(int argc, char **argv) {
     jsvUnLock(jspEvaluate(cmd ));
     free(buffer);
     isRunning = true;
-    while (isRunning && jsiHasTimers()) jsiLoop();
+    bool isBusy = true;
+    while (isRunning && (jsiHasTimers() || isBusy))
+      isBusy = jsiLoop();
     jsiKill();
     jshKill();
     exit(0);

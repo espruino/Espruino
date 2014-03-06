@@ -46,6 +46,7 @@ bool httpIdle();
 // -----------------------------
 JsVar *httpServerNew(JsVar *callback);
 void httpServerListen(JsVar *httpServerVar, int port);
+void httpServerClose(JsVar *server);
 
 JsVar *httpClientRequestNew(JsVar *options, JsVar *callback);
 void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data);

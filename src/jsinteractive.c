@@ -1526,7 +1526,7 @@ void jsiIdle() {
   }
 }
 
-void jsiLoop() {
+bool jsiLoop() {
   // idle stuff for hardware
   jshIdle();
   // Do general idle stuff
@@ -1539,6 +1539,8 @@ void jsiLoop() {
 
   // return console (if it was gone!)
   jsiReturnInputLine();
+
+  return loopsIdling==0;
 }
 
 /** Output extra functions defined in an object such that they can be copied to a new device */

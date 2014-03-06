@@ -836,6 +836,25 @@ void httpServerListen(JsVar *server, int port) {
 #endif
 }
 
+void httpServerClose(JsVar *server) {
+  JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
+  if (arr) {
+    // close socket
+    if (networkState == NETWORKSTATE_ONLINE) {
+      SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
+      if (sckt!=INVALID_SOCKET) closesocket(sckt);
+    }
+    // remove from array
+    JsVar *idx = jsvGetArrayIndexOf(arr, server, true);
+    if (idx) {
+      jsvRemoveChild(arr, idx);
+      jsvUnLock(idx);
+    } else
+      jsWarn("Server not found!");
+    jsvUnLock(arr);
+  }
+}
+
 
 JsVar *httpClientRequestNew(JsVar *options, JsVar *callback) {
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,true);

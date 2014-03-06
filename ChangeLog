@@ -2,6 +2,8 @@
             Added Array.sort() - fix #220
             fs.writeFile/appendFile now return false if they fail for some reason
             Move Graphics init and idle functions out of jsinterface.c
+            Add HttpServer.close
+            Ensure that Linux command-line tests keep running if there's something to do
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression
