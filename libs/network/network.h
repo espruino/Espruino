@@ -19,13 +19,15 @@
 #include "jsvar.h"
 #include "jshardware.h"
 
+#define NETWORK_VAR_NAME JS_HIDDEN_CHAR_STR"net"
+
 typedef enum {
   NETWORKSTATE_OFFLINE,
   NETWORKSTATE_CONNECTED, // connected but not online (no DHCP)
   NETWORKSTATE_ONLINE, // DHCP (or manual address)
 } PACKED_FLAGS JsNetworkState;
 
-extern JsNetworkState networkState;
+extern JsNetworkState networkState; // FIXME put this in JsNetwork
 
 // This is all potential code for handling multiple types of network access with one binary
 typedef enum {
@@ -43,7 +45,7 @@ typedef struct {
 } PACKED_FLAGS JsNetworkData;
 
 typedef struct JsNetwork {
-  JsVar *neworkVar; // this won't be locked again - we just know that it is already locked by something else
+  JsVar *networkVar; // this won't be locked again - we just know that it is already locked by something else
   JsNetworkData data;
   unsigned char _blank; ///< this is needed as jsvGetString for 'data' wants to add a trailing zero  
 
@@ -59,20 +61,21 @@ typedef struct JsNetwork {
   /// If the given server socket can accept a connection, return it (or return < 0)
   int (*accept)(struct JsNetwork *net, int sckt);
   /// Get an IP address from a name
-  int (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
+  void (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*send)(struct JsNetwork *net, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
 
-static inline void networkStructInit(JsNetwork *net) {  
-}
-
 // ---------------------------------- these are in network.c
-// Access a JsVar and get/set the relevant info in JsNetwork
-bool networkGetFromVar(JsNetwork *net, JsVar *parent);
-void networkSetVar(JsNetwork *net);
+// Get the relevant info for JsNetwork (done from a var in root scope)
+bool networkGetFromVar(JsNetwork *net);
+bool networkGetFromVarIfOnline(JsNetwork *net); // only return true (and network) if we're online, otherwise warn
+void networkSet(JsNetwork *net);
+void networkFree(JsNetwork *net);
 // ---------------------------------------------------------
+
+void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
 
 #endif // _NETWORK_H
