@@ -53,7 +53,7 @@
 //! THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
-#include "socket.h"
+#include "Ethernet/socket.h"
 
 //M20150401 : Typing Error
 //#define SOCK_ANY_PORT_NUM  0xC000;
