@@ -493,43 +493,48 @@ endif
 ifdef USE_NET
 DEFINES += -DUSE_NET
 WRAPPERSOURCES += libs/network/http/jswrap_http.c
-INCLUDE += -I$(ROOT)/libs/network/http
+INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
 SOURCES += \
 libs/network/network.c \
 libs/network/http/httpserver.c 
-ifdef LINUX
-#LIBS += -l... 
-#INCLUDE += -I...
-endif
+
+ ifdef LINUX
+ INCLUDE += -I$(ROOT)/libs/network/linux
+ SOURCES += \
+ libs/network/linux/network_linux.c 
+ endif
+
+ ifdef USE_CC3000
+ DEFINES += -DUSE_CC3000 -DSEND_NON_BLOCKING
+ WRAPPERSOURCES += libs/network/cc3000/jswrap_cc3000.c
+ INCLUDE += -I$(ROOT)/libs/network/cc3000
+ SOURCES += \
+ libs/network/cc3000/network_cc3000.c \
+ libs/network/cc3000/board_spi.c \
+ libs/network/cc3000/cc3000_common.c \
+ libs/network/cc3000/evnt_handler.c \
+ libs/network/cc3000/hci.c \
+ libs/network/cc3000/netapp.c \
+ libs/network/cc3000/nvmem.c \
+ libs/network/cc3000/security.c \
+ libs/network/cc3000/socket.c \
+ libs/network/cc3000/wlan.c
+ endif
+
+ ifdef USE_WIZNET
+ DEFINES += -DUSE_WIZNET
+ WRAPPERSOURCES += libs/network/wiznet/jswrap_wiznet.c
+ INCLUDE += -I$(ROOT)/libs/network/wiznet -I$(ROOT)/libs/network/wiznet/Ethernet
+ SOURCES += \
+ libs/network/wiznet/network_wiznet.c \
+ libs/network/wiznet/DNS/dns_parse.c \
+ libs/network/wiznet/DNS/dns.c \
+ libs/network/wiznet/Ethernet/wizchip_conf.c \
+ libs/network/wiznet/Ethernet/socket.c \
+ libs/network/wiznet/W5500/w5500.c
+ endif
 endif
 
-ifdef USE_CC3000
-DEFINES += -DUSE_CC3000 -DSEND_NON_BLOCKING
-WRAPPERSOURCES += libs/network/cc3000/jswrap_cc3000.c
-INCLUDE += -I$(ROOT)/libs/network/cc3000
-SOURCES += \
-libs/network/cc3000/board_spi.c \
-libs/network/cc3000/cc3000_common.c \
-libs/network/cc3000/evnt_handler.c \
-libs/network/cc3000/hci.c \
-libs/network/cc3000/netapp.c \
-libs/network/cc3000/nvmem.c \
-libs/network/cc3000/security.c \
-libs/network/cc3000/socket.c \
-libs/network/cc3000/wlan.c
-endif
-
-ifdef USE_WIZNET
-DEFINES += -DUSE_WIZNET
-WRAPPERSOURCES += libs/network/wiznet/jswrap_wiznet.c
-INCLUDE += -I$(ROOT)/libs/network/wiznet -I$(ROOT)/libs/network/wiznet/Ethernet
-SOURCES += \
-libs/network/wiznet/DNS/dns_parse.c \
-libs/network/wiznet/DNS/dns.c \
-libs/network/wiznet/Ethernet/wizchip_conf.c \
-libs/network/wiznet/Ethernet/socket.c \
-libs/network/wiznet/W5500/w5500.c
-endif
 
 ifdef USE_TRIGGER
 DEFINES += -DUSE_TRIGGER 

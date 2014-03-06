@@ -4,6 +4,7 @@
             Move Graphics init and idle functions out of jsinterface.c
             Add HttpServer.close
             Ensure that Linux command-line tests keep running if there's something to do
+            Epic networking refactor - it should now be possible to support multiple network devices in a single binary
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

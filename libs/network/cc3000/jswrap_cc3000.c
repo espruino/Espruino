@@ -19,7 +19,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "board_spi.h"
-#include "../network.h"
+#include "network.h"
 // ti driver
 #include "wlan.h"
 #include "netapp.h"
@@ -55,9 +55,9 @@ JsVar *jswrap_cc3000_connect() {
          "params" : [ [ "ap", "JsVar", "Access point name" ],
                       [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
                       [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'" ] ],
-         "return" : ["int", ""]
+         "return" : ["bool", "True if connection succeeded, false if it didn't." ]
 }*/
-JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
+bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
     jsError("Expecting callback Function but got %t", callback);
     return 0;
@@ -84,8 +84,17 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
     jsvGetString(vKey, key, sizeof(key));
   }
   // might want to set wlan_ioctl_set_connection_policy
-  return wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key));
+  bool connected =  wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key))==0;
+
+  if (connected) {
+    JsNetwork net;
+    networkCreate(&net);
+    net.data.type = JSNETWORKTYPE_CC3000;
+    networkSet(&net);
+    networkFree(&net);
+  }
   // note that we're only online (for networkState) when DHCP succeeds
+  return connected;
 }
 
 /*JSON{ "type":"method",

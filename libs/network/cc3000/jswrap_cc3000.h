@@ -14,7 +14,7 @@
 #include "jsvar.h"
 
 JsVar *jswrap_cc3000_connect();
-JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback);
+bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback);
 void jswrap_wlan_disconnect(JsVar *wlanObj);
 void jswrap_wlan_reconnect(JsVar *wlanObj);
 JsVar *jswrap_wlan_getIP(JsVar *wlanObj);

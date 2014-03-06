@@ -18,7 +18,7 @@
 #include "jswrap_wiznet.h"
 #include "jshardware.h"
 #include "jsinteractive.h"
-#include "../network.h"
+#include "network.h"
 // wiznet driver
 #include "wizchip_conf.h"
 
@@ -94,19 +94,26 @@ JsVar *jswrap_wiznet_connect() {
   if(ctlwizchip(CW_INIT_WIZCHIP,(void*)memsize) == -1)
   {
     jsiConsolePrint("WIZCHIP Initialized fail.\r\n");
-     while(1);
+    return 0;
   }
 
   /* PHY link status check */
-  do
-  {
-     if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1)
-        jsiConsolePrint("Unknown PHY Link status.\r\n");
-  }while(tmp == PHY_LINK_OFF);
+  do {
+    if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1) {
+      jsiConsolePrint("Unknown PHY Link status.\r\n");
+      return 0;
+    }
+  } while (tmp == PHY_LINK_OFF);
+
+  JsNetwork net;
+  networkCreate(&net);
+  net.data.type = JSNETWORKTYPE_W5500;
+  networkSet(&net);
+  networkFree(&net);
+
 
   networkState = NETWORKSTATE_ONLINE;
 
-  //cc3000_initialise(ethObj);
   return ethObj;
 }
 
