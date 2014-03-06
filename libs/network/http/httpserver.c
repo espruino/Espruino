@@ -466,15 +466,7 @@ void httpInit() {
 #endif
 }
 
-void _httpServerConnectionKill(JsVar *connection) {
-  if (networkState != NETWORKSTATE_ONLINE) return;
-  SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-  if (sckt!=INVALID_SOCKET) {
-    net_closesocket(0, sckt);
-  }
-}
-
-void _httpClientConnectionKill(JsVar *connection) {
+void _httpConnectionKill(JsVar *connection) {
   if (networkState != NETWORKSTATE_ONLINE) return;
   SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (sckt!=INVALID_SOCKET) {
@@ -491,7 +483,7 @@ void _httpCloseAllConnections() {
        jsvArrayIteratorNew(&it, arr);
        while (jsvArrayIteratorHasElement(&it)) {
          JsVar *connection = jsvArrayIteratorGetElement(&it);
-         _httpServerConnectionKill(connection);
+         _httpConnectionKill(connection);
          jsvUnLock(connection);
          jsvArrayIteratorNext(&it);
        }
@@ -507,7 +499,7 @@ void _httpCloseAllConnections() {
      jsvArrayIteratorNew(&it, arr);
      while (jsvArrayIteratorHasElement(&it)) {
        JsVar *connection = jsvArrayIteratorGetElement(&it);
-       _httpClientConnectionKill(connection);
+       _httpConnectionKill(connection);
        jsvUnLock(connection);
        jsvArrayIteratorNext(&it);
      }
@@ -524,10 +516,7 @@ void _httpCloseAllConnections() {
        jsvArrayIteratorNew(&it, arr);
        while (jsvArrayIteratorHasElement(&it)) {
          JsVar *connection = jsvArrayIteratorGetElement(&it);
-         if (networkState == NETWORKSTATE_ONLINE) {
-           SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-           if (sckt!=INVALID_SOCKET) closesocket(sckt);
-         }
+         _httpConnectionKill(connection);
          jsvUnLock(connection);
          jsvArrayIteratorNext(&it);
        }
@@ -760,7 +749,7 @@ bool httpServerConnectionsIdle() {
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
 
-      _httpServerConnectionKill(connection);
+      _httpConnectionKill(connection);
       JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
       jsvArrayIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
@@ -850,7 +839,7 @@ bool httpClientConnectionsIdle() {
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
 
-      _httpClientConnectionKill(connection);
+      _httpConnectionKill(connection);
       JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
       jsvArrayIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
@@ -922,43 +911,36 @@ bool httpIdle() {
 // -----------------------------
 
 JsVar *httpServerNew(JsVar *callback) {
-  JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
-  if (!arr) return 0; // out of memory
-
   JsVar *server = jspNewObject(0, "httpSrv");
-  if (!server) {
-    jsvUnLock(arr);
-    return 0; // out of memory
-  }
+  if (!server) return 0; // out of memory
 
   jsvObjectSetChild(server, HTTP_NAME_ON_CONNECT, callback); // no unlock needed
-
-  // add to list of servers
-  jsvArrayPush(arr, server);
-  jsvUnLock(arr);
-
   return server;
 }
 
 void httpServerListen(JsVar *server, int port) {
+  JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
+  if (!arr) return; // out of memory
+
   jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_PORT, jsvNewFromInteger(port)));
 
   int sckt = net_createsocket(0, 0/*server*/, (unsigned short)port);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
-  } else
+  } else {
     jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
+    // add to list of servers
+    jsvArrayPush(arr, server);
+  }
+  jsvUnLock(arr);
 }
 
 void httpServerClose(JsVar *server) {
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
     // close socket
-    if (networkState == NETWORKSTATE_ONLINE) {
-      SOCKET sckt = (SOCKET)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
-      if (sckt!=INVALID_SOCKET) closesocket(sckt);
-    }
+    _httpConnectionKill(server);
     // remove from array
     JsVar *idx = jsvGetArrayIndexOf(arr, server, true);
     if (idx) {
