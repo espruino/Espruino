@@ -17,6 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jshardware.h"
 
 typedef enum {
   NETWORKSTATE_OFFLINE,
@@ -27,8 +28,6 @@ typedef enum {
 extern JsNetworkState networkState;
 
 // This is all potential code for handling multiple types of network access with one binary
-#if 0
-
 typedef enum {
   JSNETWORKTYPE_SOCKET,  ///< Standard linux socket API
   JSNETWORKTYPE_CC3000,  ///< TI CC3000 support
@@ -60,24 +59,20 @@ typedef struct JsNetwork {
   /// If the given server socket can accept a connection, return it (or return < 0)
   int (*accept)(struct JsNetwork *net, int sckt);
   /// Get an IP address from a name
-  int (*gethostbyname)(struct JsNetwork *net, char * hostname, unsigned long* out_ip_addr);
+  int (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*recv)(struct JsNetwork *net, int sckt, void *buf, long len);
+  int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
-  int (*send)(struct JsNetwork *net, int sckt, const void *buf, long len);
+  int (*send)(struct JsNetwork *net, int sckt, const void *buf, size_t len);
 } PACKED_FLAGS JsNetwork;
 
 static inline void networkStructInit(JsNetwork *net) {  
 }
 
 // ---------------------------------- these are in network.c
-// Access a JsVar and get/set the relevant info in JsGraphics
+// Access a JsVar and get/set the relevant info in JsNetwork
 bool networkGetFromVar(JsNetwork *net, JsVar *parent);
 void networkSetVar(JsNetwork *net);
-// ----------------------------------------------------------------------------------------------
-
-void networkIdle(); ///< called when idling
-
-#endif
+// ---------------------------------------------------------
 
 #endif // _NETWORK_H
