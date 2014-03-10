@@ -1157,8 +1157,8 @@ void jsiExecuteEvents() {
   }
 }
 
-void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
-  bool wasInterrupted = jspIsInterrupted();
+NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
+  bool wasInterrupted = jspHasError();
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
   if (callbackNoNames) {
@@ -1180,8 +1180,11 @@ void jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // 
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
   }
-  if (!wasInterrupted && jspIsInterrupted())
+  if (!wasInterrupted && jspHasError()) {
     interruptedDuringEvent = true;
+    return false;
+  }
+  return true;
 }
 
 bool jsiHasTimers() {
@@ -1290,7 +1293,10 @@ void jsiIdle() {
               jsvUnLock(dataTime);
             }
             
-            jsiExecuteEventCallback(callback, data, 0);
+            if (!jsiExecuteEventCallback(callback, data, 0)) {
+              jsError("Error processing Serial data handler - removing it.");
+              jsvSetValueOfName(callback, 0);
+            }
             jsvUnLock(data);
           }
         }
@@ -1347,7 +1353,10 @@ void jsiIdle() {
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
-              jsiExecuteEventCallback(watchCallback, data, 0);
+              if (!jsiExecuteEventCallback(watchCallback, data, 0) && watchRecurring) {
+                jsError("Error processing Watch - removing it.");
+                watchRecurring = false;
+              }
               jsvUnLock(data);
               if (!watchRecurring) {
                 // free all
@@ -1409,14 +1418,20 @@ void jsiIdle() {
         }
         jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
       }
-      if (exec) jsiExecuteEventCallback(timerCallback, data, 0);
+      bool intervalRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "recur", 0));
+      if (exec) {
+        if (!jsiExecuteEventCallback(timerCallback, data, 0) && intervalRecurring) {
+          jsError("Error processing interval - removing it.");
+          intervalRecurring = false;
+        }
+      }
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
         jsvObjectSetChild(watchPtr, "timeout", 0);
       }
       jsvUnLock(watchPtr);
 
-      if (jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "recur", 0))) {
+      if (intervalRecurring) {
         JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
         if (interval<=0)
           jsvSetInteger(timerTime, time); // just set to current system time
@@ -1456,8 +1471,6 @@ void jsiIdle() {
   if (wasBusy)
     jsiSetBusy(BUSY_INTERACTIVE, false);
 
-
-  // TODO: could now sort events by time?
   // execute any outstanding events
   if (!jspIsInterrupted()) {
     jsiExecuteEvents();
@@ -1465,9 +1478,7 @@ void jsiIdle() {
   if (interruptedDuringEvent) {
     jspSetInterrupted(false);
     interruptedDuringEvent = false;
-    jsiConsolePrint("Execution Interrupted during event processing - clearing all timers and watches.\n");
-    jswrap_interface_clearInterval(0);
-    jswrap_interface_clearWatch(0);
+    jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
 
   // check for TODOs

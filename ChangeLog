@@ -5,6 +5,7 @@
             Add HttpServer.close
             Ensure that Linux command-line tests keep running if there's something to do
             Epic networking refactor - it should now be possible to support multiple network devices in a single binary
+            Now only remove the interval/timeout/watch that's causing the error - not every one
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression
