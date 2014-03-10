@@ -170,7 +170,8 @@ int net_cc3000_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
     if (num==0) num=-1; // select says data, but recv says 0 means connection is closed
   }
 
-  if (num==0 && cc3000_socket_has_closed(sckt))
+  if ((num==0 && cc3000_socket_has_closed(sckt)) ||
+      num>len) // Yes, this really does happen
     return -1;
 
   return num;
@@ -193,6 +194,7 @@ int net_cc3000_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
     return -1;
   } else if (FD_ISSET(sckt, &writefds)) {
     n = send(sckt, buf, len, MSG_NOSIGNAL);
+    if (n>len) return -1;
     return n;
   } else
     return 0; // just not ready

@@ -7,6 +7,7 @@
             Epic networking refactor - it should now be possible to support multiple network devices in a single binary
             Now only remove the interval/timeout/watch that's causing the error - not every one
             Change names of functions in callback-based Graphics so they don't conflict with the real ones
+            More CC300 reliability - now range check the return value from send+recv, because if there's a timeout it can be wrong
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression
