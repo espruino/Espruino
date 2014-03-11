@@ -34,8 +34,9 @@
 
 
 #define IRQ_PRIOR_MASSIVE 0
+#define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
+#define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
-#define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_MED 7
 #define IRQ_PRIOR_LOW 15
 
@@ -982,7 +983,7 @@ void jshInit() {
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
-  NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_MASSIVE); // Super high priority
+  NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
 #ifdef USE_RTC
   // work out initial values for RTC
