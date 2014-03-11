@@ -1199,6 +1199,8 @@ void jshIdle() {
     }
   }
 #endif
+  // Kick the watchdog (this only happens from the idle loop)
+  IWDG_ReloadCounter();
 }
 
 // ----------------------------------------------------------------------------
@@ -2545,4 +2547,34 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   } else {
     assert(0); // can't handle this yet...
   }
+}
+
+// Enable watchdog with a timeout in seconds
+void jshEnableWatchDog(JsVarFloat timeout) {
+    // Enable LSI
+    RCC_LSICmd(ENABLE);
+    WAIT_UNTIL(RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET, "LSI ready");
+
+    // Watchdog access
+    IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+    // set prescaler
+    IWDG_SetPrescaler(IWDG_Prescaler_256);
+
+    // Set counter reload value to obtain required IWDG Timeout.
+    int reload = (int)(timeout * 40000 / 256);
+    if (reload < 2) {
+      reload = 2;
+      jsError("Minimum watchdog timeout exceeded");
+    }
+    if (reload > 0xFFF) {
+      reload = 0xFFF;
+      jsError("Maximum watchdog timeout exceeded");
+    }
+    IWDG_SetReload((uint16_t)reload);
+
+    /* Reload IWDG counter */
+    IWDG_ReloadCounter();
+
+    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+    IWDG_Enable();
 }

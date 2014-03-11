@@ -12,6 +12,7 @@
             Fix 'repeat:false' in debounced setWatch
             Make sure 'repeat:false' disables the hardware watch
             Initialise RTC roughly 1 sec after reset, and use external 32kHz oscillator if it exists
+            Added E.enableWatchdog
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

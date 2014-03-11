@@ -113,3 +113,14 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
    jsvIteratorFree(&itsrc);
    return variance;
 }
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "enableWatchdog",
+         "generate" : "jswrap_espruino_enableWatchdog",
+         "description" : "Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout. NOTE: This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.",
+         "params" : [ [ "timeout", "float", "The timeout in seconds before a watchdog reset"] ]
+}*/
+void jswrap_espruino_enableWatchdog(JsVarFloat time) {
+  if (time<0 || isnan(time)) time=1;
+  jshEnableWatchDog(time);
+}

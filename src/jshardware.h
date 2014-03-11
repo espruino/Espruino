@@ -114,6 +114,9 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin);
 /// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value);
 
+/// Enable watchdog with a timeout in seconds
+void jshEnableWatchDog(JsVarFloat timeout);
+
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device);
 

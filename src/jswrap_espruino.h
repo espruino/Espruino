@@ -17,3 +17,4 @@
 JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_espruino_sum(JsVar *arr);
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean);
+void jswrap_espruino_enableWatchdog(JsVarFloat time);
