@@ -1203,6 +1203,25 @@ bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
          (!pinIsHigh && watchEdge<0); // falling edge
 }
 
+bool jsiIsWatchingPin(Pin pin) {
+  bool isWatched = false;
+  JsVar *watchArrayPtr = jsvLock(watchArray);
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, watchArrayPtr);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+    JsVar *pinVar = jsvObjectGetChild(watchPtr, "pin", 0);
+    if (jshGetPinFromVar(pinVar) == pin)
+      isWatched = true;
+    jsvUnLock(pinVar);
+    jsvUnLock(watchPtr);
+    jsvArrayIteratorNext(&it);
+  }
+  jsvArrayIteratorFree(&it);
+  jsvUnLock(watchArrayPtr);
+  return isWatched;
+}
+
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -1311,9 +1330,7 @@ void jsiIdle() {
       while (watchName) {
         JsVar *watchNamePtr = jsvLock(watchName); // effectively the array index
         JsVar *watchPtr = jsvSkipName(watchNamePtr);
-        JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
-        Pin pin = jshGetPinFromVar(watchPin); // TODO: could be faster?
-        jsvUnLock(watchPin);
+        Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
 
         if (jshIsEventForPin(&event, pin)) {
           bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
@@ -1361,6 +1378,8 @@ void jsiIdle() {
               if (!watchRecurring) {
                 // free all
                 jsvRemoveChild(watchArrayPtr, watchNamePtr);
+                if (!jsiIsWatchingPin(pin))
+                  jshPinWatch(pin, false);
               }
               jsvUnLock(watchCallback);
             }
@@ -1412,7 +1431,7 @@ void jsiIdle() {
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
           exec = jsiShouldExecuteWatch(watchPtr, state);
           // set up the lastTime variable of data to what was in the watch
-          jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
+          jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
           // set up the watches lastTime to this one
           jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
         }
@@ -1428,8 +1447,24 @@ void jsiIdle() {
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
         jsvObjectSetChild(watchPtr, "timeout", 0);
+        // Deal with non-recurring watches
+        if (exec) {
+          bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
+          if (!watchRecurring) {
+            JsVar *watchArrayPtr = jsvLock(watchArray);
+            JsVar *watchNamePtr = jsvGetArrayIndexOf(watchArrayPtr, watchPtr, true);
+            if (watchNamePtr) {
+              jsvRemoveChild(watchArrayPtr, watchNamePtr);
+              jsvUnLock(watchNamePtr);
+            }
+            jsvUnLock(watchArrayPtr);
+            Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
+            if (!jsiIsWatchingPin(pin))
+              jshPinWatch(pin, false);
+          }
+        }
+        jsvUnLock(watchPtr);
       }
-      jsvUnLock(watchPtr);
 
       if (intervalRecurring) {
         JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
