@@ -131,7 +131,9 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   JsVar *res;
   JsVarInt pLen = jsvIsUndefined(vLen) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vLen);
-  if (pLen<0) pLen=0;
+  if (pLen<0) pLen = 0;
+  if (pStart<0) pStart += (JsVarInt)jsvGetStringLength(parent);
+  if (pStart<0) pStart = 0;
   res = jsvNewWithFlags(JSV_STRING);
   if (!res) return 0; // out of memory
   jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)pLen);
