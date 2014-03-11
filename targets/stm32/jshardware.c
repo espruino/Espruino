@@ -40,11 +40,11 @@
 #define IRQ_PRIOR_LOW 15
 
 #ifdef USE_RTC
-#define RTC_PRESCALER 0x8000 // RTC counts to 32768
+// TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
+unsigned short jshRTCPrescaler = 40000;
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
-#define JSSYSTIME_SECOND (40000<<JSSYSTIME_EXTRA_BITS) // Internal LSI = around 40kHz
-#define JSSYSTIME_RTC (RTC_PRESCALER<<JSSYSTIME_EXTRA_BITS) // JsSysTime for a single RTC 'tick'
-#define JSSYSTIME_RTC_SHIFT (15+JSSYSTIME_EXTRA_BITS) // 2^JSSYSTIME_RTC_SHIFT = JSSYSTIME_RTC
+#define JSSYSTIME_SECOND_SHIFT 20
+#define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
 
 JsSysTime jshGetRTCSystemTime();
 #else
@@ -641,12 +641,14 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 
 // ----------------------------------------------------------------------------
 #ifdef USE_RTC
+unsigned int ticksSinceStart = 0;
 // Average time between SysTicks
 unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
 JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
 bool hasSystemSlept;
+
 #else
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
@@ -661,6 +663,32 @@ void jshKickUSBWatchdog() {
 
 void jshDoSysTick() {
 #ifdef USE_RTC
+  if (ticksSinceStart!=0xFFFFFFFF)
+    ticksSinceStart++;
+  if (ticksSinceStart==4) {
+    if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
+      // LSE is not working - turn it off
+      RCC_LSEConfig(RCC_LSE_OFF);
+    } else {
+      // LSE working! Yay! Now we must go through all this hassle to make it work
+      // allow access to backup domain, and reset it
+      PWR_BackupAccessCmd(ENABLE);
+      RCC_BackupResetCmd(ENABLE);
+      RCC_BackupResetCmd(DISABLE);
+      // but resetting it stopped the LSE from working!
+      RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator again
+      jshRTCPrescaler = 32768;
+      RTC_SetPrescaler(jshRTCPrescaler - 1U); // LSE is 32kHz
+      RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
+      RCC_RTCCLKCmd(ENABLE); // enable RTC
+      RTC_WaitForSynchro();
+      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
+      // reset systick or it'll go crazy
+      SysTick->VAL = 0;
+      hasSystemSlept = true;
+    }
+  }
+
   JsSysTime time = jshGetRTCSystemTime();
   if (!hasSystemSlept) {
     /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
@@ -938,15 +966,14 @@ void jshInit() {
   PWR_BackupAccessCmd(ENABLE);
   RCC_BackupResetCmd(ENABLE);
   RCC_BackupResetCmd(DISABLE);
+  // Set RTC prescaler
+  jshRTCPrescaler = 40000;
+  RTC_SetPrescaler(jshRTCPrescaler - 1U); // LSI is 40kHz
   // Initialise RTC
-  // TODO: try and start LSE, if there?
-  //RCC_LSEConfig(RCC_LSE_ON);
-  //while(RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET && timeout--) ;
-  RCC_LSICmd(ENABLE); // oscillator
-  RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source
+  RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
+  RCC_LSICmd(ENABLE); // low speed internal oscillator
+  RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
   RCC_RTCCLKCmd(ENABLE); // enable!
-  RTC_WaitForSynchro();
-  RTC_SetPrescaler(RTC_PRESCALER);
   RTC_WaitForLastTask();
 #endif
 
@@ -1251,13 +1278,15 @@ JsSysTime jshGetRTCSystemTime() {
   uint16_t ch2 = RTC->CNTH;
   uint16_t cl2 = RTC->CNTL;
 
-  if(cl1 == cl2) {
-    // no overflow
-    return ((JsSysTime)(ch2)<<(JSSYSTIME_RTC_SHIFT+8))|(cl2<<JSSYSTIME_RTC_SHIFT) | ((RTC_PRESCALER - dl2)<<JSSYSTIME_EXTRA_BITS);
-  } else {
-    // overflow, but prob didn't happen before
-    return ((JsSysTime)(ch1)<<(JSSYSTIME_RTC_SHIFT+8))|(cl1<<JSSYSTIME_RTC_SHIFT) | ((RTC_PRESCALER - dl1)<<JSSYSTIME_EXTRA_BITS);
+  if(cl1 != cl2) {
+    // overflow, but it prob didn't happen before
+    dl2 = dl1;
+    ch2 = ch1;
+    cl2 = cl1;
   }
+
+  unsigned int c = (((unsigned int)ch2)<<8) | cl2;
+  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | ((JsSysTime)(jshRTCPrescaler - (dl2+1))*JSSYSTIME_SECOND/jshRTCPrescaler);
 }
 #endif
 
@@ -2284,11 +2313,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
   /* TODO:
        Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
        Check that we're not using EXTI 11 for something else
-       Check we're not using PWM/Utility timer as these will stop
+       Check we're not using PWM as this will stop
        What about EXTI line 18 - USB Wakeup event
+       Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
   if (allowDeepSleep &&  // from setDeepSleep
-      (timeUntilWake > (JSSYSTIME_RTC*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't wake
+      (timeUntilWake > (JSSYSTIME_SECOND*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
       jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
@@ -2320,7 +2350,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinWatch(usbPin, true);
 #endif
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/JSSYSTIME_RTC)); // ensure we round down and leave a little time
+      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/JSSYSTIME_SECOND)); // ensure we round down and leave a little time
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
