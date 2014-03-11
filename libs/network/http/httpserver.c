@@ -605,6 +605,7 @@ void httpClientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
+  if (port==0) port=80;
 
   char hostName[128];
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", false);
