@@ -42,6 +42,7 @@
 #ifdef USE_RTC
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
 unsigned short jshRTCPrescaler = 40000;
+#define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
 #define JSSYSTIME_SECOND (1<<JSSYSTIME_SECOND_SHIFT) // Random value we chose - the accuracy we're allowing (1 microsecond)
@@ -665,32 +666,26 @@ void jshDoSysTick() {
 #ifdef USE_RTC
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
-  if (ticksSinceStart==4) {
+  if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
-      // LSE is not working - turn it off
-      RCC_LSEConfig(RCC_LSE_OFF);
+      // LSE is not working - turn it off and use LSI
+      jshRTCPrescaler = 40000; // 40kHz for LSI
+      RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
+      RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
     } else {
-      // LSE working! Yay! Now we must go through all this hassle to make it work
-      // allow access to backup domain, and reset it
-      PWR_BackupAccessCmd(ENABLE);
-      RCC_BackupResetCmd(ENABLE);
-      RCC_BackupResetCmd(DISABLE);
-      // but resetting it stopped the LSE from working!
-      RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator again
-      jshRTCPrescaler = 32768;
-      RTC_SetPrescaler(jshRTCPrescaler - 1U); // LSE is 32kHz
+      // LSE working! Yay! turn LSI off now
+      jshRTCPrescaler = 32768; // 32kHz for LSE
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
-      RCC_RTCCLKCmd(ENABLE); // enable RTC
-      RTC_WaitForSynchro();
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
-      // reset systick or it'll go crazy
-      SysTick->VAL = 0;
-      hasSystemSlept = true;
     }
+    RCC_RTCCLKCmd(ENABLE); // enable RTC
+    RTC_WaitForSynchro();
+    RTC_SetPrescaler(jshRTCPrescaler - 1U);
+    RTC_WaitForLastTask();
   }
 
   JsSysTime time = jshGetRTCSystemTime();
-  if (!hasSystemSlept) {
+  if (!hasSystemSlept && ticksSinceStart>RTC_INITIALISE_TICKS) {
     /* Ok - slightly crazy stuff here. So the normal jshGetSystemTime is now
      * working off of the SysTick again to get the accuracy. But this means
      * that we can't just change lastSysTickTime to the current time, because
@@ -962,19 +957,13 @@ void jshInit() {
   jshPinOutput(LED1_PININDEX, 1);
 #endif
 #ifdef USE_RTC
-  // allow access to backup domain, and reset it
+  // allow access to backup domain, and reset it (we need this so we can fiddle with the RTC)
   PWR_BackupAccessCmd(ENABLE);
   RCC_BackupResetCmd(ENABLE);
   RCC_BackupResetCmd(DISABLE);
-  // Set RTC prescaler
-  jshRTCPrescaler = 40000;
-  RTC_SetPrescaler(jshRTCPrescaler - 1U); // LSI is 40kHz
-  // Initialise RTC
+  // Turn both LSI and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
   RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
   RCC_LSICmd(ENABLE); // low speed internal oscillator
-  RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
-  RCC_RTCCLKCmd(ENABLE); // enable!
-  RTC_WaitForLastTask();
 #endif
 
   // initialise button
@@ -996,8 +985,7 @@ void jshInit() {
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_MASSIVE); // Super high priority
 
 #ifdef USE_RTC
-  // work out initial values for RTC, and reset SysTick
-  SysTick->VAL=0;
+  // work out initial values for RTC
   averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)JSSYSTIME_SECOND * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
@@ -1292,6 +1280,8 @@ JsSysTime jshGetRTCSystemTime() {
 
 JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
+  if (ticksSinceStart<=RTC_INITIALISE_TICKS)
+    return 0; // Clock hasn't stabilised yet
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
     // to fire off a SysTick IRQ, which will reset lastSysTickTime
