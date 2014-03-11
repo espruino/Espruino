@@ -8,6 +8,9 @@
             Now only remove the interval/timeout/watch that's causing the error - not every one
             Change names of functions in callback-based Graphics so they don't conflict with the real ones
             More CC300 reliability - now range check the return value from send+recv, because if there's a timeout it can be wrong
+            Fix memory leak in setWatch with debounce
+            Fix 'repeat:false' in debounced setWatch
+            Make sure 'repeat:false' disables the hardware watch
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

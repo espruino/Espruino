@@ -34,6 +34,7 @@ bool jsiLoop();
 bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
+bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
 /// Return true if the object has callbacks...
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
