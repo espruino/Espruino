@@ -14,6 +14,7 @@
             Initialise RTC roughly 1 sec after reset, and use external 32kHz oscillator if it exists
             Added E.enableWatchdog (fix #252)
             Fix negative start value for String.substr()
+            Fix problem where the RTC's full 32 bits weren't combined properly
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

@@ -1275,7 +1275,7 @@ JsSysTime jshGetRTCSystemTime() {
     cl2 = cl1;
   }
 
-  unsigned int c = (((unsigned int)ch2)<<8) | cl2;
+  unsigned int c = (((unsigned int)ch2)<<16) | cl2;
   return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | ((JsSysTime)(jshRTCPrescaler - (dl2+1))*JSSYSTIME_SECOND/jshRTCPrescaler);
 }
 #endif
