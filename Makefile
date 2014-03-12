@@ -65,14 +65,6 @@ ifeq ($(OS),Windows_NT)
 MINGW=1
 endif
 
-# Gordon's car ECU (extremely beta!)
-ifdef ECU
-STM32F4DISCOVERY=1
-#HYSTM32_32=1 
-USE_TRIGGER=1
-DEFINES += -DECU
-endif
-
 ifdef RELEASE
 # force no asserts to be compiled in
 DEFINES += -DNO_ASSERT
@@ -256,6 +248,19 @@ BOARD=LPC1768
 MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
 PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o 
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed 
+OPTIMIZEFLAGS+=-O3
+else ifdef ECU
+# Gordon's car ECU (extremely beta!)
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES +=-DECU -DSTM32F4DISCOVERY
+USB=1
+DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+CHIP=STM32F407
+BOARD=ECU
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
 BOARD=CARAMBOLA
