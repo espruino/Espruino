@@ -679,6 +679,7 @@ void jshDoSysTick() {
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
+    //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
     RTC_SetPrescaler(jshRTCPrescaler - 1U);
@@ -693,13 +694,13 @@ void jshDoSysTick() {
      * there will be an apparent glitch if SysTick happens when measuring the
      * length of a pulse.
      */
-    smoothLastSysTickTime += smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+    smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
-    averageSysTickTime = (averageSysTickTime*3 + (unsigned int)(time-lastSysTickTime)) >> 2;
+    averageSysTickTime = (unsigned int)((int)averageSysTickTime*3 + (int)(time-lastSysTickTime)) >> 2;
     // what do we expect the RTC time to be on the next SysTick?
-    JsSysTime nextSysTickTime = time+averageSysTickTime;
+    JsSysTime nextSysTickTime = time + averageSysTickTime;
     // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
-    smoothAverageSysTickTime = (averageSysTickTime*3 + (unsigned int)(nextSysTickTime-smoothLastSysTickTime)) >> 2;
+    smoothAverageSysTickTime = (unsigned int)((int)smoothAverageSysTickTime*3 + (int)(nextSysTickTime-smoothLastSysTickTime)) >> 2;
   } else {
     hasSystemSlept = false;
     smoothLastSysTickTime = time;
