@@ -14,6 +14,7 @@
 #include "trigger.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jstimer.h"
 
 const int TRIGGER_LOOKAHEAD = 4;
 
@@ -150,10 +151,10 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
               //jsiConsolePrint("Trigger already passed\n");
             }
 
-            if (!jshPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 1))
+            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 1))
               data->errors |= TRIGERR_TIMER_FULL;
             if (trig->pulseLength>0) {
-              if (!jshPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
+              if (!jstPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
                 data->errors |= TRIGERR_TIMER_FULL;
             }
             // trigger fired, so update it
