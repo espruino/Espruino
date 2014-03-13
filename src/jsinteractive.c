@@ -1474,7 +1474,7 @@ void jsiIdle() {
           jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
       } else {
         // free all
-        JsVar *foundChild = jsvFindChildFromVar(timerArrayPtr, timerNamePtr, false);
+        JsVar *foundChild = jsvGetArrayIndexOf(timerArrayPtr, timerPtr, true);
         if (foundChild) {
           // check it exists - could have been removed during jsiExecuteEventCallback!
           jsvRemoveChild(timerArrayPtr, timerNamePtr);
