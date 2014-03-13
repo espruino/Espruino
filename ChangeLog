@@ -1,5 +1,6 @@
      1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
             Make http default to port 80 if no port is specified in options
+            Try and stop issue with System Time suddenly jumping forwards
 
      1v56 : Added atob and btoa (for base64 encode/decode) - fix #244
             Added Array.sort() - fix #220

@@ -696,11 +696,13 @@ void jshDoSysTick() {
      */
     smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
-    averageSysTickTime = (unsigned int)((int)averageSysTickTime*3 + (int)(time-lastSysTickTime)) >> 2;
+    int diff = time - lastSysTickTime;
+    if (diff<0) diff=0; // just in case!
+    averageSysTickTime = (unsigned int)((int)averageSysTickTime*3 + diff) >> 2;
     // what do we expect the RTC time to be on the next SysTick?
     JsSysTime nextSysTickTime = time + averageSysTickTime;
     // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
-    smoothAverageSysTickTime = (unsigned int)((int)smoothAverageSysTickTime*3 + (int)(nextSysTickTime-smoothLastSysTickTime)) >> 2;
+    smoothAverageSysTickTime = (unsigned int)((int)smoothAverageSysTickTime*3 + (int)(nextSysTickTime - smoothLastSysTickTime)) >> 2;
   } else {
     hasSystemSlept = false;
     smoothLastSysTickTime = time;
@@ -1277,7 +1279,7 @@ JsSysTime jshGetRTCSystemTime() {
     cl2 = cl1;
   }
 
-  unsigned int c = (((unsigned int)ch2)<<16) | cl2;
+  unsigned int c = (((unsigned int)ch2)<<16) | (unsigned int)cl2;
   return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | ((JsSysTime)(jshRTCPrescaler - (dl2+1))*JSSYSTIME_SECOND/jshRTCPrescaler);
 }
 #endif
