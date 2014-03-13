@@ -91,27 +91,21 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       inf.bytesize = (unsigned char)jsvGetInteger(v);
     jsvUnLock(v);
     
-    v = jsvObjectGetChild(options, "parity", 0);    
-    if(jsvIsNull(v)) {
-      inf.parity = 0;
-    }
-    else if(jsvIsString(v)) {
-      inf.parity = 0xFF;
-      char s[8] = "";
-
-      jsvGetString(v, s, sizeof(s) - 1);
-
-      if(!strcmp(s, "o") || !strcmp(s, "odd")) {
+    inf.parity = 0;
+    v = jsvObjectGetChild(options, "parity", 0);
+    if(jsvIsString(v)) {
+      if(jsvIsStringEqual(v, "o") || jsvIsStringEqual(v, "odd"))
         inf.parity = 1;
-      }
-      else if(!strcmp(s, "e") || !strcmp(s, "even")) {
+      else if(jsvIsStringEqual(v, "e") || jsvIsStringEqual(v, "even"))
         inf.parity = 2;
-      }
-    }
-    else if(jsvIsInt(v)) {
+    } else if(jsvIsInt(v)) {
       inf.parity = (unsigned char)jsvGetInteger(v);
     }
     jsvUnLock(v);
+    if (inf.parity<0 || inf.parity>2) {
+      jsError("Invalid parity %d", inf.parity);
+      return;
+    }
 
     v = jsvObjectGetChild(options, "stopbits", 0);
     if (jsvIsInt(v)) 
