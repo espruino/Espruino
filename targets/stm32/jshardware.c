@@ -643,11 +643,11 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 
 // ----------------------------------------------------------------------------
 #ifdef USE_RTC
-unsigned int ticksSinceStart = 0;
+volatile unsigned int ticksSinceStart = 0;
 // Average time between SysTicks
-unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
+volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
-JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
+volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
 bool hasSystemSlept;
 

@@ -1,4 +1,5 @@
      1v58 : Fix Serial.parity
+            Fix glitches in jshGetSystemTime
 
      1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
             Make http default to port 80 if no port is specified in options
