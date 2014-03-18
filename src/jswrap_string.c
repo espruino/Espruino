@@ -71,33 +71,62 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
                           "Note that this returns 0 not 'NaN' for out of bounds characters"],
          "generate" : "jswrap_string_charCodeAt",
          "params" : [ [ "pos", "int", "The character number in the string. Negative values return characters from end of string (-1 = last char)"] ],
-         "return" : ["int", "The integer value of a character in the string"]
+         "return" : ["int32", "The integer value of a character in the string"]
 }*/
-JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
+int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   return (unsigned char)jsvGetCharInString(parent, (size_t)idx);
 }
 
 
 /*JSON{ "type":"method", "class": "String", "name" : "indexOf",
          "description" : "Return the index of substring in this string, or -1 if not found",
-         "generate" : "jswrap_string_indexOf",
-         "params" : [ [ "substring", "JsVar", "The string to search for"] ],
-         "return" : ["int", "The index of the string, or -1 if not found"]
+         "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)",
+         "params" : [ [ "substring", "JsVar", "The string to search for"],
+                      [ "fromIndex", "JsVar", "Index to search from"] ],
+         "return" : ["int32", "The index of the string, or -1 if not found"]
 }*/
-JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v) {
+/*JSON{ "type":"method", "class": "String", "name" : "lastIndexOf",
+         "description" : "Return the last index of substring in this string, or -1 if not found",
+         "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, true)",
+         "params" : [ [ "substring", "JsVar", "The string to search for"],
+                      [ "fromIndex", "JsVar", "Index to search from"] ],
+         "return" : ["int32", "The index of the string, or -1 if not found"]
+}*/
+int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
   // slow, but simple!
-   v = jsvAsString(v, false);
-   if (!v) return 0; // out of memory
-   int idx;
-   int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
-   for (idx=0;idx<=l;idx++) {
-     if (jsvCompareString(parent, v, (size_t)idx, 0, true)==0) {
-       jsvUnLock(v);
-       return idx;
-     }
-   }
-   jsvUnLock(v);
-   return -1;
+  substring = jsvAsString(substring, false);
+  if (!substring) return 0; // out of memory
+  int parentLength = (int)jsvGetStringLength(parent);
+  int lastPossibleSearch = parentLength - (int)jsvGetStringLength(substring);
+  int idx, dir, end;
+  if (!lastIndexOf) { // normal indexOf
+    dir = 1;
+    end = lastPossibleSearch+1;
+    idx = 0;
+    if (jsvIsNumeric(fromIndex)) {
+      idx = (int)jsvGetInteger(fromIndex);
+      if (idx<0) idx=0;
+      if (idx>end) idx=end;
+    }
+  } else {
+    dir = -1;
+    end = -1;
+    idx = lastPossibleSearch;
+    if (jsvIsNumeric(fromIndex)) {
+      idx = (int)jsvGetInteger(fromIndex);
+      if (idx<0) idx=0;
+      if (idx>lastPossibleSearch) idx=lastPossibleSearch;
+    }
+  }
+
+  for (;idx!=end;idx+=dir) {
+    if (jsvCompareString(parent, substring, (size_t)idx, 0, true)==0) {
+      jsvUnLock(substring);
+      return idx;
+    }
+  }
+  jsvUnLock(substring);
+  return -1;
 }
 
 /*JSON{ "type":"method", "class": "String", "name" : "substring",
