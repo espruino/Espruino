@@ -123,7 +123,7 @@ void graphicsSetVar(JsGraphics *gfx) {
 
 void graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
-  gfx->setPixel(gfx,x,y,col & (unsigned int)((1<<gfx->data.bpp)-1));
+  gfx->setPixel(gfx,x,y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y) {

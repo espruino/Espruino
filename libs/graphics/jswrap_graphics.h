@@ -36,6 +36,7 @@ int jswrap_graphics_getPixel(JsVar *parent, int x, int y);
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color);
 void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground);
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid);
+void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height);
 void jswrap_graphics_drawString(JsVar *parent, JsVar *str, int x, int y);
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var);
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);

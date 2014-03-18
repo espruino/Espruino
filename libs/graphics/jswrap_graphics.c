@@ -336,7 +336,47 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
     if (size<1) size=1;
     if (size>1023) size=1023;
   }
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
+    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0);
+    jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0);
+  }
   gfx.data.fontSize = (short)size;
+  graphicsSetVar(&gfx);
+}
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontCustom",
+         "description" : "Set Graphics to draw with a Custom Font",
+         "generate" : "jswrap_graphics_setFontCustom",
+         "params" : [ [ "bitmap", "JsVar", "A column-first, MSB-first, 1bpp bitmap containing the font bitmap" ],
+                      [ "firstChar", "int32", "The first character in the font - usually 32 (space)" ],
+                      [ "width", "JsVar", "The width of each character in the font. Either an integer, or a string where each character represents the width" ],
+                      [ "height", "int32", "The height as an integer" ] ]
+}*/
+void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+
+  if (!jsvIsString(bitmap)) {
+    jsError("Font bitmap must be a String");
+    return;
+  }
+  if (firstChar<0 || firstChar>255) {
+    jsError("First character out of range");
+    return;
+  }
+  if (!jsvIsString(width) && !jsvIsInt(width)) {
+    jsError("Font width must be a String or an integer");
+    return;
+  }
+  if (height<=0 || height>255) {
+   jsError("Invalid height");
+   return;
+ }
+  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
+  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
+  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
+  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
+  gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
 
@@ -350,6 +390,16 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
 }*/
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+
+  JsVar *customBitmap = 0, *customWidth = 0;
+  int customHeight, customFirstChar;
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+    customBitmap = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, 0);
+    customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    customHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, 0));
+    customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
+  }
+
   JsVar *str = jsvAsString(var, false);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -361,12 +411,54 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+      // get char width and offset in string
+      int width = 0, bmpOffset = 0;
+      if (jsvIsString(customWidth)) {
+        if (ch>=customFirstChar) {
+          JsvStringIterator wit;
+          jsvStringIteratorNew(&wit, customWidth, 0);
+          while (jsvStringIteratorHasChar(&wit) && (int)jsvStringIteratorGetIndex(&wit)<(ch-customFirstChar)) {
+            bmpOffset += (unsigned char)jsvStringIteratorGetChar(&wit);
+            jsvStringIteratorNext(&wit);
+          }
+          width = (unsigned char)jsvStringIteratorGetChar(&wit);
+          jsvStringIteratorFree(&wit);
+        }
+      } else {
+        width = (int)jsvGetInteger(customWidth);
+        bmpOffset = width*(ch-customFirstChar);
+      }
+      if (ch>=customFirstChar) {
+        bmpOffset *= customHeight;
+        // now render character
+        JsvStringIterator cit;
+        jsvStringIteratorNew(&cit, customBitmap, (size_t)bmpOffset>>3);
+        bmpOffset &= 7;
+        int cx,cy;
+        for (cx=0;cx<width;cx++) {
+          for (cy=0;cy<customHeight;cy++) {
+            if ((jsvStringIteratorGetChar(&cit)<<bmpOffset)&128)
+              graphicsSetPixel(&gfx, (short)(cx+x), (short)(cy+y), gfx.data.fgColor);
+            bmpOffset++;
+            if (bmpOffset==8) {
+              bmpOffset=0;
+              jsvStringIteratorNext(&cit);
+            }
+          }
+        }
+        jsvStringIteratorFree(&cit);
+      }
+      x += width;
     }
     if (jspIsInterrupted()) break;
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
+
+  jsvUnLock(customBitmap);
+  jsvUnLock(customWidth);
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "stringWidth",
@@ -377,6 +469,14 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
 }*/
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+
+  JsVar *customWidth = 0;
+  int customFirstChar;
+  if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+    customWidth = jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, 0);
+    customFirstChar = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, 0));
+  }
+
   JsVar *str = jsvAsString(var, false);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -387,11 +487,19 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       width += 4;
+    } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
+      if (jsvIsString(customWidth)) {
+        if (ch>=customFirstChar)
+          width += (unsigned char)jsvGetCharInString(customWidth, (size_t)(ch-customFirstChar));
+      } else
+        width += (int)jsvGetInteger(customWidth);
     }
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(str);
+
+  jsvUnLock(customWidth);
   return width;
 }
 
