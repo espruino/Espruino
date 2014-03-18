@@ -326,16 +326,17 @@ unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short s
   short verts[VECTOR_FONT_MAX_POLY_SIZE*2];
   int i, idx=0;
   for (i=0;i<vector.vertCount;i+=2) {
-    verts[idx+0] = (short)(x1+((vectorFontPolys[vector.vertOffset+i+0]&0x7F)*size/48));
-    verts[idx+1] = (short)(y1+((vectorFontPolys[vector.vertOffset+i+1]&0x7F)*size/48)-(size>>2));
+    verts[idx+0] = (short)(x1+(((vectorFontPolys[vector.vertOffset+i+0]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
+    verts[idx+1] = (short)(y1+(((vectorFontPolys[vector.vertOffset+i+1]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
     idx+=2;
     if (vectorFontPolys[vector.vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
+
       if (jspIsInterrupted()) break;
       idx=0;
     }
   }
-  return (vector.width * (unsigned int)size)/96;
+  return (vector.width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 
 // returns the width of a character
@@ -344,7 +345,7 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
   VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
-  return (vector.width * (unsigned int)size)/96;
+  return (vector.width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 
 // Splash screen
