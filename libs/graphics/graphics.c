@@ -276,9 +276,15 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
   }
   for (y=miny;y<=maxy;y++) {
     if (maxx[y]>=minx[y]) {
+      // clip
       if (minx[y]<0) minx[y]=0;
       if (maxx[y]>=gfx->data.width) maxx[y]=gfx->data.width-1;
-      graphicsFillRect(gfx,minx[y],y,maxx[y],y);
+      // try and expand the rect that we fill
+      int oldy = y;
+      while (y<maxy && minx[y+1]==minx[oldy] && maxx[y+1]==maxx[oldy])
+        y++;
+      // actually fill
+      graphicsFillRect(gfx,minx[y],oldy,maxx[y],y);
       if (jspIsInterrupted()) break;
     }
   }
@@ -307,9 +313,15 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
   }
   for (x=minx;x<=maxx;x++) {
     if (maxy[x]>=miny[x]) {
+      // clip
       if (miny[x]<0) miny[x]=0;
       if (maxy[x]>=gfx->data.height) maxy[x]=(short)(gfx->data.height-1);
-      graphicsFillRect(gfx,x,miny[x],x,maxy[x]);
+      // try and expand the rect that we fill
+      int oldx = x;
+      while (x<maxx && miny[x+1]==miny[oldx] && maxy[x+1]==maxy[oldx])
+        x++;
+      // actually fill
+      graphicsFillRect(gfx,oldx,miny[x],x,maxy[x]);
       if (jspIsInterrupted()) break;
     }
   }
