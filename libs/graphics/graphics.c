@@ -322,14 +322,21 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch) {
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
-  VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
+  int vertOffset = 0;
+  int i;
+  /* compute offset (I figure a ~50 iteration FOR loop is preferable to
+   * a 200 byte array) */
+  int fontOffset = ch-vectorFontOffset;
+  for (i=0;i<fontOffset;i++)
+    vertOffset += vectorFonts[i].vertCount;
+  VectorFontChar vector = vectorFonts[fontOffset];
   short verts[VECTOR_FONT_MAX_POLY_SIZE*2];
-  int i, idx=0;
+  int idx=0;
   for (i=0;i<vector.vertCount;i+=2) {
-    verts[idx+0] = (short)(x1+(((vectorFontPolys[vector.vertOffset+i+0]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
-    verts[idx+1] = (short)(y1+(((vectorFontPolys[vector.vertOffset+i+1]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
+    verts[idx+0] = (short)(x1+(((vectorFontPolys[vertOffset+i+0]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
+    verts[idx+1] = (short)(y1+(((vectorFontPolys[vertOffset+i+1]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
     idx+=2;
-    if (vectorFontPolys[vector.vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
+    if (vectorFontPolys[vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
 
       if (jspIsInterrupted()) break;
