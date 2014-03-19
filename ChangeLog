@@ -3,6 +3,7 @@
             Added Graphics.setFontCustom for custom fonts
             Added String.lastIndexOf, and made String.indexOf with fromIndex work
             Used non-bold vector font, improve alignment, and make curves lower quality
+            Increase allowable I2C array size to 150
 
      1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
             Make http default to port 80 if no port is specified in options

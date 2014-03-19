@@ -402,7 +402,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
          "params" : [ [ "address", "int32", "The 7 bit address of the device to transmit to" ],
                       [ "data", "JsVar", "The Data to send - either a byte, an array of bytes, or a string" ]]
 }*/
-#define I2C_BUFSIZE 32
+#define I2C_BUFSIZE 150
 void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
@@ -420,7 +420,7 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
-    if (i>=I2C_BUFSIZE) jsError("Too many bytes to write - truncating");
+    if (i>=I2C_BUFSIZE) jsError("Too many bytes to write (max %d) - truncating", I2C_BUFSIZE);
     jshI2CWrite(device, (unsigned char)address, i, buf);
   } else {
     jsError("Variable type not suited to writeTo operation");
@@ -437,7 +437,7 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
 JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
   unsigned char buf[I2C_BUFSIZE];
   if (nBytes>I2C_BUFSIZE) {
-    jsError("Too many bytes to read - truncating");
+    jsError("Too many bytes to read (max %d) - truncating", I2C_BUFSIZE);
     nBytes = I2C_BUFSIZE;
   }
 
