@@ -1914,7 +1914,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       if (a && b) {
         // Check whether both are numbers, otherwise check the variable
         // type flags themselves
-        eql = ((jsvIsInt(a)||jsvIsFloat(a)) == (jsvIsInt(b)||jsvIsFloat(b))) ||
+        eql = ((jsvIsInt(a)||jsvIsFloat(a)) && (jsvIsInt(b)||jsvIsFloat(b))) ||
               ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
       }
       if (eql) {
