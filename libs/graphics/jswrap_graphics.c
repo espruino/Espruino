@@ -320,6 +320,21 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
   graphicsSetVar(&gfx);
 }
 
+/*JSON{ "type":"method", "class": "Graphics", "name" : "getColor",
+         "description" : "Get the color to use for subsequent drawing operations",
+         "generate_full" : "jswrap_graphics_getColorX(parent, true)",
+         "return" : [ "int", "The integer value of the colour" ]
+}*/
+/*JSON{ "type":"method", "class": "Graphics", "name" : "getBgColor",
+         "description" : "Get the background color to use for subsequent drawing operations",
+         "generate_full" : "jswrap_graphics_getColorX(parent, false)",
+         "return" : [ "int", "The integer value of the colour" ]
+}*/
+JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  return (isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1);
+}
+
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
          "description" : "Set Graphics to draw with a Bitmapped Font",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
