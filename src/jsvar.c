@@ -2617,6 +2617,16 @@ JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   }
 }
 
+JsVarFloat jsvIteratorGetFloatValue(JsvIterator *it) {
+  switch (it->type) {
+  case JSVI_ARRAY : return jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it->it.arr));
+  case JSVI_OBJECT : return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  case JSVI_STRING : return (JsVarFloat)jsvStringIteratorGetChar(&it->it.str);
+  case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetFloatValue(&it->it.buf);
+  default: assert(0); return 0;
+  }
+}
+
 JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value) {
   switch (it->type) {
   case JSVI_ARRAY : jsvArrayIteratorSetElement(&it->it.arr, value); break;

@@ -7,6 +7,7 @@
             Try and enlarge fillRects caused by polygons
             Fix === issues, fix #257
             Add Graphics.getColor/getBgColor for Juergen
+            Added E.convolve for doing fast calculations with Waveforms
 
      1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
             Make http default to port 80 if no port is specified in options

@@ -61,25 +61,19 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }*/
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-     jsError("Expecting first argument to be an array, not %t", arr);
-     return NAN;
-   }
-   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
-   JsVarFloat sum = 0;
-   JsVarInt sumi = 0;
+    jsError("Expecting first argument to be an array, not %t", arr);
+    return NAN;
+  }
+  JsVarFloat sum = 0;
 
-   JsvIterator itsrc;
-   jsvIteratorNew(&itsrc, arr);
-   while (jsvIteratorHasElement(&itsrc)) {
-     if (useInts) {
-       sumi += jsvIteratorGetIntegerValue(&itsrc);
-     } else {
-       sum += jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
-     }
-     jsvIteratorNext(&itsrc);
-   }
-   jsvIteratorFree(&itsrc);
-   return useInts ? (JsVarFloat)sumi : sum;
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  while (jsvIteratorHasElement(&itsrc)) {
+    sum += jsvIteratorGetFloatValue(&itsrc);
+    jsvIteratorNext(&itsrc);
+  }
+  jsvIteratorFree(&itsrc);
+  return sum;
 }
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
@@ -90,28 +84,67 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
          "return" : ["float", "The variance of the given buffer"]
 }*/
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
-  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-     jsError("Expecting first argument to be an array, not %t", arr);
-     return NAN;
-   }
-   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
-   JsVarFloat variance = 0;
+  if (!(jsvIsIterable(arr))) {
+    jsError("Expecting first argument to be iterable, not %t", arr);
+    return NAN;
+  }
+  JsVarFloat variance = 0;
 
-   JsvIterator itsrc;
-   jsvIteratorNew(&itsrc, arr);
-   while (jsvIteratorHasElement(&itsrc)) {
-     JsVarFloat val;
-     if (useInts) {
-       val = (JsVarFloat)jsvIteratorGetIntegerValue(&itsrc);
-     } else {
-       val = jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
-     }
-     val -= mean;
-     variance += val*val;
-     jsvIteratorNext(&itsrc);
-   }
-   jsvIteratorFree(&itsrc);
-   return variance;
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  while (jsvIteratorHasElement(&itsrc)) {
+    JsVarFloat val = jsvIteratorGetFloatValue(&itsrc);
+    val -= mean;
+    variance += val*val;
+    jsvIteratorNext(&itsrc);
+  }
+  jsvIteratorFree(&itsrc);
+  return variance;
+}
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "convolve",
+         "generate" : "jswrap_espruino_convolve",
+         "description" : "Convolve arr1 with arr2. This is equivalent to `v=0;for (i in arr1) v+=arr1[i] * arr2[(i+offset) % arr2.length]`",
+         "params" : [ [ "arr1", "JsVar", "An array to convolve"],
+                      [ "arr2", "JsVar", "An array to convolve"],
+                      [ "offset", "int32", "The mean value of the array" ] ],
+         "return" : ["float", "The variance of the given buffer"]
+}*/
+JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
+  if (!(jsvIsIterable(arr1)) ||
+      !(jsvIsIterable(arr2))) {
+    jsError("Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
+    return NAN;
+  }
+  JsVarFloat conv = 0;
+
+  JsvIterator it1;
+  jsvIteratorNew(&it1, arr1);
+  JsvIterator it2;
+  jsvIteratorNew(&it2, arr2);
+
+  // get iterator2 at the correct offset
+  int l = (int)jsvGetLength(arr2);
+  offset = offset % l;
+  if (offset<0) offset += l;
+  while (offset-->0)
+    jsvIteratorNext(&it2);
+
+
+  while (jsvIteratorHasElement(&it1)) {
+    conv += jsvIteratorGetFloatValue(&it1) * jsvIteratorGetFloatValue(&it2);
+    jsvIteratorNext(&it1);
+    jsvIteratorNext(&it2);
+    // restart iterator if it hit the end
+    if (!jsvIteratorHasElement(&it2)) {
+      jsvIteratorFree(&it2);
+      jsvIteratorNew(&it2, arr2);
+    }
+  }
+  jsvIteratorFree(&it1);
+  jsvIteratorFree(&it2);
+  return conv;
 }
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
