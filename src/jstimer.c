@@ -20,7 +20,7 @@ volatile unsigned char utilTimerTasksHead = 0;
 volatile unsigned char utilTimerTasksTail = 0;
 
 
-volatile UtilTimerType utilTimerType = UT_NONE;
+volatile bool utilTimerOn = false;
 unsigned int utilTimerBit;
 bool utilTimerState;
 unsigned int utilTimerData;
@@ -61,13 +61,10 @@ static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *tas
 }
 
 void jstUtilTimerInterruptHandler() {
-  if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
-    // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
-    utilTimerType = UT_PIN_SET;
-  } else if (utilTimerType == UT_PIN_SET) {
+  if (utilTimerOn) {
     JsSysTime time = jshGetSystemTime();
     // execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time<time) {
+    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time <= time) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
       // actually perform the task
       switch (task->type) {
@@ -111,9 +108,9 @@ void jstUtilTimerInterruptHandler() {
       // If we need to repeat
       if (task->repeatInterval) {
         // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
-        unsigned int t = (unsigned int)(time+task->repeatInterval - task->time) / task->repeatInterval;
+        unsigned int t = (unsigned int)((time+(JsSysTime)task->repeatInterval - task->time) / (JsSysTime)task->repeatInterval);
         if (t<1) t=1;
-        task->time += task->repeatInterval*t;
+        task->time = task->time + (JsSysTime)task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order
         unsigned char ta = utilTimerTasksTail;
         unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
@@ -134,23 +131,20 @@ void jstUtilTimerInterruptHandler() {
 
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      jshUtilTimerReschedule(utilTimerTasks[utilTimerTasksTail].time-time);
+      jshUtilTimerReschedule(utilTimerTasks[utilTimerTasksTail].time - time);
     } else {
-      utilTimerType = UT_NONE;
+      utilTimerOn = false;
       jshUtilTimerDisable();
     }
   } else {
     // Nothing left to do - disable the timer
-    utilTimerType = UT_NONE;
     jshUtilTimerDisable();
   }
-
 }
 
 /// Return true if the utility timer is running
 bool jstUtilTimerIsRunning() {
-  return utilTimerType != UT_NONE;
+  return utilTimerOn;
 }
 
 void jstUtilTimerWaitEmpty() {
@@ -232,8 +226,8 @@ static bool utilTimerInsertTask(UtilTimerTask *task) {
 
   //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
   // now set up timer if not already set up...
-  if ((utilTimerType != UT_PIN_SET && utilTimerType != UT_PIN_SET_RELOAD_EVENT) || haveChangedTimer) {
-    utilTimerType = UT_PIN_SET_RELOAD_EVENT;
+  if (!utilTimerOn || haveChangedTimer) {
+    utilTimerOn = true;
     jshUtilTimerStart(utilTimerTasks[utilTimerTasksTail].time - jshGetSystemTime());
   }
 
@@ -264,8 +258,7 @@ bool jstSetWakeUp(JsSysTime period) {
   task.type = UET_WAKEUP;
   bool ok = utilTimerInsertTask(&task);
   // We wait until the timer is out of the reload event, because the reload event itself would wake us up
-  WAIT_UNTIL(utilTimerType != UT_PIN_SET_RELOAD_EVENT, "Utility Timer Init");
-  return ok;
+    return ok;
 }
 
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {

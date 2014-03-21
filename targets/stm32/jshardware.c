@@ -1591,8 +1591,8 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   // Set up timer frequency...
   TIM_TimeBaseStructure.TIM_Period = 0xFFFF;
   if (freq>0) {
-    int clockTicks = (int)((JsVarFloat)jshGetTimerFreq(TIMx) / freq);
-    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+    unsigned int clockTicks = (unsigned int)((JsVarFloat)jshGetTimerFreq(TIMx) / freq);
+    unsigned int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
     TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)prescale;
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(clockTicks/(prescale+1));
     /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
@@ -2444,16 +2444,22 @@ void jshUtilTimerDisable() {
 
 void jshUtilTimerReschedule(JsSysTime period) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+
+  JsSysTime clockTicks = (timerFreq * period) / JSSYSTIME_SECOND;
   if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
-  int ticks = clockTicks/(prescale+1);
+  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
+  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
   if (ticks<1) ticks=1;
   if (ticks>65535) ticks=65535;
 
+  TIM_Cmd(UTIL_TIMER, DISABLE);
   TIM_SetAutoreload(UTIL_TIMER, (uint16_t)ticks);
   // we need to kick this (even if the prescaler is correct) so the counter value is automatically reloaded
   TIM_PrescalerConfig(UTIL_TIMER, (uint16_t)prescale, TIM_PSCReloadMode_Immediate);
+  // Kicking probably fired off the IRQ...
+  TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  TIM_Cmd(UTIL_TIMER, ENABLE);
 }
 /*#
  *   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
@@ -2473,12 +2479,13 @@ void jshUtilTimerReschedule(JsSysTime period) {
  */
 
 void jshUtilTimerStart(JsSysTime period) {
-  //jsiConsolePrint("Starting\n");
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+
+  JsSysTime clockTicks = (timerFreq * period) / JSSYSTIME_SECOND;
   if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
+  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
   if (ticks<1) ticks=1;
   if (ticks>65535) ticks=65535;
 
@@ -2499,9 +2506,12 @@ void jshUtilTimerStart(JsSysTime period) {
   TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
 
-  //TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  // init will have caused a timer update - clear it
+  TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  // init interrupts and go
   TIM_ITConfig(UTIL_TIMER, TIM_IT_Update, ENABLE);
   TIM_Cmd(UTIL_TIMER, ENABLE);  /* enable counter */
+
 }
 
 

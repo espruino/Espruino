@@ -19,12 +19,6 @@
 #include "jspin.h"
 
 typedef enum {
-  UT_NONE,
-  UT_PIN_SET_RELOAD_EVENT,
-  UT_PIN_SET,
-} PACKED_FLAGS UtilTimerType;
-
-typedef enum {
   UET_WAKEUP, ///< Does nothing except wake the device up!
   UET_SET, ///< Set a pin to a value
   UET_WRITE_BYTE, ///< Write a byte to a DAC/Timer

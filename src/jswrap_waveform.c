@@ -187,8 +187,8 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     jsError("Invalid pin");
     return;
   }
-  if (!isfinite(freq) || freq<1) {
-    jsError("Frequency must be above 1Hz");
+  if (!isfinite(freq) || freq<0.001) {
+    jsError("Frequency must be above 0.001Hz");
     return;
   }
 

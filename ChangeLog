@@ -12,6 +12,7 @@
             Add builtin_modules to board's JSON
             Added E.FFT for Fast Fourier Transforms
             Added 16 bit read/write to Waveform (and speed up utility timer)
+            Fix utility timer - now interrupts just in time
 
      1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
             Make http default to port 80 if no port is specified in options
