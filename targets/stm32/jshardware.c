@@ -53,10 +53,7 @@ JsSysTime jshGetRTCSystemTime();
 #define jshGetRTCSystemTime jshGetSystemTime
 #endif
 
-
-#if defined(STM32F4) || defined(STM32F3) || defined(STM32F2)
-  #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
-#endif
+static JsSysTime jshGetTimeForSecond();
 
 
 // see jshPinWatch/jshGetWatchedPinState
@@ -990,7 +987,7 @@ void jshInit() {
 
 #ifdef USE_RTC
   // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)JSSYSTIME_SECOND * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)jshGetTimeForSecond() * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 
@@ -1246,20 +1243,20 @@ bool jshIsUSBSERIALConnected() {
 #endif
 }
 
-JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+static JsSysTime jshGetTimeForSecond() {
 #ifdef USE_RTC
-  return (JsSysTime)(ms*(JSSYSTIME_SECOND/(JsVarFloat)1000));
+  return (JsSysTime)JSSYSTIME_SECOND;
 #else
-  return (JsSysTime)((ms*getSystemTimerFreq())/1000);
+  return (JsSysTime)getSystemTimerFreq();
 #endif
 }
 
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+  return (JsSysTime)((ms*jshGetTimeForSecond())/1000);
+}
+
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-#ifdef USE_RTC
-  return (JsVarFloat)time*(1000/(JsVarFloat)JSSYSTIME_SECOND);
-#else
-  return ((JsVarFloat)time)*1000/getSystemTimerFreq();
-#endif
+  return ((JsVarFloat)time)*1000/jshGetTimeForSecond();
 }
 
 #ifdef USE_RTC
@@ -2314,10 +2311,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
   if (allowDeepSleep &&  // from setDeepSleep
-      (timeUntilWake > (JSSYSTIME_SECOND*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
+      (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
-      jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
+      jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
       ) {
     jsiSetSleep(true);
@@ -2346,7 +2343,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinWatch(usbPin, true);
 #endif
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/JSSYSTIME_SECOND)); // ensure we round down and leave a little time
+      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/jshGetTimeForSecond())); // ensure we round down and leave a little time
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
@@ -2445,7 +2442,7 @@ void jshUtilTimerDisable() {
 void jshUtilTimerReschedule(JsSysTime period) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
 
-  JsSysTime clockTicks = (timerFreq * period) / JSSYSTIME_SECOND;
+  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
   if (clockTicks<0) clockTicks=0;
   if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
   unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
@@ -2481,7 +2478,7 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
 
-  JsSysTime clockTicks = (timerFreq * period) / JSSYSTIME_SECOND;
+  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
   if (clockTicks<0) clockTicks=0;
   if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
   unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
