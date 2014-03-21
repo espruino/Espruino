@@ -102,7 +102,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       inf.parity = (unsigned char)jsvGetInteger(v);
     }
     jsvUnLock(v);
-    if (inf.parity<0 || inf.parity>2) {
+    if (inf.parity>2) {
       jsError("Invalid parity %d", inf.parity);
       return;
     }
