@@ -1,3 +1,5 @@
+     1v59 : ...
+
      1v58 : Fix Serial.parity
             Fix glitches in jshGetSystemTime
             Added Graphics.setFontCustom for custom fonts
