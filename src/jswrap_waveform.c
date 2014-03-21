@@ -28,8 +28,14 @@
         "description" : [ "This class handles waveforms. In Espruino, a Waveform is a set of data that you want to input or output." ]
 }*/
 
-static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber) {
+static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool *is16Bit) {
   JsVar *buffer = jsvObjectGetChild(waveform, (bufferNumber==0)?"buffer":"buffer2", 0);
+
+  if (is16Bit) {
+    *is16Bit = false;
+    if (jsvIsArrayBuffer(buffer) && JSV_ARRAYBUFFER_GET_SIZE(buffer->varData.arraybuffer.type)==2)
+      *is16Bit = true;
+  }
   // plough through to get array buffer data
   while (jsvIsArrayBuffer(buffer)) {
     JsVar *s = jsvLock(buffer->firstChild);
@@ -52,7 +58,7 @@ bool jswrap_waveform_idle() {
 
       bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
       if (running) {
-        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
+        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
         UtilTimerTask task;
         // Search for a timer task
         if (!jstGetLastBufferTimerTask(buffer, &task)) {
@@ -104,7 +110,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
       JsVar *waveform = jsvArrayIteratorGetElement(&it);
       bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
       if (running) {
-        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
+        JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
         if (!jstStopBufferTimerTask(buffer)) {
           jsError("Waveform couldn't be stopped");
         }
@@ -125,7 +131,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
                            "When double-buffered, a 'buffer' event will be emitted each time a buffer is finished with (the argument is that buffer). When the recording stops, a 'finish' event will be emitted (with the first argument as the buffer)." ],
          "generate" : "jswrap_waveform_constructor",
          "params" : [ [ "samples", "int32", "The number of samples" ],
-                      [ "options", "JsVar", "Optional options struct `{doubleBuffer:bool}` where: `doubleBuffer` is whether to allocate two buffers or not." ] ],
+                      [ "options", "JsVar", "Optional options struct `{doubleBuffer:bool, bits : 8/16}` where: `doubleBuffer` is whether to allocate two buffers or not (default false), and bits is the amount of bits to use (default 8)." ] ],
          "return" : [ "JsVar", "An Waveform object" ]
 
 }*/
@@ -136,16 +142,25 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   }
 
   bool doubleBuffer = false;
+  bool use16bit = false;
   if (jsvIsObject(options)) {
     doubleBuffer = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "doubleBuffer", 0));
+
+    int bits = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bits", 0));
+    if (bits!=0 && bits!=8 && bits!=16) {
+      jsError("Invalid number of bits");
+      return 0;
+    } else if (bits==16) use16bit = true;
+
   } else if (!jsvIsUndefined(options)) {
     jsError("Expecting options to be undefined or an Object, not %t", options);
   }
 
   JsVar *arrayLength = jsvNewFromInteger(samples);
-  JsVar *arrayBuffer = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arrayLength, 0, 0);
+  JsVarDataArrayBufferViewType bufferType = use16bit ? ARRAYBUFFERVIEW_UINT16 : ARRAYBUFFERVIEW_UINT8;
+  JsVar *arrayBuffer = jswrap_typedarray_constructor(bufferType, arrayLength, 0, 0);
   JsVar *arrayBuffer2 = 0;
-  if (doubleBuffer) arrayBuffer2 = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arrayLength, 0, 0);
+  if (doubleBuffer) arrayBuffer2 = jswrap_typedarray_constructor(bufferType, arrayLength, 0, 0);
   jsvUnLock(arrayLength);
   JsVar *waveform = jspNewObject(0, "Waveform");
 
@@ -162,7 +177,7 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   return waveform;
 }
 
-static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options, UtilTimerEventType eventType) {
+static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options, bool isWriting) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
   if (running) {
     jsError("Waveform is already running");
@@ -188,8 +203,19 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
     jsError("Expecting options to be undefined or an Object, not %t", options);
   }
 
-  JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
-  JsVar *buffer2 = jswrap_waveform_getBuffer(waveform,1);
+  bool is16Bit = false;
+  JsVar *buffer = jswrap_waveform_getBuffer(waveform,0, &is16Bit);
+  JsVar *buffer2 = jswrap_waveform_getBuffer(waveform,1,0);
+
+  UtilTimerEventType eventType;
+
+  if (is16Bit) {
+    eventType = isWriting ? UET_WRITE_SHORT : UET_READ_SHORT;
+  } else {
+    eventType = isWriting ? UET_WRITE_BYTE : UET_READ_BYTE;
+  }
+
+
   // And finally set it up
   if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
     jsWarn("Unable to schedule a timer");
@@ -214,7 +240,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
                       [ "options", "JsVar", "Optional options struct `{time:float,repeat:bool}` where: `time` is the that the waveform with start output at, e.g. `getTime()+1` (otherwise it is immediate), `repeat` is a boolean specifying whether to repeat the give sample"] ]
 }*/
 void jswrap_waveform_startOutput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options) {
-  jswrap_waveform_start(waveform, pin, freq, options, UET_WRITE_BYTE);
+  jswrap_waveform_start(waveform, pin, freq, options, true/*write*/);
 }
 
 /*JSON{ "type":"method", "class": "Waveform", "name" : "startInput", "ifndef" : "SAVE_ON_FLASH",
@@ -228,7 +254,7 @@ void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar
   // Setup analog, and also bail out on failure
   if (jshPinAnalog(pin)<0) return;
   // start!
-  jswrap_waveform_start(waveform, pin, freq, options, UET_READ_BYTE);
+  jswrap_waveform_start(waveform, pin, freq, options, false/*read*/);
 }
 
 /*JSON{ "type":"method", "class": "Waveform", "name" : "stop", "ifndef" : "SAVE_ON_FLASH",
@@ -241,7 +267,7 @@ void jswrap_waveform_stop(JsVar *waveform) {
     jsError("Waveform is not running");
     return;
   }
-  JsVar *buffer = jswrap_waveform_getBuffer(waveform,0);
+  JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
   if (!jstStopBufferTimerTask(buffer)) {
     jsError("Waveform couldn't be stopped");
   }

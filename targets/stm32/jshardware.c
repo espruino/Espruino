@@ -696,7 +696,7 @@ void jshDoSysTick() {
      */
     smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
-    int diff = time - lastSysTickTime;
+    int diff = (int)(time - lastSysTickTime);
     if (diff<0) diff=0; // just in case!
     averageSysTickTime = (unsigned int)((int)averageSysTickTime*3 + diff) >> 2;
     // what do we expect the RTC time to be on the next SysTick?
@@ -2446,9 +2446,21 @@ void jshUtilTimerReschedule(JsSysTime period) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
   int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
   if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-  if (prescale>65535) prescale=65535;
-  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
+  int ticks = clockTicks/(prescale+1);
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+
+  TIM_SetAutoreload(UTIL_TIMER, (uint16_t)ticks);
+  // we need to kick this (even if the prescaler is correct) so the counter value is automatically reloaded
+  TIM_PrescalerConfig(UTIL_TIMER, (uint16_t)prescale, TIM_PSCReloadMode_Immediate);
+}
+/*#
+ *   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+  if (clockTicks<0) clockTicks=0;
+  int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
+  int ticks = clockTicks/(prescale+1);
   if (ticks<1) ticks=1;
   if (ticks>65535) ticks=65535;
   TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
@@ -2456,7 +2468,9 @@ void jshUtilTimerReschedule(JsSysTime period) {
   TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
   TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
-}
+  UTIL_TIMER->ARR = (uint16_t)ticks;
+  UTIL_TIMER->PSC = (uint16_t)prescale;
+ */
 
 void jshUtilTimerStart(JsSysTime period) {
   //jsiConsolePrint("Starting\n");
@@ -2528,10 +2542,10 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
   return JSH_NOTHING;
 }
 
-// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-    uint16_t dacVal = (uint16_t)(value<<8);
+    uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
     case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
@@ -2539,8 +2553,8 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {
-      uint16_t period = TIMx->ARR; // No getter available
-      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 8);
+      unsigned int period = (int)TIMx->ARR; // No getter available
+      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 16);
       switch (func & JSH_MASK_TIMER_CH) {
       case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;
       case JSH_TIMER_CH2:  TIM_SetCompare2(TIMx, timerVal); break;

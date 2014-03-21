@@ -29,7 +29,25 @@ typedef enum {
   UET_SET, ///< Set a pin to a value
   UET_WRITE_BYTE, ///< Write a byte to a DAC/Timer
   UET_READ_BYTE, ///< Read a byte from an analog input
+  UET_WRITE_SHORT, ///< Write a short to a DAC/Timer
+  UET_READ_SHORT, ///< Read a short from an analog input
 } PACKED_FLAGS UtilTimerEventType;
+
+
+#define UET_IS_BUFFER_EVENT(T) (\
+  ((T)==UET_WRITE_BYTE) || \
+  ((T)==UET_READ_BYTE) || \
+  ((T)==UET_WRITE_SHORT) || \
+  ((T)==UET_READ_SHORT))
+
+#define UET_IS_BUFFER_READ_EVENT(T) (\
+  ((T)==UET_READ_BYTE) || \
+  ((T)==UET_READ_SHORT))
+
+#define UET_IS_BUFFER_WRITE_EVENT(T) (\
+  ((T)==UET_WRITE_BYTE) || \
+  ((T)==UET_WRITE_SHORT))
+
 
 #define UTILTIMERTASK_PIN_COUNT (4)
 
