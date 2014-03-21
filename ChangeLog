@@ -3,7 +3,7 @@
             Added Graphics.setFontCustom for custom fonts
             Added String.lastIndexOf, and made String.indexOf with fromIndex work
             Used non-bold vector font, improve alignment, and make curves lower quality
-            Increase allowable I2C array size to 150
+            I2C can now write any size (as long as it fits on the stack!)
             Try and enlarge fillRects caused by polygons
             Fix === issues, fix #257
             Add Graphics.getColor/getBgColor for Juergen

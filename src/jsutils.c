@@ -479,3 +479,17 @@ void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt
   vcbprintf(user_callback,user_data, fmt, argp);
   va_end(argp);
 }
+
+#ifdef ARM
+extern int _end;
+#endif
+
+/** get the amount of free stack we have, in bytes */
+size_t jsuGetFreeStack() {
+#ifdef ARM
+  void *frame = __builtin_frame_address(0);
+  return ((char*)&_end) - ((char*)frame);
+#else
+  return 100000000; // lots.
+#endif
+}

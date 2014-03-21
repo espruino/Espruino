@@ -382,5 +382,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
 /// This one is directly usable..
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
+/** get the amount of free stack we have, in bytes */
+size_t jsuGetFreeStack();
 
 #endif /* JSUTILS_H_ */

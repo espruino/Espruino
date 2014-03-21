@@ -214,19 +214,12 @@ void jspeiLoadScopesFromVar(JsVar *arr) {
     }
 }
 // -----------------------------------------------
-#ifdef ARM
-extern int _end;
-#endif
 bool jspCheckStackPosition() {
-#ifdef ARM
-  void *frame = __builtin_frame_address(0);
-  if ((char*)frame < ((char*)&_end)+512/*so many bytes leeway*/) {
-//   jsiConsolePrintf("frame: %d,end:%d\n",(int)frame,(int)&_end);
+  if (jsuGetFreeStack() < 512) { // giving us 512 bytes leeway
     jsErrorAt("Too much recursion - the stack is about to overflow", execInfo.lex, execInfo.lex->tokenLastStart );
     jspSetInterrupted(true);
     return false;
   }
-#endif
   return true;
 }
 
