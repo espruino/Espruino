@@ -35,18 +35,26 @@ JsVar *jswrap_string_constructor(JsVar *a) {
 }
 
 /*JSON{ "type":"staticmethod", "class": "String", "name" : "fromCharCode",
-         "description" : "Return the character represented by the given character code.",
+         "description" : "Return the character(s) represented by the given character code(s).",
          "generate" : "jswrap_string_fromCharCode",
-         "params" : [ [ "code", "int", "The character code to create a character from (range 0-255)"] ],
+         "params" : [ [ "code", "JsVarArray", "One or more character codes to create a string from (range 0-255)."] ],
          "return" : ["JsVar", "The character"]
 }*/
-JsVar *jswrap_string_fromCharCode(JsVarInt code) {
-  // We do this so we can handle '/0' in a string
+JsVar *jswrap_string_fromCharCode(JsVar *arr) {
+  assert(jsvIsArray(arr));
+
   JsVar *r = jsvNewFromEmptyString();
-  if (r) { // out of mem?
-    char ch = (char)code;
+  if (!r) return 0;
+
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, arr);
+  while (jsvArrayIteratorHasElement(&it)) {
+    char ch = (char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
     jsvAppendStringBuf(r, &ch, 1);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
+
   return r;
 }
 
