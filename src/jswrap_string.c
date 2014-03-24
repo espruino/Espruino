@@ -184,28 +184,30 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
          "return" : ["JsVar", "Part of this string from start for len characters"]
 }*/
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
-  JsVar *array;
-  int arraylen=0;
-  int idx, last = 0;
-  int splitlen =  (int)jsvGetStringLength(split);
-  int l = (int)jsvGetStringLength(parent) - splitlen;
-
-  array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
   if (!array) return 0; // out of memory
 
+  if (jsvIsUndefined(split)) {
+    jsvArrayPush(array, parent);
+    return array;
+  }
+
+  split = jsvAsString(split, true);
+
+
+  int idx, last = 0;
+  int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
+  int l = (int)jsvGetStringLength(parent) - splitlen;
+
   for (idx=0;idx<=l;idx++) {
-    if (idx==l || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
-      JsVar *part = jsvNewFromEmptyString();
+    if (splitlen==0 &&idx==0) continue; // special case for where split string is ""
+    if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
+      if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+      JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));
       if (!part) break; // out of memory
-      JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
-      if (idxvar) { // could be out of memory
-        if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
-        jsvAppendStringVar(part, parent, (size_t)last, (size_t)(idx-last));
-        jsvAddName(array, idxvar);
-        last = idx+splitlen;
-        jsvUnLock(idxvar);
-      }
+      jsvArrayPush(array, part);
       jsvUnLock(part);
+      last = idx+splitlen;
     }
   }
   return array;
