@@ -693,13 +693,24 @@ void jshDoSysTick() {
      */
     smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
-    int diff = (int)(time - lastSysTickTime);
-    if (diff<0) diff=0; // just in case!
-    averageSysTickTime = (unsigned int)((int)averageSysTickTime*3 + diff) >> 2;
+    JsSysTime diff = time - lastSysTickTime;
+    // saturate...
+    if (diff < 0) diff = 0;
+    if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+    // and work out average without overflow (averageSysTickTime*3+diff)/4
+    averageSysTickTime = (averageSysTickTime>>1) +
+                         (averageSysTickTime>>2) +
+                         ((unsigned int)diff>>2);
     // what do we expect the RTC time to be on the next SysTick?
     JsSysTime nextSysTickTime = time + averageSysTickTime;
     // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
-    smoothAverageSysTickTime = (unsigned int)((int)smoothAverageSysTickTime*3 + (int)(nextSysTickTime - smoothLastSysTickTime)) >> 2;
+    diff = nextSysTickTime - smoothLastSysTickTime;
+    // saturate...
+    if (diff < 0) diff = 0;
+    if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+    smoothAverageSysTickTime = (smoothAverageSysTickTime>>1) +
+                               (smoothAverageSysTickTime>>2) +
+                               ((unsigned int)diff>>2);
   } else {
     hasSystemSlept = false;
     smoothLastSysTickTime = time;
