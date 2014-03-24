@@ -1,4 +1,4 @@
-     1v59 : ...
+     1v59 : (function(){})?1:0 should == 1 (fix #261)
 
      1v58 : Fix Serial.parity
             Fix glitches in jshGetSystemTime
