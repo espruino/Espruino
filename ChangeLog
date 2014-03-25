@@ -5,6 +5,7 @@
             Increase RTC/getTime reliability by ensuring overflow can't happen
             Added Math.min/max
             Allow jswrapper to wrap objects with a name >8 characters long (fix #264)
+            dump() now doesn't print 'var X = undefined;' - just 'var X;'
 
      1v58 : Fix Serial.parity
             Fix glitches in jshGetSystemTime

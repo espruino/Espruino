@@ -1673,8 +1673,10 @@ void jsiDumpState() {
         // normal variable definition
         jsiConsolePrint("var ");
         jsiConsolePrintStringVar(child);
-        jsiConsolePrint(" = ");
-        jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
+        if (!jsvIsUndefined(data)) {
+          jsiConsolePrint(" = ");
+          jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
+        }
         jsiConsolePrint(";\n");
       }
     }
