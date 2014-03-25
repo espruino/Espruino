@@ -233,4 +233,33 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
          "return" : ["float", "The value of x, wrapped so as not to be below min or above max."]
 }*/
 
+/*JSON{ "type":"staticmethod",
+         "class" : "Math", "name" : "min",
+         "generate_full" : "jswrap_math_minmax(args, false)",
+         "description" : "Find the minimum of a series of numbers",
+         "params" : [ [ "args", "JsVarArray", "A floating point value to clip"] ],
+         "return" : ["float", "The minimum of the supplied values"]
+}*/
+/*JSON{ "type":"staticmethod",
+         "class" : "Math", "name" : "max",
+         "generate_full" : "jswrap_math_minmax(args, true)",
+         "description" : "Find the maximum of a series of numbers",
+         "params" : [ [ "args", "JsVarArray", "A floating point value to clip"] ],
+         "return" : ["float", "The maximum of the supplied values"]
+}*/
+JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
+  JsVarFloat v = isMax ? -INFINITY : INFINITY;
+
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, args);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVarFloat arg = jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it));
+    if ((isMax && arg > v) || (!isMax && arg < v) || isnan(arg))
+      v = arg;
+    jsvArrayIteratorNext(&it);
+  }
+  jsvArrayIteratorFree(&it);
+
+  return v;
+}
 

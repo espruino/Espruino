@@ -3,6 +3,7 @@
             Fix String.split() (Fix #259)
             Added Array.concat (Fix #262)
             Increase RTC/getTime reliability by ensuring overflow can't happen
+            Added Math.min/max
 
      1v58 : Fix Serial.parity
             Fix glitches in jshGetSystemTime
