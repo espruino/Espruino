@@ -66,7 +66,7 @@ JsVar *jswrap_number_constructor(JsVar *val) {
 
 /*JSON{ "type":"staticproperty",
          "class": "Number", "name" : "NEGATIVE_INFINITY",
-         "generate_full" : "NEGATIVE_INFINITY",
+         "generate_full" : "-INFINITY",
          "return" : ["float", "Negative Infinity (-1/0)"]
 }*/
 
