@@ -30,6 +30,8 @@
 extern int isnan ( double );
 extern int isfinite ( double );
 #define NAN (((JsVarFloat)0)/(JsVarFloat)0)
+#define INFINITY (((JsVarFloat)1)/(JsVarFloat)0)
+#define NEGATIVE_INFINITY (((JsVarFloat)1)/(JsVarFloat)0)
 #endif
 
 

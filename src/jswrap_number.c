@@ -42,7 +42,7 @@ JsVar *jswrap_number_constructor(JsVar *val) {
 }*/
 
 /*JSON{ "type":"variable", "name" : "Infinity",
-         "generate_full" : "(((JsVarFloat)1)/(JsVarFloat)0)",
+         "generate_full" : "INFINITY",
          "return" : ["float", "Positive Infinity (1/0)"]
 }*/
 
@@ -66,13 +66,13 @@ JsVar *jswrap_number_constructor(JsVar *val) {
 
 /*JSON{ "type":"staticproperty",
          "class": "Number", "name" : "NEGATIVE_INFINITY",
-         "generate_full" : "(((JsVarFloat)-1)/(JsVarFloat)0)",
+         "generate_full" : "NEGATIVE_INFINITY",
          "return" : ["float", "Negative Infinity (-1/0)"]
 }*/
 
 /*JSON{ "type":"staticproperty",
          "class": "Number", "name" : "POSITIVE_INFINITY",
-         "generate_full" : "(((JsVarFloat)1)/(JsVarFloat)0)",
+         "generate_full" : "INFINITY",
          "return" : ["float", "Positive Infinity (1/0)"]
 }*/
 
