@@ -34,7 +34,7 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v59"
+#define JS_VERSION "1v60"
 /*
   In code:
   TODO - should be fixed

@@ -1269,7 +1269,10 @@ NO_INLINE JsVar *jspeUnaryExpression() {
       } else if (tk=='-') { // unary minus
         return jsvNegateAndUnLock(jspeUnaryExpression()); // names already skipped
       }  else if (tk=='+') { // unary plus (convert to number)
-        return jsvAsNumber(jspeUnaryExpression()); // names already skipped
+        JsVar *v = jsvSkipNameAndUnLock(jspeUnaryExpression());
+        JsVar *r = jsvAsNumber(v); // names already skipped
+        jsvUnLock(v);
+        return r;
       }
       assert(0);
       return 0;
