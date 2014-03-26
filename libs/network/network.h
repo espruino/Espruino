@@ -44,6 +44,8 @@ typedef struct {
   //Pin pinCS, pinIRQ, pinEN;
 } PACKED_FLAGS JsNetworkData;
 
+
+// Here we assume that IP addresses are stored IN ORDER - eg. 192.168.1.1 = [192,168,1,1] - CC3000 does it backwards
 typedef struct JsNetwork {
   JsVar *networkVar; // this won't be locked again - we just know that it is already locked by something else
   JsNetworkData data;
@@ -79,5 +81,11 @@ void networkFree(JsNetwork *net);
 
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
 void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
+/// Parse the given IP address - return 0 on failure
+unsigned long networkParseIPAddress(const char *ip);
+/// Given an address (pointed to by ip) put it in a string named 'name', in the given object. if nBytes<0, addresses are printed out backwards
+void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator);
+/** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
+unsigned long networkFlipIPAddress(unsigned long addr);
 
 #endif // _NETWORK_H

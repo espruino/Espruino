@@ -529,6 +529,7 @@ libs/network/http/httpserver.c
  libs/network/wiznet/network_wiznet.c \
  libs/network/wiznet/DNS/dns_parse.c \
  libs/network/wiznet/DNS/dns.c \
+ libs/network/wiznet/DHCP/dhcp.c \
  libs/network/wiznet/Ethernet/wizchip_conf.c \
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c

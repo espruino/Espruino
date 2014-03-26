@@ -123,30 +123,7 @@ void jswrap_wlan_reconnect(JsVar *wlanObj) {
   jsvUnLock(cb);
 }
 
-static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
-  char data[64] = "";
-  int i, l = 0;
-  for (i=nBytes-1;i>=0;i--) {
-    itoa((int)ip[i], &data[l], base);
-    l = (int)strlen(data);
-    if (i>0 && separator) {
-      data[l++] = separator;
-      data[l] = 0;
-    }
-  }
 
-  JsVar *dataVar = jsvNewFromString(data);
-  if (!dataVar) return;
-
-  JsVar *v = jsvFindChildFromString(object, name, true);
-  if (!v) {
-    jsvUnLock(dataVar);
-    return; // out of memory
-  }
-  jsvSetValueOfName(v, dataVar);
-  jsvUnLock(dataVar);
-  jsvUnLock(v);
-}
 
 /*JSON{ "type":"method",
          "class" : "WLAN", "name" : "getIP",
@@ -167,11 +144,11 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-  _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "gateway", &ipconfig.aucDefaultGateway[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr[0], 6, 16, 0);
+  networkPutAddressAsString(data, "ip", &ipconfig.aucIP[0], -4, 10, '.');
+  networkPutAddressAsString(data, "subnet", &ipconfig.aucSubnetMask[0], -4, 10, '.');
+  networkPutAddressAsString(data, "gateway", &ipconfig.aucDefaultGateway[0], -4, 10, '.');
+  networkPutAddressAsString(data, "dhcp", &ipconfig.aucDHCPServer[0], -4, 10, '.');
+  networkPutAddressAsString(data, "dns", &ipconfig.aucDNSServer[0], -4, 10, '.');
+  networkPutAddressAsString(data, "mac", &ipconfig.uaMacAddr[0], -6, 16, 0);
   return data;
 }

@@ -34,6 +34,7 @@ typedef int SOCKET;
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
   gethostbyname(hostName, strlen(hostName), out_ip_addr);
+  *out_ip_addr = networkFlipIPAddress(*out_ip_addr);
 }
 
 /// Called on idle. Do any checks required for this device
@@ -67,6 +68,9 @@ bool net_cc3000_checkError(JsNetwork *net) {
 int net_cc3000_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
+
+    host = networkFlipIPAddress(host);
+
     sockaddr       sin;
     sin.sa_family = AF_INET;
     sin.sa_data[0] = (unsigned char)((port & 0xFF00) >> 8);

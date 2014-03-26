@@ -32,7 +32,7 @@ JsNetworkState networkState =
 #endif
     ;
 
-static unsigned long parseIPAddress(const char *ip) {
+unsigned long networkParseIPAddress(const char *ip) {
   int n = 0;
   unsigned long addr = 0;
   while (*ip) {
@@ -50,12 +50,47 @@ static unsigned long parseIPAddress(const char *ip) {
   return addr;
 }
 
+void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+  char data[64] = "";
+  int i = 0, dir = 1, l = 0;
+  if (nBytes<0) {
+    i = (-nBytes)-1;
+    nBytes = -1;
+    dir=-1;
+  }
+  for (;i!=nBytes;i+=dir) {
+    if (base==16) {
+      data[l++] = itoch(ip[i]>>4);
+      data[l++] = itoch(ip[i]&15);
+    } else {
+      itoa((int)ip[i], &data[l], base);
+    }
+    l = (int)strlen(data);
+    if (i+dir!=nBytes && separator) {
+      data[l++] = separator;
+      data[l] = 0;
+    }
+  }
+
+  JsVar *dataVar = jsvNewFromString(data);
+  jsvUnLock(jsvObjectSetChild(object, name, dataVar));
+}
+
+/** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
+unsigned long networkFlipIPAddress(unsigned long addr) {
+  return
+      ((addr&0xFF)<<24) |
+      ((addr&0xFF00)<<8) |
+      ((addr&0xFF0000)>>8) |
+      ((addr&0xFF000000)>>24);
+}
+
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
   assert(out_ip_addr);
   *out_ip_addr = 0;
 
-  *out_ip_addr = parseIPAddress(hostName); // first try and simply parse the IP address
+  *out_ip_addr = networkParseIPAddress(hostName); // first try and simply parse the IP address
   if (!*out_ip_addr)
     net->gethostbyname(net, hostName, out_ip_addr);
 }

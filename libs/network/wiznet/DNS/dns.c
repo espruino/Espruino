@@ -148,7 +148,8 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 	}
 	len = dns_makequery(0, (char *)name, dns_buf, MAX_DNS_BUF_SIZE);
 	cnt = sendto(s, dns_buf, len, gWIZNETINFO.dns, IPPORT_DOMAIN);
-	cnt = 0;
+
+	JsSysTime endTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(1000);
 
 	while (1)
 	{
@@ -164,7 +165,7 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 		//wait_1ms(1);
 		jshDelayMicroseconds(1000);
 
-		if (cnt++ == 100)
+		if (jshGetSystemTime() > endTime)
 		{
 			return 0;
 		}
