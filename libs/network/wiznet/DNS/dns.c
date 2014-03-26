@@ -21,7 +21,6 @@ Local Variable Declaration Section
 ********************************************************************************
 */
 uint16_t MSG_ID = 0x1122;
-uint8_t dns_buf[MAX_DNS_BUF_SIZE];
 
 /*
 ********************************************************************************
@@ -142,8 +141,9 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 
 	wiz_NetInfo gWIZNETINFO;
 	ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+	uint8_t dns_buf[MAX_DNS_BUF_SIZE];
 
-	for(;socket(s, Sn_MR_UDP, rand() % 63535 + 2000, 0) != s;)
+	for(;socket(s, Sn_MR_UDP, (rand() & 32767) + 2000, 0) != s;)
 	{
 	}
 	len = dns_makequery(0, (char *)name, dns_buf, MAX_DNS_BUF_SIZE);

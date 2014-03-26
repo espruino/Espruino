@@ -218,7 +218,7 @@ char * strncat(char *dst, const char *src, size_t c) {
 }
 char *strncpy(char *dst, const char *src, size_t c) {
         char *dstx = dst;
-        while (*src && c>1) {
+        while (*src && c) {
           *(dstx++) = *(src++);
           c--;
         }

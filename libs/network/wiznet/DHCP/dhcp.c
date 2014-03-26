@@ -585,9 +585,9 @@ void check_DHCP_state(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 					//iinchip_init();
 					//Set_Default();
 					//Set_network();
-					ctlwizchip(CW_RESET_WIZCHIP, 0);
-					set_default_netinfo();
-					ctlnetwork(CN_SET_NETINFO, (void*)&(*pWIZNETINFO));
+					//ctlwizchip(CW_RESET_WIZCHIP, 0);
+					//set_default_netinfo();
+					//ctlnetwork(CN_SET_NETINFO, (void*)&(*pWIZNETINFO));
 				}
 			} else if (type == DHCP_NAK) {
 				jsiConsolePrintf("> Receive DHCP_NACK\r\n");
