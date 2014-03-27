@@ -80,8 +80,8 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short
 }
 
 void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback, JsVar *fillRectCallback) {
-  jsvAddNamedChild(gfx->graphicsVar, setPixelCallback, "iSetPixel");
-  jsvAddNamedChild(gfx->graphicsVar, fillRectCallback, "iFillRect");
+  jsvObjectSetChild(gfx->graphicsVar, "iSetPixel", setPixelCallback);
+  jsvObjectSetChild(gfx->graphicsVar, "iFillRect", fillRectCallback);
 }
 
 void lcdSetCallbacks_JS(JsGraphics *gfx) {

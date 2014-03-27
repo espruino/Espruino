@@ -1,5 +1,6 @@
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
+            Fix lock 'leak' when creating Graphics with callbacks
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)
