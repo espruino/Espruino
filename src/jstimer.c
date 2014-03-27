@@ -236,7 +236,7 @@ static bool utilTimerInsertTask(UtilTimerTask *task) {
 }
 
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) {
-  assert(pinCount<UTILTIMERTASK_PIN_COUNT);
+  assert(pinCount<=UTILTIMERTASK_PIN_COUNT);
   UtilTimerTask task;
   task.time = time;
   task.repeatInterval = 0;
