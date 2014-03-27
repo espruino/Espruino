@@ -23,6 +23,20 @@
                          "You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite" ]
 }*/
 
+/*JSON{ "type":"constructor",
+        "class" : "Pin",
+        "name" : "Pin",
+        "generate" : "jswrap_pin_constructor",
+        "description" : [ "Creates a pin from the given argument (or returns undefined if no argument)" ],
+        "params" : [ [ "value", "JsVar", "A value to be converted to a pin. Can be a number, pin, or String."] ],
+        "return" : ["JsVar", "A Pin object"]
+}*/
+JsVar *jswrap_pin_constructor(JsVar *val) {
+  Pin pin = jshGetPinFromVar(val);
+  if (!jshIsPinValid(pin)) return 0;
+  return jsvNewFromPin(pin);
+}
+
 /*JSON{ "type":"method", "class": "Pin", "name" : "read",
          "description" : "Returns the input state of the pin as a boolean",
          "generate" : "jswrap_pin_read",
