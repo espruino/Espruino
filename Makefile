@@ -212,20 +212,21 @@ USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
-CHIP=STM32F401C
+CHIP=STM32F40_41xxx
+#STM32F401xx
 BOARD=STM32F401CDISCOVERY
 STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 #USB=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
-CHIP=STM32F429
+CHIP=STM32F429_439xx
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f427xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
 DEFINES+=-DHSE_VALUE=26000000UL
@@ -748,6 +749,7 @@ targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
 targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
 targetlibs/stm32f4/lib/stm32f4xx_fsmc.c       \
@@ -757,10 +759,12 @@ targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
 targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
