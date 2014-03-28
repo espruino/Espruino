@@ -17,8 +17,8 @@ import pinutils;
 info = {
  'name' : "STM32F401 Discovery",
  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1848/PF259098" ],
- 'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
- 'variables' : 2600,
+ 'default_console' : "EV_SERIAL2",
+ 'variables' : 2650,
  'binary_name' : 'espruino_%v_stm32f401Cdiscovery.bin',
 };
 chip = {
