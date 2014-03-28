@@ -24,6 +24,7 @@
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
+STM32F401CDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # LPC1768=1 # beta
@@ -33,7 +34,7 @@
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-# RELEASE=1               # Force release-style compile (no asserts, etc)
+RELEASE=1               # Force release-style compile (no asserts, etc)
 # SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
@@ -202,6 +203,17 @@ DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
 CHIP=STM32F407
 BOARD=STM32F4DISCOVERY
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef STM32F401CDISCOVERY
+#USB=1
+USE_NET=1
+USE_GRAPHICS=1
+DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+CHIP=STM32F401C
+BOARD=STM32F401CDISCOVERY
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
@@ -809,7 +821,8 @@ OPTIMIZEFLAGS += --param inline-unit-growth=15
 # 4.5
 #export CCPREFIX=~/sat/bin/arm-none-eabi-
 # 4.4
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX=/home/chris/arm-2013.11/bin/arm-none-eabi-
+#export CCPREFIX=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
