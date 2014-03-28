@@ -56,13 +56,20 @@ devices = {
             'pin_dp' : 'A12',
             'pin_vbus' : 'A9',
             'pin_id' : 'A10', },
-  'MEMS' :  {  'device' : 'LIS302DL',
-            'pin_cs' :  'E3',
-            'pin_int1' :  'E0',
-            'pin_int2' :  'E1',
-            'pin_mosi' :  'A7',
-            'pin_miso' :  'A6',
-            'pin_sck' :  'A5' },
+  'MEMS' :  {  'device' : 'LSM303DLHC',
+             'pin_scl' : 'B6',
+             'pin_sda' : 'B9',
+             'pin_drdy' : 'E2',
+             'pin_int1' : 'E5',
+             'pin_int2' : 'E4' },
+  'GYRO' : { 'device' : 'L3GD20',
+             'pin_cs' : 'E3',
+             'pin_sck' : 'A5',
+             'pin_miso' : 'A6',
+             'pin_mosi' : 'A7',
+             'pin_int1' : 'E0',
+             'pin_int2' : 'E1',
+           },
   'MIC' :  { 'device' : 'MP45DT02',
              'pin_clk' :  'C3',
              'pin_dout' :  'B10', },
@@ -108,18 +115,5 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.scan_pin_file([], 'stm32f401.csv', 6, 9, 10)
+  pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
-
-#  'MEMS' :  {  'device' : 'L3GD20',
-#            'pin_cs' :  'E3',
-#            'pin_int1' :  'E0',
-#            'pin_int2' :  'E1',
-#            'pin_mosi' :  'A7',
-#            'pin_miso' :  'A6',
-#            'pin_sck' :  'A5' },
-#  'MEMS2' :  {  'device' : 'LSM303DLHC',
-#            'pin_scl' : 'B6',
-#            'pin_sda' : 'B9',
-#            'pin_int1' : 'E5',
-#            'pin_int2' : 'E4' },

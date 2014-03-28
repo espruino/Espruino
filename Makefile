@@ -35,7 +35,7 @@ STM32F401CDISCOVERY=1
 #
 # DEBUG=1                 # add debug symbols (-g)
 RELEASE=1               # Force release-style compile (no asserts, etc)
-# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
