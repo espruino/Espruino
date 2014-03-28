@@ -545,7 +545,7 @@ for jsondata in jsondatas:
         if param[1]=="JsVarArray":
           argList.append("jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+")");
         else:
-          argList.append(getGetter(param[1] , "paramData["+str(n)+"]", "jswCallFunction"));
+          argList.append(getGetter(param[1] , str(n)+"<paramCount ? paramData["+str(n)+"] : 0", "jswCallFunction"));
         n = n+1;
 
 
