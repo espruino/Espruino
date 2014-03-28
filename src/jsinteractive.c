@@ -570,20 +570,6 @@ void jsiInit(bool autoLoad) {
   jsvInit();
   jspInit();
 
-#ifdef USE_LCD
- lcdInit_Main(&LCD);
-#ifdef USE_LCD_ILI9325
-  lcdInit_FSMC_ILI9325(&LCD, LCD_WIDTH, LCD_HEIGHT);
-#endif
-#ifdef USE_LCD_SDL
-  lcdInit_SDL(&LCD, LCD_WIDTH, LCD_HEIGHT);
-#endif
-  lcdClear(0);
-  lcdSplash();
-#endif
-
-
-
   /*for (i=0;i<IOPINS;i++)
      ioPinState[i].callbacks = 0;*/
 

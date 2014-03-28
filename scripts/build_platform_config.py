@@ -270,7 +270,7 @@ if "SD" in board.devices:
       codeOut("#define SD_SPI EV_SPI"+str(spiNum))
 
 
-for device in ["USB","SD","LCD"]:
+for device in ["USB","SD","LCD","JTAG"]:
   if device in board.devices:
     for entry in board.devices[device]: 
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
