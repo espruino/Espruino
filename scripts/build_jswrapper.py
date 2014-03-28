@@ -152,6 +152,16 @@ def getUnLockGetter(varType, name, funcName):
   sys.stderr.write("ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
   exit(1)
 
+def getGetter(varType, name, funcName):
+  if varType=="float": return "jsvGetFloat("+name+")"
+  if varType=="int": return "jsvGetInteger("+name+")"
+  if varType=="int32": return "(int)jsvGetInteger("+name+")"
+  if varType=="bool": return "jsvGetBool("+name+")"
+  if varType=="pin": return "jshGetPinFromVar("+name+")"
+  if varType=="JsVar" or varType=="JsVarName": return name
+  sys.stderr.write("ERROR: getGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
+  exit(1)
+
 def getCreator(varType, value, funcName):
   if varType=="float": return "jsvNewFromFloat("+value+")"
   if varType=="int": return "jsvNewFromInteger("+value+")"
@@ -160,6 +170,70 @@ def getCreator(varType, value, funcName):
   if varType=="JsVar": return value
   sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
   exit(1)
+
+def toArgumentType(argName):
+  if argName=="": return "JSWAT_VOID";
+  if argName=="JsVar": return "JSWAT_JSVAR";
+  if argName=="JsVarName": return "JSWAT_JSVARNAME";
+  if argName=="JsVarArray": return "JSWAT_ARGUMENT_ARRAY";
+  if argName=="bool": return "JSWAT_BOOL";
+  if argName=="pin": return "JSWAT_PIN";
+  if argName=="int32": return "JSWAT_INT32";
+  if argName=="int": return "JSWAT_JSVARINT";
+  if argName=="float": return "JSWAT_JSVARFLOAT";
+  sys.stderr.write("ERROR: toArgumentType: Unknown argument name "+argName+"\n")
+  exit(1)
+
+def toCType(argName):
+  if argName=="": return "void";
+  if argName=="JsVar": return "JsVar*";
+  if argName=="JsVarName": return "JsVar*";
+  if argName=="JsVarArray": return "JsVar*";
+  if argName=="bool": return "bool";
+  if argName=="pin": return "Pin";
+  if argName=="int32": return "int";
+  if argName=="int": return "JsVarInt";
+  if argName=="float": return "JsVarFloat";
+  sys.stderr.write("ERROR: toCType: Unknown argument name "+argName+"\n")
+  exit(1)
+
+def hasThis(func):
+  return func["type"]=="property" or func["type"]=="method"
+
+def getParams(func):
+  params = []
+  if hasThis(func): params.append(["","JsVar",""]);
+  if "params" in func:
+    for param in func["params"]:  
+      params.append(param) 
+  return params
+
+def getResult(func):
+  result = [ "", "Description" ]
+  if "return" in func: result = func["return"]  
+  return result
+
+
+def getArgumentSpecifier(jsondata):
+  params = getParams(jsondata)
+  result = getResult(jsondata);
+  s = [ toArgumentType(result[0]) ]
+  n = 1
+  for param in params:
+    s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
+    n=n+1
+  return " | ".join(s);
+  
+
+def getCDeclaration(jsondata):
+  params = getParams(jsondata)
+  result = getResult(jsondata);
+  s = [ ]
+  for param in params:
+    s.append(toCType(param[1]));
+  return toCType(result[0])+" (*)("+",".join(s)+")";
+
+
 
 def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
@@ -178,8 +252,16 @@ def codeOutFunction(indent, func):
   name = name + func["name"]
   print name
   codeOut(indent+"// "+name+"  ("+func["filename"]+")")
-  hasThis = func["type"]=="property" or func["type"]=="method"
-  if ("generate" in func) or ("generate_full" in func):
+  if ("generate" in func):
+    if hasThis(func):
+      codeOut(indent+"argArray[0] = jsvLockAgain(parent);");
+      codeOut(indent+"int argCount = jspParseFunctionIntoArray(&argArray[1], sizeof(argArray)/sizeof(argArray[0])-1)+1;");
+    else:
+      codeOut(indent+"int argCount = jspParseFunctionIntoArray(argArray, sizeof(argArray)/sizeof(argArray[0]));");
+    codeOut(indent+"JsVar *_r = jswCallFunction("+func["generate"]+", "+getArgumentSpecifier(func)+", argArray, argCount);");
+    codeOut(indent+"while (argCount--) jsvUnLock(argArray[argCount]);");
+    codeOut(indent+"return _r;");
+  elif ("generate_full" in func):
     argNames = ["a","b","c","d"];
     params = []
     if "params" in func: params = func["params"]
@@ -217,26 +299,11 @@ def codeOutFunction(indent, func):
       print "ERROR: codeOutFunction unknown number of args "+str(len(params))
       exit(1)
 
-    if "generate" in func:
-      commandargs = [];
-      if hasThis:      
-        commandargs.append("parent")
-      if "needs_parentName" in func:
-        commandargs.append("parentName")
-      for param in params:
-        if param[1]=="JsVar" or param[1]=="JsVarName" or param[1]=="JsVarArray":
-          commandargs.append(param[0]);
-        else:
-          commandargs.append(getUnLockGetter(param[1], param[0], func["name"]));
-      command = func["generate"]+"("+ ', '.join(commandargs) +")";
-    else:	
-      command = func["generate_full"];
-    
+    command = func["generate_full"];    
     if "return" in func: 
       codeOut(indent+"JsVar *_r = " + getCreator(func["return"][0], command, func["name"])+";");
     else:
       codeOut(indent+command+";");
-
     # note: generate_full doesn't use commandargs, so doesn't unlock
     for param in params:
       if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarName" or param[1]=="JsVarArray":
@@ -295,7 +362,7 @@ print ""
 print "" 
 
 codeOut('// Automatically generated wrapper file ')
-codeOut('// Generated by scripts/build_jsfunctions.py');
+codeOut('// Generated by scripts/build_jswrapper.py');
 codeOut('');
 codeOut('#include "jswrapper.h"');
 for include in includes:
@@ -313,6 +380,7 @@ codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,
 codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
 codeOut('JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name) {')
+codeOut('  JsVar *argArray[16];')
 codeOut('  if (parent) {')
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
 if "parent" in tree:
@@ -454,6 +522,43 @@ codeOut('void jswKill() {')
 for jsondata in jsondatas:
   if "type" in jsondata and jsondata["type"]=="kill":
     codeOut("  "+jsondata["generate"]+"();")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut("/** Call a function with the given argument specifiers */")
+codeOut('JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount) {')
+argSpecs = []
+for jsondata in jsondatas:
+#  if "generate" in jsondata:
+    argSpec = getArgumentSpecifier(jsondata)
+    if not argSpec in argSpecs:
+      codeOut('  if (argumentSpecifier == ('+argSpec+')) {')
+
+      params = getParams(jsondata)
+      result = getResult(jsondata);
+
+      n = 0
+      argList = [ ]
+      for param in params:
+        if param[1]=="JsVarArray":
+          argList.append("jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+")");
+        else:
+          argList.append(getGetter(param[1] , "paramData["+str(n)+"]", "jswCallFunction"));
+        n = n+1;
+
+
+      if result[0]!="":
+        codeOut('    return '+getCreator(result[0], '(('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+')',"jswCallFunction")+';')
+      else:      
+        codeOut('    (('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+');')
+        codeOut('    return 0/*undefined*/;')            
+      codeOut('  }') 
+
+      argSpecs.append(argSpec)
+codeOut('  jsError("No caller for argument specifier %d", argumentSpecifier);')
+codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')

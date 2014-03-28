@@ -15,6 +15,25 @@
 #include "jsutils.h"
 #include "jsparse.h"
 
+typedef enum {
+  JSWAT_FINISH = 0, // no argument
+  JSWAT_VOID = 0, // Only for return values
+  JSWAT_JSVAR, // standard variable
+  JSWAT_JSVARNAME = JSWAT_JSVAR, // variable without the name being stripped off
+  JSWAT_ARGUMENT_ARRAY, // a JsVar array containing all subsequent arguments
+  JSWAT_BOOL, // boolean
+  JSWAT_INT32, // 32 bit int
+  JSWAT_PIN, // A pin
+  JSWAT_JSVARINT, // 64 bit int
+  JSWAT_JSVARFLOAT, // 64 bit float
+  JSWAT__LAST = JSWAT_JSVARFLOAT,
+  JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1
+} JsnArgumentType;
+
+// number of bits needed for each argument bit
+#define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
+
+
 #define JSW_HANDLEFUNCTIONCALL_UNHANDLED ((JsVar*)-1)
 
 /** If 'name' is something that belongs to an internal function, execute it.  */
@@ -43,3 +62,6 @@ void jswInit();
 
 /** Tasks to run on Deinitialisation */
 void jswKill();
+
+
+JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount);

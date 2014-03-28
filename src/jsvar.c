@@ -523,6 +523,16 @@ JsVar *jsvNewFromPin(int pin) {
   return v;
 }
 
+/// Create an array containing the given elements
+JsVar *jsvNewArray(JsVar **elements, int elementCount) {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0;
+  int i;
+  for (i=0;i<elementCount;i++)
+    jsvArrayPush(arr, elements[i]);
+  return arr;
+}
+
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // quick checks
   if (a==b) return true;

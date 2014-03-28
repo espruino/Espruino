@@ -377,6 +377,20 @@ NO_INLINE JsVar *jspParseFunctionAsArray() {
   return arr;
 }
 
+/// parse a function with any number of arguments into the given array, and return the size
+NO_INLINE int jspParseFunctionIntoArray(JsVar **array, int arraySize) {
+  JSP_MATCH(LEX_ID);
+  int p = 0;
+  JSP_MATCH_WITH_RETURN('(', p);
+  while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && p<arraySize) {
+    array[p++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
+    if (execInfo.lex->tk!=')') JSP_MATCH_WITH_RETURN(',', p);
+  }
+
+  JSP_MATCH_WITH_RETURN(')', p);
+  return p;
+}
+
 // ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)

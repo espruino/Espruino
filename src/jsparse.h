@@ -114,6 +114,7 @@ bool jspParseVariableName();     ///< parse single variable name
 bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
 JsVar *jspParseFunctionAsArray(); ///< parse a function with any number of argument, and return an array of de-named aruments
+NO_INLINE int jspParseFunctionIntoArray(JsVar **array, int arraySize); ///< parse a function with any number of arguments into the given array, and return the size
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the

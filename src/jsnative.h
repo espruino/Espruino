@@ -24,10 +24,12 @@ typedef enum {
   JSNAT_FINISH = 0, // no argument
   JSNAT_VOID = 0, // Only for return values
   JSNAT_JSVAR, // standard variable
+  JSNAT_JSVARNAME, // variable without the name being stripped off
   JSNAT_ARGUMENT_ARRAY, // a JsVar array containing all subsequent arguments
   JSNAT_BOOL, // boolean
   JSNAT_INT16, // 16 bit int
   JSNAT_INT32, // 32 bit int
+  JSNAT_PIN, // A pin
   JSNAT_JSVARINT, // 64 bit int
   JSNAT_JSVARFLOAT, // 64 bit float
   JSNAT__LAST = JSNAT_JSVARFLOAT,
