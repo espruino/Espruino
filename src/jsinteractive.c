@@ -517,7 +517,7 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       jsvAppendPrintf(str, "pinMode(%p,\"input%s\");\n",pin,s);
     }
 
-    if (JSHPINSTATE_IS_OPENDRAIN(statem))
+    if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN)
       jsvAppendPrintf(str, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }

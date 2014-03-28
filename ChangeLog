@@ -4,6 +4,8 @@
             Small fixes for trigger/timer
             Make dump() + console aware of built-in SPI/I2C/etc
             Add Pin constructor for converting numbers into a pin object
+            Added getPinMode
+            Fixed I2C saving state (fix #270)
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)

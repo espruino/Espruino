@@ -19,6 +19,7 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time);
 void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value);
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar);
 void jswrap_io_pinMode(Pin pin, JsVar *mode);
+JsVar *jswrap_io_getPinMode(Pin pin);
 
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout);
 JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout);
