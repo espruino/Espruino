@@ -14,6 +14,7 @@
 #include "jsvar.h"
 #include "jsinteractive.h"
 
+JsVar *jswrap_pin_constructor(JsVar *val);
 bool jswrap_pin_read(JsVar *parent);
 void jswrap_pin_set(JsVar *parent);
 void jswrap_pin_reset(JsVar *parent);

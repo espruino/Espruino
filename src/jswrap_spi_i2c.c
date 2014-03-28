@@ -141,6 +141,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
       dst = jsvNewFromInteger(jshSPISend(device, -1)); // retrieve the byte (no send!)
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
+    if (!dst) return 0;
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, srcdata);
     int incount = 0, outcount = 0;
@@ -190,6 +191,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     JsVar *lenVar = jsvNewFromInteger(jsvGetLength(srcdata));
     dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, lenVar,0,0);
     jsvUnLock(lenVar);
+    if (!dst) return 0;
     JsvIterator it;
     JsvArrayBufferIterator dstit;
     jsvIteratorNew(&it, srcdata);
@@ -400,7 +402,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
          "params" : [ [ "address", "int32", "The 7 bit address of the device to transmit to" ],
                       [ "data", "JsVar", "The Data to send - either a byte, an array of bytes, or a string" ]]
 }*/
-#define I2C_BUFSIZE 32
+
 void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
@@ -409,16 +411,21 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
     buf[0] = (unsigned char)jsvGetInteger(data);
     jshI2CWrite(device, (unsigned char)address, 1, buf);
   } else if (jsvIsIterable(data)) {
-    unsigned char buf[I2C_BUFSIZE];
+    size_t l = (size_t)jsvGetLength(data);
+    if (l+256 > jsuGetFreeStack()) {
+      jsError("Not enough free stack to send this amount of data");
+      return;
+    }
+
+    unsigned char *buf = (unsigned char *)alloca(l);
     int i=0;
     JsvIterator it;
     jsvIteratorNew(&it, data);
     while (jsvIteratorHasElement(&it)) {
-      if (i<I2C_BUFSIZE) buf[i++] = (unsigned char)jsvIteratorGetIntegerValue(&it);
+      buf[i++] = (unsigned char)jsvIteratorGetIntegerValue(&it);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
-    if (i>=I2C_BUFSIZE) jsError("Too many bytes to write - truncating");
     jshI2CWrite(device, (unsigned char)address, i, buf);
   } else {
     jsError("Variable type not suited to writeTo operation");
@@ -433,11 +440,13 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
          "return" : [ "JsVar", "The data that was returned - an array of bytes" ]
 }*/
 JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
-  unsigned char buf[I2C_BUFSIZE];
-  if (nBytes>I2C_BUFSIZE) {
-    jsError("Too many bytes to read - truncating");
-    nBytes = I2C_BUFSIZE;
+  if (nBytes<=0)
+    return 0;
+  if ((unsigned int)nBytes+256 > jsuGetFreeStack()) {
+    jsError("Not enough free stack to receive this amount of data");
+    return 0;
   }
+  unsigned char *buf = (unsigned char *)alloca((size_t)nBytes);
 
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   jshI2CRead(device, (unsigned char)address, nBytes, buf);

@@ -43,7 +43,7 @@
 //! THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
-#include "socket.h"
+#include "Ethernet/socket.h"
 
 #define SOCK_ANY_PORT_NUM  0xC000;
 

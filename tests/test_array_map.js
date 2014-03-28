@@ -1,4 +1,4 @@
-// test that interrupt works 3
+// test array map
 
 var a = [2,3,4,5];
 

@@ -108,7 +108,12 @@ def getTestFor(className, static):
       n = n + 1        
     checkOffsets.append(n)
     checkCharacters.append("\\0")
-    return createStringCompare("constructorName->varData.str", checkOffsets, checkCharacters)
+    extra = ""
+    if len(className) > 8:
+      checkOffsets = checkOffsets[:8]
+      checkCharacters = checkCharacters[:8]
+      extra = " && jsvIsStringEqual(constructorName, \""+className+"\")"
+    return createStringCompare("constructorName->varData.str", checkOffsets, checkCharacters)+extra
     exit(1)
 
 print "Building decision tree"

@@ -14,10 +14,10 @@
 #include "jsvar.h"
 
 JsVar *jswrap_string_constructor(JsVar *a);
-JsVar *jswrap_string_fromCharCode(JsVarInt code);
+JsVar *jswrap_string_fromCharCode(JsVar *arr);
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx);
-JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx);
-JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v);
+int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx);
+int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf);
 JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd);
 JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen);
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split);

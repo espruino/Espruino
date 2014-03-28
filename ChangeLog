@@ -1,4 +1,57 @@
-     1v56 :  ...
+     1v60 : Fix unary plug on variable not working (fix #268)
+            Added DNS with eth.setIP() for W5500
+            Fix lock 'leak' when creating Graphics with callbacks
+            Small fixes for trigger/timer
+            Make dump() + console aware of built-in SPI/I2C/etc
+            Add Pin constructor for converting numbers into a pin object
+
+     1v59 : (function(){})?1:0 should == 1 (fix #261)
+            Fix Math.pow (Fix #260)
+            Fix String.split() (Fix #259)
+            Added Array.concat (Fix #262)
+            Increase RTC/getTime reliability by ensuring overflow can't happen
+            Added Math.min/max
+            Allow jswrapper to wrap objects with a name >8 characters long (fix #264)
+            dump() now doesn't print 'var X = undefined;' - just 'var X;'
+
+     1v58 : Fix Serial.parity
+            Fix glitches in jshGetSystemTime
+            Added Graphics.setFontCustom for custom fonts
+            Added String.lastIndexOf, and made String.indexOf with fromIndex work
+            Used non-bold vector font, improve alignment, and make curves lower quality
+            I2C can now write any size (as long as it fits on the stack!)
+            Try and enlarge fillRects caused by polygons
+            Fix === issues, fix #257
+            Add Graphics.getColor/getBgColor for Juergen
+            Added E.convolve for doing fast calculations with Waveforms
+            Allow String.fromCharCode with multiple arguments
+            Add builtin_modules to board's JSON
+            Added E.FFT for Fast Fourier Transforms
+            Added 16 bit read/write to Waveform (and speed up utility timer)
+            Fix utility timer - now interrupts just in time
+
+     1v57 : Tweak IRQ priorities to try and make SPI RX more reliable
+            Make http default to port 80 if no port is specified in options
+            Try and stop issue with System Time suddenly jumping forwards
+            Fix assert fail when clearing and adding timeouts from within a timeout
+
+     1v56 : Added atob and btoa (for base64 encode/decode) - fix #244
+            Added Array.sort() - fix #220
+            fs.writeFile/appendFile now return false if they fail for some reason
+            Move Graphics init and idle functions out of jsinterface.c
+            Add HttpServer.close
+            Ensure that Linux command-line tests keep running if there's something to do
+            Epic networking refactor - it should now be possible to support multiple network devices in a single binary
+            Now only remove the interval/timeout/watch that's causing the error - not every one
+            Change names of functions in callback-based Graphics so they don't conflict with the real ones
+            More CC300 reliability - now range check the return value from send+recv, because if there's a timeout it can be wrong
+            Fix memory leak in setWatch with debounce
+            Fix 'repeat:false' in debounced setWatch
+            Make sure 'repeat:false' disables the hardware watch
+            Initialise RTC roughly 1 sec after reset, and use external 32kHz oscillator if it exists
+            Added E.enableWatchdog (fix #252)
+            Fix negative start value for String.substr()
+            Fix problem where the RTC's full 32 bits weren't combined properly
 
      1v55 : Add String.toUpperCase/LowerCase
             Fix E.getAnalogVRef() regression

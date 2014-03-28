@@ -23,7 +23,7 @@ void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
   // look up setPixel and execute it!
 //  JsVar *lcdProto = jsvObjectGetChild(gfx->graphicsVar, JSPARSE_PROTOTYPE_VAR, 0);
  // if (lcdProto) {
-    JsVar *setPixel = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "setPixel", 0);
+    JsVar *setPixel = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "iSetPixel", 0);
     if (setPixel) {
       JsVar *args[3];
       args[0] = jsvNewFromInteger(x);
@@ -61,7 +61,7 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short
     return;
   }
 
-  JsVar *fillRect = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "fillRect", 0);
+  JsVar *fillRect = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "iFillRect", 0);
   if (fillRect) {
     JsVar *args[5];
     args[0] = jsvNewFromInteger(x1);
@@ -80,8 +80,8 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short
 }
 
 void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback, JsVar *fillRectCallback) {
-  jsvAddNamedChild(gfx->graphicsVar, setPixelCallback, "setPixel");
-  jsvAddNamedChild(gfx->graphicsVar, fillRectCallback, "fillRect");
+  jsvObjectSetChild(gfx->graphicsVar, "iSetPixel", setPixelCallback);
+  jsvObjectSetChild(gfx->graphicsVar, "iFillRect", fillRectCallback);
 }
 
 void lcdSetCallbacks_JS(JsGraphics *gfx) {

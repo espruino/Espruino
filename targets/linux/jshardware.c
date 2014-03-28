@@ -534,3 +534,5 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 void jshSetOutputValue(JshPinFunction func, int value) {
 }
 
+void jshEnableWatchDog(JsVarFloat timeout) {
+}

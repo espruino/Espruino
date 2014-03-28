@@ -46,9 +46,9 @@ do
   BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAMEX`
   rm $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh"
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo 'Build failed' ; exit 1; }
   elif [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh"
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh" || { echo 'Build failed' ; exit 1; }
   else 
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }

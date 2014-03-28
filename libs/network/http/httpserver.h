@@ -13,43 +13,21 @@
  */
 #include "jsutils.h"
 #include "jsvar.h"
+#include "../network.h"
 
-
-#if defined(USE_CC3000)
- #include "spi.h"
- #include "socket.h"
- typedef int SOCKET;
-#elif defined(USE_WIZNET)
- #include "Ethernet/socket.h"
- typedef struct sockaddr_in sockaddr_in;
-#else
- #ifdef WIN32
-  #include <winsock.h>
- #else
-  #include <sys/socket.h>
-  #include <arpa/inet.h>
-  #include <netdb.h>
-  #include <netinet/in.h>
-  #include <unistd.h>
-  #include <fcntl.h>
-  #include <stdio.h>
-  #include <resolv.h>
-  typedef struct sockaddr_in sockaddr_in;
-  typedef int SOCKET;
- #endif
-#endif
 
 // -----------------------------
 void httpInit();
-void httpKill();
-bool httpIdle();
+void httpKill(JsNetwork *net);
+bool httpIdle(JsNetwork *net);
 // -----------------------------
 JsVar *httpServerNew(JsVar *callback);
-void httpServerListen(JsVar *httpServerVar, int port);
+void httpServerListen(JsNetwork *net, JsVar *httpServerVar, int port);
+void httpServerClose(JsNetwork *net, JsVar *server);
 
 JsVar *httpClientRequestNew(JsVar *options, JsVar *callback);
 void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data);
-void httpClientRequestEnd(JsVar *httpClientReqVar);
+void httpClientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 
 void httpServerResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers);
 void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data);

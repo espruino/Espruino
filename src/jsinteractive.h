@@ -27,12 +27,14 @@
 void jsiInit(bool autoLoad);
 void jsiKill();
 
-void jsiLoop();
+/// do main loop stuff, return true if it was busy this iteration
+bool jsiLoop();
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory();
 
 bool jsiHasTimers(); // are there timers still left to run?
+bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
 /// Return true if the object has callbacks...
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);

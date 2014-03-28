@@ -1,8 +1,8 @@
 #include <string.h>
 #include <stdio.h>
-#include "socket.h"
-#include "dns.h"
-#include "dns_parse.h"
+#include "wiznet/Ethernet/socket.h"
+#include "wiznet/DNS/dns.h"
+#include "wiznet/DNS/dns_parse.h"
 
 uint8_t Server_IP_Addr[4]; // Server IP. Obtained by using the DNS.
 

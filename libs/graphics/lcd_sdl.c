@@ -21,6 +21,7 @@
 #define DEPTH 32
 
 SDL_Surface *screen = 0;
+bool needsFlip = false;
 
 unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
   if (!screen) return 0;
@@ -43,7 +44,7 @@ void lcdSetPixel_SDL(JsGraphics *gfx, short x, short y, unsigned int col) {
   unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y*gfx->data.width + x;
   *pixmem32 = col;
   if(SDL_MUSTLOCK(screen)) SDL_UnlockSurface(screen);
-  SDL_Flip(screen);
+  needsFlip = true;
 }
 
 void lcdInit_SDL(JsGraphics *gfx) {
@@ -60,6 +61,10 @@ void lcdInit_SDL(JsGraphics *gfx) {
 }
 
 void lcdIdle_SDL() {
+  if (needsFlip) {
+    needsFlip = false;
+    SDL_Flip(screen);
+  }
 }
 
 void lcdSetCallbacks_SDL(JsGraphics *gfx) {

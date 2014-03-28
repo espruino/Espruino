@@ -206,9 +206,8 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
-USB=1
+#USB=1
 USE_GRAPHICS=1
-#USE_LCD_FSMC=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
 CHIP=STM32F429
@@ -495,43 +494,49 @@ endif
 ifdef USE_NET
 DEFINES += -DUSE_NET
 WRAPPERSOURCES += libs/network/http/jswrap_http.c
-INCLUDE += -I$(ROOT)/libs/network/http
+INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
 SOURCES += \
 libs/network/network.c \
 libs/network/http/httpserver.c 
-ifdef LINUX
-#LIBS += -l... 
-#INCLUDE += -I...
-endif
+
+ ifdef LINUX
+ INCLUDE += -I$(ROOT)/libs/network/linux
+ SOURCES += \
+ libs/network/linux/network_linux.c 
+ endif
+
+ ifdef USE_CC3000
+ DEFINES += -DUSE_CC3000 -DSEND_NON_BLOCKING
+ WRAPPERSOURCES += libs/network/cc3000/jswrap_cc3000.c
+ INCLUDE += -I$(ROOT)/libs/network/cc3000
+ SOURCES += \
+ libs/network/cc3000/network_cc3000.c \
+ libs/network/cc3000/board_spi.c \
+ libs/network/cc3000/cc3000_common.c \
+ libs/network/cc3000/evnt_handler.c \
+ libs/network/cc3000/hci.c \
+ libs/network/cc3000/netapp.c \
+ libs/network/cc3000/nvmem.c \
+ libs/network/cc3000/security.c \
+ libs/network/cc3000/socket.c \
+ libs/network/cc3000/wlan.c
+ endif
+
+ ifdef USE_WIZNET
+ DEFINES += -DUSE_WIZNET
+ WRAPPERSOURCES += libs/network/wiznet/jswrap_wiznet.c
+ INCLUDE += -I$(ROOT)/libs/network/wiznet -I$(ROOT)/libs/network/wiznet/Ethernet
+ SOURCES += \
+ libs/network/wiznet/network_wiznet.c \
+ libs/network/wiznet/DNS/dns_parse.c \
+ libs/network/wiznet/DNS/dns.c \
+ libs/network/wiznet/DHCP/dhcp.c \
+ libs/network/wiznet/Ethernet/wizchip_conf.c \
+ libs/network/wiznet/Ethernet/socket.c \
+ libs/network/wiznet/W5500/w5500.c
+ endif
 endif
 
-ifdef USE_CC3000
-DEFINES += -DUSE_CC3000 -DSEND_NON_BLOCKING
-WRAPPERSOURCES += libs/network/cc3000/jswrap_cc3000.c
-INCLUDE += -I$(ROOT)/libs/network/cc3000
-SOURCES += \
-libs/network/cc3000/board_spi.c \
-libs/network/cc3000/cc3000_common.c \
-libs/network/cc3000/evnt_handler.c \
-libs/network/cc3000/hci.c \
-libs/network/cc3000/netapp.c \
-libs/network/cc3000/nvmem.c \
-libs/network/cc3000/security.c \
-libs/network/cc3000/socket.c \
-libs/network/cc3000/wlan.c
-endif
-
-ifdef USE_WIZNET
-DEFINES += -DUSE_WIZNET
-WRAPPERSOURCES += libs/network/wiznet/jswrap_wiznet.c
-INCLUDE += -I$(ROOT)/libs/network/wiznet -I$(ROOT)/libs/network/wiznet/Ethernet
-SOURCES += \
-libs/network/wiznet/DNS/dns_parse.c \
-libs/network/wiznet/DNS/dns.c \
-libs/network/wiznet/Ethernet/wizchip_conf.c \
-libs/network/wiznet/Ethernet/socket.c \
-libs/network/wiznet/W5500/w5500.c
-endif
 
 ifdef USE_TRIGGER
 DEFINES += -DUSE_TRIGGER 
@@ -797,8 +802,8 @@ ifndef BOOTLOADER
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
  
-# Limit code size growth via inlining to 20% Normally 30% it seems... This reduces code size without slowing down Espruino noticeably
-OPTIMIZEFLAGS += --param inline-unit-growth=20
+# Limit code size growth via inlining to 15% Normally 30% it seems... This reduces code size without slowing down Espruino noticeably
+OPTIMIZEFLAGS += --param inline-unit-growth=15
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

@@ -7,8 +7,6 @@ The tests here are run automatically when you type
 ./espruino --test-all
 ```
 
-Ideally their name would represent what they tested, but this hasn't been done yet.
-
 ## Other tests
 
 You can find an overview of all of these by running `./espruino --help`.

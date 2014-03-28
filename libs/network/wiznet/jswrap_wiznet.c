@@ -18,9 +18,12 @@
 #include "jswrap_wiznet.h"
 #include "jshardware.h"
 #include "jsinteractive.h"
-#include "../network.h"
+#include "network.h"
 // wiznet driver
 #include "wizchip_conf.h"
+
+#include "network_wiznet.h"
+#include "DHCP/dhcp.h"
 
 #define ETH_SPI          EV_SPI3
 #define ETH_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 2) // active low
@@ -94,19 +97,23 @@ JsVar *jswrap_wiznet_connect() {
   if(ctlwizchip(CW_INIT_WIZCHIP,(void*)memsize) == -1)
   {
     jsiConsolePrint("WIZCHIP Initialized fail.\r\n");
-     while(1);
+    return 0;
   }
 
   /* PHY link status check */
-  do
-  {
-     if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1)
-        jsiConsolePrint("Unknown PHY Link status.\r\n");
-  }while(tmp == PHY_LINK_OFF);
+  do {
+    if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1) {
+      jsiConsolePrint("Unknown PHY Link status.\r\n");
+      return 0;
+    }
+  } while (tmp == PHY_LINK_OFF);
+
+  JsNetwork net;
+  networkCreate(&net, JSNETWORKTYPE_W5500);
+  networkFree(&net);
 
   networkState = NETWORKSTATE_ONLINE;
 
-  //cc3000_initialise(ethObj);
   return ethObj;
 }
 
@@ -114,31 +121,6 @@ JsVar *jswrap_wiznet_connect() {
         "class" : "Ethernet",
         "description" : "An instantiation of an Ethernet network adaptor"
 }*/
-
-static void NO_INLINE _eth_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
-  char data[64] = "";
-  int i, l = 0;
-  for (i=0;i<nBytes;i++) {
-    itoa((int)ip[i], &data[l], base);
-    l = (int)strlen(data);
-    if (i<nBytes-1 && separator) {
-      data[l++] = separator;
-      data[l] = 0;
-    }
-  }
-
-  JsVar *dataVar = jsvNewFromString(data);
-  if (!dataVar) return;
-
-  JsVar *v = jsvFindChildFromString(object, name, true);
-  if (!v) {
-    jsvUnLock(dataVar);
-    return; // out of memory
-  }
-  jsvSetValueOfName(v, dataVar);
-  jsvUnLock(dataVar);
-  jsvUnLock(v);
-}
 
 /*JSON{ "type":"method",
          "class" : "Ethernet", "name" : "getIP",
@@ -159,10 +141,64 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
 
   /* If byte 1 is 0 we don't have a valid address */
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-  _eth_getIP_get_address(data, "ip", &gWIZNETINFO.ip[0], 4, 10, '.');
-  _eth_getIP_get_address(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
-  _eth_getIP_get_address(data, "gateway", gWIZNETINFO.gw[0], 4, 10, '.');
-  _eth_getIP_get_address(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
-  _eth_getIP_get_address(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
+  networkPutAddressAsString(data, "ip", &gWIZNETINFO.ip[0], 4, 10, '.');
+  networkPutAddressAsString(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
+  networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');
+  networkPutAddressAsString(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
+  networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
   return data;
 }
+
+
+void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
+  JsVar *info = jsvObjectGetChild(options, name, 0);
+  if (info) {
+    char buf[64];
+    jsvGetString(info, buf, sizeof(buf));
+    *(unsigned long*)ptr = networkParseIPAddress(buf);
+    jsvUnLock(info);
+  }
+}
+
+/*JSON{ "type":"method",
+         "class" : "Ethernet", "name" : "setIP",
+         "generate" : "jswrap_ethernet_setIP",
+         "description" : "Set the current IP address",
+         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`"] ],
+         "return" : ["bool", "True on success"]
+}*/
+bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
+  NOT_USED(wlanObj);
+
+  if (networkState != NETWORKSTATE_ONLINE) {
+    jsError("Not connected to the internet");
+    return false;
+  }
+
+  bool success = false;
+  wiz_NetInfo gWIZNETINFO;
+
+  if (jsvIsObject(options)) {
+    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+    _eth_getIP_set_address(options, "ip", &gWIZNETINFO.ip[0]);
+    _eth_getIP_set_address(options, "subnet", &gWIZNETINFO.sn[0]);
+    _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
+    _eth_getIP_set_address(options, "dns", &gWIZNETINFO.dns[0]);
+    gWIZNETINFO.dhcp = NETINFO_STATIC;
+    success = true;
+  } else {
+    // DHCP
+    uint8_t DHCPisSuccess = getIP_DHCPS(net_wiznet_getFreeSocket(), &gWIZNETINFO);
+    if (DHCPisSuccess == 1) {
+      // info in lease_time.lVal
+      success = true;
+    } else {
+      jsWarn("DHCP failed");
+      success = false;
+    }
+  }
+
+  ctlnetwork(CN_SET_NETINFO, (void*)&gWIZNETINFO);
+  return success;
+}
+

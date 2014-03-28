@@ -231,36 +231,41 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
     jsvArrayBufferIteratorFree(&it);
     cbprintf(user_callback, user_data, "])");
   } else if (jsvIsObject(var)) {
-    bool first = true;
-    bool needNewLine = false;
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, var);
-    cbprintf(user_callback, user_data, "{");
-    while (jsvObjectIteratorHasElement(&it) && !jspIsInterrupted()) {
-      JsVar *index = jsvObjectIteratorGetKey(&it);
-      JsVar *item = jsvObjectIteratorGetValue(&it);
-      bool hidden = jsvIsInternalObjectKey(index) ||
-                    ((flags & JSON_IGNORE_FUNCTIONS) && jsvIsFunction(item));
-      if (!hidden) {
-        if (!first) cbprintf(user_callback, user_data, ",");
-        bool newNeedsNewLine = (flags&JSON_NEWLINES) && jsonNeedsNewLine(item);
-        if (needNewLine || newNeedsNewLine) {
-          jsonNewLine(nflags, user_callback, user_data);
-          needNewLine = false;
+    IOEventFlags device = (flags & JSON_SHOW_DEVICES) ? jsiGetDeviceFromClass(var) : EV_NONE;
+    if (device!=EV_NONE) {
+      cbprintf(user_callback, user_data, "%s", jshGetDeviceString(device));
+    } else {
+      bool first = true;
+      bool needNewLine = false;
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, var);
+      cbprintf(user_callback, user_data, "{");
+      while (jsvObjectIteratorHasElement(&it) && !jspIsInterrupted()) {
+        JsVar *index = jsvObjectIteratorGetKey(&it);
+        JsVar *item = jsvObjectIteratorGetValue(&it);
+        bool hidden = jsvIsInternalObjectKey(index) ||
+                      ((flags & JSON_IGNORE_FUNCTIONS) && jsvIsFunction(item));
+        if (!hidden) {
+          if (!first) cbprintf(user_callback, user_data, ",");
+          bool newNeedsNewLine = (flags&JSON_NEWLINES) && jsonNeedsNewLine(item);
+          if (needNewLine || newNeedsNewLine) {
+            jsonNewLine(nflags, user_callback, user_data);
+            needNewLine = false;
+          }
+          cbprintf(user_callback, user_data, "%q:", index);
+          if (first)
+            first = false;
+          jsfGetJSONWithCallback(item, nflags, user_callback, user_data);
+          needNewLine = newNeedsNewLine;
         }
-        cbprintf(user_callback, user_data, "%q:", index);
-        if (first)
-          first = false;
-        jsfGetJSONWithCallback(item, nflags, user_callback, user_data);
-        needNewLine = newNeedsNewLine;
+        jsvUnLock(index);
+        jsvUnLock(item);
+        jsvObjectIteratorNext(&it);
       }
-      jsvUnLock(index);
-      jsvUnLock(item);
-      jsvObjectIteratorNext(&it);
+      jsvObjectIteratorFree(&it);
+      if (needNewLine) jsonNewLine(flags, user_callback, user_data);
+      cbprintf(user_callback, user_data, "}");
     }
-    jsvObjectIteratorFree(&it);
-    if (needNewLine) jsonNewLine(flags, user_callback, user_data);
-    cbprintf(user_callback, user_data, "}");
   } else if (jsvIsFunction(var)) {
     if (flags & JSON_IGNORE_FUNCTIONS) {
       cbprintf(user_callback, user_data, "undefined");

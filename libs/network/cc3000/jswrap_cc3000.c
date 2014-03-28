@@ -18,12 +18,12 @@
 #include "jswrap_cc3000.h"
 #include "jshardware.h"
 #include "jsinteractive.h"
-#include "board_spi.h"
-#include "../network.h"
+#include "cc3000/board_spi.h"
+#include "network.h"
 // ti driver
-#include "wlan.h"
-#include "netapp.h"
-#include "hci.h"
+#include "cc3000/wlan.h"
+#include "cc3000/netapp.h"
+#include "cc3000/hci.h"
 
 
 /*JSON{ "type":"library",
@@ -55,9 +55,9 @@ JsVar *jswrap_cc3000_connect() {
          "params" : [ [ "ap", "JsVar", "Access point name" ],
                       [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
                       [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'" ] ],
-         "return" : ["int", ""]
+         "return" : ["bool", "True if connection succeeded, false if it didn't." ]
 }*/
-JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
+bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
     jsError("Expecting callback Function but got %t", callback);
     return 0;
@@ -84,8 +84,15 @@ JsVarInt jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *cal
     jsvGetString(vKey, key, sizeof(key));
   }
   // might want to set wlan_ioctl_set_connection_policy
-  return wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key));
+  bool connected =  wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key))==0;
+
+  if (connected) {
+    JsNetwork net;
+    networkCreate(&net, JSNETWORKTYPE_CC3000);
+    networkFree(&net);
+  }
   // note that we're only online (for networkState) when DHCP succeeds
+  return connected;
 }
 
 /*JSON{ "type":"method",
@@ -116,30 +123,7 @@ void jswrap_wlan_reconnect(JsVar *wlanObj) {
   jsvUnLock(cb);
 }
 
-static void NO_INLINE _wlan_getIP_get_address(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
-  char data[64] = "";
-  int i, l = 0;
-  for (i=nBytes-1;i>=0;i--) {
-    itoa((int)ip[i], &data[l], base);
-    l = (int)strlen(data);
-    if (i>0 && separator) {
-      data[l++] = separator;
-      data[l] = 0;
-    }
-  }
 
-  JsVar *dataVar = jsvNewFromString(data);
-  if (!dataVar) return;
-
-  JsVar *v = jsvFindChildFromString(object, name, true);
-  if (!v) {
-    jsvUnLock(dataVar);
-    return; // out of memory
-  }
-  jsvSetValueOfName(v, dataVar);
-  jsvUnLock(dataVar);
-  jsvUnLock(v);
-}
 
 /*JSON{ "type":"method",
          "class" : "WLAN", "name" : "getIP",
@@ -160,11 +144,11 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-  _wlan_getIP_get_address(data, "ip", &ipconfig.aucIP[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "subnet", &ipconfig.aucSubnetMask[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "gateway", &ipconfig.aucDefaultGateway[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "dhcp", &ipconfig.aucDHCPServer[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "dns", &ipconfig.aucDNSServer[0], 4, 10, '.');
-  _wlan_getIP_get_address(data, "mac", &ipconfig.uaMacAddr[0], 6, 16, 0);
+  networkPutAddressAsString(data, "ip", &ipconfig.aucIP[0], -4, 10, '.');
+  networkPutAddressAsString(data, "subnet", &ipconfig.aucSubnetMask[0], -4, 10, '.');
+  networkPutAddressAsString(data, "gateway", &ipconfig.aucDefaultGateway[0], -4, 10, '.');
+  networkPutAddressAsString(data, "dhcp", &ipconfig.aucDHCPServer[0], -4, 10, '.');
+  networkPutAddressAsString(data, "dns", &ipconfig.aucDNSServer[0], -4, 10, '.');
+  networkPutAddressAsString(data, "mac", &ipconfig.uaMacAddr[0], -6, 16, 0);
   return data;
 }

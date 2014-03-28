@@ -251,7 +251,7 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     JsVar *v;
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
     debounce = jsvGetFloatAndUnLock(jsvObjectGetChild(repeatOrObject, "debounce", 0));
-    if (isnan(debounce)) debounce=0;
+    if (isnan(debounce) || debounce<0) debounce=0;
     v = jsvObjectGetChild(repeatOrObject, "edge", 0);
     if (jsvIsString(v)) {
       if (jsvIsStringEqual(v, "rising")) edge=1;
@@ -275,15 +275,18 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
       jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
       if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
       if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
-      jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
+      if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
       jsvObjectSetChild(watchPtr, "callback", funcVar); // no unlock intentionally
     }
+
+    // If nothing already watching the pin, set up a watch
+    if (!jsiIsWatchingPin(pin))
+      jshPinWatch(pin, true);
 
     JsVar *watchArrayPtr = jsvLock(watchArray);
     itemIndex = jsvArrayPushWithInitialSize(watchArrayPtr, watchPtr, 1) - 1;
     jsvUnLock(watchArrayPtr);
     jsvUnLock(watchPtr);
-    jshPinWatch(pin, true);
   }
   jsvUnLock(skippedFunc);
   return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
@@ -389,24 +392,10 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
       jsvUnLock(watchNamePtr);
-
-      // Now check if this pin is still being watched
-      bool stillWatched = false;
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, watchArrayPtr);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
-        JsVar *pinVar = jsvObjectGetChild(watchPtr, "pin", 0);
-        if (jshGetPinFromVar(pinVar) == pin)
-          stillWatched = true;
-        jsvUnLock(pinVar);
-        jsvUnLock(watchPtr);
-        jsvArrayIteratorNext(&it);
-      }
-      jsvArrayIteratorFree(&it);
       jsvUnLock(watchArrayPtr);
 
-      if (!stillWatched)
+      // Now check if this pin is still being watched
+      if (!jsiIsWatchingPin(pin))
         jshPinWatch(pin, false); // 'unwatch' pin
     } else {
       jsError("Unknown Watch");

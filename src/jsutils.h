@@ -30,10 +30,11 @@
 extern int isnan ( double );
 extern int isfinite ( double );
 #define NAN (((JsVarFloat)0)/(JsVarFloat)0)
+#define INFINITY (((JsVarFloat)1)/(JsVarFloat)0)
 #endif
 
 
-#define JS_VERSION "1v56"
+#define JS_VERSION "1v60"
 /*
   In code:
   TODO - should be fixed
@@ -382,5 +383,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
 /// This one is directly usable..
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
+/** get the amount of free stack we have, in bytes */
+size_t jsuGetFreeStack();
 
 #endif /* JSUTILS_H_ */

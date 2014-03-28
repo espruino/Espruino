@@ -23,6 +23,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback);
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback);
 
 void jswrap_httpSrv_listen(JsVar *parent, int port);
+void jswrap_httpSrv_close(JsVar *parent);
 
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers);
 void jswrap_httpSRs_write(JsVar *parent, JsVar *data);

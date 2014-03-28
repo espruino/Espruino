@@ -8,25 +8,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for Maths
+ * Implementation of JsNetwork for CC3000
  * ----------------------------------------------------------------------------
  */
-#include "jsutils.h"
-#include "jsvar.h"
+#include "network.h"
 
-#ifdef ARM
-#include "mconf.h"
-#include "protos.h"
-#else
-#include <math.h>
-#endif
-
-#define PI (3.141592653589793)
-
-
-JsVarInt jswrap_integer_valueOf(JsVar *v);
-JsVarFloat jswrap_math_abs(JsVarFloat x);
-double jswrap_math_pow(double x, double y);
-double jswrap_math_sqrt(double x);
-JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
-JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax);
+void netSetCallbacks_cc3000(JsNetwork *net);
