@@ -34,7 +34,7 @@ extern uint8_t Server_IP_Addr[4];
 
 #define WIZNET_SERVER_CLIENT 256 // sockets are only 0-255 so this is masked out
 
-uint8_t getFreeSocket() {
+uint8_t net_wiznet_getFreeSocket() {
   uint8_t i;
   for (i=0;i<8;i++)
     if (getSn_SR(i) == SOCK_CLOSED) // it's free!
@@ -51,7 +51,7 @@ uint8_t getFreeSocket() {
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
   NOT_USED(net);
-  if (dns_query(0, getFreeSocket(), (uint8_t*)hostName) == 1) {
+  if (dns_query(0, net_wiznet_getFreeSocket(), (uint8_t*)hostName) == 1) {
     *out_ip_addr = *(unsigned long*)&Server_IP_Addr[0];
   }
 }
@@ -73,7 +73,7 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
   NOT_USED(net);
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
-    sckt = socket(getFreeSocket(), Sn_MR_TCP, port, 0); // we set nonblocking later
+    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, port, 0); // we set nonblocking later
     if (sckt<0) return sckt; // error
 
     int res = connect((uint8_t)sckt,(uint8_t*)&host, port);
@@ -85,7 +85,7 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
      jsError("Connect failed (err %d)\n", res );
     }
  } else { // ------------------------------------------------- no host (=server)
-    sckt = socket(getFreeSocket(), Sn_MR_TCP, port, SF_IO_NONBLOCK);
+    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, port, SF_IO_NONBLOCK);
  }
   return sckt;
 }

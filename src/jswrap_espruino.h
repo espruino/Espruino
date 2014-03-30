@@ -17,4 +17,7 @@
 JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_espruino_sum(JsVar *arr);
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean);
+JsVarFloat jswrap_espruino_convolve(JsVar *a, JsVar *b, int offset);
+void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
+
 void jswrap_espruino_enableWatchdog(JsVarFloat time);

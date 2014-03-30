@@ -1046,6 +1046,8 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
+  if (jsvIsFunction(v))
+    return true;
   return jsvGetInteger(v)!=0;
 }
 
@@ -1914,7 +1916,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       if (a && b) {
         // Check whether both are numbers, otherwise check the variable
         // type flags themselves
-        eql = ((jsvIsInt(a)||jsvIsFloat(a)) == (jsvIsInt(b)||jsvIsFloat(b))) ||
+        eql = ((jsvIsInt(a)||jsvIsFloat(a)) && (jsvIsInt(b)||jsvIsFloat(b))) ||
               ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
       }
       if (eql) {
@@ -2613,6 +2615,16 @@ JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   case JSVI_OBJECT : return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
   case JSVI_STRING : return (JsVarInt)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIntegerValue(&it->it.buf);
+  default: assert(0); return 0;
+  }
+}
+
+JsVarFloat jsvIteratorGetFloatValue(JsvIterator *it) {
+  switch (it->type) {
+  case JSVI_ARRAY : return jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it->it.arr));
+  case JSVI_OBJECT : return jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  case JSVI_STRING : return (JsVarFloat)jsvStringIteratorGetChar(&it->it.str);
+  case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetFloatValue(&it->it.buf);
   default: assert(0); return 0;
   }
 }

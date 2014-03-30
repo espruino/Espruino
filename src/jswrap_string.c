@@ -35,18 +35,26 @@ JsVar *jswrap_string_constructor(JsVar *a) {
 }
 
 /*JSON{ "type":"staticmethod", "class": "String", "name" : "fromCharCode",
-         "description" : "Return the character represented by the given character code.",
+         "description" : "Return the character(s) represented by the given character code(s).",
          "generate" : "jswrap_string_fromCharCode",
-         "params" : [ [ "code", "int", "The character code to create a character from (range 0-255)"] ],
+         "params" : [ [ "code", "JsVarArray", "One or more character codes to create a string from (range 0-255)."] ],
          "return" : ["JsVar", "The character"]
 }*/
-JsVar *jswrap_string_fromCharCode(JsVarInt code) {
-  // We do this so we can handle '/0' in a string
+JsVar *jswrap_string_fromCharCode(JsVar *arr) {
+  assert(jsvIsArray(arr));
+
   JsVar *r = jsvNewFromEmptyString();
-  if (r) { // out of mem?
-    char ch = (char)code;
+  if (!r) return 0;
+
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, arr);
+  while (jsvArrayIteratorHasElement(&it)) {
+    char ch = (char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
     jsvAppendStringBuf(r, &ch, 1);
+    jsvArrayIteratorNext(&it);
   }
+  jsvArrayIteratorFree(&it);
+
   return r;
 }
 
@@ -71,33 +79,62 @@ JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
                           "Note that this returns 0 not 'NaN' for out of bounds characters"],
          "generate" : "jswrap_string_charCodeAt",
          "params" : [ [ "pos", "int", "The character number in the string. Negative values return characters from end of string (-1 = last char)"] ],
-         "return" : ["int", "The integer value of a character in the string"]
+         "return" : ["int32", "The integer value of a character in the string"]
 }*/
-JsVarInt jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
+int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
   return (unsigned char)jsvGetCharInString(parent, (size_t)idx);
 }
 
 
 /*JSON{ "type":"method", "class": "String", "name" : "indexOf",
          "description" : "Return the index of substring in this string, or -1 if not found",
-         "generate" : "jswrap_string_indexOf",
-         "params" : [ [ "substring", "JsVar", "The string to search for"] ],
-         "return" : ["int", "The index of the string, or -1 if not found"]
+         "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, false)",
+         "params" : [ [ "substring", "JsVar", "The string to search for"],
+                      [ "fromIndex", "JsVar", "Index to search from"] ],
+         "return" : ["int32", "The index of the string, or -1 if not found"]
 }*/
-JsVarInt jswrap_string_indexOf(JsVar *parent, JsVar *v) {
+/*JSON{ "type":"method", "class": "String", "name" : "lastIndexOf",
+         "description" : "Return the last index of substring in this string, or -1 if not found",
+         "generate_full" : "jswrap_string_indexOf(parent, substring, fromIndex, true)",
+         "params" : [ [ "substring", "JsVar", "The string to search for"],
+                      [ "fromIndex", "JsVar", "Index to search from"] ],
+         "return" : ["int32", "The index of the string, or -1 if not found"]
+}*/
+int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
   // slow, but simple!
-   v = jsvAsString(v, false);
-   if (!v) return 0; // out of memory
-   int idx;
-   int l = (int)jsvGetStringLength(parent) - (int)jsvGetStringLength(v);
-   for (idx=0;idx<=l;idx++) {
-     if (jsvCompareString(parent, v, (size_t)idx, 0, true)==0) {
-       jsvUnLock(v);
-       return idx;
-     }
-   }
-   jsvUnLock(v);
-   return -1;
+  substring = jsvAsString(substring, false);
+  if (!substring) return 0; // out of memory
+  int parentLength = (int)jsvGetStringLength(parent);
+  int lastPossibleSearch = parentLength - (int)jsvGetStringLength(substring);
+  int idx, dir, end;
+  if (!lastIndexOf) { // normal indexOf
+    dir = 1;
+    end = lastPossibleSearch+1;
+    idx = 0;
+    if (jsvIsNumeric(fromIndex)) {
+      idx = (int)jsvGetInteger(fromIndex);
+      if (idx<0) idx=0;
+      if (idx>end) idx=end;
+    }
+  } else {
+    dir = -1;
+    end = -1;
+    idx = lastPossibleSearch;
+    if (jsvIsNumeric(fromIndex)) {
+      idx = (int)jsvGetInteger(fromIndex);
+      if (idx<0) idx=0;
+      if (idx>lastPossibleSearch) idx=lastPossibleSearch;
+    }
+  }
+
+  for (;idx!=end;idx+=dir) {
+    if (jsvCompareString(parent, substring, (size_t)idx, 0, true)==0) {
+      jsvUnLock(substring);
+      return idx;
+    }
+  }
+  jsvUnLock(substring);
+  return -1;
 }
 
 /*JSON{ "type":"method", "class": "String", "name" : "substring",
@@ -147,28 +184,30 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
          "return" : ["JsVar", "Part of this string from start for len characters"]
 }*/
 JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
-  JsVar *array;
-  int arraylen=0;
-  int idx, last = 0;
-  int splitlen =  (int)jsvGetStringLength(split);
-  int l = (int)jsvGetStringLength(parent) - splitlen;
-
-  array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
   if (!array) return 0; // out of memory
 
+  if (jsvIsUndefined(split)) {
+    jsvArrayPush(array, parent);
+    return array;
+  }
+
+  split = jsvAsString(split, true);
+
+
+  int idx, last = 0;
+  int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
+  int l = (int)jsvGetStringLength(parent) - splitlen;
+
   for (idx=0;idx<=l;idx++) {
-    if (idx==l || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
-      JsVar *part = jsvNewFromEmptyString();
+    if (splitlen==0 &&idx==0) continue; // special case for where split string is ""
+    if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
+      if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+      JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));
       if (!part) break; // out of memory
-      JsVar *idxvar = jsvMakeIntoVariableName(jsvNewFromInteger(arraylen++), part);
-      if (idxvar) { // could be out of memory
-        if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
-        jsvAppendStringVar(part, parent, (size_t)last, (size_t)(idx-last));
-        jsvAddName(array, idxvar);
-        last = idx+splitlen;
-        jsvUnLock(idxvar);
-      }
+      jsvArrayPush(array, part);
       jsvUnLock(part);
+      last = idx+splitlen;
     }
   }
   return array;

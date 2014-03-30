@@ -96,8 +96,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
          "return" : ["float", "The cosine of theta"]
 }*/
 
-double fs_fmod(double x, double y)
-{
+double fs_fmod(double x, double y) {
   double a, b;
   const double c = x;
 
@@ -122,10 +121,9 @@ double fs_fmod(double x, double y)
   return 0 > c ? -x : x;
 }
 
-double jswrap_math_pow(double x, double y)
-{
+double jswrap_math_pow(double x, double y) {
   double p;
-  if (0 > x && fs_fmod(y, 1) == 0) {
+  if (x < 0 && fs_fmod(y, 1) == 0) {
     if (fs_fmod(y, 2) == 0) {
       p = exp(log(-x) * y);
     } else {
@@ -176,10 +174,14 @@ double jswrap_math_pow(double x, double y)
 /* we could use the real sqrt - but re-use pow to save on code space */
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "sqrt",
-         "generate_full" : "jswrap_math_pow(jsvGetFloat(x),0.5)",
+         "generate" : "jswrap_math_sqrt",
          "params" : [ [ "x", "float", "The value to take the square root of"] ],
          "return" : ["float", "The square root of x"]
 }*/
+
+double jswrap_math_sqrt(double x) {
+  return (x>=0) ? exp(log(x) / 2) : NAN;
+}
 
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "ceil",
@@ -231,4 +233,33 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
          "return" : ["float", "The value of x, wrapped so as not to be below min or above max."]
 }*/
 
+/*JSON{ "type":"staticmethod",
+         "class" : "Math", "name" : "min",
+         "generate_full" : "jswrap_math_minmax(args, false)",
+         "description" : "Find the minimum of a series of numbers",
+         "params" : [ [ "args", "JsVarArray", "A floating point value to clip"] ],
+         "return" : ["float", "The minimum of the supplied values"]
+}*/
+/*JSON{ "type":"staticmethod",
+         "class" : "Math", "name" : "max",
+         "generate_full" : "jswrap_math_minmax(args, true)",
+         "description" : "Find the maximum of a series of numbers",
+         "params" : [ [ "args", "JsVarArray", "A floating point value to clip"] ],
+         "return" : ["float", "The maximum of the supplied values"]
+}*/
+JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
+  JsVarFloat v = isMax ? -INFINITY : INFINITY;
+
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, args);
+  while (jsvArrayIteratorHasElement(&it)) {
+    JsVarFloat arg = jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it));
+    if ((isMax && arg > v) || (!isMax && arg < v) || isnan(arg))
+      v = arg;
+    jsvArrayIteratorNext(&it);
+  }
+  jsvArrayIteratorFree(&it);
+
+  return v;
+}
 

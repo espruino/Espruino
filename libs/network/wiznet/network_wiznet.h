@@ -13,4 +13,6 @@
  */
 #include "network.h"
 
+uint8_t net_wiznet_getFreeSocket();
+
 void netSetCallbacks_wiznet(JsNetwork *net);

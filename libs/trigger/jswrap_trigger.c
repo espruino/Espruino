@@ -120,9 +120,9 @@ void jswrap_trig_setTrigger(JsVarInt num, JsVarFloat position, JsVar *pins, JsVa
   tp->newTooth = (unsigned char)position;
   tp->newToothFraction = (unsigned char)((position - tp->tooth)*256);
   tp->pulseLength = jshGetTimeFromMilliseconds(pulseLength);
-  int i;
+  int i, l=jsvGetArrayLength(pins);
   for (i=0;i<TRIGGERPOINT_TRIGGERS_COUNT;i++) {
-    tp->pins[i] = jshGetPinFromVarAndUnLock(jsvGetArrayItem(pins, i));
+    tp->pins[i] = (i<l) ? jshGetPinFromVarAndUnLock(jsvGetArrayItem(pins, i)) : PIN_UNDEFINED;
   }
   // now copy over data if we need to do it immediately
   if (tp->tooth==TRIGGERPOINT_TOOTH_DISABLE || tp->newTooth==TRIGGERPOINT_TOOTH_DISABLE) {
@@ -182,7 +182,7 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   int i;
   if (v) {
     for (i=0;i<TRIGGERPOINT_TRIGGERS_COUNT;i++)
-      if (tp->pins[i]>=0) {
+      if (tp->pins[i] != PIN_UNDEFINED) {
         jsvArrayPushAndUnLock(v, jsvNewFromPin(tp->pins[i]));
       }
   }

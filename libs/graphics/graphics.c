@@ -123,7 +123,7 @@ void graphicsSetVar(JsGraphics *gfx) {
 
 void graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
-  gfx->setPixel(gfx,x,y,col & (unsigned int)((1<<gfx->data.bpp)-1));
+  gfx->setPixel(gfx,x,y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y) {
@@ -276,9 +276,15 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
   }
   for (y=miny;y<=maxy;y++) {
     if (maxx[y]>=minx[y]) {
+      // clip
       if (minx[y]<0) minx[y]=0;
       if (maxx[y]>=gfx->data.width) maxx[y]=gfx->data.width-1;
-      graphicsFillRect(gfx,minx[y],y,maxx[y],y);
+      // try and expand the rect that we fill
+      int oldy = y;
+      while (y<maxy && minx[y+1]==minx[oldy] && maxx[y+1]==maxx[oldy])
+        y++;
+      // actually fill
+      graphicsFillRect(gfx,minx[y],oldy,maxx[y],y);
       if (jspIsInterrupted()) break;
     }
   }
@@ -307,9 +313,15 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
   }
   for (x=minx;x<=maxx;x++) {
     if (maxy[x]>=miny[x]) {
+      // clip
       if (miny[x]<0) miny[x]=0;
       if (maxy[x]>=gfx->data.height) maxy[x]=(short)(gfx->data.height-1);
-      graphicsFillRect(gfx,x,miny[x],x,maxy[x]);
+      // try and expand the rect that we fill
+      int oldx = x;
+      while (x<maxx && miny[x+1]==miny[oldx] && maxy[x+1]==maxy[oldx])
+        x++;
+      // actually fill
+      graphicsFillRect(gfx,oldx,miny[x],x,maxy[x]);
       if (jspIsInterrupted()) break;
     }
   }
@@ -322,20 +334,28 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch) {
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
-  VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
+  int vertOffset = 0;
+  int i;
+  /* compute offset (I figure a ~50 iteration FOR loop is preferable to
+   * a 200 byte array) */
+  int fontOffset = ch-vectorFontOffset;
+  for (i=0;i<fontOffset;i++)
+    vertOffset += vectorFonts[i].vertCount;
+  VectorFontChar vector = vectorFonts[fontOffset];
   short verts[VECTOR_FONT_MAX_POLY_SIZE*2];
-  int i, idx=0;
+  int idx=0;
   for (i=0;i<vector.vertCount;i+=2) {
-    verts[idx+0] = (short)(x1+((vectorFontPolys[vector.vertOffset+i+0]&0x7F)*size/48));
-    verts[idx+1] = (short)(y1+((vectorFontPolys[vector.vertOffset+i+1]&0x7F)*size/48)-(size>>2));
+    verts[idx+0] = (short)(x1+(((vectorFontPolys[vertOffset+i+0]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
+    verts[idx+1] = (short)(y1+(((vectorFontPolys[vertOffset+i+1]&0x7F)*size+(VECTOR_FONT_POLY_SIZE/2))/VECTOR_FONT_POLY_SIZE));
     idx+=2;
-    if (vectorFontPolys[vector.vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
+    if (vectorFontPolys[vertOffset+i+1] & VECTOR_FONT_POLY_SEPARATOR) {
       graphicsFillPoly(gfx,idx/2, verts);
+
       if (jspIsInterrupted()) break;
       idx=0;
     }
   }
-  return (vector.width * (unsigned int)size)/96;
+  return (vector.width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 
 // returns the width of a character
@@ -344,7 +364,7 @@ unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch) {
   if (size<0) return 0;
   if (ch<vectorFontOffset || ch-vectorFontOffset>=vectorFontCount) return 0;
   VectorFontChar vector = vectorFonts[ch-vectorFontOffset];
-  return (vector.width * (unsigned int)size)/96;
+  return (vector.width * (unsigned int)size)/(VECTOR_FONT_POLY_SIZE*2);
 }
 
 // Splash screen

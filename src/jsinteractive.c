@@ -450,7 +450,7 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
       jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
         jsvAppendString(str, ", ");
-        jsfGetJSON(options, str, JSON_NONE);
+        jsfGetJSON(options, str, JSON_SHOW_DEVICES);
       }
       jsvAppendString(str, ");\n");
     }
@@ -469,7 +469,7 @@ void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
       jsvAppendString(str, deviceName);
       jsvAppendString(str, ".setup(");
       if (jsvIsObject(options)) {
-        jsfGetJSON(options, str, JSON_NONE);
+        jsfGetJSON(options, str, JSON_SHOW_DEVICES);
       }
       jsvAppendString(str, ");\n");
     }
@@ -517,7 +517,7 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       jsvAppendPrintf(str, "pinMode(%p,\"input%s\");\n",pin,s);
     }
 
-    if (JSHPINSTATE_IS_OPENDRAIN(statem))
+    if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN)
       jsvAppendPrintf(str, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }
@@ -569,20 +569,6 @@ void jsiSoftKill() {
 void jsiInit(bool autoLoad) {
   jsvInit();
   jspInit();
-
-#ifdef USE_LCD
- lcdInit_Main(&LCD);
-#ifdef USE_LCD_ILI9325
-  lcdInit_FSMC_ILI9325(&LCD, LCD_WIDTH, LCD_HEIGHT);
-#endif
-#ifdef USE_LCD_SDL
-  lcdInit_SDL(&LCD, LCD_WIDTH, LCD_HEIGHT);
-#endif
-  lcdClear(0);
-  lcdSplash();
-#endif
-
-
 
   /*for (i=0;i<IOPINS;i++)
      ioPinState[i].callbacks = 0;*/
@@ -891,7 +877,7 @@ void jsiHandleNewLine(bool execute) {
       // print result (but NOT if we had an error)
       if (echo && !jspHasError()) {
         jsiConsolePrintChar('=');
-        jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY);
+        jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
         jsiConsolePrint("\n");
       }
       jsvUnLock(v);
@@ -1474,7 +1460,7 @@ void jsiIdle() {
           jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
       } else {
         // free all
-        JsVar *foundChild = jsvFindChildFromVar(timerArrayPtr, timerNamePtr, false);
+        JsVar *foundChild = jsvGetArrayIndexOf(timerArrayPtr, timerPtr, true);
         if (foundChild) {
           // check it exists - could have been removed during jsiExecuteEventCallback!
           jsvRemoveChild(timerArrayPtr, timerNamePtr);
@@ -1604,7 +1590,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
          jsiConsolePrintStringVar(proto);
          jsiConsolePrint(" = ");
          JsVar *protoData = jsvSkipName(proto);
-         jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
+         jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
          jsvUnLock(protoData);
          jsiConsolePrint(";\n");
          protoRef = proto->nextSibling;
@@ -1615,7 +1601,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
       jsiConsolePrint(".");
       jsiConsolePrintStringVar(child);
       jsiConsolePrint(" = ");
-      jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
+      jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
       jsiConsolePrint(";\n");
 
     }
@@ -1648,7 +1634,7 @@ void jsiDumpState() {
         // function-specific output
         jsiConsolePrint("function ");
         jsiConsolePrintStringVar(child);
-        jsfPrintJSONForFunction(data, JSON_NONE);
+        jsfPrintJSONForFunction(data, JSON_SHOW_DEVICES);
         jsiConsolePrint("\n");
         // print any prototypes we had
         JsVar *proto = jsvObjectGetChild(data, JSPARSE_PROTOTYPE_VAR, 0);
@@ -1662,7 +1648,7 @@ void jsiDumpState() {
             jsiConsolePrint(".prototype.");
             jsiConsolePrintStringVar(protoName);
             jsiConsolePrint(" = ");
-            jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY);
+            jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
             jsiConsolePrint(";\n");
             jsvUnLock(protoData);
             protoRef = protoName->nextSibling;
@@ -1673,8 +1659,10 @@ void jsiDumpState() {
         // normal variable definition
         jsiConsolePrint("var ");
         jsiConsolePrintStringVar(child);
-        jsiConsolePrint(" = ");
-        jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY);
+        if (!jsvIsUndefined(data)) {
+          jsiConsolePrint(" = ");
+          jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+        }
         jsiConsolePrint(";\n");
       }
     }
@@ -1694,7 +1682,7 @@ void jsiDumpState() {
     bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
     JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
-    jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY);
+    jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
     jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
     jsvUnLock(timerCallback);
     // next
@@ -1713,9 +1701,9 @@ void jsiDumpState() {
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
     JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
     jsiConsolePrint("setWatch(");
-    jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY);
+    jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
     jsiConsolePrint(", ");
-    jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY);
+    jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
     jsiConsolePrint(", { repeat:");
     jsiConsolePrint(watchRecur?"true":"false");
     jsiConsolePrint(", edge:");

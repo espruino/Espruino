@@ -32,7 +32,13 @@ typedef enum {
 } JsGraphicsFlags;
 
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
+#define JSGRAPHICS_FONTSIZE_CUSTOM (-2) // a custom bitmap font made from fields in the graphics object (See below)
 // Positive font sizes are Vector fonts
+
+#define JSGRAPHICS_CUSTOMFONT_BMP JS_HIDDEN_CHAR_STR"fntBmp"
+#define JSGRAPHICS_CUSTOMFONT_WIDTH JS_HIDDEN_CHAR_STR"fntW"
+#define JSGRAPHICS_CUSTOMFONT_HEIGHT JS_HIDDEN_CHAR_STR"fntH"
+#define JSGRAPHICS_CUSTOMFONT_FIRSTCHAR JS_HIDDEN_CHAR_STR"fnt1st"
 
 typedef struct {
   JsGraphicsType type;

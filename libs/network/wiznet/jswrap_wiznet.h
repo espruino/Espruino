@@ -16,3 +16,4 @@
 JsVar *jswrap_wiznet_connect();
 
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj);
+bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options);

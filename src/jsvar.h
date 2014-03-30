@@ -674,6 +674,7 @@ void jsvIteratorNew(JsvIterator *it, JsVar *obj);
 JsVar *jsvIteratorGetKey(JsvIterator *it);
 JsVar *jsvIteratorGetValue(JsvIterator *it);
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it);
+JsVarFloat jsvIteratorGetFloatValue(JsvIterator *it);
 JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value); // set the value - return it in case we need to unlock it, eg. jsvUnLock(jsvIteratorSetValue(&it, jsvNew...));
 bool jsvIteratorHasElement(JsvIterator *it);
 void jsvIteratorNext(JsvIterator *it);

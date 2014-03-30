@@ -93,6 +93,11 @@ devices = {
             'pin_rs' : 'C9',
             'pin_backlight' : 'C12',
           },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          }
 };
 
 

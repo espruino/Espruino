@@ -20,21 +20,51 @@ volatile unsigned char utilTimerTasksHead = 0;
 volatile unsigned char utilTimerTasksTail = 0;
 
 
-volatile UtilTimerType utilTimerType = UT_NONE;
+volatile bool utilTimerOn = false;
 unsigned int utilTimerBit;
 bool utilTimerState;
 unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 
 
+static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
+  // move to next element in var
+  task->data.buffer.charIdx++;
+  unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
+  if (task->data.buffer.charIdx >= maxChars) {
+    task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
+    /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
+     * referenced elsewhere (in the Waveform class) so won't get freed. Why? Because
+     * we can't lock easily. We could get an IRQ right as some other code was in the
+     * middle of read/modify/write of the flags member, and then the locks would get
+     * out of sync. */
+    if (task->data.buffer.var->lastChild) {
+      task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
+    } else { // else no more... move on to the next
+      if (task->data.buffer.nextBuffer) {
+        task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
+        // flip buffers
+        JsVarRef t = task->data.buffer.nextBuffer;
+        task->data.buffer.nextBuffer = task->data.buffer.currentBuffer;
+        task->data.buffer.currentBuffer = t;
+      } else {
+        task->data.buffer.var = 0;
+        // No more data - make sure we don't repeat!
+        task->repeatInterval = 0;
+      }
+    }
+  }
+}
+
+static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *task) {
+  return (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
+}
+
 void jstUtilTimerInterruptHandler() {
-  if (utilTimerType == UT_PIN_SET_RELOAD_EVENT) {
-    // in order to set this timer, we must have set the arr register, fired the timer irq, and then waited for the next!
-    utilTimerType = UT_PIN_SET;
-  } else if (utilTimerType == UT_PIN_SET) {
+  if (utilTimerOn) {
     JsSysTime time = jshGetSystemTime();
     // execute any timers that are due
-    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time<time) {
+    while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time <= time) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
       // actually perform the task
       switch (task->type) {
@@ -45,50 +75,42 @@ void jstUtilTimerInterruptHandler() {
             jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
           }
         } break;
-        case UET_READ_BYTE:
+        case UET_READ_SHORT: {
+          int v = jshPinAnalogFast(task->data.buffer.pin);
+          *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)v;  // LSB first
+          jstUtilTimerInterruptHandlerNextByte(task);
+          *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)(v >> 8);
+          jstUtilTimerInterruptHandlerNextByte(task);
+          break;
+        }
+        case UET_WRITE_SHORT: {
+          int v = 0;
+          v |= *jstUtilTimerInterruptHandlerByte(task);  // LSB first
+          jstUtilTimerInterruptHandlerNextByte(task);
+          v |= *jstUtilTimerInterruptHandlerByte(task)<<8;
+          jshSetOutputValue(task->data.buffer.pinFunction, v);
+          jstUtilTimerInterruptHandlerNextByte(task);
+          break;
+        }
+        case UET_READ_BYTE: {
+          *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)(jshPinAnalogFast(task->data.buffer.pin) >> 8);
+          jstUtilTimerInterruptHandlerNextByte(task);
+          break;
+        }
         case UET_WRITE_BYTE: {
-          unsigned char *ptr = (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
-          // write/read data into var
-          if (task->type==UET_WRITE_BYTE)
-            jshSetOutputValue(task->data.buffer.pinFunction, *ptr);
-          else
-            *ptr = (unsigned char)(jshPinAnalogFast(task->data.buffer.pin)>>8);
-          // move to next element in var
-          task->data.buffer.charIdx++;
-          unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
-          if (task->data.buffer.charIdx >= maxChars) {
-            task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
-            /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
-             * referenced elsewhere (in the Waveform class) so won't get freed. Why? Because
-             * we can't lock easily. We could get an IRQ right as some other code was in the
-             * middle of read/modify/write of the flags member, and then the locks would get
-             * out of sync. */
-            if (task->data.buffer.var->lastChild) {
-              task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
-            } else { // else no more... move on to the next
-              if (task->data.buffer.nextBuffer) {
-                task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
-                // flip buffers
-                JsVarRef t = task->data.buffer.nextBuffer;
-                task->data.buffer.nextBuffer = task->data.buffer.currentBuffer;
-                task->data.buffer.currentBuffer = t;
-              } else {
-                task->data.buffer.var = 0;
-                // No more data - make sure we don't repeat!
-                task->repeatInterval = 0;
-              }
-            }
-          }
-        } break;
+          jshSetOutputValue(task->data.buffer.pinFunction, (int)*jstUtilTimerInterruptHandlerByte(task) << 8);
+          jstUtilTimerInterruptHandlerNextByte(task);
+          break;
+        }
         case UET_WAKEUP: // we've already done our job by waking the device up
         default: break;
       }
       // If we need to repeat
       if (task->repeatInterval) {
         // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
-        unsigned int t = (unsigned int)(time+task->repeatInterval - task->time) / task->repeatInterval;
+        unsigned int t = (unsigned int)((time+(JsSysTime)task->repeatInterval - task->time) / (JsSysTime)task->repeatInterval);
         if (t<1) t=1;
-        task->time += task->repeatInterval*t;
+        task->time = task->time + (JsSysTime)task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order
         unsigned char ta = utilTimerTasksTail;
         unsigned char tb = (ta+1) & (UTILTIMERTASK_TASKS-1);
@@ -109,23 +131,20 @@ void jstUtilTimerInterruptHandler() {
 
     // re-schedule the timer if there is something left to do
     if (utilTimerTasksTail != utilTimerTasksHead) {
-      utilTimerType = UT_PIN_SET_RELOAD_EVENT;
-      jshUtilTimerReschedule(utilTimerTasks[utilTimerTasksTail].time-time);
+      jshUtilTimerReschedule(utilTimerTasks[utilTimerTasksTail].time - time);
     } else {
-      utilTimerType = UT_NONE;
+      utilTimerOn = false;
       jshUtilTimerDisable();
     }
   } else {
     // Nothing left to do - disable the timer
-    utilTimerType = UT_NONE;
     jshUtilTimerDisable();
   }
-
 }
 
 /// Return true if the utility timer is running
 bool jstUtilTimerIsRunning() {
-  return utilTimerType != UT_NONE;
+  return utilTimerOn;
 }
 
 void jstUtilTimerWaitEmpty() {
@@ -161,7 +180,7 @@ bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
   // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
   while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE || utilTimerTasks[ptr].type == UET_READ_BYTE) {
+    if (UET_IS_BUFFER_EVENT(utilTimerTasks[ptr].type)) {
       if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
         *task = utilTimerTasks[ptr];
         return true;
@@ -207,8 +226,8 @@ static bool utilTimerInsertTask(UtilTimerTask *task) {
 
   //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
   // now set up timer if not already set up...
-  if ((utilTimerType != UT_PIN_SET && utilTimerType != UT_PIN_SET_RELOAD_EVENT) || haveChangedTimer) {
-    utilTimerType = UT_PIN_SET_RELOAD_EVENT;
+  if (!utilTimerOn || haveChangedTimer) {
+    utilTimerOn = true;
     jshUtilTimerStart(utilTimerTasks[utilTimerTasksTail].time - jshGetSystemTime());
   }
 
@@ -217,7 +236,7 @@ static bool utilTimerInsertTask(UtilTimerTask *task) {
 }
 
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) {
-  assert(pinCount<UTILTIMERTASK_PIN_COUNT);
+  assert(pinCount<=UTILTIMERTASK_PIN_COUNT);
   UtilTimerTask task;
   task.time = time;
   task.repeatInterval = 0;
@@ -239,8 +258,7 @@ bool jstSetWakeUp(JsSysTime period) {
   task.type = UET_WAKEUP;
   bool ok = utilTimerInsertTask(&task);
   // We wait until the timer is out of the reload event, because the reload event itself would wake us up
-  WAIT_UNTIL(utilTimerType != UT_PIN_SET_RELOAD_EVENT, "Utility Timer Init");
-  return ok;
+    return ok;
 }
 
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
@@ -249,10 +267,10 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
   task.repeatInterval = (unsigned int)period;
   task.time = startTime + period;
   task.type = type;
-  if (type==UET_WRITE_BYTE) {
+  if (UET_IS_BUFFER_WRITE_EVENT(type)) {
     task.data.buffer.pinFunction = jshGetCurrentPinFunction(pin);
     if (!task.data.buffer.pinFunction) return false; // no pin function found...
-  } else if (type==UET_READ_BYTE) {
+  } else if (UET_IS_BUFFER_READ_EVENT(type)) {
 #ifndef LINUX
     if (pinInfo[pin].analog == JSH_ANALOG_NONE) return false; // no analog...
 #endif
@@ -284,7 +302,7 @@ bool jstStopBufferTimerTask(JsVar *var) {
   ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
   // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
   while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_WRITE_BYTE || utilTimerTasks[ptr].type == UET_READ_BYTE) {
+    if (UET_IS_BUFFER_EVENT(utilTimerTasks[ptr].type)) {
       if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
         found = true;
         // FIXME shift tail back along

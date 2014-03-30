@@ -45,12 +45,23 @@ board = importlib.import_module(boardname)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
-
+# -----------------------------------------------------------------------------------------
+# Documentation/functions
+jsondatas = common.get_jsondata(False, False)
 # -----------------------------------------------------------------------------------------
 board.info["image_url"] = "http://www.espruino.com/img/"+boardname+".jpg"
 board.info["thumb_url"] = "http://www.espruino.com/img/"+boardname+"_thumb.jpg"
 board.info["binary_version"] = common.get_version();
 board.info["binary_url"] = "http://www.espruino.com/binaries/"+common.get_board_binary_name(board)
+# -----------------------------------------------------------------------------------------
+# Built-in modules
+
+builtinModules = []
+for jsondata in jsondatas:
+  if jsondata["type"]=="library":
+    builtinModules.append(jsondata["class"])
+
+board.info["builtin_modules"] = builtinModules
 # -----------------------------------------------------------------------------------------
 pinperipherals = {}
 

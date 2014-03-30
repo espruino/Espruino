@@ -53,10 +53,7 @@ JsSysTime jshGetRTCSystemTime();
 #define jshGetRTCSystemTime jshGetSystemTime
 #endif
 
-
-#if defined(STM32F4) || defined(STM32F3) || defined(STM32F2)
-  #define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbytes */
-#endif
+static JsSysTime jshGetTimeForSecond();
 
 
 // see jshPinWatch/jshGetWatchedPinState
@@ -643,11 +640,11 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 
 // ----------------------------------------------------------------------------
 #ifdef USE_RTC
-unsigned int ticksSinceStart = 0;
+volatile unsigned int ticksSinceStart = 0;
 // Average time between SysTicks
-unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
+volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
-JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
+volatile JsSysTime lastSysTickTime=0, smoothLastSysTickTime=0;
 // whether we have slept since the last SysTick
 bool hasSystemSlept;
 
@@ -679,6 +676,7 @@ void jshDoSysTick() {
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
+    //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
     RTC_SetPrescaler(jshRTCPrescaler - 1U);
@@ -693,13 +691,26 @@ void jshDoSysTick() {
      * there will be an apparent glitch if SysTick happens when measuring the
      * length of a pulse.
      */
-    smoothLastSysTickTime += smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
+    smoothLastSysTickTime = smoothLastSysTickTime + smoothAverageSysTickTime; // we MUST advance this by what we assumed it was going to advance by last time!
     // work out the 'real' average sysTickTime
-    averageSysTickTime = (averageSysTickTime*3 + (unsigned int)(time-lastSysTickTime)) >> 2;
+    JsSysTime diff = time - lastSysTickTime;
+    // saturate...
+    if (diff < 0) diff = 0;
+    if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+    // and work out average without overflow (averageSysTickTime*3+diff)/4
+    averageSysTickTime = (averageSysTickTime>>1) +
+                         (averageSysTickTime>>2) +
+                         ((unsigned int)diff>>2);
     // what do we expect the RTC time to be on the next SysTick?
-    JsSysTime nextSysTickTime = time+averageSysTickTime;
+    JsSysTime nextSysTickTime = time + averageSysTickTime;
     // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
-    smoothAverageSysTickTime = (averageSysTickTime*3 + (unsigned int)(nextSysTickTime-smoothLastSysTickTime)) >> 2;
+    diff = nextSysTickTime - smoothLastSysTickTime;
+    // saturate...
+    if (diff < 0) diff = 0;
+    if (diff > 0xFFFFFFFF) diff = 0xFFFFFFFF;
+    smoothAverageSysTickTime = (smoothAverageSysTickTime>>1) +
+                               (smoothAverageSysTickTime>>2) +
+                               ((unsigned int)diff>>2);
   } else {
     hasSystemSlept = false;
     smoothLastSysTickTime = time;
@@ -987,7 +998,7 @@ void jshInit() {
 
 #ifdef USE_RTC
   // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)JSSYSTIME_SECOND * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)jshGetTimeForSecond() * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 
@@ -1243,20 +1254,20 @@ bool jshIsUSBSERIALConnected() {
 #endif
 }
 
-JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+static JsSysTime jshGetTimeForSecond() {
 #ifdef USE_RTC
-  return (JsSysTime)(ms*(JSSYSTIME_SECOND/(JsVarFloat)1000));
+  return (JsSysTime)JSSYSTIME_SECOND;
 #else
-  return (JsSysTime)((ms*getSystemTimerFreq())/1000);
+  return (JsSysTime)getSystemTimerFreq();
 #endif
 }
 
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+  return (JsSysTime)((ms*jshGetTimeForSecond())/1000);
+}
+
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-#ifdef USE_RTC
-  return (JsVarFloat)time*(1000/(JsVarFloat)JSSYSTIME_SECOND);
-#else
-  return ((JsVarFloat)time)*1000/getSystemTimerFreq();
-#endif
+  return ((JsVarFloat)time)*1000/jshGetTimeForSecond();
 }
 
 #ifdef USE_RTC
@@ -1276,7 +1287,7 @@ JsSysTime jshGetRTCSystemTime() {
     cl2 = cl1;
   }
 
-  unsigned int c = (((unsigned int)ch2)<<16) | cl2;
+  unsigned int c = (((unsigned int)ch2)<<16) | (unsigned int)cl2;
   return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | ((JsSysTime)(jshRTCPrescaler - (dl2+1))*JSSYSTIME_SECOND/jshRTCPrescaler);
 }
 #endif
@@ -1588,8 +1599,8 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   // Set up timer frequency...
   TIM_TimeBaseStructure.TIM_Period = 0xFFFF;
   if (freq>0) {
-    int clockTicks = (int)((JsVarFloat)jshGetTimerFreq(TIMx) / freq);
-    int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
+    unsigned int clockTicks = (unsigned int)((JsVarFloat)jshGetTimerFreq(TIMx) / freq);
+    unsigned int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
     TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)prescale;
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(clockTicks/(prescale+1));
     /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
@@ -2311,10 +2322,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
   if (allowDeepSleep &&  // from setDeepSleep
-      (timeUntilWake > (JSSYSTIME_SECOND*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
+      (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
-      jshLastWokenByUSB+jshGetTimeFromMilliseconds(1000)<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
+      jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
       ) {
     jsiSetSleep(true);
@@ -2343,7 +2354,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinWatch(usbPin, true);
 #endif
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/JSSYSTIME_SECOND)); // ensure we round down and leave a little time
+      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/jshGetTimeForSecond())); // ensure we round down and leave a little time
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
@@ -2441,11 +2452,29 @@ void jshUtilTimerDisable() {
 
 void jshUtilTimerReschedule(JsSysTime period) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
+
+  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
+  if (clockTicks<0) clockTicks=0;
+  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
+  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
+  if (ticks<1) ticks=1;
+  if (ticks>65535) ticks=65535;
+
+  TIM_Cmd(UTIL_TIMER, DISABLE);
+  TIM_SetAutoreload(UTIL_TIMER, (uint16_t)ticks);
+  // we need to kick this (even if the prescaler is correct) so the counter value is automatically reloaded
+  TIM_PrescalerConfig(UTIL_TIMER, (uint16_t)prescale, TIM_PSCReloadMode_Immediate);
+  // Kicking probably fired off the IRQ...
+  TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  TIM_Cmd(UTIL_TIMER, ENABLE);
+}
+/*#
+ *   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
   int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
   if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-  if (prescale>65535) prescale=65535;
-  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
+  int ticks = clockTicks/(prescale+1);
   if (ticks<1) ticks=1;
   if (ticks>65535) ticks=65535;
   TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
@@ -2453,15 +2482,18 @@ void jshUtilTimerReschedule(JsSysTime period) {
   TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
   TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
-}
+  UTIL_TIMER->ARR = (uint16_t)ticks;
+  UTIL_TIMER->PSC = (uint16_t)prescale;
+ */
 
 void jshUtilTimerStart(JsSysTime period) {
-  //jsiConsolePrint("Starting\n");
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
+
+  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
   if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks/65536; // ensure that maxTime isn't greater than the timer can count to
-  int ticks = (uint16_t)(clockTicks/(prescale+1));
+  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
+  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
   if (ticks<1) ticks=1;
   if (ticks>65535) ticks=65535;
 
@@ -2482,9 +2514,12 @@ void jshUtilTimerStart(JsSysTime period) {
   TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
   TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
 
-  //TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  // init will have caused a timer update - clear it
+  TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
+  // init interrupts and go
   TIM_ITConfig(UTIL_TIMER, TIM_IT_Update, ENABLE);
   TIM_Cmd(UTIL_TIMER, ENABLE);  /* enable counter */
+
 }
 
 
@@ -2525,10 +2560,10 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
   return JSH_NOTHING;
 }
 
-// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
-    uint16_t dacVal = (uint16_t)(value<<8);
+    uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
     case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
@@ -2536,8 +2571,8 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {
-      uint16_t period = TIMx->ARR; // No getter available
-      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 8);
+      unsigned int period = (int)TIMx->ARR; // No getter available
+      uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 16);
       switch (func & JSH_MASK_TIMER_CH) {
       case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;
       case JSH_TIMER_CH2:  TIM_SetCompare2(TIMx, timerVal); break;

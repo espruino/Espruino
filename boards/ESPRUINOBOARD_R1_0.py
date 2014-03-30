@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "Espruino Board rev 1.0",
- 'link' : [ "http://www.espruino.com/kick" ],
+ 'link' : [ "http://www.espruino.com/EspruinoBoard" ],
  'variables' : 2000,
  'bootloader' : 0,
  'serial_bootloader' : False,

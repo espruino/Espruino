@@ -11,3 +11,5 @@ boards/*.html
 boards/*.json
 zipcontents
 tmp
+benchmark/*.txt
+benchmark/*.result.json

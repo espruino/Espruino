@@ -443,3 +443,37 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   jsvIteratorFree(&it);
   return jsvLockAgain(array);
 }
+
+/*JSON{ "type":"method", "class": "Array", "name" : "concat", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Create a new array, containing the elements from this one and any arguments, if any argument is an array then those elements will be added.",
+         "generate" : "jswrap_array_concat",
+         "params" : [ [ "args", "JsVarArray", "Any items to add to the array" ] ],
+         "return" : [ "JsVar", "An Array" ]
+
+}*/
+JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
+  JsVar *result = jsvNewWithFlags(JSV_ARRAY);
+
+  JsVar *source = jsvLockAgain(parent);
+
+  JsvArrayIterator sourceit;
+  jsvArrayIteratorNew(&sourceit, args);
+  while (source) {
+    if (jsvIsArray(source)) {
+      JsvArrayIterator it;
+      jsvArrayIteratorNew(&it, parent);
+      while (jsvArrayIteratorHasElement(&it)) {
+        jsvArrayPushAndUnLock(result, jsvArrayIteratorGetElement(&it));
+        jsvArrayIteratorNext(&it);
+      }
+      jsvArrayIteratorFree(&it);
+    } else
+      jsvArrayPush(result, source);
+    // next
+    jsvUnLock(source);
+    source = jsvArrayIteratorHasElement(&sourceit) ? jsvArrayIteratorGetElement(&sourceit) : 0;
+    jsvArrayIteratorNext(&sourceit);
+  }
+  jsvArrayIteratorFree(&sourceit);
+  return result;
+}

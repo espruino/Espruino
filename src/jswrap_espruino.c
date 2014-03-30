@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_espruino.h"
+#include "libs/jswrap_math.h"
 
 /*JSON{ "type":"class",
         "class" : "E",
@@ -61,25 +62,19 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }*/
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-     jsError("Expecting first argument to be an array, not %t", arr);
-     return NAN;
-   }
-   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
-   JsVarFloat sum = 0;
-   JsVarInt sumi = 0;
+    jsError("Expecting first argument to be an array, not %t", arr);
+    return NAN;
+  }
+  JsVarFloat sum = 0;
 
-   JsvIterator itsrc;
-   jsvIteratorNew(&itsrc, arr);
-   while (jsvIteratorHasElement(&itsrc)) {
-     if (useInts) {
-       sumi += jsvIteratorGetIntegerValue(&itsrc);
-     } else {
-       sum += jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
-     }
-     jsvIteratorNext(&itsrc);
-   }
-   jsvIteratorFree(&itsrc);
-   return useInts ? (JsVarFloat)sumi : sum;
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  while (jsvIteratorHasElement(&itsrc)) {
+    sum += jsvIteratorGetFloatValue(&itsrc);
+    jsvIteratorNext(&itsrc);
+  }
+  jsvIteratorFree(&itsrc);
+  return sum;
 }
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
@@ -90,29 +85,235 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
          "return" : ["float", "The variance of the given buffer"]
 }*/
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
-  if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-     jsError("Expecting first argument to be an array, not %t", arr);
-     return NAN;
-   }
-   bool useInts = jsvIsString(arr); // or arraybuffer maybe?
-   JsVarFloat variance = 0;
+  if (!(jsvIsIterable(arr))) {
+    jsError("Expecting first argument to be iterable, not %t", arr);
+    return NAN;
+  }
+  JsVarFloat variance = 0;
 
-   JsvIterator itsrc;
-   jsvIteratorNew(&itsrc, arr);
-   while (jsvIteratorHasElement(&itsrc)) {
-     JsVarFloat val;
-     if (useInts) {
-       val = (JsVarFloat)jsvIteratorGetIntegerValue(&itsrc);
-     } else {
-       val = jsvGetFloatAndUnLock(jsvIteratorGetValue(&itsrc));
-     }
-     val -= mean;
-     variance += val*val;
-     jsvIteratorNext(&itsrc);
-   }
-   jsvIteratorFree(&itsrc);
-   return variance;
+  JsvIterator itsrc;
+  jsvIteratorNew(&itsrc, arr);
+  while (jsvIteratorHasElement(&itsrc)) {
+    JsVarFloat val = jsvIteratorGetFloatValue(&itsrc);
+    val -= mean;
+    variance += val*val;
+    jsvIteratorNext(&itsrc);
+  }
+  jsvIteratorFree(&itsrc);
+  return variance;
 }
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "convolve",
+         "generate" : "jswrap_espruino_convolve",
+         "description" : "Convolve arr1 with arr2. This is equivalent to `v=0;for (i in arr1) v+=arr1[i] * arr2[(i+offset) % arr2.length]`",
+         "params" : [ [ "arr1", "JsVar", "An array to convolve"],
+                      [ "arr2", "JsVar", "An array to convolve"],
+                      [ "offset", "int32", "The mean value of the array" ] ],
+         "return" : ["float", "The variance of the given buffer"]
+}*/
+JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
+  if (!(jsvIsIterable(arr1)) ||
+      !(jsvIsIterable(arr2))) {
+    jsError("Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
+    return NAN;
+  }
+  JsVarFloat conv = 0;
+
+  JsvIterator it1;
+  jsvIteratorNew(&it1, arr1);
+  JsvIterator it2;
+  jsvIteratorNew(&it2, arr2);
+
+  // get iterator2 at the correct offset
+  int l = (int)jsvGetLength(arr2);
+  offset = offset % l;
+  if (offset<0) offset += l;
+  while (offset-->0)
+    jsvIteratorNext(&it2);
+
+
+  while (jsvIteratorHasElement(&it1)) {
+    conv += jsvIteratorGetFloatValue(&it1) * jsvIteratorGetFloatValue(&it2);
+    jsvIteratorNext(&it1);
+    jsvIteratorNext(&it2);
+    // restart iterator if it hit the end
+    if (!jsvIteratorHasElement(&it2)) {
+      jsvIteratorFree(&it2);
+      jsvIteratorNew(&it2, arr2);
+    }
+  }
+  jsvIteratorFree(&it1);
+  jsvIteratorFree(&it2);
+  return conv;
+}
+
+// http://paulbourke.net/miscellaneous/dft/
+/*
+   This computes an in-place complex-to-complex FFT
+   x and y are the real and imaginary arrays of 2^m points.
+   dir =  1 gives forward transform
+   dir = -1 gives reverse transform
+*/
+short FFT(short int dir,long m,double *x,double *y)
+{
+   long n,i,i1,j,k,i2,l,l1,l2;
+   double c1,c2,tx,ty,t1,t2,u1,u2,z;
+
+   /* Calculate the number of points */
+   n = 1;
+   for (i=0;i<m;i++)
+      n *= 2;
+
+   /* Do the bit reversal */
+   i2 = n >> 1;
+   j = 0;
+   for (i=0;i<n-1;i++) {
+      if (i < j) {
+         tx = x[i];
+         ty = y[i];
+         x[i] = x[j];
+         y[i] = y[j];
+         x[j] = tx;
+         y[j] = ty;
+      }
+      k = i2;
+      while (k <= j) {
+         j -= k;
+         k >>= 1;
+      }
+      j += k;
+   }
+
+   /* Compute the FFT */
+   c1 = -1.0;
+   c2 = 0.0;
+   l2 = 1;
+   for (l=0;l<m;l++) {
+      l1 = l2;
+      l2 <<= 1;
+      u1 = 1.0;
+      u2 = 0.0;
+      for (j=0;j<l1;j++) {
+         for (i=j;i<n;i+=l2) {
+            i1 = i + l1;
+            t1 = u1 * x[i1] - u2 * y[i1];
+            t2 = u1 * y[i1] + u2 * x[i1];
+            x[i1] = x[i] - t1;
+            y[i1] = y[i] - t2;
+            x[i] += t1;
+            y[i] += t2;
+         }
+         z =  u1 * c1 - u2 * c2;
+         u2 = u1 * c2 + u2 * c1;
+         u1 = z;
+      }
+      c2 = jswrap_math_sqrt((1.0 - c1) / 2.0);
+      if (dir == 1)
+         c2 = -c2;
+      c1 = jswrap_math_sqrt((1.0 + c1) / 2.0);
+   }
+
+   /* Scaling for forward transform */
+   if (dir == 1) {
+      for (i=0;i<n;i++) {
+         x[i] /= (double)n;
+         y[i] /= (double)n;
+      }
+   }
+
+   return(TRUE);
+}
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "FFT",
+         "generate" : "jswrap_espruino_FFT",
+         "description" : "Performs a Fast Fourier Transform (fft) on the supplied data and writes it back into the original arrays. Note that if only one array is supplied, the data written back is the modulus of the complex result `sqrt(r*r+i*i)`.",
+         "params" : [ [ "arrReal", "JsVar", "An array of real values"],
+                      [ "arrImage", "JsVar", "An array of imaginary values (or if undefined, all values will be taken to be 0)"],
+                      [ "inverse", "bool", "Set this to true if you want an inverse FFT - otherwise leave as 0" ] ]
+}*/
+void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
+  if (!(jsvIsIterable(arrReal)) ||
+      !(jsvIsUndefined(arrImag) || jsvIsIterable(arrImag))) {
+    jsError("Expecting first 2 arguments to be iterable or undefined, not %t and %t", arrReal, arrImag);
+    return;
+  }
+
+  // get length and work out power of 2
+  size_t l = (size_t)jsvGetLength(arrReal);
+  size_t pow2 = 1;
+  int order = 0;
+  while (pow2 < l) {
+    pow2 <<= 1;
+    order++;
+  }
+
+  if (jsuGetFreeStack() < 100+sizeof(double)*pow2*2) {
+    jsError("Insufficient stack for computing FFT");
+    return;
+  }
+
+  double *vReal = (double*)alloca(sizeof(double)*pow2);
+  double *vImag = (double*)alloca(sizeof(double)*pow2);
+
+  unsigned int i;
+  for (i=0;i<pow2;i++) {
+    vReal[i]=0;
+    vImag[i]=0;
+  }
+
+  // load data
+  JsvIterator it;
+  jsvIteratorNew(&it, arrReal);
+  i=0;
+  while (jsvIteratorHasElement(&it)) {
+    vReal[i++] = jsvIteratorGetFloatValue(&it);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  if (jsvIsIterable(arrImag)) {
+    jsvIteratorNew(&it, arrImag);
+    i=0;
+    while (i<pow2 && jsvIteratorHasElement(&it)) {
+      vImag[i++] = jsvIteratorGetFloatValue(&it);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  }
+
+  // do FFT
+  FFT(inverse ? -1 : 1, order, vReal, vImag);
+
+  // Put the results back
+  bool useModulus = jsvIsIterable(arrImag);
+
+  jsvIteratorNew(&it, arrReal);
+  i=0;
+  while (jsvIteratorHasElement(&it)) {
+    JsVarFloat f;
+    if (useModulus)
+      f = jswrap_math_sqrt(vReal[i]*vReal[i] + vImag[i]*vImag[i]);
+    else
+      f = vReal[i];
+
+    jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(f)));
+    i++;
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+  if (jsvIsIterable(arrImag)) {
+    jsvIteratorNew(&it, arrImag);
+    i=0;
+    while (jsvIteratorHasElement(&it)) {
+      jsvUnLock(jsvIteratorSetValue(&it, jsvNewFromFloat(vImag[i++])));
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  }
+}
+
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
          "class" : "E", "name" : "enableWatchdog",

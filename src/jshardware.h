@@ -111,7 +111,7 @@ void jshPinWatch(Pin pin, bool shouldWatch);
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin);
 
-/// Given a pin function, work out what to set the value to (used mainly for DACs and PWM)
+/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value);
 
 /// Enable watchdog with a timeout in seconds
