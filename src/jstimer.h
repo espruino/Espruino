@@ -28,6 +28,9 @@ typedef enum {
 } PACKED_FLAGS UtilTimerEventType;
 
 
+#define UET_IS_SET_EVENT(T) (\
+  ((T)==UET_SET))
+
 #define UET_IS_BUFFER_EVENT(T) (\
   ((T)==UET_WRITE_BYTE) || \
   ((T)==UET_READ_BYTE) || \

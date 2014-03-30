@@ -246,7 +246,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
     task.data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
   task.data.set.value = value?0xFF:0;
 
-  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
+//  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
 }
 
