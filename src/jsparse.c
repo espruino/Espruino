@@ -413,90 +413,6 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
   return true;
 }
 
-NO_INLINE bool jspeParseNativeFunction(JsCallback callbackPtr) {
-    char funcName[JSLEX_MAX_TOKEN_LENGTH];
-    JsVar *funcVar;
-    JsVar *base = jsvLockAgain(execInfo.root);
-    JSP_MATCH(LEX_R_FUNCTION);
-    // not too bothered about speed/memory here as only called on init :)
-    strncpy(funcName, jslGetTokenValueAsString(execInfo.lex), JSLEX_MAX_TOKEN_LENGTH);
-    JSP_MATCH(LEX_ID);
-    /* Check for dots, we might want to do something like function 'String.substring' ... */
-    while (execInfo.lex->tk == '.') {
-      JsVar *link;
-      JSP_MATCH('.');
-      link = jsvFindChildFromString(base, funcName, false);
-      // if it doesn't exist, make a new object class
-      if (!link) {
-        JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
-        link = jsvAddNamedChild(base, obj, funcName);
-        jsvUnLock(obj);
-      }
-      // set base to the object (not the name)
-      jsvUnLock(base);
-      base = jsvSkipNameAndUnLock(link);
-      // Look for another name
-      strncpy(funcName, jslGetTokenValueAsString(execInfo.lex), JSLEX_MAX_TOKEN_LENGTH);
-      JSP_MATCH(LEX_ID);
-    }
-    // So now, base points to an object where we want our function
-    funcVar = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
-    if (!funcVar) {
-      jsvUnLock(base);
-      jspSetError();
-      return false; // Out of memory
-    }
-    funcVar->varData.callback = callbackPtr;
-    jspeFunctionArguments(funcVar);
-
-    if (JSP_HAS_ERROR) { // probably out of memory while parsing
-      jsvUnLock(base);
-      jsvUnLock(funcVar);
-      return false;
-    }
-    // Add the function with its name
-    JsVar *funcNameVar = jsvFindChildFromString(base, funcName, true);
-    if (funcNameVar) // could be out of memory
-      jsvUnLock(jsvSetValueOfName(funcNameVar, funcVar)); // unlocks funcNameVar
-    jsvUnLock(base);
-    jsvUnLock(funcVar);
-    return true;
-}
-
-NO_INLINE bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
-    JsVar *fncode = jsvNewFromString(funcDesc);
-    if (!fncode) return false; // out of memory!
-
-    JSP_SAVE_EXECUTE();
-    JsExecInfo oldExecInfo = execInfo;
-
-    // Set up Lexer
-
-    JsLex lex;
-    jslInit(&lex, fncode);
-    jsvUnLock(fncode);
-
-    
-    jspeiInit(&lex);
-
-    // Parse
-    bool success = jspeParseNativeFunction(callbackPtr);
-    if (!success) {
-      jsError("Parsing Native Function failed!");
-      jspSetError();
-    }
-
-
-    // cleanup
-    jspeiKill();
-    jslKill(&lex);
-    JSP_RESTORE_EXECUTE();
-    oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
-    execInfo = oldExecInfo;
-
-    return success;
-}
-
 NO_INLINE JsVar *jspeFunctionDefinition() {
   // actually parse a function... We assume that the LEX_FUNCTION and name
   // have already been parsed
@@ -582,7 +498,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     /** Special case - we're parsing and we hit an already-defined function
      * that has no 'code'. This means that we should use jswHandleFunctionCall
      * to try and parse it */
-    if (!jsvIsNative(function)) {
+    /*if (!jsvIsNative(function)) {
       functionCode = jsvFindChildFromString(function, JSPARSE_FUNCTION_CODE_NAME, false);
       if (isParsing && !functionCode) {
         char buf[32];
@@ -598,171 +514,195 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jslSeekToP(execInfo.lex, &pos); // NASTY!
         jslCharPosFree(&pos);
       }
-    }
+    }*/
 
     if (isParsing) JSP_MATCH('(');
-    // create a new symbol table entry for execution of this function
-    // OPT: can we cache this function execution environment + param variables?
-    // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
-    functionRoot = jsvNewWithFlags(JSV_FUNCTION);
-    if (!functionRoot) { // out of memory
-      jspSetError();
-      return 0;
-    }
+
     JsVar *oldThisVar = execInfo.thisVar;
     if (thisArg) jsvRef(thisArg);
     execInfo.thisVar = thisArg;
-    if (isParsing) {
-      int hadParams = 0;
-      // grab in all parameters. We go around this loop until we've run out
-      // of named parameters AND we've parsed all the supplied arguments
-      v = function->firstChild;
-      while (!JSP_HAS_ERROR && (v || execInfo.lex->tk!=')')) {
-        JsVar *param = 0;
-        if (v) param = jsvLock(v);
-        bool paramDefined = jsvIsFunctionParameter(param);
-        if (execInfo.lex->tk!=')' || paramDefined) {
-          hadParams++;
-          JsVar *value = 0;
-          // ONLY parse this if it was supplied, otherwise leave 0 (undefined)
-          if (execInfo.lex->tk!=')')
-            value = jspeAssignmentExpression();
-          // and if execute, copy it over
-          if (JSP_SHOULD_EXECUTE) {
-            value = jsvSkipNameAndUnLock(value);
-            JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-            if (paramName) // low memory?
-              paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
-            JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
-            if (newValueName) { // could be out of memory
-              jsvAddName(functionRoot, newValueName);
-            } else
-              jspSetError();
-            jsvUnLock(newValueName);
-          }
-          jsvUnLock(value);
-          if (execInfo.lex->tk!=')') JSP_MATCH(',');
+
+    /* Ok, so we have 4 options here.
+     *
+     * 1: we're native.
+     *   a) args have been pre-parsed, which is awesome
+     *   b) we have to parse our own args into an array
+     * 2: we're not native
+     *   a) args were pre-parsed and we have to populate the function
+     *   b) we parse our own args, which is possibly better
+     */
+    if (jsvIsNative(function)) {
+      if (isParsing) {
+#define MAX_ARGS 16
+        argPtr = (JsVar**)alloca(sizeof(JsVar*)*MAX_ARGS);
+        argCount = 0;
+        while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
+          argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
+          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_RETURN(',', 0);
         }
-        if (param) {
-          v = param->nextSibling;
-          jsvUnLock(param);
-        }
+        JSP_MATCH(')');
       }
-      JSP_MATCH(')');
-    } else if (JSP_SHOULD_EXECUTE && argCount>0) {  // and NOT isParsing
-      int args = 0;
-      v = function->firstChild;
-      while (args<argCount) {
-        JsVar *param = v ? jsvLock(v) : 0;
-        bool paramDefined = jsvIsFunctionParameter(param);
-        JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-        paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
-        JsVar *newValueName = jsvMakeIntoVariableName(paramName, argPtr[args]);
-        if (newValueName) // could be out of memory - or maybe just not supplied!
-          jsvAddName(functionRoot, newValueName);
-        jsvUnLock(newValueName);
-        args++;
-        if (param) {
-          v = param->nextSibling;
-          jsvUnLock(param);
-        }
+      returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, argPtr, argCount);
+    } else {
+      // create a new symbol table entry for execution of this function
+      // OPT: can we cache this function execution environment + param variables?
+      // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
+      functionRoot = jsvNewWithFlags(JSV_FUNCTION);
+      if (!functionRoot) { // out of memory
+        jspSetError();
+        return 0;
       }
-    } 
-    // setup a return variable
-    returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
-    if (!returnVarName) // out of memory
-      jspSetError();
 
-    if (!JSP_HAS_ERROR) {
-      if (jsvIsNative(function)) {
-        assert(function->varData.callback);
-        if (function->varData.callback)
-          function->varData.callback(jsvGetRef(functionRoot));
-      } else {
-        // save old scopes
-        JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
-        int oldScopeCount;
-        int i;
-        oldScopeCount = execInfo.scopeCount;
-        for (i=0;i<execInfo.scopeCount;i++)
-          oldScopes[i] = execInfo.scopes[i];
-        // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
-        JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
-        if (functionScope) {
-            JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-            jspeiLoadScopesFromVar(functionScopeVar);
-            jsvUnLock(functionScopeVar);
-            jsvUnLock(functionScope);
-        } else {
-            // no scope var defined? We have no scopes at all!
-            execInfo.scopeCount = 0;
-        }
-        // add the function's execute space to the symbol table so we can recurse
-        if (jspeiAddScope(jsvGetRef(functionRoot))) {
-          /* Adding scope may have failed - we may have descended too deep - so be sure
-           * not to pull somebody else's scope off
-           */
-
-          /* we just want to execute the block, but something could
-           * have messed up and left us with the wrong ScriptLex, so
-           * we want to be careful here... */
-          if (functionCode) {
-            JsLex *oldLex;
-            JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
-            JsLex newLex;
-            jslInit(&newLex, functionCodeVar);
-            jsvUnLock(functionCodeVar);
-
-            oldLex = execInfo.lex;
-            execInfo.lex = &newLex;
-            JSP_SAVE_EXECUTE();
-            jspeBlock();
-            bool hasError = JSP_HAS_ERROR;
-            JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
-            jslKill(&newLex);
-            execInfo.lex = oldLex;
-            if (hasError) {
-              jsiConsolePrint("in function ");
-              if (jsvIsString(functionName)) {
-                jsiConsolePrint("\"");
-                jsiConsolePrintStringVar(functionName);
-                jsiConsolePrint("\" ");
-              }
-              jsiConsolePrint("called from ");
-              if (execInfo.lex)
-                jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
-              else
-                jsiConsolePrint("system\n");
-              jspSetError();
+      if (isParsing) {
+        int hadParams = 0;
+        // grab in all parameters. We go around this loop until we've run out
+        // of named parameters AND we've parsed all the supplied arguments
+        v = function->firstChild;
+        while (!JSP_HAS_ERROR && (v || execInfo.lex->tk!=')')) {
+          JsVar *param = 0;
+          if (v) param = jsvLock(v);
+          bool paramDefined = jsvIsFunctionParameter(param);
+          if (execInfo.lex->tk!=')' || paramDefined) {
+            hadParams++;
+            JsVar *value = 0;
+            // ONLY parse this if it was supplied, otherwise leave 0 (undefined)
+            if (execInfo.lex->tk!=')')
+              value = jspeAssignmentExpression();
+            // and if execute, copy it over
+            if (JSP_SHOULD_EXECUTE) {
+              value = jsvSkipNameAndUnLock(value);
+              JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
+              if (paramName) // low memory?
+                paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+              JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
+              if (newValueName) { // could be out of memory
+                jsvAddName(functionRoot, newValueName);
+              } else
+                jspSetError();
+              jsvUnLock(newValueName);
             }
+            jsvUnLock(value);
+            if (execInfo.lex->tk!=')') JSP_MATCH(',');
+          }
+          if (param) {
+            v = param->nextSibling;
+            jsvUnLock(param);
+          }
+        }
+        JSP_MATCH(')');
+      } else if (JSP_SHOULD_EXECUTE && argCount>0) {  // and NOT isParsing
+        int args = 0;
+        v = function->firstChild;
+        while (args<argCount) {
+          JsVar *param = v ? jsvLock(v) : 0;
+          bool paramDefined = jsvIsFunctionParameter(param);
+          JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
+          paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+          JsVar *newValueName = jsvMakeIntoVariableName(paramName, argPtr[args]);
+          if (newValueName) // could be out of memory - or maybe just not supplied!
+            jsvAddName(functionRoot, newValueName);
+          jsvUnLock(newValueName);
+          args++;
+          if (param) {
+            v = param->nextSibling;
+            jsvUnLock(param);
+          }
+        }
+      }
+      // setup a return variable
+      returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
+      if (!returnVarName) // out of memory
+        jspSetError();
+
+      if (!JSP_HAS_ERROR) {
+        if (jsvIsNative(function)) {
+          assert(function->varData.callback);
+          if (function->varData.callback)
+            function->varData.callback(jsvGetRef(functionRoot));
+        } else {
+          // save old scopes
+          JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
+          int oldScopeCount;
+          int i;
+          oldScopeCount = execInfo.scopeCount;
+          for (i=0;i<execInfo.scopeCount;i++)
+            oldScopes[i] = execInfo.scopes[i];
+          // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
+          JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
+          if (functionScope) {
+              JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
+              jspeiLoadScopesFromVar(functionScopeVar);
+              jsvUnLock(functionScopeVar);
+              jsvUnLock(functionScope);
+          } else {
+              // no scope var defined? We have no scopes at all!
+              execInfo.scopeCount = 0;
+          }
+          // add the function's execute space to the symbol table so we can recurse
+          if (jspeiAddScope(jsvGetRef(functionRoot))) {
+            /* Adding scope may have failed - we may have descended too deep - so be sure
+             * not to pull somebody else's scope off
+             */
+
+            /* we just want to execute the block, but something could
+             * have messed up and left us with the wrong ScriptLex, so
+             * we want to be careful here... */
+            if (functionCode) {
+              JsLex *oldLex;
+              JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
+              JsLex newLex;
+              jslInit(&newLex, functionCodeVar);
+              jsvUnLock(functionCodeVar);
+
+              oldLex = execInfo.lex;
+              execInfo.lex = &newLex;
+              JSP_SAVE_EXECUTE();
+              jspeBlock();
+              bool hasError = JSP_HAS_ERROR;
+              JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
+              jslKill(&newLex);
+              execInfo.lex = oldLex;
+              if (hasError) {
+                jsiConsolePrint("in function ");
+                if (jsvIsString(functionName)) {
+                  jsiConsolePrint("\"");
+                  jsiConsolePrintStringVar(functionName);
+                  jsiConsolePrint("\" ");
+                }
+                jsiConsolePrint("called from ");
+                if (execInfo.lex)
+                  jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
+                else
+                  jsiConsolePrint("system\n");
+                jspSetError();
+              }
+            }
+
+            jspeiRemoveScope();
           }
 
-          jspeiRemoveScope();
+          // Unref old scopes
+          for (i=0;i<execInfo.scopeCount;i++)
+              jsvUnRefRef(execInfo.scopes[i]);
+          // restore function scopes
+          for (i=0;i<oldScopeCount;i++)
+              execInfo.scopes[i] = oldScopes[i];
+          execInfo.scopeCount = oldScopeCount;
         }
-
-        // Unref old scopes
-        for (i=0;i<execInfo.scopeCount;i++)
-            jsvUnRefRef(execInfo.scopes[i]);
-        // restore function scopes
-        for (i=0;i<oldScopeCount;i++)
-            execInfo.scopes[i] = oldScopes[i];
-        execInfo.scopeCount = oldScopeCount;
       }
+
+      /* get the real return var before we remove it from our function */
+      returnVar = jsvSkipNameAndUnLock(returnVarName);
+      if (returnVarName) // could have failed with out of memory
+        jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
+      jsvUnLock(functionRoot);
     }
 
     /* Return to old 'this' var. No need to unlock as we never locked before */
     if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
     execInfo.thisVar = oldThisVar;
 
-    /* get the real return var before we remove it from our function */
-    returnVar = jsvSkipNameAndUnLock(returnVarName);
-    if (returnVarName) // could have failed with out of memory
-      jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
-    jsvUnLock(functionRoot);
-    if (returnVar)
-      return returnVar;
-    else
-      return 0;
+    return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
     jspeParseFunctionCallBrackets();
     /* Do not return function, as it will be unlocked! */
@@ -783,12 +723,12 @@ JsVar *jspeFactorSingleId() {
         jsvUnLock(obj);
       }
     } else {
-      a = jswHandleFunctionCall(0, 0, tokenName);
-      if (a != JSW_HANDLEFUNCTIONCALL_UNHANDLED)
-        return a;
-      /* Variable doesn't exist! JavaScript says we should create it
-       * (we won't add it here. This is done in the assignment operator)*/
-      a = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
+      a = jswFindBuiltInFunction(0, 0, tokenName);
+      if (!a) {
+        /* Variable doesn't exist! JavaScript says we should create it
+         * (we won't add it here. This is done in the assignment operator)*/
+        a = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
+      }
     }
   }
   JSP_MATCH_WITH_RETURN(LEX_ID, a);
@@ -830,10 +770,9 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                  * this for 'this' then we couldn't say 'this.toString()'
                  * */
                 if (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR))) // don't try and use builtins on the prototype var!
-                  child = jswHandleFunctionCall(aVar, a/*name*/, name);
-                else
-                  child = JSW_HANDLEFUNCTIONCALL_UNHANDLED;
-                if (child == JSW_HANDLEFUNCTIONCALL_UNHANDLED) {
+                  child = jswFindBuiltInFunction(aVar, a/*name*/, name);
+
+                if (child == 0) {
                   child = 0;
                   // It wasn't handled... We already know this is an object so just add a new child
                   if (jsvIsObject(aVar) || jsvIsFunction(aVar) || jsvIsArray(aVar)) {

@@ -18,6 +18,11 @@
 
 bool isRunning = true;
 
+static bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
+  jsiConsolePrintf("jspAddNativeFunction is broken right now\n");
+}
+
+
 void nativeQuit(JsVarRef var) {
   NOT_USED(var);
   isRunning = false;

@@ -42,7 +42,6 @@ void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
 
-bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr);
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
 JsVar *jspEvaluate(const char *str);
 bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr);

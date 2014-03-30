@@ -252,15 +252,9 @@ def codeOutFunction(indent, func):
   name = name + func["name"]
   print name
   codeOut(indent+"// "+name+"  ("+func["filename"]+")")
+  
   if ("generate" in func):
-    if hasThis(func):
-      codeOut(indent+"argArray[0] = jsvLockAgain(parent);");
-      codeOut(indent+"int argCount = jspParseFunctionIntoArray(&argArray[1], sizeof(argArray)/sizeof(argArray[0])-1)+1;");
-    else:
-      codeOut(indent+"int argCount = jspParseFunctionIntoArray(argArray, sizeof(argArray)/sizeof(argArray[0]));");
-    codeOut(indent+"JsVar *_r = jswCallFunction("+func["generate"]+", "+getArgumentSpecifier(func)+", argArray, argCount);");
-    codeOut(indent+"while (argCount--) jsvUnLock(argArray[argCount]);");
-    codeOut(indent+"return _r;");
+    codeOut(indent+"return jsvNewNativeFunction((void (*)(void))"+func["generate"]+", "+getArgumentSpecifier(func)+");")
   elif ("generate_full" in func):
     argNames = ["a","b","c","d"];
     params = []
@@ -379,7 +373,7 @@ codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&(var))==CH2(a,b))');
 codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,b,c,0))');
 codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
-codeOut('JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name) {')
+codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, JsVar *parentName, const char *name) {')
 codeOut('  JsVar *argArray[16];')
 codeOut('  if (parent) {')
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
@@ -420,7 +414,7 @@ if "!parent" in tree:
   codeOutTree("    ", tree["!parent"], 0)
 codeOut('  }');
 
-codeOut('  return JSW_HANDLEFUNCTIONCALL_UNHANDLED;')
+codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')

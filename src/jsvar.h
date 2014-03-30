@@ -61,7 +61,7 @@ typedef struct {
 
 typedef struct {
   void (*ptr)(void); ///< Function pointer
-  unsigned int arguments; ///< Actually a list of JsnArgumentType
+  unsigned int argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
 typedef union {
@@ -157,6 +157,7 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes); ///< Create an array containing the given elements
 
 /// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
 void jsvFreePtr(JsVar *var);

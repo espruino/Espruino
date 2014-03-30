@@ -533,6 +533,14 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
+  JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
+  if (!func) return 0;
+  func->varData.native.ptr = ptr;
+  func->varData.native.argTypes = argTypes;
+  return func;
+}
+
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // quick checks
   if (a==b) return true;
