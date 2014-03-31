@@ -92,6 +92,11 @@ devices = {
             'pin_cs' : 'D7',
             'pin_rs' : 'D11'
           },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          }
 };
 
 
