@@ -24,13 +24,11 @@ void addNativeFunction(const char *name, void (*callbackPtr)(void)) {
 }
 
 
-void nativeQuit(JsVarRef var) {
-  NOT_USED(var);
+void nativeQuit() {
   isRunning = false;
 }
 
-void nativeInterrupt(JsVarRef var) {
-  NOT_USED(var);
+void nativeInterrupt() {
   jspSetInterrupted(true);
 }
 

@@ -182,9 +182,8 @@ void jswrap_serial_write(JsVar *parent, JsVar *data) {
          "generate" : "jswrap_serial_onData",
          "params" : [ [ "function", "JsVar", "A function to call when data arrives. It takes one argument, which is an object with a 'data' field"] ]
 }*/
-void jswrap_serial_onData(JsVar *parent, JsVar *funcVar) {
-  JsVar *skippedFunc = jsvSkipName(funcVar);
-  if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
+void jswrap_serial_onData(JsVar *parent, JsVar *func) {
+  if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsiConsolePrint("Function or String not supplied - removing onData handler.\n");
     JsVar *handler = jsvFindChildFromString(parent, USART_CALLBACK_NAME, false);
     if (handler) {
@@ -192,7 +191,6 @@ void jswrap_serial_onData(JsVar *parent, JsVar *funcVar) {
       jsvUnLock(handler);
     }
   } else {
-    jsvUnLock(jsvSetNamedChild(parent, funcVar, USART_CALLBACK_NAME));
+    jsvUnLock(jsvSetNamedChild(parent, func, USART_CALLBACK_NAME));
   }
-  jsvUnLock(skippedFunc);
 }

@@ -202,9 +202,8 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
          "return" : ["JsVar", "An ID that can be passed to clearTimeout"]
 }*/
 JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, bool isTimeout) {
-  JsVar *skippedFunc = jsvSkipName(func);
   JsVar *itemIndex = 0;
-  if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
+  if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsError("Function or String not supplied!");
   } else {
     // Create a new timer
@@ -220,7 +219,6 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
     jsvUnLock(timerPtr);
   }
-  jsvUnLock(skippedFunc);
   return itemIndex;
 }
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {
@@ -243,7 +241,7 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
                                              "If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0." ] ]  ],
          "return" : ["JsVar", "An ID that can be passed to clearWatch"]
 }*/
-JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject) {
+JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
   bool repeat = false;
   JsVarFloat debounce = 0;
   int edge = 0;
@@ -265,8 +263,7 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     repeat = jsvGetBool(repeatOrObject);
 
   JsVarInt itemIndex = -1;
-  JsVar *skippedFunc = jsvSkipName(funcVar);
-  if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
+  if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsError("Function or String not supplied!");
   } else {
     // Create a new watch
@@ -276,7 +273,7 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
       if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
       if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
       if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
-      jsvObjectSetChild(watchPtr, "callback", funcVar); // no unlock intentionally
+      jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
 
     // If nothing already watching the pin, set up a watch
@@ -288,7 +285,6 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     jsvUnLock(watchArrayPtr);
     jsvUnLock(watchPtr);
   }
-  jsvUnLock(skippedFunc);
   return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
 }
 

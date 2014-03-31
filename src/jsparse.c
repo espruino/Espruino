@@ -498,9 +498,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     /** Special case - we're parsing and we hit an already-defined function
      * that has no 'code'. This means that we should use jswHandleFunctionCall
      * to try and parse it */
-    /*if (!jsvIsNative(function)) {
+    if (!jsvIsNative(function)) {
       functionCode = jsvFindChildFromString(function, JSPARSE_FUNCTION_CODE_NAME, false);
-      if (isParsing && !functionCode) {
+    /*  if (isParsing && !functionCode) {
         char buf[32];
         jsvGetString(functionName, buf, sizeof(buf));
         JslCharPos pos = jslCharPosClone(&execInfo.lex->tokenStart);
@@ -513,8 +513,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         jslSeekToP(execInfo.lex, &pos); // NASTY!
         jslCharPosFree(&pos);
-      }
-    }*/
+      }*/
+    }
 
     if (isParsing) JSP_MATCH('(');
 
@@ -615,80 +615,74 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jspSetError();
 
       if (!JSP_HAS_ERROR) {
-        if (jsvIsNative(function)) {
-          assert(function->varData.callback);
-          if (function->varData.callback)
-            function->varData.callback(jsvGetRef(functionRoot));
+        // save old scopes
+        JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
+        int oldScopeCount;
+        int i;
+        oldScopeCount = execInfo.scopeCount;
+        for (i=0;i<execInfo.scopeCount;i++)
+          oldScopes[i] = execInfo.scopes[i];
+        // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
+        JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
+        if (functionScope) {
+            JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
+            jspeiLoadScopesFromVar(functionScopeVar);
+            jsvUnLock(functionScopeVar);
+            jsvUnLock(functionScope);
         } else {
-          // save old scopes
-          JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
-          int oldScopeCount;
-          int i;
-          oldScopeCount = execInfo.scopeCount;
-          for (i=0;i<execInfo.scopeCount;i++)
-            oldScopes[i] = execInfo.scopes[i];
-          // if we have a scope var, load it up. We may not have one if there were no scopes apart from root
-          JsVar *functionScope = jsvFindChildFromString(function, JSPARSE_FUNCTION_SCOPE_NAME, false);
-          if (functionScope) {
-              JsVar *functionScopeVar = jsvLock(functionScope->firstChild);
-              jspeiLoadScopesFromVar(functionScopeVar);
-              jsvUnLock(functionScopeVar);
-              jsvUnLock(functionScope);
-          } else {
-              // no scope var defined? We have no scopes at all!
-              execInfo.scopeCount = 0;
-          }
-          // add the function's execute space to the symbol table so we can recurse
-          if (jspeiAddScope(jsvGetRef(functionRoot))) {
-            /* Adding scope may have failed - we may have descended too deep - so be sure
-             * not to pull somebody else's scope off
-             */
-
-            /* we just want to execute the block, but something could
-             * have messed up and left us with the wrong ScriptLex, so
-             * we want to be careful here... */
-            if (functionCode) {
-              JsLex *oldLex;
-              JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
-              JsLex newLex;
-              jslInit(&newLex, functionCodeVar);
-              jsvUnLock(functionCodeVar);
-
-              oldLex = execInfo.lex;
-              execInfo.lex = &newLex;
-              JSP_SAVE_EXECUTE();
-              jspeBlock();
-              bool hasError = JSP_HAS_ERROR;
-              JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
-              jslKill(&newLex);
-              execInfo.lex = oldLex;
-              if (hasError) {
-                jsiConsolePrint("in function ");
-                if (jsvIsString(functionName)) {
-                  jsiConsolePrint("\"");
-                  jsiConsolePrintStringVar(functionName);
-                  jsiConsolePrint("\" ");
-                }
-                jsiConsolePrint("called from ");
-                if (execInfo.lex)
-                  jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
-                else
-                  jsiConsolePrint("system\n");
-                jspSetError();
-              }
-            }
-
-            jspeiRemoveScope();
-          }
-
-          // Unref old scopes
-          for (i=0;i<execInfo.scopeCount;i++)
-              jsvUnRefRef(execInfo.scopes[i]);
-          // restore function scopes
-          for (i=0;i<oldScopeCount;i++)
-              execInfo.scopes[i] = oldScopes[i];
-          execInfo.scopeCount = oldScopeCount;
+            // no scope var defined? We have no scopes at all!
+            execInfo.scopeCount = 0;
         }
+        // add the function's execute space to the symbol table so we can recurse
+        if (jspeiAddScope(jsvGetRef(functionRoot))) {
+          /* Adding scope may have failed - we may have descended too deep - so be sure
+           * not to pull somebody else's scope off
+           */
+
+          /* we just want to execute the block, but something could
+           * have messed up and left us with the wrong ScriptLex, so
+           * we want to be careful here... */
+          if (functionCode) {
+            JsLex *oldLex;
+            JsVar* functionCodeVar = jsvSkipNameAndUnLock(functionCode);
+            JsLex newLex;
+            jslInit(&newLex, functionCodeVar);
+            jsvUnLock(functionCodeVar);
+
+            oldLex = execInfo.lex;
+            execInfo.lex = &newLex;
+            JSP_SAVE_EXECUTE();
+            jspeBlock();
+            bool hasError = JSP_HAS_ERROR;
+            JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
+            jslKill(&newLex);
+            execInfo.lex = oldLex;
+            if (hasError) {
+              jsiConsolePrint("in function ");
+              if (jsvIsString(functionName)) {
+                jsiConsolePrint("\"");
+                jsiConsolePrintStringVar(functionName);
+                jsiConsolePrint("\" ");
+              }
+              jsiConsolePrint("called from ");
+              if (execInfo.lex)
+                jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
+              else
+                jsiConsolePrint("system\n");
+              jspSetError();
+            }
+          }
+
+          jspeiRemoveScope();
+        }
+
+        // Unref old scopes
+        for (i=0;i<execInfo.scopeCount;i++)
+            jsvUnRefRef(execInfo.scopes[i]);
+        // restore function scopes
+        for (i=0;i<oldScopeCount;i++)
+            execInfo.scopes[i] = oldScopes[i];
+        execInfo.scopeCount = oldScopeCount;
       }
 
       /* get the real return var before we remove it from our function */

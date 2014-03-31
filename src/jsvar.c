@@ -224,7 +224,6 @@ JsVar *jsvNew() {
       v->refs = 0;
       //v->locks = 1;
       v->flags = JSV_LOCK_ONE;
-      v->varData.callback = 0;
       v->firstChild = 0;
       v->lastChild = 0;
       v->prevSibling = 0;
@@ -1975,7 +1974,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 case '&': return jsvNewFromInteger(da&db);
                 case '|': return jsvNewFromInteger(da|db);
                 case '^': return jsvNewFromInteger(da^db);
-                case '%': return jsvNewFromInteger(da%db);
+                case '%': return db ? jsvNewFromInteger(da%db) : jsvNewFromFloat(NAN);
                 case LEX_LSHIFT: return jsvNewFromInteger(da << db);
                 case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
                 case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger((JsVarInt)(((JsVarIntUnsigned)da) >> db));

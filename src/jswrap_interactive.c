@@ -74,12 +74,12 @@ void jswrap_interface_trace(JsVar *root) {
 
 /*XXX{ "type":"function", "name" : "dotty",
          "description" : "Output dotty-format graph of debugging information",
-         "generate_full" : "jsvDottyOutput()"
+         "generate" : "jsvDottyOutput"
 }*/
 /*JSON{ "type":"function", "name" : "dump",
          "description" : ["Output current interpreter state in a text form such that it can be copied to a new device",
                           "Note: 'Internal' functions are currently not handled correctly. You will need to recreate these in the onInit function."],
-         "generate_full" : "jsiDumpState()"
+         "generate" : "jsiDumpState"
 }*/
 /*JSON{ "type":"function", "name" : "load",
          "description" : ["Load program memory out of flash",
