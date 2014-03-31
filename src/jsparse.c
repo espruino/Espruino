@@ -14,6 +14,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jswrap_object.h" // for function_replacewith
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -114,6 +115,7 @@ JsVar *jspeiFindInScopes(const char *name) {
   return jsvFindChildFromString(execInfo.root, name, false);
 }
 
+// TODO: get rid of these, use jspeiGetTopScope instead
 JsVar *jspeiFindOnTop(const char *name, bool createIfNotFound) {
   if (execInfo.scopeCount>0)
     return jsvFindChildFromStringRef(execInfo.scopes[execInfo.scopeCount-1], name, createIfNotFound);
@@ -124,6 +126,8 @@ JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
     return jsvFindChildFromVarRef(execInfo.scopes[execInfo.scopeCount-1], childName, createIfNotFound);
   return jsvFindChildFromVar(execInfo.root, childName, createIfNotFound);
 }
+
+
 
 /** Here we assume that we have already looked in the parent itself -
  * and are now going down looking at the stuff it inherited */
@@ -1975,11 +1979,19 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
   if (JSP_SHOULD_EXECUTE) {
     // find a function with the same name (or make one)
     // OPT: can Find* use just a JsVar that is a 'name'?
-    JsVar *existingFunc = jspeiFindNameOnTop(funcName, true);
-    // replace it
-    jspReplaceWith(existingFunc, funcVar);
-    jsvUnLock(funcName);
-    funcName = existingFunc;
+    JsVar *existingName = jspeiFindNameOnTop(funcName, true);
+    JsVar *existingFunc = jsvSkipName(existingName);
+    if (jsvIsFunction(existingFunc)) {
+      // 'proper' replace, that keeps the original function var and swaps the children
+      funcVar = jsvSkipNameAndUnLock(funcVar);
+      jswrap_function_replaceWith(existingFunc, funcVar);
+      funcVar = existingName;
+    } else {
+      jspReplaceWith(existingName, funcVar);
+      jsvUnLock(funcName);
+      funcName = existingName;
+    }
+    jsvUnLock(existingFunc);
   }
   jsvUnLock(funcVar);
   return funcName;

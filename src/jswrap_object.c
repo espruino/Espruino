@@ -251,7 +251,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   // so now remove all existing entries
   jsvRemoveAllChildren(oldFunc);
   // now re-add scope
-  jsvAddName(oldFunc, scope);
+  if (scope) jsvAddName(oldFunc, scope);
   jsvUnLock(scope);
   // now re-add other entries
   JsvObjectIterator it;
