@@ -101,6 +101,8 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 * Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need
 * Try different compilers. `codesourcery-2013.05-23-arm-none-eabi` provides low binary size for `-O3`
 
+**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved upwards 10kb to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones on the Espruino website) use `scripts/create_espruino_image_1v3.sh`.
+
 ### Linux
 
 Just run `make`
