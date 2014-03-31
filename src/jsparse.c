@@ -711,7 +711,12 @@ JsVar *jspeFactorSingleId() {
     /* Special case! We haven't found the variable, so check out
      * and see if it's one of our builtins...  */
     if (jswIsBuiltInObject(tokenName)) {
-      JsVar *obj = jspNewBuiltin(tokenName);
+      // Check if we have a built-in function for it
+      // OPT: Could we instead have jswIsBuiltInObjectWithoutConstructor?
+      JsVar *obj = jswFindBuiltInFunction(0, tokenName);
+      // If not, make one
+      if (!obj)
+        obj = jspNewBuiltin(tokenName);
       if (obj) { // not out of memory
         a = jsvAddNamedChild(execInfo.root, obj, tokenName);
         jsvUnLock(obj);
