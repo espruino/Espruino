@@ -2010,14 +2010,20 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 default: return jsvMathsOpError(op, "Double");
             }
         }
-    } else if ((jsvIsArray(a) || jsvIsObject(a) ||
-                jsvIsArray(b) || jsvIsObject(b)) &&
+    } else if ((jsvIsArray(a) || jsvIsObject(a) || jsvIsFunction(a) ||
+                jsvIsArray(b) || jsvIsObject(b) || jsvIsFunction(b)) &&
                 (op == LEX_EQUAL || op==LEX_NEQUAL)) {
       bool isArray = jsvIsArray(a);
+      bool equal = a==b;
+      // even if one is not native, the contents will be different
+      if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b))
+        equal = a->varData.native.ptr == b->varData.native.ptr &&
+                a->varData.native.argTypes == b->varData.native.argTypes;
+
       /* Just check pointers */
       switch (op) {
-           case LEX_EQUAL:  return jsvNewFromBool(a==b);
-           case LEX_NEQUAL: return jsvNewFromBool(a!=b);
+           case LEX_EQUAL:  return jsvNewFromBool(equal);
+           case LEX_NEQUAL: return jsvNewFromBool(!equal);
            default: return jsvMathsOpError(op, isArray?"Array":"Object");
       }
     } else {
