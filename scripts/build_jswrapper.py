@@ -21,13 +21,11 @@ import os;
 sys.path.append(".");
 import common
 
-# Scans files for comments of the form /*JSON......*/ and then builds a tree structure of ifs to
-# efficiently detect the symbols without using RAM. See common.py for formatting
-
-jsondatas = common.get_jsondata(False)
-includes = common.get_includes_from_jsondata(jsondatas)
-
 # ------------------------------------------------------------------------------------------------------
+
+def codeOut(s): 
+#  print str(s)
+  wrapperFile.write(s+"\n");
 
 def treewalk(tree, name, jsondata):
   if len(name)==0:
@@ -74,20 +72,18 @@ def createStringCompare(varName, checkOffsets, checkCharacters):
   return " && ".join(checks)
 # ------------------------------------------------------------------------------------------------------
 
+def getConstructorTestFor(className, variableName):
+    # IMPORTANT - we expect built-in objects to be native functions with a pointer to
+    # their constructor function inside
+    for jsondata in jsondatas:
+      if jsondata["type"]=="constructor" and jsondata["name"]==className:
+        return "jsvIsNativeFunction("+variableName+") && "+variableName+"->varData.native.ptr=="+jsondata["generate"];
+    print "No constructor found for "+className
+    exit(1)
+
 def getTestFor(className, static):
   if static:
-    n = 0;
-    # IMPORTANT - we expect built-in objects to have their name stored
-    # as a string in the varData element
-    checkOffsets = []
-    checkCharacters = []
-    for ch in className:
-      checkOffsets.append(n)
-      checkCharacters.append(ch)
-      n = n + 1        
-    checkOffsets.append(n)
-    checkCharacters.append("\\0")
-    return createStringCompare("parent->varData.str", checkOffsets, checkCharacters)
+    return getConstructorTestFor(className, "parent");
   else:
     if className=="String": return "jsvIsString(parent)"
     if className=="Pin": return "jsvIsPin(parent)"
@@ -98,49 +94,7 @@ def getTestFor(className, static):
     if className=="Array": return "jsvIsArray(parent)"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
-    n = 0
-    checkOffsets = []
-    checkCharacters = []
-    for ch in className:
-      checkOffsets.append(n)
-      checkCharacters.append(ch)
-      n = n + 1        
-    checkOffsets.append(n)
-    checkCharacters.append("\\0")
-    extra = ""
-    if len(className) > 8:
-      checkOffsets = checkOffsets[:8]
-      checkCharacters = checkCharacters[:8]
-      extra = " && jsvIsStringEqual(constructorName, \""+className+"\")"
-    return createStringCompare("constructorName->varData.str", checkOffsets, checkCharacters)+extra
-    exit(1)
-
-print "Building decision tree"
-tree = {}
-for jsondata in jsondatas:
-  if "name" in jsondata:
-    jsondata["static"] = not (jsondata["type"]=="property" or jsondata["type"]=="method")
-
-    className = "!parent"
-    if not jsondata["type"]=="constructor":
-      if "class" in jsondata: className = getTestFor(jsondata["class"], jsondata["static"])
-
-
-    if not className in tree: 
-      print "Adding "+className+" to tree"
-      tree[className] = {}
-    treewalk(tree[className], jsondata["name"], jsondata)
-    classTree = tree[className]
-
-# ------------------------------------------------------------------------------------------------------
-#print json.dumps(tree, sort_keys=True, indent=2)
-# ------------------------------------------------------------------------------------------------------    
-print "Outputting decision tree"
-wrapperFile = open('gen/jswrapper.c', 'w')
-
-def codeOut(s): 
-#  print str(s)
-  wrapperFile.write(s+"\n");
+    return getConstructorTestFor(className, "constructor");
 
 def getUnLockGetter(varType, name, funcName):
   if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
@@ -232,13 +186,6 @@ def getCDeclaration(jsondata):
     s.append(toCType(param[1]));
   return toCType(result[0])+" (*)("+",".join(s)+")";
 
-# If we were to make a function for this, what would we call it?
-def getGeneratedFunctionName(jsondata):
-  s = "gen_jswrap"
-  if "class" in jsondata: s = s + "_" + jsondata["class"];
-  s = s + "_" + jsondata["name"];
-  return s;
-
 def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
   if "#if" in obj: codeOut(indent+"#if "+obj["#if"]);
@@ -256,11 +203,7 @@ def codeOutFunction(indent, func):
   print name
   codeOut(indent+"// "+name+"  ("+func["filename"]+")")
   
-  gen_name = ""
-
-  if ("generate_full" in func):
-    gen_name = getGeneratedFunctionName(func)
-  elif ("generate" in func):
+  if ("generate" in func):
     gen_name = func["generate"]
   else:
     sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
@@ -314,11 +257,42 @@ def codeOutTree(indent, tree, offset):
   if not first:
     codeOut(indent+'}')
 
+# ------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------
 
+jsondatas = common.get_jsondata(False)
+includes = common.get_includes_from_jsondata(jsondatas)
 
+# work out what we have actually got
+classes = []
+constructors = []
+for jsondata in jsondatas:
+  if "class" in jsondata :
+    if not jsondata["class"] in classes:
+      classes.append(jsondata["class"])
+  if jsondata["type"]=="constructor":
+    if not jsondata["name"] in constructors:
+      constructors.append(jsondata["name"])
 
-print ""
-print "" 
+# Add constructors if we need them
+for className in classes:
+  if not className in constructors:
+    jsondatas.append({
+        "type":"constructor", "class": className,  "name": className,
+        "generate_full" : "jsvNewWithFlags(JSV_OBJECT)",
+        "filename" : "jswrapper.c",
+        "return" : [ "JsVar", "" ]
+    });
+
+# ------------------------------------------------------------------------------------------------------
+#print json.dumps(tree, sort_keys=True, indent=2)
+# ------------------------------------------------------------------------------------------------------    
+
+wrapperFile = open('gen/jswrapper.c', 'w')
 
 codeOut('// Automatically generated wrapper file ')
 codeOut('// Generated by scripts/build_jswrapper.py');
@@ -346,7 +320,12 @@ codeOut('');
 
 for jsondata in jsondatas:
   if ("generate_full" in jsondata):
-    gen_name = getGeneratedFunctionName(jsondata)
+  
+    gen_name = "gen_jswrap"
+    if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
+    gen_name = gen_name + "_" + jsondata["name"];
+
+    jsondata["generate"] = gen_name
     params = getParams(jsondata)
     result = getResult(jsondata);
     s = [ ]
@@ -354,7 +333,7 @@ for jsondata in jsondatas:
     for param in params:
       s.append(toCType(param[1])+" "+param[0]);
      
-    codeOut("static "+toCType(result[0])+" "+gen_name+"("+", ".join(s)+") {");
+    codeOut("static "+toCType(result[0])+" "+jsondata["generate"]+"("+", ".join(s)+") {");
     if result[0]:
       codeOut("  return "+jsondata["generate_full"]+";");
     else:
@@ -368,6 +347,28 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 codeOut('');
 
+print "Building decision tree"
+tree = {}
+for jsondata in jsondatas:
+  if "name" in jsondata:
+    jsondata["static"] = not (jsondata["type"]=="property" or jsondata["type"]=="method")
+
+    className = "!parent"
+    if not jsondata["type"]=="constructor":
+      if "class" in jsondata: className = getTestFor(jsondata["class"], jsondata["static"])
+
+
+    if not className in tree: 
+      print "Adding "+className+" to tree"
+      tree[className] = {}
+    treewalk(tree[className], jsondata["name"], jsondata)
+    classTree = tree[className]
+
+
+print "Outputting decision tree"
+print ""
+print "" 
+
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  if (parent) {')
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
@@ -375,26 +376,26 @@ if "parent" in tree:
   codeOutTree("    ", tree["parent"], 0)
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 for className in tree:
-  if className!="parent" and  className!="!parent" and not "constructorName" in className:
+  if className!="parent" and  className!="!parent" and not "constructor" in className:
     codeOut('    if ('+className+') {')
     codeOutTree("      ", tree[className], 0)
     codeOut("    }")
 codeOut('    // ------------------------------------------ INSTANCE METHODS WE MUST CHECK CONSTRUCTOR FOR')
-codeOut('    JsVar *constructorName = jsvIsObject(parent)?jsvSkipOneNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
-codeOut('    if (constructorName && jsvIsName(constructorName)) {')
+codeOut('    JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('    if (constructor) {')
 first = True
 for className in tree:
-  if "constructorName" in className:
+  if "constructor" in className:
     if first:
       codeOut('    if ('+className+') {')
       first = False
     else:
       codeOut('    } else if ('+className+') {')
-    codeOut('      jsvUnLock(constructorName);constructorName=0;')
+    codeOut('      jsvUnLock(constructor);constructor=0;')
     codeOutTree("          ", tree[className], 0)
 if not first:
   codeOut("    } else ")
-codeOut('      jsvUnLock(constructorName);');
+codeOut('      jsvUnLock(constructor);');
 codeOut('    }')
 codeOut('  } else { /* if (!parent) */')
 codeOut('    // ------------------------------------------ FUNCTIONS')
@@ -423,13 +424,10 @@ for jsondata in jsondatas:
 
 
 builtinChecks = []
-notRealObjects = []
 for jsondata in jsondatas:
   if "class" in jsondata:
     check = 'strcmp(name, "'+jsondata["class"]+'")==0';
     if not check in builtinLibraryChecks:
-      if "not_real_object" in jsondata:
-        notRealObjects.append(check)
       if not check in builtinChecks:
         builtinChecks.append(check)
 
