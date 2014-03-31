@@ -78,6 +78,10 @@ void jswrap_http_kill() {
         "description" : ["The HTTP client request" ]
 }*/
 /*JSON{ "type":"class",
+        "class" : "httpCRs",
+        "description" : ["The HTTP client response" ]
+}*/
+/*JSON{ "type":"class",
         "class" : "url",
         "description" : ["This class helps to convert URLs into Objects of information ready for http.request/get" ]
 }*/

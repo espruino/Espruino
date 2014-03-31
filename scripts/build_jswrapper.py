@@ -376,7 +376,7 @@ if "parent" in tree:
   codeOutTree("    ", tree["parent"], 0)
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 for className in tree:
-  if className!="parent" and  className!="!parent" and not "constructor" in className:
+  if className!="parent" and  className!="!parent" and not "(constructor)" in className:
     codeOut('    if ('+className+') {')
     codeOutTree("      ", tree[className], 0)
     codeOut("    }")
@@ -385,7 +385,7 @@ codeOut('    JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFi
 codeOut('    if (constructor) {')
 first = True
 for className in tree:
-  if "constructor" in className:
+  if "(constructor)" in className:
     if first:
       codeOut('    if ('+className+') {')
       first = False
