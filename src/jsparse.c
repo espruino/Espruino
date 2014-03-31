@@ -547,6 +547,12 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
 
+      // unlock values if we locked them
+      if (isParsing) {
+        while (argCount--)
+          jsvUnLock(argPtr[argCount]);
+      }
+
       /* Return to old 'this' var. No need to unlock as we never locked before */
       if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
       execInfo.thisVar = oldThisVar;
