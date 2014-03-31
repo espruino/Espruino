@@ -14,6 +14,7 @@
 #include "jsvar.h"
 #include "jspin.h"
 
+JsVar *jswrap_spi_constructor();
 void jswrap_spi_setup(JsVar *parent, JsVar *options);
 JsVar *jswrap_spi_send(JsVar *parent, JsVar *data, Pin nss_pin);
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin);

@@ -11,6 +11,7 @@
             You can now reference built-in functions. eg. [1,2,3].map(Math.sqrt)
             Add Object.valueOf - help with #187
             Add Object.hasOwnProperty (although it does have some false positives) - #24
+            Add software SPI - fix #41
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)
