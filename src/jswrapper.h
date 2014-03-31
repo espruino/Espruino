@@ -35,7 +35,7 @@ typedef enum {
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
 /** If 'name' is something that belongs to an internal function, execute it.  */
-JsVar *jswFindBuiltInFunction(JsVar *parent, JsVar *parentName, const char *name);
+JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
 
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);

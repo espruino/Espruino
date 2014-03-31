@@ -341,7 +341,7 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
 }*/
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, (int)jsvGetInteger(size), true)",
+         "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
          "params" : [ [ "size", "int32", "The size as an integer" ] ]
 }*/
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {

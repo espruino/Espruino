@@ -129,7 +129,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 
 /*JSON{ "type":"constructor", "class": "Uint8Array",  "name": "Uint8Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -137,7 +137,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Int8Array",  "name": "Int8Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -145,7 +145,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Uint16Array",  "name": "Uint16Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT16, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT16, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -153,7 +153,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Int16Array",  "name": "Int16Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -161,7 +161,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Uint32Array",  "name": "Uint32Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT32, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -169,7 +169,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Int32Array",  "name": "Int32Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT32, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -177,7 +177,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Float32Array",  "name": "Float32Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT32, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],
@@ -185,7 +185,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 }*/
 /*JSON{ "type":"constructor", "class": "Float64Array",  "name": "Float64Array",
          "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
-         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT64, arr, jsvGetInteger(byteOffset), jsvGetInteger(length))",
+         "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT64, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
                       [ "length", "int", "The length (ONLY IF the first argument was an ArrayBuffer)" ] ],

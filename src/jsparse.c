@@ -717,7 +717,7 @@ JsVar *jspeFactorSingleId() {
         jsvUnLock(obj);
       }
     } else {
-      a = jswFindBuiltInFunction(0, 0, tokenName);
+      a = jswFindBuiltInFunction(0, tokenName);
       if (!a) {
         /* Variable doesn't exist! JavaScript says we should create it
          * (we won't add it here. This is done in the assignment operator)*/
@@ -759,7 +759,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                * this for 'this' then we couldn't say 'this.toString()'
                * */
               if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) // don't try and use builtins on the prototype var!
-                child = jswFindBuiltInFunction(aVar, a/*name*/, name);
+                child = jswFindBuiltInFunction(aVar, name);
 
               if (child) { // found - let's match it!
                 JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);

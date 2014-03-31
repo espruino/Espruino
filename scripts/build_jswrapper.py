@@ -76,7 +76,6 @@ def createStringCompare(varName, checkOffsets, checkCharacters):
 
 def getTestFor(className, static):
   if static:
-    #return 'jsvIsStringEqual(parentName, "'+className+'")'
     n = 0;
     # IMPORTANT - we expect built-in objects to have their name stored
     # as a string in the varData element
@@ -233,7 +232,12 @@ def getCDeclaration(jsondata):
     s.append(toCType(param[1]));
   return toCType(result[0])+" (*)("+",".join(s)+")";
 
-
+# If we were to make a function for this, what would we call it?
+def getGeneratedFunctionName(jsondata):
+  s = "gen_jswrap"
+  if "class" in jsondata: s = s + "_" + jsondata["class"];
+  s = s + "_" + jsondata["name"];
+  return s;
 
 def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
@@ -252,64 +256,27 @@ def codeOutFunction(indent, func):
   print name
   codeOut(indent+"// "+name+"  ("+func["filename"]+")")
   
-  if ("generate" in func):
-    codeOut(indent+"return jsvNewNativeFunction((void (*)(void))"+func["generate"]+", "+getArgumentSpecifier(func)+");")
-  elif ("generate_full" in func):
-    argNames = ["a","b","c","d"];
-    params = []
-    if "params" in func: params = func["params"]
+  gen_name = ""
 
-    if len(params)==0: 
-      if func["type"]=="variable" or common.is_property(func):
-        codeOut(indent+"jspParseVariableName();")
-      else:
-        codeOut(indent+"jspParseEmptyFunction();")
-    elif len(params)==1 and params[0][1]=="JsVarArray": 
-      codeOut(indent+"JsVar *"+params[0][0]+" = jspParseFunctionAsArray();")
-      codeOut(indent+"if (!"+params[0][0]+") return 0; // if parse error")
-    elif len(params)==1: 
-      codeOut(indent+"JsVar *"+params[0][0]+" = jspParseSingleFunction();")
-    elif len(params)<9:
-      funcName = "jspParseFunction8"
-      paramCount = 8
-      if len(params)<5:  
-        funcName = "jspParseFunction"
-        paramCount = 4
-      paramDefs = []
-      paramPtrs = []
-      skipNames = "0"
-      n = 0
-      letters = ["A","B","C","D","E","F","G","H"];
-      for param in params:
-        paramDefs.append("*"+param[0])
-        paramPtrs.append("&"+param[0])
-        n = n + 1
-      while len(paramPtrs)<paramCount: paramPtrs.append("0")
-      codeOut(indent+"JsVar "+', '.join(paramDefs)+";");
-      codeOut(indent+funcName+"("+skipNames+", "+', '.join(paramPtrs)+");");
-    else:
-      print "ERROR: codeOutFunction unknown number of args "+str(len(params))
-      exit(1)
-
-    command = func["generate_full"];    
-    if "return" in func: 
-      codeOut(indent+"JsVar *_r = " + getCreator(func["return"][0], command, func["name"])+";");
-    else:
-      codeOut(indent+command+";");
-    # note: generate_full doesn't use commandargs, so doesn't unlock
-    for param in params:
-      if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarArray":
-        codeOut(indent+"jsvUnLock("+param[0]+");");
-
-    if "return" in func: 
-      codeOut(indent+"return _r;");
-    else:
-      codeOut(indent+"return 0;");
-  elif "wrap" in func:
-    codeOut(indent+"return "+func["wrap"]+"(parent, parentName);")
+  if ("generate_full" in func):
+    gen_name = getGeneratedFunctionName(func)
+  elif ("generate" in func):
+    gen_name = func["generate"]
   else:
     sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
     exit(1)
+
+  if func["type"]=="variable" or common.is_property(func):     
+    if hasThis(func):
+      gen_name = gen_name+"(parent)"
+    else:
+      gen_name = gen_name+"()";
+
+    codeOut(indent+"return "+getCreator(func["return"][0], gen_name, func["name"])+";")
+  else:
+    codeOut(indent+"return jsvNewNativeFunction((void (*)(void))"+gen_name+", "+getArgumentSpecifier(func)+");")
+
+
 
 def codeOutTree(indent, tree, offset):
   first = True
@@ -371,15 +338,44 @@ codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&(var))==CH2(a,b))');
 codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,b,c,0))');
 codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
-codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, JsVar *parentName, const char *name) {')
-codeOut('  JsVar *argArray[16];')
+
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// ----------------------------------------------------------------- AUTO-GENERATED WRAPPERS');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('');
+
+for jsondata in jsondatas:
+  if ("generate_full" in jsondata):
+    gen_name = getGeneratedFunctionName(jsondata)
+    params = getParams(jsondata)
+    result = getResult(jsondata);
+    s = [ ]
+    if hasThis(jsondata): s.append("JsVar *parent");
+    for param in params:
+      s.append(toCType(param[1])+" "+param[0]);
+     
+    codeOut("static "+toCType(result[0])+" "+gen_name+"("+", ".join(s)+") {");
+    if result[0]:
+      codeOut("  return "+jsondata["generate_full"]+";");
+    else:
+      codeOut("  "+jsondata["generate_full"]+";");  
+    codeOut("}");
+    codeOut('');        
+
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('');
+codeOut('');
+
+codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  if (parent) {')
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
 if "parent" in tree:
   codeOutTree("    ", tree["parent"], 0)
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 for className in tree:
-  if className!="parent" and  className!="!parent" and not "parentName" in className and not "constructorName" in className:
+  if className!="parent" and  className!="!parent" and not "constructorName" in className:
     codeOut('    if ('+className+') {')
     codeOutTree("      ", tree[className], 0)
     codeOut("    }")

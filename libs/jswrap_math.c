@@ -91,7 +91,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 /* we use sin here, not cos, to try and save a bit of code space */
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "cos",
-         "generate_full" : "sin(jsvGetFloat(theta) + (PI/2))",
+         "generate_full" : "sin(theta + (PI/2))",
          "params" : [ [ "theta", "float", "The angle to get the cosine of"] ],
          "return" : ["float", "The cosine of theta"]
 }*/
@@ -166,7 +166,7 @@ double jswrap_math_pow(double x, double y) {
 }*/
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "tan",
-         "generate_full" : "sin(jsvGetFloat(theta)) / sin(jsvGetFloat(theta)+(PI/2))",
+         "generate_full" : "sin(theta) / sin(theta+(PI/2))",
          "params" : [ [ "theta", "float", "The angle to get the tangent of"] ],
          "return" : ["float", "The tangent of theta"]
 }*/ // note - we're trying to avoid having to use cos here
