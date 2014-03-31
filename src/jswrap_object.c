@@ -16,6 +16,7 @@
 #include "jswrap_object.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrapper.h"
 #ifdef __MINGW32__
 #include "malloc.h" // needed for alloca
 #endif//__MINGW32__
@@ -135,6 +136,41 @@ JsVar *jswrap_object_keys(JsVar *obj) {
     return 0;
   }
 }
+
+/*JSON{ "type":"method", "class": "Object", "name" : "hasOwnProperty",
+         "description" : ["Return true if the object (not its prototype) has the given property.","NOTE: This currently returns false-positives for built-in functions in prototypes"],
+         "generate" : "jswrap_object_hasOwnProperty",
+         "params" : [ [ "name", "JsVar", "The name of the property to search for"] ],
+         "return" : ["bool", "True if it exists, false if it doesn't"]
+}*/
+bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
+  char str[32];
+  jsvGetString(name, str, sizeof(str));
+
+  bool contains = false;
+  if (jsvHasChildren(parent)) {
+    JsVar *foundVar =  jsvFindChildFromString(parent, str, false);
+    if (foundVar) {
+      contains = true;
+      jsvUnLock(foundVar);
+    }
+  }
+
+  if (!contains) { // search builtins
+    JsVar *foundVar = jswFindBuiltInFunction(parent, str);
+    if (foundVar) {
+      contains = true;
+      jsvUnLock(foundVar);
+    }
+  }
+
+  return contains;
+}
+
+
+
+// --------------------------------------------------------------------------
+//                                            These should be in EventEmitter
 
 /*JSON{ "type":"method", "class": "Object", "name" : "on",
          "description" : ["Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter."],
