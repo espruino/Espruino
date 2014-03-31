@@ -407,7 +407,6 @@ codeOut('    // ------------------------------------------ FUNCTIONS')
 codeOut('    // Handle pin names - eg LED1 or D5 (this is hardcoded in build_jsfunctions.py)')
 codeOut('    Pin pin = jshGetPinFromString(name);')
 codeOut('    if (pin != PIN_UNDEFINED) {')
-codeOut('      jspParseVariableName();')
 codeOut('      return jsvNewFromPin(pin);')
 codeOut('    }')
 if "!parent" in tree:
