@@ -518,10 +518,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
     if (isParsing) JSP_MATCH('(');
 
-    JsVar *oldThisVar = execInfo.thisVar;
-    if (!thisArg) thisArg = execInfo.root; // 'this' should always default to root
-    execInfo.thisVar = jsvRef(thisArg);
-
     /* Ok, so we have 4 options here.
      *
      * 1: we're native.
@@ -542,7 +538,19 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         JSP_MATCH(')');
       }
+
+      JsVar *oldThisVar = execInfo.thisVar;
+      if (thisArg)
+        execInfo.thisVar = jsvRef(thisArg);
+      else
+        execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
+
       returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+
+      /* Return to old 'this' var. No need to unlock as we never locked before */
+      if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
+      execInfo.thisVar = oldThisVar;
+
     } else {
       // create a new symbol table entry for execution of this function
       // OPT: can we cache this function execution environment + param variables?
@@ -639,6 +647,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
            * not to pull somebody else's scope off
            */
 
+          JsVar *oldThisVar = execInfo.thisVar;
+          if (thisArg)
+            execInfo.thisVar = jsvRef(thisArg);
+          else
+            execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
+
+
           /* we just want to execute the block, but something could
            * have messed up and left us with the wrong ScriptLex, so
            * we want to be careful here... */
@@ -673,6 +688,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             }
           }
 
+          /* Return to old 'this' var. No need to unlock as we never locked before */
+          if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
+          execInfo.thisVar = oldThisVar;
+
           jspeiRemoveScope();
         }
 
@@ -692,9 +711,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       jsvUnLock(functionRoot);
     }
 
-    /* Return to old 'this' var. No need to unlock as we never locked before */
-    if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
-    execInfo.thisVar = oldThisVar;
+
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done
