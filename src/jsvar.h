@@ -138,7 +138,7 @@ JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
-static inline JsVar *jsvNewFromEmptyString() { return jsvNewWithFlags(JSV_STRING); } ;///< Create a new empty string
+static inline JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING); if (v) v->varData.integer=0; return v; } ;///< Create a new empty string
 static inline JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength);
