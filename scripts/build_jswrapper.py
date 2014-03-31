@@ -77,7 +77,10 @@ def getConstructorTestFor(className, variableName):
     # their constructor function inside
     for jsondata in jsondatas:
       if jsondata["type"]=="constructor" and jsondata["name"]==className:
-        return "jsvIsNativeFunction("+variableName+") && "+variableName+"->varData.native.ptr=="+jsondata["generate"];
+        if variableName=="constructorPtr": # jsvIsNativeFunction/etc has already been done
+          return "constructorPtr==(void*)"+jsondata["generate"];
+        else:
+          return "jsvIsNativeFunction("+variableName+") && (void*)"+variableName+"->varData.native.ptr==(void*)"+jsondata["generate"];
     print "No constructor found for "+className
     exit(1)
 
@@ -94,7 +97,7 @@ def getTestFor(className, static):
     if className=="Array": return "jsvIsArray(parent)"
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
-    return getConstructorTestFor(className, "constructor");
+    return getConstructorTestFor(className, "constructorPtr");
 
 def getUnLockGetter(varType, name, funcName):
   if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
@@ -376,26 +379,28 @@ if "parent" in tree:
   codeOutTree("    ", tree["parent"], 0)
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 for className in tree:
-  if className!="parent" and  className!="!parent" and not "(constructor)" in className:
+  if className!="parent" and  className!="!parent" and not "constructorPtr" in className:
     codeOut('    if ('+className+') {')
     codeOutTree("      ", tree[className], 0)
     codeOut("    }")
 codeOut('    // ------------------------------------------ INSTANCE METHODS WE MUST CHECK CONSTRUCTOR FOR')
 codeOut('    JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
-codeOut('    if (constructor) {')
+codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
+codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('      jsvUnLock(constructor);')
 first = True
 for className in tree:
-  if "(constructor)" in className:
+  if "constructorPtr" in className:
     if first:
       codeOut('    if ('+className+') {')
       first = False
     else:
       codeOut('    } else if ('+className+') {')
-    codeOut('      jsvUnLock(constructor);constructor=0;')
     codeOutTree("          ", tree[className], 0)
 if not first:
-  codeOut("    } else ")
-codeOut('      jsvUnLock(constructor);');
+  codeOut("    }")
+codeOut('    } else {')
+codeOut('      jsvUnLock(constructor);')
 codeOut('    }')
 codeOut('  } else { /* if (!parent) */')
 codeOut('    // ------------------------------------------ FUNCTIONS')
