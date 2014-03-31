@@ -412,12 +412,14 @@ JsVar *jsvNewFromString(const char *str) {
   // over the end
   JsVar *var = jsvLockAgain(first);
   while (*str) {
+    // quickly set contents to 0
+    var->varData.integer = 0;
     // copy data in
     size_t i, l = jsvGetMaxCharactersInVar(var);
     for (i=0;i<l && *str;i++)
       var->varData.str[i] = *(str++);
-    // might as well shove a zero terminator on it if we can
-    if (i<l) var->varData.str[i]=0;
+    // we already set the variable data to 0, so no need for adding one
+
     // we've stopped if the string was empty
     jsvSetCharactersInVar(var, i);
 
