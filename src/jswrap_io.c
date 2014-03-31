@@ -187,7 +187,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
                           "for example: ```setInterval(function (e) { print(e.time); }, 1000);```",
                           "This can also be removed using clearInterval" ],
          "generate" : "jswrap_interface_setInterval",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
                       [ "timeout", "float", "The time between calls to the function" ] ],
          "return" : ["JsVar", "An ID that can be passed to clearInterval"]
 }*/
@@ -197,7 +197,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
                           "for example: ```setTimeout(function (e) { print(e.time); }, 1000);```",
                           "This can also be removed using clearTimeout" ],
          "generate" : "jswrap_interface_setTimeout",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
                       [ "timeout", "float", "The time until the function will be executed" ] ],
          "return" : ["JsVar", "An ID that can be passed to clearTimeout"]
 }*/
@@ -237,7 +237,7 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
                           "For instance, if you want to measure the length of a positive pusle you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```",
                           "This can also be removed using clearWatch" ],
          "generate" : "jswrap_interface_setWatch",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
                       [ "pin", "pin", "The pin to watch" ],
                       [ "options", "JsVar", ["If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)",
                                              "If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0." ] ]  ],

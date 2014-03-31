@@ -62,7 +62,7 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 /*JSON{ "type":"function", "name" : "trace", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Output debugging information",
          "generate" : "jswrap_interface_trace",
-         "params" : [ [ "root", "JsVarName", "The symbol to output (optional). If nothing is specified, everything will be output"] ]
+         "params" : [ [ "root", "JsVar", "The symbol to output (optional). If nothing is specified, everything will be output"] ]
 }*/
 void jswrap_interface_trace(JsVar *root) {
   if (jsvIsUndefined(root)) {
@@ -133,7 +133,7 @@ void jswrap_interface_print(JsVar *v) {
         "description" : ["Fill the console with the contents of the given function, so you can edit it.",
                          "NOTE: This is a convenience function - it will not edit 'inner functions'. For that, you must edit the 'outer function' and re-execute it."],
         "generate" : "jswrap_interface_edit",
-        "params" : [ [ "funcName", "JsVarName", "The name of the function to edit (either a string or just the unquoted name)"] ]
+        "params" : [ [ "funcName", "JsVar", "The name of the function to edit (either a string or just the unquoted name)"] ]
 }*/
 void jswrap_interface_edit(JsVar *funcName) {
   if (jsvIsString(funcName)) {

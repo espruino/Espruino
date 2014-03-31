@@ -48,7 +48,6 @@ if silent:
 #                               // bool - parses into a boolean
 #                               // pin - parses into a pin
 #                               // JsVar - passes a JsVar* to the function (after skipping names)
-#                               // JsVarName - passes a JsVar* to the function (WITHOUT skipping names)
 #                               // JsVarArray - parses this AND ANY SUBSEQUENT ARGUMENTS into a JsVar of type JSV_ARRAY. THIS IS ALWAYS DEFINED, EVEN IF ZERO LENGTH. Currently it must be the only parameter
 #         "return" : ["int|float|JsVar", "The integer representation of x"],
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
@@ -57,6 +56,7 @@ if silent:
 #         "check" : "jsvIsFoo(var)", // for classes - this is code that returns true if 'var' is of the given type
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
+#         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),

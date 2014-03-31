@@ -542,7 +542,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         }
         JSP_MATCH(')');
       }
-      returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, argPtr, argCount);
+      returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
     } else {
       // create a new symbol table entry for execution of this function
       // OPT: can we cache this function execution environment + param variables?
@@ -757,37 +757,32 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               if (!child)
                 child = jspeiFindChildFromStringInParents(aVar, name);
 
+              /* Check for builtins via separate function
+               * This way we save on RAM for built-ins because everything comes out of program code.
+               *
+               * We don't check for prototype vars so people can overload the built
+               * in functions (eg. Person.prototype.toString). HOWEVER if we did
+               * this for 'this' then we couldn't say 'this.toString()'
+               * */
+              if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) // don't try and use builtins on the prototype var!
+                child = jswFindBuiltInFunction(aVar, a/*name*/, name);
 
-              if (child) {
-                // it was found - no need for name ptr now, so match!
+              if (child) { // found - let's match it!
                 JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
-              } else { // NOT FOUND...
-                /* Check for builtins via separate function
-                 * This way we save on RAM for built-ins because all comes out of program code.
-                 *
-                 * We don't check for prototype vars, so people can overload the built
-                 * in functions (eg. Person.prototype.toString). HOWEVER if we did
-                 * this for 'this' then we couldn't say 'this.toString()'
-                 * */
-                if (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR))) // don't try and use builtins on the prototype var!
-                  child = jswFindBuiltInFunction(aVar, a/*name*/, name);
-
-                if (child == 0) {
-                  child = 0;
-                  // It wasn't handled... We already know this is an object so just add a new child
-                  if (jsvIsObject(aVar) || jsvIsFunction(aVar) || jsvIsArray(aVar)) {
-                    JsVar *value = 0;
-                    if (jsvIsFunction(aVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0)
-                      value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
-                    child = jsvAddNamedChild(aVar, value, name);
-                    jsvUnLock(value);
-                  } else {
-                    // could have been a string...
-                    jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
-                    jspSetError();
-                  }
-                  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
+              } else { // not found!
+                // It wasn't handled... We already know this is an object so just add a new child
+                if (jsvIsObject(aVar) || jsvIsFunction(aVar) || jsvIsArray(aVar)) {
+                  JsVar *value = 0;
+                  if (jsvIsFunction(aVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0)
+                    value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+                  child = jsvAddNamedChild(aVar, value, name);
+                  jsvUnLock(value);
+                } else {
+                  // could have been a string...
+                  jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
+                  jspSetError();
                 }
+                JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
               }
             } else {
                 jsErrorAt("Using '.' operator on non-object", execInfo.lex, execInfo.lex->tokenLastStart);

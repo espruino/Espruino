@@ -158,7 +158,7 @@ def getGetter(varType, name, funcName):
   if varType=="int32": return "(int)jsvGetInteger("+name+")"
   if varType=="bool": return "jsvGetBool("+name+")"
   if varType=="pin": return "jshGetPinFromVar("+name+")"
-  if varType=="JsVar" or varType=="JsVarName": return name
+  if varType=="JsVar": return name
   sys.stderr.write("ERROR: getGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
   exit(1)
 
@@ -174,7 +174,6 @@ def getCreator(varType, value, funcName):
 def toArgumentType(argName):
   if argName=="": return "JSWAT_VOID";
   if argName=="JsVar": return "JSWAT_JSVAR";
-  if argName=="JsVarName": return "JSWAT_JSVARNAME";
   if argName=="JsVarArray": return "JSWAT_ARGUMENT_ARRAY";
   if argName=="bool": return "JSWAT_BOOL";
   if argName=="pin": return "JSWAT_PIN";
@@ -187,7 +186,6 @@ def toArgumentType(argName):
 def toCType(argName):
   if argName=="": return "void";
   if argName=="JsVar": return "JsVar*";
-  if argName=="JsVarName": return "JsVar*";
   if argName=="JsVarArray": return "JsVar*";
   if argName=="bool": return "bool";
   if argName=="pin": return "Pin";
@@ -202,7 +200,6 @@ def hasThis(func):
 
 def getParams(func):
   params = []
-  if hasThis(func): params.append(["","JsVar",""]);
   if "params" in func:
     for param in func["params"]:  
       params.append(param) 
@@ -218,6 +215,8 @@ def getArgumentSpecifier(jsondata):
   params = getParams(jsondata)
   result = getResult(jsondata);
   s = [ toArgumentType(result[0]) ]
+  if hasThis(jsondata): s.append("JSWAT_THIS_ARG");
+
   n = 1
   for param in params:
     s.append("("+toArgumentType(param[1])+" << (JSWAT_BITS*"+str(n)+"))");
@@ -229,6 +228,7 @@ def getCDeclaration(jsondata):
   params = getParams(jsondata)
   result = getResult(jsondata);
   s = [ ]
+  if hasThis(jsondata): s.append("JsVar*");
   for param in params:
     s.append(toCType(param[1]));
   return toCType(result[0])+" (*)("+",".join(s)+")";
@@ -238,7 +238,6 @@ def getCDeclaration(jsondata):
 def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
   if "#if" in obj: codeOut(indent+"#if "+obj["#if"]);
-  codeOut(indent+"jspParseVariableName();")
   codeOut(indent+"return jspNewObject(\""+obj["name"]+"\", \""+obj["instanceof"]+"\");");
   if "#if" in obj: codeOut(indent+"#endif //"+obj["#if"]);
 
@@ -268,7 +267,7 @@ def codeOutFunction(indent, func):
     elif len(params)==1 and params[0][1]=="JsVarArray": 
       codeOut(indent+"JsVar *"+params[0][0]+" = jspParseFunctionAsArray();")
       codeOut(indent+"if (!"+params[0][0]+") return 0; // if parse error")
-    elif len(params)==1 and params[0][1]!="JsVarName": 
+    elif len(params)==1: 
       codeOut(indent+"JsVar *"+params[0][0]+" = jspParseSingleFunction();")
     elif len(params)<9:
       funcName = "jspParseFunction8"
@@ -284,7 +283,6 @@ def codeOutFunction(indent, func):
       for param in params:
         paramDefs.append("*"+param[0])
         paramPtrs.append("&"+param[0])
-        if param[1]=="JsVarName": skipNames = skipNames + "|JSP_NOSKIP_"+letters[n]
         n = n + 1
       while len(paramPtrs)<paramCount: paramPtrs.append("0")
       codeOut(indent+"JsVar "+', '.join(paramDefs)+";");
@@ -300,7 +298,7 @@ def codeOutFunction(indent, func):
       codeOut(indent+command+";");
     # note: generate_full doesn't use commandargs, so doesn't unlock
     for param in params:
-      if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarName" or param[1]=="JsVarArray":
+      if "generate_full" in func or param[1]=="JsVar" or param[1]=="JsVarArray":
         codeOut(indent+"jsvUnLock("+param[0]+");");
 
     if "return" in func: 
@@ -522,7 +520,7 @@ codeOut('')
 codeOut('')
 
 codeOut("/** Call a function with the given argument specifiers */")
-codeOut('JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount) {')
+codeOut('JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
 argSpecs = []
 for jsondata in jsondatas:
 #  if "generate" in jsondata:
@@ -535,6 +533,8 @@ for jsondata in jsondatas:
 
       n = 0
       argList = [ ]
+      if hasThis(jsondata):
+        argList.append("thisParam");
       for param in params:
         if param[1]=="JsVarArray":
           argList.append("jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+")");

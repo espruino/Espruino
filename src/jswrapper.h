@@ -19,7 +19,6 @@ typedef enum {
   JSWAT_FINISH = 0, // no argument
   JSWAT_VOID = 0, // Only for return values
   JSWAT_JSVAR, // standard variable
-  JSWAT_JSVARNAME = JSWAT_JSVAR, // variable without the name being stripped off
   JSWAT_ARGUMENT_ARRAY, // a JsVar array containing all subsequent arguments
   JSWAT_BOOL, // boolean
   JSWAT_INT32, // 32 bit int
@@ -27,7 +26,9 @@ typedef enum {
   JSWAT_JSVARINT, // 64 bit int
   JSWAT_JSVARFLOAT, // 64 bit float
   JSWAT__LAST = JSWAT_JSVARFLOAT,
-  JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1
+  JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1,
+
+  JSWAT_THIS_ARG = 0x8000000
 } JsnArgumentType;
 
 // number of bits needed for each argument bit
@@ -61,4 +62,4 @@ void jswInit();
 void jswKill();
 
 
-JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount);
+JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);

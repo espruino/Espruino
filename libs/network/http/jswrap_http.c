@@ -91,7 +91,7 @@ void jswrap_http_kill() {
          "class" : "http", "name" : "createServer",
          "generate" : "jswrap_http_createServer",
          "description" : ["Create an HTTP Server", "When a request to the server is made, the callback is called. In the callback you can use the methods on the response (httpSRs) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data" ],
-         "params" : [ [ "callback", "JsVarName", "A function(request,response) that will be called when a connection is made"] ],
+         "params" : [ [ "callback", "JsVar", "A function(request,response) that will be called when a connection is made"] ],
          "return" : ["JsVar", "Returns a new httpSrv object"]
 }*/
 
@@ -111,7 +111,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
          "generate" : "jswrap_http_request",
          "description" : ["Create an HTTP Request - end() must be called on it to complete the operation" ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
-                       [ "callback", "JsVarName", "A function(res) that will be called when a connection is made"] ],
+                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made"] ],
          "return" : ["JsVar", "Returns a new httpCRq object"]
 }*/
 
@@ -142,7 +142,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
          "generate" : "jswrap_http_get",
          "description" : ["Create an HTTP Request - convenience function for ```http.request()```. options.method is set to 'get', and end is called automatically" ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
-                       [ "callback", "JsVarName", "A function(res) that will be called when a connection is made"] ],
+                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made"] ],
          "return" : ["JsVar", "Returns a new httpCRq object"]
 }*/
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {

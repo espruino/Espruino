@@ -180,7 +180,7 @@ void jswrap_serial_write(JsVar *parent, JsVar *data) {
          "description" : ["When a character is received on this serial port, the function supplied to onData gets called.",
                           "Only one function can ever be supplied, so calling onData(undefined) will stop any function being called"],
          "generate" : "jswrap_serial_onData",
-         "params" : [ [ "function", "JsVarName", "A function to call when data arrives. It takes one argument, which is an object with a 'data' field"] ]
+         "params" : [ [ "function", "JsVar", "A function to call when data arrives. It takes one argument, which is an object with a 'data' field"] ]
 }*/
 void jswrap_serial_onData(JsVar *parent, JsVar *funcVar) {
   JsVar *skippedFunc = jsvSkipName(funcVar);
