@@ -16,13 +16,6 @@
 
 #include "jsutils.h"
 
-
-typedef void (*JsCallback)(JsVarRef var) 
-#ifdef SDCC
-__reentrant
-#endif
-;
-
 /** To avoid confusion - JsVarRefCounter should be big enough
  * to store as many refs as can possibly be created - so it's
  * safe just to set it to the same size as JsVarRef. However
@@ -71,7 +64,6 @@ typedef union {
     // TODO do some magic with union/structs in order to make sure we don't intentionally write off the end of arrays
     JsVarInt integer; ///< The contents of this variable if it is an int
     JsVarFloat floating; ///< The contents of this variable if it is a double
-    JsCallback callback; ///< Callback for native functions, or 0
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
 } PACKED_FLAGS JsVarData;

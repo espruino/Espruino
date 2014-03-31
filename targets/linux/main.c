@@ -12,14 +12,15 @@
 
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jswrapper.h"
 
 
 #define TEST_DIR "tests/"
 
 bool isRunning = true;
 
-static bool jspAddNativeFunction(const char *funcDesc, JsCallback callbackPtr) {
-  jsiConsolePrintf("jspAddNativeFunction is broken right now\n");
+void addNativeFunction(const char *name, void (*callbackPtr)(void)) {
+  jsvUnLock(jsvObjectSetChild(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID)));
 }
 
 
@@ -63,8 +64,8 @@ bool run_test(const char *filename) {
   jshInit();
   jsiInit(false /* do not autoload!!! */);
 
-  jspAddNativeFunction("function quit()", nativeQuit);
-  jspAddNativeFunction("function interrupt()", nativeInterrupt);
+  addNativeFunction("quit", nativeQuit);
+  addNativeFunction("interrupt", nativeInterrupt);
 
   jsvUnLock(jspEvaluate(buffer ));
 
@@ -233,7 +234,7 @@ int main(int argc, char **argv) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
         jsiInit(true);
-        jspAddNativeFunction("function quit()", nativeQuit);
+        addNativeFunction("quit", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1]));
         isRunning = true;
         bool isBusy = true;
@@ -282,7 +283,7 @@ int main(int argc, char **argv) {
     }
     jshInit();
     jsiInit(false /* do not autoload!!! */);
-    jspAddNativeFunction("function quit()", nativeQuit);
+    addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd ));
     free(buffer);
     isRunning = true;
@@ -323,8 +324,8 @@ int main(int argc, char **argv) {
   jshInit();
   jsiInit(true);
 
-  jspAddNativeFunction("function quit()", nativeQuit);
-  jspAddNativeFunction("function interrupt()", nativeInterrupt);
+  addNativeFunction("quit", nativeQuit);
+  addNativeFunction("interrupt", nativeInterrupt);
 
   while (isRunning) {
     jsiLoop();

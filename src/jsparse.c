@@ -519,8 +519,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     if (isParsing) JSP_MATCH('(');
 
     JsVar *oldThisVar = execInfo.thisVar;
-    if (thisArg) jsvRef(thisArg);
-    execInfo.thisVar = thisArg;
+    if (!thisArg) thisArg = execInfo.root; // 'this' should always default to root
+    execInfo.thisVar = jsvRef(thisArg);
 
     /* Ok, so we have 4 options here.
      *
