@@ -146,15 +146,20 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
     jsvUnLock(child);
   }
   cbprintf(user_callback, user_data, ") ");
-  if (coderef) {
-    if (flags & JSON_LIMIT) {
-      cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
-    } else {
-     JsVar *codeVar = jsvLock(coderef);
-     cbprintf(user_callback, user_data, "%v", codeVar);
-     jsvUnLock(codeVar);
-    }
-  } else cbprintf(user_callback, user_data, "{}");
+
+  if (jsvIsNative(var)) {
+    cbprintf(user_callback, user_data, "{ [native code] }");
+  } else {
+    if (coderef) {
+      if (flags & JSON_LIMIT) {
+        cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
+      } else {
+       JsVar *codeVar = jsvLock(coderef);
+       cbprintf(user_callback, user_data, "%v", codeVar);
+       jsvUnLock(codeVar);
+      }
+    } else cbprintf(user_callback, user_data, "{}");
+  }
 }
 
 void jsfGetEscapedString(JsVar *var, vcbprintf_callback user_callback, void *user_data) {
