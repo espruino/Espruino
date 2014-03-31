@@ -9,6 +9,7 @@
             Add JTAG to ignore list for some boards
             Fix LCD FSMC formatting and report if LCD is unknown
             You can now reference built-in functions. eg. [1,2,3].map(Math.sqrt)
+            Add Object.valueOf - help with #187
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)

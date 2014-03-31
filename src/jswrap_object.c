@@ -62,6 +62,15 @@ JsVar *jswrap_object_length(JsVar *parent) {
   return 0;
 }
 
+/*JSON{ "type":"method", "class": "Object", "name" : "valueOf",
+         "description" : "Returns the primitive value of this object.",
+         "generate" : "jswrap_object_valueOf",
+         "return" : ["JsVar", "The primitive value of this object"]
+}*/
+JsVar *jswrap_object_valueOf(JsVar *parent) {
+  return jsvLockAgain(parent);
+}
+
 /*JSON{ "type":"method", "class": "Object", "name" : "toString",
          "description" : "Convert the Object to a string",
          "generate" : "jswrap_object_toString",

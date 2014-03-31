@@ -14,6 +14,7 @@
 #include "jsvar.h"
 
 JsVar *jswrap_object_length(JsVar *parent);
+JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
 JsVar *jswrap_object_keys(JsVar *obj);
