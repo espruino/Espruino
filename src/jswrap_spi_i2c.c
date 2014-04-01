@@ -119,9 +119,9 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   JshSPIInfo inf;
   jswrap_spi_populate_info(&inf, options);
 
-  if (device!=EV_NONE) {
+  if (DEVICE_IS_SPI(device)) {
     jshSPISetup(device, &inf);
-  } else {
+  } else if (device == EV_NONE) {
     // software mode - at least configure pins properly
     if (inf.pinSCK != PIN_UNDEFINED)
       jshPinSetState(inf.pinSCK,  JSHPINSTATE_GPIO_OUT);
@@ -129,7 +129,7 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
       jshPinSetState(inf.pinMISO,  JSHPINSTATE_GPIO_IN);
     if (inf.pinMOSI != PIN_UNDEFINED)
       jshPinSetState(inf.pinMOSI,  JSHPINSTATE_GPIO_OUT);
-  }
+  } else return;
   // Set up options, so we can initialise it on startup
   if (options)
     jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
@@ -153,7 +153,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
 
   spi_sender spiSend;
   void *spiSendData;
-  if (device != EV_NONE) {
+  if (DEVICE_IS_SPI(device)) {
     if (!jshIsDeviceInitialised(device)) {
       JshSPIInfo inf;
       jshSPIInitInfo(&inf);
@@ -161,14 +161,14 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     }
     spiSend = spi_sender_hardware;
     spiSendData = &device;
-  } else {
+  } else if (device == EV_NONE) {
     JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
     JshSPIInfo inf;
     jswrap_spi_populate_info(&inf, options);
     jsvUnLock(options);
     spiSend = spi_sender_software;
     spiSendData = &inf;
-  }
+  } else return 0;
 
   JsVar *dst = 0;
 
@@ -297,8 +297,8 @@ void spi_send8bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (device == EV_NONE) {
-    jsError("SPI.send4bit doesn't work on Software SPI");
+  if (!DEVICE_IS_SPI(device)) {
+    jsError("SPI.send4bit only works on hardware SPI");
     return;
   }
 
@@ -355,8 +355,8 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (device == EV_NONE) {
-    jsError("SPI.send4bit doesn't work on Software SPI");
+  if (!DEVICE_IS_SPI(device)) {
+    jsError("SPI.send8bit only works on hardware SPI");
     return;
   }
   jshSPISet16(device, true); // 16 bit output
@@ -429,6 +429,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 }*/
 void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_I2C(device)) return;
   JshI2CInfo inf;
   jshI2CInitInfo(&inf);
   if (jsvIsObject(options)) {
@@ -455,6 +456,7 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
 
 void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_I2C(device)) return;
 
   if (jsvIsNumeric(data)) {
     unsigned char buf[1];
@@ -490,6 +492,9 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
          "return" : [ "JsVar", "The data that was returned - an array of bytes" ]
 }*/
 JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_I2C(device)) return 0;
+
   if (nBytes<=0)
     return 0;
   if ((unsigned int)nBytes+256 > jsuGetFreeStack()) {
@@ -498,7 +503,6 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
   }
   unsigned char *buf = (unsigned char *)alloca((size_t)nBytes);
 
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
   jshI2CRead(device, (unsigned char)address, nBytes, buf);
 
   // OPT: could use ArrayBuffer for return values

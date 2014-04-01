@@ -69,6 +69,8 @@
 }*/
 void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
 
@@ -139,6 +141,8 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
 void _jswrap_serial_print(JsVar *parent, JsVar *str, bool newLine) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+
   str = jsvAsString(str, false);
   jsiTransmitStringVar(device,str);
   jsvUnLock(str);
@@ -161,6 +165,8 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
 void jswrap_serial_write(JsVar *parent, JsVar *data) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+
   if (jsvIsNumeric(data)) {
     jshTransmit(device, (unsigned char)jsvGetInteger(data));
   } else if (jsvIsIterable(data)) {
@@ -183,6 +189,9 @@ void jswrap_serial_write(JsVar *parent, JsVar *data) {
          "params" : [ [ "function", "JsVar", "A function to call when data arrives. It takes one argument, which is an object with a 'data' field"] ]
 }*/
 void jswrap_serial_onData(JsVar *parent, JsVar *func) {
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsiConsolePrint("Function or String not supplied - removing onData handler.\n");
     JsVar *handler = jsvFindChildFromString(parent, USART_CALLBACK_NAME, false);
