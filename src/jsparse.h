@@ -104,16 +104,7 @@ typedef enum {
   JSP_NOSKIP_H = 128,
 } JspSkipFlags;
 
-/// parse function with max 4 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
-bool jspParseFunction(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d);
-/// parse function with max 8 arguments (can set arg to 0 to avoid parse). Usually first arg will be 0, but if we DON'T want to skip names on an arg stuff, we can say
-bool jspParseFunction8(JspSkipFlags skipName, JsVar **a, JsVar **b, JsVar **c, JsVar **d, JsVar **e, JsVar **f, JsVar **g, JsVar **h);
-
-bool jspParseVariableName();     ///< parse single variable name
 bool jspParseEmptyFunction();    ///< parse function with no arguments
-JsVar *jspParseSingleFunction(); ///< parse function with a single argument, return its value (no names!)
-JsVar *jspParseFunctionAsArray(); ///< parse a function with any number of argument, and return an array of de-named aruments
-NO_INLINE int jspParseFunctionIntoArray(JsVar **array, int arraySize); ///< parse a function with any number of arguments into the given array, and return the size
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
