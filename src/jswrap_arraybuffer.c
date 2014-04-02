@@ -198,7 +198,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   JsVar *arrayBuffer = 0;
   if (jsvIsArrayBuffer(arr)) {
     arrayBuffer = jsvLockAgain(arr);
-  } else if (jsvIsInt(arr)) {
+  } else if (jsvIsNumeric(arr)) {
     length = jsvGetInteger(arr);
     byteOffset = 0;
     arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
@@ -209,7 +209,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     // later on we'll populate this
   }
   if (!arrayBuffer) {
-    jsError("Unsupported first argument\n");
+    jsError("Unsupported first argument of type %t\n", arr);
     return 0;
   }
   if (length==0) length = (JsVarInt)(jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type));
