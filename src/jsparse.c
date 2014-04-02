@@ -1033,10 +1033,10 @@ NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
     JSP_MATCH(execInfo.lex->tk);
     if (JSP_SHOULD_EXECUTE) {
         JsVar *one = jsvNewFromInteger(1);
-        JsVar *res = jsvMathsOpSkipNames(a, one, op==LEX_PLUSPLUS ? '+' : '-');
-        JsVar *oldValue;
+        JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(a)); // keep the old value (but convert to number)
+        JsVar *res = jsvMathsOpSkipNames(oldValue, one, op==LEX_PLUSPLUS ? '+' : '-');
         jsvUnLock(one);
-        oldValue = jsvSkipName(a); // keep the old value
+
         // in-place add/subtract
         jspReplaceWith(a, res);
         jsvUnLock(res);
