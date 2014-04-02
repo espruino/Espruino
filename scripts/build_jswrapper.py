@@ -531,20 +531,26 @@ for jsondata in jsondatas:
 
       n = 0
       argList = [ ]
+      cleanupList = []
       if hasThis(jsondata):
         argList.append("thisParam");
       for param in params:
-        if param[1]=="JsVarArray":
-          argList.append("jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+")");
+        if param[1]=="JsVarArray":   
+          codeOut("     JsVar *argArray = jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+");");       
+          argList.append("argArray")
+          cleanupList.append("jsvUnLock(argArray);")
         else:
           argList.append(getGetter(param[1] , str(n)+"<paramCount ? paramData["+str(n)+"] : 0", "jswCallFunction"));
         n = n+1;
 
 
       if result[0]!="":
-        codeOut('    return '+getCreator(result[0], '(('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+')',"jswCallFunction")+';')
+        codeOut('    JsVar *_r = '+getCreator(result[0], '(('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+')',"jswCallFunction")+';')
+        codeOut('    '+"\n    ".join(cleanupList))        
+        codeOut('    return _r;')        
       else:      
         codeOut('    (('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+');')
+        codeOut('    '+"\n    ".join(cleanupList))        
         codeOut('    return 0/*undefined*/;')            
       codeOut('  }') 
 
