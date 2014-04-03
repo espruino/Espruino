@@ -58,6 +58,10 @@ const char *escapeCharacter(char ch) {
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
 JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+  if (forceRadix > 36) {
+    if (hasError) *hasError = true;
+    return 0;
+  }
 
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
@@ -324,7 +328,7 @@ JsVarFloat stringToFloat(const char *s) {
 
 char itoch(int val) {
   if (val<10) return (char)('0'+val);
-  return (char)('A'+val-10);
+  return (char)('a'+val-10);
 }
 
 #ifndef HAS_STDLIB
