@@ -24,6 +24,7 @@
             Fix issues with NaN, negative zero, and Math.round
             Fix equality checks with null
             Fix comparison of integers with empty string/whitespace+number
+            Finally accept defeat and switch to '-Os' for Espruino compile
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)
