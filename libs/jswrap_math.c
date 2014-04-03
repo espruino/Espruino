@@ -15,6 +15,11 @@
  */
 #include "jswrap_math.h"
 
+static bool isNegativeZero(double x) {
+  double NEGATIVE_ZERO = -0.0;
+  return *((long long*)&x) == *((long long*)&NEGATIVE_ZERO);
+}
+
 /*JSON{ "type":"class",
         "class" : "Math",
         "description" : "This is a standard JavaScript class that contains useful Maths routines"
@@ -39,6 +44,38 @@
          "generate_full" : "PI",
          "return" : ["float", "The value of PI - 3.141592653589793"]
 }*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "LN2",
+         "generate_full" : "0.6931471805599453",
+         "return" : ["float", "The natural logarithm of 2 - 0.6931471805599453"]
+}*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "LN10",
+         "generate_full" : "2.302585092994046",
+         "return" : ["float", "The natural logarithm of 10 - 2.302585092994046"]
+}*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "LOG2E",
+         "generate_full" : "1.4426950408889634",
+         "return" : ["float", "The base 2 logarithm of e - 1.4426950408889634"]
+}*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "LOG10E",
+         "generate_full" : "0.4342944819032518",
+         "return" : ["float", "The base 10 logarithm of e - 0.4342944819032518"]
+}*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "SQRT2",
+         "generate_full" : "1.4142135623730951",
+         "return" : ["float", "The square root of 2 - 1.4142135623730951"]
+}*/
+/*JSON{ "type":"staticproperty",
+         "class" : "Math", "name" : "SQRT1_2",
+         "generate_full" : "0.7071067811865476",
+         "return" : ["float", "The square root of 1/2 - 0.7071067811865476"]
+}*/
+
+
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "abs",
          "generate" : "jswrap_math_abs",
@@ -140,10 +177,19 @@ double jswrap_math_pow(double x, double y) {
 }*/
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "round",
-         "generate_full" : "(JsVarInt)round(x)",
+         "generate" : "jswrap_math_round",
          "params" : [ [ "x", "float", "The value to round"] ],
-         "return" : ["int", "x, rounded to the nearest integer"]
+         "return" : ["JsVar", "x, rounded to the nearest integer"]
 }*/
+JsVar *jswrap_math_round(double x) {
+  if (!isfinite(x) || isNegativeZero(x)) return jsvNewFromFloat(x);
+  x += (x<0) ? -0.4999999999 : 0.4999999999;
+  JsVarInt i = (JsVarInt)x;
+  if (i==0 && (x<0))
+    return jsvNewFromFloat(-0.0); // pass -0 through
+  return jsvNewFromInteger(i);
+}
+
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "sin",
          "generate" : "sin",

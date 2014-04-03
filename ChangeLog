@@ -21,6 +21,7 @@
             Fix `1 in [2,3,4]` behaviour - it searches keys, not values
             Make parseInt(..., >36) return NaN
             Make Number.toString() use lowercase chars for hex
+            Fix issues with NaN, negative zero, and Math.round
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)
