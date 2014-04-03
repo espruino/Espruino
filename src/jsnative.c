@@ -14,6 +14,9 @@
 
 #include "jsnative.h"
 
+#if 0
+// none of this is used at the moment
+
 #define MAX_ARGS 10
 
 
@@ -21,9 +24,9 @@ typedef uint32_t (*fn_4_32)(size_t,size_t,size_t,size_t);
 typedef uint64_t (*fn_4_64)(size_t,size_t,size_t,size_t);
 
 JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount) {
-  JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSNAT_MASK);
-  JsVar *argsArray = 0; // if JSNAT_ARGUMENT_ARRAY is ever used (note it'll only ever be used once)
-  argumentSpecifier >>= JSNAT_BITS;
+  JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
+  JsVar *argsArray = 0; // if JSWAT_ARGUMENT_ARRAY is ever used (note it'll only ever be used once)
+  argumentSpecifier >>= JSWAT_BITS;
   int paramNumber = 0;
   int argCount = 0;
   size_t argData[MAX_ARGS];
@@ -32,13 +35,13 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
     JsVar *param = (paramNumber<paramCount) ? paramData[paramNumber] : (JsVar *)0;
     paramNumber++;
     // try and pack it:
-    JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSNAT_MASK);
+    JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
     switch (argType) {
-      case JSNAT_JSVAR: { // standard variable
+      case JSWAT_JSVAR: { // standard variable
         argData[argCount++] = param;
         break;
       }
-      case JSNAT_ARGUMENT_ARRAY: { // a JsVar array containing all subsequent arguments
+      case JSWAT_ARGUMENT_ARRAY: { // a JsVar array containing all subsequent arguments
         argsArray = jsvNewWithFlags(JSV_ARRAY);
         if (argsArray) {
           // push everything into the array
@@ -52,16 +55,16 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
         argData[argCount++] = argsArray;
         break;
       }
-      case JSNAT_BOOL: // boolean
+      case JSWAT_BOOL: // boolean
         argData[argCount++] = jsvGetBool(param);
         break;
-      case JSNAT_INT16: // 16 bit int
+      case JSWAT_INT16: // 16 bit int
         argData[argCount++] = (uint32_t)(jsvGetInteger(param) & 0xFFFF);
         break;
-      case JSNAT_INT32: // 32 bit int
+      case JSWAT_INT32: // 32 bit int
         argData[argCount++] = (uint32_t)(jsvGetInteger(param) & 0xFFFFFFFF);
         break;
-      case JSNAT_JSVARINT: { // 64 bit int
+      case JSWAT_JSVARINT: { // 64 bit int
         uint64_t i = (uint64_t)jsvGetInteger(param);
 #if __WORDSIZE == 64
         argData[argCount++] = i;
@@ -71,7 +74,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
 #endif
         break;
       }
-      case JSNAT_JSVARFLOAT: { // 64 bit float
+      case JSWAT_JSVARFLOAT: { // 64 bit float
         JsVarFloat f = jsvGetFloat(param);;
         uint64_t i = *(uint64_t*)&f;
 #if __WORDSIZE == 64
@@ -87,10 +90,10 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
         break;
     }
     // on to next!
-    argumentSpecifier >>= JSNAT_BITS;
+    argumentSpecifier >>= JSWAT_BITS;
   }
 
-  bool return64 = JSNAT_IS_64BIT(returnType);
+  bool return64 = JSWAT_IS_64BIT(returnType);
 
   uint64_t result;
 
@@ -102,19 +105,19 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
   jsvUnLock(argsArray);
 
   switch (returnType) {
-    case JSNAT_VOID:
+    case JSWAT_VOID:
       return 0;
-    case JSNAT_JSVAR: // standard variable
-    case JSNAT_ARGUMENT_ARRAY: // a JsVar array containing all subsequent arguments
+    case JSWAT_JSVAR: // standard variable
+    case JSWAT_ARGUMENT_ARRAY: // a JsVar array containing all subsequent arguments
       return (JsVar*)result;
-    case JSNAT_BOOL: // boolean
+    case JSWAT_BOOL: // boolean
       return jsvNewFromBool(result!=0);
       break;
-    case JSNAT_INT16: // 16 bit int
-    case JSNAT_INT32: // 32 bit int
-    case JSNAT_JSVARINT: // 64 bit int
+    case JSWAT_INT16: // 16 bit int
+    case JSWAT_INT32: // 32 bit int
+    case JSWAT_JSVARINT: // 64 bit int
       return jsvNewFromInteger((JsVarInt)result);
-    case JSNAT_JSVARFLOAT: // 64 bit float
+    case JSWAT_JSVARFLOAT: // 64 bit float
       return jsvNewFromFloat(*(JsVarFloat*)&result);
     default:
       assert(0);
@@ -122,3 +125,4 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
   }
 }
 
+#endif

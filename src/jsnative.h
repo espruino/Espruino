@@ -15,41 +15,25 @@
 #ifndef JSNATIVE_H
 #define JSNATIVE_H
 
+// not used at the moment
+#if 0
+
 #include "jsutils.h"
 #include "jsvar.h"
 
 #include <stdint.h> // uint32_t
 
-typedef enum {
-  JSNAT_FINISH = 0, // no argument
-  JSNAT_VOID = 0, // Only for return values
-  JSNAT_JSVAR, // standard variable
-  JSNAT_JSVARNAME, // variable without the name being stripped off
-  JSNAT_ARGUMENT_ARRAY, // a JsVar array containing all subsequent arguments
-  JSNAT_BOOL, // boolean
-  JSNAT_INT16, // 16 bit int
-  JSNAT_INT32, // 32 bit int
-  JSNAT_PIN, // A pin
-  JSNAT_JSVARINT, // 64 bit int
-  JSNAT_JSVARFLOAT, // 64 bit float
-  JSNAT__LAST = JSNAT_JSVARFLOAT,
-  JSNAT_MASK = NEXT_POWER_2(JSNAT__LAST)-1
-} JsnArgumentType;
-
-// number of bits needed for each argument bit
-#define JSNAT_BITS GET_BIT_NUMBER(JSNAT_MASK+1)
-
 #if __WORDSIZE == 64
  #define JSNAT_IS_64BIT(N) (\
-  (N)==JSNAT_JSVAR || \
-  (N)==JSNAT_ARGUMENT_ARRAY || \
-  (N)==JSNAT_JSVARINT || \
-  (N)==JSNAT_JSVARFLOAT \
+  (N)==JSWAT_JSVAR || \
+  (N)==JSWAT_ARGUMENT_ARRAY || \
+  (N)==JSWAT_JSVARINT || \
+  (N)==JSWAT_JSVARFLOAT \
  )
 #else
-#define JSNAT_IS_64BIT(N) (\
-  (N)==JSNAT_JSVARINT || \
-  (N)==JSNAT_JSVARFLOAT \
+#define JSWAT_IS_64BIT(N) (\
+  (N)==JSWAT_JSVARINT || \
+  (N)==JSWAT_JSVARFLOAT \
  )
 #endif
 
@@ -57,5 +41,7 @@ typedef enum {
  * is the return type
  */
 JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount);
+
+#endif
 
 #endif //JSNATIVE_H

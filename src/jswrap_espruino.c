@@ -15,6 +15,8 @@
  */
 #include "jswrap_espruino.h"
 #include "libs/jswrap_math.h"
+#include "jswrapper.h"
+#include "jsinteractive.h"
 
 /*JSON{ "type":"class",
         "class" : "E",
@@ -35,6 +37,73 @@
          "description" : "Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` ",
          "return" : ["float", "The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
 }*/
+
+
+int nativeCallGetCType(JsLex *lex) {
+  if (lex->tk == LEX_R_VOID) {
+    jslMatch(lex, LEX_R_VOID);
+    return JSWAT_VOID;
+  }
+  if (lex->tk == LEX_ID) {
+    int t = -1;
+    char *name = jslGetTokenValueAsString(lex);
+    if (strcmp(name,"int")==0) t=JSWAT_INT32;
+    if (strcmp(name,"long")==0) t=JSWAT_JSVARINT;
+    if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
+    if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
+    if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
+    if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
+    jslMatch(lex, LEX_ID);
+    return t;
+  }
+  return -1; // unknown
+}
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "nativeCall",
+         "generate" : "jswrap_espruino_nativeCall",
+         "description" : ["ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing",
+                          "Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)` ",
+                          "If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.",
+                          "Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses."],
+         "params" : [ [ "addr", "int", "The address in memory of the function"],
+                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`long`,`double`,`Pin`,`JsVar`"] ],
+         "return" : ["JsVar", "The native function"]
+}*/
+JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
+  unsigned int argTypes = 0;
+  if (jsvIsUndefined(signature)) {
+    // Nothing to do
+  } else if (jsvIsString(signature)) {
+    JsLex lex;
+    jslInit(&lex, signature);
+    int argType;
+    bool ok = true;
+    int argNumber = 0;
+    argType = nativeCallGetCType(&lex);
+    if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
+    else ok = false;
+    if (ok) ok = jslMatch(&lex, '(');
+    while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
+      argType = nativeCallGetCType(&lex);
+      if (argType>=0) {
+        argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
+        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+      } else ok = false;
+    }
+    if (ok) ok = jslMatch(&lex, ')');
+    jslKill(&lex);
+    if (!ok) {
+      jsError("Error Parsing signature at argument number %d", argNumber);
+      return 0;
+    }
+  } else {
+    jsError("Invalid Signature");
+    return 0;
+  }
+
+  return jsvNewNativeFunction((void *)addr, argTypes);
+}
 
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
@@ -325,4 +394,3 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   if (time<0 || isnan(time)) time=1;
   jshEnableWatchDog(time);
 }
-
