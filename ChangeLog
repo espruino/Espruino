@@ -18,6 +18,7 @@
             Fix hardware SPI regression (getting out of sync after ArrayBuffer write)
             Removed non-standard Integer.valueOf - use "A".charCodeAt(0)
             Fix non-standard ArrayBuffer behaviour when constructing an ArrayBuffer from an ArrayBufferView
+            Fix `1 in [2,3,4]` behaviour - it searches keys, not values
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)

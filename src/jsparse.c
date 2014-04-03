@@ -1164,10 +1164,10 @@ NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
         if (JSP_SHOULD_EXECUTE) {
           JsVar *res = 0;
           if (op==LEX_R_IN) {
-            JsVar *av = jsvSkipName(a);
-            JsVar *bv = jsvSkipName(b);
-            if (jsvIsArray(bv) || jsvIsObject(bv)) {
-              JsVar *varFound = jsvGetArrayIndexOf(bv, av, false/*not exact*/); // ArrayIndexOf will return 0 if not found
+            JsVar *av = jsvSkipName(a); // needle
+            JsVar *bv = jsvSkipName(b); // haystack
+            if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+              JsVar *varFound = jsvFindChildFromVar( bv, av, false);
               res = jsvNewFromBool(varFound!=0);
               jsvUnLock(varFound);
             } // else it will be undefined
