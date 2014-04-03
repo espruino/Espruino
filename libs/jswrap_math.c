@@ -154,7 +154,7 @@ double jswrap_math_pow(double x, double y) {
 }*/
 /*JSON{ "type":"staticmethod",
          "class" : "Math", "name" : "round",
-         "generate" : "(JsVarInt)round",
+         "generate_full" : "(JsVarInt)round(x)",
          "params" : [ [ "x", "float", "The value to round"] ],
          "return" : ["int", "x, rounded to the nearest integer"]
 }*/

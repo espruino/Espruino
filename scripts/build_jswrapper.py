@@ -208,6 +208,9 @@ def codeOutFunction(indent, func):
   
   if ("generate" in func):
     gen_name = func["generate"]
+    if re.match('^[\w_]+$', gen_name) is None:
+      sys.stderr.write("ERROR: generate for '"+func["name"]+"' is not simple function name: '"+gen_name+"'\n")
+      exit(1)
   else:
     sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
     exit(1)
