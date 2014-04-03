@@ -63,10 +63,10 @@ typedef enum {
  EV_EXTI_IS_HIGH = NEXT_POWER_2(EV_DEVICE_MAX),
 } PACKED_FLAGS IOEventFlags;
 
-#define DEVICE_IS_USART(X) (((X)>=EV_USBSERIAL)&& ((X)<=EV_SERIAL_MAX))
-#define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) || ((X)<=EV_SPI_MAX))
-#define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) || ((X)<=EV_I2C_MAX))
-#define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) || ((X)<=EV_EXTI_MAX))
+#define DEVICE_IS_USART(X) (((X)>=EV_USBSERIAL) && ((X)<=EV_SERIAL_MAX))
+#define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
+#define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
+#define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
 
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 #define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
