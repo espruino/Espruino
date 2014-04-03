@@ -204,6 +204,7 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
     case JSHPINSTATE_AF_OUT : text = "af_output"; break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN : text = "af_opendrain"; break;
+    default: break;
   }
   if (text) return jsvNewFromString(text);
   return 0;

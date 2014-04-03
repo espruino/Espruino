@@ -186,7 +186,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, srcdata);
     int incount = 0, outcount = 0;
-    while (jsvArrayIteratorHasElement(&it)) {
+    while (jsvArrayIteratorHasElement(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
       incount++;
       int out = spiSend(in, spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
@@ -199,7 +199,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     }
     jsvArrayIteratorFree(&it);
     // finally add the remaining bytes  (no send!)
-    while (outcount < incount) {
+    while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
       int out = spiSend(-1, spiSendData);
       JsVar *outVar = jsvNewFromInteger(out);
@@ -210,7 +210,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, srcdata, 0);
     int incount = 0, outcount = 0;
-    while (jsvStringIteratorHasChar(&it)) {
+    while (jsvStringIteratorHasChar(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvStringIteratorGetChar(&it);
       incount++;
       int out = spiSend(in, spiSendData);
@@ -223,7 +223,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     }
     jsvStringIteratorFree(&it);
     // finally add the remaining bytes  (no send!)
-    while (outcount < incount) {
+    while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
       unsigned char out = (unsigned char)spiSend(-1, spiSendData);
       jsvAppendStringBuf(dst, (char*)&out, 1);
@@ -237,14 +237,26 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     JsvArrayBufferIterator dstit;
     jsvIteratorNew(&it, srcdata);
     jsvArrayBufferIteratorNew(&dstit, dst, 0);
-    while (jsvIteratorHasElement(&it)) {
+    int incount = 0, outcount = 0;
+    while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
+      incount++;
       int out = spiSend(in, spiSendData);
-      jsvArrayBufferIteratorSetIntegerValue(&dstit, out);
+      if (out>=0) {
+        outcount++;
+        jsvArrayBufferIteratorSetIntegerValue(&dstit, (char)out);
+        jsvArrayBufferIteratorNext(&dstit);
+      }
       jsvIteratorNext(&it);
-      jsvArrayBufferIteratorNext(&dstit);
+
     }
     jsvIteratorFree(&it);
+    // finally add the remaining bytes  (no send!)
+    while (outcount < incount && !jspIsInterrupted()) {
+      outcount++;
+      jsvArrayBufferIteratorSetIntegerValue(&dstit, (unsigned char)spiSend(-1, spiSendData));
+      jsvArrayBufferIteratorNext(&dstit);
+    }
     jsvArrayBufferIteratorFree(&dstit);
   } else {
     jsError("Variable type not suited to transmit operation");
