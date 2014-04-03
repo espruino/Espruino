@@ -21,12 +21,11 @@ var a = [
   foo.indexOf("bar")==4, 
   foo.substring(8,13)=="stuff",
   parsed==42,
-  Integer.valueOf(aChar)==65,
+  aChar.charCodeAt(0)==65,
   obj1.food=="cake",
   obj2.desert=="pie",
   aChar=="A",
   bChar=="B"
 ];
-var d = Integer.valueOf(aChar);
 
-result = a[0]&&a[1]&&a[2]&&a[3]&&a[4]&&a[5]&&a[6]&&a[7]&&a[8];
+result = a[0]&&a[1]&&a[2]&&a[3]&&a[4]&&a[5]&&a[6]&&a[7];

@@ -20,20 +20,6 @@
         "description" : "This is a standard JavaScript class that contains useful Maths routines"
 }*/
 
-// -------------------------------------------------------------------- Integer
-/*JSON{ "type":"staticmethod",
-         "class" : "Integer", "name" : "valueOf",
-         "generate" : "jswrap_integer_valueOf",
-         "description" : "Given a string containing a single character, return the numeric value of it",
-         "params" : [ [ "character" ,"JsVar", "A string containing a single character"] ],
-         "return" : ["int", "The integer value of char"]
-}*/
-JsVarInt jswrap_integer_valueOf(JsVar *v) {
-  if (!jsvIsString(v) || jsvGetStringLength(v)!=1)
-    return 0;
-  return (int)v->varData.str[0];
-}
-
  // -------------------------------------------------------------------- Double
 /*JSON{ "type":"staticmethod",
          "class" : "Double", "name" : "doubleToIntBits",

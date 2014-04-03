@@ -16,6 +16,7 @@
             Fix Math.round regression and add checks to ensure it can't happen again
             Fix DEVICE_IS_XXX defines (fix SW SPI regression)
             Fix hardware SPI regression (getting out of sync after ArrayBuffer write)
+            Removed non-standard Integer.valueOf - use "A".charCodeAt(0)
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)
