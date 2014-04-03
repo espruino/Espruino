@@ -22,6 +22,7 @@
             Make parseInt(..., >36) return NaN
             Make Number.toString() use lowercase chars for hex
             Fix issues with NaN, negative zero, and Math.round
+            Fix equality checks with null
 
      1v59 : (function(){})?1:0 should == 1 (fix #261)
             Fix Math.pow (Fix #260)

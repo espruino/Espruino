@@ -1980,8 +1980,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 case LEX_LSHIFT: return jsvNewFromInteger(da << db);
                 case LEX_RSHIFT: return jsvNewFromInteger(da >> db);
                 case LEX_RSHIFTUNSIGNED: return jsvNewFromInteger((JsVarInt)(((JsVarIntUnsigned)da) >> db));
-                case LEX_EQUAL:     return jsvNewFromBool(da==db);
-                case LEX_NEQUAL:    return jsvNewFromBool(da!=db);
+                case LEX_EQUAL:     return jsvNewFromBool(da==db && jsvIsNull(a)==jsvIsNull(b));
+                case LEX_NEQUAL:    return jsvNewFromBool(da!=db || jsvIsNull(a)!=jsvIsNull(b));
                 case '<':           return jsvNewFromBool(da<db);
                 case LEX_LEQUAL:    return jsvNewFromBool(da<=db);
                 case '>':           return jsvNewFromBool(da>db);
