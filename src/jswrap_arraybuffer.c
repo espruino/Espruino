@@ -128,7 +128,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
  */
 
 /*JSON{ "type":"constructor", "class": "Uint8Array",  "name": "Uint8Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -136,7 +136,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Int8Array",  "name": "Int8Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT8, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -144,7 +144,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Uint16Array",  "name": "Uint16Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT16, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -152,7 +152,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Int16Array",  "name": "Int16Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT16, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -160,7 +160,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Uint32Array",  "name": "Uint32Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -168,7 +168,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Int32Array",  "name": "Int32Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_INT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -176,7 +176,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Float32Array",  "name": "Float32Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT32, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -184,7 +184,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
          "return" : [ "JsVar", "A typed array" ]
 }*/
 /*JSON{ "type":"constructor", "class": "Float64Array",  "name": "Float64Array",
-         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array",
+         "description" : "Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.",
          "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_FLOAT64, arr, byteOffset, length)",
          "params" : [ [ "arr", "JsVar", "The array or typed array to base this off, or an integer which is the array length" ],
                       [ "byteOffset", "int", "The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)" ],
@@ -196,17 +196,19 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
 
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length) {
   JsVar *arrayBuffer = 0;
-  if (jsvIsArrayBuffer(arr)) {
+  // Only allow use of byteOffset/length if we're passing an ArrayBuffer - NOT A VIEW.
+  bool copyData = false;
+  if (jsvIsArrayBuffer(arr) && arr->varData.arraybuffer.type==ARRAYBUFFERVIEW_ARRAYBUFFER) {
     arrayBuffer = jsvLockAgain(arr);
   } else if (jsvIsNumeric(arr)) {
     length = jsvGetInteger(arr);
     byteOffset = 0;
     arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
-  } else if (jsvIsArray(arr)) {
-    length = (JsVarInt)jsvGetArrayLength(arr);
+  } else if (jsvIsArray(arr) || jsvIsArrayBuffer(arr)) {
+    length = (JsVarInt)jsvGetLength(arr);
     byteOffset = 0;
     arrayBuffer = jswrap_arraybuffer_constructor((int)JSV_ARRAYBUFFER_GET_SIZE(type)*length);
-    // later on we'll populate this
+    copyData = true; // so later on we'll populate this
   }
   if (!arrayBuffer) {
     jsError("Unsupported first argument of type %t\n", arr);
@@ -220,21 +222,21 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     typedArr->varData.arraybuffer.length = (unsigned short)length;
     typedArr->firstChild = jsvGetRef(jsvRef(arrayBuffer));
 
-    if (jsvIsArray(arr)) {
+    if (copyData) {
       // if we were given an array, populate this ArrayBuffer
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, arr);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *idx = jsvArrayIteratorGetIndex(&it);
+      JsvIterator it;
+      jsvIteratorNew(&it, arr);
+      while (jsvIteratorHasElement(&it)) {
+        JsVar *idx = jsvIteratorGetKey(&it);
         if (jsvIsInt(idx)) {
-          JsVar *val = jsvArrayIteratorGetElement(&it);
+          JsVar *val = jsvIteratorGetValue(&it);
           jsvArrayBufferSet(typedArr, (size_t)jsvGetInteger(idx), val);
           jsvUnLock(val);
         }
         jsvUnLock(idx);
-        jsvArrayIteratorNext(&it);
+        jsvIteratorNext(&it);
       }
-      jsvArrayIteratorFree(&it);
+      jsvIteratorFree(&it);
     }
   }
   jsvUnLock(arrayBuffer);
