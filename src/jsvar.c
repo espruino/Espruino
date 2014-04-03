@@ -995,6 +995,11 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   assert(jsvIsString(var));
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, var, 0); // we know it's non const
+
+  // skip whitespace
+  while (jsvStringIteratorHasChar(&it) && isWhitespace(jsvStringIteratorGetChar(&it)))
+    jsvStringIteratorNext(&it);
+
   // skip a minus. if there was one
   if (jsvStringIteratorHasChar(&it) && jsvStringIteratorGetChar(&it)=='-')
     jsvStringIteratorNext(&it);
@@ -1012,7 +1017,7 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  return chars>0;
+  return true;
 }
 
 /** Does this string contain only Numeric characters? This is for arrays
@@ -1951,6 +1956,16 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 
     bool needsInt = op=='&' || op=='|' || op=='^' || op=='%' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
     bool needsNumeric = needsInt || op=='*' || op=='/' || op=='%' || op=='-';
+    bool isCompare = op==LEX_EQUAL || op==LEX_NEQUAL || op=='<' || op==LEX_LEQUAL || op=='>'|| op==LEX_GEQUAL;
+    if (isCompare) {
+      if (jsvIsNumeric(a) && jsvIsString(b)) {
+        needsNumeric = true;
+        needsInt = jsvIsIntegerish(a) && jsvIsStringNumericInt(b, false);
+      } else if (jsvIsNumeric(b) && jsvIsString(a)) {
+        needsNumeric = true;
+        needsInt = jsvIsIntegerish(b) && jsvIsStringNumericInt(a, false);
+      }
+    }
 
     // do maths...
     if (jsvIsUndefined(a) && jsvIsUndefined(b)) {
