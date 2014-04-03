@@ -22,5 +22,3 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
 
 
 void jswrap_espruino_enableWatchdog(JsVarFloat time);
-
-JsVar *jswrap_espruino_sin(JsVar *o); // TESTING ONLY

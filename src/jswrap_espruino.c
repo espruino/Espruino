@@ -326,26 +326,3 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   jshEnableWatchDog(time);
 }
 
-
-
-int add(int x, int y) {
-  return x*1.234;
-}
-
-// TESTING ONLY
-#include "jsnative.h"
-/*JSON{ "type":"staticmethod",
-         "class" : "E", "name" : "sin",
-         "generate" : "jswrap_espruino_sin",
-         "description" : "",
-         "params" : [ [ "arr", "JsVar", "The array to sum"] ],
-         "return" : ["JsVar", "The sum of the given buffer"]
-}*/
-JsVar *jswrap_espruino_sin(JsVar *o) {
-  //return jsnCallFunction(sin, JSNAT_JSVARFLOAT | (JSNAT_JSVARFLOAT<<JSNAT_BITS), &o, 1);
-  JsVar *a[2] = {o,o};
-  //return jsnCallFunction(add, JSNAT_JSVARINT | (JSNAT_JSVARINT<<JSNAT_BITS) | (JSNAT_JSVARINT<<(JSNAT_BITS*2)), a, 2);
-  return jsnCallFunction(add, JSNAT_INT32 | (JSNAT_INT32<<JSNAT_BITS) | (JSNAT_INT32<<(JSNAT_BITS*2)), a, 2);
-}
-// TESTING ONLY
-
