@@ -224,6 +224,7 @@ JsVar *jsvNew() {
       v->refs = 0;
       //v->locks = 1;
       v->flags = JSV_LOCK_ONE;
+      v->varData.integer = 0; // shouldn't be needed, but just in case
       v->firstChild = 0;
       v->lastChild = 0;
       v->prevSibling = 0;
