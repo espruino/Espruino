@@ -33,7 +33,13 @@ function create_info() {
   BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAME`
   echo "Binary $BINARY_NAME"
   unzip -p $DIR/archives/$CURRENTZIP $BINARY_NAME > $BINARYDIR/$BINARY_NAME
-  echo "UNZIP DONE"
+  if [[ -s $BINARYDIR/$BINARY_NAME ]] ; then
+    echo "$BINARY_NAME extracted successfully"
+  else
+    echo "$BINARY_NAME not found"
+    rm $BINARYDIR/$BINARY_NAME
+  fi ;
+  
 }
 
 cd $DIR/archives
