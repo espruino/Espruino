@@ -389,8 +389,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
-  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
+  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height)));
+  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar)));
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
