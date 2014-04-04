@@ -126,7 +126,7 @@ CHIP=STM32F103RC
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
+OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
 USB=1
 USE_FILESYSTEM=1
@@ -803,7 +803,7 @@ OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
  
 # Limit code size growth via inlining to 15% Normally 30% it seems... This reduces code size without slowing down Espruino noticeably
-#OPTIMIZEFLAGS += --param inline-unit-growth=15
+OPTIMIZEFLAGS += --param inline-unit-growth=10
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

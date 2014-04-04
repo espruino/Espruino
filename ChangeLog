@@ -24,7 +24,6 @@
             Fix issues with NaN, negative zero, and Math.round
             Fix equality checks with null
             Fix comparison of integers with empty string/whitespace+number
-            Finally accept defeat and switch to '-Os' for Espruino compile
             Added nativeCall, which allows C/Assembler to be called from JavaScript
             Fix custom font memory leak
 
