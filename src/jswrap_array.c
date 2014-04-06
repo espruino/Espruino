@@ -454,14 +454,15 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
 
-  JsVar *source = jsvLockAgain(parent);
+  JsvArrayIterator argsIt;
+  jsvArrayIteratorNew(&argsIt, args);
 
-  JsvArrayIterator sourceit;
-  jsvArrayIteratorNew(&sourceit, args);
-  while (source) {
+  // Append parent's elements first (parent is always an array)
+  JsVar *source = jsvLockAgain(parent);
+  do {
     if (jsvIsArray(source)) {
       JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, parent);
+      jsvArrayIteratorNew(&it, source);
       while (jsvArrayIteratorHasElement(&it)) {
         jsvArrayPushAndUnLock(result, jsvArrayIteratorGetElement(&it));
         jsvArrayIteratorNext(&it);
@@ -469,11 +470,12 @@ JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
       jsvArrayIteratorFree(&it);
     } else
       jsvArrayPush(result, source);
-    // next
+    // Next, append arguments
     jsvUnLock(source);
-    source = jsvArrayIteratorHasElement(&sourceit) ? jsvArrayIteratorGetElement(&sourceit) : 0;
-    jsvArrayIteratorNext(&sourceit);
-  }
-  jsvArrayIteratorFree(&sourceit);
+    source = jsvArrayIteratorHasElement(&argsIt) ? jsvArrayIteratorGetElement(&argsIt) : 0;
+    jsvArrayIteratorNext(&argsIt);
+  } while (source);
+
+  jsvArrayIteratorFree(&argsIt);
   return result;
 }
