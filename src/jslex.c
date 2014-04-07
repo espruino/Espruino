@@ -106,7 +106,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_PLUS, // +
     JSLJT_SINGLECHAR, // ,
     JSLJT_MINUS, // -
-    JSLJT_SINGLECHAR, // .
+    JSLJT_NUMBER, // . - special :/
     JSLJT_FORWARDSLASH, // /
     // 48
     JSLJT_NUMBER, // 0
@@ -294,26 +294,41 @@ jslGetNextToken_start:
       case JSLJT_NUMBER: {
         // TODO: check numbers aren't the wrong format
         bool canBeFloating = true;
-        if (lex->currCh=='0') {
-          jslTokenAppendChar(lex, lex->currCh);
+        if (lex->currCh=='.') {
           jslGetNextCh(lex);
+          if (isNumeric(lex->currCh)) {
+            // it is a float
+            lex->tk = LEX_FLOAT;
+            jslTokenAppendChar(lex, '.');
+          } else {
+            // it wasn't a number after all
+            lex->tk = '.';
+            break;
+          }
+        } else {
+          if (lex->currCh=='0') {
+            jslTokenAppendChar(lex, lex->currCh);
+            jslGetNextCh(lex);
+            if ((lex->currCh=='x' || lex->currCh=='X') ||
+                (lex->currCh=='b' || lex->currCh=='B') ||
+                (lex->currCh=='o' || lex->currCh=='O')) {
+              canBeFloating = false;
+              jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
+            }
+          }
+          lex->tk = LEX_INT;
+          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
+            jslTokenAppendChar(lex, lex->currCh);
+            jslGetNextCh(lex);
+          }
+          if (canBeFloating && lex->currCh=='.') {
+            lex->tk = LEX_FLOAT;
+            jslTokenAppendChar(lex, '.');
+            jslGetNextCh(lex);
+          }
         }
-
-        if ((lex->currCh=='x' || lex->currCh=='X') ||
-            (lex->currCh=='b' || lex->currCh=='B') ||
-            (lex->currCh=='o' || lex->currCh=='O')) {
-          canBeFloating = false;
-          jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
-        }
-        lex->tk = LEX_INT;
-        while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
-          jslTokenAppendChar(lex, lex->currCh);
-          jslGetNextCh(lex);
-        }
-        if (canBeFloating && lex->currCh=='.') {
-          lex->tk = LEX_FLOAT;
-          jslTokenAppendChar(lex, '.');
-          jslGetNextCh(lex);
+        // parse fractional part
+        if (lex->tk == LEX_FLOAT) {
           while (isNumeric(lex->currCh)) {
             jslTokenAppendChar(lex, lex->currCh);
             jslGetNextCh(lex);

@@ -1,4 +1,5 @@
      1v61 : Fix toString crash for large numbers
+            Support floating-point literals without a leading 0 - eg '.5' (fix #296)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
