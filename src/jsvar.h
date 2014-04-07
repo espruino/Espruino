@@ -189,7 +189,7 @@ static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYP
 static inline bool jsvIsBoolean(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN; }
 static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_MAX; }
 static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_EXT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
-static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NUMERICSTART && (v->flags&JSV_VARTYPEMASK)<=JSV_NUMERICEND && (v->flags&JSV_VARTYPEMASK)!=JSV_BOOLEAN; }
+static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NUMERICSTART && (v->flags&JSV_VARTYPEMASK)<=JSV_NUMERICEND; }
 static inline bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
 static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
 static inline bool jsvIsObject(const JsVar *v) { return v && (((v->flags&JSV_VARTYPEMASK)==JSV_OBJECT) || ((v->flags&JSV_VARTYPEMASK)==JSV_ROOT)); }
