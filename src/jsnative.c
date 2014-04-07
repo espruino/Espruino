@@ -13,32 +13,75 @@
  */
 
 #include "jsnative.h"
+#include "jshardware.h"
+#include "jsinteractive.h"
 
-#if 0
 // none of this is used at the moment
 
 #define MAX_ARGS 10
 
 
-typedef uint32_t (*fn_4_32)(size_t,size_t,size_t,size_t);
-typedef uint64_t (*fn_4_64)(size_t,size_t,size_t,size_t);
+/** Call a function with a set of data that's all packed up
+ *  paramsAre64Bit is a bit mask specifying which parameters are 64 bit
+ */
+uint64_t jswCallTypedFunction(void *function, bool returns64Bit, unsigned int paramsAre64Bit, uint32_t *argData, int paramCount) {
+  if (paramCount==1) {
+    if (paramsAre64Bit==1) return ((uint64_t (*)(uint64_t))function)(*(uint64_t*)&argData[0]);
+  }
 
-JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **paramData, int paramCount) {
+  jsiConsolePrint(returns64Bit ? "64":"32");
+  jsiConsolePrint(" call(");
+  int i;
+  for (i=0;i<paramCount;i++) {
+    jsiConsolePrint((paramsAre64Bit&(1<<(paramCount-(i+1)))) ? "64":"32");
+    if (i<paramCount-1) jsiConsolePrint(",");
+  }
+  jsiConsolePrint(") not implemented\n");
+  return 0;
+}
+
+/** Call a function with the given argument specifiers */
+JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
   JsVar *argsArray = 0; // if JSWAT_ARGUMENT_ARRAY is ever used (note it'll only ever be used once)
   argumentSpecifier >>= JSWAT_BITS;
-  int paramNumber = 0;
+  int paramNumber = 0; // how many parameters we have
+  uint32_t param64BitFlags = 0; // each bit is one if that parameter is 64 bits
   int argCount = 0;
-  size_t argData[MAX_ARGS];
+  uint32_t argData[MAX_ARGS];
+
+  // prepend the 'this' link if we need one
+  bool hasThis = false;
+  if (argumentSpecifier&JSWAT_THIS_ARG) {
+    argumentSpecifier &= ~JSWAT_THIS_ARG;
+    hasThis = true;
+    param64BitFlags = (param64BitFlags<<1) | JSWAT_IS_64BIT(JSWAT_JSVAR);
+#if __WORDSIZE == 64
+      uint64_t i = (uint64_t)thisParam;
+      argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+      argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
+#else
+      argData[argCount++] = (uint32_t)thisParam;
+#endif
+  }
+
+  // run through all arguments
   while (argumentSpecifier) {
     // Get the parameter data
     JsVar *param = (paramNumber<paramCount) ? paramData[paramNumber] : (JsVar *)0;
     paramNumber++;
     // try and pack it:
     JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
+    param64BitFlags = (param64BitFlags<<1) | JSWAT_IS_64BIT(argType);
     switch (argType) {
       case JSWAT_JSVAR: { // standard variable
-        argData[argCount++] = param;
+#if __WORDSIZE == 64
+        uint64_t i = (uint64_t)param;
+        argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
+#else
+        argData[argCount++] = (uint32_t)param;
+#endif
         break;
       }
       case JSWAT_ARGUMENT_ARRAY: { // a JsVar array containing all subsequent arguments
@@ -52,37 +95,35 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
           }
         }
         // push the array
-        argData[argCount++] = argsArray;
+#if __WORDSIZE == 64
+        uint64_t i = (uint64_t)argsArray;
+        argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
+#else
+        argData[argCount++] = (uint32_t)argsArray;
+#endif
         break;
       }
       case JSWAT_BOOL: // boolean
         argData[argCount++] = jsvGetBool(param);
         break;
-      case JSWAT_INT16: // 16 bit int
-        argData[argCount++] = (uint32_t)(jsvGetInteger(param) & 0xFFFF);
-        break;
       case JSWAT_INT32: // 32 bit int
         argData[argCount++] = (uint32_t)(jsvGetInteger(param) & 0xFFFFFFFF);
         break;
+      case JSWAT_PIN: // 16 bit int
+        argData[argCount++] = (uint32_t)(jshGetPinFromVar(param));
+        break;
       case JSWAT_JSVARINT: { // 64 bit int
         uint64_t i = (uint64_t)jsvGetInteger(param);
-#if __WORDSIZE == 64
-        argData[argCount++] = i;
-#else
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
-#endif
         break;
       }
       case JSWAT_JSVARFLOAT: { // 64 bit float
         JsVarFloat f = jsvGetFloat(param);;
         uint64_t i = *(uint64_t*)&f;
-#if __WORDSIZE == 64
-        argData[argCount++] = i;
-#else
         argData[argCount++] = (uint32_t)((i) & 0xFFFFFFFF);
         argData[argCount++] = (uint32_t)((i>>32) & 0xFFFFFFFF);
-#endif
         break;
       }
       default:
@@ -93,15 +134,26 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
     argumentSpecifier >>= JSWAT_BITS;
   }
 
+  // because of the param we shoved on at the start
+  if (hasThis) paramCount++;
+
+  // actually execute!
   bool return64 = JSWAT_IS_64BIT(returnType);
 
   uint64_t result;
 
-  if (return64) { // 64 bit
-    result = ((fn_4_64)function)(argData[0],argData[1],argData[2],argData[3]);
-  } else { // 32 bit
-    result = ((fn_4_32)function)(argData[0],argData[1],argData[2],argData[3]);
+  // this is the simple case...
+  if (param64BitFlags==0 && paramNumber<=4) {
+    if (return64) { // 64 bit
+      result = ((uint32_t (*)(uint32_t,uint32_t,uint32_t,uint32_t))function)(argData[0],argData[1],argData[2],argData[3]);
+    } else { // 32 bit
+      result = ((uint64_t (*)(uint32_t,uint32_t,uint32_t,uint32_t))function)(argData[0],argData[1],argData[2],argData[3]);
+    }
+  } else { // else it gets tricky...
+    // just use calls that were pre-made by build_jswrapper
+    result = jswCallTypedFunction(function, return64, param64BitFlags, argData, paramCount);
   }
+
   jsvUnLock(argsArray);
 
   switch (returnType) {
@@ -112,8 +164,8 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
       return (JsVar*)result;
     case JSWAT_BOOL: // boolean
       return jsvNewFromBool(result!=0);
-      break;
-    case JSWAT_INT16: // 16 bit int
+    case JSWAT_PIN:
+      return jsvNewFromPin((Pin)result);
     case JSWAT_INT32: // 32 bit int
     case JSWAT_JSVARINT: // 64 bit int
       return jsvNewFromInteger((JsVarInt)result);
@@ -124,5 +176,3 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar **p
       return 0;
   }
 }
-
-#endif
