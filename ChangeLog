@@ -7,6 +7,7 @@
             ArrayBuffer Graphics now supports 2 and 4 bits as well as 1,8,16,24,32 (fix #301)
             Allowed array.splice to as many arguments as needed
             Make Array.sort() use string compare by default (fix #291, fix #292)
+            Allow [,] and [1,2,,4] - (fix #287)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
