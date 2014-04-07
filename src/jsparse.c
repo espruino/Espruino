@@ -14,6 +14,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jsnative.h"
 #include "jswrap_object.h" // for function_replacewith
 
 /* Info about execution when Parsing - this saves passing it on the stack
@@ -387,7 +388,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       else
         execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
-      returnVar = jswCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+      returnVar = jsnCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
 
       // unlock values if we locked them
       if (isParsing) {

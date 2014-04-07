@@ -12,6 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifndef JSWRAPPER_H
+#define JSWRAPPER_H
+
 #include "jsutils.h"
 #include "jsparse.h"
 
@@ -61,5 +64,4 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
-
-JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount);
+#endif // JSWRAPPER_H
