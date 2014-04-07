@@ -1863,7 +1863,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       }
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
-      if (value) {
+      if (value && !jsvIsNull(value)) {
         JsVar *valueStr = jsvAsString(value, true /* UNLOCK */);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
