@@ -2030,26 +2030,22 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 jsvIsArray(b) || jsvIsObject(b) || jsvIsFunction(b)) &&
                 (op == LEX_EQUAL || op==LEX_NEQUAL)) {
 
-      bool isArray = jsvIsArray(a);
       bool equal = a==b;
 
       // Abstract comparison of Arrays requires coercing the
       // object to a string prior to the comparison operation.
-      if (jsvIsArray(a) || jsvIsArray(b)) {
-        int cmp = jsvCompareString(jsvAsString(a, false), jsvAsString(b, false), 0, 0, false);
-        return jsvNewFromBool(cmp == 0);
-      }
-
-      // even if one is not native, the contents will be different
-      if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b))
+      if ((jsvIsArray(a) || jsvIsArray(b)) && jsvIsArray(a)!=jsvIsArray(b)) {
+        equal = (jsvCompareString(jsvAsString(a, false), jsvAsString(b, false), 0, 0, false) == 0);
+      } else if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b)) { // even if one is not native, the contents will be different
         equal = a->varData.native.ptr == b->varData.native.ptr &&
                 a->varData.native.argTypes == b->varData.native.argTypes;
+      }
 
       /* Just check pointers */
       switch (op) {
            case LEX_EQUAL:  return jsvNewFromBool(equal);
            case LEX_NEQUAL: return jsvNewFromBool(!equal);
-           default: return jsvMathsOpError(op, isArray?"Array":"Object");
+           default: return jsvMathsOpError(op, jsvIsArray(a)?"Array":"Object");
       }
     } else {
        JsVar *da = jsvAsString(a, false);

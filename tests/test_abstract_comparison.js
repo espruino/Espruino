@@ -1,3 +1,5 @@
+// https://github.com/espruino/Espruino/issues/283
+
 var abstract = 0;
 var strict = 0;
 var reference = {};
