@@ -46,27 +46,10 @@ unsigned int graphicsFallbackGetPixel(JsGraphics *gfx, short x, short y) {
 }
 
 void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  // Software emulation
-  if (x1>x2) {
-    short l=x1; x1 = x2; x2 = l;
-  }
-  if (y1>y2) {
-    short l=y1; y1 = y2; y2 = l;
-  }
   short x,y;
   for (y=y1;y<=y2;y++)
     for (x=x1;x<=x2;x++)
       graphicsSetPixel(gfx,x,y, gfx->data.fgColor);
-}
-
-void graphicsFallbackBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data) {
-  unsigned int x,y;
-  for(x=0;x<width;x++) {
-    for(y=0;y<height;y++) {
-      int bitOffset = x1+(int)x+(((int)y+y1)*width);
-      graphicsSetPixel(gfx,(short)x,(short)y, (unsigned int)(((data[bitOffset>>3]>>(bitOffset&7))&1) ? gfx->data.fgColor : gfx->data.bgColor));
-    }
-  }
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -81,7 +64,6 @@ bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent) {
     gfx->setPixel = graphicsFallbackSetPixel;
     gfx->getPixel = graphicsFallbackGetPixel;
     gfx->fillRect = graphicsFallbackFillRect;
-    gfx->bitmap1bit = graphicsFallbackBitmap1bit;
 #ifdef USE_LCD_SDL
     if (gfx->data.type == JSGRAPHICSTYPE_SDL) {
       lcdSetCallbacks_SDL(gfx);
@@ -127,10 +109,32 @@ void graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col) {
 }
 
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y) {
+  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   return gfx->getPixel(gfx, x, y);
 }
 
 void graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
+  if (x1>x2) {
+    short t = x1;
+    x1 = x2;
+    x2 = t;
+  }
+  if (y1>y2) {
+    short t = y1;
+    y1 = y2;
+    y2 = t;
+  }
+  if (x1<0) x1=0;
+  if (y1<0) y1=0;
+  if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
+  if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
+  if (x2<x1 || y2<y1) return; // nope
+
+  if (x1==x2 && y1==y2) {
+    graphicsSetPixel(gfx,x1,y1,gfx->data.fgColor);
+    return;
+  }
+
   return gfx->fillRect(gfx, x1, y1, x2, y2);
 }
 
@@ -280,7 +284,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
       if (minx[y]<0) minx[y]=0;
       if (maxx[y]>=gfx->data.width) maxx[y]=gfx->data.width-1;
       // try and expand the rect that we fill
-      int oldy = y;
+      short oldy = y;
       while (y<maxy && minx[y+1]==minx[oldy] && maxx[y+1]==maxx[oldy])
         y++;
       // actually fill
@@ -317,7 +321,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices) {
       if (miny[x]<0) miny[x]=0;
       if (maxy[x]>=gfx->data.height) maxy[x]=(short)(gfx->data.height-1);
       // try and expand the rect that we fill
-      int oldx = x;
+      short oldx = x;
       while (x<maxx && miny[x+1]==miny[oldx] && maxy[x+1]==maxy[oldx])
         x++;
       // actually fill

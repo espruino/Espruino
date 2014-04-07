@@ -57,7 +57,6 @@ typedef struct JsGraphics {
 
   void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
   void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
-  void (*bitmap1bit)(struct JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data);
   unsigned int (*getPixel)(struct JsGraphics *gfx, short x, short y);
 } PACKED_FLAGS JsGraphics;
 
@@ -69,7 +68,7 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.cursorY = 0;
 }
 
-// ---------------------------------- these are in lcd.c
+// ---------------------------------- these are in graphics.c
 // Access a JsVar and get/set the relevant info in JsGraphics
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 void graphicsSetVar(JsGraphics *gfx);
@@ -79,7 +78,7 @@ void         graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int co
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void         graphicsBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data);
+void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2); // Simple fillrect - doesn't call device-specific FR
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);

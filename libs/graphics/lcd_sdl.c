@@ -25,7 +25,6 @@ bool needsFlip = false;
 
 unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
   if (!screen) return 0;
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   if(SDL_MUSTLOCK(screen))
       if(SDL_LockSurface(screen) < 0) return 0;
   unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y + x;
@@ -37,7 +36,6 @@ unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
 
 void lcdSetPixel_SDL(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (!screen) return;
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
 
   if(SDL_MUSTLOCK(screen))
     if(SDL_LockSurface(screen) < 0) return;

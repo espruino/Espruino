@@ -27,7 +27,6 @@ typedef struct {
 } LCDDataPCD8544 PACKED_FLAGS;
 
 unsigned int lcdGetPixel_PCD8544(JsGraphics *gfx, short x, short y) {
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   int yp = y>>3;
   int addr = x + (yp*gfx->data.width);
   return (pixels[addr]>>(y&7)) & 1;
@@ -35,7 +34,6 @@ unsigned int lcdGetPixel_PCD8544(JsGraphics *gfx, short x, short y) {
 
 
 void lcdSetPixel_PCD8544(JsGraphics *gfx, short x, short y, unsigned int col) {
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
   int yp = y>>3;
   int addr = x + (yp*gfx->data.width);
   if (col) pixels[addr] |= 1<<(y&7);

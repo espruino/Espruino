@@ -3,6 +3,7 @@
             Fix array access with booleans (fix #290)
             Fix "==" issues where only one argument is an array (fix #283)
             Make Array.join ignore null values (fix #289)
+            Callback graphics now works even without a fillRect implementation (fix #295)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

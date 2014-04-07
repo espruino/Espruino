@@ -63,6 +63,11 @@ void jswrap_graphics_init() {
 #endif
 }
 
+
+static bool isValidBPP(int bpp) {
+  return bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32;
+}
+
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
          "description" : "Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself",
          "generate" : "jswrap_graphics_createArrayBuffer",
@@ -79,7 +84,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
+  if (!isValidBPP(bpp)) {
     jsWarn("Invalid BPP");
     return 0;
   }
@@ -113,7 +118,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 }
 
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createCallback",
-         "description" : "Create a Graphics object that renders by calling a JavaScript callback function",
+         "description" : "Create a Graphics object that renders by calling a JavaScript callback function to draw pixels",
          "generate" : "jswrap_graphics_createCallback",
          "params" : [ [ "width", "int32", "Pixels wide" ],
                       [ "height", "int32", "Pixels high" ],
@@ -126,7 +131,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
+  if (!isValidBPP(bpp)) {
     jsWarn("Invalid BPP");
     return 0;
   }
