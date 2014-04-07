@@ -65,7 +65,7 @@ void jswrap_graphics_init() {
 
 
 static bool isValidBPP(int bpp) {
-  return bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32;
+  return bpp==1 || bpp==2 || bpp==4 || bpp==8 || bpp==16 || bpp==24 || bpp==32; // currently one colour can't ever be spread across multiple bytes
 }
 
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",

@@ -33,7 +33,7 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
     size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
-    if (gfx->data.bpp < 8) {
+    if (gfx->data.bpp&7/*not a multiple of one byte*/) {
       idx = idx & 7;
       unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
       unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
@@ -59,7 +59,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
     short p;
     for (p=0;p<pixelCount;p++) { // writing individual bits
-      if (gfx->data.bpp < 8) {
+      if (gfx->data.bpp&7/*not a multiple of one byte*/) {
         idx = idx & 7;
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
@@ -85,26 +85,10 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
 
 
 void lcdSetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y, unsigned int col) {
-  if (x>=0 && y>=0 && x<gfx->data.width && y<gfx->data.height)
-    lcdSetPixels_ArrayBuffer(gfx,x,y,1,col);
+  lcdSetPixels_ArrayBuffer(gfx,x,y,1,col);
 }
 
 void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  if (x1>x2) {
-    short t = x1;
-    x1 = x2;
-    x2 = t;
-  }
-  if (y1>y2) {
-    short t = y1;
-    y1 = y2;
-    y2 = t;
-  }
-  if (x1<0) x1=0;
-  if (y1<0) y1=0;
-  if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
-  if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
-  if (x2<x1 || y2<y1) return; // nope
   short y;
   for (y=y1;y<=y2;y++)
     lcdSetPixels_ArrayBuffer(gfx, x1, y, (short)(1+x2-x1), gfx->data.fgColor);

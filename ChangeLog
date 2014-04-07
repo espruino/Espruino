@@ -4,6 +4,7 @@
             Fix "==" issues where only one argument is an array (fix #283)
             Make Array.join ignore null values (fix #289)
             Callback graphics now works even without a fillRect implementation (fix #295)
+            ArrayBuffer Graphics now supports 2 and 4 bits as well as 1,8,16,24,32 (fix #301)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
