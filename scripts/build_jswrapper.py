@@ -179,15 +179,15 @@ def getArgumentSpecifier(jsondata):
     n=n+1
   return " | ".join(s);
   
-
-def getCDeclaration(jsondata):
+def getCDeclaration(jsondata, name): 
+  # name could be '(*)' for a C function pointer 
   params = getParams(jsondata)
   result = getResult(jsondata);
   s = [ ]
   if hasThis(jsondata): s.append("JsVar*");
   for param in params:
     s.append(toCType(param[1]));
-  return toCType(result[0])+" (*)("+",".join(s)+")";
+  return toCType(result[0])+" "+name+"("+",".join(s)+")";
 
 def codeOutFunctionObject(indent, obj):
   codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
@@ -203,8 +203,9 @@ def codeOutFunction(indent, func):
   if "class" in func:
     name = name + func["class"]+".";
   name = name + func["name"]
-  print name
+#  print name
   codeOut(indent+"// "+name+"  ("+func["filename"]+")")
+  codeOut(indent+"// "+getCDeclaration(func, name));
   
   if ("generate" in func):
     gen_name = func["generate"]
@@ -520,47 +521,4 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-codeOut("/** Call a function with the given argument specifiers */")
-codeOut('JsVar *jswCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {')
-argSpecs = []
-for jsondata in jsondatas:
-#  if "generate" in jsondata:
-    argSpec = getArgumentSpecifier(jsondata)
-    if not argSpec in argSpecs:
-      codeOut('  if (argumentSpecifier == ('+argSpec+')) {')
 
-      params = getParams(jsondata)
-      result = getResult(jsondata);
-
-      n = 0
-      argList = [ ]
-      cleanupList = []
-      if hasThis(jsondata):
-        argList.append("thisParam");
-      for param in params:
-        if param[1]=="JsVarArray":   
-          codeOut("     JsVar *argArray = jsvNewArray(&paramData["+str(n)+"], paramCount-"+str(n)+");");       
-          argList.append("argArray")
-          cleanupList.append("jsvUnLock(argArray);")
-        else:
-          argList.append(getGetter(param[1] , str(n)+"<paramCount ? paramData["+str(n)+"] : 0", "jswCallFunction"));
-        n = n+1;
-
-
-      if result[0]!="":
-        codeOut('    JsVar *_r = '+getCreator(result[0], '(('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+')',"jswCallFunction")+';')
-        codeOut('    '+"\n    ".join(cleanupList))        
-        codeOut('    return _r;')        
-      else:      
-        codeOut('    (('+getCDeclaration(jsondata)+')function)('+', '.join(argList)+');')
-        codeOut('    '+"\n    ".join(cleanupList))        
-        codeOut('    return 0/*undefined*/;')            
-      codeOut('  }') 
-
-      argSpecs.append(argSpec)
-codeOut('  jsError("No caller for argument specifier %d", argumentSpecifier);')
-codeOut('  return 0;')
-codeOut('}')
-
-codeOut('')
-codeOut('')
