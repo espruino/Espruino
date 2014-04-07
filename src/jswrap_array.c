@@ -335,7 +335,12 @@ NO_INLINE static bool _jswrap_array_sort_leq(JsVar *a, JsVar *b, JsVar *compareF
     JsVarInt r = jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
     return r<0;
   } else {
-    return jsvGetBoolAndUnLock(jsvMathsOp(a,b,LEX_LEQUAL));
+    JsVar *sa = jsvAsString(a, false);
+    JsVar *sb = jsvAsString(b, false);
+    bool r = jsvCompareString(sa,sb, 0, 0, false) < 0;
+    jsvUnLock(sa);
+    jsvUnLock(sb);
+    return r;
   }
 }
 

@@ -1227,7 +1227,7 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
 
 
 /** Compare 2 strings, starting from the given character positions. equalAtEndOfString means that
- * if one of the strings ends, we treat them as equal.
+ * if one of the strings ends (even if the other hasn't), we treat them as equal.
  * For a basic strcmp, do: jsvCompareString(a,b,0,0,false)
  *  */
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString) {
