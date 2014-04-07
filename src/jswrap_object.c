@@ -318,31 +318,24 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
 
 /*JSON{ "type":"method", "class": "Function", "name" : "call",
          "description" : ["This executes the function with the supplied 'this' argument and parameters"],
-         "generate" : "jswrap_function_call",
+         "generate" : "jswrap_function_apply_or_call",
          "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
-                      [ "a", "JsVar", "Optional Parameter 1"],
-                      [ "b", "JsVar", "Optional Parameter 2"],
-                      [ "c", "JsVar", "Optional Parameter 3"],
-                      [ "d", "JsVar", "Optional Parameter 4"]
+                      [ "params", "JsVarArray", "Optional Parameters"]
                     ],
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/
-JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d) {
-  JsVar *args[4] = {a,b,c,d};
-  int argC = 0;
-  while (argC<4 && args[argC]!=0) argC++;
-  return jspeFunctionCall(parent, 0, thisArg, false, argC, args);
-}
+// ... it just so happens that the way JsVarArray is parsed means that apply and call can be exactly the same function!
+
 
 /*JSON{ "type":"method", "class": "Function", "name" : "apply",
          "description" : ["This executes the function with the supplied 'this' argument and parameters"],
-         "generate" : "jswrap_function_apply",
+         "generate" : "jswrap_function_apply_or_call",
          "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
                       [ "args", "JsVar", "Optional Array of Aruments"]
                     ],
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/
-JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
+JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   unsigned int i;
   JsVar **args = 0;
   size_t argC = 0;
