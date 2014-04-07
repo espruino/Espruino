@@ -135,7 +135,10 @@ sudo apt-get install ia32-libs
 
 This will create a file called ```functions.html```
 
+Testing
+------
 
+There are a bunch of tests in the `tests` directory. See [`tests/README.md`](tests/README.md) for examples on how to run them.
 
 Modifying
 --------
