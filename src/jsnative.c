@@ -24,12 +24,18 @@
 /** Call a function with a set of data that's all packed up
  *  paramsAre64Bit is a bit mask specifying which parameters are 64 bit
  */
-uint64_t jswCallTypedFunction(void *function, bool returns64Bit, unsigned int paramsAre64Bit, uint32_t *argData, int paramCount) {
+uint64_t jswCallTypedFunction(void *function, JsnArgumentType returnType, unsigned int paramsAre64Bit, uint32_t *argData, int paramCount) {
   if (paramCount==1) {
-    if (paramsAre64Bit==1) return ((uint64_t (*)(uint64_t))function)(*(uint64_t*)&argData[0]);
+    if (paramsAre64Bit==1 && returnType==JSWAT_JSVARINT) {
+      return ((uint64_t (*)(uint64_t))function)(*(uint64_t*)&argData[0]);;
+    }
+    if (paramsAre64Bit==1 && returnType==JSWAT_JSVARFLOAT) {
+      JsVarFloat f = ((JsVarFloat (*)(uint64_t))function)(*(uint64_t*)&argData[0]);
+      return *(uint64_t*)&f;
+    }
   }
 
-  jsiConsolePrint(returns64Bit ? "64":"32");
+  jsiConsolePrint(returnType==JSWAT_JSVARFLOAT ? "double": (returnType==JSWAT_JSVARINT? "64":"32"));
   jsiConsolePrint(" call(");
   int i;
   for (i=0;i<paramCount;i++) {
@@ -137,21 +143,27 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
   // because of the param we shoved on at the start
   if (hasThis) paramCount++;
 
-  // actually execute!
-  bool return64 = JSWAT_IS_64BIT(returnType);
-
   uint64_t result;
 
   // this is the simple case...
-  if (param64BitFlags==0 && paramNumber<=4) {
-    if (return64) { // 64 bit
-      result = ((uint32_t (*)(uint32_t,uint32_t,uint32_t,uint32_t))function)(argData[0],argData[1],argData[2],argData[3]);
-    } else { // 32 bit
-      result = ((uint64_t (*)(uint32_t,uint32_t,uint32_t,uint32_t))function)(argData[0],argData[1],argData[2],argData[3]);
-    }
+  if (param64BitFlags==0 && paramNumber<=4 &&  !JSWAT_IS_64BIT(returnType)) {
+    result = ((uint32_t (*)(uint32_t,uint32_t,uint32_t,uint32_t))function)(argData[0],argData[1],argData[2],argData[3]);
   } else { // else it gets tricky...
+    JsnArgumentType simpleReturnType = returnType;
+#ifndef ARM
+    if (simpleReturnType!=JSWAT_JSVARFLOAT) {
+      // we have to deal with 3 distinct return types in x86 (we can forget the others)
+#else
+    if (true) {
+      // on ARM we only care about 32/64 bit
+#endif
+      if (JSWAT_IS_64BIT(simpleReturnType))
+        simpleReturnType = JSWAT_JSVARINT;
+      else
+        simpleReturnType = JSWAT_INT32;
+    }
     // just use calls that were pre-made by build_jswrapper
-    result = jswCallTypedFunction(function, return64, param64BitFlags, argData, paramCount);
+    result = jswCallTypedFunction(function, simpleReturnType, param64BitFlags, argData, paramCount);
   }
 
   jsvUnLock(argsArray);
