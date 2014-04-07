@@ -2029,8 +2029,17 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     } else if ((jsvIsArray(a) || jsvIsObject(a) || jsvIsFunction(a) ||
                 jsvIsArray(b) || jsvIsObject(b) || jsvIsFunction(b)) &&
                 (op == LEX_EQUAL || op==LEX_NEQUAL)) {
+
       bool isArray = jsvIsArray(a);
       bool equal = a==b;
+
+      // Abstract comparison of Arrays requires coercing the
+      // object to a string prior to the comparison operation.
+      if (jsvIsArray(a) || jsvIsArray(b)) {
+        int cmp = jsvCompareString(jsvAsString(a, false), jsvAsString(b, false), 0, 0, false);
+        return jsvNewFromBool(cmp == 0);
+      }
+
       // even if one is not native, the contents will be different
       if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b))
         equal = a->varData.native.ptr == b->varData.native.ptr &&
