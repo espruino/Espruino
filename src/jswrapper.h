@@ -64,4 +64,4 @@ void jswInit();
 /** Tasks to run on Deinitialisation */
 void jswKill();
 
-#endif JSWRAPPER_H
+#endif // JSWRAPPER_H
