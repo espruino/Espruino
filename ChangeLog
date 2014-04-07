@@ -8,6 +8,7 @@
             Allowed array.splice to as many arguments as needed
             Make Array.sort() use string compare by default (fix #291, fix #292)
             Allow [,] and [1,2,,4] - (fix #287)
+            Stop JSON.stringify using 'undefined' (fix #286)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

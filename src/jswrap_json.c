@@ -34,7 +34,7 @@ const char *JSON_LIMIT_TEXT = " ... ";
 JsVar *jswrap_json_stringify(JsVar *v) {
   JsVar *result = jsvNewFromEmptyString();
   if (result) // could be out of memory
-    jsfGetJSON(v, result, JSON_IGNORE_FUNCTIONS);
+    jsfGetJSON(v, result, JSON_IGNORE_FUNCTIONS|JSON_NO_UNDEFINED);
   return result;
 }
 
@@ -204,6 +204,8 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
         if (i>0) cbprintf(user_callback, user_data, ",");
         if (limited && i==length-JSON_LIMITED_AMOUNT) cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
         JsVar *item = jsvGetArrayItem(var, (JsVarInt)i);
+        if (jsvIsUndefined(item) && (flags&JSON_NO_UNDEFINED))
+            item = jsvNewWithFlags(JSV_NULL);
         bool newNeedsNewLine = (flags&JSON_NEWLINES) && jsonNeedsNewLine(item);
         if (needNewLine || newNeedsNewLine) {
           jsonNewLine(nflags, user_callback, user_data);
@@ -249,7 +251,8 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
         JsVar *index = jsvObjectIteratorGetKey(&it);
         JsVar *item = jsvObjectIteratorGetValue(&it);
         bool hidden = jsvIsInternalObjectKey(index) ||
-                      ((flags & JSON_IGNORE_FUNCTIONS) && jsvIsFunction(item));
+                      ((flags & JSON_IGNORE_FUNCTIONS) && jsvIsFunction(item)) ||
+                      ((flags&JSON_NO_UNDEFINED) && jsvIsUndefined(item));
         if (!hidden) {
           if (!first) cbprintf(user_callback, user_data, ",");
           bool newNeedsNewLine = (flags&JSON_NEWLINES) && jsonNeedsNewLine(item);
