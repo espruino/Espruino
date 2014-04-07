@@ -20,7 +20,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler);
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args);
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar);
-JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *element1, JsVar *element2, JsVar *element3, JsVar *element4, JsVar *element5, JsVar *element6);
+JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements);
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn);
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args);

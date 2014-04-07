@@ -181,15 +181,10 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "generate" : "jswrap_array_splice",
          "params" : [ [ "index", "int", "Index at which to start changing the array. If negative, will begin that many elements from the end"],
                       [ "howMany", "JsVar", "An integer indicating the number of old array elements to remove. If howMany is 0, no elements are removed."],
-                      [ "element1", "JsVar", "A new item to add (optional)" ],
-                      [ "element2", "JsVar", "A new item to add (optional)" ],
-                      [ "element3", "JsVar", "A new item to add (optional)" ],
-                      [ "element4", "JsVar", "A new item to add (optional)" ],
-                      [ "element5", "JsVar", "A new item to add (optional)" ],
-                      [ "element6", "JsVar", "A new item to add (optional)" ] ],
+                      [ "elements", "JsVarArray", "One or more items to add to the array" ] ],
          "return" : ["JsVar", "An array containing the removed elements. If only one element is removed, an array of one element is returned."]
 }*/
-JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *element1, JsVar *element2, JsVar *element3, JsVar *element4, JsVar *element5, JsVar *element6) {
+JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements) {
   JsVarInt len = jsvGetArrayLength(parent);
   if (index<0) index+=len;
   if (index<0) index=0;
@@ -197,13 +192,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   JsVarInt howMany = len; // how many to delete!
   if (jsvIsInt(howManyVar)) howMany = jsvGetInteger(howManyVar);
   if (howMany > len-index) howMany = len-index;
-  JsVarInt newItems = 0;
-  if (element1) newItems++;
-  if (element2) newItems++;
-  if (element3) newItems++;
-  if (element4) newItems++;
-  if (element5) newItems++;
-  if (element6) newItems++;
+  JsVarInt newItems = jsvGetArrayLength(elements);
   JsVarInt shift = newItems-howMany;
 
   bool needToAdd = false;
@@ -239,22 +228,25 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   }
   // now we add everything
   JsVar *beforeIndex = jsvArrayIteratorGetIndex(&it);
-  if (element1) jsvArrayInsertBefore(parent, beforeIndex, element1);
-  if (element2) jsvArrayInsertBefore(parent, beforeIndex, element2);
-  if (element3) jsvArrayInsertBefore(parent, beforeIndex, element3);
-  if (element4) jsvArrayInsertBefore(parent, beforeIndex, element4);
-  if (element5) jsvArrayInsertBefore(parent, beforeIndex, element5);
-  if (element6) jsvArrayInsertBefore(parent, beforeIndex, element6);
+  JsvArrayIterator itElement;
+  jsvArrayIteratorNew(&itElement, elements);
+  while (jsvArrayIteratorHasElement(&itElement)) {
+    JsVar *element = jsvArrayIteratorGetElement(&itElement);
+    jsvArrayInsertBefore(parent, beforeIndex, element);
+    jsvUnLock(element);
+    jsvArrayIteratorNext(&itElement);
+  }
+  jsvArrayIteratorFree(&itElement);
   jsvUnLock(beforeIndex);
   // And finally renumber
   while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
-      if (idxVar && jsvIsInt(idxVar)) {
-        jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
-      }
-      jsvUnLock(idxVar);
-      jsvArrayIteratorNext(&it);
+    JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
+    if (idxVar && jsvIsInt(idxVar)) {
+      jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
     }
+    jsvUnLock(idxVar);
+    jsvArrayIteratorNext(&it);
+  }
   // free
   jsvArrayIteratorFree(&it);
 
