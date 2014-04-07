@@ -689,7 +689,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             } else if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar) || jsvIsFunction(aVar))) {
                 // TODO: If we set to undefined, maybe we should remove the name?
                 JsVar *indexValue = jsvSkipName(index);
-                if (!jsvIsString(indexValue) && !jsvIsNumeric(indexValue))
+                if (!jsvIsString(indexValue) && (jsvIsBoolean(indexValue) || !jsvIsNumeric(indexValue)))
                   indexValue = jsvAsString(indexValue, true);
                 JsVar *child = jsvFindChildFromVar(aVar, indexValue, true);
                 jsvUnLock(indexValue);
