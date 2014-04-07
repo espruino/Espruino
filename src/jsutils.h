@@ -114,7 +114,7 @@ typedef long long JsSysTime;
 #define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
 #define JS_ERROR_TOKEN_BUF_SIZE 16 // see jslTokenAsString
 
-#define JS_NUMBER_BUFFER_SIZE 24
+#define JS_NUMBER_BUFFER_SIZE 66 // 64 bit base 2 + minus + terminating 0
 
 #define JSPARSE_MAX_SCOPES  8
 // Don't restrict number of iterations now

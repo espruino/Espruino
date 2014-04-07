@@ -334,22 +334,27 @@ char itoch(int val) {
 #ifndef HAS_STDLIB
 void itoa(JsVarInt vals,char *str,unsigned int base) {
   JsVarIntUnsigned val;
+  // handle negative numbers
   if (vals<0) {
     *(str++)='-';
     val = (JsVarIntUnsigned)(-vals);
   } else {
     val = (JsVarIntUnsigned)vals;
   }
-  JsVarIntUnsigned d = 1;
-  while (d*base <= val) d*=base;
-  while (d > 1) {
-    unsigned int v = (unsigned int)(val / d);
-    val -= v*d;
-    *(str++) = itoch((int)v);
-    d /= base;
+  // work out how many digits
+  JsVarIntUnsigned tmp = val;
+  int digits = 1;
+  while (tmp>=base) {
+    digits++;
+    tmp /= base;
   }
-  *(str++)=itoch((int)val);
-  *(str++)=0;
+  // for each digit...
+  int i;
+  for (i=digits-1;i>=0;i--) {
+    str[i] = itoch((int)(val % base));
+    val /= base;
+  }
+  str[digits] = 0;
 }
 #endif
 
