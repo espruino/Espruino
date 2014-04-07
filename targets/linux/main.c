@@ -90,9 +90,15 @@ bool run_test(const char *filename) {
   jsiKill();
   printf("AFTER: %d Memory Records Used\r\n", jsvGetMemoryUsage());
   jsvGarbageCollect();
-  printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", jsvGetMemoryUsage());
+  unsigned int unfreed = jsvGetMemoryUsage();
+  printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", unfreed);
   jsvShowAllocated();
   jshKill();
+
+  if (unfreed) {
+    printf("FAIL because of unfreed memory.\r\n");
+    pass = false;
+  }
 
   //jsvDottyOutput();
   printf("\r\n");
