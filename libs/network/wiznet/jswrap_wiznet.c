@@ -163,8 +163,8 @@ void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
 /*JSON{ "type":"method",
          "class" : "Ethernet", "name" : "setIP",
          "generate" : "jswrap_ethernet_setIP",
-         "description" : "Set the current IP address",
-         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`"] ],
+         "description" : "Set the current IP address for get an IP from DHCP (if no options object is specified)",
+         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."] ],
          "return" : ["bool", "True on success"]
 }*/
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
