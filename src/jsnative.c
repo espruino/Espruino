@@ -46,9 +46,16 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
     // try and pack it:
     JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
 
+#ifdef ARM
+    if (JSWAT_IS_64BIT(argType))
+      argCount = (argCount+1)&~1;
+#endif
+
     if (argCount > MAX_ARGS - (JSWAT_IS_64BIT(argType)?2:1)) {
       jsError("INTERNAL: too many arguments for jsnCallFunction");
     }
+
+
 
     switch (argType) {
       case JSWAT_JSVAR: { // standard variable
@@ -110,7 +117,6 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
   uint64_t result;
 
   // When args<=4 on ARM, everything is passed in registers (so we try and do this case first)
-/*
   if (argCount<=4) {
 #ifndef ARM
     if (returnType==JSWAT_JSVARFLOAT) {
@@ -125,7 +131,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
       else
         result = ((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
     }
-  } else */{ // else it gets tricky...
+  } else { // else it gets tricky...
 #ifndef ARM
     if (returnType==JSWAT_JSVARFLOAT) {
       // On x86, doubles are returned in a floating point unit register
