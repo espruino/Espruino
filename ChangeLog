@@ -16,6 +16,8 @@
             Add extra escape codes in strings (fix #304)
             Ensure String.charAt returns empty string for out of range (fix #305)
             Make REPL faster when receiving large amounts of data (fix #303)
+            Improved jspeFunctionCall speed, added Named functions (fix #77)
+
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

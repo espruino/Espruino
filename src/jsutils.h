@@ -132,8 +132,9 @@ typedef long long JsSysTime;
 // internal names that hopefully nobody will be able to access
 #define JS_HIDDEN_CHAR '>' // initial character of var name determines that we shouldn't see this stuff
 #define JS_HIDDEN_CHAR_STR ">"
-#define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code"
-#define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope"
+#define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code" // the function's code!
+#define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
+#define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
 #define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
 
 #if !defined(NO_ASSERT)
