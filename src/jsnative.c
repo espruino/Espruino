@@ -160,6 +160,7 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
     case JSWAT_PIN:
       return jsvNewFromPin((Pin)result);
     case JSWAT_INT32: // 32 bit int
+      return jsvNewFromInteger((JsVarInt)(int)result);
     case JSWAT_JSVARINT: // 64 bit int
       return jsvNewFromInteger((JsVarInt)result);
     case JSWAT_JSVARFLOAT: // 64 bit float
