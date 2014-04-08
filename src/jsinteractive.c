@@ -58,6 +58,7 @@ bool echo;                  ///< do we provide any user feedback?
 bool allowDeepSleep;
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
+JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
 bool inputLineRemoved = false;
 size_t inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
@@ -79,6 +80,28 @@ JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
 static inline bool jsiShowInputLine() {
   return echo && !inputLineRemoved;
 }
+
+/// Called when the input line/cursor is modified *and its iterator should be reset*
+static NO_INLINE void jsiInputLineCursorMoved() {
+  // free string iterator
+  if (inputLineIterator.var) {
+    jsvStringIteratorFree(&inputLineIterator);
+    inputLineIterator.var = 0;
+  }
+}
+
+/// Called to append to the input line
+static NO_INLINE void jsiAppendToInputLine(const char *str) {
+  // free string iterator
+  if (!inputLineIterator.var) {
+    jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
+    jsvStringIteratorGotoEnd(&inputLineIterator);
+  }
+  while (*str) {
+    jsvStringIteratorAppend(&inputLineIterator, *(str++));
+  }
+}
+
 
 /// Change the console to a new location
 void jsiSetConsoleDevice(IOEventFlags device) {
@@ -315,6 +338,7 @@ void jsiClearInputLine() {
   // clear input line
   jsvUnLock(inputLine);
   inputLine = jsvNewFromEmptyString();
+  jsiInputLineCursorMoved();
 }
 
 void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
@@ -360,6 +384,9 @@ void jsiSoftInit() {
   events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
+  jsiInputLineCursorMoved();
+  inputLineIterator.var = 0;
+
   allowDeepSleep = false;
 
   // Load timer/watch arrays
@@ -528,6 +555,7 @@ void jsiSoftKill() {
   jsvUnLock(inputLine);
   inputLine=0;
   inputCursorPos = 0;
+  jsiInputLineCursorMoved();
 
   // Unref Watches/etc
   if (events) {
@@ -726,6 +754,7 @@ void jsiReplaceInputLine(JsVar *newLine) {
   jsvUnLock(inputLine);
   inputLine = jsvLockAgain(newLine);
   inputCursorPos = jsvGetStringLength(inputLine);
+  jsiInputLineCursorMoved();
 }
 
 void jsiChangeToHistory(bool previous) {
@@ -741,6 +770,7 @@ void jsiChangeToHistory(bool previous) {
     jsvUnLock(inputLine);
     inputLine = jsvNewFromEmptyString();
     inputCursorPos = 0;
+    jsiInputLineCursorMoved();
   }
 }
 
@@ -754,6 +784,7 @@ void jsiIsAboutToEditInputLine() {
       if (newLine) { // could have been out of memory!
         jsvUnLock(inputLine);
         inputLine = newLine;
+        jsiInputLineCursorMoved();
       }
     }
   }
@@ -773,6 +804,7 @@ void jsiHandleDelete(bool isBackspace) {
       // delete newline char
       jsiConsolePrint("\x08 "); // delete and then send space
       jsiMoveCursorChar(inputLine, inputCursorPos, inputCursorPos-1); // move cursor back
+      jsiInputLineCursorMoved();
     }
   }
 
@@ -783,6 +815,7 @@ void jsiHandleDelete(bool isBackspace) {
   if (p+1<l) jsvAppendStringVar(v, inputLine, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
   jsvUnLock(inputLine);
   inputLine=v;
+  jsiInputLineCursorMoved();
   if (isBackspace)
     inputCursorPos--; // move cursor back
 
@@ -869,6 +902,7 @@ void jsiHandleNewLine(bool execute) {
       jsvUnLock(inputLine);
       inputLine = jsvNewFromEmptyString();
       inputCursorPos = 0;
+      jsiInputLineCursorMoved();
       // execute!
       JsVar *v = jspEvaluateVar(lineToExecute, 0);
       // add input line to history
@@ -887,7 +921,7 @@ void jsiHandleNewLine(bool execute) {
       // without executing
       if (jsiShowInputLine()) jsiConsolePrint("\n:");
       jsiIsAboutToEditInputLine();
-      jsvAppendCharacter(inputLine, '\n');
+      jsiAppendToInputLine("\n");
       inputCursorPos++;
     }
   } else { // new line - but not at end of line!
@@ -904,6 +938,7 @@ void jsiHandleNewLine(bool execute) {
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
     }
     inputCursorPos++;
+    jsiInputLineCursorMoved();
   }
 }
 
@@ -1031,24 +1066,25 @@ void jsiHandleChar(char ch) {
       // Add the character to our input line
       jsiIsAboutToEditInputLine();
       size_t l = jsvGetStringLength(inputLine);
-      bool hasTab = ch=='\t';
-      if (inputCursorPos>=l) {
-        if (hasTab) jsvAppendString(inputLine, "    ");
-        else jsvAppendCharacter(inputLine, ch);
-      } else {
+      char buf[2] = {ch,0};
+      const char *strToAppend = (ch=='\t') ? "    " : buf;
+      size_t strSize = (ch=='\t') ? 4 : 1;
+
+      if (inputCursorPos>=l) { // append to the end
+        jsiAppendToInputLine(strToAppend);
+      } else { // add in halfway through
         JsVar *v = jsvNewFromEmptyString();
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
-        if (hasTab) jsvAppendString(v, "    ");
-        else jsvAppendCharacter(v, ch);
+        jsvAppendString(v, strToAppend);
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
         jsvUnLock(inputLine);
         inputLine=v;
+        jsiInputLineCursorMoved();
         if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
       }
-      inputCursorPos += hasTab ? 4 : 1;
+      inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
       if (jsiShowInputLine()) {
-        if (hasTab) jsiConsolePrint("    ");
-        else jsiConsolePrintChar(ch);
+        jsiConsolePrint(strToAppend);
       }
     }
   }
