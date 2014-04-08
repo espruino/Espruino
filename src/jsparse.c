@@ -263,10 +263,10 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   if (JSP_SHOULD_EXECUTE)
     funcVar = jsvNewWithFlags(JSV_FUNCTION);
 
-  JsVar *functionName = 0;
+  JsVar *functionInternalName = 0;
   if (parseNamedFunction && execInfo.lex->tk==LEX_ID) {
     // you can do `var a = function foo() { foo(); };` - so cope with this
-    if (funcVar) functionName = jslGetTokenValueAsVar(execInfo.lex);
+    if (funcVar) functionInternalName = jslGetTokenValueAsVar(execInfo.lex);
     // note that we don't add it to the beginning, because it would mess up our function call code
     JSP_MATCH(LEX_ID);
   }
@@ -274,7 +274,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
 
   // Get arguments save them to the structure
   if (!jspeFunctionArguments(funcVar)) {
-    jsvUnLock(functionName);
+    jsvUnLock(functionInternalName);
     jsvUnLock(funcVar);
     // parse failed
     return 0;
@@ -301,8 +301,8 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   jslCharPosFree(&funcBegin);
 
   // if we had a function name, add it to the end
-  if (functionName)
-    jsvUnLock(jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionName));
+  if (functionInternalName)
+    jsvUnLock(jsvObjectSetChild(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName));
 
   return funcVar;
 }
@@ -404,7 +404,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       JsVar *functionScope = 0;
       JsVar *functionCode = 0;
-      JsVar *functionName = 0;
+      JsVar *functionInternalName = 0;
 
       /** NOTE: We expect that the function object will have:
        *
@@ -470,18 +470,18 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         if (jsvIsString(param)) {
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
-          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionName = jsvSkipName(param);
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
         }
         v = param->nextSibling;
         jsvUnLock(param);
       }
 
       // setup a the function's name (if a named function)
-      if (functionName) {
-        JsVar *name = jsvMakeIntoVariableName(jsvNewFromStringVar(functionName,0,JSVAPPENDSTRINGVAR_MAXLENGTH), function);
+      if (functionInternalName) {
+        JsVar *name = jsvMakeIntoVariableName(jsvNewFromStringVar(functionInternalName,0,JSVAPPENDSTRINGVAR_MAXLENGTH), function);
         jsvAddName(functionRoot, name);
         jsvUnLock(name);
-        jsvUnLock(functionName);
+        jsvUnLock(functionInternalName);
       }
       // setup a return variable
       returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
