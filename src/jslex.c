@@ -355,10 +355,12 @@ jslGetNextToken_start:
               jslGetNextCh(lex);
               char ch = lex->currCh;
               switch (lex->currCh) {
-              case 'n'  : ch = '\n'; jslGetNextCh(lex); break;
-              case 'a'  : ch = '\a'; jslGetNextCh(lex); break;
-              case 'r'  : ch = '\r'; jslGetNextCh(lex); break;
-              case 't'  : ch = '\t'; jslGetNextCh(lex); break;
+              case 'n'  : ch = 0x0A; jslGetNextCh(lex); break;
+              case 'b'  : ch = 0x08; jslGetNextCh(lex); break;
+              case 'f'  : ch = 0x0C; jslGetNextCh(lex); break;
+              case 'r'  : ch = 0x0D; jslGetNextCh(lex); break;
+              case 't'  : ch = 0x09; jslGetNextCh(lex); break;
+              case 'v'  : ch = 0x0B; jslGetNextCh(lex); break;
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
                             jslGetNextCh(lex);
