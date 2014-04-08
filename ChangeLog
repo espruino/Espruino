@@ -18,6 +18,7 @@
             Make REPL faster when receiving large amounts of data (fix #303)
             Improved jspeFunctionCall speed, added Named functions (fix #77)
             Allow Array.map.forEach to be applied to Strings and ArrayBuffers (for #310)
+            Tweaks to make more Array functions work on non-arrays
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

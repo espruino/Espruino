@@ -98,6 +98,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
          "return" : ["int", "The new size of the array"]
 }*/
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
+  if (!jsvIsArray(parent)) return -1;
   JsVarInt len = -1;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, args);
@@ -121,16 +122,17 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
 }*/
 
 JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool isMap) {
+  const char *name = isMap ? "map":"forEach";
   if (!jsvIsIterable(parent)) {
-    jsError("Array.map/forEach can only be called on something iterable");
+    jsError("Array.%s can only be called on something iterable", name);
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.map/forEach's first argument should be a function");
+    jsError("Array.%s's first argument should be a function", name);
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Array.map/forEach's second argument should be undefined, or an object");
+    jsError("Array.%s's second argument should be undefined, or an object", name);
     return 0;
   }
   JsVar *array = 0;
@@ -183,6 +185,16 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_map_or_forEach(parent, funcVar, thisVar, true);
 }
 
+/*JSON{ "type":"method", "class": "Array", "name" : "forEach",
+         "description" : "Executes a provided function once per array element.",
+         "generate" : "jswrap_array_forEach",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
+}*/
+void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
+}
+
 
 /*JSON{ "type":"method", "class": "Array", "name" : "splice",
          "description" : "Both remove and add items to an array",
@@ -193,6 +205,7 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "return" : ["JsVar", "An array containing the removed elements. If only one element is removed, an array of one element is returned."]
 }*/
 JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements) {
+  if (!jsvIsArray(parent)) return 0;
   JsVarInt len = jsvGetArrayLength(parent);
   if (index<0) index+=len;
   if (index<0) index=0;
@@ -270,7 +283,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
          "return" : ["JsVar", "A new array"]
 }*/
 JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
-  JsVarInt len = jsvGetArrayLength(parent);
+  JsVarInt len = jsvGetLength(parent);
   JsVarInt start = 0;
   JsVarInt end = len;
 
@@ -294,18 +307,18 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
 
   bool isDone = false;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, parent);
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
 
-  while (jsvArrayIteratorHasElement(&it) && !isDone) {
-    JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
+  while (jsvIteratorHasElement(&it) && !isDone) {
+    JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
 
     if (idx < k) {
-      jsvArrayIteratorNext(&it);
+      jsvIteratorNext(&it);
     } else {
       if (k < final) {
-        jsvArrayPushAndUnLock(array, jsvArrayIteratorGetElement(&it));
-        jsvArrayIteratorNext(&it);
+        jsvArrayPushAndUnLock(array, jsvIteratorGetValue(&it));
+        jsvIteratorNext(&it);
         k++;
       } else {
         isDone = true;
@@ -313,21 +326,13 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
     }
   }
 
-  jsvArrayIteratorFree(&it);
+  jsvIteratorFree(&it);
 
   return array;
 }
 
 
-/*JSON{ "type":"method", "class": "Array", "name" : "forEach",
-         "description" : "Executes a provided function once per array element.",
-         "generate" : "jswrap_array_forEach",
-         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
-                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
-}*/
-void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
-}
+
 
 /*JSON{ "type":"staticmethod", "class": "Array", "name" : "isArray",
          "description" : "Returns true if the provided object is an array",
