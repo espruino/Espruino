@@ -148,8 +148,7 @@ JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVa
 
         JsVar *args[3], *mapped;
         args[0] = jsvIteratorGetValue(&it);
-        // child is a variable name, create a new variable for the index
-        args[1] = jsvNewFromInteger(idxValue);
+        args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
         args[2] = parent;
         mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
         jsvUnLock(args[0]);
@@ -179,7 +178,7 @@ JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVa
          "generate" : "jswrap_array_map",
          "params" : [ [ "function", "JsVar", "Function used to map one item to another"] ,
                       [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
-         "return" : ["JsVar", "The value that is popped off"]
+         "return" : ["JsVar", "An array containing the results"]
 }*/
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   return _jswrap_array_map_or_forEach(parent, funcVar, thisVar, true);
@@ -193,6 +192,50 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 }*/
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
+}
+
+
+/*JSON{ "type":"method", "class": "Array", "name" : "reduce",
+         "description" : "Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.",
+         "generate" : "jswrap_array_reduce",
+         "params" : [ [ "callback", "JsVar", "Function used to reduce the array"] ,
+                      [ "initialValue", "JsVar", "if specified, the initial value to pass to the function"] ],
+         "return" : ["JsVar", "The value returned by the last function called"]
+}*/
+JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
+  const char *name = "reduce";
+  if (!jsvIsIterable(parent)) {
+    jsError("Array.%s can only be called on something iterable", name);
+    return 0;
+  }
+  if (!jsvIsFunction(funcVar)) {
+    jsError("Array.%s's first argument should be a function", name);
+    return 0;
+  }
+  JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *index = jsvIteratorGetKey(&it);
+    if (jsvIsInt(index)) {
+      JsVarInt idxValue = jsvGetInteger(index);
+
+      JsVar *args[4];
+      args[0] = previousValue;
+      args[1] = jsvIteratorGetValue(&it);
+      args[2] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
+      args[3] = parent;
+      previousValue = jspeFunctionCall(funcVar, 0, 0, false, 4, args);
+      jsvUnLock(args[0]);
+      jsvUnLock(args[1]);
+      jsvUnLock(args[2]);
+    }
+    jsvUnLock(index);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  return previousValue;
 }
 
 

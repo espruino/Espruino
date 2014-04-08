@@ -22,5 +22,6 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
 JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar);
 JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements);
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar);
+JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue);
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn);
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args);
