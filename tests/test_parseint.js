@@ -10,6 +10,9 @@ var a = [
          parseInt("0x100",16), 256,
          parseInt("a",16), 10,
          parseInt("A",16), 10,
+         parseInt(NaN), NaN,
+         parseInt(NaN,16), NaN,
+         parseInt(Infinity), NaN,
          parseFloat("1.11"), 1.11,
          parseFloat(".01"), 0.01,
          parseFloat("100."), 100.0,
@@ -21,4 +24,4 @@ var a = [
 
 var result = 1;
 for (var i=0;i<a.length;i+=2)
-  if (a[i]!=a[i+1]) result = 0;
+  if (a[i]!=a[i+1] && !(isNaN(a[i]) && isNaN(a[i+1]))) result = 0;

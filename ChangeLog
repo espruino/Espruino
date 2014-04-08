@@ -12,6 +12,7 @@
             function.call can now have more than 4 arguments
             Rewrite native function caller (fix #277)
             Fix conversion of floats to booleans (fix #307)
+            Fix parseInt of NaN/Infinity (fix #309)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
