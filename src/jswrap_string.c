@@ -67,9 +67,14 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
   // We do this so we can handle '/0' in a string
   JsVar *r = jsvNewFromEmptyString();
-  if (r) { // out of mem?
-    char ch = jsvGetCharInString(parent, (size_t)idx);
-    jsvAppendStringBuf(r, &ch, 1);
+  if (r && jsvIsString(parent)) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, parent, idx);
+    if (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      jsvAppendStringBuf(r, &ch, 1);
+    }
+    jsvStringIteratorFree(&it);
   }
   return r;
 }
