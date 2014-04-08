@@ -11,6 +11,7 @@
             Stop JSON.stringify using 'undefined' (fix #286)
             function.call can now have more than 4 arguments
             Rewrite native function caller (fix #277)
+            Fix conversion of floats to booleans (fix #307)
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500
