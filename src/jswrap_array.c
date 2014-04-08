@@ -121,45 +121,53 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
 }*/
 
 JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool isMap) {
+  if (!jsvIsIterable(parent)) {
+    jsError("Array.map/forEach can only be called on something iterable");
+    return 0;
+  }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.map's first argument should be a function");
+    jsError("Array.map/forEach's first argument should be a function");
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Arraymap's second argument should be undefined, or an object");
+    jsError("Array.map/forEach's second argument should be undefined, or an object");
     return 0;
   }
   JsVar *array = 0;
   if (isMap)
     array = jsvNewWithFlags(JSV_ARRAY);
   if (array || !isMap) {
-   JsVarRef childRef = parent->firstChild;
-   while (childRef) {
-     JsVar *child = jsvLock(childRef);
-     if (jsvIsInt(child)) {
-       JsVar *args[3], *mapped;
-       args[0] = jsvLock(child->firstChild);
-       // child is a variable name, create a new variable for the index
-       args[1] = jsvNewFromInteger(jsvGetInteger(child));
-       args[2] = parent;
-       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-       jsvUnLock(args[0]);
-       jsvUnLock(args[1]);
-       if (mapped) {
-         if (isMap) {
-           JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
-           if (name) { // out of memory?
-             name->firstChild = jsvGetRef(jsvRef(mapped));
-             jsvAddName(array, name);
-             jsvUnLock(name);
-           }
-         }
-         jsvUnLock(mapped);
-       }
-     }
-     childRef = child->nextSibling;
-     jsvUnLock(child);
-   }
+    JsvIterator it;
+    jsvIteratorNew(&it, parent);
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *index = jsvIteratorGetKey(&it);
+      if (jsvIsInt(index)) {
+        JsVarInt idxValue = jsvGetInteger(index);
+
+        JsVar *args[3], *mapped;
+        args[0] = jsvIteratorGetValue(&it);
+        // child is a variable name, create a new variable for the index
+        args[1] = jsvNewFromInteger(idxValue);
+        args[2] = parent;
+        mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
+        jsvUnLock(args[0]);
+        jsvUnLock(args[1]);
+        if (mapped) {
+          if (isMap) {
+            JsVar *name = jsvNewFromInteger(idxValue);
+            if (name) { // out of memory?
+              jsvMakeIntoVariableName(name, mapped);
+              jsvAddName(array, name);
+              jsvUnLock(name);
+            }
+          }
+          jsvUnLock(mapped);
+        }
+      }
+      jsvUnLock(index);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
   }
   return array;
 }
