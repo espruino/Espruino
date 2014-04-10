@@ -21,6 +21,7 @@
             Tweaks to make more Array functions work on non-arrays
             Added Array.reduce
             Allow commas in expressions at end of for loop - `for (;;i++,j++)`
+            Fix SPI send with a single number
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

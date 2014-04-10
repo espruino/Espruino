@@ -178,7 +178,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   // send data
   if (jsvIsNumeric(srcdata)) {
     int r = spiSend((unsigned char)jsvGetInteger(srcdata), spiSendData);
-    if (r<0) spiSend(-1, spiSendData);
+    if (r<0) r = spiSend(-1, spiSendData);
     dst = jsvNewFromInteger(r); // retrieve the byte (no send!)
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
