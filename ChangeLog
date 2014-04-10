@@ -20,6 +20,7 @@
             Allow Array.map.forEach to be applied to Strings and ArrayBuffers (for #310)
             Tweaks to make more Array functions work on non-arrays
             Added Array.reduce
+            Allow commas in expressions at end of for loop - `for (;;i++,j++)`
 
      1v60 : Fix unary plug on variable not working (fix #268)
             Added DNS with eth.setIP() for W5500

@@ -1364,7 +1364,7 @@ NO_INLINE JsVar *jspeAssignmentExpression() {
   return __jspeAssignmentExpression(jspeConditionalExpression());
 }
 
-// jspeAssignmentExpression where ',' is allowed to add multiple expressions
+// ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
 NO_INLINE JsVar *jspeExpression() {
   while (!JSP_HAS_ERROR) {
     JsVar *a = jspeAssignmentExpression();
@@ -1702,7 +1702,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     }
     jsvUnLock(forStatement);
     jsvUnLock(array);
-  } else { // NORMAL FOR LOOP
+  } else { // ----------------------------------------------- NORMAL FOR LOOP
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     int loopCount = JSPARSE_MAX_LOOP_ITERATIONS;
 #endif
@@ -1722,7 +1722,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (execInfo.lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
       jspSetNoExecute();
-      jsvUnLock(jspeAssignmentExpression()); // iterator
+      jsvUnLock(jspeExpression()); // iterator
       JSP_RESTORE_EXECUTE();
     }
     JSP_MATCH(')');
@@ -1743,7 +1743,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
         jslSeekToP(execInfo.lex, &forIterStart);
-        if (execInfo.lex->tk != ')') jsvUnLock(jspeAssignmentExpression());
+        if (execInfo.lex->tk != ')') jsvUnLock(jspeExpression());
     }
     while (!hasHadBreak && JSP_SHOULD_EXECUTE && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
@@ -1773,7 +1773,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         }
         if (JSP_SHOULD_EXECUTE && loopCond) {
             jslSeekToP(execInfo.lex, &forIterStart);
-            if (execInfo.lex->tk != ')') jsvUnLock(jspeAssignmentExpression());
+            if (execInfo.lex->tk != ')') jsvUnLock(jspeExpression());
         }
     }
     jslSeekToP(execInfo.lex, &forBodyEnd);
