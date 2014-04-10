@@ -83,7 +83,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
       jsvUnLock(moduleExportName);
       jsvUnLock(fileContents);
-      jsWarn("Module not found");
+      jsWarn("Module %q not found", moduleName);
       return 0;
     }
     moduleExport = jspEvaluateModule(fileContents);

@@ -425,8 +425,8 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  *   %f = JsVarFloat
  *   %s = string (char *)
  *   %c = char
- *   %v = JsVar * (prints var as string)
- *   %t = JsVar * (prints type of var)
+ *   %v = JsVar * (doesn't have to be a string - it'll be converted)
+ *   %q = JsVar * (in quotes, and escaped)
  *   %p = Pin
  *
  * Anything else will assert
