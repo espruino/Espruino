@@ -230,6 +230,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
         JsVar *idx = jsvIteratorGetKey(&it);
         if (jsvIsInt(idx)) {
           JsVar *val = jsvIteratorGetValue(&it);
+          // TODO: This is horrible! We need to try and iterate properly...
           jsvArrayBufferSet(typedArr, (size_t)jsvGetInteger(idx), val);
           jsvUnLock(val);
         }

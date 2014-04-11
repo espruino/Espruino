@@ -44,3 +44,5 @@ void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2);
 void jswrap_graphics_lineTo(JsVar *parent, int x, int y);
 void jswrap_graphics_moveTo(JsVar *parent, int x, int y);
 void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly);
+void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect);
+void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos);

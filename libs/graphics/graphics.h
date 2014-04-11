@@ -29,6 +29,9 @@ typedef enum {
   JSGRAPHICSFLAGS_NONE,
   JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG = 1, ///< ArrayBuffer: zig-zag (even rows reversed)
   JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE = 2, ///< ArrayBuffer: if 1 bpp, treat bytes as stacked vertically
+  JSGRAPHICSFLAGS_SWAP_XY = 4, //< All devices: swap X and Y over
+  JSGRAPHICSFLAGS_INVERT_X = 8, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
+  JSGRAPHICSFLAGS_INVERT_Y = 16, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
 } JsGraphicsFlags;
 
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
@@ -43,7 +46,7 @@ typedef enum {
 typedef struct {
   JsGraphicsType type;
   JsGraphicsFlags flags;
-  unsigned short width, height;
+  unsigned short width, height; // DEVICE width and height (flags could mean the device is rotated)
   unsigned char bpp;
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
@@ -73,7 +76,7 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
-// drawing functions
+// drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y);
 void         graphicsClear(JsGraphics *gfx);
@@ -82,7 +85,7 @@ void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, sho
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices);
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch); ///< returns the width of a character
 void graphicsSplash(JsGraphics *gfx); ///< splash screen

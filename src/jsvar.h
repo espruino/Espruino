@@ -305,9 +305,10 @@ bool jsvGetBoolAndUnLock(JsVar *v);
 #define jsvGetBoolAndUnLock _jsvGetBoolAndUnLock
 #endif
 
-
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
+/** Get the String the contains the data for this arrayBuffer */
+JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer);
 /** Get the item at the given location in the array buffer and return the result */
 JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t index);
 /** Set the item at the given location in the array buffer */

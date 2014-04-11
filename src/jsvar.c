@@ -1125,6 +1125,18 @@ size_t jsvGetArrayBufferLength(JsVar *arrayBuffer) {
   return arrayBuffer->varData.arraybuffer.length;
 }
 
+/** Get the String the contains the data for this arrayBuffer */
+JsVar *jsvGetArrayBufferBackingString(JsVar *arrayBuffer) {
+  jsvLockAgain(arrayBuffer);
+  while (jsvIsArrayBuffer(arrayBuffer)) {
+    JsVar *s = jsvLock(arrayBuffer->firstChild);
+    jsvUnLock(arrayBuffer);
+    arrayBuffer = s;
+  }
+  assert(jsvIsString(arrayBuffer));
+  return arrayBuffer;
+}
+
 /** Get the item at the given location in the array buffer and return the result */
 JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t idx) {
   JsvArrayBufferIterator it;
@@ -2462,13 +2474,7 @@ void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer,
   it->type = arrayBuffer->varData.arraybuffer.type;
   it->byteLength = arrayBuffer->varData.arraybuffer.length * JSV_ARRAYBUFFER_GET_SIZE(it->type);
   it->byteOffset = arrayBuffer->varData.arraybuffer.byteOffset;
-  JsVar *arrayBufferData = jsvLock(arrayBuffer->firstChild);
-  while (jsvIsArrayBuffer(arrayBufferData)) {
-    JsVar *s = jsvLock(arrayBufferData->firstChild);
-    jsvUnLock(arrayBufferData);
-    arrayBufferData = s;
-  }
-  assert(jsvIsString(arrayBufferData));
+  JsVar *arrayBufferData = jsvGetArrayBufferBackingString(arrayBuffer);
 
   it->byteLength += it->byteOffset; // because we'll check if we have more bytes using this
   it->byteOffset = it->byteOffset + index*JSV_ARRAYBUFFER_GET_SIZE(it->type);

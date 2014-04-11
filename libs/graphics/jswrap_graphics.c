@@ -211,6 +211,8 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
 }*/
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  if (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY)
+    height=!height;
   return height ? gfx.data.height : gfx.data.width;
 }
 
@@ -587,3 +589,104 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   graphicsFillPoly(&gfx, idx/2, verts);
 }
 
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setRotation",
+         "description" : "Set the current rotation of the graphics device.",
+         "generate" : "jswrap_graphics_setRotation",
+         "params" : [ [ "rotation", "int32", "The clockwise rotation. 0 for no rotation, 1 for 90 degrees, 2 for 180, 3 for 270" ],
+                      [ "reflect", "bool", "Whether to reflect the image" ] ]
+}*/
+void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+
+  // clear flags
+  gfx.data.flags &= (JsGraphicsFlags)~(JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y);
+  // set flags
+  switch (rotation) {
+    case 0:
+      break;
+    case 1:
+      gfx.data.flags |= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X;
+      break;
+    case 2:
+      gfx.data.flags |= JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+      break;
+    case 3:
+      gfx.data.flags |= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_Y;
+      break;
+  }
+
+  if (reflect) {
+    if (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY)
+      gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_Y;
+    else
+      gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_X;
+  }
+
+  graphicsSetVar(&gfx);
+}
+
+/*JSON{ "type":"method", "class": "Graphics", "name" : "drawImage",
+         "description" : "Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is.",
+         "generate" : "jswrap_graphics_drawImage",
+         "params" : [ [ "image", "JsVar", "An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent" ],
+                      [ "x", "int32", "The X offset to draw the image" ],
+                      [ "y", "int32", "The Y offset to draw the image" ] ]
+}*/
+void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (!jsvIsObject(image)) {
+    jsError("Expecting first argument to be an object");
+    return;
+  }
+  int imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
+  int imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
+  int imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
+  JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
+  bool imageIsTransparent = transpVar!=0;
+  unsigned int imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
+  jsvUnLock(transpVar);
+  JsVar *imageBuffer = jsvObjectGetChild(image, "buffer", 0);
+  if (!(jsvIsArrayBuffer(imageBuffer) && imageWidth>0 && imageHeight>0 && imageBpp>0 && imageBpp<=32)) {
+    jsError("Expecting first argument to a valid Image");
+    jsvUnLock(imageBuffer);
+    return;
+  }
+  JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
+  jsvUnLock(imageBuffer);
+
+
+  int x=0, y=0;
+  int bits=0;
+  unsigned int colData = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, imageBufferString, 0);
+  while (jsvStringIteratorHasChar(&it) && y<imageHeight) {
+    // Get the data we need...
+    while (bits < imageBpp) {
+      colData |= (unsigned int)(((unsigned char)jsvStringIteratorGetChar(&it)) << bits);
+      jsvStringIteratorNext(&it);
+      bits += 8;
+    }
+    // extract just the bits we want
+    unsigned int col = colData&imageBitMask;
+    colData = colData >> imageBpp;
+    bits -= imageBpp;
+    // Try and write pixel!
+    if (!imageIsTransparent || imageTransparentCol!=col) {
+      if (imageBpp==1)
+        col = col ? gfx.data.fgColor : gfx.data.bgColor;
+      graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
+    }
+    // Go to next pixel
+    x++;
+    if (x>=imageWidth) {
+      x=0;
+      y++;
+      // we don't care about image height - we'll stop next time...
+    }
+
+  }
+  jsvStringIteratorFree(&it);
+  jsvUnLock(imageBufferString);
+}
