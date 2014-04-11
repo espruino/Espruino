@@ -99,7 +99,8 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
 
 /*JSON{ "type":"function", "name" : "digitalWrite",
          "description" : ["Set the digital value of the given pin",
-                          "If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB" ],
+                          "If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB.",
+                          "In the case of an array of pins, pin values are set LSB first (from the right-hand side of the array of pins)." ],
          "generate" : "jswrap_io_digitalWrite",
          "params" : [ [ "pin", "JsVar", "The pin to use"],
                       [ "value", "int", "Whether to pulse high (true) or low (false)"] ]

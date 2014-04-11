@@ -348,10 +348,104 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   jsvIteratorFree(&itsrc);
 }
 
+
+// 'special' ArrayBufferView.map as it needs to return an ArrayBuffer
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "map",
+         "description" : ["Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```",
+                          "**Note:** This returns an ArrayBuffer of the same type it was called on. To get an Array, use `Array.prototype.map`" ],
+         "generate" : "jswrap_arraybufferview_map",
+         "params" : [ [ "function", "JsVar", "Function used to map one item to another"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
+         "return" : ["JsVar", "An array containing the results"]
+}*/
+JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  if (!jsvIsArrayBuffer(parent)) {
+    jsError("ArrayBufferView.map can only be called on an ArrayBufferView");
+    return 0;
+  }
+  if (!jsvIsFunction(funcVar)) {
+    jsError("ArrayBufferView.map's first argument should be a function");
+    return 0;
+  }
+  if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
+    jsError("ArrayBufferView.map's second argument should be undefined, or an object");
+    return 0;
+  }
+
+  // create ArrayBuffer result
+  JsVarDataArrayBufferViewType arrayBufferType = parent->varData.arraybuffer.type;
+  JsVar *arrayBufferLength = jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
+  JsVar *array = jswrap_typedarray_constructor(arrayBufferType, arrayBufferLength, 0, 0);
+  jsvUnLock(arrayBufferLength);
+  if (!array) return 0;
+
+  // now iterate
+  JsvIterator it; // TODO: if we really are limited to ArrayBuffers, this could be an ArrayBufferIterator.
+  jsvIteratorNew(&it, parent);
+  JsvArrayBufferIterator itdst;
+  jsvArrayBufferIteratorNew(&itdst, array, 0);
+
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *index = jsvIteratorGetKey(&it);
+    if (jsvIsInt(index)) {
+      JsVarInt idxValue = jsvGetInteger(index);
+
+      JsVar *args[3], *mapped;
+      args[0] = jsvIteratorGetValue(&it);
+      args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
+      args[2] = parent;
+      mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
+      jsvUnLock(args[0]);
+      jsvUnLock(args[1]);
+      if (mapped) {
+        jsvArrayBufferIteratorSetValue(&itdst, mapped);
+        jsvUnLock(mapped);
+      }
+    }
+    jsvUnLock(index);
+    jsvIteratorNext(&it);
+    jsvArrayBufferIteratorNext(&itdst);
+  }
+  jsvIteratorFree(&it);
+  jsvArrayBufferIteratorFree(&itdst);
+
+  return array;
+}
+
+
+// -----------------------------------------------------------------------------------------------------
+//                                                                      Steal Array's methods for this
+// -----------------------------------------------------------------------------------------------------
+
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "indexOf",
+         "description" : "Return the index of the value in the array, or -1",
+         "generate" : "jswrap_array_indexOf",
+         "params" : [ [ "value", "JsVar", "The value to check for"] ],
+         "return" : ["JsVar", "the index of the value in the array, or -1"]
+}*/
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "join",
+         "description" : "Join all elements of this array together into one string, using 'separator' between them. eg. ```[1,2,3].join(' ')=='1 2 3'```",
+         "generate" : "jswrap_array_join",
+         "params" : [ [ "separator", "JsVar", "The separator"] ],
+         "return" : ["JsVar", "A String representing the Joined array"]
+}*/
 /*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "sort", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Do an in-place quicksort of the array",
          "generate" : "jswrap_array_sort",
          "params" : [ [ "var", "JsVar", "A function to use to compare array elements (or undefined)"] ],
          "return" : [ "JsVar", "This array object" ]
 }*/
-// Steal the normal array's sort function for this
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "forEach",
+         "description" : "Executes a provided function once per array element.",
+         "generate" : "jswrap_array_forEach",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
+}*/
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "reduce",
+         "description" : "Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.",
+         "generate" : "jswrap_array_reduce",
+         "params" : [ [ "callback", "JsVar", "Function used to reduce the array"] ,
+                      [ "initialValue", "JsVar", "if specified, the initial value to pass to the function"] ],
+         "return" : ["JsVar", "The value returned by the last function called"]
+}*/
+

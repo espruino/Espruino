@@ -81,6 +81,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value) {
          "return" : ["JsVar", "A String representing the Joined array"]
 }*/
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
+  if (!jsvIsIterable(parent)) return 0;
   if (jsvIsUndefined(filler))
     filler = jsvNewFromString(","); // the default it seems
   else
