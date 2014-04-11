@@ -119,7 +119,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
          "return" : ["float", "The cosine of theta"]
 }*/
 
-double fs_fmod(double x, double y) {
+double jswrap_math_mod(double x, double y) {
   double a, b;
   const double c = x;
 
@@ -146,8 +146,8 @@ double fs_fmod(double x, double y) {
 
 double jswrap_math_pow(double x, double y) {
   double p;
-  if (x < 0 && fs_fmod(y, 1) == 0) {
-    if (fs_fmod(y, 2) == 0) {
+  if (x < 0 && jswrap_math_mod(y, 1) == 0) {
+    if (jswrap_math_mod(y, 2) == 0) {
       p = exp(log(-x) * y);
     } else {
       p = -exp(log(-x) * y);

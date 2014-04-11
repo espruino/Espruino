@@ -17,6 +17,7 @@
 #include "jswrap_json.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "libs/jswrap_math.h" // for jswrap_math_mod
 
 
 /** Basically, JsVars are stored in one big array, so save the need for
@@ -1971,7 +1972,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
         return jsvNewFromBool(!eql);
     }
 
-    bool needsInt = op=='&' || op=='|' || op=='^' || op=='%' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
+    bool needsInt = op=='&' || op=='|' || op=='^' || op==LEX_LSHIFT || op==LEX_RSHIFT || op==LEX_RSHIFTUNSIGNED;
     bool needsNumeric = needsInt || op=='*' || op=='/' || op=='%' || op=='-';
     bool isCompare = op==LEX_EQUAL || op==LEX_NEQUAL || op=='<' || op==LEX_LEQUAL || op=='>'|| op==LEX_GEQUAL;
     if (isCompare) {
@@ -2029,6 +2030,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
                 case '-': return jsvNewFromFloat(da-db);
                 case '*': return jsvNewFromFloat(da*db);
                 case '/': return jsvNewFromFloat(da/db);
+                case '%': return jsvNewFromFloat(jswrap_math_mod(da, db));
                 case LEX_EQUAL:
                 case LEX_NEQUAL:  { bool equal = da==db;
                                     if ((jsvIsNull(a) && jsvIsUndefined(b)) ||
