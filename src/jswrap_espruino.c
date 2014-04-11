@@ -102,7 +102,7 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     return 0;
   }
 
-  return jsvNewNativeFunction((void *)addr, argTypes);
+  return jsvNewNativeFunction((void *)(size_t)addr, argTypes);
 }
 
 
@@ -394,3 +394,17 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   if (time<0 || isnan(time)) time=1;
   jshEnableWatchDog(time);
 }
+
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "toArrayBuffer",
+         "generate" : "jswrap_espruino_toArrayBuffer",
+         "description" : [ "Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.",
+                           "Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`." ],
+         "params" : [ [ "str", "JsVar", "The string to convert to an ArrayBuffer"] ],
+         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ]
+}*/
+JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
+  if (!jsvIsString(str)) return 0;
+  return jsvNewArrayBufferFromString(str, 0);
+}
+

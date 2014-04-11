@@ -626,7 +626,7 @@ void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "drawImage",
-         "description" : "Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is.",
+         "description" : "Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first",
          "generate" : "jswrap_graphics_drawImage",
          "params" : [ [ "image", "JsVar", "An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent" ],
                       [ "x", "int32", "The X offset to draw the image" ],
@@ -664,13 +664,12 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   while (jsvStringIteratorHasChar(&it) && y<imageHeight) {
     // Get the data we need...
     while (bits < imageBpp) {
-      colData |= (unsigned int)(((unsigned char)jsvStringIteratorGetChar(&it)) << bits);
+      colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
       jsvStringIteratorNext(&it);
       bits += 8;
     }
     // extract just the bits we want
-    unsigned int col = colData&imageBitMask;
-    colData = colData >> imageBpp;
+    unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
     bits -= imageBpp;
     // Try and write pixel!
     if (!imageIsTransparent || imageTransparentCol!=col) {

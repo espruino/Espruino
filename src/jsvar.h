@@ -150,6 +150,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes); ///< Create an array containing the given elements
+JsVar *jsvNewArrayBufferFromString(JsVar *str, int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
 /// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
 void jsvFreePtr(JsVar *var);

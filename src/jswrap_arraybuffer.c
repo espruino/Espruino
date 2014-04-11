@@ -105,17 +105,9 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   }
   JsVar *arrData = jsvNewStringOfLength((unsigned int)byteLength);
   if (!arrData) return 0;
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
-  if (!arr) {
-    jsvUnLock(arrData);
-    return 0;
-  }
-  arr->firstChild = jsvGetRef(jsvRef(arrData));
+  JsVar *v = jsvNewArrayBufferFromString(arrData, (int)byteLength);
   jsvUnLock(arrData);
-  arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
-  arr->varData.arraybuffer.byteOffset = 0;
-  arr->varData.arraybuffer.length = (unsigned short)byteLength;
-  return arr;
+  return v;
 }
 
 

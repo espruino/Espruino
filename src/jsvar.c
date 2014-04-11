@@ -544,6 +544,18 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
   return func;
 }
 
+/// Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+JsVar *jsvNewArrayBufferFromString(JsVar *str, int lengthOrZero) {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
+  if (!arr) return 0;
+  arr->firstChild = jsvGetRef(jsvRef(str));
+  arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
+  arr->varData.arraybuffer.byteOffset = 0;
+  if (lengthOrZero<=0) lengthOrZero = jsvGetStringLength(str);
+  arr->varData.arraybuffer.length = lengthOrZero;
+  return arr;
+}
+
 bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // quick checks
   if (a==b) return true;
