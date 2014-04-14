@@ -74,6 +74,22 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
     return;
   }
   jsvSetValueOfName(dst, src);
+  /* If dst is flagged as a new child, it means that
+   * it was previously undefined, and we need to add it to
+   * the given object when it is set.
+   */
+  if (jsvIsNewChild(dst)) {
+    // Get what it should have been a child of
+    JsVar *parent = jsvLock(dst->nextSibling);
+    // Remove the 'new child' flagging
+    jsvUnRef(parent);
+    dst->nextSibling = 0;
+    jsvUnRef(parent);
+    dst->prevSibling = 0;
+    // Add to the parent
+    jsvAddName(parent, dst);
+    jsvUnLock(parent);
+  }
 }
 
 void jspeiInit(JsLex *lex) {
@@ -650,11 +666,16 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               } else { // not found!
                 // It wasn't handled... We already know this is an object so just add a new child
                 if (jsvIsObject(aVar) || jsvIsFunction(aVar) || jsvIsArray(aVar)) {
-                  JsVar *value = 0;
-                  if (jsvIsFunction(aVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0)
-                    value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
-                  child = jsvAddNamedChild(aVar, value, name);
-                  jsvUnLock(value);
+                  if (jsvIsFunction(aVar) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+                    JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+                    child = jsvAddNamedChild(aVar, value, name);
+                    jsvUnLock(value);
+                  } else {
+                    child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
+                    // by setting the siblings as the same, we signal that if set,
+                    // we should be made a member of the given object
+                    child->nextSibling = child->prevSibling = jsvGetRef(jsvRef(jsvRef(aVar)));
+                  }
                 } else {
                   // could have been a string...
                   jsErrorAt("Field or method does not already exist, and can't create it on a non-object", execInfo.lex, execInfo.lex->tokenLastStart);
@@ -701,11 +722,16 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               if (a) // turn into an 'array buffer name'
                 a->flags = (a->flags & ~(JSV_NAME|JSV_VARTYPEMASK)) | JSV_ARRAYBUFFERNAME;
             } else if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar) || jsvIsFunction(aVar))) {
-                // TODO: If we set to undefined, maybe we should remove the name?
                 JsVar *indexValue = jsvSkipName(index);
                 if (!jsvIsString(indexValue) && (jsvIsBoolean(indexValue) || !jsvIsNumeric(indexValue)))
                   indexValue = jsvAsString(indexValue, true);
-                JsVar *child = jsvFindChildFromVar(aVar, indexValue, true);
+                JsVar *child = jsvFindChildFromVar(aVar, indexValue, false);
+                if (!child) {
+                  child = jsvAsName(indexValue);
+                  // by setting the siblings as the same, we signal that if set,
+                  // we should be made a member of the given object
+                  child->nextSibling = child->prevSibling = jsvGetRef(jsvRef(jsvRef(aVar)));
+                }
                 jsvUnLock(indexValue);
 
                 jsvUnLock(parent);
@@ -1308,8 +1334,8 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         /* If we're assigning to this and we don't have a parent,
          * add it to the symbol table root as per JavaScript. */
         if (JSP_SHOULD_EXECUTE && lhs && !lhs->refs) {
-          if (jsvIsName(lhs)/* && jsvGetStringLength(lhs)>0*/) {
-            if (!jsvIsArrayBufferName(lhs))
+          if (jsvIsName(lhs)) {
+            if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
               jsvAddName(execInfo.root, lhs);
           } else // TODO: Why was this here? can it happen?
             jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastStart);

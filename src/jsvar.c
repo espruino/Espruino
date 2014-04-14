@@ -262,7 +262,9 @@ static inline void jsvFreePtrInternal(JsVar *var) {
 void jsvFreePtr(JsVar *var) {
     /* To be here, we're not supposed to be part of anything else. If
      * we were, we'd have been freed by jsvGarbageCollect */
-    assert(jsvIsStringExt(var) || (!var->nextSibling && !var->prevSibling));
+    assert((!var->nextSibling && !var->prevSibling) || // check that next/prevSibling are not set
+           jsvIsStringExt(var) ||  // UNLESS we're part of a string and nextSibling/prevSibling are used for string data
+           (jsvIsName(var) && (var->nextSibling==var->prevSibling))); // UNLESS we're signalling that we're jsvIsNewChild
 
     // Names that Link to other things
     if (jsvHasSingleChild(var)) {
@@ -287,7 +289,11 @@ void jsvFreePtr(JsVar *var) {
         jsvFreePtrInternal(child);
         jsvUnLock(child);
       }
-    } else if (jsvHasChildren(var)) {
+    }
+    /* NO ELSE HERE - because jsvIsNewChild stuff can be for Names, which
+    can be ints or strings */
+
+    if (jsvHasChildren(var)) {
       JsVarRef childref = var->firstChild;
       var->firstChild = 0;
       var->lastChild = 0;
@@ -303,6 +309,13 @@ void jsvFreePtr(JsVar *var) {
     } else {
       assert(!var->firstChild);
       assert(!var->lastChild);
+      if (jsvIsName(var)) {
+        assert(var->nextSibling==var->prevSibling); // the case for jsvIsNewChild
+        if (var->nextSibling) {
+          jsvUnRefRef(var->nextSibling);
+          jsvUnRefRef(var->prevSibling);
+        }
+      }
     }
     // free!
     jsvFreePtrInternal(var);
@@ -545,14 +558,14 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
 }
 
 /// Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
-JsVar *jsvNewArrayBufferFromString(JsVar *str, int lengthOrZero) {
+JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
   JsVar *arr = jsvNewWithFlags(JSV_ARRAYBUFFER);
   if (!arr) return 0;
   arr->firstChild = jsvGetRef(jsvRef(str));
   arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
   arr->varData.arraybuffer.byteOffset = 0;
-  if (lengthOrZero<=0) lengthOrZero = jsvGetStringLength(str);
-  arr->varData.arraybuffer.length = lengthOrZero;
+  if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
+  arr->varData.arraybuffer.length = (unsigned short)lengthOrZero;
   return arr;
 }
 
@@ -1518,6 +1531,18 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
   return child;
 }
 
+/** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
+JsVar *jsvAsName(JsVar *var) {
+  if (var->refs == 0) {
+    // Not reffed - great! let's just use it
+    if (!jsvIsName(var))
+      var = jsvMakeIntoVariableName(var, 0);
+    return jsvLockAgain(var);
+  } else { // it was reffed, we must add a new one
+    return jsvMakeIntoVariableName(jsvCopy(var), 0);
+  }
+}
+
 /** Non-recursive finding */
 JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) {
   JsVar *child;
@@ -1535,14 +1560,7 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 
   child = 0;
   if (addIfNotFound && childName) {
-    if (childName->refs == 0) {
-      // Not reffed - great! let's just use it
-      if (!jsvIsName(childName))
-        childName = jsvMakeIntoVariableName(childName, 0);
-      child = jsvLockAgain(childName);
-    } else { // it was reffed, we must add a new one
-      child = jsvMakeIntoVariableName(jsvCopy(childName), 0);
-    }
+    child = jsvAsName(childName);
     jsvAddName(parent, child);
   }
   return child;
@@ -2521,8 +2539,8 @@ static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char
   else if (dataLen==4) v = *(int*)data;
   else if (dataLen==8) v = *(long long*)data;
   else assert(0);
-  if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)) && v<0)
-    v += 1 << (8*dataLen);
+  if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)))
+    v = v & ((1L << (8*dataLen))-1);
   return v;
 }
 

@@ -2,6 +2,7 @@
             Added Graphics.setRotation (fix #321)
             Added Graphics.drawImage (fix #198)
             Added E.toArrayBuffer for fast string->array conversion
+            Accessing an undefined array/object element now doesn't create it (fix #63)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

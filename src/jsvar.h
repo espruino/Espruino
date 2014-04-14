@@ -79,7 +79,8 @@ typedef struct {
    * to overwrite the following 3 references in order to grab another
    * 6 bytes worth of string data */
 
-  /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list
+  /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
+   *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
@@ -92,7 +93,8 @@ typedef struct {
    * For OBJECT/ARRAY/FUNCTION - this is the first child
    * For NAMES and REF - this is a link to the variable it points to
    * For STRING_EXT - extra character data (NOT a link)
-   * For ARRAYBUFFER - a link to a string containing the data for the array buffer   *
+   * For ARRAYBUFFER - a link to a string containing the data for the array buffer
+   * For CHILD_OF - a link to the variable pointed to
    */
   JsVarRef firstChild;
 
@@ -100,6 +102,7 @@ typedef struct {
    * For OBJECT/ARRAY/FUNCTION - this is the last child
    * For STRINGS/STRING_EXT/NAME+STRING - this is a link to more string data if it is needed
    * For REF - this is the 'parent' that the firstChild is a member of
+   * For CHILD_OF - a link to the object that should contain the variable
    */
   JsVarRef lastChild;
 } PACKED_FLAGS JsVar;
@@ -150,7 +153,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes); ///< Create an array containing the given elements
-JsVar *jsvNewArrayBufferFromString(JsVar *str, int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
+JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
 /// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
 void jsvFreePtr(JsVar *var);
@@ -203,6 +206,8 @@ static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+/// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
+static inline bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && v->nextSibling && v->nextSibling==v->prevSibling; }
 
 /// Can the given variable be converted into an integer without loss of precision
 static inline bool jsvIsIntegerish(const JsVar *v) { return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v); }
@@ -221,7 +226,7 @@ bool jsvIsStringNumericStrict(const JsVar *var);
 // TODO: maybe isName shouldn't include ArrayBufferName?
 bool jsvHasCharacterData(const JsVar *v); ///< does the v->data union contain character data?
 bool jsvHasStringExt(const JsVar *v);
-/// Does this variable use firstChild/lastChild to point to multiple childrem
+/// Does this variable use firstChild/lastChild to point to multiple children
 bool jsvHasChildren(const JsVar *v);
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v);
@@ -346,6 +351,9 @@ static inline JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
   jsvUnLock(a);
   return b;
 }
+
+/** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
+JsVar *jsvAsName(JsVar *var);
 
 /// MATHS!
 JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op);
