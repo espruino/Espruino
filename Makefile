@@ -995,10 +995,10 @@ $(PROJ_NAME).srec : $(PROJ_NAME).elf
 	@$(call obj_to_bin,srec,srec)
 
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
-  @echo $(call $(quiet_)obj_to_bin,binary,bin)
-  @$(call obj_to_bin,binary,bin)
+	@echo $(call $(quiet_)obj_to_bin,binary,bin)
+	@$(call obj_to_bin,binary,bin)
 ifndef TRAVIS
-  bash scripts/check_size.sh $(PROJ_NAME).bin
+	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
@@ -1010,26 +1010,26 @@ ifdef OLIMEXINO_STM32_BOOTLOADER
   dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else
 ifdef MBED
-  cp $(PROJ_NAME).bin /media/MBED;sync
+	cp $(PROJ_NAME).bin /media/MBED;sync
 else
-  echo ST-LINK flash
-  st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
+	echo ST-LINK flash
+	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 endif
 
 serialflash: all
-  echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
-  python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
+	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
+	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 #	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ewv $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 
 gdb:
-  echo "target extended-remote :4242" > gdbinit
-  echo "file $(PROJ_NAME).elf" >> gdbinit
-  #echo "load" >> gdbinit
-  echo "break main" >> gdbinit
-  echo "break HardFault_Handler" >> gdbinit
-  $(GDB) -x gdbinit
-  rm gdbinit
+	echo "target extended-remote :4242" > gdbinit
+	echo "file $(PROJ_NAME).elf" >> gdbinit
+	#echo "load" >> gdbinit
+	echo "break main" >> gdbinit
+	echo "break HardFault_Handler" >> gdbinit
+	$(GDB) -x gdbinit
+	rm gdbinit
 endif	    # ---------------------------------------------------
 
 clean:
