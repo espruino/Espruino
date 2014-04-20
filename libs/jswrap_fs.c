@@ -110,7 +110,7 @@ bool _Pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position)
                 }
                 else
                 {
-                   InProgress = false;
+                    InProgress = false;
                 }
                 jsvUnLock(Buffer);
             }
@@ -134,17 +134,17 @@ void jswrap_fs_kill() {
     {
         JsVar *arr = fsGetArray(JS_HIDDEN_CHAR_STR"FSOpenFiles",false);
         if (arr) {
-          JsvArrayIterator it;
-          jsvArrayIteratorNew(&it, arr);
-          while (jsvArrayIteratorHasElement(&it)) {
-            JsVar *file = jsvArrayIteratorGetElement(&it);
-            wrap_fat_close(file);
-            jsvUnLock(file);
-            jsvArrayIteratorNext(&it);
-          }
-          jsvArrayIteratorFree(&it);
-          jsvRemoveAllChildren(arr);
-          jsvUnLock(arr);
+            JsvArrayIterator it;
+            jsvArrayIteratorNew(&it, arr);
+            while (jsvArrayIteratorHasElement(&it)) {
+                JsVar *file = jsvArrayIteratorGetElement(&it);
+                wrap_fat_close(file);
+                jsvUnLock(file);
+                jsvArrayIteratorNext(&it);
+            }
+            jsvArrayIteratorFree(&it);
+            jsvRemoveAllChildren(arr);
+            jsvUnLock(arr);
         }
     }
     // all open files will have been closed..
@@ -152,22 +152,22 @@ void jswrap_fs_kill() {
     {
         JsVar *arr = fsGetArray(JS_HIDDEN_CHAR_STR"FSOpenPipes", false);
         if (arr) {
-          jsvRemoveAllChildren(arr);
-          jsvUnLock(arr);
+            jsvRemoveAllChildren(arr);
+            jsvUnLock(arr);
         }
     }
 }
 
 bool fileGetFromVar(JsFile *file, JsVar *parent)
 {
-	bool ret = false;
+    bool ret = false;
     JsVar *fHandle = jsvObjectGetChild(parent, JS_HIDDEN_CHAR_STR"FShandle", 0);
-	assert(fHandle);
-	if (fHandle)
-	{
-		jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
-		jsvUnLock(fHandle);
-		file->fileVar = parent;
+    assert(fHandle);
+    if (fHandle)
+    {
+        jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
+        jsvUnLock(fHandle);
+        file->fileVar = parent;
         file->read = _readFile;
         file->write = _writeFile;
         file->close = _closeFile;
@@ -175,23 +175,23 @@ bool fileGetFromVar(JsFile *file, JsVar *parent)
         {
             ret = true;
         }
-	}
-	return ret;
+    }
+    return ret;
 }
 
 void fileSetVar(JsFile *file)
 {
     JsVar *fHandle = jsvFindChildFromString(file->fileVar, JS_HIDDEN_CHAR_STR"FShandle", true);
-	JsVar *data = jsvSkipName(fHandle);
-	if (!data)
-	{
-		data = jsvNewStringOfLength(sizeof(JsFileData));
-	    jsvSetValueOfName(fHandle, data);
-	}
-	jsvUnLock(fHandle);
-	assert(data);
-	jsvSetString(data, (char*)&file->data, sizeof(JsFileData));
-	jsvUnLock(data);
+    JsVar *data = jsvSkipName(fHandle);
+    if (!data)
+    {
+        data = jsvNewStringOfLength(sizeof(JsFileData));
+        jsvSetValueOfName(fHandle, data);
+    }
+    jsvUnLock(fHandle);
+    assert(data);
+    jsvSetString(data, (char*)&file->data, sizeof(JsFileData));
+    jsvUnLock(data);
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "open",
@@ -205,18 +205,18 @@ void fileSetVar(JsFile *file)
 JsVar* wrap_fat_open(JsVar* path, JsVar* mode)
 {
     FRESULT res = FR_INVALID_NAME;
-	JsFile file;
+    JsFile file;
     FileMode fMode = FM_NONE;
-	if (jsfsInit())
-	{
+    if (jsfsInit())
+    {
         JsVar *arr = fsGetArray(JS_HIDDEN_CHAR_STR"FSOpenFiles", true);
         if (!arr) return 0; // out of memory
 
-		char pathStr[JS_DIR_BUF_SIZE] = "";
+        char pathStr[JS_DIR_BUF_SIZE] = "";
         char modeStr[3] = "";
         if (!jsvIsUndefined(path) && !jsvIsUndefined(mode))
-		{
-			jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+        {
+            jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
             jsvGetString(mode, modeStr, 3);
 
             if(strcmp(modeStr,"r") == 0)
@@ -232,50 +232,50 @@ JsVar* wrap_fat_open(JsVar* path, JsVar* mode)
                 fMode = FM_READ_WRITE;
             }
             if(fMode != FM_NONE && AllocateJsFile(&file, fMode, FT_FILE))
-			{
+            {
 #ifndef LINUX
                 if ((res=f_open(&file.data.handle, pathStr, fMode)) == FR_OK)
-				{
+                {
 #else
                 file.data.handle = fopen(pathStr, modeStr);
-				if (file.data.handle)
-				{
+                if (file.data.handle)
+                {
                     res=FR_OK;
 #endif
                     file.data.state = FS_OPEN;
-					fileSetVar(&file);
+                    fileSetVar(&file);
                     // add to list of open files
                     jsvArrayPush(arr, file.fileVar);
                     jsvUnLock(arr);
-				}
-			}
-		}
-	}
+                }
+            }
+        }
+    }
 
-	if(res != FR_OK)
-	{
-		jsfsReportError("Could not open file", res);
-	}
+    if(res != FR_OK)
+    {
+        jsfsReportError("Could not open file", res);
+    }
 
-	return file.fileVar;
+    return file.fileVar;
 }
 
 bool AllocateJsFile(JsFile* file,FileMode mode, FileType type)
 {
-	bool ret = false;
-	JsVar *parent = jspNewObject(0, "File");
-	if (parent) // low memory
-	{
-		file->fileVar = parent;
-		file->data.mode = mode;
-		file->data.type = type;
+    bool ret = false;
+    JsVar *parent = jspNewObject(0, "File");
+    if (parent) // low memory
+    {
+        file->fileVar = parent;
+        file->data.mode = mode;
+        file->data.type = type;
         file->data.state = FS_NONE;
         file->read = _readFile;
         file->write = _writeFile;
         file->close = _closeFile;
-		ret = true;
-	}
-	return ret;
+        ret = true;
+    }
+    return ret;
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "pipe",
@@ -325,11 +325,11 @@ JsVar * wrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* ChunkSize, JsVar* cal
 //fs.close(fd)
 void wrap_fat_close(JsVar* parent)
 {
-	if (jsfsInit())
-	{
-		JsFile file;
+    if (jsfsInit())
+    {
+        JsFile file;
         if (fileGetFromVar(&file, parent) && file.data.state == FS_OPEN)
-		{
+        {
             file.close(&file);
             JsVar *arr = fsGetArray(JS_HIDDEN_CHAR_STR"FSOpenFiles", false);
             if (arr)
@@ -337,13 +337,13 @@ void wrap_fat_close(JsVar* parent)
                 JsVar *idx = jsvGetArrayIndexOf(arr, file.fileVar, true);
                 if (idx)
                 {
-                  jsvRemoveChild(arr, idx);
-                  jsvUnLock(idx);
+                    jsvRemoveChild(arr, idx);
+                    jsvUnLock(idx);
                 }
                 jsvUnLock(arr);
             }
-		}
-	}
+        }
+    }
 }
 
 void _closeFile(JsFile* file)
@@ -351,49 +351,49 @@ void _closeFile(JsFile* file)
     if(file)
     {
 #ifndef LINUX
-            f_close(&file->data.handle);
+        f_close(&file->data.handle);
 #else
-            fclose(file->data.handle);
-            file->data.handle = 0;
+        fclose(file->data.handle);
+        file->data.handle = 0;
 #endif
-            file->data.state = FS_CLOSED;
-            fileSetVar(file);
+        file->data.state = FS_CLOSED;
+        fileSetVar(file);
     }
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "write",
          "generate" : "wrap_fat_write",
-		 "description" : [ "write data to a file in byte size chunks"],
+         "description" : [ "write data to a file in byte size chunks"],
          "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
                       ["length", "int32", "is an integer specifying the number of bytes to write."],
                       ["position", "int32", "is an integer specifying where to begin writing to in the file.", "If position is null, data will be written from the current file position."],
-					  ["callback", "JsVar", "a function to call when the data has been written."]],
+                      ["callback", "JsVar", "a function to call when the data has been written."]],
          "return" : [ "int32", "the number of bytes written" ]
 }*/
 //fs.write(fd, buffer, offset, length, position, callback)
 size_t wrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback)
 {
-	FRESULT res = 0;
-	size_t bytesWritten = 0;
-	if (jsfsInit())
-	{
-		JsFile file;
+    FRESULT res = 0;
+    size_t bytesWritten = 0;
+    if (jsfsInit())
+    {
+        JsFile file;
         if (fileGetFromVar(&file, parent))
-		{
+        {
             bytesWritten = file.write(&file, buffer, length, position, &res);
-		}
+        }
         if(callback)
         {
             jsvUnLock(jsvAddNamedChild(parent, callback, "#oncomplete"));
             jsiQueueObjectCallbacks(parent, "#oncomplete", bytesWritten, 0);
         }
-	}
+    }
 
-	if (res)
-	{
-		jsfsReportError("Unable to write file", res);
-	}
-	return bytesWritten;
+    if (res)
+    {
+        jsfsReportError("Unable to write file", res);
+    }
+    return bytesWritten;
 }
 
 size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res)
@@ -449,33 +449,33 @@ size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT
          "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
                       ["length", "int32", "is an integer specifying the number of bytes to read."],
                       ["position", "int32", "is an integer specifying where to begin reading from in the file.", "If position is null, data will be read from the current file position."],
-          	  	  	  ["callback", "JsVar", "a function to call when the data has been read."]],
+                      ["callback", "JsVar", "a function to call when the data has been read."]],
          "return" : [ "int32", "the number of bytes read" ]
 }*/
 //fs.read(fd, buffer, length, position, callback)
 size_t wrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback)
 {
-	FRESULT res = 0;
-	size_t bytesRead = 0;
-	if (jsfsInit())
-	{
-		JsFile file;
+    FRESULT res = 0;
+    size_t bytesRead = 0;
+    if (jsfsInit())
+    {
+        JsFile file;
         if (fileGetFromVar(&file, parent))
-		{
+        {
             bytesRead = file.read(&file, buffer, length, position, &res);
-		}
+        }
         if(callback)
         {
             jsvUnLock(jsvAddNamedChild(parent, callback, "#oncomplete"));
             jsiQueueObjectCallbacks(parent, "#oncomplete", bytesRead, 0);
         }
-	}
+    }
 
-	if (res)
-	{
-		jsfsReportError("Unable to read file", res);
-	}
-	return bytesRead;
+    if (res)
+    {
+        jsfsReportError("Unable to read file", res);
+    }
+    return bytesRead;
 }
 
 size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res)
@@ -517,10 +517,10 @@ size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT*
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "createReadStream",
-		 "generate" : "createReadStream",
-		 "description" : [ "Create a stream object to read the specified file" ],
+         "generate" : "createReadStream",
+         "description" : [ "Create a stream object to read the specified file" ],
          "params" : [ [ "path", "JsVar", "The path of the file to read" ]],
-		 "return" : [ "JsVar", "The ReadStream Object" ]
+         "return" : [ "JsVar", "The ReadStream Object" ]
 }*/
 //var r = fs.createReadStream('file.txt');
 JsVar* createReadStream(JsVar* path) {
@@ -530,10 +530,10 @@ JsVar* createReadStream(JsVar* path) {
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "createWriteStream",
-		 "generate" : "createWriteStream",
-		 "description" : [ "Create a stream object to write to the specified file" ],
+         "generate" : "createWriteStream",
+         "description" : [ "Create a stream object to write to the specified file" ],
          "params" : [ [ "path", "JsVar", "The path of the file to write" ]],
-		 "return" : [ "JsVar", "The WriteStream Object" ]
+         "return" : [ "JsVar", "The WriteStream Object" ]
 }*/
 //var w = fs.createWriteStream('file.txt');
 JsVar* createWriteStream(JsVar* path) {

@@ -32,16 +32,16 @@ typedef int FRESULT;
 #include "jsinteractive.h"
 
 typedef enum {
-	FT_NONE=0,
-	FT_FILE,
-	FT_STREAM
+    FT_NONE=0,
+    FT_FILE,
+    FT_STREAM
 } FileType;
 
 typedef enum {
-	FM_NONE=0,
-	FM_READ,
-	FM_WRITE,
-	FM_READ_WRITE
+    FM_NONE=0,
+    FM_READ,
+    FM_WRITE,
+    FM_READ_WRITE
 } FileMode;
 
 typedef enum {
@@ -52,18 +52,18 @@ typedef enum {
 
 typedef struct {
     File_Handle handle;
-	FileType type;
-	FileMode mode;
+    FileType type;
+    FileMode mode;
     FileState state;
 } PACKED_FLAGS JsFileData;
 
 typedef struct JsFile {
-  JsVar* fileVar; // this won't be locked again - we just know that it is already locked by something else
-  JsFileData data;
-  unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
-  size_t (*read)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-  size_t (*write)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-  void (*close)(JsVar* parent);
+    JsVar* fileVar; // this won't be locked again - we just know that it is already locked by something else
+    JsFileData data;
+    unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
+    size_t (*read)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
+    size_t (*write)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
+    void (*close)(JsVar* parent);
 } PACKED_FLAGS JsFile;
 
 bool jswrap_fs_idle();
