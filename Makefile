@@ -928,24 +928,24 @@ endif
 
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
-  @echo Generating JS wrappers
-  $(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
-  $(Q)echo DEFINES =  $(DEFINES)
-  $(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
+	@echo Generating JS wrappers
+	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
+	$(Q)echo DEFINES =  $(DEFINES)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
-  @echo Generating pin info
-  $(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
+	@echo Generating pin info
+	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
 $(LINKER_FILE): scripts/build_linker.py
-  @echo Generating linker scripts
-  $(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+	@echo Generating linker scripts
+	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
-  @echo Generating platform configs
-  $(Q)python scripts/build_platform_config.py $(BOARD)
+	@echo Generating platform configs
+	$(Q)python scripts/build_platform_config.py $(BOARD)
 
 compile=$(CC) $(CFLAGS) $(DEFINES) $< -o $@
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -958,41 +958,41 @@ quiet_obj_dump= GEN $(PROJ_NAME).lst
 quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 %.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
-  @echo $($(quiet_)compile)
-  @$(call compile)
+	@echo $($(quiet_)compile)
+	@$(call compile)
 
 .cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
-  @echo $($(quiet_)compile)
-  @$(call compile)
+	@echo $($(quiet_)compile)
+	@$(call compile)
 
 .s.o:
-  @echo $($(quiet_)compile)
-  @$(call compile)
+	@echo $($(quiet_)compile)
+	@$(call compile)
 
 ifdef LINUX # ---------------------------------------------------
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 
 $(PROJ_NAME): $(OBJS)
-  @echo $($(quiet_)link)
-  @$(call link)
+	@echo $($(quiet_)link)
+	@$(call link)
 
 else # embedded, so generate bin, etc ---------------------------
 
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
-  @echo $($(quiet_)link)
-  @$(call link)
+	@echo $($(quiet_)link)
+	@$(call link)
 
 $(PROJ_NAME).lst : $(PROJ_NAME).elf
-  @echo $($(quiet_)obj_dump)
-  @$(call obj_dump)
+	@echo $($(quiet_)obj_dump)
+	@$(call obj_dump)
 
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
-  @echo $(call $(quiet_)obj_to_bin,ihex,hex)
-  @$(call obj_to_bin,ihex,hex)
+	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
+	@$(call obj_to_bin,ihex,hex)
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
-  @echo $(call $(quiet_)obj_to_bin,srec,srec)
-  @$(call obj_to_bin,srec,srec)
+	@echo $(call $(quiet_)obj_to_bin,srec,srec)
+	@$(call obj_to_bin,srec,srec)
 
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
   @echo $(call $(quiet_)obj_to_bin,binary,bin)
@@ -1033,11 +1033,11 @@ gdb:
 endif	    # ---------------------------------------------------
 
 clean:
-  @echo Cleaning targets
-  $(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
-  $(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
-  $(Q)rm -f $(PROJ_NAME).elf
-  $(Q)rm -f $(PROJ_NAME).hex
-  $(Q)rm -f $(PROJ_NAME).bin
-  $(Q)rm -f $(PROJ_NAME).srec
-  $(Q)rm -f $(PROJ_NAME).lst
+	@echo Cleaning targets
+	$(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+	$(Q)rm -f $(PROJ_NAME).elf
+	$(Q)rm -f $(PROJ_NAME).hex
+	$(Q)rm -f $(PROJ_NAME).bin
+	$(Q)rm -f $(PROJ_NAME).srec
+	$(Q)rm -f $(PROJ_NAME).lst
