@@ -401,7 +401,11 @@ else # !BOOTLOADER but using a bootloader
  ifdef USE_BOOTLOADER
   BUILD_LINKER_FLAGS+=--using_bootloader
   # -k applies bootloader hack for Espruino 1v3 boards
-  STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodemfa131
+  ifdef MACOSX
+    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodemfa131
+  else
+    STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
+  endif
   BASEADDRESS=$(shell python -c "import sys;sys.path.append('scripts');import common;print hex(0x08000000+common.get_bootloader_size())")
  endif
 endif
