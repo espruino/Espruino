@@ -38,7 +38,6 @@
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
-
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -87,6 +86,7 @@ BASEADDRESS=0x08000000
 ###################################################
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 ifdef ESPRUINO_1V0
+EMBEDDED=1
 USB=1
 #USE_NET=1
 USE_GRAPHICS=1
@@ -99,6 +99,7 @@ STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
+EMBEDDED=1
 DEFINES+=-DESPRUINO_1V1
 USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
@@ -114,6 +115,7 @@ STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os # not that short on memory, but Travis compiler is old and uses more
 else ifdef ESPRUINO_1V3
+EMBEDDED=1
 DEFINES+=-DESPRUINO_1V3
 USE_BOOTLOADER=1
 BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
@@ -128,6 +130,7 @@ STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
+EMBEDDED=1
 USB=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -138,6 +141,7 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef OLIMEXINO_STM32_BOOTLOADER
+EMBEDDED=1
 USB=1
 USE_FILESYSTEM=1
 FAMILY=STM32F1
@@ -149,6 +153,7 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef EMBEDDED_PI
+EMBEDDED=1
 USB=1
 # USE_FILESYSTEM=1 # no SD-CARD READER
 FAMILY=STM32F1
@@ -158,6 +163,7 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef HYSTM32_24
+EMBEDDED=1
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -170,6 +176,7 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef HYSTM32_28
+EMBEDDED=1
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -183,6 +190,7 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
 else ifdef HYSTM32_32
+EMBEDDED=1
 USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
@@ -195,6 +203,7 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
+EMBEDDED=1
 USB=1
 USE_NET=1
 USE_GRAPHICS=1
@@ -206,6 +215,7 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
+EMBEDDED=1
 #USB=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
@@ -216,6 +226,7 @@ STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
+EMBEDDED=1
 DEFINES+=-DHSE_VALUE=26000000UL
 USB=1
 FAMILY=STM32F2
@@ -225,6 +236,7 @@ STLIB=STM32F2XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F3DISCOVERY
+EMBEDDED=1
 #USE_BOOTLOADER=1
 #BOOTLOADER_PROJ_NAME=bootloader_espruino_stm32f3discovery
 USB=1
@@ -235,6 +247,7 @@ STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
+EMBEDDED=1
 FAMILY=STM32F1
 CHIP=STM32F100RB
 BOARD=STM32VLDISCOVERY
@@ -242,6 +255,7 @@ STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef TINYCHIP
+EMBEDDED=1
 FAMILY=STM32F1
 CHIP=STM32F103TB
 BOARD=TINYCHIP
@@ -249,6 +263,7 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef LPC1768
+EMBEDDED=1
 MBED=1
 FAMILY=LPC1768
 CHIP=LPC1768
@@ -258,6 +273,7 @@ PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBE
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed 
 OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
+EMBEDDED=1
 BOARD=CARAMBOLA
 DEFINES += -DCARAMBOLA -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
@@ -266,6 +282,7 @@ USB=1
 USE_GRAPHICS=1
 USE_NET=1
 else ifdef RASPBERRYPI
+EMBEDDED=1
 BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
@@ -275,6 +292,7 @@ USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
 else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
 USB=1
 SAVE_ON_FLASH=1
 FAMILY=STM32F1
@@ -383,7 +401,7 @@ else # !BOOTLOADER but using a bootloader
  ifdef USE_BOOTLOADER
   BUILD_LINKER_FLAGS+=--using_bootloader
   # -k applies bootloader hack for Espruino 1v3 boards
-  STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
+  STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodemfa131
   BASEADDRESS=$(shell python -c "import sys;sys.path.append('scripts');import common;print hex(0x08000000+common.get_bootloader_size())")
  endif
 endif
@@ -399,6 +417,7 @@ endif
 ifdef USE_FILESYSTEM
 DEFINES += -DUSE_FILESYSTEM
 WRAPPERSOURCES += libs/jswrap_fat.c
+WRAPPERSOURCES += libs/jswrap_fs.c
 ifndef LINUX 
 INCLUDE += -I$(ROOT)/libs/fat_sd
 SOURCES += \
@@ -873,6 +892,8 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 ifndef MACOSX
 LDFLAGS += -Wl,--gc-sections
+else ifdef EMBEDDED
+LDFLAGS += -Wl,--gc-sections
 endif
 
 ifdef LINKER_FILE 
@@ -988,7 +1009,7 @@ ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
 else
 	echo ST-LINK flash
-	~/bin/st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
+	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
 endif	
 endif	
 
