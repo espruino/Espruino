@@ -848,13 +848,13 @@ export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
 endif
 
 ifdef RASPBERRYPI
-  ifneq ($(shell uname -m),armv6l)
-    # eep. let's cross compile
-    export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
-  else
-    # compiling in-place, so give it a normal name
-    PROJ_NAME=espruino
-  endif
+	ifneq ($(shell uname -m),armv6l)
+		# eep. let's cross compile
+		export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
+	else
+		# compiling in-place, so give it a normal name
+		PROJ_NAME=espruino
+	endif
 endif
 
 
@@ -1006,8 +1006,8 @@ proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
 
 flash: all
 ifdef OLIMEXINO_STM32_BOOTLOADER
-  echo Olimexino Serial bootloader
-  dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
+	echo Olimexino Serial bootloader
+	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else
 ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
