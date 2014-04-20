@@ -46,8 +46,8 @@ INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
-OPTIMIZEFLAGS= 
-#-fdiagnostics-show-option - shows which flags can be used with -Werror 
+OPTIMIZEFLAGS=
+#-fdiagnostics-show-option - shows which flags can be used with -Werror
 
 # Espruino flags...
 USE_MATH=1
@@ -67,7 +67,7 @@ endif
 # Gordon's car ECU (extremely beta!)
 ifdef ECU
 STM32F4DISCOVERY=1
-#HYSTM32_32=1 
+#HYSTM32_32=1
 USE_TRIGGER=1
 DEFINES += -DECU
 endif
@@ -269,8 +269,8 @@ FAMILY=LPC1768
 CHIP=LPC1768
 BOARD=LPC1768
 MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
-PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o 
-LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed 
+PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
+LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
 OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
 EMBEDDED=1
@@ -317,12 +317,12 @@ else ifdef MINGW
 DEFINES += -DHAS_STDLIB=1
 else  # Linux
 USE_NET=1
-endif 
+endif
 endif
 
 PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
 ifeq ($(PROJ_NAME),)
-$(error Unable to work out binary name (PROJ_NAME)) 
+$(error Unable to work out binary name (PROJ_NAME))
 endif
 ifeq ($(BOARD),LINUX)
 PROJ_NAME=espruino
@@ -422,7 +422,7 @@ ifdef USE_FILESYSTEM
 DEFINES += -DUSE_FILESYSTEM
 WRAPPERSOURCES += libs/jswrap_fat.c
 WRAPPERSOURCES += libs/jswrap_fs.c
-ifndef LINUX 
+ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/fat_sd
 SOURCES += \
 libs/fat_sd/fattime.c \
@@ -445,7 +445,7 @@ ifdef USE_MATH
 DEFINES += -DUSE_MATH
 WRAPPERSOURCES += libs/jswrap_math.c
 
-ifndef LINUX 
+ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/math
 SOURCES += \
 libs/math/acosh.c \
@@ -484,9 +484,9 @@ libs/math/tan.c \
 libs/math/tandg.c \
 libs/math/tanh.c \
 libs/math/unity.c
-#libs/math/mod2pi.c 
-#libs/math/mtst.c 
-#libs/math/dtestvec.c 
+#libs/math/mod2pi.c
+#libs/math/mtst.c
+#libs/math/dtestvec.c
 endif
 endif
 
@@ -503,7 +503,7 @@ libs/graphics/lcd_js.c
 ifdef USE_LCD_SDL
 DEFINES += -DUSE_LCD_SDL
 SOURCES += libs/graphics/lcd_sdl.c
-LIBS += -lSDL 
+LIBS += -lSDL
 INCLUDE += -I/usr/include/SDL
 endif
 
@@ -520,12 +520,12 @@ WRAPPERSOURCES += libs/network/http/jswrap_http.c
 INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
 SOURCES += \
 libs/network/network.c \
-libs/network/http/httpserver.c 
+libs/network/http/httpserver.c
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
  SOURCES += \
- libs/network/linux/network_linux.c 
+ libs/network/linux/network_linux.c
  endif
 
  ifdef USE_CC3000
@@ -562,7 +562,7 @@ endif
 
 
 ifdef USE_TRIGGER
-DEFINES += -DUSE_TRIGGER 
+DEFINES += -DUSE_TRIGGER
 WRAPPERSOURCES += libs/trigger/jswrap_trigger.c
 INCLUDE += -I$(ROOT)/libs/trigger
 SOURCES += \
@@ -688,9 +688,9 @@ targetlibs/stm32f2/usblib/usb_dcd.c
 #targetlibs/stm32f2/usblib/usb_bsp_template.c \
 #targetlibs/stm32f2/usblib/usbd_cdc_if_template.c \
 #targetlibs/stm32f2/usblib/usb_hcd.c \
-#targetlibs/stm32f2/usblib/usb_hcd_int.c 
+#targetlibs/stm32f2/usblib/usb_hcd_int.c
 endif #USB
-endif #STM32F2 
+endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
@@ -737,9 +737,9 @@ targetlibs/stm32f3/usb/usb_endp.c              \
 targetlibs/stm32f3/usb/usb_istr.c              \
 targetlibs/stm32f3/usb/usb_prop.c              \
 targetlibs/stm32f3/usb/usb_pwr.c               \
-targetlibs/stm32f3/usb/usb_utils.c  
+targetlibs/stm32f3/usb/usb_utils.c
 endif #USB
-endif #STM32F3 
+endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
@@ -795,9 +795,9 @@ targetlibs/stm32f4/usb/usb_bsp.c              \
 targetlibs/stm32f4/usb/usbd_cdc_vcp.c         \
 targetlibs/stm32f4/usb/usbd_desc.c            \
 targetlibs/stm32f4/usb/usbd_usr.c
-#targetlibs/stm32f4/usblib/usb_hcd.c           
+#targetlibs/stm32f4/usblib/usb_hcd.c
 #targetlibs/stm32f4/usblib/usb_hcd_int.c
-#targetlibs/stm32f4/usblib/usb_otg.c           
+#targetlibs/stm32f4/usblib/usb_otg.c
 endif #USB
 endif #STM32F4
 
@@ -808,23 +808,23 @@ ARM=1
 INCLUDE+=-I$(ROOT)/targetlibs/libmbed -I$(ROOT)/targetlibs/libmbed/$(CHIP) -I$(ROOT)/targetlibs/libmbed/$(CHIP)/GCC_CS
 DEFINES += -DMBED
 INCLUDE += -I$(ROOT)/targetlibs/mbed
-SOURCES += targets/mbed/main.c                     
-CPPSOURCES += targets/mbed/jshardware.cpp             
+SOURCES += targets/mbed/main.c
+CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
 ifdef ARM
 LINKER_FILE = gen/linker.ld
-DEFINES += -DARM 
+DEFINES += -DARM
 INCLUDE += -I$(ROOT)/targetlibs/arm
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
-# I've no idea why this breaks the bootloader, but it does. 
-# Given we've left 10k for it, there's no real reason to enable LTO anyway. 
+# I've no idea why this breaks the bootloader, but it does.
+# Given we've left 10k for it, there's no real reason to enable LTO anyway.
 ifndef BOOTLOADER
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
- 
+
 # Limit code size growth via inlining to 15% Normally 30% it seems... This reduces code size without slowing down Espruino noticeably
 OPTIMIZEFLAGS += --param inline-unit-growth=10
 
@@ -860,7 +860,7 @@ endif
 
 ifdef STM32
 DEFINES += -DFAKE_STDLIB
-# FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated 
+# FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
 DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
@@ -873,10 +873,10 @@ endif
 
 ifdef LINUX
 DEFINES += -DLINUX
-INCLUDE += -I$(ROOT)/targets/linux 
+INCLUDE += -I$(ROOT)/targets/linux
 SOURCES +=                              \
 targets/linux/main.c                    \
-targets/linux/jshardware.c  
+targets/linux/jshardware.c
 LIBS += -lm # maths lib
 endif
 
@@ -900,9 +900,9 @@ else ifdef EMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 
-ifdef LINKER_FILE 
+ifdef LINKER_FILE
 LDFLAGS += -T$(LINKER_FILE)
-endif 
+endif
 
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
@@ -923,29 +923,29 @@ ifeq ($(V),1)
 else
         quiet_=quiet_
         Q=@
-	export SILENT=1
+  export SILENT=1
 endif
 
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
-	@echo Generating JS wrappers
-	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
-	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
+  @echo Generating JS wrappers
+  $(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
+  $(Q)echo DEFINES =  $(DEFINES)
+  $(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
 
 ifdef PININFOFILE
-$(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py 
-	@echo Generating pin info
-	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
+$(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
+  @echo Generating pin info
+  $(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
-$(LINKER_FILE): scripts/build_linker.py 
-	@echo Generating linker scripts
-	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+$(LINKER_FILE): scripts/build_linker.py
+  @echo Generating linker scripts
+  $(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
-	@echo Generating platform configs
-	$(Q)python scripts/build_platform_config.py $(BOARD)
+  @echo Generating platform configs
+  $(Q)python scripts/build_platform_config.py $(BOARD)
 
 compile=$(CC) $(CFLAGS) $(DEFINES) $< -o $@
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -958,47 +958,47 @@ quiet_obj_dump= GEN $(PROJ_NAME).lst
 quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 
 %.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
-	@echo $($(quiet_)compile)
-	@$(call compile)
+  @echo $($(quiet_)compile)
+  @$(call compile)
 
 .cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
-	@echo $($(quiet_)compile)
-	@$(call compile)
+  @echo $($(quiet_)compile)
+  @$(call compile)
 
 .s.o:
-	@echo $($(quiet_)compile)
-	@$(call compile)
-	
+  @echo $($(quiet_)compile)
+  @$(call compile)
+
 ifdef LINUX # ---------------------------------------------------
 proj: 	$(PLATFORM_CONFIG_FILE) $(PROJ_NAME)
 
 $(PROJ_NAME): $(OBJS)
-	@echo $($(quiet_)link)
-	@$(call link)
+  @echo $($(quiet_)link)
+  @$(call link)
 
 else # embedded, so generate bin, etc ---------------------------
 
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
-	@echo $($(quiet_)link)
-	@$(call link)
+  @echo $($(quiet_)link)
+  @$(call link)
 
 $(PROJ_NAME).lst : $(PROJ_NAME).elf
-	@echo $($(quiet_)obj_dump)
-	@$(call obj_dump)
+  @echo $($(quiet_)obj_dump)
+  @$(call obj_dump)
 
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
-	@$(call obj_to_bin,ihex,hex)
+  @echo $(call $(quiet_)obj_to_bin,ihex,hex)
+  @$(call obj_to_bin,ihex,hex)
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,srec,srec)
-	@$(call obj_to_bin,srec,srec)
+  @echo $(call $(quiet_)obj_to_bin,srec,srec)
+  @$(call obj_to_bin,srec,srec)
 
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,binary,bin)
-	@$(call obj_to_bin,binary,bin)
+  @echo $(call $(quiet_)obj_to_bin,binary,bin)
+  @$(call obj_to_bin,binary,bin)
 ifndef TRAVIS
-	bash scripts/check_size.sh $(PROJ_NAME).bin
+  bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
@@ -1006,38 +1006,38 @@ proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
 
 flash: all
 ifdef OLIMEXINO_STM32_BOOTLOADER
-	echo Olimexino Serial bootloader
-	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
+  echo Olimexino Serial bootloader
+  dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else
 ifdef MBED
-	cp $(PROJ_NAME).bin /media/MBED;sync
+  cp $(PROJ_NAME).bin /media/MBED;sync
 else
-	echo ST-LINK flash
-	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
-endif	
-endif	
+  echo ST-LINK flash
+  st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
+endif
+endif
 
 serialflash: all
-	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
-	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
+  echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
+  python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
 #	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ewv $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
-		
-gdb: 
-	echo "target extended-remote :4242" > gdbinit
-	echo "file $(PROJ_NAME).elf" >> gdbinit
-	#echo "load" >> gdbinit
-	echo "break main" >> gdbinit
-	echo "break HardFault_Handler" >> gdbinit
-	$(GDB) -x gdbinit
-	rm gdbinit
+
+gdb:
+  echo "target extended-remote :4242" > gdbinit
+  echo "file $(PROJ_NAME).elf" >> gdbinit
+  #echo "load" >> gdbinit
+  echo "break main" >> gdbinit
+  echo "break HardFault_Handler" >> gdbinit
+  $(GDB) -x gdbinit
+  rm gdbinit
 endif	    # ---------------------------------------------------
- 
+
 clean:
-	@echo Cleaning targets
-	$(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
-	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
-	$(Q)rm -f $(PROJ_NAME).elf
-	$(Q)rm -f $(PROJ_NAME).hex
-	$(Q)rm -f $(PROJ_NAME).bin
-	$(Q)rm -f $(PROJ_NAME).srec
-	$(Q)rm -f $(PROJ_NAME).lst
+  @echo Cleaning targets
+  $(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+  $(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
+  $(Q)rm -f $(PROJ_NAME).elf
+  $(Q)rm -f $(PROJ_NAME).hex
+  $(Q)rm -f $(PROJ_NAME).bin
+  $(Q)rm -f $(PROJ_NAME).srec
+  $(Q)rm -f $(PROJ_NAME).lst
