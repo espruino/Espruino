@@ -4,6 +4,7 @@
             Added E.toArrayBuffer for fast string->array conversion
             Accessing an undefined array/object element now doesn't create it (fix #63)
             Fix fs.unlink returns true if the file does not exist (fix #331)
+            Try and improve timer overlays by reordering the alternat function list
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)
