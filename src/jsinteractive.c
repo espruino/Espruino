@@ -59,6 +59,7 @@ bool allowDeepSleep;
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
 JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
+int inputLineLength = -1;
 bool inputLineRemoved = false;
 size_t inputCursorPos = 0; ///< The position of the cursor in the input line
 InputState inputState = 0; ///< state for dealing with cursor keys
@@ -88,17 +89,19 @@ static NO_INLINE void jsiInputLineCursorMoved() {
     jsvStringIteratorFree(&inputLineIterator);
     inputLineIterator.var = 0;
   }
+  inputLineLength = -1;
 }
 
 /// Called to append to the input line
 static NO_INLINE void jsiAppendToInputLine(const char *str) {
-  // free string iterator
+  // recreate string iterator if needed
   if (!inputLineIterator.var) {
     jsvStringIteratorNew(&inputLineIterator, inputLine, 0);
     jsvStringIteratorGotoEnd(&inputLineIterator);
   }
   while (*str) {
     jsvStringIteratorAppend(&inputLineIterator, *(str++));
+    inputLineLength++;
   }
 }
 
@@ -1065,12 +1068,14 @@ void jsiHandleChar(char ch) {
     } else if (ch>=32 || ch=='\t') {
       // Add the character to our input line
       jsiIsAboutToEditInputLine();
-      size_t l = jsvGetStringLength(inputLine);
       char buf[2] = {ch,0};
       const char *strToAppend = (ch=='\t') ? "    " : buf;
       size_t strSize = (ch=='\t') ? 4 : 1;
 
-      if (inputCursorPos>=l) { // append to the end
+      if (inputLineLength < 0)
+        inputLineLength = (int)jsvGetStringLength(inputLine);
+
+      if ((int)inputCursorPos>=inputLineLength) { // append to the end
         jsiAppendToInputLine(strToAppend);
       } else { // add in halfway through
         JsVar *v = jsvNewFromEmptyString();
