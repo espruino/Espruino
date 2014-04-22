@@ -335,7 +335,7 @@ bool wrap_fat_unlink(JsVar *path) {
 #ifndef LINUX
     FRESULT res = 0;
     if (jsfsInit()) {
-      f_unlink(pathStr);
+      res = f_unlink(pathStr);
     }
 #else
     FRESULT res = remove(pathStr);
