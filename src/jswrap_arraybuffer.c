@@ -105,7 +105,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   }
   JsVar *arrData = jsvNewStringOfLength((unsigned int)byteLength);
   if (!arrData) return 0;
-  JsVar *v = jsvNewArrayBufferFromString(arrData, (int)byteLength);
+  JsVar *v = jsvNewArrayBufferFromString(arrData, (unsigned int)byteLength);
   jsvUnLock(arrData);
   return v;
 }
@@ -252,62 +252,6 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
          "generate_full" : "parent->varData.arraybuffer.byteOffset",
          "return" : [ "int", "The byte Offset" ]
 }*/
-
-/*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "interpolate",
-         "description" : "Interpolate between two adjacent values in the Typed Array",
-         "generate" : "jswrap_arraybufferview_interpolate",
-         "params" : [ [ "index", "float", "Floating point index to access" ] ],
-         "return" : [ "float", "The result of interpolating between (int)index and (int)(index+1)" ]
-}*/
-JsVarFloat jswrap_arraybufferview_interpolate(JsVar *parent, JsVarFloat findex) {
-  size_t idx = (size_t)findex;
-  JsVarFloat a = findex - (int)idx;
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, parent, idx);
-  JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  JsVarFloat fb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  return fa*(1-a) + fb*a;
-} 
-
-/*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "interpolate2d",
-         "description" : "Interpolate between two adjacent values in the Typed Array",
-         "generate" : "jswrap_arraybufferview_interpolate2d",
-         "params" : [ [ "width", "int", "Integer 'width' of 2d array" ],
-                      [ "x", "float", "Floating point X index to access" ],
-                      [ "y", "float", "Floating point Y index to access" ] ],
-         "return" : [ "float", "The result of interpolating in 2d between the 4 surrounding cells" ]
-}*/
-JsVarFloat jswrap_arraybufferview_interpolate2d(JsVar *parent, JsVarInt width, JsVarFloat x, JsVarFloat y) {
-  int yidx = (int)y;
-  JsVarFloat ay = y-yidx;
-
-  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
-  size_t idx = (size_t)findex;
-  JsVarFloat ax = findex-(int)idx;
-
-  JsvArrayBufferIterator it;
-  jsvArrayBufferIteratorNew(&it, parent, idx);
-
-  JsVarFloat xa,xb;
-  int i;
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  JsVarFloat ya = xa*(1-ax) + xb*ax;
-
-  for (i=1;i<width;i++) jsvArrayBufferIteratorNext(&it);
-
-  xa = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorNext(&it);
-  xb = jsvArrayBufferIteratorGetFloatValue(&it);
-  jsvArrayBufferIteratorFree(&it);
-  JsVarFloat yb = xa*(1-ax) + xb*ax;
-
-  return ya*(1-ay) + yb*ay;
-}
 
 /*JSON{ "type":"method", "class": "ArrayBufferView",  "name": "set",
          "description" : "Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`",

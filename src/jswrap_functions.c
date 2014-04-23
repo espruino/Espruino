@@ -179,7 +179,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 
 
   int padding = 0;
-  while (jsvIteratorHasElement(&itsrc)) {
+  while (jsvIteratorHasElement(&itsrc) && !jspIsInterrupted()) {
     int octet_a = (unsigned char)jsvIteratorGetIntegerValue(&itsrc)&255;
     jsvIteratorNext(&itsrc);
     int octet_b = 0, octet_c = 0;
@@ -232,7 +232,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
         isWhitespace(jsvStringIteratorGetChar(&itsrc)))
     jsvStringIteratorNext(&itsrc);
 
-  while (jsvStringIteratorHasChar(&itsrc)) {
+  while (jsvStringIteratorHasChar(&itsrc) && !jspIsInterrupted()) {
     uint32_t triple = 0;
     int i, valid=0;
     for (i=0;i<4;i++) {
