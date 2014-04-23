@@ -99,12 +99,14 @@ void jswrap_interface_trace(JsVar *root) {
          "generate_full" : "jsiSetTodo(TODO_RESET)"
 }*/
 /*JSON{ "type":"function", "name" : "print",
-         "description" : "Print the supplied string",
+         "description" : [ "Print the supplied string(s) to the console",
+                           "**Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print."],
          "generate" : "jswrap_interface_print",
          "params" : [ [ "text", "JsVarArray", ""] ]
 }*/
 /*JSON{ "type":"staticmethod", "class":"console", "name" : "log",
-         "description" : "Print the supplied string(s)",
+         "description" : [ "Print the supplied string(s) to the console",
+                           "**Note:** If you're connected to a computer (not a wall adaptor) via USB but **you are not running a terminal app** then when you print data Espruino may pause execution and wait until the computer requests the data it is trying to print." ],
          "generate" : "jswrap_interface_print",
          "params" : [ [ "text", "JsVarArray", "One or more arguments to print"] ]
 }*/
