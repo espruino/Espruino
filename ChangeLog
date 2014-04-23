@@ -7,6 +7,7 @@
             Try and improve timer overlays by reordering the alternate function list
             Ensure that PWM output doesn't enable negated/non-negated outputs when it doesn't have to
             Improve console performance when sending long strings
+            Initialise Graphics flags Graphics.createCallback - could have caused all kinds of issues
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

@@ -64,6 +64,8 @@ typedef struct JsGraphics {
 } PACKED_FLAGS JsGraphics;
 
 static inline void graphicsStructInit(JsGraphics *gfx) {
+  // type/width/height/bpp should be set elsewhere...
+  gfx->data.flags = JSGRAPHICSFLAGS_NONE;
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
   gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
