@@ -78,8 +78,16 @@ typedef enum {
 } JsiBusyDevice;
 /// Shows a busy indicator, if one is set up
 void jsiSetBusy(JsiBusyDevice device, bool isBusy);
+
+/// Flags for jsiSetSleep
+typedef enum {
+  JSI_SLEEP_AWAKE  = 0,
+  JSI_SLEEP_ASLEEP = 1,
+  JSI_SLEEP_DEEP   = 2,
+} JsiSleepType;
+
 /// Shows a sleep indicator, if one is set up
-void jsiSetSleep(bool isSleep);
+void jsiSetSleep(JsiSleepType isSleep);
 
 
 // for jswrap_interactive/io.c ----------------------------------------------------

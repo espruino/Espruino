@@ -2328,7 +2328,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
       true
       ) {
-    jsiSetSleep(true);
+    jsiSetSleep(JSI_SLEEP_DEEP);
     // deep sleep!
     jshADCInitialised = 0;
     ADC_Cmd(ADC1, DISABLE); // ADC off
@@ -2354,16 +2354,14 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinWatch(usbPin, true);
 #endif
 
-    /* If we're going asleep for more than 5 seconds,
-     * add one second to the sleep time so that when we
-     * wake up, we execute our timer immediately (even if it is a bit late)
-     * and don't waste power in shallow sleep */
-    if (timeUntilWake > jshGetTimeForSecond()*5) {
-      timeUntilWake += jshGetTimeForSecond();
-    }
-
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
-      RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/jshGetTimeForSecond())); // ensure we round down and leave a little time
+      unsigned int ticks = (unsigned int)(timeUntilWake/jshGetTimeForSecond()); // ensure we round down and leave a little time
+      /* If we're going asleep for more than a few seconds,
+       * add one second to the sleep time so that when we
+       * wake up, we execute our timer immediately (even if it is a bit late)
+       * and don't waste power in shallow sleep. This is documented in setInterval */
+      if (ticks>3) ticks++; // sleep longer than we need
+      RTC_SetAlarm(RTC_GetCounter() + ticks);
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
@@ -2401,7 +2399,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
 #endif
-    jsiSetSleep(false);
+    jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
 #endif
   {
@@ -2418,9 +2416,9 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
 
     // TODO: we can do better than this. look at lastSysTickTime
-    jsiSetSleep(true);
+    jsiSetSleep(JSI_SLEEP_ASLEEP);
     __WFI(); // Wait for Interrupt
-    jsiSetSleep(false);
+    jsiSetSleep(JSI_SLEEP_AWAKE);
     return true;
   }
 

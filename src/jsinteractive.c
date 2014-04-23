@@ -356,9 +356,9 @@ void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
     jshPinOutput(pinBusyIndicator, business!=0);
 }
 
-void jsiSetSleep(bool isSleep) {
+void jsiSetSleep(JsiSleepType isSleep) {
   if (pinSleepIndicator != PIN_UNDEFINED)
-    jshPinOutput(pinSleepIndicator, !isSleep);
+    jshPinOutput(pinSleepIndicator, isSleep == JSI_SLEEP_AWAKE);
 }
 
 static JsVarRef _jsiInitNamedArray(const char *name) {
