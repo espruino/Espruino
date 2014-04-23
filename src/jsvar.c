@@ -754,6 +754,31 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   return str;
 }
 
+/** Given a JsVar meant to be an index to an array, convert it to
+ * the actual variable type we'll use to access the array. For example
+ * a["0"] is actually translated to a[0]
+ */
+JsVar *jsvAsArrayIndex(JsVar *index) {
+  if (jsvIsInt(index)) {
+    return jsvLockAgain(index); // we're ok!
+  } else if (jsvIsString(index)) {
+    /* Index filtering (bug #19) - if we have an array index A that is:
+     is_string(A) && int_to_string(string_to_int(A)) == A
+     then convert it to an integer. Shouldn't be too nasty for performance
+     as we only do this when accessing an array with a string */
+    if (jsvIsStringNumericStrict(index))
+      return jsvNewFromInteger(jsvGetInteger(index));
+  } else if (jsvIsFloat(index)) {
+    // if it's a float that is actually integral, return an integer...
+    JsVarFloat v = jsvGetFloat(index);
+    JsVarInt vi = jsvGetInteger(index);
+    if (v == vi) return jsvNewFromInteger(vi);
+  }
+
+  // else if it's not a simple numeric type, convert it to a string
+  return jsvAsString(index, false);
+}
+
 /// Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 bool jsvIsEmptyString(JsVar *v) {
   if (!jsvHasCharacterData(v)) return true;

@@ -144,12 +144,12 @@ JsVar *jswrap_object_keys(JsVar *obj) {
          "return" : ["bool", "True if it exists, false if it doesn't"]
 }*/
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
-  char str[32];
-  jsvGetString(name, str, sizeof(str));
+
+  JsVar *propName = jsvAsArrayIndex(name);
 
   bool contains = false;
   if (jsvHasChildren(parent)) {
-    JsVar *foundVar =  jsvFindChildFromString(parent, str, false);
+    JsVar *foundVar =  jsvFindChildFromVar(parent, propName, false);
     if (foundVar) {
       contains = true;
       jsvUnLock(foundVar);
@@ -157,6 +157,9 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
   }
 
   if (!contains) { // search builtins
+    char str[32];
+    jsvGetString(propName, str, sizeof(str));
+
     JsVar *foundVar = jswFindBuiltInFunction(parent, str);
     if (foundVar) {
       contains = true;
@@ -164,6 +167,7 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
     }
   }
 
+  jsvUnLock(propName);
   return contains;
 }
 

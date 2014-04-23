@@ -83,7 +83,7 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
       JsVar *obj = jsvNewWithFlags(JSV_OBJECT); if (!obj) return 0;
       jslGetNextToken(lex); // {
       while (lex->tk == LEX_STR) {
-        JsVar *key = jslGetTokenValueAsVar(lex);
+        JsVar *key = jsvAsArrayIndexAndUnLock(jslGetTokenValueAsVar(lex));
         jslGetNextToken(lex);
         JsVar *value = 0;
         if (!jslMatch(lex, ':') ||

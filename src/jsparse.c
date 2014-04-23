@@ -702,15 +702,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock(parent);jsvUnLock(index);, a);
           if (JSP_SHOULD_EXECUTE) {
-            /* Index filtering (bug #19) - if we have an array index A that is:
-             is_string(A) && int_to_string(string_to_int(A)) = =A
-             then convert it to an integer. Should be too nasty for performance
-             as we only do this when accessing an array with a string */
-            if (jsvIsString(index) && jsvIsStringNumericStrict(index)) {
-              JsVar *v = jsvNewFromInteger(jsvGetInteger(index));
-              jsvUnLock(index);
-              index = v;
-            }
+            index = jsvAsArrayIndexAndUnLock(index);
 
             JsVar *aVar = jsvSkipName(a);
             if (aVar && (jsvIsArrayBuffer(aVar))) {
@@ -720,8 +712,6 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               if (a) // turn into an 'array buffer name'
                 a->flags = (a->flags & ~(JSV_NAME|JSV_VARTYPEMASK)) | JSV_ARRAYBUFFERNAME;
             } else if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar) || jsvIsFunction(aVar))) {
-                if (!jsvIsString(index) && (jsvIsBoolean(index) || !jsvIsNumeric(index)))
-                  index = jsvAsString(index, true);
                 JsVar *child = jsvFindChildFromVar(aVar, index, false);
                 if (!child) {
                   child = jsvAsName(index);
@@ -881,6 +871,7 @@ NO_INLINE JsVar *jspeFactorObject() {
         JsVar *valueVar;
         JsVar *value = jspeAssignmentExpression(); // value can be 0 (could be undefined!)
         valueVar = jsvSkipNameAndUnLock(value);
+        varName = jsvAsArrayIndexAndUnLock(varName);
         varName = jsvMakeIntoVariableName(varName, valueVar);
         jsvAddName(contents, varName);
         jsvUnLock(valueVar);
@@ -1202,6 +1193,7 @@ NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
             JsVar *av = jsvSkipName(a); // needle
             JsVar *bv = jsvSkipName(b); // haystack
             if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+              av = jsvAsArrayIndexAndUnLock(av);
               JsVar *varFound = jsvFindChildFromVar( bv, av, false);
               res = jsvNewFromBool(varFound!=0);
               jsvUnLock(varFound);

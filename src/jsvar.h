@@ -336,18 +336,29 @@ JsVar *jsvSkipOneName(JsVar *a);
  * ALWAYS locks - so must unlock what it returns.  */
 JsVar *jsvSkipToLastName(JsVar *a);
 
-/** Same as jsvSkipName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used INLINE_FUNC */
+/** Same as jsvSkipName, but ensures that 'a' is unlocked */
 static inline JsVar *jsvSkipNameAndUnLock(JsVar *a) {
   JsVar *b = jsvSkipName(a);
   jsvUnLock(a);
   return b;
 }
 
-/** Same as jsvSkipOneName, but ensures that 'a' is unlocked if it was
- * a name, so it can be used INLINE_FUNC */
+/** Same as jsvSkipOneName, but ensures that 'a' is unlocked */
 static inline JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
   JsVar *b = jsvSkipOneName(a);
+  jsvUnLock(a);
+  return b;
+}
+
+/** Given a JsVar meant to be an index to an array, convert it to
+ * the actual variable type we'll use to access the array. For example
+ * a["0"] is actually translated to a[0]
+ */
+JsVar *jsvAsArrayIndex(JsVar *index);
+
+/** Same as jsvAsArrayIndex, but ensures that 'index' is unlocked */
+static inline JsVar *jsvAsArrayIndexAndUnLock(JsVar *a) {
+  JsVar *b = jsvAsArrayIndex(a);
   jsvUnLock(a);
   return b;
 }
