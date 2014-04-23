@@ -8,6 +8,7 @@
             Ensure that PWM output doesn't enable negated/non-negated outputs when it doesn't have to
             Improve console performance when sending long strings
             Initialise Graphics flags Graphics.createCallback - could have caused all kinds of issues
+            Now make setInterval > 5s less accurate when setDeepSleep is on (saves ~0.5 sec of non-sleep time)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

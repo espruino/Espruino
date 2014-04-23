@@ -2353,6 +2353,15 @@ bool jshSleep(JsSysTime timeUntilWake) {
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
 #endif
+
+    /* If we're going asleep for more than 5 seconds,
+     * add one second to the sleep time so that when we
+     * wake up, we execute our timer immediately (even if it is a bit late)
+     * and don't waste power in shallow sleep */
+    if (timeUntilWake > jshGetTimeForSecond()*5) {
+      timeUntilWake += jshGetTimeForSecond();
+    }
+
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
       RTC_SetAlarm(RTC_GetCounter() + (unsigned int)((timeUntilWake-(timeUntilWake/2))/jshGetTimeForSecond())); // ensure we round down and leave a little time
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
