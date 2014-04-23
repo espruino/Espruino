@@ -699,7 +699,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
       } else if (execInfo.lex->tk == '[') { // ------------------------------------- Array Access
           JsVar *index;
           JSP_MATCH('[');
-          index = jspeAssignmentExpression();
+          index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock(parent);jsvUnLock(index);, a);
           if (JSP_SHOULD_EXECUTE) {
             /* Index filtering (bug #19) - if we have an array index A that is:
@@ -715,31 +715,27 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             JsVar *aVar = jsvSkipName(a);
             if (aVar && (jsvIsArrayBuffer(aVar))) {
               // for array buffers, we actually create a NAME, and hand that back - then when we assign (or use SkipName) we pull out the correct data
-              JsVar *indexValue = jsvSkipName(index);
               jsvUnLock(a);
-              a = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(indexValue)), aVar);
-              jsvUnLock(indexValue);
+              a = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(index)), aVar);
               if (a) // turn into an 'array buffer name'
                 a->flags = (a->flags & ~(JSV_NAME|JSV_VARTYPEMASK)) | JSV_ARRAYBUFFERNAME;
             } else if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar) || jsvIsFunction(aVar))) {
-                JsVar *indexValue = jsvSkipName(index);
-                if (!jsvIsString(indexValue) && (jsvIsBoolean(indexValue) || !jsvIsNumeric(indexValue)))
-                  indexValue = jsvAsString(indexValue, true);
-                JsVar *child = jsvFindChildFromVar(aVar, indexValue, false);
+                if (!jsvIsString(index) && (jsvIsBoolean(index) || !jsvIsNumeric(index)))
+                  index = jsvAsString(index, true);
+                JsVar *child = jsvFindChildFromVar(aVar, index, false);
                 if (!child) {
-                  child = jsvAsName(indexValue);
+                  child = jsvAsName(index);
                   // by setting the siblings as the same, we signal that if set,
                   // we should be made a member of the given object
                   child->nextSibling = child->prevSibling = jsvGetRef(jsvRef(jsvRef(aVar)));
                 }
-                jsvUnLock(indexValue);
 
                 jsvUnLock(parent);
                 parent = jsvLockAgain(aVar);
                 jsvUnLock(a);
                 a = child;
             } else if (aVar && (jsvIsString(aVar))) {
-                JsVarInt idx = jsvGetIntegerAndUnLock(jsvSkipName(index));
+                JsVarInt idx = jsvGetInteger(index);
                 JsVar *child = 0;
                 if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(aVar)) {
                   char ch = jsvGetCharInString(aVar, (size_t)idx);
