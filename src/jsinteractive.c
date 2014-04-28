@@ -1616,6 +1616,15 @@ bool jsiLoop() {
   return loopsIdling==0;
 }
 
+void jsiDumpCallback(JsVar *callback) {
+  JsVar *name = jsvGetArrayIndexOf(execInfo.root,  callback, true);
+  if (name && jsvIsString(name)) {
+    jsiConsolePrintStringVar(name);
+  } else {
+    jsfPrintJSON(callback, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+  }
+}
+
 /** Output extra functions defined in an object such that they can be copied to a new device */
 void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   JsVarRef childRef = parent->firstChild;
@@ -1723,7 +1732,7 @@ void jsiDumpState() {
     bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
     JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
     jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
-    jsfPrintJSON(timerCallback, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+    jsiDumpCallback(timerCallback);
     jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
     jsvUnLock(timerCallback);
     // next
@@ -1742,7 +1751,7 @@ void jsiDumpState() {
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
     JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
     jsiConsolePrint("setWatch(");
-    jsfPrintJSON(watchCallback, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+    jsiDumpCallback(watchCallback);
     jsiConsolePrint(", ");
     jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
     jsiConsolePrint(", { repeat:");
