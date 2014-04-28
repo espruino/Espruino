@@ -17,6 +17,7 @@
             Ensure that dump remembers function names if they were in the root scope (fix #338)
             Fix memory leak in fs.readdir
             Ensure that abbreviations in console's '=...' output appear on newline if needed
+            Add String.replace (fix #334)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

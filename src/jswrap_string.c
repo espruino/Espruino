@@ -67,9 +67,9 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
 JsVar *jswrap_string_charAt(JsVar *parent, JsVarInt idx) {
   // We do this so we can handle '/0' in a string
   JsVar *r = jsvNewFromEmptyString();
-  if (r && jsvIsString(parent)) {
+  if (r && jsvIsString(parent) && idx>=0) {
     JsvStringIterator it;
-    jsvStringIteratorNew(&it, parent, idx);
+    jsvStringIteratorNew(&it, parent, (size_t)idx);
     if (jsvStringIteratorHasChar(&it)) {
       char ch = jsvStringIteratorGetChar(&it);
       jsvAppendStringBuf(r, &ch, 1);
@@ -106,6 +106,7 @@ int jswrap_string_charCodeAt(JsVar *parent, JsVarInt idx) {
          "return" : ["int32", "The index of the string, or -1 if not found"]
 }*/
 int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, bool lastIndexOf) {
+  if (!jsvIsString(parent)) return 0;
   // slow, but simple!
   substring = jsvAsString(substring, false);
   if (!substring) return 0; // out of memory
@@ -141,6 +142,33 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   jsvUnLock(substring);
   return -1;
 }
+
+/*JSON{ "type":"method", "class": "String", "name" : "replace",
+         "description" : "Search and replace ONE occurrance of `subStr` with `newSubStr` and return the result. This doesn't alter the original string. Regular expressions not supported.",
+         "generate" : "jswrap_string_replace",
+         "params" : [ [ "subStr", "JsVar", "The string to search for"],
+                      [ "newSubStr", "JsVar", "The string to replace it with"] ],
+         "return" : ["JsVar", "This string with `subStr` replaced"]
+}*/
+JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
+  JsVar *str = jsvAsString(parent, false);
+  subStr = jsvAsString(subStr, false);
+  newSubStr = jsvAsString(newSubStr, false);
+
+  int idx = jswrap_string_indexOf(parent, subStr, 0, false);
+  if (idx>=0) {
+    JsVar *newStr = jsvNewFromStringVar(str, 0, (size_t)idx);
+    jsvAppendStringVar(newStr, newSubStr, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvAppendStringVar(newStr, str, (size_t)idx+jsvGetStringLength(subStr), JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvUnLock(str);
+    str = newStr;
+  }
+
+  jsvUnLock(subStr);
+  jsvUnLock(newSubStr);
+  return str;
+}
+
 
 /*JSON{ "type":"method", "class": "String", "name" : "substring",
          "generate" : "jswrap_string_substring",
