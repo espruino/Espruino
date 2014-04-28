@@ -661,7 +661,7 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   unsigned int colData = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, imageBufferString, 0);
-  while (jsvStringIteratorHasChar(&it) && y<imageHeight) {
+  while ((bits>=imageBpp || jsvStringIteratorHasChar(&it)) && y<imageHeight) {
     // Get the data we need...
     while (bits < imageBpp) {
       colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
