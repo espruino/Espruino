@@ -19,6 +19,7 @@
             Ensure that abbreviations in console's '=...' output appear on newline if needed
             Add String.replace (fix #334)
             Make Graphics.drawImage draw bottom line of pixels (fix #329)
+            Add Array.shift/unshift (fix #342)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

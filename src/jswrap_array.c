@@ -318,21 +318,53 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   return result;
 }
 
+/*JSON{ "type":"method", "class": "Array", "name" : "shift",
+         "description" : "Remove the first element of the array, and return it",
+         "generate" : "jswrap_array_shift",
+         "params" : [ ],
+         "return" : ["JsVar", "The element that was removed"]
+}*/
+JsVar *jswrap_array_shift(JsVar *parent) {
+  // just use splice, as this does all the hard work for us
+  JsVar *nRemove = jsvNewFromInteger(1);
+  JsVar *elements = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jswrap_array_splice(parent, 0, nRemove, elements);
+  jsvUnLock(elements);
+  jsvUnLock(nRemove);
+  // unpack element from the array
+  JsVar *el = 0;
+  if (jsvIsArray(arr))
+    el = jsvArrayPop(arr);
+  jsvUnLock(arr);
+  return el;
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "unshift",
+         "description" : "Remove the first element of the array, and return it",
+         "generate" : "jswrap_array_unshift",
+         "params" : [ [ "elements", "JsVarArray", "One or more items to add to the beginning of the array" ] ],
+         "return" : ["int", "The new array length"]
+}*/
+JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
+  // just use splice, as this does all the hard work for us
+  JsVar *nRemove = jsvNewFromInteger(0);
+  jsvUnLock(jswrap_array_splice(parent, 0, nRemove, elements));
+  jsvUnLock(nRemove);
+  // return new length
+  return jsvGetLength(parent);
+}
+
 
 /*JSON{ "type":"method", "class": "Array", "name" : "slice",
          "description" : "Return a copy of a portion of the calling array",
          "generate" : "jswrap_array_slice",
-         "params" : [ [ "start", "JsVar", "Start index"],
+         "params" : [ [ "start", "int", "Start index"],
                       [ "end", "JsVar", "End index (optional)"] ],
          "return" : ["JsVar", "A new array"]
 }*/
-JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
+JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar) {
   JsVarInt len = jsvGetLength(parent);
-  JsVarInt start = 0;
   JsVarInt end = len;
-
-  if (!jsvIsUndefined(startVar))
-    start = jsvGetInteger(startVar);
 
   if (!jsvIsUndefined(endVar))
     end = jsvGetInteger(endVar);
@@ -374,8 +406,6 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
 
   return array;
 }
-
-
 
 
 /*JSON{ "type":"staticmethod", "class": "Array", "name" : "isArray",

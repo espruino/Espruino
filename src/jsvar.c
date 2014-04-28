@@ -1881,7 +1881,7 @@ JsVar *jsvArrayPop(JsVar *arr) {
   }
 }
 
-/// Removes the first element of an array, and returns that element (or 0 if empty).
+/// Removes the first element of an array, and returns that element (or 0 if empty). DOES NOT RENUMBER.
 JsVar *jsvArrayPopFirst(JsVar *arr) {
   assert(jsvIsArray(arr));
   if (arr->firstChild) {
