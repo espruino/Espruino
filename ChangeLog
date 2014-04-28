@@ -15,6 +15,7 @@
             Fix Problem with Object.keys on a string (fix #347)
             Fix assert fail when deleting a property that doesn't exist (fix #344)
             Ensure that dump remembers function names if they were in the root scope (fix #338)
+            Fix memory leak in fs.readdir
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

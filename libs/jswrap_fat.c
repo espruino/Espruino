@@ -162,8 +162,10 @@ JsVar *wrap_fat_readdir(JsVar *path) {
           char *fn = (*pDir).d_name;
 #endif
           JsVar *fnVar = jsvNewFromString(fn);
-          if (fnVar) // out of memory?
+          if (fnVar) {// out of memory?
             jsvArrayPush(arr, fnVar);
+            jsvUnLock(fnVar);
+          }
         }
       }
 #ifdef LINUX
