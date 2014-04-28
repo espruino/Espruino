@@ -658,8 +658,17 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                * in functions (eg. Person.prototype.toString). HOWEVER if we did
                * this for 'this' then we couldn't say 'this.toString()'
                * */
-              if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) // don't try and use builtins on the prototype var!
+              if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) { // don't try and use builtins on the prototype var!
                 child = jswFindBuiltInFunction(aVar, name);
+                // create a name to show where this came from - so we can overwrite builtins
+                if (child) {
+                  JsVar *nameVar = jslGetTokenValueAsVar(execInfo.lex);
+                  JsVar *newChild = jsvCreateNewChild(aVar, nameVar, child);
+                  jsvUnLock(nameVar);
+                  jsvUnLock(child);
+                  child = newChild;
+                }
+              }
 
               if (child) { // found - let's match it!
                 JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
@@ -671,10 +680,11 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                     child = jsvAddNamedChild(aVar, value, name);
                     jsvUnLock(value);
                   } else {
-                    child = jsvMakeIntoVariableName(jsvNewFromString(name), 0);
-                    // by setting the siblings as the same, we signal that if set,
-                    // we should be made a member of the given object
-                    child->nextSibling = child->prevSibling = jsvGetRef(jsvRef(jsvRef(aVar)));
+                    // if no child found, create a pointer to where it could be
+                    // as we don't want to allocate it until it's written
+                    JsVar *nameVar = jslGetTokenValueAsVar(execInfo.lex);
+                    child = jsvCreateNewChild(aVar, nameVar, 0);
+                    jsvUnLock(nameVar);
                   }
                 } else {
                   // could have been a string...
@@ -713,12 +723,10 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 a->flags = (a->flags & ~(JSV_NAME|JSV_VARTYPEMASK)) | JSV_ARRAYBUFFERNAME;
             } else if (aVar && (jsvIsArray(aVar) || jsvIsObject(aVar) || jsvIsFunction(aVar))) {
                 JsVar *child = jsvFindChildFromVar(aVar, index, false);
-                if (!child) {
-                  child = jsvAsName(index);
-                  // by setting the siblings as the same, we signal that if set,
-                  // we should be made a member of the given object
-                  child->nextSibling = child->prevSibling = jsvGetRef(jsvRef(jsvRef(aVar)));
-                }
+                // if no child found, create a pointer to where it could be
+                // as we don't want to allocate it until it's written
+                if (!child)
+                  child = jsvCreateNewChild(aVar, index, 0);
 
                 jsvUnLock(parent);
                 parent = jsvLockAgain(aVar);

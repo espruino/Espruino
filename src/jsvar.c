@@ -1556,6 +1556,19 @@ JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool addIfNotFoun
   return child;
 }
 
+/// See jsvIsNewChild - for fields that don't exist yet
+JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child) {
+  JsVar *newChild = jsvAsName(index);
+  assert(!newChild->firstChild);
+  if (child) jsvSetValueOfName(newChild, child);
+  assert(!newChild->nextSibling && !newChild->prevSibling);
+  // by setting the siblings as the same, we signal that if set,
+  // we should be made a member of the given object
+  newChild->nextSibling = newChild->prevSibling = jsvGetRef(jsvRef(jsvRef(parent)));
+
+  return newChild;
+}
+
 /** Try and turn the supplied variable into a name. If not, make a new one. This locks again. */
 JsVar *jsvAsName(JsVar *var) {
   if (var->refs == 0) {

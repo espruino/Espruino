@@ -208,6 +208,8 @@ static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsS
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 static inline bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && v->nextSibling && v->nextSibling==v->prevSibling; }
+/// See jsvIsNewChild - for fields that don't exist yet
+JsVar *jsvCreateNewChild(JsVar *parent, JsVar *index, JsVar *child);
 
 /// Can the given variable be converted into an integer without loss of precision
 static inline bool jsvIsIntegerish(const JsVar *v) { return jsvIsInt(v) || jsvIsPin(v) || jsvIsBoolean(v) || jsvIsNull(v); }
