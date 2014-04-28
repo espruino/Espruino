@@ -563,3 +563,36 @@ JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   jsvArrayIteratorFree(&argsIt);
   return result;
 }
+
+/*JSON{ "type":"method", "class": "Array", "name" : "fill",
+         "description" : "Fill this array with the given value, for every index `>= start` and `< end`",
+         "generate" : "jswrap_array_fill",
+         "params" : [ [ "value", "JsVar", "The value to fill the array with" ],
+                      [ "start", "int", "Optional. The index to start from (or 0). If start is negative, it is treated as length+start where length is the length of the array" ],
+                      [ "end", "JsVar", "Optional. The index to end at (or the array length). If end is negative, it is treated as length+end." ]  ],
+         "return" : ["JsVar", "This array"]
+}*/
+JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *endVar) {
+  if (!jsvIsIterable(parent)) return 0;
+
+  JsVarInt length = jsvGetLength(parent);
+  if (start < 0) start = start + length;
+  if (start < 0) return 0;
+  JsVarInt end = jsvIsNumeric(endVar) ? jsvGetInteger(endVar) : length;
+  if (end < 0) end = end + length;
+  if (end < 0) return 0;
+
+
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  while (jsvIteratorHasElement(&it)) {
+    JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
+    if (idx>=start && idx<end) {
+      jsvIteratorSetValue(&it, value);
+    }
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  return jsvLockAgain(parent);
+}

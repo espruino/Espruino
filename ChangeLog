@@ -24,6 +24,7 @@
             Fix deleting the last element in array (fix #346)
             More helpful I2C error messages (fix #10)
             Fix overriding built-in functions (fix #202)
+            Add ES6 Array.prototype.fill (fix #317)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

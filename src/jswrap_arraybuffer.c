@@ -385,4 +385,11 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
                       [ "initialValue", "JsVar", "if specified, the initial value to pass to the function"] ],
          "return" : ["JsVar", "The value returned by the last function called"]
 }*/
-
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "fill",
+         "description" : "Fill this array with the given value, for every index `>= start` and `< end`",
+         "generate" : "jswrap_array_fill",
+         "params" : [ [ "value", "JsVar", "The value to fill the array with" ],
+                      [ "start", "int", "Optional. The index to start from (or 0). If start is negative, it is treated as length+start where length is the length of the array" ],
+                      [ "end", "JsVar", "Optional. The index to end at (or the array length). If end is negative, it is treated as length+end." ]  ],
+         "return" : ["JsVar", "This array"]
+}*/
