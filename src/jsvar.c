@@ -2703,8 +2703,8 @@ JsVar *jsvIteratorGetKey(JsvIterator *it) {
   switch (it->type) {
   case JSVI_ARRAY : return jsvArrayIteratorGetIndex(&it->it.arr);
   case JSVI_OBJECT : return jsvObjectIteratorGetKey(&it->it.obj);
-  case JSVI_STRING : return jsvNewFromInteger((JsVarInt)jsvStringIteratorGetIndex(&it->it.str));
-  case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIndex(&it->it.buf);
+  case JSVI_STRING : return jsvMakeIntoVariableName(jsvNewFromInteger((JsVarInt)jsvStringIteratorGetIndex(&it->it.str)), 0); // some things expect a veriable name
+  case JSVI_ARRAYBUFFER : return jsvMakeIntoVariableName(jsvArrayBufferIteratorGetIndex(&it->it.buf), 0); // some things expect a veriable name
   default: assert(0); return 0;
   }
 }

@@ -109,7 +109,8 @@ JsVar *jswrap_object_clone(JsVar *parent) {
          "return" : ["JsVar", "An array of strings - one for each key on the given object"]
 }*/
 JsVar *jswrap_object_keys(JsVar *obj) {
-  if (jsvIsIterable(obj)) {
+  // strings are iterable, but we shouldn't try and show keys for them
+  if (jsvIsIterable(obj) && !jsvIsString(obj)) {
     bool (*checkerFunction)(JsVar*) = 0;
     if (jsvIsFunction(obj)) checkerFunction = jsvIsInternalFunctionKey;
     else if (jsvIsObject(obj)) checkerFunction = jsvIsInternalObjectKey;

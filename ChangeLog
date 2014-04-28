@@ -12,6 +12,7 @@
             Fixed problem when accessing an array with a string in a variable
             Fix issues with `"0" in {0:1}` (and hasOwnProperty)
             Improved interpolate function, and moved it out of ArrayBufferView into E
+            Fix Problem with Object.keys on a string (fix #347)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)
