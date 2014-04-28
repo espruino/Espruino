@@ -1833,11 +1833,12 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
   JsVar *funcName = 0;
   JsVar *funcVar;
   JSP_MATCH(LEX_R_FUNCTION);
-  if (JSP_SHOULD_EXECUTE)
+  if (JSP_SHOULD_EXECUTE) {
     funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
-  if (!funcName) { // out of memory
-    jspSetError();
-    return 0;
+    if (!funcName) { // out of memory
+      jspSetError();
+      return 0;
+    }
   }
   JSP_MATCH(LEX_ID);
   funcVar = jspeFunctionDefinition(false);
