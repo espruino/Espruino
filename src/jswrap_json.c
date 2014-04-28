@@ -202,7 +202,10 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
     for (i=0;i<length && !jspIsInterrupted();i++) {
       if (!limited || i<JSON_LIMITED_AMOUNT || i>=length-JSON_LIMITED_AMOUNT) {
         if (i>0) cbprintf(user_callback, user_data, ",");
-        if (limited && i==length-JSON_LIMITED_AMOUNT) cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
+        if (limited && i==length-JSON_LIMITED_AMOUNT) {
+          if (needNewLine) jsonNewLine(nflags, user_callback, user_data);
+          cbprintf(user_callback, user_data, JSON_LIMIT_TEXT);
+        }
         JsVar *item = jsvGetArrayItem(var, (JsVarInt)i);
         if (jsvIsUndefined(item) && (flags&JSON_NO_UNDEFINED))
             item = jsvNewWithFlags(JSV_NULL);
