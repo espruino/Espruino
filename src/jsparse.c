@@ -958,7 +958,7 @@ NO_INLINE JsVar *jspeFactorDelete() {
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
     bool ok = false;
-    if (jsvIsName(a)) {
+    if (jsvIsName(a) && !jsvIsNewChild(a)) {
       // if no parent, check in root?
       if (!parent && jsvIsChild(execInfo.root, a))
         parent = jsvLockAgain(execInfo.root);

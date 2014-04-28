@@ -13,6 +13,7 @@
             Fix issues with `"0" in {0:1}` (and hasOwnProperty)
             Improved interpolate function, and moved it out of ArrayBufferView into E
             Fix Problem with Object.keys on a string (fix #347)
+            Fix assert fail when deleting a property that doesn't exist (fix #344)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)
