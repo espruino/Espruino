@@ -2078,6 +2078,19 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   I2C_Cmd(I2Cx, ENABLE);
 }
 
+#if !defined(STM32F3)
+bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
+  JsSysTime endTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(0.1);
+  while (!(I2C_GetFlagStatus(I2C, I2C_FLAG_SB))) {
+    if (jspIsInterrupted() || (jshGetSystemTime() > endTime)) {
+      jsWarn("I2C device not responding");
+      return false;
+    }
+  }
+  return true;
+}
+#endif
+
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
 #if defined(STM32F3)
@@ -2096,8 +2109,9 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   }
 #else
   WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Write BUSY");
-  I2C_GenerateSTART(I2C, ENABLE);    
-  WAIT_UNTIL(I2C_GetFlagStatus(I2C, I2C_FLAG_SB), "I2C Write SB");
+  I2C_GenerateSTART(I2C, ENABLE);
+  if (!jshI2CWaitStartBit(I2C)) return;
+
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter); 
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
@@ -2112,9 +2126,10 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
+  int i;
+
 #if defined(STM32F3)
   I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
-  int i;
   for (i=0;i<nBytes;i++) {
     WAIT_UNTIL((I2C_GetFlagStatus(I2C, I2C_FLAG_RXNE) != RESET) ||
                (I2C_GetFlagStatus(I2C, I2C_FLAG_NACKF) != RESET), "I2C Read RXNE2");
@@ -2129,11 +2144,14 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 #else
   WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
   I2C_GenerateSTART(I2C, ENABLE);    
-  WAIT_UNTIL(I2C_GetFlagStatus(I2C, I2C_FLAG_SB), "I2C Read SB");
+  if (!jshI2CWaitStartBit(I2C)) {
+    for (i=0;i<nBytes;i++) data[i]=0;
+    return;
+  }
+
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Read Mode 1");
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);  
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED), "I2C Read Receive Mode");
-  int i;
   for (i=0;i<nBytes;i++) {
     if (i == nBytes-1) {
       I2C_AcknowledgeConfig(I2C, DISABLE); /* Send STOP Condition */

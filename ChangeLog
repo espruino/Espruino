@@ -22,6 +22,7 @@
             Add Array.shift/unshift (fix #342)
             Fix Defining function after return causes error (fix #326)
             Fix deleting the last element in array (fix #346)
+            More helpful I2C error messages (fix #10)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)
