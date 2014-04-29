@@ -188,6 +188,7 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
     success = true;
   } else {
     // DHCP
+    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
     uint8_t DHCPisSuccess = getIP_DHCPS(net_wiznet_getFreeSocket(), &gWIZNETINFO);
     if (DHCPisSuccess == 1) {
       // info in lease_time.lVal
