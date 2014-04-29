@@ -251,7 +251,7 @@ JsVar * wrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* ChunkSize, JsVar* cal
       JsVar *pipe = jspNewObject(0, "Pipe");
       if(pipe) {// out of memory?
         if(callback) {
-          jsvAddNamedChild(pipe, callback, "#oncomplete");
+          jsvUnLock(jsvAddNamedChild(pipe, callback, "#oncomplete"));
         }
         jsvArrayPush(arr, pipe);
         JsVar* Position = jsvNewFromInteger(0);
@@ -326,8 +326,9 @@ size_t wrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, Js
       bytesWritten = file.write(&file, buffer, length, position, &res);
     }
     if(callback) {
-      jsvUnLock(jsvAddNamedChild(parent, callback, "#oncomplete"));
-      jsiQueueObjectCallbacks(parent, "#oncomplete", bytesWritten, 0);
+      JsVar *bytesWrittenVar = jsvNewFromInteger(bytesWritten);
+      jsiQueueEvents(jsvGetRef(callback), &bytesWrittenVar, 1);
+      jsvUnLock(bytesWrittenVar);
     }
   }
 
@@ -397,8 +398,9 @@ size_t wrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsV
       bytesRead = file.read(&file, buffer, length, position, &res);
     }
     if(callback) {
-      jsvUnLock(jsvAddNamedChild(parent, callback, "#oncomplete"));
-      jsiQueueObjectCallbacks(parent, "#oncomplete", bytesRead, 0);
+      JsVar *bytesReadVar = jsvNewFromInteger(bytesRead);
+      jsiQueueEvents(jsvGetRef(callback), &bytesReadVar, 1);
+      jsvUnLock(bytesReadVar);
     }
   }
 
