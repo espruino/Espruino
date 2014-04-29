@@ -402,7 +402,7 @@ else # !BOOTLOADER but using a bootloader
   BUILD_LINKER_FLAGS+=--using_bootloader
   # -k applies bootloader hack for Espruino 1v3 boards
   ifdef MACOSX
-    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodemfa131
+    STM32LOADER_FLAGS+=-k -p /dev/tty.usbmodem*
   else
     STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
   endif
