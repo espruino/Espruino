@@ -59,7 +59,7 @@ bool jswrap_fs_idle() {
       JsVar *source = jsvObjectGetChild(pipe,"Source",0);
       JsVar *destination = jsvObjectGetChild(pipe,"Destination",0);
       if(!_Pipe(source, destination, chunkSize, position)) { // when no more chunks are possible, execute the callback.
-        jsiQueueObjectCallbacks(pipe, "#oncomplete", pipe, 0);
+        jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
         JsVar *idx = jsvArrayIteratorGetIndex(&it);
         jsvRemoveChild(arr,idx);
         jsvUnLock(idx);
