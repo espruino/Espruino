@@ -225,10 +225,9 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
          "description" : ["Call the event listeners for this object, for instance ```http.emit('data', 'Foo')```. See Node.js's EventEmitter."],
          "generate" : "jswrap_object_emit",
          "params" : [ [ "event", "JsVar", "The name of the event, for instance 'data'"],
-                      [ "v1", "JsVar", "Optional argument 1"],
-                      [ "v2", "JsVar", "Optional argument 2"]  ]
+                      [ "args", "JsVarArray", "Optional arguments"] ]
 }*/
-void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2) {
+void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   if (!jsvIsObject(parent)) {
       jsWarn("Parent must be a proper object - not a String, Integer, etc.");
       return;
@@ -239,7 +238,28 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2) {
   }
   char eventName[16] = "#on";
   jsvGetString(event, &eventName[3], sizeof(eventName)-4);
-  jsiQueueObjectCallbacks(parent, eventName, v1, v2);
+
+  // extract data
+  const int MAX_ARGS = 4;
+  JsVar *args[MAX_ARGS];
+  int n = 0;
+  JsvArrayIterator it;
+  jsvArrayIteratorNew(&it, argArray);
+  while (jsvArrayIteratorHasElement(&it)) {
+    if (n>=MAX_ARGS) {
+      jsWarn("Too many arguments");
+      break;
+    }
+    args[n++] = jsvArrayIteratorGetElement(&it);
+    jsvArrayIteratorNext(&it);
+  }
+  jsvArrayIteratorFree(&it);
+
+
+  jsiQueueObjectCallbacks(parent, eventName, args, n);
+  // unlock
+  while (n--)
+    jsvUnLock(args[n]);
 }
 
 /*JSON{ "type":"method", "class": "Object", "name" : "removeAllListeners",
