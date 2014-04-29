@@ -53,6 +53,7 @@
 //! THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
+#include "jsparse.h"
 #include "Ethernet/socket.h"
 
 //M20150401 : Typing Error
@@ -274,10 +275,12 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
 	setSn_DIPR(sn,addr);
 	setSn_DPORT(sn,port);
 	setSn_CR(sn,Sn_CR_CONNECT);
-   while(getSn_CR(sn));
+   while(getSn_CR(sn) && !jspIsInterrupted());
    if(sock_io_mode & (1<<sn)) return SOCK_BUSY;
    while(getSn_SR(sn) != SOCK_ESTABLISHED)
    {
+        if (jspIsInterrupted())
+          return SOCKERR_TIMEOUT;
 		if (getSn_IR(sn) & Sn_IR_TIMEOUT)
 		{
 			setSn_IR(sn, Sn_IR_TIMEOUT);
