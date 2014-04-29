@@ -177,6 +177,7 @@ typedef struct {
   Pin pinMISO;
   Pin pinMOSI;
   unsigned char spiMode;
+  bool spiMSB; // MSB first?
 } PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 100000;
@@ -184,6 +185,7 @@ static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->pinMISO = PIN_UNDEFINED;
   inf->pinMOSI = PIN_UNDEFINED;
   inf->spiMode = SPIF_SPI_MODE_0;
+  inf->spiMSB = true; // MSB first is default
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */

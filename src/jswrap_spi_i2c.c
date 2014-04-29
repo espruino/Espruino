@@ -52,8 +52,11 @@ int spi_sender_software(int data, void *info) {
   bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
 
   int result = 0;
-  int bit;
-  for (bit=7;bit>=0;bit--) {
+  int bit = inf->spiMSB ? 7 : 0;
+  int bitDir = inf->spiMSB ? -1 : 1;
+  int endBit = inf->spiMSB ? -1 : 8;
+
+  for (;bit!=endBit;bit+=bitDir) {
     if (!CPHA) { // 'Normal' SPI, CPHA=0
       if (inf->pinMOSI != PIN_UNDEFINED)
         jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
@@ -99,7 +102,14 @@ static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
       inf->baudRate = (int)jsvGetInteger(v);
     v = jsvObjectGetChild(options, "mode", 0);
     if (jsvIsNumeric(v))
-      inf->spiMode = ((int)jsvGetInteger(v))&3;;
+      inf->spiMode = ((int)jsvGetInteger(v))&3;
+    v = jsvObjectGetChild(options, "order", 0);
+    if (jsvIsString(v) && jsvIsStringEqual(v, "msb")) {
+      inf->spiMSB = true;
+    } else if (jsvIsString(v) && jsvIsStringEqual(v, "lsb")) {
+      inf->spiMSB = false;
+    } else
+      jsWarn("SPI order should be 'msb' or 'lsb'");
     jsvUnLock(v);
   }
 }
@@ -109,7 +119,7 @@ static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
          "generate" : "jswrap_spi_setup",
          "params" : [ [ "options", "JsVar", ["An optional structure containing extra information on initialising the SPI port",
                                               "Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%",
-                                              "```{sck:pin, miso:pin, mosi:pin, baud:integer, mode:integer=0 }```",
+                                              "```{sck:pin, miso:pin, mosi:pin, baud:integer, mode:integer=0, order:'msb'/'lsb'='msb' }```",
                                               "If sck,miso and mosi are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.",
                                               "The SPI ```mode``` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase",
                                               "On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this." ] ] ]
