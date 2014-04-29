@@ -1095,42 +1095,43 @@ void jsiHandleChar(char ch) {
   }
 }
 
-void jsiQueueEvents(JsVarRef callbacks, JsVar *arg0, JsVar *arg1) { // array of functions or single function
-  if (!callbacks) return;
+void jsiQueueEventInternal(JsVar *callbackFunc, JsVar **args, int argCount) {
+  assert(argCount<10);
+  assert(jsvIsFunction(callbackFunc) || jsvIsString(callbackFunc));
 
-  JsVar *callbackVar = jsvLock(callbacks);
+  JsVar *event = jsvNewWithFlags(JSV_OBJECT);
+  if (event) { // Could be out of memory error!
+    jsvUnLock(jsvAddNamedChild(event, callbackFunc, "func"));
+
+    int i;
+    for (i=0;i<argCount;i++) {
+      char argName[5] = "arg#";
+      argName[3] = (char)('0'+i);
+      jsvUnLock(jsvAddNamedChild(event, args[i], argName));
+    }
+
+    jsvArrayPushAndUnLock(events, event);
+  }
+}
+
+/// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
+void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
+  if (!callback) return;
   // if it is a single callback, just add it
-  if (jsvIsFunction(callbackVar) || jsvIsString(callbackVar)) {
-    JsVar *event = jsvNewWithFlags(JSV_OBJECT);
-    if (event) { // Could be out of memory error!
-      jsvUnLock(jsvAddNamedChild(event, callbackVar, "func"));
-      if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
-      if (arg1) jsvUnLock(jsvAddNamedChild(event, arg1, "arg1"));
-      jsvArrayPushAndUnLock(events, event);
-    }
-    jsvUnLock(callbackVar);
+  if (jsvIsFunction(callback) || jsvIsString(callback)) {
+    jsiQueueEventInternal(callback, args, argCount);
   } else {
-    assert(jsvIsArray(callbackVar));
-    // go through all callbacks
-    JsVarRef next = callbackVar->firstChild;
-    jsvUnLock(callbackVar);
-    while (next) {
-      //jsPrint("Queue Event\n");
-      JsVar *child = jsvLock(next);
-      
-      // for each callback...
-      JsVar *event = jsvNewWithFlags(JSV_OBJECT);
-      if (event) { // Could be out of memory error!
-        jsvUnLock(jsvAddNamedChild(event, child, "func"));
-        if (arg0) jsvUnLock(jsvAddNamedChild(event, arg0, "arg0"));
-        if (arg1) jsvUnLock(jsvAddNamedChild(event, arg1, "arg1"));
-        // add event to the events list
-        jsvArrayPushAndUnLock(events, event);
-        // go to next callback
-      }
-      next = child->nextSibling;
-      jsvUnLock(child);
+    assert(jsvIsArray(callback));
+
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, callback);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *callbackFunc = jsvArrayIteratorGetElement(&it);
+      jsiQueueEventInternal(callbackFunc, args, argCount);
+      jsvUnLock(callbackFunc);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
   }
 }
 
@@ -1141,10 +1142,10 @@ bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName) {
   return hasCallbacks;
 }
 
-void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1) {
+void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
   JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
   if (!callback) return;
-  jsiQueueEvents(jsvGetRef(callback), arg0, arg1);
+  jsiQueueEvents(callback, args, argCount);
   jsvUnLock(callback);
 }
 
@@ -1157,6 +1158,7 @@ void jsiExecuteEvents() {
     // Get function to execute
     JsVar *func = jsvObjectGetChild(event, "func", 0);
     JsVar *args[2];
+    // TODO: make this faster by iterating over the children (and support varying numbers of args)
     args[0] = jsvObjectGetChild(event, "arg0", 0);
     args[1] = jsvObjectGetChild(event, "arg1", 0);
     // free

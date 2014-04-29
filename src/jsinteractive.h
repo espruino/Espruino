@@ -36,10 +36,12 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
+/// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
+void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
-void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar *arg0, JsVar *arg1);
+void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
 
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);

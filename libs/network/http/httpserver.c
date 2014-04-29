@@ -289,13 +289,14 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
               jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
               JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
               JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
-              jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, connection, resVar);
+              JsVar *args[2] = { connection, resVar };
+              jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, 2);
               jsvUnLock(server);
               jsvUnLock(resVar);
             }
             if (hadHeaders && !jsvIsEmptyString(receiveData) && jsiObjectHasCallbacks(connection, HTTP_NAME_ON_DATA)) {
               // Execute 'data' callback with the data that we have
-              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, &receiveData, 1);
               // clear received data
               jsvUnLock(receiveData);
               receiveData = 0;
@@ -325,7 +326,7 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
       bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
       if (hadHeaders && !jsvIsEmptyString(receiveData)) {
          // Execute 'data' callback with the data that we have
-         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, receiveData, 0);
+         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, &receiveData, 1);
       }
       jsvUnLock(receiveData);
       // fire the close listener
@@ -373,7 +374,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
      * around the idle loop (=callbacks have been executed) before we run this */
     if (hadHeaders && receiveData) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
-      jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_DATA, receiveData, 0);
+      jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_DATA, &receiveData, 1);
       jsvUnLock(resVar);
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -407,7 +408,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
               if (httpParseHeaders(&receiveData, resVar, false)) {
                 hadHeaders = true;
                 jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
-                jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, resVar, 0);
+                jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
               }
               jsvUnLock(resVar);
               jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);

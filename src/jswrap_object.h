@@ -21,7 +21,7 @@ JsVar *jswrap_object_keys(JsVar *obj);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
-void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2);
+void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);

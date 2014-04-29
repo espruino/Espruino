@@ -390,7 +390,7 @@ static void cc3000_state_change(const char *data) {
   JsVar *wlanObj = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
   JsVar *dataVar = jsvNewFromString(data);
   if (wlanObj)
-    jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, dataVar, 0);
+    jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, &dataVar, 1);
   jsvUnLock(dataVar);
   jsvUnLock(wlanObj);
 }
