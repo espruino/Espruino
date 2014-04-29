@@ -81,7 +81,7 @@ void jsfsReportError(const char *msg, FRESULT res) {
 
 bool fat_initialised = false;
 
-static bool jsfsInit() {
+bool jsfsInit() {
 #ifndef LINUX
   if (!fat_initialised) {
     FRESULT res;
