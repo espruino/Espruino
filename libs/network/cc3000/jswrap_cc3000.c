@@ -152,3 +152,53 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "mac", &ipconfig.uaMacAddr[0], -6, 16, 0);
   return data;
 }
+
+
+static void _wlan_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
+  JsVar *info = jsvObjectGetChild(options, name, 0);
+  if (info) {
+    char buf[64];
+    jsvGetString(info, buf, sizeof(buf));
+    *(unsigned long*)ptr = networkParseIPAddress(buf);
+    jsvUnLock(info);
+  }
+}
+
+/*JSON{ "type":"method",
+         "class" : "WLAN", "name" : "setIP",
+         "generate" : "jswrap_wlan_setIP",
+         "description" : ["Set the current IP address for get an IP from DHCP (if no options object is specified).",
+                          "**Note:** Changes are written to non-volatile memory, but will only take effect after calling `wlan.reconnect()`" ],
+         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."] ],
+         "return" : ["bool", "True on success"]
+}*/
+bool jswrap_wlan_setIP(JsVar *wlanObj, JsVar *options) {
+  NOT_USED(wlanObj);
+
+  if (networkState != NETWORKSTATE_ONLINE) {
+    jsError("Not connected to the internet");
+    return false;
+  }
+
+  tNetappIpconfigRetArgs ipconfig;
+  netapp_ipconfig(&ipconfig);
+
+  if (jsvIsObject(options)) {
+    _wlan_getIP_set_address(options, "ip", &ipconfig.aucIP[0]);
+    _wlan_getIP_set_address(options, "subnet", &ipconfig.aucSubnetMask[0]);
+    _wlan_getIP_set_address(options, "gateway", &ipconfig.aucDefaultGateway[0]);
+    _wlan_getIP_set_address(options, "dns", &ipconfig.aucDNSServer[0]);
+  } else {
+    // DHCP - just set all values to 0
+    *((unsigned long*)&ipconfig.aucIP[0]) = 0;
+    *((unsigned long*)&ipconfig.aucSubnetMask) = 0;
+    *((unsigned long*)&ipconfig.aucDefaultGateway) = 0;
+  }
+
+  return netapp_dhcp(
+      (unsigned long *)&ipconfig.aucIP[0],
+      (unsigned long *)&ipconfig.aucSubnetMask[0],
+      (unsigned long *)&ipconfig.aucDefaultGateway[0],
+      (unsigned long *)&ipconfig.aucDNSServer[0]) == 0;
+}
+

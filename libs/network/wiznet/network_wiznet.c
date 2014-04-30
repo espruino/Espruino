@@ -92,7 +92,7 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
     listen((uint8_t)sckt);
   }
   wiznetSocketPorts[sckt&7] = port;
-  jsiConsolePrintf("Created socket %d\n", sckt);
+  //jsiConsolePrintf("Created socket %d\n", sckt);
   return sckt;
 }
 
