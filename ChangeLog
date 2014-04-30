@@ -29,6 +29,7 @@
             Added support for SPI LSB-first
             WIZnet improvements (specifically on HTTP server)
             Added WLAN.setIP for CC3000
+            Fix String.split issue with last element (fix #352)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)
