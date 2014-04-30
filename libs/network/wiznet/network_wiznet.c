@@ -31,16 +31,17 @@ typedef struct sockaddr_in sockaddr_in;
 // name resolution
 #include "wiznet/DNS/dns.h"
 extern uint8_t Server_IP_Addr[4];
-short wiznetSocketPorts[8];
+unsigned short wiznetSocketPorts[8];
+unsigned char wiznetSocketAsServerClient = 0;
 
 
 #define WIZNET_SERVER_CLIENT 256 // sockets are only 0-255 so this is masked out
 
 uint8_t net_wiznet_getFreeSocket() {
-  uint8_t i;
+  unsigned int i;
   for (i=0;i<8;i++)
     if (getSn_SR(i) == SOCK_CLOSED) // it's free!
-      return i;
+      return (uint8_t)i;
 
   jsError("No free sockets found\n");
   // out of range will probably just make it error out
@@ -91,6 +92,7 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
     listen((uint8_t)sckt);
   }
   wiznetSocketPorts[sckt&7] = port;
+  jsiConsolePrintf("Created socket %d\n", sckt);
   return sckt;
 }
 
@@ -111,20 +113,32 @@ void net_wiznet_closesocket(JsNetwork *net, int sckt) {
     // so it's just closed, but put it into 'listen' mode again
     sckt = socket((uint8_t)sckt, Sn_MR_TCP, wiznetSocketPorts[sckt&7], SF_IO_NONBLOCK);
     listen((uint8_t)sckt);
+    // Be sure to mark it as not a client socket any more
+    wiznetSocketAsServerClient = wiznetSocketAsServerClient & (unsigned char)~(1<<(sckt&7));
   }
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
 int net_wiznet_accept(JsNetwork *net, int sckt) {
   NOT_USED(net);
+
+  // On WIZnet the same server socket is reused for clients - keep track so we don't get confused
+  // and try and allocate a new HTTP Server Client
+  if (wiznetSocketAsServerClient & (1<<sckt))
+    return -1;
+
   /* CC3000/WIZnet works a different way - we set accept as nonblocking,
    * and then we just call it and see if it works or not...
    */
+
   // we have a client waiting to connect... try to connect and see what happens
   // WIZnet's implementation doesn't use accept, it uses listen
   int status = getSn_SR((uint8_t)sckt);
-  if (status == SOCK_ESTABLISHED)
-    return sckt | WIZNET_SERVER_CLIENT; // we deal with the client on the same socket (we use the flag so we know that it really is different!)
+  if (status == SOCK_ESTABLISHED) {
+    wiznetSocketAsServerClient = wiznetSocketAsServerClient | (unsigned char)(1<<sckt); // mark that it's now being used as a client socket
+
+    return ((int)sckt) | WIZNET_SERVER_CLIENT; // we deal with the client on the same socket (we use the flag so we know that it really is different!)
+  }
   return -1;
 }
 
@@ -134,7 +148,7 @@ int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
   int num = 0;
   if (getSn_SR(sckt)!=SOCK_LISTEN) {
     // receive data - if none available it'll just return SOCK_BUSY
-    num = (int)recv(sckt,buf,len,0);
+    num = (int)recv((uint8_t)sckt,buf,(uint16_t)len,0);
     if (num==SOCK_BUSY) num=0;
   }
   if (jspIsInterrupted()) return -1;
@@ -144,7 +158,7 @@ int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
   NOT_USED(net);
-  int r = (int)send(sckt, buf, len, MSG_NOSIGNAL);
+  int r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
   if (jspIsInterrupted()) return -1;
   return r;
 }
