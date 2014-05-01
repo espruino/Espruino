@@ -1,3 +1,5 @@
+     1v63 : ...
+
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
             Added Graphics.drawImage (fix #198)
