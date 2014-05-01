@@ -31,6 +31,7 @@
             Added WLAN.setIP for CC3000
             Fix String.split issue with last element (fix #352)
             Remove order warning for SPI if no order given (fix #353)
+            process.env will now contain the git commit
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

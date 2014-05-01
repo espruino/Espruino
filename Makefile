@@ -49,6 +49,7 @@ DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
 OPTIMIZEFLAGS= 
 #-fdiagnostics-show-option - shows which flags can be used with -Werror 
+DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 
 # Espruino flags...
 USE_MATH=1
