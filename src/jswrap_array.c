@@ -196,7 +196,7 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 }
 
 
-/*JSON{ "type":"method", "class": "Array", "name" : "reduce",
+/*JSON{ "type":"method", "class": "Array", "name" : "reduce", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.",
          "generate" : "jswrap_array_reduce",
          "params" : [ [ "callback", "JsVar", "Function used to reduce the array"] ,
@@ -318,7 +318,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   return result;
 }
 
-/*JSON{ "type":"method", "class": "Array", "name" : "shift",
+/*JSON{ "type":"method", "class": "Array", "name" : "shift", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Remove the first element of the array, and return it",
          "generate" : "jswrap_array_shift",
          "params" : [ ],
@@ -339,7 +339,7 @@ JsVar *jswrap_array_shift(JsVar *parent) {
   return el;
 }
 
-/*JSON{ "type":"method", "class": "Array", "name" : "unshift",
+/*JSON{ "type":"method", "class": "Array", "name" : "unshift", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Remove the first element of the array, and return it",
          "generate" : "jswrap_array_unshift",
          "params" : [ [ "elements", "JsVarArray", "One or more items to add to the beginning of the array" ] ],
@@ -564,7 +564,7 @@ JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   return result;
 }
 
-/*JSON{ "type":"method", "class": "Array", "name" : "fill",
+/*JSON{ "type":"method", "class": "Array", "name" : "fill", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Fill this array with the given value, for every index `>= start` and `< end`",
          "generate" : "jswrap_array_fill",
          "params" : [ [ "value", "JsVar", "The value to fill the array with" ],
