@@ -108,7 +108,7 @@ static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
       inf->spiMSB = true;
     } else if (jsvIsString(v) && jsvIsStringEqual(v, "lsb")) {
       inf->spiMSB = false;
-    } else
+    } else if (!jsvIsUndefined(v))
       jsWarn("SPI order should be 'msb' or 'lsb'");
     jsvUnLock(v);
   }
