@@ -104,7 +104,7 @@ int net_linux_createsocket(JsNetwork *net, unsigned long host, unsigned short po
     }
     int optval = 1;
     if (setsockopt(sckt,SOL_SOCKET,SO_REUSEADDR,(const char *)&optval,sizeof(optval)) < 0)
-      jsWarn("setsockopt failed\n");
+      jsWarn("setsockopt(SO_REUSADDR) failed\n");
 
     int nret;
     sockaddr_in serverInfo;
@@ -128,6 +128,14 @@ int net_linux_createsocket(JsNetwork *net, unsigned long host, unsigned short po
       return -1;
     }
   }
+
+#ifdef SO_NOSIGPIPE
+  // disable SIGPIPE
+  int optval = 1;
+  if (setsockopt(sckt,SOL_SOCKET,SO_NOSIGPIPE,(const char *)&optval,sizeof(optval))<0)
+    jsWarn("setsockopt(SO_NOSIGPIPE) failed\n");
+#endif
+
   return sckt;
 }
 
@@ -195,7 +203,11 @@ int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
      // we probably disconnected so just get rid of this
     return -1;
   } else if (FD_ISSET(sckt, &writefds)) {
-    n = send(sckt, buf, len, MSG_NOSIGNAL);
+    int flags = 0;
+#if !defined(SO_NOSIGPIPE) && defined(MSG_NOSIGNAL)
+    flags |= MSG_NOSIGNAL;
+#endif
+    n = send(sckt, buf, len, flags);
     return n;
   } else
     return 0; // just not ready
