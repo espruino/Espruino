@@ -217,3 +217,53 @@ JsVar *jswrap_interface_getSerial() {
   }
   return str;
 }
+
+/*JSON{ "type":"function", "name" : "setInterval",
+         "description" : ["Call the function specified REPEATEDLY after the timeout in milliseconds.",
+                          "The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)",
+                          "for example: ```setInterval(function (e) { print(e.time); }, 1000);```",
+                          "This can also be removed using clearInterval",
+                          "**Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time." ],
+         "generate" : "jswrap_interface_setInterval",
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
+                      [ "timeout", "float", "The time between calls to the function" ] ],
+         "return" : ["JsVar", "An ID that can be passed to clearInterval"]
+}*/
+/*JSON{ "type":"function", "name" : "setTimeout",
+         "description" : ["Call the function specified ONCE after the timeout in milliseconds.",
+                          "The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)",
+                          "for example: ```setTimeout(function (e) { print(e.time); }, 1000);```",
+                          "This can also be removed using clearTimeout",
+                          "**Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time." ],
+         "generate" : "jswrap_interface_setTimeout",
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
+                      [ "timeout", "float", "The time until the function will be executed" ] ],
+         "return" : ["JsVar", "An ID that can be passed to clearTimeout"]
+}*/
+JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, bool isTimeout) {
+  // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
+  JsVar *itemIndex = 0;
+  if (!jsvIsFunction(func) && !jsvIsString(func)) {
+    jsError("Function or String not supplied!");
+  } else {
+    // Create a new timer
+    JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
+    if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+    JsVarInt intervalInt = jshGetTimeFromMilliseconds(interval);
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(jshGetSystemTime() + intervalInt)));
+    jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
+    if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
+    jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
+
+    // Add to array
+    itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
+    jsvUnLock(timerPtr);
+  }
+  return itemIndex;
+}
+JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {
+  return _jswrap_interface_setTimeoutOrInterval(func, timeout, false);
+}
+JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
+  return _jswrap_interface_setTimeoutOrInterval(func, timeout, true);
+}
