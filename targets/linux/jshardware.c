@@ -383,6 +383,17 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
   } else jsError("Invalid pin!");
 }
 
+bool jshCanWatch(Pin pin) {
+  if (jshIsPinValid(pin)) {
+#ifdef SYSFS_GPIO_DIR
+     IOEventFlags exti = getNewEVEXTI();
+     if (exti) return true;
+#endif
+     return false;
+  } else
+    return false;
+}
+
 void jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
 #ifdef SYSFS_GPIO_DIR

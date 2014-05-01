@@ -1647,6 +1647,13 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   jshPinSetFunction(pin, func);
 }
 
+bool jshCanWatch(Pin pin) {
+  if (jshIsPinValid(pin)) {
+    return watchedPins[pinInfo[pin].pin]==PIN_UNDEFINED;
+  } else
+    return false;
+}
+
 void jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
