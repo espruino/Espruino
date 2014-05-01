@@ -90,6 +90,8 @@ int net_linux_createsocket(JsNetwork *net, unsigned long host, unsigned short po
      if (err != EINPROGRESS &&
          err != EWOULDBLOCK) {
        jsError("Connect failed (err %d)\n", err );
+       closesocket(sckt);
+       return -1;
      }
     }
 
