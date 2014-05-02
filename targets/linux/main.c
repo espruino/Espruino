@@ -32,20 +32,20 @@ void nativeInterrupt() {
   jspSetInterrupted(true);
 }
 
-const char *read_file(const char *filename) {
+char *read_file(const char *filename) {
   struct stat results;
   if (!stat(filename, &results) == 0) {
     printf("Cannot stat file! '%s'\r\n", filename);
     return 0;
   }
-  int size = (int)results.st_size;
+  size_t size = (size_t)results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
      printf("Unable to open file! '%s'\r\n", filename);
      return 0;
   }
-  char *buffer = malloc(size+1);
+  char *buffer = (char *)malloc(size+1);
   size_t actualRead = fread(buffer,1,size,file);
   buffer[actualRead]=0;
   buffer[size]=0;
@@ -120,9 +120,9 @@ bool run_all_tests() {
     struct dirent *pDir=NULL;
     while((pDir = readdir(dir)) != NULL) {
       char *fn = (*pDir).d_name;
-      int l = strlen(fn);
+      size_t l = strlen(fn);
       if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
-        char *full_fn = malloc(1+l+strlen(TEST_DIR));
+        char *full_fn = (char *)malloc(1+l+strlen(TEST_DIR));
         strcpy(full_fn, TEST_DIR);
         strcat(full_fn, fn);
         if (run_test(full_fn)) {
@@ -155,12 +155,12 @@ bool run_all_tests() {
 }
 
 bool run_memory_test(const char *fn, int vars) {
-  int i;
-  int min = 20;
-  int max = 100;
+  unsigned int i;
+  unsigned int min = 20;
+  unsigned int max = 100;
   if (vars>0) {
-    min = vars;
-    max = vars+1;
+    min = (unsigned)vars;
+    max = (unsigned)vars+1;
   }
   for (i=min;i<max;i++) {
     jsvSetMaxVarsUsed(i);
@@ -171,18 +171,16 @@ bool run_memory_test(const char *fn, int vars) {
 }
 
 bool run_memory_tests(int vars) {
-  int test_num = 1;
   int count = 0;
-  int passed = 0;
 
   DIR *dir = opendir(TEST_DIR);
   if(dir) {
     struct dirent *pDir=NULL;
     while((pDir = readdir(dir)) != NULL) {
       char *fn = (*pDir).d_name;
-      int l = strlen(fn);
+      size_t l = strlen(fn);
       if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
-        char *full_fn = malloc(1+l+strlen(TEST_DIR));
+        char *full_fn = (char *)malloc(1+l+strlen(TEST_DIR));
         strcpy(full_fn, TEST_DIR);
         strcat(full_fn, fn);
         run_memory_test(full_fn, vars);
