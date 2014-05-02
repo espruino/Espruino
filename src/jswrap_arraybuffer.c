@@ -378,14 +378,14 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
          "params" : [ [ "function", "JsVar", "Function to be executed"] ,
                       [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
 }*/
-/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "reduce",
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "reduce", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.",
          "generate" : "jswrap_array_reduce",
          "params" : [ [ "callback", "JsVar", "Function used to reduce the array"] ,
                       [ "initialValue", "JsVar", "if specified, the initial value to pass to the function"] ],
          "return" : ["JsVar", "The value returned by the last function called"]
 }*/
-/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "fill",
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "fill", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Fill this array with the given value, for every index `>= start` and `< end`",
          "generate" : "jswrap_array_fill",
          "params" : [ [ "value", "JsVar", "The value to fill the array with" ],

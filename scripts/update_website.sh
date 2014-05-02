@@ -27,6 +27,9 @@ function create_info() {
   echo "  \"${BOARDNAME}\" : {" >> $BOARDJSON
   echo "    \"json\" : \"${BOARDNAME}.json\"," >> $BOARDJSON
   echo "    \"thumb\" : \"http://www.espruino.com/img/${BOARDNAME}_thumb.jpg\"," >> $BOARDJSON
+#  THUMBIMAGE=`convert boards/img/${BOARDNAME}.* -resize 64x64 -quality 80 jpeg:- | base64 --wrap=0`
+#  echo $THUMBIMAGE
+#  echo "    \"thumb_b64\" : \"${THUMBIMAGE}\"," >> $BOARDJSON
   echo "    \"image\" : \"http://www.espruino.com/img/${BOARDNAME}.jpg\"" >> $BOARDJSON
   echo "  }," >> $BOARDJSON
   # copy in binary

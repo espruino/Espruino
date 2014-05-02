@@ -230,10 +230,10 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
 
   int idx, last = 0;
   int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
-  int l = (int)jsvGetStringLength(parent) - splitlen;
+  int l = (int)jsvGetStringLength(parent) + 1 - splitlen;
 
   for (idx=0;idx<=l;idx++) {
-    if (splitlen==0 &&idx==0) continue; // special case for where split string is ""
+    if (splitlen==0 && idx==0) continue; // special case for where split string is ""
     if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
       if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
       JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));

@@ -47,7 +47,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
   bool hadErrors = false;
   while (jspIsInterrupted()) {
     hadErrors = true;
-    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
+    jsiConsolePrint("CC3000 WiFi is not responding. Power cycling...\n");
     jspSetInterrupted(false);
     // remove all existing connections
     networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything

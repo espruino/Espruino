@@ -48,6 +48,7 @@ DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
+DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 
 # Espruino flags...
 USE_MATH=1
@@ -58,6 +59,7 @@ endif
 
 ifeq ($(shell uname),Darwin)
 MACOSX=1
+CFLAGS+=-D__MACOSX__
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -310,7 +312,7 @@ USE_GRAPHICS=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
-#USE_NET=1 # http libs need some tweaks before net can compile
+USE_NET=1
 else ifdef MINGW
 #USE_NET=1 # http libs need some tweaks before net can compile
 #LIBS += -lwsock32

@@ -1,3 +1,5 @@
+     1v63 : ...
+
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
             Added Graphics.drawImage (fix #198)
@@ -26,6 +28,14 @@
             Fix overriding built-in functions (fix #202)
             Add ES6 Array.prototype.fill (fix #317)
             Modified jsiQueueObjectCallbacks (and Object.emit) to support >2 args
+            Added support for SPI LSB-first
+            WIZnet improvements (specifically on HTTP server)
+            Added WLAN.setIP for CC3000
+            Fix String.split issue with last element (fix #352)
+            Remove order warning for SPI if no order given (fix #353)
+            process.env will now contain the git commit
+            Move setInterval/Timeout implementations into jswrap_interactive (makes more sense)
+            Add setWatch warning if it's not possible (fix #337)
 
      1v61 : Fix toString crash for large numbers
             Support floating-point literals without a leading 0 - eg '.5' (fix #296)

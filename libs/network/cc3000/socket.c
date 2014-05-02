@@ -40,7 +40,7 @@
 //
 //*****************************************************************************
 
-
+#include "jsinteractive.h"
 #include "hci.h"
 #include "socket.h"
 #include "evnt_handler.h"
@@ -320,6 +320,8 @@ accept(long sd, sockaddr *addr, socklen_t *addrlen)
 	// Since we are in blocking state - wait for event complete
 	SimpleLinkWaitEvent(HCI_CMND_ACCEPT, &tAcceptReturnArguments);
 	
+	// if we had a problem while waiting, just exit...
+	if (jspIsInterrupted()) return -1;
 	
 	// need specify return parameters!!!
 	memcpy(addr, &tAcceptReturnArguments.tSocketAddress, ASIC_ADDR_LEN);

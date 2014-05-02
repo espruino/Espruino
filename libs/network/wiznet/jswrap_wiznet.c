@@ -150,7 +150,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
 }
 
 
-void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
+static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *ptr) {
   JsVar *info = jsvObjectGetChild(options, name, 0);
   if (info) {
     char buf[64];
@@ -178,8 +178,9 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   bool success = false;
   wiz_NetInfo gWIZNETINFO;
 
+  ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+
   if (jsvIsObject(options)) {
-    ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
     _eth_getIP_set_address(options, "ip", &gWIZNETINFO.ip[0]);
     _eth_getIP_set_address(options, "subnet", &gWIZNETINFO.sn[0]);
     _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
