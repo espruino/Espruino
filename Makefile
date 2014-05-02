@@ -60,6 +60,7 @@ endif
 
 ifeq ($(shell uname),Darwin)
 MACOSX=1
+CFLAGS+=-D__MACOSX__
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -293,7 +294,7 @@ USE_GRAPHICS=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
-#USE_NET=1 # http libs need some tweaks before net can compile
+USE_NET=1
 else ifdef MINGW
 #USE_NET=1 # http libs need some tweaks before net can compile
 #LIBS += -lwsock32
