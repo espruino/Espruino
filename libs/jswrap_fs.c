@@ -74,13 +74,6 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   return ret;
 }
 
-/// Given an FD, get the file
-static JsVar *fileGetFromFD(JsVarInt fd) {
-  JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, false);
-  if (!arr) return 0;
-  return jsvGetArrayItem(arr, fd);
-}
-
 static void fileSetVar(JsFile *file) {
   JsVar *fHandle = jsvFindChildFromString(file->fileVar, JS_FS_DATA_NAME, true);
   JsVar *data = jsvSkipName(fHandle);
@@ -202,8 +195,14 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   return ret;
 }
 
-/// Open a file - if fdPtr!=0, return the file descriptor
-JsVar* fileOpen(JsVar* path, JsVar* mode, JsVarInt *fdPtr) {
+/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "open",
+         "generate_full" : "jswrap_fat_open(path, mode)",
+         "description" : [ "Open a file."],
+         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
+                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read and 'w' for write"] ],
+         "return" : [ "JsVar", "The file handle or undefined if the file specified does not exist." ]
+}*/
+JsVar *jswrap_fat_open(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
   FileMode fMode = FM_NONE;
@@ -235,8 +234,7 @@ JsVar* fileOpen(JsVar* path, JsVar* mode, JsVarInt *fdPtr) {
           file.data.state = FS_OPEN;
           fileSetVar(&file);
           // add to list of open files
-          JsVarInt fd = jsvArrayPush(arr, file.fileVar) - 1;
-          if (fdPtr) *fdPtr = fd;
+          jsvArrayPush(arr, file.fileVar);
           jsvUnLock(arr);
         }
       }
@@ -248,21 +246,6 @@ JsVar* fileOpen(JsVar* path, JsVar* mode, JsVarInt *fdPtr) {
   }
 
   return file.fileVar;
-}
-
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "open",
-         "generate_full" : "jswrap_fat_open(path, mode)",
-         "description" : [ "Open a file."],
-         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
-                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read and 'w' for write"] ],
-         "return" : [ "JsVar", "The file handle or undefined if the file specified does not exist." ]
-}*/
-JsVar *jswrap_fat_open(JsVar* path, JsVar* mode) {
-  /*JsVarInt fd;
-  JsVar *file = fileOpen(path,mode,&fd);
-  if (!file) return 0;
-  return jsvNewFromInteger(fd);*/
-  return fileOpen(path,mode,0);
 }
 
 
