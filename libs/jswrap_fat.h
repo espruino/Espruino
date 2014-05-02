@@ -13,8 +13,8 @@
  */
 #include "jsvar.h"
 
-void wrap_fat_kill();
-JsVar *wrap_fat_readdir(JsVar *path);
-bool wrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
-JsVar *wrap_fat_readFile(JsVar *path);
-bool wrap_fat_unlink(JsVar *path);
+void jswrap_fat_kill();
+JsVar *jswrap_fat_readdir(JsVar *path);
+bool jswrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
+JsVar *jswrap_fat_readFile(JsVar *path);
+bool jswrap_fat_unlink(JsVar *path);
