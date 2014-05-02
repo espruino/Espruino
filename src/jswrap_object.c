@@ -356,7 +356,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
          "description" : ["This executes the function with the supplied 'this' argument and parameters"],
          "generate" : "jswrap_function_apply_or_call",
          "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
-                      [ "args", "JsVar", "Optional Array of Aruments"]
+                      [ "args", "JsVar", "Optional Array of Arguments"]
                     ],
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/
