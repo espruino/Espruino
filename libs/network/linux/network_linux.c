@@ -209,7 +209,7 @@ int net_linux_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
 #if !defined(SO_NOSIGPIPE) && defined(MSG_NOSIGNAL)
     flags |= MSG_NOSIGNAL;
 #endif
-    n = send(sckt, buf, len, flags);
+    n = (int)send(sckt, buf, len, flags);
     return n;
   } else
     return 0; // just not ready
