@@ -63,38 +63,28 @@ typedef struct JsFile {
   unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
   size_t (*read)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
   size_t (*write)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-  void (*close)(JsVar* parent);
+  void (*close)(struct JsFile* file);
 } PACKED_FLAGS JsFile;
 
 bool jswrap_fs_idle();
 void jswrap_fs_init();
 void jswrap_fs_kill();
 
-bool AllocateJsFile(JsFile* file,FileMode mode, FileType type);
-bool fileGetFromVar(JsFile *file, JsVar *parent);
-void fileSetVar(JsFile *file);
-
 //var file = fs.open(path, mode, callback)
-JsVar* wrap_fat_open(JsVar* path, JsVar* mode);
+JsVar* jswrap_fat_open(JsVar* path, JsVar* mode);
 //file.read(buffer, length, position, callback)
-size_t wrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
+size_t jswrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
 //file.write(buffer, length, position, callback)
-size_t wrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
+size_t jswrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
 //file.pipe(destination, callback)
-JsVar* wrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
+JsVar* jswrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
 //file.close(callback)
-void wrap_fat_close(JsVar* parent);
-
-//object methods handles
-bool _Pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position);
-size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-void _closeFile(JsFile* file);
+void jswrap_fat_close(JsVar* parent);
 
 //var r = fs.createReadStream('file.txt');
-JsVar* createReadStream(JsVar* path);
+JsVar* jswrap_fs_createReadStream(JsVar* path);
 //var w = fs.createWriteStream('file.txt');
-JsVar* createWriteStream(JsVar* path);
+JsVar* jswrap_fs_createWriteStream(JsVar* path);
 
 #pragma GCC visibility push(hidden)
 extern bool jsfsInit();
