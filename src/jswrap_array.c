@@ -122,9 +122,7 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
          "return" : ["JsVar", "The value that is popped off"]
 }*/
 
-JsVar *_jswrap_array_iterate_with_callback(JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
-  const char *name = wantArray ? (isBoolCallback ? "filter" : "map" ) : 
-                     isBoolCallback ? (expectedValue ? "every" : "some") : "forEach";
+JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
   if (!jsvIsIterable(parent)) {
     jsError("Array.%s can only be called on something iterable", name);
     return 0;
@@ -140,11 +138,11 @@ JsVar *_jswrap_array_iterate_with_callback(JsVar *parent, JsVar *funcVar, JsVar 
   JsVar *result = 0;
   if (wantArray)
     result = jsvNewWithFlags(JSV_ARRAY);
-  bool terminate = false;
+  bool isDone = false;
   if (result || !wantArray) {
     JsvIterator it;
     jsvIteratorNew(&it, parent);
-    while (jsvIteratorHasElement(&it)) {
+    while (jsvIteratorHasElement(&it) && !isDone) {
       JsVar *index = jsvIteratorGetKey(&it);
       if (jsvIsInt(index)) {
         JsVarInt idxValue = jsvGetInteger(index);
@@ -176,13 +174,12 @@ JsVar *_jswrap_array_iterate_with_callback(JsVar *parent, JsVar *funcVar, JsVar 
           } else {
             // break the loop early if expecting a particular value and didn't get it
             if (isBoolCallback && !matched)
-              terminate = true;
+              isDone = true;
           }
           jsvUnLock(cb_result);
         }
       }
       jsvUnLock(index);
-      if (terminate) break;
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
@@ -190,7 +187,7 @@ JsVar *_jswrap_array_iterate_with_callback(JsVar *parent, JsVar *funcVar, JsVar 
   /* boolean result depends on whether the loop terminated
      early for 'some' or completed for 'every' */
   if (!wantArray && isBoolCallback) {
-    result = jsvNewFromBool(terminate != expectedValue);
+    result = jsvNewFromBool(isDone != expectedValue);
   }
   return result;
 }
@@ -203,7 +200,7 @@ JsVar *_jswrap_array_iterate_with_callback(JsVar *parent, JsVar *funcVar, JsVar 
          "return" : ["JsVar", "An array containing the results"]
 }*/
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, true, false, false);
+  return _jswrap_array_iterate_with_callback("map", parent, funcVar, thisVar, true, false, false);
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "forEach",
@@ -213,7 +210,7 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
                       [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
 }*/
 void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, false, false, false);
+  _jswrap_array_iterate_with_callback("forEach", parent, funcVar, thisVar, false, false, false);
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "filter",
@@ -224,7 +221,7 @@ void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "return" : ["JsVar", "An array containing the results"]
 }*/
 JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, true, true, true);
+  return _jswrap_array_iterate_with_callback("filter", parent, funcVar, thisVar, true, true, true);
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "some",
@@ -235,7 +232,7 @@ JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "return" : ["JsVar", "A boolean containing the result"]
 }*/
 JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, false, true, false);
+  return _jswrap_array_iterate_with_callback("some", parent, funcVar, thisVar, false, true, false);
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "every",
@@ -246,7 +243,7 @@ JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "return" : ["JsVar", "A boolean containing the result"]
 }*/
 JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_iterate_with_callback(parent, funcVar, thisVar, false, true, true);
+  return _jswrap_array_iterate_with_callback("every", parent, funcVar, thisVar, false, true, true);
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "reduce", "ifndef" : "SAVE_ON_FLASH",
