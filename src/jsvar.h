@@ -374,6 +374,10 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
 /// Negates an integer/double value
 JsVar *jsvNegateAndUnLock(JsVar *v);
 
+/** If the given element is found, return the path to it as a string of
+ * the form 'foo.bar', else return 0. */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth);
+
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);
 /** Copy only a name, not what it points to. ALTHOUGH the link to what it points to is maintained unless linkChildren=false.

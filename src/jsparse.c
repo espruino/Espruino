@@ -644,24 +644,38 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             JsVar *aVar = jsvSkipName(a);
             JsVar *child = 0;
             if (aVar && jswGetBasicObjectName(aVar)) {
+
               // if we're an object (or pretending to be one)
               if (jsvHasChildren(aVar))
                 child = jsvFindChildFromString(aVar, name, false);
 
-              if (!child)
+              if (!child) {
+                // Now look in prototypes
                 child = jspeiFindChildFromStringInParents(aVar, name);
 
-              /* Check for builtins via separate function
-               * This way we save on RAM for built-ins because everything comes out of program code.
-               *
-               * We don't check for prototype vars so people can overload the built
-               * in functions (eg. Person.prototype.toString). HOWEVER if we did
-               * this for 'this' then we couldn't say 'this.toString()'
-               * */
-              if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) { // don't try and use builtins on the prototype var!
-                child = jswFindBuiltInFunction(aVar, name);
-                // create a name to show where this came from - so we can overwrite builtins
+                /* Check for builtins via separate function
+                 * This way we save on RAM for built-ins because everything comes out of program code.
+                 *
+                 * We don't check for prototype vars so people can overload the built
+                 * in functions (eg. Person.prototype.toString). HOWEVER if we did
+                 * this for 'this' then we couldn't say 'this.toString()'
+                 * */
+                if (!child && (!jsvIsString(a) || (!jsvIsStringEqual(a, JSPARSE_PROTOTYPE_VAR)))) { // don't try and use builtins on the prototype var!
+                  child = jswFindBuiltInFunction(aVar, name);
+                }
+
+                /* We didn't get here if we found a child in the object itself, so
+                 * if we're here then we probably have the wrong name - so for example
+                 * with `a.b = c;` could end up setting `a.prototype.b` (bug #360)
+                 *
+                 * Also we might have got a built-in, which wouldn't have a name on it
+                 * anyway - so in both cases, strip the name if it is there, and create
+                 * a new name.
+                 */
                 if (child) {
+                  // Get rid of existing name
+                  child = jsvSkipNameAndUnLock(child);
+                  // create a new nam,e
                   JsVar *nameVar = jslGetTokenValueAsVar(execInfo.lex);
                   JsVar *newChild = jsvCreateNewChild(aVar, nameVar, child);
                   jsvUnLock(nameVar);
@@ -1865,6 +1879,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       // 'proper' replace, that keeps the original function var and swaps the children
       funcVar = jsvSkipNameAndUnLock(funcVar);
       jswrap_function_replaceWith(existingFunc, funcVar);
+      jsvUnLock(funcVar);
       funcVar = existingName;
     } else {
       jspReplaceWith(existingName, funcVar);
@@ -1872,6 +1887,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       funcName = existingName;
     }
     jsvUnLock(existingFunc);
+    // existingName is used - don't UnLock
   }
   jsvUnLock(funcVar);
   return funcName;

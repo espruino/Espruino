@@ -2183,6 +2183,38 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
   return res;
 }
 
+/** If the given element is found, return the path to it as a string of
+ * the form 'foo.bar', else return 0. */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth) {
+  if (maxDepth<=0) return 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, root);
+  while (jsvObjectIteratorHasElement(&it)) {
+    JsVar *el = jsvObjectIteratorGetValue(&it);
+    if (el == element) {
+      // if we found it - send the key name back!
+      JsVar *name = jsvAsString(jsvObjectIteratorGetKey(&it), true);
+      jsvObjectIteratorFree(&it);
+      return name;
+    } else if (jsvIsObject(el)) {
+      // recursively search
+      JsVar *n = jsvGetPathTo(el, element, maxDepth-1);
+      if (n) {
+        // we found it! Append our name onto it as well
+        JsVar *name = jsvAsString(jsvObjectIteratorGetKey(&it), true);
+        jsvAppendCharacter(name, '.');
+        jsvAppendStringVarComplete(name, n);
+        jsvUnLock(n);
+        jsvObjectIteratorFree(&it);
+        return name;
+      }
+    }
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  return 0;
+}
+
 void jsvTraceLockInfo(JsVar *v) {
     jsiConsolePrintf("#%d[r%d,l%d] ",jsvGetRef(v),v->refs,jsvGetLocks(v)-1);
 }

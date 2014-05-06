@@ -336,6 +336,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
         jsvUnLock(copy);
       }
     }
+    jsvUnLock(el);
   }
   jsvObjectIteratorFree(&it);
 
