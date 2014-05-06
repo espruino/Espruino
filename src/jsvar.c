@@ -1438,6 +1438,14 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
   namedChild = jsvRef(namedChild); // ref here VERY important as adding to structure!
   assert(jsvIsName(namedChild));
 
+  // update array length
+  if (jsvIsArray(parent) && jsvIsInt(namedChild)) {
+    JsVarInt index = jsvGetInteger(namedChild);
+    if (index >= jsvGetArrayLength(parent)) {
+          jsvSetArrayLength(parent, index + 1, false);
+    }
+  }
+
   if (parent->lastChild) { // we have children already
     JsVar *insertAfter = jsvLock(parent->lastChild);
     if (jsvIsArray(parent)) {
@@ -1698,21 +1706,15 @@ int jsvGetChildren(JsVar *v) {
 
 
 JsVarInt jsvGetArrayLength(const JsVar *arr) {
-  JsVarRef childref = arr->lastChild;
-  // Just look at last non-string element!
-  while (childref) {
-    JsVar *child = jsvLock(childref);
-    if (jsvIsInt(child)) {
-      JsVarInt lastIdx = jsvGetInteger(child);
-      jsvUnLock(child);
-      if (lastIdx<0) lastIdx=-1;
-      return lastIdx+1;
-    }
-    // if not an int, keep going
-    childref = child->prevSibling;
-    jsvUnLock(child);
+  return arr->varData.integer;
+}
+
+JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate) {
+  if (truncate && length < arr->varData.integer) {
+    // @TODO implement truncation here
   }
-  return 0;
+  arr->varData.integer = length;
+  return length;
 }
 
 JsVarInt jsvGetLength(JsVar *src) {
@@ -1857,7 +1859,7 @@ JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialV
   }
   jsvAddName(arr, idx);
   jsvUnLock(idx);
-  return index+1; // new size
+  return jsvGetArrayLength(arr);
 }
 
 /// Adds new elements to the end of an array, and returns the new length
@@ -1875,23 +1877,32 @@ JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
 /// Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPop(JsVar *arr) {
   assert(jsvIsArray(arr));
-  if (arr->lastChild) {
-    JsVar *child = jsvLock(arr->lastChild);
-    if (arr->firstChild == arr->lastChild)
-      arr->firstChild = 0; // if 1 item in array
-    arr->lastChild = child->prevSibling; // unlink from end of array
-    jsvUnRef(child); // as no longer in array
-    if (child->prevSibling) {
-      JsVar *v = jsvLock(child->prevSibling);
-      v->nextSibling = 0;
-      jsvUnLock(v);
+  JsVarInt length = jsvGetArrayLength(arr);
+  if (length > 0) {
+    // change array length irrespective of what happens below
+    jsvSetArrayLength(arr, --length, false);
+    if (arr->lastChild) {
+      // find last child with an integer key
+      JsVarRef ref = arr->lastChild;
+      JsVar *child = jsvLock(ref);
+      while (child && !jsvIsInt(child)) {
+        ref = child->prevSibling;
+        jsvUnLock(child);
+		if (ref) {
+		  child = jsvLock(ref);
+        } else {
+          child = 0;
+        }
+      }
+      // check if the last integer key really is the last element
+      if (child && jsvGetInteger(child) == length) {
+        jsvRemoveChild(arr, child);
+        return child;
+      }
     }
-    child->prevSibling = 0;
-    return child; // and return it
-  } else {
-    // no children!
-    return 0;
   }
+  // no children!
+  return 0;
 }
 
 /// Removes the first element of an array, and returns that element (or 0 if empty). DOES NOT RENUMBER.

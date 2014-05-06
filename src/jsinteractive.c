@@ -1219,9 +1219,9 @@ NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, J
 bool jsiHasTimers() {
   if (!timerArray) return false;
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarInt c = jsvGetArrayLength(timerArrayPtr);
+  bool hasTimers = timerArrayPtr->firstChild;
   jsvUnLock(timerArrayPtr);
-  return c>0;
+  return hasTimers;
 }
 
 /// Is the given watch object meant to be executed when the current value of the pin is pinIsHigh
