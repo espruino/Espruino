@@ -926,10 +926,11 @@ NO_INLINE JsVar *jspeFactorArray() {
     if (JSP_SHOULD_EXECUTE) {
       // OPT: Store array indices as actual ints
       JsVar *aVar = 0;
-      JsVar *indexName;
-      if (execInfo.lex->tk != ',') // #287 - [,] and [1,2,,4] are allowed
+      JsVar *indexName = 0;
+      if (execInfo.lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
         aVar = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-      indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
+        indexName = jsvMakeIntoVariableName(jsvNewFromInteger(idx),  aVar);
+      }
       if (indexName) { // could be out of memory
         jsvAddName(contents, indexName);
         jsvUnLock(indexName);
