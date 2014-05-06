@@ -1442,7 +1442,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
   if (jsvIsArray(parent) && jsvIsInt(namedChild)) {
     JsVarInt index = jsvGetInteger(namedChild);
     if (index >= jsvGetArrayLength(parent)) {
-          jsvSetArrayLength(parent, index + 1, false);
+      jsvSetArrayLength(parent, index + 1, false);
     }
   }
 
@@ -1877,14 +1877,15 @@ JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
 /// Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPop(JsVar *arr) {
   assert(jsvIsArray(arr));
+  JsVar *child = 0;
   JsVarInt length = jsvGetArrayLength(arr);
   if (length > 0) {
-    // change array length irrespective of what happens below
-    jsvSetArrayLength(arr, --length, false);
+    length--;
+
     if (arr->lastChild) {
       // find last child with an integer key
       JsVarRef ref = arr->lastChild;
-      JsVar *child = jsvLock(ref);
+      child = jsvLock(ref);
       while (child && !jsvIsInt(child)) {
         ref = child->prevSibling;
         jsvUnLock(child);
@@ -1895,14 +1896,22 @@ JsVar *jsvArrayPop(JsVar *arr) {
         }
       }
       // check if the last integer key really is the last element
-      if (child && jsvGetInteger(child) == length) {
-        jsvRemoveChild(arr, child);
-        return child;
+      if (child) {
+        if (jsvGetInteger(child) == length) {
+          // child is the last element - remove it
+          jsvRemoveChild(arr, child);
+        } else {
+          // child is not the last element
+          jsvUnLock(child);
+          child = 0;
+        }
       }
     }
+    // and finally shrink the array
+    jsvSetArrayLength(arr, length, false);
   }
-  // no children!
-  return 0;
+
+  return child;
 }
 
 /// Removes the first element of an array, and returns that element (or 0 if empty). DOES NOT RENUMBER.
@@ -1976,7 +1985,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
 
   // pad missing elements from sparse arrays
   if (hasMemory && filler && jsvIsArray(arr)) {
-    int length = jsvGetArrayLength(arr);
+    JsVarInt length = jsvGetArrayLength(arr);
     while (++index < length) {
       jsvAppendStringVarComplete(str, filler);
     }
