@@ -630,10 +630,9 @@ JsVar *jspeFactorSingleId() {
   return a;
 }
 
-/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
-JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
+/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
+JsVar *jspGetNamedField(JsVar *object, char* name) {
   JsVar *child = 0;
-
   // TODO: merge this and '.' and '[ ... ]' implementations
 
   if (jsvHasChildren(object))
@@ -645,7 +644,12 @@ JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **arg
   if (!child)
     child = jswFindBuiltInFunction(object, name);
 
-  child = jsvSkipNameAndUnLock(child);
+  return jsvSkipNameAndUnLock(child);
+}
+
+/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
+JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
+  JsVar *child = jspGetNamedField(object, name);
   if (!jsvIsFunction(child)) return 0;
   return jspeFunctionCall(child, 0, object, false, argCount, argPtr);
 }

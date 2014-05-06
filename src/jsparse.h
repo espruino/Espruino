@@ -117,6 +117,9 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 
+/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
+JsVar *jspGetNamedField(JsVar *object, char* name);
+
 /** Call the function named on the given object. For example you might call:
  *
  *  JsVar *str = jspCallNamedFunction(var, "toString", 0, 0);
