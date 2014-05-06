@@ -1,4 +1,5 @@
      1v63 : Memory leak when defining functions (fix #359)
+            Fix Instance properties overwrite prototype (fix #360)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
