@@ -1,6 +1,7 @@
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
             Fix `edit(functionName)` without quotes (fix #356)
+            Fix 'Uint32Array is not unsigned' (fix #330)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

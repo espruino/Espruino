@@ -2610,7 +2610,7 @@ static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char
   else if (dataLen==8) v = *(long long*)data;
   else assert(0);
   if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)))
-    v = v & ((1L << (8*dataLen))-1);
+    v = v & ((1LL << (8*dataLen))-1);
   return v;
 }
 
