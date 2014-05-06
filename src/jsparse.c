@@ -1865,6 +1865,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       // 'proper' replace, that keeps the original function var and swaps the children
       funcVar = jsvSkipNameAndUnLock(funcVar);
       jswrap_function_replaceWith(existingFunc, funcVar);
+      jsvUnLock(funcVar);
       funcVar = existingName;
     } else {
       jspReplaceWith(existingName, funcVar);
@@ -1872,6 +1873,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       funcName = existingName;
     }
     jsvUnLock(existingFunc);
+    // existingName is used - don't UnLock
   }
   jsvUnLock(funcVar);
   return funcName;
