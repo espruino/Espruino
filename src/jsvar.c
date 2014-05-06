@@ -1972,12 +1972,16 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
     jsvUnLock(key);
     jsvIteratorNext(&it);
   }
-  // pad missing elements
-  int length = jsvGetArrayLength(arr);
-  while (hasMemory && ++index < length) {
-    jsvAppendStringVarComplete(str, filler);
-  }
   jsvIteratorFree(&it);
+
+  // pad missing elements from sparse arrays
+  if (hasMemory && filler && jsvIsArray(arr)) {
+    int length = jsvGetArrayLength(arr);
+    while (++index < length) {
+      jsvAppendStringVarComplete(str, filler);
+    }
+  }
+
   return str;
 }
 
