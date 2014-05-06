@@ -728,7 +728,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
       }
       jsvUnLock(idx);
     } else {
-      if (previous) historyLine = jsvSkipNameAndUnLock(jsvArrayGetLast(history));
+      if (previous) historyLine = jsvSkipNameAndUnLock(jsvGetArrayItem(history, jsvGetArrayLength(history)-1));
       // if next, we weren't using history so couldn't go forwards
     }
     

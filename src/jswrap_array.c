@@ -37,7 +37,7 @@
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
   if (jsvGetArrayLength(args)==1) {
-    JsVar *firstArg = jsvSkipNameAndUnLock(jsvArrayGetLast(args)); // also the first!
+    JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
     if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
       JsVarInt count = jsvGetInteger(firstArg);
       if (count>0) {

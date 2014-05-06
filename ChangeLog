@@ -5,6 +5,7 @@
             Ensure Object.keys([9,,undefined,9])==[0,2,3] (partial #349)
             Store array length in the array root node rather than the last element (fix #351 #361)  
             Object.keys on array now returns strings (fix #348)
+            Remove jsvArrayGetLast (fix #363)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

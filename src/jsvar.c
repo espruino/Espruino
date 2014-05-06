@@ -1104,7 +1104,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsUndefined(v)) return 0;
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
-      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
+      return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
     if (jsvIsFloat(v)) return isfinite(v->varData.floating) ? (JsVarInt)v->varData.floating : 0;
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
@@ -1138,7 +1138,7 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (jsvIsArray(v)) {
       JsVarInt l = jsvGetArrayLength(v);
       if (l==0) return 0; // zero element array==0 (not undefined)
-      if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvArrayGetLast(v)));
+      if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
     }
     if (jsvIsString(v)) {
       char buf[32];
@@ -1761,7 +1761,7 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
 }
 
 
-JsVar *jsvGetArrayItem(JsVar *arr, JsVarInt index) {
+JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   JsVarRef childref = arr->lastChild;
   JsVarInt lastArrayIndex = 0;
   // Look at last non-string element!
@@ -1932,16 +1932,6 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
     return child; // and return it
   } else {
     // no children!
-    return 0;
-  }
-}
-
-///  Get the last element of an array (does not remove, unlike jsvArrayPop), and returns that element (or 0 if empty) includes the NAME
-JsVar *jsvArrayGetLast(const JsVar *arr) {
-  assert(jsvIsArray(arr));
-  if (arr->lastChild) {
-    return jsvLock(arr->lastChild);
-  } else { // no children!
     return 0;
   }
 }
