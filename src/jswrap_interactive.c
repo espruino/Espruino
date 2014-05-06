@@ -140,12 +140,16 @@ void jswrap_interface_print(JsVar *v) {
         "params" : [ [ "funcName", "JsVar", "The name of the function to edit (either a string or just the unquoted name)"] ]
 }*/
 void jswrap_interface_edit(JsVar *funcName) {
+  JsVar *func = 0;
   if (jsvIsString(funcName)) {
-    JsVar *func = 0;
-    if (jsvIsName(funcName))
-      func = jsvSkipName(funcName);
-    else
-      func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
+    funcName = jsvLockAgain(funcName);
+    func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
+  } else {
+    func = funcName;
+    funcName = jsvGetPathTo(execInfo.root, func, 2);
+  }
+
+  if (jsvIsString(funcName)) {
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
       JsVarRef scope = jsvGetRef(scopeVar);
@@ -174,10 +178,11 @@ void jswrap_interface_edit(JsVar *funcName) {
     } else {
       jsError("Edit should be called with the name of a function");
     }
-    jsvUnLock(func);
   } else {
     jsError("Edit should be called with edit(funcName) or edit('funcName')");
   }
+  jsvUnLock(func);
+  jsvUnLock(funcName);
 }
 
 
