@@ -7,6 +7,7 @@
             Object.keys on array now returns strings (fix #348)
             Remove jsvArrayGetLast (fix #363)
             Fix issue parsing `function() { return }`
+            Stop jspNewObject creating a new object name if one already exists
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

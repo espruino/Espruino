@@ -2011,8 +2011,10 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   jsvUnLock(prototypeName);prototypeName=0;
   jsvUnLock(jsvAddNamedChild(obj, objFuncName, JSPARSE_CONSTRUCTOR_VAR));
   jsvUnLock(objFuncName);
+
   if (name) {
-    JsVar *objName = jsvAddNamedChild(execInfo.root, obj, name);
+    JsVar *objName = jsvFindChildFromString(execInfo.root, name, true);
+    if (objName) jsvSetValueOfName(objName, obj);
     jsvUnLock(obj);
     if (!objName) { // out of memory
       return 0;
