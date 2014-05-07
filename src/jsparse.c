@@ -1839,7 +1839,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 NO_INLINE JsVar *jspeStatementReturn() {
   JsVar *result = 0;
   JSP_MATCH(LEX_R_RETURN);
-  if (execInfo.lex->tk != ';') {
+  if (execInfo.lex->tk != ';' && execInfo.lex->tk != '}') {
     // we only want the value, so skip the name if there was one
     result = jsvSkipNameAndUnLock(jspeExpression());
   }
