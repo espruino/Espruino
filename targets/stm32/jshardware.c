@@ -939,6 +939,7 @@ void jshInit() {
         RCC_APB2Periph_AFIO, ENABLE);
  #endif
 
+#ifdef ESPRUINOBOARD
   // Enable the BusFault IRQ
   SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA;
 
@@ -946,7 +947,6 @@ void jshInit() {
   /* When using the small packages (48 and 64 pin packages), the GPIO pins which 
      are not present on these packages, must not be configured in analog mode.*/
   /* Enable GPIOs clock */
-#ifdef ESPRUINOBOARD
   GPIO_InitTypeDef GPIO_InitStructure;
 #if defined(STM32API2)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;

@@ -122,9 +122,9 @@ __attribute__ ((naked)) void BusFault_Handler(void) {
    * is 2 bytes, but it COULD be 4.
    */
   __asm__(
-      "ldr r0, [sp, #24]\n"  // load the value
-      "add r0, #2\n"         // increase by 2
-      "str r0, [sp, #24]\n"
+      "ldr r0, [sp, #24]\n"  // load the PC
+      "add r0, #2\n"         // increase by 2 - dangerous, see above
+      "str r0, [sp, #24]\n"  // save the PC back
       "bx lr\n"              // Return (function is naked so we must do this explicitly)
   );
 }
