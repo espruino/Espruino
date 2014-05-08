@@ -939,6 +939,9 @@ void jshInit() {
         RCC_APB2Periph_AFIO, ENABLE);
  #endif
 
+  // Enable the BusFault IRQ
+  SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA;
+
   /* Configure all GPIO as analog to reduce current consumption on non used IOs */
   /* When using the small packages (48 and 64 pin packages), the GPIO pins which 
      are not present on these packages, must not be configured in analog mode.*/
