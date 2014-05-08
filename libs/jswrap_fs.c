@@ -20,7 +20,6 @@
 #define JS_FS_OPEN_PIPES_NAME JS_HIDDEN_CHAR_STR"FSOpenPipes"
 
 //object methods handles
-bool _Pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position);
 size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
 size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
 void _closeFile(JsFile* file);
@@ -38,11 +37,6 @@ void _closeFile(JsFile* file);
         "class" : "File",
         "description" : ["This is the stream related file IO library.",
                          "To use this, you must type ```var fd = require('fs').open('filepath','flags','mode')``` to open a file stream." ]
-}*/
-
-/*JSON{ "type":"library",
-        "class" : "Pipe",
-        "description" : ["This is the Pipe container for async related file IO library." ]
 }*/
 
 JsVar* fsGetArray(const char *name, bool create) {
@@ -87,69 +81,6 @@ static void fileSetVar(JsFile *file) {
   jsvUnLock(data);
 }
 
-
-/*JSON{ "type":"idle", "generate" : "jswrap_fs_idle" }*/
-bool jswrap_fs_idle() {
-  bool ret = false;
-  JsVar *arr = fsGetArray(JS_FS_OPEN_PIPES_NAME,false);
-  if (arr) {
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, arr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *pipe = jsvArrayIteratorGetElement(&it);
-      JsVar *position = jsvObjectGetChild(pipe,"Position",0);
-      JsVar *chunkSize = jsvObjectGetChild(pipe,"ChunkSize",0);
-      JsVar *source = jsvObjectGetChild(pipe,"Source",0);
-      JsVar *destination = jsvObjectGetChild(pipe,"Destination",0);
-      if(!_Pipe(source, destination, chunkSize, position)) { // when no more chunks are possible, execute the callback.
-        jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
-        JsVar *idx = jsvArrayIteratorGetIndex(&it);
-        jsvRemoveChild(arr,idx);
-        jsvUnLock(idx);
-      } else {
-        ret = true;
-      }
-      jsvUnLock(source);
-      jsvUnLock(destination);
-      jsvUnLock(pipe);
-      jsvUnLock(chunkSize);
-      jsvUnLock(position);
-      jsvArrayIteratorNext(&it);
-    }
-    jsvArrayIteratorFree(&it);
-    jsvUnLock(arr);
-  }
-  return ret;
-}
-
-bool _Pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position) {
-  bool InProgress = true;
-  if(jsfsInit() && source && destination && chunkSize && position) {
-    JsFile sourceFile;
-    JsFile destinationFile;
-    JsVar * Buffer;
-    FRESULT res;
-    if(fileGetFromVar(&sourceFile, source) && fileGetFromVar(&destinationFile, destination)) {
-      int ReadLength = (int)jsvGetInteger(chunkSize);
-      int Position = (int)jsvGetInteger(position);
-      Buffer = jsvNewStringOfLength(0);
-      if(Buffer) {// do we have enough memory?
-        int BytesRead = (int)sourceFile.read(&sourceFile, Buffer, ReadLength, Position, &res);
-        if(res == FR_OK && BytesRead > 0) {
-          destinationFile.write(&destinationFile, Buffer, BytesRead, Position, &res);
-          jsvSetInteger(position, (JsVarInt)(Position+BytesRead));
-        } else {
-          InProgress = false;
-        }
-        jsvUnLock(Buffer);
-      }
-    } else {
-      InProgress = false;
-    }
-  }
-  return InProgress;
-}
-
 /*JSON{ "type":"kill", "generate" : "jswrap_fs_kill" }*/
 void jswrap_fs_kill() {
   {
@@ -164,15 +95,6 @@ void jswrap_fs_kill() {
         jsvArrayIteratorNext(&it);
       }
       jsvArrayIteratorFree(&it);
-      jsvRemoveAllChildren(arr);
-      jsvUnLock(arr);
-    }
-  }
-  // all open files will have been closed..
-  // now remove all pipes...
-  {
-    JsVar *arr = fsGetArray(JS_FS_OPEN_PIPES_NAME, false);
-    if (arr) {
       jsvRemoveAllChildren(arr);
       jsvUnLock(arr);
     }
@@ -246,42 +168,6 @@ JsVar *jswrap_fat_open(JsVar* path, JsVar* mode) {
   }
 
   return file.fileVar;
-}
-
-
-
-/*JSON{  "type" : "method", "class" : "File", "name" : "pipe",
-         "generate" : "jswrap_fat_pipe",
-         "params" : [ ["destfd", "JsVar", "The destination file/stream that will receive this files contents."],
-                      ["chunkSize", "JsVar", "The amount of data to pipe from source to destination at a time."],
-                      ["callback", "JsVar", "a function to call when the pipe activity is complete."] ],
-         "return" : [ "JsVar", "The source file handle, for chaining multiple pipe actions." ]
-}*/
-JsVar * jswrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* ChunkSize, JsVar* callback) {
-  JsVar *arr = fsGetArray(JS_FS_OPEN_PIPES_NAME, true);
-  if (arr) {// out of memory?
-    if (parent && destfd && ChunkSize) {
-      JsVar *pipe = jspNewObject(0, "Pipe");
-      if(pipe) {// out of memory?
-        if(callback) {
-          jsvUnLock(jsvAddNamedChild(pipe, callback, "#oncomplete"));
-        }
-        jsvArrayPush(arr, pipe);
-        JsVar* Position = jsvNewFromInteger(0);
-        if(Position) {
-          jsvUnLock(jsvAddNamedChild(pipe, Position, "Position"));
-          jsvUnLock(jsvAddNamedChild(pipe, ChunkSize, "ChunkSize"));
-          jsvUnLock(jsvAddNamedChild(pipe, parent, "Source"));
-          jsvUnLock(jsvAddNamedChild(pipe, destfd, "Destination"));
-          jsvUnLock(Position);
-        }
-        jsvUnLock(pipe);
-      }
-    }
-    jsvUnLock(arr);
-  }
-  jsvLockAgain(parent);
-  return parent;
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "close",
@@ -453,30 +339,4 @@ size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT*
     }
   }
   return bytesRead;
-}
-
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "createReadStream",
-         "generate" : "jswrap_fs_createReadStream",
-         "description" : [ "Create a stream object to read the specified file" ],
-         "params" : [ [ "path", "JsVar", "The path of the file to read" ]],
-         "return" : [ "JsVar", "The ReadStream Object" ]
-}*/
-//var r = fs.createReadStream('file.txt');
-JsVar* jswrap_fs_createReadStream(JsVar* path) {
-  JsVar *mode = jsvNewFromString("r");
-  if(!mode) return 0; // low memory
-  return jswrap_fat_open(path, mode);
-}
-
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "createWriteStream",
-         "generate" : "jswrap_fs_createWriteStream",
-         "description" : [ "Create a stream object to write to the specified file" ],
-         "params" : [ [ "path", "JsVar", "The path of the file to write" ]],
-         "return" : [ "JsVar", "The WriteStream Object" ]
-}*/
-//var w = fs.createWriteStream('file.txt');
-JsVar* jswrap_fs_createWriteStream(JsVar* path) {
-  JsVar *mode = jsvNewFromString("w");
-  if (!mode) return 0; // low memory
-  return jswrap_fat_open(path, mode);
 }

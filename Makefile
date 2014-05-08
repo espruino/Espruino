@@ -424,6 +424,7 @@ ifdef USE_FILESYSTEM
 DEFINES += -DUSE_FILESYSTEM
 WRAPPERSOURCES += libs/jswrap_fat.c
 WRAPPERSOURCES += libs/jswrap_fs.c
+WRAPPERSOURCES += libs/jswrap_pipe.c
 ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/fat_sd
 SOURCES += \

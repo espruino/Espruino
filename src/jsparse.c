@@ -339,6 +339,9 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
  * function is executed (it's usually the parent object)
  *
+ *
+ * NOTE: this does not set the execInfo flags - so if execInfo==EXEC_NO, it won't execute
+ *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
@@ -2120,21 +2123,18 @@ JsVar *jspEvaluate(const char *str) {
   return v;
 }
 
-bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr) {
+JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(0);
-  JsVar *resultVar = jspeFunctionCall(func, 0, parent, false, argCount, argPtr);
-  bool result = jsvGetBool(resultVar);
-  jsvUnLock(resultVar);
+  JsVar *result = jspeFunctionCall(func, 0, thisArg, false, argCount, argPtr);
   // clean up
   jspeiKill();
   // restore state
   JSP_RESTORE_EXECUTE();
   oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
-
 
   return result;
 }
