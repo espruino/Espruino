@@ -163,11 +163,11 @@ NO_INLINE void jsiConsolePrintInt(JsVarInt d) {
 
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
-void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, bool andBackup) {
-  int chars = 0;
+void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
+  size_t chars = 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, v, fromCharacter);
-  while (jsvStringIteratorHasChar(&it)) {
+  while (jsvStringIteratorHasChar(&it) && chars<maxChars) {
     char ch = jsvStringIteratorGetChar(&it);
     if (ch == '\n') break;
     jsiConsolePrintChar(ch);
@@ -317,7 +317,19 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos) {
   size_t line = 1,col = 1;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
-  jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, false);
+   size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
+
+  if (lineLength>60 && tokenPos-startOfLine>30) {
+    jsiConsolePrint("...");
+    size_t skipChars = tokenPos-30 - startOfLine;
+    startOfLine += 3+skipChars;
+    col -= skipChars;
+    lineLength -= skipChars;
+  }
+
+  jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, 60, false);
+  if (lineLength > 60)
+    jsiConsolePrint("...");
   jsiConsolePrint("\n");
   while (col-- > 0) jsiConsolePrintChar(' ');
   jsiConsolePrint("^\n");
@@ -831,7 +843,7 @@ void jsiHandleDelete(bool isBackspace) {
     } else {
       // clear the character and move line back
       if (isBackspace) jsiConsolePrintChar(0x08);
-      jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
+      jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
     }
   }
 }
@@ -1085,7 +1097,7 @@ void jsiHandleChar(char ch) {
         jsvUnLock(inputLine);
         inputLine=v;
         jsiInputLineCursorMoved();
-        if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, true/*and backup*/);
+        if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
       }
       inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
       if (jsiShowInputLine()) {
