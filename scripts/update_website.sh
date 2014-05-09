@@ -13,7 +13,7 @@ BOARDJSON=$WEBSITEDIR/www/json/boards.json
 
 function create_info() {
   BOARDNAME=$1
-  NICENAME=`python scripts/get_board_name.py $BOARDNAME`
+  NICENAME=`python scripts/get_board_info.py $BOARDNAME "board.info['name']"`
   echo $BOARDNAME = $NICENAME 
   # the board's image
   cp boards/img/${BOARDNAME}.* ${BOARDIMGDIR}

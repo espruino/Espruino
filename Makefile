@@ -86,15 +86,14 @@ PRECOMPILED_OBJS=
 PLATFORM_CONFIG_FILE=gen/platform_config.h
 BASEADDRESS=0x08000000
 
-###################################################
+# ---------------------------------------------------------------------------------
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
+# TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
+# ---------------------------------------------------------------------------------
 ifdef ESPRUINO_1V0
-USB=1
 #USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-FAMILY=STM32F1
-CHIP=STM32F103RG
 BOARD=ESPRUINOBOARD_R1_0
 DEFINES+=-DESPRUINOBOARD
 STLIB=STM32F10X_XL
@@ -102,48 +101,32 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
 DEFINES+=-DESPRUINO_1V1
-USE_BOOTLOADER=1
-BOOTLOADER_PROJ_NAME=bootloader_espruino_1v1
-USB=1
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-FAMILY=STM32F1
-CHIP=STM32F103RC
 BOARD=ESPRUINOBOARD_R1_1
 DEFINES+=-DESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os # not that short on memory, but Travis compiler is old and uses more
+OPTIMIZEFLAGS+=-Os
 else ifdef ESPRUINO_1V3
 DEFINES+=-DESPRUINO_1V3
-USE_BOOTLOADER=1
-BOOTLOADER_PROJ_NAME=bootloader_espruino_1v3
-USB=1
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-FAMILY=STM32F1
-CHIP=STM32F103RC
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
-USB=1
 USE_FILESYSTEM=1
-FAMILY=STM32F1
-CHIP=STM32F103RB
 SAVE_ON_FLASH=1
 BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef OLIMEXINO_STM32_BOOTLOADER
-USB=1
 USE_FILESYSTEM=1
-FAMILY=STM32F1
-CHIP=STM32F103RB_MAPLE
 DEFINES += -DSTM32F103RB
 SAVE_ON_FLASH=1
 BOARD=OLIMEXINO_STM32_BOOTLOADER
@@ -151,87 +134,60 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef EMBEDDED_PI
-USB=1
-# USE_FILESYSTEM=1 # no SD-CARD READER
-FAMILY=STM32F1
-CHIP=STM32F103RB
 BOARD=EMBEDDED_PI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef HYSTM32_24
-USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
-FAMILY=STM32F1
-CHIP=STM32F103VE
 BOARD=HYSTM32_24
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef HYSTM32_28
-USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
 DEFINES+=-DILI9325_BITBANG # bit-bang the LCD driver
 SAVE_ON_FLASH=1
 #USE_FILESYSTEM=1 # just normal SPI
-FAMILY=STM32F1
-CHIP=STM32F103RB
 BOARD=HYSTM32_28
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
 else ifdef HYSTM32_32
-USB=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
-FAMILY=STM32F1
-CHIP=STM32F103VC
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
-USB=1
 USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
-FAMILY=STM32F4
-CHIP=STM32F407
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
-#USB=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
-FAMILY=STM32F4
-CHIP=STM32F429
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
 DEFINES+=-DHSE_VALUE=26000000UL
-USB=1
-FAMILY=STM32F2
-CHIP=STM32F205RG
 BOARD=SMARTWATCH
 STLIB=STM32F2XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F3DISCOVERY
-#USE_BOOTLOADER=1
-#BOOTLOADER_PROJ_NAME=bootloader_espruino_stm32f3discovery
-USB=1
-FAMILY=STM32F3
-CHIP=STM32F303
 BOARD=STM32F3DISCOVERY
 STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
@@ -244,16 +200,12 @@ STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef TINYCHIP
-FAMILY=STM32F1
-CHIP=STM32F103TB
 BOARD=TINYCHIP
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef LPC1768
 MBED=1
-FAMILY=LPC1768
-CHIP=LPC1768
 BOARD=LPC1768
 MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
 PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o 
@@ -264,7 +216,6 @@ BOARD=CARAMBOLA
 DEFINES += -DCARAMBOLA -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
 USE_FILESYSTEM=1
-USB=1
 USE_GRAPHICS=1
 USE_NET=1
 else ifdef RASPBERRYPI
@@ -272,15 +223,11 @@ BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
 USE_FILESYSTEM=1
-USB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
 else ifdef LCTECH_STM32F103RBT6
-USB=1
 SAVE_ON_FLASH=1
-FAMILY=STM32F1
-CHIP=STM32F103RB
 BOARD=LCTECH_STM32F103RBT6
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
@@ -289,7 +236,6 @@ else
 BOARD=LINUX
 LINUX=1
 USE_FILESYSTEM=1
-USB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 
@@ -304,6 +250,11 @@ USE_NET=1
 endif 
 endif
 
+
+# ---------------------------------------------------------------------------------
+#                                                      Get info out of BOARDNAME.py
+# ---------------------------------------------------------------------------------
+
 PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME)) 
@@ -311,6 +262,24 @@ endif
 ifeq ($(BOARD),LINUX)
 PROJ_NAME=espruino
 endif
+
+ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'bootloader' in board.info and board.info['bootloader']==1"),True)
+USE_BOOTLOADER:=1
+BOOTLOADER_PROJ_NAME:=bootloader_$(PROJ_NAME)
+endif
+
+ifeq ($(shell python scripts/get_board_info.py $(BOARD) "'USB' in board.devices"),True)
+USB:=1
+endif
+
+ifndef LINUX
+FAMILY:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['family']")
+CHIP:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['part']")
+endif
+
+# ---------------------------------------------------------------------------------
+
+
 
 # If we're not on Linux and we want internet, we need either CC3000 or WIZnet support
 ifdef USE_NET

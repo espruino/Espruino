@@ -61,8 +61,9 @@ print "IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER)
 board = importlib.import_module(boardname)
 
 # Check what board py says
-if ("bootloader" in board.info and board.info["bootloader"]!=0) != (IS_BOOTLOADER or IS_USING_BOOTLOADER):
-  die("Makefile and BOARD.py do not agree over bootloaderiness")
+BOARD_BOOTLOADER = "bootloader" in board.info and board.info["bootloader"]!=0
+if BOARD_BOOTLOADER != (IS_BOOTLOADER or IS_USING_BOOTLOADER):
+  die("Makefile ("+str(IS_BOOTLOADER or IS_USING_BOOTLOADER)+") and BOARD.py ("+str(BOARD_BOOTLOADER)+") do not agree over bootloaderiness")
 
 # -----------------------------------------------------------------------------------------
 linkerFile = open(linkerFilename, 'w')
