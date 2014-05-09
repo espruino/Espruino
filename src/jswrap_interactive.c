@@ -152,26 +152,35 @@ void jswrap_interface_edit(JsVar *funcName) {
   if (jsvIsString(funcName)) {
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
-      JsVarRef scope = jsvGetRef(scopeVar);
+      JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
+      bool normalDecl = scopeVar==0 && inRoot!=0;
+      jsvUnLock(inRoot);
       jsvUnLock(scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();
       if (newLine) { // could be out of memory
-        jsvAppendStringVarComplete(newLine, funcName);
-        if (scope) {
-          // If we have a scope, it's an internal function so we will need to write different code
-          jsvAppendString(newLine, ".replaceWith(");
-        } else {
-          jsvAppendString(newLine, " = ");
-        }
+        /* normalDecl:
+         *
+         * function foo() { ... }
+         *
+         * NOT normalDecl:
+         *
+         * foo.replaceWith(function() { ... });
+         *
+         */
         JsVar *funcData = jsvAsString(func, false);
-        if (funcData)
-          jsvAppendStringVarComplete(newLine, funcData);
-        jsvUnLock(funcData);
-        if (scope) {
-          jsvAppendString(newLine, ");");
+
+        if (normalDecl) {
+          jsvAppendString(newLine, "function ");
+          jsvAppendStringVarComplete(newLine, funcName);
+          jsvAppendStringVar(newLine, funcData, 9, JSVAPPENDSTRINGVAR_MAXLENGTH);
+
         } else {
-          jsvAppendString(newLine, ";");
+          jsvAppendStringVarComplete(newLine, funcName);
+          jsvAppendString(newLine, ".replaceWith(");
+          jsvAppendStringVarComplete(newLine, funcData);
+          jsvAppendString(newLine, ");");
         }
+        jsvUnLock(funcData);
         jsiReplaceInputLine(newLine);
         jsvUnLock(newLine);
       }

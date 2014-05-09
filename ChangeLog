@@ -10,6 +10,7 @@
             Stop jspNewObject creating a new object name if one already exists
             startup_stm32f10x_hd.s now explicitly sets the stack pointer. Allows Espruino images to use more RAM
             Add BusFault hander, to allow peek and poke to unmapped addresses without HardFaulting the ARM
+            Fix edit(...) so that functions themselves (not just the variable) are updated (fix #366)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
