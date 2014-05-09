@@ -2021,18 +2021,9 @@ JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op) {
 
 
 JsVar *jsvMathsOpError(int op, const char *datatype) {
-    char buf[JS_ERROR_BUF_SIZE];
-    size_t bufpos = 0;
-    strncpy(&buf[bufpos], "Operation ", JS_ERROR_BUF_SIZE-bufpos);
-    bufpos=strlen(buf);
-    jslTokenAsString(op, &buf[bufpos], JS_ERROR_TOKEN_BUF_SIZE-bufpos);
-    bufpos=strlen(buf);
-    strncat(&buf[bufpos], " not supported on the  ", JS_ERROR_BUF_SIZE-bufpos);
-    bufpos=strlen(buf);
-    strncat(&buf[bufpos], datatype, JS_ERROR_BUF_SIZE-bufpos);
-    bufpos=strlen(buf);
-    strncat(&buf[bufpos], " datatype", JS_ERROR_BUF_SIZE-bufpos);
-    jsError(buf);
+    char opName[32];
+    jslTokenAsString(op, opName, sizeof(opName));
+    jsError("Operation %s not supported on the %s datatype", opName, datatype);
     return 0;
 }
 

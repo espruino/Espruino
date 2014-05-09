@@ -548,12 +548,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             if (hasError) {
               jsiConsolePrintf(jsvIsString(functionName)?"in function %q called from ":
                                                          "in function called from ", functionName);
-              if (execInfo.lex)
+              if (execInfo.lex) {
                 jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
-              else
+                jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastStart);
+              } else
                 jsiConsolePrint("system\n");
-              jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastStart);
-              jspSetError(true);
+
+              jspSetError(execInfo.lex!=0);
             }
           }
 

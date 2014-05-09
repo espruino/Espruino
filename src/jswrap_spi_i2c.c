@@ -270,7 +270,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     }
     jsvArrayBufferIteratorFree(&dstit);
   } else {
-    jsError("Variable type not suited to transmit operation");
+    jsError("Variable type %t not suited to transmit operation", srcdata);
     dst = 0;
   }
 
@@ -358,7 +358,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jsvIteratorFree(&it);
     jshInterruptOn();
   } else {
-    jsError("Variable type not suited to transmit operation");
+    jsError("Variable type %t not suited to transmit operation", srcdata);
   }
 
   // de-assert NSS
@@ -415,7 +415,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jsvIteratorFree(&it);
     jshInterruptOn();
   } else {
-    jsError("Variable type not suited to transmit operation");
+    jsError("Variable type %t not suited to transmit operation", srcdata);
   }
 
   // de-assert NSS
@@ -504,7 +504,7 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
     jsvIteratorFree(&it);
     jshI2CWrite(device, (unsigned char)address, i, buf);
   } else {
-    jsError("Variable type not suited to writeTo operation");
+    jsError("Variable type %t not suited to writeTo operation", data);
   }
 }
 
