@@ -12,6 +12,7 @@
             Add BusFault hander, to allow peek and poke to unmapped addresses without HardFaulting the ARM
             Fix edit(...) so that functions themselves (not just the variable) are updated (fix #366)
             Crop lines in errors when > 60 chars (fix #364)
+            Improve when stack traces happen for error reporting
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
