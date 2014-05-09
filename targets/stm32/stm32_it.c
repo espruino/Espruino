@@ -104,12 +104,29 @@ void MemManage_Handler(void)
 * Output         : None
 * Return         : None
 *******************************************************************************/
-void BusFault_Handler(void)
-{
-  /* Go to infinite loop when Bus Fault exception occurs */
-  while (1)
-  {
-  }
+__attribute__ ((naked)) void BusFault_Handler(void) {
+  /* NAKED function so we can be sure that SP is correct when we
+   * run our asm code below */
+
+  // DO NOT clear the busfault active flag - it causes a hard fault!
+
+  /* Instead, we must increase the value of the PC, so that when we
+   * return, we don't return to the same instruction.
+   *
+   * Registers are stacked as follows: r0,r1,r2,r3,r12,lr,pc,xPSR
+   * http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0337e/Babedgea.html
+   *
+   * So we want PC - the 6th down * 4 bytes = 24
+   *
+   * Then we add 2 - which IS DANGEROUS because we're assuming that the op
+   * is 2 bytes, but it COULD be 4.
+   */
+  __asm__(
+      "ldr r0, [sp, #24]\n"  // load the PC
+      "add r0, #2\n"         // increase by 2 - dangerous, see above
+      "str r0, [sp, #24]\n"  // save the PC back
+      "bx lr\n"              // Return (function is naked so we must do this explicitly)
+  );
 }
 
 /*******************************************************************************

@@ -140,44 +140,58 @@ void jswrap_interface_print(JsVar *v) {
         "params" : [ [ "funcName", "JsVar", "The name of the function to edit (either a string or just the unquoted name)"] ]
 }*/
 void jswrap_interface_edit(JsVar *funcName) {
+  JsVar *func = 0;
   if (jsvIsString(funcName)) {
-    JsVar *func = 0;
-    if (jsvIsName(funcName))
-      func = jsvSkipName(funcName);
-    else
-      func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
+    funcName = jsvLockAgain(funcName);
+    func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
+  } else {
+    func = funcName;
+    funcName = jsvGetPathTo(execInfo.root, func, 2);
+  }
+
+  if (jsvIsString(funcName)) {
     if (jsvIsFunction(func)) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
-      JsVarRef scope = jsvGetRef(scopeVar);
+      JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
+      bool normalDecl = scopeVar==0 && inRoot!=0;
+      jsvUnLock(inRoot);
       jsvUnLock(scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();
       if (newLine) { // could be out of memory
-        jsvAppendStringVarComplete(newLine, funcName);
-        if (scope) {
-          // If we have a scope, it's an internal function so we will need to write different code
-          jsvAppendString(newLine, ".replaceWith(");
-        } else {
-          jsvAppendString(newLine, " = ");
-        }
+        /* normalDecl:
+         *
+         * function foo() { ... }
+         *
+         * NOT normalDecl:
+         *
+         * foo.replaceWith(function() { ... });
+         *
+         */
         JsVar *funcData = jsvAsString(func, false);
-        if (funcData)
-          jsvAppendStringVarComplete(newLine, funcData);
-        jsvUnLock(funcData);
-        if (scope) {
-          jsvAppendString(newLine, ");");
+
+        if (normalDecl) {
+          jsvAppendString(newLine, "function ");
+          jsvAppendStringVarComplete(newLine, funcName);
+          jsvAppendStringVar(newLine, funcData, 9, JSVAPPENDSTRINGVAR_MAXLENGTH);
+
         } else {
-          jsvAppendString(newLine, ";");
+          jsvAppendStringVarComplete(newLine, funcName);
+          jsvAppendString(newLine, ".replaceWith(");
+          jsvAppendStringVarComplete(newLine, funcData);
+          jsvAppendString(newLine, ");");
         }
+        jsvUnLock(funcData);
         jsiReplaceInputLine(newLine);
         jsvUnLock(newLine);
       }
     } else {
       jsError("Edit should be called with the name of a function");
     }
-    jsvUnLock(func);
   } else {
     jsError("Edit should be called with edit(funcName) or edit('funcName')");
   }
+  jsvUnLock(func);
+  jsvUnLock(funcName);
 }
 
 

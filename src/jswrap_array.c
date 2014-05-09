@@ -37,18 +37,13 @@
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
   if (jsvGetArrayLength(args)==1) {
-    JsVar *firstArg = jsvSkipNameAndUnLock(jsvArrayGetLast(args)); // also the first!
+    JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
     if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
       JsVarInt count = jsvGetInteger(firstArg);
-      // we cheat - no need to fill the array - just the last element
       if (count>0) {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
-        JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
-        if (idx) { // could be out of memory
-          jsvAddName(arr, idx);
-          jsvUnLock(idx);
-        }
+        jsvSetArrayLength(arr, count, false);
         jsvUnLock(firstArg);
         return arr;
       }
@@ -266,6 +261,21 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
   JsvIterator it;
   jsvIteratorNew(&it, parent);
+  if (!previousValue) {
+    bool isDone = false;
+    while (!isDone && jsvIteratorHasElement(&it)) {
+      JsVar *index = jsvIteratorGetKey(&it);
+      if (jsvIsInt(index)) {
+        previousValue = jsvIteratorGetValue(&it);
+        isDone = true;
+      }
+      jsvUnLock(index);
+      jsvIteratorNext(&it);
+    }
+    if (!previousValue) {
+      jsError("Array.%s without initial value required non-empty array", name);
+    }
+  }
   while (jsvIteratorHasElement(&it)) {
     JsVar *index = jsvIteratorGetKey(&it);
     if (jsvIsInt(index)) {
@@ -364,6 +374,9 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   }
   // free
   jsvArrayIteratorFree(&it);
+
+  // and reset array size
+  jsvSetArrayLength(parent, len + shift, false);
 
   return result;
 }

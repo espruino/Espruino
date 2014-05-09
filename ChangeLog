@@ -1,4 +1,19 @@
      1v63 : Memory leak when defining functions (fix #359)
+            Fix Instance properties overwrite prototype (fix #360)
+            Fix `edit(functionName)` without quotes (fix #356)
+            Fix 'Uint32Array is not unsigned' (fix #330)
+            Ensure Object.keys([9,,undefined,9])==[0,2,3] (partial #349)
+            Store array length in the array root node rather than the last element (fix #351 #361)  
+            Object.keys on array now returns strings (fix #348)
+            Remove jsvArrayGetLast (fix #363)
+            Fix issue parsing `function() { return }`
+            Stop jspNewObject creating a new object name if one already exists
+            startup_stm32f10x_hd.s now explicitly sets the stack pointer. Allows Espruino images to use more RAM
+            Add BusFault hander, to allow peek and poke to unmapped addresses without HardFaulting the ARM
+            Fix edit(...) so that functions themselves (not just the variable) are updated (fix #366)
+            Crop lines in errors when > 60 chars (fix #364)
+            Improve when stack traces happen for error reporting
+            Better error messages, and more efficient handler
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

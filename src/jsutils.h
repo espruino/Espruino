@@ -331,6 +331,7 @@ struct JsLex;
 
 void jsError(const char *fmt, ...);
 void jsErrorInternal(const char *fmt, ...);
+void jsErrorHere(const char *fmt, ...); // output an error with a line marker at lex's current position
 void jsErrorAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
@@ -375,6 +376,7 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  *   %c = char
  *   %v = JsVar * (doesn't have to be a string - it'll be converted)
  *   %q = JsVar * (in quotes, and escaped)
+ *   %t = Type of variable
  *   %p = Pin
  *
  * Anything else will assert

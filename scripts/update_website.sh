@@ -62,14 +62,14 @@ echo "{" > $BOARDJSON
 # -------------------------------------------- Create the text up the top of the reference
 echo Updating Board Docs
 echo "<h1>Espruino Hardware Reference</h1>" > NewReference.html
-echo "<p>The Espruino Software will run on a variety of boards. However the <a href=\"/EspruinoBoard\">Espruino Board</a> has been specially designed to complement our software and is the only board that we actively support. Please click on the thumbnails below to see diagrams of each board with all pins and their capabilities marked</p>" >> NewReference.html
+echo "<p><a name=\"boards\"></a>The Espruino Software will run on a variety of boards. However the <a href=\"/EspruinoBoard\">Espruino Board</a> has been specially designed to complement our software and is the only board that we actively support. Please click on the thumbnails below to see diagrams of each board with all pins and their capabilities marked</p>" >> NewReference.html
 echo "<h2>Espruino Board - Supported</h2>" >> NewReference.html
  BOARDNAME=ESPRUINOBOARD
  create_info $BOARDNAME
  convert boards/img/${BOARDNAME}.* -resize 256x256 ${BOARDIMGDIR}/${BOARDNAME}_thumb.jpg
  echo -e "<center><span style=\"text-align:center;margin:10px;width:200px;\"><a href=\"Reference${BOARDNAME}\"><img src=\"img/${BOARDNAME}_thumb.jpg\" alt=\"${NICENAME}\"><br/>${NICENAME}</a></span></center>" >> NewReference.html
 echo "<h2>Other Boards - Unsupported</h2>" >> NewReference.html
-echo "<div id=\"boards\" style=\"display:inline-block;\">" >> NewReference.html
+echo "<div style=\"display:inline-block;\">" >> NewReference.html
 # TEMPORARY for old board support
 create_info ESPRUINOBOARD_R1_0
 create_info ESPRUINOBOARD_R1_1

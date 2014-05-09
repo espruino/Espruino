@@ -56,27 +56,26 @@ FATFS jsfsFAT;
 #endif
 
 void jsfsReportError(const char *msg, FRESULT res) {
-  char buf[JS_ERROR_BUF_SIZE];
-  strncpy(buf, msg, JS_ERROR_BUF_SIZE);
-  if (res==FR_OK             ) strncat(buf," : OK", JS_ERROR_BUF_SIZE);
+  const char *errStr = "";
+  if (res==FR_OK             ) errStr = "OK";
 #ifndef LINUX
-  if (res==FR_DISK_ERR       ) strncat(buf," : DISK_ERR", JS_ERROR_BUF_SIZE);
-  if (res==FR_INT_ERR        ) strncat(buf," : INT_ERR", JS_ERROR_BUF_SIZE);
-  if (res==FR_NOT_READY      ) strncat(buf," : NOT_READY", JS_ERROR_BUF_SIZE);
-  if (res==FR_NO_FILE        ) strncat(buf," : NO_FILE", JS_ERROR_BUF_SIZE);
-  if (res==FR_NO_PATH        ) strncat(buf," : NO_PATH", JS_ERROR_BUF_SIZE);
-  if (res==FR_INVALID_NAME   ) strncat(buf," : INVALID_NAME", JS_ERROR_BUF_SIZE);
-  if (res==FR_DENIED         ) strncat(buf," : DENIED", JS_ERROR_BUF_SIZE);
-  if (res==FR_EXIST          ) strncat(buf," : EXIST", JS_ERROR_BUF_SIZE);
-  if (res==FR_INVALID_OBJECT ) strncat(buf," : INVALID_OBJECT", JS_ERROR_BUF_SIZE);
-  if (res==FR_WRITE_PROTECTED) strncat(buf," : WRITE_PROTECTED", JS_ERROR_BUF_SIZE);
-  if (res==FR_INVALID_DRIVE  ) strncat(buf," : INVALID_DRIVE", JS_ERROR_BUF_SIZE);
-  if (res==FR_NOT_ENABLED    ) strncat(buf," : NOT_ENABLED", JS_ERROR_BUF_SIZE);
-  if (res==FR_NO_FILESYSTEM  ) strncat(buf," : NO_FILESYSTEM", JS_ERROR_BUF_SIZE);
-  if (res==FR_MKFS_ABORTED   ) strncat(buf," : MKFS_ABORTED", JS_ERROR_BUF_SIZE);
-  if (res==FR_TIMEOUT        ) strncat(buf," : TIMEOUT", JS_ERROR_BUF_SIZE);
+  else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
+  else if (res==FR_INT_ERR        ) errStr = "INT_ERR";
+  else if (res==FR_NOT_READY      ) errStr = "NOT_READY";
+  else if (res==FR_NO_FILE        ) errStr = "NO_FILE";
+  else if (res==FR_NO_PATH        ) errStr = "NO_PATH";
+  else if (res==FR_INVALID_NAME   ) errStr = "INVALID_NAME";
+  else if (res==FR_DENIED         ) errStr = "DENIED";
+  else if (res==FR_EXIST          ) errStr = "EXIST";
+  else if (res==FR_INVALID_OBJECT ) errStr = "INVALID_OBJECT";
+  else if (res==FR_WRITE_PROTECTED) errStr = "WRITE_PROTECTED";
+  else if (res==FR_INVALID_DRIVE  ) errStr = "INVALID_DRIVE";
+  else if (res==FR_NOT_ENABLED    ) errStr = "NOT_ENABLED";
+  else if (res==FR_NO_FILESYSTEM  ) errStr = "NO_FILESYSTEM";
+  else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
+  else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
 #endif
-  jsError(buf);
+  jsError("%s : %s", msg, errStr);
 }
 
 bool fat_initialised = false;

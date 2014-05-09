@@ -58,13 +58,13 @@
                           "This is different to Arduino which only returns an integer between 0 and 1023",
                           "However only pins connected to an ADC will work (see the datasheet)"],
          "generate" : "jshPinAnalog",
-         "params" : [ [ "pin", "pin", "The pin to use"] ],
+         "params" : [ [ "pin", "pin", [ "The pin to use", "You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `ADC` markers." ] ] ],
          "return" : ["float", "The analog Value of the Pin between 0 and 1"]
 }*/
 /*JSON{ "type":"function", "name" : "analogWrite",
          "description" : "Set the analog Value of a pin. It will be output using PWM",
          "generate" : "jswrap_io_analogWrite",
-         "params" : [ [ "pin", "pin", "The pin to use"],
+         "params" : [ [ "pin", "pin", ["The pin to use", "You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `PWM` or `DAC` markers." ]],
                       [ "value", "float", "A value between 0 and 1"],
                       [ "options", "JsVar", ["An object containing options.",
                                             "Currently only freq (pulse frequency in Hz) is available: ```analogWrite(A0,0.5,{ freq : 10 });``` ",
