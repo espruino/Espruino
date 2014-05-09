@@ -2485,16 +2485,22 @@ void jshUtilTimerDisable() {
   TIM_Cmd(UTIL_TIMER, DISABLE);
 }
 
-void jshUtilTimerReschedule(JsSysTime period) {
+static NO_INLINE void jshUtilTimerGetPrescale(JsSysTime period, unsigned int *prescale, unsigned int *ticks) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
 
-  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
-  if (clockTicks<0) clockTicks=0;
-  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
-  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
-  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
-  if (ticks<1) ticks=1;
-  if (ticks>65535) ticks=65535;
+  unsigned long long clockTicksL = (timerFreq * (unsigned long long)period) / (unsigned long long)jshGetTimeForSecond();
+  if (clockTicksL<0) clockTicksL=0;
+  if (clockTicksL>0xFFFFFFFF) clockTicksL=0xFFFFFFFF;
+  unsigned int clockTicks = (unsigned int)clockTicksL;
+  *prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
+  *ticks = (unsigned int)(clockTicks/((*prescale)+1));
+  if (*ticks<1) *ticks=1;
+  if (*ticks>65535) *ticks=65535;
+}
+
+void jshUtilTimerReschedule(JsSysTime period) {
+  unsigned int prescale, ticks;
+  jshUtilTimerGetPrescale(period, &prescale, &ticks);
 
   TIM_Cmd(UTIL_TIMER, DISABLE);
   TIM_SetAutoreload(UTIL_TIMER, (uint16_t)ticks);
@@ -2504,35 +2510,10 @@ void jshUtilTimerReschedule(JsSysTime period) {
   TIM_ClearITPendingBit(UTIL_TIMER, TIM_IT_Update);
   TIM_Cmd(UTIL_TIMER, ENABLE);
 }
-/*#
- *   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-  int clockTicks = (int)(((JsVarFloat)timerFreq * (JsVarFloat)period) / getSystemTimerFreq());
-  if (clockTicks<0) clockTicks=0;
-  int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
-  int ticks = clockTicks/(prescale+1);
-  if (ticks<1) ticks=1;
-  if (ticks>65535) ticks=65535;
-  TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
-  TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
-  TIM_TimeBaseInitStruct.TIM_Prescaler = (uint16_t)prescale;
-  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticks;
-  TIM_TimeBaseInit(UTIL_TIMER, &TIM_TimeBaseInitStruct);
-  UTIL_TIMER->ARR = (uint16_t)ticks;
-  UTIL_TIMER->PSC = (uint16_t)prescale;
- */
 
 void jshUtilTimerStart(JsSysTime period) {
-  unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-
-  JsSysTime clockTicks = (timerFreq * period) / jshGetTimeForSecond();
-  if (clockTicks<0) clockTicks=0;
-  if (clockTicks>0xFFFFFFFF) clockTicks=0xFFFFFFFF;
-  unsigned int prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to
-  unsigned int ticks = (unsigned int)(clockTicks/(prescale+1));
-  if (ticks<1) ticks=1;
-  if (ticks>65535) ticks=65535;
-
-  // set up actual hardware
+  unsigned int prescale, ticks;
+  jshUtilTimerGetPrescale(period, &prescale, &ticks);
 
   /* TIM6 Periph clock enable */
   RCC_APB1PeriphClockCmd(UTIL_TIMER_APB1, ENABLE);
@@ -2540,8 +2521,6 @@ void jshUtilTimerStart(JsSysTime period) {
   /*Timer configuration------------------------------------------------*/
   TIM_ITConfig(UTIL_TIMER, TIM_IT_Update, DISABLE);
   TIM_Cmd(UTIL_TIMER, DISABLE);
- // TIM_ARRPreloadConfig(UTIL_TIMER, FALSE); // disable auto buffering 'period' register
-// TIM_UpdateRequestConfig(UTIL_TIMER, TIM_UpdateSource_Regular); // JUST underflow/overflow
 
   TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
   TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);

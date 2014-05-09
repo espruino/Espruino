@@ -14,6 +14,7 @@
             Crop lines in errors when > 60 chars (fix #364)
             Improve when stack traces happen for error reporting
             Better error messages, and more efficient handler
+            Improving Util Timer rescheduling to try and avoid 64 bit divisions
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
