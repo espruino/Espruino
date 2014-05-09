@@ -108,7 +108,7 @@ void jstUtilTimerInterruptHandler() {
       // If we need to repeat
       if (task->repeatInterval) {
         // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
-        unsigned int t = (unsigned int)((time+(JsSysTime)task->repeatInterval - task->time) / (JsSysTime)task->repeatInterval);
+        unsigned int t = ((unsigned int)(time+task->repeatInterval - task->time)) / task->repeatInterval;
         if (t<1) t=1;
         task->time = task->time + (JsSysTime)task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order

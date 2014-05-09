@@ -220,8 +220,8 @@ class CommandInterface(object):
               for c in data:
                   crc = crc ^ c
                   datastr = datastr+chr(c)
+              datastr = datastr + chr(crc)
               self.sp.write(datastr)
-              self.sp.write(chr(crc))
               self._wait_for_ack("0x31 programming failed")
               mdebug(10, "    Write memory done")
             except:

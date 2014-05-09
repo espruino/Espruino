@@ -27,7 +27,7 @@ else
   ACTUALSIZE=$(du -b "$FILE" | cut -f 1)
 fi
 
-if [ $ACTUALSIZE -ge $MAXSIZE ]; then
+if [ $ACTUALSIZE -gt $MAXSIZE ]; then
     echo FAIL - size of $ACTUALSIZE is over $MAXSIZE bytes
     exit 1
 else
