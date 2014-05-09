@@ -30,10 +30,10 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-if len(sys.argv)!=2:
-  print "ERROR, USAGE: get_board_name.py BOARD_NAME"
+if len(sys.argv)!=3:
+  print "ERROR, USAGE: get_board_info.py BOARD_NAME 'board.info.foo'"
   exit(1)
 boardname = sys.argv[1]
 # import the board def
 board = importlib.import_module(boardname)
-print board.info["name"]
+print eval(sys.argv[2]);
