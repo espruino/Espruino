@@ -696,7 +696,7 @@ bool jslMatch(JsLex *lex, int expected_tk) {
       strncpy(&buf[bufpos], " expected ", JS_ERROR_BUF_SIZE-bufpos);
       bufpos = strlen(buf);
       jslTokenAsString(expected_tk, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
-      jsErrorAt(buf, lex, jsvStringIteratorGetIndex(&lex->tokenStart.it));
+      jsErrorAt(buf, lex, jsvStringIteratorGetIndex(&lex->tokenStart.it)-2);
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);
       return false;
