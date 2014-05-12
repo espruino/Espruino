@@ -136,7 +136,12 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    setSn_PORT(sn,port);	
    setSn_CR(sn,Sn_CR_OPEN);
    while(getSn_CR(sn));
-	sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
+   
+   //mgg1010 line below added - without it, if a socket is re-used, it may inherit the previous
+   // value of NONBLOCK
+   
+   sock_io_mode &= ~(1 << sn);   
+   sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
    sock_is_sending &= ~(1<<sn);
    sock_remained_size[sn] = 0;
    sock_pack_info[sn] = 0;
