@@ -15,6 +15,7 @@
             Improve when stack traces happen for error reporting
             Better error messages, and more efficient handler
             Improving Util Timer rescheduling to try and avoid 64 bit divisions
+            Fix a lot of WIZnet W5500 issues (thanks @mgg1010!)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
