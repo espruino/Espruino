@@ -161,26 +161,18 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
 /*JSON{ "type":"method", "class": "Serial", "name" : "write",
          "description" : "Write a character or array of characters to the serial port - without a line feed",
          "generate" : "jswrap_serial_write",
-         "params" : [ [ "data", "JsVar", "A byte, a string, or an array of bytes to write"] ]
+         "params" : [ [ "data", "JsVarArray", "One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."] ]
 }*/
-void jswrap_serial_write(JsVar *parent, JsVar *data) {
+static void jswrap_serial_write_cb(int data, void *userData) {
+  IOEventFlags device = *(IOEventFlags*)userData;
+  jshTransmit(device, (unsigned char)data);
+}
+void jswrap_serial_write(JsVar *parent, JsVar *args) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_USART(device)) return;
 
-  if (jsvIsNumeric(data)) {
-    jshTransmit(device, (unsigned char)jsvGetInteger(data));
-  } else if (jsvIsIterable(data)) {
-    JsvIterator it;
-    jsvIteratorNew(&it, data);
-    while (jsvIteratorHasElement(&it)) {
-      jshTransmit(device, (unsigned char)jsvIteratorGetIntegerValue(&it));
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-  } else {
-    jsWarn("Data supplied was not an integer - or iterable");
-  }
+  jsvIterateCallback(args, jswrap_serial_write_cb, (void*)&device);
 }
 
 /*JSON{ "type":"method", "class": "Serial", "name" : "onData",

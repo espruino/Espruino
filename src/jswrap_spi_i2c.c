@@ -279,6 +279,55 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   return dst;
 }
 
+/*JSON{ "type":"method", "class": "SPI", "name" : "write",
+         "description" : "Write a character or array of characters to SPI - without reading the result back",
+         "generate" : "jswrap_spi_write",
+         "params" : [ [ "data", "JsVarArray", ["One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`.",
+                                               "If the last argument is a pin, it is taken to be the NSS pin"]] ]
+}*/
+void jswrap_spi_write(JsVar *parent, JsVar *args) {
+  NOT_USED(parent);
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+
+  spi_sender spiSend;
+  void *spiSendData;
+  if (DEVICE_IS_SPI(device)) {
+    if (!jshIsDeviceInitialised(device)) {
+      JshSPIInfo inf;
+      jshSPIInitInfo(&inf);
+      jshSPISetup(device, &inf);
+    }
+    spiSend = spi_sender_hardware;
+    spiSendData = &device;
+  } else if (device == EV_NONE) {
+    JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
+    JshSPIInfo inf;
+    jswrap_spi_populate_info(&inf, options);
+    jsvUnLock(options);
+    spiSend = spi_sender_software;
+    spiSendData = &inf;
+  } else return;
+
+  Pin nss_pin = PIN_UNDEFINED;
+  // If the last value is a pin, use it as the NSS pin
+  if (jsvGetArrayLength(args)>0) {
+    JsVar *last = jsvArrayPop(args); // take the last value off
+    if (jsvIsPin(last))
+      nss_pin = jshGetPinFromVar(last);
+    else
+      jsvArrayPush(args, last); // else push the value back on...
+    jsvUnLock(last);
+  }
+
+  // assert NSS
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
+  // Write data
+  jsvIterateCallback(args, (void (*)(int,  void *))spiSend, spiSendData);
+  // de-assert NSS
+  if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
+}
+
+
 // used by jswrap_spi_send4bit
 void spi_send4bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
   unsigned char lookup[] = {
@@ -475,37 +524,29 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
          "description" : "Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.",
          "generate" : "jswrap_i2c_writeTo",
          "params" : [ [ "address", "int32", "The 7 bit address of the device to transmit to" ],
-                      [ "data", "JsVar", "The Data to send - either a byte, an array of bytes, or a string" ]]
+                      [ "data", "JsVarArray", "One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`." ]]
 }*/
-
-void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *data) {
+typedef struct { unsigned char *buf; int idx; } JsI2CWriteCbData;
+static void jswrap_i2c_writeToCb(int data, void *userData) {
+  JsI2CWriteCbData *cbData = (JsI2CWriteCbData*)userData;
+  cbData->buf[cbData->idx++] = (unsigned char)data;
+}
+void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return;
 
-  if (jsvIsNumeric(data)) {
-    unsigned char buf[1];
-    buf[0] = (unsigned char)jsvGetInteger(data);
-    jshI2CWrite(device, (unsigned char)address, 1, buf);
-  } else if (jsvIsIterable(data)) {
-    size_t l = (size_t)jsvGetLength(data);
-    if (l+256 > jsuGetFreeStack()) {
-      jsError("Not enough free stack to send this amount of data");
-      return;
-    }
-
-    unsigned char *buf = (unsigned char *)alloca(l);
-    int i=0;
-    JsvIterator it;
-    jsvIteratorNew(&it, data);
-    while (jsvIteratorHasElement(&it)) {
-      buf[i++] = (unsigned char)jsvIteratorGetIntegerValue(&it);
-      jsvIteratorNext(&it);
-    }
-    jsvIteratorFree(&it);
-    jshI2CWrite(device, (unsigned char)address, i, buf);
-  } else {
-    jsError("Variable type %t not suited to writeTo operation", data);
+  size_t l = (size_t)jsvIterateCallbackCount(args);
+  if (l+256 > jsuGetFreeStack()) {
+    jsError("Not enough free stack to send this amount of data");
+    return;
   }
+
+  JsI2CWriteCbData cbData;
+  cbData.buf = (unsigned char *)alloca(l);
+  cbData.idx = 0;
+  jsvIterateCallback(args, jswrap_i2c_writeToCb, (void*)&cbData);
+
+  jshI2CWrite(device, (unsigned char)address, cbData.idx, cbData.buf);
 }
 
 /*JSON{ "type":"method", "class": "I2C", "name" : "readFrom",

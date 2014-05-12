@@ -2507,6 +2507,60 @@ bool jsvIsInternalObjectKey(JsVar *v) {
                             ));
 }
 
+
+
+/** Iterate over the contents of var, calling callback for each. Contents may be:
+ *   * numeric -> output
+ *   * a string -> output each character
+ *   * array/arraybuffer -> call itself on each element
+ *   * object -> call itself object.count times, on object.data
+ */
+bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackData), void *callbackData) {
+  bool ok = true;
+  if (jsvIsNumeric(data)) {
+    callback((int)jsvGetInteger(data), callbackData);
+  } else if (jsvIsObject(data)) {
+    JsVar *countVar = jsvObjectGetChild(data, "count", 0);
+    JsVar *dataVar = jsvObjectGetChild(data, "data", 0);
+    if (countVar && dataVar && jsvIsNumeric(countVar)) {
+      int n = (int)jsvGetInteger(countVar);
+      while (ok && n-- > 0) {
+        ok = jsvIterateCallback(dataVar, callback, callbackData);
+      }
+    } else {
+      jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
+    }
+    jsvUnLock(countVar);
+    jsvUnLock(dataVar);
+  } else if (jsvIsIterable(data)) {
+    JsvIterator it;
+    jsvIteratorNew(&it, data);
+    while (jsvIteratorHasElement(&it) && ok) {
+      JsVar *el = jsvIteratorGetValue(&it);
+      ok = jsvIterateCallback(el, callback, callbackData);
+      jsvUnLock(el);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else {
+    jsWarn("Expecting a number or something iterable, got %t", data);
+    ok = false;
+  }
+  return ok;
+}
+
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
+static void jsvIterateCallbackCountCb(int n, void *data) {
+  NOT_USED(n);
+  int *count = (int*)data;
+  count++;
+}
+int jsvIterateCallbackCount(JsVar *var) {
+  int count = 0;
+  jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
+  return count;
+}
+
 // --------------------------------------------------------------------------------------------
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
@@ -2846,3 +2900,4 @@ JsvIterator jsvIteratorClone(JsvIterator *it) {
   }
   return newit;
 }
+

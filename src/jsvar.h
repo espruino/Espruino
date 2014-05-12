@@ -450,6 +450,18 @@ bool jsvIsInternalFunctionKey(JsVar *v);
 
 /// If v is the key of an object, return true if it is internal and shouldn't be visible to the user
 bool jsvIsInternalObjectKey(JsVar *v);
+
+/** Iterate over the contents of var, calling callback for each. Contents may be:
+ *   * numeric -> output
+ *   * a string -> output each character
+ *   * array/arraybuffer -> call itself on each element
+ *   * object -> call itself object.count times, on object.data
+ */
+bool jsvIterateCallback(JsVar *var, void (*callback)(int item, void *callbackData), void *callbackData);
+
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
+int jsvIterateCallbackCount(JsVar *var);
+
 // --------------------------------------------------------------------------------------------
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var
