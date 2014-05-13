@@ -115,7 +115,8 @@ static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
 }
 
 /*JSON{ "type":"method", "class": "SPI", "name" : "setup",
-         "description" : "Set up this SPI port. Master, MSB first, no checksum",
+         "description" : ["Set up this SPI port as SPI Master, with no checksum",
+                          "If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)"],
          "generate" : "jswrap_spi_setup",
          "params" : [ [ "options", "JsVar", ["An optional structure containing extra information on initialising the SPI port",
                                               "Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%",
@@ -445,7 +446,8 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 
 
 /*JSON{ "type":"method", "class": "I2C", "name" : "setup",
-         "description" : "Set up this I2C port",
+         "description" : ["Set up this I2C port",
+                          "If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)"],
          "generate" : "jswrap_i2c_setup",
          "params" : [ [ "options", "JsVar", ["An optional structure containing extra information on initialising the I2C port",
                                              "```{scl:pin, sda:pin}```",
