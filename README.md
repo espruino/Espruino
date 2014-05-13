@@ -151,7 +151,6 @@ Modifying
 * `code/`:              Example JavaScript code
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
-* `linker/`:            Linker files for various processors
 * `misc/`:              random other stuff
 * `scripts/`:           Scripts for generating files in gen, and for analysing code/compilation/etc
 * `src/`:               Main source code
