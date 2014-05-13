@@ -27,49 +27,6 @@ def codeOut(s):
 #  print str(s)
   wrapperFile.write(s+"\n");
 
-def treewalk(tree, name, jsondata):
-  if len(name)==0:
-    tree[""] = jsondata
-  else:	
-    firstchar = name[:1]
-    if not firstchar in tree: tree[firstchar] = {}
-    treewalk(tree[firstchar], name[1:], jsondata)
-
-# ------------------------------------------------------------------------------------------------------
-# Creates something like 'name[0]=='s' && name[1]=='e' && name[2]=='t' && name[3]==0'
-def createStringCompare(varName, checkOffsets, checkCharacters):
-  checks = []
-  # if we're doing multiple checks, batch up into int compare
-  # NOTE: batching up into 64 bit compare doesn't help here
-  # 4 byte check
-  while len(checkOffsets)>3:    
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP4("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")
-  # 3 byte check
-  while len(checkOffsets)>2:    
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP3("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")  
-  # 2 byte check
-  while len(checkOffsets)>1:
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP2("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")
-  # finish up with single checks
-  while len(checkOffsets)>0:
-    checkOffset = checkOffsets.pop(0)
-    checkCharacter = checkCharacters.pop(0)
-    # This check is a hack for when class names are exactly the same length as the data field in varData (8 chars)
-    if not "varData" in varName or checkOffset < 8: 
-      checks.append(varName+"["+str(checkOffset)+"]=='"+checkCharacter+"'")
-  return " && ".join(checks)
 # ------------------------------------------------------------------------------------------------------
 
 def getConstructorTestFor(className, variableName):
@@ -98,34 +55,6 @@ def getTestFor(className, static):
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
     return getConstructorTestFor(className, "constructorPtr");
-
-def getUnLockGetter(varType, name, funcName):
-  if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
-  if varType=="int": return "jsvGetIntegerAndUnLock("+name+")"
-  if varType=="int32": return "(int)jsvGetIntegerAndUnLock("+name+")"
-  if varType=="bool": return "jsvGetBoolAndUnLock("+name+")"
-  if varType=="pin": return "jshGetPinFromVarAndUnLock("+name+")"
-  sys.stderr.write("ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
-  exit(1)
-
-def getGetter(varType, name, funcName):
-  if varType=="float": return "jsvGetFloat("+name+")"
-  if varType=="int": return "jsvGetInteger("+name+")"
-  if varType=="int32": return "(int)jsvGetInteger("+name+")"
-  if varType=="bool": return "jsvGetBool("+name+")"
-  if varType=="pin": return "jshGetPinFromVar("+name+")"
-  if varType=="JsVar": return name
-  sys.stderr.write("ERROR: getGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
-  exit(1)
-
-def getCreator(varType, value, funcName):
-  if varType=="float": return "jsvNewFromFloat("+value+")"
-  if varType=="int": return "jsvNewFromInteger("+value+")"
-  if varType=="int32": return "jsvNewFromInteger((JsVarInt)"+value+")"
-  if varType=="bool": return "jsvNewFromBool("+value+")"
-  if varType=="JsVar": return value
-  sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
-  exit(1)
 
 def toArgumentType(argName):
   if argName=="": return "JSWAT_VOID";
@@ -166,7 +95,6 @@ def getResult(func):
   if "return" in func: result = func["return"]  
   return result
 
-
 def getArgumentSpecifier(jsondata):
   params = getParams(jsondata)
   result = getResult(jsondata);
@@ -189,81 +117,6 @@ def getCDeclaration(jsondata, name):
   for param in params:
     s.append(toCType(param[1]));
   return toCType(result[0])+" "+name+"("+",".join(s)+")";
-
-def codeOutFunctionObject(indent, obj):
-  codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
-  if "#if" in obj: codeOut(indent+"#if "+obj["#if"]);
-  codeOut(indent+"return jspNewObject(\""+obj["name"]+"\", \""+obj["instanceof"]+"\");");
-  if "#if" in obj: codeOut(indent+"#endif //"+obj["#if"]);
-
-def codeOutFunction(indent, func):
-  if func["type"]=="object":
-    codeOutFunctionObject(indent, func)
-    return
-  name = ""
-  if "class" in func:
-    name = name + func["class"]+".";
-  name = name + func["name"]
-#  print name
-  codeOut(indent+"// "+name+"  ("+func["filename"]+")")
-  codeOut(indent+"// "+getCDeclaration(func, name));
-  
-  if ("generate" in func):
-    gen_name = func["generate"]
-    if re.match('^[\w_]+$', gen_name) is None:
-      sys.stderr.write("ERROR: generate for '"+func["name"]+"' is not simple function name: '"+gen_name+"'\n")
-      exit(1)
-  else:
-    sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
-    exit(1)
-
-  if func["type"]=="variable" or common.is_property(func):     
-    if hasThis(func):
-      gen_name = gen_name+"(parent)"
-    else:
-      gen_name = gen_name+"()";
-
-    codeOut(indent+"return "+getCreator(func["return"][0], gen_name, func["name"])+";")
-  else:
-    codeOut(indent+"return jsvNewNativeFunction((void (*)(void))"+gen_name+", "+getArgumentSpecifier(func)+");")
-
-
-
-def codeOutTree(indent, tree, offset):
-  first = True
-  for char in tree:
-    if char!="":
-      charOffset = offset
-      charTree = tree[char]
-      line = indent
-      if first: first = False
-      else: line = line + "} else "
-      checkOffsets = [charOffset]
-      checkCharacters = [char]
-      while len(charTree)==1:
-        charOffset = charOffset + 1
-        char = charTree.keys()[0]
-        charTree = charTree[char]        
-        checkOffsets.append(charOffset)
-        if char=='': checkCharacters.append('\\0')
-        else: checkCharacters.append(char)
-      line = line + "if (" + createStringCompare("name", checkOffsets, checkCharacters) + ") {"
-      codeOut(line)   
-      if char=='':
-        codeOutFunction(indent+"  ", charTree)
-      else:
-        codeOutTree(indent+"  ", charTree, charOffset+1)
-      # Now we do the handling part!
-  if "" in tree:
-    func = tree[""]
-    line = indent;
-    if first: first = False
-    if not first: line = line + "} else "
-    line = line + "if (name["+str(offset)+"]==0) {";
-    codeOut(line)
-    codeOutFunction(indent+"  ", func)
-  if not first:
-    codeOut(indent+'}')
 
 def codeOutSymbolTable(builtin):
   codeName = builtin["name"]
@@ -333,16 +186,6 @@ codeOut('#include "jsnative.h"');
 for include in includes:
   codeOut('#include "'+include+'"');
 codeOut('');
-
-codeOut("#if( 'q\\0\\0\\0' & 'q' )")
-codeOut('  #error( "architecture is big-endian. need to test and make sure this still works" )')
-codeOut("#endif")
-codeOut('// beware big endian!');
-codeOut('#define CH2(a,b) ( ((b)<<8) | (a) )');
-codeOut('#define CH4(a,b,c,d) ( ((d)<<24) | ((c)<<16) | ((b)<<8) | (a) )');
-codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&(var))==CH2(a,b))');
-codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,b,c,0))');
-codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
 
 codeOut('// -----------------------------------------------------------------------------------------');
