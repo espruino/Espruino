@@ -29,11 +29,9 @@ JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *th
   size_t argData[MAX_ARGS];
 
   // prepend the 'this' link if we need one
-  if (argumentSpecifier&JSWAT_THIS_ARG) {
-    argumentSpecifier &= (JsnArgumentType)~JSWAT_THIS_ARG;
+  if (argumentSpecifier&JSWAT_THIS_ARG)
     argData[argCount++] = (size_t)thisParam;
-  }
-  argumentSpecifier >>= JSWAT_BITS;
+  argumentSpecifier = (argumentSpecifier & JSWAT_ARGUMENTS_MASK) >> JSWAT_BITS;
 
 
   // run through all arguments
