@@ -8,13 +8,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for SD card access
+ * Contains built-in functions for SD card access, based on node.js 'fs' module
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
 
-void jswrap_fat_kill();
-JsVar *jswrap_fat_readdir(JsVar *path);
-bool jswrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
-JsVar *jswrap_fat_readFile(JsVar *path);
-bool jswrap_fat_unlink(JsVar *path);
+void jswrap_fs_kill();
+JsVar *jswrap_fs_readdir(JsVar *path);
+bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
+JsVar *jswrap_fs_readFile(JsVar *path);
+bool jswrap_fs_unlink(JsVar *path);

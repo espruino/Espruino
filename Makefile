@@ -391,34 +391,35 @@ endif
 
 ifdef USE_FILESYSTEM
 DEFINES += -DUSE_FILESYSTEM
-WRAPPERSOURCES += libs/jswrap_fat.c
-WRAPPERSOURCES += libs/jswrap_file.c
-WRAPPERSOURCES += libs/jswrap_pipe.c
+INCLUDE += -I$(ROOT)/libs/filesystem
+WRAPPERSOURCES += \
+libs/filesystem/jswrap_fs.c \
+libs/filesystem/jswrap_file.c \
+libs/filesystem/jswrap_pipe.c
 ifndef LINUX
-INCLUDE += -I$(ROOT)/libs/fat_sd
+INCLUDE += -I$(ROOT)/libs/filesystem/fat_sd
 SOURCES += \
-libs/fat_sd/fattime.c \
-libs/fat_sd/ff.c \
-libs/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
+libs/filesystem/fat_sd/fattime.c \
+libs/filesystem/fat_sd/ff.c \
+libs/filesystem/fat_sd/option/unicode.c # for LFN support (see _USE_LFN in ff.h)
 
 ifdef USE_FILESYSTEM_SDIO
 DEFINES += -DUSE_FILESYSTEM_SDIO
 SOURCES += \
-libs/fat_sd/sdio_diskio.c \
-libs/fat_sd/sdio_sdcard.c
+libs/filesystem/fat_sd/sdio_diskio.c \
+libs/filesystem/fat_sd/sdio_sdcard.c
 else #USE_FILESYSTEM_SDIO
 SOURCES += \
-libs/fat_sd/spi_diskio.c
+libs/filesystem/fat_sd/spi_diskio.c
 endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
 
 ifdef USE_MATH
 DEFINES += -DUSE_MATH
-WRAPPERSOURCES += libs/jswrap_math.c
-
-ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/math
+WRAPPERSOURCES += libs/math/jswrap_math.c
+ifndef LINUX
 SOURCES += \
 libs/math/acosh.c \
 libs/math/asin.c \
@@ -464,8 +465,8 @@ endif
 
 ifdef USE_GRAPHICS
 DEFINES += -DUSE_GRAPHICS
-WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 INCLUDE += -I$(ROOT)/libs/graphics
+WRAPPERSOURCES += libs/graphics/jswrap_graphics.c
 SOURCES += \
 libs/graphics/bitmap_font_4x6.c \
 libs/graphics/graphics.c \
@@ -488,8 +489,8 @@ endif
 
 ifdef USE_NET
 DEFINES += -DUSE_NET
-WRAPPERSOURCES += libs/network/http/jswrap_http.c
 INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
+WRAPPERSOURCES += libs/network/http/jswrap_http.c
 SOURCES += \
 libs/network/network.c \
 libs/network/http/httpserver.c

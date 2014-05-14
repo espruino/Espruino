@@ -17,7 +17,7 @@
 #include "jswrap_json.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
-#include "libs/jswrap_math.h" // for jswrap_math_mod
+#include "jswrap_math.h" // for jswrap_math_mod
 
 
 /** Basically, JsVars are stored in one big array, so save the need for
