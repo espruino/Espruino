@@ -342,6 +342,7 @@ size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT*
          "generate" : "jswrap_pipe",
          "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
          "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
-                      ["chunkSize", "JsVar", "The amount of data to pipe from source to destination at a time."],
-                      ["callback", "JsVar", "a function to call when the pipe activity is complete."] ]
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, complete : function }`",
+                                             "chunkSize : The amount of data to pipe from source to destination at a time",
+                                             "complete : a function to call when the pipe activity is complete"] ] ]
 }*/

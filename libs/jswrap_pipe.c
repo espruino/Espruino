@@ -1,3 +1,19 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2014 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * This file is designed to be parsed during the build process
+ *
+ * Handling of the 'pipe' function - to pipe one stream to another
+ * ----------------------------------------------------------------------------
+ */
+
 #include "jswrap_pipe.h"
 
 /*JSON{ "type":"library",
@@ -66,10 +82,10 @@ bool jswrap_pipe_idle() {
     jsvArrayIteratorNew(&it, arr);
     while (jsvArrayIteratorHasElement(&it)) {
       JsVar *pipe = jsvArrayIteratorGetElement(&it);
-      JsVar *position = jsvObjectGetChild(pipe,"Position",0);
-      JsVar *chunkSize = jsvObjectGetChild(pipe,"ChunkSize",0);
-      JsVar *source = jsvObjectGetChild(pipe,"Source",0);
-      JsVar *destination = jsvObjectGetChild(pipe,"Destination",0);
+      JsVar *position = jsvObjectGetChild(pipe,"position",0);
+      JsVar *chunkSize = jsvObjectGetChild(pipe,"chunkSize",0);
+      JsVar *source = jsvObjectGetChild(pipe,"source",0);
+      JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
       if(!_pipe(source, destination, chunkSize, position)) { // when no more chunks are possible, execute the callback.
         jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
         JsVar *idx = jsvArrayIteratorGetIndex(&it);
@@ -107,43 +123,59 @@ void jswrap_pipe_kill() {
          "generate" : "jswrap_pipe",
          "params" : [ ["source", "JsVar", "The source file/stream that will send content."],
                       ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
-                      ["chunkSize", "JsVar", "The amount of data to pipe from source to destination at a time."],
-                      ["callback", "JsVar", "a function to call when the pipe activity is complete."] ]
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, complete : function }`",
+                                             "chunkSize : The amount of data to pipe from source to destination at a time",
+                                             "complete : a function to call when the pipe activity is complete"] ] ]
 }*/
 //fs.pipe(source,destination,4,onCompleteHandler);
-void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* ChunkSize, JsVar* callback) {
+void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
+  if (!source || !dest) return;
+  JsVar *pipe = jspNewObject(0, "Pipe");
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", true);
-  if (arr) {// out of memory?
-    if (source && dest && ChunkSize) {
-      JsVar *ReadFunc = jspGetNamedField(source, "read");
-      JsVar *WriteFunc = jspGetNamedField(dest, "write");
-      if(jsvIsFunction(ReadFunc)) {
-        if(jsvIsFunction(WriteFunc)) {
-          JsVar *pipe = jspNewObject(0, "Pipe");
-          if(pipe) {// out of memory?
-            if(callback) {
-              jsvAddNamedChild(pipe, callback, "#oncomplete");
-            }
-            jsvArrayPush(arr, pipe);
-            JsVar* Position = jsvNewFromInteger(0);
-            if(Position) {
-              jsvUnLock(jsvAddNamedChild(pipe, Position, "Position"));
-              jsvUnLock(jsvAddNamedChild(pipe, ChunkSize, "ChunkSize"));
-              jsvUnLock(jsvAddNamedChild(pipe, source, "Source"));
-              jsvUnLock(jsvAddNamedChild(pipe, dest, "Destination"));
-            }
-            jsvUnLock(pipe);
+  JsVar* chunkSize = jsvNewFromInteger(32);
+  JsVar* position = jsvNewFromInteger(0);
+  if (pipe && arr && chunkSize && position) {// out of memory?
+    JsVar *readFunc = jspGetNamedField(source, "read");
+    JsVar *writeFunc = jspGetNamedField(dest, "write");
+    if(jsvIsFunction(readFunc)) {
+      if(jsvIsFunction(writeFunc)) {
+        // parse Options Object
+        if (jsvIsObject(options)) {
+          JsVar *c;
+          c = jsvObjectGetChild(options, "complete", false);
+          if(c) {
+            jsvAddNamedChild(pipe, c, "#oncomplete");
+            jsvUnLock(c);
           }
-        } else {
-          jsError("Destination object does not implement the required write(buffer, length, position) method.");
+          c = jsvObjectGetChild(options, "chunkSize", false);
+          if(c) {
+            if (jsvIsNumeric(c) && jsvGetInteger(c)>0)
+              jsvSetInteger(chunkSize, jsvGetInteger(c));
+            else
+              jsWarn("chunkSize must be an integer > 0");
+          }
+        } else if (!jsvIsUndefined(options)) {
+          jsWarn("'options' must be an object, or undefined");
         }
+        // set up the rest of the pipe
+        jsvUnLock(jsvAddNamedChild(pipe, position, "position"));
+        jsvUnLock(jsvAddNamedChild(pipe, chunkSize, "chunkSize"));
+        jsvUnLock(jsvAddNamedChild(pipe, source, "source"));
+        jsvUnLock(jsvAddNamedChild(pipe, dest, "destination"));
+        // add the pipe to our list
+        jsvArrayPush(arr, pipe);
       } else {
-        jsError("Source object does not implement the required read(buffer, length, position) method.");
+        jsError("Destination object does not implement the required write(buffer, length, position) method.");
       }
-      jsvUnLock(ReadFunc);
-      jsvUnLock(WriteFunc);
+    } else {
+      jsError("Source object does not implement the required read(buffer, length, position) method.");
     }
-    jsvUnLock(arr);
+    jsvUnLock(readFunc);
+    jsvUnLock(writeFunc);
   }
+  jsvUnLock(arr);
+  jsvUnLock(pipe);
+  jsvUnLock(chunkSize);
+  jsvUnLock(position);
 }
 
