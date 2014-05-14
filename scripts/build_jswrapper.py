@@ -315,11 +315,10 @@ codeOut('');
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  if (parent) {')
-codeOut('    JsVar *v;');
 
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
 if "parent" in builtins:
-  codeOutBuiltins("    v = ", builtins["parent"])
+  codeOutBuiltins("    JsVar *v = ", builtins["parent"])
   codeOut('    if (v) return v;');
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
@@ -327,15 +326,13 @@ codeOut('    if (jsvIsNativeFunction(parent)) {')
 for className in builtins:
   if className.startswith(nativeCheck):
     codeOut('      if ('+className[len(nativeCheck):]+') {')
-    codeOutBuiltins("        v = ", builtins[className])
-    codeOut('        if (v) return v;');
+    codeOutBuiltins("        return ", builtins[className])
     codeOut("    }")
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
     codeOut('    if ('+className+') {')
-    codeOutBuiltins("      v = ", builtins[className])
-    codeOut('      if (v) return v;');
+    codeOutBuiltins("      return ", builtins[className])
     codeOut("    }")
 
 
