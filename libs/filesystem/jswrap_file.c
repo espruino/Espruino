@@ -121,16 +121,29 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
       if (!jsvIsUndefined(mode))
         jsvGetString(mode, modeStr, 3);
 
+#ifndef LINUX
+      BYTE ff_mode = 0;
+#endif
+
       if(strcmp(modeStr,"r") == 0) {
         fMode = FM_READ;
-      } else if(strcmp(modeStr,"w") == 0 || strcmp(modeStr,"a") == 0) {
+#ifndef LINUX
+        ff_mode = FA_READ | FA_OPEN_ALWAYS;
+#endif
+      } else if(strcmp(modeStr,"a") == 0) {
         fMode = FM_WRITE;
-      } else if(strcmp(modeStr,"w+") == 0 || strcmp(modeStr,"r+") == 0) {
-        fMode = FM_READ_WRITE;
+#ifndef LINUX
+        ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
+#endif
+      } else if(strcmp(modeStr,"w") == 0) {
+        fMode = FM_WRITE;
+#ifndef LINUX
+        ff_mode = FA_WRITE | FA_CREATE_ALWAYS;
+#endif
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
 #ifndef LINUX
-        if ((res=f_open(&file.data.handle, pathStr, fMode)) == FR_OK) {
+        if ((res=f_open(&file.data.handle, pathStr, ff_mode)) == FR_OK) {
 #else
         file.data.handle = fopen(pathStr, modeStr);
         if (file.data.handle) {
@@ -176,6 +189,7 @@ void jswrap_file_close(JsVar* parent) {
 #endif
       file.data.state = FS_CLOSED;
       fileSetVar(&file);
+      // TODO: could try and free the memory used by file.data ?
 
       JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, false);
       if (arr) {
@@ -234,6 +248,8 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
         fflush(file.data.handle);
 #endif
       }
+
+      fileSetVar(&file);
     }
   }
 
@@ -280,6 +296,7 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
           bytesRead += actual;
           if(actual != requested) break;
         }
+        fileSetVar(&file);
       }
     }
   }
@@ -312,6 +329,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
   #else
         fseek(file.data.handle, length, SEEK_CUR);
   #endif
+        fileSetVar(&file);
       }
     }
   }
