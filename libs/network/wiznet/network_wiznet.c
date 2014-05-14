@@ -76,7 +76,11 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
   NOT_USED(net);
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
-    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, port, 0); // we set nonblocking later
+
+    //mgg1010 - added random source port - seems to solve problem of repeated GET failing
+    
+    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (rand() & 32767) + 2000, 0); // we set nonblocking later
+     
     if (sckt<0) return sckt; // error
 
     int res = connect((uint8_t)sckt,(uint8_t*)&host, port);

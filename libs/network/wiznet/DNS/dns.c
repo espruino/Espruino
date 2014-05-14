@@ -171,6 +171,10 @@ uint8_t dns_query(uint8_t ch, uint8_t s, uint8_t * name)
 		}
 	}
 
+	//mgg1010 - next line added to ensure socket is closed - without this, it runs out of sockets
+	
+	close(s);
+	
 //	for(i=0;i<256;i++) PrintString("%02bx ", dns_buf[i]);
 	return(parseMSG(ch, &dhp, dns_buf));	/* Convert to local format */
 }

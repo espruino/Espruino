@@ -273,7 +273,7 @@ endif
 #                                                      Get info out of BOARDNAME.py
 # ---------------------------------------------------------------------------------
 
-PROJ_NAME=$(shell python scripts/get_binary_name.py $(BOARD)  | sed -e "s/.bin$$//")
+PROJ_NAME=$(shell python scripts/get_board_info.py $(BOARD) "common.get_board_binary_name(board)"  | sed -e "s/.bin$$//")
 ifeq ($(PROJ_NAME),)
 $(error Unable to work out binary name (PROJ_NAME))
 endif

@@ -482,3 +482,18 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   return jsvNewArrayBufferFromString(str, 0);
 }
 
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "reverseByte",
+         "generate" : "jswrap_espruino_reverseByte",
+         "description" : [ "Reverse the 8 bits in a byte, swapping MSB and LSB.",
+                           "For example, `E.reverseByte(0b10010000) == 0b00001001`.",
+                           "Note that you can reverse all the bytes in an array with: `arr = arr.map(E.reverseByte)`" ],
+         "params" : [ [ "x", "int32", "A byte value to reverse the bits of"] ],
+         "return" : [ "int32", "The byte with reversed bits" ]
+}*/
+int jswrap_espruino_reverseByte(int v) {
+  unsigned int b = v&0xFF;
+  // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
+  return (((b * 0x0802LU & 0x22110LU) | (b * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16) & 0xFF;
+}
+

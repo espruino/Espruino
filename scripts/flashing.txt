@@ -1,1 +1,0 @@
- sudo dfu-util -a1 -d 0x1EAF:0x0003 -D espruino_olimexino_bootloader_stm32.bin
