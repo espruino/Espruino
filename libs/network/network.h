@@ -25,6 +25,7 @@ typedef enum {
   NETWORKSTATE_OFFLINE,
   NETWORKSTATE_CONNECTED, // connected but not online (no DHCP)
   NETWORKSTATE_ONLINE, // DHCP (or manual address)
+  NETWORKSTATE_INVOLUNTARY_DISCONNECT, // just randomly disconnected - maybe try and reconnect
 } PACKED_FLAGS JsNetworkState;
 
 extern JsNetworkState networkState; // FIXME put this in JsNetwork
