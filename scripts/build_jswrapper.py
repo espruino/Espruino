@@ -227,18 +227,6 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 codeOut("""
-typedef struct {
-  unsigned short strOffset;
-  void (*functionPtr)(void);
-  unsigned int functionSpec; // JsnArgumentType
-} PACKED_FLAGS JswSymPtr;
-
-typedef struct {
-  const JswSymPtr *symbols;
-  int symbolCount;
-  const char *symbolChars;
-} PACKED_FLAGS JswSymList;
-
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
   int searchMin = 0;
   int searchMax = symbolsPtr->symbolCount-1;
@@ -374,6 +362,17 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
+codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {') 
+for className in builtins:
+  if not className in ["parent","!parent","jsvIsFunction(parent)"] and not "constructorPtr" in className:
+    builtin = builtins[className]
+    codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut("  if (jsvIsFunction(parent)) return &jswSymbolTables["+builtins["jsvIsFunction(parent)"]["indexName"]+"];");
+codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
+codeOut('}')
+
+codeOut('')
+codeOut('')
 
 builtinLibraryChecks = []
 for jsondata in jsondatas:

@@ -39,8 +39,25 @@ typedef enum {
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
+/// Structure for each symbol in the list of built-in symbols
+typedef struct {
+  unsigned short strOffset;
+  void (*functionPtr)(void);
+  unsigned int functionSpec; // JsnArgumentType
+} PACKED_FLAGS JswSymPtr;
+
+/// Information for each list of built-in symbols
+typedef struct {
+  const JswSymPtr *symbols;
+  int symbolCount;
+  const char *symbolChars;
+} PACKED_FLAGS JswSymList;
+
 /** If 'name' is something that belongs to an internal function, execute it.  */
 JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
+
+/// Given an object, return the list of symbols for it
+const JswSymList *jswGetSymbolListForObject(JsVar *parent);
 
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);
