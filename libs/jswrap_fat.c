@@ -15,6 +15,7 @@
  */
 
 #include "jswrap_fat.h"
+#include "jswrap_file.h"
 #include "jsutils.h"
 #include "jsvar.h"
 #include "jsparse.h"
@@ -56,7 +57,7 @@ FATFS jsfsFAT;
 #endif
 
 void jsfsReportError(const char *msg, FRESULT res) {
-  const char *errStr = "";
+  const char *errStr = "UNKNOWN";
   if (res==FR_OK             ) errStr = "OK";
 #ifndef LINUX
   else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
@@ -205,61 +206,14 @@ JsVar *jswrap_fat_readdir(JsVar *path) {
          "return" : [ "bool", "True on success, false on failure" ]
 }*/
 bool jswrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
-  char pathStr[JS_DIR_BUF_SIZE] = "";
-  if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
-
-  FRESULT res = 0;
-  if (jsfsInit()) {
-#ifndef LINUX
-    FIL file;
-
-    if ((res=f_open(&file, pathStr, FA_WRITE|(append ? FA_OPEN_ALWAYS : FA_CREATE_ALWAYS))) == FR_OK) {
-
-      if (append) {
-        // move to end of file to append data
-        f_lseek(&file, file.fsize);
-//        if (res != FR_OK) jsfsReportError("Unable to move to end of file", res);
-      }
-#else
-      FILE *file = fopen(pathStr, append?"a":"w");
-      if (file) {
-#endif
-
-      JsvStringIterator it;
-      JsVar *dataString = jsvAsString(data, false);
-      jsvStringIteratorNew(&it, dataString, 0);
-      size_t toWrite = 0;
-      size_t written = 0;
-
-      while (jsvStringIteratorHasChar(&it) && res==FR_OK && written==toWrite) {
-
-        // re-use pathStr buffer
-        toWrite = 0;
-        while (jsvStringIteratorHasChar(&it) && toWrite < JS_DIR_BUF_SIZE) {
-          pathStr[toWrite++] = jsvStringIteratorGetChar(&it);
-          jsvStringIteratorNext(&it);
-        }
-#ifndef LINUX
-        res = f_write(&file, pathStr, toWrite, &written);
-#else
-        written = fwrite(pathStr, 1, toWrite, file);
-#endif
-      }
-      jsvStringIteratorFree(&it);
-      jsvUnLock(dataString);
-#ifndef LINUX
-      f_close(&file);
-#else
-      fclose(file);
-#endif
-    }
-  }
-  if (res) {
-    jsfsReportError("Unable to write file", res);
-    return false;
-  }
-  return true;
+  JsVar *fMode = jsvNewFromString(append ? "a" : "w");
+  JsVar *f = jswrap_file_constructor(path, fMode);
+  jsvUnLock(fMode);
+  if (!f) return 0;
+  size_t amt = jswrap_file_write(f, data);
+  jswrap_file_close(f);
+  jsvUnLock(f);
+  return amt>0;
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFile",
@@ -270,50 +224,19 @@ bool jswrap_fat_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
 }*/
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFileSync", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_fat_readFile",
-         "description" : [ "Read all data from a file and return as a string" ],
+         "description" : [ "Read all data from a file and return as a string.","**Note:** The size of files you can load using this method is limited by the amount of available RAM. To read files a bit at a time, see the `File` class." ],
          "params" : [ [ "path", "JsVar", "The path of the file to read" ] ],
          "return" : [ "JsVar", "A string containing the contents of the file (or undefined if the file doesn't exist)" ]
 }*/
 JsVar *jswrap_fat_readFile(JsVar *path) {
-  char pathStr[JS_DIR_BUF_SIZE] = "";
-  if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
-
-  JsVar *result = 0; // undefined unless we read the file
-
-  FRESULT res = 0;
-  if (jsfsInit()) {
-#ifndef LINUX
-    FIL file;
-    if ((res=f_open(&file, pathStr, FA_READ)) == FR_OK) {
-#else
-    FILE *file = fopen(pathStr, "r");
-    if (file) {
-#endif
-      result = jsvNewFromEmptyString();
-      if (result) { // out of memory?
-        // re-use pathStr buffer
-        size_t bytesRead = JS_DIR_BUF_SIZE;
-        while (res==FR_OK && bytesRead==JS_DIR_BUF_SIZE) {
-#ifndef LINUX
-          res = f_read (&file, pathStr, JS_DIR_BUF_SIZE, &bytesRead);
-#else
-          bytesRead = fread(pathStr,1,JS_DIR_BUF_SIZE,file);
-#endif
-          if (!jsvAppendStringBuf(result, pathStr, (int)bytesRead))
-            break; // was out of memory
-        }
-      }
-#ifndef LINUX
-      f_close(&file);
-#else
-      fclose(file);
-#endif
-    }
-  }
-
-  if (res) jsfsReportError("Unable to read file", res);
-  return result;
+  JsVar *fMode = jsvNewFromString("r");
+  JsVar *f = jswrap_file_constructor(path, fMode);
+  jsvUnLock(fMode);
+  if (!f) return 0;
+  JsVar *buffer = jswrap_file_read(f, 0x7FFFFFFF);
+  jswrap_file_close(f);
+  jsvUnLock(f);
+  return buffer;
 }
 
   /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlink",

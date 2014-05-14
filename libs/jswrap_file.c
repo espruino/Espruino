@@ -28,7 +28,7 @@ extern void jsfsReportError(const char *msg, FRESULT res);
                          "To use this, you must type ```var fd = require('fs').open('filepath','flags','mode')``` to open a file stream." ]
 }*/
 
-JsVar* fsGetArray(const char *name, bool create) {
+static JsVar* fsGetArray(const char *name, bool create) {
   JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, create);
   JsVar *arr = jsvSkipName(arrayName);
   if (!arr && create) {
@@ -88,16 +88,13 @@ void jswrap_file_kill() {
 }
 
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
-  bool ret = false;
   JsVar *parent = jspNewObject(0, "File");
-  if (parent) {// low memory
-    file->fileVar = parent;
-    file->data.mode = mode;
-    file->data.type = type;
-    file->data.state = FS_NONE;
-    ret = true;
-  }
-  return ret;
+  if (!parent) return false; // low memory
+  file->fileVar = parent;
+  file->data.mode = mode;
+  file->data.type = type;
+  file->data.state = FS_NONE;
+  return true;
 }
 
 /*JSON{ "type":"constructor",
@@ -106,12 +103,13 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
         "generate" : "jswrap_file_constructor",
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
-                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read and 'w' for write"] ],
+                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write and 'a' for append"] ],
         "return" : ["JsVar", "A File object"]
 }*/
 JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
+  file.fileVar = 0;
   FileMode fMode = FM_NONE;
   if (jsfsInit()) {
     JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, true);
@@ -125,7 +123,7 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
 
       if(strcmp(modeStr,"r") == 0) {
         fMode = FM_READ;
-      } else if(strcmp(modeStr,"w") == 0) {
+      } else if(strcmp(modeStr,"w") == 0 || strcmp(modeStr,"a") == 0) {
         fMode = FM_WRITE;
       } else if(strcmp(modeStr,"w+") == 0 || strcmp(modeStr,"r+") == 0) {
         fMode = FM_READ_WRITE;
@@ -143,6 +141,10 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
           // add to list of open files
           jsvArrayPush(arr, file.fileVar);
           jsvUnLock(arr);
+        } else {
+          // File open failed
+          jsvUnLock(file.fileVar);
+          file.fileVar = 0;
         }
       }
     }

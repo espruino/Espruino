@@ -71,8 +71,3 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer);
 JsVar *jswrap_file_read(JsVar* parent, int length);
 void jswrap_file_skip(JsVar* parent, int length);
 void jswrap_file_close(JsVar* parent);
-
-//var r = fs.createReadStream('file.txt');
-JsVar* jswrap_fs_createReadStream(JsVar* path);
-//var w = fs.createWriteStream('file.txt');
-JsVar* jswrap_fs_createWriteStream(JsVar* path);

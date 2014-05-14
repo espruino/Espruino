@@ -282,7 +282,7 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
           JsVar *oldReceiveData = receiveData;
           if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
-            jsvAppendStringBuf(receiveData, buf, num);
+            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
             if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
               hadHeaders = true;
@@ -402,7 +402,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
             jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
           }
           if (receiveData) { // could be out of memory
-            jsvAppendStringBuf(receiveData, buf, num);
+            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             if (!hadHeaders) {
               JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
               if (httpParseHeaders(&receiveData, resVar, false)) {
