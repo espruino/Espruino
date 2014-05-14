@@ -22,7 +22,7 @@ cd `dirname $0`
 BINARY=$1
 if [ -z "$BINARY" ]; then
     #BINARY=`ls  ../espruino*espruino_1r3.bin | sort -n | tail -1`
-    BINARY=../`python ../scripts/get_binary_name.py ESPRUINOBOARD`
+    BINARY=../`python ../scripts/get_board_info.py ESPRUINOBOARD "common.get_board_binary_name(board)"`
 fi  
 
 

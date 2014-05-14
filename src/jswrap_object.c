@@ -177,6 +177,15 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
 // --------------------------------------------------------------------------
 //                                            These should be in EventEmitter
 
+/** A convenience function for adding event listeners */
+void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes) {
+  JsVar *n = jsvNewFromString(eventName);
+  JsVar *cb = jsvNewNativeFunction(callback, argTypes);
+  jswrap_object_on(parent, n, cb);
+  jsvUnLock(cb);
+  jsvUnLock(n);
+}
+
 /*JSON{ "type":"method", "class": "Object", "name" : "on",
          "description" : ["Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter."],
          "generate" : "jswrap_object_on",
@@ -357,7 +366,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
          "description" : ["This executes the function with the supplied 'this' argument and parameters"],
          "generate" : "jswrap_function_apply_or_call",
          "params" : [ [ "this", "JsVar", "The value to use as the 'this' argument when executing the function"],
-                      [ "args", "JsVar", "Optional Array of Aruments"]
+                      [ "args", "JsVar", "Optional Array of Arguments"]
                     ],
          "return" : [ "JsVar", "The return value of executing this function" ]
 }*/

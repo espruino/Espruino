@@ -20,7 +20,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #ifdef USE_FILESYSTEM
-#include "../libs/jswrap_fat.h"
+#include "jswrap_fs.h"
 #endif
 
 static JsVar *jswrap_modules_getModuleList() {
@@ -77,7 +77,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
     jsvAppendString(modulePath,".js");
-    fileContents = wrap_fat_readFile(modulePath);
+    fileContents = jswrap_fs_readFile(modulePath);
     jsvUnLock(modulePath);
   #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {

@@ -38,7 +38,7 @@
 /** argumentSpecifier is actually a set of JsnArgumentType. The one at bit 0
  * is the return type
  */
-JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) ;
+JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) ;
 
 
 #endif //JSNATIVE_H

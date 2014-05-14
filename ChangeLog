@@ -19,6 +19,8 @@
             Add E.reverseByte
             Add HIGH and LOW (fix #371)
             Improve docs for SPI/I2C/Serial.setup
+            Force reconnect on CC3000 disconnect (fix #373)
+            Added cephdon's streaming file API (fix #12)
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

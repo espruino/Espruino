@@ -342,6 +342,9 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
  * function is executed (it's usually the parent object)
  *
+ *
+ * NOTE: this does not set the execInfo flags - so if execInfo==EXEC_NO, it won't execute
+ *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
@@ -621,6 +624,30 @@ JsVar *jspeFactorSingleId() {
   JSP_MATCH_WITH_RETURN(LEX_ID, a);
 
   return a;
+}
+
+/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
+JsVar *jspGetNamedField(JsVar *object, char* name) {
+  JsVar *child = 0;
+  // TODO: merge this and '.' and '[ ... ]' implementations
+
+  if (jsvHasChildren(object))
+     child = jsvFindChildFromString(object, name, false);
+
+  if (!child)
+    child = jspeiFindChildFromStringInParents(object, name);
+
+  if (!child)
+    child = jswFindBuiltInFunction(object, name);
+
+  return jsvSkipNameAndUnLock(child);
+}
+
+/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
+JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
+  JsVar *child = jspGetNamedField(object, name);
+  if (!jsvIsFunction(child)) return 0;
+  return jspeFunctionCall(child, 0, object, false, argCount, argPtr);
 }
 
 NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
@@ -2106,21 +2133,18 @@ JsVar *jspEvaluate(const char *str) {
   return v;
 }
 
-bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr) {
+JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
   JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(0);
-  JsVar *resultVar = jspeFunctionCall(func, 0, parent, false, argCount, argPtr);
-  bool result = jsvGetBool(resultVar);
-  jsvUnLock(resultVar);
+  JsVar *result = jspeFunctionCall(func, 0, thisArg, false, argCount, argPtr);
   // clean up
   jspeiKill();
   // restore state
   JSP_RESTORE_EXECUTE();
   oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
-
 
   return result;
 }

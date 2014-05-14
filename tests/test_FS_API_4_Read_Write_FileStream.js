@@ -1,0 +1,11 @@
+var fsr = new File('./tests/FS_API_Test.txt', "r");
+var fsw = new File('./tests/FS_API_WriteStream_Test.txt', "w");
+fsr.skip(22);
+var buffer1 = fsr.read(6);
+fsw.write(buffer1);
+fsw.close();
+fsr.close();
+var fsr2 = new File('./tests/FS_API_WriteStream_Test.txt', "r");
+var buffer2 = fsr2.read(6);
+fsr2.close();
+result = (buffer1 == "FS API" && buffer1 == buffer2);

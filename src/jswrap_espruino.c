@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_espruino.h"
-#include "libs/jswrap_math.h"
+#include "jswrap_math.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 

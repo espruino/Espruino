@@ -52,3 +52,9 @@ function onPageRequest(req, res) {
 }
 require('http').createServer(onPageRequest).listen(8080);
 
+
+function onPageRequest(req, res) {
+  res.writeHead(200, {'Content-Type': 'video/webm'});
+  new File("rick.webm").pipe(res);
+}
+require('http').createServer(onPageRequest).listen(8080);

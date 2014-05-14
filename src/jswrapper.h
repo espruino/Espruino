@@ -16,7 +16,7 @@
 #define JSWRAPPER_H
 
 #include "jsutils.h"
-#include "jsparse.h"
+#include "jsvar.h"
 
 typedef enum {
   JSWAT_FINISH = 0, // no argument
@@ -35,7 +35,6 @@ typedef enum {
   JSWAT_THIS_ARG    = 0x80000000, // whether a 'this' argument should be tacked onto the start
   JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_EXECUTE_IMMEDIATELY | JSWAT_THIS_ARG)
 } JsnArgumentType;
-
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 

@@ -44,7 +44,7 @@ bool jspHasError();
 
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
 JsVar *jspEvaluate(const char *str);
-bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr);
+JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents);
@@ -108,12 +108,24 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
- * function is executed (it's usually the parent object)
+ * function is executed (it's usually the parent object).
+ *
+ * NOTE: this does not set the execInfo flags - so if execInfo==EXEC_NO, it won't execute
  *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
  */
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
+
+
+/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
+JsVar *jspGetNamedField(JsVar *object, char* name);
+
+/** Call the function named on the given object. For example you might call:
+ *
+ *  JsVar *str = jspCallNamedFunction(var, "toString", 0, 0);
+ */
+JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr);
 
 #endif /* JSPARSE_H_ */
