@@ -69,15 +69,10 @@ typedef struct JsFile {
 // Called when stopping, to make sure all files are closed
 void jswrap_file_kill();
 
-//var file = fs.open(path, mode, callback)
-JsVar* jswrap_file_open(JsVar* path, JsVar* mode);
-//file.read(buffer, length, position, callback)
+JsVar* jswrap_file_constructor(JsVar* path, JsVar* mode);
 size_t jswrap_file_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
-//file.write(buffer, length, position, callback)
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
-//file.pipe(destination, callback)
 JsVar* jswrap_file_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
-//file.close(callback)
 void jswrap_file_close(JsVar* parent);
 
 //var r = fs.createReadStream('file.txt');

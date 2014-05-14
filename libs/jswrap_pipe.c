@@ -16,41 +16,7 @@ JsVar* PipeGetArray(const char *name, bool create) {
   return arr;
 }
 
-/*JSON{ "type":"idle", "generate" : "jswrap_Pipe_idle" }*/
-bool jswrap_Pipe_idle() {
-  bool ret = false;
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
-  if (arr) {
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, arr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *pipe = jsvArrayIteratorGetElement(&it);
-      JsVar *position = jsvObjectGetChild(pipe,"Position",0);
-      JsVar *chunkSize = jsvObjectGetChild(pipe,"ChunkSize",0);
-      JsVar *source = jsvObjectGetChild(pipe,"Source",0);
-      JsVar *destination = jsvObjectGetChild(pipe,"Destination",0);
-      if(!_pipe(source, destination, chunkSize, position)) { // when no more chunks are possible, execute the callback.
-        jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
-        JsVar *idx = jsvArrayIteratorGetIndex(&it);
-        jsvRemoveChild(arr,idx);
-        jsvUnLock(idx);
-      } else {
-        ret = true;
-      }
-      jsvUnLock(source);
-      jsvUnLock(destination);
-      jsvUnLock(pipe);
-      jsvUnLock(chunkSize);
-      jsvUnLock(position);
-      jsvArrayIteratorNext(&it);
-    }
-    jsvArrayIteratorFree(&it);
-    jsvUnLock(arr);
-  }
-  return ret;
-}
-
-bool _pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position) {
+static bool _pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position) {
   JsVarInt Bytes_Read = 0;
   if(source && destination && chunkSize && position) {
     JsVar * Buffer = jsvNewFromEmptyString();
@@ -91,8 +57,42 @@ bool _pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position)
   return Bytes_Read > 0;
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_Pipe_kill" }*/
-void jswrap_Pipe_kill() {
+/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle" }*/
+bool jswrap_pipe_idle() {
+  bool ret = false;
+  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
+  if (arr) {
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, arr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *pipe = jsvArrayIteratorGetElement(&it);
+      JsVar *position = jsvObjectGetChild(pipe,"Position",0);
+      JsVar *chunkSize = jsvObjectGetChild(pipe,"ChunkSize",0);
+      JsVar *source = jsvObjectGetChild(pipe,"Source",0);
+      JsVar *destination = jsvObjectGetChild(pipe,"Destination",0);
+      if(!_pipe(source, destination, chunkSize, position)) { // when no more chunks are possible, execute the callback.
+        jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
+        JsVar *idx = jsvArrayIteratorGetIndex(&it);
+        jsvRemoveChild(arr,idx);
+        jsvUnLock(idx);
+      } else {
+        ret = true;
+      }
+      jsvUnLock(source);
+      jsvUnLock(destination);
+      jsvUnLock(pipe);
+      jsvUnLock(chunkSize);
+      jsvUnLock(position);
+      jsvArrayIteratorNext(&it);
+    }
+    jsvArrayIteratorFree(&it);
+    jsvUnLock(arr);
+  }
+  return ret;
+}
+
+/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill" }*/
+void jswrap_pipe_kill() {
   // now remove all pipes...
   {
     JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", false);
@@ -104,14 +104,14 @@ void jswrap_Pipe_kill() {
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe",
-         "generate" : "wrap_Pipe",
+         "generate" : "jswrap_pipe",
          "params" : [ ["source", "JsVar", "The source file/stream that will send content."],
                       ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
                       ["chunkSize", "JsVar", "The amount of data to pipe from source to destination at a time."],
                       ["callback", "JsVar", "a function to call when the pipe activity is complete."] ]
 }*/
 //fs.pipe(source,destination,4,onCompleteHandler);
-void wrap_Pipe(JsVar* source, JsVar* dest, JsVar* ChunkSize, JsVar* callback) {
+void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* ChunkSize, JsVar* callback) {
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", true);
   if (arr) {// out of memory?
     if (source && dest && ChunkSize) {
@@ -147,14 +147,3 @@ void wrap_Pipe(JsVar* source, JsVar* dest, JsVar* ChunkSize, JsVar* callback) {
   }
 }
 
-bool HasFunction(JsVar * object, char* FunctionName) {
-  bool ret = false;
-  if(object) {
-    JsVar * func = jsvObjectGetChild(object, FunctionName, 0);
-    if(func) {
-      ret = true;
-      jsvUnLock(func);
-    }
-  }
-  return ret;
-}

@@ -112,14 +112,16 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   return ret;
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "open",
-         "generate_full" : "jswrap_file_open(path, mode)",
-         "description" : [ "Open a file."],
-         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
+/*JSON{ "type":"constructor",
+        "class" : "File",
+        "name" : "File",
+        "generate" : "jswrap_file_constructor",
+        "description" : [ "Open a file" ],
+        "params" : [ [ "path", "JsVar", "the path to the file to open." ],
                       [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read and 'w' for write"] ],
-         "return" : [ "JsVar", "The file handle or undefined if the file specified does not exist." ]
+        "return" : ["JsVar", "A File object"]
 }*/
-JsVar *jswrap_file_open(JsVar* path, JsVar* mode) {
+JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
   FileMode fMode = FM_NONE;
@@ -335,3 +337,11 @@ size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT*
   }
   return bytesRead;
 }
+
+/*JSON{  "type" : "method", "class" : "File", "name" : "pipe",
+         "generate" : "jswrap_pipe",
+         "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
+         "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
+                      ["chunkSize", "JsVar", "The amount of data to pipe from source to destination at a time."],
+                      ["callback", "JsVar", "a function to call when the pipe activity is complete."] ]
+}*/
