@@ -13,25 +13,20 @@
  * Contains built-in functions for SD card access
  * ----------------------------------------------------------------------------
  */
-#include "jswrap_fs.h"
+#include "jswrap_file.h"
 
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata"
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles"
 #define JS_FS_OPEN_PIPES_NAME JS_HIDDEN_CHAR_STR"FSOpenPipes"
 
+// from jswrap_fat
+extern bool jsfsInit();
+extern void jsfsReportError(const char *msg, FRESULT res);
+
 //object methods handles
 size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
 size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
 void _closeFile(JsFile* file);
-
-
-/*JSON{ "type":"library",
-        "class" : "fs",
-        "description" : ["This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.",
-                         "Currently this provides minimal file IO - it's great for logging and loading/saving settings, but not good for loading large amounts of data as you will soon fill your memory up.",
-                         "It is currently only available on boards that contain an SD card slot, such as the Olimexino and the HY. It can not currently be added to boards that did not ship with a card slot.",
-                         "To use this, you must type ```var fs = require('fs')``` to get access to the library" ]
-}*/
 
 /*JSON{ "type":"library",
         "class" : "File",
@@ -81,8 +76,8 @@ static void fileSetVar(JsFile *file) {
   jsvUnLock(data);
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_fs_kill" }*/
-void jswrap_fs_kill() {
+/*JSON{ "type":"kill", "generate" : "jswrap_file_kill" }*/
+void jswrap_file_kill() {
   {
     JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME,false);
     if (arr) {
@@ -90,7 +85,7 @@ void jswrap_fs_kill() {
       jsvArrayIteratorNew(&it, arr);
       while (jsvArrayIteratorHasElement(&it)) {
         JsVar *file = jsvArrayIteratorGetElement(&it);
-        jswrap_fat_close(file);
+        jswrap_file_close(file);
         jsvUnLock(file);
         jsvArrayIteratorNext(&it);
       }
@@ -118,13 +113,13 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
 }
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "open",
-         "generate_full" : "jswrap_fat_open(path, mode)",
+         "generate_full" : "jswrap_file_open(path, mode)",
          "description" : [ "Open a file."],
          "params" : [ [ "path", "JsVar", "the path to the file to open." ],
                       [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read and 'w' for write"] ],
          "return" : [ "JsVar", "The file handle or undefined if the file specified does not exist." ]
 }*/
-JsVar *jswrap_fat_open(JsVar* path, JsVar* mode) {
+JsVar *jswrap_file_open(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
   FileMode fMode = FM_NONE;
@@ -171,11 +166,11 @@ JsVar *jswrap_fat_open(JsVar* path, JsVar* mode) {
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "close",
-         "generate_full" : "jswrap_fat_close(parent)",
+         "generate_full" : "jswrap_file_close(parent)",
          "description" : [ "Close an open file."]
 }*/
 //fs.close(fd)
-void jswrap_fat_close(JsVar* parent) {
+void jswrap_file_close(JsVar* parent) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent) && file.data.state == FS_OPEN) {
@@ -207,7 +202,7 @@ void _closeFile(JsFile* file) {
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "write",
-         "generate" : "jswrap_fat_write",
+         "generate" : "jswrap_file_write",
          "description" : [ "write data to a file in byte size chunks"],
          "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
                       ["length", "int32", "is an integer specifying the number of bytes to write."],
@@ -216,7 +211,7 @@ void _closeFile(JsFile* file) {
          "return" : [ "int32", "the number of bytes written" ]
 }*/
 //fs.write(fd, buffer, offset, length, position, callback)
-size_t jswrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
+size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
   FRESULT res = 0;
   size_t bytesWritten = 0;
   if (jsfsInit()) {
@@ -279,7 +274,7 @@ size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "read",
-         "generate" : "jswrap_fat_read",
+         "generate" : "jswrap_file_read",
          "description" : [ "Read data in a file in byte size chunks"],
          "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
                       ["length", "int32", "is an integer specifying the number of bytes to read."],
@@ -288,7 +283,7 @@ size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT
          "return" : [ "int32", "the number of bytes read" ]
 }*/
 //fs.read(fd, buffer, length, position, callback)
-size_t jswrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
+size_t jswrap_file_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
   FRESULT res = 0;
   size_t bytesRead = 0;
   if (jsfsInit()) {

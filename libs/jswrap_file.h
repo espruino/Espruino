@@ -66,27 +66,21 @@ typedef struct JsFile {
   void (*close)(struct JsFile* file);
 } PACKED_FLAGS JsFile;
 
-bool jswrap_fs_idle();
-void jswrap_fs_init();
-void jswrap_fs_kill();
+// Called when stopping, to make sure all files are closed
+void jswrap_file_kill();
 
 //var file = fs.open(path, mode, callback)
-JsVar* jswrap_fat_open(JsVar* path, JsVar* mode);
+JsVar* jswrap_file_open(JsVar* path, JsVar* mode);
 //file.read(buffer, length, position, callback)
-size_t jswrap_fat_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
+size_t jswrap_file_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
 //file.write(buffer, length, position, callback)
-size_t jswrap_fat_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
+size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
 //file.pipe(destination, callback)
-JsVar* jswrap_fat_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
+JsVar* jswrap_file_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
 //file.close(callback)
-void jswrap_fat_close(JsVar* parent);
+void jswrap_file_close(JsVar* parent);
 
 //var r = fs.createReadStream('file.txt');
 JsVar* jswrap_fs_createReadStream(JsVar* path);
 //var w = fs.createWriteStream('file.txt');
 JsVar* jswrap_fs_createWriteStream(JsVar* path);
-
-#pragma GCC visibility push(hidden)
-extern bool jsfsInit();
-extern void jsfsReportError(const char *msg, FRESULT res);
-#pragma GCC visibility pop
