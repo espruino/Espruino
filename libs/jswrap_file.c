@@ -15,18 +15,12 @@
  */
 #include "jswrap_file.h"
 
-#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata"
-#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles"
-#define JS_FS_OPEN_PIPES_NAME JS_HIDDEN_CHAR_STR"FSOpenPipes"
+#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
+#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
 
 // from jswrap_fat
 extern bool jsfsInit();
 extern void jsfsReportError(const char *msg, FRESULT res);
-
-//object methods handles
-size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-void _closeFile(JsFile* file);
 
 /*JSON{ "type":"library",
         "class" : "File",
@@ -53,9 +47,6 @@ static bool fileGetFromVar(JsFile *file, JsVar *parent) {
     jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
     jsvUnLock(fHandle);
     file->fileVar = parent;
-    file->read = _readFile;
-    file->write = _writeFile;
-    file->close = _closeFile;
     if(file->data.state == FS_OPEN) {// return false if the file has been closed.
       ret = true;
     }
@@ -104,9 +95,6 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
     file->data.mode = mode;
     file->data.type = type;
     file->data.state = FS_NONE;
-    file->read = _readFile;
-    file->write = _writeFile;
-    file->close = _closeFile;
     ret = true;
   }
   return ret;
@@ -171,12 +159,19 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
          "generate_full" : "jswrap_file_close(parent)",
          "description" : [ "Close an open file."]
 }*/
-//fs.close(fd)
 void jswrap_file_close(JsVar* parent) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent) && file.data.state == FS_OPEN) {
-      file.close(&file);
+#ifndef LINUX
+      f_close(&file.data.handle);
+#else
+      fclose(file.data.handle);
+      file.data.handle = 0;
+#endif
+      file.data.state = FS_CLOSED;
+      fileSetVar(&file);
+
       JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, false);
       if (arr) {
         JsVar *idx = jsvGetArrayIndexOf(arr, file.fileVar, true);
@@ -190,41 +185,50 @@ void jswrap_file_close(JsVar* parent) {
   }
 }
 
-void _closeFile(JsFile* file) {
-  if(file) {
-#ifndef LINUX
-    f_close(&file->data.handle);
-#else
-    fclose(file->data.handle);
-    file->data.handle = 0;
-#endif
-    file->data.state = FS_CLOSED;
-    fileSetVar(file);
-  }
-}
-
 /*JSON{  "type" : "method", "class" : "File", "name" : "write",
          "generate" : "jswrap_file_write",
-         "description" : [ "write data to a file in byte size chunks"],
-         "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
-                      ["length", "int32", "is an integer specifying the number of bytes to write."],
-                      ["position", "int32", "is an integer specifying where to begin writing to in the file.", "If position is null, data will be written from the current file position."],
-                      ["callback", "JsVar", "a function to call when the data has been written."]],
+         "description" : [ "write data to a file"],
+         "params" : [ ["buffer", "JsVar", "A string containing the bytes to write"] ],
          "return" : [ "int32", "the number of bytes written" ]
 }*/
-//fs.write(fd, buffer, offset, length, position, callback)
-size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
+size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   FRESULT res = 0;
   size_t bytesWritten = 0;
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      bytesWritten = file.write(&file, buffer, length, position, &res);
-    }
-    if(callback) {
-      JsVar *bytesWrittenVar = jsvNewFromInteger((JsVarInt)bytesWritten);
-      jsiQueueEvents(callback, &bytesWrittenVar, 1);
-      jsvUnLock(bytesWrittenVar);
+      if(file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
+        JsvIterator it;
+        jsvIteratorNew(&it, buffer);
+        char buf[32];
+
+        while (jsvIteratorHasElement(&it)) {
+          // pull in a buffer's worth of data
+          size_t n = 0;
+          while (jsvIteratorHasElement(&it) && n<sizeof(buf)) {
+            buf[n++] = (char)jsvIteratorGetIntegerValue(&it);
+            jsvIteratorNext(&it);
+          }
+          // write it out
+          size_t written = 0;
+#ifndef LINUX
+          res = f_write(&file.data.handle, &buf, n, &written);
+#else
+          written = fwrite(&buf, 1, n, file.data.handle);
+#endif
+          bytesWritten += written;
+          if(written == 0)
+            res = FR_DISK_ERR;
+          if (res) break;
+        }
+        jsvIteratorFree(&it);
+        // finally, sync - just in case there's a reset or something
+#ifndef LINUX
+        f_sync(&file.data.handle);
+#else
+        fflush(file.data.handle);
+#endif
+      }
     }
   }
 
@@ -234,108 +238,72 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position,
   return bytesWritten;
 }
 
-size_t _writeFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res) {
-  size_t bytesWritten = 0;
-  if(file->data.mode == FM_WRITE || file->data.mode == FM_READ_WRITE) {
-    if(position >= 0) {
-#ifndef LINUX
-      f_lseek(&file->data.handle, position);
-#else
-      fseek(file->data.handle, position, SEEK_SET);
-#endif
-    }
-
-    JsvStringIterator it;
-    JsVar *dataString = jsvSkipName(buffer);
-    jsvStringIteratorNew(&it, dataString, 0);
-    size_t written = 0;
-    char buf = '\0';
-    int i =0;
-    for(i=0; i<length; i++) {
-      if(!jsvStringIteratorHasChar(&it) || *res!=FR_OK) {
-        break;
-      }
-      buf = jsvStringIteratorGetChar(&it);
-#ifndef LINUX
-      *res = f_write(&file->data.handle, &buf, sizeof(buf), &written);
-      f_sync(&file->data.handle);
-#else
-      written = fwrite(&buf, sizeof(buf), sizeof(buf), file->data.handle);
-      fflush(file->data.handle);
-      if(written == 0) {
-        *res = FR_DISK_ERR;
-      }
-#endif
-      bytesWritten += written;
-      jsvStringIteratorNext(&it);
-    }
-    jsvStringIteratorFree(&it);
-    jsvUnLock(dataString);
-  }
-  return bytesWritten;
-}
-
 /*JSON{  "type" : "method", "class" : "File", "name" : "read",
          "generate" : "jswrap_file_read",
          "description" : [ "Read data in a file in byte size chunks"],
-         "params" : [ ["buffer", "JsVar", "an array to use for storing bytes read."],
-                      ["length", "int32", "is an integer specifying the number of bytes to read."],
-                      ["position", "int32", "is an integer specifying where to begin reading from in the file.", "If position is null, data will be read from the current file position."],
-                      ["callback", "JsVar", "a function to call when the data has been read."]],
-         "return" : [ "int32", "the number of bytes read" ]
+         "params" : [ ["length", "int32", "is an integer specifying the number of bytes to read."] ],
+         "return" : [ "JsVar", "A string containing the characters that were read" ]
 }*/
-//fs.read(fd, buffer, length, position, callback)
-size_t jswrap_file_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback) {
+JsVar *jswrap_file_read(JsVar* parent, int length) {
+  JsVar *buffer = 0;
   FRESULT res = 0;
-  size_t bytesRead = 0;
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      bytesRead = file.read(&file, buffer, length, position, &res);
-    }
-    if(callback) {
-      JsVar *bytesReadVar = jsvNewFromInteger((JsVarInt)bytesRead);
-      jsiQueueEvents(callback, &bytesReadVar, 1);
-      jsvUnLock(bytesReadVar);
+      if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
+        char buf[32];
+        size_t i = 0;
+        size_t actual = 0;
+        for(i=0; (int)i < length; i += actual) {
+          size_t requested = (size_t)length - i;
+          if (requested > sizeof( buf ))
+            requested = sizeof( buf );
+          actual = 0;
+    #ifndef LINUX
+          res = f_read(&file.data.handle, buf, requested, &actual);
+          if(res) break;
+    #else
+          actual = fread(buf, 1, requested, file.data.handle);
+    #endif
+          if (!buffer) {
+            buffer = jsvNewFromEmptyString();
+            if (!buffer) return 0; // out of memory
+          }
+          jsvAppendStringBuf(buffer, buf, actual);
+          if(actual != requested) break;
+        }
+      }
     }
   }
 
-  if (res) {
-    jsfsReportError("Unable to read file", res);
-  }
-  return bytesRead;
+  if (res) jsfsReportError("Unable to read file", res);
+  return buffer;
 }
 
-size_t _readFile(JsFile* file, JsVar* buffer, int length, int position, FRESULT* res) {
-  size_t bytesRead = 0;
-  if(file->data.mode == FM_READ || file->data.mode == FM_READ_WRITE) {
-    if(position >= 0) {
-#ifndef LINUX
-      f_lseek(&file->data.handle, position);
-#else
-      fseek(file->data.handle, position, SEEK_SET);
-#endif
-    }
-    size_t readBytes=0;
-    char buf = '\0';
-    int i = 0;
-    for(i=0; i < length;i++) {
-#ifndef LINUX
-      *res = f_read(&file->data.handle, &buf, sizeof( buf ), &readBytes);
-      if(*res != FR_OK) {
-        break;
+/*JSON{  "type" : "method", "class" : "File", "name" : "skip",
+         "generate" : "jswrap_file_skip",
+         "description" : [ "Skip the specified number of bytes forwards"],
+         "params" : [ ["nBytes", "int32", "is an integer specifying the number of bytes to skip forwards."] ]
+}*/
+void jswrap_file_skip(JsVar* parent, int length) {
+  if (length<=0) {
+    jsWarn("length for skip must be greater than 0");
+    return;
+  }
+  FRESULT res = 0;
+  if (jsfsInit()) {
+    JsFile file;
+    if (fileGetFromVar(&file, parent)) {
+      if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
+  #ifndef LINUX
+        res = f_lseek(&file.data.handle, f_tell(&file.data.handle) + length);
+  #else
+        fseek(file.data.handle, length, SEEK_CUR);
+  #endif
       }
-#else
-      readBytes = fread(&buf,sizeof( buf ), sizeof( buf ), file->data.handle);
-      if(readBytes > 0) {
-        *res = FR_OK;
-      }
-#endif
-      jsvAppendStringBuf(buffer, &buf, 1);
-      bytesRead += readBytes;
     }
   }
-  return bytesRead;
+  if (res) jsfsReportError("Unable to skip", res);
 }
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "pipe",

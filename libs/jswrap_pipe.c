@@ -33,44 +33,31 @@ JsVar* PipeGetArray(const char *name, bool create) {
 }
 
 static bool _pipe(JsVar* source, JsVar* destination, JsVar* chunkSize, JsVar* position) {
-  JsVarInt Bytes_Read = 0;
+  bool dataTransferred = false;
   if(source && destination && chunkSize && position) {
-    JsVar * Buffer = jsvNewFromEmptyString();
-    JsVarInt Position = jsvGetInteger(position);
-    if(Buffer) {// do we have enough memory?
-      JsVar *ReadFunc = jspGetNamedField(source, "read");
-      JsVar *WriteFunc = jspGetNamedField(destination, "write");
-      if (jsvIsFunction(ReadFunc) && jsvIsFunction(WriteFunc)) { // do the objects have the necessary methods on them?
-        JsVar *ReadArgs[3];
-        ReadArgs[0] = Buffer;
-        ReadArgs[1] = chunkSize;
-        ReadArgs[2] = position;
-        JsVar *BytesRead = jspExecuteFunction(ReadFunc, source, 3, ReadArgs);
-        Bytes_Read = jsvGetInteger(BytesRead);
-        if(Bytes_Read > 0)
-        {
-          JsVar *WriteArgs[3];
-          WriteArgs[0] = Buffer;
-          WriteArgs[1] = BytesRead;
-          WriteArgs[2] = position;
-          jsvUnLock(jspExecuteFunction(WriteFunc, destination, 3, WriteArgs));
-          jsvSetInteger(position, (Position+Bytes_Read));
+    JsVar *readFunc = jspGetNamedField(source, "read");
+    JsVar *writeFunc = jspGetNamedField(destination, "write");
+    if (jsvIsFunction(readFunc) && jsvIsFunction(writeFunc)) { // do the objects have the necessary methods on them?
+      JsVar *buffer = jspExecuteFunction(readFunc, source, 1, &chunkSize);
+      if(buffer) {
+        JsVarInt bufferSize = jsvGetLength(buffer);
+        if (bufferSize>0) {
+          jsvUnLock(jspExecuteFunction(writeFunc, destination, 1, &buffer));
+          jsvSetInteger(position, jsvGetInteger(position) + bufferSize);
+          dataTransferred = true;
         }
-        jsvUnLock(BytesRead);
-      } else {
-        if(!jsvIsFunction(ReadFunc)) {
-          jsError("Source Stream does not implement the required read(buffer, length, position) method.");
-        }
-        if(!jsvIsFunction(WriteFunc)) {
-          jsError("Destination Stream does not implement the required write(buffer, length, position) method.");
-        }
+        jsvUnLock(buffer);
       }
-      jsvUnLock(ReadFunc);
-      jsvUnLock(WriteFunc);
-      jsvUnLock(Buffer);
+    } else {
+      if(!jsvIsFunction(readFunc))
+        jsError("Source Stream does not implement the required read(length) method.");
+      if(!jsvIsFunction(writeFunc))
+        jsError("Destination Stream does not implement the required write(buffer) method.");
     }
+    jsvUnLock(readFunc);
+    jsvUnLock(writeFunc);
   }
-  return Bytes_Read > 0;
+  return dataTransferred;
 }
 
 /*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle" }*/
@@ -127,7 +114,6 @@ void jswrap_pipe_kill() {
                                              "chunkSize : The amount of data to pipe from source to destination at a time",
                                              "complete : a function to call when the pipe activity is complete"] ] ]
 }*/
-//fs.pipe(source,destination,4,onCompleteHandler);
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   if (!source || !dest) return;
   JsVar *pipe = jspNewObject(0, "Pipe");

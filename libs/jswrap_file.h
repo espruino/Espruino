@@ -61,18 +61,15 @@ typedef struct JsFile {
   JsVar* fileVar; // this won't be locked again - we just know that it is already locked by something else
   JsFileData data;
   unsigned char _blank; //< this is needed as jsvGetString for 'data' wants to add a trailing zero
-  size_t (*read)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-  size_t (*write)(struct JsFile* file, JsVar* buffer, int length, int position, FRESULT* res);
-  void (*close)(struct JsFile* file);
 } PACKED_FLAGS JsFile;
 
 // Called when stopping, to make sure all files are closed
 void jswrap_file_kill();
 
 JsVar* jswrap_file_constructor(JsVar* path, JsVar* mode);
-size_t jswrap_file_read(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
-size_t jswrap_file_write(JsVar* parent, JsVar* buffer, int length, int position, JsVar* callback);
-JsVar* jswrap_file_pipe(JsVar* parent, JsVar* destfd, JsVar* chunkSize, JsVar* callback);
+size_t jswrap_file_write(JsVar* parent, JsVar* buffer);
+JsVar *jswrap_file_read(JsVar* parent, int length);
+void jswrap_file_skip(JsVar* parent, int length);
 void jswrap_file_close(JsVar* parent);
 
 //var r = fs.createReadStream('file.txt');
