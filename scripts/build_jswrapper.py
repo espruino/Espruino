@@ -100,7 +100,13 @@ def getArgumentSpecifier(jsondata):
   result = getResult(jsondata);
   s = [ toArgumentType(result[0]) ]
   if hasThis(jsondata): s.append("JSWAT_THIS_ARG");
-  if jsondata["type"]=="variable" or common.is_property(jsondata): s.append("JSWAT_EXECUTE_IMMEDIATELY")
+  # Either it's a variable/property, in which case we need to execute the native function in order to return the correct info
+  if jsondata["type"]=="variable" or common.is_property(jsondata): 
+    s.append("JSWAT_EXECUTE_IMMEDIATELY")
+  # Or it's an object, in which case the native function contains code that creates it - and that must be executed too. 
+  # It also returns JsVar
+  if jsondata["type"]=="object":
+    s = [ toArgumentType("JsVar"), "JSWAT_EXECUTE_IMMEDIATELY" ]
 
   n = 1
   for param in params:
@@ -203,7 +209,7 @@ for jsondata in jsondatas:
     s = [ ]
 
     if jsondata["type"]=="object":
-      jsondata["generate_full"] = "jspNewObject(\""+jsondata["name"]+"\", \""+jsondata["instanceof"]+"\")";
+      jsondata["generate_full"] = "jspNewObject(\""+jsondata["name"]+"\", \""+jsondata["instanceof"]+"\") /* needs JSWAT_EXECUTE_IMMEDIATELY */";
       params = []
       result = ["JsVar"]
     else:
