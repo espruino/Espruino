@@ -177,6 +177,15 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
 // --------------------------------------------------------------------------
 //                                            These should be in EventEmitter
 
+/** A convenience function for adding event listeners */
+void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes) {
+  JsVar *n = jsvNewFromString(eventName);
+  JsVar *cb = jsvNewNativeFunction(callback, argTypes);
+  jswrap_object_on(parent, n, cb);
+  jsvUnLock(cb);
+  jsvUnLock(n);
+}
+
 /*JSON{ "type":"method", "class": "Object", "name" : "on",
          "description" : ["Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter."],
          "generate" : "jswrap_object_on",

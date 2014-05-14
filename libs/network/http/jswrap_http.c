@@ -212,10 +212,12 @@ void jswrap_httpSrv_close(JsVar *parent) {
 /*JSON{ "type":"method",
          "class" : "httpSRs", "name" : "write",
          "generate" : "jswrap_httpSRs_write",
-         "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
+         "params" : [ [ "data", "JsVar", "A string containing data to send"] ],
+         "return" : ["bool", "For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent" ]
 }*/
-void jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
+bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
   httpServerResponseData(parent, data);
+  return false;
 }
 
 /*JSON{ "type":"method",
@@ -246,10 +248,12 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
 /*JSON{ "type":"method",
          "class" : "httpCRq", "name" : "write",
          "generate" : "jswrap_httpCRq_write",
-         "params" : [ [ "data", "JsVar", "A string containing data to send"] ]
+         "params" : [ [ "data", "JsVar", "A string containing data to send"] ],
+         "return" : ["bool", "For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent" ]
 }*/
-void jswrap_httpCRq_write(JsVar *parent, JsVar *data) {
+bool jswrap_httpCRq_write(JsVar *parent, JsVar *data) {
   httpClientRequestWrite(parent, data);
+  return false;
 }
 
 /*JSON{ "type":"method",

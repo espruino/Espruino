@@ -16,7 +16,7 @@
 #define JSWRAPPER_H
 
 #include "jsutils.h"
-#include "jsparse.h"
+#include "jsvar.h"
 
 typedef enum {
   JSWAT_FINISH = 0, // no argument
@@ -33,7 +33,6 @@ typedef enum {
 
   JSWAT_THIS_ARG = 0x8000000
 } JsnArgumentType;
-
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 

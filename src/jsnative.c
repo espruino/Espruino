@@ -21,7 +21,7 @@
 #define MAX_ARGS 12
 
 /** Call a function with the given argument specifiers */
-JsVar *jsnCallFunction(void *function, unsigned int argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
+JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
   JsVar *argsArray = 0; // if JSWAT_ARGUMENT_ARRAY is ever used (note it'll only ever be used once)
   int paramNumber = 0; // how many parameters we have

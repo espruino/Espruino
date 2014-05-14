@@ -42,7 +42,6 @@ static JsVar* fsGetArray(const char *name, bool create) {
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
   bool ret = false;
   JsVar *fHandle = jsvObjectGetChild(parent, JS_FS_DATA_NAME, 0);
-  assert(fHandle);
   if (fHandle) {
     jsvGetString(fHandle, (char*)&file->data, sizeof(JsFileData)+1/*trailing zero*/);
     jsvUnLock(fHandle);
@@ -103,7 +102,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
         "generate" : "jswrap_file_constructor",
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
-                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write and 'a' for append"] ],
+                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write and 'a' for append. If not specified, the default is 'r'."] ],
         "return" : ["JsVar", "A File object"]
 }*/
 JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
@@ -116,10 +115,11 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
     if (!arr) return 0; // out of memory
 
     char pathStr[JS_DIR_BUF_SIZE] = "";
-    char modeStr[3] = "";
-    if (!jsvIsUndefined(path) && !jsvIsUndefined(mode)) {
+    char modeStr[3] = "r";
+    if (!jsvIsUndefined(path)) {
       jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
-      jsvGetString(mode, modeStr, 3);
+      if (!jsvIsUndefined(mode))
+        jsvGetString(mode, modeStr, 3);
 
       if(strcmp(modeStr,"r") == 0) {
         fMode = FM_READ;
@@ -146,13 +146,16 @@ JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
           jsvUnLock(file.fileVar);
           file.fileVar = 0;
         }
+
+        if(res != FR_OK)
+          jsfsReportError("Could not open file", res);
+
       }
+    } else {
+      jsError("Path is undefined");
     }
   }
 
-  if(res != FR_OK) {
-    jsfsReportError("Could not open file", res);
-  }
 
   return file.fileVar;
 }
@@ -249,15 +252,15 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
 JsVar *jswrap_file_read(JsVar* parent, int length) {
   JsVar *buffer = 0;
   FRESULT res = 0;
+  size_t bytesRead = 0;
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
         char buf[32];
-        size_t i = 0;
         size_t actual = 0;
-        for(i=0; (int)i < length; i += actual) {
-          size_t requested = (size_t)length - i;
+        while (bytesRead < (size_t)length) {
+          size_t requested = (size_t)length - bytesRead;
           if (requested > sizeof( buf ))
             requested = sizeof( buf );
           actual = 0;
@@ -267,18 +270,25 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
     #else
           actual = fread(buf, 1, requested, file.data.handle);
     #endif
-          if (!buffer) {
-            buffer = jsvNewFromEmptyString();
-            if (!buffer) return 0; // out of memory
+          if (actual>0) {
+            if (!buffer) {
+              buffer = jsvNewFromEmptyString();
+              if (!buffer) return 0; // out of memory
+            }
+            jsvAppendStringBuf(buffer, buf, actual);
           }
-          jsvAppendStringBuf(buffer, buf, actual);
+          bytesRead += actual;
           if(actual != requested) break;
         }
       }
     }
   }
-
   if (res) jsfsReportError("Unable to read file", res);
+
+  // automatically close this file if we're at the end of it
+  if (bytesRead!=(size_t)length)
+    jswrap_file_close(parent);
+
   return buffer;
 }
 
@@ -312,7 +322,8 @@ void jswrap_file_skip(JsVar* parent, int length) {
          "generate" : "jswrap_pipe",
          "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
          "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
-                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, complete : function }`",
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
                                              "chunkSize : The amount of data to pipe from source to destination at a time",
-                                             "complete : a function to call when the pipe activity is complete"] ] ]
+                                             "complete : a function to call when the pipe activity is complete",
+                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
 }*/

@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jswrapper.h"
 
 JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
@@ -26,3 +27,6 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
 JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray);
+
+/** A convenience function for adding event listeners */
+void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes);
