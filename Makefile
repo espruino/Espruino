@@ -798,8 +798,8 @@ ifndef BOOTLOADER
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
 
-# Limit code size growth via inlining to 15% Normally 30% it seems... This reduces code size without slowing down Espruino noticeably
-OPTIMIZEFLAGS += --param inline-unit-growth=10
+# Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
+OPTIMIZEFLAGS += --param inline-unit-growth=8
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-
