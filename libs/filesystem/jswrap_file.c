@@ -325,7 +325,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, f_tell(&file.data.handle) + length);
+        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(f_tell(&file.data.handle) + length));
   #else
         fseek(file.data.handle, length, SEEK_CUR);
   #endif
