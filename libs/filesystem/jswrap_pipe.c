@@ -14,7 +14,14 @@
  *
  * Piping works as follows:
  *   On idle, data is read from the source stream
- *   If this fails, the stream is considered empty and
+ *    * If this returns undefined, the stream is considered finished and is closed
+ *    * If this returns "" we just assume that it's waiting for more data
+ *    * If it returns some data, 'write' is called with it
+ *    * And if 'write' returns the boolean false then we stall the pipe until
+ *       the destination emits a 'drain' signal
+ *    * If the destination emits a 'close' signal we close the pipe
+ *    * When the pipe closes, unless 'end=false' on initialisation, we call
+ *      'end' on destination, and 'close' on source.
  *
  * ----------------------------------------------------------------------------
  */
@@ -44,6 +51,7 @@ static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"end",0))) {
     // call destination.end if available
     JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
+    // TODO: we should probably remove our drain+close listeners
     JsVar *endFunc = jspGetNamedField(destination, "end");
     if (endFunc) {
       jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
@@ -91,9 +99,9 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
           }
           jsvUnLock(response);
           jsvSetInteger(position, jsvGetInteger(position) + bufferSize);
-          dataTransferred = true;
         }
         jsvUnLock(buffer);
+        dataTransferred = true; // so we don't close the pipe if we get an empty string
       }
     } else {
       if(!jsvIsFunction(readFunc))
