@@ -128,12 +128,12 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       if(strcmp(modeStr,"r") == 0) {
         fMode = FM_READ;
 #ifndef LINUX
-        ff_mode = FA_READ | FA_OPEN_ALWAYS;
+        ff_mode = FA_READ | FA_OPEN_EXISTING;
 #endif
       } else if(strcmp(modeStr,"a") == 0) {
         fMode = FM_WRITE;
 #ifndef LINUX
-        ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
+        ff_mode = FA_WRITE | FA_OPEN_EXISTING;
 #endif
       } else if(strcmp(modeStr,"w") == 0) {
         fMode = FM_WRITE;
@@ -325,7 +325,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = f_lseek(&file.data.handle, f_tell(&file.data.handle) + length);
+        res = (FRESULT)f_lseek(&file.data.handle, f_tell(&file.data.handle) + length);
   #else
         fseek(file.data.handle, length, SEEK_CUR);
   #endif
