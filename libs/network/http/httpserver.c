@@ -558,28 +558,28 @@ JsVar *httpClientRequestNew(JsVar *options, JsVar *callback) {
 
 void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
   // Append data to sendData
-  JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, false);
+  JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
-    JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
+    JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
     if (options) {
       sendData = jsvNewFromString("");
-      JsVar *method = jsvObjectGetChild(options, "method", false);
-      JsVar *path = jsvObjectGetChild(options, "path", false);
+      JsVar *method = jsvObjectGetChild(options, "method", 0);
+      JsVar *path = jsvObjectGetChild(options, "path", 0);
       jsvAppendPrintf(sendData, "%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
       jsvUnLock(method);
       jsvUnLock(path);
-      JsVar *headers = jsvObjectGetChild(options, "headers", false);
+      JsVar *headers = jsvObjectGetChild(options, "headers", 0);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
-        JsVar *hostHeader = jsvObjectGetChild(headers, "Host", false);
+        JsVar *hostHeader = jsvObjectGetChild(headers, "Host", 0);
         hasHostHeader = hostHeader!=0;
         jsvUnLock(hostHeader);
         httpAppendHeaders(sendData, headers);
       }
       jsvUnLock(headers);
       if (!hasHostHeader) {
-        JsVar *host = jsvObjectGetChild(options, "host", false);
-        JsVarInt port = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
+        JsVar *host = jsvObjectGetChild(options, "host", 0);
+        int port = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
         if (port>0 && port!=80)
           jsvAppendPrintf(sendData, "Host: %v:%d\r\n", host, port);
         else
@@ -606,11 +606,11 @@ void httpClientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
   httpClientRequestWrite(httpClientReqVar, 0); // force sendData to be made
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
-  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
+  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
   if (port==0) port=80;
 
   char hostName[128];
-  JsVar *hostNameVar = jsvObjectGetChild(options, "host", false);
+  JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
   jsvGetString(hostNameVar, hostName, sizeof(hostName));
   jsvUnLock(hostNameVar);
 

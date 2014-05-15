@@ -22,6 +22,7 @@
             Force reconnect on CC3000 disconnect (fix #373)
             Added cephdon's streaming file API (fix #12)
             More WIZnet W5500 stability fixes - try and ensure that HTTP server never goes down
+            Fix HTTP client Host header when accessing ports!=80
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)
