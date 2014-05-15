@@ -207,7 +207,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 }*/
 bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
   JsVar *fMode = jsvNewFromString(append ? "a" : "w");
-  JsVar *f = jswrap_file_constructor(path, fMode);
+  JsVar *f = jswrap_E_openFile(path, fMode);
   jsvUnLock(fMode);
   if (!f) return 0;
   size_t amt = jswrap_file_write(f, data);
@@ -230,7 +230,7 @@ bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
 }*/
 JsVar *jswrap_fs_readFile(JsVar *path) {
   JsVar *fMode = jsvNewFromString("r");
-  JsVar *f = jswrap_file_constructor(path, fMode);
+  JsVar *f = jswrap_E_openFile(path, fMode);
   jsvUnLock(fMode);
   if (!f) return 0;
   JsVar *buffer = jswrap_file_read(f, 0x7FFFFFFF);

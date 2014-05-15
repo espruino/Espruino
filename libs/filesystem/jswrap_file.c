@@ -96,16 +96,16 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   return true;
 }
 
-/*JSON{ "type":"constructor",
-        "class" : "File",
-        "name" : "File",
-        "generate" : "jswrap_file_constructor",
+/*JSON{ "type":"staticmethod",
+        "class" : "E",
+        "name" : "openFile",
+        "generate" : "jswrap_E_openFile",
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
                       [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write and 'a' for append. If not specified, the default is 'r'."] ],
         "return" : ["JsVar", "A File object"]
 }*/
-JsVar *jswrap_file_constructor(JsVar* path, JsVar* mode) {
+JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
   file.fileVar = 0;
