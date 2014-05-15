@@ -103,7 +103,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
          "params" : [ [ "x", "float", "The value to get the arc tangent  of"] ],
          "return" : ["float", "The arc tangent of x, between -PI/2 and PI/2"]
 }*/
-/*JSON{ "type":"staticmethod",
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Math", "name" : "atan2",
          "generate" : "atan2",
          "params" : [ [ "y", "float", "The Y-part of the angle to get the arc tangent of"],

@@ -336,7 +336,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
   if (res) jsfsReportError("Unable to skip", res);
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "pipe",
+/*JSON{  "type" : "method", "class" : "File", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_pipe",
          "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
          "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],

@@ -29,7 +29,7 @@
 #include "jswrap_pipe.h"
 #include "jswrap_object.h"
 
-/*JSON{ "type":"library",
+/*JSON{ "type":"library", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Pipe",
         "description" : ["This is the Pipe container for async related IO." ]
 }*/
@@ -123,7 +123,7 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
   return dataTransferred;
 }
 
-/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle" }*/
+/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle", "ifndef" : "SAVE_ON_FLASH" }*/
 bool jswrap_pipe_idle() {
   bool wasBusy = false;
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
@@ -142,7 +142,7 @@ bool jswrap_pipe_idle() {
   return wasBusy;
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill" }*/
+/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill", "ifndef" : "SAVE_ON_FLASH" }*/
 void jswrap_pipe_kill() {
   // now remove all pipes...
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", false);
@@ -200,7 +200,7 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
   }
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe",
+/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_pipe",
          "params" : [ ["source", "JsVar", "The source file/stream that will send content."],
                       ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
