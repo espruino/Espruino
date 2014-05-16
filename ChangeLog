@@ -1,3 +1,5 @@
+     1v64 : ...
+
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
             Fix `edit(functionName)` without quotes (fix #356)
