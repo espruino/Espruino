@@ -17,16 +17,6 @@
 #include "httpserver.h"
 #include "../network.h"
 
-/*
-
-http.createServer(function (req, res) {
-  console.log("Connected");
-  res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('Hello World\n');
-}).listen(8080);
-
- */
-
 /*JSON{ "type":"idle", "generate" : "jswrap_http_idle" }*/
 bool jswrap_http_idle() {
   JsNetwork net;
@@ -54,11 +44,8 @@ void jswrap_http_kill() {
         "class" : "http",
         "description" : [
                          "This library allows you to create http servers and make http requests",
-                         "NOTE: This is currently only available in the Raspberry Pi version",
-                         "This is a cut-down version of node.js's library",
-                         "Please see http://nodemanual.org/latest/nodejs_ref_guide/http.html",
-                         "To use this, you must type ```var http = require('http')``` to get access to the library",
-                         "NOTE: The HTTP client + server send in ~8 byte chunks. This is normally fine but big servers - eg. Google will reject requests made like this (DDoS protection?)"
+                         "In order to use this, you will need an extra module to get network connectivity such as the [TI CC3000](/CC3000) or [WIZnet W5500](/WIZnet).",
+                         "This is designed to be a cut-down version of the [node.js library](http://nodemanual.org/latest/nodejs_ref_guide/http.html). Please see the [Internet](/Internet) page for more information on how to use it."
                           ]
 }*/
 /*JSON{ "type":"class",
