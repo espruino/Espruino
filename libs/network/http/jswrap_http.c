@@ -45,7 +45,7 @@ void jswrap_http_kill() {
         "description" : [
                          "This library allows you to create http servers and make http requests",
                          "In order to use this, you will need an extra module to get network connectivity such as the [TI CC3000](/CC3000) or [WIZnet W5500](/WIZnet).",
-                         "This is designed to be a cut-down version of the [node.js library](http://nodemanual.org/latest/nodejs_ref_guide/http.html). Please see the [Internet](/Internet) page for more information on how to use it."
+                         "This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/http.html). Please see the [Internet](/Internet) page for more information on how to use it."
                           ]
 }*/
 /*JSON{ "type":"class",
@@ -102,7 +102,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
          "generate" : "jswrap_http_request",
          "description" : ["Create an HTTP Request - end() must be called on it to complete the operation" ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
-                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made"] ],
+                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."] ],
          "return" : ["JsVar", "Returns a new httpCRq object"]
 }*/
 
@@ -131,9 +131,9 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
 /*JSON{ "type":"staticmethod",
          "class" : "http", "name" : "get",
          "generate" : "jswrap_http_get",
-         "description" : ["Create an HTTP Request - convenience function for ```http.request()```. options.method is set to 'get', and end is called automatically" ],
+         "description" : ["Create an HTTP Request - convenience function for ```http.request()```. `options.method` is set to 'get', and end is called automatically. See [the Internet page](/Internet) for more usage examples." ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
-                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made"] ],
+                       [ "callback", "JsVar", "A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."] ],
          "return" : ["JsVar", "Returns a new httpCRq object"]
 }*/
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
