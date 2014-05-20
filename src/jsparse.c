@@ -1561,7 +1561,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(switchOn);jsvUnLock(test), 0);
     bool cond = false;
     if (execute)
-      cond = jsvGetBoolAndUnLock(jsvMathsOpSkipNames(switchOn, test, LEX_EQUAL));
+      cond = jsvGetBoolAndUnLock(jsvMathsOpSkipNames(switchOn, test, LEX_TYPEEQUAL));
     if (cond) hasExecuted = true;
     jsvUnLock(test);
     if (cond && (execInfo.execute&EXEC_RUN_MASK)==EXEC_NO)
