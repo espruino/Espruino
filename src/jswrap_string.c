@@ -227,7 +227,8 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   if (pEnd<0) pEnd = 0;
   res = jsvNewWithFlags(JSV_STRING);
   if (!res) return 0; // out of memory
-  jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
+  if (pEnd>pStart)
+    jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
   return res;
 }
 
