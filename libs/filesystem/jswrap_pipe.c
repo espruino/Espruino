@@ -52,7 +52,7 @@ static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
     // call destination.end if available
     JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
     // TODO: we should probably remove our drain+close listeners
-    JsVar *endFunc = jspGetNamedField(destination, "end");
+    JsVar *endFunc = jspGetNamedField(destination, "end", false);
     if (endFunc) {
       jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
       jsvUnLock(endFunc);
@@ -62,7 +62,7 @@ static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
     but seems very sensible in this case. If you don't want it,
     set end:false */
     JsVar *source = jsvObjectGetChild(pipe,"source",0);
-    JsVar *closeFunc = jspGetNamedField(source, "close");
+    JsVar *closeFunc = jspGetNamedField(source, "close", false);
     if (closeFunc) {
       jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
       jsvUnLock(closeFunc);
@@ -85,8 +85,8 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
 
   bool dataTransferred = false;
   if(source && destination && chunkSize && position) {
-    JsVar *readFunc = jspGetNamedField(source, "read");
-    JsVar *writeFunc = jspGetNamedField(destination, "write");
+    JsVar *readFunc = jspGetNamedField(source, "read", false);
+    JsVar *writeFunc = jspGetNamedField(destination, "write", false);
     if (jsvIsFunction(readFunc) && jsvIsFunction(writeFunc)) { // do the objects have the necessary methods on them?
       JsVar *buffer = jspExecuteFunction(readFunc, source, 1, &chunkSize);
       if(buffer) {
@@ -215,8 +215,8 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", true);
   JsVar* position = jsvNewFromInteger(0);
   if (pipe && arr && position) {// out of memory?
-    JsVar *readFunc = jspGetNamedField(source, "read");
-    JsVar *writeFunc = jspGetNamedField(dest, "write");
+    JsVar *readFunc = jspGetNamedField(source, "read", false);
+    JsVar *writeFunc = jspGetNamedField(dest, "write", false);
     if(jsvIsFunction(readFunc)) {
       if(jsvIsFunction(writeFunc)) {
         JsVarInt chunkSize = 64;

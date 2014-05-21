@@ -127,8 +127,14 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 
-/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
-JsVar *jspGetNamedField(JsVar *object, char* name);
+/** Get the named function/variable on the object - whether it's built in, or predefined.
+ * If !returnName, returns the function/variable itself or undefined, but
+ * if returnName, return a name (could be fake) referencing the parent.
+ *
+ * NOTE: ArrayBuffer/Strings are not handled here. We assume that if we're
+ * passing a char* rather than a JsVar it's because we're looking up via
+ * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
+JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
 
 /** Call the function named on the given object. For example you might call:
  *
