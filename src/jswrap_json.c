@@ -189,6 +189,13 @@ void jsonNewLine(JSONFlags flags, vcbprintf_callback user_callback, void *user_d
 }
 
 void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data) {
+  // Use IS_RECURSING  flag to stop recursion
+  if (var->flags & JSV_IS_RECURSING) {
+    cbprintf(user_callback, user_data, " ... ");
+    return;
+  }
+  var->flags |= JSV_IS_RECURSING;
+
   JSONFlags nflags = flags + JSON_INDENT; // if we add a newline, make sure we indent any subsequent JSON more
 
   if (jsvIsUndefined(var)) {
@@ -298,6 +305,8 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
   } else {
     cbprintf(user_callback, user_data, "%v", var);
   }
+
+  var->flags &= ~JSV_IS_RECURSING;
 }
 
 void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags) {
