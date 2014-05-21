@@ -649,7 +649,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
     // Get rid of existing name
     child = jsvSkipNameAndUnLock(child);
     // create a new name
-    JsVar *nameVar = jslGetTokenValueAsVar(execInfo.lex);
+    JsVar *nameVar = jsvNewFromString(name);
     JsVar *newChild = jsvCreateNewChild(object, nameVar, child);
     jsvUnLock(nameVar);
     jsvUnLock(child);
