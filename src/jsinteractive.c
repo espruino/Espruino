@@ -1554,6 +1554,7 @@ void jsiIdle() {
   if (interruptedDuringEvent) {
     jspSetInterrupted(false);
     interruptedDuringEvent = false;
+    jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
 
@@ -1620,7 +1621,13 @@ bool jsiLoop() {
   jsiIdle();
   
   if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted.\n");
     jspSetInterrupted(false);
+  }
+  // If Ctrl-C was pressed, clear the line
+  if (execInfo.execute & EXEC_CTRL_C_MASK) {
+    execInfo.execute = execInfo.execute & ~EXEC_CTRL_C_MASK;
     jsiClearInputLine();
   }
 

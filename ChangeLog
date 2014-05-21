@@ -2,6 +2,7 @@
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
             Fix equality check used in switch, so false !== 0
             Improve Math.pow accuracy for small integer powers (fix #374)
+            Make Ctrl-C only interrupt code if it has been running for too long (fix Ctrl-C -> CC3000 restart issues)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
