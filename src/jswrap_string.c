@@ -111,7 +111,9 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   substring = jsvAsString(substring, false);
   if (!substring) return 0; // out of memory
   int parentLength = (int)jsvGetStringLength(parent);
-  int lastPossibleSearch = parentLength - (int)jsvGetStringLength(substring);
+  int subStringLength = (int)jsvGetStringLength(substring);
+  if (subStringLength > parentLength) return -1;
+  int lastPossibleSearch = parentLength - subStringLength;
   int idx, dir, end;
   if (!lastIndexOf) { // normal indexOf
     dir = 1;

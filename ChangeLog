@@ -5,6 +5,7 @@
             Make Ctrl-C only interrupt code if it has been running for too long (fix Ctrl-C -> CC3000 restart issues)
             Removed duplication in symbol lookup (fix #372, fix #323, fix #343)
             Fix JSON.stringify with circular references (fix #378)
+            Fix String.indexOf when search string is bigger than the string being searched (fix #377)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
