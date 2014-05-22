@@ -27,6 +27,8 @@ JsVar *jspeExpression();
 JsVar *jspeUnaryExpression();
 JsVar *jspeBlock();
 JsVar *jspeStatement();
+JsVar *jspeFactor();
+void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 // ----------------------------------------------- Utils
 #define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { jspSetError(true); CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
@@ -658,9 +660,13 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
 
   // If not found and is the prototype, create it
   if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
-    JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
-    child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
-    jsvUnLock(value);
+    // prototype is supposed to be an object
+    JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
+    // make sure it has a 'constructor' variable that points to the object it was part of
+    jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
+    child = jsvAddNamedChild(object, proto, JSPARSE_PROTOTYPE_VAR);
+    jspEnsureIsPrototype(object, child);
+    jsvUnLock(proto);
   }
 
   return child;
@@ -809,9 +815,6 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   return a;
 }
 
-JsVar *jspeFactor();
-void jspEnsureIsPrototype(JsVar *prototypeName);
-
 NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   assert(JSP_SHOULD_EXECUTE);
   if (!jsvIsFunction(func)) {
@@ -824,7 +827,7 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   if (!thisObj) return 0; // out of memory
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
-  jspEnsureIsPrototype(prototypeName); // make sure it's an object
+  jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
   jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
   jsvUnLock(prototypeName);
 
@@ -835,11 +838,6 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
     thisObj = a;
   } else {
     jsvUnLock(a);
-    JsVar *constructor = jsvFindChildFromString(thisObj, JSPARSE_CONSTRUCTOR_VAR, true);
-    if (constructor) {
-      jsvSetValueOfName(constructor, funcName);
-      jsvUnLock(constructor);
-    }
   }
   return thisObj;
 }
@@ -978,7 +976,7 @@ NO_INLINE JsVar *jspeFactorArray() {
   return contents;
 }
 
-NO_INLINE void jspEnsureIsPrototype(JsVar *prototypeName) {
+NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   if (!prototypeName) return;
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
@@ -990,6 +988,10 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *prototypeName) {
     jsvSetValueOfName(lastName, prototypeVar);
     jsvUnLock(lastName);
   }
+  JsVar *constructor = jsvFindChildFromString(prototypeVar, JSPARSE_CONSTRUCTOR_VAR, true);
+  jsvSetValueOfName(constructor, instanceOf);
+  jsvUnLock(constructor);
+
   jsvUnLock(prototypeVar);
 }
 
@@ -1265,7 +1267,10 @@ NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
               jspSetError(true);
             } else {
               if (jsvIsObject(av)) {
-                JsVar *constructor = jsvObjectGetChild(av, JSPARSE_CONSTRUCTOR_VAR, 0);
+                JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
+                JsVar *constructor = 0;
+                if (proto)
+                  constructor = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
                 if (constructor==bv) inst=true;
                 else inst = jspIsConstructor(bv,"Object");
                 jsvUnLock(constructor);
@@ -2030,7 +2035,7 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   }
 
   JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
-  jspEnsureIsPrototype(prototypeName); // make sure it's an object
+  jspEnsureIsPrototype(objFunc, prototypeName); // make sure it's an object
   jsvUnLock(objFunc);
   if (!prototypeName) { // out of memory
     jsvUnLock(objFuncName);
@@ -2047,10 +2052,9 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     // set object data to be object name
     strncpy(obj->varData.str, name, sizeof(obj->varData));
   }
-  // add inherits/constructor/etc
+  // add __proto__
   jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
   jsvUnLock(prototypeName);prototypeName=0;
-  jsvUnLock(jsvAddNamedChild(obj, objFuncName, JSPARSE_CONSTRUCTOR_VAR));
   jsvUnLock(objFuncName);
 
   if (name) {
@@ -2212,4 +2216,15 @@ JsVar *jspObjectToString(JsVar *obj) {
    } else {
      return jsvNewFromString(jsvIsRoot(obj) ? "[object Hardware]":"[object Object]");
    }
+}
+
+/** Get the owner of the current prototype. We assume that it's
+ * the first item in the array, because that's what we will
+ * have added when we created it. It's safe to call this on
+ * non-prototypes and non-objects.  */
+JsVar *jspGetPrototypeOwner(JsVar *proto) {
+  if (jsvIsObject(proto) || jsvIsArray(proto)) {
+    return jsvSkipNameAndUnLock(jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0));
+  }
+  return 0;
 }

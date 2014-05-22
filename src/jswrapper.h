@@ -61,6 +61,9 @@ JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
 /// Given an object, return the list of symbols for it
 const JswSymList *jswGetSymbolListForObject(JsVar *parent);
 
+/// Given an object, return the list of symbols for its prototype
+const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent);
+
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);
 

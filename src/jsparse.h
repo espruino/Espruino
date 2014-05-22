@@ -52,6 +52,12 @@ JsVar *jspEvaluateModule(JsVar *moduleContents);
 /// Execute the Object.toString function on an object (if we can find it)
 JsVar *jspObjectToString(JsVar *obj);
 
+/** Get the owner of the current prototype. We assume that it's
+ * the first item in the array, because that's what we will
+ * have added when we created it. It's safe to call this on
+ * non-prototypes and non-objects.  */
+JsVar *jspGetPrototypeOwner(JsVar *proto);
+
 /** When parsing, this enum defines whether
  we are executing or not */
 typedef enum  {

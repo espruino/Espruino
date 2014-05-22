@@ -7,22 +7,22 @@ function cmp(ae, mustHave, maybeHave) {
   var a = eval(ae);
   var i;
   var fail = undefined;
-  for (i in a) if (mustHave.indexOf(a[i])<0 && maybeHave.indexOf(a[i])<0) fail = "Shouldn't have "+a[i];
-  for (i in mustHave) if (a.indexOf(mustHave[i])<0) fail = "Missing "+mustHave[i];
+  for (i in a) if (mustHave.indexOf(a[i])<0 && maybeHave.indexOf(a[i])<0) fail = "Shouldn't have '"+a[i]+"'";
+  for (i in mustHave) if (a.indexOf(mustHave[i])<0) fail = "Missing '"+mustHave[i]+"'";
   if (fail) { console.log(ae, "Failed", fail, a, "vs", mustHave, "optional", maybeHave); return; }
   pass++;
 }
 
 cmp("Object.getOwnPropertyNames([])", [ 'length' ], [])
-cmp("Object.getOwnPropertyNames(Array.prototype)", 
-[ 'length',
+cmp("Object.getOwnPropertyNames(Array.prototype)",
+[ 
+  'fill', // ES6
   'constructor',
   'toString',
   'join',
   'pop',
   'push',
   'concat',
-  'reverse',
   'shift',
   'unshift',
   'slice',
@@ -34,10 +34,12 @@ cmp("Object.getOwnPropertyNames(Array.prototype)",
   'every',
   'map',
   'indexOf',
-  'lastIndexOf',
-  'reduce',
-  'reduceRight' ], [
+  'reduce'], [
+  'length', // unsure why length has to be in proto
   'toLocaleString',
+  'reduceRight',
+  'lastIndexOf',
+  'reverse',
 ]);
 cmp("Object.getOwnPropertyNames(Array)",         
 [ 'prototype',

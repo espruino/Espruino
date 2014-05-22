@@ -54,6 +54,13 @@ JsVar *jswrap_array_constructor(JsVar *args) {
   return jsvLockAgain(args);
 }
 
+/*JSON{ "type":"method", "class": "Array", "name" : "toString",
+         "description" : "Convert the Array to a string",
+         "generate" : "jswrap_object_toString",
+         "params" : [ [ "radix", "JsVar", "unused"] ],
+         "return" : ["JsVar", "A String representing the array"]
+}*/
+
 /*JSON{ "type":"method", "class": "Array", "name" : "indexOf",
          "description" : "Return the index of the value in the array, or -1",
          "generate" : "jswrap_array_indexOf",

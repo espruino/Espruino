@@ -129,7 +129,10 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
     jsvIteratorNew(&it, obj);
     while (jsvIteratorHasElement(&it)) {
       JsVar *key = jsvIteratorGetKey(&it);
-      if (!(checkerFunction && checkerFunction(key))) {
+      if (!(checkerFunction && checkerFunction(key)) || (jsvIsStringEqual(key, JSPARSE_CONSTRUCTOR_VAR))) {
+        /* Not sure why constructor is included in getOwnPropertyNames, but
+         * not in for (i in ...) but it is, so we must explicitly override the
+         * check in jsvIsInternalObjectKey! */
         JsVar *name = jsvAsArrayIndexAndUnLock(jsvCopyNameOnly(key, false, false));
         if (name) {
           jsvArrayPushAndUnLock(arr, name);
@@ -143,8 +146,18 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
     /* Search our built-in symbol table
        Assume that ALL builtins are non-enumerable. This isn't great but
        seems to work quite well right now! */
-    if (includeNonEnumerable && !jsvIsObject(obj)) {
-      const JswSymList *symbols = jswGetSymbolListForObject(obj);
+    if (includeNonEnumerable) {
+      const JswSymList *symbols = 0;
+
+      JsVar *protoOwner = jspGetPrototypeOwner(obj);
+      if (protoOwner) {
+        symbols = jswGetSymbolListForObjectProto(protoOwner);
+        jsvUnLock(protoOwner);
+      } else if (!jsvIsObject(obj)) {
+        // get symbols, but only if we're not doing it on a basic object
+        symbols = jswGetSymbolListForObject(obj);
+      }
+
       if (symbols) {
         unsigned int i;
         for (i=0;i<symbols->symbolCount;i++) {

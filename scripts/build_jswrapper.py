@@ -272,17 +272,20 @@ for jsondata in jsondatas:
 
     testCode = "!parent"
     builtinName = "global"
+    className = "global"
+    isProto = False
     if not jsondata["type"]=="constructor":
       if "class" in jsondata: 
-        testCode = getTestFor(jsondata["class"], jsondata["static"])
-        builtinName = jsondata["class"]
-        if not jsondata["static"]: builtinName = builtinName+"_proto";
-
+        testCode = getTestFor(jsondata["class"], jsondata["static"])        
+        className = jsondata["class"]
+        builtinName = className
+        if not jsondata["static"]: 
+          isProto = True
+          builtinName = builtinName+"_proto";
 
     if not testCode in builtins: 
       print "Adding "+testCode+" to builtins"
-      builtins[testCode] = { "name" : builtinName, "functions" : [] }
-
+      builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 
 
@@ -335,7 +338,9 @@ for className in builtins:
 
 
 codeOut('    // ------------------------------------------ INSTANCE METHODS WE MUST CHECK CONSTRUCTOR FOR')
-codeOut('    JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_INHERITS_VAR, false)):0;')
+codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('    jsvUnLock(proto);')
 codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
 codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
 codeOut('      jsvUnLock(constructor);')
@@ -376,6 +381,33 @@ for className in builtins:
     builtin = builtins[className]
     codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut("  if (jsvIsFunction(parent)) return &jswSymbolTables["+builtins["jsvIsFunction(parent)"]["indexName"]+"];");
+codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut('const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent) {')
+codeOut('  if (jsvIsNativeFunction(parent)) {')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and not "constructorPtr" in className and not className in ["parent","!parent"] :
+    check = className
+    for jsondata in jsondatas:
+      if jsondata["type"]=="constructor" and jsondata["name"]==builtin["className"]:
+        check = "(void*)parent->varData.native.ptr==(void*)"+jsondata["generate"]
+
+    codeOut("    if ("+check+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  }')
+codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
+codeOut('    void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('   jsvUnLock(constructor);')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and "constructorPtr" in className:
+    codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  }')
 codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
 codeOut('}')
 

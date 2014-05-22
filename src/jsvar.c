@@ -1272,7 +1272,6 @@ JsVar *jsvSkipToLastName(JsVar *a) {
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   if (!jsvHasCharacterData(var)) {
-    assert(jsvIsBasic(var));
     return 0; // not a string so not equal!
   }
 
@@ -1703,6 +1702,12 @@ int jsvGetChildren(JsVar *v) {
   return children;
 }
 
+/// Get the first child's name from an object,array or function
+JsVar *jsvGetFirstName(JsVar *v) {
+  assert(jsvHasChildren(v));
+  if (!v->firstChild) return 0;
+  return jsvLock(v->firstChild);
+}
 
 JsVarInt jsvGetArrayLength(const JsVar *arr) {
   return arr->varData.integer;
