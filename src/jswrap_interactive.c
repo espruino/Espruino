@@ -263,8 +263,8 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    JsVarInt intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(jshGetSystemTime() + intervalInt)));
+    unsigned int intervalInt = (unsigned int)jshGetTimeFromMilliseconds(interval);
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger((unsigned int)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt)));
     jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
     if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #endif
 #include <stdarg.h> // for va_args
+#include <stdint.h>
 
 #ifdef LINUX
 #include <math.h>
@@ -98,8 +99,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #endif
 #endif
 
-typedef long long JsVarInt;
-typedef unsigned long long JsVarIntUnsigned;
+typedef int32_t JsVarInt;
+typedef uint32_t JsVarIntUnsigned;
 #ifdef USE_FLOATS
 typedef float JsVarFloat;
 #else

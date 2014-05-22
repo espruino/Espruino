@@ -80,21 +80,12 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
         argData[argCount++] = jsvGetBool(param);
         break;
       case JSWAT_INT32: // 32 bit int
+      case JSWAT_JSVARINT:  // 32 bit int
         argData[argCount++] = (uint32_t)(jsvGetInteger(param) & 0xFFFFFFFF);
         break;
       case JSWAT_PIN: // 16 bit int
         argData[argCount++] = (uint32_t)(jshGetPinFromVar(param));
         break;
-      case JSWAT_JSVARINT: { // 64 bit int
-        uint64_t i = (uint64_t)jsvGetInteger(param);
-#if __WORDSIZE == 64
-        argData[argCount++] = (size_t)i;
-#else
-        argData[argCount++] = (size_t)((i) & 0xFFFFFFFF);
-        argData[argCount++] = (size_t)((i>>32) & 0xFFFFFFFF);
-#endif
-        break;
-      }
       case JSWAT_JSVARFLOAT: { // 64 bit float
         JsVarFloat f = jsvGetFloat(param);
 #ifdef ARM
@@ -177,8 +168,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     case JSWAT_PIN:
       return jsvNewFromPin((Pin)result);
     case JSWAT_INT32: // 32 bit int
-      return jsvNewFromInteger((JsVarInt)(int)result);
-    case JSWAT_JSVARINT: // 64 bit int
+    case JSWAT_JSVARINT: // 32 bit int
       return jsvNewFromInteger((JsVarInt)result);
     case JSWAT_JSVARFLOAT: // 64 bit float
       return jsvNewFromFloat(*(JsVarFloat*)&result);

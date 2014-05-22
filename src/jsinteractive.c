@@ -56,6 +56,7 @@ Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 bool echo;                  ///< do we provide any user feedback?
 bool allowDeepSleep;
+JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
 JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
@@ -467,6 +468,8 @@ void jsiSoftInit() {
       jsError("onInit is not a Function or a String");
   }
   jsvUnLock(onInit);
+
+  jsiLastIdleTime = jshGetSystemTime();
 }
 
 /** Append the code required to initialise a serial port to this string */
@@ -1388,7 +1391,7 @@ void jsiIdle() {
               timeout = jsvNewWithFlags(JSV_OBJECT);
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
-                jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger(event.data.time+debounce)));
+                jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(event.data.time-jsiLastIdleTime)+debounce)));
                 jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
                 jsvUnLock(jsvObjectSetChild(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
                 // Add to timer array
@@ -1447,6 +1450,8 @@ void jsiIdle() {
   // Check timers
   JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
+  JsVarInt timePassed = jshGetSystemTime()-jsiLastIdleTime;
+  jsiLastIdleTime = time;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsVarRef timer = timerArrayPtr->firstChild;
@@ -1455,10 +1460,11 @@ void jsiIdle() {
     timer = timerNamePtr->nextSibling; // ptr to next
     JsVar *timerPtr = jsvSkipName(timerNamePtr);
     JsVar *timerTime = jsvObjectGetChild(timerPtr, "time", 0);
-    JsSysTime timeUntilNext = jsvGetInteger(timerTime) - time;
+    JsVarInt timeUntilNext = jsvGetInteger(timerTime) - timePassed;
+    jsvSetInteger(timerTime, timeUntilNext);// update timer time
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
-    if (timerTime && timeUntilNext<=0) {
+    if (timeUntilNext<=0) {
       // we're now doing work
       jsiSetBusy(BUSY_INTERACTIVE, true);
       wasBusy = true;
@@ -1467,7 +1473,7 @@ void jsiIdle() {
       bool exec = true;
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
       if (data) {
-        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsvGetInteger(timerTime))/1000);
+        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+jsvGetInteger(timerTime))/1000);
         // if it was a watch, set the last state up
         if (watchPtr) {
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));

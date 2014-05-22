@@ -107,6 +107,8 @@ extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
 extern bool echo;
 extern bool allowDeepSleep;
+extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
+
 void jsiDumpState();
 void jsiSetTodo(TODOFlags newTodo);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds

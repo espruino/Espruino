@@ -25,12 +25,10 @@
  #define JSWAT_IS_64BIT(N) (\
   (N)==JSWAT_JSVAR || \
   (N)==JSWAT_ARGUMENT_ARRAY || \
-  (N)==JSWAT_JSVARINT || \
   (N)==JSWAT_JSVARFLOAT \
  )
 #else
 #define JSWAT_IS_64BIT(N) (\
-  (N)==JSWAT_JSVARINT || \
   (N)==JSWAT_JSVARFLOAT \
  )
 #endif
