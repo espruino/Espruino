@@ -143,10 +143,12 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 #ifndef LINUX
     DIR dirs;
     if ((res=f_opendir(&dirs, pathStr)) == FR_OK) {
-      char lfnBuf[_MAX_LFN+1];
       FILINFO Finfo;
+#if _USE_LFN!=0
+      char lfnBuf[_MAX_LFN+1];
       Finfo.lfname = lfnBuf;
       Finfo.lfsize = sizeof(lfnBuf);
+#endif
 #else
     DIR *dir = opendir(pathStr);
     if(dir) {

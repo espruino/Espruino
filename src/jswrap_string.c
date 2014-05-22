@@ -111,7 +111,9 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   substring = jsvAsString(substring, false);
   if (!substring) return 0; // out of memory
   int parentLength = (int)jsvGetStringLength(parent);
-  int lastPossibleSearch = parentLength - (int)jsvGetStringLength(substring);
+  int subStringLength = (int)jsvGetStringLength(substring);
+  if (subStringLength > parentLength) return -1;
+  int lastPossibleSearch = parentLength - subStringLength;
   int idx, dir, end;
   if (!lastIndexOf) { // normal indexOf
     dir = 1;
@@ -209,6 +211,27 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)pLen);
   return res;
 }
+
+/*JSON{ "type":"method", "class": "String", "name" : "slice",
+         "generate" : "jswrap_string_slice",
+         "params" : [ [ "start", "int", "The start character index, if negative it is from the end of the string"],
+                      [ "end", "JsVar", "The end character index, if negative it is from the end of the string, and if omitted it is the end of the string"] ],
+         "return" : ["JsVar", "Part of this string from start for len characters"]
+}*/
+JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
+  JsVar *res;
+  JsVarInt pEnd = jsvIsUndefined(vEnd) ? JSVAPPENDSTRINGVAR_MAXLENGTH : (int)jsvGetInteger(vEnd);
+  if (pStart<0) pStart += (JsVarInt)jsvGetStringLength(parent);
+  if (pEnd<0) pEnd += (JsVarInt)jsvGetStringLength(parent);
+  if (pStart<0) pStart = 0;
+  if (pEnd<0) pEnd = 0;
+  res = jsvNewWithFlags(JSV_STRING);
+  if (!res) return 0; // out of memory
+  if (pEnd>pStart)
+    jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
+  return res;
+}
+
 
 /*JSON{ "type":"method", "class": "String", "name" : "split",
          "description" : "Return an array made by splitting this string up by the separator. eg. ```'1,2,3'.split(',')==[1,2,3]```",

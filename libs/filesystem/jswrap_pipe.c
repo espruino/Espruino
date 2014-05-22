@@ -29,7 +29,7 @@
 #include "jswrap_pipe.h"
 #include "jswrap_object.h"
 
-/*JSON{ "type":"library",
+/*JSON{ "type":"library", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Pipe",
         "description" : ["This is the Pipe container for async related IO." ]
 }*/
@@ -52,7 +52,7 @@ static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
     // call destination.end if available
     JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
     // TODO: we should probably remove our drain+close listeners
-    JsVar *endFunc = jspGetNamedField(destination, "end");
+    JsVar *endFunc = jspGetNamedField(destination, "end", false);
     if (endFunc) {
       jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
       jsvUnLock(endFunc);
@@ -62,7 +62,7 @@ static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
     but seems very sensible in this case. If you don't want it,
     set end:false */
     JsVar *source = jsvObjectGetChild(pipe,"source",0);
-    JsVar *closeFunc = jspGetNamedField(source, "close");
+    JsVar *closeFunc = jspGetNamedField(source, "close", false);
     if (closeFunc) {
       jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
       jsvUnLock(closeFunc);
@@ -85,8 +85,8 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
 
   bool dataTransferred = false;
   if(source && destination && chunkSize && position) {
-    JsVar *readFunc = jspGetNamedField(source, "read");
-    JsVar *writeFunc = jspGetNamedField(destination, "write");
+    JsVar *readFunc = jspGetNamedField(source, "read", false);
+    JsVar *writeFunc = jspGetNamedField(destination, "write", false);
     if (jsvIsFunction(readFunc) && jsvIsFunction(writeFunc)) { // do the objects have the necessary methods on them?
       JsVar *buffer = jspExecuteFunction(readFunc, source, 1, &chunkSize);
       if(buffer) {
@@ -123,7 +123,7 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
   return dataTransferred;
 }
 
-/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle" }*/
+/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle", "ifndef" : "SAVE_ON_FLASH" }*/
 bool jswrap_pipe_idle() {
   bool wasBusy = false;
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
@@ -142,7 +142,7 @@ bool jswrap_pipe_idle() {
   return wasBusy;
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill" }*/
+/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill", "ifndef" : "SAVE_ON_FLASH" }*/
 void jswrap_pipe_kill() {
   // now remove all pipes...
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", false);
@@ -200,7 +200,7 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
   }
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe",
+/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_pipe",
          "params" : [ ["source", "JsVar", "The source file/stream that will send content."],
                       ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
@@ -215,8 +215,8 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", true);
   JsVar* position = jsvNewFromInteger(0);
   if (pipe && arr && position) {// out of memory?
-    JsVar *readFunc = jspGetNamedField(source, "read");
-    JsVar *writeFunc = jspGetNamedField(dest, "write");
+    JsVar *readFunc = jspGetNamedField(source, "read", false);
+    JsVar *writeFunc = jspGetNamedField(dest, "write", false);
     if(jsvIsFunction(readFunc)) {
       if(jsvIsFunction(writeFunc)) {
         JsVarInt chunkSize = 64;

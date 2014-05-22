@@ -68,9 +68,17 @@ typedef enum  {
   EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
   EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
 
+  /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
+   * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
+   * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
+   * in something, and otherwise the console just clears the line. */
+  EXEC_CTRL_C = 512, // If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 1024, // If Ctrl-C was set and SysTick happens then this is set instead
+
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
+  EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
@@ -119,8 +127,14 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 
-/// Get the named function/variable on the object - whether it's built in, or predefined. Returns the function/variable itself - not a name
-JsVar *jspGetNamedField(JsVar *object, char* name);
+/** Get the named function/variable on the object - whether it's built in, or predefined.
+ * If !returnName, returns the function/variable itself or undefined, but
+ * if returnName, return a name (could be fake) referencing the parent.
+ *
+ * NOTE: ArrayBuffer/Strings are not handled here. We assume that if we're
+ * passing a char* rather than a JsVar it's because we're looking up via
+ * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
+JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
 
 /** Call the function named on the given object. For example you might call:
  *

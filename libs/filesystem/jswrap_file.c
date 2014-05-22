@@ -102,7 +102,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
         "generate" : "jswrap_E_openFile",
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
-                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write and 'a' for append. If not specified, the default is 'r'."] ],
+                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."] ],
         "return" : ["JsVar", "A File object"]
 }*/
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
@@ -123,6 +123,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
 
 #ifndef LINUX
       BYTE ff_mode = 0;
+      bool append = false;
 #endif
 
       if(strcmp(modeStr,"r") == 0) {
@@ -134,16 +135,23 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
         fMode = FM_WRITE;
 #ifndef LINUX
         ff_mode = FA_WRITE | FA_OPEN_EXISTING;
+        append = true;
 #endif
       } else if(strcmp(modeStr,"w") == 0) {
         fMode = FM_WRITE;
 #ifndef LINUX
         ff_mode = FA_WRITE | FA_CREATE_ALWAYS;
 #endif
+      } else if(strcmp(modeStr,"w+") == 0) {
+        fMode = FM_READ_WRITE;
+#ifndef LINUX
+        ff_mode = FA_WRITE | FA_OPEN_EXISTING;
+#endif
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
 #ifndef LINUX
         if ((res=f_open(&file.data.handle, pathStr, ff_mode)) == FR_OK) {
+          if (append) f_lseek(&file.data.handle, file.data.handle.fsize); // move to end of file
 #else
         file.data.handle = fopen(pathStr, modeStr);
         if (file.data.handle) {
@@ -323,9 +331,9 @@ void jswrap_file_skip(JsVar* parent, int length) {
   if (jsfsInit()) {
     JsFile file;
     if (fileGetFromVar(&file, parent)) {
-      if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
+      if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, f_tell(&file.data.handle) + length);
+        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(f_tell(&file.data.handle) + length));
   #else
         fseek(file.data.handle, length, SEEK_CUR);
   #endif
@@ -336,7 +344,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
   if (res) jsfsReportError("Unable to skip", res);
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "pipe",
+/*JSON{  "type" : "method", "class" : "File", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_pipe",
          "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
          "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
