@@ -52,6 +52,9 @@ typedef struct {
   const char *symbolChars;
 } PACKED_FLAGS JswSymList;
 
+/// Do a binary search of the symbol table list
+JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
+
 /** If 'name' is something that belongs to an internal function, execute it.  */
 JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
 

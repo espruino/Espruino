@@ -157,14 +157,18 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
     }
   }
 
-  if (!contains) { // search builtins
-    char str[32];
-    jsvGetString(propName, str, sizeof(str));
+  if (!contains && !jsvIsObject(parent)) {
+    /* search builtin symbol table, but not for Objects, as these
+     * are descended from Objects but do not themselves contain
+     * an Object's properties */
+    const JswSymList *symbols = jswGetSymbolListForObject(parent);
+    if (symbols) {
+      char str[32];
+      jsvGetString(propName, str, sizeof(str));
 
-    JsVar *foundVar = jswFindBuiltInFunction(parent, str);
-    if (foundVar) {
-      contains = true;
-      jsvUnLock(foundVar);
+      JsVar *v = jswBinarySearch(symbols, parent, str);
+      if (v) contains = true;
+      jsvUnLock(v);
     }
   }
 

@@ -8,6 +8,7 @@
             Fix String.indexOf when search string is bigger than the string being searched (fix #377)
             Add String.prototype.slice() (fix #376)
             Changed to more compact binary search symbol table (fix #278)
+            hasOwnProperty now doesn't check prototypes #24
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
