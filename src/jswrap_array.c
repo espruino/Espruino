@@ -61,6 +61,12 @@ JsVar *jswrap_array_constructor(JsVar *args) {
          "return" : ["JsVar", "A String representing the array"]
 }*/
 
+/*JSON{ "type":"property", "class": "Array", "name" : "length",
+         "description" : "Find the length of the array",
+         "generate" : "jswrap_object_length",
+         "return" : ["JsVar", "The value of the array"]
+}*/
+
 /*JSON{ "type":"method", "class": "Array", "name" : "indexOf",
          "description" : "Return the index of the value in the array, or -1",
          "generate" : "jswrap_array_indexOf",

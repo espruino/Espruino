@@ -1940,6 +1940,15 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
   }
 }
 
+/// Adds a new String element to the end of an array (IF it was not already there)
+void jsvArrayAddString(JsVar *arr, const char *text) {
+  JsVar *v = jsvNewFromString(text);
+  JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
+  if (!idx) jsvArrayPush(arr, v);
+  else jsvUnLock(idx);
+  jsvUnLock(v);
+}
+
 /// Join all elements of an array together into a string
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
   JsVar *str = jsvNewFromEmptyString();

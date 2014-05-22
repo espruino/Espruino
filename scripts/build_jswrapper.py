@@ -377,11 +377,10 @@ codeOut('')
 
 codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {') 
 for className in builtins:
-  if not className in ["parent","!parent","jsvIsFunction(parent)"] and not "constructorPtr" in className:
-    builtin = builtins[className]
+  builtin = builtins[className]
+  if not className in ["parent","!parent"] and not builtin["isProto"]:
     codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
-codeOut("  if (jsvIsFunction(parent)) return &jswSymbolTables["+builtins["jsvIsFunction(parent)"]["indexName"]+"];");
-codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
+codeOut("  return 0;")
 codeOut('}')
 
 codeOut('')
