@@ -659,14 +659,21 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
   }
 
   // If not found and is the prototype, create it
-  if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
-    // prototype is supposed to be an object
-    JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
-    // make sure it has a 'constructor' variable that points to the object it was part of
-    jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
-    child = jsvAddNamedChild(object, proto, JSPARSE_PROTOTYPE_VAR);
-    jspEnsureIsPrototype(object, child);
-    jsvUnLock(proto);
+  if (!child) {
+    if (jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+      // prototype is supposed to be an object
+      JsVar *proto = jsvNewWithFlags(JSV_OBJECT);
+      // make sure it has a 'constructor' variable that points to the object it was part of
+      jsvObjectSetChild(proto, JSPARSE_CONSTRUCTOR_VAR, object);
+      child = jsvAddNamedChild(object, proto, JSPARSE_PROTOTYPE_VAR);
+      jspEnsureIsPrototype(object, child);
+      jsvUnLock(proto);
+    } else if (strcmp(name, JSPARSE_INHERITS_VAR)==0) {
+      const char *objName = jswGetBasicObjectName(object);
+      if (objName) {
+        child = jspNewPrototype(objName);
+      }
+    }
   }
 
   return child;
@@ -2016,8 +2023,8 @@ JsVar *jspNewBuiltin(const char *instanceOf) {
   return objFunc;
 }
 
-
-NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
+/// Create a new Class of the given instance and return its prototype
+NO_INLINE JsVar *jspNewPrototype(const char *instanceOf) {
   JsVar *objFuncName = jsvFindChildFromString(execInfo.root, instanceOf, true);
   if (!objFuncName) // out of memory
     return 0;
@@ -2037,14 +2044,19 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   JsVar *prototypeName = jsvFindChildFromString(objFunc, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(objFunc, prototypeName); // make sure it's an object
   jsvUnLock(objFunc);
-  if (!prototypeName) { // out of memory
-    jsvUnLock(objFuncName);
-    return 0;
-  }
+  jsvUnLock(objFuncName);
+
+  return prototypeName;
+}
+
+/** Create a new object of the given instance and add it to root with name 'name'.
+ * If name!=0, added to root with name, and the name is returned
+ * If name==0, not added to root and Object itself returned */
+NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
+  JsVar *prototypeName = jspNewPrototype(instanceOf);
 
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   if (!obj) { // out of memory
-    jsvUnLock(objFuncName);
     jsvUnLock(prototypeName);
     return 0;
   }
@@ -2055,7 +2067,6 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
   // add __proto__
   jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
   jsvUnLock(prototypeName);prototypeName=0;
-  jsvUnLock(objFuncName);
 
   if (name) {
     JsVar *objName = jsvFindChildFromString(execInfo.root, name, true);
