@@ -390,18 +390,7 @@ JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild. Returns the UNLOCKED name argument
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-static inline JsVar *jsvFindChildFromStringRef(JsVarRef parentref, const char *name, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
-  JsVar *p = jsvLock(parentref);
-  JsVar *v = jsvFindChildFromString(p, name, addIfNotFound);
-  jsvUnLock(p);
-  return v;
-}
-static inline JsVar *jsvFindChildFromVarRef(JsVarRef parentref, JsVar *childName, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
-  JsVar *p = jsvLock(parentref);
-  JsVar *v = jsvFindChildFromVar(p, childName, addIfNotFound);
-  jsvUnLock(p);
-  return v;
-}
+
 /// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);

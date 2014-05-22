@@ -584,18 +584,19 @@ void jsiSoftKill() {
   if (watchArray) {
     // Check any existing watches and disable interrupts for them
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch);
-      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, watchArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
       jsvUnLock(watchPin);
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+      jsvUnLock(watchPtr);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
+    jsvUnRef(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
-
-    jsvUnRefRef(watchArray);
     watchArray=0;
   }
   // Save initialisation information
@@ -1627,7 +1628,7 @@ bool jsiLoop() {
   }
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
-    execInfo.execute = execInfo.execute & ~EXEC_CTRL_C_MASK;
+    execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
     jsiClearInputLine();
   }
 

@@ -294,12 +294,11 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
          "params" : [ [ "id", "JsVar", "The id returned by a previous call to setTimeout"] ]
 }*/
 void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
   if (jsvIsUndefined(idVar)) {
-    JsVar *timerArrayPtr = jsvLock(timerArray);
     jsvRemoveAllChildren(timerArrayPtr);
-    jsvUnLock(timerArrayPtr);
   } else {
-    JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVarRef(timerArray, idVar, false) : 0;
+    JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
     if (child) {
       JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveChild(timerArrayPtr, child);
@@ -309,6 +308,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
       jsError(isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
   }
+  jsvUnLock(timerArrayPtr);
 }
 void jswrap_interface_clearInterval(JsVar *idVar) {
   _jswrap_interface_clearTimeoutOrInterval(idVar, false);
@@ -327,8 +327,9 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
                       [ "time","float","The new time period in ms" ] ]
 }*/
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
   if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-  JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVarRef(timerArray, idVar, false) : 0;
+  JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
 
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
@@ -344,6 +345,7 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   } else {
     jsError("Unknown Interval");
   }
+  jsvUnLock(timerArrayPtr);
 }
 
 /*JSON{ "type":"function", "name" : "clearWatch",
@@ -352,27 +354,31 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
          "params" : [ [ "id", "JsVar", "The id returned by a previous call to setWatch"] ]
 }*/
 void jswrap_interface_clearWatch(JsVar *idVar) {
+
   if (jsvIsUndefined(idVar)) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    // unwatch all pins
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
-      JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      jshPinWatch(jshGetPinFromVar(pinVar), false); // 'unwatch' pin because we know that we're removing ALL watches
-      jsvUnLock(pinVar);
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, watchArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
+      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      jsvUnLock(watchPin);
+      jsvUnLock(watchPtr);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
     // remove all items
     jsvRemoveAllChildren(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
   } else {
-    JsVar *watchNamePtr = jsvFindChildFromVarRef(watchArray, idVar, false);
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVar *watchNamePtr = jsvFindChildFromVar(watchArrayPtr, idVar, false);
+    jsvUnLock(watchArrayPtr);
     if (watchNamePtr) { // child is a 'name'
-      JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      Pin pin = jshGetPinFromVar(pinVar);
-      jsvUnLock(pinVar);
+      JsVar *watchPtr = jsvSkipName(watchNamePtr);
+      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
+      jsvUnLock(watchPtr);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
