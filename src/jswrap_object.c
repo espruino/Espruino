@@ -104,11 +104,19 @@ JsVar *jswrap_object_clone(JsVar *parent) {
 
 /*JSON{ "type":"staticmethod", "class": "Object", "name" : "keys",
          "description" : "Return all enumerable keys of the given object",
-         "generate" : "jswrap_object_keys",
+         "generate_full" : "jswrap_object_keys_or_property_names(object, false)",
          "params" : [ [ "object", "JsVar", "The object to return keys for"] ],
          "return" : ["JsVar", "An array of strings - one for each key on the given object"]
 }*/
-JsVar *jswrap_object_keys(JsVar *obj) {
+/*JSON{ "type":"staticmethod", "class": "Object", "name" : "getOwnPropertyNames",
+         "description" : ["Returns an array of all properties (enumerable or not) found directly on a given object.", "**Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380"],
+         "generate_full" : "jswrap_object_keys_or_property_names(object, true)",
+         "params" : [ [ "object", "JsVar", "The Object to return a list of property names for"] ],
+         "return" : ["JsVar", "An array of the Object's own properties"]
+}*/
+
+// This is for Object.keys and Object.
+JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerable) {
   // strings are iterable, but we shouldn't try and show keys for them
   if (jsvIsIterable(obj) && !jsvIsString(obj)) {
     bool (*checkerFunction)(JsVar*) = 0;
@@ -122,7 +130,7 @@ JsVar *jswrap_object_keys(JsVar *obj) {
     while (jsvIteratorHasElement(&it)) {
       JsVar *key = jsvIteratorGetKey(&it);
       if (!(checkerFunction && checkerFunction(key))) {
-        JsVar *name = jsvAsString(key,false);
+        JsVar *name = jsvAsArrayIndexAndUnLock(jsvCopyNameOnly(key, false, false));
         if (name) {
           jsvArrayPushAndUnLock(arr, name);
         }
@@ -131,6 +139,24 @@ JsVar *jswrap_object_keys(JsVar *obj) {
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
+
+    /* Search our built-in symbol table
+       Assume that ALL builtins are non-enumerable. This isn't great but
+       seems to work quite well right now! */
+    if (includeNonEnumerable && !jsvIsObject(obj)) {
+      const JswSymList *symbols = jswGetSymbolListForObject(obj);
+      if (symbols) {
+        unsigned int i;
+        for (i=0;i<symbols->symbolCount;i++) {
+          JsVar *v = jsvNewFromString(&symbols->symbolChars[symbols->symbols[i].strOffset]);
+          JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
+          if (!idx) jsvArrayPush(arr, v);
+          jsvUnLock(idx);
+          jsvUnLock(v);
+        }
+      }
+    }
+
     return arr;
   } else {
     jsWarn("Object.keys called on non-object");
@@ -175,6 +201,7 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
   jsvUnLock(propName);
   return contains;
 }
+
 
 
 

@@ -48,7 +48,7 @@ typedef struct {
 /// Information for each list of built-in symbols
 typedef struct {
   const JswSymPtr *symbols;
-  int symbolCount;
+  unsigned char symbolCount;
   const char *symbolChars;
 } PACKED_FLAGS JswSymList;
 

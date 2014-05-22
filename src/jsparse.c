@@ -1723,14 +1723,20 @@ NO_INLINE JsVar *jspeStatementFor() {
       bool (*checkerFunction)(JsVar*) = 0;
       if (jsvIsFunction(array)) checkerFunction = jsvIsInternalFunctionKey;
       else if (jsvIsObject(array)) checkerFunction = jsvIsInternalObjectKey;
+      JsVar *foundPrototype = 0;
+
       JsvIterator it;
       jsvIteratorNew(&it, array);
       bool hasHadBreak = false;
       while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
           JsVar *loopIndexVar = jsvIteratorGetKey(&it);
           bool ignore = false;
-          if (checkerFunction && checkerFunction(loopIndexVar))
+          if (checkerFunction && checkerFunction(loopIndexVar)) {
             ignore = true;
+            if (jsvIsString(loopIndexVar) &&
+                jsvIsStringEqual(loopIndexVar, JSPARSE_INHERITS_VAR))
+              foundPrototype = jsvSkipName(loopIndexVar);
+          }
           if (!ignore) {
             JsVar *indexValue = jsvIsName(loopIndexVar) ?
                                   jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
@@ -1757,7 +1763,15 @@ NO_INLINE JsVar *jspeStatementFor() {
           } else
             jsvIteratorNext(&it);
           jsvUnLock(loopIndexVar);
+
+          if (!jsvIteratorHasElement(&it) && foundPrototype) {
+            jsvIteratorFree(&it);
+            jsvIteratorNew(&it, foundPrototype);
+            jsvUnLock(foundPrototype);
+            foundPrototype = 0;
+          }
       }
+      assert(!foundPrototype);
       jsvIteratorFree(&it);
     } else {
       jsErrorHere("FOR loop can only iterate over Arrays, Strings or Objects");
