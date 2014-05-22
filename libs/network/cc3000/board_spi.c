@@ -406,7 +406,8 @@ void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLengt
       networkState = NETWORKSTATE_CONNECTED;
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DISCONNECT) {
       //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DISCONNECT\n");
-      networkState = NETWORKSTATE_OFFLINE;
+      if (networkState != NETWORKSTATE_OFFLINE)
+        networkState = NETWORKSTATE_INVOLUNTARY_DISCONNECT;
       cc3000_state_change("disconnect");
     } else if (lEventType == HCI_EVNT_WLAN_UNSOL_DHCP) {
       //jsiConsolePrint("HCI_EVNT_WLAN_UNSOL_DHCP\n");

@@ -460,7 +460,7 @@ void jsiSoftInit() {
     if (echo) jsiConsolePrint("Running onInit()...\n");
     JsVar *func = jsvSkipName(onInit);
     if (jsvIsFunction(func))
-      jspExecuteFunction(func, 0, 0, (JsVar**)0);
+      jsvUnLock(jspExecuteFunction(func, 0, 0, (JsVar**)0));
     else if (jsvIsString(func))
       jsvUnLock(jspEvaluateVar(func, 0));
     else
@@ -1180,7 +1180,7 @@ void jsiExecuteEvents() {
     // now run..
     if (func) {
       if (jsvIsFunction(func))
-        jspExecuteFunction(func, 0, 2, args);
+        jsvUnLock(jspExecuteFunction(func, 0, 2, args));
       else if (jsvIsString(func))
         jsvUnLock(jspEvaluateVar(func, 0));
       else 
@@ -1214,7 +1214,7 @@ NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, J
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
        JsVar *parent = 0;
-       jspExecuteFunction(callbackNoNames, parent, 2, args);
+       jsvUnLock(jspExecuteFunction(callbackNoNames, parent, 2, args));
     } else if (jsvIsString(callbackNoNames))
       jsvUnLock(jspEvaluateVar(callbackNoNames, 0));
     else 
@@ -1554,6 +1554,7 @@ void jsiIdle() {
   if (interruptedDuringEvent) {
     jspSetInterrupted(false);
     interruptedDuringEvent = false;
+    jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted during event processing.\n");
   }
 
@@ -1620,7 +1621,13 @@ bool jsiLoop() {
   jsiIdle();
   
   if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted.\n");
     jspSetInterrupted(false);
+  }
+  // If Ctrl-C was pressed, clear the line
+  if (execInfo.execute & EXEC_CTRL_C_MASK) {
+    execInfo.execute = execInfo.execute & ~EXEC_CTRL_C_MASK;
     jsiClearInputLine();
   }
 

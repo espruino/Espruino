@@ -16,7 +16,7 @@
 #define JSWRAPPER_H
 
 #include "jsutils.h"
-#include "jsparse.h"
+#include "jsvar.h"
 
 typedef enum {
   JSWAT_FINISH = 0, // no argument
@@ -31,14 +31,38 @@ typedef enum {
   JSWAT__LAST = JSWAT_JSVARFLOAT,
   JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1,
 
-  JSWAT_THIS_ARG = 0x8000000
+  JSWAT_EXECUTE_IMMEDIATELY = 0x40000000,  // should this just be executed right away and the value returned? Used to encode constants in the symbol table
+  JSWAT_THIS_ARG    = 0x80000000, // whether a 'this' argument should be tacked onto the start
+  JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_EXECUTE_IMMEDIATELY | JSWAT_THIS_ARG)
 } JsnArgumentType;
-
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
+/// Structure for each symbol in the list of built-in symbols
+typedef struct {
+  unsigned short strOffset;
+  void (*functionPtr)(void);
+  unsigned int functionSpec; // JsnArgumentType
+} PACKED_FLAGS JswSymPtr;
+
+/// Information for each list of built-in symbols
+typedef struct {
+  const JswSymPtr *symbols;
+  unsigned char symbolCount;
+  const char *symbolChars;
+} PACKED_FLAGS JswSymList;
+
+/// Do a binary search of the symbol table list
+JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
+
 /** If 'name' is something that belongs to an internal function, execute it.  */
 JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
+
+/// Given an object, return the list of symbols for it
+const JswSymList *jswGetSymbolListForObject(JsVar *parent);
+
+/// Given an object, return the list of symbols for its prototype
+const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent);
 
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);

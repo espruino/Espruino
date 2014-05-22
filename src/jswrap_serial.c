@@ -60,7 +60,8 @@
 }*/
 
 /*JSON{ "type":"method", "class": "Serial", "name" : "setup",
-         "description" : "Setup this Serial port with the given baud rate and options",
+         "description" : ["Setup this Serial port with the given baud rate and options.",
+                          "If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)"],
          "generate" : "jswrap_serial_setup",
          "params" : [ [ "baudrate", "JsVar", "The baud rate - the default is 9600"],
                       [ "options", "JsVar", ["An optional structure containing extra information on initialising the serial port.",

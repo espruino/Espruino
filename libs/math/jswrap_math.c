@@ -103,7 +103,7 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
          "params" : [ [ "x", "float", "The value to get the arc tangent  of"] ],
          "return" : ["float", "The arc tangent of x, between -PI/2 and PI/2"]
 }*/
-/*JSON{ "type":"staticmethod",
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Math", "name" : "atan2",
          "generate" : "atan2",
          "params" : [ [ "y", "float", "The Y-part of the angle to get the arc tangent of"],
@@ -146,6 +146,24 @@ double jswrap_math_mod(double x, double y) {
 
 double jswrap_math_pow(double x, double y) {
   double p;
+  /* quick hack for raising to a small integer power.
+   * exp/log aren't accurate and are relatively slow, so
+   * it's probably better to bash through small integer
+   * powers in a stupid way. */
+  int yi = (int)y;
+  if (yi>=0 && yi<10 && yi==y) {
+    if (yi==0) return 1.0;
+    p = x;
+    while (yi>1) {
+      p *= x;
+      yi--;
+    }
+    return p;
+  }
+
+  /* do proper floating point pow. Not as accurate as a
+   * proper pow implementation but this saves a *lot*
+   * of flash */
   if (x < 0 && jswrap_math_mod(y, 1) == 0) {
     if (jswrap_math_mod(y, 2) == 0) {
       p = exp(log(-x) * y);

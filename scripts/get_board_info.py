@@ -25,6 +25,7 @@ basedir = scriptdir+"/../"
 sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
 
+import common;
 import pinutils;
 
 # -----------------------------------------------------------------------------------------

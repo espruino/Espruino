@@ -229,7 +229,7 @@ void httpKill(JsNetwork *net) {
 
 
 
-bool _http_send(JsNetwork *net, int sckt, JsVar **sendData) {
+bool _http_send(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
   char buf[64];
 
   int a=1;
@@ -239,8 +239,13 @@ bool _http_send(JsNetwork *net, int sckt, JsVar **sendData) {
     // Now cut what we managed to send off the beginning of sendData
     if (a>0) {
       JsVar *newSendData = 0;
-      if (a!=(int)jsvGetStringLength(*sendData))
+      if (a < (int)jsvGetStringLength(*sendData)) {
+        // we didn't send all of it... cut out what we did send
         newSendData = jsvNewFromStringVar(*sendData, (size_t)a, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      } else {
+        // we sent all of it! Issue a drain event
+        jsiQueueObjectCallbacks(connection, "#ondrain", &connection, 1);
+      }
       jsvUnLock(*sendData);
       *sendData = newSendData;
     }
@@ -282,17 +287,15 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
           JsVar *oldReceiveData = receiveData;
           if (!receiveData) receiveData = jsvNewFromEmptyString();
           if (receiveData) {
-            jsvAppendStringBuf(receiveData, buf, num);
+            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
             if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
               hadHeaders = true;
               jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
-              JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
               JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
-              JsVar *args[2] = { connection, resVar };
+              JsVar *args[2] = { connection, connectReponse };
               jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, 2);
               jsvUnLock(server);
-              jsvUnLock(resVar);
             }
             if (hadHeaders && !jsvIsEmptyString(receiveData) && jsiObjectHasCallbacks(connection, HTTP_NAME_ON_DATA)) {
               // Execute 'data' callback with the data that we have
@@ -312,7 +315,7 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
       // send data if possible
       JsVar *sendData = jsvObjectGetChild(connectReponse,HTTP_NAME_SEND_DATA,0);
       if (sendData) {
-          if (!_http_send(net, sckt, &sendData))
+          if (!_http_send(net, connectReponse, sckt, &sendData))
             closeConnectionNow = true;
         jsvObjectSetChild(connectReponse, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
       }
@@ -330,9 +333,7 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
       }
       jsvUnLock(receiveData);
       // fire the close listener
-      JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
-      jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
-      jsvUnLock(resVar);
+      jsiQueueObjectCallbacks(connectReponse, HTTP_NAME_ON_CLOSE, &connectReponse, 1);
 
       _httpConnectionKill(net, connection);
       JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
@@ -384,7 +385,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
       JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
       // send data if possible
       if (sendData) {
-        bool b = _http_send(net, sckt, &sendData);
+        bool b = _http_send(net, connection, sckt, &sendData);
         if (!b)
           closeConnectionNow = true;
         jsvObjectSetChild(connection, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
@@ -402,7 +403,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
             jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
           }
           if (receiveData) { // could be out of memory
-            jsvAppendStringBuf(receiveData, buf, num);
+            jsvAppendStringBuf(receiveData, buf, (size_t)num);
             if (!hadHeaders) {
               JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
               if (httpParseHeaders(&receiveData, resVar, false)) {
@@ -557,28 +558,28 @@ JsVar *httpClientRequestNew(JsVar *options, JsVar *callback) {
 
 void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
   // Append data to sendData
-  JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, false);
+  JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
-    JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
+    JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
     if (options) {
       sendData = jsvNewFromString("");
-      JsVar *method = jsvObjectGetChild(options, "method", false);
-      JsVar *path = jsvObjectGetChild(options, "path", false);
+      JsVar *method = jsvObjectGetChild(options, "method", 0);
+      JsVar *path = jsvObjectGetChild(options, "path", 0);
       jsvAppendPrintf(sendData, "%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
       jsvUnLock(method);
       jsvUnLock(path);
-      JsVar *headers = jsvObjectGetChild(options, "headers", false);
+      JsVar *headers = jsvObjectGetChild(options, "headers", 0);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
-        JsVar *hostHeader = jsvObjectGetChild(headers, "Host", false);
+        JsVar *hostHeader = jsvObjectGetChild(headers, "Host", 0);
         hasHostHeader = hostHeader!=0;
         jsvUnLock(hostHeader);
         httpAppendHeaders(sendData, headers);
       }
       jsvUnLock(headers);
       if (!hasHostHeader) {
-        JsVar *host = jsvObjectGetChild(options, "host", false);
-        JsVarInt port = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
+        JsVar *host = jsvObjectGetChild(options, "host", 0);
+        int port = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
         if (port>0 && port!=80)
           jsvAppendPrintf(sendData, "Host: %v:%d\r\n", host, port);
         else
@@ -605,11 +606,11 @@ void httpClientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
   httpClientRequestWrite(httpClientReqVar, 0); // force sendData to be made
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
-  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", false));
+  unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
   if (port==0) port=80;
 
   char hostName[128];
-  JsVar *hostNameVar = jsvObjectGetChild(options, "host", false);
+  JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
   jsvGetString(hostNameVar, hostName, sizeof(hostName));
   jsvUnLock(hostNameVar);
 
@@ -672,8 +673,8 @@ void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data) {
       jsvUnLock(sendHeaders);
       // finally add ending newline
       jsvAppendString(sendData, "\r\n");
-    } else {
-      // we have already sent headers
+    } else if (!jsvIsUndefined(data)) {
+      // we have already sent headers, but want to send more
       sendData = jsvNewFromEmptyString();
     }
     jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
@@ -687,7 +688,7 @@ void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data) {
 }
 
 void httpServerResponseEnd(JsVar *httpServerResponseVar) {
-  httpServerResponseData(httpServerResponseVar, 0); // force onnection->sendData to be created even if data not called
+  httpServerResponseData(httpServerResponseVar, 0); // force connection->sendData to be created even if data not called
   jsvUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CLOSE, jsvNewFromBool(true)));
 }
 

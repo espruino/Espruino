@@ -133,7 +133,7 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
 #ifdef LINUX
     raise(SIGINT);
 #endif
-    jspSetInterrupted(true);
+    execInfo.execute |= EXEC_CTRL_C;
     return;
   }
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF) 

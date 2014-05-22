@@ -89,7 +89,13 @@
 /   1    - ASCII (Valid for only non-LFN cfg.) */
 
 
-#define	_USE_LFN	2		/* 0 to 3 */
+#ifdef SAVE_ON_FLASH
+// sadly, codepages use up a bunch of memory
+#define	_USE_LFN	0		/* 0 to 3 */
+#else
+#define _USE_LFN    2       /* 0 to 3 */
+#endif
+
 #define	_MAX_LFN	63		/* Maximum LFN length to handle (12 to 255) */
 /* The _USE_LFN option switches the LFN feature.
 /

@@ -661,6 +661,12 @@ void jshKickUSBWatchdog() {
 
 
 void jshDoSysTick() {
+  /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
+  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
+  if (execInfo.execute & EXEC_CTRL_C)
+    execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
+
 #ifdef USE_RTC
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
@@ -1266,11 +1272,11 @@ static JsSysTime jshGetTimeForSecond() {
 }
 
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-  return (JsSysTime)((ms*jshGetTimeForSecond())/1000);
+  return (JsSysTime)((ms*(JsVarFloat)jshGetTimeForSecond())/1000);
 }
 
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-  return ((JsVarFloat)time)*1000/jshGetTimeForSecond();
+  return ((JsVarFloat)time)*1000/(JsVarFloat)jshGetTimeForSecond();
 }
 
 #ifdef USE_RTC
@@ -2487,9 +2493,8 @@ void jshUtilTimerDisable() {
 
 static NO_INLINE void jshUtilTimerGetPrescale(JsSysTime period, unsigned int *prescale, unsigned int *ticks) {
   unsigned int timerFreq = jshGetTimerFreq(UTIL_TIMER);
-
+  if (period<0) period=0;
   unsigned long long clockTicksL = (timerFreq * (unsigned long long)period) / (unsigned long long)jshGetTimeForSecond();
-  if (clockTicksL<0) clockTicksL=0;
   if (clockTicksL>0xFFFFFFFF) clockTicksL=0xFFFFFFFF;
   unsigned int clockTicks = (unsigned int)clockTicksL;
   *prescale = ((unsigned int)clockTicks >> 16); // ensure that maxTime isn't greater than the timer can count to

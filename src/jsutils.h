@@ -34,7 +34,7 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v63"
+#define JS_VERSION "1v64"
 /*
   In code:
   TODO - should be fixed
@@ -135,6 +135,7 @@ typedef long long JsSysTime;
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
+
 #define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
 
 #if !defined(NO_ASSERT)

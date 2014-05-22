@@ -30,6 +30,10 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName);
 
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *name);
+
+/// Create a new Class of the given instance and return its prototype
+NO_INLINE JsVar *jspNewPrototype(const char *instanceOf);
+
 /** Create a new object of the given instance and add it to root with name 'name'.
  * If name!=0, added to root with name, and the name is returned
  * If name==0, not added to root and Object itself returned */
@@ -44,13 +48,19 @@ bool jspHasError();
 
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
 JsVar *jspEvaluate(const char *str);
-bool jspExecuteFunction(JsVar *func, JsVar *parent, int argCount, JsVar **argPtr);
+JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents);
 
 /// Execute the Object.toString function on an object (if we can find it)
 JsVar *jspObjectToString(JsVar *obj);
+
+/** Get the owner of the current prototype. We assume that it's
+ * the first item in the array, because that's what we will
+ * have added when we created it. It's safe to call this on
+ * non-prototypes and non-objects.  */
+JsVar *jspGetPrototypeOwner(JsVar *proto);
 
 /** When parsing, this enum defines whether
  we are executing or not */
@@ -68,9 +78,17 @@ typedef enum  {
   EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
   EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
 
+  /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
+   * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
+   * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
+   * in something, and otherwise the console just clears the line. */
+  EXEC_CTRL_C = 512, // If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 1024, // If Ctrl-C was set and SysTick happens then this is set instead
+
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
+  EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
@@ -108,12 +126,30 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
- * function is executed (it's usually the parent object)
+ * function is executed (it's usually the parent object).
+ *
+ * NOTE: this does not set the execInfo flags - so if execInfo==EXEC_NO, it won't execute
  *
  * If !isParsing and arg0!=0, argument 0 is set to what is supplied (same with arg1)
  *
  * functionName is used only for error reporting - and can be 0
  */
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
+
+
+/** Get the named function/variable on the object - whether it's built in, or predefined.
+ * If !returnName, returns the function/variable itself or undefined, but
+ * if returnName, return a name (could be fake) referencing the parent.
+ *
+ * NOTE: ArrayBuffer/Strings are not handled here. We assume that if we're
+ * passing a char* rather than a JsVar it's because we're looking up via
+ * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
+JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
+
+/** Call the function named on the given object. For example you might call:
+ *
+ *  JsVar *str = jspCallNamedFunction(var, "toString", 0, 0);
+ */
+JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr);
 
 #endif /* JSPARSE_H_ */

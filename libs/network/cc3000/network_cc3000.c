@@ -40,6 +40,15 @@ void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, unsigned long* ou
 /// Called on idle. Do any checks required for this device
 void net_cc3000_idle(JsNetwork *net) {
   cc3000_spi_check();
+
+  if (networkState == NETWORKSTATE_INVOLUNTARY_DISCONNECT) {
+    JsVar *wlanObj = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
+    if (wlanObj) {
+      jswrap_wlan_reconnect(wlanObj);
+      jsvUnLock(wlanObj);
+      cc3000_spi_check();
+    }
+  }
 }
 
 /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.

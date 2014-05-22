@@ -27,49 +27,6 @@ def codeOut(s):
 #  print str(s)
   wrapperFile.write(s+"\n");
 
-def treewalk(tree, name, jsondata):
-  if len(name)==0:
-    tree[""] = jsondata
-  else:	
-    firstchar = name[:1]
-    if not firstchar in tree: tree[firstchar] = {}
-    treewalk(tree[firstchar], name[1:], jsondata)
-
-# ------------------------------------------------------------------------------------------------------
-# Creates something like 'name[0]=='s' && name[1]=='e' && name[2]=='t' && name[3]==0'
-def createStringCompare(varName, checkOffsets, checkCharacters):
-  checks = []
-  # if we're doing multiple checks, batch up into int compare
-  # NOTE: batching up into 64 bit compare doesn't help here
-  # 4 byte check
-  while len(checkOffsets)>3:    
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP4("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")
-  # 3 byte check
-  while len(checkOffsets)>2:    
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP3("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")  
-  # 2 byte check
-  while len(checkOffsets)>1:
-    checkOffset = checkOffsets.pop(0)
-    checkOffsets.pop(0)
-    checkWC = [checkCharacters.pop(0),checkCharacters.pop(0)]
-    checks.append("CMP2("+varName+"["+str(checkOffset)+"],'"+("','".join(checkWC))+"')")
-  # finish up with single checks
-  while len(checkOffsets)>0:
-    checkOffset = checkOffsets.pop(0)
-    checkCharacter = checkCharacters.pop(0)
-    # This check is a hack for when class names are exactly the same length as the data field in varData (8 chars)
-    if not "varData" in varName or checkOffset < 8: 
-      checks.append(varName+"["+str(checkOffset)+"]=='"+checkCharacter+"'")
-  return " && ".join(checks)
 # ------------------------------------------------------------------------------------------------------
 
 def getConstructorTestFor(className, variableName):
@@ -98,34 +55,6 @@ def getTestFor(className, static):
     if className=="ArrayBufferView": return "jsvIsArrayBuffer(parent) && parent->varData.arraybuffer.type!=ARRAYBUFFERVIEW_ARRAYBUFFER"
     if className=="Function": return "jsvIsFunction(parent)"
     return getConstructorTestFor(className, "constructorPtr");
-
-def getUnLockGetter(varType, name, funcName):
-  if varType=="float": return "jsvGetFloatAndUnLock("+name+")"
-  if varType=="int": return "jsvGetIntegerAndUnLock("+name+")"
-  if varType=="int32": return "(int)jsvGetIntegerAndUnLock("+name+")"
-  if varType=="bool": return "jsvGetBoolAndUnLock("+name+")"
-  if varType=="pin": return "jshGetPinFromVarAndUnLock("+name+")"
-  sys.stderr.write("ERROR: getUnLockGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
-  exit(1)
-
-def getGetter(varType, name, funcName):
-  if varType=="float": return "jsvGetFloat("+name+")"
-  if varType=="int": return "jsvGetInteger("+name+")"
-  if varType=="int32": return "(int)jsvGetInteger("+name+")"
-  if varType=="bool": return "jsvGetBool("+name+")"
-  if varType=="pin": return "jshGetPinFromVar("+name+")"
-  if varType=="JsVar": return name
-  sys.stderr.write("ERROR: getGetter: Unknown type '"+varType+"' for "+funcName+":"+name+"\n")
-  exit(1)
-
-def getCreator(varType, value, funcName):
-  if varType=="float": return "jsvNewFromFloat("+value+")"
-  if varType=="int": return "jsvNewFromInteger("+value+")"
-  if varType=="int32": return "jsvNewFromInteger((JsVarInt)"+value+")"
-  if varType=="bool": return "jsvNewFromBool("+value+")"
-  if varType=="JsVar": return value
-  sys.stderr.write("ERROR: getCreator: Unknown type '"+varType+"'"+"' for "+funcName+"\n")
-  exit(1)
 
 def toArgumentType(argName):
   if argName=="": return "JSWAT_VOID";
@@ -166,12 +95,18 @@ def getResult(func):
   if "return" in func: result = func["return"]  
   return result
 
-
 def getArgumentSpecifier(jsondata):
   params = getParams(jsondata)
   result = getResult(jsondata);
   s = [ toArgumentType(result[0]) ]
   if hasThis(jsondata): s.append("JSWAT_THIS_ARG");
+  # Either it's a variable/property, in which case we need to execute the native function in order to return the correct info
+  if jsondata["type"]=="variable" or common.is_property(jsondata): 
+    s.append("JSWAT_EXECUTE_IMMEDIATELY")
+  # Or it's an object, in which case the native function contains code that creates it - and that must be executed too. 
+  # It also returns JsVar
+  if jsondata["type"]=="object":
+    s = [ toArgumentType("JsVar"), "JSWAT_EXECUTE_IMMEDIATELY" ]
 
   n = 1
   for param in params:
@@ -189,80 +124,28 @@ def getCDeclaration(jsondata, name):
     s.append(toCType(param[1]));
   return toCType(result[0])+" "+name+"("+",".join(s)+")";
 
-def codeOutFunctionObject(indent, obj):
-  codeOut(indent+"// Object "+obj["name"]+"  ("+obj["filename"]+")")
-  if "#if" in obj: codeOut(indent+"#if "+obj["#if"]);
-  codeOut(indent+"return jspNewObject(\""+obj["name"]+"\", \""+obj["instanceof"]+"\");");
-  if "#if" in obj: codeOut(indent+"#endif //"+obj["#if"]);
+def codeOutSymbolTable(builtin):
+  codeName = builtin["name"]
+  # sort by name
+  builtin["functions"] = sorted(builtin["functions"], key=lambda n: n["name"]);
+  # output tables
+  listSymbols = []
+  listChars = ""
+  strLen = 0
+  for sym in builtin["functions"]:
+    symName = sym["name"];
+    if "generate" in sym:
+      listSymbols.append("{"+", ".join([str(strLen), "(void (*)(void))"+sym["generate"], getArgumentSpecifier(sym)])+"}")
+      listChars = listChars + symName + "\\0";
+      strLen = strLen + len(symName) + 1
+    else: 
+      print (codeName + "." + symName+" not included in Symbol Table because no 'generate'")
+  builtin["symbolTableChars"] = "\""+listChars+"\"";
+  builtin["symbolTableCount"] = str(len(listSymbols));
+  codeOut("static const JswSymPtr jswSymbols_"+codeName+"[] = {\n  "+",\n  ".join(listSymbols)+"\n};");
 
-def codeOutFunction(indent, func):
-  if func["type"]=="object":
-    codeOutFunctionObject(indent, func)
-    return
-  name = ""
-  if "class" in func:
-    name = name + func["class"]+".";
-  name = name + func["name"]
-#  print name
-  codeOut(indent+"// "+name+"  ("+func["filename"]+")")
-  codeOut(indent+"// "+getCDeclaration(func, name));
-  
-  if ("generate" in func):
-    gen_name = func["generate"]
-    if re.match('^[\w_]+$', gen_name) is None:
-      sys.stderr.write("ERROR: generate for '"+func["name"]+"' is not simple function name: '"+gen_name+"'\n")
-      exit(1)
-  else:
-    sys.stderr.write("ERROR: codeOutFunction: Function '"+func["name"]+"' does not have generate, generate_full or wrap elements'\n")
-    exit(1)
-
-  if func["type"]=="variable" or common.is_property(func):     
-    if hasThis(func):
-      gen_name = gen_name+"(parent)"
-    else:
-      gen_name = gen_name+"()";
-
-    codeOut(indent+"return "+getCreator(func["return"][0], gen_name, func["name"])+";")
-  else:
-    codeOut(indent+"return jsvNewNativeFunction((void (*)(void))"+gen_name+", "+getArgumentSpecifier(func)+");")
-
-
-
-def codeOutTree(indent, tree, offset):
-  first = True
-  for char in tree:
-    if char!="":
-      charOffset = offset
-      charTree = tree[char]
-      line = indent
-      if first: first = False
-      else: line = line + "} else "
-      checkOffsets = [charOffset]
-      checkCharacters = [char]
-      while len(charTree)==1:
-        charOffset = charOffset + 1
-        char = charTree.keys()[0]
-        charTree = charTree[char]        
-        checkOffsets.append(charOffset)
-        if char=='': checkCharacters.append('\\0')
-        else: checkCharacters.append(char)
-      line = line + "if (" + createStringCompare("name", checkOffsets, checkCharacters) + ") {"
-      codeOut(line)   
-      if char=='':
-        codeOutFunction(indent+"  ", charTree)
-      else:
-        codeOutTree(indent+"  ", charTree, charOffset+1)
-      # Now we do the handling part!
-  if "" in tree:
-    func = tree[""]
-    line = indent;
-    if first: first = False
-    if not first: line = line + "} else "
-    line = line + "if (name["+str(offset)+"]==0) {";
-    codeOut(line)
-    codeOutFunction(indent+"  ", func)
-  if not first:
-    codeOut(indent+'}')
+def codeOutBuiltins(indent, builtin):
+  codeOut(indent+"jswBinarySearch(&jswSymbolTables["+builtin["indexName"]+"], parent, name);");
 
 # ------------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------------
@@ -305,19 +188,10 @@ codeOut('// Automatically generated wrapper file ')
 codeOut('// Generated by scripts/build_jswrapper.py');
 codeOut('');
 codeOut('#include "jswrapper.h"');
+codeOut('#include "jsnative.h"');
 for include in includes:
   codeOut('#include "'+include+'"');
 codeOut('');
-
-codeOut("#if( 'q\\0\\0\\0' & 'q' )")
-codeOut('  #error( "architecture is big-endian. need to test and make sure this still works" )')
-codeOut("#endif")
-codeOut('// beware big endian!');
-codeOut('#define CH2(a,b) ( ((b)<<8) | (a) )');
-codeOut('#define CH4(a,b,c,d) ( ((d)<<24) | ((c)<<16) | ((b)<<8) | (a) )');
-codeOut('#define CMP2(var, a,b) ((*(unsigned short*)&(var))==CH2(a,b))');
-codeOut('#define CMP3(var, a,b,c) (((*(unsigned int*)&(var))&0x00FFFFFF)==CH4(a,b,c,0))');
-codeOut('#define CMP4(var, a,b,c,d) ((*(unsigned int*)&(var))==CH4(a,b,c,d))');
 codeOut('');
 
 codeOut('// -----------------------------------------------------------------------------------------');
@@ -326,19 +200,24 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 
 for jsondata in jsondatas:
-  if ("generate_full" in jsondata):
-  
+  if ("generate_full" in jsondata) or (jsondata["type"]=="object"):
     gen_name = "gen_jswrap"
     if "class" in jsondata: gen_name = gen_name + "_" + jsondata["class"];
     gen_name = gen_name + "_" + jsondata["name"];
 
     jsondata["generate"] = gen_name
-    params = getParams(jsondata)
-    result = getResult(jsondata);
     s = [ ]
-    if hasThis(jsondata): s.append("JsVar *parent");
-    for param in params:
-      s.append(toCType(param[1])+" "+param[0]);
+
+    if jsondata["type"]=="object":
+      jsondata["generate_full"] = "jspNewObject(\""+jsondata["name"]+"\", \""+jsondata["instanceof"]+"\") /* needs JSWAT_EXECUTE_IMMEDIATELY */";
+      params = []
+      result = ["JsVar"]
+    else:
+      params = getParams(jsondata)
+      result = getResult(jsondata);
+      if hasThis(jsondata): s.append("JsVar *parent");
+      for param in params:
+        s.append(toCType(param[1])+" "+param[0]);
      
     codeOut("static "+toCType(result[0])+" "+jsondata["generate"]+"("+", ".join(s)+") {");
     if result[0]:
@@ -352,55 +231,128 @@ codeOut('// --------------------------------------------------------------------
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('');
+
+codeOut("""
+JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
+  int searchMin = 0;
+  int searchMax = symbolsPtr->symbolCount-1;
+  while (searchMin <= searchMax) {
+    int idx = (searchMin+searchMax) >> 1;
+    const JswSymPtr *sym = &symbolsPtr->symbols[idx];
+    int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
+    if (cmp==0) {
+      if (sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY)
+        return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
+      return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
+    } else {
+      if (cmp<0) {
+        // searchMin is the same
+        searchMax = idx-1;
+      } else { 
+        searchMin = idx+1;
+        // searchMax is the same      
+      }
+    }
+  }
+  return 0;
+}
+""");
+
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('// -----------------------------------------------------------------------------------------');
+codeOut('');
 codeOut('');
 
-print "Building decision tree"
-tree = {}
+print "Classifying Functions"
+builtins = {}
 for jsondata in jsondatas:
   if "name" in jsondata:
     jsondata["static"] = not (jsondata["type"]=="property" or jsondata["type"]=="method")
 
-    className = "!parent"
+    testCode = "!parent"
+    builtinName = "global"
+    className = "global"
+    isProto = False
     if not jsondata["type"]=="constructor":
-      if "class" in jsondata: className = getTestFor(jsondata["class"], jsondata["static"])
+      if "class" in jsondata: 
+        testCode = getTestFor(jsondata["class"], jsondata["static"])        
+        className = jsondata["class"]
+        builtinName = className
+        if not jsondata["static"]: 
+          isProto = True
+          builtinName = builtinName+"_proto";
+
+    if not testCode in builtins: 
+      print "Adding "+testCode+" to builtins"
+      builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
+    builtins[testCode]["functions"].append(jsondata);
 
 
-    if not className in tree: 
-      print "Adding "+className+" to tree"
-      tree[className] = {}
-    treewalk(tree[className], jsondata["name"], jsondata)
-    classTree = tree[className]
+print "Outputting Symbol Tables"
+idx = 0
+for b in builtins:
+  builtin = builtins[b]
+  codeOutSymbolTable(builtin);
+  builtins[b]["indexName"] = "jswSymbolIndex_"+builtin["name"];
+  codeOut("static const unsigned char "+builtin["indexName"]+" = "+str(idx)+";");
+  idx = idx + 1
+codeOut('');
+codeOut('');
 
+codeOut('const JswSymList jswSymbolTables[] = {');
+for b in builtins:
+  builtin = builtins[b]
+  codeOut("  {"+", ".join(["jswSymbols_"+builtin["name"], builtin["symbolTableCount"], builtin["symbolTableChars"]])+"},");
+codeOut('};');
 
-print "Outputting decision tree"
-print ""
-print "" 
+codeOut('');
+codeOut('');
+
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  if (parent) {')
+
 codeOut('    // ------------------------------------------ METHODS ON OBJECT')
-if "parent" in tree:
-  codeOutTree("    ", tree["parent"], 0)
+if "parent" in builtins:
+  codeOutBuiltins("    JsVar *v = ", builtins["parent"])
+  codeOut('    if (v) return v;');
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
-for className in tree:
-  if className!="parent" and  className!="!parent" and not "constructorPtr" in className:
-    codeOut('    if ('+className+') {')
-    codeOutTree("      ", tree[className], 0)
+nativeCheck = "jsvIsNativeFunction(parent) && "
+codeOut('    if (jsvIsNativeFunction(parent)) {')
+for className in builtins:
+  if className.startswith(nativeCheck):
+    codeOut('      if ('+className[len(nativeCheck):]+') {')
+    codeOutBuiltins("        v = ", builtins[className])
+    codeOut('      if (v) return v;');
     codeOut("    }")
+codeOut('    }')
+for className in builtins:
+  if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
+    codeOut('    if ('+className+') {')
+    codeOutBuiltins("      v = ", builtins[className])
+    codeOut('      if (v) return v;');
+    codeOut("    }")
+
+
+
+
 codeOut('    // ------------------------------------------ INSTANCE METHODS WE MUST CHECK CONSTRUCTOR FOR')
-codeOut('    JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_INHERITS_VAR, false)):0;')
+codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('    jsvUnLock(proto);')
 codeOut('    if (constructor && jsvIsNativeFunction(constructor)) {')
 codeOut('      void *constructorPtr = constructor->varData.native.ptr;')
 codeOut('      jsvUnLock(constructor);')
 first = True
-for className in tree:
+for className in builtins:
   if "constructorPtr" in className:
     if first:
       codeOut('    if ('+className+') {')
       first = False
     else:
       codeOut('    } else if ('+className+') {')
-    codeOutTree("          ", tree[className], 0)
+    codeOutBuiltins("          return ", builtins[className])
 if not first:
   codeOut("    }")
 codeOut('    } else {')
@@ -413,8 +365,8 @@ codeOut('    Pin pin = jshGetPinFromString(name);')
 codeOut('    if (pin != PIN_UNDEFINED) {')
 codeOut('      return jsvNewFromPin(pin);')
 codeOut('    }')
-if "!parent" in tree:
-  codeOutTree("    ", tree["!parent"], 0)
+if "!parent" in builtins:
+  codeOutBuiltins("    return ", builtins["!parent"])
 codeOut('  }');
 
 codeOut('  return 0;')
@@ -423,6 +375,44 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
+codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *parent) {') 
+for className in builtins:
+  if not className in ["parent","!parent","jsvIsFunction(parent)"] and not "constructorPtr" in className:
+    builtin = builtins[className]
+    codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut("  if (jsvIsFunction(parent)) return &jswSymbolTables["+builtins["jsvIsFunction(parent)"]["indexName"]+"];");
+codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
+codeOut('}')
+
+codeOut('')
+codeOut('')
+
+codeOut('const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent) {')
+codeOut('  if (jsvIsNativeFunction(parent)) {')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and not "constructorPtr" in className and not className in ["parent","!parent"] :
+    check = className
+    for jsondata in jsondatas:
+      if jsondata["type"]=="constructor" and jsondata["name"]==builtin["className"]:
+        check = "(void*)parent->varData.native.ptr==(void*)"+jsondata["generate"]
+
+    codeOut("    if ("+check+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  }')
+codeOut('  JsVar *constructor = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
+codeOut('  if (constructor && jsvIsNativeFunction(constructor)) {')
+codeOut('    void *constructorPtr = constructor->varData.native.ptr;')
+codeOut('   jsvUnLock(constructor);')
+for className in builtins:
+  builtin = builtins[className]
+  if builtin["isProto"] and "constructorPtr" in className:
+    codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+codeOut('  }')
+codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
+codeOut('}')
+
+codeOut('')
+codeOut('')
 
 builtinLibraryChecks = []
 for jsondata in jsondatas:
@@ -520,5 +510,6 @@ codeOut('}')
 
 codeOut('')
 codeOut('')
+
 
 

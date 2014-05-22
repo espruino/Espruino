@@ -43,7 +43,7 @@ do
     BOARDNAMEX=ESPRUINOBOARD_R1_1
   fi
   # actually build
-  BINARY_NAME=`python scripts/get_binary_name.py $BOARDNAMEX`
+  BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
   rm $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo 'Build failed' ; exit 1; }

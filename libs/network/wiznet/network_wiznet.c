@@ -79,7 +79,7 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
 
     //mgg1010 - added random source port - seems to solve problem of repeated GET failing
     
-    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (rand() & 32767) + 2000, 0); // we set nonblocking later
+    sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (uint16_t)((rand() & 32767) + 2000), 0); // we set nonblocking later
      
     if (sckt<0) return sckt; // error
 
@@ -143,6 +143,13 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
 
     return ((int)sckt) | WIZNET_SERVER_CLIENT; // we deal with the client on the same socket (we use the flag so we know that it really is different!)
   }
+
+  // WIZnet can get confused (somehow!) when handling repeated requests from the HTTP server
+  if (status == SOCK_CLOSED || status == SOCK_CLOSE_WAIT) {
+    // make sure we force-close again and re-init as a listener
+    net_wiznet_closesocket(net, (uint16_t)(sckt | WIZNET_SERVER_CLIENT));
+  }
+
   return -1;
 }
 
@@ -150,7 +157,11 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
 int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
   NOT_USED(net);
   int num = 0;
-  if (getSn_SR(sckt)!=SOCK_LISTEN) {
+  if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
+    // socket is operating as a TCP server - something has gone wrong.
+    // just return -1 to close this connection immediately
+    return -1;
+  } else {
     // receive data - if none available it'll just return SOCK_BUSY
     num = (int)recv((uint8_t)sckt,buf,(uint16_t)len,0);
     if (num==SOCK_BUSY) num=0;

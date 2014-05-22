@@ -1,3 +1,18 @@
+     1v64 : Fix 'a=[2,3,4];delete a[1];'
+            Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
+            Fix equality check used in switch, so false !== 0
+            Improve Math.pow accuracy for small integer powers (fix #374)
+            Make Ctrl-C only interrupt code if it has been running for too long (fix Ctrl-C -> CC3000 restart issues)
+            Removed duplication in symbol lookup (fix #372, fix #323, fix #343)
+            Fix JSON.stringify with circular references (fix #378)
+            Fix String.indexOf when search string is bigger than the string being searched (fix #377)
+            Add String.prototype.slice() (fix #376)
+            Changed to more compact binary search symbol table (fix #278)
+            hasOwnProperty now doesn't check prototypes #24
+            Added Object.getOwnPropertyNames (fix #79, fix #158)
+            Move 'constructor' into the correct place, be more aware of builtins in prototypes (helps #380)
+            Handle __proto__ on builtin object types (eg. [].__proto__) (fix #381)
+
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
             Fix `edit(functionName)` without quotes (fix #356)
@@ -18,6 +33,11 @@
             Fix a lot of WIZnet W5500 issues (thanks @mgg1010!)
             Add E.reverseByte
             Add HIGH and LOW (fix #371)
+            Improve docs for SPI/I2C/Serial.setup
+            Force reconnect on CC3000 disconnect (fix #373)
+            Added cephdon's streaming file API (fix #12)
+            More WIZnet W5500 stability fixes - try and ensure that HTTP server never goes down
+            Fix HTTP client Host header when accessing ports!=80
 
      1v62 : Added ArrayBufferView functions as per ES6 spec (fix #310)
             Added Graphics.setRotation (fix #321)

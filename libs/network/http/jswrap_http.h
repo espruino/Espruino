@@ -26,10 +26,10 @@ void jswrap_httpSrv_listen(JsVar *parent, int port);
 void jswrap_httpSrv_close(JsVar *parent);
 
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers);
-void jswrap_httpSRs_write(JsVar *parent, JsVar *data);
+bool jswrap_httpSRs_write(JsVar *parent, JsVar *data);
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data);
 
-void jswrap_httpCRq_write(JsVar *parent, JsVar *data);
+bool jswrap_httpCRq_write(JsVar *parent, JsVar *data);
 void jswrap_httpCRq_end(JsVar *parent, JsVar *data);
 
 JsVar *jswrap_url_parse(JsVar *url, bool parseQuery);
