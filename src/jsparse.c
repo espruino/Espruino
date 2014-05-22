@@ -835,7 +835,9 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
-  jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
+  JsVar *prototypeVar = jsvSkipName(prototypeName);
+  jsvUnLock(jsvAddNamedChild(thisObj, prototypeVar, JSPARSE_INHERITS_VAR));
+  jsvUnLock(prototypeVar);
   jsvUnLock(prototypeName);
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
@@ -2065,7 +2067,9 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     strncpy(obj->varData.str, name, sizeof(obj->varData));
   }
   // add __proto__
-  jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
+  JsVar *prototypeVar = jsvSkipName(prototypeName);
+  jsvUnLock(jsvAddNamedChild(obj, prototypeVar, JSPARSE_INHERITS_VAR));
+  jsvUnLock(prototypeVar);
   jsvUnLock(prototypeName);prototypeName=0;
 
   if (name) {

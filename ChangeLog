@@ -12,6 +12,8 @@
             Added Object.getOwnPropertyNames (fix #79, fix #158)
             Move 'constructor' into the correct place, be more aware of builtins in prototypes (helps #380)
             Handle __proto__ on builtin object types (eg. [].__proto__) (fix #381)
+            SPI.send/I2C.write/Serial.write can now take variable number of arguments (fix #370)
+            Remove indirection of __proto__ (fix #102)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
