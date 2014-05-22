@@ -148,7 +148,6 @@ Modifying
 * `ChangeLog`:          What's new
 * `TODO`:               List of things to do
 * `boards/`:            Information on boards, used to auto-generate a lot of the code
-* `code/`:              Example JavaScript code
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
 * `misc/`:              random other stuff
