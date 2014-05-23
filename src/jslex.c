@@ -33,17 +33,18 @@ static inline char jslNextCh(JsLex *lex) {
 static void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = jslNextCh(lex);
 
+  /** NOTE: In this next bit, we DON'T LOCK OR UNLOCK.
+   * The String iterator we're basing on does, so every
+   * time we touch the iterator we have to re-lock it
+   */
   lex->it.charIdx++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && lex->it.var->lastChild) {
-      JsVar *next = jsvLock(lex->it.var->lastChild);
-      jsvUnLock(lex->it.var);
-      lex->it.var = next;
+      lex->it.var = _jsvGetAddressOf(lex->it.var->lastChild);
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
-      jsvUnLock(lex->it.var);
       lex->it.var = 0;
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
@@ -534,11 +535,13 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->tokenValue = 0;
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   jslPreload(lex);
 }
 
 void jslKill(JsLex *lex) {
   lex->tk = LEX_EOF; // safety ;)
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   if (lex->tokenValue) {
     jsvUnLock(lex->tokenValue);
@@ -550,16 +553,20 @@ void jslKill(JsLex *lex) {
 }
 
 void jslSeekTo(JsLex *lex, size_t seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
   jslPreload(lex);
 }
 
 void jslSeekToP(JsLex *lex, JslCharPos *seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   lex->it = jsvStringIteratorClone(&seekToChar->it);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->currCh = seekToChar->currCh;
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
