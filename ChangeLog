@@ -16,6 +16,7 @@
             Remove indirection of __proto__ (fix #102)
             Properly fix Object.getOwnPropertyNames (fix #380)
             Remove jsvFindChild*Ref (fix #375)
+            Added LoopbackA/LoopbackB serial ports (fix #61)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)

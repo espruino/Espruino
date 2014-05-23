@@ -52,6 +52,13 @@
         "#if" : "USARTS>=6"
 }*/
 
+/*JSON{ "type":"object", "name":"LoopbackA", "instanceof" : "Serial",
+        "description" : [ "A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice versa" ]
+}*/
+/*JSON{ "type":"object", "name":"LoopbackB", "instanceof" : "Serial",
+        "description" : ["A loopback serial device. Data sent to LoopbackA comes out of LoopbackB and vice versa" ]
+}*/
+
 
 
 /*JSON{ "type":"method", "class": "Serial", "name" : "setConsole",
