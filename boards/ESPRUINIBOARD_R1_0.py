@@ -37,10 +37,13 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'A0', 'A1', 'A2' ],
-  'left2' : [ 'A3', 'A4', 'A5' ],
-  'top' : [ 'VBAT', '3.3', 'GND', 'A2', 'A3', 'A4', 'A5', 'A6' ],
-  'bottom' : [ 'VBAT', '3.3', 'GND','A2', 'A3', 'A4', 'A5', 'A6' ]
+  'left' : [ 'B5', 'B4', 'B3' ],
+  'left2' : [ '', 'A8', 'B10' ],
+  'top' : [ 'VBAT', 'GND', 'B15','B14','B13','A7', 'A6', 'A5' ],
+  'bottom' : [ 'B6', 'B7', 'B8','B9', 'A0', 'A1', '3.3', 'GND' ],
+
+  'right' : ['','','','','','','','','',''],
+  'right2' : ['','','','','','','','','',''],
         
 };
 devices = {
@@ -54,6 +57,11 @@ devices = {
   'USB' : { 'pin_disc' :  'C13',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          }
 };
 
 board_css = """
@@ -61,6 +69,7 @@ board_css = """
   width: 714px;
   height: 338px;
   top: 200px;
+  left : 100px;
   background-image: url(img/ESPRUINIBOARD_R1_0.png);
 }
 #boardcontainer {
@@ -82,10 +91,23 @@ board_css = """
   top: 320px;
   left: 210px;
 }
+
+#right  {
+  top: 35px;
+  left: 920px;
+}
+#right2  {
+  top: 35px;
+  right: -205px;
+}
+
 .leftpin { height: 48px; }
 .left2pin { height: 48px; }
 .toppin { width: 48px; }
 .bottompin { width: 48px; }
+
+.rightpin { height: 25px; }
+.right2pin { height: 25px; }
 
 """;
 
