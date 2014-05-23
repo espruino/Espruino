@@ -348,6 +348,12 @@ jslGetNextToken_start:
         {
           char delim = lex->currCh;
           lex->tokenValue = jsvNewFromEmptyString();
+          if (!lex->tokenValue) {
+            lex->tk = LEX_EOF;
+            return;
+          }
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, lex->tokenValue, 0);
           // strings...
           jslGetNextCh(lex);
           while (lex->currCh && lex->currCh!=delim) {
@@ -389,18 +395,15 @@ jslGetNextToken_start:
                        }
                        break;
               }
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, ch);
-                jsvAppendCharacter(lex->tokenValue, ch);
-              }
+              jslTokenAppendChar(lex, ch);
+              jsvStringIteratorAppend(&it, ch);
             } else {
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, lex->currCh);
-                jsvAppendCharacter(lex->tokenValue, lex->currCh);
-              }
+              jslTokenAppendChar(lex, lex->currCh);
+              jsvStringIteratorAppend(&it, lex->currCh);
               jslGetNextCh(lex);
             }
           }
+          jsvStringIteratorFree(&it);
           jslGetNextCh(lex);
           lex->tk = LEX_STR;
         } break;
