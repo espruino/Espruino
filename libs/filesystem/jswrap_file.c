@@ -24,8 +24,8 @@ extern void jsfsReportError(const char *msg, FRESULT res);
 
 /*JSON{ "type":"library",
         "class" : "File",
-        "description" : ["This is the stream related file IO library.",
-                         "To use this, you must type ```var fd = require('fs').open('filepath','flags','mode')``` to open a file stream." ]
+        "description" : ["This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).",
+                         "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information." ]
 }*/
 
 static JsVar* fsGetArray(const char *name, bool create) {
