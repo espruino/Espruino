@@ -19,6 +19,7 @@
             Added LoopbackA/LoopbackB serial ports (fix #61)
             Fix slowdown when lexing long strings
             Remove Lock/UnLock in jslGetNextCh - should speed it up
+            fs.appendFile() now works even if the file doesn't exist (#385)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)
