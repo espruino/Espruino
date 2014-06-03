@@ -368,8 +368,15 @@ jslGetNextToken_start:
               case 'r'  : ch = 0x0D; jslGetNextCh(lex); break;
               case 't'  : ch = 0x09; jslGetNextCh(lex); break;
               case 'v'  : ch = 0x0B; jslGetNextCh(lex); break;
+              case 'u' :
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
+                            if (lex->currCh == 'u') {
+                              // We don't support unicode, so we just take the bottom 8 bits
+                              // of the unicode character
+                              jslGetNextCh(lex);
+                              jslGetNextCh(lex);
+                            }
                             jslGetNextCh(lex);
                             buf[2] = lex->currCh; jslGetNextCh(lex);
                             buf[3] = lex->currCh; jslGetNextCh(lex);
