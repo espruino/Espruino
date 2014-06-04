@@ -1566,6 +1566,7 @@ void jsiIdle() {
       todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
       jsiKill();
+      jshReset();
       jsiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {
@@ -1576,6 +1577,7 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshSaveToFlash();
+      jshReset();
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit();
@@ -1586,6 +1588,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
+      jshReset();
       jshLoadFromFlash();
       jsvSoftInit();
       jspSoftInit();
