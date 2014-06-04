@@ -21,6 +21,7 @@
             Remove Lock/UnLock in jslGetNextCh - should speed it up
             fs.appendFile() now works even if the file doesn't exist (fix #385)
             Support unicode escape sequence (\uXXXX) but crop to 8 bits (fix #386)
+            Stop setInterval/etc increasing index numbers (fix #382)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)

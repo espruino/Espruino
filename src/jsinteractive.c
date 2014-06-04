@@ -1804,7 +1804,7 @@ void jsiSetTodo(TODOFlags newTodo) {
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarInt itemIndex = jsvArrayPushWithInitialSize(timerArrayPtr, timerPtr, 1) - 1;
+  JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
   jsvUnLock(timerArrayPtr);
   return itemIndex;
 }
