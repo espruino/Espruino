@@ -28,9 +28,8 @@ extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
   if (execInfo.scopeCount>0)
-    scope = jsvLock(execInfo.scopes[execInfo.scopeCount-1]);
+    scope = execInfo.scopes[execInfo.scopeCount-1];
   if (!jsvIsFunction(scope)) {
-    jsvUnLock(scope);
     jsError("Can only use 'arguments' variable inside a function");
     return 0;
   }
@@ -50,7 +49,6 @@ JsVar *jswrap_arguments() {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
-  jsvUnLock(scope);
 
   return args;
 }

@@ -390,18 +390,7 @@ JsVar *jsvSetNamedChild(JsVar *parent, JsVar *child, const char *name); // Add a
 JsVar *jsvSetValueOfName(JsVar *name, JsVar *src); // Set the value of a child created with jsvAddName,jsvAddNamedChild. Returns the UNLOCKED name argument
 JsVar *jsvFindChildFromString(JsVar *parent, const char *name, bool createIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
 JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound); // Non-recursive finding of child with name. Returns a LOCKED var
-static inline JsVar *jsvFindChildFromStringRef(JsVarRef parentref, const char *name, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
-  JsVar *p = jsvLock(parentref);
-  JsVar *v = jsvFindChildFromString(p, name, addIfNotFound);
-  jsvUnLock(p);
-  return v;
-}
-static inline JsVar *jsvFindChildFromVarRef(JsVarRef parentref, JsVar *childName, bool addIfNotFound) { // Non-recursive finding of child with name. Returns a LOCKED var
-  JsVar *p = jsvLock(parentref);
-  JsVar *v = jsvFindChildFromVar(p, childName, addIfNotFound);
-  jsvUnLock(p);
-  return v;
-}
+
 /// Remove a child - note that the child MUST ACTUALLY BE A CHILD! and should be a name, not a value.
 void jsvRemoveChild(JsVar *parent, JsVar *child);
 void jsvRemoveAllChildren(JsVar *parent);
@@ -428,11 +417,12 @@ JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does th
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
-JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
+JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
+void jsvArrayAddString(JsVar *arr, const char *text); ///< Adds a new String element to the end of an array (IF it was not already there)
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static inline bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !arr->firstChild; } ///< Return true is array is empty

@@ -13,7 +13,8 @@ function cmp(ae, mustHave, maybeHave) {
   pass++;
 }
 
-cmp("Object.getOwnPropertyNames([])", [ 'length' ], [])
+cmp("Object.getOwnPropertyNames([])", [ 'length' ], [
+])
 cmp("Object.getOwnPropertyNames(Array.prototype)",
 [ 
   'fill', // ES6

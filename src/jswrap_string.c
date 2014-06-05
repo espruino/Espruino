@@ -34,6 +34,12 @@ JsVar *jswrap_string_constructor(JsVar *a) {
   return jsvAsString(a, false);
 }
 
+/*JSON{ "type":"property", "class": "String", "name" : "length",
+         "description" : "Find the length of the string",
+         "generate" : "jswrap_object_length",
+         "return" : ["JsVar", "The value of the string"]
+}*/
+
 /*JSON{ "type":"staticmethod", "class": "String", "name" : "fromCharCode",
          "description" : "Return the character(s) represented by the given character code(s).",
          "generate" : "jswrap_string_fromCharCode",

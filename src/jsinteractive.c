@@ -584,18 +584,19 @@ void jsiSoftKill() {
   if (watchArray) {
     // Check any existing watches and disable interrupts for them
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch);
-      JsVar *watchPin = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, watchArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
       jsvUnLock(watchPin);
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+      jsvUnLock(watchPtr);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
+    jsvUnRef(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
-
-    jsvUnRefRef(watchArray);
     watchArray=0;
   }
   // Save initialisation information
@@ -1565,6 +1566,7 @@ void jsiIdle() {
       todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
       jsiKill();
+      jshReset();
       jsiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {
@@ -1575,6 +1577,7 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshSaveToFlash();
+      jshReset();
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit();
@@ -1585,6 +1588,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
+      jshReset();
       jshLoadFromFlash();
       jsvSoftInit();
       jspSoftInit();
@@ -1627,7 +1631,7 @@ bool jsiLoop() {
   }
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
-    execInfo.execute = execInfo.execute & ~EXEC_CTRL_C_MASK;
+    execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
     jsiClearInputLine();
   }
 
@@ -1803,7 +1807,7 @@ void jsiSetTodo(TODOFlags newTodo) {
 
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarInt itemIndex = jsvArrayPushWithInitialSize(timerArrayPtr, timerPtr, 1) - 1;
+  JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
   jsvUnLock(timerArrayPtr);
   return itemIndex;
 }

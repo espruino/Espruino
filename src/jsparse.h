@@ -98,7 +98,7 @@ typedef struct {
   JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed
-  JsVarRef scopes[JSPARSE_MAX_SCOPES];
+  JsVar *scopes[JSPARSE_MAX_SCOPES];
   int scopeCount;
   /// Value of 'this' reserved word
   JsVar *thisVar;

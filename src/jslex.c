@@ -33,17 +33,18 @@ static inline char jslNextCh(JsLex *lex) {
 static void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = jslNextCh(lex);
 
+  /** NOTE: In this next bit, we DON'T LOCK OR UNLOCK.
+   * The String iterator we're basing on does, so every
+   * time we touch the iterator we have to re-lock it
+   */
   lex->it.charIdx++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && lex->it.var->lastChild) {
-      JsVar *next = jsvLock(lex->it.var->lastChild);
-      jsvUnLock(lex->it.var);
-      lex->it.var = next;
+      lex->it.var = _jsvGetAddressOf(lex->it.var->lastChild);
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
-      jsvUnLock(lex->it.var);
       lex->it.var = 0;
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
@@ -348,6 +349,12 @@ jslGetNextToken_start:
         {
           char delim = lex->currCh;
           lex->tokenValue = jsvNewFromEmptyString();
+          if (!lex->tokenValue) {
+            lex->tk = LEX_EOF;
+            return;
+          }
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, lex->tokenValue, 0);
           // strings...
           jslGetNextCh(lex);
           while (lex->currCh && lex->currCh!=delim) {
@@ -361,8 +368,15 @@ jslGetNextToken_start:
               case 'r'  : ch = 0x0D; jslGetNextCh(lex); break;
               case 't'  : ch = 0x09; jslGetNextCh(lex); break;
               case 'v'  : ch = 0x0B; jslGetNextCh(lex); break;
+              case 'u' :
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
+                            if (lex->currCh == 'u') {
+                              // We don't support unicode, so we just take the bottom 8 bits
+                              // of the unicode character
+                              jslGetNextCh(lex);
+                              jslGetNextCh(lex);
+                            }
                             jslGetNextCh(lex);
                             buf[2] = lex->currCh; jslGetNextCh(lex);
                             buf[3] = lex->currCh; jslGetNextCh(lex);
@@ -389,18 +403,15 @@ jslGetNextToken_start:
                        }
                        break;
               }
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, ch);
-                jsvAppendCharacter(lex->tokenValue, ch);
-              }
+              jslTokenAppendChar(lex, ch);
+              jsvStringIteratorAppend(&it, ch);
             } else {
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, lex->currCh);
-                jsvAppendCharacter(lex->tokenValue, lex->currCh);
-              }
+              jslTokenAppendChar(lex, lex->currCh);
+              jsvStringIteratorAppend(&it, lex->currCh);
               jslGetNextCh(lex);
             }
           }
+          jsvStringIteratorFree(&it);
           jslGetNextCh(lex);
           lex->tk = LEX_STR;
         } break;
@@ -531,11 +542,13 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->tokenValue = 0;
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   jslPreload(lex);
 }
 
 void jslKill(JsLex *lex) {
   lex->tk = LEX_EOF; // safety ;)
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   if (lex->tokenValue) {
     jsvUnLock(lex->tokenValue);
@@ -547,16 +560,20 @@ void jslKill(JsLex *lex) {
 }
 
 void jslSeekTo(JsLex *lex, size_t seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
   jslPreload(lex);
 }
 
 void jslSeekToP(JsLex *lex, JslCharPos *seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   lex->it = jsvStringIteratorClone(&seekToChar->it);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->currCh = seekToChar->currCh;
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;

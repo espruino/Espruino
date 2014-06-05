@@ -109,13 +109,13 @@ void jspeiKill() {
   assert(execInfo.scopeCount==0);
 }
 
-bool jspeiAddScope(JsVarRef scope) {
+bool jspeiAddScope(JsVar *scope) {
   if (execInfo.scopeCount >= JSPARSE_MAX_SCOPES) {
     jsError("Maximum number of scopes exceeded");
     jspSetError(false);
     return false;
   }
-  execInfo.scopes[execInfo.scopeCount++] = jsvRefRef(scope);
+  execInfo.scopes[execInfo.scopeCount++] = jsvLockAgain(scope);
   return true;
 }
 
@@ -125,13 +125,13 @@ void jspeiRemoveScope() {
     jspSetError(false);
     return;
   }
-  jsvUnRefRef(execInfo.scopes[--execInfo.scopeCount]);
+  jsvUnLock(execInfo.scopes[--execInfo.scopeCount]);
 }
 
 JsVar *jspeiFindInScopes(const char *name) {
   int i;
   for (i=execInfo.scopeCount-1;i>=0;i--) {
-    JsVar *ref = jsvFindChildFromStringRef(execInfo.scopes[i], name, false);
+    JsVar *ref = jsvFindChildFromString(execInfo.scopes[i], name, false);
     if (ref) return ref;
   }
   return jsvFindChildFromString(execInfo.root, name, false);
@@ -140,12 +140,12 @@ JsVar *jspeiFindInScopes(const char *name) {
 // TODO: get rid of these, use jspeiGetTopScope instead
 JsVar *jspeiFindOnTop(const char *name, bool createIfNotFound) {
   if (execInfo.scopeCount>0)
-    return jsvFindChildFromStringRef(execInfo.scopes[execInfo.scopeCount-1], name, createIfNotFound);
+    return jsvFindChildFromString(execInfo.scopes[execInfo.scopeCount-1], name, createIfNotFound);
   return jsvFindChildFromString(execInfo.root, name, createIfNotFound);
 }
 JsVar *jspeiFindNameOnTop(JsVar *childName, bool createIfNotFound) {
   if (execInfo.scopeCount>0)
-    return jsvFindChildFromVarRef(execInfo.scopes[execInfo.scopeCount-1], childName, createIfNotFound);
+    return jsvFindChildFromVar(execInfo.scopes[execInfo.scopeCount-1], childName, createIfNotFound);
   return jsvFindChildFromVar(execInfo.root, childName, createIfNotFound);
 }
 
@@ -211,10 +211,7 @@ JsVar *jspeiGetScopesAsVar() {
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   int i;
   for (i=0;i<execInfo.scopeCount;i++) {
-      //printf("%d %d\n",i,execInfo.scopes[i]);
-      JsVar *scope = jsvLock(execInfo.scopes[i]);
-      JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), scope);
-      jsvUnLock(scope);
+      JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(i), execInfo.scopes[i]);
       if (!idx) { // out of memory
         jspSetError(false);
         return arr;
@@ -228,16 +225,14 @@ JsVar *jspeiGetScopesAsVar() {
 
 void jspeiLoadScopesFromVar(JsVar *arr) {
     execInfo.scopeCount = 0;
-    //printf("%d\n",arr->firstChild);
-    JsVarRef childref = arr->firstChild;
-    while (childref) {
-      JsVar *child = jsvLock(childref);
-      //printf("%d %d %d %d\n",execInfo.scopeCount,childref,child, child->firstChild);
-      execInfo.scopes[execInfo.scopeCount] = jsvRefRef(child->firstChild);
-      execInfo.scopeCount++;
-      childref = child->nextSibling;
-      jsvUnLock(child);
+
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, arr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      execInfo.scopes[execInfo.scopeCount++] = jsvArrayIteratorGetElement(&it);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
 }
 // -----------------------------------------------
 bool jspCheckStackPosition() {
@@ -507,7 +502,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       if (!JSP_HAS_ERROR) {
         // save old scopes
-        JsVarRef oldScopes[JSPARSE_MAX_SCOPES];
+        JsVar *oldScopes[JSPARSE_MAX_SCOPES];
         int oldScopeCount;
         int i;
         oldScopeCount = execInfo.scopeCount;
@@ -522,7 +517,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             execInfo.scopeCount = 0;
         }
         // add the function's execute space to the symbol table so we can recurse
-        if (jspeiAddScope(jsvGetRef(functionRoot))) {
+        if (jspeiAddScope(functionRoot)) {
           /* Adding scope may have failed - we may have descended too deep - so be sure
            * not to pull somebody else's scope off
            */
@@ -572,7 +567,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
         // Unref old scopes
         for (i=0;i<execInfo.scopeCount;i++)
-            jsvUnRefRef(execInfo.scopes[i]);
+            jsvUnLock(execInfo.scopes[i]);
         // restore function scopes
         for (i=0;i<oldScopeCount;i++)
             execInfo.scopes[i] = oldScopes[i];
@@ -835,7 +830,9 @@ NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   // Make sure the function has a 'prototype' var
   JsVar *prototypeName = jsvFindChildFromString(func, JSPARSE_PROTOTYPE_VAR, true);
   jspEnsureIsPrototype(func, prototypeName); // make sure it's an object
-  jsvUnLock(jsvAddNamedChild(thisObj, prototypeName, JSPARSE_INHERITS_VAR));
+  JsVar *prototypeVar = jsvSkipName(prototypeName);
+  jsvUnLock(jsvAddNamedChild(thisObj, prototypeVar, JSPARSE_INHERITS_VAR));
+  jsvUnLock(prototypeVar);
   jsvUnLock(prototypeName);
 
   JsVar *a = jspeFunctionCall(func, funcName, thisObj, hasArgs, 0, 0);
@@ -2065,7 +2062,9 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     strncpy(obj->varData.str, name, sizeof(obj->varData));
   }
   // add __proto__
-  jsvUnLock(jsvAddNamedChild(obj, prototypeName, JSPARSE_INHERITS_VAR));
+  JsVar *prototypeVar = jsvSkipName(prototypeName);
+  jsvUnLock(jsvAddNamedChild(obj, prototypeVar, JSPARSE_INHERITS_VAR));
+  jsvUnLock(prototypeVar);
   jsvUnLock(prototypeName);prototypeName=0;
 
   if (name) {
@@ -2135,7 +2134,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope) {
   jspeiInit(&lex);
   bool scopeAdded = false;
   if (scope)
-    scopeAdded = jspeiAddScope(jsvGetRef(scope));
+    scopeAdded = jspeiAddScope(scope);
   while (!JSP_HAS_ERROR && execInfo.lex->tk != LEX_EOF) {
     jsvUnLock(v);
     v = jspeBlockOrStatement();

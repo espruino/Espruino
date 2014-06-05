@@ -38,6 +38,10 @@ volatile unsigned char txHead=0, txTail=0;
 
 // Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data) {
+  if (device==EV_LOOPBACKA || device==EV_LOOPBACKB) {
+    jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, data);
+    return;
+  }
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -233,6 +237,8 @@ bool jshHasEventSpaceForChars(int n) {
 //                                                                      DEVICES
 const char *jshGetDeviceString(IOEventFlags device) {
   switch (device) {
+  case EV_LOOPBACKA: return "LoopbackA";
+  case EV_LOOPBACKB: return "LoopbackB";
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif
@@ -271,47 +277,51 @@ const char *jshGetDeviceString(IOEventFlags device) {
 }
 
 IOEventFlags jshFromDeviceString(const char *device) {
-  if (device[0]=='U') {
-#ifdef USB
-    if (strcmp(device, "USB")==0) return EV_USBSERIAL;
-#endif
+  if (device[0]=='L') {
+    if (strcmp(&device[1], "oopbackA")==0) return EV_LOOPBACKA;
+    if (strcmp(&device[1], "oopbackB")==0) return EV_LOOPBACKB;
   }
+#ifdef USB
+  if (device[0]=='U' && device[1]=='S' && device[2]=='B' && device[3]==0) {
+    return EV_USBSERIAL;
+  }
+#endif
   else if (device[0]=='S') {
-    if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l') {
-      if (strcmp(device, "Serial1")==0) return EV_SERIAL1;
-      if (strcmp(device, "Serial2")==0) return EV_SERIAL2;
-      if (strcmp(device, "Serial3")==0) return EV_SERIAL3;
+    if (device[1]=='e' && device[2]=='r' && device[3]=='i' && device[4]=='a' && device[5]=='l' && device[6]!=0 && device[7]==0) {
+      if (device[6]=='1') return EV_SERIAL1;
+      if (device[6]=='2') return EV_SERIAL2;
+      if (device[6]=='3') return EV_SERIAL3;
 #if USARTS>=4
-      if (strcmp(device, "Serial4")==0) return EV_SERIAL4;
+      if (device[6]=='4') return EV_SERIAL4;
 #endif
 #if USARTS>=5
-      if (strcmp(device, "Serial5")==0) return EV_SERIAL5;
+      if (device[6]=='5') return EV_SERIAL5;
 #endif
 #if USARTS>=6
-      if (strcmp(device, "Serial6")==0) return EV_SERIAL6;
+      if (device[6]=='6') return EV_SERIAL6;
 #endif
     }
-    if (device[1]=='P' && device[2]=='I') {
+    if (device[1]=='P' && device[2]=='I' && device[3]!=0 && device[4]==0) {
 #if SPIS>=1
-      if (strcmp(device, "SPI1")==0) return EV_SPI1;
+      if (device[3]=='1') return EV_SPI1;
 #endif
 #if SPIS>=2
-      if (strcmp(device, "SPI2")==0) return EV_SPI2;
+      if (device[3]=='2') return EV_SPI2;
 #endif
 #if SPIS>=3
-      if (strcmp(device, "SPI3")==0) return EV_SPI3;
+      if (device[3]=='3') return EV_SPI3;
 #endif
     }
   }
-  else if (device[0]=='I' && device[1]=='2' && device[2]=='C') {
+  else if (device[0]=='I' && device[1]=='2' && device[2]=='C' && device[3]!=0 && device[4]==0) {
 #if I2CS>=1
-    if (strcmp(device, "I2C1")==0) return EV_I2C1;
+    if (device[3]=='1') return EV_I2C1;
 #endif
 #if I2CS>=2
-    if (strcmp(device, "I2C2")==0) return EV_I2C2;
+    if (device[3]=='2') return EV_I2C2;
 #endif
 #if I2CS>=3
-    if (strcmp(device, "I2C3")==0) return EV_I2C3;
+    if (device[3]=='3') return EV_I2C3;
 #endif
   }
   return EV_NONE;

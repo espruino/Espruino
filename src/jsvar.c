@@ -1852,10 +1852,29 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
 }
 
 /// Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
-JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialValue) {
+JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue) {
+  assert(jsvIsArray(arr));
+  JsVarInt index = initialValue;
+  if (arr->lastChild) {
+    JsVar *last = jsvLock(arr->lastChild);
+    index = jsvGetInteger(last)+1;
+    jsvUnLock(last);
+  }
+
+  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
+  if (!idx) {
+    jsWarn("Out of memory while appending to array");
+    return 0;
+  }
+  jsvAddName(arr, idx);
+  jsvUnLock(idx);
+  return index+1;
+}
+
+/// Adds new elements to the end of an array, and returns the new length
+JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
-  if (index==0) index=initialValue;
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
   if (!idx) {
     jsWarn("Out of memory while appending to array");
@@ -1866,14 +1885,9 @@ JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialV
   return jsvGetArrayLength(arr);
 }
 
-/// Adds new elements to the end of an array, and returns the new length
-JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
-  return jsvArrayPushWithInitialSize(arr, value, 0);
-}
-
 /// Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
-  JsVarInt l = jsvArrayPushWithInitialSize(arr, value, 0);
+  JsVarInt l = jsvArrayPush(arr, value);
   jsvUnLock(value);
   return l;
 }
@@ -1938,6 +1952,15 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
     // no children!
     return 0;
   }
+}
+
+/// Adds a new String element to the end of an array (IF it was not already there)
+void jsvArrayAddString(JsVar *arr, const char *text) {
+  JsVar *v = jsvNewFromString(text);
+  JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
+  if (!idx) jsvArrayPush(arr, v);
+  else jsvUnLock(idx);
+  jsvUnLock(v);
 }
 
 /// Join all elements of an array together into a string

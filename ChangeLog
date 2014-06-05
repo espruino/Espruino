@@ -1,3 +1,5 @@
+     1v65 : ...
+
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
             Fix equality check used in switch, so false !== 0
@@ -12,6 +14,18 @@
             Added Object.getOwnPropertyNames (fix #79, fix #158)
             Move 'constructor' into the correct place, be more aware of builtins in prototypes (helps #380)
             Handle __proto__ on builtin object types (eg. [].__proto__) (fix #381)
+            SPI.send/I2C.write/Serial.write can now take variable number of arguments (fix #370)
+            Remove indirection of __proto__ (fix #102)
+            Properly fix Object.getOwnPropertyNames (fix #380)
+            Remove jsvFindChild*Ref (fix #375)
+            Added LoopbackA/LoopbackB serial ports (fix #61)
+            Fix slowdown when lexing long strings
+            Remove Lock/UnLock in jslGetNextCh - should speed it up
+            fs.appendFile() now works even if the file doesn't exist (fix #385)
+            Support unicode escape sequence (\uXXXX) but crop to 8 bits (fix #386)
+            Stop setInterval/etc increasing index numbers (fix #382)
+            Clear existing digitalWrites on reset() (fix #231)
+            Stop setWatch getting invalid data on load/save/reset (fix #254)
 
      1v63 : Memory leak when defining functions (fix #359)
             Fix Instance properties overwrite prototype (fix #360)

@@ -50,7 +50,7 @@
 /*JSON{ "type":"property", "class": "Object", "name" : "length",
          "description" : "Find the length of the object",
          "generate" : "jswrap_object_length",
-         "return" : ["JsVar", "The value of the string"]
+         "return" : ["JsVar", "The length of the object"]
 }*/
 JsVar *jswrap_object_length(JsVar *parent) {
   if (jsvIsArray(parent)) {
@@ -160,13 +160,12 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
 
       if (symbols) {
         unsigned int i;
-        for (i=0;i<symbols->symbolCount;i++) {
-          JsVar *v = jsvNewFromString(&symbols->symbolChars[symbols->symbols[i].strOffset]);
-          JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
-          if (!idx) jsvArrayPush(arr, v);
-          jsvUnLock(idx);
-          jsvUnLock(v);
-        }
+        for (i=0;i<symbols->symbolCount;i++)
+          jsvArrayAddString(arr, &symbols->symbolChars[symbols->symbols[i].strOffset]);
+      }
+
+      if (jsvIsArray(obj) || jsvIsString(obj)) {
+        jsvArrayAddString(arr, "length");
       }
     }
 
