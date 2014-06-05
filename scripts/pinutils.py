@@ -79,6 +79,7 @@ DEVICES = {
  "AUDIO":"AUDIO",
  "MEMS":"MEMS",
  "GYRO":"GYRO",
+ "JTAG":"JTAG",
 };
 
 for i in range(0,7):
