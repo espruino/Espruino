@@ -281,3 +281,74 @@ JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {
 JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
   return _jswrap_interface_setTimeoutOrInterval(func, timeout, true);
 }
+
+/*JSON{ "type":"function", "name" : "clearInterval",
+         "description" : ["Clear the Interval that was created with setInterval, for example:",
+                          "```var id = setInterval(function () { print('foo'); }, 1000);```",
+                          "```clearInterval(id);```",
+                          "If no argument is supplied, all timers and intervals are stopped" ],
+         "generate" : "jswrap_interface_clearInterval",
+         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"] ]
+}*/
+/*JSON{ "type":"function", "name" : "clearTimeout",
+         "description" : ["Clear the Timeout that was created with setTimeout, for example:",
+                          "```var id = setTimeout(function () { print('foo'); }, 1000);```",
+                          "```clearTimeout(id);```",
+                          "If no argument is supplied, all timers and intervals are stopped" ],
+         "generate" : "jswrap_interface_clearTimeout",
+         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setTimeout"] ]
+}*/
+void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  if (jsvIsUndefined(idVar)) {
+    jsvRemoveAllChildren(timerArrayPtr);
+  } else {
+    JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
+    if (child) {
+      JsVar *timerArrayPtr = jsvLock(timerArray);
+      jsvRemoveChild(timerArrayPtr, child);
+      jsvUnLock(child);
+      jsvUnLock(timerArrayPtr);
+    } else {
+      jsError(isTimeout ? "Unknown Timeout" : "Unknown Interval");
+    }
+  }
+  jsvUnLock(timerArrayPtr);
+}
+void jswrap_interface_clearInterval(JsVar *idVar) {
+  _jswrap_interface_clearTimeoutOrInterval(idVar, false);
+}
+void jswrap_interface_clearTimeout(JsVar *idVar) {
+  _jswrap_interface_clearTimeoutOrInterval(idVar, true);
+}
+
+/*JSON{ "type":"function", "name" : "changeInterval",
+         "description" : ["Change the Interval on a callback created with setInterval, for example:",
+                          "```var id = setInterval(function () { print('foo'); }, 1000); // every second```",
+                          "```changeInterval(id, 1500); // now runs every 1.5 seconds```",
+                          "This takes effect the text time the callback is called (so it is not immediate)."],
+         "generate" : "jswrap_interface_changeInterval",
+         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"],
+                      [ "time","float","The new time period in ms" ] ]
+}*/
+void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
+  JsVar *timerArrayPtr = jsvLock(timerArray);
+  if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
+  JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
+
+  if (timerName) {
+    JsVar *timer = jsvSkipNameAndUnLock(timerName);
+    JsVar *v;
+    v = jsvNewFromInteger(jshGetTimeFromMilliseconds(interval));
+    jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
+    jsvUnLock(v);
+    v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
+    jsvUnLock(jsvSetNamedChild(timer, v, "time"));
+    jsvUnLock(v);
+    jsvUnLock(timer);
+    // timerName already unlocked
+  } else {
+    jsError("Unknown Interval");
+  }
+  jsvUnLock(timerArrayPtr);
+}

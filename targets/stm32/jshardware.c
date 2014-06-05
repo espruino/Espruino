@@ -1202,6 +1202,13 @@ void jshInit() {
 #endif
 }
 
+void jshReset() {
+  Pin i;
+  for (i=0;i<JSH_PIN_COUNT;i++)
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i))
+      jshPinSetState(i, JSHPINSTATE_ADC_IN);
+}
+
 void jshKill() {
 }
 
@@ -1672,15 +1679,17 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     pinInterrupt[idx].fired = false;
     pinInterrupt[idx].callbacks = ...;*/
 
-    // set as input
-    if (!jshGetPinStateIsManual(pin)) 
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+    if (shouldWatch) {
+      // set as input
+      if (!jshGetPinStateIsManual(pin))
+        jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
 #ifdef STM32API2
-    SYSCFG_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
+      SYSCFG_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
 #else
-    GPIO_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
+      GPIO_EXTILineConfig(stmPortSource(pin), stmPinSource(pin));
 #endif
+    }
     watchedPins[pinInfo[pin].pin] = (Pin)(shouldWatch ? pin : PIN_UNDEFINED);
 
     EXTI_InitTypeDef s;

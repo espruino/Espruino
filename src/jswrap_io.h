@@ -22,7 +22,4 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode);
 JsVar *jswrap_io_getPinMode(Pin pin);
 
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject);
-void jswrap_interface_clearInterval(JsVar *idVar);
-void jswrap_interface_clearTimeout(JsVar *idVar);
-void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval);
 void jswrap_interface_clearWatch(JsVar *idVar);

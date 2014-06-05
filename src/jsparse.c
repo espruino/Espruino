@@ -32,7 +32,8 @@ void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 // ----------------------------------------------- Utils
 #define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { jspSetError(true); CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
-#define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0)
+#define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0) // Match where the user could have given us the wrong token
+#define JSP_ASSERT_MATCH(TOKEN) { assert(execInfo.lex->tk==(TOKEN));jslGetNextToken(execInfo.lex); } // Match where if we have the wrong token, it's an internal error
 #define JSP_SHOULD_EXECUTE (((execInfo.execute)&EXEC_RUN_MASK)==EXEC_YES)
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
 #define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_SAVE_RESTORE_MASK)) | (oldExecute&EXEC_SAVE_RESTORE_MASK);
@@ -750,7 +751,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
 
   while (execInfo.lex->tk=='.' || execInfo.lex->tk=='[') {
       if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
-          JSP_MATCH('.');
+          JSP_ASSERT_MATCH('.');
           if (JSP_SHOULD_EXECUTE) {
             // Note: name will go away when we parse something else!
             const char *name = jslGetTokenValueAsString(execInfo.lex);
@@ -782,7 +783,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           }
       } else if (execInfo.lex->tk == '[') { // ------------------------------------- Array Access
           JsVar *index;
-          JSP_MATCH('[');
+          JSP_ASSERT_MATCH('[');
           index = jsvSkipNameAndUnLock(jspeAssignmentExpression());
           JSP_MATCH_WITH_CLEANUP_AND_RETURN(']', jsvUnLock(parent);jsvUnLock(index);, a);
           if (JSP_SHOULD_EXECUTE) {
@@ -850,7 +851,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   /* The parent if we're executing a method call */
   bool isConstructor = false;
   if (execInfo.lex->tk==LEX_R_NEW) {
-    JSP_MATCH(LEX_R_NEW);
+    JSP_ASSERT_MATCH(LEX_R_NEW);
     isConstructor = true;
 
     if (execInfo.lex->tk==LEX_R_NEW) {
@@ -1000,7 +1001,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
 }
 
 NO_INLINE JsVar *jspeFactorTypeOf() {
-  JSP_MATCH(LEX_R_TYPEOF);
+  JSP_ASSERT_MATCH(LEX_R_TYPEOF);
   JsVar *a = jspeUnaryExpression();
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
@@ -1012,7 +1013,7 @@ NO_INLINE JsVar *jspeFactorTypeOf() {
 }
 
 NO_INLINE JsVar *jspeFactorDelete() {
-  JSP_MATCH(LEX_R_DELETE);
+  JSP_ASSERT_MATCH(LEX_R_DELETE);
   JsVar *parent = 0;
   JsVar *a = jspeFactorMember(jspeFactor(), &parent);
   JsVar *result = 0;
@@ -1039,86 +1040,86 @@ NO_INLINE JsVar *jspeFactorDelete() {
 }
 
 NO_INLINE JsVar *jspeFactor() {
-    if (execInfo.lex->tk=='(') {
-        JsVar *a = 0;
-        JSP_MATCH('(');
-        if (!jspCheckStackPosition()) return 0;
-        a = jspeExpression();
-        if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
-        return a;
-    } else if (execInfo.lex->tk==LEX_R_TRUE) {
-        JSP_MATCH(LEX_R_TRUE);
-        return JSP_SHOULD_EXECUTE ? jsvNewFromBool(true) : 0;
-    } else if (execInfo.lex->tk==LEX_R_FALSE) {
-        JSP_MATCH(LEX_R_FALSE);
-        return JSP_SHOULD_EXECUTE ? jsvNewFromBool(false) : 0;
-    } else if (execInfo.lex->tk==LEX_R_NULL) {
-        JSP_MATCH(LEX_R_NULL);
-        return JSP_SHOULD_EXECUTE ? jsvNewWithFlags(JSV_NULL) : 0;
-    } else if (execInfo.lex->tk==LEX_R_UNDEFINED) {
-        JSP_MATCH(LEX_R_UNDEFINED);
-        return 0;
-    } else if (execInfo.lex->tk==LEX_ID) {
-      return jspeFactorId();
-    } else if (execInfo.lex->tk==LEX_INT) {
-        // atol works only on decimals
-        // strtol handles 0x12345 as well
-        //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo.lex));
-        //JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo.lex),0,0); // broken on PIC
-        if (JSP_SHOULD_EXECUTE) {
-          JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo.lex));
-          JSP_MATCH(LEX_INT);
-          return jsvNewFromInteger(v);
-        } else {
-          JSP_MATCH(LEX_INT);
-          return 0;
-        }
-    } else if (execInfo.lex->tk==LEX_FLOAT) {
+  if (execInfo.lex->tk=='(') {
+    JsVar *a = 0;
+    JSP_ASSERT_MATCH('(');
+    if (!jspCheckStackPosition()) return 0;
+    a = jspeExpression();
+    if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
+    return a;
+  } else if (execInfo.lex->tk==LEX_R_TRUE) {
+    JSP_ASSERT_MATCH(LEX_R_TRUE);
+    return JSP_SHOULD_EXECUTE ? jsvNewFromBool(true) : 0;
+  } else if (execInfo.lex->tk==LEX_R_FALSE) {
+    JSP_ASSERT_MATCH(LEX_R_FALSE);
+    return JSP_SHOULD_EXECUTE ? jsvNewFromBool(false) : 0;
+  } else if (execInfo.lex->tk==LEX_R_NULL) {
+    JSP_ASSERT_MATCH(LEX_R_NULL);
+    return JSP_SHOULD_EXECUTE ? jsvNewWithFlags(JSV_NULL) : 0;
+  } else if (execInfo.lex->tk==LEX_R_UNDEFINED) {
+    JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
+    return 0;
+  } else if (execInfo.lex->tk==LEX_ID) {
+    return jspeFactorId();
+  } else if (execInfo.lex->tk==LEX_INT) {
+      // atol works only on decimals
+      // strtol handles 0x12345 as well
+      //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo.lex));
+      //JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo.lex),0,0); // broken on PIC
       if (JSP_SHOULD_EXECUTE) {
-        JsVarFloat v = stringToFloat(jslGetTokenValueAsString(execInfo.lex));
-        JSP_MATCH(LEX_FLOAT);
-        return jsvNewFromFloat(v);
+        JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo.lex));
+        JSP_ASSERT_MATCH(LEX_INT);
+        return jsvNewFromInteger(v);
       } else {
-        JSP_MATCH(LEX_FLOAT);
+        JSP_ASSERT_MATCH(LEX_INT);
         return 0;
       }
-    } else if (execInfo.lex->tk==LEX_STR) {
-      if (JSP_SHOULD_EXECUTE) {
-        JsVar *a = jslGetTokenValueAsVar(execInfo.lex);
-        JSP_MATCH_WITH_RETURN(LEX_STR, a);
-        return a;
-      } else {
-        JSP_MATCH(LEX_STR);
-        return 0;
-      }
-    } else if (execInfo.lex->tk=='{') {
-      return jspeFactorObject();
-    } else if (execInfo.lex->tk=='[') {
-        return jspeFactorArray();
-    } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
-      JSP_MATCH(LEX_R_FUNCTION);
-      return jspeFunctionDefinition(true);
-    } else if (execInfo.lex->tk==LEX_R_THIS) {
-      JSP_MATCH(LEX_R_THIS);
-      return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
-    } else if (execInfo.lex->tk==LEX_R_DELETE) {
-      return jspeFactorDelete();
-    } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
-      return jspeFactorTypeOf();
-    } else if (execInfo.lex->tk==LEX_R_VOID) {
-      JSP_MATCH(LEX_R_VOID);
-      jsvUnLock(jspeFactor());
+  } else if (execInfo.lex->tk==LEX_FLOAT) {
+    if (JSP_SHOULD_EXECUTE) {
+      JsVarFloat v = stringToFloat(jslGetTokenValueAsString(execInfo.lex));
+      JSP_ASSERT_MATCH(LEX_FLOAT);
+      return jsvNewFromFloat(v);
+    } else {
+      JSP_ASSERT_MATCH(LEX_FLOAT);
       return 0;
     }
-    // Nothing we can do here... just hope it's the end...
-    JSP_MATCH(LEX_EOF);
+  } else if (execInfo.lex->tk==LEX_STR) {
+    if (JSP_SHOULD_EXECUTE) {
+      JsVar *a = jslGetTokenValueAsVar(execInfo.lex);
+      JSP_ASSERT_MATCH(LEX_STR);
+      return a;
+    } else {
+      JSP_ASSERT_MATCH(LEX_STR);
+      return 0;
+    }
+  } else if (execInfo.lex->tk=='{') {
+    return jspeFactorObject();
+  } else if (execInfo.lex->tk=='[') {
+    return jspeFactorArray();
+  } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
+    JSP_ASSERT_MATCH(LEX_R_FUNCTION);
+    return jspeFunctionDefinition(true);
+  } else if (execInfo.lex->tk==LEX_R_THIS) {
+    JSP_ASSERT_MATCH(LEX_R_THIS);
+    return jsvLockAgain( execInfo.thisVar ? execInfo.thisVar : execInfo.root );
+  } else if (execInfo.lex->tk==LEX_R_DELETE) {
+    return jspeFactorDelete();
+  } else if (execInfo.lex->tk==LEX_R_TYPEOF) {
+    return jspeFactorTypeOf();
+  } else if (execInfo.lex->tk==LEX_R_VOID) {
+    JSP_ASSERT_MATCH(LEX_R_VOID);
+    jsvUnLock(jspeFactor());
     return 0;
+  }
+  // Nothing we can do here... just hope it's the end...
+  JSP_MATCH(LEX_EOF);
+  return 0;
 }
 
 NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
   while (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
     int op = execInfo.lex->tk;
-    JSP_MATCH(execInfo.lex->tk);
+    JSP_ASSERT_MATCH(op);
     if (JSP_SHOULD_EXECUTE) {
         JsVar *one = jsvNewFromInteger(1);
         JsVar *oldValue = jsvAsNumberAndUnLock(jsvSkipName(a)); // keep the old value (but convert to number)
@@ -1140,7 +1141,7 @@ NO_INLINE JsVar *jspePostfixExpression() {
   JsVar *a;
   if (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
       int op = execInfo.lex->tk;
-      JSP_MATCH(execInfo.lex->tk);
+      JSP_ASSERT_MATCH(op);
       a = jspePostfixExpression();
       if (JSP_SHOULD_EXECUTE) {
           JsVar *one = jsvNewFromInteger(1);
@@ -1158,7 +1159,7 @@ NO_INLINE JsVar *jspePostfixExpression() {
 NO_INLINE JsVar *jspeUnaryExpression() {
     if (execInfo.lex->tk=='!' || execInfo.lex->tk=='~' || execInfo.lex->tk=='-' || execInfo.lex->tk=='+') {
       short tk = execInfo.lex->tk;
-      JSP_MATCH(execInfo.lex->tk);
+      JSP_ASSERT_MATCH(tk);
       if (!JSP_SHOULD_EXECUTE) {
         return jspePostfixExpression();
       }
@@ -1184,7 +1185,7 @@ NO_INLINE JsVar *__MultiplicativeExpression(JsVar *a) {
     while (execInfo.lex->tk=='*' || execInfo.lex->tk=='/' || execInfo.lex->tk=='%') {
         JsVar *b;
         int op = execInfo.lex->tk;
-        JSP_MATCH(execInfo.lex->tk);
+        JSP_ASSERT_MATCH(op);
         b = jspeUnaryExpression();
         if (JSP_SHOULD_EXECUTE) {
           JsVar *res = jsvMathsOpSkipNames(a, b, op);
@@ -1202,7 +1203,7 @@ NO_INLINE JsVar *jspeMultiplicativeExpression() {
 NO_INLINE JsVar *__jspeAdditiveExpression(JsVar *a) {
   while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-') {
       int op = execInfo.lex->tk;
-      JSP_MATCH(execInfo.lex->tk);
+      JSP_ASSERT_MATCH(op);
       JsVar *b = jspeMultiplicativeExpression();
       if (JSP_SHOULD_EXECUTE) {
           // not in-place, so just replace
@@ -1223,7 +1224,7 @@ NO_INLINE JsVar *__jspeShiftExpression(JsVar *a) {
   if (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
     JsVar *b;
     int op = execInfo.lex->tk;
-    JSP_MATCH(op);
+    JSP_ASSERT_MATCH(op);
     b = jspeAdditiveExpression();
     if (JSP_SHOULD_EXECUTE) {
       JsVar *res = jsvMathsOpSkipNames(a, b, op);
@@ -1247,7 +1248,7 @@ NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
            execInfo.lex->tk==LEX_R_INSTANCEOF ||
            (execInfo.lex->tk==LEX_R_IN && !(execInfo.execute&EXEC_FOR_INIT))) {
         int op = execInfo.lex->tk;
-        JSP_MATCH(execInfo.lex->tk);
+        JSP_ASSERT_MATCH(op);
         b = jspeShiftExpression();
         if (JSP_SHOULD_EXECUTE) {
           JsVar *res = 0;
@@ -1306,7 +1307,7 @@ NO_INLINE JsVar *jspeRelationalExpression() {
 NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a) {
     while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
         int op = execInfo.lex->tk;
-        JSP_MATCH(execInfo.lex->tk);
+        JSP_ASSERT_MATCH(op);
         
         // if we have short-circuit ops, then if we know the outcome
         // we don't bother to execute the other op. Even if not
@@ -1343,7 +1344,7 @@ NO_INLINE JsVar *jspeLogicalExpression() {
 
 NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
   if (execInfo.lex->tk=='?') {
-    JSP_MATCH('?');
+    JSP_ASSERT_MATCH('?');
     if (!JSP_SHOULD_EXECUTE) {
       // just let lhs pass through
       jsvUnLock(jspeAssignmentExpression());
@@ -1395,7 +1396,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         }
 
         int op = execInfo.lex->tk;
-        JSP_MATCH(execInfo.lex->tk);
+        JSP_ASSERT_MATCH(op);
         rhs = jspeAssignmentExpression();
         rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
         if (JSP_SHOULD_EXECUTE && lhs) {
@@ -1450,13 +1451,13 @@ NO_INLINE JsVar *jspeExpression() {
     if (execInfo.lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
     jsvUnLock(a);
-    JSP_MATCH(',');
+    JSP_ASSERT_MATCH(',');
   }
   return 0;
 }
 
 NO_INLINE JsVar *jspeBlock() {
-    JSP_MATCH('{');
+  JSP_ASSERT_MATCH('{');
     if (JSP_SHOULD_EXECUTE) {
       while (execInfo.lex->tk && execInfo.lex->tk!='}') {
         jsvUnLock(jspeStatement());
@@ -1477,7 +1478,7 @@ NO_INLINE JsVar *jspeBlock() {
       while (execInfo.lex->tk && brackets) {
         if (execInfo.lex->tk == '{') brackets++;
         if (execInfo.lex->tk == '}') brackets--;
-        JSP_MATCH(execInfo.lex->tk);
+        JSP_ASSERT_MATCH(execInfo.lex->tk);
       }
     }
     return 0;
@@ -1488,7 +1489,7 @@ NO_INLINE JsVar *jspeBlockOrStatement() {
        return jspeBlock();
     else {
        JsVar *v = jspeStatement();
-       if (execInfo.lex->tk==';') JSP_MATCH(';');
+       if (execInfo.lex->tk==';') JSP_ASSERT_MATCH(';');
        return v;
     }
 }
@@ -1498,7 +1499,7 @@ NO_INLINE JsVar *jspeStatementVar() {
    /* variable creation. TODO - we need a better way of parsing the left
     * hand side. Maybe just have a flag called can_create_var that we
     * set and then we parse as if we're doing a normal equals.*/
-   JSP_MATCH(LEX_R_VAR);
+  JSP_ASSERT_MATCH(LEX_R_VAR);
    bool hasComma = true; // for first time in loop
    while (hasComma && execInfo.lex->tk == LEX_ID && !jspIsInterrupted()) {
      JsVar *a = 0;
@@ -1540,7 +1541,7 @@ NO_INLINE JsVar *jspeStatementVar() {
 NO_INLINE JsVar *jspeStatementIf() {
   bool cond;
   JsVar *var;
-  JSP_MATCH(LEX_R_IF);
+  JSP_ASSERT_MATCH(LEX_R_IF);
   JSP_MATCH('(');
   var = jspeExpression();
   JSP_MATCH(')');
@@ -1552,18 +1553,17 @@ NO_INLINE JsVar *jspeStatementIf() {
   jsvUnLock(jspeBlockOrStatement());
   if (!cond) JSP_RESTORE_EXECUTE();
   if (execInfo.lex->tk==LEX_R_ELSE) {
-      //JSP_MATCH(';'); ???
-      JSP_MATCH(LEX_R_ELSE);
-      JSP_SAVE_EXECUTE();
-      if (cond) jspSetNoExecute();
-      jsvUnLock(jspeBlockOrStatement());
-      if (cond) JSP_RESTORE_EXECUTE();
+    JSP_ASSERT_MATCH(LEX_R_ELSE);
+    JSP_SAVE_EXECUTE();
+    if (cond) jspSetNoExecute();
+    jsvUnLock(jspeBlockOrStatement());
+    if (cond) JSP_RESTORE_EXECUTE();
   }
   return 0;
 }
 
 NO_INLINE JsVar *jspeStatementSwitch() {
-  JSP_MATCH(LEX_R_SWITCH);
+  JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
   JsVar *switchOn = jspeAssignmentExpression();
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
@@ -1595,7 +1595,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_RESTORE_EXECUTE();
 
   if (execInfo.lex->tk==LEX_R_DEFAULT) {
-    JSP_MATCH(LEX_R_DEFAULT);
+    JSP_ASSERT_MATCH(LEX_R_DEFAULT);
     JSP_MATCH(':');
     JSP_SAVE_EXECUTE();
     if (hasExecuted) jspSetNoExecute();
@@ -1617,7 +1617,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   JslCharPos whileCondStart;
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
-  JSP_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
+  JSP_ASSERT_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
   if (isWhile) { // while loop
     JSP_MATCH('(');
     whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
@@ -1688,7 +1688,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 }
 
 NO_INLINE JsVar *jspeStatementFor() {
-  JSP_MATCH(LEX_R_FOR);
+  JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
   execInfo.execute |= EXEC_FOR_INIT;
   // initialisation
@@ -1888,7 +1888,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
 NO_INLINE JsVar *jspeStatementReturn() {
   JsVar *result = 0;
-  JSP_MATCH(LEX_R_RETURN);
+  JSP_ASSERT_MATCH(LEX_R_RETURN);
   if (execInfo.lex->tk != ';' && execInfo.lex->tk != '}') {
     // we only want the value, so skip the name if there was one
     result = jsvSkipNameAndUnLock(jspeExpression());
@@ -1911,7 +1911,7 @@ NO_INLINE JsVar *jspeStatementReturn() {
 NO_INLINE JsVar *jspeStatementFunctionDecl() {
   JsVar *funcName = 0;
   JsVar *funcVar;
-  JSP_MATCH(LEX_R_FUNCTION);
+  JSP_ASSERT_MATCH(LEX_R_FUNCTION);
   if (JSP_SHOULD_EXECUTE) {
     funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
     if (!funcName) { // out of memory
@@ -1969,28 +1969,28 @@ NO_INLINE JsVar *jspeStatement() {
         /* Execute a simple statement that only contains basic arithmetic... */
       return jspeExpression();
     } else if (execInfo.lex->tk=='{') {
-        /* A block of code */
-        return jspeBlock();
+      /* A block of code */
+      return jspeBlock();
     } else if (execInfo.lex->tk==';') {
-        /* Empty statement - to allow things like ;;; */
-        JSP_MATCH(';');
-        return 0;
+      /* Empty statement - to allow things like ;;; */
+      JSP_ASSERT_MATCH(';');
+      return 0;
     } else if (execInfo.lex->tk==LEX_R_VAR) {
-        return jspeStatementVar();
+      return jspeStatementVar();
     } else if (execInfo.lex->tk==LEX_R_IF) {
-        return jspeStatementIf();
+      return jspeStatementIf();
     } else if (execInfo.lex->tk==LEX_R_DO) {
-        return jspeStatementDoOrWhile(false);
+      return jspeStatementDoOrWhile(false);
     } else if (execInfo.lex->tk==LEX_R_WHILE) {
-        return jspeStatementDoOrWhile(true);
+      return jspeStatementDoOrWhile(true);
     } else if (execInfo.lex->tk==LEX_R_FOR) {
-        return jspeStatementFor();
+      return jspeStatementFor();
     } else if (execInfo.lex->tk==LEX_R_RETURN) {
-        return jspeStatementReturn();
+      return jspeStatementReturn();
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
-        return jspeStatementFunctionDecl();
+      return jspeStatementFunctionDecl();
     } else if (execInfo.lex->tk==LEX_R_CONTINUE) {
-      JSP_MATCH(LEX_R_CONTINUE);
+      JSP_ASSERT_MATCH(LEX_R_CONTINUE);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & EXEC_IN_LOOP))
           jsErrorHere("CONTINUE statement outside of FOR or WHILE loop");
@@ -1998,7 +1998,7 @@ NO_INLINE JsVar *jspeStatement() {
           execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) |  EXEC_CONTINUE;
       }
     } else if (execInfo.lex->tk==LEX_R_BREAK) {
-      JSP_MATCH(LEX_R_BREAK);
+      JSP_ASSERT_MATCH(LEX_R_BREAK);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & (EXEC_IN_LOOP|EXEC_IN_SWITCH)))
           jsErrorHere("BREAK statement outside of SWITCH, FOR or WHILE loop");

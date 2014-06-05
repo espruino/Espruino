@@ -417,7 +417,7 @@ JsVarInt jsvGetLength(JsVar *src); ///< General purpose length function. Does th
 size_t jsvCountJsVarsUsed(JsVar *v); ///< Count the amount of JsVars used. Mostly useful for debugging
 JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index); ///< Get an item at the specified index in the array (and lock it)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact); ///< Get the index of the value in the array (matchExact==use pointer, not equality check)
-JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
+JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue); ///< Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
 JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
@@ -441,6 +441,18 @@ bool jsvIsInternalFunctionKey(JsVar *v);
 
 /// If v is the key of an object, return true if it is internal and shouldn't be visible to the user
 bool jsvIsInternalObjectKey(JsVar *v);
+
+/** Iterate over the contents of var, calling callback for each. Contents may be:
+ *   * numeric -> output
+ *   * a string -> output each character
+ *   * array/arraybuffer -> call itself on each element
+ *   * object -> call itself object.count times, on object.data
+ */
+bool jsvIterateCallback(JsVar *var, void (*callback)(int item, void *callbackData), void *callbackData);
+
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
+int jsvIterateCallbackCount(JsVar *var);
+
 // --------------------------------------------------------------------------------------------
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var

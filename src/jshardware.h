@@ -28,6 +28,7 @@
 #endif
 
 void jshInit();
+void jshReset(); // When 'reset' is called - we try and put peripherals back to their power-on state
 void jshKill();
 void jshIdle(); // stuff to do on idle
 
