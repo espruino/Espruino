@@ -37,13 +37,13 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'B5', 'B4', 'B3' ],
-  'left2' : [ '', 'A8', 'B10' ],
-  'top' : [ 'VBAT', 'GND', 'B15','B14','B13','A7', 'A6', 'A5' ],
-  'bottom' : [ 'B6', 'B7', 'B8','B9', 'A0', 'A1', '3.3', 'GND' ],
+  'left' : [ 'A1', 'A8', 'B10' ],
+  'left2' : [ 'B5', 'B4', 'B3' ],
+  'top' : [ 'GND', 'VBAT', 'A2', 'A3', 'A5', 'A6', 'A7', 'B0'],
+  'bottom' : [ 'B7', 'B6', 'GND', '3.3', 'A0', 'B15', 'B14', 'B13',  ], 
 
   'right' : ['','','','','','','','','',''],
-  'right2' : ['','','','','','','','','',''],
+  'right2' : ['','','','','','A11','A12','A13','A14','A15'],
         
 };
 devices = {
@@ -51,10 +51,8 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
-  'LED1' : { 'pin' : 'A13' },
-  'LED2' : { 'pin' : 'A14' },
-  'BTN1' : { 'pin' : 'B12' },
-  'USB' : { 'pin_disc' :  'C13',
+  'LED1' : { 'pin' : 'B1' },
+  'USB' : { 'pin_vbus' :  'B12',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked
   'JTAG' : {
