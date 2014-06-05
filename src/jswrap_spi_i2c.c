@@ -311,12 +311,13 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
 
   Pin nss_pin = PIN_UNDEFINED;
   // If the last value is a pin, use it as the NSS pin
-  if (jsvGetArrayLength(args)>0) {
-    JsVar *last = jsvArrayPop(args); // take the last value off
-    if (jsvIsPin(last))
-      nss_pin = jshGetPinFromVar(last);
-    else
-      jsvArrayPush(args, last); // else push the value back on...
+  JsVarInt len = jsvGetArrayLength(args);
+  if (len>0) {    
+    JsVar *last = jsvGetArrayItem(args, len-1); // look at the last value
+    if (jsvIsPin(last)) {
+      nss_pin = jshGetPinFromVar(last);    
+      jsvUnLock(jsvArrayPop(args));
+    }
     jsvUnLock(last);
   }
 

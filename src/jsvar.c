@@ -1907,8 +1907,8 @@ JsVar *jsvArrayPop(JsVar *arr) {
       while (child && !jsvIsInt(child)) {
         ref = child->prevSibling;
         jsvUnLock(child);
-		if (ref) {
-		  child = jsvLock(ref);
+        if (ref) {
+          child = jsvLock(ref);
         } else {
           child = 0;
         }
@@ -2560,6 +2560,15 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
     }
     jsvUnLock(countVar);
     jsvUnLock(dataVar);
+  } else if (jsvIsString(data)) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, data, 0);
+    while (jsvStringIteratorHasChar(&it) && ok) {
+      char ch = jsvStringIteratorGetChar(&it);
+      callback(ch, callbackData);
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&it);
   } else if (jsvIsIterable(data)) {
     JsvIterator it;
     jsvIteratorNew(&it, data);
