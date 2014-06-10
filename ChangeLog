@@ -2,6 +2,7 @@
             Don't check for token matches where we already know what it should be (fix #280)
             Improve file read speed for large reads
             Waveform stability improvements
+            Fix Float32Array.set (and improve speed for non-float arrays) 
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
