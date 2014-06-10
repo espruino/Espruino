@@ -194,6 +194,9 @@ void jshInit() {
 #endif
 }
 
+void jshReset() {
+}
+
 void jshKill() {
 #ifdef SYSFS_GPIO_DIR
   int i;

@@ -24,8 +24,8 @@ extern void jsfsReportError(const char *msg, FRESULT res);
 
 /*JSON{ "type":"library",
         "class" : "File",
-        "description" : ["This is the stream related file IO library.",
-                         "To use this, you must type ```var fd = require('fs').open('filepath','flags','mode')``` to open a file stream." ]
+        "description" : ["This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).",
+                         "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information." ]
 }*/
 
 static JsVar* fsGetArray(const char *name, bool create) {
@@ -134,7 +134,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       } else if(strcmp(modeStr,"a") == 0) {
         fMode = FM_WRITE;
 #ifndef LINUX
-        ff_mode = FA_WRITE | FA_OPEN_EXISTING;
+        ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
         append = true;
 #endif
       } else if(strcmp(modeStr,"w") == 0) {
@@ -145,7 +145,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
       } else if(strcmp(modeStr,"w+") == 0) {
         fMode = FM_READ_WRITE;
 #ifndef LINUX
-        ff_mode = FA_WRITE | FA_OPEN_EXISTING;
+        ff_mode = FA_WRITE | FA_OPEN_ALWAYS;
 #endif
       }
       if(fMode != FM_NONE && allocateJsFile(&file, fMode, FT_FILE)) {
@@ -275,6 +275,7 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
 }*/
 JsVar *jswrap_file_read(JsVar* parent, int length) {
   JsVar *buffer = 0;
+  JsvStringIterator it;
   FRESULT res = 0;
   size_t bytesRead = 0;
   if (jsfsInit()) {
@@ -283,6 +284,7 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
       if(file.data.mode == FM_READ || file.data.mode == FM_READ_WRITE) {
         char buf[32];
         size_t actual = 0;
+
         while (bytesRead < (size_t)length) {
           size_t requested = (size_t)length - bytesRead;
           if (requested > sizeof( buf ))
@@ -298,8 +300,11 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
             if (!buffer) {
               buffer = jsvNewFromEmptyString();
               if (!buffer) return 0; // out of memory
+              jsvStringIteratorNew(&it, buffer, 0);
             }
-            jsvAppendStringBuf(buffer, buf, actual);
+            size_t i;
+            for (i=0;i<actual;i++)
+              jsvStringIteratorAppend(&it, buf[i]);
           }
           bytesRead += actual;
           if(actual != requested) break;
@@ -309,6 +314,9 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
     }
   }
   if (res) jsfsReportError("Unable to read file", res);
+
+  if (buffer)
+    jsvStringIteratorFree(&it);
 
   // automatically close this file if we're at the end of it
   if (bytesRead!=(size_t)length)
@@ -333,7 +341,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(f_tell(&file.data.handle) + length));
+        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)f_tell(&file.data.handle) + (DWORD)length);
   #else
         fseek(file.data.handle, length, SEEK_CUR);
   #endif

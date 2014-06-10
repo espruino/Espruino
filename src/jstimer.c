@@ -30,7 +30,7 @@ uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReloa
 static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
   // move to next element in var
   task->data.buffer.charIdx++;
-  unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
+  size_t maxChars = jsvGetCharactersInVar(task->data.buffer.var);
   if (task->data.buffer.charIdx >= maxChars) {
     task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
     /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
@@ -42,6 +42,7 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
       task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
     } else { // else no more... move on to the next
       if (task->data.buffer.nextBuffer) {
+        task->data.buffer.charIdx = 0;
         task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
         // flip buffers
         JsVarRef t = task->data.buffer.nextBuffer;
@@ -76,6 +77,7 @@ void jstUtilTimerInterruptHandler() {
           }
         } break;
         case UET_READ_SHORT: {
+          if (!task->data.buffer.var) break;
           int v = jshPinAnalogFast(task->data.buffer.pin);
           *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)v;  // LSB first
           jstUtilTimerInterruptHandlerNextByte(task);
@@ -84,6 +86,7 @@ void jstUtilTimerInterruptHandler() {
           break;
         }
         case UET_WRITE_SHORT: {
+          if (!task->data.buffer.var) break;
           int v = 0;
           v |= *jstUtilTimerInterruptHandlerByte(task);  // LSB first
           jstUtilTimerInterruptHandlerNextByte(task);
@@ -93,11 +96,13 @@ void jstUtilTimerInterruptHandler() {
           break;
         }
         case UET_READ_BYTE: {
+          if (!task->data.buffer.var) break;
           *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)(jshPinAnalogFast(task->data.buffer.pin) >> 8);
           jstUtilTimerInterruptHandlerNextByte(task);
           break;
         }
         case UET_WRITE_BYTE: {
+          if (!task->data.buffer.var) break;
           jshSetOutputValue(task->data.buffer.pinFunction, (int)*jstUtilTimerInterruptHandlerByte(task) << 8);
           jstUtilTimerInterruptHandlerNextByte(task);
           break;

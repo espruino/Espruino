@@ -1852,10 +1852,29 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
 }
 
 /// Adds new elements to the end of an array, and returns the new length. initialValue is the item index when no items are currently in the array.
-JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialValue) {
+JsVarInt jsvArrayAddToEnd(JsVar *arr, JsVar *value, JsVarInt initialValue) {
+  assert(jsvIsArray(arr));
+  JsVarInt index = initialValue;
+  if (arr->lastChild) {
+    JsVar *last = jsvLock(arr->lastChild);
+    index = jsvGetInteger(last)+1;
+    jsvUnLock(last);
+  }
+
+  JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
+  if (!idx) {
+    jsWarn("Out of memory while appending to array");
+    return 0;
+  }
+  jsvAddName(arr, idx);
+  jsvUnLock(idx);
+  return index+1;
+}
+
+/// Adds new elements to the end of an array, and returns the new length
+JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
   assert(jsvIsArray(arr));
   JsVarInt index = jsvGetArrayLength(arr);
-  if (index==0) index=initialValue;
   JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(index), value);
   if (!idx) {
     jsWarn("Out of memory while appending to array");
@@ -1866,14 +1885,9 @@ JsVarInt jsvArrayPushWithInitialSize(JsVar *arr, JsVar *value, JsVarInt initialV
   return jsvGetArrayLength(arr);
 }
 
-/// Adds new elements to the end of an array, and returns the new length
-JsVarInt jsvArrayPush(JsVar *arr, JsVar *value) {
-  return jsvArrayPushWithInitialSize(arr, value, 0);
-}
-
 /// Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value) {
-  JsVarInt l = jsvArrayPushWithInitialSize(arr, value, 0);
+  JsVarInt l = jsvArrayPush(arr, value);
   jsvUnLock(value);
   return l;
 }
@@ -1893,8 +1907,8 @@ JsVar *jsvArrayPop(JsVar *arr) {
       while (child && !jsvIsInt(child)) {
         ref = child->prevSibling;
         jsvUnLock(child);
-		if (ref) {
-		  child = jsvLock(ref);
+        if (ref) {
+          child = jsvLock(ref);
         } else {
           child = 0;
         }
@@ -2521,6 +2535,69 @@ bool jsvIsInternalObjectKey(JsVar *v) {
                             ));
 }
 
+
+
+/** Iterate over the contents of var, calling callback for each. Contents may be:
+ *   * numeric -> output
+ *   * a string -> output each character
+ *   * array/arraybuffer -> call itself on each element
+ *   * object -> call itself object.count times, on object.data
+ */
+bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackData), void *callbackData) {
+  bool ok = true;
+  if (jsvIsNumeric(data)) {
+    callback((int)jsvGetInteger(data), callbackData);
+  } else if (jsvIsObject(data)) {
+    JsVar *countVar = jsvObjectGetChild(data, "count", 0);
+    JsVar *dataVar = jsvObjectGetChild(data, "data", 0);
+    if (countVar && dataVar && jsvIsNumeric(countVar)) {
+      int n = (int)jsvGetInteger(countVar);
+      while (ok && n-- > 0) {
+        ok = jsvIterateCallback(dataVar, callback, callbackData);
+      }
+    } else {
+      jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
+    }
+    jsvUnLock(countVar);
+    jsvUnLock(dataVar);
+  } else if (jsvIsString(data)) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, data, 0);
+    while (jsvStringIteratorHasChar(&it) && ok) {
+      char ch = jsvStringIteratorGetChar(&it);
+      callback(ch, callbackData);
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&it);
+  } else if (jsvIsIterable(data)) {
+    JsvIterator it;
+    jsvIteratorNew(&it, data);
+    while (jsvIteratorHasElement(&it) && ok) {
+      JsVar *el = jsvIteratorGetValue(&it);
+      ok = jsvIterateCallback(el, callback, callbackData);
+      jsvUnLock(el);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else {
+    jsWarn("Expecting a number or something iterable, got %t", data);
+    ok = false;
+  }
+  return ok;
+}
+
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
+static void jsvIterateCallbackCountCb(int n, void *data) {
+  NOT_USED(n);
+  int *count = (int*)data;
+  count++;
+}
+int jsvIterateCallbackCount(JsVar *var) {
+  int count = 0;
+  jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
+  return count;
+}
+
 // --------------------------------------------------------------------------------------------
 
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
@@ -2860,3 +2937,4 @@ JsvIterator jsvIteratorClone(JsvIterator *it) {
   }
   return newit;
 }
+

@@ -268,7 +268,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
-  bool useInts = JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
+  bool useInts = !JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
 
   while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
     if (useInts) {
