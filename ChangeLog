@@ -5,6 +5,7 @@
             Fix Float32Array.set (and improve speed for non-float arrays)
             OneWire library now uses hex strings for addresses rather than 64 bit ints
             Fix issue with uninitialised function arguments (fix #391)
+            Fix parseURL for numeric keys in query string (fix #388)
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
