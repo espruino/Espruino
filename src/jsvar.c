@@ -2590,7 +2590,7 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
 static void jsvIterateCallbackCountCb(int n, void *data) {
   NOT_USED(n);
   int *count = (int*)data;
-  count++;
+  (*count)++;
 }
 int jsvIterateCallbackCount(JsVar *var) {
   int count = 0;
