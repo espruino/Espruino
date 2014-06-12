@@ -484,6 +484,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
+          else if (jsvIsFunctionParameter(param)) {
+            JsVar *paramName = jsvCopy(param);
+            paramName = jsvMakeIntoVariableName(paramName, 0);
+            if (paramName) // could be out of memory - or maybe just not supplied!
+              jsvAddName(functionRoot, paramName);
+            jsvUnLock(paramName);
+          }
         }
         v = param->nextSibling;
         jsvUnLock(param);
