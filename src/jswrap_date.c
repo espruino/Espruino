@@ -195,6 +195,11 @@ JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent) {
          "generate" : "jswrap_date_getTime",
          "return" : ["float", ""]
 }*/
+/*JSON{ "type":"method", "class": "Date", "name" : "valueOf",
+         "description" : "Return the number of milliseconds since 1970",
+         "generate" : "jswrap_date_getTime",
+         "return" : ["float", ""]
+}*/
 JsVarFloat jswrap_date_getTime(JsVar *date) {
   return jsvGetFloatAndUnLock(jsvObjectGetChild(date, "ms", 0));
 }

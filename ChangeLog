@@ -12,6 +12,8 @@
             Add Object.getOwnPropertyDescriptor (although it won't return spec-compliant values)
             Add some Stubs for inbuilt Date and Error classes
             Added throw and try..catch..finally (see #40)
+            Fixed overriding of builtins with other Builtins
+            Added Date.valueOf
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0

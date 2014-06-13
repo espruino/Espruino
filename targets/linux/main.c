@@ -197,9 +197,9 @@ bool run_memory_tests(int vars) {
 
 void sig_handler(int sig)
 {
-  printf("Got Signal %d\n",sig);fflush(stdout);
-    if (sig==SIGINT) 
-      jspSetInterrupted(true);
+  //printf("Got Signal %d\n",sig);fflush(stdout);
+  if (sig==SIGINT)
+    jspSetInterrupted(true);
 }
 
 void show_help() {

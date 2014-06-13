@@ -77,7 +77,7 @@ typedef enum  {
   EXEC_INTERRUPTED = 8, // true if execution has been interrupted
   EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
   EXEC_ERROR = 32,
-  EXEC_ERROR_LINE_REPORTED = 64, // if an error has been reported, set this so we don't do it too much
+  EXEC_ERROR_LINE_REPORTED = 64, // if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
 
   EXEC_FOR_INIT = 128, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
   EXEC_IN_LOOP = 256, // when in a loop, set this - we can then block break/continue outside it
@@ -99,7 +99,8 @@ typedef enum  {
   EXEC_PARSE_FUNCTION_DECL = 4096,
 
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
-  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED,
+  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
+  EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, // in these cases we should exit as fast as possible - skipping out of parsing
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
   EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
 } JsExecFlags;

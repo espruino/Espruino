@@ -38,6 +38,7 @@ void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #define JSP_SAVE_EXECUTE() JsExecFlags oldExecute = execInfo.execute
 #define JSP_RESTORE_EXECUTE() execInfo.execute = (execInfo.execute&(JsExecFlags)(~EXEC_SAVE_RESTORE_MASK)) | (oldExecute&EXEC_SAVE_RESTORE_MASK);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
+#define JSP_SHOULDNT_PARSE (((execInfo.execute)&EXEC_NO_PARSE_MASK)!=0)
 
 /// if interrupting execution, this is set
 bool jspIsInterrupted() {
@@ -341,11 +342,11 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
  * everything away */
 NO_INLINE bool jspeParseFunctionCallBrackets() {
   JSP_MATCH('(');
-  while (!JSP_HAS_ERROR && execInfo.lex->tk != ')') {
+  while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != ')') {
     jsvUnLock(jspeAssignmentExpression());
     if (execInfo.lex->tk!=')') JSP_MATCH(',');
   }
-  if (!JSP_HAS_ERROR) JSP_MATCH(')');
+  if (!JSP_SHOULDNT_PARSE) JSP_MATCH(')');
   return 0;
 }
 
@@ -393,7 +394,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #define MAX_ARGS 16
         argPtr = (JsVar**)alloca(sizeof(JsVar*)*MAX_ARGS);
         argCount = 0;
-        while (!JSP_HAS_ERROR && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
+        while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
           if (execInfo.lex->tk!=')') JSP_MATCH_WITH_RETURN(',', 0);
         }
@@ -444,7 +445,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         int hadParams = 0;
         // grab in all parameters. We go around this loop until we've run out
         // of named parameters AND we've parsed all the supplied arguments
-        while (!JSP_HAS_ERROR && execInfo.lex->tk!=')') {
+        while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')') {
           JsVar *param = 0;
           if (v) param = jsvLock(v);
           bool paramDefined = jsvIsFunctionParameter(param);
@@ -923,7 +924,7 @@ NO_INLINE JsVar *jspeFactorObject() {
     }
     /* JSON-style object definition */
     JSP_MATCH_WITH_RETURN('{', contents);
-    while (!JSP_HAS_ERROR && execInfo.lex->tk != '}') {
+    while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != '}') {
       JsVar *varName = 0;
       // we only allow strings or IDs on the left hand side of an initialisation
       if (execInfo.lex->tk==LEX_ID) {
@@ -976,7 +977,7 @@ NO_INLINE JsVar *jspeFactorArray() {
   }
   /* JSON-style array */
   JSP_MATCH_WITH_RETURN('[', contents);
-  while (!JSP_HAS_ERROR && execInfo.lex->tk != ']') {
+  while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != ']') {
     if (JSP_SHOULD_EXECUTE) {
       // OPT: Store array indices as actual ints
       JsVar *aVar = 0;
@@ -1065,7 +1066,7 @@ NO_INLINE JsVar *jspeFactor() {
     JSP_ASSERT_MATCH('(');
     if (!jspCheckStackPosition()) return 0;
     a = jspeExpression();
-    if (!JSP_HAS_ERROR) JSP_MATCH_WITH_RETURN(')',a);
+    if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN(')',a);
     return a;
   } else if (execInfo.lex->tk==LEX_R_TRUE) {
     JSP_ASSERT_MATCH(LEX_R_TRUE);
@@ -1466,7 +1467,7 @@ NO_INLINE JsVar *jspeAssignmentExpression() {
 
 // ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
 NO_INLINE JsVar *jspeExpression() {
-  while (!JSP_HAS_ERROR) {
+  while (!JSP_SHOULDNT_PARSE) {
     JsVar *a = jspeAssignmentExpression();
     if (execInfo.lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
@@ -1488,8 +1489,9 @@ NO_INLINE JsVar *jspeBlock() {
           jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart);
           jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastStart);
         }
-        return 0;
       }
+      if (JSP_SHOULDNT_PARSE)
+        return 0;
     }
     JSP_MATCH('}');
   } else {
@@ -1564,7 +1566,7 @@ NO_INLINE JsVar *jspeStatementIf() {
   JSP_ASSERT_MATCH(LEX_R_IF);
   JSP_MATCH('(');
   var = jspeExpression();
-  if (jspHasError()) return var;
+  if (JSP_SHOULDNT_PARSE) return var;
   JSP_MATCH(')');
   cond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(var));
   jsvUnLock(var);
@@ -1607,7 +1609,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     jsvUnLock(test);
     if (cond && (execInfo.execute&EXEC_RUN_MASK)==EXEC_NO)
       execInfo.execute=EXEC_YES|EXEC_IN_SWITCH;
-    while (!JSP_HAS_ERROR && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
+    while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!=LEX_R_CASE && execInfo.lex->tk!=LEX_R_DEFAULT && execInfo.lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
   }
   jsvUnLock(switchOn);
@@ -1620,7 +1622,7 @@ NO_INLINE JsVar *jspeStatementSwitch() {
     JSP_MATCH(':');
     JSP_SAVE_EXECUTE();
     if (hasExecuted) jspSetNoExecute();
-    while (!JSP_HAS_ERROR && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!='}')
+    while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=LEX_EOF && execInfo.lex->tk!='}')
       jsvUnLock(jspeBlockOrStatement());
     JSP_RESTORE_EXECUTE();
   }
@@ -2222,7 +2224,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   if (parseTwice) {
     JsExecFlags oldFlags = execInfo.execute;
     execInfo.execute = EXEC_PARSE_FUNCTION_DECL;
-    while (!JSP_HAS_ERROR && execInfo.lex->tk != LEX_EOF) {
+    while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != LEX_EOF) {
       jsvUnLock(v);
       v = jspeBlockOrStatement();
     }
@@ -2230,7 +2232,7 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
     execInfo.execute = oldFlags; // old flags
   }
 
-  while (!JSP_HAS_ERROR && execInfo.lex->tk != LEX_EOF) {
+  while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != LEX_EOF) {
     jsvUnLock(v);
     v = jspeBlockOrStatement();
   }
