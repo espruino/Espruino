@@ -251,6 +251,18 @@ void jspSetNoExecute() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)(int)~EXEC_RUN_MASK) | EXEC_NO;
 }
 
+// We had an exception - start it off now
+void jspSetException(JsVar *value) {
+  // Add the exception itself to a variable in root scope
+  JsVar *exception = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, true);
+  if (exception) {
+    jsvSetValueOfName(exception, value);
+    jsvUnLock(exception);
+  }
+  // Set the exception flag
+  execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
+}
+
 // ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)
@@ -1893,6 +1905,51 @@ NO_INLINE JsVar *jspeStatementFor() {
   return 0;
 }
 
+NO_INLINE JsVar *jspeStatementTry() {
+  // execute the try block
+  JSP_ASSERT_MATCH(LEX_R_TRY);
+  bool shouldExecuteBefore = JSP_SHOULD_EXECUTE;
+  jspeBlock();
+  bool hadException = shouldExecuteBefore && ((execInfo.execute & EXEC_EXCEPTION)!=0);
+
+  bool hadCatch = false;
+  if (execInfo.lex->tk == LEX_R_CATCH) {
+    JSP_ASSERT_MATCH(LEX_R_CATCH);
+    hadCatch = true;
+    JSP_MATCH('(');
+    JsVar *exceptionVar = 0;
+    if (hadException)
+      exceptionVar = jspeiFindOnTop(jslGetTokenValueAsString(execInfo.lex), true);
+    JSP_MATCH(LEX_ID);
+    JSP_MATCH(')');
+    if (exceptionVar) {
+      // set the exception var up properly
+      JsVar *actualExceptionName = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, false);
+      if (actualExceptionName) {
+        JsVar *actualException = jsvSkipName(actualExceptionName);
+        jsvSetValueOfName(exceptionVar, actualException);
+        jsvUnLock(actualException);
+        // remove the actual exception
+        jsvRemoveChild(execInfo.root, actualExceptionName);
+        jsvUnLock(actualExceptionName);
+        // Now clear the exception flag (it's handled - we hope!)
+        execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
+      }
+      jsvUnLock(exceptionVar);
+    }
+    jspeBlock();
+  }
+  if (execInfo.lex->tk == LEX_R_FINALLY || !hadCatch) {
+    JSP_MATCH(LEX_R_FINALLY);
+    // clear the exception flag - but only momentarily!
+    if (hadException) execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
+    jspeBlock();
+    // put the flag back!
+    if (hadException && !hadCatch) execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
+  }
+  return 0;
+}
+
 NO_INLINE JsVar *jspeStatementReturn() {
   JsVar *result = 0;
   JSP_ASSERT_MATCH(LEX_R_RETURN);
@@ -1910,6 +1967,17 @@ NO_INLINE JsVar *jspeStatementReturn() {
       jspSetError(true);
     }
     jspSetNoExecute(); // Stop anything else in this function executing
+  }
+  jsvUnLock(result);
+  return 0;
+}
+
+NO_INLINE JsVar *jspeStatementThrow() {
+  JsVar *result = 0;
+  JSP_ASSERT_MATCH(LEX_R_THROW);
+  result = jsvSkipNameAndUnLock(jspeExpression());
+  if (JSP_SHOULD_EXECUTE) {
+    jspSetException(result); // Stop anything else in this function executing
   }
   jsvUnLock(result);
   return 0;
@@ -1994,8 +2062,12 @@ NO_INLINE JsVar *jspeStatement() {
       return jspeStatementDoOrWhile(true);
     } else if (execInfo.lex->tk==LEX_R_FOR) {
       return jspeStatementFor();
+    } else if (execInfo.lex->tk==LEX_R_TRY) {
+      return jspeStatementTry();
     } else if (execInfo.lex->tk==LEX_R_RETURN) {
       return jspeStatementReturn();
+    } else if (execInfo.lex->tk==LEX_R_THROW) {
+      return jspeStatementThrow();
     } else if (execInfo.lex->tk==LEX_R_FUNCTION) {
       return jspeStatementFunctionDecl();
     } else if (execInfo.lex->tk==LEX_R_CONTINUE) {

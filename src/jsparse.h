@@ -75,19 +75,20 @@ typedef enum  {
   EXEC_CONTINUE = 4,
 
   EXEC_INTERRUPTED = 8, // true if execution has been interrupted
-  EXEC_ERROR = 16,
-  EXEC_ERROR_LINE_REPORTED = 32, // if an error has been reported, set this so we don't do it too much
+  EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
+  EXEC_ERROR = 32,
+  EXEC_ERROR_LINE_REPORTED = 64, // if an error has been reported, set this so we don't do it too much
 
-  EXEC_FOR_INIT = 64, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
-  EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
-  EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
+  EXEC_FOR_INIT = 128, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
+  EXEC_IN_LOOP = 256, // when in a loop, set this - we can then block break/continue outside it
+  EXEC_IN_SWITCH = 512, // when in a switch, set this - we can then block break outside it/loops
 
   /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
    * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
    * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
    * in something, and otherwise the console just clears the line. */
-  EXEC_CTRL_C = 512, // If Ctrl-C was pressed, set this
-  EXEC_CTRL_C_WAIT = 1024, // If Ctrl-C was set and SysTick happens then this is set instead
+  EXEC_CTRL_C = 1024, // If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 2048, // If Ctrl-C was set and SysTick happens then this is set instead
 
   /** Parse function declarations, even if we're not executing. This
    * is used when we want to do two passes, to effectively 'hoist' function
@@ -95,9 +96,9 @@ typedef enum  {
    * NOTE: This is only needed to call a function before it is defined IF
    * code is being executed as it is being parsed. If it's in a function
    * then you're fine anyway. */
-  EXEC_PARSE_FUNCTION_DECL = 2048,
+  EXEC_PARSE_FUNCTION_DECL = 4096,
 
-  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
+  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
   EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
