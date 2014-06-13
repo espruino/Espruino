@@ -13,11 +13,16 @@
  */
 #include "jsvar.h"
 
+JsVarFloat jswrap_date_now();
 JsVar *jswrap_date_constructor();
 
 JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
+JsVarFloat jswrap_date_getTime(JsVar *parent);
 int jswrap_date_getHours(JsVar *parent);
 int jswrap_date_getMinutes(JsVar *parent);
+int jswrap_date_getSeconds(JsVar *parent);
+int jswrap_date_getMilliseconds(JsVar *parent);
 int jswrap_date_getDay(JsVar *parent);
 int jswrap_date_getDate(JsVar *parent);
 int jswrap_date_getMonth(JsVar *parent);
+int jswrap_date_getFullYear(JsVar *parent);
