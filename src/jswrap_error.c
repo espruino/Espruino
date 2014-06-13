@@ -26,11 +26,34 @@
         "name" : "Error",
         "generate" : "jswrap_error_constructor",
         "description" : [ "Creates an Error object" ],
+        "params" : [ [ "message", "JsVar", "An optional message string"] ],
         "return" : ["JsVar", "An Error object"]
 }*/
-JsVar *jswrap_error_constructor() {
+JsVar *jswrap_error_constructor(JsVar *msg) {
   JsVar *d = jspNewObject(0,"Error");
   if (!d) return 0;
 
+  if (msg) {
+    msg = jsvAsString(msg, false);
+    jsvUnLock(jsvObjectSetChild(d, "msg", msg));
+  }
+
   return d;
+}
+
+/*JSON{ "type":"method",
+        "class" : "Error", "name" : "toString",
+        "generate" : "jswrap_error_toString",
+        "return" : ["JsVar", "A String"]
+}*/
+JsVar *jswrap_error_toString(JsVar *parent) {
+  JsVar *str = jsvNewFromString("Error");
+
+  JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
+  if (msg) {
+    jsvAppendPrintf(str, ": %v", msg);
+    jsvUnLock(msg);
+  }
+
+  return str;
 }

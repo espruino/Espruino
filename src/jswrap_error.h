@@ -14,3 +14,4 @@
 #include "jsvar.h"
 
 JsVar *jswrap_error_constructor();
+JsVar *jswrap_error_toString(JsVar *parent);
