@@ -119,9 +119,7 @@ JsVar *jswrap_object_clone(JsVar *parent) {
 JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerable) {
   // strings are iterable, but we shouldn't try and show keys for them
   if (jsvIsIterable(obj) && !jsvIsString(obj)) {
-    bool (*checkerFunction)(JsVar*) = 0;
-    if (jsvIsFunction(obj)) checkerFunction = jsvIsInternalFunctionKey;
-    else if (jsvIsObject(obj)) checkerFunction = jsvIsInternalObjectKey;
+    JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
 
     JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
     if (!arr) return 0;
@@ -176,6 +174,66 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
   }
 }
 
+/*JSON{ "type":"staticmethod", "class": "Object", "name" : "create",
+         "description" : ["Creates a new object with the specified prototype object and properties. properties are currently unsupported."],
+         "generate" : "jswrap_object_create",
+         "params" : [ [ "proto", "JsVar", "A prototype object",
+                        "propertiesObject", "JsVar", "An object containing properties. NOT IMPLEMENTED"] ],
+         "return" : ["JsVar", "A new object"]
+}*/
+JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject) {
+  if (!jsvIsObject(proto) && !jsvIsNull(proto)) {
+    jsWarn("Object prototype may only be an Object or null: %t", proto);
+    return 0;
+  }
+  if (jsvIsObject(propertiesObject)) {
+    jsWarn("propertiesObject is not supported yet");
+  }
+  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  if (!obj) return 0;
+  if (jsvIsObject(proto))
+    jsvObjectSetChild(obj, JSPARSE_INHERITS_VAR, proto);
+  return obj;
+}
+
+
+/*JSON{ "type":"staticmethod", "class": "Object", "name" : "getOwnPropertyDescriptor",
+         "description" : ["Get information on the given property in the object, or undefined"],
+         "generate" : "jswrap_object_getOwnPropertyDescriptor",
+         "params" : [ [ "obj", "JsVar", "The object"],
+                      [ "name", "JsVar", "The name of the property"] ],
+         "return" : ["JsVar", "An object with a description of the property. The values of writable/enumerable/configurable may not be entirely correct due to Espruino's implementation."]
+}*/
+JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
+  if (!jswrap_object_hasOwnProperty(parent, name))
+    return 0;
+
+  JsVar *varName = jspGetVarNamedField(parent, name, true);
+  assert(varName); // we had it! (apparently)
+  if (!varName) return 0;
+
+  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  if (!obj) {
+    jsvUnLock(varName);
+    return 0;
+  }
+
+  jsvTrace(jsvGetRef(varName), 5);
+  JsVar *var = jsvSkipName(varName);
+
+  bool isBuiltIn = jsvIsNewChild(varName);
+  JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(parent);
+
+  jsvObjectSetChild(obj, "value", var);
+  jsvUnLock(jsvObjectSetChild(obj, "writable", jsvNewFromBool(true)));
+  jsvUnLock(jsvObjectSetChild(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName))));
+  jsvUnLock(jsvObjectSetChild(obj, "configurable", jsvNewFromBool(!isBuiltIn)));
+
+  jsvUnLock(var);
+  jsvUnLock(varName);
+  return obj;
+}
+
 /*JSON{ "type":"method", "class": "Object", "name" : "hasOwnProperty",
          "description" : ["Return true if the object (not its prototype) has the given property.","NOTE: This currently returns false-positives for built-in functions in prototypes"],
          "generate" : "jswrap_object_hasOwnProperty",
@@ -183,7 +241,6 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
          "return" : ["bool", "True if it exists, false if it doesn't"]
 }*/
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
-
   JsVar *propName = jsvAsArrayIndex(name);
 
   bool contains = false;

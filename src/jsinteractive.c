@@ -413,7 +413,7 @@ void jsiSoftInit() {
   if (initName && initName->firstChild) {
     //jsiConsolePrint("Running initialisation code...\n");
     JsVar *initCode = jsvLock(initName->firstChild);
-    jsvUnLock(jspEvaluateVar(initCode, 0));
+    jsvUnLock(jspEvaluateVar(initCode, 0, false));
     jsvUnLock(initCode);
     jsvRemoveChild(execInfo.root, initName);
   }
@@ -462,7 +462,7 @@ void jsiSoftInit() {
     if (jsvIsFunction(func))
       jsvUnLock(jspExecuteFunction(func, 0, 0, (JsVar**)0));
     else if (jsvIsString(func))
-      jsvUnLock(jspEvaluateVar(func, 0));
+      jsvUnLock(jspEvaluateVar(func, 0, false));
     else
       jsError("onInit is not a Function or a String");
   }
@@ -920,7 +920,7 @@ void jsiHandleNewLine(bool execute) {
       inputCursorPos = 0;
       jsiInputLineCursorMoved();
       // execute!
-      JsVar *v = jspEvaluateVar(lineToExecute, 0);
+      JsVar *v = jspEvaluateVar(lineToExecute, 0, false);
       // add input line to history
       jsiHistoryAddLine(lineToExecute);
       jsvUnLock(lineToExecute);
@@ -1183,7 +1183,7 @@ void jsiExecuteEvents() {
       if (jsvIsFunction(func))
         jsvUnLock(jspExecuteFunction(func, 0, 2, args));
       else if (jsvIsString(func))
-        jsvUnLock(jspEvaluateVar(func, 0));
+        jsvUnLock(jspEvaluateVar(func, 0, false));
       else 
         jsError("Unknown type of callback in Event Queue");
     }
@@ -1217,7 +1217,7 @@ NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, J
        JsVar *parent = 0;
        jsvUnLock(jspExecuteFunction(callbackNoNames, parent, 2, args));
     } else if (jsvIsString(callbackNoNames))
-      jsvUnLock(jspEvaluateVar(callbackNoNames, 0));
+      jsvUnLock(jspEvaluateVar(callbackNoNames, 0, false));
     else 
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);

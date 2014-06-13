@@ -65,7 +65,7 @@ bool run_test(const char *filename) {
   addNativeFunction("quit", nativeQuit);
   addNativeFunction("interrupt", nativeInterrupt);
 
-  jsvUnLock(jspEvaluate(buffer ));
+  jsvUnLock(jspEvaluate(buffer, true));
 
   isRunning = true;
   bool isBusy = true;
@@ -237,7 +237,7 @@ int main(int argc, char **argv) {
         jshInit();
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
-        jsvUnLock(jspEvaluate(argv[i+1]));
+        jsvUnLock(jspEvaluate(argv[i+1], false));
         isRunning = true;
         bool isBusy = true;
         while (isRunning && (jsiHasTimers() || isBusy))
@@ -286,7 +286,7 @@ int main(int argc, char **argv) {
     jshInit();
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
-    jsvUnLock(jspEvaluate(cmd ));
+    jsvUnLock(jspEvaluate(cmd, true));
     free(buffer);
     isRunning = true;
     bool isBusy = true;

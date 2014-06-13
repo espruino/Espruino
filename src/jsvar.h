@@ -436,11 +436,18 @@ bool jsvGarbageCollect();
 /** Remove whitespace to the right of a string - on MULTIPLE LINES */
 JsVar *jsvStringTrimRight(JsVar *srcString);
 
+typedef bool (*JsvIsInternalChecker)(JsVar*);
+
 /** If v is the key of a function, return true if it is internal and shouldn't be visible to the user */
 bool jsvIsInternalFunctionKey(JsVar *v);
 
 /// If v is the key of an object, return true if it is internal and shouldn't be visible to the user
 bool jsvIsInternalObjectKey(JsVar *v);
+
+/// Get the correct checker function for the given variable. see jsvIsInternalFunctionKey/jsvIsInternalObjectKey
+JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v);
+
+
 
 /** Iterate over the contents of var, calling callback for each. Contents may be:
  *   * numeric -> output

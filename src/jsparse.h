@@ -46,8 +46,12 @@ void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
 
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
-JsVar *jspEvaluate(const char *str);
+/** Execute code form a variable and return the result. If parseTwice is set,
+ * we run over the variable twice - once to pick out function declarations,
+ * and once to actually execute. */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice);
+/** Execute code form a string and return the result. */
+JsVar *jspEvaluate(const char *str, bool parseTwice);
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
@@ -84,6 +88,14 @@ typedef enum  {
    * in something, and otherwise the console just clears the line. */
   EXEC_CTRL_C = 512, // If Ctrl-C was pressed, set this
   EXEC_CTRL_C_WAIT = 1024, // If Ctrl-C was set and SysTick happens then this is set instead
+
+  /** Parse function declarations, even if we're not executing. This
+   * is used when we want to do two passes, to effectively 'hoist' function
+   * declarations to the top so they can be called before they're defined.
+   * NOTE: This is only needed to call a function before it is defined IF
+   * code is being executed as it is being parsed. If it's in a function
+   * then you're fine anyway. */
+  EXEC_PARSE_FUNCTION_DECL = 2048,
 
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
@@ -145,6 +157,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
  * passing a char* rather than a JsVar it's because we're looking up via
  * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
 JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
+JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName);
 
 /** Call the function named on the given object. For example you might call:
  *

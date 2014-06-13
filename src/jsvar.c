@@ -2535,6 +2535,13 @@ bool jsvIsInternalObjectKey(JsVar *v) {
                             ));
 }
 
+/// Get the correct checker function for the given variable. see jsvIsInternalFunctionKey/jsvIsInternalObjectKey
+JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
+  if (jsvIsFunction(v)) return jsvIsInternalFunctionKey;
+  if (jsvIsObject(v)) return jsvIsInternalObjectKey;
+  return 0;
+}
+
 
 
 /** Iterate over the contents of var, calling callback for each. Contents may be:
