@@ -324,8 +324,8 @@ for className in builtins:
   if className.startswith(nativeCheck):
     codeOut('      if ('+className[len(nativeCheck):]+') {')
     codeOutBuiltins("        v = ", builtins[className])
-    codeOut('      if (v) return v;');
-    codeOut("    }")
+    codeOut('        if (v) return v;');
+    codeOut("      }")
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
