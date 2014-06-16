@@ -165,13 +165,10 @@ Currently there are a bunch of different files to modify. Eventually the plan is
 
 * Most build options handled in `Makefile`
 * Extra libraries like USB/LCD/filesystem in `Makefile`
-* Linker Scripts are in `linker/`
-* `boards/*.py` files handle loading the list of available pins so the relevant headers + docs can be created
-* Processor-specific code in `targets/stm32`, `targets/linux`, etc.
+* `boards/*.py` files describe the CPU, available pins, and connections - so the relevant linker script, headers + docs can be created
+* Processor-specific code in `targets/ARCH` - eg. `targets/stm32`, `targets/linux`
 * Processor-specific libs in `targetlibs/foo` 
 * `src/jshardware.h` is effectively a simple abstraction layer for SPI/I2C/etc
-* `targets/stm32/jshardware.c` also has flash-size-specific defines
-* `libs/fat_sd` and `libs/lcd` still have some device-specific defines in too
 
 ### Adding libraries
 
