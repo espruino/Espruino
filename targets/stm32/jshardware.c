@@ -42,7 +42,9 @@
 
 #ifdef USE_RTC
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
-unsigned short jshRTCPrescaler = 40000;
+unsigned short jshRTCPrescaler;
+unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
+#define RTC_PRESCALER_RECIPROCAL_SHIFT 12
 #define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
@@ -682,6 +684,7 @@ void jshDoSysTick() {
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
+    jshRTCPrescalerReciprocal = (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
     //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
@@ -1007,7 +1010,7 @@ void jshInit() {
 
 #ifdef USE_RTC
   // work out initial values for RTC
-  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsSysTime)jshGetTimeForSecond() * (JsSysTime)SYSTICK_RANGE) / getSystemTimerFreq());
+  averageSysTickTime = smoothAverageSysTickTime = (unsigned int)(((JsVarFloat)jshGetTimeForSecond() * (JsVarFloat)SYSTICK_RANGE) / (JsVarFloat)getSystemTimerFreq());
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 
@@ -1304,7 +1307,7 @@ JsSysTime jshGetRTCSystemTime() {
   }
 
   unsigned int c = (((unsigned int)ch2)<<16) | (unsigned int)cl2;
-  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | ((JsSysTime)(jshRTCPrescaler - (dl2+1))*JSSYSTIME_SECOND/jshRTCPrescaler);
+  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl2+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
 }
 #endif
 
