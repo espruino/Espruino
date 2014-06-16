@@ -256,6 +256,7 @@ jslGetNextToken_start:
           case 'b': if (jslIsToken(lex,"break", 1)) lex->tk = LEX_R_BREAK;
                     break;
           case 'c': if (jslIsToken(lex,"case", 1)) lex->tk = LEX_R_CASE;
+                    else if (jslIsToken(lex,"catch", 1)) lex->tk = LEX_R_CATCH;
                     else if (jslIsToken(lex,"continue", 1)) lex->tk = LEX_R_CONTINUE;
                     break;
           case 'd': if (jslIsToken(lex,"default", 1)) lex->tk = LEX_R_DEFAULT;
@@ -265,6 +266,7 @@ jslGetNextToken_start:
           case 'e': if (jslIsToken(lex,"else", 1)) lex->tk = LEX_R_ELSE;
                     break;
           case 'f': if (jslIsToken(lex,"false", 1)) lex->tk = LEX_R_FALSE;
+                    else if (jslIsToken(lex,"finally", 1)) lex->tk = LEX_R_FINALLY;
                     else if (jslIsToken(lex,"for", 1)) lex->tk = LEX_R_FOR;
                     else if (jslIsToken(lex,"function", 1)) lex->tk = LEX_R_FUNCTION;
                     break;
@@ -280,7 +282,9 @@ jslGetNextToken_start:
           case 's': if (jslIsToken(lex,"switch", 1)) lex->tk = LEX_R_SWITCH;
                     break;
           case 't': if (jslIsToken(lex,"this", 1)) lex->tk = LEX_R_THIS;
+                    else if (jslIsToken(lex,"throw", 1)) lex->tk = LEX_R_THROW;
                     else if (jslIsToken(lex,"true", 1)) lex->tk = LEX_R_TRUE;
+                    else if (jslIsToken(lex,"try", 1)) lex->tk = LEX_R_TRY;
                     else if (jslIsToken(lex,"typeof", 1)) lex->tk = LEX_R_TYPEOF;
                     break;
           case 'u': if (jslIsToken(lex,"undefined", 1)) lex->tk = LEX_R_UNDEFINED;
@@ -641,6 +645,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
       /*LEX_R_RETURN     */ "return\0"
       /*LEX_R_VAR :      */ "var\0"
       /*LEX_R_THIS :     */ "this\0"
+      /*LEX_R_THROW :    */ "throw\0"
+      /*LEX_R_TRY :      */ "try\0"
+      /*LEX_R_CATCH :    */ "catch\0"
+      /*LEX_R_FINALLY :  */ "finally\0"
       /*LEX_R_TRUE :     */ "true\0"
       /*LEX_R_FALSE :    */ "false\0"
       /*LEX_R_NULL :     */ "null\0"

@@ -2535,6 +2535,13 @@ bool jsvIsInternalObjectKey(JsVar *v) {
                             ));
 }
 
+/// Get the correct checker function for the given variable. see jsvIsInternalFunctionKey/jsvIsInternalObjectKey
+JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
+  if (jsvIsFunction(v)) return jsvIsInternalFunctionKey;
+  if (jsvIsObject(v)) return jsvIsInternalObjectKey;
+  return 0;
+}
+
 
 
 /** Iterate over the contents of var, calling callback for each. Contents may be:
@@ -2590,7 +2597,7 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
 static void jsvIterateCallbackCountCb(int n, void *data) {
   NOT_USED(n);
   int *count = (int*)data;
-  count++;
+  (*count)++;
 }
 int jsvIterateCallbackCount(JsVar *var) {
   int count = 0;

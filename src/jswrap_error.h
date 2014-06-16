@@ -8,18 +8,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript methods and functions in the global namespace
+ * JavaScript methods for Errors
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
 
-JsVar *jswrap_arguments();
-JsVar *jswrap_function_constructor(JsVar *code);
-JsVar *jswrap_eval(JsVar *v);
-JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar);
-JsVarFloat jswrap_parseFloat(JsVar *v);
-bool jswrap_isNaN(JsVar *v);
-
-
-JsVar *jswrap_btoa(JsVar *binaryData);
-JsVar *jswrap_atob(JsVar *base64Data);
+JsVar *jswrap_error_constructor();
+JsVar *jswrap_error_toString(JsVar *parent);

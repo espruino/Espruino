@@ -136,7 +136,7 @@ typedef long long JsSysTime;
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
-
+#define JSPARSE_EXCEPTION_VAR JS_HIDDEN_CHAR_STR"except" // when exceptions are thrown, they're stored in the root scope
 #define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
 
 #if !defined(NO_ASSERT)
@@ -276,6 +276,10 @@ typedef enum LEX_TYPES {
     LEX_R_RETURN,
     LEX_R_VAR,
     LEX_R_THIS,
+    LEX_R_THROW,
+    LEX_R_TRY,
+    LEX_R_CATCH,
+    LEX_R_FINALLY,
     LEX_R_TRUE,
     LEX_R_FALSE,
     LEX_R_NULL,

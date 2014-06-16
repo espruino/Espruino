@@ -330,10 +330,12 @@ src/jswrap_process.c \
 src/jswrap_interactive.c \
 src/jswrap_json.c \
 src/jswrap_object.c \
+src/jswrap_error.c \
 src/jswrap_string.c \
 src/jswrap_number.c \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
+src/jswrap_date.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_onewire.c \

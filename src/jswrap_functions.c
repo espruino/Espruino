@@ -54,6 +54,28 @@ JsVar *jswrap_arguments() {
 }
 
 
+/*JSON{ "type":"constructor",
+        "class" : "Function",
+        "name" : "Function",
+        "generate" : "jswrap_function_constructor",
+        "description" : [ "Creates a function" ],
+        "params" : [ [ "code", "JsVar", "A string representing the code to run"] ],
+        "return" : ["JsVar", "A Number object"]
+}*/
+JsVar *jswrap_function_constructor(JsVar *code) {
+  JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
+  if (!fn) return 0;
+
+  JsVar *codeStr = jsvNewFromEmptyString();
+  if (!codeStr) {
+    jsvUnLock(fn);
+    return 0;
+  }
+  jsvAppendPrintf(codeStr, "{\n%v\n}", code);
+  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  return fn;
+}
+
 /*JSON{ "type":"function", "name" : "eval",
          "description" : "Evaluate a string containing JavaScript code",
          "generate" : "jswrap_eval",
@@ -63,7 +85,7 @@ JsVar *jswrap_arguments() {
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0);
+  JsVar *result = jspEvaluateVar(s, 0, false);
   jsvUnLock(s);
   return result;
 }
