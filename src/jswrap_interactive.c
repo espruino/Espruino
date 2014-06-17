@@ -263,8 +263,8 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    unsigned int intervalInt = (unsigned int)jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger((unsigned int)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt)));
+    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger((JsVarInt)(jshGetSystemTime() - jsiLastIdleTime) + intervalInt)));
     jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
     if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
@@ -326,7 +326,7 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
          "description" : ["Change the Interval on a callback created with setInterval, for example:",
                           "```var id = setInterval(function () { print('foo'); }, 1000); // every second```",
                           "```changeInterval(id, 1500); // now runs every 1.5 seconds```",
-                          "This takes effect the text time the callback is called (so it is not immediate)."],
+                          "This takes effect the next time the callback is called (so it is not immediate)."],
          "generate" : "jswrap_interface_changeInterval",
          "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"],
                       [ "time","float","The new time period in ms" ] ]
@@ -339,10 +339,11 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
-    v = jsvNewFromInteger(jshGetTimeFromMilliseconds(interval));
+    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
+    v = jsvNewFromInteger(intervalInt);
     jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
     jsvUnLock(v);
-    v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
+    v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
     jsvUnLock(jsvSetNamedChild(timer, v, "time"));
     jsvUnLock(v);
     jsvUnLock(timer);
