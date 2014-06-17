@@ -17,6 +17,8 @@
             Stop warning about break at the end of 'default' in switch statement            
             Switch to 32 bit ints (fix #324)
             Added Array.prototype.reverse, and also for ArrayBuffers (fix #389)
+            Swap JsVar fields around so everything is aligned on the correct boundaries
+            Merge jsvNewWithFlags and jsvNew - making variable allocation a bit faster
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0

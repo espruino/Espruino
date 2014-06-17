@@ -214,14 +214,11 @@ bool jsvHasSingleChild(const JsVar *v) {
 
 
 
-JsVar *jsvNew() {
+JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
       JsVar *v = jsvLock(jsVarFirstEmpty);
       jsVarFirstEmpty = v->nextSibling; // move our reference to the next in the free list
       assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
-      // reset it
-      v->flags = JSV_LOCK_ONE;
-
       // make sure we clear all data...
       ((unsigned int*)&v->varData.integer)[0] = 0;
       ((unsigned int*)&v->varData.integer)[1] = 0;
@@ -231,21 +228,24 @@ JsVar *jsvNew() {
       v->refs = 0;
       v->firstChild = 0;
       v->lastChild = 0;
+      // set flags
+      assert(!(flags & JSV_LOCK_MASK));
+      v->flags = flags | JSV_LOCK_ONE;
 
       // return pointer
       return v;
   }
   /* we don't have memort - second last hope - run garbage collector */
   if (jsvGarbageCollect())
-    return jsvNew(); // if it freed something, continue
+    return jsvNewWithFlags(flags); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
    may have kicking around */
   if (jsiFreeMoreMemory())
-    return jsvNew();
+    return jsvNewWithFlags(flags);
   /* We couldn't claim any more memory by Garbage collecting... */
 #ifdef RESIZABLE_JSVARS
   jsvSetMemoryTotal(jsVarsSize*2);
-  return jsvNew();
+  return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
   jsError("Out of Memory!");
@@ -496,12 +496,6 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength) {
     return first;
 }
 
-JsVar *jsvNewWithFlags(JsVarFlags flags) {
-  JsVar *var = jsvNew();
-  if (!var) return 0; // no memory
-  var->flags = (var->flags&(JsVarFlags)(~JSV_VARTYPEMASK)) | (flags&(JsVarFlags)(~JSV_LOCK_MASK));
-  return var;
-}
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNewWithFlags(JSV_INTEGER);
   if (!var) return 0; // no memory
