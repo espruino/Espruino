@@ -18,6 +18,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #include "jswrap_math.h" // for jswrap_math_mod
+#include "jswrap_object.h" // for jswrap_object_toString
 
 
 /** Basically, JsVars are stored in one big array, so save the need for
@@ -713,7 +714,15 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
   } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
-    str = jspObjectToString(v);
+    JsVar *toStringFn = jspGetNamedField(v, "toString", false);
+    if (toStringFn && toStringFn->varData.native.ptr != (void (*)(void))jswrap_object_toString) {
+      // Function found and it's not the default one - execute it
+      JsVar *result = jspeFunctionCall(toStringFn, 0, v, false, 0, 0);
+      jsvUnLock(toStringFn);
+      return result;
+    } else {
+      return jsvNewFromString("[object Object]");
+    }
   } else {
     const char *constChar = jsvGetConstString(v);
     char buf[JS_NUMBER_BUFFER_SIZE];
@@ -2707,10 +2716,9 @@ static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char
   if (dataLen==1) v = *(int8_t*)data;
   else if (dataLen==2) v = *(short*)data;
   else if (dataLen==4) v = *(int*)data;
-  else if (dataLen==8) v = *(long long*)data;
   else assert(0);
   if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)))
-    v = v & ((1LL << (8*dataLen))-1);
+    v = v & (JsVarInt)((1UL << (8*dataLen))-1);
   return v;
 }
 
