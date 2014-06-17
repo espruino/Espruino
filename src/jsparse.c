@@ -276,7 +276,7 @@ NO_INLINE bool jspeFunctionArguments(JsVar *funcVar) {
           jspSetError(false);
           return false;
         }
-        param->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
+        jsvMakeFunctionParameter(param); // force this to be called a function parameter
         jsvUnLock(param);
       }
       JSP_MATCH(LEX_ID);
@@ -459,14 +459,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             if (JSP_SHOULD_EXECUTE) {
               value = jsvSkipNameAndUnLock(value);
               JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-              if (paramName) // low memory?
-                paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
-              JsVar *newValueName = jsvMakeIntoVariableName(paramName, value);
-              if (newValueName) { // could be out of memory
-                jsvAddName(functionRoot, newValueName);
+              if (paramName) { // could be out of memory
+                jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+                jsvSetValueOfName(paramName, value);
+                jsvAddName(functionRoot, paramName);
+                jsvUnLock(paramName);
               } else
                 jspSetError(false);
-              jsvUnLock(newValueName);
             }
             jsvUnLock(value);
             if (execInfo.lex->tk!=')') JSP_MATCH(',');
@@ -481,11 +480,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           JsVar *param = v ? jsvLock(v) : 0;
           bool paramDefined = jsvIsFunctionParameter(param);
           JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-          paramName->flags |= JSV_FUNCTION_PARAMETER; // force this to be called a function parameter
-          JsVar *newValueName = jsvMakeIntoVariableName(paramName, argPtr[args]);
-          if (newValueName) // could be out of memory - or maybe just not supplied!
-            jsvAddName(functionRoot, newValueName);
-          jsvUnLock(newValueName);
+          if (paramName) {
+            jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+            jsvSetValueOfName(paramName, argPtr[args]);
+            jsvAddName(functionRoot, paramName);
+            jsvUnLock(paramName);
+          } else
+            jspSetError(false);
           args++;
           if (paramDefined) v = param->nextSibling;
           jsvUnLock(param);
@@ -500,10 +501,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
           else if (jsvIsFunctionParameter(param)) {
             JsVar *paramName = jsvCopy(param);
-            paramName = jsvMakeIntoVariableName(paramName, 0);
-            if (paramName) // could be out of memory - or maybe just not supplied!
+            // paramName is already a name (it's a function parameter)
+            if (paramName) {// could be out of memory - or maybe just not supplied!
               jsvAddName(functionRoot, paramName);
-            jsvUnLock(paramName);
+              jsvUnLock(paramName);
+            }
           }
         }
         v = param->nextSibling;
@@ -731,14 +733,14 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
       // for array buffers, we actually create a NAME, and hand that back - then when we assign (or use SkipName) we pull out the correct data
       child = jsvMakeIntoVariableName(jsvNewFromInteger(jsvGetInteger(nameVar)), object);
       if (child) // turn into an 'array buffer name'
-        child->flags = (child->flags & ~(JSV_NAME|JSV_VARTYPEMASK)) | JSV_ARRAYBUFFERNAME;
+        child->flags = (child->flags & ~JSV_VARTYPEMASK) | JSV_ARRAYBUFFERNAME;
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
         JsVarInt idx = jsvGetInteger(nameVar);
         if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
           child = jsvNewFromEmptyString();
           if (child) jsvAppendCharacter(child, jsvGetCharInString(object, (size_t)idx));
         } else if (returnName)
-          child = jsvNewWithFlags(JSV_NAME); // just return *something* to show this is handled
+          child = jsvNewWithFlags(JSV_NAME_STRING_0); // just return *something* to show this is handled
     } else {
       // get the name as a string
       char name[JSLEX_MAX_TOKEN_LENGTH];

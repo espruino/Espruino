@@ -154,7 +154,7 @@ JsVar *jsvNew(); ///< Create a new variable
 JsVar *jsvNewWithFlags(JsVarFlags flags);
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
-static inline JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING); if (v) v->varData.integer=0; return v; } ;///< Create a new empty string
+static inline JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string
 static inline JsVar *jsvNewNull() { return jsvNewWithFlags(JSV_NULL); } ;///< Create a new null variable
 /** Create a new variable from a substring. argument must be a string. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)  */
 JsVar *jsvNewFromStringVar(const JsVar *str, size_t stridx, size_t maxLength);
@@ -201,24 +201,24 @@ JsVarRef jsvUnRefRef(JsVarRef ref);
 
 static inline bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 static inline bool jsvIsPin(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PIN; }
-static inline bool jsvIsInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_INTEGER || (v->flags&JSV_VARTYPEMASK)==JSV_PIN); }
+static inline bool jsvIsInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_INTEGER || (v->flags&JSV_VARTYPEMASK)==JSV_PIN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT); }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
-static inline bool jsvIsBoolean(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN; }
-static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_MAX; }
+static inline bool jsvIsBoolean(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
+static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_STRING_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_STRING_END; }
 static inline bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_EXT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
-static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_NUMERICSTART && (v->flags&JSV_VARTYPEMASK)<=JSV_NUMERICEND; }
+static inline bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NUMERIC_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NUMERIC_END; }
 static inline bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
-static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_FUNCTION_PARAMETER) == JSV_FUNCTION_PARAMETER; }
+static inline bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_NATIVE) && jsvIsString(v); }
 static inline bool jsvIsObject(const JsVar *v) { return v && (((v->flags&JSV_VARTYPEMASK)==JSV_OBJECT) || ((v->flags&JSV_VARTYPEMASK)==JSV_ROOT)); }
 static inline bool jsvIsArray(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAY; }
 static inline bool jsvIsArrayBuffer(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ARRAYBUFFER; }
-static inline bool jsvIsArrayBufferName(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK|JSV_NAME))==JSV_ARRAYBUFFERNAME; }
+static inline bool jsvIsArrayBufferName(const JsVar *v) { return v && (v->flags&(JSV_VARTYPEMASK))==JSV_ARRAYBUFFERNAME; }
 static inline bool jsvIsNative(const JsVar *v) { return v && (v->flags&JSV_NATIVE)!=0; }
 static inline bool jsvIsNativeFunction(const JsVar *v) { return v && (v->flags&(JSV_NATIVE|JSV_VARTYPEMASK))==(JSV_NATIVE|JSV_FUNCTION); }
 static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
-static inline bool jsvIsName(const JsVar *v) { return v && (v->flags & JSV_NAME)!=0; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+static inline bool jsvIsName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_END; } ///< NAMEs are what's used to name a variable (it is not the data itself)
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 static inline bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && v->nextSibling && v->nextSibling==v->prevSibling; }
 /// See jsvIsNewChild - for fields that don't exist yet
@@ -258,21 +258,34 @@ static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
 
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline size_t jsvGetCharactersInVar(const JsVar *v) {
-  assert(jsvIsString(v) || jsvIsStringExt(v));
-  int f = v->flags&JSV_VARTYPEMASK;
-  return (size_t)(f - ((f < JSV_STRING_EXT_0) ? JSV_STRING_0 : JSV_STRING_EXT_0));
+  unsigned int f = v->flags&JSV_VARTYPEMASK;
+  assert(f >= JSV_NAME_STRING_0);
+  if (f<=JSV_NAME_STRING_MAX) return f-JSV_NAME_STRING_0;
+  if (f<=JSV_STRING_MAX) return f-JSV_STRING_0;
+  assert(f <= JSV_STRING_EXT_MAX);
+  return f - JSV_STRING_EXT_0;
 }
 
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline void jsvSetCharactersInVar(JsVar *v, size_t chars) {
-  assert(jsvIsString(v) || jsvIsStringExt(v));
-  if (jsvIsString(v)) { assert(chars <= JSVAR_DATA_STRING_LEN); }
-  if (jsvIsStringExt(v)) { assert(chars <= JSVAR_DATA_STRING_MAX_LEN); }
-
-  int f = v->flags&JSV_VARTYPEMASK;
-  v->flags = (JsVarFlags)((v->flags&(~JSV_VARTYPEMASK)) | (((f < JSV_STRING_EXT_0) ? JSV_STRING_0 : JSV_STRING_EXT_0) + (int)chars));
+  unsigned int f = v->flags&JSV_VARTYPEMASK;
+  JsVarFlags m = (JsVarFlags)v->flags&~JSV_VARTYPEMASK;
+  assert(f >= JSV_NAME_STRING_0);
+  if (f<=JSV_NAME_STRING_MAX)
+    v->flags = m | (JSV_NAME_STRING_0+chars);
+  else if (f<=JSV_STRING_MAX)
+    v->flags = m | (JSV_STRING_0+chars);
+  else {
+    assert(f <= JSV_STRING_EXT_MAX);
+    v->flags = m | (JSV_STRING_EXT_0+chars);
+  }
 }
 
+static inline void jsvMakeFunctionParameter(JsVar *v) {
+  assert(jsvIsString(v));
+  if (!jsvIsName(v)) jsvMakeIntoVariableName(v,0);
+  v->flags |= JSV_NATIVE;
+}
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
  * so 'a=5'=='a=7' but 'a=5'!='b=5')

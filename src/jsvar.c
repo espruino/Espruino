@@ -222,7 +222,7 @@ JsVar *jsvNew() {
       v->refs = 0;
       //v->locks = 1;
       v->flags = JSV_LOCK_ONE;
-      v->varData.integer = 0; // shouldn't be needed, but just in case
+      *(long long*)&v->varData = 0; // shouldn't be needed, but just in case
       v->firstChild = 0;
       v->lastChild = 0;
       v->prevSibling = 0;
@@ -411,7 +411,7 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
 
 JsVar *jsvNewFromString(const char *str) {
   // Create a var
-  JsVar *first = jsvNewWithFlags(JSV_STRING);
+  JsVar *first = jsvNewWithFlags(JSV_STRING_0);
   if (!first) {
     jsWarn("Unable to create string as not enough memory");
     return 0;
@@ -434,7 +434,7 @@ JsVar *jsvNewFromString(const char *str) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) {
         jsWarn("Truncating string as not enough memory");
         jsvUnLock(var);
@@ -453,7 +453,7 @@ JsVar *jsvNewFromString(const char *str) {
 
 JsVar *jsvNewStringOfLength(unsigned int byteLength) {
   // Create a var
-    JsVar *first = jsvNewWithFlags(JSV_STRING);
+    JsVar *first = jsvNewWithFlags(JSV_STRING_0);
     if (!first) {
       jsWarn("Unable to create string as not enough memory");
       return 0;
@@ -474,7 +474,7 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength) {
       // if there is still some left, it's because we filled up our var...
       // make a new one, link it in, and unlock the old one.
       if (byteLength>0) {
-        JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+        JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
         if (!next) {
           jsWarn("Truncating string as not enough memory");
           jsvUnLock(var);
@@ -518,7 +518,13 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
-  var->flags |= JSV_NAME;
+  assert(jsvIsInt(var) || jsvIsString(var));
+  if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
+    var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
+  } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
+    var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
+  } else assert(0);
+
   if (valueOrZero)
     var->firstChild = jsvGetRef(jsvRef(valueOrZero));
   return var;
@@ -905,7 +911,7 @@ void jsvAppendString(JsVar *var, const char *str) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (*str) {
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) break;
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       block->lastChild = jsvGetRef(next);
@@ -941,7 +947,7 @@ bool jsvAppendStringBuf(JsVar *var, const char *str, size_t length) {
     // if there is still some left, it's because we filled up our var...
     // make a new one, link it in, and unlock the old one.
     if (length) {
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) {
         block->lastChild = 0;
         jsvUnLock(block);
@@ -996,7 +1002,7 @@ void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxL
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) break; // out of memory
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       block->lastChild = jsvGetRef(next);
@@ -1094,6 +1100,8 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     /* strtol understands about hex and octal */
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
+        (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) return (JsVarInt)v->lastChild;
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
       return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
@@ -1108,7 +1116,13 @@ JsVarInt jsvGetInteger(const JsVar *v) {
 
 void jsvSetInteger(JsVar *v, JsVarInt value) {
   assert(jsvIsInt(v));
-  v->varData.integer  = value;
+  if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
+     (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) {
+
+    v->lastChild = (JsVarRef)value;
+  } else {
+    v->varData.integer  = value;
+  }
 }
 
 bool jsvGetBool(const JsVar *v) {
@@ -1126,6 +1140,8 @@ bool jsvGetBool(const JsVar *v) {
 JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return NAN; // undefined
     if (jsvIsFloat(v)) return v->varData.floating;
+    if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
+        (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) return (JsVarFloat)(JsVarInt)v->lastChild;
     if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsArray(v)) {
       JsVarInt l = jsvGetArrayLength(v);
@@ -1332,7 +1348,15 @@ int jsvCompareInteger(JsVar *va, JsVar *vb) {
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   assert(jsvIsName(src));
   JsVarFlags flags = src->flags;
-  if (!keepAsName) flags &= (JsVarFlags)~JSV_NAME; // make sure this is NOT a name
+  if (!keepAsName) {
+    JsVarFlags t = src->flags & JSV_VARTYPEMASK;
+    if (t>=_JSV_NAME_INT_START && t<=_JSV_NAME_INT_END) {
+      flags = (flags & ~JSV_VARTYPEMASK) | JSV_INTEGER;
+    } else {
+      assert(t>=JSV_NAME_STRING_0 && t<=JSV_NAME_STRING_MAX);
+      flags = (flags & ~JSV_VARTYPEMASK) | (JSV_STRING_0 + t - JSV_NAME_STRING_0);
+    }
+  }
   JsVar *dst = jsvNewWithFlags(flags);
   if (!dst) return 0; // out of memory
 
@@ -2653,7 +2677,7 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     assert(it->charIdx == 0);
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!it->var->lastChild);
-    JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+    JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
     if (!next) return; // out of memory
     // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
     it->var->lastChild = jsvGetRef(next);

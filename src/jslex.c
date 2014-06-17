@@ -749,7 +749,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) break; // out of memory
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       block->lastChild = jsvGetRef(next);

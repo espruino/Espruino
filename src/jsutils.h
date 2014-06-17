@@ -193,39 +193,43 @@ typedef enum {
     JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
-    JSV_STRING      = JSV_NULL+1, ///< string
-    JSV_STRING_0    = JSV_STRING, // string of length 0
-    JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
-    JSV_STRING_EXT  = JSV_STRING_MAX+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
-    JSV_STRING_EXT_0 = JSV_STRING_EXT,
-    JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
-    JSV_ARRAY = JSV_STRING_EXT_MAX+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
+
+    JSV_ARRAY = JSV_NULL+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
-    JSV_OBJECT      = JSV_ARRAYBUFFER+1,
+    JSV_ARRAYBUFFERNAME = JSV_ARRAYBUFFER+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+    JSV_OBJECT      = JSV_ARRAYBUFFERNAME+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_NUMERICSTART = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
-    JSV_INTEGER     = JSV_NUMERICSTART, ///< integer number (note JSV_NUMERICMASK)
+    _JSV_NUMERIC_START = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
+    JSV_INTEGER     = _JSV_NUMERIC_START, ///< integer number (note JSV_NUMERICMASK)
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
     JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
-    JSV_NUMERICEND  = JSV_PIN, ///< --------- End of numeric variable types
-    JSV_VAR_END     = JSV_NUMERICEND, ///< End of numeric variable types
 
-    JSV_VARTYPEMASK = NEXT_POWER_2(JSV_VAR_END)-1,
+    _JSV_NAME_START = JSV_PIN+1,
+    _JSV_NAME_INT_START = _JSV_NAME_START,
+    JSV_NAME_INT    = _JSV_NAME_INT_START, ///< integer array/object index
+    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value - NOT CURRENTLY USED
+    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value - NOT CURRENTLY USED
+    _JSV_NAME_INT_END = JSV_NAME_INT_BOOL,
+    _JSV_NUMERIC_END  = _JSV_NAME_INT_END, ///< --------- End of numeric variable types
+    _JSV_STRING_START =  _JSV_NUMERIC_END+1,
+    JSV_NAME_STRING_0    = _JSV_STRING_START, // array/object index as string of length 0
+    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
+    _JSV_NAME_END    = JSV_NAME_STRING_MAX,
+    JSV_STRING_0    = _JSV_NAME_END+1, // simple string value of length 0
+    JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
+    _JSV_STRING_END = JSV_STRING_MAX,
+    JSV_STRING_EXT_0 = _JSV_STRING_END+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+    JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
+    _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
 
-    // names can be STRING,
-    JSV_NAME        = JSV_VARTYPEMASK+1, ///< a NAME of a variable - this isn't a variable itself (and can be an int/string/etc.)
-    JSV_NATIVE      = JSV_NAME<<1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
+    JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1,
+
+    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
-
-
-
-    JSV_ARRAYBUFFERNAME = JSV_NAME|JSV_ARRAYBUFFER, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
-    JSV_FUNCTION_PARAMETER = JSV_NATIVE | JSV_NAME, ///< this is inside a function, so it should be quite obvious
-
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
 /// The amount of bits we must shift to get the number of locks - forced to be a constant
