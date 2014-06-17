@@ -41,7 +41,6 @@
 #define JS_DIR_BUF_SIZE 64
 #else
 #define JS_DIR_BUF_SIZE 256
-typedef int FRESULT;
 #define FR_OK (0)
 #endif
 
