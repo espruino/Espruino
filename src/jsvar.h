@@ -118,15 +118,15 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  |  INT  | DOUBLE | OBJ/FUNC/ARRAY |
- * |-------|---------|--------|----------|-------|--------|----------------|
- * | 0 - 1 | Flags   | Flags  | Flags    | Flags | Flags  | Flags          |
- * | 2 - 9 | varData | data   | data     | data  | data   | nativePtr      |
- * | 10-11 | next    | next   | data     | next  | next   | -              |
- * | 12-13 | prev    | prev   | data     | prev  | prev   | -              |
- * | 14-15 | refs    | refs   | data     | refs  | refs   | refs           |
- * | 16-17 | first   | child  | data     | child |  -     | first          |
- * | 18-19 | last    | nextPtr| nextPtr  |  -    |  -     | last           |
+ * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ * | 0 - 1 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ * | 2 - 9 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size/format |
+ * | 10-11 | next    | -      | data     |  next    | next     | -    | -      | -              | -           |
+ * | 12-13 | prev    | -      | data     |  prev    | prev     | -    | -      | -              | -           |
+ * | 14-15 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ * | 16-17 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
+ * | 18-19 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
  */
 
 
