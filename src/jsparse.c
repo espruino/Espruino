@@ -1732,7 +1732,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   if (execInfo.lex->tk == LEX_R_IN) {
     // for (i in array)
     // where i = jsvUnLock(forStatement);
-    if (!jsvIsName(forStatement)) {
+    if (JSP_SHOULD_EXECUTE && !jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
       jsErrorHere("FOR a IN b - 'a' must be a variable name");
       jspSetError(true);

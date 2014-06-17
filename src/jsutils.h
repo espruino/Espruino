@@ -196,8 +196,7 @@ typedef enum {
 
     JSV_ARRAY = JSV_NULL+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
-    JSV_ARRAYBUFFERNAME = JSV_ARRAYBUFFER+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
-    JSV_OBJECT      = JSV_ARRAYBUFFERNAME+1,
+    JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
     _JSV_NUMERIC_START = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
     JSV_INTEGER     = _JSV_NUMERIC_START, ///< integer number (note JSV_NUMERICMASK)
@@ -206,7 +205,8 @@ typedef enum {
     JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
 
     _JSV_NAME_START = JSV_PIN+1,
-    _JSV_NAME_INT_START = _JSV_NAME_START,
+    JSV_ARRAYBUFFERNAME = _JSV_NAME_START, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+    _JSV_NAME_INT_START = JSV_ARRAYBUFFERNAME+1,
     JSV_NAME_INT    = _JSV_NAME_INT_START, ///< integer array/object index
     JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value - NOT CURRENTLY USED
     JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value - NOT CURRENTLY USED
