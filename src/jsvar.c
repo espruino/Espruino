@@ -222,7 +222,10 @@ JsVar *jsvNew() {
       // reset it
       v->flags = JSV_LOCK_ONE;
 
-      *(unsigned long long*)&v->varData = 0; // shouldn't be needed, but just in case
+      // make sure we clear all data...
+      ((unsigned int*)&v->varData.integer)[0] = 0;
+      ((unsigned int*)&v->varData.integer)[1] = 0;
+      // and the rest...
       v->nextSibling = 0;
       v->prevSibling = 0;
       v->refs = 0;

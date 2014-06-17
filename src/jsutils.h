@@ -146,7 +146,7 @@ typedef long long JsSysTime;
    #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,"");
  #endif
 #else
- #define assert(X) 
+ #define assert(X) {}
 #endif
 
 /// Used when we have enums we want to squash down
