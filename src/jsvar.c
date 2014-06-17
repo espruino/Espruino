@@ -220,14 +220,15 @@ JsVar *jsvNew() {
       jsVarFirstEmpty = v->nextSibling; // move our reference to the next in the free list
       assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
       // reset it
-      v->refs = 0;
-      //v->locks = 1;
       v->flags = JSV_LOCK_ONE;
-      v->varData.integer = 0; // shouldn't be needed, but just in case
+
+      *(unsigned long long*)&v->varData = 0; // shouldn't be needed, but just in case
+      v->nextSibling = 0;
+      v->prevSibling = 0;
+      v->refs = 0;
       v->firstChild = 0;
       v->lastChild = 0;
-      v->prevSibling = 0;
-      v->nextSibling = 0;
+
       // return pointer
       return v;
   }
