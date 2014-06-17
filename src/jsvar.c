@@ -1340,7 +1340,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   assert(jsvIsName(src));
   JsVarFlags flags = src->flags;
   if (!keepAsName) flags &= (JsVarFlags)~JSV_NAME; // make sure this is NOT a name
-  JsVar *dst = jsvNewWithFlags(flags);
+  JsVar *dst = jsvNewWithFlags(flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
 
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
@@ -1372,7 +1372,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
 }
 
 JsVar *jsvCopy(JsVar *src) {
-  JsVar *dst = jsvNewWithFlags(src->flags);
+  JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
     memcpy(&dst->varData, &src->varData, sizeof(JsVarData));

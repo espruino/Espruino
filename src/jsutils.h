@@ -222,7 +222,7 @@ typedef enum {
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
 
 
-
+    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NAME | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
     JSV_ARRAYBUFFERNAME = JSV_NAME|JSV_ARRAYBUFFER, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
     JSV_FUNCTION_PARAMETER = JSV_NATIVE | JSV_NAME, ///< this is inside a function, so it should be quite obvious
 
