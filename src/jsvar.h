@@ -69,9 +69,6 @@ typedef union {
 } PACKED_FLAGS JsVarData;
 
 typedef struct {
-#ifdef LARGE_MEM
-  JsVarRef this; ///< The reference of this variable itself (so we can get back)
-#endif
   JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
 
   JsVarData varData;
@@ -116,6 +113,22 @@ typedef struct {
  *  STRING - use firstChild to link to other STRINGs if String value is too long
  *  INT/DOUBLE - firstChild never used
  */
+
+/* For 'normal' JsVars used on Espruino Board (Linux are different to allow more storage):
+ *
+ * Both INT and STRING can also be names:
+ *
+ * | Byte  | Name    | STRING | STR_EXT  |  INT  | DOUBLE | OBJ/FUNC/ARRAY |
+ * |-------|---------|--------|----------|-------|--------|----------------|
+ * | 0 - 1 | Flags   | Flags  | Flags    | Flags | Flags  | Flags          |
+ * | 2 - 9 | varData | data   | data     | data  | data   | nativePtr      |
+ * | 10-11 | next    | next   | data     | next  | next   | -              |
+ * | 12-13 | prev    | prev   | data     | prev  | prev   | -              |
+ * | 14-15 | refs    | refs   | data     | refs  | refs   | refs           |
+ * | 16-17 | first   | child  | data     | child |  -     | first          |
+ * | 18-19 | last    | nextPtr| nextPtr  |  -    |  -     | last           |
+ */
+
 
 static inline unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 

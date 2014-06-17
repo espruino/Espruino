@@ -95,9 +95,6 @@ static JsVarRef jsvInitJsVars(JsVarRef start, unsigned int count) {
   for (i=start;i<start+count;i++) {
     JsVar *v = jsvGetAddressOf(i);
     v->flags = JSV_UNUSED;
-#ifdef LARGE_MEM
-    v->this = i;
-#endif
     // v->locks = 0; // locks is 0 anyway because it is stored in flags
     v->nextSibling = (JsVarRef)(i+1); // link to next
   }
@@ -324,9 +321,6 @@ void jsvFreePtr(JsVar *var) {
 /// Get a reference from a var - SAFE for null vars
 JsVarRef jsvGetRef(JsVar *var) {
     if (!var) return 0;
-#ifdef LARGE_MEM
-    return var->this;
-#else
  #ifdef RESIZABLE_JSVARS
     unsigned int i, c = jsVarsSize>>JSVAR_BLOCK_SHIFT;
     for (i=0;i<c;i++) {
@@ -339,7 +333,6 @@ JsVarRef jsvGetRef(JsVar *var) {
  #else
     return (JsVarRef)(1 + (var - jsVars));
  #endif
-#endif
 }
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
