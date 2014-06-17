@@ -146,7 +146,7 @@ typedef long long JsSysTime;
    #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,"");
  #endif
 #else
- #define assert(X) 
+ #define assert(X) {}
 #endif
 
 /// Used when we have enums we want to squash down
@@ -230,6 +230,8 @@ typedef enum {
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
+
+    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
 /// The amount of bits we must shift to get the number of locks - forced to be a constant

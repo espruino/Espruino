@@ -69,8 +69,7 @@ typedef union {
 } PACKED_FLAGS JsVarData;
 
 typedef struct {
-  JsVarFlags flags; ///< the flags determine the type of the variable - int/double/string/etc.
-
+  /** The actual variable data. Put first so word aligned */
   JsVarData varData;
   /* NOTE: WE INTENTIONALLY OVERFLOW data in the case of STRING_EXTS
    * to overwrite the following 3 references in order to grab another
@@ -102,7 +101,10 @@ typedef struct {
    * For CHILD_OF - a link to the object that should contain the variable
    */
   JsVarRef lastChild;
-} PACKED_FLAGS JsVar;
+
+  /** the flags determine the type of the variable - int/double/string/etc. */
+  JsVarFlags flags;
+} PACKED_FLAGS __attribute__((aligned(4))) JsVar;
 
 /* We have a few different types:
  *
@@ -120,13 +122,13 @@ typedef struct {
  *
  * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
  * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- * | 0 - 1 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
- * | 2 - 9 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size/format |
- * | 10-11 | next    | -      | data     |  next    | next     | -    | -      | -              | -           |
- * | 12-13 | prev    | -      | data     |  prev    | prev     | -    | -      | -              | -           |
- * | 14-15 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- * | 16-17 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
- * | 18-19 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
+ * | 0 - 7 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size/format |
+ * | 8 - 9 | next    | -      | data     |  next    | next     | -    | -      | -              | -           |
+ * | 10-11 | prev    | -      | data     |  prev    | prev     | -    | -      | -              | -           |
+ * | 12-13 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ * | 14-15 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
+ * | 16-17 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
+ * | 18-19 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
  */
 
 
@@ -150,8 +152,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
-JsVar *jsvNew(); ///< Create a new variable
-JsVar *jsvNewWithFlags(JsVarFlags flags);
+JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static inline JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string

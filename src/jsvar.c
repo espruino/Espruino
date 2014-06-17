@@ -18,6 +18,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #include "jswrap_math.h" // for jswrap_math_mod
+#include "jswrap_object.h" // for jswrap_object_toString
 
 
 /** Basically, JsVars are stored in one big array, so save the need for
@@ -213,34 +214,38 @@ bool jsvHasSingleChild(const JsVar *v) {
 
 
 
-JsVar *jsvNew() {
+JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
       JsVar *v = jsvLock(jsVarFirstEmpty);
       jsVarFirstEmpty = v->nextSibling; // move our reference to the next in the free list
       assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
-      // reset it
+      // make sure we clear all data...
+      ((unsigned int*)&v->varData.integer)[0] = 0;
+      ((unsigned int*)&v->varData.integer)[1] = 0;
+      // and the rest...
+      v->nextSibling = 0;
+      v->prevSibling = 0;
       v->refs = 0;
-      //v->locks = 1;
-      v->flags = JSV_LOCK_ONE;
-      *(long long*)&v->varData = 0; // shouldn't be needed, but just in case
       v->firstChild = 0;
       v->lastChild = 0;
-      v->prevSibling = 0;
-      v->nextSibling = 0;
+      // set flags
+      assert(!(flags & JSV_LOCK_MASK));
+      v->flags = flags | JSV_LOCK_ONE;
+
       // return pointer
       return v;
   }
   /* we don't have memort - second last hope - run garbage collector */
   if (jsvGarbageCollect())
-    return jsvNew(); // if it freed something, continue
+    return jsvNewWithFlags(flags); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
    may have kicking around */
   if (jsiFreeMoreMemory())
-    return jsvNew();
+    return jsvNewWithFlags(flags);
   /* We couldn't claim any more memory by Garbage collecting... */
 #ifdef RESIZABLE_JSVARS
   jsvSetMemoryTotal(jsVarsSize*2);
-  return jsvNew();
+  return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
   jsError("Out of Memory!");
@@ -491,12 +496,6 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength) {
     return first;
 }
 
-JsVar *jsvNewWithFlags(JsVarFlags flags) {
-  JsVar *var = jsvNew();
-  if (!var) return 0; // no memory
-  var->flags = (var->flags&(JsVarFlags)(~JSV_VARTYPEMASK)) | (flags&(JsVarFlags)(~JSV_LOCK_MASK));
-  return var;
-}
 JsVar *jsvNewFromInteger(JsVarInt value) {
   JsVar *var = jsvNewWithFlags(JSV_INTEGER);
   if (!var) return 0; // no memory
@@ -719,7 +718,15 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   } else if (jsvIsString(v)) { // If it is a string - just return a reference
     str = jsvLockAgain(v);
   } else if (jsvIsObject(v)) { // If it is an object and we can call toString on it
-    str = jspObjectToString(v);
+    JsVar *toStringFn = jspGetNamedField(v, "toString", false);
+    if (toStringFn && toStringFn->varData.native.ptr != (void (*)(void))jswrap_object_toString) {
+      // Function found and it's not the default one - execute it
+      JsVar *result = jspeFunctionCall(toStringFn, 0, v, false, 0, 0);
+      jsvUnLock(toStringFn);
+      return result;
+    } else {
+      return jsvNewFromString("[object Object]");
+    }
   } else {
     const char *constChar = jsvGetConstString(v);
     char buf[JS_NUMBER_BUFFER_SIZE];
@@ -1357,7 +1364,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
       flags = (flags & ~JSV_VARTYPEMASK) | (JSV_STRING_0 + t - JSV_NAME_STRING_0);
     }
   }
-  JsVar *dst = jsvNewWithFlags(flags);
+  JsVar *dst = jsvNewWithFlags(flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
 
   memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
@@ -1389,7 +1396,7 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
 }
 
 JsVar *jsvCopy(JsVar *src) {
-  JsVar *dst = jsvNewWithFlags(src->flags);
+  JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
     memcpy(&dst->varData, &src->varData, sizeof(JsVarData));
@@ -2731,10 +2738,9 @@ static JsVarInt jsvArrayBufferIteratorDataToInt(JsvArrayBufferIterator *it, char
   if (dataLen==1) v = *(int8_t*)data;
   else if (dataLen==2) v = *(short*)data;
   else if (dataLen==4) v = *(int*)data;
-  else if (dataLen==8) v = *(long long*)data;
   else assert(0);
   if ((!JSV_ARRAYBUFFER_IS_SIGNED(it->type)))
-    v = v & ((1LL << (8*dataLen))-1);
+    v = v & (JsVarInt)((1UL << (8*dataLen))-1);
   return v;
 }
 

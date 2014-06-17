@@ -57,9 +57,6 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents);
 
-/// Execute the Object.toString function on an object (if we can find it)
-JsVar *jspObjectToString(JsVar *obj);
-
 /** Get the owner of the current prototype. We assume that it's
  * the first item in the array, because that's what we will
  * have added when we created it. It's safe to call this on

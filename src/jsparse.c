@@ -2303,34 +2303,6 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   return scopeExports;
 }
 
-/// Execute the Object.toString function on an object (if we can find it)
-JsVar *jspObjectToString(JsVar *obj) {
-  assert(jsvIsObject(obj));
-  JsVar *toStringFn = 0;
-
-  toStringFn = jsvFindChildFromString(obj, "toString", false);
-
-  if (!toStringFn)
-    toStringFn = jspeiFindChildFromStringInParents(obj, "toString");
-
-   /* TODO: what about searching for builtins here? We can't at the moment
-    * because https://github.com/espruino/Espruino/issues/79 and
-    * https://github.com/espruino/Espruino/issues/188 mean that we actually
-    * *have* to parse brackets rather than just executing the function.
-    */
-
-   if (toStringFn) {
-     // Function found - execute it
-     JsVar *fn = jsvSkipName(toStringFn);
-     JsVar *result = jspeFunctionCall(fn, 0, obj, false, 0, 0);
-     jsvUnLock(fn);
-     jsvUnLock(toStringFn);
-     return result;
-   } else {
-     return jsvNewFromString(jsvIsRoot(obj) ? "[object Hardware]":"[object Object]");
-   }
-}
-
 /** Get the owner of the current prototype. We assume that it's
  * the first item in the array, because that's what we will
  * have added when we created it. It's safe to call this on
