@@ -344,7 +344,7 @@ struct JsLex;
 void jsError(const char *fmt, ...);
 void jsErrorInternal(const char *fmt, ...);
 void jsErrorHere(const char *fmt, ...); // output an error with a line marker at lex's current position
-void jsErrorAt(const char *message, struct JsLex *lex, size_t tokenPos);
+void jsExceptionHere(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);

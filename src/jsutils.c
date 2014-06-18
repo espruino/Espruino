@@ -158,18 +158,6 @@ NO_INLINE void jsErrorInternal(const char *fmt, ...) {
   jsiConsolePrint("\n");
 }
 
-NO_INLINE void jsErrorAt(const char *message, struct JsLex *lex, size_t tokenPos) {
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("ERROR: ");
-  jsiConsolePrint(message);
-  if (lex) {
-    jsiConsolePrint(" at ");
-    jsiConsolePrintPosition(lex, tokenPos);
-    jsiConsolePrintTokenLineMarker(lex, tokenPos);
-  } else
-    jsiConsolePrint("\n");
-}
-
 NO_INLINE void jsErrorHere(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
@@ -184,6 +172,39 @@ NO_INLINE void jsErrorHere(const char *fmt, ...) {
   }
   jsiConsolePrint("\n");
 }
+
+NO_INLINE void jsExceptionHere(const char *fmt, ...) {
+  jsiConsoleRemoveInputLine();
+
+  JsVar *var = jsvNewFromEmptyString();
+  if (!var) {
+    jspSetError(false);
+    return; // out of memory
+  }
+
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, var, 0);
+  jsvStringIteratorGotoEnd(&it);
+
+  vcbprintf_callback cb = (vcbprintf_callback)jsvStringIteratorPrintfCallback;
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf(cb,&it, fmt, argp);
+  va_end(argp);
+
+  if (execInfo.lex) {
+    cb(" at ",&it);
+    jslPrintPosition(cb,&it, execInfo.lex, execInfo.lex->tokenLastStart-1);
+    jslPrintTokenLineMarker(cb,&it, execInfo.lex, execInfo.lex->tokenLastStart-1);
+  }
+  cb("\n", &it);
+
+  jsvStringIteratorFree(&it);
+  jspSetException(var);
+  jsvUnLock(var);
+}
+
 
 
 NO_INLINE void jsWarn(const char *fmt, ...) {

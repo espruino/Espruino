@@ -307,33 +307,12 @@ void jsiReturnInputLine() {
     }
   }
 }
-
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  size_t line,col;
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  jsiConsolePrintf("line %d col %d\n",line,col);
+  jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos) {
-  size_t line = 1,col = 1;
-  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
-   size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
-
-  if (lineLength>60 && tokenPos-startOfLine>30) {
-    jsiConsolePrint("...");
-    size_t skipChars = tokenPos-30 - startOfLine;
-    startOfLine += 3+skipChars;
-    col -= skipChars;
-    lineLength -= skipChars;
-  }
-
-  jsiConsolePrintStringVarUntilEOL(lex->sourceVar, startOfLine, 60, false);
-  if (lineLength > 60)
-    jsiConsolePrint("...");
-  jsiConsolePrint("\n");
-  while (col-- > 0) jsiConsolePrintChar(' ');
-  jsiConsolePrint("^\n");
+  jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
 

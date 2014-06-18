@@ -54,7 +54,7 @@ void jspSetInterrupted(bool interrupt) {
 }
 
 /// Set the error flag - set lineReported if we've already output the line number
-static inline void jspSetError(bool lineReported) {
+void jspSetError(bool lineReported) {
   execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_YES) | EXEC_ERROR;
   if (lineReported)
     execInfo.execute |= EXEC_ERROR_LINE_REPORTED;
@@ -76,8 +76,7 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   }
   // if destination isn't there, isn't a 'name', or is used, give an error
   if (!jsvIsName(dst)) {
-    jsErrorHere("Unable to assign value to non-reference");
-    jspSetError(true);
+    jsExceptionHere("Unable to assign value to non-reference %t", dst);
     return;
   }
   jsvSetValueOfName(dst, src);
@@ -239,7 +238,7 @@ void jspeiLoadScopesFromVar(JsVar *arr) {
 // -----------------------------------------------
 bool jspCheckStackPosition() {
   if (jsuGetFreeStack() < 512) { // giving us 512 bytes leeway
-    jsErrorHere("Too much recursion - the stack is about to overflow");
+    jsExceptionHere("Too much recursion - the stack is about to overflow");
     jspSetInterrupted(true);
     return false;
   }
@@ -252,7 +251,7 @@ void jspSetNoExecute() {
   execInfo.execute = (execInfo.execute & (JsExecFlags)(int)~EXEC_RUN_MASK) | EXEC_NO;
 }
 
-// We had an exception - start it off now
+/// We had an exception (argument is the exception's value)
 void jspSetException(JsVar *value) {
   // Add the exception itself to a variable in root scope
   JsVar *exception = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, true);
@@ -363,8 +362,8 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
  */
 NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
   if (JSP_SHOULD_EXECUTE && !function) {
-    jsErrorHere(functionName ? "Function %q not found!" : "Function not found!", functionName);
-      jspSetError(true);
+    jsExceptionHere(functionName ? "Function %q not found!" : "Function not found!", functionName);
+    return 0;
   }
 
   if (JSP_SHOULD_EXECUTE) if (!jspCheckStackPosition()) return 0; // try and ensure that we won't overflow our stack
@@ -374,9 +373,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     JsVar *returnVarName;
     JsVar *returnVar;
     if (!jsvIsFunction(function)) {
-        jsErrorHere("Expecting a function to call, got %t", function);
-        jspSetError(true);
-        return 0;
+      jsExceptionHere("Expecting a function to call, got %t", function);
+      return 0;
     }
     if (isParsing) JSP_MATCH('(');
 
@@ -790,8 +788,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 jsvUnLock(nameVar);
               } else {
                 // could have been a string...
-                jsErrorHere("Field or method does not already exist, and can't create it on %t", aVar);
-                jspSetError(true);
+                jsExceptionHere("Field or method does not already exist, and can't create it on %t", aVar);
               }
             }
             JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
@@ -820,8 +817,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 // as we don't want to allocate it until it's written
                 child = jsvCreateNewChild(aVar, index, 0);
               } else {
-                jsErrorHere("Field or method does not already exist, and can't create it on %t", aVar);
-                jspSetError(true);
+                jsExceptionHere("Field or method does not already exist, and can't create it on %t", aVar);
               }
             }
             jsvUnLock(parent);
@@ -844,8 +840,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
 NO_INLINE JsVar *jspeConstruct(JsVar *func, JsVar *funcName, bool hasArgs) {
   assert(JSP_SHOULD_EXECUTE);
   if (!jsvIsFunction(func)) {
-    jsErrorHere("Constructor should be a function, but is %t", func);
-    jspSetError(true);
+    jsExceptionHere("Constructor should be a function, but is %t", func);
     return 0;
   }
 
@@ -1291,8 +1286,7 @@ NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
             JsVar *av = jsvSkipName(a);
             JsVar *bv = jsvSkipName(b);
             if (!jsvIsFunction(bv)) {
-              jsErrorHere("Expecting a function on RHS in instanceof check, got %t", bv);
-              jspSetError(true);
+              jsExceptionHere("Expecting a function on RHS in instanceof check, got %t", bv);
             } else {
               if (jsvIsObject(av)) {
                 JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
@@ -1708,8 +1702,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   jslCharPosFree(&whileBodyEnd);
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
   if (loopCount<=0) {
-    jsErrorHere("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
-    jspSetError(true);
+    jsExceptionHere("WHILE Loop exceeded the maximum number of iterations (" STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS) ")");
   }
 #endif
   return 0;
@@ -1734,8 +1727,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     // where i = jsvUnLock(forStatement);
     if (JSP_SHOULD_EXECUTE && !jsvIsName(forStatement)) {
       jsvUnLock(forStatement);
-      jsErrorHere("FOR a IN b - 'a' must be a variable name");
-      jspSetError(true);
+      jsExceptionHere("FOR a IN b - 'a' must be a variable name, not %t", forStatement);
       return 0;
     }
     bool addedIteratorToScope = false;
@@ -1809,8 +1801,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       assert(!foundPrototype);
       jsvIteratorFree(&it);
     } else {
-      jsErrorHere("FOR loop can only iterate over Arrays, Strings or Objects");
-      jspSetError(true);
+      jsExceptionHere("FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
     }
     jslSeekToP(execInfo.lex, &forBodyEnd);
     jslCharPosFree(&forBodyStart);
@@ -1904,8 +1895,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS
     if (loopCount<=0) {
-        jsErrorHere("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
-        jspSetError(true);
+      jsExceptionHere("FOR Loop exceeded the maximum number of iterations ("STRINGIFY(JSPARSE_MAX_LOOP_ITERATIONS)")");
     }
 #endif
   }
@@ -1969,11 +1959,10 @@ NO_INLINE JsVar *jspeStatementReturn() {
     if (resultVar) {
       jspReplaceWith(resultVar, result);
       jsvUnLock(resultVar);
+      jspSetNoExecute(); // Stop anything else in this function executing
     } else {
-      jsErrorHere("RETURN statement, but not in a function.\n");
-      jspSetError(true);
+      jsExceptionHere("RETURN statement, but not in a function.\n");
     }
-    jspSetNoExecute(); // Stop anything else in this function executing
   }
   jsvUnLock(result);
   return 0;
@@ -2081,7 +2070,7 @@ NO_INLINE JsVar *jspeStatement() {
       JSP_ASSERT_MATCH(LEX_R_CONTINUE);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & EXEC_IN_LOOP))
-          jsErrorHere("CONTINUE statement outside of FOR or WHILE loop");
+          jsExceptionHere("CONTINUE statement outside of FOR or WHILE loop");
         else
           execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) |  EXEC_CONTINUE;
       }
@@ -2089,7 +2078,7 @@ NO_INLINE JsVar *jspeStatement() {
       JSP_ASSERT_MATCH(LEX_R_BREAK);
       if (JSP_SHOULD_EXECUTE) {
         if (!(execInfo.execute & (EXEC_IN_LOOP|EXEC_IN_SWITCH)))
-          jsErrorHere("BREAK statement outside of SWITCH, FOR or WHILE loop");
+          jsExceptionHere("BREAK statement outside of SWITCH, FOR or WHILE loop");
         else
           execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_BREAK;
       }

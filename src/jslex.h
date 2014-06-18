@@ -65,4 +65,7 @@ void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
 
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
+
 #endif /* JSLEX_H_ */

@@ -45,6 +45,10 @@ bool jspIsInterrupted();
 void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
+/// Set the error flag - set lineReported if we've already output the line number
+void jspSetError(bool lineReported);
+/// We had an exception (argument is the exception's value)
+void jspSetException(JsVar *value);
 
 /** Execute code form a variable and return the result. If parseTwice is set,
  * we run over the variable twice - once to pick out function declarations,
