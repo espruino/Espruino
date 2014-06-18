@@ -205,7 +205,7 @@ void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
     return; // queue full - dump this event!
   }
   ioBuffer[ioHead].flags = channel;
-  ioBuffer[ioHead].data.time = time;
+  ioBuffer[ioHead].data.time = (unsigned int)time;
   ioHead = nextHead;
 }
 

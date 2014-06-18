@@ -60,7 +60,7 @@ typedef enum {
  // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
  // Also helps if we're under 32 so we can fit IOEventFlags into a byte
  EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
- EV_CHARS_MASK = 7 * NEXT_POWER_2(EV_DEVICE_MAX),
+ EV_CHARS_MASK = 3 * NEXT_POWER_2(EV_DEVICE_MAX), // see IOEVENT_MAXCHARS
  // -----------------------------------------
  // if the pin we're watching is high, the handler sets this
  EV_EXTI_IS_HIGH = NEXT_POWER_2(EV_DEVICE_MAX),
@@ -74,11 +74,11 @@ typedef enum {
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
 #define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
 #define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<5)))
-#define IOEVENT_MAXCHARS 8
+#define IOEVENT_MAXCHARS 4 // See EV_CHARS_MASK
 
 typedef union {
-  JsSysTime time; // time event occurred
-  char chars[IOEVENT_MAXCHARS];
+  unsigned int time; ///< BOTTOM 32 BITS of time the event occurred
+  char chars[IOEVENT_MAXCHARS]; ///< Characters received
 } PACKED_FLAGS IOEventData;
 
 // IO Events - these happen when a pin changes

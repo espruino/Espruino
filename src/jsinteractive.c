@@ -437,24 +437,9 @@ void jsiSoftInit() {
     jsvUnLock(watchArrayPtr);
   }
 
-  // Check any existing timers and try and set time correctly
-  if (timerArray) {
-    JsSysTime currentTime = jshGetSystemTime();
-    JsVar *timerArrayPtr = jsvLock(timerArray);
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, timerArrayPtr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *timer = jsvArrayIteratorGetElement(&it);
-      JsVar *timerTime = jsvObjectGetChild(timer, "time", 0);
-      JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
-      jsvSetInteger(timerTime, currentTime + interval);
-      jsvUnLock(timerTime);
-      jsvUnLock(timer);
-      jsvArrayIteratorNext(&it);
-    }
-    jsvArrayIteratorFree(&it);
-    jsvUnLock(timerArrayPtr);
-  }
+  // Timers are stored by time in the future now, so no need
+  // to fiddle with them.
+
   // And look for onInit function
   JsVar *onInit = jsvFindChildFromString(execInfo.root, JSI_ONINIT_NAME, false);
   if (onInit && onInit->firstChild) {
@@ -1378,6 +1363,21 @@ void jsiIdle() {
         Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
 
         if (jshIsEventForPin(&event, pin)) {
+          /** Work out event time. Events time is only stored in 32 bits, so we need to
+           * use the correct 'high' 32 bits from the current time.
+           *
+           * We know that the current time is always newer than the event time, so
+           * if the bottom 32 bits of the current time is less than the bottom
+           * 32 bits of the event time, we need to subtract a full 32 bits worth
+           * from the current time.
+           */
+          JsSysTime time = jshGetSystemTime();
+          if (((unsigned int)time) < (unsigned int)event.data.time)
+            time = time - 0x100000000LL;
+          // finally, mask in the event's time
+          JsSysTime eventTime = (time & ~0xFFFFFFFFLL) | (JsSysTime)event.data.time;
+
+          // Now actually process the event
           bool pinIsHigh = (event.flags&EV_EXTI_IS_HIGH)!=0;
 
           JsVarInt debounce = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
@@ -1385,13 +1385,13 @@ void jsiIdle() {
             JsVar *timeout = jsvObjectGetChild(watchPtr, "timeout", 0);
             if (timeout) { // if we had a timeout, update the callback time
               JsVar *timerTime = jsvObjectGetChild(timeout, "time", JSV_INTEGER);
-              jsvSetInteger(timerTime, event.data.time+debounce);
+              jsvSetInteger(timerTime, (JsVarInt)(eventTime - jsiLastIdleTime) + debounce);
               jsvUnLock(timerTime);
             } else { // else create a new timeout
               timeout = jsvNewWithFlags(JSV_OBJECT);
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
-                jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(event.data.time-jsiLastIdleTime)+debounce)));
+                jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce)));
                 jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
                 jsvUnLock(jsvObjectSetChild(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
                 // Add to timer array
@@ -1404,7 +1404,7 @@ void jsiIdle() {
             // store the current state here
             jsvUnLock(jsvObjectSetChild(watchPtr, "state", jsvNewFromBool(pinIsHigh)));
           } else { // Not debouncing - just execute normally
-            JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(event.data.time)/1000);
+            JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(eventTime)/1000);
             if (jsiShouldExecuteWatch(watchPtr, pinIsHigh)) { // edge triggering
               JsVar *watchCallback = jsvObjectGetChild(watchPtr, "callback", 0);
               bool watchRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(watchPtr,  "recur", 0));
@@ -1450,7 +1450,7 @@ void jsiIdle() {
   // Check timers
   JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
-  JsVarInt timePassed = jshGetSystemTime()-jsiLastIdleTime;
+  JsVarInt timePassed = (JsVarInt)(jshGetSystemTime() - jsiLastIdleTime);
   jsiLastIdleTime = time;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -1517,9 +1517,9 @@ void jsiIdle() {
       if (intervalRecurring) {
         JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
         if (interval<=0)
-          jsvSetInteger(timerTime, time); // just set to current system time
+          jsvSetInteger(timerTime, 0); // just set to current system time
         else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime)+interval);
+          jsvSetInteger(timerTime, jsvGetInteger(timerTime) + interval);
       } else {
         // free all
         JsVar *foundChild = jsvGetArrayIndexOf(timerArrayPtr, timerPtr, true);
