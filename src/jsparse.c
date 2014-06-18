@@ -363,7 +363,7 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
  */
 NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
   if (JSP_SHOULD_EXECUTE && !function) {
-      jsErrorHere("Function not found! Skipping.");
+    jsErrorHere(functionName ? "Function %q not found!" : "Function not found!", functionName);
       jspSetError(true);
   }
 
