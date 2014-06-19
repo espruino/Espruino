@@ -1283,71 +1283,44 @@ void jsiIdle() {
         JsVar *callback = jsvFindChildFromString(usartClass, USART_CALLBACK_NAME, false);
 
         if (callback) {
-          int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
-
-// Part of hackish solution to 7 bit support on STM32
-#ifdef STM32
+          /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
+           * check the options and work out the masking here than it is to
+           * do it in the IRQ */
           unsigned char bytesize = 8;
-          unsigned char parity   = 0;
-          JsVar *options    = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-
-          if(jsvIsObject(options)) {
+          JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
+          if(jsvIsObject(options))
             bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
-            JsVar *v = jsvObjectGetChild(options, "parity", 0);
-
-            if(jsvIsString(v)) {
-              parity = 0xFF;
-              char s[8] = "";
-
-              jsvGetString(v, s, sizeof(s) - 1);
-
-              if(!strcmp(s, "o") || !strcmp(s, "odd")) {
-                parity = 1;
-              }
-              else if(!strcmp(s, "e") || !strcmp(s, "even")) {
-                parity = 2;
-              }
-            }
-            else if(jsvIsInt(v)) {
-              parity = (unsigned char)jsvGetInteger(v);
-            }
-
-            jsvUnLock(v);
-          }
-
           jsvUnLock(options);
-#endif
 
-          for (i=0; i<c; i++) {
-            JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+          JsVar *data = jsvNewWithFlags(JSV_OBJECT);
+          JsVar *stringData = jsvNewFromEmptyString();
+          if (data && stringData) {
+            JsvStringIterator it;
+            jsvStringIteratorNew(&it, stringData, 0);
 
-            if (data) {
-              JsVar *dataTime = jsvNewFromString("X");
-
-#ifdef STM32 
-              if(bytesize == 7 && parity > 0) {
-                dataTime->varData.str[0] = event.data.chars[i] & 0x7F;
+            int i, chars = IOEVENTFLAGS_GETCHARS(event.flags);
+            while (chars) {
+              for (i=0;i<chars;i++) {
+                char ch = (char)(event.data.chars[i] & ((1<<bytesize)-1)); // mask
+                jsvStringIteratorAppend(&it, ch);
               }
-              else if(bytesize == 8 && parity > 0) {
-                dataTime->varData.str[0] = event.data.chars[i] & 0xFF;
-              }
-              else {
-                dataTime->varData.str[0] = event.data.chars[i];
-              }
-#else
-              dataTime->varData.str[0] = event.data.chars[i];
-#endif
-
-              if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "data"));
-              jsvUnLock(dataTime);
+              // look down the stack and see if there is more data
+              if (jshIsTopEvent(eventType)) {
+                jshPopIOEvent(&event);
+                chars = IOEVENTFLAGS_GETCHARS(event.flags);
+              } else
+                chars = 0;
             }
+            jsvUnLock(jsvAddNamedChild(data, stringData, "data"));
             
+            // Now run the handler
             if (!jsiExecuteEventCallback(callback, data, 0)) {
               jsError("Error processing Serial data handler - removing it.");
               jsvSetValueOfName(callback, 0);
             }
-            jsvUnLock(data);
           }
+          jsvUnLock(stringData);
+          jsvUnLock(data);
         }
         jsvUnLock(callback);
         jsvUnLock(usartClass);

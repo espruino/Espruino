@@ -100,6 +100,8 @@ static inline void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigne
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
+/// Check if the top event is for the given device
+bool jshIsTopEvent(IOEventFlags eventType);
 
 /// How many event blocks are left? compare this to IOBUFFERMASK
 int jshGetEventsUsed();

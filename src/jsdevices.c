@@ -221,6 +221,12 @@ bool jshHasEvents() {
   return ioHead!=ioTail;
 }
 
+/// Check if the top event is for the given device
+bool jshIsTopEvent(IOEventFlags eventType) {
+  if (ioHead==ioTail) return false;
+  return IOEVENTFLAGS_GETTYPE(ioBuffer[ioTail].flags) == eventType;
+}
+
 int jshGetEventsUsed() {
   int spaceUsed = (ioHead >= ioTail) ? ((int)ioHead-(int)ioTail) : /*or rolled*/((int)ioHead+IOBUFFERMASK+1-(int)ioTail);
   return spaceUsed;
