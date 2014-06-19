@@ -47,6 +47,7 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
     }
     jsvArrayBufferIteratorFree(&it);
   }
+  jsvUnLock(buf);
   return col;
 }
 
