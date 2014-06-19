@@ -17,6 +17,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jswrap_stream.h"
 #ifdef __MINGW32__
 #include "malloc.h" // needed for alloca
 #endif//__MINGW32__
@@ -328,6 +329,16 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   }
   jsvUnLock(eventListeners);
   jsvUnLock(eventList);
+  /* Special case if we're a data listener and data has already arrived then
+   * we queue an event immediately. */
+  if (jsvIsStringEqual(event, "data")) {
+    JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
+    if (jsvIsString(buf)) {
+      jsiQueueObjectCallbacks(parent, "#ondata", &buf, 1);
+      jsvRemoveNamedChild(parent, STREAM_BUFFER_NAME);
+    }
+    jsvUnLock(buf);
+  }
 }
 
 /*JSON{ "type":"method", "class": "Object", "name" : "emit",

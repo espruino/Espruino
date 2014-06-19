@@ -239,6 +239,7 @@ def is_function(jsondata):
   return jsondata["type"]=="function" or jsondata["type"]=="method"
 
 def get_prefix_name(jsondata):
+  if jsondata["type"]=="event": return "event"
   if jsondata["type"]=="constructor": return "constructor"
   if jsondata["type"]=="function": return "function"
   if jsondata["type"]=="method": return "function"

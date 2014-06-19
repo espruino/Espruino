@@ -711,7 +711,7 @@ void jshDoSysTick() {
                          (averageSysTickTime>>2) +
                          ((unsigned int)diff>>2);
     // what do we expect the RTC time to be on the next SysTick?
-    JsSysTime nextSysTickTime = time + averageSysTickTime;
+    JsSysTime nextSysTickTime = time + (JsSysTime)averageSysTickTime;
     // Now the smooth average is the average of what we had, and what we need to get back in line with the actual time
     diff = nextSysTickTime - smoothLastSysTickTime;
     // saturate...
@@ -1291,23 +1291,16 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 
 #ifdef USE_RTC
 JsSysTime jshGetRTCSystemTime() {
-  uint16_t dl1 = RTC->DIVL;
-  uint16_t ch1 = RTC->CNTH;
-  uint16_t cl1 = RTC->CNTL;
+  volatile uint16_t dl,ch,cl,cl1;
+  do {
+    cl1 = RTC->CNTL;
+    dl = RTC->DIVL;
+    ch = RTC->CNTH;
+    cl = RTC->CNTL;
+  } while(cl1!=cl);
 
-  uint16_t dl2 = RTC->DIVL;
-  uint16_t ch2 = RTC->CNTH;
-  uint16_t cl2 = RTC->CNTL;
-
-  if(cl1 != cl2) {
-    // overflow, but it prob didn't happen before
-    dl2 = dl1;
-    ch2 = ch1;
-    cl2 = cl1;
-  }
-
-  unsigned int c = (((unsigned int)ch2)<<16) | (unsigned int)cl2;
-  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl2+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
+  unsigned int c = (((unsigned int)ch)<<16) | (unsigned int)cl;
+  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
 }
 #endif
 

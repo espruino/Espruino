@@ -354,7 +354,7 @@ void jswrap_file_skip(JsVar* parent, int length) {
 
 /*JSON{  "type" : "method", "class" : "File", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
          "generate" : "jswrap_pipe",
-         "description" : [ "Pipe this file to a stream (and object with a 'write' method)"],
+         "description" : [ "Pipe this file to a stream (an object with a 'write' method)"],
          "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
                       ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
                                              "chunkSize : The amount of data to pipe from source to destination at a time",

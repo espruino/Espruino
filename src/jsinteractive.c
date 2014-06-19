@@ -17,6 +17,7 @@
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
+#include "jswrap_stream.h"
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1187,7 +1188,7 @@ void jsiExecuteEvents() {
   }
 }
 
-NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
+NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
   bool wasInterrupted = jspHasError();
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
@@ -1272,59 +1273,46 @@ void jsiIdle() {
       jsiSetBusy(BUSY_INTERACTIVE, true);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
       jsiSetBusy(BUSY_INTERACTIVE, false);
-    }
-
-
-
-    if (DEVICE_IS_USART(eventType)) {
+      /** don't allow us to read data when the device is our
+       console device. It slows us down and just causes pain. */
+    } else if (DEVICE_IS_USART(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
-      if (usartClass) {
-        JsVar *callback = jsvFindChildFromString(usartClass, USART_CALLBACK_NAME, false);
+      if (jsvIsObject(usartClass)) {
+        /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
+         * check the options and work out the masking here than it is to
+         * do it in the IRQ */
+        unsigned char bytesize = 8;
+        JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
+        if(jsvIsObject(options))
+          bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+        jsvUnLock(options);
 
-        if (callback) {
-          /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
-           * check the options and work out the masking here than it is to
-           * do it in the IRQ */
-          unsigned char bytesize = 8;
-          JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-          if(jsvIsObject(options))
-            bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
-          jsvUnLock(options);
+        JsVar *stringData = jsvNewFromEmptyString();
+        if (stringData) {
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, stringData, 0);
 
-          JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-          JsVar *stringData = jsvNewFromEmptyString();
-          if (data && stringData) {
-            JsvStringIterator it;
-            jsvStringIteratorNew(&it, stringData, 0);
-
-            int i, chars = IOEVENTFLAGS_GETCHARS(event.flags);
-            while (chars) {
-              for (i=0;i<chars;i++) {
-                char ch = (char)(event.data.chars[i] & ((1<<bytesize)-1)); // mask
-                jsvStringIteratorAppend(&it, ch);
-              }
-              // look down the stack and see if there is more data
-              if (jshIsTopEvent(eventType)) {
-                jshPopIOEvent(&event);
-                chars = IOEVENTFLAGS_GETCHARS(event.flags);
-              } else
-                chars = 0;
+          int i, chars = IOEVENTFLAGS_GETCHARS(event.flags);
+          while (chars) {
+            for (i=0;i<chars;i++) {
+              char ch = (char)(event.data.chars[i] & ((1<<bytesize)-1)); // mask
+              jsvStringIteratorAppend(&it, ch);
             }
-            jsvUnLock(jsvAddNamedChild(data, stringData, "data"));
-            
-            // Now run the handler
-            if (!jsiExecuteEventCallback(callback, data, 0)) {
-              jsError("Error processing Serial data handler - removing it.");
-              jsvSetValueOfName(callback, 0);
-            }
+            // look down the stack and see if there is more data
+            if (jshIsTopEvent(eventType)) {
+              jshPopIOEvent(&event);
+              chars = IOEVENTFLAGS_GETCHARS(event.flags);
+            } else
+              chars = 0;
           }
+
+          // Now run the handler
+          jswrap_stream_pushData(usartClass, stringData);
           jsvUnLock(stringData);
-          jsvUnLock(data);
         }
-        jsvUnLock(callback);
-        jsvUnLock(usartClass);
       }
+      jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array

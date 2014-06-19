@@ -322,25 +322,27 @@ endif
 
 WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
-src/jswrap_pin.c \
-src/jswrap_espruino.c \
-src/jswrap_functions.c \
-src/jswrap_modules.c \
-src/jswrap_process.c \
-src/jswrap_interactive.c \
-src/jswrap_json.c \
-src/jswrap_object.c \
-src/jswrap_error.c \
-src/jswrap_string.c \
-src/jswrap_number.c \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
 src/jswrap_date.c \
+src/jswrap_error.c \
+src/jswrap_espruino.c \
+src/jswrap_functions.c \
+src/jswrap_interactive.c \
+src/jswrap_io.c \
+src/jswrap_json.c \
+src/jswrap_modules.c \
+src/jswrap_number.c \
+src/jswrap_object.c \
+src/jswrap_onewire.c \
+src/jswrap_pin.c \
+src/jswrap_process.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
-src/jswrap_onewire.c \
-src/jswrap_waveform.c \
-src/jswrap_io.c
+src/jswrap_stream.c \
+src/jswrap_string.c \
+src/jswrap_waveform.c 
+
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
 

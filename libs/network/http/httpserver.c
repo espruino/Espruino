@@ -15,6 +15,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jswrap_stream.h"
 
 #define HTTP_NAME_PORT "port"
 #define HTTP_NAME_SOCKET "sckt"
@@ -29,7 +30,6 @@
 #define HTTP_NAME_CLOSENOW "closeNow"
 #define HTTP_NAME_CLOSE "close"
 #define HTTP_NAME_ON_CONNECT "#onconnect"
-#define HTTP_NAME_ON_DATA "#ondata"
 #define HTTP_NAME_ON_CLOSE "#onclose"
 
 #define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS JS_HIDDEN_CHAR_STR"HttpCC"
@@ -297,9 +297,9 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
               jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, 2);
               jsvUnLock(server);
             }
-            if (hadHeaders && !jsvIsEmptyString(receiveData) && jsiObjectHasCallbacks(connection, HTTP_NAME_ON_DATA)) {
-              // Execute 'data' callback with the data that we have
-              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, &receiveData, 1);
+            if (hadHeaders && !jsvIsEmptyString(receiveData)) {
+              // execute 'data' callback or save data
+              jswrap_stream_pushData(connection, receiveData);
               // clear received data
               jsvUnLock(receiveData);
               receiveData = 0;
@@ -328,12 +328,13 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
       JsVar *receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
       bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
       if (hadHeaders && !jsvIsEmptyString(receiveData)) {
-         // Execute 'data' callback with the data that we have
-         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DATA, &receiveData, 1);
+        // execute 'data' callback or save data
+        jswrap_stream_pushData(connection, receiveData);
       }
       jsvUnLock(receiveData);
-      // fire the close listener
-      jsiQueueObjectCallbacks(connectReponse, HTTP_NAME_ON_CLOSE, &connectReponse, 1);
+      // fire the close listeners
+      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, 0, 0);
+      jsiQueueObjectCallbacks(connectReponse, HTTP_NAME_ON_CLOSE, 0, 0);
 
       _httpConnectionKill(net, connection);
       JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
@@ -375,7 +376,7 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
      * around the idle loop (=callbacks have been executed) before we run this */
     if (hadHeaders && receiveData) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
-      jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_DATA, &receiveData, 1);
+      jswrap_stream_pushData(resVar, receiveData);
       jsvUnLock(resVar);
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);

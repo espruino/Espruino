@@ -24,6 +24,10 @@
             Store only 32 bit time for events (work out full 64 bits in event loop)
             Increase event buffer size to 128 (from 64)
             Make `Serial.onData` call back with >1 char (#383)
+            Move `Serial.onData(...)` to `Serial.on('data',...)`
+            Add Serial.read/available/pipe (fix #383)
+            Add HTTP client/server read/available/pipe
+            Add documentation for events (and tidy it up for constructors)
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
