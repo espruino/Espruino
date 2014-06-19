@@ -1244,7 +1244,7 @@ NO_INLINE JsVar *jspeAdditiveExpression() {
 }
 
 NO_INLINE JsVar *__jspeShiftExpression(JsVar *a) {
-  if (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
+  while (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
     JsVar *b;
     int op = execInfo.lex->tk;
     JSP_ASSERT_MATCH(op);
