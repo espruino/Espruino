@@ -1355,6 +1355,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce)));
                 jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
                 jsvUnLock(jsvObjectSetChild(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
+                jsvUnLock(jsvObjectSetChild(timeout, "pin", jsvNewFromPin(pin)));
                 // Add to timer array
                 jsiTimerAdd(timeout);
                 // Add to our watch
@@ -1374,6 +1375,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
                 // set both data.time, and watch.lastTime in one go
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
+                jsvUnLock(jsvObjectSetChild(data, "pin", jsvNewFromPin(pin)));
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
               if (!jsiExecuteEventCallback(watchCallback, data, 0) && watchRecurring) {
