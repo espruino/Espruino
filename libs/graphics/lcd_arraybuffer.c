@@ -63,7 +63,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
         idx = idx & 7;
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorSetIntegerValue(&it, (existing&~(mask<<idx)) | ((col&mask)<<idx));
+        jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
         if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
           jsvArrayBufferIteratorNext(&it);
         } else {
@@ -73,7 +73,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       } else { // we're writing whole bytes
         int i;
         for (i=0;i<gfx->data.bpp;i+=8) {
-          jsvArrayBufferIteratorSetIntegerValue(&it, col >> i);
+          jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)(col >> i));
           jsvArrayBufferIteratorNext(&it);
         }
       }
