@@ -23,6 +23,7 @@
             Remove JSV_NAME flag - paving the way for more efficient variable storage
             Store only 32 bit time for events (work out full 64 bits in event loop)
             Increase event buffer size to 128 (from 64)
+            Enabled Graphics + CC3k support in the F3Discovery
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
