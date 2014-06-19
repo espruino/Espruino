@@ -273,7 +273,6 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
-    // TODO: look for unreffed connections?
 
     if (!closeConnectionNow) {
       int num = net->recv(net, sckt, buf,sizeof(buf));
@@ -319,7 +318,8 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
             closeConnectionNow = true;
         jsvObjectSetChild(connectReponse, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
       }
-      if (jsvGetBoolAndUnLock(jsvObjectGetChild(connectReponse,HTTP_NAME_CLOSE,0)) && !sendData)
+      // only close if we want to close, have no data to send, and aren't receiving data
+      if (jsvGetBoolAndUnLock(jsvObjectGetChild(connectReponse,HTTP_NAME_CLOSE,0)) && !sendData && num<=0)
         closeConnectionNow = true;
       jsvUnLock(sendData);
     }
