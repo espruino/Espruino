@@ -336,6 +336,7 @@ src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_onewire.c \
 src/jswrap_pin.c \
+src/jswrap_pipe.c \
 src/jswrap_process.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
@@ -398,8 +399,7 @@ DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
 WRAPPERSOURCES += \
 libs/filesystem/jswrap_fs.c \
-libs/filesystem/jswrap_file.c \
-libs/filesystem/jswrap_pipe.c
+libs/filesystem/jswrap_file.c
 ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/filesystem/fat_sd
 SOURCES += \
