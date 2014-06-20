@@ -73,6 +73,7 @@ void jswrap_stream_pushData(JsVar *parent, JsVar *dataString) {
       jsError("Error processing Serial data handler - removing it.");
       jsvRemoveNamedChild(parent, STREAM_CALLBACK_NAME);
     }
+    jsvUnLock(callback);
   } else {
     // No callback - try and add buffer
     JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
