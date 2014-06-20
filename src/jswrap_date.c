@@ -35,6 +35,7 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 typedef struct {
   int daysSinceEpoch;
   int ms,sec,min,hour;
+  int zone; // timezone in minutes
 } TimeInDay;
 
 typedef struct {
@@ -52,11 +53,12 @@ TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in) {
   s = s % 3600;
   t.min = s/60;
   t.sec = s%60;
+  t.zone = 0;
   return t;
 }
 
 JsVarFloat fromTimeInDay(TimeInDay *td) {
-  return (JsVarFloat)(td->ms + (((td->hour*60+td->min)*60+td->sec)*1000) + (JsVarFloat)td->daysSinceEpoch*MSDAY);
+  return (JsVarFloat)(td->ms + (((td->hour*60+td->min - td->zone)*60+td->sec)*1000) + (JsVarFloat)td->daysSinceEpoch*MSDAY);
 }
 
 // First calculate the number of four-year-interval, so calculation
@@ -324,9 +326,51 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   return str;
 }
 
+
+static JsVarInt _parse_int(JsLex *lex) {
+  return stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
+}
+
+static bool _parse_time(JsLex *lex, TimeInDay *time, int initialChars) {
+  time->hour = stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
+  jslGetNextToken(lex);
+  if (lex->tk==':') {
+    jslGetNextToken(lex);
+    if (lex->tk == LEX_INT) {
+      time->min = _parse_int(lex);
+      jslGetNextToken(lex);
+      if (lex->tk==':') {
+        jslGetNextToken(lex);
+        if (lex->tk == LEX_INT || lex->tk == LEX_FLOAT) {
+          JsVarFloat f = stringToFloat(jslGetTokenValueAsString(lex));
+          time->sec = (int)f;
+          time->ms = (int)(f*1000) % 1000;
+          jslGetNextToken(lex);
+          if (lex->tk == LEX_ID && strcmp(jslGetTokenValueAsString(lex),"GMT")==0) {
+            jslGetNextToken(lex);
+          }
+          if (lex->tk == '+' || lex->tk == '-') {
+            int sign = lex->tk == '+' ? 1 : -1;
+            jslGetNextToken(lex);
+            if (lex->tk == LEX_INT) {
+              int i = _parse_int(lex);
+              // correct the fact that it's HHMM and turn it into just minutes
+              i = (i%100) + ((i/100)*60);
+              time->zone = i*sign;
+              jslGetNextToken(lex);
+            }
+          }
+
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /*JSON{ "type":"staticmethod", "class": "Date", "name" : "parse",
-         "description" : ["Parse a date string and return milliseconds since 1970. Data can be either '2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430' ",
-                          "**Note:** This always assumes a timezone of GMT+0000"],
+         "description" : ["Parse a date string and return milliseconds since 1970. Data can be either '2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430' "],
          "generate" : "jswrap_date_parse",
          "params" : [ [ "str", "JsVar", "A String"] ],
          "return" : ["float", "The number of milliseconds since 1970"]
@@ -351,28 +395,15 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
       // Aug 9, 1995
       jslGetNextToken(&lex);
       if (lex.tk == LEX_INT) {
-        date.day = atoi(jslGetTokenValueAsString(&lex));
+        date.day = _parse_int(&lex);
         jslGetNextToken(&lex);
         if (lex.tk==',') {
           jslGetNextToken(&lex);
           if (lex.tk == LEX_INT) {
-            date.year = atoi(jslGetTokenValueAsString(&lex));
+            date.year = _parse_int(&lex);
             jslGetNextToken(&lex);
             if (lex.tk == LEX_INT) {
-              time.hour = atoi(&jslGetTokenValueAsString(&lex)[1]);
-              jslGetNextToken(&lex);
-              if (lex.tk==':') {
-                jslGetNextToken(&lex);
-                if (lex.tk == LEX_INT) {
-                  time.min = atoi(jslGetTokenValueAsString(&lex));
-                  if (lex.tk==':') {
-                    jslGetNextToken(&lex);
-                    if (lex.tk == LEX_INT) {
-                      time.sec = atoi(jslGetTokenValueAsString(&lex));
-                    }
-                  }
-                }
-              }
+              _parse_time(&lex, &time, 0);
             }
           }
         }
@@ -383,14 +414,17 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
       if (lex.tk==',') {
         jslGetNextToken(&lex);
         if (lex.tk == LEX_INT) {
-          date.day = atoi(jslGetTokenValueAsString(&lex));
+          date.day = _parse_int(&lex);
           jslGetNextToken(&lex);
           if (lex.tk == LEX_ID && getMonth(jslGetTokenValueAsString(&lex))>=0) {
             date.month = getMonth(jslGetTokenValueAsString(&lex));
             jslGetNextToken(&lex);
             if (lex.tk == LEX_INT) {
-               date.year = atoi(jslGetTokenValueAsString(&lex));
+               date.year = _parse_int(&lex);
                jslGetNextToken(&lex);
+               if (lex.tk == LEX_INT) {
+                 _parse_time(&lex, &time, 0);
+               }
             }
           }
         }
@@ -401,36 +435,20 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
     }
   } else if (lex.tk == LEX_INT) {
     // assume 2011-10-10T14:48:00 format
-    date.year = atoi(jslGetTokenValueAsString(&lex));
+    date.year = _parse_int(&lex);
     jslGetNextToken(&lex);
     if (lex.tk=='-') {
       jslGetNextToken(&lex);
       if (lex.tk == LEX_INT) {
-        date.month = atoi(jslGetTokenValueAsString(&lex)) - 1;
+        date.month = _parse_int(&lex) - 1;
         jslGetNextToken(&lex);
         if (lex.tk=='-') {
           jslGetNextToken(&lex);
           if (lex.tk == LEX_INT) {
-            date.day = atoi(jslGetTokenValueAsString(&lex));
+            date.day = _parse_int(&lex);
             jslGetNextToken(&lex);
             if (lex.tk == LEX_ID && jslGetTokenValueAsString(&lex)[0]=='T') {
-              time.hour = atoi(&jslGetTokenValueAsString(&lex)[1]);
-              jslGetNextToken(&lex);
-              if (lex.tk==':') {
-                jslGetNextToken(&lex);
-                if (lex.tk == LEX_INT) {
-                  time.min = atoi(jslGetTokenValueAsString(&lex));
-                  jslGetNextToken(&lex);
-                  if (lex.tk==':') {
-                    jslGetNextToken(&lex);
-                    if (lex.tk == LEX_INT || lex.tk == LEX_FLOAT) {
-                      JsVarFloat f = atof(jslGetTokenValueAsString(&lex));
-                      time.sec = (int)f;
-                      time.ms = (int)(f*1000) % 1000;
-                    }
-                  }
-                }
-              }
+              _parse_time(&lex, &time, 1);
             }
           }
         }
