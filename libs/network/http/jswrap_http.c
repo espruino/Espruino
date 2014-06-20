@@ -48,26 +48,96 @@ void jswrap_http_kill() {
                          "This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/http.html). Please see the [Internet](/Internet) page for more information on how to use it."
                           ]
 }*/
+
 /*JSON{ "type":"class",
         "class" : "httpSrv",
         "description" : ["The HTTP server created by http.createServer" ]
 }*/
+// there is a 'connect' event on httpSrv, but it's used by createServer and isn't node-compliant
+
 /*JSON{ "type":"class",
         "class" : "httpSRq",
         "description" : ["The HTTP server request" ]
 }*/
+/*JSON{ "type":"event", "class" : "httpSRq", "name" : "data",
+        "description" : ["The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`" ],
+        "params" : [ [ "data", "JsVar", "A string containing one or more characters of received data"] ]
+}*/
+/*JSON{ "type":"event", "class" : "httpSRq", "name" : "close",
+        "description" : [ "Called when the connection closes." ]
+}*/
+/*JSON{ "type":"method", "class": "httpSRq", "name" : "available",
+         "description" : ["Return how many bytes are available to read. If there is already a listener for data, this will always return 0."],
+         "generate" : "jswrap_stream_available",
+         "return" : ["int", "How many bytes are available"]
+}*/
+/*JSON{ "type":"method", "class": "httpSRq", "name" : "read",
+         "description" : ["Return a string containing characters that have been received"],
+         "generate" : "jswrap_stream_read",
+         "params" : [ [ "chars", "int", "The number of characters to read, or undefined/0 for all available"] ],
+         "return" : ["JsVar", "A string containing the required bytes."]
+}*/
+/*JSON{  "type" : "method", "class" : "httpSRq", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
+         "generate" : "jswrap_pipe",
+         "description" : [ "Pipe this to a stream (an object with a 'write' method)"],
+         "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
+                                             "chunkSize : The amount of data to pipe from source to destination at a time",
+                                             "complete : a function to call when the pipe activity is complete",
+                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
+}*/
+
 /*JSON{ "type":"class",
         "class" : "httpSRs",
         "description" : ["The HTTP server response" ]
 }*/
+/*JSON{ "type":"event", "class" : "httpSRs", "name" : "drain",
+        "description" : [ "An event that is fired when the buffer is empty and it can accept more data to send. " ]
+}*/
+/*JSON{ "type":"event", "class" : "httpSRs", "name" : "close",
+        "description" : [ "Called when the connection closes." ]
+}*/
+
 /*JSON{ "type":"class",
         "class" : "httpCRq",
         "description" : ["The HTTP client request" ]
 }*/
+/*JSON{ "type":"event", "class" : "httpCRq", "name" : "drain",
+        "description" : [ "An event that is fired when the buffer is empty and it can accept more data to send. " ]
+}*/
+
 /*JSON{ "type":"class",
         "class" : "httpCRs",
         "description" : ["The HTTP client response" ]
 }*/
+/*JSON{ "type":"event", "class" : "httpCRs", "name" : "data",
+        "description" : ["The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`" ],
+        "params" : [ [ "data", "JsVar", "A string containing one or more characters of received data"] ]
+}*/
+/*JSON{ "type":"event", "class" : "httpCRs", "name" : "close",
+        "description" : [ "Called when the connection closes." ]
+}*/
+/*JSON{ "type":"method", "class": "httpCRs", "name" : "available",
+         "description" : ["Return how many bytes are available to read. If there is already a listener for data, this will always return 0."],
+         "generate" : "jswrap_stream_available",
+         "return" : ["int", "How many bytes are available"]
+}*/
+/*JSON{ "type":"method", "class": "httpCRs", "name" : "read",
+         "description" : ["Return a string containing characters that have been received"],
+         "generate" : "jswrap_stream_read",
+         "params" : [ [ "chars", "int", "The number of characters to read, or undefined/0 for all available"] ],
+         "return" : ["JsVar", "A string containing the required bytes."]
+}*/
+/*JSON{  "type" : "method", "class" : "httpCRs", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
+         "generate" : "jswrap_pipe",
+         "description" : [ "Pipe this to a stream (an object with a 'write' method)"],
+         "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
+                                             "chunkSize : The amount of data to pipe from source to destination at a time",
+                                             "complete : a function to call when the pipe activity is complete",
+                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
+}*/
+
 /*JSON{ "type":"class",
         "class" : "url",
         "description" : ["This class helps to convert URLs into Objects of information ready for http.request/get" ]

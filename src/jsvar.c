@@ -721,7 +721,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
     JsVar *toStringFn = jspGetNamedField(v, "toString", false);
     if (toStringFn && toStringFn->varData.native.ptr != (void (*)(void))jswrap_object_toString) {
       // Function found and it's not the default one - execute it
-      JsVar *result = jspeFunctionCall(toStringFn, 0, v, false, 0, 0);
+      JsVar *result = jspExecuteFunction(toStringFn,v,0,0);
       jsvUnLock(toStringFn);
       return result;
     } else {

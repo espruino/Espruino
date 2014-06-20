@@ -263,6 +263,17 @@ void jspSetException(JsVar *value) {
   execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
 }
 
+/** Return the reported exception if there was one (and clear it) */
+JsVar *jspGetException() {
+  JsVar *exceptionName = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, false);
+  if (exceptionName) {
+    JsVar *exception = jsvSkipName(exceptionName);
+    jsvRemoveChild(execInfo.root, exceptionName);
+    jsvUnLock(exceptionName);
+    return exception;
+  }
+}
+
 // ----------------------------------------------
 
 // we return a value so that JSP_MATCH can return 0 if it fails (if we pass 0, we just parse all args)
@@ -1239,7 +1250,7 @@ NO_INLINE JsVar *jspeAdditiveExpression() {
 }
 
 NO_INLINE JsVar *__jspeShiftExpression(JsVar *a) {
-  if (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
+  while (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
     JsVar *b;
     int op = execInfo.lex->tk;
     JSP_ASSERT_MATCH(op);
@@ -2200,7 +2211,7 @@ void jspKill() {
 
 /** Execute code form a variable and return the result. If parseTwice is set,
  * we run over the variable twice - once to pick out function declarations,
- * and once to actually execute. */
+ * and once to actually execute.  */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   JsLex lex;
   JsVar *v = 0;

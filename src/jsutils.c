@@ -500,20 +500,22 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         if (quoted) user_callback("\"",user_data);
         JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
         buf[1] = 0;
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, v, 0);
-        // OPT: this could be faster than it is (sending whole blocks at once)
-        while (jsvStringIteratorHasChar(&it)) {
-          buf[0] = jsvStringIteratorGetChar(&it);
-          if (quoted) {
-            user_callback(escapeCharacter(buf[0]), user_data);
-          } else {
-            user_callback(buf,user_data);
+        if (jsvIsString(v)) {
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, v, 0);
+          // OPT: this could be faster than it is (sending whole blocks at once)
+          while (jsvStringIteratorHasChar(&it)) {
+            buf[0] = jsvStringIteratorGetChar(&it);
+            if (quoted) {
+              user_callback(escapeCharacter(buf[0]), user_data);
+            } else {
+              user_callback(buf,user_data);
+            }
+            jsvStringIteratorNext(&it);
           }
-          jsvStringIteratorNext(&it);
+          jsvStringIteratorFree(&it);
+          jsvUnLock(v);
         }
-        jsvStringIteratorFree(&it);
-        jsvUnLock(v);
         if (quoted) user_callback("\"",user_data);
       } break;
       case 't': {

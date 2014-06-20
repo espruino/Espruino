@@ -27,7 +27,7 @@ void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
       JsVar *args[3];
       args[0] = jsvNewFromInteger(x);
       args[1] = jsvNewFromInteger(y);
-      args[2] = jsvNewFromInteger(col);
+      args[2] = jsvNewFromInteger((JsVarInt)col);
       jsvUnLock(jspExecuteFunction(setPixel, gfx->graphicsVar, 3, args));
       jsvUnLock(args[0]);
       jsvUnLock(args[1]);
@@ -46,7 +46,7 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short
     args[1] = jsvNewFromInteger(y1);
     args[2] = jsvNewFromInteger(x2);
     args[3] = jsvNewFromInteger(y2);
-    args[4] = jsvNewFromInteger(gfx->data.fgColor);
+    args[4] = jsvNewFromInteger((JsVarInt)gfx->data.fgColor);
     jsvUnLock(jspExecuteFunction(fillRect, gfx->graphicsVar, 5, args));
     jsvUnLock(args[0]);
     jsvUnLock(args[1]);

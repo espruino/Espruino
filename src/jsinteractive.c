@@ -17,6 +17,7 @@
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
+#include "jswrap_stream.h"
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1166,7 +1167,7 @@ void jsiExecuteEvents() {
   }
 }
 
-NO_INLINE static bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
+NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
   bool wasInterrupted = jspHasError();
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
@@ -1251,86 +1252,46 @@ void jsiIdle() {
       jsiSetBusy(BUSY_INTERACTIVE, true);
       for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
       jsiSetBusy(BUSY_INTERACTIVE, false);
-    }
-
-
-
-    if (DEVICE_IS_USART(eventType)) {
+      /** don't allow us to read data when the device is our
+       console device. It slows us down and just causes pain. */
+    } else if (DEVICE_IS_USART(eventType)) {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
-      if (usartClass) {
-        JsVar *callback = jsvFindChildFromString(usartClass, USART_CALLBACK_NAME, false);
+      if (jsvIsObject(usartClass)) {
+        /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
+         * check the options and work out the masking here than it is to
+         * do it in the IRQ */
+        unsigned char bytesize = 8;
+        JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
+        if(jsvIsObject(options))
+          bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+        jsvUnLock(options);
 
-        if (callback) {
-          int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
+        JsVar *stringData = jsvNewFromEmptyString();
+        if (stringData) {
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, stringData, 0);
 
-// Part of hackish solution to 7 bit support on STM32
-#ifdef STM32
-          unsigned char bytesize = 8;
-          unsigned char parity   = 0;
-          JsVar *options    = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-
-          if(jsvIsObject(options)) {
-            bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
-            JsVar *v = jsvObjectGetChild(options, "parity", 0);
-
-            if(jsvIsString(v)) {
-              parity = 0xFF;
-              char s[8] = "";
-
-              jsvGetString(v, s, sizeof(s) - 1);
-
-              if(!strcmp(s, "o") || !strcmp(s, "odd")) {
-                parity = 1;
-              }
-              else if(!strcmp(s, "e") || !strcmp(s, "even")) {
-                parity = 2;
-              }
+          int i, chars = IOEVENTFLAGS_GETCHARS(event.flags);
+          while (chars) {
+            for (i=0;i<chars;i++) {
+              char ch = (char)(event.data.chars[i] & ((1<<bytesize)-1)); // mask
+              jsvStringIteratorAppend(&it, ch);
             }
-            else if(jsvIsInt(v)) {
-              parity = (unsigned char)jsvGetInteger(v);
-            }
-
-            jsvUnLock(v);
+            // look down the stack and see if there is more data
+            if (jshIsTopEvent(eventType)) {
+              jshPopIOEvent(&event);
+              chars = IOEVENTFLAGS_GETCHARS(event.flags);
+            } else
+              chars = 0;
           }
 
-          jsvUnLock(options);
-#endif
-
-          for (i=0; i<c; i++) {
-            JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-
-            if (data) {
-              JsVar *dataTime = jsvNewFromString("X");
-
-#ifdef STM32 
-              if(bytesize == 7 && parity > 0) {
-                dataTime->varData.str[0] = event.data.chars[i] & 0x7F;
-              }
-              else if(bytesize == 8 && parity > 0) {
-                dataTime->varData.str[0] = event.data.chars[i] & 0xFF;
-              }
-              else {
-                dataTime->varData.str[0] = event.data.chars[i];
-              }
-#else
-              dataTime->varData.str[0] = event.data.chars[i];
-#endif
-
-              if (dataTime) jsvUnLock(jsvAddNamedChild(data, dataTime, "data"));
-              jsvUnLock(dataTime);
-            }
-            
-            if (!jsiExecuteEventCallback(callback, data, 0)) {
-              jsError("Error processing Serial data handler - removing it.");
-              jsvSetValueOfName(callback, 0);
-            }
-            jsvUnLock(data);
-          }
+          // Now run the handler
+          jswrap_stream_pushData(usartClass, stringData);
+          jsvUnLock(stringData);
         }
-        jsvUnLock(callback);
-        jsvUnLock(usartClass);
       }
+      jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array
@@ -1373,6 +1334,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce)));
                 jsvUnLock(jsvObjectSetChild(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0)));
                 jsvUnLock(jsvObjectSetChild(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
+                jsvUnLock(jsvObjectSetChild(timeout, "pin", jsvNewFromPin(pin)));
                 // Add to timer array
                 jsiTimerAdd(timeout);
                 // Add to our watch
@@ -1392,6 +1354,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
                 // set both data.time, and watch.lastTime in one go
                 jsvObjectSetChild(data, "time", timePtr); // no unlock
+                jsvUnLock(jsvObjectSetChild(data, "pin", jsvNewFromPin(pin)));
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
               if (!jsiExecuteEventCallback(watchCallback, data, 0) && watchRecurring) {
@@ -1609,6 +1572,12 @@ bool jsiLoop() {
   // Do general idle stuff
   jsiIdle();
   
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+  }
+
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted.\n");

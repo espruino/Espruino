@@ -139,7 +139,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+      value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
       pinName = pinNamePtr->nextSibling;
       jsvUnLock(pinNamePtr);
@@ -260,7 +260,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
     if (watchPtr) {
       jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
       if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
-      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
+      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce))));
       if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
