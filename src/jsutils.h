@@ -137,6 +137,7 @@ typedef long long JsSysTime;
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
 #define JSPARSE_EXCEPTION_VAR JS_HIDDEN_CHAR_STR"except" // when exceptions are thrown, they're stored in the root scope
+#define JSPARSE_STACKTRACE_VAR JS_HIDDEN_CHAR_STR"sTrace" // for errors/exceptions, a stack trace is stored as a string
 #define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
 
 #if !defined(NO_ASSERT)
@@ -340,11 +341,15 @@ JsVarInt stringToInt(const char *s);
 // forward decl
 struct JsLex;
 // ------------
+typedef enum {
+  JSET_STRING,
+  JSET_ERROR,
+  JSET_SYNTAXERROR,
+  JSET_INTERNALERROR,
+} JsExceptionType;
 
 void jsError(const char *fmt, ...);
-void jsErrorInternal(const char *fmt, ...);
-void jsErrorHere(const char *fmt, ...); // output an error with a line marker at lex's current position
-void jsExceptionHere(const char *fmt, ...);
+void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);

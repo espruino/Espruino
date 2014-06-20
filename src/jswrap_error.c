@@ -20,6 +20,27 @@
         "class" : "Error",
         "description" : [ "The base class for runtime errors" ]
 }*/
+/*JSON{ "type":"class",
+        "class" : "SyntaxError",
+        "description" : [ "The base class for syntax errors" ]
+}*/
+/*JSON{ "type":"class",
+        "class" : "InternalError",
+        "description" : [ "The base class for internal errors" ]
+}*/
+
+JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
+  JsVar *d = jspNewObject(0,type);
+  if (!d) return 0;
+
+  if (msg) {
+    msg = jsvAsString(msg, false);
+    jsvUnLock(jsvObjectSetChild(d, "msg", msg));
+  }
+  jsvUnLock(jsvObjectSetChild(d, "type", jsvNewFromString(type)));
+
+  return d;
+}
 
 /*JSON{ "type":"constructor",
         "class" : "Error",
@@ -30,15 +51,29 @@
         "return" : ["JsVar", "An Error object"]
 }*/
 JsVar *jswrap_error_constructor(JsVar *msg) {
-  JsVar *d = jspNewObject(0,"Error");
-  if (!d) return 0;
-
-  if (msg) {
-    msg = jsvAsString(msg, false);
-    jsvUnLock(jsvObjectSetChild(d, "msg", msg));
-  }
-
-  return d;
+  return _jswrap_error_constructor(msg, "Error");
+}
+/*JSON{ "type":"constructor",
+        "class" : "SyntaxError",
+        "name" : "SyntaxError",
+        "generate" : "jswrap_syntaxerror_constructor",
+        "description" : [ "Creates a SyntaxError object" ],
+        "params" : [ [ "message", "JsVar", "An optional message string"] ],
+        "return" : ["JsVar", "A SyntaxError object"]
+}*/
+JsVar *jswrap_syntaxerror_constructor(JsVar *msg) {
+  return _jswrap_error_constructor(msg, "SyntaxError");
+}
+/*JSON{ "type":"constructor",
+        "class" : "InternalError",
+        "name" : "InternalError",
+        "generate" : "jswrap_internalerror_constructor",
+        "description" : [ "Creates an InternalError object" ],
+        "params" : [ [ "message", "JsVar", "An optional message string"] ],
+        "return" : ["JsVar", "An InternalError object"]
+}*/
+JsVar *jswrap_internalerror_constructor(JsVar *msg) {
+  return _jswrap_error_constructor(msg, "InternalError");
 }
 
 /*JSON{ "type":"method",
@@ -46,8 +81,15 @@ JsVar *jswrap_error_constructor(JsVar *msg) {
         "generate" : "jswrap_error_toString",
         "return" : ["JsVar", "A String"]
 }*/
+/*JSON{ "type":"method",
+        "class" : "SyntaxError", "name" : "toString",
+        "generate" : "jswrap_error_toString",
+        "return" : ["JsVar", "A String"]
+}*/
 JsVar *jswrap_error_toString(JsVar *parent) {
-  JsVar *str = jsvNewFromString("Error");
+  JsVar *str = jsvObjectGetChild(parent, "type", 0);
+  if (!str) str = jsvNewFromString("Error");
+  if (!str) return 0;
 
   JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
   if (msg) {

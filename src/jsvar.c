@@ -660,8 +660,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
      ftoa_bounded(v->varData.floating, str, len);
      return strlen(str);
    } else if (jsvHasCharacterData(v)) {
-       if (jsvIsStringExt(v))
-         jsErrorInternal("Calling jsvGetString on a JSV_STRING_EXT");
+      assert(!jsvIsStringExt(v));
       size_t l = len;
       JsvStringIterator it;
       jsvStringIteratorNewConst(&it, v, 0);
@@ -687,7 +686,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
         return l;
       } else {
         strncpy(str, "", len);
-        jsErrorInternal("Variable type cannot be converted to string");
+        jsExceptionHere(JSET_INTERNALERROR, "Variable type cannot be converted to string");
         return 0;
       }
     }
@@ -750,7 +749,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       str = jsvNewFromEmptyString();
       if (str) jsfGetJSON(v, str, JSON_NONE);
     } else {
-      jsErrorInternal("Variable type cannot be converted to string");
+      jsExceptionHere(JSET_INTERNALERROR, "Variable type cannot be converted to string");
       str = 0;
     }
   }
@@ -984,7 +983,7 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
 
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)&jsvStringIteratorPrintfCallback,&it, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsvStringIteratorPrintfCallback,&it, fmt, argp);
   va_end(argp);
 
   jsvStringIteratorFree(&it);

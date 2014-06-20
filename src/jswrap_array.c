@@ -132,15 +132,15 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
 
 JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
   if (!jsvIsIterable(parent)) {
-    jsError("Array.%s can only be called on something iterable", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.%s's first argument should be a function", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Array.%s's second argument should be undefined, or an object", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's second argument should be undefined, or an object", name);
     return 0;
   }
   JsVar *result = 0;
@@ -264,11 +264,11 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   const char *name = "reduce";
   if (!jsvIsIterable(parent)) {
-    jsError("Array.%s can only be called on something iterable", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.%s's first argument should be a function", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
   JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
@@ -286,7 +286,7 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
       jsvIteratorNext(&it);
     }
     if (!previousValue) {
-      jsError("Array.%s without initial value required non-empty array", name);
+      jsExceptionHere(JSET_ERROR, "Array.%s without initial value required non-empty array", name);
     }
   }
   while (jsvIteratorHasElement(&it)) {
@@ -572,7 +572,7 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
 }*/
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {
-    jsError("Expecting compare function, got %t", compareFn);
+    jsExceptionHere(JSET_ERROR, "Expecting compare function, got %t", compareFn);
     return 0;
   }
   JsvIterator it;

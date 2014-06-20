@@ -112,7 +112,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
       if (running) {
         JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
         if (!jstStopBufferTimerTask(buffer)) {
-          jsError("Waveform couldn't be stopped");
+          jsExceptionHere(JSET_ERROR, "Waveform couldn't be stopped");
         }
         jsvUnLock(buffer);
       }
@@ -137,7 +137,7 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
 }*/
 JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
   if (samples<=0) {
-    jsError("Samples must be greater than 0");
+    jsExceptionHere(JSET_ERROR, "Samples must be greater than 0");
     return 0;
   }
 
@@ -148,12 +148,12 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
 
     int bits = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bits", 0));
     if (bits!=0 && bits!=8 && bits!=16) {
-      jsError("Invalid number of bits");
+      jsExceptionHere(JSET_ERROR, "Invalid number of bits");
       return 0;
     } else if (bits==16) use16bit = true;
 
   } else if (!jsvIsUndefined(options)) {
-    jsError("Expecting options to be undefined or an Object, not %t", options);
+    jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
 
   JsVar *arrayLength = jsvNewFromInteger(samples);
@@ -180,15 +180,15 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
 static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar *options, bool isWriting) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
   if (running) {
-    jsError("Waveform is already running");
+    jsExceptionHere(JSET_ERROR, "Waveform is already running");
     return;
   }
   if (!jshIsPinValid(pin)) {
-    jsError("Invalid pin");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
   if (!isfinite(freq) || freq<0.001) {
-    jsError("Frequency must be above 0.001Hz");
+    jsExceptionHere(JSET_ERROR, "Frequency must be above 0.001Hz");
     return;
   }
 
@@ -200,7 +200,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
        startTime = jshGetTimeFromMilliseconds(t*1000);
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "repeat", 0));
   } else if (!jsvIsUndefined(options)) {
-    jsError("Expecting options to be undefined or an Object, not %t", options);
+    jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
 
   bool is16Bit = false;
@@ -264,12 +264,12 @@ void jswrap_waveform_startInput(JsVar *waveform, Pin pin, JsVarFloat freq, JsVar
 void jswrap_waveform_stop(JsVar *waveform) {
   bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
   if (!running) {
-    jsError("Waveform is not running");
+    jsExceptionHere(JSET_ERROR, "Waveform is not running");
     return;
   }
   JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
   if (!jstStopBufferTimerTask(buffer)) {
-    jsError("Waveform couldn't be stopped");
+    jsExceptionHere(JSET_ERROR, "Waveform couldn't be stopped");
   }
   jsvUnLock(buffer);
   // now run idle loop as this will issue the finish event and will clean up

@@ -16,6 +16,7 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 #include "jswrapper.h"
+#include "jswrap_error.h"
 
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
@@ -148,32 +149,7 @@ NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsolePrint("\n");
 }
 
-NO_INLINE void jsErrorInternal(const char *fmt, ...) {
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("INTERNAL ERROR: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
-  va_end(argp);
-  jsiConsolePrint("\n");
-}
-
-NO_INLINE void jsErrorHere(const char *fmt, ...) {
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("ERROR: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
-  va_end(argp);
-  if (execInfo.lex) {
-    jsiConsolePrint(" at ");
-    jsiConsolePrintPosition(execInfo.lex, execInfo.lex->tokenLastStart-1);
-    jsiConsolePrintTokenLineMarker(execInfo.lex, execInfo.lex->tokenLastStart-1);
-  }
-  jsiConsolePrint("\n");
-}
-
-NO_INLINE void jsExceptionHere(const char *fmt, ...) {
+NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
 
   JsVar *var = jsvNewFromEmptyString();
@@ -193,14 +169,17 @@ NO_INLINE void jsExceptionHere(const char *fmt, ...) {
   vcbprintf(cb,&it, fmt, argp);
   va_end(argp);
 
-  if (execInfo.lex) {
-    cb(" at ",&it);
-    jslPrintPosition(cb,&it, execInfo.lex, execInfo.lex->tokenLastStart-1);
-    jslPrintTokenLineMarker(cb,&it, execInfo.lex, execInfo.lex->tokenLastStart-1);
-  }
-  cb("\n", &it);
-
   jsvStringIteratorFree(&it);
+
+  if (type != JSET_STRING) {
+    JsVar *obj = 0;
+    if (type == JSET_ERROR) obj = jswrap_error_constructor(var);
+    if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
+    if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
+    jsvUnLock(var);
+    var = obj;
+  }
+
   jspSetException(var);
   jsvUnLock(var);
 }

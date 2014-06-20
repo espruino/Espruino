@@ -185,10 +185,10 @@ void jswrap_interface_edit(JsVar *funcName) {
         jsvUnLock(newLine);
       }
     } else {
-      jsError("Edit should be called with the name of a function");
+      jsExceptionHere(JSET_ERROR, "Edit should be called with the name of a function");
     }
   } else {
-    jsError("Edit should be called with edit(funcName) or edit('funcName')");
+    jsExceptionHere(JSET_ERROR, "Edit should be called with edit(funcName) or edit('funcName')");
   }
   jsvUnLock(func);
   jsvUnLock(funcName);
@@ -258,7 +258,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
   JsVar *itemIndex = 0;
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
-    jsError("Function or String not supplied!");
+    jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
@@ -310,7 +310,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
       jsvUnLock(child);
       jsvUnLock(timerArrayPtr);
     } else {
-      jsError(isTimeout ? "Unknown Timeout" : "Unknown Interval");
+      jsExceptionHere(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
   }
   jsvUnLock(timerArrayPtr);
@@ -349,7 +349,7 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
     jsvUnLock(timer);
     // timerName already unlocked
   } else {
-    jsError("Unknown Interval");
+    jsExceptionHere(JSET_ERROR, "Unknown Interval");
   }
   jsvUnLock(timerArrayPtr);
 }

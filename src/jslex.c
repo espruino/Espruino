@@ -719,7 +719,7 @@ bool jslMatch(JsLex *lex, int expected_tk) {
 
       size_t oldPos = lex->tokenLastStart;
       lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
-      jsExceptionHere("Got %s expected %s", gotStr, expStr);
+      jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
       lex->tokenLastStart = oldPos;
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);

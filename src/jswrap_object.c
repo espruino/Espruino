@@ -37,16 +37,6 @@
         "check" : "jsvIsFunction(var)",
         "description" : ["This is the built-in class for Functions" ]
 }*/
-/*JSON{ "type":"class",
-        "class" : "Integer", "prototype" : "Number",
-        "check" : "jsvIsInt(var)",
-        "description" : ["This is the built-in class for Integer values" ]
-}*/
-/*JSON{ "type":"class",
-        "class" : "Double", "prototype" : "Number",
-        "check" : "jsvIsFloat(var)",
-        "description" : ["This is the built-in class for Floating Point values" ]
-}*/
 
 /*JSON{ "type":"property", "class": "Object", "name" : "length",
          "description" : "Find the length of the object",

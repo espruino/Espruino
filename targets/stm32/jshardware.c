@@ -111,7 +111,7 @@ static inline uint8_t pinToEVEXTI(Pin ipin) {
   if (pin==JSH_PIN13) return EV_EXTI13;
   if (pin==JSH_PIN14) return EV_EXTI14;
   if (pin==JSH_PIN15) return EV_EXTI15;
-  jsErrorInternal("pinToEVEXTI");
+  jsExceptionHere(JSET_INTERNALERROR, "pinToEVEXTI");
   return EV_NONE;*/
 }
 
@@ -134,7 +134,7 @@ static inline uint16_t stmPin(Pin ipin) {
   if (pin==JSH_PIN13) return GPIO_Pin_13;
   if (pin==JSH_PIN14) return GPIO_Pin_14;
   if (pin==JSH_PIN15) return GPIO_Pin_15;
-  jsErrorInternal("stmPin");
+  jsExceptionHere(JSET_INTERNALERROR, "stmPin");
   return GPIO_Pin_0;*/
 }
 static inline uint32_t stmExtI(Pin ipin) {
@@ -156,7 +156,7 @@ static inline uint32_t stmExtI(Pin ipin) {
   if (pin==JSH_PIN13) return EXTI_Line13;
   if (pin==JSH_PIN14) return EXTI_Line14;
   if (pin==JSH_PIN15) return EXTI_Line15;
-  jsErrorInternal("stmExtI");
+  jsExceptionHere(JSET_INTERNALERROR, "stmExtI");
   return EXTI_Line0;*/
 }
 
@@ -173,7 +173,7 @@ static inline GPIO_TypeDef *stmPort(Pin pin) {
   if (port == JSH_PORTG) return GPIOG;
   if (port == JSH_PORTH) return GPIOH;
 #endif
-  jsErrorInternal("stmPort");
+  jsExceptionHere(JSET_INTERNALERROR, "stmPort");
   return GPIOA;*/
 }
 
@@ -196,7 +196,7 @@ static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
   if (pin==JSH_PIN13) return GPIO_PinSource13;
   if (pin==JSH_PIN14) return GPIO_PinSource14;
   if (pin==JSH_PIN15) return GPIO_PinSource15;
-  jsErrorInternal("stmPinSource");
+  jsExceptionHere(JSET_INTERNALERROR, "stmPinSource");
   return GPIO_PinSource0;*/
 }
 
@@ -214,7 +214,7 @@ static inline uint8_t stmPortSource(Pin pin) {
   if (port == JSH_PORTG) return EXTI_PortSourceGPIOG;
   if (port == JSH_PORTH) return EXTI_PortSourceGPIOH;
 #endif
-  jsErrorInternal("stmPortSource");
+  jsExceptionHere(JSET_INTERNALERROR, "stmPortSource");
   return EXTI_PortSourceGPIOA;
 #else
   if (port == JSH_PORTA) return GPIO_PortSourceGPIOA;
@@ -224,7 +224,7 @@ static inline uint8_t stmPortSource(Pin pin) {
   if (port == JSH_PORTE) return GPIO_PortSourceGPIOE;
   if (port == JSH_PORTF) return GPIO_PortSourceGPIOF;
   if (port == JSH_PORTG) return GPIO_PortSourceGPIOG;
-  jsErrorInternal("stmPortSource");
+  jsExceptionHere(JSET_INTERNALERROR, "stmPortSource");
   return GPIO_PortSourceGPIOA;
 #endif*/
 }
@@ -236,7 +236,7 @@ static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
 #if ADCS>3
   if (analog & JSH_ANALOG4) return ADC4;
 #endif
-  jsErrorInternal("stmADC");
+  jsExceptionHere(JSET_INTERNALERROR, "stmADC");
   return ADC1;
 }
 
@@ -262,7 +262,7 @@ static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
   case JSH_ANALOG_CH15  : return ADC_Channel_15;
   case JSH_ANALOG_CH16  : return ADC_Channel_16;
   case JSH_ANALOG_CH17  : return ADC_Channel_17;
-  default: jsErrorInternal("stmADCChannel"); return 0;
+  default: jsExceptionHere(JSET_INTERNALERROR, "stmADCChannel"); return 0;
   }
 }
 
@@ -292,7 +292,7 @@ static inline uint8_t functionToAF(JshPinFunction func) {
   case JSH_USART4  : return GPIO_AF_UART4;
   case JSH_USART5  : return GPIO_AF_UART5;
   case JSH_USART6  : return GPIO_AF_USART6;
-  default: jsErrorInternal("functionToAF");return 0;
+  default: jsExceptionHere(JSET_INTERNALERROR, "functionToAF");return 0;
   }
 #else // will be F3
   switch (func & JSH_MASK_AF) {
@@ -312,7 +312,7 @@ static inline uint8_t functionToAF(JshPinFunction func) {
 //case JSH_AF13  : return GPIO_AF_13;
   case JSH_AF14  : return GPIO_AF_14;
   case JSH_AF15  : return GPIO_AF_15;
-  default: jsErrorInternal("functionToAF");return 0;
+  default: jsExceptionHere(JSET_INTERNALERROR, "functionToAF");return 0;
   }
 #endif
 }
@@ -459,7 +459,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM17, cmd);
 #endif
   } else {
-    jsErrorInternal("setDeviceClockCmd: Unknown Device %d", (int)device);
+    jsExceptionHere(JSET_INTERNALERROR, "setDeviceClockCmd: Unknown Device %d", (int)device);
   }
   return ptr;
 }
@@ -1411,7 +1411,7 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
       }
   #endif
     } else {
-      jsErrorInternal("couldn't find ADC!");
+      jsExceptionHere(JSET_INTERNALERROR, "couldn't find ADC!");
       return -1;
     }
 
@@ -1598,7 +1598,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
       DAC_SetChannel2Data(DAC_Align_12b_L, data);
     } else
 #endif
-      jsErrorInternal("Unknown DAC");
+      jsExceptionHere(JSET_INTERNALERROR, "Unknown DAC");
     return;
   }
 
@@ -1845,7 +1845,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART6_IRQn;
 #endif
   } else {
-    jsErrorInternal("Unknown serial port device.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unknown serial port device.");
     return;
   }
 
@@ -1870,7 +1870,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_WordLength = USART_WordLength_9b; 
   }
   else {
-    jsErrorInternal("Unsupported serial byte size.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size.");
     return;
   }
 
@@ -1881,7 +1881,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_StopBits = USART_StopBits_2;
   }
   else {
-    jsErrorInternal("Unsupported serial stopbits length.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial stopbits length.");
     return;
   } // FIXME: How do we handle 1.5 stopbits?
 
@@ -1897,7 +1897,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     USART_InitStructure.USART_Parity = USART_Parity_Even;
   }
   else {
-    jsErrorInternal("Unsupported serial parity mode.");
+    jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial parity mode.");
     return;
   }
 

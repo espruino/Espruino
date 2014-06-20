@@ -90,7 +90,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   if (!jsvIsUndefined(baud)) {
     int b = (int)jsvGetInteger(baud);
     if (b<=100 || b > 10000000)
-      jsError("Invalid baud rate specified");
+      jsExceptionHere(JSET_ERROR, "Invalid baud rate specified");
     else
       inf.baudRate = b;
   }
@@ -118,7 +118,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     }
     jsvUnLock(v);
     if (inf.parity>2) {
-      jsError("Invalid parity %d", inf.parity);
+      jsExceptionHere(JSET_ERROR, "Invalid parity %d", inf.parity);
       return;
     }
 

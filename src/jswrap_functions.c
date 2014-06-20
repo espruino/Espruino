@@ -30,7 +30,7 @@ JsVar *jswrap_arguments() {
   if (execInfo.scopeCount>0)
     scope = execInfo.scopes[execInfo.scopeCount-1];
   if (!jsvIsFunction(scope)) {
-    jsError("Can only use 'arguments' variable inside a function");
+    jsExceptionHere(JSET_ERROR, "Can only use 'arguments' variable inside a function");
     return 0;
   }
 
@@ -187,7 +187,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
 }*/
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
-    jsError("Expecting a string or array, got %t", binaryData);
+    jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
   JsVar* base64Data = jsvNewFromEmptyString();
@@ -238,7 +238,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 }*/
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
-    jsError("Expecting a string, got %t", base64Data);
+    jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
     return 0;
   }
   JsVar* binaryData = jsvNewFromEmptyString();

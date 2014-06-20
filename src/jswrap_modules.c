@@ -131,7 +131,7 @@ JsVar *jswrap_modules_getCached() {
 }*/
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
-    jsError("The argument to removeCached must be a string");
+    jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
     return;
   }
   JsVar *moduleList = jswrap_modules_getModuleList();
@@ -169,7 +169,7 @@ void jswrap_modules_removeAllCached() {
 }*/
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
-    jsError("Both arguments to addCached must be strings");
+    jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");
     return;
   }
 
