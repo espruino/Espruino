@@ -1593,6 +1593,12 @@ bool jsiLoop() {
   // Do general idle stuff
   jsiIdle();
   
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+  }
+
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted.\n");

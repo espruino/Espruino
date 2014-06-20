@@ -45,6 +45,8 @@ bool jspIsInterrupted();
 void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
+/** Return the reported exception if there was one (and clear it) */
+JsVar *jspGetException();
 
 /** Execute code form a variable and return the result. If parseTwice is set,
  * we run over the variable twice - once to pick out function declarations,
