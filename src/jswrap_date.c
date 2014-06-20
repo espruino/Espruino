@@ -383,6 +383,7 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
   time.min = 0;
   time.sec = 0;
   time.ms = 0;
+  time.zone = 0;
   CalendarDate date = getCalendarDate(0);
 
   JsLex lex;
