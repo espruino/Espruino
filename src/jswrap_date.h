@@ -26,3 +26,5 @@ int jswrap_date_getDay(JsVar *parent);
 int jswrap_date_getDate(JsVar *parent);
 int jswrap_date_getMonth(JsVar *parent);
 int jswrap_date_getFullYear(JsVar *parent);
+JsVar *jswrap_date_toString(JsVar *parent);
+JsVarFloat jswrap_date_parse(JsVar *str);

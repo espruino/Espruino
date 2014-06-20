@@ -385,6 +385,7 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
 /** Espruino-special printf with a callback
  * Supported are:
  *   %d = int
+ *   %0#d = int padded to length # with 0s
  *   %x = int as hex
  *   %L = JsVarInt
  *   %Lx = JsVarInt as hex

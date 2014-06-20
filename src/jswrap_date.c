@@ -16,6 +16,7 @@
 #include "jswrap_date.h"
 #include "jsparse.h"
 #include "jshardware.h"
+#include "jslex.h"
 
 const int MSDAY = 24*60*60*1000;
 const int YDAY = 365;
@@ -25,6 +26,8 @@ const int BASE_DOW = 4;
 const short DAYS[13] = {0,31,59,90,120,151,181,212,243,273,304,334,365};
 const short LPDAYS[13] = {0,31,60,91,121,152,182,213,244,274,305,335,366};
 const short YDAYS[4] = {0,365,365*2,365*3+1};
+const char *MONTHNAMES = "Jan\0Feb\0Mar\0Apr\0May\0Jun\0Jul\0Aug\0Sep\0Oct\0Nov\0Dec";
+const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 
 /* NOTE: we use / and % here because the compiler is smart enough to
  * condense them into one op. */
@@ -122,6 +125,23 @@ int fromCalenderDate(CalendarDate *date) {
   return f*FDAY+YDAYS[yf]+mdays[date->month]+date->day-1;
 };
 
+
+static int getMonth(const char *s) {
+  int i;
+  for (i=0;i<12;i++)
+    if (strcmp(s, &MONTHNAMES[i*4])==0)
+      return i;
+  return -1;
+}
+
+static int getDay(const char *s) {
+  int i;
+  for (i=0;i<7;i++)
+    if (strcmp(s, &DAYNAMES[i*4])==0)
+      return i;
+  return -1;
+}
+
 /*JSON{ "type":"class",
         "class" : "Date",
         "description" : [ "The built-in class for handling Dates" ]
@@ -142,7 +162,7 @@ JsVarFloat jswrap_date_now() {
         "name" : "Date",
         "generate" : "jswrap_date_constructor",
         "description" : [ "Creates a date object" ],
-        "params" : [ [ "args", "JsVarArray", "Either nothing (current time), one numeric argument (milliseconds since 1970), a date string (unsupported), or [year, month, day, hour, minute, second, millisecond] "] ],
+        "params" : [ [ "args", "JsVarArray", "Either nothing (current time), one numeric argument (milliseconds since 1970), a date string (see `Date.parse`), or [year, month, day, hour, minute, second, millisecond] "] ],
         "return" : ["JsVar", "A Date object"]
 }*/
 JsVar *jswrap_date_constructor(JsVar *args) {
@@ -153,12 +173,14 @@ JsVar *jswrap_date_constructor(JsVar *args) {
 
   if (jsvGetArrayLength(args)==0) {
     time = jswrap_date_now();
-  } else if (jsvGetArrayLength(args)==0) {
+  } else if (jsvGetArrayLength(args)==1) {
     JsVar *arg = jsvGetArrayItem(args, 0);
     if (jsvIsNumeric(arg))
       time = jsvGetFloat(arg);
+    else if (jsvIsString(arg))
+      time = jswrap_date_parse(arg);
     else
-      jsWarn("Strings in date constructor are unsupported");
+      jsWarn("Variables of type %t are not supported in date constructor", arg);
     jsvUnLock(arg);
   } else {
     CalendarDate date;
@@ -284,4 +306,139 @@ int jswrap_date_getMonth(JsVar *parent) {
 }*/
 int jswrap_date_getFullYear(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).year;
+}
+
+/*JSON{ "type":"method", "class": "Date", "name" : "toString",
+         "description" : ["Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`",
+                         "**Note:** This always assumes a timezone of GMT+0000"],
+         "generate" : "jswrap_date_toString",
+         "return" : ["JsVar", "A String"]
+}*/
+JsVar *jswrap_date_toString(JsVar *parent) {
+  TimeInDay time = getTimeFromDateVar(parent);
+  CalendarDate date = getCalendarDate(time.daysSinceEpoch);
+
+  JsVar *str = jsvNewFromEmptyString();
+  if (!str) return 0;
+  jsvAppendPrintf(str, "%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
+  return str;
+}
+
+/*JSON{ "type":"staticmethod", "class": "Date", "name" : "parse",
+         "description" : ["Parse a date string and return milliseconds since 1970. Data can be either '2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430' ",
+                          "**Note:** This always assumes a timezone of GMT+0000"],
+         "generate" : "jswrap_date_parse",
+         "params" : [ [ "str", "JsVar", "A String"] ],
+         "return" : ["float", "The number of milliseconds since 1970"]
+}*/
+JsVarFloat jswrap_date_parse(JsVar *str) {
+  if (!jsvIsString(str)) return 0;
+  TimeInDay time;
+  time.daysSinceEpoch = 0;
+  time.hour = 0;
+  time.min = 0;
+  time.sec = 0;
+  time.ms = 0;
+  CalendarDate date = getCalendarDate(0);
+
+  JsLex lex;
+  jslInit(&lex, str);
+
+  if (lex.tk == LEX_ID) {
+    date.month = getMonth(jslGetTokenValueAsString(&lex));
+    date.dow = getDay(jslGetTokenValueAsString(&lex));
+    if (date.month>=0) {
+      // Aug 9, 1995
+      jslGetNextToken(&lex);
+      if (lex.tk == LEX_INT) {
+        date.day = atoi(jslGetTokenValueAsString(&lex));
+        jslGetNextToken(&lex);
+        if (lex.tk==',') {
+          jslGetNextToken(&lex);
+          if (lex.tk == LEX_INT) {
+            date.year = atoi(jslGetTokenValueAsString(&lex));
+            jslGetNextToken(&lex);
+            if (lex.tk == LEX_INT) {
+              time.hour = atoi(&jslGetTokenValueAsString(&lex)[1]);
+              jslGetNextToken(&lex);
+              if (lex.tk==':') {
+                jslGetNextToken(&lex);
+                if (lex.tk == LEX_INT) {
+                  time.min = atoi(jslGetTokenValueAsString(&lex));
+                  if (lex.tk==':') {
+                    jslGetNextToken(&lex);
+                    if (lex.tk == LEX_INT) {
+                      time.sec = atoi(jslGetTokenValueAsString(&lex));
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if (date.dow>=0) {
+      date.month = 0;
+      jslGetNextToken(&lex);
+      if (lex.tk==',') {
+        jslGetNextToken(&lex);
+        if (lex.tk == LEX_INT) {
+          date.day = atoi(jslGetTokenValueAsString(&lex));
+          jslGetNextToken(&lex);
+          if (lex.tk == LEX_ID && getMonth(jslGetTokenValueAsString(&lex))>=0) {
+            date.month = getMonth(jslGetTokenValueAsString(&lex));
+            jslGetNextToken(&lex);
+            if (lex.tk == LEX_INT) {
+               date.year = atoi(jslGetTokenValueAsString(&lex));
+               jslGetNextToken(&lex);
+            }
+          }
+        }
+      }
+    } else {
+      date.dow = 0;
+      date.month = 0;
+    }
+  } else if (lex.tk == LEX_INT) {
+    // assume 2011-10-10T14:48:00 format
+    date.year = atoi(jslGetTokenValueAsString(&lex));
+    jslGetNextToken(&lex);
+    if (lex.tk=='-') {
+      jslGetNextToken(&lex);
+      if (lex.tk == LEX_INT) {
+        date.month = atoi(jslGetTokenValueAsString(&lex)) - 1;
+        jslGetNextToken(&lex);
+        if (lex.tk=='-') {
+          jslGetNextToken(&lex);
+          if (lex.tk == LEX_INT) {
+            date.day = atoi(jslGetTokenValueAsString(&lex));
+            jslGetNextToken(&lex);
+            if (lex.tk == LEX_ID && jslGetTokenValueAsString(&lex)[0]=='T') {
+              time.hour = atoi(&jslGetTokenValueAsString(&lex)[1]);
+              jslGetNextToken(&lex);
+              if (lex.tk==':') {
+                jslGetNextToken(&lex);
+                if (lex.tk == LEX_INT) {
+                  time.min = atoi(jslGetTokenValueAsString(&lex));
+                  jslGetNextToken(&lex);
+                  if (lex.tk==':') {
+                    jslGetNextToken(&lex);
+                    if (lex.tk == LEX_INT || lex.tk == LEX_FLOAT) {
+                      JsVarFloat f = atof(jslGetTokenValueAsString(&lex));
+                      time.sec = (int)f;
+                      time.ms = (int)(f*1000) % 1000;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  jslKill(&lex);
+  time.daysSinceEpoch = fromCalenderDate(&date);
+  return fromTimeInDay(&time);
 }

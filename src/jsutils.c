@@ -443,6 +443,7 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
 /** Espruino-special printf with a callback
  * Supported are:
  *   %d = int
+ *   %0#d = int padded to length # with 0s
  *   %x = int as hex
  *   %L = JsVarInt
  *   %Lx = JsVarInt as hex
@@ -463,6 +464,19 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
       fmt++;
       char fmtChar = *fmt++;
       switch (fmtChar) {
+      case '0': {
+        int digits = (*fmt++) - '0';
+        assert('d' == *fmt); // of the form '%02d'
+        fmt++; // skip over 'd'
+        itoa(va_arg(argp, int), buf, 10);
+        int len = strlen(buf);
+        while (len < digits) {
+          user_callback("0",user_data);
+          len++;
+        }
+        user_callback(buf,user_data);
+        break;
+      }
       case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
       case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
       case 'L': {

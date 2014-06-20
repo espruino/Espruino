@@ -36,6 +36,7 @@
             Fixed memory leak in "".indexOf(".")
             Fixed ArrayBuffer Graphics where width*height*bpp&7!=0
             Converted parse errors to throw exceptions
+            Added Date.parse and Date.toString
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
