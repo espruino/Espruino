@@ -32,6 +32,7 @@
             Fixed parsing of multiple shifts
             setWatch now reports the pin back (fix #275)
             Fixed memory leak in g.getPixel with arraybuffers
+            Fixed memory leak in "".indexOf(".")
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
