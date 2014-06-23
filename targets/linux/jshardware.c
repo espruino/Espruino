@@ -150,8 +150,8 @@ int kbhit()
     struct timeval tv = { 0L, 0L };
     fd_set fds;
     FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
+    FD_SET(STDIN_FILENO, &fds);
+    return select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
 }
 
 int getch()
@@ -209,7 +209,9 @@ void jshKill() {
 
 void jshIdle() {
   while (kbhit()) {
-    jshPushIOCharEvent(EV_USBSERIAL, (char)getch());
+    int ch = getch();
+    if (ch<0) break;
+    jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
   }
 
 #ifdef SYSFS_GPIO_DIR
