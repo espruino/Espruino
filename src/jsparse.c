@@ -1128,27 +1128,27 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (execInfo.lex->tk==LEX_ID) {
     return jspeFactorId();
   } else if (execInfo.lex->tk==LEX_INT) {
-      // atol works only on decimals
-      // strtol handles 0x12345 as well
-      //JsVarInt v = (JsVarInt)atol(jslGetTokenValueAsString(execInfo.lex));
-      //JsVarInt v = (JsVarInt)strtol(jslGetTokenValueAsString(execInfo.lex),0,0); // broken on PIC
-      if (JSP_SHOULD_EXECUTE) {
-        JsVarInt v = stringToInt(jslGetTokenValueAsString(execInfo.lex));
-        JSP_ASSERT_MATCH(LEX_INT);
-        return jsvNewFromInteger(v);
-      } else {
-        JSP_ASSERT_MATCH(LEX_INT);
-        return 0;
-      }
-  } else if (execInfo.lex->tk==LEX_FLOAT) {
+    JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
-      JsVarFloat v = stringToFloat(jslGetTokenValueAsString(execInfo.lex));
-      JSP_ASSERT_MATCH(LEX_FLOAT);
-      return jsvNewFromFloat(v);
-    } else {
-      JSP_ASSERT_MATCH(LEX_FLOAT);
-      return 0;
+      if (jslGetTokenLength(execInfo.lex) < 10) {
+        v = jsvNewFromInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
+      } else {
+        JsVarFloat f = stringToFloatWithRadix(jslGetTokenValueAsString(execInfo.lex), 0);
+        if (f>=-2147483648 && f<=2147483647)
+          v = jsvNewFromInteger((JsVarInt)f);
+        else
+          v = jsvNewFromFloat(f);
+      }
     }
+    JSP_ASSERT_MATCH(LEX_INT);
+    return v;
+  } else if (execInfo.lex->tk==LEX_FLOAT) {
+    JsVar *v = 0;
+    if (JSP_SHOULD_EXECUTE) {
+      v = jsvNewFromFloat(stringToFloat(jslGetTokenValueAsString(execInfo.lex)));
+    }
+    JSP_ASSERT_MATCH(LEX_FLOAT);
+    return v;
   } else if (execInfo.lex->tk==LEX_STR) {
     if (JSP_SHOULD_EXECUTE) {
       JsVar *a = jslGetTokenValueAsVar(execInfo.lex);

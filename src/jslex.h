@@ -57,6 +57,7 @@ bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on succe
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
 void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
+int jslGetTokenLength(JsLex *lex);
 JsVar *jslGetTokenValueAsVar(JsLex *lex);
 
 // Only for more 'internal' use

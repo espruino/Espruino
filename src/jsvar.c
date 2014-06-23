@@ -1111,7 +1111,11 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
       return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
-    if (jsvIsFloat(v)) return isfinite(v->varData.floating) ? (JsVarInt)v->varData.floating : 0;
+    if (jsvIsFloat(v)) {
+      if (isfinite(v->varData.floating))
+        return (JsVarInt)(uint32_t)v->varData.floating;
+      return 0;
+    }
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));

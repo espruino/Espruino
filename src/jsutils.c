@@ -58,52 +58,42 @@ const char *escapeCharacter(char ch) {
   return buf;
 }
 
-/* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+/** Parse radix prefixes, or return 0 */
+static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
+  int radix = 10;
+
   if (forceRadix > 36) {
     if (hasError) *hasError = true;
     return 0;
   }
 
-  // skip whitespace (strange parseInt behaviour)
-  while (isWhitespace(*s)) s++;
-
-  const char *numberStart = s;
-
-  bool isNegated = false;
-  JsVarInt v = 0;
-  JsVarInt radix = 10;
-  if (*s == '-') {
-    isNegated = true;
-    s++;
-  }
-  if (*s == '0') {
+  if (**s == '0') {
     radix = 8;
-    s++;
+    (*s)++;
 
     // OctalIntegerLiteral: 0o01, 0O01
-    if (*s == 'o' || *s == 'O') {
+    if (**s == 'o' || **s == 'O') {
       radix = 8;
       if (forceRadix && forceRadix!=8 && forceRadix<25) return 0;
-      s++;
+      (*s)++;
 
     // HexIntegerLiteral: 0x01, 0X01
-    } else if (*s == 'x' || *s == 'X') {
+    } else if (**s == 'x' || **s == 'X') {
       radix = 16;
       if (forceRadix && forceRadix!=16 && forceRadix<34) return 0;
-      s++;
+      (*s)++;
 
     // BinaryIntegerLiteral: 0b01, 0B01
-    } else if (*s == 'b' || *s == 'B') {
+    } else if (**s == 'b' || **s == 'B') {
       radix = 2;
       if (forceRadix && forceRadix!=2 && forceRadix<12)
         return 0;
       else
-        s++;
+        (*s)++;
     } else if (!forceRadix) {
       // check for digits 8 or 9 - if so it's decimal
       const char *p;
-      for (p=s;*p;p++)
+      for (p=*s;*p;p++)
         if (*p<'0' || *p>'9') break;
         else if (*p>='8')
           radix = 10;
@@ -112,14 +102,33 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   if (forceRadix>0 && forceRadix<=36)
     radix = forceRadix;
 
+  return radix;
+}
+
+/* convert a number in the given radix to an int. if radix=0, autodetect */
+JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+  // skip whitespace (strange parseInt behaviour)
+  while (isWhitespace(*s)) s++;
+  const char *numberStart = s;
+
+  bool isNegated = false;
+  JsVarInt v = 0;
+  if (*s == '-') {
+    isNegated = true;
+    s++;
+  }
+
+  int radix = getRadix(&s, forceRadix, hasError);
+  if (!radix) return 0;
+
   while (*s) {
     int digit = 0;
     if (*s >= '0' && *s <= '9')
-      digit = (*s - '0');
+      digit = *s - '0';
     else if (*s >= 'a' && *s <= 'f')
-      digit = (10 + *s - 'a');
+      digit = 10 + *s - 'a';
     else if (*s >= 'A' && *s <= 'F')
-      digit = (10 + *s - 'A');
+      digit = 10 + *s - 'A';
     else break;
     if (digit>=radix)
       break;
@@ -283,11 +292,13 @@ unsigned int rand() {
 }
 #endif
 
-JsVarFloat stringToFloat(const char *s) {
+JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
-
   const char *numberStart = s;
+
+  int radix = getRadix(&s, forceRadix, 0);
+  if (!radix) return NAN;
 
   bool isNegated = false;
   JsVarFloat v = 0;
@@ -298,48 +309,59 @@ JsVarFloat stringToFloat(const char *s) {
   }
   // handle integer part
   while (*s) {
+    int digit = 0;
     if (*s >= '0' && *s <= '9')
-      v = (v*10) + (*s - '0');
+      digit = *s - '0';
+    else if (*s >= 'a' && *s <= 'f')
+      digit = 10 + *s - 'a';
+    else if (*s >= 'A' && *s <= 'F')
+      digit = 10 + *s - 'A';
     else break;
+    if (digit>=radix)
+      break;
+    v = (v*radix) + digit;
     s++;
   }
-  // handle decimal point
-  if (*s == '.') {
-    s++; // skip .
 
-    while (*s) {
-      if (*s >= '0' && *s <= '9')
-        v += mul*(*s - '0');
-      else break;
-      mul /= 10;
-      s++;
-    }
-  }
+  if (radix == 10) {
+    // handle decimal point
+    if (*s == '.') {
+      s++; // skip .
 
-  // handle exponentials
-  if (*s == 'e' || *s == 'E') {
-    s++;  // skip E
-    bool isENegated = false;
-    if (*s == '-' || *s == '+') {
-      isENegated = *s=='-';
-      s++;
+      while (*s) {
+        if (*s >= '0' && *s <= '9')
+          v += mul*(*s - '0');
+        else break;
+        mul /= 10;
+        s++;
+      }
     }
-    int e = 0;
-    while (*s) {
-      if (*s >= '0' && *s <= '9')
-        e = (e*10) + (*s - '0');
-      else break;
-      s++;
-    }
-    if (isENegated) e=-e;
-    // TODO: faster INTEGER pow? Normal pow has floating point inaccuracies
-    while (e>0) { 
-      v*=10; 
-      e--;
-    }
-    while (e<0) { 
-      v/=10; 
-      e++;
+
+    // handle exponentials
+    if (*s == 'e' || *s == 'E') {
+      s++;  // skip E
+      bool isENegated = false;
+      if (*s == '-' || *s == '+') {
+        isENegated = *s=='-';
+        s++;
+      }
+      int e = 0;
+      while (*s) {
+        if (*s >= '0' && *s <= '9')
+          e = (e*10) + (*s - '0');
+        else break;
+        s++;
+      }
+      if (isENegated) e=-e;
+      // TODO: faster INTEGER pow? Normal pow has floating point inaccuracies
+      while (e>0) {
+        v*=10;
+        e--;
+      }
+      while (e<0) {
+        v/=10;
+        e++;
+      }
     }
   }
   // check that we managed to parse something at least
@@ -347,6 +369,10 @@ JsVarFloat stringToFloat(const char *s) {
 
   if (isNegated) return -v;
   return v;
+}
+
+JsVarFloat stringToFloat(const char *s) {
+  return stringToFloatWithRadix(s,10);
 }
 
 

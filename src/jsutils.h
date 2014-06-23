@@ -365,6 +365,7 @@ void *memcpy(void *dst, const void *src, size_t size);
 unsigned int rand();
 #endif
 
+JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
 
 #ifndef HAS_STDLIB

@@ -699,6 +699,10 @@ char *jslGetTokenValueAsString(JsLex *lex) {
   return lex->token;
 }
 
+int jslGetTokenLength(JsLex *lex) {
+  return lex->tokenl;
+}
+
 JsVar *jslGetTokenValueAsVar(JsLex *lex) {
   if (lex->tokenValue) {
     return jsvLockAgain(lex->tokenValue);
