@@ -105,6 +105,17 @@ static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
   return radix;
 }
 
+// Convert a character to the hexadecimal equivalent (or -1)
+int chtod(char ch) {
+  if (ch >= '0' && ch <= '9')
+    return ch - '0';
+  else if (ch >= 'a' && ch <= 'f')
+    return 10 + ch - 'a';
+  else if (ch >= 'A' && ch <= 'F')
+    return 10 + ch - 'A';
+  else return -1;
+}
+
 /* convert a number in the given radix to an int. if radix=0, autodetect */
 JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   // skip whitespace (strange parseInt behaviour)
@@ -122,15 +133,8 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   if (!radix) return 0;
 
   while (*s) {
-    int digit = 0;
-    if (*s >= '0' && *s <= '9')
-      digit = *s - '0';
-    else if (*s >= 'a' && *s <= 'f')
-      digit = 10 + *s - 'a';
-    else if (*s >= 'A' && *s <= 'F')
-      digit = 10 + *s - 'A';
-    else break;
-    if (digit>=radix)
+    int digit = chtod(*s);
+    if (digit<0 || digit>=radix)
       break;
     v = v*radix + digit;
     s++;
@@ -309,15 +313,8 @@ JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
   }
   // handle integer part
   while (*s) {
-    int digit = 0;
-    if (*s >= '0' && *s <= '9')
-      digit = *s - '0';
-    else if (*s >= 'a' && *s <= 'f')
-      digit = 10 + *s - 'a';
-    else if (*s >= 'A' && *s <= 'F')
-      digit = 10 + *s - 'A';
-    else break;
-    if (digit>=radix)
+    int digit = chtod(*s);
+    if (digit<0 || digit>=radix)
       break;
     v = (v*radix) + digit;
     s++;
@@ -495,7 +492,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         assert('d' == *fmt); // of the form '%02d'
         fmt++; // skip over 'd'
         itoa(va_arg(argp, int), buf, 10);
-        int len = strlen(buf);
+        int len = (int)strlen(buf);
         while (len < digits) {
           user_callback("0",user_data);
           len++;
@@ -570,7 +567,7 @@ extern int _end;
 size_t jsuGetFreeStack() {
 #ifdef ARM
   void *frame = __builtin_frame_address(0);
-  return ((char*)&_end) - ((char*)frame);
+  return (size_t)((char*)&_end) - (size_t)((char*)frame);
 #else
   return 100000000; // lots.
 #endif

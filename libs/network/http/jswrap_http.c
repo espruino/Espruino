@@ -436,6 +436,14 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
       } else if (!hadEquals && ch=='=') {
         hadEquals = true;
       } else {
+        // decode percent escape chars
+        if (ch=='%') {
+          jsvStringIteratorNext(&it);
+          ch = jsvStringIteratorGetChar(&it);
+          jsvStringIteratorNext(&it);
+          ch = (char)((chtod(ch)<<4) | chtod(jsvStringIteratorGetChar(&it)));
+        }
+
         if (hadEquals) jsvAppendCharacter(val, ch);
         else jsvAppendCharacter(key, ch);
       }
