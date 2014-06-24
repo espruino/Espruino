@@ -1635,7 +1635,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_OCInitStructure.TIM_OutputNState = (func & JSH_TIMER_NEGATED) ? TIM_OutputNState_Enable : TIM_OutputNState_Disable;
   TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
   TIM_OCInitStructure.TIM_Pulse = (uint16_t)(value*TIM_TimeBaseStructure.TIM_Period);
-  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-(TIM_OCInitStructure.TIM_Pulse+1));
+  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-TIM_OCInitStructure.TIM_Pulse);
 
   if ((func&JSH_MASK_TIMER_CH)==JSH_TIMER_CH1) {
     TIM_OC1Init(TIMx, &TIM_OCInitStructure);

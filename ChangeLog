@@ -1,4 +1,4 @@
-     1v66 : ...
+     1v66 : Ensure that analogWrite(pin,1) works on negated outputs
 
      1v65 : SPI.send/I2C.write/Serial.write can now take variable number of arguments (fix #370)
             Don't check for token matches where we already know what it should be (fix #280)
