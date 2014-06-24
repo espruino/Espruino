@@ -346,7 +346,7 @@ JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
          "description" : "Set Graphics to draw with a Bitmapped Font",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
          "params" : [ [ "size", "int32", "The size as an integer" ] ]
@@ -428,8 +428,10 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
@@ -506,7 +508,9 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       width += 4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
