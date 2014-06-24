@@ -27,6 +27,7 @@ unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 
 
+#ifndef SAVE_ON_FLASH
 static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
   // move to next element in var
   task->data.buffer.charIdx++;
@@ -60,6 +61,7 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
 static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *task) {
   return (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
 }
+#endif
 
 void jstUtilTimerInterruptHandler() {
   if (utilTimerOn) {
@@ -76,6 +78,7 @@ void jstUtilTimerInterruptHandler() {
             jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
           }
         } break;
+#ifndef SAVE_ON_FLASH
         case UET_READ_SHORT: {
           if (!task->data.buffer.var) break;
           int v = jshPinAnalogFast(task->data.buffer.pin);
@@ -107,6 +110,7 @@ void jstUtilTimerInterruptHandler() {
           jstUtilTimerInterruptHandlerNextByte(task);
           break;
         }
+#endif
         case UET_WAKEUP: // we've already done our job by waking the device up
         default: break;
       }
@@ -177,6 +181,7 @@ bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
   return false;
 }
 
+#ifndef SAVE_ON_FLASH
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
 bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   JsVarRef ref = jsvGetRef(var);
@@ -195,6 +200,7 @@ bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   }
   return false;
 }
+#endif
 
 /// Is the timer full - can it accept any other signals?
 static bool utilTimerIsFull() {
@@ -266,6 +272,7 @@ bool jstSetWakeUp(JsSysTime period) {
     return ok;
 }
 
+#ifndef SAVE_ON_FLASH
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
   if (!jshIsPinValid(pin)) return false;
   UtilTimerTask task;
@@ -320,3 +327,4 @@ bool jstStopBufferTimerTask(JsVar *var) {
   jshInterruptOn();
   return found;
 }
+#endif

@@ -240,7 +240,7 @@ JsVar *jswrap_fs_readFile(JsVar *path) {
   return buffer;
 }
 
-  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlink",
+  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlink", "ifndef" : "SAVE_ON_FLASH",
            "generate" : "jswrap_fs_unlink",
            "description" : [ "Delete the given file", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
            "params" : [ [ "path", "JsVar", "The path of the file to delete" ] ],

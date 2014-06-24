@@ -417,7 +417,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   jshSPISet16(device, false); // back to 8 bit
 }
 
-/*JSON{ "type":"method", "class": "SPI", "name" : "send8bit",
+/*JSON{ "type":"method", "class": "SPI", "name" : "send8bit", "ifndef" : "SAVE_ON_FLASH",
          "description" : ["Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols",
 "Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds."],
          "generate" : "jswrap_spi_send8bit",

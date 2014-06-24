@@ -22,6 +22,7 @@
 
 #define JSI_WAVEFORM_NAME JS_HIDDEN_CHAR_STR"wave"
 
+#ifndef SAVE_ON_FLASH
 
 /*JSON{ "type":"class", "ifndef" : "SAVE_ON_FLASH",
         "class" : "Waveform",
@@ -275,4 +276,5 @@ void jswrap_waveform_stop(JsVar *waveform) {
   // now run idle loop as this will issue the finish event and will clean up
   jswrap_waveform_idle();
 }
+#endif
 
