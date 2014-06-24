@@ -20,6 +20,7 @@ import sys;
 import os;
 import importlib;
 import common;
+import copy;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
@@ -60,13 +61,35 @@ def writeheader(s): pininfoHeaderFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
 
 pinInfoFunctionCount = 0
+# Gather some info on available pin functions
+usageCount = {}
+for pin in pins:
+  for afname in pin["functions"]:
+    if not afname in usageCount: usageCount[afname] = 0
+    usageCount[afname] = usageCount[afname] + 1
+# Now treat TIMx_CHy and TIMx_CHyN as the same
+for used in usageCount:
+  usedNegated = used+"N"
+  if usedNegated in usageCount:
+    c = usageCount[used] + usageCount[usedNegated]
+    usageCount[used] = c; 
+    usageCount[usedNegated] = c;
+
+#print(json.dumps(usageCount, sort_keys=True, indent=2))
+
 # work out pin functions (and how many we need)
 for pin in pins:
+  # Sort pin functions by:
+  # How many times they're used (least used go first) and alternate function (functions on the default function get used first)
+  sortedFunctions = [];
+  for afname in pin["functions"]: sortedFunctions.append(afname)
+  sortedFunctions = sorted(sortedFunctions, key=lambda afname: usageCount[afname]*100+pin["functions"][afname]);
+  #
   functions = [ ]
-  for afname in pin["functions"]:
+  for afname in sortedFunctions:
     af = pin["functions"][afname]
     if afname in pinutils.ALLOWED_FUNCTIONS:
-      functions.append("JSH_AF"+str(af)+"|"+pinutils.ALLOWED_FUNCTIONS[afname]);
+      functions.append("JSH_AF"+str(af)+"|"+pinutils.ALLOWED_FUNCTIONS[afname]+"/* "+str(usageCount[afname])+" Uses */");
   pin["jshFunctions"] = functions
   if len(functions)>pinInfoFunctionCount: pinInfoFunctionCount = len(functions)
 

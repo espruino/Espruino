@@ -12,36 +12,40 @@
 
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jswrapper.h"
 
 
 #define TEST_DIR "tests/"
 
 bool isRunning = true;
 
-void nativeQuit(JsVarRef var) {
-  NOT_USED(var);
+void addNativeFunction(const char *name, void (*callbackPtr)(void)) {
+  jsvUnLock(jsvObjectSetChild(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID)));
+}
+
+
+void nativeQuit() {
   isRunning = false;
 }
 
-void nativeInterrupt(JsVarRef var) {
-  NOT_USED(var);
+void nativeInterrupt() {
   jspSetInterrupted(true);
 }
 
-const char *read_file(const char *filename) {
+char *read_file(const char *filename) {
   struct stat results;
   if (!stat(filename, &results) == 0) {
     printf("Cannot stat file! '%s'\r\n", filename);
     return 0;
   }
-  int size = (int)results.st_size;
+  size_t size = (size_t)results.st_size;
   FILE *file = fopen( filename, "rb" );
   /* if we open as text, the number of bytes read may be > the size we read */
   if( !file ) {
      printf("Unable to open file! '%s'\r\n", filename);
      return 0;
   }
-  char *buffer = malloc(size+1);
+  char *buffer = (char *)malloc(size+1);
   size_t actualRead = fread(buffer,1,size,file);
   buffer[actualRead]=0;
   buffer[size]=0;
@@ -58,10 +62,10 @@ bool run_test(const char *filename) {
   jshInit();
   jsiInit(false /* do not autoload!!! */);
 
-  jspAddNativeFunction("function quit()", nativeQuit);
-  jspAddNativeFunction("function interrupt()", nativeInterrupt);
+  addNativeFunction("quit", nativeQuit);
+  addNativeFunction("interrupt", nativeInterrupt);
 
-  jsvUnLock(jspEvaluate(buffer ));
+  jsvUnLock(jspEvaluate(buffer, true));
 
   isRunning = true;
   bool isBusy = true;
@@ -86,9 +90,15 @@ bool run_test(const char *filename) {
   jsiKill();
   printf("AFTER: %d Memory Records Used\r\n", jsvGetMemoryUsage());
   jsvGarbageCollect();
-  printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", jsvGetMemoryUsage());
+  unsigned int unfreed = jsvGetMemoryUsage();
+  printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", unfreed);
   jsvShowAllocated();
   jshKill();
+
+  if (unfreed) {
+    printf("FAIL because of unfreed memory.\r\n");
+    pass = false;
+  }
 
   //jsvDottyOutput();
   printf("\r\n");
@@ -110,9 +120,9 @@ bool run_all_tests() {
     struct dirent *pDir=NULL;
     while((pDir = readdir(dir)) != NULL) {
       char *fn = (*pDir).d_name;
-      int l = strlen(fn);
+      size_t l = strlen(fn);
       if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
-        char *full_fn = malloc(1+l+strlen(TEST_DIR));
+        char *full_fn = (char *)malloc(1+l+strlen(TEST_DIR));
         strcpy(full_fn, TEST_DIR);
         strcat(full_fn, fn);
         if (run_test(full_fn)) {
@@ -145,12 +155,12 @@ bool run_all_tests() {
 }
 
 bool run_memory_test(const char *fn, int vars) {
-  int i;
-  int min = 20;
-  int max = 100;
+  unsigned int i;
+  unsigned int min = 20;
+  unsigned int max = 100;
   if (vars>0) {
-    min = vars;
-    max = vars+1;
+    min = (unsigned)vars;
+    max = (unsigned)vars+1;
   }
   for (i=min;i<max;i++) {
     jsvSetMaxVarsUsed(i);
@@ -161,18 +171,16 @@ bool run_memory_test(const char *fn, int vars) {
 }
 
 bool run_memory_tests(int vars) {
-  int test_num = 1;
   int count = 0;
-  int passed = 0;
 
   DIR *dir = opendir(TEST_DIR);
   if(dir) {
     struct dirent *pDir=NULL;
     while((pDir = readdir(dir)) != NULL) {
       char *fn = (*pDir).d_name;
-      int l = strlen(fn);
+      size_t l = strlen(fn);
       if (l>3 && fn[l-3]=='.' && fn[l-2]=='j' && fn[l-1]=='s') {
-        char *full_fn = malloc(1+l+strlen(TEST_DIR));
+        char *full_fn = (char *)malloc(1+l+strlen(TEST_DIR));
         strcpy(full_fn, TEST_DIR);
         strcat(full_fn, fn);
         run_memory_test(full_fn, vars);
@@ -189,9 +197,9 @@ bool run_memory_tests(int vars) {
 
 void sig_handler(int sig)
 {
-  printf("Got Signal %d\n",sig);fflush(stdout);
-    if (sig==SIGINT) 
-      jspSetInterrupted(true);
+  //printf("Got Signal %d\n",sig);fflush(stdout);
+  if (sig==SIGINT)
+    jspSetInterrupted(true);
 }
 
 void show_help() {
@@ -228,8 +236,8 @@ int main(int argc, char **argv) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
         jsiInit(true);
-        jspAddNativeFunction("function quit()", nativeQuit);
-        jsvUnLock(jspEvaluate(argv[i+1]));
+        addNativeFunction("quit", nativeQuit);
+        jsvUnLock(jspEvaluate(argv[i+1], false));
         isRunning = true;
         bool isBusy = true;
         while (isRunning && (jsiHasTimers() || isBusy))
@@ -277,8 +285,8 @@ int main(int argc, char **argv) {
     }
     jshInit();
     jsiInit(false /* do not autoload!!! */);
-    jspAddNativeFunction("function quit()", nativeQuit);
-    jsvUnLock(jspEvaluate(cmd ));
+    addNativeFunction("quit", nativeQuit);
+    jsvUnLock(jspEvaluate(cmd, true));
     free(buffer);
     isRunning = true;
     bool isBusy = true;
@@ -318,8 +326,8 @@ int main(int argc, char **argv) {
   jshInit();
   jsiInit(true);
 
-  jspAddNativeFunction("function quit()", nativeQuit);
-  jspAddNativeFunction("function interrupt()", nativeInterrupt);
+  addNativeFunction("quit", nativeQuit);
+  addNativeFunction("interrupt", nativeInterrupt);
 
   while (isRunning) {
     jsiLoop();

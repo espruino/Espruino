@@ -41,19 +41,22 @@ if silent:
 #         "needs_parentName":true,           // optional - if for a method, this makes the first 2 args parent+parentName (not just parent)
 #         "generate_full|generate|wrap" : "*(JsVarInt*)&x",
 #         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
-#         "params" : [ [ "x" , "float|int|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
+#         "params" : [ [ "x" , "float|int|int32|bool|pin|JsVar|JsVarName|JsVarArray", "A floating point number"] ],
 #                               // float - parses into a JsVarFloat which is passed to the function
 #                               // int - parses into a JsVarInt which is passed to the function
+#                               // int32 - parses into a 32 bit int
+#                               // bool - parses into a boolean
+#                               // pin - parses into a pin
 #                               // JsVar - passes a JsVar* to the function (after skipping names)
-#                               // JsVarName - passes a JsVar* to the function (WITHOUT skipping names)
 #                               // JsVarArray - parses this AND ANY SUBSEQUENT ARGUMENTS into a JsVar of type JSV_ARRAY. THIS IS ALWAYS DEFINED, EVEN IF ZERO LENGTH. Currently it must be the only parameter
-#         "return" : ["int|float", "The integer representation of x"],
+#         "return" : ["int|float|JsVar", "The integer representation of x"],
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
 #         "not_real_object" : "anything",    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT
 #         "prototype" : "Object",    // optional - for classes, this is what their prototype is. It's particlarly helpful if not_real_object, because there is no prototype var in that case
 #         "check" : "jsvIsFoo(var)", // for classes - this is code that returns true if 'var' is of the given type
 #         "ifndef" : "SAVE_ON_FLASH", // if the given preprocessor macro is defined, don't implement this
 #         "ifdef" : "USE_LCD_FOO", // if the given preprocessor macro isn't defined, don't implement this
+#         "#if" : "A>2", // add a #if statement in the generated C file (ONLY if type==object)
 #}*/
 #
 # description can be an array of strings as well as a simple string (in which case each element is separated by a newline),
@@ -236,6 +239,7 @@ def is_function(jsondata):
   return jsondata["type"]=="function" or jsondata["type"]=="method"
 
 def get_prefix_name(jsondata):
+  if jsondata["type"]=="event": return "event"
   if jsondata["type"]=="constructor": return "constructor"
   if jsondata["type"]=="function": return "function"
   if jsondata["type"]=="method": return "function"

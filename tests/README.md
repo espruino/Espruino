@@ -1,11 +1,13 @@
 Tests
 =====
 
-The tests here are run automatically when you type
+The tests here are run automatically when you type:
 
 ```sh
 ./espruino --test-all
 ```
+
+Each test sets the variable `result` to `true` for a pass, or `false` for a failure.
 
 ## Other tests
 

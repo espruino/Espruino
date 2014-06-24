@@ -8,6 +8,5 @@ for (i in a) s1=s1+i;
 var s2 = JSON.stringify(a);
 var s3 = a.join('-');
 var l = a.length;
-result = s1=="0124" && s2=="[0,1,2,undefined,4]" && s3=="0-1-2--4" && l==5;
-// trying this on jsconsole.chrome gives [0,1,2,null,4] - but lets forget that for now
+result = s1=="0124" && s2=="[0,1,2,null,4]" && s3=="0-1-2--4" && l==5;
 

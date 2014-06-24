@@ -33,17 +33,18 @@ static inline char jslNextCh(JsLex *lex) {
 static void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->currCh = jslNextCh(lex);
 
+  /** NOTE: In this next bit, we DON'T LOCK OR UNLOCK.
+   * The String iterator we're basing on does, so every
+   * time we touch the iterator we have to re-lock it
+   */
   lex->it.charIdx++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && lex->it.var->lastChild) {
-      JsVar *next = jsvLock(lex->it.var->lastChild);
-      jsvUnLock(lex->it.var);
-      lex->it.var = next;
+      lex->it.var = _jsvGetAddressOf(lex->it.var->lastChild);
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
-      jsvUnLock(lex->it.var);
       lex->it.var = 0;
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
@@ -106,7 +107,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
     JSLJT_PLUS, // +
     JSLJT_SINGLECHAR, // ,
     JSLJT_MINUS, // -
-    JSLJT_SINGLECHAR, // .
+    JSLJT_NUMBER, // . - special :/
     JSLJT_FORWARDSLASH, // /
     // 48
     JSLJT_NUMBER, // 0
@@ -255,6 +256,7 @@ jslGetNextToken_start:
           case 'b': if (jslIsToken(lex,"break", 1)) lex->tk = LEX_R_BREAK;
                     break;
           case 'c': if (jslIsToken(lex,"case", 1)) lex->tk = LEX_R_CASE;
+                    else if (jslIsToken(lex,"catch", 1)) lex->tk = LEX_R_CATCH;
                     else if (jslIsToken(lex,"continue", 1)) lex->tk = LEX_R_CONTINUE;
                     break;
           case 'd': if (jslIsToken(lex,"default", 1)) lex->tk = LEX_R_DEFAULT;
@@ -264,6 +266,7 @@ jslGetNextToken_start:
           case 'e': if (jslIsToken(lex,"else", 1)) lex->tk = LEX_R_ELSE;
                     break;
           case 'f': if (jslIsToken(lex,"false", 1)) lex->tk = LEX_R_FALSE;
+                    else if (jslIsToken(lex,"finally", 1)) lex->tk = LEX_R_FINALLY;
                     else if (jslIsToken(lex,"for", 1)) lex->tk = LEX_R_FOR;
                     else if (jslIsToken(lex,"function", 1)) lex->tk = LEX_R_FUNCTION;
                     break;
@@ -279,7 +282,9 @@ jslGetNextToken_start:
           case 's': if (jslIsToken(lex,"switch", 1)) lex->tk = LEX_R_SWITCH;
                     break;
           case 't': if (jslIsToken(lex,"this", 1)) lex->tk = LEX_R_THIS;
+                    else if (jslIsToken(lex,"throw", 1)) lex->tk = LEX_R_THROW;
                     else if (jslIsToken(lex,"true", 1)) lex->tk = LEX_R_TRUE;
+                    else if (jslIsToken(lex,"try", 1)) lex->tk = LEX_R_TRY;
                     else if (jslIsToken(lex,"typeof", 1)) lex->tk = LEX_R_TYPEOF;
                     break;
           case 'u': if (jslIsToken(lex,"undefined", 1)) lex->tk = LEX_R_UNDEFINED;
@@ -294,26 +299,41 @@ jslGetNextToken_start:
       case JSLJT_NUMBER: {
         // TODO: check numbers aren't the wrong format
         bool canBeFloating = true;
-        if (lex->currCh=='0') {
-          jslTokenAppendChar(lex, lex->currCh);
+        if (lex->currCh=='.') {
           jslGetNextCh(lex);
+          if (isNumeric(lex->currCh)) {
+            // it is a float
+            lex->tk = LEX_FLOAT;
+            jslTokenAppendChar(lex, '.');
+          } else {
+            // it wasn't a number after all
+            lex->tk = '.';
+            break;
+          }
+        } else {
+          if (lex->currCh=='0') {
+            jslTokenAppendChar(lex, lex->currCh);
+            jslGetNextCh(lex);
+            if ((lex->currCh=='x' || lex->currCh=='X') ||
+                (lex->currCh=='b' || lex->currCh=='B') ||
+                (lex->currCh=='o' || lex->currCh=='O')) {
+              canBeFloating = false;
+              jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
+            }
+          }
+          lex->tk = LEX_INT;
+          while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
+            jslTokenAppendChar(lex, lex->currCh);
+            jslGetNextCh(lex);
+          }
+          if (canBeFloating && lex->currCh=='.') {
+            lex->tk = LEX_FLOAT;
+            jslTokenAppendChar(lex, '.');
+            jslGetNextCh(lex);
+          }
         }
-
-        if ((lex->currCh=='x' || lex->currCh=='X') ||
-            (lex->currCh=='b' || lex->currCh=='B') ||
-            (lex->currCh=='o' || lex->currCh=='O')) {
-          canBeFloating = false;
-          jslTokenAppendChar(lex, lex->currCh); jslGetNextCh(lex);
-        }
-        lex->tk = LEX_INT;
-        while (isNumeric(lex->currCh) || (!canBeFloating && isHexadecimal(lex->currCh))) {
-          jslTokenAppendChar(lex, lex->currCh);
-          jslGetNextCh(lex);
-        }
-        if (canBeFloating && lex->currCh=='.') {
-          lex->tk = LEX_FLOAT;
-          jslTokenAppendChar(lex, '.');
-          jslGetNextCh(lex);
+        // parse fractional part
+        if (lex->tk == LEX_FLOAT) {
           while (isNumeric(lex->currCh)) {
             jslTokenAppendChar(lex, lex->currCh);
             jslGetNextCh(lex);
@@ -333,6 +353,12 @@ jslGetNextToken_start:
         {
           char delim = lex->currCh;
           lex->tokenValue = jsvNewFromEmptyString();
+          if (!lex->tokenValue) {
+            lex->tk = LEX_EOF;
+            return;
+          }
+          JsvStringIterator it;
+          jsvStringIteratorNew(&it, lex->tokenValue, 0);
           // strings...
           jslGetNextCh(lex);
           while (lex->currCh && lex->currCh!=delim) {
@@ -340,12 +366,21 @@ jslGetNextToken_start:
               jslGetNextCh(lex);
               char ch = lex->currCh;
               switch (lex->currCh) {
-              case 'n'  : ch = '\n'; jslGetNextCh(lex); break;
-              case 'a'  : ch = '\a'; jslGetNextCh(lex); break;
-              case 'r'  : ch = '\r'; jslGetNextCh(lex); break;
-              case 't'  : ch = '\t'; jslGetNextCh(lex); break;
+              case 'n'  : ch = 0x0A; jslGetNextCh(lex); break;
+              case 'b'  : ch = 0x08; jslGetNextCh(lex); break;
+              case 'f'  : ch = 0x0C; jslGetNextCh(lex); break;
+              case 'r'  : ch = 0x0D; jslGetNextCh(lex); break;
+              case 't'  : ch = 0x09; jslGetNextCh(lex); break;
+              case 'v'  : ch = 0x0B; jslGetNextCh(lex); break;
+              case 'u' :
               case 'x' : { // hex digits
                             char buf[5] = "0x??";
+                            if (lex->currCh == 'u') {
+                              // We don't support unicode, so we just take the bottom 8 bits
+                              // of the unicode character
+                              jslGetNextCh(lex);
+                              jslGetNextCh(lex);
+                            }
                             jslGetNextCh(lex);
                             buf[2] = lex->currCh; jslGetNextCh(lex);
                             buf[3] = lex->currCh; jslGetNextCh(lex);
@@ -372,18 +407,15 @@ jslGetNextToken_start:
                        }
                        break;
               }
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, ch);
-                jsvAppendCharacter(lex->tokenValue, ch);
-              }
+              jslTokenAppendChar(lex, ch);
+              jsvStringIteratorAppend(&it, ch);
             } else {
-              if (lex->tokenValue) {
-                jslTokenAppendChar(lex, lex->currCh);
-                jsvAppendCharacter(lex->tokenValue, lex->currCh);
-              }
+              jslTokenAppendChar(lex, lex->currCh);
+              jsvStringIteratorAppend(&it, lex->currCh);
               jslGetNextCh(lex);
             }
           }
+          jsvStringIteratorFree(&it);
           jslGetNextCh(lex);
           lex->tk = LEX_STR;
         } break;
@@ -514,11 +546,13 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->tokenValue = 0;
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   jslPreload(lex);
 }
 
 void jslKill(JsLex *lex) {
   lex->tk = LEX_EOF; // safety ;)
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   if (lex->tokenValue) {
     jsvUnLock(lex->tokenValue);
@@ -530,16 +564,20 @@ void jslKill(JsLex *lex) {
 }
 
 void jslSeekTo(JsLex *lex, size_t seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   jsvStringIteratorNew(&lex->it, lex->sourceVar, seekToChar);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
   jslPreload(lex);
 }
 
 void jslSeekToP(JsLex *lex, JslCharPos *seekToChar) {
+  if (lex->it.var) jsvLockAgain(lex->it.var); // see jslGetNextCh
   jsvStringIteratorFree(&lex->it);
   lex->it = jsvStringIteratorClone(&seekToChar->it);
+  jsvUnLock(lex->it.var); // see jslGetNextCh
   lex->currCh = seekToChar->currCh;
   lex->tokenStart.it.var = 0;
   lex->tokenStart.currCh = 0;
@@ -607,6 +645,10 @@ void jslTokenAsString(int token, char *str, size_t len) {
       /*LEX_R_RETURN     */ "return\0"
       /*LEX_R_VAR :      */ "var\0"
       /*LEX_R_THIS :     */ "this\0"
+      /*LEX_R_THROW :    */ "throw\0"
+      /*LEX_R_TRY :      */ "try\0"
+      /*LEX_R_CATCH :    */ "catch\0"
+      /*LEX_R_FINALLY :  */ "finally\0"
       /*LEX_R_TRUE :     */ "true\0"
       /*LEX_R_FALSE :    */ "false\0"
       /*LEX_R_NULL :     */ "null\0"
@@ -657,6 +699,10 @@ char *jslGetTokenValueAsString(JsLex *lex) {
   return lex->token;
 }
 
+int jslGetTokenLength(JsLex *lex) {
+  return lex->tokenl;
+}
+
 JsVar *jslGetTokenValueAsVar(JsLex *lex) {
   if (lex->tokenValue) {
     return jsvLockAgain(lex->tokenValue);
@@ -670,16 +716,15 @@ JsVar *jslGetTokenValueAsVar(JsLex *lex) {
 /// Match, and return true on success, false on failure
 bool jslMatch(JsLex *lex, int expected_tk) {
   if (lex->tk!=expected_tk) {
-      char buf[JS_ERROR_BUF_SIZE];
-      size_t bufpos = 0;
-      strncpy(&buf[bufpos], "Got ", JS_ERROR_BUF_SIZE-bufpos);
-      bufpos = strlen(buf);
-      jslGetTokenString(lex, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
-      bufpos = strlen(buf);
-      strncpy(&buf[bufpos], " expected ", JS_ERROR_BUF_SIZE-bufpos);
-      bufpos = strlen(buf);
-      jslTokenAsString(expected_tk, &buf[bufpos], JS_ERROR_BUF_SIZE-bufpos);
-      jsErrorAt(buf, lex, jsvStringIteratorGetIndex(&lex->tokenStart.it));
+      char gotStr[16];
+      char expStr[16];
+      jslGetTokenString(lex, gotStr, sizeof(gotStr));
+      jslTokenAsString(expected_tk, expStr, sizeof(expStr));
+
+      size_t oldPos = lex->tokenLastStart;
+      lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->tokenStart.it)-1;
+      jsExceptionHere(JSET_SYNTAXERROR, "Got %s expected %s", gotStr, expStr);
+      lex->tokenLastStart = oldPos;
       // Sod it, skip this token anyway - stops us looping
       jslGetNextToken(lex);
       return false;
@@ -707,7 +752,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
-      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT);
+      JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) break; // out of memory
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       block->lastChild = jsvGetRef(next);
@@ -724,3 +769,47 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
 
   return var;
 }
+
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos) {
+  size_t line,col;
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+  cbprintf(user_callback, user_data, "line %d col %d\n",line,col);
+}
+
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos) {
+  size_t line = 1,col = 1;
+  jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
+  size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
+  size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
+
+  if (lineLength>60 && tokenPos-startOfLine>30) {
+    cbprintf(user_callback, user_data, "...");
+    size_t skipChars = tokenPos-30 - startOfLine;
+    startOfLine += 3+skipChars;
+    col -= skipChars;
+    lineLength -= skipChars;
+  }
+
+  // print the string until the end of the line, or 60 chars (whichever is lesS)
+  int chars = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, lex->sourceVar, startOfLine);
+  while (jsvStringIteratorHasChar(&it) && chars<60) {
+    char ch = jsvStringIteratorGetChar(&it);
+    if (ch == '\n') break;
+    char buf[2];
+    buf[0] = ch;
+    buf[1] = 0;
+    user_callback(buf, user_data);
+    chars++;
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+
+  if (lineLength > 60)
+    user_callback("...", user_data);
+  user_callback("\n", user_data);
+  while (col-- > 0) user_callback(" ", user_data);
+  user_callback("^\n", user_data);
+}
+

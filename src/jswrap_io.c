@@ -18,37 +18,37 @@
 
 /*JSON{ "type":"function", "name" : "peek8",
          "description" : [ "Read 8 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned char*)(size_t)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned char*)(size_t)addr",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke8",
          "description" : [ "Write 8 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned char*)(size_t)jsvGetInteger(addr)) = (unsigned char)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned char*)(size_t)addr) = (unsigned char)value",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/
 /*JSON{ "type":"function", "name" : "peek16",
          "description" : [ "Read 16 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned short*)(size_t)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned short*)(size_t)addr",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke16",
          "description" : [ "Write 16 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned short*)(size_t)jsvGetInteger(addr)) = (unsigned short)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned short*)(size_t)addr) = (unsigned short)value",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/
 /*JSON{ "type":"function", "name" : "peek32",
          "description" : [ "Read 32 bits of memory at the given location - DANGEROUS!" ],
-         "generate_full" : "(JsVarInt)*(unsigned int*)(size_t)jsvGetInteger(addr)",
+         "generate_full" : "(JsVarInt)*(unsigned int*)(size_t)addr",
          "params" : [ [ "addr", "int", "The address in memory to read"] ],
          "return" : ["int", "The value of memory at the given location"]
 }*/
 /*JSON{ "type":"function", "name" : "poke32",
          "description" : [ "Write 32 bits of memory at the given location - VERY DANGEROUS!" ],
-         "generate_full" : "(*(unsigned int*)(size_t)jsvGetInteger(addr)) = (unsigned int)jsvGetInteger(value)",
+         "generate_full" : "(*(unsigned int*)(size_t)addr) = (unsigned int)value",
          "params" : [ [ "addr", "int", "The address in memory to write"],
                       [ "value", "int", "The value to write"] ]
 }*/
@@ -58,13 +58,13 @@
                           "This is different to Arduino which only returns an integer between 0 and 1023",
                           "However only pins connected to an ADC will work (see the datasheet)"],
          "generate" : "jshPinAnalog",
-         "params" : [ [ "pin", "pin", "The pin to use"] ],
+         "params" : [ [ "pin", "pin", [ "The pin to use", "You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `ADC` markers." ] ] ],
          "return" : ["float", "The analog Value of the Pin between 0 and 1"]
 }*/
 /*JSON{ "type":"function", "name" : "analogWrite",
          "description" : "Set the analog Value of a pin. It will be output using PWM",
          "generate" : "jswrap_io_analogWrite",
-         "params" : [ [ "pin", "pin", "The pin to use"],
+         "params" : [ [ "pin", "pin", ["The pin to use", "You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `PWM` or `DAC` markers." ]],
                       [ "value", "float", "A value between 0 and 1"],
                       [ "options", "JsVar", ["An object containing options.",
                                             "Currently only freq (pulse frequency in Hz) is available: ```analogWrite(A0,0.5,{ freq : 10 });``` ",
@@ -99,7 +99,8 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
 
 /*JSON{ "type":"function", "name" : "digitalWrite",
          "description" : ["Set the digital value of the given pin",
-                          "If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB" ],
+                          "If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB.",
+                          "In the case of an array of pins, pin values are set LSB first (from the right-hand side of the array of pins)." ],
          "generate" : "jswrap_io_digitalWrite",
          "params" : [ [ "pin", "JsVar", "The pin to use"],
                       [ "value", "int", "Whether to pulse high (true) or low (false)"] ]
@@ -138,7 +139,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+      value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
       pinName = pinNamePtr->nextSibling;
       jsvUnLock(pinNamePtr);
@@ -159,7 +160,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
 }*/
 void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   if (!jshIsPinValid(pin)) {
-    jsError("Invalid pin");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
   JshPinState m = JSHPINSTATE_UNDEFINED;
@@ -178,7 +179,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   } else {
     jshSetPinStateIsManual(pin, false);
     if (!jsvIsUndefined(mode)) {
-      jsError("Unknown pin mode");
+      jsExceptionHere(JSET_ERROR, "Unknown pin mode");
     }
   }
 }
@@ -191,7 +192,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
 }*/
 JsVar *jswrap_io_getPinMode(Pin pin) {
   if (!jshIsPinValid(pin)) {
-    jsError("Invalid pin");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return 0;
   }
   JshPinState m = jshPinGetState(pin)&JSHPINSTATE_MASK;
@@ -204,58 +205,10 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
     case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
     case JSHPINSTATE_AF_OUT : text = "af_output"; break;
     case JSHPINSTATE_AF_OUT_OPENDRAIN : text = "af_opendrain"; break;
+    default: break;
   }
   if (text) return jsvNewFromString(text);
   return 0;
-}
-
-/*JSON{ "type":"function", "name" : "setInterval",
-         "description" : ["Call the function specified REPEATEDLY after the timeout in milliseconds.",
-                          "The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)",
-                          "for example: ```setInterval(function (e) { print(e.time); }, 1000);```",
-                          "This can also be removed using clearInterval" ],
-         "generate" : "jswrap_interface_setInterval",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
-                      [ "timeout", "float", "The time between calls to the function" ] ],
-         "return" : ["JsVar", "An ID that can be passed to clearInterval"]
-}*/
-/*JSON{ "type":"function", "name" : "setTimeout",
-         "description" : ["Call the function specified ONCE after the timeout in milliseconds.",
-                          "The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)",
-                          "for example: ```setTimeout(function (e) { print(e.time); }, 1000);```",
-                          "This can also be removed using clearTimeout" ],
-         "generate" : "jswrap_interface_setTimeout",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
-                      [ "timeout", "float", "The time until the function will be executed" ] ],
-         "return" : ["JsVar", "An ID that can be passed to clearTimeout"]
-}*/
-JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, bool isTimeout) {
-  JsVar *skippedFunc = jsvSkipName(func);
-  JsVar *itemIndex = 0;
-  if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
-    jsError("Function or String not supplied!");
-  } else {
-    // Create a new timer
-    JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
-    if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    JsVarInt intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(jshGetSystemTime() + intervalInt)));
-    jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
-    if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
-    jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
-
-    // Add to array
-    itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
-    jsvUnLock(timerPtr);
-  }
-  jsvUnLock(skippedFunc);
-  return itemIndex;
-}
-JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {
-  return _jswrap_interface_setTimeoutOrInterval(func, timeout, false);
-}
-JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
-  return _jswrap_interface_setTimeoutOrInterval(func, timeout, true);
 }
 
 /*JSON{ "type":"function", "name" : "setWatch",
@@ -265,13 +218,19 @@ JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
                           "For instance, if you want to measure the length of a positive pusle you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```",
                           "This can also be removed using clearWatch" ],
          "generate" : "jswrap_interface_setWatch",
-         "params" : [ [ "function", "JsVarName", "A Function or String to be executed"],
+         "params" : [ [ "function", "JsVar", "A Function or String to be executed"],
                       [ "pin", "pin", "The pin to watch" ],
                       [ "options", "JsVar", ["If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)",
                                              "If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0." ] ]  ],
          "return" : ["JsVar", "An ID that can be passed to clearWatch"]
 }*/
-JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject) {
+JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
+
+  if (!jsiIsWatchingPin(pin) && !jshCanWatch(pin)) {
+    jsWarn("Unable to set watch on pin. You may already have a watch on a pin with the same number.");
+    return 0;
+  }
+
   bool repeat = false;
   JsVarFloat debounce = 0;
   int edge = 0;
@@ -293,18 +252,17 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
     repeat = jsvGetBool(repeatOrObject);
 
   JsVarInt itemIndex = -1;
-  JsVar *skippedFunc = jsvSkipName(funcVar);
-  if (!jsvIsFunction(skippedFunc) && !jsvIsString(skippedFunc)) {
-    jsError("Function or String not supplied!");
+  if (!jsvIsFunction(func) && !jsvIsString(func)) {
+    jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
     // Create a new watch
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
       jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
       if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
-      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
+      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce))));
       if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
-      jsvObjectSetChild(watchPtr, "callback", funcVar); // no unlock intentionally
+      jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
 
     // If nothing already watching the pin, set up a watch
@@ -312,81 +270,11 @@ JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject)
       jshPinWatch(pin, true);
 
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    itemIndex = jsvArrayPushWithInitialSize(watchArrayPtr, watchPtr, 1) - 1;
+    itemIndex = jsvArrayAddToEnd(watchArrayPtr, watchPtr, 1) - 1;
     jsvUnLock(watchArrayPtr);
     jsvUnLock(watchPtr);
   }
-  jsvUnLock(skippedFunc);
   return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
-}
-
-/*JSON{ "type":"function", "name" : "clearInterval",
-         "description" : ["Clear the Interval that was created with setInterval, for example:",
-                          "```var id = setInterval(function () { print('foo'); }, 1000);```",
-                          "```clearInterval(id);```",
-                          "If no argument is supplied, all timers and intervals are stopped" ],
-         "generate" : "jswrap_interface_clearInterval",
-         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"] ]
-}*/
-/*JSON{ "type":"function", "name" : "clearTimeout",
-         "description" : ["Clear the Timeout that was created with setTimeout, for example:",
-                          "```var id = setTimeout(function () { print('foo'); }, 1000);```",
-                          "```clearTimeout(id);```",
-                          "If no argument is supplied, all timers and intervals are stopped" ],
-         "generate" : "jswrap_interface_clearTimeout",
-         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setTimeout"] ]
-}*/
-void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
-  if (jsvIsUndefined(idVar)) {
-    JsVar *timerArrayPtr = jsvLock(timerArray);
-    jsvRemoveAllChildren(timerArrayPtr);
-    jsvUnLock(timerArrayPtr);
-  } else {
-    JsVar *child = jsvIsBasic(idVar) ? jsvFindChildFromVarRef(timerArray, idVar, false) : 0;
-    if (child) {
-      JsVar *timerArrayPtr = jsvLock(timerArray);
-      jsvRemoveChild(timerArrayPtr, child);
-      jsvUnLock(child);
-      jsvUnLock(timerArrayPtr);
-    } else {
-      jsError(isTimeout ? "Unknown Timeout" : "Unknown Interval");
-    }
-  }
-}
-void jswrap_interface_clearInterval(JsVar *idVar) {
-  _jswrap_interface_clearTimeoutOrInterval(idVar, false);
-}
-void jswrap_interface_clearTimeout(JsVar *idVar) {
-  _jswrap_interface_clearTimeoutOrInterval(idVar, true);
-}
-
-/*JSON{ "type":"function", "name" : "changeInterval",
-         "description" : ["Change the Interval on a callback created with setInterval, for example:",
-                          "```var id = setInterval(function () { print('foo'); }, 1000); // every second```",
-                          "```changeInterval(id, 1500); // now runs every 1.5 seconds```",
-                          "This takes effect the text time the callback is called (so it is not immediate)."],
-         "generate" : "jswrap_interface_changeInterval",
-         "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"],
-                      [ "time","float","The new time period in ms" ] ]
-}*/
-void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
-  if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-  JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVarRef(timerArray, idVar, false) : 0;
-
-  if (timerName) {
-    JsVar *timer = jsvSkipNameAndUnLock(timerName);
-    JsVar *v;
-    v = jsvNewFromInteger(jshGetTimeFromMilliseconds(interval));
-    jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
-    jsvUnLock(v);
-    v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
-    jsvUnLock(jsvSetNamedChild(timer, v, "time"));
-    jsvUnLock(v);
-    jsvUnLock(timer);
-    // timerName already unlocked
-  } else {
-    jsError("Unknown Interval");
-  }
 }
 
 /*JSON{ "type":"function", "name" : "clearWatch",
@@ -395,27 +283,31 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
          "params" : [ [ "id", "JsVar", "The id returned by a previous call to setWatch"] ]
 }*/
 void jswrap_interface_clearWatch(JsVar *idVar) {
+
   if (jsvIsUndefined(idVar)) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    // unwatch all pins
-    JsVarRef watch = watchArrayPtr->firstChild;
-    while (watch) {
-      JsVar *watchNamePtr = jsvLock(watch); // effectively the array index
-      JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      jshPinWatch(jshGetPinFromVar(pinVar), false); // 'unwatch' pin because we know that we're removing ALL watches
-      jsvUnLock(pinVar);
-      watch = watchNamePtr->nextSibling;
-      jsvUnLock(watchNamePtr);
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, watchArrayPtr);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+      JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
+      jshPinWatch(jshGetPinFromVar(watchPin), false);
+      jsvUnLock(watchPin);
+      jsvUnLock(watchPtr);
+      jsvArrayIteratorNext(&it);
     }
+    jsvArrayIteratorFree(&it);
     // remove all items
     jsvRemoveAllChildren(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
   } else {
-    JsVar *watchNamePtr = jsvFindChildFromVarRef(watchArray, idVar, false);
+    JsVar *watchArrayPtr = jsvLock(watchArray);
+    JsVar *watchNamePtr = jsvFindChildFromVar(watchArrayPtr, idVar, false);
+    jsvUnLock(watchArrayPtr);
     if (watchNamePtr) { // child is a 'name'
-      JsVar *pinVar = jsvSkipNameAndUnLock(jsvFindChildFromStringRef(watchNamePtr->firstChild, "pin", false));
-      Pin pin = jshGetPinFromVar(pinVar);
-      jsvUnLock(pinVar);
+      JsVar *watchPtr = jsvSkipName(watchNamePtr);
+      Pin pin = jshGetPinFromVarAndUnLock(jsvObjectGetChild(watchPtr, "pin", 0));
+      jsvUnLock(watchPtr);
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
@@ -426,7 +318,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       if (!jsiIsWatchingPin(pin))
         jshPinWatch(pin, false); // 'unwatch' pin
     } else {
-      jsError("Unknown Watch");
+      jsExceptionHere(JSET_ERROR, "Unknown Watch");
     }
   }
 }

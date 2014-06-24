@@ -29,6 +29,9 @@ typedef enum {
   JSGRAPHICSFLAGS_NONE,
   JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG = 1, ///< ArrayBuffer: zig-zag (even rows reversed)
   JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE = 2, ///< ArrayBuffer: if 1 bpp, treat bytes as stacked vertically
+  JSGRAPHICSFLAGS_SWAP_XY = 4, //< All devices: swap X and Y over
+  JSGRAPHICSFLAGS_INVERT_X = 8, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
+  JSGRAPHICSFLAGS_INVERT_Y = 16, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
 } JsGraphicsFlags;
 
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
@@ -43,7 +46,7 @@ typedef enum {
 typedef struct {
   JsGraphicsType type;
   JsGraphicsFlags flags;
-  unsigned short width, height;
+  unsigned short width, height; // DEVICE width and height (flags could mean the device is rotated)
   unsigned char bpp;
   unsigned int fgColor, bgColor; ///< current foreground and background colors
   short fontSize; ///< See JSGRAPHICS_FONTSIZE_ constants
@@ -57,11 +60,12 @@ typedef struct JsGraphics {
 
   void (*setPixel)(struct JsGraphics *gfx, short x, short y, unsigned int col);
   void (*fillRect)(struct JsGraphics *gfx, short x1, short y1, short x2, short y2);
-  void (*bitmap1bit)(struct JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data);
   unsigned int (*getPixel)(struct JsGraphics *gfx, short x, short y);
 } PACKED_FLAGS JsGraphics;
 
 static inline void graphicsStructInit(JsGraphics *gfx) {
+  // type/width/height/bpp should be set elsewhere...
+  gfx->data.flags = JSGRAPHICSFLAGS_NONE;
   gfx->data.fgColor = 0xFFFFFFFF;
   gfx->data.bgColor = 0;
   gfx->data.fontSize = JSGRAPHICS_FONTSIZE_4X6;
@@ -69,23 +73,25 @@ static inline void graphicsStructInit(JsGraphics *gfx) {
   gfx->data.cursorY = 0;
 }
 
-// ---------------------------------- these are in lcd.c
+// ---------------------------------- these are in graphics.c
 // Access a JsVar and get/set the relevant info in JsGraphics
 bool graphicsGetFromVar(JsGraphics *gfx, JsVar *parent);
 void graphicsSetVar(JsGraphics *gfx);
 // ----------------------------------------------------------------------------------------------
-// drawing functions
+// drawing functions - all coordinates are in USER coordinates, not DEVICE coordinates
 void         graphicsSetPixel(JsGraphics *gfx, short x, short y, unsigned int col);
 unsigned int graphicsGetPixel(JsGraphics *gfx, short x, short y);
 void         graphicsClear(JsGraphics *gfx);
 void         graphicsFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void         graphicsBitmap1bit(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data);
+void graphicsFallbackFillRect(JsGraphics *gfx, short x1, short y1, short x2, short y2); // Simple fillrect - doesn't call device-specific FR
 void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
-void graphicsFillPoly(JsGraphics *gfx, int points, const short *vertices);
+void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
+#ifndef SAVE_ON_FLASH
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch); ///< returns the width of a character
+#endif
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling

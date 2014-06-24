@@ -37,18 +37,13 @@
 JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
   if (jsvGetArrayLength(args)==1) {
-    JsVar *firstArg = jsvSkipNameAndUnLock(jsvArrayGetLast(args)); // also the first!
+    JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
     if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
       JsVarInt count = jsvGetInteger(firstArg);
-      // we cheat - no need to fill the array - just the last element
       if (count>0) {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
-        JsVar *idx = jsvMakeIntoVariableName(jsvNewFromInteger(count-1), 0);
-        if (idx) { // could be out of memory
-          jsvAddName(arr, idx);
-          jsvUnLock(idx);
-        }
+        jsvSetArrayLength(arr, count, false);
         jsvUnLock(firstArg);
         return arr;
       }
@@ -58,6 +53,19 @@ JsVar *jswrap_array_constructor(JsVar *args) {
   // Otherwise, we just return the array!
   return jsvLockAgain(args);
 }
+
+/*JSON{ "type":"method", "class": "Array", "name" : "toString",
+         "description" : "Convert the Array to a string",
+         "generate" : "jswrap_object_toString",
+         "params" : [ [ "radix", "JsVar", "unused"] ],
+         "return" : ["JsVar", "A String representing the array"]
+}*/
+
+/*JSON{ "type":"property", "class": "Array", "name" : "length",
+         "description" : "Find the length of the array",
+         "generate" : "jswrap_object_length",
+         "return" : ["JsVar", "The value of the array"]
+}*/
 
 /*JSON{ "type":"method", "class": "Array", "name" : "indexOf",
          "description" : "Return the index of the value in the array, or -1",
@@ -81,6 +89,7 @@ JsVar *jswrap_array_indexOf(JsVar *parent, JsVar *value) {
          "return" : ["JsVar", "A String representing the Joined array"]
 }*/
 JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
+  if (!jsvIsIterable(parent)) return 0;
   if (jsvIsUndefined(filler))
     filler = jsvNewFromString(","); // the default it seems
   else
@@ -98,6 +107,7 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
          "return" : ["int", "The new size of the array"]
 }*/
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
+  if (!jsvIsArray(parent)) return -1;
   JsVarInt len = -1;
   JsvArrayIterator it;
   jsvArrayIteratorNew(&it, args);
@@ -120,48 +130,74 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
          "return" : ["JsVar", "The value that is popped off"]
 }*/
 
-JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool isMap) {
+JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
+  if (!jsvIsIterable(parent)) {
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
+    return 0;
+  }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.map's first argument should be a function");
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Arraymap's second argument should be undefined, or an object");
+    jsExceptionHere(JSET_ERROR, "Array.%s's second argument should be undefined, or an object", name);
     return 0;
   }
-  JsVar *array = 0;
-  if (isMap)
-    array = jsvNewWithFlags(JSV_ARRAY);
-  if (array || !isMap) {
-   JsVarRef childRef = parent->firstChild;
-   while (childRef) {
-     JsVar *child = jsvLock(childRef);
-     if (jsvIsInt(child)) {
-       JsVar *args[3], *mapped;
-       args[0] = jsvLock(child->firstChild);
-       // child is a variable name, create a new variable for the index
-       args[1] = jsvNewFromInteger(jsvGetInteger(child));
-       args[2] = parent;
-       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-       jsvUnLock(args[0]);
-       jsvUnLock(args[1]);
-       if (mapped) {
-         if (isMap) {
-           JsVar *name = jsvCopyNameOnly(child, false/*linkChildren*/, true/*keepAsName*/);
-           if (name) { // out of memory?
-             name->firstChild = jsvGetRef(jsvRef(mapped));
-             jsvAddName(array, name);
-             jsvUnLock(name);
-           }
-         }
-         jsvUnLock(mapped);
-       }
-     }
-     childRef = child->nextSibling;
-     jsvUnLock(child);
-   }
+  JsVar *result = 0;
+  if (wantArray)
+    result = jsvNewWithFlags(JSV_ARRAY);
+  bool isDone = false;
+  if (result || !wantArray) {
+    JsvIterator it;
+    jsvIteratorNew(&it, parent);
+    while (jsvIteratorHasElement(&it) && !isDone) {
+      JsVar *index = jsvIteratorGetKey(&it);
+      if (jsvIsInt(index)) {
+        JsVarInt idxValue = jsvGetInteger(index);
+
+        JsVar *args[3], *cb_result;
+        args[0] = jsvIteratorGetValue(&it);
+        args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
+        args[2] = parent;
+        cb_result = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
+        jsvUnLock(args[0]);
+        jsvUnLock(args[1]);
+        if (cb_result) {
+          bool matched;
+          if (isBoolCallback)
+            matched = (jsvGetBool(cb_result) == expectedValue);
+          if (wantArray) {
+            if (isBoolCallback) { // filter
+              if (matched) {
+                jsvArrayPushAndUnLock(result, jsvIteratorGetValue(&it));
+              }
+			} else { // map
+              JsVar *name = jsvNewFromInteger(idxValue);
+              if (name) { // out of memory?
+                jsvMakeIntoVariableName(name, cb_result);
+                jsvAddName(result, name);
+                jsvUnLock(name);
+              }
+			}
+          } else {
+            // break the loop early if expecting a particular value and didn't get it
+            if (isBoolCallback && !matched)
+              isDone = true;
+          }
+          jsvUnLock(cb_result);
+        }
+      }
+      jsvUnLock(index);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
   }
-  return array;
+  /* boolean result depends on whether the loop terminated
+     early for 'some' or completed for 'every' */
+  if (!wantArray && isBoolCallback) {
+    result = jsvNewFromBool(isDone != expectedValue);
+  }
+  return result;
 }
 
 /*JSON{ "type":"method", "class": "Array", "name" : "map",
@@ -169,10 +205,111 @@ JsVar *_jswrap_array_map_or_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVa
          "generate" : "jswrap_array_map",
          "params" : [ [ "function", "JsVar", "Function used to map one item to another"] ,
                       [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
-         "return" : ["JsVar", "The value that is popped off"]
+         "return" : ["JsVar", "An array containing the results"]
 }*/
 JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  return _jswrap_array_map_or_forEach(parent, funcVar, thisVar, true);
+  return _jswrap_array_iterate_with_callback("map", parent, funcVar, thisVar, true, false, false);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "forEach",
+         "description" : "Executes a provided function once per array element.",
+         "generate" : "jswrap_array_forEach",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
+}*/
+void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  _jswrap_array_iterate_with_callback("forEach", parent, funcVar, thisVar, false, false, false);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "filter",
+         "description" : "Return an array which contains only those elements for which the callback function returns 'true'",
+         "generate" : "jswrap_array_filter",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
+         "return" : ["JsVar", "An array containing the results"]
+}*/
+JsVar *jswrap_array_filter(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  return _jswrap_array_iterate_with_callback("filter", parent, funcVar, thisVar, true, true, true);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "some",
+         "description" : "Return 'true' if the callback returns 'true' for any of the elements in the array",
+         "generate" : "jswrap_array_some",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
+         "return" : ["JsVar", "A boolean containing the result"]
+}*/
+JsVar *jswrap_array_some(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  return _jswrap_array_iterate_with_callback("some", parent, funcVar, thisVar, false, true, false);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "every",
+         "description" : "Return 'true' if the callback returns 'true' for every element in the array",
+         "generate" : "jswrap_array_every",
+         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
+                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ],
+         "return" : ["JsVar", "A boolean containing the result"]
+}*/
+JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
+  return _jswrap_array_iterate_with_callback("every", parent, funcVar, thisVar, false, true, true);
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "reduce", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.",
+         "generate" : "jswrap_array_reduce",
+         "params" : [ [ "callback", "JsVar", "Function used to reduce the array"] ,
+                      [ "initialValue", "JsVar", "if specified, the initial value to pass to the function"] ],
+         "return" : ["JsVar", "The value returned by the last function called"]
+}*/
+JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
+  const char *name = "reduce";
+  if (!jsvIsIterable(parent)) {
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
+    return 0;
+  }
+  if (!jsvIsFunction(funcVar)) {
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
+    return 0;
+  }
+  JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  if (!previousValue) {
+    bool isDone = false;
+    while (!isDone && jsvIteratorHasElement(&it)) {
+      JsVar *index = jsvIteratorGetKey(&it);
+      if (jsvIsInt(index)) {
+        previousValue = jsvIteratorGetValue(&it);
+        isDone = true;
+      }
+      jsvUnLock(index);
+      jsvIteratorNext(&it);
+    }
+    if (!previousValue) {
+      jsExceptionHere(JSET_ERROR, "Array.%s without initial value required non-empty array", name);
+    }
+  }
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *index = jsvIteratorGetKey(&it);
+    if (jsvIsInt(index)) {
+      JsVarInt idxValue = jsvGetInteger(index);
+
+      JsVar *args[4];
+      args[0] = previousValue;
+      args[1] = jsvIteratorGetValue(&it);
+      args[2] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
+      args[3] = parent;
+      previousValue = jspeFunctionCall(funcVar, 0, 0, false, 4, args);
+      jsvUnLock(args[0]);
+      jsvUnLock(args[1]);
+      jsvUnLock(args[2]);
+    }
+    jsvUnLock(index);
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  return previousValue;
 }
 
 
@@ -181,15 +318,11 @@ JsVar *jswrap_array_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
          "generate" : "jswrap_array_splice",
          "params" : [ [ "index", "int", "Index at which to start changing the array. If negative, will begin that many elements from the end"],
                       [ "howMany", "JsVar", "An integer indicating the number of old array elements to remove. If howMany is 0, no elements are removed."],
-                      [ "element1", "JsVar", "A new item to add (optional)" ],
-                      [ "element2", "JsVar", "A new item to add (optional)" ],
-                      [ "element3", "JsVar", "A new item to add (optional)" ],
-                      [ "element4", "JsVar", "A new item to add (optional)" ],
-                      [ "element5", "JsVar", "A new item to add (optional)" ],
-                      [ "element6", "JsVar", "A new item to add (optional)" ] ],
+                      [ "elements", "JsVarArray", "One or more items to add to the array" ] ],
          "return" : ["JsVar", "An array containing the removed elements. If only one element is removed, an array of one element is returned."]
 }*/
-JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *element1, JsVar *element2, JsVar *element3, JsVar *element4, JsVar *element5, JsVar *element6) {
+JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsVar *elements) {
+  if (!jsvIsArray(parent)) return 0;
   JsVarInt len = jsvGetArrayLength(parent);
   if (index<0) index+=len;
   if (index<0) index=0;
@@ -197,13 +330,7 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   JsVarInt howMany = len; // how many to delete!
   if (jsvIsInt(howManyVar)) howMany = jsvGetInteger(howManyVar);
   if (howMany > len-index) howMany = len-index;
-  JsVarInt newItems = 0;
-  if (element1) newItems++;
-  if (element2) newItems++;
-  if (element3) newItems++;
-  if (element4) newItems++;
-  if (element5) newItems++;
-  if (element6) newItems++;
+  JsVarInt newItems = jsvGetArrayLength(elements);
   JsVarInt shift = newItems-howMany;
 
   bool needToAdd = false;
@@ -239,43 +366,81 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   }
   // now we add everything
   JsVar *beforeIndex = jsvArrayIteratorGetIndex(&it);
-  if (element1) jsvArrayInsertBefore(parent, beforeIndex, element1);
-  if (element2) jsvArrayInsertBefore(parent, beforeIndex, element2);
-  if (element3) jsvArrayInsertBefore(parent, beforeIndex, element3);
-  if (element4) jsvArrayInsertBefore(parent, beforeIndex, element4);
-  if (element5) jsvArrayInsertBefore(parent, beforeIndex, element5);
-  if (element6) jsvArrayInsertBefore(parent, beforeIndex, element6);
+  JsvArrayIterator itElement;
+  jsvArrayIteratorNew(&itElement, elements);
+  while (jsvArrayIteratorHasElement(&itElement)) {
+    JsVar *element = jsvArrayIteratorGetElement(&itElement);
+    jsvArrayInsertBefore(parent, beforeIndex, element);
+    jsvUnLock(element);
+    jsvArrayIteratorNext(&itElement);
+  }
+  jsvArrayIteratorFree(&itElement);
   jsvUnLock(beforeIndex);
   // And finally renumber
   while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
-      if (idxVar && jsvIsInt(idxVar)) {
-        jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
-      }
-      jsvUnLock(idxVar);
-      jsvArrayIteratorNext(&it);
+    JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
+    if (idxVar && jsvIsInt(idxVar)) {
+      jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
     }
+    jsvUnLock(idxVar);
+    jsvArrayIteratorNext(&it);
+  }
   // free
   jsvArrayIteratorFree(&it);
 
+  // and reset array size
+  jsvSetArrayLength(parent, len + shift, false);
+
   return result;
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "shift", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Remove the first element of the array, and return it",
+         "generate" : "jswrap_array_shift",
+         "params" : [ ],
+         "return" : ["JsVar", "The element that was removed"]
+}*/
+JsVar *jswrap_array_shift(JsVar *parent) {
+  // just use splice, as this does all the hard work for us
+  JsVar *nRemove = jsvNewFromInteger(1);
+  JsVar *elements = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jswrap_array_splice(parent, 0, nRemove, elements);
+  jsvUnLock(elements);
+  jsvUnLock(nRemove);
+  // unpack element from the array
+  JsVar *el = 0;
+  if (jsvIsArray(arr))
+    el = jsvArrayPop(arr);
+  jsvUnLock(arr);
+  return el;
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "unshift", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Remove the first element of the array, and return it",
+         "generate" : "jswrap_array_unshift",
+         "params" : [ [ "elements", "JsVarArray", "One or more items to add to the beginning of the array" ] ],
+         "return" : ["int", "The new array length"]
+}*/
+JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
+  // just use splice, as this does all the hard work for us
+  JsVar *nRemove = jsvNewFromInteger(0);
+  jsvUnLock(jswrap_array_splice(parent, 0, nRemove, elements));
+  jsvUnLock(nRemove);
+  // return new length
+  return jsvGetLength(parent);
 }
 
 
 /*JSON{ "type":"method", "class": "Array", "name" : "slice",
          "description" : "Return a copy of a portion of the calling array",
          "generate" : "jswrap_array_slice",
-         "params" : [ [ "start", "JsVar", "Start index"],
+         "params" : [ [ "start", "int", "Start index"],
                       [ "end", "JsVar", "End index (optional)"] ],
          "return" : ["JsVar", "A new array"]
 }*/
-JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
-  JsVarInt len = jsvGetArrayLength(parent);
-  JsVarInt start = 0;
+JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar) {
+  JsVarInt len = jsvGetLength(parent);
   JsVarInt end = len;
-
-  if (!jsvIsUndefined(startVar))
-    start = jsvGetInteger(startVar);
 
   if (!jsvIsUndefined(endVar))
     end = jsvGetInteger(endVar);
@@ -294,18 +459,18 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
 
   bool isDone = false;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, parent);
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
 
-  while (jsvArrayIteratorHasElement(&it) && !isDone) {
-    JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
+  while (jsvIteratorHasElement(&it) && !isDone) {
+    JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
 
     if (idx < k) {
-      jsvArrayIteratorNext(&it);
+      jsvIteratorNext(&it);
     } else {
       if (k < final) {
-        jsvArrayPushAndUnLock(array, jsvArrayIteratorGetElement(&it));
-        jsvArrayIteratorNext(&it);
+        jsvArrayPushAndUnLock(array, jsvIteratorGetValue(&it));
+        jsvIteratorNext(&it);
         k++;
       } else {
         isDone = true;
@@ -313,21 +478,11 @@ JsVar *jswrap_array_slice(JsVar *parent, JsVar *startVar, JsVar *endVar) {
     }
   }
 
-  jsvArrayIteratorFree(&it);
+  jsvIteratorFree(&it);
 
   return array;
 }
 
-
-/*JSON{ "type":"method", "class": "Array", "name" : "forEach",
-         "description" : "Executes a provided function once per array element.",
-         "generate" : "jswrap_array_forEach",
-         "params" : [ [ "function", "JsVar", "Function to be executed"] ,
-                      [ "thisArg", "JsVar", "if specified, the function is called with 'this' set to thisArg (optional)"] ]
-}*/
-void jswrap_array_forEach(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
-  _jswrap_array_map_or_forEach(parent, funcVar, thisVar, false);
-}
 
 /*JSON{ "type":"staticmethod", "class": "Array", "name" : "isArray",
          "description" : "Returns true if the provided object is an array",
@@ -343,7 +498,12 @@ NO_INLINE static bool _jswrap_array_sort_leq(JsVar *a, JsVar *b, JsVar *compareF
     JsVarInt r = jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
     return r<0;
   } else {
-    return jsvGetBoolAndUnLock(jsvMathsOp(a,b,LEX_LEQUAL));
+    JsVar *sa = jsvAsString(a, false);
+    JsVar *sb = jsvAsString(b, false);
+    bool r = jsvCompareString(sa,sb, 0, 0, false) < 0;
+    jsvUnLock(sa);
+    jsvUnLock(sb);
+    return r;
   }
 }
 
@@ -412,7 +572,7 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
 }*/
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {
-    jsError("Expecting compare function, got %t", compareFn);
+    jsExceptionHere(JSET_ERROR, "Expecting compare function, got %t", compareFn);
     return 0;
   }
   JsvIterator it;
@@ -454,14 +614,15 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
 
-  JsVar *source = jsvLockAgain(parent);
+  JsvArrayIterator argsIt;
+  jsvArrayIteratorNew(&argsIt, args);
 
-  JsvArrayIterator sourceit;
-  jsvArrayIteratorNew(&sourceit, args);
-  while (source) {
+  // Append parent's elements first (parent is always an array)
+  JsVar *source = jsvLockAgain(parent);
+  do {
     if (jsvIsArray(source)) {
       JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, parent);
+      jsvArrayIteratorNew(&it, source);
       while (jsvArrayIteratorHasElement(&it)) {
         jsvArrayPushAndUnLock(result, jsvArrayIteratorGetElement(&it));
         jsvArrayIteratorNext(&it);
@@ -469,11 +630,138 @@ JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
       jsvArrayIteratorFree(&it);
     } else
       jsvArrayPush(result, source);
-    // next
+    // Next, append arguments
     jsvUnLock(source);
-    source = jsvArrayIteratorHasElement(&sourceit) ? jsvArrayIteratorGetElement(&sourceit) : 0;
-    jsvArrayIteratorNext(&sourceit);
-  }
-  jsvArrayIteratorFree(&sourceit);
+    source = jsvArrayIteratorHasElement(&argsIt) ? jsvArrayIteratorGetElement(&argsIt) : 0;
+    jsvArrayIteratorNext(&argsIt);
+  } while (source);
+
+  jsvArrayIteratorFree(&argsIt);
   return result;
+}
+
+/*JSON{ "type":"method", "class": "Array", "name" : "fill", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Fill this array with the given value, for every index `>= start` and `< end`",
+         "generate" : "jswrap_array_fill",
+         "params" : [ [ "value", "JsVar", "The value to fill the array with" ],
+                      [ "start", "int", "Optional. The index to start from (or 0). If start is negative, it is treated as length+start where length is the length of the array" ],
+                      [ "end", "JsVar", "Optional. The index to end at (or the array length). If end is negative, it is treated as length+end." ]  ],
+         "return" : ["JsVar", "This array"]
+}*/
+JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *endVar) {
+  if (!jsvIsIterable(parent)) return 0;
+
+  JsVarInt length = jsvGetLength(parent);
+  if (start < 0) start = start + length;
+  if (start < 0) return 0;
+  JsVarInt end = jsvIsNumeric(endVar) ? jsvGetInteger(endVar) : length;
+  if (end < 0) end = end + length;
+  if (end < 0) return 0;
+
+
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  while (jsvIteratorHasElement(&it)) {
+    JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
+    if (idx>=start && idx<end) {
+      jsvIteratorSetValue(&it, value);
+    }
+    jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  return jsvLockAgain(parent);
+}
+
+/** recursive reverse, because we're dealing with a linked list that
+ * MAY only be linked in one direction (eg. string/arraybuffer).
+ */
+void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
+  assert(items > 1);
+
+  JsvIterator ita = jsvIteratorClone(it);
+  JsvIterator itb = jsvIteratorClone(it);
+
+  // move second pointer halfway through (round up)
+  int i;
+  for (i=(items+1)/2;i>0;i--)
+    jsvIteratorNext(&itb);
+  // recurse if >3 items. If 3 we can cope with it here
+  if (items > 3) {
+    _jswrap_array_reverse_block(parent, &ita, items/2);
+    _jswrap_array_reverse_block(parent, &itb, items/2);
+  }
+  // start flipping values (round down for how many)
+  for (i=items/2;i>0;i--) {
+    JsVar *va = jsvIteratorGetValue(&ita);
+    JsVar *vb = jsvIteratorGetValue(&itb);
+    jsvIteratorSetValue(&ita, vb);
+    jsvIteratorSetValue(&itb, va);
+    jsvUnLock(va);
+    jsvUnLock(vb);
+    // if it's an array, we need to swap the key values too
+    if (jsvIsArray(parent)) {
+      JsVar *ka = jsvIteratorGetKey(&ita);
+      JsVar *kb = jsvIteratorGetKey(&itb);
+      JsVarInt kva = jsvGetInteger(ka);
+      JsVarInt kvb = jsvGetInteger(kb);
+      jsvSetInteger(ka, kvb);
+      jsvSetInteger(kb, kva);
+      jsvUnLock(ka);
+      jsvUnLock(kb);
+    }
+
+    jsvIteratorNext(&ita);
+    jsvIteratorNext(&itb);
+  }
+  // now recurse!
+  jsvIteratorFree(&ita);
+  jsvIteratorFree(&itb);
+}
+
+
+/*JSON{ "type":"method", "class": "Array", "name" : "reverse", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Reverse all elements in this array (in place)",
+         "generate" : "jswrap_array_reverse",
+         "return" : ["JsVar", "The array, but reversed."]
+}*/
+JsVar *jswrap_array_reverse(JsVar *parent) {
+  if (!jsvIsIterable(parent) || jsvIsObject(parent)) return 0;
+
+
+  int len = 0;
+  if (jsvIsArray(parent)) {
+    /* arrays are sparse, so we must handle them differently.
+     * We work out how many NUMERIC keys they have, and we
+     * reverse only those. Then, we reverse the key values too */
+    JsvIterator it;
+    jsvIteratorNew(&it, parent);
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *k = jsvIteratorGetKey(&it);
+      if (jsvIsInt(k)) len++;
+      jsvUnLock(k);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else
+    len = jsvGetLength(parent);
+
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  if (len>1) {
+    _jswrap_array_reverse_block(parent, &it, len);
+  }
+  // if it's an array, we must change the values on the keys
+  if (jsvIsArray(parent)) {
+    JsVarInt last = jsvGetArrayLength(parent)-1;
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *k = jsvIteratorGetKey(&it);
+      jsvSetInteger(k, last-jsvGetInteger(k));
+      jsvUnLock(k);
+      jsvIteratorNext(&it);
+    }
+  }
+  jsvIteratorFree(&it);
+
+  return jsvLockAgain(parent);
 }

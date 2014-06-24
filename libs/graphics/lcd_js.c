@@ -19,7 +19,6 @@
 
 
 void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
   // look up setPixel and execute it!
 //  JsVar *lcdProto = jsvObjectGetChild(gfx->graphicsVar, JSPARSE_PROTOTYPE_VAR, 0);
  // if (lcdProto) {
@@ -28,8 +27,8 @@ void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
       JsVar *args[3];
       args[0] = jsvNewFromInteger(x);
       args[1] = jsvNewFromInteger(y);
-      args[2] = jsvNewFromInteger(col);
-      jspExecuteFunction(setPixel, gfx->graphicsVar, 3, args);
+      args[2] = jsvNewFromInteger((JsVarInt)col);
+      jsvUnLock(jspExecuteFunction(setPixel, gfx->graphicsVar, 3, args));
       jsvUnLock(args[0]);
       jsvUnLock(args[1]);
       jsvUnLock(args[2]);
@@ -40,27 +39,6 @@ void lcdSetPixel_JS(JsGraphics *gfx, short x, short y, unsigned int col) {
 }
 
 void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  if (x1>x2) {
-    short t = x1;
-    x1 = x2;
-    x2 = t;
-  }
-  if (y1>y2) {
-    short t = y1;
-    y1 = y2;
-    y2 = t;
-  }
-  if (x1<0) x1=0;
-  if (y1<0) y1=0;
-  if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
-  if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
-  if (x2<x1 || y2<y1) return; // nope
-
-  if (x1==x2 && y1==y2) {
-    lcdSetPixel_JS(gfx,x1,y1,gfx->data.fgColor);
-    return;
-  }
-
   JsVar *fillRect = jsvObjectGetChild(gfx->graphicsVar/*lcdProto*/, "iFillRect", 0);
   if (fillRect) {
     JsVar *args[5];
@@ -68,15 +46,16 @@ void  lcdFillRect_JS(struct JsGraphics *gfx, short x1, short y1, short x2, short
     args[1] = jsvNewFromInteger(y1);
     args[2] = jsvNewFromInteger(x2);
     args[3] = jsvNewFromInteger(y2);
-    args[4] = jsvNewFromInteger(gfx->data.fgColor);
-    jspExecuteFunction(fillRect, gfx->graphicsVar, 5, args);
+    args[4] = jsvNewFromInteger((JsVarInt)gfx->data.fgColor);
+    jsvUnLock(jspExecuteFunction(fillRect, gfx->graphicsVar, 5, args));
     jsvUnLock(args[0]);
     jsvUnLock(args[1]);
     jsvUnLock(args[2]);
     jsvUnLock(args[3]);
     jsvUnLock(args[4]);
     jsvUnLock(fillRect);
-  }
+  } else
+    graphicsFallbackFillRect(gfx, x1,y1,x2,y2);
 }
 
 void lcdInit_JS(JsGraphics *gfx, JsVar *setPixelCallback, JsVar *fillRectCallback) {

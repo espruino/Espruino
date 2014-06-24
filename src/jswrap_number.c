@@ -89,3 +89,13 @@ JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
   ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), 10, decimals);
   return jsvNewFromString(buf);
 }
+
+/*JSON{ "type":"variable", "name" : "HIGH",
+         "generate_full" : "1",
+         "return" : ["int32", "Logic 1 for Arduino compatibility - this is the same as just typing `1`"]
+}*/
+
+/*JSON{ "type":"variable", "name" : "LOW",
+         "generate_full" : "0",
+         "return" : ["int32", "Logic 0 for Arduino compatibility - this is the same as just typing `0`"]
+}*/

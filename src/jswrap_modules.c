@@ -20,7 +20,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #ifdef USE_FILESYSTEM
-#include "../libs/jswrap_fat.h"
+#include "jswrap_fs.h"
 #endif
 
 static JsVar *jswrap_modules_getModuleList() {
@@ -77,13 +77,13 @@ JsVar *jswrap_require(JsVar *moduleName) {
     if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
     jsvAppendString(modulePath,".js");
-    fileContents = wrap_fat_readFile(modulePath);
+    fileContents = jswrap_fs_readFile(modulePath);
     jsvUnLock(modulePath);
   #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
       jsvUnLock(moduleExportName);
       jsvUnLock(fileContents);
-      jsWarn("Module not found");
+      jsWarn("Module %q not found", moduleName);
       return 0;
     }
     moduleExport = jspEvaluateModule(fileContents);
@@ -131,7 +131,7 @@ JsVar *jswrap_modules_getCached() {
 }*/
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
-    jsError("The argument to removeCached must be a string");
+    jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
     return;
   }
   JsVar *moduleList = jswrap_modules_getModuleList();
@@ -169,7 +169,7 @@ void jswrap_modules_removeAllCached() {
 }*/
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
-    jsError("Both arguments to addCached must be strings");
+    jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");
     return;
   }
 

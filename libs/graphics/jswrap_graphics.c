@@ -63,6 +63,11 @@ void jswrap_graphics_init() {
 #endif
 }
 
+
+static bool isValidBPP(int bpp) {
+  return bpp==1 || bpp==2 || bpp==4 || bpp==8 || bpp==16 || bpp==24 || bpp==32; // currently one colour can't ever be spread across multiple bytes
+}
+
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
          "description" : "Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself",
          "generate" : "jswrap_graphics_createArrayBuffer",
@@ -79,7 +84,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
+  if (!isValidBPP(bpp)) {
     jsWarn("Invalid BPP");
     return 0;
   }
@@ -113,7 +118,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
 }
 
 /*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createCallback",
-         "description" : "Create a Graphics object that renders by calling a JavaScript callback function",
+         "description" : "Create a Graphics object that renders by calling a JavaScript callback function to draw pixels",
          "generate" : "jswrap_graphics_createCallback",
          "params" : [ [ "width", "int32", "Pixels wide" ],
                       [ "height", "int32", "Pixels high" ],
@@ -126,7 +131,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     jsWarn("Invalid Size");
     return 0;
   }
-  if (!(bpp==1 || bpp==8 || bpp==16 || bpp==24 || bpp==32)) {
+  if (!isValidBPP(bpp)) {
     jsWarn("Invalid BPP");
     return 0;
   }
@@ -139,12 +144,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   } else
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
-    jsError("Expecting Callback Function or an Object but got %t", callbackSetPixel);
+    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
     jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
-    jsError("Expecting Callback Function or an Object but got %t", callbackFillRect);
+    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
     jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
     return 0;
   }
@@ -206,6 +211,8 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
 }*/
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  if (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY)
+    height=!height;
   return height ? gfx.data.height : gfx.data.width;
 }
 
@@ -332,16 +339,16 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 }*/
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  return (isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1);
+  return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1));
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
          "description" : "Set Graphics to draw with a Bitmapped Font",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, (int)jsvGetInteger(size), true)",
+         "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
          "params" : [ [ "size", "int32", "The size as an integer" ] ]
 }*/
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
@@ -372,25 +379,25 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
   if (!jsvIsString(bitmap)) {
-    jsError("Font bitmap must be a String");
+    jsExceptionHere(JSET_ERROR, "Font bitmap must be a String");
     return;
   }
   if (firstChar<0 || firstChar>255) {
-    jsError("First character out of range");
+    jsExceptionHere(JSET_ERROR, "First character out of range");
     return;
   }
   if (!jsvIsString(width) && !jsvIsInt(width)) {
-    jsError("Font width must be a String or an integer");
+    jsExceptionHere(JSET_ERROR, "Font width must be a String or an integer");
     return;
   }
   if (height<=0 || height>255) {
-   jsError("Invalid height");
+   jsExceptionHere(JSET_ERROR, "Invalid height");
    return;
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
-  jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
+  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height)));
+  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar)));
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
@@ -421,8 +428,10 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
@@ -499,7 +508,9 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       width += 4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
@@ -582,3 +593,103 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   graphicsFillPoly(&gfx, idx/2, verts);
 }
 
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setRotation",
+         "description" : "Set the current rotation of the graphics device.",
+         "generate" : "jswrap_graphics_setRotation",
+         "params" : [ [ "rotation", "int32", "The clockwise rotation. 0 for no rotation, 1 for 90 degrees, 2 for 180, 3 for 270" ],
+                      [ "reflect", "bool", "Whether to reflect the image" ] ]
+}*/
+void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+
+  // clear flags
+  gfx.data.flags &= (JsGraphicsFlags)~(JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y);
+  // set flags
+  switch (rotation) {
+    case 0:
+      break;
+    case 1:
+      gfx.data.flags |= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_X;
+      break;
+    case 2:
+      gfx.data.flags |= JSGRAPHICSFLAGS_INVERT_X | JSGRAPHICSFLAGS_INVERT_Y;
+      break;
+    case 3:
+      gfx.data.flags |= JSGRAPHICSFLAGS_SWAP_XY | JSGRAPHICSFLAGS_INVERT_Y;
+      break;
+  }
+
+  if (reflect) {
+    if (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY)
+      gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_Y;
+    else
+      gfx.data.flags ^= JSGRAPHICSFLAGS_INVERT_X;
+  }
+
+  graphicsSetVar(&gfx);
+}
+
+/*JSON{ "type":"method", "class": "Graphics", "name" : "drawImage",
+         "description" : "Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first",
+         "generate" : "jswrap_graphics_drawImage",
+         "params" : [ [ "image", "JsVar", "An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent" ],
+                      [ "x", "int32", "The X offset to draw the image" ],
+                      [ "y", "int32", "The Y offset to draw the image" ] ]
+}*/
+void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
+  if (!jsvIsObject(image)) {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object");
+    return;
+  }
+  int imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
+  int imageHeight = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "height", 0));
+  int imageBpp = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "bpp", 0));
+  unsigned int imageBitMask = (unsigned int)((1L<<imageBpp)-1L);
+  JsVar *transpVar = jsvObjectGetChild(image, "transparent", 0);
+  bool imageIsTransparent = transpVar!=0;
+  unsigned int imageTransparentCol = (unsigned int)jsvGetInteger(transpVar);
+  jsvUnLock(transpVar);
+  JsVar *imageBuffer = jsvObjectGetChild(image, "buffer", 0);
+  if (!(jsvIsArrayBuffer(imageBuffer) && imageWidth>0 && imageHeight>0 && imageBpp>0 && imageBpp<=32)) {
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
+    jsvUnLock(imageBuffer);
+    return;
+  }
+  JsVar *imageBufferString = jsvGetArrayBufferBackingString(imageBuffer);
+  jsvUnLock(imageBuffer);
+
+
+  int x=0, y=0;
+  int bits=0;
+  unsigned int colData = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, imageBufferString, 0);
+  while ((bits>=imageBpp || jsvStringIteratorHasChar(&it)) && y<imageHeight) {
+    // Get the data we need...
+    while (bits < imageBpp) {
+      colData = (colData<<8) | ((unsigned char)jsvStringIteratorGetChar(&it));
+      jsvStringIteratorNext(&it);
+      bits += 8;
+    }
+    // extract just the bits we want
+    unsigned int col = (colData>>(bits-imageBpp))&imageBitMask;
+    bits -= imageBpp;
+    // Try and write pixel!
+    if (!imageIsTransparent || imageTransparentCol!=col) {
+      if (imageBpp==1)
+        col = col ? gfx.data.fgColor : gfx.data.bgColor;
+      graphicsSetPixel(&gfx, (short)(x+xPos), (short)(y+yPos), col);
+    }
+    // Go to next pixel
+    x++;
+    if (x>=imageWidth) {
+      x=0;
+      y++;
+      // we don't care about image height - we'll stop next time...
+    }
+
+  }
+  jsvStringIteratorFree(&it);
+  jsvUnLock(imageBufferString);
+}

@@ -43,7 +43,9 @@
 //! THE POSSIBILITY OF SUCH DAMAGE.
 //
 //*****************************************************************************
+#include "jsparse.h"
 #include "Ethernet/socket.h"
+
 
 #define SOCK_ANY_PORT_NUM  0xC000;
 
@@ -134,7 +136,12 @@ int8_t socket(uint8_t sn, uint8_t protocol, uint16_t port, uint8_t flag)
    setSn_PORT(sn,port);	
    setSn_CR(sn,Sn_CR_OPEN);
    while(getSn_CR(sn));
-	sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
+   
+   //mgg1010 line below added - without it, if a socket is re-used, it may inherit the previous
+   // value of NONBLOCK
+   
+   sock_io_mode &= ~(1 << sn);   
+   sock_io_mode |= ((flag & SF_IO_NONBLOCK) << sn);   
    sock_is_sending &= ~(1<<sn);
    sock_remained_size[sn] = 0;
    sock_pack_info[sn] = 0;
@@ -190,10 +197,12 @@ int8_t connect(uint8_t sn, uint8_t * addr, uint16_t port)
       setSUBR(0);
    #endif
 	setSn_CR(sn,Sn_CR_CONNECT);
-   while(getSn_CR(sn));
+   while(getSn_CR(sn) && !jspIsInterrupted());
    if(sock_io_mode & (1<<sn)) return SOCK_BUSY;
    while(getSn_SR(sn) != SOCK_ESTABLISHED)
    {   
+        if (jspIsInterrupted())
+          return SOCKERR_TIMEOUT;
 		if (getSn_IR(sn) & Sn_IR_TIMEOUT)
 		{
 			setSn_IR(sn, Sn_IR_TIMEOUT);

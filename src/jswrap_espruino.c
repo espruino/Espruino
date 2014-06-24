@@ -14,7 +14,9 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_espruino.h"
-#include "libs/jswrap_math.h"
+#include "jswrap_math.h"
+#include "jswrapper.h"
+#include "jsinteractive.h"
 
 /*JSON{ "type":"class",
         "class" : "E",
@@ -25,7 +27,7 @@
          "class": "E", "name" : "getTemperature",
          "generate_full" : "jshReadTemperature()",
          "description" : ["Use the STM32's internal thermistor to work out the temperature.",
-                          "**Note:** This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
+                          "**Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though."],
          "return" : ["float", "The temperature in degrees C"]
 }*/
 
@@ -35,6 +37,73 @@
          "description" : "Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` ",
          "return" : ["float", "The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
 }*/
+
+
+int nativeCallGetCType(JsLex *lex) {
+  if (lex->tk == LEX_R_VOID) {
+    jslMatch(lex, LEX_R_VOID);
+    return JSWAT_VOID;
+  }
+  if (lex->tk == LEX_ID) {
+    int t = -1;
+    char *name = jslGetTokenValueAsString(lex);
+    if (strcmp(name,"int")==0) t=JSWAT_INT32;
+    if (strcmp(name,"long")==0) t=JSWAT_JSVARINT;
+    if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
+    if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
+    if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
+    if (strcmp(name,"JsVar")==0) t=JSWAT_JSVAR;
+    jslMatch(lex, LEX_ID);
+    return t;
+  }
+  return -1; // unknown
+}
+
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "nativeCall",
+         "generate" : "jswrap_espruino_nativeCall",
+         "description" : ["ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing",
+                          "Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)` ",
+                          "If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.",
+                          "Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses."],
+         "params" : [ [ "addr", "int", "The address in memory of the function"],
+                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`long`,`double`,`Pin`,`JsVar`"] ],
+         "return" : ["JsVar", "The native function"]
+}*/
+JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
+  unsigned int argTypes = 0;
+  if (jsvIsUndefined(signature)) {
+    // Nothing to do
+  } else if (jsvIsString(signature)) {
+    JsLex lex;
+    jslInit(&lex, signature);
+    int argType;
+    bool ok = true;
+    int argNumber = 0;
+    argType = nativeCallGetCType(&lex);
+    if (argType>=0) argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
+    else ok = false;
+    if (ok) ok = jslMatch(&lex, '(');
+    while (ok && lex.tk!=LEX_EOF && lex.tk!=')') {
+      argType = nativeCallGetCType(&lex);
+      if (argType>=0) {
+        argTypes |= (unsigned)argType << (JSWAT_BITS * argNumber++);
+        if (lex.tk!=')') ok = jslMatch(&lex, ',');
+      } else ok = false;
+    }
+    if (ok) ok = jslMatch(&lex, ')');
+    jslKill(&lex);
+    if (!ok) {
+      jsExceptionHere(JSET_ERROR, "Error Parsing signature at argument number %d", argNumber);
+      return 0;
+    }
+  } else {
+    jsExceptionHere(JSET_ERROR, "Invalid Signature");
+    return 0;
+  }
+
+  return jsvNewNativeFunction((void *)(size_t)addr, argTypes);
+}
 
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
@@ -62,7 +131,7 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }*/
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-    jsError("Expecting first argument to be an array, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
     return NAN;
   }
   JsVarFloat sum = 0;
@@ -86,7 +155,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
 }*/
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   if (!(jsvIsIterable(arr))) {
-    jsError("Expecting first argument to be iterable, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be iterable, not %t", arr);
     return NAN;
   }
   JsVarFloat variance = 0;
@@ -115,7 +184,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
 JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   if (!(jsvIsIterable(arr1)) ||
       !(jsvIsIterable(arr2))) {
-    jsError("Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
+    jsExceptionHere(JSET_ERROR, "Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
     return NAN;
   }
   JsVarFloat conv = 0;
@@ -236,7 +305,7 @@ short FFT(short int dir,long m,double *x,double *y)
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (!(jsvIsIterable(arrReal)) ||
       !(jsvIsUndefined(arrImag) || jsvIsIterable(arrImag))) {
-    jsError("Expecting first 2 arguments to be iterable or undefined, not %t and %t", arrReal, arrImag);
+    jsExceptionHere(JSET_ERROR, "Expecting first 2 arguments to be iterable or undefined, not %t and %t", arrReal, arrImag);
     return;
   }
 
@@ -250,7 +319,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
 
   if (jsuGetFreeStack() < 100+sizeof(double)*pow2*2) {
-    jsError("Insufficient stack for computing FFT");
+    jsExceptionHere(JSET_ERROR, "Insufficient stack for computing FFT");
     return;
   }
 
@@ -314,6 +383,80 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
 }
 
+/*JSON{ "type":"staticmethod", "class": "E",  "name": "interpolate", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Interpolate between two adjacent values in the Typed Array",
+         "generate" : "jswrap_espruino_interpolate",
+         "params" : [ [ "array", "JsVar", "A Typed Array to interpolate between" ], [ "index", "float", "Floating point index to access" ] ],
+         "return" : [ "float", "The result of interpolating between (int)index and (int)(index+1)" ]
+}*/
+JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex) {
+  if (!jsvIsArrayBuffer(array)) return 0;
+  size_t idx = (size_t)findex;
+  JsVarFloat a = findex - (int)idx;
+  if (findex<0) {
+    idx = 0;
+    a = 0;
+  }
+  if (findex>=jsvGetArrayBufferLength(array)-1) {
+    idx = jsvGetArrayBufferLength(array)-1;
+    a = 0;
+  }
+  JsvArrayBufferIterator it;
+  jsvArrayBufferIteratorNew(&it, array, idx);
+  JsVarFloat fa = jsvArrayBufferIteratorGetFloatValue(&it);
+  jsvArrayBufferIteratorNext(&it);
+  JsVarFloat fb = jsvArrayBufferIteratorGetFloatValue(&it);
+  jsvArrayBufferIteratorFree(&it);
+  return fa*(1-a) + fb*a;
+}
+
+/*JSON{ "type":"staticmethod", "class": "E",  "name": "interpolate2d", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Interpolate between four adjacent values in the Typed Array, in 2D.",
+         "generate" : "jswrap_espruino_interpolate2d",
+         "params" : [ [ "array", "JsVar", "A Typed Array to interpolate between" ],
+                      [ "width", "int32", "Integer 'width' of 2d array" ],
+                      [ "x", "float", "Floating point X index to access" ],
+                      [ "y", "float", "Floating point Y index to access" ] ],
+         "return" : [ "float", "The result of interpolating in 2d between the 4 surrounding cells" ]
+}*/
+JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y) {
+  if (!jsvIsArrayBuffer(array)) return 0;
+  int yidx = (int)y;
+  JsVarFloat ay = y-yidx;
+  if (y<0) {
+    yidx = 0;
+    ay = 0;
+  }
+
+  JsVarFloat findex = x + (JsVarFloat)(yidx*width);
+  size_t idx = (size_t)findex;
+  JsVarFloat ax = findex-(int)idx;
+  if (x<0) {
+    idx = (size_t)(yidx*width);
+    ax = 0;
+  }
+
+  JsvArrayBufferIterator it;
+  jsvArrayBufferIteratorNew(&it, array, idx);
+
+  JsVarFloat xa,xb;
+  int i;
+
+  xa = jsvArrayBufferIteratorGetFloatValue(&it);
+  jsvArrayBufferIteratorNext(&it);
+  xb = jsvArrayBufferIteratorGetFloatValue(&it);
+  JsVarFloat ya = xa*(1-ax) + xb*ax;
+
+  for (i=1;i<width;i++) jsvArrayBufferIteratorNext(&it);
+
+  xa = jsvArrayBufferIteratorGetFloatValue(&it);
+  jsvArrayBufferIteratorNext(&it);
+  xb = jsvArrayBufferIteratorGetFloatValue(&it);
+  jsvArrayBufferIteratorFree(&it);
+  JsVarFloat yb = xa*(1-ax) + xb*ax;
+
+  return ya*(1-ay) + yb*ay;
+}
 
 /*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
          "class" : "E", "name" : "enableWatchdog",
@@ -325,3 +468,32 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   if (time<0 || isnan(time)) time=1;
   jshEnableWatchDog(time);
 }
+
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "toArrayBuffer",
+         "generate" : "jswrap_espruino_toArrayBuffer",
+         "description" : [ "Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.",
+                           "Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`." ],
+         "params" : [ [ "str", "JsVar", "The string to convert to an ArrayBuffer"] ],
+         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ]
+}*/
+JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
+  if (!jsvIsString(str)) return 0;
+  return jsvNewArrayBufferFromString(str, 0);
+}
+
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "reverseByte",
+         "generate" : "jswrap_espruino_reverseByte",
+         "description" : [ "Reverse the 8 bits in a byte, swapping MSB and LSB.",
+                           "For example, `E.reverseByte(0b10010000) == 0b00001001`.",
+                           "Note that you can reverse all the bytes in an array with: `arr = arr.map(E.reverseByte)`" ],
+         "params" : [ [ "x", "int32", "A byte value to reverse the bits of"] ],
+         "return" : [ "int32", "The byte with reversed bits" ]
+}*/
+int jswrap_espruino_reverseByte(int v) {
+  unsigned int b = v&0xFF;
+  // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
+  return (((b * 0x0802LU & 0x22110LU) | (b * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16) & 0xFF;
+}
+

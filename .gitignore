@@ -13,3 +13,4 @@ zipcontents
 tmp
 benchmark/*.txt
 benchmark/*.result.json
+/espruino

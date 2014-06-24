@@ -12,16 +12,23 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jswrapper.h"
 
 JsVar *jswrap_object_length(JsVar *parent);
+JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
-JsVar *jswrap_object_keys(JsVar *obj);
+JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerable);
+JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
+JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
+bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
-void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *v1, JsVar *v2);
+void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
-JsVar *jswrap_function_call(JsVar *parent, JsVar *thisArg, JsVar *a, JsVar *b, JsVar *c, JsVar *d);
-JsVar *jswrap_function_apply(JsVar *parent, JsVar *thisArg, JsVar *argsArray);
+JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray);
+
+/** A convenience function for adding event listeners */
+void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (*callback)(), JsnArgumentType argTypes);

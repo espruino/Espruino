@@ -7,6 +7,11 @@ a.indexOf("BC"), 1,
 a.indexOf("C"), 2,
 a.indexOf("D"), 3,
 a.indexOf("CD"), 2,
+a.indexOf("X"), -1,
+a.indexOf("ABCDEFG"), -1,
+a.indexOf("QVWXYZ"), -1,
+a.indexOf("VWXYZ"), -1,
+a.indexOf("WXYZ"), -1,
 ];
 
 result = 1;

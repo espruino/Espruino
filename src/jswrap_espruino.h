@@ -14,10 +14,17 @@
 #include "jsvar.h"
 #include "jshardware.h"
 
+JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature);
+
 JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_espruino_sum(JsVar *arr);
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean);
 JsVarFloat jswrap_espruino_convolve(JsVar *a, JsVar *b, int offset);
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse);
 
+JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex);
+JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y);
+
 void jswrap_espruino_enableWatchdog(JsVarFloat time);
+JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
+int jswrap_espruino_reverseByte(int v);

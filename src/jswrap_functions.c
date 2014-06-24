@@ -28,10 +28,9 @@ extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
   if (execInfo.scopeCount>0)
-    scope = jsvLock(execInfo.scopes[execInfo.scopeCount-1]);
+    scope = execInfo.scopes[execInfo.scopeCount-1];
   if (!jsvIsFunction(scope)) {
-    jsvUnLock(scope);
-    jsError("Can only use 'arguments' variable inside a function");
+    jsExceptionHere(JSET_ERROR, "Can only use 'arguments' variable inside a function");
     return 0;
   }
 
@@ -50,11 +49,32 @@ JsVar *jswrap_arguments() {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
-  jsvUnLock(scope);
 
   return args;
 }
 
+
+/*JSON{ "type":"constructor",
+        "class" : "Function",
+        "name" : "Function",
+        "generate" : "jswrap_function_constructor",
+        "description" : [ "Creates a function" ],
+        "params" : [ [ "code", "JsVar", "A string representing the code to run"] ],
+        "return" : ["JsVar", "A Number object"]
+}*/
+JsVar *jswrap_function_constructor(JsVar *code) {
+  JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
+  if (!fn) return 0;
+
+  JsVar *codeStr = jsvNewFromEmptyString();
+  if (!codeStr) {
+    jsvUnLock(fn);
+    return 0;
+  }
+  jsvAppendPrintf(codeStr, "{\n%v\n}", code);
+  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  return fn;
+}
 
 /*JSON{ "type":"function", "name" : "eval",
          "description" : "Evaluate a string containing JavaScript code",
@@ -65,7 +85,7 @@ JsVar *jswrap_arguments() {
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0);
+  JsVar *result = jspEvaluateVar(s, 0, false);
   jsvUnLock(s);
   return result;
 }
@@ -82,9 +102,13 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   if (jsvIsNumeric(radixVar))
     radix = (int)jsvGetInteger(radixVar);
 
+  if (jsvIsFloat(v) && !isfinite(jsvGetFloat(v)))
+    return jsvNewFromFloat(NAN);
+
   // shortcut for values that are already numbers
-  if ((radix==0 || radix==10) && jsvIsNumeric(v))
+  if ((radix==0 || radix==10) && jsvIsNumeric(v)) {
     return jsvNewFromInteger(jsvGetInteger(v));
+  }
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
@@ -163,7 +187,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
 }*/
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
-    jsError("Expecting a string or array, got %t", binaryData);
+    jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
     return 0;
   }
   JsVar* base64Data = jsvNewFromEmptyString();
@@ -175,7 +199,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 
 
   int padding = 0;
-  while (jsvIteratorHasElement(&itsrc)) {
+  while (jsvIteratorHasElement(&itsrc) && !jspIsInterrupted()) {
     int octet_a = (unsigned char)jsvIteratorGetIntegerValue(&itsrc)&255;
     jsvIteratorNext(&itsrc);
     int octet_b = 0, octet_c = 0;
@@ -214,7 +238,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 }*/
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
-    jsError("Expecting a string, got %t", base64Data);
+    jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
     return 0;
   }
   JsVar* binaryData = jsvNewFromEmptyString();
@@ -228,7 +252,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
         isWhitespace(jsvStringIteratorGetChar(&itsrc)))
     jsvStringIteratorNext(&itsrc);
 
-  while (jsvStringIteratorHasChar(&itsrc)) {
+  while (jsvStringIteratorHasChar(&itsrc) && !jspIsInterrupted()) {
     uint32_t triple = 0;
     int i, valid=0;
     for (i=0;i<4;i++) {

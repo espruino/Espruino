@@ -24,6 +24,7 @@ typedef enum {
   JSON_IGNORE_FUNCTIONS  = 8, // don't output functions
   JSON_INDENT            = 16, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
   JSON_SHOW_DEVICES      = 32, // Show built-in device names like SPI/etc
+  JSON_NO_UNDEFINED      = 64, // don't output undefined keys in objects, and use null for undefined in arrays
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */

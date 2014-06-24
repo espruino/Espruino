@@ -17,8 +17,8 @@ cd ..            # main dir
 BASEDIR=`pwd`
 
 BOARDNAME=ESPRUINOBOARD
-ESPRUINOFILE=`python scripts/get_binary_name.py $BOARDNAME`
-BOOTLOADERFILE=bootloader_espruino_1v3.bin
+ESPRUINOFILE=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
+BOOTLOADERFILE=bootloader_$ESPRUINOFILE
 IMGFILE=espruino_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 

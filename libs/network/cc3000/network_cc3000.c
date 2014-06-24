@@ -40,6 +40,15 @@ void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, unsigned long* ou
 /// Called on idle. Do any checks required for this device
 void net_cc3000_idle(JsNetwork *net) {
   cc3000_spi_check();
+
+  if (networkState == NETWORKSTATE_INVOLUNTARY_DISCONNECT) {
+    JsVar *wlanObj = jsvObjectGetChild(execInfo.root, CC3000_OBJ_NAME, 0);
+    if (wlanObj) {
+      jswrap_wlan_reconnect(wlanObj);
+      jsvUnLock(wlanObj);
+      cc3000_spi_check();
+    }
+  }
 }
 
 /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.
@@ -47,7 +56,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
   bool hadErrors = false;
   while (jspIsInterrupted()) {
     hadErrors = true;
-    jsiConsolePrint("Looks like CC3000 has died again. Power cycling...\n");
+    jsiConsolePrint("CC3000 WiFi is not responding. Power cycling...\n");
     jspSetInterrupted(false);
     // remove all existing connections
     networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
@@ -58,7 +67,7 @@ bool net_cc3000_checkError(JsNetwork *net) {
     if (wlan) {
       jswrap_wlan_reconnect(wlan);
       jsvUnLock(wlan);
-    } else jsErrorInternal("No CC3000 object!\n");
+    } else jsExceptionHere(JSET_INTERNALERROR, "No CC3000 object!\n");
     // jswrap_wlan_reconnect could fail, which would mean we have to do this all over again
   }
   return hadErrors;

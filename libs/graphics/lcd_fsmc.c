@@ -1194,19 +1194,6 @@ static inline void lcdSetFullWindow(JsGraphics *gfx) {
 
 
 void lcdFillRect_FSMC(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
-  if (x1>x2) {
-    short l=x1; x1 = x2; x2 = l;
-  }
-  if (y1>y2) {
-    short l=y1; y1 = y2; y2 = l;
-  }
-  // offscreen
-  if (x1>=gfx->data.width || y1>=gfx->data.height || x2<0 || y2<0) return;
-  // now clip
-  if (x1<0) x1=0;
-  if (y1<0) y1=0;
-  if (x2>=gfx->data.width) x2=gfx->data.width-1;
-  if (y2>=gfx->data.height) y2=gfx->data.height-1;
   // finally!
   if (x1==x2) { // special case for single vertical line - no window needed
     lcdSetCursor(gfx,x2,y1);
@@ -1223,23 +1210,7 @@ void lcdFillRect_FSMC(JsGraphics *gfx, short x1, short y1, short x2, short y2) {
   }
 }
 
-/* Output a 1 bit bitmap */
-void lcdBitmap1bit_FSMC(JsGraphics *gfx, short x1, short y1, unsigned short width, unsigned short height, unsigned char *data) {
-  lcdSetWindow(gfx,x1,y1,x1+width-1,y1+height-1);
-  lcdSetCursor(gfx,x1+width-1,y1);
-  LCD_WR_REG(0x22); // start data tx
-  unsigned int x,y;
-  for(x=0;x<width;x++) {
-    for(y=0;y<height;y++) {
-      int bitOffset = x+(y*width);
-      LCD_WR_Data(((data[bitOffset>>3]>>(bitOffset&7))&1) ? gfx->data.fgColor : gfx->data.bgColor);
-    }
-  }
-  lcdSetFullWindow(gfx);
-}
-
 unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, short x, short y) {
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   lcdSetCursor(gfx,x,y);
   LCD_WR_REG(0x22); // start data tx
   return LCD_RD_Data();
@@ -1247,7 +1218,6 @@ unsigned int lcdGetPixel_FSMC(JsGraphics *gfx, short x, short y) {
 
 
 void lcdSetPixel_FSMC(JsGraphics *gfx, short x, short y, unsigned int col) {
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
   lcdSetCursor(gfx,x,y);
   LCD_WR_REG(34);
   LCD_WR_Data(col);
@@ -1265,6 +1235,5 @@ void lcdSetCallbacks_FSMC(JsGraphics *gfx) {
   gfx->setPixel = lcdSetPixel_FSMC;
   gfx->getPixel = lcdGetPixel_FSMC;
   gfx->fillRect = lcdFillRect_FSMC;
-  gfx->bitmap1bit = lcdBitmap1bit_FSMC;
 }
 

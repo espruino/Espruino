@@ -38,7 +38,8 @@ def html(s): htmlFile.write(s+"\n");
 def htmlify(d):
   d = re.sub(r'```([^`]+)```', r'<code>\1</code>', d) # code tags
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
-  d = re.sub(r'(http://[^ ]+)', r'<a href="\1">\1</a>', d) # links tags
+  d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
+  d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
   return d
 
 def html_description(ds,current):
@@ -67,20 +68,31 @@ def get_fullname(jsondata):
   s=s+jsondata["name"]
   return s
 
+def get_arguments(jsondata):
+  if common.is_property(jsondata):
+    return ""
+  args = [];
+  if "params" in jsondata:
+    for param in jsondata["params"]:
+      args.append(param[0]);
+      if param[1]=="JsVarArray": args.append("...");
+  return "("+", ".join(args)+")"
+
 def get_surround(jsondata):
   s = common.get_prefix_name(jsondata)
   if s!="": s = s + " "
   if jsondata["type"]!="constructor":
     if "class" in jsondata: s=s+jsondata["class"]+"."
   s=s+jsondata["name"]
-  if not common.is_property(jsondata):
-    args = [];
-    if "params" in jsondata:
-      for param in jsondata["params"]:
-        args.append(param[0]);
-        if param[1]=="JsVarArray": args.append("...");
-    s=s+"("+",".join(args)+")"
+  s=s+get_arguments(jsondata)
   return s
+
+def get_code(jsondata):
+  if jsondata["type"]=="event":
+    return jsondata["class"]+".on('"+jsondata["name"]+"', function"+get_arguments(jsondata)+" { ... });";
+  if jsondata["type"]=="constructor":
+    return "new "+jsondata["name"]+get_arguments(jsondata);
+  return get_surround(jsondata)
 
 def get_link(jsondata):
   s="l_";
@@ -180,7 +192,7 @@ for jsondata in detail:
   html("  <h3 class=\"detail\"><a name=\""+get_link(jsondata)+"\">"+get_fullname(jsondata)+"</a></h3>")
   html("  <p class=\"top\"><a href=\"#top\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
-  html("   <p class=\"call\"><code>"+get_surround(jsondata)+"</code></p>")
+  html("   <p class=\"call\"><code>"+get_code(jsondata)+"</code></p>")
   if "description" in jsondata:
     html("  <h4>Description</h4>")
     desc = jsondata["description"]

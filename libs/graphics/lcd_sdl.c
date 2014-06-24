@@ -25,7 +25,6 @@ bool needsFlip = false;
 
 unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
   if (!screen) return 0;
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return 0;
   if(SDL_MUSTLOCK(screen))
       if(SDL_LockSurface(screen) < 0) return 0;
   unsigned int *pixmem32 = ((unsigned int*)screen->pixels) + y + x;
@@ -37,7 +36,6 @@ unsigned int lcdGetPixel_SDL(JsGraphics *gfx, short x, short y) {
 
 void lcdSetPixel_SDL(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (!screen) return;
-  if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
 
   if(SDL_MUSTLOCK(screen))
     if(SDL_LockSurface(screen) < 0) return;
@@ -49,12 +47,12 @@ void lcdSetPixel_SDL(JsGraphics *gfx, short x, short y, unsigned int col) {
 
 void lcdInit_SDL(JsGraphics *gfx) {
   if (SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-    jsError("SDL_Init failed\n");
+    jsExceptionHere(JSET_ERROR, "SDL_Init failed\n");
     exit(1);
   }
   if (!(screen = SDL_SetVideoMode(gfx->data.width, gfx->data.height, gfx->data.bpp, SDL_SWSURFACE)))
   {
-    jsError("SDL_SetVideoMode failed\n");
+    jsExceptionHere(JSET_ERROR, "SDL_SetVideoMode failed\n");
     SDL_Quit();
     exit(1);
   }

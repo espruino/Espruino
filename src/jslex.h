@@ -57,6 +57,7 @@ bool jslMatch(JsLex *lex, int expected_tk); ///< Match, and return true on succe
 void jslTokenAsString(int token, char *str, size_t len); ///< output the given token as a string - for debugging
 void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
+int jslGetTokenLength(JsLex *lex);
 JsVar *jslGetTokenValueAsVar(JsLex *lex);
 
 // Only for more 'internal' use
@@ -64,5 +65,8 @@ void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't 
 void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
+
+void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
 
 #endif /* JSLEX_H_ */

@@ -58,6 +58,8 @@ defined in linker script */
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
 
 .equ  BootRAM,        0xF1E0F85F
+
+
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -71,6 +73,13 @@ defined in linker script */
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:  
+
+/* Set up stack pointer. THIS IS FOR ESPRUINO.
+  Basically the bootloader (and the boot-time vector table) may initialise
+  the device as if it was 48kb - but we may want to upload an image that
+  uses more than that  */
+  ldr r0, =_estack
+  mov sp, r0
 
 /* Copy the data segment initializers from flash to SRAM */  
   movs  r1, #0

@@ -27,10 +27,11 @@ unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 
 
+#ifndef SAVE_ON_FLASH
 static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
   // move to next element in var
   task->data.buffer.charIdx++;
-  unsigned char maxChars = (unsigned char)jsvGetCharactersInVar(task->data.buffer.var);
+  size_t maxChars = jsvGetCharactersInVar(task->data.buffer.var);
   if (task->data.buffer.charIdx >= maxChars) {
     task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
     /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
@@ -42,6 +43,7 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
       task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
     } else { // else no more... move on to the next
       if (task->data.buffer.nextBuffer) {
+        task->data.buffer.charIdx = 0;
         task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
         // flip buffers
         JsVarRef t = task->data.buffer.nextBuffer;
@@ -59,6 +61,7 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
 static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *task) {
   return (unsigned char*)&task->data.buffer.var->varData.str[task->data.buffer.charIdx];
 }
+#endif
 
 void jstUtilTimerInterruptHandler() {
   if (utilTimerOn) {
@@ -75,7 +78,9 @@ void jstUtilTimerInterruptHandler() {
             jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
           }
         } break;
+#ifndef SAVE_ON_FLASH
         case UET_READ_SHORT: {
+          if (!task->data.buffer.var) break;
           int v = jshPinAnalogFast(task->data.buffer.pin);
           *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)v;  // LSB first
           jstUtilTimerInterruptHandlerNextByte(task);
@@ -84,6 +89,7 @@ void jstUtilTimerInterruptHandler() {
           break;
         }
         case UET_WRITE_SHORT: {
+          if (!task->data.buffer.var) break;
           int v = 0;
           v |= *jstUtilTimerInterruptHandlerByte(task);  // LSB first
           jstUtilTimerInterruptHandlerNextByte(task);
@@ -93,22 +99,25 @@ void jstUtilTimerInterruptHandler() {
           break;
         }
         case UET_READ_BYTE: {
+          if (!task->data.buffer.var) break;
           *jstUtilTimerInterruptHandlerByte(task) = (unsigned char)(jshPinAnalogFast(task->data.buffer.pin) >> 8);
           jstUtilTimerInterruptHandlerNextByte(task);
           break;
         }
         case UET_WRITE_BYTE: {
+          if (!task->data.buffer.var) break;
           jshSetOutputValue(task->data.buffer.pinFunction, (int)*jstUtilTimerInterruptHandlerByte(task) << 8);
           jstUtilTimerInterruptHandlerNextByte(task);
           break;
         }
+#endif
         case UET_WAKEUP: // we've already done our job by waking the device up
         default: break;
       }
       // If we need to repeat
       if (task->repeatInterval) {
         // update time (we know time > task->time) - what if we're being asked to do too fast? skip one (or 500 :)
-        unsigned int t = (unsigned int)((time+(JsSysTime)task->repeatInterval - task->time) / (JsSysTime)task->repeatInterval);
+        unsigned int t = ((unsigned int)(time+task->repeatInterval - task->time)) / task->repeatInterval;
         if (t<1) t=1;
         task->time = task->time + (JsSysTime)task->repeatInterval*t;
         // do an in-place bubble sort to ensure that times are still in the right order
@@ -172,6 +181,7 @@ bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
   return false;
 }
 
+#ifndef SAVE_ON_FLASH
 /// Return true if a timer task for the given variable exists (and set 'task' to it)
 bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   JsVarRef ref = jsvGetRef(var);
@@ -190,6 +200,7 @@ bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
   }
   return false;
 }
+#endif
 
 /// Is the timer full - can it accept any other signals?
 static bool utilTimerIsFull() {
@@ -261,6 +272,7 @@ bool jstSetWakeUp(JsSysTime period) {
     return ok;
 }
 
+#ifndef SAVE_ON_FLASH
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
   if (!jshIsPinValid(pin)) return false;
   UtilTimerTask task;
@@ -315,3 +327,4 @@ bool jstStopBufferTimerTask(JsVar *var) {
   jshInterruptOn();
   return found;
 }
+#endif

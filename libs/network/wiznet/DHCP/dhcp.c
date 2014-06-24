@@ -6,6 +6,7 @@ File Include Section
 
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jsparse.h"
 #include <stdio.h>
 #include <string.h>
 #include "socket.h"
@@ -794,7 +795,7 @@ uint8_t getIP_DHCPS(uint8_t s, wiz_NetInfo *pWIZNETINFO)
 //**************
 		//if (Recv_ConfigMsg() == MSG_SETTING_REQ) return(2);
 
-		if (DHCP_timeout == 1) {
+		if (DHCP_timeout == 1 || jspIsInterrupted()) {
 			jsiConsolePrintf("> => DHCP Timeout occurred\r\n");
 			return(0);
 		}

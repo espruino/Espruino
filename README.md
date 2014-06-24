@@ -101,6 +101,8 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 * Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need
 * Try different compilers. `codesourcery-2013.05-23-arm-none-eabi` provides low binary size for `-O3`
 
+**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved upwards 10kb to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones on the Espruino website) use `scripts/create_espruino_image_1v3.sh`.
+
 ### Linux
 
 Just run `make`
@@ -133,7 +135,10 @@ sudo apt-get install ia32-libs
 
 This will create a file called ```functions.html```
 
+Testing
+------
 
+There are a bunch of tests in the `tests` directory. See [`tests/README.md`](tests/README.md) for examples on how to run them.
 
 Modifying
 --------
@@ -143,10 +148,8 @@ Modifying
 * `ChangeLog`:          What's new
 * `TODO`:               List of things to do
 * `boards/`:            Information on boards, used to auto-generate a lot of the code
-* `code/`:              Example JavaScript code
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
-* `linker/`:            Linker files for various processors
 * `misc/`:              random other stuff
 * `scripts/`:           Scripts for generating files in gen, and for analysing code/compilation/etc
 * `src/`:               Main source code
@@ -162,13 +165,10 @@ Currently there are a bunch of different files to modify. Eventually the plan is
 
 * Most build options handled in `Makefile`
 * Extra libraries like USB/LCD/filesystem in `Makefile`
-* Linker Scripts are in `linker/`
-* `boards/*.py` files handle loading the list of available pins so the relevant headers + docs can be created
-* Processor-specific code in `targets/stm32`, `targets/linux`, etc.
+* `boards/*.py` files describe the CPU, available pins, and connections - so the relevant linker script, headers + docs can be created
+* Processor-specific code in `targets/ARCH` - eg. `targets/stm32`, `targets/linux`
 * Processor-specific libs in `targetlibs/foo` 
 * `src/jshardware.h` is effectively a simple abstraction layer for SPI/I2C/etc
-* `targets/stm32/jshardware.c` also has flash-size-specific defines
-* `libs/fat_sd` and `libs/lcd` still have some device-specific defines in too
 
 ### Adding libraries
 

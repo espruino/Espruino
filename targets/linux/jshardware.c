@@ -150,8 +150,8 @@ int kbhit()
     struct timeval tv = { 0L, 0L };
     fd_set fds;
     FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
+    FD_SET(STDIN_FILENO, &fds);
+    return select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
 }
 
 int getch()
@@ -194,6 +194,9 @@ void jshInit() {
 #endif
 }
 
+void jshReset() {
+}
+
 void jshKill() {
 #ifdef SYSFS_GPIO_DIR
   int i;
@@ -206,7 +209,9 @@ void jshKill() {
 
 void jshIdle() {
   while (kbhit()) {
-    jshPushIOCharEvent(EV_USBSERIAL, (char)getch());
+    int ch = getch();
+    if (ch<0) break;
+    jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
   }
 
 #ifdef SYSFS_GPIO_DIR
@@ -381,6 +386,17 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
     usleep(time*1000000);
     jshPinSetValue(pin, !value);
   } else jsError("Invalid pin!");
+}
+
+bool jshCanWatch(Pin pin) {
+  if (jshIsPinValid(pin)) {
+#ifdef SYSFS_GPIO_DIR
+     IOEventFlags exti = getNewEVEXTI();
+     if (exti) return true;
+#endif
+     return false;
+  } else
+    return false;
 }
 
 void jshPinWatch(Pin pin, bool shouldWatch) {
