@@ -1611,7 +1611,7 @@ void jsiDumpCallback(JsVar *callback) {
 }
 
 /** Output extra functions defined in an object such that they can be copied to a new device */
-void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
+NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   JsVarRef childRef = parent->firstChild;
   while (childRef) {
     JsVar *child = jsvLock(childRef);
@@ -1620,10 +1620,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
       JsVarRef protoRef = data->firstChild;
       while (protoRef) {
          JsVar *proto = jsvLock(protoRef);
-         jsiConsolePrintStringVar(parentName);
-         jsiConsolePrint(".prototype.");
-         jsiConsolePrintStringVar(proto);
-         jsiConsolePrint(" = ");
+         jsiConsolePrintf("%v.prototype.%v = ", parentName, proto);
          JsVar *protoData = jsvSkipName(proto);
          jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
          jsvUnLock(protoData);
@@ -1632,10 +1629,7 @@ void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
          jsvUnLock(proto);
        }
     } else {
-      jsiConsolePrintStringVar(parentName);
-      jsiConsolePrint(".");
-      jsiConsolePrintStringVar(child);
-      jsiConsolePrint(" = ");
+      jsiConsolePrintf("%v.%v = ", parentName, child);
       jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
       jsiConsolePrint(";\n");
 
@@ -1667,8 +1661,7 @@ void jsiDumpState() {
     } else if (!jsvIsNative(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
         // function-specific output
-        jsiConsolePrint("function ");
-        jsiConsolePrintStringVar(child);
+        jsiConsolePrintf("function %v", child);
         jsfPrintJSONForFunction(data, JSON_SHOW_DEVICES);
         jsiConsolePrint("\n");
         // print any prototypes we had
@@ -1679,10 +1672,7 @@ void jsiDumpState() {
           while (protoRef) {
             JsVar *protoName = jsvLock(protoRef);
             JsVar *protoData = jsvSkipName(protoName);
-            jsiConsolePrintStringVar(child);
-            jsiConsolePrint(".prototype.");
-            jsiConsolePrintStringVar(protoName);
-            jsiConsolePrint(" = ");
+            jsiConsolePrintf("%v.prototype.%v = ", child, protoName);
             jsfPrintJSON(protoData, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
             jsiConsolePrint(";\n");
             jsvUnLock(protoData);
@@ -1692,8 +1682,7 @@ void jsiDumpState() {
         }
       } else {
         // normal variable definition
-        jsiConsolePrint("var ");
-        jsiConsolePrintStringVar(child);
+        jsiConsolePrintf("var %v", child);
         if (!jsvIsUndefined(data)) {
           jsiConsolePrint(" = ");
           jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
@@ -1739,13 +1728,9 @@ void jsiDumpState() {
     jsiDumpCallback(watchCallback);
     jsiConsolePrint(", ");
     jsfPrintJSON(watchPin, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-    jsiConsolePrint(", { repeat:");
-    jsiConsolePrint(watchRecur?"true":"false");
-    jsiConsolePrint(", edge:");
-    if (watchEdge<0) jsiConsolePrint("'falling'");
-    else if (watchEdge>0) jsiConsolePrint("'rising'");
-    else jsiConsolePrint("'both'");
-    jsiConsolePrint(" });\n");
+    jsiConsolePrintf(", { repeat:%s, edge:'%s' });\n",
+                     watchRecur?"true":"false",
+                     (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
     jsvUnLock(watchPin);
     jsvUnLock(watchCallback);
     // next

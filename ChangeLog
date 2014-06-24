@@ -39,6 +39,7 @@
             Added Date.parse and Date.toString
             Fix parsing of integers that are too big to fit in an int32 (they're stored as doubles)
             Fix Linux Espruino when no tty is present
+            Shave a few bytes off size of jsiDumpState using printf
 
      1v64 : Fix 'a=[2,3,4];delete a[1];'
             Make sure parseInt("0x01",16)==1 and parseInt("0x01")==1 but parseInt("0b01",16)==0
