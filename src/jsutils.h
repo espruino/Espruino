@@ -214,8 +214,8 @@ typedef enum {
     JSV_ARRAYBUFFERNAME = _JSV_NAME_START, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
     _JSV_NAME_INT_START = JSV_ARRAYBUFFERNAME+1,
     JSV_NAME_INT    = _JSV_NAME_INT_START, ///< integer array/object index
-    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value - NOT CURRENTLY USED
-    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value - NOT CURRENTLY USED
+    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value
+    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value
     _JSV_NAME_INT_END = JSV_NAME_INT_BOOL,
     _JSV_NUMERIC_END  = _JSV_NAME_INT_END, ///< --------- End of numeric variable types
     _JSV_STRING_START =  _JSV_NUMERIC_END+1,
