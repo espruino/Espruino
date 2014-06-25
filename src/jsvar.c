@@ -209,7 +209,9 @@ bool jsvHasChildren(const JsVar *v) {
 
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v) {
-  return jsvIsName(v) || jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v);
+  return jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v) ||
+         ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT) ||
+         (((v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0) && ((v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX));
 }
 
 
@@ -269,7 +271,9 @@ void jsvFreePtr(JsVar *var) {
            (jsvIsName(var) && (var->nextSibling==var->prevSibling))); // UNLESS we're signalling that we're jsvIsNewChild
 
     // Names that Link to other things
-    if (jsvHasSingleChild(var)) {
+    if (jsvIsNameIntInt(var) || jsvIsNameIntBool(var)) {
+      var->firstChild = 0; // it just contained random data - zero it
+    } else if (jsvHasSingleChild(var)) {
       if (var->firstChild) {
         JsVar *child = jsvLock(var->firstChild);
         jsvUnRef(child); var->firstChild = 0; // unlink the child
@@ -519,7 +523,16 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   assert(var->refs==0); // make sure it's unused
   assert(jsvIsInt(var) || jsvIsString(var));
   if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
-    var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
+    int t = JSV_NAME_INT;
+    if (jsvIsInt(valueOrZero) || jsvIsBoolean(valueOrZero)) {
+      JsVarInt v = valueOrZero->varData.integer;
+      if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
+        t = jsvIsInt(valueOrZero) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL;
+        var->firstChild = (JsVarRef)v;
+        valueOrZero = 0;
+      }
+    }
+    var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
   } else assert(0);
@@ -1106,8 +1119,6 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     /* strtol understands about hex and octal */
     if (jsvIsNull(v)) return 0;
     if (jsvIsUndefined(v)) return 0;
-    if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
-        (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) return (JsVarInt)v->lastChild;
     if (jsvIsIntegerish(v) || jsvIsArrayBufferName(v)) return v->varData.integer;
     if (jsvIsArray(v) && jsvGetArrayLength(v)==1)
       return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
@@ -1126,13 +1137,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
 
 void jsvSetInteger(JsVar *v, JsVarInt value) {
   assert(jsvIsInt(v));
-  if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
-     (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) {
-
-    v->lastChild = (JsVarRef)value;
-  } else {
-    v->varData.integer  = value;
-  }
+  v->varData.integer  = value;
 }
 
 bool jsvGetBool(const JsVar *v) {
@@ -1150,8 +1155,6 @@ bool jsvGetBool(const JsVar *v) {
 JsVarFloat jsvGetFloat(const JsVar *v) {
     if (!v) return NAN; // undefined
     if (jsvIsFloat(v)) return v->varData.floating;
-    if ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT ||
-        (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL) return (JsVarFloat)(JsVarInt)v->lastChild;
     if (jsvIsIntegerish(v)) return (JsVarFloat)v->varData.integer;
     if (jsvIsArray(v)) {
       JsVarInt l = jsvGetArrayLength(v);
@@ -1241,6 +1244,8 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
+  if (jsvIsNameIntInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
+  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(pa->firstChild!=0);
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);
@@ -1258,6 +1263,8 @@ JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
+  if (jsvIsNameIntInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
+  if (jsvIsNameIntBool(pa)) return jsvNewFromBool(pa->firstChild!=0);
   if (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
     if (pa!=a) jsvUnLock(pa);
@@ -1465,7 +1472,7 @@ void jsvAddName(JsVar *parent, JsVar *namedChild) {
 
   // update array length
   if (jsvIsArray(parent) && jsvIsInt(namedChild)) {
-    JsVarInt index = jsvGetInteger(namedChild);
+    JsVarInt index = namedChild->varData.integer;
     if (index >= jsvGetArrayLength(parent)) {
       jsvSetArrayLength(parent, index + 1, false);
     }
@@ -1533,8 +1540,20 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   /* Existing child may be null in the case of Z = 0 where
    * we create 'Z' and pass it down to '=' to have the value
    * filled in (or it may be undefined). */
-  if (name->firstChild) jsvUnRefRef(name->firstChild); // free existing
+  if (jsvIsNameIntInt(name) || jsvIsNameIntBool(name)) {
+    name->flags = (name->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
+    name->firstChild = 0;
+  } else if (name->firstChild)
+    jsvUnRefRef(name->firstChild); // free existing
   if (src) {
+      if (jsvIsInt(name) && (jsvIsInt(src) || jsvIsBoolean(src))) {
+        JsVarInt v = src->varData.integer;
+        if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
+          name->flags = (name->flags & ~JSV_VARTYPEMASK) | (jsvIsInt(src) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL);
+          name->firstChild = (JsVarRef)v;
+          return name;
+        }
+      }
       // we can link to a name if we want (so can remove the assert!)
       name->firstChild = jsvGetRef(jsvRef(src));
   } else
@@ -1799,12 +1818,10 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   while (childref) {
     JsVar *child = jsvLock(childref);
     if (jsvIsInt(child)) {
-      lastArrayIndex = jsvGetInteger(child);
+      lastArrayIndex = child->varData.integer;
       // it was the last element... sorted!
       if (lastArrayIndex == index) {
-        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
-        jsvUnLock(child);
-        return item;
+        return jsvSkipNameAndUnLock(child);
       }
       jsvUnLock(child);
       break;
@@ -1820,15 +1837,11 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   if (index > lastArrayIndex/2) {
     // it's in the final half of the array (probably) - search backwards
     while (childref) {
-      JsVarInt childIndex;
       JsVar *child = jsvLock(childref);
 
       assert(jsvIsInt(child));
-      childIndex = jsvGetInteger(child);
-      if (childIndex == index) {
-        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
-        jsvUnLock(child);
-        return item;
+      if (child->varData.integer == index) {
+        return jsvSkipNameAndUnLock(child);
       }
       childref = child->prevSibling;
       jsvUnLock(child);
@@ -1837,15 +1850,11 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
     // it's in the first half of the array (probably) - search forwards
     childref = arr->firstChild;
     while (childref) {
-      JsVarInt childIndex;
       JsVar *child = jsvLock(childref);
 
       assert(jsvIsInt(child));
-      childIndex = jsvGetInteger(child);
-      if (childIndex == index) {
-        JsVar *item = child->firstChild ? jsvLock(child->firstChild) : 0;
-        jsvUnLock(child);
-        return item;
+      if (child->varData.integer == index) {
+        return jsvSkipNameAndUnLock(child);
       }
       childref = child->nextSibling;
       jsvUnLock(child);
@@ -1862,16 +1871,13 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   while (indexref) {
     JsVar *childIndex = jsvLock(indexref);
     assert(jsvIsName(childIndex))
-    if (childIndex->firstChild) {
-      JsVar *childValue = jsvLock(childIndex->firstChild);
-      if ((matchExact && childValue==value) ||
-          (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
-        jsvUnLock(childValue);
-        return childIndex;
-      }
+    JsVar *childValue = jsvSkipName(childIndex);
+    if (childValue==value ||
+        (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
       jsvUnLock(childValue);
-    } else if (jsvIsUndefined(value))
-      return childIndex; // both are undefined, so we return the index
+      return childIndex;
+    }
+    jsvUnLock(childValue);
     indexref = childIndex->nextSibling;
     jsvUnLock(childIndex);
   }
@@ -2335,9 +2341,7 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
       JsVar *str = jsvAsString(var, false);
       if (jsvIsInt(var)) {
         jsiConsolePrintf("Name: int %v  ", str);
-      } else if (jsvIsFloat(var)) {
-        jsiConsolePrintf("Name: flt %v  ", str);
-      } else if (jsvIsString(var) || jsvIsFunctionParameter(var)) {
+      } else if (jsvIsString(var)) {
         jsiConsolePrintf("Name: '%v'  ", str);
       } else if (jsvIsArrayBufferName(var)) {
         jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
@@ -2345,32 +2349,41 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
         assert(0);
       }
       jsvUnLock(str);
-      // go to what the name points to
-      ref = var->firstChild;
-      jsvUnLock(var);
-      if (ref) {
-        level++;
-        int lowestLevel = _jsvTraceGetLowestLevel(baseRef, ref);
-        /*jsiConsolePrint("<");
-        jsiConsolePrintInt(level);
-        jsiConsolePrint(":");
-        jsiConsolePrintInt(lowestLevel);
-        jsiConsolePrint("> ");*/
+      if (jsvIsNameIntInt(var)) {
+        jsiConsolePrintf("int %d\n", var->firstChild);
+        jsvUnLock(var);
+        return;
+      } else if (jsvIsNameIntBool(var)) {
+        jsiConsolePrintf("bool %s\n", var->firstChild?"true":"false");
+        jsvUnLock(var);
+        return;
+      } else {
+        // go to what the name points to
+        ref = var->firstChild;
+        if (ref) {
+          level++;
+          int lowestLevel = _jsvTraceGetLowestLevel(baseRef, ref);
+          /*jsiConsolePrint("<");
+          jsiConsolePrintInt(level);
+          jsiConsolePrint(":");
+          jsiConsolePrintInt(lowestLevel);
+          jsiConsolePrint("> ");*/
 
-        var = jsvLock(ref);
-        jsvTraceLockInfo(var);
-        if (lowestLevel < level) {
-          // If this data is available elsewhere in the tree (but nearer the root)
-          // then don't print it. This makes the dump significantly more readable!
-          // It also stops us getting in recursive loops ...
-          jsiConsolePrint("...\n");
+          var = jsvLock(ref);
+          jsvTraceLockInfo(var);
+          if (lowestLevel < level) {
+            // If this data is available elsewhere in the tree (but nearer the root)
+            // then don't print it. This makes the dump significantly more readable!
+            // It also stops us getting in recursive loops ...
+            jsiConsolePrint("...\n");
+            jsvUnLock(var);
+            return;
+          }
+        } else {
           jsvUnLock(var);
+          jsiConsolePrint("undefined\n");
           return;
         }
-
-      } else {
-        jsiConsolePrint("undefined\n");
-        return;
       }
     }
 
@@ -2381,7 +2394,7 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
       return;
     }
     if (jsvIsObject(var)) jsiConsolePrint("Object {");
-    else if (jsvIsArray(var)) jsiConsolePrint("Array [");
+    else if (jsvIsArray(var)) jsiConsolePrintf("Array(%d) [", var->varData.integer);
     else if (jsvIsPin(var)) jsiConsolePrint("Pin ");
     else if (jsvIsInt(var)) jsiConsolePrint("Integer ");
     else if (jsvIsBoolean(var)) jsiConsolePrint("Bool ");

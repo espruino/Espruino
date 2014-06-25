@@ -129,6 +129,8 @@ typedef struct {
  * | 14-15 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
  * | 16-17 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
  * | 18-19 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ *
+ * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  */
 
 
@@ -202,7 +204,7 @@ JsVarRef jsvUnRefRef(JsVarRef ref);
 
 static inline bool jsvIsRoot(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_ROOT; }
 static inline bool jsvIsPin(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_PIN; }
-static inline bool jsvIsInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_INTEGER || (v->flags&JSV_VARTYPEMASK)==JSV_PIN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT); }
+static inline bool jsvIsInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_INTEGER || (v->flags&JSV_VARTYPEMASK)==JSV_PIN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
 static inline bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 static inline bool jsvIsBoolean(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
 static inline bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_STRING_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_STRING_END; }
@@ -220,6 +222,8 @@ static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_END; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+static inline bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT; }
+static inline bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
 static inline bool jsvIsNewChild(const JsVar *v) { return jsvIsName(v) && v->nextSibling && v->nextSibling==v->prevSibling; }
 /// See jsvIsNewChild - for fields that don't exist yet
@@ -246,6 +250,7 @@ bool jsvHasStringExt(const JsVar *v);
 bool jsvHasChildren(const JsVar *v);
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v);
+
 /// Does this variable have a 'ref' argument? Stringexts use it for extra character data
 static inline bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }
 
@@ -594,7 +599,7 @@ static inline JsvArrayIterator jsvArrayIteratorClone(JsvArrayIterator *it) {
 /// Gets the current array element (or 0)
 static inline JsVar *jsvArrayIteratorGetElement(JsvArrayIterator *it) {
   if (!it->var) return 0; // end of array
-  return it->var->firstChild ? jsvLock(it->var->firstChild) : 0; // might even be undefined
+  return jsvSkipName(it->var); // might even be undefined
 }
 
 /// Set the current array element
