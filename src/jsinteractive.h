@@ -42,6 +42,8 @@ void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount);
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
+/// Execute the given function/string/array of functions and return true on success, false on failure (error)
+bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1);
 
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
@@ -99,7 +101,7 @@ typedef enum {
  TODO_FLASH_LOAD = 2,
  TODO_RESET = 4,
 } TODOFlags;
-#define USART_CALLBACK_NAME "_callback"
+#define USART_CALLBACK_NAME "#ondata"
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
 
@@ -107,6 +109,8 @@ extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
 extern bool echo;
 extern bool allowDeepSleep;
+extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
+
 void jsiDumpState();
 void jsiSetTodo(TODOFlags newTodo);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds

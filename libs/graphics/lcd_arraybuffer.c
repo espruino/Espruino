@@ -47,6 +47,7 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
     }
     jsvArrayBufferIteratorFree(&it);
   }
+  jsvUnLock(buf);
   return col;
 }
 
@@ -63,7 +64,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
         idx = idx & 7;
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorSetIntegerValue(&it, (existing&~(mask<<idx)) | ((col&mask)<<idx));
+        jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
         if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
           jsvArrayBufferIteratorNext(&it);
         } else {
@@ -73,7 +74,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       } else { // we're writing whole bytes
         int i;
         for (i=0;i<gfx->data.bpp;i+=8) {
-          jsvArrayBufferIteratorSetIntegerValue(&it, col >> i);
+          jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)(col >> i));
           jsvArrayBufferIteratorNext(&it);
         }
       }
@@ -96,7 +97,7 @@ void  lcdFillRect_ArrayBuffer(struct JsGraphics *gfx, short x1, short y1, short 
 
 void lcdInit_ArrayBuffer(JsGraphics *gfx) {
   // create buffer
-  JsVar *buf = jswrap_arraybuffer_constructor(gfx->data.width * gfx->data.height * gfx->data.bpp / 8);
+  JsVar *buf = jswrap_arraybuffer_constructor((gfx->data.width * gfx->data.height * gfx->data.bpp + 7) >> 3);
   jsvAddNamedChild(gfx->graphicsVar, buf, "buffer");
   jsvUnLock(buf);
 }

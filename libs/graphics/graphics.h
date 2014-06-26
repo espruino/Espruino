@@ -88,8 +88,10 @@ void graphicsDrawRect(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsDrawString(JsGraphics *gfx, short x1, short y1, const char *str);
 void graphicsDrawLine(JsGraphics *gfx, short x1, short y1, short x2, short y2);
 void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices); // may overwrite vertices...
+#ifndef SAVE_ON_FLASH
 unsigned int graphicsFillVectorChar(JsGraphics *gfx, short x1, short y1, short size, char ch); ///< prints character, returns width
 unsigned int graphicsVectorCharWidth(JsGraphics *gfx, short size, char ch); ///< returns the width of a character
+#endif
 void graphicsSplash(JsGraphics *gfx); ///< splash screen
 
 void graphicsIdle(); ///< called when idling

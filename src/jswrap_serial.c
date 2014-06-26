@@ -22,6 +22,10 @@
         "description" : ["This class allows use of the built-in USARTs",
                          "Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 and Serial6 objects. While different processors provide different numbers of USARTs, you can always rely on at least Serial1 and Serial2" ]
 }*/
+/*JSON{ "type":"event", "class" : "Serial", "name" : "data",
+        "description" : ["The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`" ],
+        "params" : [ [ "data", "JsVar", "A string containing one or more characters of received data"] ]
+}*/
 
 /*JSON{ "type":"object", "name":"USB", "instanceof" : "Serial",
         "description" : ["The USB Serial port" ],
@@ -86,7 +90,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   if (!jsvIsUndefined(baud)) {
     int b = (int)jsvGetInteger(baud);
     if (b<=100 || b > 10000000)
-      jsError("Invalid baud rate specified");
+      jsExceptionHere(JSET_ERROR, "Invalid baud rate specified");
     else
       inf.baudRate = b;
   }
@@ -114,7 +118,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     }
     jsvUnLock(v);
     if (inf.parity>2) {
-      jsError("Invalid parity %d", inf.parity);
+      jsExceptionHere(JSET_ERROR, "Invalid parity %d", inf.parity);
       return;
     }
 
@@ -184,23 +188,35 @@ void jswrap_serial_write(JsVar *parent, JsVar *args) {
 }
 
 /*JSON{ "type":"method", "class": "Serial", "name" : "onData",
-         "description" : ["When a character is received on this serial port, the function supplied to onData gets called.",
-                          "Only one function can ever be supplied, so calling onData(undefined) will stop any function being called"],
+         "description" : ["Serial.onData(func) has now been replaced with the event Serial.on(`data`, func)"],
          "generate" : "jswrap_serial_onData",
-         "params" : [ [ "function", "JsVar", "A function to call when data arrives. It takes one argument, which is an object with a 'data' field"] ]
+         "params" : [ [ "function", "JsVar", ""] ]
 }*/
 void jswrap_serial_onData(JsVar *parent, JsVar *func) {
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (!DEVICE_IS_USART(device)) return;
-
-  if (!jsvIsFunction(func) && !jsvIsString(func)) {
-    jsiConsolePrint("Function or String not supplied - removing onData handler.\n");
-    JsVar *handler = jsvFindChildFromString(parent, USART_CALLBACK_NAME, false);
-    if (handler) {
-      jsvRemoveChild(parent, handler);
-      jsvUnLock(handler);
-    }
-  } else {
-    jsvUnLock(jsvSetNamedChild(parent, func, USART_CALLBACK_NAME));
-  }
+  NOT_USED(parent);
+  NOT_USED(func);
+  jsWarn("Serial.onData(func) has now been replaced with Serial.on(`data`, func).");
 }
+
+/*JSON{ "type":"method", "class": "Serial", "name" : "available",
+         "description" : ["Return how many bytes are available to read. If there is already a listener for data, this will always return 0."],
+         "generate" : "jswrap_stream_available",
+         "return" : ["int", "How many bytes are available"]
+}*/
+
+/*JSON{ "type":"method", "class": "Serial", "name" : "read",
+         "description" : ["Return a string containing characters that have been received"],
+         "generate" : "jswrap_stream_read",
+         "params" : [ [ "chars", "int", "The number of characters to read, or undefined/0 for all available"] ],
+         "return" : ["JsVar", "A string containing the required bytes."]
+}*/
+
+/*JSON{  "type" : "method", "class" : "Serial", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
+         "generate" : "jswrap_pipe",
+         "description" : [ "Pipe this USART to a stream (an object with a 'write' method)"],
+         "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
+                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
+                                             "chunkSize : The amount of data to pipe from source to destination at a time",
+                                             "complete : a function to call when the pipe activity is complete",
+                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
+}*/

@@ -132,15 +132,15 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
 
 JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
   if (!jsvIsIterable(parent)) {
-    jsError("Array.%s can only be called on something iterable", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.%s's first argument should be a function", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("Array.%s's second argument should be undefined, or an object", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's second argument should be undefined, or an object", name);
     return 0;
   }
   JsVar *result = 0;
@@ -264,11 +264,11 @@ JsVar *jswrap_array_every(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
 JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
   const char *name = "reduce";
   if (!jsvIsIterable(parent)) {
-    jsError("Array.%s can only be called on something iterable", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s can only be called on something iterable", name);
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("Array.%s's first argument should be a function", name);
+    jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
   JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
@@ -286,7 +286,7 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
       jsvIteratorNext(&it);
     }
     if (!previousValue) {
-      jsError("Array.%s without initial value required non-empty array", name);
+      jsExceptionHere(JSET_ERROR, "Array.%s without initial value required non-empty array", name);
     }
   }
   while (jsvIteratorHasElement(&it)) {
@@ -572,7 +572,7 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
 }*/
 JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
   if (!jsvIsUndefined(compareFn) && !jsvIsFunction(compareFn)) {
-    jsError("Expecting compare function, got %t", compareFn);
+    jsExceptionHere(JSET_ERROR, "Expecting compare function, got %t", compareFn);
     return 0;
   }
   JsvIterator it;
@@ -667,6 +667,99 @@ JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *end
       jsvIteratorSetValue(&it, value);
     }
     jsvIteratorNext(&it);
+  }
+  jsvIteratorFree(&it);
+
+  return jsvLockAgain(parent);
+}
+
+/** recursive reverse, because we're dealing with a linked list that
+ * MAY only be linked in one direction (eg. string/arraybuffer).
+ */
+void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
+  assert(items > 1);
+
+  JsvIterator ita = jsvIteratorClone(it);
+  JsvIterator itb = jsvIteratorClone(it);
+
+  // move second pointer halfway through (round up)
+  int i;
+  for (i=(items+1)/2;i>0;i--)
+    jsvIteratorNext(&itb);
+  // recurse if >3 items. If 3 we can cope with it here
+  if (items > 3) {
+    _jswrap_array_reverse_block(parent, &ita, items/2);
+    _jswrap_array_reverse_block(parent, &itb, items/2);
+  }
+  // start flipping values (round down for how many)
+  for (i=items/2;i>0;i--) {
+    JsVar *va = jsvIteratorGetValue(&ita);
+    JsVar *vb = jsvIteratorGetValue(&itb);
+    jsvIteratorSetValue(&ita, vb);
+    jsvIteratorSetValue(&itb, va);
+    jsvUnLock(va);
+    jsvUnLock(vb);
+    // if it's an array, we need to swap the key values too
+    if (jsvIsArray(parent)) {
+      JsVar *ka = jsvIteratorGetKey(&ita);
+      JsVar *kb = jsvIteratorGetKey(&itb);
+      JsVarInt kva = jsvGetInteger(ka);
+      JsVarInt kvb = jsvGetInteger(kb);
+      jsvSetInteger(ka, kvb);
+      jsvSetInteger(kb, kva);
+      jsvUnLock(ka);
+      jsvUnLock(kb);
+    }
+
+    jsvIteratorNext(&ita);
+    jsvIteratorNext(&itb);
+  }
+  // now recurse!
+  jsvIteratorFree(&ita);
+  jsvIteratorFree(&itb);
+}
+
+
+/*JSON{ "type":"method", "class": "Array", "name" : "reverse", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Reverse all elements in this array (in place)",
+         "generate" : "jswrap_array_reverse",
+         "return" : ["JsVar", "The array, but reversed."]
+}*/
+JsVar *jswrap_array_reverse(JsVar *parent) {
+  if (!jsvIsIterable(parent) || jsvIsObject(parent)) return 0;
+
+
+  int len = 0;
+  if (jsvIsArray(parent)) {
+    /* arrays are sparse, so we must handle them differently.
+     * We work out how many NUMERIC keys they have, and we
+     * reverse only those. Then, we reverse the key values too */
+    JsvIterator it;
+    jsvIteratorNew(&it, parent);
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *k = jsvIteratorGetKey(&it);
+      if (jsvIsInt(k)) len++;
+      jsvUnLock(k);
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  } else
+    len = jsvGetLength(parent);
+
+  JsvIterator it;
+  jsvIteratorNew(&it, parent);
+  if (len>1) {
+    _jswrap_array_reverse_block(parent, &it, len);
+  }
+  // if it's an array, we must change the values on the keys
+  if (jsvIsArray(parent)) {
+    JsVarInt last = jsvGetArrayLength(parent)-1;
+    while (jsvIteratorHasElement(&it)) {
+      JsVar *k = jsvIteratorGetKey(&it);
+      jsvSetInteger(k, last-jsvGetInteger(k));
+      jsvUnLock(k);
+      jsvIteratorNext(&it);
+    }
   }
   jsvIteratorFree(&it);
 

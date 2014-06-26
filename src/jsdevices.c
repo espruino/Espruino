@@ -205,7 +205,7 @@ void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
     return; // queue full - dump this event!
   }
   ioBuffer[ioHead].flags = channel;
-  ioBuffer[ioHead].data.time = time;
+  ioBuffer[ioHead].data.time = (unsigned int)time;
   ioHead = nextHead;
 }
 
@@ -219,6 +219,12 @@ bool jshPopIOEvent(IOEvent *result) {
 
 bool jshHasEvents() {
   return ioHead!=ioTail;
+}
+
+/// Check if the top event is for the given device
+bool jshIsTopEvent(IOEventFlags eventType) {
+  if (ioHead==ioTail) return false;
+  return IOEVENTFLAGS_GETTYPE(ioBuffer[ioTail].flags) == eventType;
 }
 
 int jshGetEventsUsed() {

@@ -271,7 +271,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     }
     jsvArrayBufferIteratorFree(&dstit);
   } else {
-    jsError("Variable type %t not suited to transmit operation", srcdata);
+    jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
     dst = 0;
   }
 
@@ -372,7 +372,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_SPI(device)) {
-    jsError("SPI.send4bit only works on hardware SPI");
+    jsExceptionHere(JSET_ERROR, "SPI.send4bit only works on hardware SPI");
     return;
   }
 
@@ -409,7 +409,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jsvIteratorFree(&it);
     jshInterruptOn();
   } else {
-    jsError("Variable type %t not suited to transmit operation", srcdata);
+    jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
   }
 
   // de-assert NSS
@@ -417,7 +417,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   jshSPISet16(device, false); // back to 8 bit
 }
 
-/*JSON{ "type":"method", "class": "SPI", "name" : "send8bit",
+/*JSON{ "type":"method", "class": "SPI", "name" : "send8bit", "ifndef" : "SAVE_ON_FLASH",
          "description" : ["Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols",
 "Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds."],
          "generate" : "jswrap_spi_send8bit",
@@ -430,7 +430,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_SPI(device)) {
-    jsError("SPI.send8bit only works on hardware SPI");
+    jsExceptionHere(JSET_ERROR, "SPI.send8bit only works on hardware SPI");
     return;
   }
   jshSPISet16(device, true); // 16 bit output
@@ -466,7 +466,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jsvIteratorFree(&it);
     jshInterruptOn();
   } else {
-    jsError("Variable type %t not suited to transmit operation", srcdata);
+    jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
   }
 
   // de-assert NSS
@@ -540,7 +540,7 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *args) {
 
   size_t l = (size_t)jsvIterateCallbackCount(args);
   if (l+256 > jsuGetFreeStack()) {
-    jsError("Not enough free stack to send this amount of data");
+    jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
     return;
   }
 
@@ -566,7 +566,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
   if (nBytes<=0)
     return 0;
   if ((unsigned int)nBytes+256 > jsuGetFreeStack()) {
-    jsError("Not enough free stack to receive this amount of data");
+    jsExceptionHere(JSET_ERROR, "Not enough free stack to receive this amount of data");
     return 0;
   }
   unsigned char *buf = (unsigned char *)alloca((size_t)nBytes);

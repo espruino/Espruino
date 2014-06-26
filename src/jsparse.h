@@ -45,16 +45,25 @@ bool jspIsInterrupted();
 void jspSetInterrupted(bool interrupt);
 /// Has there been an error during parsing
 bool jspHasError();
+/// Set the error flag - set lineReported if we've already output the line number
+void jspSetError(bool lineReported);
+/// We had an exception (argument is the exception's value)
+void jspSetException(JsVar *value);
+/** Return the reported exception if there was one (and clear it) */
+JsVar *jspGetException();
+/** Return a stack trace string if there was one (and clear it) */
+JsVar *jspGetStackTrace();
 
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope);
-JsVar *jspEvaluate(const char *str);
+/** Execute code form a variable and return the result. If parseTwice is set,
+ * we run over the variable twice - once to pick out function declarations,
+ * and once to actually execute. */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice);
+/** Execute code form a string and return the result. */
+JsVar *jspEvaluate(const char *str, bool parseTwice);
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
 JsVar *jspEvaluateModule(JsVar *moduleContents);
-
-/// Execute the Object.toString function on an object (if we can find it)
-JsVar *jspObjectToString(JsVar *obj);
 
 /** Get the owner of the current prototype. We assume that it's
  * the first item in the array, because that's what we will
@@ -71,22 +80,32 @@ typedef enum  {
   EXEC_CONTINUE = 4,
 
   EXEC_INTERRUPTED = 8, // true if execution has been interrupted
-  EXEC_ERROR = 16,
-  EXEC_ERROR_LINE_REPORTED = 32, // if an error has been reported, set this so we don't do it too much
+  EXEC_EXCEPTION = 16, // we had an exception, so don't execute until we hit a try/catch block
+  EXEC_ERROR = 32,
+  EXEC_ERROR_LINE_REPORTED = 64, // if an error has been reported, set this so we don't do it too much (EXEC_ERROR will STILL be set)
 
-  EXEC_FOR_INIT = 64, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
-  EXEC_IN_LOOP = 128, // when in a loop, set this - we can then block break/continue outside it
-  EXEC_IN_SWITCH = 256, // when in a switch, set this - we can then block break outside it/loops
+  EXEC_FOR_INIT = 128, // when in for initialiser parsing - hack to avoid getting confused about multiple use for IN
+  EXEC_IN_LOOP = 256, // when in a loop, set this - we can then block break/continue outside it
+  EXEC_IN_SWITCH = 512, // when in a switch, set this - we can then block break outside it/loops
 
   /** If Ctrl-C is pressed, the EXEC_CTRL_C flag is set on an interrupt. The next time a SysTick
    * happens, it sets EXEC_CTRL_C_WAIT, and if we get ANOTHER SysTick and it hasn't been handled,
    * we go to a full-on EXEC_INTERRUPTED. That means we only interrupt code if we're actually stuck
    * in something, and otherwise the console just clears the line. */
-  EXEC_CTRL_C = 512, // If Ctrl-C was pressed, set this
-  EXEC_CTRL_C_WAIT = 1024, // If Ctrl-C was set and SysTick happens then this is set instead
+  EXEC_CTRL_C = 1024, // If Ctrl-C was pressed, set this
+  EXEC_CTRL_C_WAIT = 2048, // If Ctrl-C was set and SysTick happens then this is set instead
 
-  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED,
-  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR,
+  /** Parse function declarations, even if we're not executing. This
+   * is used when we want to do two passes, to effectively 'hoist' function
+   * declarations to the top so they can be called before they're defined.
+   * NOTE: This is only needed to call a function before it is defined IF
+   * code is being executed as it is being parsed. If it's in a function
+   * then you're fine anyway. */
+  EXEC_PARSE_FUNCTION_DECL = 4096,
+
+  EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
+  EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
+  EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, // in these cases we should exit as fast as possible - skipping out of parsing
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
   EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
 } JsExecFlags;
@@ -145,6 +164,7 @@ JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bo
  * passing a char* rather than a JsVar it's because we're looking up via
  * a symbol rather than a variable. To handle these use jspGetVarNamedField  */
 JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName);
+JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName);
 
 /** Call the function named on the given object. For example you might call:
  *

@@ -311,21 +311,21 @@ codeOut('');
 
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
+codeOut('  JsVar *v;')
 codeOut('  if (parent) {')
 
-codeOut('    // ------------------------------------------ METHODS ON OBJECT')
-if "parent" in builtins:
-  codeOutBuiltins("    JsVar *v = ", builtins["parent"])
-  codeOut('    if (v) return v;');
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "
 codeOut('    if (jsvIsNativeFunction(parent)) {')
+first = True
 for className in builtins:
-  if className.startswith(nativeCheck):
-    codeOut('      if ('+className[len(nativeCheck):]+') {')
+  if className.startswith(nativeCheck):    
+    codeOut('      '+("" if first else "} else ")+'if ('+className[len(nativeCheck):]+') {')
+    first = False
     codeOutBuiltins("        v = ", builtins[className])
-    codeOut('      if (v) return v;');
-    codeOut("    }")
+    codeOut('        if (v) return v;');
+if not first:
+  codeOut("      }")
 codeOut('    }')
 for className in builtins:
   if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
@@ -333,10 +333,6 @@ for className in builtins:
     codeOutBuiltins("      v = ", builtins[className])
     codeOut('      if (v) return v;');
     codeOut("    }")
-
-
-
-
 codeOut('    // ------------------------------------------ INSTANCE METHODS WE MUST CHECK CONSTRUCTOR FOR')
 codeOut('    JsVar *proto = jsvIsObject(parent)?jsvSkipNameAndUnLock(jsvFindChildFromString(parent, JSPARSE_INHERITS_VAR, false)):0;')
 codeOut('    JsVar *constructor = jsvIsObject(proto)?jsvSkipNameAndUnLock(jsvFindChildFromString(proto, JSPARSE_CONSTRUCTOR_VAR, false)):0;')
@@ -348,16 +344,21 @@ first = True
 for className in builtins:
   if "constructorPtr" in className:
     if first:
-      codeOut('    if ('+className+') {')
+      codeOut('      if ('+className+') {')
       first = False
     else:
-      codeOut('    } else if ('+className+') {')
-    codeOutBuiltins("          return ", builtins[className])
+      codeOut('      } else if ('+className+') {')
+    codeOutBuiltins("        v = ", builtins[className])
+    codeOut('        if (v) return v;')
 if not first:
-  codeOut("    }")
+  codeOut("      }")
 codeOut('    } else {')
 codeOut('      jsvUnLock(constructor);')
 codeOut('    }')
+codeOut('    // ------------------------------------------ METHODS ON OBJECT')
+if "parent" in builtins:
+  codeOutBuiltins("    v = ", builtins["parent"])
+  codeOut('    if (v) return v;');
 codeOut('  } else { /* if (!parent) */')
 codeOut('    // ------------------------------------------ FUNCTIONS')
 codeOut('    // Handle pin names - eg LED1 or D5 (this is hardcoded in build_jsfunctions.py)')

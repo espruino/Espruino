@@ -96,11 +96,11 @@
 }*/
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   if (byteLength <= 0 || byteLength>65535) {
-    jsError("Invalid length for ArrayBuffer\n");
+    jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer\n");
     return 0;
   }
   if (byteLength > JSV_ARRAYBUFFER_MAX_LENGTH) {
-    jsError("ArrayBuffer too long\n");
+    jsExceptionHere(JSET_ERROR, "ArrayBuffer too long\n");
     return 0;
   }
   JsVar *arrData = jsvNewStringOfLength((unsigned int)byteLength);
@@ -203,7 +203,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     copyData = true; // so later on we'll populate this
   }
   if (!arrayBuffer) {
-    jsError("Unsupported first argument of type %t\n", arr);
+    jsExceptionHere(JSET_ERROR, "Unsupported first argument of type %t\n", arr);
     return 0;
   }
   if (length==0) length = (JsVarInt)(jsvGetArrayBufferLength(arrayBuffer) / JSV_ARRAYBUFFER_GET_SIZE(type));
@@ -260,7 +260,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
 }*/
 void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-    jsError("Expecting first argument to be an array, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
     return;
   }
   JsvIterator itsrc;
@@ -268,7 +268,7 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   JsvArrayBufferIterator itdst;
   jsvArrayBufferIteratorNew(&itdst, parent, (size_t)offset);
 
-  bool useInts = JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
+  bool useInts = !JSV_ARRAYBUFFER_IS_FLOAT(itdst.type) || jsvIsString(arr);
 
   while (jsvIteratorHasElement(&itsrc) && jsvArrayBufferIteratorHasElement(&itdst)) {
     if (useInts) {
@@ -297,15 +297,15 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
 }*/
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   if (!jsvIsArrayBuffer(parent)) {
-    jsError("ArrayBufferView.map can only be called on an ArrayBufferView");
+    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map can only be called on an ArrayBufferView");
     return 0;
   }
   if (!jsvIsFunction(funcVar)) {
-    jsError("ArrayBufferView.map's first argument should be a function");
+    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map's first argument should be a function");
     return 0;
   }
   if (!jsvIsUndefined(thisVar) && !jsvIsObject(thisVar)) {
-    jsError("ArrayBufferView.map's second argument should be undefined, or an object");
+    jsExceptionHere(JSET_ERROR, "ArrayBufferView.map's second argument should be undefined, or an object");
     return 0;
   }
 
@@ -391,5 +391,10 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
          "params" : [ [ "value", "JsVar", "The value to fill the array with" ],
                       [ "start", "int", "Optional. The index to start from (or 0). If start is negative, it is treated as length+start where length is the length of the array" ],
                       [ "end", "JsVar", "Optional. The index to end at (or the array length). If end is negative, it is treated as length+end." ]  ],
+         "return" : ["JsVar", "This array"]
+}*/
+/*JSON{ "type":"method", "class": "ArrayBufferView", "name" : "reverse", "ifndef" : "SAVE_ON_FLASH",
+         "description" : "Reverse the contents of this arraybuffer in-place",
+         "generate" : "jswrap_array_reverse",
          "return" : ["JsVar", "This array"]
 }*/

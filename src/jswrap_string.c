@@ -118,7 +118,10 @@ int jswrap_string_indexOf(JsVar *parent, JsVar *substring, JsVar *fromIndex, boo
   if (!substring) return 0; // out of memory
   int parentLength = (int)jsvGetStringLength(parent);
   int subStringLength = (int)jsvGetStringLength(substring);
-  if (subStringLength > parentLength) return -1;
+  if (subStringLength > parentLength) {
+    jsvUnLock(substring);
+    return -1;
+  }
   int lastPossibleSearch = parentLength - subStringLength;
   int idx, dir, end;
   if (!lastIndexOf) { // normal indexOf
@@ -194,7 +197,7 @@ JsVar *jswrap_string_substring(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
     pStart = pEnd;
     pEnd = l;
   }
-  res = jsvNewWithFlags(JSV_STRING);
+  res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
   jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
   return res;
@@ -212,7 +215,7 @@ JsVar *jswrap_string_substr(JsVar *parent, JsVarInt pStart, JsVar *vLen) {
   if (pLen<0) pLen = 0;
   if (pStart<0) pStart += (JsVarInt)jsvGetStringLength(parent);
   if (pStart<0) pStart = 0;
-  res = jsvNewWithFlags(JSV_STRING);
+  res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
   jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)pLen);
   return res;
@@ -231,7 +234,7 @@ JsVar *jswrap_string_slice(JsVar *parent, JsVarInt pStart, JsVar *vEnd) {
   if (pEnd<0) pEnd += (JsVarInt)jsvGetStringLength(parent);
   if (pStart<0) pStart = 0;
   if (pEnd<0) pEnd = 0;
-  res = jsvNewWithFlags(JSV_STRING);
+  res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
   if (pEnd>pStart)
     jsvAppendStringVar(res, parent, (size_t)pStart, (size_t)(pEnd-pStart));
@@ -286,7 +289,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
          "return": ["JsVar", "The uppercase version of this string"]
 }*/
 JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
-  JsVar *res = jsvNewWithFlags(JSV_STRING);
+  JsVar *res = jsvNewFromEmptyString();
   if (!res) return 0; // out of memory
 
   JsvStringIterator itsrc, itdst;

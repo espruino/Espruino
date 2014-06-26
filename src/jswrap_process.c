@@ -83,10 +83,10 @@ JsVar *jswrap_process_memory() {
     }
     unsigned int usage = jsvGetMemoryUsage() - history;
     unsigned int total = jsvGetMemoryTotal();
-    jsvUnLock(jsvObjectSetChild(obj, "free", jsvNewFromInteger(total-usage)));
-    jsvUnLock(jsvObjectSetChild(obj, "usage", jsvNewFromInteger(usage)));
-    jsvUnLock(jsvObjectSetChild(obj, "total", jsvNewFromInteger(total)));
-    jsvUnLock(jsvObjectSetChild(obj, "history", jsvNewFromInteger(history)));
+    jsvUnLock(jsvObjectSetChild(obj, "free", jsvNewFromInteger((JsVarInt)(total-usage))));
+    jsvUnLock(jsvObjectSetChild(obj, "usage", jsvNewFromInteger((JsVarInt)usage)));
+    jsvUnLock(jsvObjectSetChild(obj, "total", jsvNewFromInteger((JsVarInt)total)));
+    jsvUnLock(jsvObjectSetChild(obj, "history", jsvNewFromInteger((JsVarInt)history)));
 
 #ifdef ARM
     jsvUnLock(jsvObjectSetChild(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&_end)));

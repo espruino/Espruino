@@ -139,7 +139,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
-      value = (value<<1) | jshPinInput(jshGetPinFromVar(pinPtr));
+      value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
       pinName = pinNamePtr->nextSibling;
       jsvUnLock(pinNamePtr);
@@ -160,7 +160,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
 }*/
 void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   if (!jshIsPinValid(pin)) {
-    jsError("Invalid pin");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
   JshPinState m = JSHPINSTATE_UNDEFINED;
@@ -179,7 +179,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
   } else {
     jshSetPinStateIsManual(pin, false);
     if (!jsvIsUndefined(mode)) {
-      jsError("Unknown pin mode");
+      jsExceptionHere(JSET_ERROR, "Unknown pin mode");
     }
   }
 }
@@ -192,7 +192,7 @@ void jswrap_io_pinMode(Pin pin, JsVar *mode) {
 }*/
 JsVar *jswrap_io_getPinMode(Pin pin) {
   if (!jshIsPinValid(pin)) {
-    jsError("Invalid pin");
+    jsExceptionHere(JSET_ERROR, "Invalid pin");
     return 0;
   }
   JshPinState m = jshPinGetState(pin)&JSHPINSTATE_MASK;
@@ -253,14 +253,14 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
 
   JsVarInt itemIndex = -1;
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
-    jsError("Function or String not supplied!");
+    jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
     // Create a new watch
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
       jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
       if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
-      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger(jshGetTimeFromMilliseconds(debounce))));
+      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce))));
       if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
@@ -318,7 +318,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       if (!jsiIsWatchingPin(pin))
         jshPinWatch(pin, false); // 'unwatch' pin
     } else {
-      jsError("Unknown Watch");
+      jsExceptionHere(JSET_ERROR, "Unknown Watch");
     }
   }
 }

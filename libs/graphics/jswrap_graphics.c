@@ -144,12 +144,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   } else
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
-    jsError("Expecting Callback Function or an Object but got %t", callbackSetPixel);
+    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
     jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
-    jsError("Expecting Callback Function or an Object but got %t", callbackFillRect);
+    jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
     jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
     return 0;
   }
@@ -339,14 +339,14 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 }*/
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  return (isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1);
+  return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1));
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
          "description" : "Set Graphics to draw with a Bitmapped Font",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
 }*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector",
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector", "ifndef" : "SAVE_ON_FLASH",
          "description" : "Set Graphics to draw with a Vector Font of the given size",
          "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
          "params" : [ [ "size", "int32", "The size as an integer" ] ]
@@ -379,19 +379,19 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
   if (!jsvIsString(bitmap)) {
-    jsError("Font bitmap must be a String");
+    jsExceptionHere(JSET_ERROR, "Font bitmap must be a String");
     return;
   }
   if (firstChar<0 || firstChar>255) {
-    jsError("First character out of range");
+    jsExceptionHere(JSET_ERROR, "First character out of range");
     return;
   }
   if (!jsvIsString(width) && !jsvIsInt(width)) {
-    jsError("Font width must be a String or an integer");
+    jsExceptionHere(JSET_ERROR, "Font width must be a String or an integer");
     return;
   }
   if (height<=0 || height>255) {
-   jsError("Invalid height");
+   jsExceptionHere(JSET_ERROR, "Invalid height");
    return;
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
@@ -428,8 +428,10 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       int w = (int)graphicsFillVectorChar(&gfx, (short)x, (short)y, gfx.data.fontSize, ch);
       x+=w;
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       graphicsDrawChar4x6(&gfx, (short)x, (short)y, ch);
       x+=4;
@@ -506,7 +508,9 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   while (jsvStringIteratorHasChar(&it)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (gfx.data.fontSize>0) {
+#ifndef SAVE_ON_FLASH
       width += (int)graphicsVectorCharWidth(&gfx, gfx.data.fontSize, ch);
+#endif
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_4X6) {
       width += 4;
     } else if (gfx.data.fontSize == JSGRAPHICS_FONTSIZE_CUSTOM) {
@@ -635,7 +639,7 @@ void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
 void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   if (!jsvIsObject(image)) {
-    jsError("Expecting first argument to be an object");
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an object");
     return;
   }
   int imageWidth = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(image, "width", 0));
@@ -648,7 +652,7 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   jsvUnLock(transpVar);
   JsVar *imageBuffer = jsvObjectGetChild(image, "buffer", 0);
   if (!(jsvIsArrayBuffer(imageBuffer) && imageWidth>0 && imageHeight>0 && imageBpp>0 && imageBpp<=32)) {
-    jsError("Expecting first argument to a valid Image");
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to a valid Image");
     jsvUnLock(imageBuffer);
     return;
   }

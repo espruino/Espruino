@@ -185,10 +185,10 @@ void jswrap_interface_edit(JsVar *funcName) {
         jsvUnLock(newLine);
       }
     } else {
-      jsError("Edit should be called with the name of a function");
+      jsExceptionHere(JSET_ERROR, "Edit should be called with the name of a function");
     }
   } else {
-    jsError("Edit should be called with edit(funcName) or edit('funcName')");
+    jsExceptionHere(JSET_ERROR, "Edit should be called with edit(funcName) or edit('funcName')");
   }
   jsvUnLock(func);
   jsvUnLock(funcName);
@@ -258,13 +258,13 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
   JsVar *itemIndex = 0;
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
-    jsError("Function or String not supplied!");
+    jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
     // Create a new timer
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
-    JsVarInt intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(jshGetSystemTime() + intervalInt)));
+    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger((JsVarInt)(jshGetSystemTime() - jsiLastIdleTime) + intervalInt)));
     jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromInteger(intervalInt)));
     if (!isTimeout) jsvUnLock(jsvObjectSetChild(timerPtr, "recur", jsvNewFromBool(true)));
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
@@ -310,7 +310,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
       jsvUnLock(child);
       jsvUnLock(timerArrayPtr);
     } else {
-      jsError(isTimeout ? "Unknown Timeout" : "Unknown Interval");
+      jsExceptionHere(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
   }
   jsvUnLock(timerArrayPtr);
@@ -326,7 +326,7 @@ void jswrap_interface_clearTimeout(JsVar *idVar) {
          "description" : ["Change the Interval on a callback created with setInterval, for example:",
                           "```var id = setInterval(function () { print('foo'); }, 1000); // every second```",
                           "```changeInterval(id, 1500); // now runs every 1.5 seconds```",
-                          "This takes effect the text time the callback is called (so it is not immediate)."],
+                          "This takes effect the next time the callback is called (so it is not immediate)."],
          "generate" : "jswrap_interface_changeInterval",
          "params" : [ [ "id", "JsVar", "The id returned by a previous call to setInterval"],
                       [ "time","float","The new time period in ms" ] ]
@@ -339,16 +339,17 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
-    v = jsvNewFromInteger(jshGetTimeFromMilliseconds(interval));
+    JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
+    v = jsvNewFromInteger(intervalInt);
     jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
     jsvUnLock(v);
-    v = jsvNewFromInteger(jshGetSystemTime() + jshGetTimeFromMilliseconds(interval));
+    v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
     jsvUnLock(jsvSetNamedChild(timer, v, "time"));
     jsvUnLock(v);
     jsvUnLock(timer);
     // timerName already unlocked
   } else {
-    jsError("Unknown Interval");
+    jsExceptionHere(JSET_ERROR, "Unknown Interval");
   }
   jsvUnLock(timerArrayPtr);
 }

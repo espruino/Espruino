@@ -27,7 +27,7 @@
          "class": "E", "name" : "getTemperature",
          "generate_full" : "jshReadTemperature()",
          "description" : ["Use the STM32's internal thermistor to work out the temperature.",
-                          "**Note:** This is very inaccurate (+/- 20 degrees C) and varies from chip to chip. It can be used to work out when temperature rises or falls, but don't expect absolute temperature readings to be useful."],
+                          "**Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though."],
          "return" : ["float", "The temperature in degrees C"]
 }*/
 
@@ -94,11 +94,11 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     if (ok) ok = jslMatch(&lex, ')');
     jslKill(&lex);
     if (!ok) {
-      jsError("Error Parsing signature at argument number %d", argNumber);
+      jsExceptionHere(JSET_ERROR, "Error Parsing signature at argument number %d", argNumber);
       return 0;
     }
   } else {
-    jsError("Invalid Signature");
+    jsExceptionHere(JSET_ERROR, "Invalid Signature");
     return 0;
   }
 
@@ -131,7 +131,7 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }*/
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
-    jsError("Expecting first argument to be an array, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
     return NAN;
   }
   JsVarFloat sum = 0;
@@ -155,7 +155,7 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
 }*/
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   if (!(jsvIsIterable(arr))) {
-    jsError("Expecting first argument to be iterable, not %t", arr);
+    jsExceptionHere(JSET_ERROR, "Expecting first argument to be iterable, not %t", arr);
     return NAN;
   }
   JsVarFloat variance = 0;
@@ -184,7 +184,7 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
 JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   if (!(jsvIsIterable(arr1)) ||
       !(jsvIsIterable(arr2))) {
-    jsError("Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
+    jsExceptionHere(JSET_ERROR, "Expecting first 2 arguments to be iterable, not %t and %t", arr1, arr2);
     return NAN;
   }
   JsVarFloat conv = 0;
@@ -305,7 +305,7 @@ short FFT(short int dir,long m,double *x,double *y)
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (!(jsvIsIterable(arrReal)) ||
       !(jsvIsUndefined(arrImag) || jsvIsIterable(arrImag))) {
-    jsError("Expecting first 2 arguments to be iterable or undefined, not %t and %t", arrReal, arrImag);
+    jsExceptionHere(JSET_ERROR, "Expecting first 2 arguments to be iterable or undefined, not %t and %t", arrReal, arrImag);
     return;
   }
 
@@ -319,7 +319,7 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
 
   if (jsuGetFreeStack() < 100+sizeof(double)*pow2*2) {
-    jsError("Insufficient stack for computing FFT");
+    jsExceptionHere(JSET_ERROR, "Insufficient stack for computing FFT");
     return;
   }
 

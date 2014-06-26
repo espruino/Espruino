@@ -200,6 +200,8 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F3DISCOVERY
 EMBEDDED=1
+USE_NET=1
+USE_GRAPHICS=1
 BOARD=STM32F3DISCOVERY
 STLIB=STM32F3XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
@@ -322,23 +324,28 @@ endif
 
 WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
-src/jswrap_pin.c \
-src/jswrap_espruino.c \
-src/jswrap_functions.c \
-src/jswrap_modules.c \
-src/jswrap_process.c \
-src/jswrap_interactive.c \
-src/jswrap_json.c \
-src/jswrap_object.c \
-src/jswrap_string.c \
-src/jswrap_number.c \
 src/jswrap_array.c \
 src/jswrap_arraybuffer.c \
+src/jswrap_date.c \
+src/jswrap_error.c \
+src/jswrap_espruino.c \
+src/jswrap_functions.c \
+src/jswrap_interactive.c \
+src/jswrap_io.c \
+src/jswrap_json.c \
+src/jswrap_modules.c \
+src/jswrap_number.c \
+src/jswrap_object.c \
+src/jswrap_onewire.c \
+src/jswrap_pin.c \
+src/jswrap_pipe.c \
+src/jswrap_process.c \
 src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
-src/jswrap_onewire.c \
-src/jswrap_waveform.c \
-src/jswrap_io.c
+src/jswrap_stream.c \
+src/jswrap_string.c \
+src/jswrap_waveform.c 
+
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
 
@@ -394,8 +401,7 @@ DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
 WRAPPERSOURCES += \
 libs/filesystem/jswrap_fs.c \
-libs/filesystem/jswrap_file.c \
-libs/filesystem/jswrap_pipe.c
+libs/filesystem/jswrap_file.c
 ifndef LINUX
 INCLUDE += -I$(ROOT)/libs/filesystem/fat_sd
 SOURCES += \

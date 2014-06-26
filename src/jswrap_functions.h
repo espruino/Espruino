@@ -14,6 +14,7 @@
 #include "jsvar.h"
 
 JsVar *jswrap_arguments();
+JsVar *jswrap_function_constructor(JsVar *code);
 JsVar *jswrap_eval(JsVar *v);
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar);
 JsVarFloat jswrap_parseFloat(JsVar *v);

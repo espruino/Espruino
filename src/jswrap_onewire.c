@@ -63,9 +63,9 @@ static JsVarInt NO_INLINE OneWireRead(Pin pin, int bits) {
 }
 
 /** Write 'bits' bits, and return what was read (to read, you must send all 1s) */
-static void NO_INLINE OneWireWrite(Pin pin, int bits, JsVarInt data) {
+static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT_OPENDRAIN);
-  JsVarInt mask = 1;
+  unsigned long long mask = 1;
   while (bits-- > 0) {
     if (data & mask) { // short pulse
       jshInterruptOff();
@@ -115,13 +115,36 @@ bool jswrap_onewire_reset(JsVar *parent) {
 /*JSON{ "type":"method", "class": "OneWire", "name" : "select",
          "description" : "Select a ROM - reset needs to be done first",
          "generate" : "jswrap_onewire_select",
-         "params" : [ [ "rom", "int", "The rom to select" ] ]
+         "params" : [ [ "rom", "JsVar", "The device to select (get this using `OneWire.search()`)" ] ]
 }*/
-void jswrap_onewire_select(JsVar *parent, JsVarInt rom) {
+void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
+  if (!jsvIsString(rom) || jsvGetStringLength(rom)!=16) {
+    jsWarn("Invalid OneWire device address");
+    return;
+  }
+
+  // decode the address
+  unsigned long long romdata = 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, rom, 0);
+  int i;
+  for (i=0;i<8;i++) {
+    char b[3];
+    b[0] = jsvStringIteratorGetChar(&it);
+    jsvStringIteratorNext(&it);
+    b[1] = jsvStringIteratorGetChar(&it);
+    jsvStringIteratorNext(&it);
+    b[2] = 0;
+    romdata = romdata | (((unsigned long long)stringToIntWithRadix(b,16,0)) << (i*8));
+
+  }
+  jsvStringIteratorFree(&it);
+
+  // finally write data out
   OneWireWrite(pin, 8, 0x55);
-  OneWireWrite(pin, 64, rom);
+  OneWireWrite(pin, 64, romdata);
 }
 
 /*JSON{ "type":"method", "class": "OneWire", "name" : "skip",
@@ -143,7 +166,7 @@ void jswrap_onewire_skip(JsVar *parent) {
 void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
-  OneWireWrite(pin, 8, data);
+  OneWireWrite(pin, 8, (unsigned int)data);
 
   if (!leavePowerOn) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
@@ -304,17 +327,14 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
     }
 
     if (search_result) {
-      JsVar *val = jsvNewFromInteger(
-          (((JsVarInt)ROM_NO[7])<<(7*8)) |
-          (((JsVarInt)ROM_NO[6])<<(6*8)) |
-          (((JsVarInt)ROM_NO[5])<<(5*8)) |
-          (((JsVarInt)ROM_NO[4])<<(4*8)) |
-          (((JsVarInt)ROM_NO[3])<<(3*8)) |
-          (((JsVarInt)ROM_NO[2])<<(2*8)) |
-          (((JsVarInt)ROM_NO[1])<<(1*8)) |
-           ((JsVarInt)ROM_NO[0])
-          );
-      if (val) jsvArrayPushAndUnLock(array, val);
+      int i;
+      char buf[17];
+      for (i=0;i<8;i++) {
+        buf[i*2] = itoch((ROM_NO[i]>>4) & 15);
+        buf[i*2+1] = itoch(ROM_NO[i] & 15);
+      }
+      buf[16]=0;
+      jsvArrayPushAndUnLock(array, jsvNewFromString(buf));
     }
 
     NOT_USED(LastFamilyDiscrepancy);
