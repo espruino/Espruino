@@ -131,6 +131,7 @@ typedef struct {
  * | 18-19 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
  *
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
+ * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  */
 
 
@@ -222,6 +223,9 @@ static inline bool jsvIsUndefined(const JsVar *v) { return v==0; }
 static inline bool jsvIsNull(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NULL; }
 static inline bool jsvIsBasic(const JsVar *v) { return jsvIsNumeric(v) || jsvIsString(v);} ///< Is this *not* an array/object/etc
 static inline bool jsvIsName(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_END; } ///< NAMEs are what's used to name a variable (it is not the data itself)
+/// Names with values have firstChild set to a value - AND NOT A REFERENCE
+static inline bool jsvIsNameWithValue(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NAME_WITH_VALUE_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NAME_WITH_VALUE_END; }
+static inline bool jsvIsNameInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT || ((v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_INT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_INT_MAX)); }
 static inline bool jsvIsNameIntInt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT; }
 static inline bool jsvIsNameIntBool(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL; }
 /// What happens when we access a variable that doesn't exist. We get a NAME where the next + previous siblings point to the object that may one day contain them
@@ -265,26 +269,43 @@ static inline size_t jsvGetMaxCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
-  assert(f >= JSV_NAME_STRING_0);
-  if (f<=JSV_NAME_STRING_MAX) return f-JSV_NAME_STRING_0;
-  if (f<=JSV_STRING_MAX) return f-JSV_STRING_0;
-  assert(f <= JSV_STRING_EXT_MAX);
-  return f - JSV_STRING_EXT_0;
+  assert(f >= JSV_NAME_STRING_INT_0);
+  assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
+         (JSV_NAME_STRING_0 < JSV_STRING_0) &&
+         (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
+  if (f<=JSV_NAME_STRING_MAX) {
+    if (f<=JSV_NAME_STRING_INT_MAX)
+      return f-JSV_NAME_STRING_INT_0;
+    else
+      return f-JSV_NAME_STRING_0;
+  } else {
+    if (f<=JSV_STRING_MAX) return f-JSV_STRING_0;
+    assert(f <= JSV_STRING_EXT_MAX);
+    return f - JSV_STRING_EXT_0;
+  }
 }
 
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline void jsvSetCharactersInVar(JsVar *v, size_t chars) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   JsVarFlags m = (JsVarFlags)v->flags&~JSV_VARTYPEMASK;
-  assert(f >= JSV_NAME_STRING_0);
-  if (f<=JSV_NAME_STRING_MAX)
-    v->flags = m | (JSV_NAME_STRING_0+chars);
-  else if (f<=JSV_STRING_MAX)
-    v->flags = m | (JSV_STRING_0+chars);
-  else {
-    assert(f <= JSV_STRING_EXT_MAX);
-    v->flags = m | (JSV_STRING_EXT_0+chars);
-  }
+  assert(f >= JSV_NAME_STRING_INT_0);
+  assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
+         (JSV_NAME_STRING_0 < JSV_STRING_0) &&
+         (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
+  if (f<=JSV_NAME_STRING_MAX) {
+      if (f<=JSV_NAME_STRING_INT_MAX)
+        v->flags = m | (JSV_NAME_STRING_INT_0+chars);
+      else
+        v->flags = m | (JSV_NAME_STRING_0+chars);
+    } else {
+      if (f<=JSV_STRING_MAX) {
+        v->flags = m | (JSV_STRING_0+chars);
+      } else {
+        assert(f <= JSV_STRING_EXT_MAX);
+        v->flags = m | (JSV_STRING_EXT_0+chars);
+      }
+    }
 }
 
 static inline void jsvMakeFunctionParameter(JsVar *v) {
@@ -667,7 +688,7 @@ static inline JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
 /// Gets the current object element value (or 0)
 static inline JsVar *jsvObjectIteratorGetValue(JsvObjectIterator *it) {
   if (!it->var) return 0; // end of object
-  return it->var->firstChild ? jsvLock(it->var->firstChild) : 0; // might even be undefined
+  return jsvSkipName(it->var); // might even be undefined
 }
 
 /// Set the current array element

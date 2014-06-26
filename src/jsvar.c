@@ -209,12 +209,9 @@ bool jsvHasChildren(const JsVar *v) {
 
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v) {
-  return jsvIsArrayBuffer(v) || jsvIsArrayBufferName(v) ||
-         ((v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT) ||
-         (((v->flags&JSV_VARTYPEMASK)>=JSV_NAME_STRING_0) && ((v->flags&JSV_VARTYPEMASK)<=JSV_NAME_STRING_MAX));
+  return jsvIsArrayBuffer(v) ||
+         (jsvIsName(v) && !jsvIsNameWithValue(v));
 }
-
-
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
@@ -271,7 +268,7 @@ void jsvFreePtr(JsVar *var) {
            (jsvIsName(var) && (var->nextSibling==var->prevSibling))); // UNLESS we're signalling that we're jsvIsNewChild
 
     // Names that Link to other things
-    if (jsvIsNameIntInt(var) || jsvIsNameIntBool(var)) {
+    if (jsvIsNameWithValue(var)) {
       var->firstChild = 0; // it just contained random data - zero it
     } else if (jsvHasSingleChild(var)) {
       if (var->firstChild) {
@@ -534,7 +531,16 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
     }
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
-    var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
+    size_t t = JSV_NAME_STRING_0;
+    if (jsvIsInt(valueOrZero)) {
+      JsVarInt v = valueOrZero->varData.integer;
+      if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
+        t = JSV_NAME_STRING_INT_0;
+        var->firstChild = (JsVarRef)v;
+        valueOrZero = 0;
+      }
+    }
+    var->flags = (var->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (t+jsvGetCharactersInVar(var));
   } else assert(0);
 
   if (valueOrZero)
@@ -1244,7 +1250,7 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameIntInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(pa->firstChild!=0);
   while (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
@@ -1263,7 +1269,7 @@ JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameIntInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)pa->firstChild);
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(pa->firstChild!=0);
   if (jsvIsName(pa)) {
     JsVarRef n = pa->firstChild;
@@ -1370,8 +1376,11 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
     if (t>=_JSV_NAME_INT_START && t<=_JSV_NAME_INT_END) {
       flags = (flags & ~JSV_VARTYPEMASK) | JSV_INTEGER;
     } else {
-      assert(t>=JSV_NAME_STRING_0 && t<=JSV_NAME_STRING_MAX);
-      flags = (flags & ~JSV_VARTYPEMASK) | (JSV_STRING_0 + t - JSV_NAME_STRING_0);
+      assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
+             (JSV_NAME_STRING_0 < JSV_STRING_0) &&
+             (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
+      assert(t>=JSV_NAME_STRING_INT_0 && t<=JSV_NAME_STRING_MAX);
+      flags = (flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_STRING_0 + jsvGetCharactersInVar(src));
     }
   }
   JsVar *dst = jsvNewWithFlags(flags & JSV_VARIABLEINFOMASK);
@@ -1540,18 +1549,32 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
   /* Existing child may be null in the case of Z = 0 where
    * we create 'Z' and pass it down to '=' to have the value
    * filled in (or it may be undefined). */
-  if (jsvIsNameIntInt(name) || jsvIsNameIntBool(name)) {
-    name->flags = (name->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
+  if (jsvIsNameWithValue(name)) {
+    if (jsvIsString(name))
+      name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(name));
+    else
+      name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | JSV_NAME_INT;
     name->firstChild = 0;
   } else if (name->firstChild)
     jsvUnRefRef(name->firstChild); // free existing
   if (src) {
-      if (jsvIsInt(name) && (jsvIsInt(src) || jsvIsBoolean(src))) {
-        JsVarInt v = src->varData.integer;
-        if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
-          name->flags = (name->flags & ~JSV_VARTYPEMASK) | (jsvIsInt(src) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL);
-          name->firstChild = (JsVarRef)v;
-          return name;
+      if (jsvIsInt(name)) {
+        if ((jsvIsInt(src) || jsvIsBoolean(src))) {
+          JsVarInt v = src->varData.integer;
+          if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
+            name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (jsvIsInt(src) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL);
+            name->firstChild = (JsVarRef)v;
+            return name;
+          }
+        }
+      } else if (jsvIsString(name)) {
+        if ((jsvIsInt(src))) {
+          JsVarInt v = src->varData.integer;
+          if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
+            name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_NAME_STRING_INT_0 + jsvGetCharactersInVar(name));
+            name->firstChild = (JsVarRef)v;
+            return name;
+          }
         }
       }
       // we can link to a name if we want (so can remove the assert!)
@@ -2349,7 +2372,7 @@ void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
         assert(0);
       }
       jsvUnLock(str);
-      if (jsvIsNameIntInt(var)) {
+      if (jsvIsNameInt(var)) {
         jsiConsolePrintf("int %d\n", var->firstChild);
         jsvUnLock(var);
         return;

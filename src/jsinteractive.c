@@ -1324,9 +1324,7 @@ void jsiIdle() {
           if (debounce>0) { // Debouncing - use timeouts to ensure we only fire at the right time
             JsVar *timeout = jsvObjectGetChild(watchPtr, "timeout", 0);
             if (timeout) { // if we had a timeout, update the callback time
-              JsVar *timerTime = jsvObjectGetChild(timeout, "time", JSV_INTEGER);
-              jsvSetInteger(timerTime, (JsVarInt)(eventTime - jsiLastIdleTime) + debounce);
-              jsvUnLock(timerTime);
+              jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce)));
             } else { // else create a new timeout
               timeout = jsvNewWithFlags(JSV_OBJECT);
               if (timeout) {
@@ -1401,9 +1399,9 @@ void jsiIdle() {
     JsVar *timerNamePtr = jsvLock(timer);
     timer = timerNamePtr->nextSibling; // ptr to next
     JsVar *timerPtr = jsvSkipName(timerNamePtr);
-    JsVar *timerTime = jsvObjectGetChild(timerPtr, "time", 0);
-    JsVarInt timeUntilNext = jsvGetInteger(timerTime) - timePassed;
-    jsvSetInteger(timerTime, timeUntilNext);// update timer time
+    JsVarInt timerTime = jsvGetInteger(jsvObjectGetChild(timerPtr, "time", 0));
+    JsVarInt timeUntilNext = timerTime - timePassed;
+
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
     if (timeUntilNext<=0) {
@@ -1415,7 +1413,7 @@ void jsiIdle() {
       bool exec = true;
       JsVar *data = jsvNewWithFlags(JSV_OBJECT);
       if (data) {
-        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+jsvGetInteger(timerTime))/1000);
+        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timerTime)/1000);
         // if it was a watch, set the last state up
         if (watchPtr) {
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
@@ -1458,10 +1456,7 @@ void jsiIdle() {
 
       if (intervalRecurring) {
         JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
-        if (interval<=0)
-          jsvSetInteger(timerTime, 0); // just set to current system time
-        else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime) + interval);
+        timeUntilNext = (interval<=0) ? 0 : (timerTime + interval);
       } else {
         // free all
         JsVar *foundChild = jsvGetArrayIndexOf(timerArrayPtr, timerPtr, true);
@@ -1474,7 +1469,8 @@ void jsiIdle() {
       jsvUnLock(timerCallback);
 
     }
-    jsvUnLock(timerTime);
+    // update the timer's time
+    jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(timeUntilNext));
     jsvUnLock(timerPtr);
     JsVarRef currentTimer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
