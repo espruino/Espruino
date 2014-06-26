@@ -14,6 +14,7 @@
 #include "jsutils.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+#include "jstimer.h"
 #include "jswrapper.h"
 #include "jswrap_json.h"
 #include "jswrap_io.h"
@@ -540,6 +541,8 @@ void jsiSoftKill() {
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
 
+  // Stop all active timer tasks
+  jstReset();
   // Unref Watches/etc
   if (events) {
     jsvUnLock(events);

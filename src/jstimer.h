@@ -58,14 +58,15 @@ typedef struct UtilTimerTaskSet {
  * To repeat, flipping between 2 buffers, set var=buffer1, currentBuffer==buffer1, nextBuffer=buffer2
  */
 typedef struct UtilTimerTaskBuffer {
+  JsVar *var; ///< variable to get data from
+  JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
+  JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
+  unsigned char charIdx; ///< Index of character in variable
+  unsigned short currentValue; ///< current value being written (for writes)
   union {
     JshPinFunction pinFunction; ///< Pin function to write to
     Pin pin; ///< Pin to read from
   };
-  JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
-  JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
-  unsigned char charIdx; ///< Index of character in variable
-  JsVar *var; ///< variable to get data from
 } PACKED_FLAGS UtilTimerTaskBuffer;
 
 
@@ -106,6 +107,9 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
 
 /// Stop a timer task
 bool jstStopBufferTimerTask(JsVar *var);
+
+/// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
+void jstReset();
 
 #endif /* JSTIMER_H_ */
 
