@@ -17,6 +17,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #include "jswrap_error.h"
+#include "jswrap_json.h"
 
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
@@ -475,6 +476,7 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  *   %c = char
  *   %v = JsVar * (doesn't have to be a string - it'll be converted)
  *   %q = JsVar * (in quotes, and escaped)
+ *   %j = Variable printed as JSON
  *   %t = Type of variable
  *   %p = Pin
  *
@@ -534,6 +536,11 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         }
         if (quoted) user_callback("\"",user_data);
       } break;
+      case 'j': {
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
+        jsfGetJSONWithCallback(v, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+        break;
+      }
       case 't': {
         JsVar *v = va_arg(argp, JsVar*);
         const char *n = jsvIsNull(v)?"null":jswGetBasicObjectName(v);
@@ -572,3 +579,4 @@ size_t jsuGetFreeStack() {
   return 100000000; // lots.
 #endif
 }
+
