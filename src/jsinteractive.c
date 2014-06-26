@@ -1399,7 +1399,7 @@ void jsiIdle() {
     JsVar *timerNamePtr = jsvLock(timer);
     timer = timerNamePtr->nextSibling; // ptr to next
     JsVar *timerPtr = jsvSkipName(timerNamePtr);
-    JsVarInt timerTime = jsvGetInteger(jsvObjectGetChild(timerPtr, "time", 0));
+    JsVarInt timerTime = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsVarInt timeUntilNext = timerTime - timePassed;
 
     if (timeUntilNext < minTimeUntilNext)
@@ -1470,7 +1470,7 @@ void jsiIdle() {
 
     }
     // update the timer's time
-    jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(timeUntilNext));
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(timeUntilNext)));
     jsvUnLock(timerPtr);
     JsVarRef currentTimer = timerNamePtr->nextSibling;
     jsvUnLock(timerNamePtr);
