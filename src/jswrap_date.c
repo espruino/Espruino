@@ -293,7 +293,7 @@ int jswrap_date_getDate(JsVar *parent) {
 
 
 /*JSON{ "type":"method", "class": "Date", "name" : "getMonth",
-         "description" : "Month of the year 1..12",
+         "description" : "Month of the year 0..11",
          "generate" : "jswrap_date_getMonth",
          "return" : ["int32", ""]
 }*/

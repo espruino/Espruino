@@ -1,6 +1,7 @@
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
             Improve dump() for objects and Serial.on('data') (part of #397)
+            Fix Date.getSeconds,Milliseconds, and documentation on getMonth (#399)
 
      1v65 : SPI.send/I2C.write/Serial.write can now take variable number of arguments (fix #370)
             Don't check for token matches where we already know what it should be (fix #280)
