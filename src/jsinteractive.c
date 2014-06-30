@@ -1264,8 +1264,10 @@ void jsiIdle() {
          * do it in the IRQ */
         unsigned char bytesize = 8;
         JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-        if(jsvIsObject(options))
-          bytesize = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+        if(jsvIsObject(options)) {
+          unsigned char c = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+          if (c>=7 && c<10) bytesize = c;
+        }
         jsvUnLock(options);
 
         JsVar *stringData = jsvNewFromEmptyString();
@@ -1286,6 +1288,7 @@ void jsiIdle() {
             } else
               chars = 0;
           }
+          jsvStringIteratorFree(&it);
 
           // Now run the handler
           jswrap_stream_pushData(usartClass, stringData);
