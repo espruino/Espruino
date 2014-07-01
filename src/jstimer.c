@@ -14,7 +14,6 @@
 #include "jstimer.h"
 #include "jsparse.h"
 
-#define UTILTIMERTASK_TASKS (16) // MUST BE POWER OF 2
 UtilTimerTask utilTimerTasks[UTILTIMERTASK_TASKS];
 volatile unsigned char utilTimerTasksHead = 0;
 volatile unsigned char utilTimerTasksTail = 0;

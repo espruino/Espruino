@@ -61,8 +61,8 @@ typedef struct UtilTimerTaskBuffer {
   JsVar *var; ///< variable to get data from
   JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
   JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
-  unsigned char charIdx; ///< Index of character in variable
   unsigned short currentValue; ///< current value being written (for writes)
+  unsigned char charIdx; ///< Index of character in variable
   union {
     JshPinFunction pinFunction; ///< Pin function to write to
     Pin pin; ///< Pin to read from
@@ -78,8 +78,8 @@ typedef union UtilTimerTaskData {
 typedef struct UtilTimerTask {
   JsSysTime time; // time at which to set pins
   unsigned int repeatInterval; // if nonzero, repeat the timer
-  UtilTimerEventType type;
   UtilTimerTaskData data; // data used when timer is hit
+  UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data
 } PACKED_FLAGS UtilTimerTask;
 
 void jstUtilTimerInterruptHandler();
