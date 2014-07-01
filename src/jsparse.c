@@ -1987,7 +1987,10 @@ NO_INLINE JsVar *jspeStatementTry() {
       }
       jsvUnLock(exceptionVar);
     }
+    JSP_SAVE_EXECUTE();
+    if (shouldExecuteBefore && !hadException) jspSetNoExecute();
     jspeBlock();
+    JSP_RESTORE_EXECUTE();
   }
   if (execInfo.lex->tk == LEX_R_FINALLY || !hadCatch) {
     JSP_MATCH(LEX_R_FINALLY);
