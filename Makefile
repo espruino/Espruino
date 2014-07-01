@@ -24,6 +24,7 @@
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
+STM32F401CDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # LPC1768=1 # beta
@@ -33,8 +34,8 @@
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-# RELEASE=1               # Force release-style compile (no asserts, etc)
-# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+RELEASE=1               # Force release-style compile (no asserts, etc)
+SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
@@ -183,13 +184,27 @@ BOARD=STM32F4DISCOVERY
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
+else ifdef STM32F401CDISCOVERY
+#USB=1
+USE_NET=1
+USE_GRAPHICS=1
+DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+CHIP=STM32F40_41xxx
+#STM32F401xx
+BOARD=STM32F401CDISCOVERY
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+CHIP=STM32F429_439xx
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f427xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
 EMBEDDED=1
@@ -739,6 +754,7 @@ targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
 targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
 targetlibs/stm32f4/lib/stm32f4xx_fsmc.c       \
@@ -748,10 +764,12 @@ targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
 targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
@@ -812,7 +830,8 @@ OPTIMIZEFLAGS += --param inline-unit-growth=8
 # 4.5
 #export CCPREFIX=~/sat/bin/arm-none-eabi-
 # 4.4
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX=/home/chris/arm-2013.11/bin/arm-none-eabi-
+#export CCPREFIX=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
