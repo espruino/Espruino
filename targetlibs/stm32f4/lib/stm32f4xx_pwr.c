@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_pwr.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides firmware functions to manage the following 
   *          functionalities of the Power Controller (PWR) peripheral:           
   *           + Backup Domain Access
@@ -680,6 +680,70 @@ void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
 }
 
 /**
+  * @brief  Enters in Under-Drive STOP mode.
+  *  
+  * @note   This mode is only available for STM32F42xxx/STM3243xxx devices. 
+  * 
+  * @note    This mode can be selected only when the Under-Drive is already active 
+  *         
+  * @note   In Stop mode, all I/O pins keep the same state as in Run mode.
+  * @note   When exiting Stop mode by issuing an interrupt or a wakeup event, 
+  *         the HSI RC oscillator is selected as system clock.
+  * @note   When the voltage regulator operates in low power mode, an additional 
+  *         startup delay is incurred when waking up from Stop mode. 
+  *         By keeping the internal regulator ON during Stop mode, the consumption 
+  *         is higher although the startup time is reduced.
+  *     
+  * @param  PWR_Regulator: specifies the regulator state in STOP mode.
+  *          This parameter can be one of the following values:
+  *            @arg PWR_MainRegulator_UnderDrive_ON:  Main Regulator in under-drive mode 
+  *                 and Flash memory in power-down when the device is in Stop under-drive mode
+  *            @arg PWR_LowPowerRegulator_UnderDrive_ON:  Low Power Regulator in under-drive mode 
+  *                and Flash memory in power-down when the device is in Stop under-drive mode
+  * @param  PWR_STOPEntry: specifies if STOP mode in entered with WFI or WFE instruction.
+  *          This parameter can be one of the following values:
+  *            @arg PWR_STOPEntry_WFI: enter STOP mode with WFI instruction
+  *            @arg PWR_STOPEntry_WFE: enter STOP mode with WFE instruction
+  * @retval None
+  */
+void PWR_EnterUnderDriveSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry)
+{
+  uint32_t tmpreg = 0;
+  
+  /* Check the parameters */
+  assert_param(IS_PWR_REGULATOR_UNDERDRIVE(PWR_Regulator));
+  assert_param(IS_PWR_STOP_ENTRY(PWR_STOPEntry));
+  
+  /* Select the regulator state in STOP mode ---------------------------------*/
+  tmpreg = PWR->CR;
+  /* Clear PDDS and LPDS bits */
+  tmpreg &= CR_DS_MASK;
+  
+  /* Set LPDS, MRLUDS and LPLUDS bits according to PWR_Regulator value */
+  tmpreg |= PWR_Regulator;
+  
+  /* Store the new value */
+  PWR->CR = tmpreg;
+  
+  /* Set SLEEPDEEP bit of Cortex System Control Register */
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  
+  /* Select STOP mode entry --------------------------------------------------*/
+  if(PWR_STOPEntry == PWR_STOPEntry_WFI)
+  {   
+    /* Request Wait For Interrupt */
+    __WFI();
+  }
+  else
+  {
+    /* Request Wait For Event */
+    __WFE();
+  }
+  /* Reset SLEEPDEEP bit of Cortex System Control Register */
+  SCB->SCR &= (uint32_t)~((uint32_t)SCB_SCR_SLEEPDEEP_Msk);  
+}
+
+/**
   * @brief  Enters STANDBY mode.
   * @note   In Standby mode, all I/O pins are high impedance except for:
   *          - Reset pad (still available) 
@@ -797,7 +861,7 @@ void PWR_ClearFlag(uint32_t PWR_FLAG)
   }
 #endif /* STM32F427_437xx ||  STM32F429_439xx */
 
-#if defined (STM32F40_41xxx) 
+#if defined (STM32F40_41xxx) || defined (STM32F401xx) 
   PWR->CR |=  PWR_FLAG << 2;
 #endif /* STM32F40_41xxx */
 }

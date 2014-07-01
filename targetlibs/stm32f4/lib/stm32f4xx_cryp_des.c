@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_cryp_des.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides high level functions to encrypt and decrypt an 
   *          input message using DES in ECB/CBC modes.
   *          It uses the stm32f4xx_cryp.c/.h drivers to access the STM32F4xx CRYP

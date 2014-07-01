@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    misc.h
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file contains all the functions prototypes for the miscellaneous
   *          firmware library functions (add-on to CMSIS functions).
   ******************************************************************************

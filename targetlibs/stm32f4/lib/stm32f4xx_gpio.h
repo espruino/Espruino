@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_gpio.h
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file contains all the functions prototypes for the GPIO firmware
   *          library.  
   ******************************************************************************
@@ -88,13 +88,20 @@ typedef enum
   */  
 typedef enum
 { 
-  GPIO_Speed_2MHz   = 0x00, /*!< Low speed */
-  GPIO_Speed_25MHz  = 0x01, /*!< Medium speed */
-  GPIO_Speed_50MHz  = 0x02, /*!< Fast speed */
-  GPIO_Speed_100MHz = 0x03  /*!< High speed on 30 pF (80 MHz Output max speed on 15 pF) */
+  GPIO_Low_Speed     = 0x00, /*!< Low speed    */
+  GPIO_Medium_Speed  = 0x01, /*!< Medium speed */
+  GPIO_Fast_Speed    = 0x02, /*!< Fast speed   */
+  GPIO_High_Speed    = 0x03  /*!< High speed   */
 }GPIOSpeed_TypeDef;
-#define IS_GPIO_SPEED(SPEED) (((SPEED) == GPIO_Speed_2MHz) || ((SPEED) == GPIO_Speed_25MHz) || \
-                              ((SPEED) == GPIO_Speed_50MHz)||  ((SPEED) == GPIO_Speed_100MHz)) 
+
+/* Add legacy definition */
+#define  GPIO_Speed_2MHz    GPIO_Low_Speed    
+#define  GPIO_Speed_25MHz   GPIO_Medium_Speed 
+#define  GPIO_Speed_50MHz   GPIO_Fast_Speed 
+#define  GPIO_Speed_100MHz  GPIO_High_Speed  
+  
+#define IS_GPIO_SPEED(SPEED) (((SPEED) == GPIO_Low_Speed) || ((SPEED) == GPIO_Medium_Speed) || \
+                              ((SPEED) == GPIO_Fast_Speed)||  ((SPEED) == GPIO_High_Speed)) 
 
 /** 
   * @brief  GPIO Configuration PullUp PullDown enumeration 

@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_pwr.h
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file contains all the functions prototypes for the PWR firmware 
   *          library.
   ******************************************************************************
@@ -85,6 +85,19 @@
 
 #define IS_PWR_REGULATOR(REGULATOR) (((REGULATOR) == PWR_MainRegulator_ON) || \
                                      ((REGULATOR) == PWR_LowPowerRegulator_ON))
+
+/**
+  * @}
+  */
+
+/** @defgroup PWR_Regulator_state_in_UnderDrive_mode 
+  * @{
+  */
+#define PWR_MainRegulator_UnderDrive_ON               PWR_CR_MRUDS
+#define PWR_LowPowerRegulator_UnderDrive_ON           ((uint32_t)(PWR_CR_LPDS | PWR_CR_LPUDS))
+
+#define IS_PWR_REGULATOR_UNDERDRIVE(REGULATOR) (((REGULATOR) == PWR_MainRegulator_UnderDrive_ON) || \
+                                                ((REGULATOR) == PWR_LowPowerRegulator_UnderDrive_ON))
 
 /**
   * @}
@@ -173,6 +186,7 @@ void PWR_FlashPowerDownCmd(FunctionalState NewState);
 
 /* Low Power modes configuration functions ************************************/ 
 void PWR_EnterSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry);
+void PWR_EnterUnderDriveSTOPMode(uint32_t PWR_Regulator, uint8_t PWR_STOPEntry);
 void PWR_EnterSTANDBYMode(void);
 
 /* Flags management functions *************************************************/ 

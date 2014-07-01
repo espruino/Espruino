@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    system_stm32f4xx.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   CMSIS Cortex-M4 Device Peripheral Access Layer System Source File.
   *          This file contains the system clock configuration for STM32F4xx devices.
   *             
@@ -840,7 +840,7 @@ void SystemInit_ExtMemCtl(void)
   RCC->AHB3ENR |= 0x00000001;
   
   /* Configure and enable SDRAM bank1 */
-  FMC_Bank5_6->SDCR[0] = 0x000029D0;
+  FMC_Bank5_6->SDCR[0] = 0x000039D0;
   FMC_Bank5_6->SDTR[0] = 0x01115351;      
   
   /* SDRAM initialization sequence */

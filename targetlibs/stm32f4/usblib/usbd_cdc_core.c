@@ -171,6 +171,14 @@ __ALIGN_BEGIN uint8_t USB_Rx_Buffer   [CDC_DATA_MAX_PACKET_SIZE] __ALIGN_END ;
     #pragma data_alignment=4   
   #endif
 #endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
+__ALIGN_BEGIN uint8_t APP_Rx_Buffer   [APP_RX_DATA_SIZE] __ALIGN_END ; 
+
+
+#ifdef USB_OTG_HS_INTERNAL_DMA_ENABLED
+  #if defined ( __ICCARM__ ) /*!< IAR Compiler */
+    #pragma data_alignment=4   
+  #endif
+#endif /* USB_OTG_HS_INTERNAL_DMA_ENABLED */
 __ALIGN_BEGIN uint8_t CmdBuff[CDC_CMD_PACKET_SZE] __ALIGN_END ;
 
 uint32_t APP_Rx_ptr_in  = 0;
@@ -621,26 +629,26 @@ static uint8_t  usbd_cdc_DataIn (void *pdev, uint8_t epnum)
   {
     unsigned char USB_TX_Buffer[CDC_DATA_IN_PACKET_SIZE];
     int USB_Tx_length = 0;
-
+        
     // try and fill the buffer
     int c;
     while (USB_Tx_length<CDC_DATA_IN_PACKET_SIZE &&
            ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
       USB_TX_Buffer[USB_Tx_length++] = c;
-    }
-
+      }
+        
     // if nothing, set state to 0
     if (USB_Tx_length==0) {
       USB_Tx_State = 0;
       return USBD_OK;
-    }
+      }
       
-    /* Prepare the available data buffer to be sent on IN endpoint */
-    DCD_EP_Tx (pdev,
-               CDC_IN_EP,
+      /* Prepare the available data buffer to be sent on IN endpoint */
+      DCD_EP_Tx (pdev,
+                 CDC_IN_EP,
                (uint8_t*)USB_TX_Buffer,
-               USB_Tx_length);
-  }  
+                 USB_Tx_length);
+    }
   
   return USBD_OK;
 }
@@ -716,7 +724,7 @@ static void Handle_USBAsynchXfer (void *pdev)
            ((c = jshGetCharToTransmit(EV_USBSERIAL)) >=0) ) { // get byte to transmit
       USB_TX_Buffer[USB_Tx_length++] = c;
     }
-
+    
     // if nothing, set state to 0
     if (USB_Tx_length==0) {
       USB_Tx_State = 0; 

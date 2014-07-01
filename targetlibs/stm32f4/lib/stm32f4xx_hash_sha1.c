@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_hash_sha1.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides high level functions to compute the HASH SHA1 and
   *          HMAC SHA1 Digest of an input message.
   *          It uses the stm32f4xx_hash.c/.h drivers to access the STM32F4xx HASH

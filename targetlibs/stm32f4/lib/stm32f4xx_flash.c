@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_flash.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides firmware functions to manage the following 
   *          functionalities of the FLASH peripheral:
   *            + FLASH Interface configuration
@@ -189,17 +189,18 @@
  +-------------------------------------------------------------------------------------------------------------------+  
 
       -@- On STM32F405xx/407xx and STM32F415xx/417xx devices: 
-           (++) when VOS = '0', the maximum value of fHCLK = 144MHz. 
-           (++) when VOS = '1', the maximum value of fHCLK = 168MHz. 
+           (++) when VOS = '0' Scale 2 mode, the maximum value of fHCLK = 144MHz. 
+           (++) when VOS = '1' Scale 1 mode, the maximum value of fHCLK = 168MHz. 
           [..] 
           On STM32F42xxx/43xxx devices:
-           (++) when VOS[1:0] = '0x01', the maximum value of fHCLK is 120MHz.
-           (++) when VOS[1:0] = '0x10', the maximum value of fHCLK is 144MHz.
-           (++) when VOS[1:0] = '0x11', the maximum value of f  is 168MHz 
+           (++) when VOS[1:0] = '0x01' Scale 3 mode, the maximum value of fHCLK is 120MHz.
+           (++) when VOS[1:0] = '0x10' Scale 2 mode, the maximum value of fHCLK is 144MHz if OverDrive OFF and 168MHz if OverDrive ON.
+           (++) when VOS[1:0] = '0x11' Scale 1 mode, the maximum value of fHCLK is 168MHz if OverDrive OFF and 180MHz if OverDrive ON. 
           [..]  
           On STM32F401x devices:
-           (++) when VOS[1:0] = '0x01', the maximum value of fHCLK is 64MHz.
-           (++) when VOS[1:0] = '0x10', the maximum value of fHCLK is 84MHz.
+           (++) when VOS[1:0] = '0x01' Scale 3 mode, the maximum value of fHCLK is 60MHz.
+           (++) when VOS[1:0] = '0x10' Scale 2 mode, the maximum value of fHCLK is 84MHz.
+           For more details please refer product DataSheet 
            You can use PWR_MainRegulatorModeConfig() function to control VOS bits.
                  
       (+) void FLASH_PrefetchBufferCmd(FunctionalState NewState)

@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    stm32f4xx_adc.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides firmware functions to manage the following 
   *          functionalities of the Analog to Digital Convertor (ADC) peripheral:
   *           + Initialization and Configuration (in addition to ADC multi mode 

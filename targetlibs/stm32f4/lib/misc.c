@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    misc.c
   * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    11-September-2013
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file provides all the miscellaneous firmware functions (add-on
   *          to CMSIS functions).
   *          

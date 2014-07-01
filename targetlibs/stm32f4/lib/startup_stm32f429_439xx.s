@@ -1,17 +1,17 @@
 /**
   ******************************************************************************
-  * @file      startup_stm32f42_43xxx.s
+  * @file      startup_stm32f429_439xx.s
   * @author    MCD Application Team
-  * @version   V1.2.0
-  * @date      11-September-2013
-  * @brief     STM32F42xxx/43xxx Devices vector table for Atollic TrueSTUDIO toolchain.   
+  * @version   V1.3.0
+  * @date      08-November-2013
+  * @brief     STM32F429xx/439xx Devices vector table for RIDE7 toolchain.          
   *            This module performs:
   *                - Set the initial SP
   *                - Set the initial PC == Reset_Handler,
   *                - Set the vector table entries with the exceptions ISR address
   *                - Configure the clock system and the external SRAM mounted on 
-  *                  STM324x9I-EVAL/STM324x7I-EVAL board to be used as data memory  
-  *                  (optional, to be enabled by user)
+  *                  STM324x9I-EVAL board to be used as data memory (optional, 
+  *                  to be enabled by user)
   *                - Branches to main in the C library (which eventually
   *                  calls main()).
   *            After Reset the Cortex-M4 processor is in Thread mode,
@@ -101,8 +101,6 @@ LoopFillZerobss:
 
 /* Call the clock system intitialization function.*/
   bl  SystemInit   
-/* Call static constructors */
-    bl __libc_init_array
 /* Call the application's entry point.*/
   bl  main
   bx  lr    
@@ -151,16 +149,16 @@ g_pfnVectors:
   .word  SysTick_Handler
   
   /* External Interrupts */
-  .word     WWDG_IRQHandler                   /* Window WatchDog                              */                                        
-  .word     PVD_IRQHandler                    /* PVD through EXTI Line detection              */                        
-  .word     TAMP_STAMP_IRQHandler             /* Tamper and TimeStamps through the EXTI line  */            
-  .word     RTC_WKUP_IRQHandler               /* RTC Wakeup through the EXTI line             */                      
-  .word     FLASH_IRQHandler                  /* FLASH                                        */                                          
-  .word     RCC_IRQHandler                    /* RCC                                          */                                            
-  .word     EXTI0_IRQHandler                  /* EXTI Line0                                   */                        
-  .word     EXTI1_IRQHandler                  /* EXTI Line1                                   */                          
-  .word     EXTI2_IRQHandler                  /* EXTI Line2                                   */                          
-  .word     EXTI3_IRQHandler                  /* EXTI Line3                                   */                          
+  .word     WWDG_IRQHandler                   /* Window WatchDog              */                                        
+  .word     PVD_IRQHandler                    /* PVD through EXTI Line detection */                        
+  .word     TAMP_STAMP_IRQHandler             /* Tamper and TimeStamps through the EXTI line */            
+  .word     RTC_WKUP_IRQHandler               /* RTC Wakeup through the EXTI line */                      
+  .word     FLASH_IRQHandler                  /* FLASH                        */                                          
+  .word     RCC_IRQHandler                    /* RCC                          */                                            
+  .word     EXTI0_IRQHandler                  /* EXTI Line0                   */                        
+  .word     EXTI1_IRQHandler                  /* EXTI Line1                   */                          
+  .word     EXTI2_IRQHandler                  /* EXTI Line2                   */                          
+  .word     EXTI3_IRQHandler                  /* EXTI Line3                   */                          
   .word     EXTI4_IRQHandler                  /* EXTI Line4                   */                          
   .word     DMA1_Stream0_IRQHandler           /* DMA1 Stream 0                */                  
   .word     DMA1_Stream1_IRQHandler           /* DMA1 Stream 1                */                   
@@ -232,7 +230,7 @@ g_pfnVectors:
   .word     DCMI_IRQHandler                   /* DCMI                         */                   
   .word     CRYP_IRQHandler                   /* CRYP crypto                  */                   
   .word     HASH_RNG_IRQHandler               /* Hash and Rng                 */
-  .word     FPU_IRQHandler                    /* FPU                          */
+  .word     FPU_IRQHandler                    /* FPU                          */                         
   .word     UART7_IRQHandler                  /* UART7                        */
   .word     UART8_IRQHandler                  /* UART8                        */
   .word     SPI4_IRQHandler                   /* SPI4                         */
@@ -242,7 +240,7 @@ g_pfnVectors:
   .word     LTDC_IRQHandler                   /* LTDC                         */
   .word     LTDC_ER_IRQHandler                /* LTDC error                   */
   .word     DMA2D_IRQHandler                  /* DMA2D                        */
-                        
+                              
 /*******************************************************************************
 *
 * Provide weak aliases for each Exception handler to the Default_Handler. 
@@ -521,8 +519,8 @@ g_pfnVectors:
    .thumb_set HASH_RNG_IRQHandler,Default_Handler   
 
    .weak      FPU_IRQHandler                  
-   .thumb_set FPU_IRQHandler,Default_Handler  
-
+   .thumb_set FPU_IRQHandler,Default_Handler 
+   
    .weak      UART7_IRQHandler                  
    .thumb_set UART7_IRQHandler,Default_Handler                   
    
@@ -548,6 +546,6 @@ g_pfnVectors:
    .thumb_set LTDC_ER_IRQHandler,Default_Handler 
    
    .weak      DMA2D_IRQHandler
-   .thumb_set DMA2D_IRQHandler,Default_Handler 
-      
+   .thumb_set DMA2D_IRQHandler,Default_Handler                    
+   
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
