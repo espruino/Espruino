@@ -1,4 +1,5 @@
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
+            Move hidden lists out of the root scope (fix #357)
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)

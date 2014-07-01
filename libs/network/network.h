@@ -19,7 +19,7 @@
 #include "jsvar.h"
 #include "jshardware.h"
 
-#define NETWORK_VAR_NAME JS_HIDDEN_CHAR_STR"net"
+#define NETWORK_VAR_NAME "net"
 
 typedef enum {
   NETWORKSTATE_OFFLINE,

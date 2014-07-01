@@ -24,16 +24,7 @@
 #endif
 
 static JsVar *jswrap_modules_getModuleList() {
-  JsVar *moduleListName = jsvFindChildFromString(execInfo.root, JSPARSE_MODULE_CACHE_NAME, true);
-  if (!moduleListName) return 0; // out of memory
-  JsVar *moduleList = jsvSkipName(moduleListName);
-  if (!moduleList) {
-    moduleList = jsvNewWithFlags(JSV_OBJECT);
-    if (!moduleList) { jsvUnLock(moduleListName); return 0; } // out of memory
-    jsvSetValueOfName(moduleListName, moduleList); // no need to unlock
-  }
-  jsvUnLock(moduleListName);
-  return moduleList;
+  return jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_MODULE_CACHE_NAME, JSV_OBJECT);
 }
 
 /*JSON{ "type":"function", "name" : "require",

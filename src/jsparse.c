@@ -263,7 +263,7 @@ void jspAppendStackTrace(JsVar *stackTrace) {
 /// We had an exception (argument is the exception's value)
 void jspSetException(JsVar *value) {
   // Add the exception itself to a variable in root scope
-  JsVar *exception = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, true);
+  JsVar *exception = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, true);
   if (exception) {
     jsvSetValueOfName(exception, value);
     jsvUnLock(exception);
@@ -272,7 +272,7 @@ void jspSetException(JsVar *value) {
   execInfo.execute = execInfo.execute | EXEC_EXCEPTION;
   // Try and do a stack trace
   if (execInfo.lex) {
-    JsVar *stackTrace = jsvObjectGetChild(execInfo.root, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
+    JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
     if (stackTrace) {
       jsvAppendPrintf(stackTrace, " at ");
       jspAppendStackTrace(stackTrace);
@@ -286,10 +286,10 @@ void jspSetException(JsVar *value) {
 
 /** Return the reported exception if there was one (and clear it) */
 JsVar *jspGetException() {
-  JsVar *exceptionName = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, false);
+  JsVar *exceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, false);
   if (exceptionName) {
     JsVar *exception = jsvSkipName(exceptionName);
-    jsvRemoveChild(execInfo.root, exceptionName);
+    jsvRemoveChild(execInfo.hiddenRoot, exceptionName);
     jsvUnLock(exceptionName);
     return exception;
   }
@@ -298,10 +298,10 @@ JsVar *jspGetException() {
 
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace() {
-  JsVar *stackTraceName = jsvFindChildFromString(execInfo.root, JSPARSE_STACKTRACE_VAR, false);
+  JsVar *stackTraceName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, false);
   if (stackTraceName) {
     JsVar *stackTrace = jsvSkipName(stackTraceName);
-    jsvRemoveChild(execInfo.root, stackTraceName);
+    jsvRemoveChild(execInfo.hiddenRoot, stackTraceName);
     jsvUnLock(stackTraceName);
     return stackTrace;
   }
@@ -613,7 +613,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jslKill(&newLex);
             execInfo.lex = oldLex;
             if (hasError) {
-              JsVar *stackTrace = jsvObjectGetChild(execInfo.root, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
+              JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
               if (stackTrace) {
                 jsvAppendPrintf(stackTrace, jsvIsString(functionName)?"in function %q called from ":
                                                            "in function called from ", functionName);
@@ -1529,7 +1529,7 @@ NO_INLINE JsVar *jspeBlock() {
       if (JSP_HAS_ERROR) {
         if (execInfo.lex && !(execInfo.execute&EXEC_ERROR_LINE_REPORTED)) {
           execInfo.execute = (JsExecFlags)(execInfo.execute | EXEC_ERROR_LINE_REPORTED);
-          JsVar *stackTrace = jsvObjectGetChild(execInfo.root, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
+          JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
           if (stackTrace) {
             jsvAppendPrintf(stackTrace, "at ");
             jspAppendStackTrace(stackTrace);
@@ -1972,16 +1972,16 @@ NO_INLINE JsVar *jspeStatementTry() {
     JSP_MATCH(')');
     if (exceptionVar) {
       // set the exception var up properly
-      JsVar *actualExceptionName = jsvFindChildFromString(execInfo.root, JSPARSE_EXCEPTION_VAR, false);
+      JsVar *actualExceptionName = jsvFindChildFromString(execInfo.hiddenRoot, JSPARSE_EXCEPTION_VAR, false);
       if (actualExceptionName) {
         JsVar *actualException = jsvSkipName(actualExceptionName);
         jsvSetValueOfName(exceptionVar, actualException);
         jsvUnLock(actualException);
         // remove the actual exception
-        jsvRemoveChild(execInfo.root, actualExceptionName);
+        jsvRemoveChild(execInfo.hiddenRoot, actualExceptionName);
         jsvUnLock(actualExceptionName);
         // remove any stack trace
-        jsvRemoveNamedChild(execInfo.root, JSPARSE_STACKTRACE_VAR);
+        jsvRemoveNamedChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
         // Now clear the exception flag (it's handled - we hope!)
         execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
       }
@@ -2224,15 +2224,12 @@ bool jspIsConstructor(JsVar *constructor, const char *constructorName) {
 void jspSoftInit() {
   execInfo.root = jsvFindOrCreateRoot();
   // Root now has a lock and a ref
-}
-
-/** Is v likely to have been created by this parser? */
-bool jspIsCreatedObject(JsVar *v) {
-  return
-      v==execInfo.root;
+  execInfo.hiddenRoot = jsvObjectGetChild(execInfo.root, JS_HIDDEN_CHAR_STR, JSV_OBJECT);
 }
 
 void jspSoftKill() {
+  jsvUnLock(execInfo.hiddenRoot);
+  execInfo.hiddenRoot = 0;
   jsvUnLock(execInfo.root);
   execInfo.root = 0;
   // Root is now left with just a ref

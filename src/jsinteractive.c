@@ -356,7 +356,7 @@ void jsiSetSleep(JsiSleepType isSleep) {
 }
 
 static JsVarRef _jsiInitNamedArray(const char *name) {
-  JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, true);
+  JsVar *arrayName = jsvFindChildFromString(execInfo.hiddenRoot, name, true);
   if (!arrayName) return 0; // out of memory
   if (!arrayName->firstChild) {
     JsVar *array = jsvNewWithFlags(JSV_ARRAY);
@@ -391,13 +391,13 @@ void jsiSoftInit() {
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
   // Now run initialisation code
-  JsVar *initName = jsvFindChildFromString(execInfo.root, JSI_INIT_CODE_NAME, false);
+  JsVar *initName = jsvFindChildFromString(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, false);
   if (initName && initName->firstChild) {
     //jsiConsolePrint("Running initialisation code...\n");
     JsVar *initCode = jsvLock(initName->firstChild);
     jsvUnLock(jspEvaluateVar(initCode, 0, false));
     jsvUnLock(initCode);
-    jsvRemoveChild(execInfo.root, initName);
+    jsvRemoveChild(execInfo.hiddenRoot, initName);
   }
   jsvUnLock(initName);
 
@@ -422,7 +422,7 @@ void jsiSoftInit() {
   // to fiddle with them.
 
   // And look for onInit function
-  JsVar *onInit = jsvFindChildFromString(execInfo.root, JSI_ONINIT_NAME, false);
+  JsVar *onInit = jsvFindChildFromString(execInfo.hiddenRoot, JSI_ONINIT_NAME, false);
   if (onInit && onInit->firstChild) {
     if (echo) jsiConsolePrint("Running onInit()...\n");
     JsVar *func = jsvSkipName(onInit);
@@ -572,7 +572,7 @@ void jsiSoftKill() {
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
     jsiAppendHardwareInitialisation(initCode, false);
-    jsvObjectSetChild(execInfo.root, JSI_INIT_CODE_NAME, initCode);
+    jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
 
@@ -660,7 +660,7 @@ int jsiCountBracketsInInput() {
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
-  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   if (!history) return 0;
   JsVar *item = jsvArrayPopFirst(history);
   bool freed = item!=0;
@@ -673,7 +673,7 @@ bool jsiFreeMoreMemory() {
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
   if (!newLine || jsvGetStringLength(newLine)==0) return;
-  JsVar *history = jsvFindChildFromString(execInfo.root, JSI_HISTORY_NAME, true);
+  JsVar *history = jsvFindChildFromString(execInfo.hiddenRoot, JSI_HISTORY_NAME, true);
   if (!history) return; // out of memory
   // ensure we actually have the history array
   if (!history->firstChild) {
@@ -698,7 +698,7 @@ void jsiHistoryAddLine(JsVar *newLine) {
 }
 
 JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
-  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   JsVar *historyLine = 0;
   if (history) {
     JsVar *idx = jsvGetArrayIndexOf(history, inputLine, true/*exact*/); // get index of current line
@@ -720,7 +720,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
 }
 
 bool jsiIsInHistory(JsVar *line) {
-  JsVar *history = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
+  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
   if (!history) return false;
   JsVar *historyFound = jsvGetArrayIndexOf(history, line, true/*exact*/);
   bool inHistory = historyFound!=0;
@@ -1662,7 +1662,7 @@ void jsiDumpState() {
     jsvGetString(child, childName, JSLEX_MAX_TOKEN_LENGTH);
 
     JsVar *data = jsvSkipName(child);
-    if (jspIsCreatedObject(data) || jswIsBuiltInObject(childName)) {
+    if (jswIsBuiltInObject(childName)) {
       jsiDumpObjectState(child, data);
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later

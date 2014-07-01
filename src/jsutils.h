@@ -136,9 +136,9 @@ typedef long long JsSysTime;
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
-#define JSPARSE_EXCEPTION_VAR JS_HIDDEN_CHAR_STR"except" // when exceptions are thrown, they're stored in the root scope
-#define JSPARSE_STACKTRACE_VAR JS_HIDDEN_CHAR_STR"sTrace" // for errors/exceptions, a stack trace is stored as a string
-#define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
+#define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
+#define JSPARSE_STACKTRACE_VAR "sTrace" // for errors/exceptions, a stack trace is stored as a string
+#define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
  #ifdef __STRING
