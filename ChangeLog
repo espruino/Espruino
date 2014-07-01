@@ -1,3 +1,5 @@
+     1v67 : ...
+
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
             Improve dump() for objects and Serial.on('data') (part of #397)
