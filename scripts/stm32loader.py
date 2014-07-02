@@ -381,25 +381,42 @@ class CommandInterface(object):
           self.sp.write(self._encode_addr(RCC_CFGR))
           self._wait_for_ack("0x31 address failed")
           self.sp.write(chr(3)) # len really
-          crc = 0xFF^reg[0]^reg[1]^reg[2]^reg[3];
-          crc = 40 # FIXME - Why is CRC different to what I'd expect? Python says 212 above
           self.sp.write(chr(reg[0]))
           self.sp.write(chr(reg[1]))
           self.sp.write(chr(reg[2]))
           self.sp.write(chr(reg[3]))            
+          crc = 3^reg[0]^reg[1]^reg[2]^reg[3];
           self.sp.write(chr(crc))
           self._wait_for_ack("0x31 programming failed")
           mdebug(10, "    PCLK write memory done")
 
+    def resetDevice(self):
+        AIRCR = 0xE000ED0C
+        mdebug(5, "Writing to Reset Register")
+        reg = [0x04,0x00,0xFA,0x05]
+        if self.cmdGeneric(0x31):
+          self.sp.write(self._encode_addr(AIRCR))
+          self._wait_for_ack("0x31 address failed")
+          self.sp.write(chr(3)) # len really
+          self.sp.write(chr(reg[0]))
+          self.sp.write(chr(reg[1]))
+          self.sp.write(chr(reg[2]))
+          self.sp.write(chr(reg[3]))            
+          crc = 3^reg[0]^reg[1]^reg[2]^reg[3];
+          self.sp.write(chr(crc))
+          # don't wait for ack - device will have rebooted
+          mdebug(10, "    reset done")
+
 
 def usage():
-    print("""Usage: %s [-hqVewvr] [-l length] [-p port] [-b baud] [-a addr] [file.bin]
+    print("""Usage: %s [-hqVewvrX] [-l length] [-p port] [-b baud] [-a addr] [file.bin]
     -h          This help
     -q          Quiet
     -V          Verbose
     -e          Erase
     -w          Write
     -v          Verify
+    -X          Reset after
     -r          Read
     -l length   Length of read
     -p port     Serial port (default: first USB-like port in /dev)
@@ -450,6 +467,7 @@ if __name__ == "__main__":
             'write': 0,
             'verify': 0,
             'read': 0,
+            'reset': 0,
             'len': 1000,
             'fname':'',
             'pclk_hack':0,
@@ -458,7 +476,7 @@ if __name__ == "__main__":
 # http://www.python.org/doc/2.5.2/lib/module-getopt.html
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrp:b:a:l:k")
+        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrXp:b:a:l:k")
     except getopt.GetoptError as err:
         # print help information and exit:
         print(str(err)) # will print something like "option -a not recognized"
@@ -481,6 +499,8 @@ if __name__ == "__main__":
             conf['verify'] = 1
         elif o == '-r':
             conf['read'] = 1
+        elif o == '-X':
+            conf['reset'] = 1
         elif o == '-p':
             conf['port'] = a
         elif o == '-b':
@@ -569,6 +589,10 @@ if __name__ == "__main__":
             rdata = cmd.readMemory(conf['address'], conf['len'])
             file(args[0], 'wb').write(''.join(map(chr,rdata)))
 
+        if conf['reset']:
+            cmd.resetDevice()
+
     finally:
-        cmd.releaseChip()
+        if not conf['reset']: 
+            cmd.releaseChip()
 
