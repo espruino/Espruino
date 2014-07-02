@@ -422,7 +422,7 @@ void jsiSoftInit() {
   // to fiddle with them.
 
   // And look for onInit function
-  JsVar *onInit = jsvFindChildFromString(execInfo.hiddenRoot, JSI_ONINIT_NAME, false);
+  JsVar *onInit = jsvFindChildFromString(execInfo.root, JSI_ONINIT_NAME, false);
   if (onInit && onInit->firstChild) {
     if (echo) jsiConsolePrint("Running onInit()...\n");
     JsVar *func = jsvSkipName(onInit);
