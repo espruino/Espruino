@@ -1210,6 +1210,13 @@ void jshReset() {
   for (i=0;i<JSH_PIN_COUNT;i++)
     if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i))
       jshPinSetState(i, JSHPINSTATE_ADC_IN);
+
+  // re-initialise serial port (like was done on jshInit)
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
+  }
 }
 
 void jshKill() {
