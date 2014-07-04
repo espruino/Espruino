@@ -30,7 +30,7 @@ JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 // ----------------------------------------------- Utils
-#define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { jspSetError(true); CLEANUP_CODE; return RETURN_VAL; } }
+#define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0) // Match where the user could have given us the wrong token
 #define JSP_ASSERT_MATCH(TOKEN) { assert(execInfo.lex->tk==(TOKEN));jslGetNextToken(execInfo.lex); } // Match where if we have the wrong token, it's an internal error
@@ -1992,7 +1992,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     jspeBlock();
     JSP_RESTORE_EXECUTE();
   }
-  if (execInfo.lex->tk == LEX_R_FINALLY || !hadCatch) {
+  if (execInfo.lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);
     // clear the exception flag - but only momentarily!
     if (hadException) execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;

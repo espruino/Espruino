@@ -2,6 +2,7 @@
             Move hidden lists out of the root scope (fix #357)
             Fixed exception catching
             Fix Serial1 initialisation after 'reset()'
+            Fix parsing of try..catch when a serious error (not an exception) occurred
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
