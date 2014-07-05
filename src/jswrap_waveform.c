@@ -50,7 +50,7 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
 
 /*JSON{ "type":"idle", "generate" : "jswrap_waveform_idle", "ifndef" : "SAVE_ON_FLASH" }*/
 bool jswrap_waveform_idle() {
-  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, 0);
+  JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, waveforms);
@@ -103,7 +103,7 @@ bool jswrap_waveform_idle() {
 
 /*JSON{ "type":"kill", "generate" : "jswrap_waveform_kill", "ifndef" : "SAVE_ON_FLASH" }*/
 void jswrap_waveform_kill() { // be sure to remove all waveforms...
-  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, 0);
+  JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, waveforms);
@@ -226,7 +226,7 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(true)));
   jsvUnLock(jsvObjectSetChild(waveform, "freq", jsvNewFromFloat(freq)));
   // Add to our list of active waveforms
-  JsVar *waveforms = jsvObjectGetChild(execInfo.root, JSI_WAVEFORM_NAME, JSV_ARRAY);
+  JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {
     jsvArrayPush(waveforms, waveform);
     jsvUnLock(waveforms);

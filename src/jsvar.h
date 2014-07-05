@@ -402,8 +402,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
 JsVar *jsvNegateAndUnLock(JsVar *v);
 
 /** If the given element is found, return the path to it as a string of
- * the form 'foo.bar', else return 0. */
-JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth);
+ * the form 'foo.bar', else return 0. If we would have returned a.b and
+ * ignoreParent is a, don't! */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent);
 
 /// Copy this variable and return the locked copy
 JsVar *jsvCopy(JsVar *src);

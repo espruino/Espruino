@@ -100,13 +100,13 @@ void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
   net->data.type = type;
-  jsvUnLock(jsvObjectSetChild(execInfo.root, NETWORK_VAR_NAME, net->networkVar));
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar));
   networkSet(net);
   networkGetFromVar(net);
 }
 
 bool networkGetFromVar(JsNetwork *net) {
-  net->networkVar = jsvObjectGetChild(execInfo.root, NETWORK_VAR_NAME, 0);
+  net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
   if (!net->networkVar) {
 #ifdef LINUX
     networkCreate(net, JSNETWORKTYPE_SOCKET);

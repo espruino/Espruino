@@ -32,9 +32,9 @@
 #define HTTP_NAME_ON_CONNECT "#onconnect"
 #define HTTP_NAME_ON_CLOSE "#onclose"
 
-#define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS JS_HIDDEN_CHAR_STR"HttpCC"
-#define HTTP_ARRAY_HTTP_SERVERS JS_HIDDEN_CHAR_STR"HttpS"
-#define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS JS_HIDDEN_CHAR_STR"HttpSC"
+#define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS "HttpCC"
+#define HTTP_ARRAY_HTTP_SERVERS "HttpS"
+#define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS "HttpSC"
 
 // -----------------------------
 
@@ -59,7 +59,7 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
 }
 
 static JsVar *httpGetArray(const char *name, bool create) {
-  return jsvObjectGetChild(execInfo.root, name, create?JSV_ARRAY:0);
+  return jsvObjectGetChild(execInfo.hiddenRoot, name, create?JSV_ARRAY:0);
 }
 
 // httpParseHeaders(&receiveData, reqVar, true) // server

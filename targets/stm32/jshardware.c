@@ -684,7 +684,7 @@ void jshDoSysTick() {
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
-    jshRTCPrescalerReciprocal = (((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
+    jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
     //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
@@ -1210,6 +1210,13 @@ void jshReset() {
   for (i=0;i<JSH_PIN_COUNT;i++)
     if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i))
       jshPinSetState(i, JSHPINSTATE_ADC_IN);
+
+  // re-initialise serial port (like was done on jshInit)
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
+  }
 }
 
 void jshKill() {
@@ -1350,7 +1357,7 @@ bool jshPinInput(Pin pin) {
       jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
     value = jshPinGetValue(pin);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
   return value;
 }
 
@@ -1537,7 +1544,7 @@ void jshPinOutput(Pin pin, bool value) {
     if (!jshGetPinStateIsManual(pin)) 
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
 }
 
 
@@ -1695,7 +1702,7 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     s.EXTI_LineCmd = shouldWatch ? ENABLE : DISABLE;
     EXTI_Init(&s);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
@@ -2221,9 +2228,7 @@ void jshSaveToFlash() {
   }
 #endif
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrint("\nProgramming ");
-  jsiConsolePrintInt(dataSize);
-  jsiConsolePrint(" Bytes...");
+  jsiConsolePrintf("\nProgramming %d Bytes...", dataSize);
 
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
@@ -2550,7 +2555,7 @@ void jshUtilTimerStart(JsSysTime period) {
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
   if (!jshIsPinValid(pin)) {
-       jsError("Invalid pin!");
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
        return;
   }
   if (pulseTime<=0) {
@@ -2624,11 +2629,11 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     int reload = (int)(timeout * 40000 / 256);
     if (reload < 2) {
       reload = 2;
-      jsError("Minimum watchdog timeout exceeded");
+      jsExceptionHere(JSET_ERROR, "Minimum watchdog timeout exceeded");
     }
     if (reload > 0xFFF) {
       reload = 0xFFF;
-      jsError("Maximum watchdog timeout exceeded");
+      jsExceptionHere(JSET_ERROR, "Maximum watchdog timeout exceeded");
     }
     IWDG_SetReload((uint16_t)reload);
 

@@ -146,7 +146,7 @@ void jswrap_interface_edit(JsVar *funcName) {
     func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
   } else {
     func = funcName;
-    funcName = jsvGetPathTo(execInfo.root, func, 2);
+    funcName = jsvGetPathTo(execInfo.root, func, 2, 0);
   }
 
   if (jsvIsString(funcName)) {

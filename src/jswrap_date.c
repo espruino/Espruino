@@ -255,7 +255,7 @@ int jswrap_date_getMinutes(JsVar *parent) {
   return getTimeFromDateVar(parent).min;
 }
 
-/*JSON{ "type":"method", "class": "Date", "name" : "getMinutes",
+/*JSON{ "type":"method", "class": "Date", "name" : "getSeconds",
          "description" : "0..59",
          "generate" : "jswrap_date_getSeconds",
          "return" : ["int32", ""]
@@ -264,7 +264,7 @@ int jswrap_date_getSeconds(JsVar *parent) {
   return getTimeFromDateVar(parent).sec;
 }
 
-/*JSON{ "type":"method", "class": "Date", "name" : "getMinutes",
+/*JSON{ "type":"method", "class": "Date", "name" : "getMilliseconds",
          "description" : "0..999",
          "generate" : "jswrap_date_getMilliseconds",
          "return" : ["int32", ""]
@@ -293,7 +293,7 @@ int jswrap_date_getDate(JsVar *parent) {
 
 
 /*JSON{ "type":"method", "class": "Date", "name" : "getMonth",
-         "description" : "Month of the year 1..12",
+         "description" : "Month of the year 0..11",
          "generate" : "jswrap_date_getMonth",
          "return" : ["int32", ""]
 }*/

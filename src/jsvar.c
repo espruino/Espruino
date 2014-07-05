@@ -2237,34 +2237,42 @@ JsVar *jsvNegateAndUnLock(JsVar *v) {
 }
 
 /** If the given element is found, return the path to it as a string of
- * the form 'foo.bar', else return 0. */
-JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth) {
+ * the form 'foo.bar', else return 0. If we would have returned a.b and
+ * ignoreParent is a, don't! */
+JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignoreParent) {
   if (maxDepth<=0) return 0;
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, root);
-  while (jsvObjectIteratorHasElement(&it)) {
-    JsVar *el = jsvObjectIteratorGetValue(&it);
-    if (el == element) {
+  JsvIterator it;
+  jsvIteratorNew(&it, root);
+  while (jsvIteratorHasElement(&it)) {
+    JsVar *el = jsvIteratorGetValue(&it);
+    if (el == element && root != ignoreParent) {
       // if we found it - send the key name back!
-      JsVar *name = jsvAsString(jsvObjectIteratorGetKey(&it), true);
-      jsvObjectIteratorFree(&it);
+      JsVar *name = jsvAsString(jsvIteratorGetKey(&it), true);
+      jsvIteratorFree(&it);
       return name;
-    } else if (jsvIsObject(el)) {
+    } else if (jsvIsObject(el) || jsvIsArray(el) || jsvIsFunction(el)) {
       // recursively search
-      JsVar *n = jsvGetPathTo(el, element, maxDepth-1);
+      JsVar *n = jsvGetPathTo(el, element, maxDepth-1, ignoreParent);
       if (n) {
         // we found it! Append our name onto it as well
-        JsVar *name = jsvAsString(jsvObjectIteratorGetKey(&it), true);
-        jsvAppendCharacter(name, '.');
-        jsvAppendStringVarComplete(name, n);
+        JsVar *keyName = jsvIteratorGetKey(&it);
+        JsVar *name = jsvNewFromEmptyString();
+        if (name) {
+          if (jsvIsObject(el)) {
+            jsvAppendPrintf(name, "%v.%v",keyName,n);
+          } else { // array
+            jsvAppendPrintf(name, "%v[%q]",keyName,n);
+          }
+        }
+        jsvUnLock(keyName);
         jsvUnLock(n);
-        jsvObjectIteratorFree(&it);
+        jsvIteratorFree(&it);
         return name;
       }
     }
-    jsvObjectIteratorNext(&it);
+    jsvIteratorNext(&it);
   }
-  jsvObjectIteratorFree(&it);
+  jsvIteratorFree(&it);
   return 0;
 }
 
