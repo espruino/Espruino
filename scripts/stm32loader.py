@@ -422,6 +422,7 @@ def usage():
     -p port     Serial port (default: first USB-like port in /dev)
     -b baud     Baud speed (default: 115200)
     -a addr     Target address
+    -s n        Skip writing N bytes from beginning of the binary (does not affect start address)
     -k          Change PCLK frequency to make USB stable on Espruino 1v43 bootloaders
 
     ./stm32loader.py -e -w -v example/main.bin
@@ -459,10 +460,13 @@ def read(filename):
 
 if __name__ == "__main__":
 
+    had_error = False
+
     conf = {
             'port': 'auto',
             'baud': 115200,
             'address': 0x08000000,
+            'skip' : 0,
             'erase': 0,
             'write': 0,
             'verify': 0,
@@ -476,7 +480,7 @@ if __name__ == "__main__":
 # http://www.python.org/doc/2.5.2/lib/module-getopt.html
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrXp:b:a:l:k")
+        opts, args = getopt.getopt(sys.argv[1:], "hqVewvrXp:b:a:s:l:k")
     except getopt.GetoptError as err:
         # print help information and exit:
         print(str(err)) # will print something like "option -a not recognized"
@@ -507,13 +511,14 @@ if __name__ == "__main__":
             conf['baud'] = eval(a)
         elif o == '-a':
             conf['address'] = eval(a)
+        elif o == '-s':
+            conf['skip'] = eval(a)
         elif o == '-l':
             conf['len'] = eval(a)
         elif o == '-k':
             conf['pclk_hack'] = 1
         else:
             assert False, "unhandled option"
-
     # Try and find the port automatically
     if conf['port'] == 'auto':
         ports = []
@@ -536,6 +541,10 @@ if __name__ == "__main__":
         if (conf['write'] or conf['verify']):
             mdebug(5, "Reading data from %s" % args[0])
             data = read(args[0])
+
+            if conf['skip']:
+                mdebug(5, "Skipping %d bytes" % conf['skip'])
+                data = data[conf['skip']:]
 
         try:
             cmd.initChip()
@@ -584,6 +593,7 @@ if __name__ == "__main__":
                 for i in xrange(0, len(data)):
                     if data[i] != verify[i]:
                         print(hex(i) + ': ' + hex(data[i]) + ' vs ' + hex(verify[i]))
+                had_error = True
 
         if not conf['write'] and conf['read']:
             rdata = cmd.readMemory(conf['address'], conf['len'])
@@ -595,4 +605,6 @@ if __name__ == "__main__":
     finally:
         if not conf['reset']: 
             cmd.releaseChip()
+
+    if had_error: exit(1)
 
