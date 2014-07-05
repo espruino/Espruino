@@ -417,10 +417,12 @@ void jstDumpUtilityTimers() {
            jsiConsolePrintf("%p=%d,", task.data.set.pins[i],  (task.data.set.value>>i)&i);
          jsiConsolePrintf("\n");
          break;
+#ifndef SAVE_ON_FLASH
     case UET_WRITE_BYTE : jsiConsolePrintf("WRITE_BYTE\n"); break;
     case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
     case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
     case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
+#endif
     default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
     }
 
