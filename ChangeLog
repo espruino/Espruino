@@ -3,6 +3,7 @@
             Fixed exception catching
             Fix Serial1 initialisation after 'reset()'
             Fix parsing of try..catch when a serious error (not an exception) occurred
+            Stop the utility timer queue filling with WAKEUP tasks if Espruino gets woken up early
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)

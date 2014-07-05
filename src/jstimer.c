@@ -13,6 +13,7 @@
  */
 #include "jstimer.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
 
 UtilTimerTask utilTimerTasks[UTILTIMERTASK_TASKS];
 volatile unsigned char utilTimerTasksHead = 0;
@@ -279,12 +280,49 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period) {
   UtilTimerTask task;
-  task.repeatInterval = 0;
   task.time = jshGetSystemTime() + period;
+  task.repeatInterval = 0;
   task.type = UET_WAKEUP;
+
+  bool hasTimer = false;
+  JsSysTime nextTime;
+
+  // work out if we're waiting for a timer,
+  // and if so, when it's going to be
+  jshInterruptOff();
+  if (utilTimerTasksTail!=utilTimerTasksHead) {
+    hasTimer = true;
+    nextTime = utilTimerTasks[utilTimerTasksTail].time;
+  }
+  jshInterruptOn();
+
+  if (hasTimer && task.time >= nextTime) {
+    // we already had a timer, and it's going to wake us up sooner.
+    // don't create a WAKEUP timer task
+    return true;
+  }
+
   bool ok = utilTimerInsertTask(&task);
   // We wait until the timer is out of the reload event, because the reload event itself would wake us up
     return ok;
+}
+
+/** If the first timer task is a wakeup task, remove it. This stops
+ * us filling the timer full of wakeup events if we wake up from sleep
+ * before the wakeup event */
+void jstClearWakeUp() {
+  bool removedTimer = false;
+  jshInterruptOff();
+  // while the first item is a wakeup, remove it
+  while (utilTimerTasksTail!=utilTimerTasksHead &&
+      utilTimerTasks[utilTimerTasksTail].type == UET_WAKEUP) {
+    utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
+    removedTimer = true;
+  }
+  // if the queue is now empty, and we stop the timer
+  if (utilTimerTasksTail==utilTimerTasksHead && removedTimer)
+    jshUtilTimerDisable();
+  jshInterruptOn();
 }
 
 #ifndef SAVE_ON_FLASH
@@ -332,7 +370,7 @@ bool jstStopBufferTimerTask(JsVar *var) {
       if (UET_IS_BUFFER_EVENT(utilTimerTasks[ptr].type)) {
         if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
           // shift tail back along
-          int next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+          unsigned char next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
           while (next!=endPtr) {
             utilTimerTasks[ptr] = utilTimerTasks[next];
             ptr = next;
@@ -355,4 +393,38 @@ bool jstStopBufferTimerTask(JsVar *var) {
 void jstReset() {
   jshUtilTimerDisable();
   utilTimerTasksTail = utilTimerTasksHead = 0;
+}
+
+void jstDumpUtilityTimers() {
+  int i;
+  UtilTimerTask uTimerTasks[UTILTIMERTASK_TASKS];
+  jshInterruptOff();
+  for (i=0;i<UTILTIMERTASK_TASKS;i++)
+    uTimerTasks[i] = utilTimerTasks[i];
+  unsigned char uTimerTasksHead = utilTimerTasksHead;
+  unsigned char uTimerTasksTail = utilTimerTasksTail;
+  jshInterruptOn();
+
+  unsigned char t = uTimerTasksTail;
+  while (t!=uTimerTasksHead) {
+    UtilTimerTask task = uTimerTasks[t];
+    jsiConsolePrintf("%08d us : ", (int)(1000*jshGetMillisecondsFromTime(task.time-jsiLastIdleTime)));
+
+    switch (task.type) {
+    case UET_WAKEUP : jsiConsolePrintf("WAKEUP\n"); break;
+    case UET_SET : jsiConsolePrintf("SET ");
+         for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+           jsiConsolePrintf("%p=%d,", task.data.set.pins[i],  (task.data.set.value>>i)&i);
+         jsiConsolePrintf("\n");
+         break;
+    case UET_WRITE_BYTE : jsiConsolePrintf("WRITE_BYTE\n"); break;
+    case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
+    case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
+    case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
+    default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
+    }
+
+    t = (t+1) & (UTILTIMERTASK_TASKS-1);
+  }
+
 }

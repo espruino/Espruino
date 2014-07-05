@@ -105,6 +105,11 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period);
 
+/** If the first timer task is a wakeup task, remove it. This stops
+ * us filling the timer full of wakeup events if we wake up from sleep
+ * before the wakeup event */
+void jstClearWakeUp();
+
 /// Start writing a string out at the given period between samples
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
@@ -113,6 +118,9 @@ bool jstStopBufferTimerTask(JsVar *var);
 
 /// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
 void jstReset();
+
+/// Dump the current list of timers
+void jstDumpUtilityTimers();
 
 #endif /* JSTIMER_H_ */
 

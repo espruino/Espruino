@@ -2459,10 +2459,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
       // we're going to wake on a System Tick timer anyway, so don't bother
     }
 
-    // TODO: we can do better than this. look at lastSysTickTime
     jsiSetSleep(JSI_SLEEP_ASLEEP);
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
+
+    /* We may have woken up before the wakeup event. If so
+    then make sure we clear the event */
+    jstClearWakeUp();
     return true;
   }
 
@@ -2600,7 +2603,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {
-      unsigned int period = (int)TIMx->ARR; // No getter available
+      unsigned int period = (unsigned int)TIMx->ARR; // No getter available
       uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 16);
       switch (func & JSH_MASK_TIMER_CH) {
       case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;

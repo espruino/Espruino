@@ -234,6 +234,10 @@ else:
   bufferSizeIO = 64 if board.chip["ram"]<20 else 128
   bufferSizeTX = 32 if board.chip["ram"]<20 else 128
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
+
+if 'util_timer_tasks' in board.info:
+  bufferSizeTimer = board.info['util_timer_tasks']
+
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255)")
 codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")

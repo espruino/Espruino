@@ -17,6 +17,7 @@
 #include "jswrap_math.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 
 /*JSON{ "type":"class",
         "class" : "E",
@@ -495,5 +496,15 @@ int jswrap_espruino_reverseByte(int v) {
   unsigned int b = v&0xFF;
   // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
   return (((b * 0x0802LU & 0x22110LU) | (b * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16) & 0xFF;
+}
+
+
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "dumpTimers", "ifndef":"RELEASE",
+         "description" : ["Output the current list of Utility Timer Tasks - for debugging only"],
+         "generate" : "jswrap_espruino_dumpTimers"
+}*/
+void jswrap_espruino_dumpTimers() {
+  jstDumpUtilityTimers();
 }
 
