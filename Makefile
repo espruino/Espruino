@@ -66,14 +66,6 @@ ifeq ($(OS),Windows_NT)
 MINGW=1
 endif
 
-# Gordon's car ECU (extremely beta!)
-ifdef ECU
-STM32F4DISCOVERY=1
-#HYSTM32_32=1
-USE_TRIGGER=1
-DEFINES += -DECU
-endif
-
 ifdef RELEASE
 # force no asserts to be compiled in
 DEFINES += -DNO_ASSERT
@@ -173,6 +165,15 @@ USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
+else ifdef ECU
+EMBEDDED=1
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES += -DUSE_USB_OTG_FS=1 -DECU
+BOARD=ECU
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
