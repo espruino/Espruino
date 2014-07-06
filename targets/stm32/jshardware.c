@@ -1017,6 +1017,12 @@ void jshInit() {
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+#endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
 
