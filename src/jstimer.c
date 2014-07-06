@@ -271,7 +271,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
   int i;
   for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
     task.data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
-  task.data.set.value = value?0xFF:0;
+  task.data.set.value = value;
 
 //  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
@@ -414,7 +414,7 @@ void jstDumpUtilityTimers() {
     case UET_WAKEUP : jsiConsolePrintf("WAKEUP\n"); break;
     case UET_SET : jsiConsolePrintf("SET ");
          for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-           jsiConsolePrintf("%p=%d,", task.data.set.pins[i],  (task.data.set.value>>i)&i);
+           jsiConsolePrintf("%p=%d,", task.data.set.pins[i],  (task.data.set.value>>i)&1);
          jsiConsolePrintf("\n");
          break;
     case UET_WRITE_BYTE : jsiConsolePrintf("WRITE_BYTE\n"); break;

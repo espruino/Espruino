@@ -151,7 +151,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
               //jsiConsolePrint("Trigger already passed\n");
             }
 
-            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 1))
+            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0xFF))
               data->errors |= TRIGERR_TIMER_FULL;
             if (trig->pulseLength>0) {
               if (!jstPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
