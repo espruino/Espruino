@@ -437,7 +437,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
       val*=radix;
-      while (((fractionalDigits<0) && (val > stopAtError)) || (fractionalDigits > 0)) {
+      while (((fractionalDigits<0) && (fractionalDigits>-12) && (val > stopAtError)) || (fractionalDigits > 0)) {
         int v = (int)(val+((fractionalDigits==1) ? 0.4 : 0.00000001) );
         val = (val-v)*radix;
         if (--len <= 0) { *str=0; return; } // bounds check
