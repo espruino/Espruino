@@ -229,6 +229,9 @@ if "default_console_tx" in board.info:
   codeOut("#define DEFAULT_CONSOLE_TX_PIN "+toPinDef(board.info["default_console_tx"]))
 if "default_console_rx" in board.info:
   codeOut("#define DEFAULT_CONSOLE_RX_PIN "+toPinDef(board.info["default_console_rx"]))
+if "default_console_baudrate" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_BAUDRATE "+board.info["default_console_baudrate"])
+
 
 codeOut("");
 if LINUX:

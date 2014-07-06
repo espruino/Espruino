@@ -20,6 +20,7 @@ info = {
  'default_console' : "EV_SERIAL2",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
+ 'default_console_baudrate' : "115200",
  'variables' : 5450,
  'util_timer_tasks' : 64,
  'binary_name' : 'espruino_%v_ecu.bin',
