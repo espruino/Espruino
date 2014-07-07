@@ -37,14 +37,14 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'GND', 'A10', 'A9', 'A8' ],
+  'left' : [ 'GND', '3V3', '', '' ],
 #  'left2' : [ 'GND', 'A12', 'A11', 'VCC' ],
-  'top' : [ '3.3', 'GND', 'A13', 'A14', 'A15', 'B10', 'B3', 'B4', 'B5', 'B6', 'B7'],
-  'bottom' : [ 'VBAT','GND','B15', 'B14', 'B13', 'B2', 'B0', 'A7', 'A6', 'A5','A4' ], 
+  'top' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
+  'bottom' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B0', 'A7', 'A6', 'A5' ], 
 
 
-  'right2' : ['B9','','A1','A3'],
-  'right' : ['B8','C13','A0','A2'],        
+  'right2' : ['C13','A9','A1','A3'],
+  'right' : ['A10','A8','A2','A4'],        
 };
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
@@ -52,6 +52,7 @@ devices = {
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
   'LED1' : { 'pin' : 'B1' },
+  'LED2' : { 'pin' : 'B2' },
   'USB' : { 'pin_vbus' :  'B12',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked

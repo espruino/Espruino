@@ -306,11 +306,10 @@ writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(-5*d)
 writeHTML('drawLine(x+'+str(5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(5*d)+');');
 writeHTML('drawLine(x+'+str(5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(5*d)+');');
 writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(-5*d)+');');
-
+writeHTML('var p;');
 for pinstrip in board.board:
   if pinstrip[0]!='_':
     for pin in board.board[pinstrip]:       
-      p = "$('.pinname:contains(\""+pin+".\")').offset()";
       if pin in pinmap:
         pin = pinmap[pin];      
       pininfo = pinutils.findpin(pins, pin, False)
@@ -330,7 +329,10 @@ for pinstrip in board.board:
           px = -6*d
           py = (6-(n-36))*d
 
-        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+p+'.left,'+p+'.top, "'+pin+'");');
+        writeHTML("p=$('.pinname:contains(\""+pin+".\")');");
+        pinx = "p.offset().left+p.width()/2";
+        piny = "p.offset().top+p.height()/2";
+        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+pinx+','+piny+', "'+pin+'");');
 
 
 writeHTML('});</SCRIPT>');
