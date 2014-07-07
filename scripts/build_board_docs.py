@@ -74,7 +74,7 @@ def dump_pin(pin, pinstrip):
          not_five_volt = True
 
       writeHTML('    <DIV class="'+pinstrip+'pin pin">');
-      pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
+      pinHTML = '     <SPAN class="pinname">'+pin+".</SPAN>";
       pinHTML2 = '';
 
       if not_five_volt:
@@ -199,13 +199,21 @@ writeHTML("""
 }
 
 
+.line {
+  height:2px;background-color:red;position:absolute;
+}
+
+.line:hover {
+  background-color:#FF00FF;
+}
+
 """);
 for pinstrip in board.board:
   writeHTML("   #"+pinstrip+" { position: absolute; }")
   writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
 writeHTML(board.board_css)
-writeHTML("  </STYLE>")
-writeHTML(""""
+writeHTML("  </STYLE>"+'<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>')
+writeHTML("""
   <SCRIPT type="text/javascript"> 
     function showTT(ttid) { 
       var e = document.getElementById(ttid);
@@ -215,6 +223,25 @@ writeHTML(""""
       var e = document.getElementById(ttid);
       e.style.display = "none";
     }
+function drawLine(x1, y1, x2, y2, hover) {
+    if (x2 < x1) {
+        var temp = x1;
+        x1 = x2;
+        x2 = temp;
+        temp = y1;
+        y1 = y2;
+        y2 = temp;
+    }
+    var line = $('<div class="line" alt="'+hover+'"></div>').appendTo($("body"));
+    var length = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+    line.css('width', length + "px");
+    var angle = Math.atan((y2 - y1) / (x2 - x1));
+    line.css('top', y1 + 0.5 * length * Math.sin(angle) + "px");
+    line.css('left', x1 - 0.5 * length * (1 - Math.cos(angle)) + "px");
+    line.css('-moz-transform', "rotate(" + angle + "rad)");
+    line.css('-webkit-transform', "rotate(" + angle + "rad)");
+    line.css('-o-transform', "rotate(" + angle + "rad)");
+ }
   </SCRIPT>
 """)
 writeHTML(" </HEAD>")
@@ -251,8 +278,6 @@ for pinstrip in board.board:
       usedpins.append(pin)
       dump_pin(pin, pinstrip)
     writeHTML('   </DIV>')    
-writeHTML('  </DIV>')
-writeHTML('  </DIV>')
 
 otherpins=0
 for pinstruct in pins:
@@ -260,15 +285,56 @@ for pinstruct in pins:
   if not pin in usedpins: 
     otherpins = otherpins + 1
 
+writeHTML('  </DIV id="board">')
+writeHTML('  </DIV id="boardcontainer">')
+
 if otherpins>0:
   writeHTML('  <DIV id="otherpins">')
   writeHTML('   <H2>Pins not on connectors</H2>')
   for pinstruct in pins:
-    pin = pinstruct["name"]
+    pin = pinstruct["name"]        
     if not pin in usedpins:    
       dump_pin(pin, "otherpins")
   writeHTML('  </DIV>')
 writeHTML('  <P></P>')
+
+writeHTML('<SCRIPT type="text/javascript"> $(function() {');
+writeHTML('var x = $("#board").offset().left+500;');
+writeHTML('var y = $("#board").offset().top+200;');
+d = 12
+writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(-5*d)+');');
+writeHTML('drawLine(x+'+str(5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(5*d)+');');
+writeHTML('drawLine(x+'+str(5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(5*d)+');');
+writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(-5*d)+');');
+
+for pinstrip in board.board:
+  if pinstrip[0]!='_':
+    for pin in board.board[pinstrip]:       
+      p = "$('.pinname:contains(\""+pin+".\")').offset()";
+      if pin in pinmap:
+        pin = pinmap[pin];      
+      pininfo = pinutils.findpin(pins, pin, False)
+      if "UQFN48" in pininfo["csv"]:
+        n = int(pininfo["csv"]["UQFN48"])-1        
+        n = (n+12) % 48
+        if n<12:
+          px = (n-6)*d
+          py = -6*d
+        elif n<24:
+          px = 6*d
+          py = ((n-12)-6)*d
+        elif n<36:
+          px = (6-(n-24))*d
+          py = 6*d
+        else:
+          px = -6*d
+          py = (6-(n-36))*d
+
+        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+p+'.left,'+p+'.top, "'+pin+'");');
+
+
+writeHTML('});</SCRIPT>');
+
 writeHTML(" </BODY>")
 writeHTML("</HTML>")
 
