@@ -39,12 +39,12 @@ chip = {
 board = {
   'left' : [ 'GND', 'A10', 'A9', 'A8' ],
 #  'left2' : [ 'GND', 'A12', 'A11', 'VCC' ],
-  'top' : [ '3.3', 'A13', 'A14', 'A15', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8','B9'],
-  'bottom' : [ 'B15', 'B14', 'B13', 'B10', 'B0', 'A7', 'A6', 'A5','A4','A3','A2' ], 
+  'top' : [ '3.3', 'GND', 'A13', 'A14', 'A15', 'B10', 'B3', 'B4', 'B5', 'B6', 'B7'],
+  'bottom' : [ 'VBAT','GND','B15', 'B14', 'B13', 'B2', 'B0', 'A7', 'A6', 'A5','A4' ], 
 
 
-  'right2' : ['','','','A1'],
-  'right' : ['C13','','','A0'],        
+  'right2' : ['B9','','A1','A3'],
+  'right' : ['B8','C13','A0','A2'],        
 };
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
@@ -75,7 +75,7 @@ board_css = """
 }
 #left {
   top: 105px;
-  right: 600px;  
+  right: 560px;  
 }
 #left2  {
   top: 105px;
