@@ -7,6 +7,7 @@
             Add ability to specify default Serial TX and RX pins in BOARD.py
             Reduce how many digits of floating point values are normally displayed
             Fixed PWM output on B4 + B5
+            Fix regression when using pins as array indices
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)

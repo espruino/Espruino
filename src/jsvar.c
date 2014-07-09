@@ -518,7 +518,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
   assert(jsvIsInt(var) || jsvIsString(var));
-  if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
+  if (jsvIsInt(var)) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
