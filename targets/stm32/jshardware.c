@@ -871,8 +871,12 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   bool remap = (func&JSH_MASK_AF)!=JSH_AF0;
   if ((func&JSH_MASK_TYPE)==JSH_TIMER1)       GPIO_PinRemapConfig( GPIO_FullRemap_TIM1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER2)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM2, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
+  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3) {
+    if (pin == JSH_PORTB_OFFSET+4 || pin == JSH_PORTB_OFFSET+5)
+      GPIO_PinRemapConfig( GPIO_PartialRemap_TIM3, remap );
+    else
+      GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
+  } else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER15) GPIO_PinRemapConfig( GPIO_Remap_TIM15, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_I2C1) GPIO_PinRemapConfig( GPIO_Remap_I2C1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_SPI1) GPIO_PinRemapConfig( GPIO_Remap_SPI1, remap );
@@ -1027,16 +1031,13 @@ void jshInit() {
   }
 
 #ifdef STM32F1
-  // reclaim B3 and B4!
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);    
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
-#endif
-#ifdef ESPRUINOBOARD
-  // reclaim A13 and A14 (do we need the two above now?)
 #ifndef DEBUG
+  // reclaim B3, B4, A13 and A14
+
   // don't disable this when compiling with DEBUG=1, because we need SWD
   // for in-circuit debugging and we probably don't care about the LEDs
   // see http://www.espruino.com/AdvancedDebug
+
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
 #endif
 #endif
