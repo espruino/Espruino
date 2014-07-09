@@ -37,13 +37,13 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'GND', '3V3', '', '' ],
+  'left' : [ 'GND', '3V3', 'BOOT0', 'NRST' ],
 #  'left2' : [ 'GND', 'A12', 'A11', 'VCC' ],
   'top' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
-  'bottom' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B0', 'A7', 'A6', 'A5' ], 
+  'bottom' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
 
 
-  'right2' : ['C13','A9','A1','A3'],
+  'right2' : ['A9','A0','A1','A3'],
   'right' : ['A10','A8','A2','A4'],        
 };
 devices = {
@@ -51,9 +51,10 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
-  'LED1' : { 'pin' : 'B1' },
+  'LED1' : { 'pin' : 'B12' }, 
   'LED2' : { 'pin' : 'B2' },
-  'USB' : { 'pin_vbus' :  'B12',
+  'USB' : { 'pin_charge' :  'B0',
+            'pin_vsense' :  'B1',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked
   'JTAG' : {
