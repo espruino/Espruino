@@ -53,10 +53,6 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
-ifeq ($(shell uname -m),armv6l)
-RASPBERRYPI=1 # just a guess
-endif
-
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -250,7 +246,19 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
-else ifdef RASPBERRYPI
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+else
+ifeq ($(shell uname -m),armv6l)
+RASPBERRYPI=1 # just a guess
+endif
+
+ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -259,13 +267,6 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
-else ifdef LCTECH_STM32F103RBT6
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
 else
 BOARD=LINUX
 LINUX=1
@@ -281,6 +282,7 @@ else ifdef MINGW
 DEFINES += -DHAS_STDLIB=1
 else  # Linux
 USE_NET=1
+endif
 endif
 endif
 
