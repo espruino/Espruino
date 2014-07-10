@@ -470,6 +470,29 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   jshEnableWatchDog(time);
 }
 
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "getErrorFlags",
+         "generate" : "jswrap_espruino_getErrorFlags",
+         "description" : ["Get and reset the error flags. Returns an array that can contain:",
+                          "`'FIFO_FULL'`: The receive FIFO filled up and data was lost. This could be state transitions for setWatch, or received characters.",
+                          "`'BUFFER_FULL'`: A buffer for a stream filled up and characters were lost. This can happen to any stream - Serial,HTTP,etc.",
+                          "`'CALLBACK'`: A callback (s`etWatch`, `setInterval`, `on('data',...)`) caused an error and so was removed.",
+                          "`'LOW_MEMORY'`: Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history",
+                          "`'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed."],
+         "return" : [ "JsVar", "An array of error flags" ]
+}*/
+JsVar *jswrap_espruino_getErrorFlags() {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0;
+  if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
+  if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
+  if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
+  if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
+  if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  jsErrorFlags = JSERR_NONE;
+  return arr;
+}
+
 /*JSON{ "type":"staticmethod",
          "class" : "E", "name" : "toArrayBuffer",
          "generate" : "jswrap_espruino_toArrayBuffer",

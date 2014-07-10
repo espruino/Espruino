@@ -235,7 +235,8 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
       // return pointer
       return v;
   }
-  /* we don't have memort - second last hope - run garbage collector */
+  jsErrorFlags |= JSERR_LOW_MEMORY;
+  /* we don't have memory - second last hope - run garbage collector */
   if (jsvGarbageCollect())
     return jsvNewWithFlags(flags); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
@@ -248,7 +249,9 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
-  jsError("Out of Memory!");
+  if (!(jsErrorFlags&JSERR_MEMORY))
+    jsError("Out of Memory!");
+  jsErrorFlags |= JSERR_MEMORY;
   jspSetInterrupted(true);
   return 0;
 #endif
