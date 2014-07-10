@@ -20,10 +20,6 @@
 #include "jsinteractive.h" // for debug
 #include "graphics.h"
 
-/*
-const unsigned int DELAY_LONG = 0xAFFFFf;
-const unsigned int DELAY_SHORT = 10;*/
-const unsigned int DELAY_LONG = 0xFFFFF;
 const unsigned int DELAY_SHORT = 10;
 
 
@@ -31,9 +27,8 @@ void LCD_DELAY(__IO uint32_t nCount) {
   for(; nCount != 0; nCount--) ;//n++;
 }
 
-void delay_ms(__IO uint32_t mSec) {
-  mSec *= 10000;
-  for(; mSec != 0; mSec--) ;//n++;
+static inline void delay_ms(__IO uint32_t mSec) {
+  jshDelayMicroseconds(mSec*1000);
 }
 
 static uint8_t LCD_Code;
@@ -178,6 +173,10 @@ static inline void LCD_WR_Data_multi(unsigned int val, unsigned int count) {
 
 
 void LCD_init_hardware() {
+  delay_ms(100);
+  // not sure why, but adding a delay here with the debugger means
+  // that everything works great
+
   GPIO_InitTypeDef GPIO_InitStructure;
 
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_FSMC, ENABLE); /* Enable the FSMC Clock */
@@ -197,6 +196,7 @@ void LCD_init_hardware() {
   GPIO_Init(GPIOE, &GPIO_InitStructure);
 
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
+  FSMC_NORSRAMStructInit(&FSMC_NORSRAMInitStructure);
   FSMC_NORSRAMTimingInitTypeDef  p;
   p.FSMC_AddressSetupTime = 0x02;
   p.FSMC_AddressHoldTime = 0x00;
@@ -205,8 +205,8 @@ void LCD_init_hardware() {
   p.FSMC_CLKDivision = 0x00;
   p.FSMC_DataLatency = 0x00;
   p.FSMC_AccessMode = FSMC_AccessMode_B;
-  FSMC_NORSRAMInitStructure.FSMC_MemoryType = FSMC_MemoryType_NOR;
 
+  FSMC_NORSRAMInitStructure.FSMC_MemoryType = FSMC_MemoryType_NOR;
   FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM1;
   FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable;
   FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b;
@@ -229,7 +229,9 @@ void LCD_init_hardware() {
 #ifdef LCD_RESET
   jshPinSetState(LCD_RESET, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(LCD_RESET, 0); //RESET=0
-  LCD_DELAY(DELAY_LONG);
+#endif
+  delay_ms(50);
+#ifdef LCD_RESET
   jshPinSetValue(LCD_RESET, 1); //RESET=1
 #endif
 }
