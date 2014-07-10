@@ -776,7 +776,7 @@ inline void jshPinSetState(Pin pin, JshPinState state) {
             state==JSHPINSTATE_USART_IN ||
             state==JSHPINSTATE_USART_OUT ||
             state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP;
+  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
   bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
