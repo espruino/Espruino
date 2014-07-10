@@ -14,6 +14,7 @@
             I2C timeouts now throw exceptions (fix #403)
             Fix String.prototype.split with non-string args
             Add fake digital pins D0..D7 under linux (helps with testing)
+            Rewrite ff_wtoupper and save 650 bytes \o/ (fix #185)
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
