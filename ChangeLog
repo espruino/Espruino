@@ -13,6 +13,7 @@
             Add error flags and E.getErrorFlags to report possible issues like buffer overflows and low memory (fix #136)
             I2C timeouts now throw exceptions (fix #403)
             Fix String.prototype.split with non-string args
+            Add fake digital pins D0..D7 under linux (helps with testing)
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
