@@ -16,6 +16,7 @@
             Add fake digital pins D0..D7 under linux (helps with testing)
             Rewrite ff_wtoupper and save 650 bytes \o/ (fix #368)
             Update Makefile to make it easier to cross-compile RPi->Espruino board
+            Fix HYSTM32_32 LCD at the expense of a bit of speed (fix #137, fix #327)
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
