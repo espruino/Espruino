@@ -8,6 +8,7 @@
             Reduce how many digits of floating point values are normally displayed
             Fixed PWM output on B4 + B5
             Fix regression when using pins as array indices
+            Remove negation for CHxN outputs - it seems they don't negate after all. Fixes PWM polarity on A7,B1,B13,B14,B15
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)
