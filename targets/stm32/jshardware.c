@@ -2122,7 +2122,7 @@ bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
   JsSysTime endTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(0.1);
   while (!(I2C_GetFlagStatus(I2C, I2C_FLAG_SB))) {
     if (jspIsInterrupted() || (jshGetSystemTime() > endTime)) {
-      jsWarn("I2C device not responding");
+      jsExceptionHere(JSET_ERROR, "I2C device not responding");
       return false;
     }
   }
@@ -2157,7 +2157,9 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);   
-    WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED), "I2C Write Transmit");
+    int timeout = WAIT_UNTIL_N_CYCLES;
+    while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
   I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
