@@ -12,6 +12,7 @@
             Add pullup to USART RX. Reduces wakeups and random characters on Serial1.
             Add error flags and E.getErrorFlags to report possible issues like buffer overflows and low memory (fix #136)
             I2C timeouts now throw exceptions (fix #403)
+            Fix String.prototype.split with non-string args
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)

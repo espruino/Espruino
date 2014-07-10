@@ -257,8 +257,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     return array;
   }
 
-  split = jsvAsString(split, true);
-
+  split = jsvAsString(split, false);
 
   int idx, last = 0;
   int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
