@@ -107,7 +107,7 @@ USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
 USE_FILESYSTEM=1
@@ -162,7 +162,7 @@ USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef ECU
 EMBEDDED=1
 USE_TRIGGER=1
@@ -820,9 +820,6 @@ ifndef BOOTLOADER
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
-
-# Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-OPTIMIZEFLAGS += --param inline-unit-growth=8
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-
