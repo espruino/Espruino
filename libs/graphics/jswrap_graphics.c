@@ -339,7 +339,7 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
 }*/
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
-  return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1L<<gfx.data.bpp)-1));
+  return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1UL<<gfx.data.bpp)-1));
 }
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
