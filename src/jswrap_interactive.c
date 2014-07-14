@@ -17,6 +17,11 @@
 #include "jswrap_json.h" // for print/console.log
 #include "jsinteractive.h"
 
+/*JSON{ "type":"class", "class" : "console",
+         "description" : "An Object that contains functions for writing to the interactive console"
+}*/
+
+
 /*JSON{ "type":"function", "name" : "setBusyIndicator",
          "description" : "When Espruino is busy, set the pin specified here high. Set this to undefined to disable the feature.",
          "generate" : "jswrap_interface_setBusyIndicator",
