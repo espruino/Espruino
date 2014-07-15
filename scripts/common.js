@@ -55,7 +55,9 @@ Builtin.prototype.getTernType = function() {
         return p[0]+": "+getBasicTernType(p[1]);
       });
     var ret = "";
-    if ("return" in this)
+    if ("return_object" in this)
+      ret = " -> +"+this.return_object
+    else if ("return" in this) 
       ret = " -> "+getBasicTernType(this.return[0]); 
     return "fn("+args.join("\, ")+")"+ret;
   } else {

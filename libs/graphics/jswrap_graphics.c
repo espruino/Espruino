@@ -77,7 +77,7 @@ static bool isValidBPP(int bpp) {
                       [ "options", "JsVar", ["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```",
                                              "zigzag = whether to alternate the direction of scanlines for rows",
                                              "vertical_byte = whether to align bits in a byte vertically or not"] ] ],
-         "return" : [ "JsVar", "The new Graphics object" ]
+         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
 }*/
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {
@@ -124,7 +124,7 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
                       [ "height", "int32", "Pixels high" ],
                       [ "bpp", "int32", "Number of bits per pixel" ],
                       [ "callback", "JsVar", "A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked." ] ],
-         "return" : [ "JsVar", "The new Graphics object" ]
+         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
 }*/
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {
@@ -176,7 +176,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
          "generate" : "jswrap_graphics_createSDL",
          "params" : [ [ "width", "int32", "Pixels wide" ],
                       [ "height", "int32", "Pixels high" ] ],
-         "return" : [ "JsVar", "The new Graphics object" ]
+         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
 }*/
 JsVar *jswrap_graphics_createSDL(int width, int height) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {

@@ -241,11 +241,7 @@ for jsondata in detail:
     html("  <p class=\"examples\">This function is used in the following places in Espruino's documentation</p>")
     html("  <ul class=\"examples\">")    
     for link in uses:
-      if "#" in link: linkname = link[:link.find("#")]
-      else: linkname = link
-      if linkname[0]=="/": linkname = linkname[1:]
-      linkname = linkname.replace("+"," ");
-      html('    <li><a href="'+link+'">'+linkname+'</a></li>')
+      html('    <li><a href="'+link["url"]+'">'+link["title"]+'</a></li>')
     html("  </ul>")
 
 html(" </body>")

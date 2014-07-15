@@ -13,6 +13,10 @@ require("./common.js").readAllWrapperFiles(function(json) {
         o["!doc"] = j.getDescription();
         o["!url"] = j.getURL();
         tern[j.class] = o;
+
+        if ("prototype" in j) {
+          o["prototype"] = { "!proto": j.prototype+".prototype" };
+        }
       } else if (j.type=="object") { 
         var o = { "!type": ("instanceof" in j) ? ("+"+j.instanceof) : "?" };
         o["!doc"] = j.getDescription();

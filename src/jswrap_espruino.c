@@ -499,7 +499,7 @@ JsVar *jswrap_espruino_getErrorFlags() {
          "description" : [ "Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.",
                            "Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`." ],
          "params" : [ [ "str", "JsVar", "The string to convert to an ArrayBuffer"] ],
-         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ]
+         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ], "return_object":"ArrayBufferView"
 }*/
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   if (!jsvIsString(str)) return 0;

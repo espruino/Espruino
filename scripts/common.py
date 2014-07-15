@@ -50,6 +50,7 @@ if silent:
 #                               // JsVar - passes a JsVar* to the function (after skipping names)
 #                               // JsVarArray - parses this AND ANY SUBSEQUENT ARGUMENTS into a JsVar of type JSV_ARRAY. THIS IS ALWAYS DEFINED, EVEN IF ZERO LENGTH. Currently it must be the only parameter
 #         "return" : ["int|float|JsVar", "The integer representation of x"],
+#         "return_object" : "ObjectName", // optional - used for tern's code analysis - so for example we can do hints for openFile(...).yyy
 #         "no_create_links":1                // optional - if this is set then hyperlinks are not created when this name is mentioned (good example = bit() )
 #         "not_real_object" : "anything",    // optional - for classes, this means we shouldn't treat this as a built-in object, as internally it isn't stored in a JSV_OBJECT
 #         "prototype" : "Object",    // optional - for classes, this is what their prototype is. It's particlarly helpful if not_real_object, because there is no prototype var in that case
