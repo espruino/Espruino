@@ -32,6 +32,14 @@ for jsondata in jsondatas:
     if not jsondata["class"] in classes:
       classes.append(jsondata["class"])
 
+# Load list of 'uses' in EspruinoDocs
+code_uses = []
+referenceFile = "../EspruinoDocs/references.json"
+if os.path.isfile(referenceFile):
+  print "Found references.json - using this to link to examples"
+  code_uses = json.loads(open(referenceFile, "r").read())
+
+# start writing
 htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
@@ -118,6 +126,7 @@ html("   .call { padding-left: 50px; }")
 html("   .description { padding-left: 50px; }")
 html("   .param { padding-left: 50px; }")
 html("   .return { padding-left: 50px; }")
+html("   .examples { padding-left: 50px; }")
 html("  </style>")
 html(" </head>")
 html(" <body>")
@@ -224,6 +233,20 @@ for jsondata in detail:
     html("   <p class=\"return\">"+htmlify(desc)+"</p>")
   else:
     html("   <p class=\"return\">No return value (undefined)</p>")
+
+  url = "http://www.espruino.com/Reference#"+get_link(jsondata)
+  if url in code_uses: 
+    uses = code_uses[url]
+    html("  <h4>Examples</h4>")
+    html("  <p class=\"examples\">This function is used in the following places in Espruino's documentation</p>")
+    html("  <ul class=\"examples\">")    
+    for link in uses:
+      if "#" in link: linkname = link[:link.find("#")]
+      else: linkname = link
+      if linkname[0]=="/": linkname = linkname[1:]
+      linkname = linkname.replace("+"," ");
+      html('    <li><a href="'+link+'">'+linkname+'</a></li>')
+    html("  </ul>")
 
 html(" </body>")
 html("</html>")
