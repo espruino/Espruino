@@ -73,6 +73,6 @@ require("./common.js").readAllWrapperFiles(function(json) {
     }
   });
 
- console.log(JSON.stringify(tern,null,4));
+ console.log(JSON.stringify(tern,null,2));
   
 });

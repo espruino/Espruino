@@ -2,6 +2,9 @@
 // common functions for parsing the JSON comments out of
 // the C wrapper files (like common.py)
 
+var fs = require('fs');
+var path = require('path');
+
 /// Object representing each builtin
 function Builtin(j) {
   // remove arrays of description - folw it down with newlines
@@ -62,14 +65,15 @@ Builtin.prototype.getTernType = function() {
 
 /// Get any files that we think might contain 'JSON' tags
 exports.getWrapperFiles = function (callback) {
-  require('child_process').exec("find .. -name jswrap*.c", function(error, stdout, stderr) {
+  var BASEDIR = path.resolve(__dirname, "..");
+  require('child_process').exec("find "+BASEDIR+" -name jswrap*.c", function(error, stdout, stderr) {
     callback(stdout.toString().trim().split("\n"));
   });
 }
 
 /// Extract the /*JSON ... */ comments from a file and parse them
 exports.readWrapperFile = function(filename) {
-  var contents = require("fs").readFileSync(filename).toString();
+  var contents = fs.readFileSync(filename).toString();
   var builtins = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
