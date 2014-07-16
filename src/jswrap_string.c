@@ -274,6 +274,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
       last = idx+splitlen;
     }
   }
+  jsvUnLock(split);
   return array;
 }
 

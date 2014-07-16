@@ -1,4 +1,4 @@
-     1v68 : ...
+     1v68 : Fix memory leak in String.split
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
