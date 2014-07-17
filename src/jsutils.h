@@ -80,7 +80,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   typedef unsigned int JsVarRef;
   #define JSVARREF_MIN (-2147483648)
   #define JSVARREF_MAX 2147483647
-  #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
+  #define JSVAR_DATA_STRING_LEN  4
   #define JSVAR_DATA_STRING_MAX_LEN 24 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
 #else
    /** JsVerRef stores References for variables - We treat 0 as null
@@ -91,16 +91,16 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
     typedef unsigned char JsVarRef;
     #define JSVARREF_MIN (-128)
     #define JSVARREF_MAX 127
-    #define JSVAR_SIZE 15
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 12 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too
+    #define JSVAR_SIZE 11
+    #define JSVAR_DATA_STRING_LEN  4
+    #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+3+1) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too
   #else
     typedef unsigned short JsVarRef;
     #define JSVARREF_MIN (-32768)
     #define JSVARREF_MAX 32767
-    #define JSVAR_SIZE 20
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 16 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
+    #define JSVAR_SIZE 16
+    #define JSVAR_DATA_STRING_LEN  8
+    #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+6+2) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
   #endif
 #endif
 

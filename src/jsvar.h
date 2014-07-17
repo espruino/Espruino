@@ -52,28 +52,22 @@ typedef struct {
   JsVarDataArrayBufferViewType type;
 } PACKED_FLAGS JsVarDataArrayBufferView;
 
+/// Data for native functions
 typedef struct {
   void (*ptr)(void); ///< Function pointer
   unsigned int argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
-typedef union {
-    char str[JSVAR_DATA_STRING_LEN]; ///< The contents of this variable if it is a string
-    /* NOTE: For str above, we INTENTIONALLY OVERFLOW str (and hence data) in the case of STRING_EXTS
-     * to overwrite 3 references in order to grab another 6 bytes worth of string data */
-    // TODO do some magic with union/structs in order to make sure we don't intentionally write off the end of arrays
-    JsVarInt integer; ///< The contents of this variable if it is an int
-    JsVarFloat floating; ///< The contents of this variable if it is a double
-    JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
-    JsVarDataNative native; ///< A native function
-} PACKED_FLAGS JsVarData;
-
+/// References
 typedef struct {
-  /** The actual variable data. Put first so word aligned */
-  JsVarData varData;
-  /* NOTE: WE INTENTIONALLY OVERFLOW data in the case of STRING_EXTS
-   * to overwrite the following 3 references in order to grab another
-   * 6 bytes worth of string data */
+  /* padding for data. On 64 bit we must pad these so that there's
+   * enough space for JsVarDataNative.ptr */
+
+#if __WORDSIZE == 64
+  char pad[8];
+#else
+  char pad[4];
+#endif
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
@@ -101,6 +95,25 @@ typedef struct {
    * For CHILD_OF - a link to the object that should contain the variable
    */
   JsVarRef lastChild;
+} PACKED_FLAGS JsVarDataRef;
+
+
+/// Union that contains all the different types of data
+typedef union {
+    char str[JSVAR_DATA_STRING_MAX_LEN]; ///< The contents of this variable if it is a string
+    /* NOTE: For str above, we INTENTIONALLY OVERFLOW str (and hence data) in the case of STRING_EXTS
+     * to overwrite 3 references in order to grab another 6 bytes worth of string data */
+    // TODO do some magic with union/structs in order to make sure we don't intentionally write off the end of arrays
+    JsVarInt integer; ///< The contents of this variable if it is an int
+    JsVarFloat floating; ///< The contents of this variable if it is a double
+    JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
+    JsVarDataNative native; ///< A native function
+    JsVarDataRef ref; ///< References
+} PACKED_FLAGS JsVarData;
+
+typedef struct {
+  /** The actual variable data, as well as references (see below). Put first so word aligned */
+  JsVarData varData;
 
   /** the flags determine the type of the variable - int/double/string/etc. */
   JsVarFlags flags;
@@ -122,29 +135,28 @@ typedef struct {
  *
  * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
  * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- * | 0 - 7 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size/format |
- * | 8 - 9 | next    | -      | data     |  next    | next     | -    | -      | -              | -           |
- * | 10-11 | prev    | -      | data     |  prev    | prev     | -    | -      | -              | -           |
- * | 12-13 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- * | 14-15 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
- * | 16-17 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
- * | 18-19 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   | argTypes       | format      |
+ * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   | argTypes       | format      |
+ * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
+ * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
+ * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
  *
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  */
 
-static inline JsVarRef jsvGetFirstChild(const JsVar *v) { return v->firstChild; }
-static inline JsVarRef jsvGetLastChild(const JsVar *v) { return v->lastChild; }
-static inline JsVarRef jsvGetNextSibling(const JsVar *v) { return v->nextSibling; }
-static inline JsVarRef jsvGetPrevSibling(const JsVar *v) { return v->prevSibling; }
-static inline JsVarRefCounter jsvGetRefs(const JsVar *v) { return v->refs; }
-static inline void jsvSetFirstChild(JsVar *v, JsVarRef r) { v->firstChild = r; }
-static inline void jsvSetLastChild(JsVar *v, JsVarRef r) { v->lastChild = r; }
-static inline void jsvSetNextSibling(JsVar *v, JsVarRef r) { v->nextSibling = r; }
-static inline void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->prevSibling = r; }
+static inline JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
+static inline JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
+static inline JsVarRef jsvGetNextSibling(const JsVar *v) { return v->varData.ref.nextSibling; }
+static inline JsVarRef jsvGetPrevSibling(const JsVar *v) { return v->varData.ref.prevSibling; }
+static inline void jsvSetFirstChild(JsVar *v, JsVarRef r) { v->varData.ref.firstChild = r; }
+static inline void jsvSetLastChild(JsVar *v, JsVarRef r) { v->varData.ref.lastChild = r; }
+static inline void jsvSetNextSibling(JsVar *v, JsVarRef r) { v->varData.ref.nextSibling = r; }
+static inline void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->varData.ref.prevSibling = r; }
 
-
+static inline JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
 static inline unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 // For debugging/testing ONLY - maximum # of vars we are allowed to use

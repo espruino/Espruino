@@ -222,11 +222,11 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
       ((unsigned int*)&v->varData.integer)[0] = 0;
       ((unsigned int*)&v->varData.integer)[1] = 0;
       // and the rest...
-      v->nextSibling = 0;
-      v->prevSibling = 0;
-      v->refs = 0;
-      v->firstChild = 0;
-      v->lastChild = 0;
+      jsvSetNextSibling(v, 0);
+      jsvSetPrevSibling(v, 0);
+      v->varData.ref.refs = 0;
+      jsvSetFirstChild(v, 0);
+      jsvSetLastChild(v, 0);
       // set flags
       assert(!(flags & JSV_LOCK_MASK));
       v->flags = flags | JSV_LOCK_ONE;
@@ -384,14 +384,14 @@ void jsvUnLock(JsVar *var) {
 /// Reference - set this variable as used by something
 JsVar *jsvRef(JsVar *v) {
   assert(v && jsvHasRef(v));
-  v->refs++;
+  v->varData.ref.refs++;
   return v;
 }
 
 /// Unreference - set this variable as not used by anything
 void jsvUnRef(JsVar *var) {
   assert(var && jsvGetRefs(var)>0 && jsvHasRef(var));
-  var->refs--;
+  var->varData.ref.refs--;
   // locks are never 0 here, so why bother checking!
   assert(jsvGetLocks(var)>0);
 }
