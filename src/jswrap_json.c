@@ -133,12 +133,12 @@ JsVar *jswrap_json_parse(JsVar *v) {
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data) {
   assert(jsvIsFunction(var));
   JsVarRef coderef = 0; // TODO: this should really be in jsvAsString
-  JsVarRef childref = var->firstChild;
+  JsVarRef childref = jsvGetFirstChild(var);
   bool firstParm = true;
   cbprintf(user_callback, user_data, "(");
   while (childref) {
     JsVar *child = jsvLock(childref);
-    childref = child->nextSibling;
+    childref = jsvGetNextSibling(child);
     if (jsvIsFunctionParameter(child)) {
       if (firstParm)
         firstParm=false;
@@ -146,7 +146,7 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         cbprintf(user_callback, user_data, ",");
       cbprintf(user_callback, user_data, "%v", child);
     } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
-      coderef = child->firstChild;
+      coderef = jsvGetFirstChild(child);
     }
     jsvUnLock(child);
   }

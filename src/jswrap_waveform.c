@@ -39,7 +39,7 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
   }
   // plough through to get array buffer data
   while (jsvIsArrayBuffer(buffer)) {
-    JsVar *s = jsvLock(buffer->firstChild);
+    JsVar *s = jsvLock(jsvGetFirstChild(buffer));
     jsvUnLock(buffer);
     buffer = s;
   }

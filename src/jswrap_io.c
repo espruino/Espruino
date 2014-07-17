@@ -107,13 +107,13 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
 }*/
 void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
   if (jsvIsArray(pinVar)) {
-    JsVarRef pinName = pinVar->lastChild; // NOTE: start at end and work back!
+    JsVarRef pinName = jsvGetLastChild(pinVar); // NOTE: start at end and work back!
     while (pinName) {
       JsVar *pinNamePtr = jsvLock(pinName);
       JsVar *pinPtr = jsvSkipName(pinNamePtr);
       jshPinOutput(jshGetPinFromVar(pinPtr), value&1);
       jsvUnLock(pinPtr);
-      pinName = pinNamePtr->prevSibling;
+      pinName = jsvGetPrevSibling(pinNamePtr);
       jsvUnLock(pinNamePtr);
       value = value>>1; // next bit down
     }
@@ -135,16 +135,16 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   if (jsvIsArray(pinVar)) {
     int pins = 0;
     JsVarInt value = 0;
-    JsVarRef pinName = pinVar->firstChild;
-    while (pinName) {
-      JsVar *pinNamePtr = jsvLock(pinName);
-      JsVar *pinPtr = jsvSkipName(pinNamePtr);
+    JsvArrayIterator it;
+    jsvArrayIteratorNew(&it, pinVar);
+    while (jsvArrayIteratorHasElement(&it)) {
+      JsVar *pinPtr = jsvArrayIteratorGetElement(&it);
       value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
-      pinName = pinNamePtr->nextSibling;
-      jsvUnLock(pinNamePtr);
+      jsvArrayIteratorNext(&it);
       pins++;
     }
+    jsvArrayIteratorFree(&it);
     if (pins==0) return 0; // return undefined if array empty
     return value;
   } else {
