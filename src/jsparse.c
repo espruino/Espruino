@@ -439,7 +439,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         argCount = 0;
         while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_RETURN(',', 0);
+          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',while(argCount)jsvUnLock(argPtr[--argCount]);, 0);
         }
         JSP_MATCH(')');
       }
