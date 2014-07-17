@@ -76,7 +76,7 @@ JsVar *jswrap_process_memory() {
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   if (obj) {
     unsigned int history = 0;
-    JsVar *historyVar = jsvObjectGetChild(execInfo.root, JSI_HISTORY_NAME, 0);
+    JsVar *historyVar = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, 0);
     if (historyVar) {
       history = (unsigned int)jsvCountJsVarsUsed(historyVar); // vars used to store history
       jsvUnLock(historyVar);

@@ -20,6 +20,7 @@ import sys;
 import os;
 sys.path.append(".");
 import common
+import urllib2
 
 # Scans files for comments of the form /*JSON......*/ and then writes out an HTML file describing 
 # all the functions
@@ -32,6 +33,20 @@ for jsondata in jsondatas:
     if not jsondata["class"] in classes:
       classes.append(jsondata["class"])
 
+# Load list of 'uses' in EspruinoDocs
+code_uses = []
+referenceFile = "../EspruinoDocs/references.json"
+if os.path.isfile(referenceFile):
+  print "Found references.json - using this to link to examples"
+  code_uses = json.loads(open(referenceFile, "r").read())
+
+# Load list of MDN URLs (to speed up processing)
+valid_mdn_urls = { 'valid' : [], 'invalid' : [] };
+mdnURLFile = "MDN_URLS.txt"
+if os.path.isfile(mdnURLFile):
+  valid_mdn_urls = json.loads(open(mdnURLFile, "r").read())
+
+# start writing
 htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
@@ -103,6 +118,28 @@ def get_link(jsondata):
   s=s+jsondata["name"]
   return s
 
+# If MDN doesn't 404 then include a link to it
+def insert_mdn_link(jsondata):
+  if "class" in jsondata and "name" in jsondata:
+    url = "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/"+jsondata["class"]
+    if jsondata["type"]!="constructor": url = url +"/"+jsondata["name"]
+    if url in valid_mdn_urls['valid']:
+      code = 200
+    elif url in valid_mdn_urls['invalid']:
+      code = 404
+    else:
+      print "Checking URL "+url
+      try:
+        connection = urllib2.urlopen(url)
+        code = connection.getcode()
+        connection.close()
+      except urllib2.HTTPError, e:
+        code = e.getcode()
+      if code==200: valid_mdn_urls['valid'].append(url)
+      else: valid_mdn_urls['invalid'].append(url)
+    if code==200:
+      html("<p><a href=\""+url+"\">View MDN documentation</a></p>")
+
 html("<html>")
 html(" <head>")
 html("  <title>Espruino Reference</title>")
@@ -118,6 +155,7 @@ html("   .call { padding-left: 50px; }")
 html("   .description { padding-left: 50px; }")
 html("   .param { padding-left: 50px; }")
 html("   .return { padding-left: 50px; }")
+html("   .examples { padding-left: 50px; }")
 html("  </style>")
 html(" </head>")
 html(" <body>")
@@ -190,6 +228,7 @@ for jsondata in detail:
         html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   html("  <h3 class=\"detail\"><a name=\""+get_link(jsondata)+"\">"+get_fullname(jsondata)+"</a></h3>")
+  insert_mdn_link(jsondata);      
   html("  <p class=\"top\"><a href=\"#top\">(top)</a></p>")
   html("  <h4>Call type:</h4>")
   html("   <p class=\"call\"><code>"+get_code(jsondata)+"</code></p>")
@@ -224,6 +263,16 @@ for jsondata in detail:
     html("   <p class=\"return\">"+htmlify(desc)+"</p>")
   else:
     html("   <p class=\"return\">No return value (undefined)</p>")
+
+  url = "http://www.espruino.com/Reference#"+get_link(jsondata)
+  if url in code_uses: 
+    uses = code_uses[url]
+    html("  <h4>Examples</h4>")
+    html("  <p class=\"examples\">This function is used in the following places in Espruino's documentation</p>")
+    html("  <ul class=\"examples\">")    
+    for link in uses:
+      html('    <li><a href="'+link["url"]+'">'+link["title"]+'</a></li>')
+    html("  </ul>")
 
 html(" </body>")
 html("</html>")
@@ -265,3 +314,6 @@ for jsondata in jsondatas:
 print "------------------------------------------------------"    
 print('Global classes and functions: '+' '.join(builtins));
 print "------------------------------------------------------"
+
+# Writing MDN URL file
+open(mdnURLFile, "w").write(json.dumps(valid_mdn_urls, sort_keys=True, indent=2))

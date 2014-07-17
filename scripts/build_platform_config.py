@@ -225,15 +225,27 @@ codeOut("#define ADCS                            "+str(board.chip["adc"]))
 codeOut("#define DACS                            "+str(board.chip["dac"]))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
+if "default_console_tx" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_TX_PIN "+toPinDef(board.info["default_console_tx"]))
+if "default_console_rx" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_RX_PIN "+toPinDef(board.info["default_console_rx"]))
+
 codeOut("");
 if LINUX:
   bufferSizeIO = 256
   bufferSizeTX = 256
+  bufferSizeTimer = 16
 else:
   bufferSizeIO = 64 if board.chip["ram"]<20 else 128
   bufferSizeTX = 32 if board.chip["ram"]<20 else 128
+  bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
+
+if 'util_timer_tasks' in board.info:
+  bufferSizeTimer = board.info['util_timer_tasks']
+
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
-codeOut("#define TXBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255)")
+codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255)")
+codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 
 codeOut("");
 

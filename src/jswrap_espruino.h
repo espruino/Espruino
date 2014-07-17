@@ -26,5 +26,7 @@ JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex);
 JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y);
 
 void jswrap_espruino_enableWatchdog(JsVarFloat time);
+JsVar *jswrap_espruino_getErrorFlags();
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
 int jswrap_espruino_reverseByte(int v);
+void jswrap_espruino_dumpTimers();

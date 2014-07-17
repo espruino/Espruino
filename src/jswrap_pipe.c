@@ -34,15 +34,8 @@
         "description" : ["This is the Pipe container for async related IO." ]
 }*/
 
-JsVar* PipeGetArray(const char *name, bool create) {
-  JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, create);
-  JsVar *arr = jsvSkipName(arrayName);
-  if (!arr && create) {
-    arr = jsvNewWithFlags(JSV_ARRAY);
-    jsvSetValueOfName(arrayName, arr);
-  }
-  jsvUnLock(arrayName);
-  return arr;
+static JsVar* pipeGetArray(bool create) {
+  return jsvObjectGetChild(execInfo.hiddenRoot, "pipes", create ? JSV_ARRAY : 0);
 }
 
 static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
@@ -126,7 +119,7 @@ static bool handlePipe(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
 /*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle", "ifndef" : "SAVE_ON_FLASH" }*/
 bool jswrap_pipe_idle() {
   bool wasBusy = false;
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
+  JsVar *arr = pipeGetArray(false);
   if (arr) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
@@ -145,7 +138,7 @@ bool jswrap_pipe_idle() {
 /*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill", "ifndef" : "SAVE_ON_FLASH" }*/
 void jswrap_pipe_kill() {
   // now remove all pipes...
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", false);
+  JsVar *arr = pipeGetArray(false);
   if (arr) {
     jsvRemoveAllChildren(arr);
     jsvUnLock(arr);
@@ -156,7 +149,7 @@ void jswrap_pipe_kill() {
 static void jswrap_pipe_drain_listener(JsVar *destination) {
   if (!jsvIsObject(destination)) return;
   // try and find it...
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
+  JsVar *arr = pipeGetArray(false);
   if (arr) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
@@ -180,7 +173,7 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
 static void jswrap_pipe_close_listener(JsVar *destination) {
   if (!jsvIsObject(destination)) return;
   // try and find it...
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes",false);
+  JsVar *arr = pipeGetArray(false);
   if (arr) {
     JsvArrayIterator it;
     jsvArrayIteratorNew(&it, arr);
@@ -212,7 +205,7 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   if (!source || !dest) return;
   JsVar *pipe = jspNewObject(0, "Pipe");
-  JsVar *arr = PipeGetArray(JS_HIDDEN_CHAR_STR"OpenPipes", true);
+  JsVar *arr = pipeGetArray(true);
   JsVar* position = jsvNewFromInteger(0);
   if (pipe && arr && position) {// out of memory?
     JsVar *readFunc = jspGetNamedField(source, "read", false);

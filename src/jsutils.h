@@ -35,7 +35,7 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v66"
+#define JS_VERSION "1v68"
 /*
   In code:
   TODO - should be fixed
@@ -141,9 +141,9 @@ typedef long long JsSysTime;
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"code" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"scope" // the scope of the function's definition
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"name" // for named functions (a = function foo() { foo(); })
-#define JSPARSE_EXCEPTION_VAR JS_HIDDEN_CHAR_STR"except" // when exceptions are thrown, they're stored in the root scope
-#define JSPARSE_STACKTRACE_VAR JS_HIDDEN_CHAR_STR"sTrace" // for errors/exceptions, a stack trace is stored as a string
-#define JSPARSE_MODULE_CACHE_NAME JS_HIDDEN_CHAR_STR"modules"
+#define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
+#define JSPARSE_STACKTRACE_VAR "sTrace" // for errors/exceptions, a stack trace is stored as a string
+#define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
  #ifdef __STRING
@@ -365,6 +365,21 @@ void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
 
+// ------------
+typedef enum {
+  JSERR_NONE = 0,
+  JSERR_RX_FIFO_FULL = 1, ///< The IO buffer (ioBuffer in jsdevices.c) is full and data was lost. Happens for character data and watch events
+  JSERR_BUFFER_FULL = 2, ///< eg. Serial1's buffer exceeded the max size. Doesn't happen if you have an on('data') callback
+  JSERR_CALLBACK = 4, ///< A callback (on data/watch/timer) caused an error and was removed
+  JSERR_LOW_MEMORY = 8, ///< Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
+  JSERR_MEMORY = 16, ///< Espruino ran out of memory and was unable to allocate some data that it needed.
+} PACKED_FLAGS JsErrorFlags;
+
+/** Error flags for things that we don't really want to report on the console,
+ * but which are good to know about */
+extern JsErrorFlags jsErrorFlags;
+
+
 #ifdef FAKE_STDLIB
 void exit(int errcode);
 char *strncat(char *dst, const char *src, size_t c);
@@ -406,6 +421,7 @@ typedef void (*vcbprintf_callback)(const char *str, void *user_data);
  *   %c = char
  *   %v = JsVar * (doesn't have to be a string - it'll be converted)
  *   %q = JsVar * (in quotes, and escaped)
+ *   %j = Variable printed as JSON
  *   %t = Type of variable
  *   %p = Pin
  *

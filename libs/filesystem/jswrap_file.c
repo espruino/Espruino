@@ -28,15 +28,8 @@ extern void jsfsReportError(const char *msg, FRESULT res);
                          "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information." ]
 }*/
 
-static JsVar* fsGetArray(const char *name, bool create) {
-  JsVar *arrayName = jsvFindChildFromString(execInfo.root, name, create);
-  JsVar *arr = jsvSkipName(arrayName);
-  if (!arr && create) {
-    arr = jsvNewWithFlags(JSV_ARRAY);
-    jsvSetValueOfName(arrayName, arr);
-  }
-  jsvUnLock(arrayName);
-  return arr;
+static JsVar* fsGetArray(bool create) {
+  return jsvObjectGetChild(execInfo.hiddenRoot, JS_FS_OPEN_FILES_NAME, create ? JSV_ARRAY : 0);
 }
 
 static bool fileGetFromVar(JsFile *file, JsVar *parent) {
@@ -69,7 +62,7 @@ static void fileSetVar(JsFile *file) {
 /*JSON{ "type":"kill", "generate" : "jswrap_file_kill" }*/
 void jswrap_file_kill() {
   {
-    JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME,false);
+    JsVar *arr = fsGetArray(false);
     if (arr) {
       JsvArrayIterator it;
       jsvArrayIteratorNew(&it, arr);
@@ -103,7 +96,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
                       [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."] ],
-        "return" : ["JsVar", "A File object"]
+        "return" : ["JsVar", "A File object"], "return_object":"File"
 }*/
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
@@ -111,7 +104,7 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   file.fileVar = 0;
   FileMode fMode = FM_NONE;
   if (jsfsInit()) {
-    JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, true);
+    JsVar *arr = fsGetArray(true);
     if (!arr) return 0; // out of memory
 
     char pathStr[JS_DIR_BUF_SIZE] = "";
@@ -199,7 +192,7 @@ void jswrap_file_close(JsVar* parent) {
       fileSetVar(&file);
       // TODO: could try and free the memory used by file.data ?
 
-      JsVar *arr = fsGetArray(JS_FS_OPEN_FILES_NAME, false);
+      JsVar *arr = fsGetArray(false);
       if (arr) {
         JsVar *idx = jsvGetArrayIndexOf(arr, file.fileVar, true);
         if (idx) {

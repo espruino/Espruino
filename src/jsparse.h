@@ -23,7 +23,6 @@ void jspKill();
 // jspSoft* - 'release' or 'claim' anything we are using, but ensure that it doesn't get freed
 void jspSoftInit(); ///< used when recovering from or saving to flash
 void jspSoftKill(); ///< used when recovering from or saving to flash
-bool jspIsCreatedObject(JsVar *v); ///< Is v likely to have been created by this parser?
 /** Returns true if the constructor function given is the same as that
  * of the object with the given name. */
 bool jspIsConstructor(JsVar *constructor, const char *constructorName);
@@ -114,6 +113,7 @@ typedef enum  {
  * everything that should be needed. */
 typedef struct {
   JsVar  *root;   ///< root of symbol table
+  JsVar  *hiddenRoot;   ///< root of the symbol table that's hidden
   JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed

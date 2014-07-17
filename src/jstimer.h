@@ -29,6 +29,9 @@ typedef enum {
 #endif
 } PACKED_FLAGS UtilTimerEventType;
 
+#define UET_IS_SET_EVENT(T) (\
+  ((T)==UET_SET))
+
 #ifndef SAVE_ON_FLASH
 #define UET_IS_BUFFER_EVENT(T) (\
   ((T)==UET_WRITE_BYTE) || \
@@ -58,14 +61,15 @@ typedef struct UtilTimerTaskSet {
  * To repeat, flipping between 2 buffers, set var=buffer1, currentBuffer==buffer1, nextBuffer=buffer2
  */
 typedef struct UtilTimerTaskBuffer {
+  JsVar *var; ///< variable to get data from
+  JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
+  JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
+  unsigned short currentValue; ///< current value being written (for writes)
+  unsigned char charIdx; ///< Index of character in variable
   union {
     JshPinFunction pinFunction; ///< Pin function to write to
     Pin pin; ///< Pin to read from
   };
-  JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
-  JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
-  unsigned char charIdx; ///< Index of character in variable
-  JsVar *var; ///< variable to get data from
 } PACKED_FLAGS UtilTimerTaskBuffer;
 
 
@@ -77,8 +81,8 @@ typedef union UtilTimerTaskData {
 typedef struct UtilTimerTask {
   JsSysTime time; // time at which to set pins
   unsigned int repeatInterval; // if nonzero, repeat the timer
-  UtilTimerEventType type;
   UtilTimerTaskData data; // data used when timer is hit
+  UtilTimerEventType type; // the type of this task - do we set pin(s) or read/write data
 } PACKED_FLAGS UtilTimerTask;
 
 void jstUtilTimerInterruptHandler();
@@ -101,11 +105,22 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period);
 
+/** If the first timer task is a wakeup task, remove it. This stops
+ * us filling the timer full of wakeup events if we wake up from sleep
+ * before the wakeup event */
+void jstClearWakeUp();
+
 /// Start writing a string out at the given period between samples
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type);
 
 /// Stop a timer task
 bool jstStopBufferTimerTask(JsVar *var);
+
+/// Stop ALL timer tasks (including digitalPulse - use this when resetting the VM)
+void jstReset();
+
+/// Dump the current list of timers
+void jstDumpUtilityTimers();
 
 #endif /* JSTIMER_H_ */
 

@@ -127,7 +127,8 @@ volatile unsigned char ioHead=0, ioTail=0;
 
 
 void jshIOEventOverflowed() {
-  // Error here - just light LED as we can't do much else right now
+  // Error here - just set flag so we don't dump a load of data out
+  jsErrorFlags |= JSERR_RX_FIFO_FULL;
 }
 
 
@@ -171,23 +172,6 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
 void jshPushIOWatchEvent(IOEventFlags channel) {
  JsSysTime time = jshGetSystemTime();
  bool state = jshGetWatchedPinState(channel);
-
-/* // This is some simple debounce code - however it requires that the event
-   // is not taken out of ioBuffer by the main thread, which will require
-   // a bit of fiddling in jsinteractive.c. In fact it might be worth just
-   // doing debounce outside of the interrupt
-   if (true) { // debounce
-   // scan back and see if we have an event for this pin
-   unsigned char prevHead = ioHead;
-   while (prevHead!=ioTail && (IOEVENTFLAGS_GETTYPE(ioBuffer[prevHead].flags)!=channel))
-     prevHead = (unsigned char)((prevHead+IOBUFFERMASK) & IOBUFFERMASK); // step back
-   // if we have an event
-   if (prevHead!=ioTail  && (IOEVENTFLAGS_GETTYPE(ioBuffer[prevHead].flags)==channel)) {
-     // just use it (with the same timestamp)... 
-     ioBuffer[prevHead].flags = channel | (state?EV_EXTI_IS_HIGH:0);
-     return;
-   }
- }*/
 
 #ifdef USE_TRIGGER
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))

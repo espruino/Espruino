@@ -71,6 +71,7 @@ void jswrap_stream_pushData(JsVar *parent, JsVar *dataString) {
   if (callback) {
     if (!jsiExecuteEventCallback(callback, dataString, 0)) {
       jsError("Error processing Serial data handler - removing it.");
+      jsErrorFlags |= JSERR_CALLBACK;
       jsvRemoveNamedChild(parent, STREAM_CALLBACK_NAME);
     }
     jsvUnLock(callback);
@@ -85,7 +86,8 @@ void jswrap_stream_pushData(JsVar *parent, JsVar *dataString) {
       size_t bufLen = jsvGetStringLength(buf);
       size_t dataLen = jsvGetStringLength(dataString);
       if (bufLen + dataLen > STREAM_MAX_BUFFER_SIZE) {
-        jsWarn("String buffer overflowed maximum size (%d)", STREAM_MAX_BUFFER_SIZE);
+        jsErrorFlags |= JSERR_BUFFER_FULL;
+        // jsWarn("String buffer overflowed maximum size (%d)", STREAM_MAX_BUFFER_SIZE);
       }
       if (bufLen < STREAM_MAX_BUFFER_SIZE)
         jsvAppendStringVar(buf, dataString, 0, STREAM_MAX_BUFFER_SIZE-bufLen);

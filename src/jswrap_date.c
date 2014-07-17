@@ -165,7 +165,7 @@ JsVarFloat jswrap_date_now() {
         "generate" : "jswrap_date_constructor",
         "description" : [ "Creates a date object" ],
         "params" : [ [ "args", "JsVarArray", "Either nothing (current time), one numeric argument (milliseconds since 1970), a date string (see `Date.parse`), or [year, month, day, hour, minute, second, millisecond] "] ],
-        "return" : ["JsVar", "A Date object"]
+        "return" : ["JsVar", "A Date object"], "return_object":"Date"
 }*/
 JsVar *jswrap_date_constructor(JsVar *args) {
   JsVar *d = jspNewObject(0,"Date");
@@ -255,7 +255,7 @@ int jswrap_date_getMinutes(JsVar *parent) {
   return getTimeFromDateVar(parent).min;
 }
 
-/*JSON{ "type":"method", "class": "Date", "name" : "getMinutes",
+/*JSON{ "type":"method", "class": "Date", "name" : "getSeconds",
          "description" : "0..59",
          "generate" : "jswrap_date_getSeconds",
          "return" : ["int32", ""]
@@ -264,7 +264,7 @@ int jswrap_date_getSeconds(JsVar *parent) {
   return getTimeFromDateVar(parent).sec;
 }
 
-/*JSON{ "type":"method", "class": "Date", "name" : "getMinutes",
+/*JSON{ "type":"method", "class": "Date", "name" : "getMilliseconds",
          "description" : "0..999",
          "generate" : "jswrap_date_getMilliseconds",
          "return" : ["int32", ""]
@@ -293,7 +293,7 @@ int jswrap_date_getDate(JsVar *parent) {
 
 
 /*JSON{ "type":"method", "class": "Date", "name" : "getMonth",
-         "description" : "Month of the year 1..12",
+         "description" : "Month of the year 0..11",
          "generate" : "jswrap_date_getMonth",
          "return" : ["int32", ""]
 }*/

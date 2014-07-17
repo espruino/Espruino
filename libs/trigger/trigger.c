@@ -68,17 +68,17 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
 
   data->lastTime2 = data->lastTime;
   data->lastTime = pulseTime;
-  unsigned char teeth = (unsigned char)((((timeDiff<<1) / data->avrTrigger) + 1) >> 1); // round to find out # of teeth
+  unsigned char teeth = (unsigned char)(((((unsigned int)timeDiff<<1) / data->avrTrigger) + 1) >> 1); // round to find out # of teeth
   if (teeth<1) {
     data->errors |= TRIGERR_SHORT_TOOTH;
     teeth=1;
   }
   // running average
   if (data->teethSinceStart<16)
-    data->avrTrigger = (data->avrTrigger + timeDiff) >> 1; 
+    data->avrTrigger = (data->avrTrigger + (unsigned int)timeDiff) >> 1;
   else
-    data->avrTrigger = (data->avrTrigger*7 + timeDiff) >> 3; 
-  data->avrTooth = (data->avrTooth*7 + timeDiff/teeth) >> 3; 
+    data->avrTrigger = (data->avrTrigger*7 + (unsigned int)timeDiff) >> 3;
+  data->avrTooth = (data->avrTooth*7 + (unsigned int)timeDiff/teeth) >> 3;
   if (data->teethSinceStart<0xFFFFFFFF) data->teethSinceStart++;
   // move tooth count
   unsigned char lastTooth = data->currTooth;
@@ -129,7 +129,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
 
     unsigned char currTooth = data->currTooth;
     if (currTooth < lastTooth) currTooth = (unsigned char)(data->currTooth + data->teethTotal);
-    unsigned int tooth;
+    int tooth;
 
     for (tooth=lastTooth+TRIGGER_LOOKAHEAD;tooth<currTooth+TRIGGER_LOOKAHEAD;tooth++) {
       // actually we want to check a few teeth into the future to give us time
@@ -151,7 +151,7 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
               //jsiConsolePrint("Trigger already passed\n");
             }
 
-            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 1))
+            if (!jstPinOutputAtTime(trigTime, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0xFF))
               data->errors |= TRIGERR_TIMER_FULL;
             if (trig->pulseLength>0) {
               if (!jstPinOutputAtTime(trigTime+trig->pulseLength, trig->pins, TRIGGERPOINT_TRIGGERS_COUNT, 0))
@@ -172,7 +172,7 @@ bool trigHandleEXTI(IOEventFlags channel, JsSysTime time) {
   IOEvent event;
   event.flags = channel;
 
-  if (mainTrigger.sensorPin>=0 && jshIsEventForPin(&event, mainTrigger.sensorPin)) {
+  if (mainTrigger.sensorPin!=PIN_UNDEFINED && jshIsEventForPin(&event, mainTrigger.sensorPin)) {
   //  jshPinOutput(JSH_PORTB_OFFSET + 4, event.flags & EV_EXTI_IS_HIGH);
 
     if (!(event.flags & EV_EXTI_IS_HIGH)) // we only care about falling edges

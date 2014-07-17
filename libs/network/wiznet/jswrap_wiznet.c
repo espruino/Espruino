@@ -67,7 +67,7 @@ uint8_t wizchip_read()
          "generate" : "jswrap_wiznet_connect",
          "description" : "Initialise the WIZnet module and return an Ethernet object",
          "params" : [ ],
-         "return" : ["JsVar", "A WLAN Object"]
+         "return" : ["JsVar", "An Ethernet Object"], "return_object":"Ethernet"
 }*/
 JsVar *jswrap_wiznet_connect() {
   JsVar *ethObj = jspNewObject(0, "Ethernet");

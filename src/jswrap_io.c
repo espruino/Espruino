@@ -90,7 +90,7 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
 }*/
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
   if (time<0 || isnan(time)) {
-    jsWarn("Pulse Time given for digitalPulse is less than 0, or not a number");
+    jsExceptionHere(JSET_ERROR, "Pulse Time given for digitalPulse is less than 0, or not a number");
   } else {
     //jsPrintInt((JsVarInt)(time*1000));
     jshPinPulse(pin, value, time);
