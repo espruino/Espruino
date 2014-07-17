@@ -727,6 +727,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(toStringFn);
       return result;
     } else {
+      jsvUnLock(toStringFn);
       return jsvNewFromString("[object Object]");
     }
   } else {
