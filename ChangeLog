@@ -1,6 +1,7 @@
      1v68 : Fix memory leak in String.split
             Fix references to `this` - you can now write `this["LED1"]`
             Fix memory leak when calling toString on a normal object
+            Fix memory leak in Graphics.createArrayBuffer
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
