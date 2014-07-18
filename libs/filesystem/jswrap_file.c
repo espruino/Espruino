@@ -154,7 +154,6 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
           fileSetVar(&file);
           // add to list of open files
           jsvArrayPush(arr, file.fileVar);
-          jsvUnLock(arr);
         } else {
           // File open failed
           jsvUnLock(file.fileVar);
@@ -168,6 +167,8 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
     } else {
       jsError("Path is undefined");
     }
+
+    jsvUnLock(arr);
   }
 
 
