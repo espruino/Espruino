@@ -53,10 +53,6 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
-ifeq ($(shell uname -m),armv6l)
-RASPBERRYPI=1 # just a guess
-endif
-
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -160,12 +156,13 @@ else ifdef HYSTM32_32
 EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef ECU
 EMBEDDED=1
 USE_TRIGGER=1
@@ -250,7 +247,19 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
-else ifdef RASPBERRYPI
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+else
+ifeq ($(shell uname -m),armv6l)
+RASPBERRYPI=1 # just a guess
+endif
+
+ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -259,13 +268,6 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
-else ifdef LCTECH_STM32F103RBT6
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
 else
 BOARD=LINUX
 LINUX=1
@@ -281,6 +283,7 @@ else ifdef MINGW
 DEFINES += -DHAS_STDLIB=1
 else  # Linux
 USE_NET=1
+endif
 endif
 endif
 
@@ -820,6 +823,7 @@ endif
 
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
+
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

@@ -776,7 +776,7 @@ inline void jshPinSetState(Pin pin, JshPinState state) {
             state==JSHPINSTATE_USART_IN ||
             state==JSHPINSTATE_USART_OUT ||
             state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP;
+  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
   bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
@@ -871,8 +871,12 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   bool remap = (func&JSH_MASK_AF)!=JSH_AF0;
   if ((func&JSH_MASK_TYPE)==JSH_TIMER1)       GPIO_PinRemapConfig( GPIO_FullRemap_TIM1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER2)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM2, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
+  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3) {
+    if (pin == JSH_PORTB_OFFSET+4 || pin == JSH_PORTB_OFFSET+5)
+      GPIO_PinRemapConfig( GPIO_PartialRemap_TIM3, remap );
+    else
+      GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
+  } else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER15) GPIO_PinRemapConfig( GPIO_Remap_TIM15, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_I2C1) GPIO_PinRemapConfig( GPIO_Remap_I2C1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_SPI1) GPIO_PinRemapConfig( GPIO_Remap_SPI1, remap );
@@ -1030,16 +1034,13 @@ void jshInit() {
   }
 
 #ifdef STM32F1
-  // reclaim B3 and B4!
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);    
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
-#endif
-#ifdef ESPRUINOBOARD
-  // reclaim A13 and A14 (do we need the two above now?)
 #ifndef DEBUG
+  // reclaim B3, B4, A13 and A14
+
   // don't disable this when compiling with DEBUG=1, because we need SWD
   // for in-circuit debugging and we probably don't care about the LEDs
   // see http://www.espruino.com/AdvancedDebug
+
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
 #endif
 #endif
@@ -1651,7 +1652,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_OCInitStructure.TIM_OutputNState = (func & JSH_TIMER_NEGATED) ? TIM_OutputNState_Enable : TIM_OutputNState_Disable;
   TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
   TIM_OCInitStructure.TIM_Pulse = (uint16_t)(value*TIM_TimeBaseStructure.TIM_Period);
-  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-TIM_OCInitStructure.TIM_Pulse);
+
+  // So it looks like even if we have CH1N/etc, the output isn't
+  // always negated. Probably because of the CCxNP bits, the output
+  // doesn't need negating in software
+  //if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-TIM_OCInitStructure.TIM_Pulse);
 
   if ((func&JSH_MASK_TIMER_CH)==JSH_TIMER_CH1) {
     TIM_OC1Init(TIMx, &TIM_OCInitStructure);
@@ -2120,7 +2125,7 @@ bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
   JsSysTime endTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(0.1);
   while (!(I2C_GetFlagStatus(I2C, I2C_FLAG_SB))) {
     if (jspIsInterrupted() || (jshGetSystemTime() > endTime)) {
-      jsWarn("I2C device not responding");
+      jsExceptionHere(JSET_ERROR, "I2C device not responding");
       return false;
     }
   }
@@ -2155,7 +2160,9 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);   
-    WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED), "I2C Write Transmit");
+    int timeout = WAIT_UNTIL_N_CYCLES;
+    while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
   I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif

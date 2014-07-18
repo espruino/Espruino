@@ -19,6 +19,10 @@
 #include "jswrap_error.h"
 #include "jswrap_json.h"
 
+/** Error flags for things that we don't really want to report on the console,
+ * but which are good to know about */
+JsErrorFlags jsErrorFlags;
+
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
         return false;

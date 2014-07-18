@@ -235,7 +235,8 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
       // return pointer
       return v;
   }
-  /* we don't have memort - second last hope - run garbage collector */
+  jsErrorFlags |= JSERR_LOW_MEMORY;
+  /* we don't have memory - second last hope - run garbage collector */
   if (jsvGarbageCollect())
     return jsvNewWithFlags(flags); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
@@ -248,7 +249,9 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
-  jsError("Out of Memory!");
+  if (!(jsErrorFlags&JSERR_MEMORY))
+    jsError("Out of Memory!");
+  jsErrorFlags |= JSERR_MEMORY;
   jspSetInterrupted(true);
   return 0;
 #endif
@@ -518,7 +521,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
   assert(jsvIsInt(var) || jsvIsString(var));
-  if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
+  if (jsvIsInt(var)) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
@@ -724,6 +727,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(toStringFn);
       return result;
     } else {
+      jsvUnLock(toStringFn);
       return jsvNewFromString("[object Object]");
     }
   } else {
@@ -2013,7 +2017,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
-        JsVar *valueStr = jsvAsString(value, true /* UNLOCK */);
+        JsVar *valueStr = jsvAsString(value, false);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
@@ -2021,6 +2025,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
           hasMemory = false;
         }
       }
+      jsvUnLock(value);
     }
     jsvUnLock(key);
     jsvIteratorNext(&it);

@@ -312,7 +312,7 @@ codeOut('');
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  JsVar *v;')
-codeOut('  if (parent) {')
+codeOut('  if (parent && !jsvIsRoot(parent)) {')
 
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "

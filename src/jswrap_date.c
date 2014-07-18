@@ -165,7 +165,7 @@ JsVarFloat jswrap_date_now() {
         "generate" : "jswrap_date_constructor",
         "description" : [ "Creates a date object" ],
         "params" : [ [ "args", "JsVarArray", "Either nothing (current time), one numeric argument (milliseconds since 1970), a date string (see `Date.parse`), or [year, month, day, hour, minute, second, millisecond] "] ],
-        "return" : ["JsVar", "A Date object"]
+        "return" : ["JsVar", "A Date object"], "return_object":"Date"
 }*/
 JsVar *jswrap_date_constructor(JsVar *args) {
   JsVar *d = jspNewObject(0,"Date");

@@ -1,3 +1,10 @@
+     1v68 : Fix memory leak in String.split
+            Fix references to `this` - you can now write `this["LED1"]`
+            Fix memory leak when calling toString on a normal object
+            Fix memory leak in Graphics.createArrayBuffer
+            Fix memory leak when joining arrays containing null
+            Fix memory leak when syntax error while getting function arguments
+
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
             Fixed exception catching
@@ -6,6 +13,17 @@
             Stop the utility timer queue filling with WAKEUP tasks if Espruino gets woken up early
             Add ability to specify default Serial TX and RX pins in BOARD.py
             Reduce how many digits of floating point values are normally displayed
+            Fixed PWM output on B4 + B5
+            Fix regression when using pins as array indices
+            Remove negation for CHxN outputs - it seems they don't negate after all. Fixes PWM polarity on A7,B1,B13,B14,B15
+            Add pullup to USART RX. Reduces wakeups and random characters on Serial1.
+            Add error flags and E.getErrorFlags to report possible issues like buffer overflows and low memory (fix #136)
+            I2C timeouts now throw exceptions (fix #403)
+            Fix String.prototype.split with non-string args
+            Add fake digital pins D0..D7 under linux (helps with testing)
+            Rewrite ff_wtoupper and save 650 bytes \o/ (fix #368)
+            Update Makefile to make it easier to cross-compile RPi->Espruino board
+            Fix HYSTM32_32 LCD at the expense of a bit of speed (fix #137, fix #327)
 
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
             Allow multiple Waveform playback on one pin (+ wave fixes)

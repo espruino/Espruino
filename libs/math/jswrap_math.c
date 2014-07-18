@@ -25,14 +25,6 @@ static bool isNegativeZero(double x) {
         "description" : "This is a standard JavaScript class that contains useful Maths routines"
 }*/
 
- // -------------------------------------------------------------------- Double
-/*JSON{ "type":"staticmethod",
-         "class" : "Double", "name" : "doubleToIntBits",
-         "generate_full" : "*(JsVarInt*)&x",
-         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
-         "params" : [ [ "x", "float", "A floating point number"] ],
-         "return" : ["int", "The integer representation of x"]
-}*/
 // -------------------------------------------------------------------- Math
 /*JSON{ "type":"staticproperty",
          "class" : "Math", "name" : "E",

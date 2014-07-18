@@ -378,6 +378,7 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 void jsiSoftInit() {
   jswInit();
 
+  jsErrorFlags = 0;
   events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromEmptyString();
   inputCursorPos = 0;
@@ -667,6 +668,8 @@ bool jsiFreeMoreMemory() {
   jsvUnLock(item);
   jsvUnLock(history);
   // TODO: could also free the array structure?
+  // TODO: could look at all streams (Serial1/HTTP/etc) and see if their buffers contain data that could be removed
+
   return freed;
 }
 
@@ -1363,6 +1366,7 @@ void jsiIdle() {
               }
               if (!jsiExecuteEventCallback(watchCallback, data, 0) && watchRecurring) {
                 jsError("Error processing Watch - removing it.");
+                jsErrorFlags |= JSERR_CALLBACK;
                 watchRecurring = false;
               }
               jsvUnLock(data);
@@ -1435,6 +1439,7 @@ void jsiIdle() {
       if (exec) {
         if (!jsiExecuteEventCallback(timerCallback, data, 0) && intervalRecurring) {
           jsError("Error processing interval - removing it.");
+          jsErrorFlags |= JSERR_CALLBACK;
           intervalRecurring = false;
         }
       }
