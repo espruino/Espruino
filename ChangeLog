@@ -4,6 +4,7 @@
             Fix memory leak in Graphics.createArrayBuffer
             Fix memory leak when joining arrays containing null
             Fix memory leak when syntax error while getting function arguments
+            Fix memory leak test when running on Linux
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
