@@ -567,7 +567,6 @@ void jsiSoftKill() {
 }
 
 void jsiInit(bool autoLoad) {
-  jsvInit();
   jspInit();
 
   /*for (i=0;i<IOPINS;i++)
@@ -592,7 +591,6 @@ void jsiInit(bool autoLoad) {
     jsvSoftInit();
     jspSoftInit();
   }
-  //jsvTrace(jsvGetRef(execInfo.root), 0)
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
@@ -624,7 +622,6 @@ void jsiKill() {
   jsiSoftKill();
 
   jspKill();
-  jsvKill();
 }
 
 int jsiCountBracketsInInput() {
@@ -1496,7 +1493,9 @@ void jsiIdle() {
       todo &= (TODOFlags)~TODO_RESET;
       // shut down everything and start up again
       jsiKill();
+      jsvKill();
       jshReset();
+      jsvInit();
       jsiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {

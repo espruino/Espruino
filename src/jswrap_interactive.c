@@ -71,9 +71,9 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 }*/
 void jswrap_interface_trace(JsVar *root) {
   if (jsvIsUndefined(root)) {
-    jsvTrace(jsvGetRef(execInfo.root), 0);
+    jsvTrace(execInfo.root, 0);
   } else {
-    jsvTrace(jsvGetRef(root), 0);
+    jsvTrace(root, 0);
   }
 }
 

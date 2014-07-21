@@ -190,7 +190,7 @@ void jsvShowAllocated() {
   for (i=1;i<=jsVarsSize;i++) {
     if ((jsvGetAddressOf(i)->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
       jsiConsolePrintf("USED VAR #%d:",i);
-      jsvTrace(i, 2);
+      jsvTrace(jsvGetAddressOf(i), 2);
     }
   }
 }
@@ -746,6 +746,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(toStringFn);
       return result;
     } else {
+      jsvUnLock(toStringFn);
       return jsvNewFromString("[object Object]");
     }
   } else {
@@ -2048,7 +2049,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
-        JsVar *valueStr = jsvAsString(value, true /* UNLOCK */);
+        JsVar *valueStr = jsvAsString(value, false);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
@@ -2056,6 +2057,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
           hasMemory = false;
         }
       }
+      jsvUnLock(value);
     }
     jsvUnLock(key);
     jsvIteratorNext(&it);
@@ -2312,197 +2314,121 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
 }
 
 void jsvTraceLockInfo(JsVar *v) {
-    jsiConsolePrintf("#%d[r%d,l%d] ",jsvGetRef(v), jsvGetRefs(v), jsvGetLocks(v)-1);
+    jsiConsolePrintf("#%d[r%d,l%d] ",jsvGetRef(v),jsvGetRefs(v),jsvGetLocks(v));
 }
 
 /** Get the lowest level at which searchRef appears */
-int _jsvTraceGetLowestLevel(JsVarRef ref, JsVarRef searchRef) {
-  if (ref == searchRef) return 0;
+int _jsvTraceGetLowestLevel(JsVar *var, JsVar *searchVar) {
+  if (var == searchVar) return 0;
   int found = -1;
-  JsVar *var = jsvLock(ref);
 
   // Use IS_RECURSING  flag to stop recursion
   if (var->flags & JSV_IS_RECURSING) {
-    jsvUnLock(var);
     return -1;
   }
   var->flags |= JSV_IS_RECURSING;
 
   if (jsvHasSingleChild(var) && jsvGetFirstChild(var)) {
-    int f = _jsvTraceGetLowestLevel(jsvGetFirstChild(var), searchRef);
+    JsVar *child = jsvLock(jsvGetFirstChild(var));
+    int f = _jsvTraceGetLowestLevel(child, searchVar);
+    jsvUnLock(child);
     if (f>=0 && (found<0 || f<found)) found=f+1;
   }
   if (jsvHasChildren(var)) {
     JsVarRef childRef = jsvGetFirstChild(var);
     while (childRef) {
-      int f = _jsvTraceGetLowestLevel(childRef, searchRef);
-      if (f>=0 && (found<0 || f<found)) found=f+1;
-
       JsVar *child = jsvLock(childRef);
+      int f = _jsvTraceGetLowestLevel(child, searchVar);
+      if (f>=0 && (found<0 || f<found)) found=f+1;
       childRef = jsvGetNextSibling(child);
       jsvUnLock(child);
     }
   }
 
   var->flags &= ~JSV_IS_RECURSING;
-  jsvUnLock(var);
 
   return found; // searchRef not found
 }
 
-void _jsvTrace(JsVarRef ref, int indent, JsVarRef baseRef, int level) {
+void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 #ifdef SAVE_ON_FLASH
   jsiConsolePrint("Trace unimplemented in this version.\n");
 #else
-    int i;
-    for (i=0;i<indent;i++) jsiConsolePrint(" ");
+  int i;
+  for (i=0;i<indent;i++) jsiConsolePrint(" ");
 
-    if (!ref) {
-        jsiConsolePrint("undefined\n");
-        return;
+  if (!var) {
+    jsiConsolePrint("undefined");
+    return;
+  }
+
+  jsvTraceLockInfo(var);
+
+  int lowestLevel = _jsvTraceGetLowestLevel(baseVar, var);
+  if (lowestLevel < level) {
+    // If this data is available elsewhere in the tree (but nearer the root)
+    // then don't print it. This makes the dump significantly more readable!
+    // It also stops us getting in recursive loops ...
+    jsiConsolePrint("...\n");
+    return;
+  }
+
+  if (jsvIsName(var)) jsiConsolePrint("Name ");
+
+  char endBracket = ' ';
+  if (jsvIsObject(var)) { jsiConsolePrint("Object { "); endBracket = '}'; }
+  else if (jsvIsArray(var)) { jsiConsolePrintf("Array(%d) [ ", var->varData.integer); endBracket = ']'; }
+  else if (jsvIsFunction(var)) { jsiConsolePrint("Function { "); endBracket = '}'; }
+  else if (jsvIsPin(var)) jsiConsolePrintf("Pin %d", jsvGetInteger(var));
+  else if (jsvIsInt(var)) jsiConsolePrintf("Integer %d", jsvGetInteger(var));
+  else if (jsvIsBoolean(var)) jsiConsolePrintf("Bool %s", jsvGetBool(var)?"true":"false");
+  else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
+  else if (jsvIsFunctionParameter(var)) jsiConsolePrint("Param ");
+  else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
+  else if (jsvIsString(var)) jsiConsolePrintf("String %q", var);
+  else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
+  else {
+    jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
+  }
+
+  // print a value if it was stored in here as well...
+  if (jsvIsNameInt(var)) {
+    jsiConsolePrintf("= int %d\n", jsvGetFirstChild(var));
+    return;
+  } else if (jsvIsNameIntBool(var)) {
+    jsiConsolePrintf("= bool %s\n", jsvGetFirstChild(var)?"true":"false");
+    return;
+  }
+
+  if (jsvHasSingleChild(var)) {
+    JsVar *child = jsvGetFirstChild(var) ? jsvLock(jsvGetFirstChild(var)) : 0;
+    _jsvTrace(child, indent+2, baseVar, level+1);
+    jsvUnLock(child);
+  } else if (jsvHasChildren(var)) {
+    JsvIterator it;
+    jsvIteratorNew(&it, var);
+    bool first = true;
+    while (jsvIteratorHasElement(&it)) {
+      if (first) jsiConsolePrintf("\n");
+      first = false;
+      JsVar *child = jsvIteratorGetKey(&it);
+      _jsvTrace(child, indent+2, baseVar, level+1);
+      jsvUnLock(child);
+      jsiConsolePrintf("\n");
+      jsvIteratorNext(&it);
     }
-    /*jsiConsolePrint("<");
-    jsiConsolePrintInt(level);
-    jsiConsolePrint(":");
-    jsiConsolePrintInt(_jsvTraceGetLowestLevel(baseRef, ref));
-    jsiConsolePrint("> ");*/
-
-
-    JsVar *var = jsvLock(ref);
-    jsvTraceLockInfo(var);
-
-
-    if (jsvIsName(var)) {
-      if (jsvIsFunctionParameter(var))
-        jsiConsolePrint("Param ");
-      JsVar *str = jsvAsString(var, false);
-      if (jsvIsInt(var)) {
-        jsiConsolePrintf("Name: int %v  ", str);
-      } else if (jsvIsString(var)) {
-        jsiConsolePrintf("Name: '%v'  ", str);
-      } else if (jsvIsArrayBufferName(var)) {
-        jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
-      } else {
-        assert(0);
-      }
-      jsvUnLock(str);
-      if (jsvIsNameInt(var)) {
-        jsiConsolePrintf("int %d\n", jsvGetFirstChild(var));
-        jsvUnLock(var);
-        return;
-      } else if (jsvIsNameIntBool(var)) {
-        jsiConsolePrintf("bool %s\n", jsvGetFirstChild(var)?"true":"false");
-        jsvUnLock(var);
-        return;
-      } else {
-        // go to what the name points to
-        ref = jsvGetFirstChild(var);
-        if (ref) {
-          level++;
-          int lowestLevel = _jsvTraceGetLowestLevel(baseRef, ref);
-          /*jsiConsolePrint("<");
-          jsiConsolePrintInt(level);
-          jsiConsolePrint(":");
-          jsiConsolePrintInt(lowestLevel);
-          jsiConsolePrint("> ");*/
-
-          var = jsvLock(ref);
-          jsvTraceLockInfo(var);
-          if (lowestLevel < level) {
-            // If this data is available elsewhere in the tree (but nearer the root)
-            // then don't print it. This makes the dump significantly more readable!
-            // It also stops us getting in recursive loops ...
-            jsiConsolePrint("...\n");
-            jsvUnLock(var);
-            return;
-          }
-        } else {
-          jsvUnLock(var);
-          jsiConsolePrint("undefined\n");
-          return;
-        }
-      }
-    }
-
-    if (jsvIsName(var)) {
-      jsiConsolePrint("\n");
-      _jsvTrace(jsvGetRef(var), indent+2, baseRef, level+1);
-      jsvUnLock(var);
-      return;
-    }
-    if (jsvIsObject(var)) jsiConsolePrint("Object {");
-    else if (jsvIsArray(var)) jsiConsolePrintf("Array(%d) [", var->varData.integer);
-    else if (jsvIsPin(var)) jsiConsolePrint("Pin ");
-    else if (jsvIsInt(var)) jsiConsolePrint("Integer ");
-    else if (jsvIsBoolean(var)) jsiConsolePrint("Bool ");
-    else if (jsvIsFloat(var)) jsiConsolePrint("Double ");
-    else if (jsvIsString(var)) jsiConsolePrint("String ");
-    else if (jsvIsArrayBuffer(var)) {
-      jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
-      _jsvTrace(jsvGetFirstChild(var), indent+1, baseRef, level+1);
-      jsvUnLock(var);
-      return;
-    } else if (jsvIsFunction(var)) jsiConsolePrint("Function {");
-    else {
-        jsiConsolePrintf("Flags %d\n", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
-    }
-
-    if (jsvIsStringExt(var)) {
-      jsiConsolePrintf("STRINGEXT"); // way to get nice name
-    } else if (!jsvIsObject(var) && !jsvIsArray(var) && !jsvIsFunction(var)) {
-      JsVar *str = jsvAsString(var, false);
-      if (str) {
-        JsvStringIterator it;
-        jsvStringIteratorNew(&it, str, 0);
-        while (jsvStringIteratorHasChar(&it)) {
-          char ch = jsvStringIteratorGetChar(&it);
-          jsiConsolePrint(escapeCharacter(ch));
-          jsvStringIteratorNext(&it);
-        }
-        jsvStringIteratorFree(&it);
-        jsvUnLock(str);
-      }
-    }
-
-    if (jsvHasStringExt(var)) {
-      if (!jsvIsStringExt(var) && jsvGetFirstChild(var)) { // stringext don't have children (the use them for chars)
-        jsiConsolePrint("( Multi-block string ");
-        JsVarRef child = jsvGetFirstChild(var);
-        while (child) {
-          JsVar *childVar = jsvLock(child);
-          jsvTraceLockInfo(childVar);
-          child = jsvGetFirstChild(childVar);
-          jsvUnLock(childVar);
-        }
-        jsiConsolePrint(")\n");
-      } else
-          jsiConsolePrint("\n");
-    } else {
-      JsVarRef child = jsvGetFirstChild(var);
-      jsiConsolePrint("\n");
-      // dump children
-      while (child) {
-        JsVar *childVar;
-        _jsvTrace(child, indent+2, baseRef, level+1);
-        childVar = jsvLock(child);
-        child = jsvGetNextSibling(childVar);
-        jsvUnLock(childVar);
-      }
-    }
-
-    if (jsvIsObject(var) || jsvIsFunction(var) || jsvIsArray(var)) {
-      int i;
+    jsvIteratorFree(&it);
+    if (!first)
       for (i=0;i<indent;i++) jsiConsolePrint(" ");
-      jsiConsolePrint(jsvIsArray(var) ? "]\n" : "}\n");
-    }
-
-    jsvUnLock(var);
+  }
+  jsiConsolePrintf("%c", endBracket);
 #endif
 }
 
 /** Write debug info for this Var out to the console */
-void jsvTrace(JsVarRef ref, int indent) {
-  _jsvTrace(ref,indent,ref,0);
+void jsvTrace(JsVar *var, int indent) {
+  _jsvTrace(var,indent,var,0);
+  jsiConsolePrintf("\n");
 }
 
 

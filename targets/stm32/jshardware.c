@@ -1027,6 +1027,9 @@ void jshInit() {
 #ifdef DEFAULT_CONSOLE_RX_PIN
     inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
 #endif
+#ifdef DEFAULT_CONSOLE_BAUDRATE
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+#endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
 

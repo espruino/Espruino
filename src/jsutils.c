@@ -168,6 +168,9 @@ NO_INLINE void jsError(const char *fmt, ...) {
 }
 
 NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
+  // If we already had an exception, forget this
+  if (jspHasError()) return;
+
   jsiConsoleRemoveInputLine();
 
   JsVar *var = jsvNewFromEmptyString();
@@ -233,7 +236,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
     jsiConsolePrint("ASSERT FAILED AT ");
   jsiConsolePrintf("%s:%d\n",file,line);
 
-  jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
+  jsvTrace(jsvFindOrCreateRoot(), 2);
   exit(1);
 }
 

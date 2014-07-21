@@ -75,6 +75,7 @@ int main(void){
 
   bool buttonState = false;
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;
+  jsvInit();
   jsiInit(!buttonState); // pressing USER button skips autoload
 
   while (1) {
@@ -86,6 +87,7 @@ int main(void){
 #endif*/
   }
   //jsiKill();
+  //jsvKill();
   //jshKill();
 }
 
