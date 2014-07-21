@@ -63,7 +63,7 @@ def toArgumentType(argName):
   if argName=="bool": return "JSWAT_BOOL";
   if argName=="pin": return "JSWAT_PIN";
   if argName=="int32": return "JSWAT_INT32";
-  if argName=="int": return "JSWAT_JSVARINT";
+  if argName=="int": return "JSWAT_INT32";
   if argName=="float": return "JSWAT_JSVARFLOAT";
   sys.stderr.write("ERROR: toArgumentType: Unknown argument name "+argName+"\n")
   exit(1)

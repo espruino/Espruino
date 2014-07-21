@@ -49,7 +49,6 @@ int nativeCallGetCType(JsLex *lex) {
     int t = -1;
     char *name = jslGetTokenValueAsString(lex);
     if (strcmp(name,"int")==0) t=JSWAT_INT32;
-    if (strcmp(name,"long")==0) t=JSWAT_JSVARINT;
     if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
@@ -68,7 +67,7 @@ int nativeCallGetCType(JsLex *lex) {
                           "If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.",
                           "Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses."],
          "params" : [ [ "addr", "int", "The address in memory of the function"],
-                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`long`,`double`,`Pin`,`JsVar`"] ],
+                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"] ],
          "return" : ["JsVar", "The native function"]
 }*/
 JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
@@ -94,6 +93,8 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     }
     if (ok) ok = jslMatch(&lex, ')');
     jslKill(&lex);
+    if (argTypes & (unsigned int)~0xFFFF)
+      ok = false;
     if (!ok) {
       jsExceptionHere(JSET_ERROR, "Error Parsing signature at argument number %d", argNumber);
       return 0;
@@ -103,7 +104,7 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     return 0;
   }
 
-  return jsvNewNativeFunction((void *)(size_t)addr, argTypes);
+  return jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
 }
 
 

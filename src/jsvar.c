@@ -550,7 +550,7 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
-JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
   if (!func) return 0;
   func->varData.native.ptr = ptr;
