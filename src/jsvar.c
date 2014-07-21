@@ -1254,7 +1254,7 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChild(pa));
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)(JsVarRefSigned)jsvGetFirstChild(pa));
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
   while (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
@@ -1273,7 +1273,7 @@ JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChild(pa));
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)(JsVarRefSigned)jsvGetFirstChild(pa));
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
   if (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
@@ -2385,7 +2385,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
   else if (jsvIsFunctionParameter(var)) jsiConsolePrint("Param ");
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
-  else if (jsvIsString(var)) jsiConsolePrintf("String %q", var);
+  else if (jsvIsString(var)) jsiConsolePrintf("String [%d blocks] %q", jsvCountJsVarsUsed(var), var);
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
   else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
@@ -2393,7 +2393,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
   // print a value if it was stored in here as well...
   if (jsvIsNameInt(var)) {
-    jsiConsolePrintf("= int %d\n", jsvGetFirstChild(var));
+    jsiConsolePrintf("= int %d\n", (JsVarRefSigned)jsvGetFirstChild(var));
     return;
   } else if (jsvIsNameIntBool(var)) {
     jsiConsolePrintf("= bool %s\n", jsvGetFirstChild(var)?"true":"false");

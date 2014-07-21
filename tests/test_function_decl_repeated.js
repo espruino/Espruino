@@ -26,5 +26,10 @@ function test() {console.log("rawr");}
 function test() {console.log("rawr");} 
 function test() {console.log("rawr");} 
 
-var mem = process.memory().usage; 
-result = mem < 80;
+var mem;
+// use timeout to ensure that the actual source code has been freed
+setTimeout(function() {
+  mem = process.memory().usage; 
+  console.log(mem);
+  result = mem < 90;
+},10);
