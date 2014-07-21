@@ -569,7 +569,7 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
-JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
   if (!func) return 0;
   func->varData.native.ptr = ptr;
@@ -1744,7 +1744,7 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   assert(jsvHasChildren(obj));
   JsVar *childName = jsvFindChildFromString(obj, name, createChild!=0);
   JsVar *child = jsvSkipName(childName);
-  if (!child && createChild) {
+  if (!child && createChild && childName!=0/*out of memory?*/) {
     child = jsvNewWithFlags(createChild);
     jsvSetValueOfName(childName, child);
     jsvUnLock(childName);
@@ -2679,7 +2679,12 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
-    if (!next) return; // out of memory
+    if (!next) {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->charIdx = 0;
+      return; // out of memory
+    }
     // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
     jsvSetLastChild(it->var, jsvGetRef(next));
     jsvUnLock(it->var);

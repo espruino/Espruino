@@ -55,7 +55,7 @@ typedef struct {
 /// Data for native functions
 typedef struct {
   void (*ptr)(void); ///< Function pointer
-  unsigned int argTypes; ///< Actually a list of JsnArgumentType
+  unsigned short argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
 /// References
@@ -191,7 +191,7 @@ JsVar *jsvNewFromFloat(JsVarFloat value);
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero);
 JsVar *jsvNewFromPin(int pin);
 JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array containing the given elements
-JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes); ///< Create an array containing the given elements
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
 /// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
