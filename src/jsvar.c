@@ -2394,8 +2394,8 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
   else if (jsvIsString(var)) {
     size_t blocks = 1;
-    if (var->lastChild) {
-      JsVar *v = jsvLock(var->lastChild);
+    if (jsvGetLastChild(var)) {
+      JsVar *v = jsvLock(jsvGetLastChild(var));
       blocks += jsvCountJsVarsUsed(v);
       jsvUnLock(v);
     }
