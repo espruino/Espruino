@@ -746,6 +746,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(toStringFn);
       return result;
     } else {
+      jsvUnLock(toStringFn);
       return jsvNewFromString("[object Object]");
     }
   } else {
@@ -2045,7 +2046,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
-        JsVar *valueStr = jsvAsString(value, true /* UNLOCK */);
+        JsVar *valueStr = jsvAsString(value, false);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
@@ -2053,6 +2054,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
           hasMemory = false;
         }
       }
+      jsvUnLock(value);
     }
     jsvUnLock(key);
     jsvIteratorNext(&it);

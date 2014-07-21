@@ -60,6 +60,7 @@ bool run_test(const char *filename) {
   if (!buffer) exit(1);
 
   jshInit();
+  jsvInit();
   jsiInit(false /* do not autoload!!! */);
 
   addNativeFunction("quit", nativeQuit);
@@ -93,6 +94,7 @@ bool run_test(const char *filename) {
   unsigned int unfreed = jsvGetMemoryUsage();
   printf("AFTER GC: %d Memory Records Used (should be 0!)\r\n", unfreed);
   jsvShowAllocated();
+  jsvKill();
   jshKill();
 
   if (unfreed) {
@@ -235,6 +237,7 @@ int main(int argc, char **argv) {
       } else if (!strcmp(a,"-e") || !strcmp(a,"--eval")) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         jshInit();
+        jsvInit();
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1], false));
@@ -243,6 +246,7 @@ int main(int argc, char **argv) {
         while (isRunning && (jsiHasTimers() || isBusy))
           isBusy = jsiLoop();
         jsiKill();
+        jsvKill();
         jshKill();
         exit(0);
       } else if (!strcmp(a,"--test")) {
@@ -284,6 +288,7 @@ int main(int argc, char **argv) {
       if (cmd[0]=='\n') cmd++;
     }
     jshInit();
+    jsvInit();
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd, true));
@@ -293,6 +298,7 @@ int main(int argc, char **argv) {
     while (isRunning && (jsiHasTimers() || isBusy))
       isBusy = jsiLoop();
     jsiKill();
+    jsvKill();
     jshKill();
     exit(0);
   } else {
@@ -324,6 +330,7 @@ int main(int argc, char **argv) {
 #endif//!__MINGW32__
 
   jshInit();
+  jsvInit();
   jsiInit(true);
 
   addNativeFunction("quit", nativeQuit);
@@ -336,6 +343,7 @@ int main(int argc, char **argv) {
   jsiKill();
 
   jsvShowAllocated();
+  jsvKill();
   jshKill();
 
   return 0;

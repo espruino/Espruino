@@ -7,8 +7,11 @@ void __cxa_pure_virtual() { while (1); }
 
 int main() {
   jshInit();
+  jsvInit();
   jsiInit(true);
   
   while (1) 
     jsiLoop();
+
+  // js*Kill()
 }

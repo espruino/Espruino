@@ -98,8 +98,14 @@ JsVar *jswrap_error_toString(JsVar *parent) {
 
   JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
   if (msg) {
-    jsvAppendPrintf(str, ": %v", msg);
-    jsvUnLock(msg);
+    JsVar *newStr = jsvNewFromEmptyString();
+    if (newStr) {
+      jsvAppendPrintf(newStr, "%v: %v", str, msg);
+      jsvUnLock(msg);
+
+      jsvUnLock(str);
+      str = newStr;
+    }
   }
 
   return str;
