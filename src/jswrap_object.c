@@ -209,7 +209,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
     return 0;
   }
 
-  jsvTrace(jsvGetRef(varName), 5);
+  //jsvTrace(varName, 5);
   JsVar *var = jsvSkipName(varName);
 
   bool isBuiltIn = jsvIsNewChild(varName);

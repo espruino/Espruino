@@ -82,7 +82,7 @@ bool run_test(const char *filename) {
   else {
     printf("----------------------------------\r\n");
     printf("----------------------------- FAIL %s <-------\r\n", filename);
-    jsvTrace(jsvGetRef(execInfo.root), 0);
+    jsvTrace(execInfo.root, 0);
     printf("----------------------------- FAIL %s <-------\r\n", filename);
     printf("----------------------------------\r\n");
   }

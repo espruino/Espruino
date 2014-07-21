@@ -605,7 +605,6 @@ void jsiInit(bool autoLoad) {
     jsvSoftInit();
     jspSoftInit();
   }
-  //jsvTrace(jsvGetRef(execInfo.root), 0)
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();

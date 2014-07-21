@@ -482,7 +482,7 @@ void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< 
 static inline bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !arr->firstChild; } ///< Return true is array is empty
 
 /** Write debug info for this Var out to the console */
-void jsvTrace(JsVarRef ref, int indent);
+void jsvTrace(JsVar *var, int indent);
 
 /** Run a garbage collection sweep - return true if things have been freed */
 bool jsvGarbageCollect();
