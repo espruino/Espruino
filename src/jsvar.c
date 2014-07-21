@@ -1810,6 +1810,12 @@ JsVarInt jsvGetLength(JsVar *src) {
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
 size_t jsvCountJsVarsUsed(JsVar *v) {
+
+  // Use IS_RECURSING  flag to stop recursion
+  if (v->flags & JSV_IS_RECURSING)
+    return 0;
+  v->flags |= JSV_IS_RECURSING;
+
   size_t count = 1;
   if (jsvHasChildren(v)) {
     JsVarRef childref = v->firstChild;
@@ -1834,6 +1840,7 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
     count += jsvCountJsVarsUsed(child);
     jsvUnLock(child);
   }
+  v->flags &= ~JSV_IS_RECURSING;
   return count;
 }
 
@@ -2320,9 +2327,8 @@ int _jsvTraceGetLowestLevel(JsVar *var, JsVar *searchVar) {
   int found = -1;
 
   // Use IS_RECURSING  flag to stop recursion
-  if (var->flags & JSV_IS_RECURSING) {
+  if (var->flags & JSV_IS_RECURSING)
     return -1;
-  }
   var->flags |= JSV_IS_RECURSING;
 
   if (jsvHasSingleChild(var) && var->firstChild) {
@@ -2382,9 +2388,16 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
   else if (jsvIsFunctionParameter(var)) jsiConsolePrint("Param ");
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
-  else if (jsvIsString(var)) jsiConsolePrintf("String [%d blocks] %q", jsvCountJsVarsUsed(var), var);
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
-  else {
+  else if (jsvIsString(var)) {
+    size_t blocks = 1;
+    if (var->lastChild) {
+      JsVar *v = jsvLock(var->lastChild);
+      blocks += jsvCountJsVarsUsed(v);
+      jsvUnLock(v);
+    }
+    jsiConsolePrintf("String [%d blocks] %q", blocks, var);
+  } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
   }
 
