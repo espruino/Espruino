@@ -1227,7 +1227,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
       short tk = execInfo.lex->tk;
       JSP_ASSERT_MATCH(tk);
       if (!JSP_SHOULD_EXECUTE) {
-        return jspePostfixExpression();
+        return jspeUnaryExpression();
       }
       if (tk=='!') { // logical not
         return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
