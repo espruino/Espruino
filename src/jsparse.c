@@ -623,8 +623,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
                   jsvAppendPrintf(stackTrace, "system\n");
                 jsvUnLock(stackTrace);
               }
-
-              jspSetError(execInfo.lex!=0);
             }
           }
 
