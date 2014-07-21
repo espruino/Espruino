@@ -168,6 +168,9 @@ NO_INLINE void jsError(const char *fmt, ...) {
 }
 
 NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
+  // If we already had an exception, forget this
+  if (jspHasError()) return;
+
   jsiConsoleRemoveInputLine();
 
   JsVar *var = jsvNewFromEmptyString();

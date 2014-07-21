@@ -6,6 +6,8 @@
             Fix memory leak when syntax error while getting function arguments
             Fix memory leak test when running on Linux
             Fix memory leak in filesystem file open (when failure)
+            Fix memory leak on Syntax error
+            Stop multiple exceptions from being reported (eg. Syntax Errors)
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)

@@ -2048,7 +2048,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       return 0;
     }
   }
-  JSP_MATCH(LEX_ID);
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(funcName), 0);
   funcVar = jspeFunctionDefinition(false);
   if (actuallyCreateFunction) {
     // find a function with the same name (or make one)
