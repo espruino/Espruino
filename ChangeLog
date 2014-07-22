@@ -14,6 +14,7 @@
             Switch native function decls from 32 bits to 16
             Swap HY2.4 board to software LCD driver as well, work out pin mappings from PY file
             Fix inaccuracy in setInterval, which had started since 32 bit switch in 1v65
+            Store JSWAT_EXECUTE_IMMEDIATELY in a way that will fit in 16 bit function decls
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
