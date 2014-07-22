@@ -1742,12 +1742,16 @@ void jsiDumpState() {
     bool watchRecur = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "recur", 0));
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
     JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
+    JsVarInt watchDebounce = jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "debounce", 0));
     jsiConsolePrint("setWatch(");
     jsiDumpJSON(watchCallback, 0);
-    jsiConsolePrintf(", %j, { repeat:%s, edge:'%s' });\n",
+    jsiConsolePrintf(", %j, { repeat:%s, edge:'%s'",
                      watchPin,
                      watchRecur?"true":"false",
                      (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
+    if (watchDebounce>0)
+      jsiConsolePrintf(", debounce : %f", jshGetMillisecondsFromTime(watchDebounce));
+    jsiConsolePrint(" });\n");
     jsvUnLock(watchPin);
     jsvUnLock(watchCallback);
     // next
