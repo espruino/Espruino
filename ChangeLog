@@ -12,6 +12,7 @@
             Improve Error.toString, and fix bug when an exception was thrown from a function
             Improve jsvObjectGetChild when out of memory
             Switch native function decls from 32 bits to 16
+            Swap HY2.4 board to software LCD driver as well, work out pin mappings from PY file
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
