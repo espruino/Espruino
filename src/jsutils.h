@@ -82,7 +82,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #define JSVARREF_MIN (-2147483648)
   #define JSVARREF_MAX 2147483647
   #define JSVAR_DATA_STRING_LEN  4
-  #define JSVAR_DATA_STRING_MAX_LEN 24 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
+  #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*4)+4) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
 #else
    /** JsVerRef stores References for variables - We treat 0 as null
    *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
@@ -103,7 +103,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
     #define JSVARREF_MAX 32767
     #define JSVAR_SIZE 16
     #define JSVAR_DATA_STRING_LEN  8
-    #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+6+2) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
+    #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*2)+2) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
   #endif
 #endif
 
