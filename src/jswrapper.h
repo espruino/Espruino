@@ -30,9 +30,13 @@ typedef enum {
   JSWAT__LAST = JSWAT_JSVARFLOAT,
   JSWAT_MASK = NEXT_POWER_2(JSWAT__LAST)-1,
 
-  JSWAT_EXECUTE_IMMEDIATELY = 0x4000,  // should this just be executed right away and the value returned? Used to encode constants in the symbol table
+  // should this just be executed right away and the value returned? Used to encode constants in the symbol table
+  // We encode this by setting all bits in the last argument, but leaving the second-last argument as zero
+  JSWAT_EXECUTE_IMMEDIATELY = 0x7000,  
+  JSWAT_EXECUTE_IMMEDIATELY_MASK = 0x7E00, 
+
   JSWAT_THIS_ARG    = 0x8000, // whether a 'this' argument should be tacked onto the start
-  JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_EXECUTE_IMMEDIATELY | JSWAT_THIS_ARG)
+  JSWAT_ARGUMENTS_MASK = ~(JSWAT_MASK | JSWAT_THIS_ARG)
 } JsnArgumentType;
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)

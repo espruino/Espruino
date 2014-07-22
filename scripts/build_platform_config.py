@@ -270,6 +270,14 @@ for device in simpleDevices:
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
 
+if "LCD" in board.devices:
+  for i in range(0,16):
+    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))    
+  codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
+  codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
+  codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
+  codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
+
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD
     if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")

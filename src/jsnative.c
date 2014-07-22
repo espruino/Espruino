@@ -39,7 +39,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
 
 
   // run through all arguments
-  while (argumentSpecifier) {
+  while (argumentSpecifier & JSWAT_MASK) {
     // Get the parameter data
     JsVar *param = (paramNumber<paramCount) ? paramData[paramNumber] : (JsVar *)0;
     paramNumber++;
