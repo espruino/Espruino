@@ -1686,25 +1686,22 @@ void jsiDumpState() {
         jsiDumpObjectState(child, data);
       } else {
         // normal variable definition
-        jsiConsolePrintf("var %v", child);
-        if (!jsvIsUndefined(data)) {
-          jsiConsolePrint(" = ");
-          bool hasProto = false;
-          if (jsvIsObject(data)) {
-            JsVar *proto = jsvObjectGetChild(data, JSPARSE_INHERITS_VAR, 0);
-            if (proto) {
-              JsVar *protoName = jsvGetPathTo(execInfo.root, proto, 4, data);
-              if (protoName) {
-                jsiConsolePrintf("Object.create(%v);\n", protoName);
-                jsiDumpObjectState(child, data);
-                hasProto = true;
-              }
+        jsiConsolePrintf("var %v = ", child);
+        bool hasProto = false;
+        if (jsvIsObject(data)) {
+          JsVar *proto = jsvObjectGetChild(data, JSPARSE_INHERITS_VAR, 0);
+          if (proto) {
+            JsVar *protoName = jsvGetPathTo(execInfo.root, proto, 4, data);
+            if (protoName) {
+              jsiConsolePrintf("Object.create(%v);\n", protoName);
+              jsiDumpObjectState(child, data);
+              hasProto = true;
             }
           }
-          if (!hasProto) {
-            jsiDumpJSON(data, child);
-            jsiConsolePrint(";\n");
-          }
+        }
+        if (!hasProto) {
+          jsiDumpJSON(data, child);
+          jsiConsolePrint(";\n");
         }
       }
     }
