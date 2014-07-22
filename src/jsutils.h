@@ -93,6 +93,21 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
     #define JSVARREF_MIN (-128)
     #define JSVARREF_MAX 127
     #define JSVARREF_SIZE 1
+  #elif JSVAR_CACHE_SIZE <= 1023
+    /* for this, we use 10 bit refs. GCC can't do that so store refs as
+     * single bytes and then manually pack an extra 2 bits for each of
+     * the 4 refs into a byte called 'pack'
+     *
+     * Note that JsVarRef/JsVarRefSigned are still 2 bytes, which means
+     * we're only messing around when loading/storing refs - not when
+     * passing them around.
+     */
+    #define JSVARREF_PACKED_BITS 2
+    typedef unsigned short JsVarRef;
+    typedef short JsVarRefSigned;
+    #define JSVARREF_MIN (-512)
+    #define JSVARREF_MAX 511
+    #define JSVARREF_SIZE 1
   #else
     typedef unsigned short JsVarRef;
     typedef short JsVarRefSigned;

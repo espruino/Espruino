@@ -74,6 +74,7 @@ typedef struct {
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
+#ifndef JSVARREF_PACKED_BITS
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
@@ -95,6 +96,17 @@ typedef struct {
    * For CHILD_OF - a link to the object that should contain the variable
    */
   JsVarRef lastChild;
+
+#else // not JSVARREF_PACKED_BITS
+  // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
+  unsigned char nextSibling;
+  unsigned char prevSibling;
+  unsigned char refs;
+  unsigned char firstChild;
+  unsigned char lastChild;
+
+  unsigned char pack; // extra packed bits
+#endif
 } PACKED_FLAGS JsVarDataRef;
 
 
@@ -147,6 +159,7 @@ typedef struct {
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  */
 
+#ifndef JSVARREF_PACKED_BITS
 static inline JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
 static inline JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
 static inline JsVarRef jsvGetNextSibling(const JsVar *v) { return v->varData.ref.nextSibling; }
@@ -155,6 +168,17 @@ static inline void jsvSetFirstChild(JsVar *v, JsVarRef r) { v->varData.ref.first
 static inline void jsvSetLastChild(JsVar *v, JsVarRef r) { v->varData.ref.lastChild = r; }
 static inline void jsvSetNextSibling(JsVar *v, JsVarRef r) { v->varData.ref.nextSibling = r; }
 static inline void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->varData.ref.prevSibling = r; }
+#else
+// for packed bits, functions are not inlined to save space
+JsVarRef jsvGetFirstChild(const JsVar *v);
+JsVarRef jsvGetLastChild(const JsVar *v);
+JsVarRef jsvGetNextSibling(const JsVar *v);
+JsVarRef jsvGetPrevSibling(const JsVar *v);
+void jsvSetFirstChild(JsVar *v, JsVarRef r);
+void jsvSetLastChild(JsVar *v, JsVarRef r);
+void jsvSetNextSibling(JsVar *v, JsVarRef r);
+void jsvSetPrevSibling(JsVar *v, JsVarRef r);
+#endif
 
 static inline JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
 static inline unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }

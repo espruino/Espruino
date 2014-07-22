@@ -56,6 +56,30 @@ JsVar *_jsvGetAddressOf(JsVarRef ref) {
   return jsvGetAddressOf(ref);
 }
 
+#ifdef JSVARREF_PACKED_BITS
+#define JSVARREF_PACKED_BIT_MASK ((1U<<JSVARREF_PACKED_BITS)-1)
+JsVarRef jsvGetFirstChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.firstChild | (((v->varData.ref.pack)&JSVARREF_PACKED_BIT_MASK))<<8); }
+JsVarRef jsvGetLastChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.lastChild | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*1))&JSVARREF_PACKED_BIT_MASK))<<8); }
+JsVarRef jsvGetNextSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.nextSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*2))&JSVARREF_PACKED_BIT_MASK))<<8); }
+JsVarRef jsvGetPrevSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.prevSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*3))&JSVARREF_PACKED_BIT_MASK))<<8); }
+void jsvSetFirstChild(JsVar *v, JsVarRef r) {
+  v->varData.ref.firstChild = (unsigned char)(r & 0xFF);
+  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~JSVARREF_PACKED_BIT_MASK) | ((r >> 8) & JSVARREF_PACKED_BIT_MASK));
+}
+void jsvSetLastChild(JsVar *v, JsVarRef r) {
+  v->varData.ref.lastChild = (unsigned char)(r & 0xFF);
+  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*1))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*1)));
+}
+void jsvSetNextSibling(JsVar *v, JsVarRef r) {
+  v->varData.ref.nextSibling = (unsigned char)(r & 0xFF);
+  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*2))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*2)));
+}
+void jsvSetPrevSibling(JsVar *v, JsVarRef r) {
+  v->varData.ref.prevSibling = (unsigned char)(r & 0xFF);
+  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*3))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*3)));
+}
+#endif
+
 
 // For debugging/testing ONLY - maximum # of vars we are allowed to use
 void jsvSetMaxVarsUsed(unsigned int size) {
