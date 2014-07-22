@@ -241,7 +241,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
     if (cmp==0) {
-      if (sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY)
+      if ((sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
     } else {

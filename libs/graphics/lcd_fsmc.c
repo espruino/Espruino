@@ -144,136 +144,135 @@ void LCD_init_hardware() {
 
 // bitbanged FSMC - because for some reason normal one seems unreliable on HYSTM32_32
 // Nasty, slow, but easy to write + test
-
-#define FSMCP_RS JSH_PORTD_OFFSET+11
-#define FSMCP_RD JSH_PORTD_OFFSET+4
-#define FSMCP_WR JSH_PORTD_OFFSET+5
-#define FSMCP_CS JSH_PORTD_OFFSET+7
-#define FSMCP_D0 JSH_PORTD_OFFSET+14
-#define FSMCP_D1 JSH_PORTD_OFFSET+15
-#define FSMCP_D2 JSH_PORTD_OFFSET+0
-#define FSMCP_D3 JSH_PORTD_OFFSET+1
-#define FSMCP_D4 JSH_PORTE_OFFSET+7
-#define FSMCP_D5 JSH_PORTE_OFFSET+8
-#define FSMCP_D6 JSH_PORTE_OFFSET+9
-#define FSMCP_D7 JSH_PORTE_OFFSET+10
-#define FSMCP_D8 JSH_PORTE_OFFSET+11
-#define FSMCP_D9 JSH_PORTE_OFFSET+12
-#define FSMCP_D10 JSH_PORTE_OFFSET+13
-#define FSMCP_D11 JSH_PORTE_OFFSET+14
-#define FSMCP_D12 JSH_PORTE_OFFSET+15
-#define FSMCP_D13 JSH_PORTD_OFFSET+8
-#define FSMCP_D14 JSH_PORTD_OFFSET+9
-#define FSMCP_D15 JSH_PORTD_OFFSET+10
+/*#define LCD_FSMC_RS JSH_PORTD_OFFSET+11
+#define LCD_FSMC_RD JSH_PORTD_OFFSET+4
+#define LCD_FSMC_WR JSH_PORTD_OFFSET+5
+#define LCD_FSMC_CS JSH_PORTD_OFFSET+7
+#define LCD_FSMC_D0 JSH_PORTD_OFFSET+14
+#define LCD_FSMC_D1 JSH_PORTD_OFFSET+15
+#define LCD_FSMC_D2 JSH_PORTD_OFFSET+0
+#define LCD_FSMC_D3 JSH_PORTD_OFFSET+1
+#define LCD_FSMC_D4 JSH_PORTE_OFFSET+7
+#define LCD_FSMC_D5 JSH_PORTE_OFFSET+8
+#define LCD_FSMC_D6 JSH_PORTE_OFFSET+9
+#define LCD_FSMC_D7 JSH_PORTE_OFFSET+10
+#define LCD_FSMC_D8 JSH_PORTE_OFFSET+11
+#define LCD_FSMC_D9 JSH_PORTE_OFFSET+12
+#define LCD_FSMC_D10 JSH_PORTE_OFFSET+13
+#define LCD_FSMC_D11 JSH_PORTE_OFFSET+14
+#define LCD_FSMC_D12 JSH_PORTE_OFFSET+15
+#define LCD_FSMC_D13 JSH_PORTD_OFFSET+8
+#define LCD_FSMC_D14 JSH_PORTD_OFFSET+9
+#define LCD_FSMC_D15 JSH_PORTD_OFFSET+10*/
 
 
 static void _LCD_WR(unsigned int d) {
-  jshPinSetValue(FSMCP_D0 , ((d>>0 )&1)!=0);
-  jshPinSetValue(FSMCP_D1 , ((d>>1 )&1)!=0);
-  jshPinSetValue(FSMCP_D2 , ((d>>2 )&1)!=0);
-  jshPinSetValue(FSMCP_D3 , ((d>>3 )&1)!=0);
-  jshPinSetValue(FSMCP_D4 , ((d>>4 )&1)!=0);
-  jshPinSetValue(FSMCP_D5 , ((d>>5 )&1)!=0);
-  jshPinSetValue(FSMCP_D6 , ((d>>6 )&1)!=0);
-  jshPinSetValue(FSMCP_D7 , ((d>>7 )&1)!=0);
-  jshPinSetValue(FSMCP_D8 , ((d>>8 )&1)!=0);
-  jshPinSetValue(FSMCP_D9 , ((d>>9 )&1)!=0);
-  jshPinSetValue(FSMCP_D10, ((d>>10)&1)!=0);
-  jshPinSetValue(FSMCP_D11, ((d>>11)&1)!=0);
-  jshPinSetValue(FSMCP_D12, ((d>>12)&1)!=0);
-  jshPinSetValue(FSMCP_D13, ((d>>13)&1)!=0);
-  jshPinSetValue(FSMCP_D14, ((d>>14)&1)!=0);
-  jshPinSetValue(FSMCP_D15, ((d>>15)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D0 , ((d>>0 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D1 , ((d>>1 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D2 , ((d>>2 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D3 , ((d>>3 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D4 , ((d>>4 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D5 , ((d>>5 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D6 , ((d>>6 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D7 , ((d>>7 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D8 , ((d>>8 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D9 , ((d>>9 )&1)!=0);
+  jshPinSetValue(LCD_FSMC_D10, ((d>>10)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D11, ((d>>11)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D12, ((d>>12)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D13, ((d>>13)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D14, ((d>>14)&1)!=0);
+  jshPinSetValue(LCD_FSMC_D15, ((d>>15)&1)!=0);
 }
 
 static unsigned int _LCD_RD() {
   unsigned int d = 0;
-  if (jshPinGetValue(FSMCP_D0 )) d|=1<<0 ;
-  if (jshPinGetValue(FSMCP_D1 )) d|=1<<1 ;
-  if (jshPinGetValue(FSMCP_D2 )) d|=1<<2 ;
-  if (jshPinGetValue(FSMCP_D3 )) d|=1<<3 ;
-  if (jshPinGetValue(FSMCP_D4 )) d|=1<<4 ;
-  if (jshPinGetValue(FSMCP_D5 )) d|=1<<5 ;
-  if (jshPinGetValue(FSMCP_D6 )) d|=1<<6 ;
-  if (jshPinGetValue(FSMCP_D7 )) d|=1<<7 ;
-  if (jshPinGetValue(FSMCP_D8 )) d|=1<<8 ;
-  if (jshPinGetValue(FSMCP_D9 )) d|=1<<9 ;
-  if (jshPinGetValue(FSMCP_D10)) d|=1<<10;
-  if (jshPinGetValue(FSMCP_D11)) d|=1<<11;
-  if (jshPinGetValue(FSMCP_D12)) d|=1<<12;
-  if (jshPinGetValue(FSMCP_D13)) d|=1<<13;
-  if (jshPinGetValue(FSMCP_D14)) d|=1<<14;
-  if (jshPinGetValue(FSMCP_D15)) d|=1<<15;
+  if (jshPinGetValue(LCD_FSMC_D0 )) d|=1<<0 ;
+  if (jshPinGetValue(LCD_FSMC_D1 )) d|=1<<1 ;
+  if (jshPinGetValue(LCD_FSMC_D2 )) d|=1<<2 ;
+  if (jshPinGetValue(LCD_FSMC_D3 )) d|=1<<3 ;
+  if (jshPinGetValue(LCD_FSMC_D4 )) d|=1<<4 ;
+  if (jshPinGetValue(LCD_FSMC_D5 )) d|=1<<5 ;
+  if (jshPinGetValue(LCD_FSMC_D6 )) d|=1<<6 ;
+  if (jshPinGetValue(LCD_FSMC_D7 )) d|=1<<7 ;
+  if (jshPinGetValue(LCD_FSMC_D8 )) d|=1<<8 ;
+  if (jshPinGetValue(LCD_FSMC_D9 )) d|=1<<9 ;
+  if (jshPinGetValue(LCD_FSMC_D10)) d|=1<<10;
+  if (jshPinGetValue(LCD_FSMC_D11)) d|=1<<11;
+  if (jshPinGetValue(LCD_FSMC_D12)) d|=1<<12;
+  if (jshPinGetValue(LCD_FSMC_D13)) d|=1<<13;
+  if (jshPinGetValue(LCD_FSMC_D14)) d|=1<<14;
+  if (jshPinGetValue(LCD_FSMC_D15)) d|=1<<15;
   return d;
 }
 
 static void _LCD_STATE(JshPinState state) {
-  jshPinSetState(FSMCP_D0 , state);
-  jshPinSetState(FSMCP_D1 , state);
-  jshPinSetState(FSMCP_D2 , state);
-  jshPinSetState(FSMCP_D3 , state);
-  jshPinSetState(FSMCP_D4 , state);
-  jshPinSetState(FSMCP_D5 , state);
-  jshPinSetState(FSMCP_D6 , state);
-  jshPinSetState(FSMCP_D7 , state);
-  jshPinSetState(FSMCP_D8 , state);
-  jshPinSetState(FSMCP_D9 , state);
-  jshPinSetState(FSMCP_D10, state);
-  jshPinSetState(FSMCP_D11, state);
-  jshPinSetState(FSMCP_D12, state);
-  jshPinSetState(FSMCP_D13, state);
-  jshPinSetState(FSMCP_D14, state);
-  jshPinSetState(FSMCP_D15, state);
+  jshPinSetState(LCD_FSMC_D0 , state);
+  jshPinSetState(LCD_FSMC_D1 , state);
+  jshPinSetState(LCD_FSMC_D2 , state);
+  jshPinSetState(LCD_FSMC_D3 , state);
+  jshPinSetState(LCD_FSMC_D4 , state);
+  jshPinSetState(LCD_FSMC_D5 , state);
+  jshPinSetState(LCD_FSMC_D6 , state);
+  jshPinSetState(LCD_FSMC_D7 , state);
+  jshPinSetState(LCD_FSMC_D8 , state);
+  jshPinSetState(LCD_FSMC_D9 , state);
+  jshPinSetState(LCD_FSMC_D10, state);
+  jshPinSetState(LCD_FSMC_D11, state);
+  jshPinSetState(LCD_FSMC_D12, state);
+  jshPinSetState(LCD_FSMC_D13, state);
+  jshPinSetState(LCD_FSMC_D14, state);
+  jshPinSetState(LCD_FSMC_D15, state);
 }
 
 static inline void LCD_WR_REG(unsigned int index) {
-  jshPinSetValue(FSMCP_CS, 0);
-  jshPinSetValue(FSMCP_RS, 0);
+  jshPinSetValue(LCD_FSMC_CS, 0);
+  jshPinSetValue(LCD_FSMC_RS, 0);
   _LCD_WR(index);
-  jshPinSetValue(FSMCP_WR, 0);
-  jshPinSetValue(FSMCP_WR, 1);
-  jshPinSetValue(FSMCP_CS, 1);
+  jshPinSetValue(LCD_FSMC_WR, 0);
+  jshPinSetValue(LCD_FSMC_WR, 1);
+  jshPinSetValue(LCD_FSMC_CS, 1);
 }
 
 static inline unsigned int LCD_RD_Data(void) {
   _LCD_STATE(JSHPINSTATE_GPIO_IN);
-  jshPinSetValue(FSMCP_CS, 0);
-  jshPinSetValue(FSMCP_RS, 1);
-  jshPinSetValue(FSMCP_RD, 0);
+  jshPinSetValue(LCD_FSMC_CS, 0);
+  jshPinSetValue(LCD_FSMC_RS, 1);
+  jshPinSetValue(LCD_FSMC_RD, 0);
   uint16_t temp = (uint16_t)_LCD_RD();
-  jshPinSetValue(FSMCP_RD, 1);
-  jshPinSetValue(FSMCP_CS, 1);
+  jshPinSetValue(LCD_FSMC_RD, 1);
+  jshPinSetValue(LCD_FSMC_CS, 1);
   _LCD_STATE(JSHPINSTATE_GPIO_OUT);
 
   return temp;
 }
 
 static inline void LCD_WR_Data(unsigned int val) {
-  jshPinSetValue(FSMCP_CS, 0);
-  jshPinSetValue(FSMCP_RS, 1);
+  jshPinSetValue(LCD_FSMC_CS, 0);
+  jshPinSetValue(LCD_FSMC_RS, 1);
   _LCD_WR(val);
-  jshPinSetValue(FSMCP_WR, 0);
-  jshPinSetValue(FSMCP_WR, 1);
-  jshPinSetValue(FSMCP_CS, 1);
+  jshPinSetValue(LCD_FSMC_WR, 0);
+  jshPinSetValue(LCD_FSMC_WR, 1);
+  jshPinSetValue(LCD_FSMC_CS, 1);
 }
 
 static inline void LCD_WR_Data_multi(unsigned int val, unsigned int count) {
-  jshPinSetValue(FSMCP_CS, 0);
-  jshPinSetValue(FSMCP_RS, 1);
+  jshPinSetValue(LCD_FSMC_CS, 0);
+  jshPinSetValue(LCD_FSMC_RS, 1);
   _LCD_WR(val);
   unsigned int i;
   for (i=0;i<count;i++) {
-    jshPinSetValue(FSMCP_WR, 0);
-    jshPinSetValue(FSMCP_WR, 1);
+    jshPinSetValue(LCD_FSMC_WR, 0);
+    jshPinSetValue(LCD_FSMC_WR, 1);
   }
-  jshPinSetValue(FSMCP_CS, 1);
+  jshPinSetValue(LCD_FSMC_CS, 1);
 }
 
 void LCD_init_hardware() {
-  jshPinSetState(FSMCP_RS , JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(FSMCP_RD , JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(FSMCP_WR , JSHPINSTATE_GPIO_OUT);
-  jshPinSetState(FSMCP_CS , JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(LCD_FSMC_RS , JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(LCD_FSMC_RD , JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(LCD_FSMC_WR , JSHPINSTATE_GPIO_OUT);
+  jshPinSetState(LCD_FSMC_CS , JSHPINSTATE_GPIO_OUT);
   _LCD_STATE(JSHPINSTATE_GPIO_OUT);
 }
 

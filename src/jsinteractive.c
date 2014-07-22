@@ -1395,7 +1395,7 @@ void jsiIdle() {
   // Check timers
   JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
-  JsVarInt timePassed = (JsVarInt)(jshGetSystemTime() - jsiLastIdleTime);
+  JsVarInt timePassed = (JsVarInt)(time - jsiLastIdleTime);
   jsiLastIdleTime = time;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
