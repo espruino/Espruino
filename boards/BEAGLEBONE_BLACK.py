@@ -42,7 +42,7 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(2,99)  
+  pins = pinutils.generate_pins(2,127)  
   pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0;
   pinutils.findpin(pins, "PD20", True)["functions"]["I2C2_SDA"]=0;
   return pins
