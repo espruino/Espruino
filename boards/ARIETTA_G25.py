@@ -15,20 +15,20 @@
 
 import pinutils;
 info = {
- 'name' : "Raspberry Pi",
+ 'name' : "Arietta G25",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_raspberrypi',
+ 'binary_name' : 'espruino_%v_arietta',
 };
 chip = {
-  'part' : "RASPBERRYPI",
+  'part' : "ARMV5TEJL",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,
   'flash' : -1,
   'speed' : -1,
-  'usart' : 1,
+  'usart' : 0,
   'spi' : 1,
-  'i2c' : 1,
+  'i2c' : 0,
   'adc' : 0,
   'dac' : 0,
 };
@@ -36,7 +36,6 @@ chip = {
 board = {
 };
 devices = {
-  'LED1' : { 'pin' : 'D16' }
 };
 
 board_css = """
@@ -44,13 +43,7 @@ board_css = """
 
 def get_pins():
   pins = pinutils.generate_pins(0,31)  
-  pinutils.findpin(pins, "PD0", True)["functions"]["I2C1_SDA"]=0; # Rev 1
-  pinutils.findpin(pins, "PD1", True)["functions"]["I2C1_SCL"]=0; # Rev 1
-  pinutils.findpin(pins, "PD2", True)["functions"]["I2C1_SDA"]=0; # Rev 2
-  pinutils.findpin(pins, "PD3", True)["functions"]["I2C1_SCL"]=0; # Rev 2
-  pinutils.findpin(pins, "PD9", True)["functions"]["SPI1_MISO"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD11", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["UART1_TX"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["UART1_RX"]=0;
-  return pins
+  pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["SPI1_MOSI"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MISO"]=0;
+  return pins  

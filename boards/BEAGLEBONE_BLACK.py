@@ -26,8 +26,8 @@ chip = {
   'ram' : -1,
   'flash' : -1,
   'speed' : -1,
-  'usart' : 1,
-  'spi' : 1,
+  'usart' : 0,
+  'spi' : 0,
   'i2c' : 1,
   'adc' : 0,
   'dac' : 0,
@@ -42,14 +42,7 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,31)  
-  pinutils.findpin(pins, "PD0", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD1", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD2", True)["functions"]["I2C1_SDA"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["I2C1_SCL"]=0;
-  pinutils.findpin(pins, "PD9", True)["functions"]["SPI1_MISO"]=0;
-  pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MOSI"]=0;
-  pinutils.findpin(pins, "PD11", True)["functions"]["SPI1_SCK"]=0;
-  pinutils.findpin(pins, "PD14", True)["functions"]["UART1_TX"]=0;
-  pinutils.findpin(pins, "PD15", True)["functions"]["UART1_RX"]=0;
+  pins = pinutils.generate_pins(2,99)  
+  pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0;
+  pinutils.findpin(pins, "PD20", True)["functions"]["I2C2_SDA"]=0;
   return pins
