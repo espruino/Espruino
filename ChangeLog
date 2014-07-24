@@ -18,6 +18,7 @@
             Now dump 'debounce' for setWatch
             Make sure that dump() outputs correct JS for undefined variables
             Allow pin counts per port of >31 on Linux-based systems
+            Fix issue with lost high-speed events when using setWatch with small debounce
             Fix HTTP client regression
             Fix Date constructor issue (uninitialised variable) (fix #408)
 
