@@ -50,24 +50,7 @@ typedef enum {
   JSH_PIN13,
   JSH_PIN14,
   JSH_PIN15,
-#ifndef ARM
-  JSH_PIN16,
-  JSH_PIN17,
-  JSH_PIN18,
-  JSH_PIN19,
-  JSH_PIN20,
-  JSH_PIN21,
-  JSH_PIN22,
-  JSH_PIN23,
-  JSH_PIN24,
-  JSH_PIN25,
-  JSH_PIN26,
-  JSH_PIN27,
-  JSH_PIN28,
-  JSH_PIN29,
-  JSH_PIN30,
-  JSH_PIN31,
-#endif
+  // and there may be more on Linux systems...
 } PACKED_FLAGS JsvPinInfoPin;
 
 typedef enum {

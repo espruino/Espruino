@@ -24,6 +24,7 @@ Other Documentation
 As well as above, please see:
 
 * [The Forum](http://forum.espruino.com/)
+* [FAQ](http://www.espruino.com//FAQ)
 * [Troubleshooting](http://www.espruino.com/Troubleshooting)
 
 * [Performance Notes](http://www.espruino.com/Performance)
@@ -44,7 +45,7 @@ Please check that:
 * It hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](http://www.espruino.com/Forum)
 * You're not just looking at outdated documentation (See the [Building](#Building) section to see how to build documentation)
 
-Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues (some quite large), so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
+Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues, so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
 
 
 Contributing
@@ -58,30 +59,32 @@ Current State
 
 You can download binaries from http://www.espruino.com/Download (these aren't the latest, but are more likely to work with your board)
 
-Please note that this is BETA. We've been working hard on the Espruino Board support but we haven't had time to check the other boards properly.
+The only officially supported board is the [Espruino Board](http://www.espruino.com/EspruinoBoard). While Espruino can run on other boards, we make no money from them and so cannot afford to test, fix or support the firmware on them.
 
-* [Espruino Board](http://www.espruino.com/EspruinoBoard) - awesome.
-* Linux - working
-* STM32VLDISCOVERY - WORKING
+If you are a board manufacturer interested in getting your board officially supported, please [Contact Us](http://www.espruino.com/Contact+Us).
+
+* [Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
+* Linux - WORKING
+* STM32VLDISCOVERY - WORKING - limited memory so some features removed
 * STM32F3DISCOVERY - WORKING
 * STM32F4DISCOVERY - WORKING
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
-* HY STM32 2.4" - NOT WORKING - appears to crash after startup
-* HY STM32 2.8" - WORKING, but screen is not black at startup
+* HY STM32 2.4" - WORKING
+* HY STM32 2.8" - WORKING - limited memory so some features removed
 * HY STM32 3.2" - WORKING
-* Olimexino - WORKING
-* Carambola - ?
-* Raspberry Pi - WORKING - only GPIO via filesystem (no SPI or I2C)
-* Sony SmartWatch - USB VCP support still needed
-* MBed platforms - have not worked for a while - hardware wrapper still needed
-* Arduino - has never worked. Compiles but doesn't even get past init
+* Olimexino - WORKING - limited memory so some features removed
+* Carambola - WORKING - GPIO via filesystem (no SPI or I2C)
+* Raspberry Pi - WORKING - GPIO via filesystem (no SPI or I2C)
+* Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
+* MBed platforms - have not worked for a while - full hardware wrapper still required
+* Arduino - has never worked. Used to compile but probably doesn't any more
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 
 
 Building
 --------
   
-Espruino is easy to build under Linux, and it is possible to build under MacOS. We'd strongly suggest that you DO NOT TRY AND BUILD UNDER WINDOWS, and instead use a Virtual Machine. There's a good post on this here: http://forum.espruino.com/conversations/151
+Espruino is easy to build under Linux, and it is possible to build under MacOS. We'd strongly suggest that you *DO NOT TRY AND BUILD UNDER WINDOWS*, and instead use a Virtual Machine. There's a good post on how to do this here: http://forum.espruino.com/conversations/151
 
 ### For ARM Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
   
@@ -107,14 +110,18 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 Just run `make`
 
-## Arduino (VERY beta)
+## Arduino (ALPHA)
+
+This will not work - these steps are only to get you started.
 
 * Ensure that `targets/arduino/utility` is symlinked to `src`
 * Symlink `...arduino_workspace/libraries/Espruino` to `targets/arduino`
 
 ### Raspberry Pi
 
-On the PI:
+On the Pi, just run `make`.
+
+Or to cross-compile:
 
 ```
 cd targetlibs
@@ -125,6 +132,8 @@ sudo apt-get install ia32-libs
 ```
 
 ### Carambola (OpenWRT)
+
+To cross compile,
 
 * Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
 * Run ```CARAMBOLA=1 make```
@@ -150,7 +159,7 @@ Modifying
 * `boards/`:            Information on boards, used to auto-generate a lot of the code
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
-* `misc/`:              random other stuff
+* `misc/`:              Other useful things
 * `scripts/`:           Scripts for generating files in gen, and for analysing code/compilation/etc
 * `src/`:               Main source code
 * `targetlibs/`:        Libraries for targeted architectures

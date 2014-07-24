@@ -26,6 +26,8 @@
 # STM32F429IDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
+# BEAGLEBONE=1
+# ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # Or nothing for standard linux compile
@@ -259,6 +261,10 @@ OPTIMIZEFLAGS+=-Os
 else
 ifeq ($(shell uname -m),armv6l)
 RASPBERRYPI=1 # just a guess
+else ifeq ($(shell uname -n),beaglebone)
+BEAGLEBONE=1
+else ifeq ($(shell uname -n),arietta)
+ARIETTA=1
 endif
 
 ifdef RASPBERRYPI
@@ -269,6 +275,22 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
+USE_NET=1
+else ifdef BEAGLEBONE
+EMBEDDED=1
+BOARD=BEAGLEBONE_BLACK
+DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
+else ifdef ARIETTA
+EMBEDDED=1
+BOARD=ARIETTA_G25
+DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
 USE_NET=1
 else
 BOARD=LINUX
