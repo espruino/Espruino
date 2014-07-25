@@ -2187,8 +2187,16 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     return 0;
   }
   if (name) {
-    // set object data to be object name
-    strncpy(obj->varData.str, name, sizeof(obj->varData));
+    // If it's a device, set the device number up as the Object data
+    // See jsiGetDeviceFromClass
+    IOEventFlags device = jshFromDeviceString(name);
+    if (device!=EV_NONE) {
+      obj->varData.str[0] = 'D';
+      obj->varData.str[1] = 'E';
+      obj->varData.str[2] = 'V';
+      obj->varData.str[3] = (char)device;
+    }
+
   }
   // add __proto__
   JsVar *prototypeVar = jsvSkipName(prototypeName);

@@ -72,8 +72,14 @@ bool interruptedDuringEvent; ///< Were we interrupted while executing an event? 
 // ----------------------------------------------------------------------------
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
-  // Built-in classes have their object data set to the device name
-  return jshFromDeviceString(class->varData.str);
+  // Devices have their Object data set up to something special
+  // See jspNewObject
+  if (class->varData.str[0]=='D' &&
+      class->varData.str[1]=='E' &&
+      class->varData.str[2]=='V')
+    return (IOEventFlags)class->varData.str[3];
+
+  return EV_NONE;
 }
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {

@@ -60,14 +60,8 @@ typedef struct {
 
 /// References
 typedef struct {
-  /* padding for data. On 64 bit we must pad these so that there's
-   * enough space for JsVarDataNative.ptr */
-
-#if __WORDSIZE == 64
-  char pad[8];
-#else
-  char pad[4];
-#endif
+  /* padding for data. Must be big enough for an int */
+  char pad[JSVAR_DATA_STRING_LEN];
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
@@ -157,6 +151,9 @@ typedef struct {
  *
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
+ *
+ * For Objects that represent hardware devices, 'nativePtr' is actually set to a special string that
+ * contains the device number. See jsiGetDeviceFromClass/jspNewObject
  */
 
 #ifndef JSVARREF_PACKED_BITS

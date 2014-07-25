@@ -117,7 +117,12 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #endif
 #endif
 
+#if __WORDSIZE == 64
+// 64 bit needs extra space to be able to store a function pointer
+#define JSVAR_DATA_STRING_LEN  8
+#else
 #define JSVAR_DATA_STRING_LEN  4
+#endif
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
 typedef int32_t JsVarInt;
