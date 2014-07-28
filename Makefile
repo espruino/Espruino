@@ -539,7 +539,7 @@ INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
 WRAPPERSOURCES += libs/network/http/jswrap_http.c
 SOURCES += \
 libs/network/network.c \
-libs/network/http/httpserver.c
+libs/network/socketserver.c
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux

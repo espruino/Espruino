@@ -14,28 +14,29 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_http.h"
-#include "httpserver.h"
+#include "../socketserver.h"
 #include "../network.h"
 
 /*JSON{ "type":"idle", "generate" : "jswrap_http_idle" }*/
 bool jswrap_http_idle() {
   JsNetwork net;
   if (!networkGetFromVar(&net)) return false;
-  bool b = httpIdle(&net);
+  net.idle(&net);
+  bool b = socketIdle(&net);
   networkFree(&net);
   return b;
 }
 
 /*JSON{ "type":"init", "generate" : "jswrap_http_init" }*/
 void jswrap_http_init() {
-  httpInit();
+  socketInit();
 }
 
 /*JSON{ "type":"kill", "generate" : "jswrap_http_kill" }*/
 void jswrap_http_kill() {
   JsNetwork net;
   if (!networkGetFromVar(&net)) return;
-  httpKill(&net);
+  socketKill(&net);
   networkFree(&net);
 }
 
@@ -164,7 +165,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  return httpServerNew(callback);
+  return serverNew(callback);
 }
 
 /*JSON{ "type":"staticmethod",
@@ -193,7 +194,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  JsVar *rq = httpClientRequestNew(options, callback);
+  JsVar *rq = clientRequestNew(options, callback);
   if (unlockOptions) jsvUnLock(options);
   return rq;
 }
@@ -224,7 +225,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   }
   jsvUnLock(skippedCallback);
   JsVar *cliReq = jswrap_http_request(options, callback);
-  httpClientRequestEnd(&net, cliReq);
+  clientRequestEnd(&net, cliReq);
   networkFree(&net);
   return cliReq;
 }
@@ -244,7 +245,7 @@ void jswrap_httpSrv_listen(JsVar *parent, int port) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return;
 
-  httpServerListen(&net, parent, port);
+  serverListen(&net, parent, port);
   networkFree(&net);
 }
 
@@ -258,7 +259,7 @@ void jswrap_httpSrv_close(JsVar *parent) {
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return;
 
-  httpServerClose(&net, parent);
+  serverClose(&net, parent);
   networkFree(&net);
 }
 
@@ -273,7 +274,7 @@ void jswrap_httpSrv_close(JsVar *parent) {
          "return" : ["bool", "For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent" ]
 }*/
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
-  httpServerResponseData(parent, data);
+  serverResponseData(parent, data);
   return false;
 }
 
@@ -284,7 +285,7 @@ bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
 }*/
 void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
   if (!jsvIsUndefined(data)) jswrap_httpSRs_write(parent, data);
-  httpServerResponseEnd(parent);
+  serverResponseEnd(parent);
 }
 
 
@@ -295,7 +296,7 @@ void jswrap_httpSRs_end(JsVar *parent, JsVar *data) {
                       [ "headers", "JsVar", "An object containing the headers"] ]
 }*/
 void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
-  httpServerResponseWriteHead(parent, statusCode, headers);
+  serverResponseWriteHead(parent, statusCode, headers);
 }
 
 // ---------------------------------------------------------------------------------
@@ -309,7 +310,7 @@ void jswrap_httpSRs_writeHead(JsVar *parent, int statusCode, JsVar *headers) {
          "return" : ["bool", "For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent" ]
 }*/
 bool jswrap_httpCRq_write(JsVar *parent, JsVar *data) {
-  httpClientRequestWrite(parent, data);
+  clientRequestWrite(parent, data);
   return false;
 }
 
@@ -324,7 +325,7 @@ void jswrap_httpCRq_end(JsVar *parent, JsVar *data) {
   if (!networkGetFromVarIfOnline(&net)) return;
 
   if (!jsvIsUndefined(data)) jswrap_httpCRq_write(parent, data);
-  httpClientRequestEnd(&net, parent);
+  clientRequestEnd(&net, parent);
   networkFree(&net);
 }
 
