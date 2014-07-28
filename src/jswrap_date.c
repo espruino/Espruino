@@ -195,6 +195,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     td.min = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4));
     td.sec = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5));
     td.ms = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6));
+    td.zone = 0;
     time = fromTimeInDay(&td);
   }
 

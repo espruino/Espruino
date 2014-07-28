@@ -19,6 +19,7 @@
             Make sure that dump() outputs correct JS for undefined variables
             Allow pin counts per port of >31 on Linux-based systems
             Fix HTTP client regression
+            Fix Date constructor issue (uninitialised variable) (fix #408)
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)
