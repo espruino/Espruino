@@ -65,21 +65,35 @@ void trigOnTimingPulse(TriggerStruct *data, JsSysTime pulseTime) {
 //    jsiConsolePrintf("0x%Lx 0x%Lx 0x%Lx\n",data->lastTime2, data->lastTime, pulseTime);
     pulseTime = data->lastTime + data->avrTrigger; // just make it up and hope!
   }
+  // it's been too long since the last tooth (we were stationary?)
+  // clip and make sure we do a quick average
+  if (timeDiff > data->maxTooth) {
+    timeDiff = data->maxTooth;
+    data->teethSinceStart = 0;
+  }
 
   data->lastTime2 = data->lastTime;
   data->lastTime = pulseTime;
-  unsigned char teeth = (unsigned char)(((((unsigned int)timeDiff<<1) / data->avrTrigger) + 1) >> 1); // round to find out # of teeth
-  if (teeth<1) {
-    data->errors |= TRIGERR_SHORT_TOOTH;
-    teeth=1;
-  }
-  // running average
-  if (data->teethSinceStart<16)
+
+  unsigned char teeth = 1;
+  // running average...
+  if (data->teethSinceStart < 8) {
+    // Fast average if we're just starting off...
     data->avrTrigger = (data->avrTrigger + (unsigned int)timeDiff) >> 1;
-  else
+    data->avrTooth = data->avrTrigger;
+  } else {
+    // Otherwise figure out how many teeth
+    teeth = (unsigned char)(((((unsigned int)timeDiff<<1) / data->avrTrigger) + 1) >> 1); // round to find out # of teeth
+    if (teeth<1) {
+      data->errors |= TRIGERR_SHORT_TOOTH;
+      teeth=1;
+    }
+    // and do slow averages
     data->avrTrigger = (data->avrTrigger*7 + (unsigned int)timeDiff) >> 3;
-  data->avrTooth = (data->avrTooth*7 + (unsigned int)timeDiff/teeth) >> 3;
+    data->avrTooth = (data->avrTooth*7 + (unsigned int)timeDiff/teeth) >> 3;
+  }
   if (data->teethSinceStart<0xFFFFFFFF) data->teethSinceStart++;
+
   // move tooth count
   unsigned char lastTooth = data->currTooth;
   data->currTooth = (unsigned char)(data->currTooth + teeth);
