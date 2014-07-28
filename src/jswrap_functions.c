@@ -112,7 +112,7 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
-  bool hasError;
+  bool hasError = false;
   JsVarInt i = stringToIntWithRadix(buffer, radix, &hasError);
   if (hasError) return jsvNewFromFloat(NAN);
   return jsvNewFromInteger(i);
