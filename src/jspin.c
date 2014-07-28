@@ -81,30 +81,32 @@ Pin jshGetPinFromString(const char *s) {
         }
       }
     }
-    if (port == JSH_PORTA) {
-      if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
-    } else if (port == JSH_PORTB) {
-      if (pin<JSH_PORTB_COUNT) return (Pin)(JSH_PORTB_OFFSET + pin);
-    } else if (port == JSH_PORTC) {
-      if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
-    } else if (port == JSH_PORTD) {
-      if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
+    if (pin>=0) {
+      if (port == JSH_PORTA) {
+        if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
+      } else if (port == JSH_PORTB) {
+        if (pin<JSH_PORTB_COUNT) return (Pin)(JSH_PORTB_OFFSET + pin);
+      } else if (port == JSH_PORTC) {
+        if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
+      } else if (port == JSH_PORTD) {
+        if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
 #if JSH_PORTE_OFFSET!=-1
-    } else if (port == JSH_PORTE) {
-      if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
+      } else if (port == JSH_PORTE) {
+        if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
 #endif
 #if JSH_PORTF_OFFSET!=-1
-    } else if (port == JSH_PORTF) {
-      if (pin<JSH_PORTF_COUNT) return (Pin)(JSH_PORTF_OFFSET + pin);
+      } else if (port == JSH_PORTF) {
+        if (pin<JSH_PORTF_COUNT) return (Pin)(JSH_PORTF_OFFSET + pin);
 #endif
 #if JSH_PORTG_OFFSET!=-1
-    } else if (port == JSH_PORTG) {
-      if (pin<JSH_PORTG_COUNT) return (Pin)(JSH_PORTG_OFFSET + pin);
+      } else if (port == JSH_PORTG) {
+        if (pin<JSH_PORTG_COUNT) return (Pin)(JSH_PORTG_OFFSET + pin);
 #endif
 #if JSH_PORTH_OFFSET!=-1
-    } else if (port == JSH_PORTH) {
-      if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
+      } else if (port == JSH_PORTH) {
+        if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
 #endif
+      }
     }
   }
 
