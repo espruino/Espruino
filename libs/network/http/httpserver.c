@@ -374,12 +374,14 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
 
     /* We do this up here because we want to wait until we have been once
      * around the idle loop (=callbacks have been executed) before we run this */
-    if (hadHeaders && receiveData) {
+    if (hadHeaders && receiveData && jsvGetStringLength(receiveData)) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
       jswrap_stream_pushData(resVar, receiveData);
       jsvUnLock(resVar);
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      jsvUnLock(receiveData);
+      receiveData = 0;
     }
 
     if (!closeConnectionNow) {
@@ -420,9 +422,13 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
       }
       jsvUnLock(sendData);
     }
-    jsvUnLock(receiveData);
+
     if (closeConnectionNow) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
+      if (receiveData && jsvGetStringLength(receiveData)) {
+        jswrap_stream_pushData(resVar, receiveData);
+      }
+
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
 
@@ -431,8 +437,11 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
       jsvArrayIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
       jsvUnLock(connectionName);
-    } else
+    } else {
       jsvArrayIteratorNext(&it);
+    }
+
+    jsvUnLock(receiveData);
     jsvUnLock(connection);
   }
   jsvUnLock(arr);

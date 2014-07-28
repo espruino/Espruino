@@ -185,15 +185,16 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
       if (objName) {
         JsVar *result = 0;
         JsVar *obj = jsvSkipNameAndUnLock(objName);
-        if (obj) {
+        // could be something the user has made - eg. 'Array=1'
+        if (jsvHasChildren(obj)) {
           // We have found an object with this name - search for the prototype var
           JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
           if (proto) {
             result = jsvFindChildFromString(proto, name, false);
             jsvUnLock(proto);
           }
-          jsvUnLock(obj);
         }
+        jsvUnLock(obj);
         if (result) return result;
       }
       /* We haven't found anything in the actual object, we should check the 'Object' itself
@@ -757,6 +758,13 @@ JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
 
   if (!child) {
     child = jspGetNamedFieldInParents(object, name, returnName);
+
+    // If not found and is the prototype, create it
+    if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+      JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+      child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
+      jsvUnLock(value);
+    }
   }
 
   if (returnName) return child;
