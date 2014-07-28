@@ -21,9 +21,9 @@
 #include "jsvar.h"
 #include "jsdevices.h"
 #include "jspin.h"
-#ifndef LINUX
 #include "jspininfo.h"
-#else
+
+#ifdef LINUX
 #include <inttypes.h>
 #endif
 

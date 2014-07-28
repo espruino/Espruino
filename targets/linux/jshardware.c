@@ -29,7 +29,6 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
-#include "jspininfo.h"
 
 // ----------------------------------------------------------------------------
 #ifdef SYSFS_GPIO_DIR
