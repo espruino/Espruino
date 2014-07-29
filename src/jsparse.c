@@ -1140,7 +1140,7 @@ NO_INLINE JsVar *jspeFactor() {
         v = jsvNewFromInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
       } else {
         JsVarFloat f = stringToFloatWithRadix(jslGetTokenValueAsString(execInfo.lex), 0);
-        if (f>=-2147483648 && f<=2147483647)
+        if (f>=-2147483648.0 && f<=2147483647.0)
           v = jsvNewFromInteger((JsVarInt)f);
         else
           v = jsvNewFromFloat(f);
