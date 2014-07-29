@@ -1,3 +1,5 @@
+     1v70 : ...     
+
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
 
