@@ -194,7 +194,7 @@ JsVarInt jswrap_onewire_read(JsVar *parent) {
 /*JSON{ "type":"method", "class": "OneWire", "name" : "search",
          "description" : "Search for devices",
          "generate" : "jswrap_onewire_search",
-         "params" : [ [ "command", "int32", "(Optional) command byte. If not specified (or zero), this defaults to 0xF0. This can could be set to 0xEC to perform a DS18B20 'Alarm Search Command'" ],
+         "params" : [ [ "command", "int32", "(Optional) command byte. If not specified (or zero), this defaults to 0xF0. This can could be set to 0xEC to perform a DS18B20 'Alarm Search Command'" ] ],
          "return" : [ "JsVar", "An array of devices that were found" ]
 }*/
 JsVar *jswrap_onewire_search(JsVar *parent, int command) {
