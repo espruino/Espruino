@@ -22,6 +22,7 @@
             Fix HTTP client regression
             Fix Date constructor issue (uninitialised variable) (fix #408)
             Fix invalid conversion of large ints to floats on ARM
+            Fix reset behaviour for non-standard default Serial ports
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)

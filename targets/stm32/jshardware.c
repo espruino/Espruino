@@ -912,6 +912,23 @@ static inline unsigned int getSystemTimerFreq() {
 }
 
 // ----------------------------------------------------------------------------
+static void jshResetSerial() {
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_BAUDRATE
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+#endif
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
+  }
+}
+
 void jshInit() {
   int i;
   // reset some vars
@@ -1018,20 +1035,7 @@ void jshInit() {
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 
-  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
-    JshUSARTInfo inf;
-    jshUSARTInitInfo(&inf);
-#ifdef DEFAULT_CONSOLE_TX_PIN
-    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
-#endif
-#ifdef DEFAULT_CONSOLE_RX_PIN
-    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
-#endif
-#ifdef DEFAULT_CONSOLE_BAUDRATE
-    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
-#endif
-    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
-  }
+  jshResetSerial();
 
 #ifdef STM32F1
 #ifndef DEBUG
@@ -1217,16 +1221,20 @@ void jshInit() {
 
 void jshReset() {
   Pin i;
-  for (i=0;i<JSH_PIN_COUNT;i++)
-    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i))
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
       jshPinSetState(i, JSHPINSTATE_ADC_IN);
+    }
+  }
 
   // re-initialise serial port (like was done on jshInit)
-  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
-    JshUSARTInfo inf;
-    jshUSARTInitInfo(&inf);
-    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
-  }
+  jshResetSerial();
 }
 
 void jshKill() {
