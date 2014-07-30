@@ -26,6 +26,8 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event);
+// For internal use - like jswrap_object_removeAllListeners but takes a C string
+void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
 JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray);

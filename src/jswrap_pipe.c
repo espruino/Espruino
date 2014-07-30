@@ -38,19 +38,26 @@ static JsVar* pipeGetArray(bool create) {
   return jsvObjectGetChild(execInfo.hiddenRoot, "pipes", create ? JSV_ARRAY : 0);
 }
 
+
 static void handlePipeClose(JsVar *arr, JsvArrayIterator *it, JsVar* pipe) {
   jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
   // also call 'end' if 'end' was passed as an initialisation option
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"end",0))) {
     // call destination.end if available
     JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
-    // TODO: we should probably remove our drain+close listeners
-    JsVar *endFunc = jspGetNamedField(destination, "end", false);
-    if (endFunc) {
-      jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
-      jsvUnLock(endFunc);
+    if (destination) {
+      // remove our drain and close listeners.
+      // This removes ALL listeners. Maybe we should just remove ours?
+      jswrap_object_removeAllListeners_cstr(destination, "drain");
+      jswrap_object_removeAllListeners_cstr(destination, "close");
+      // execute the 'end' function
+      JsVar *endFunc = jspGetNamedField(destination, "end", false);
+      if (endFunc) {
+        jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
+        jsvUnLock(endFunc);
+      }
+      jsvUnLock(destination);
     }
-    jsvUnLock(destination);
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
     set end:false */

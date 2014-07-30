@@ -1,4 +1,4 @@
-     1v70 : ...     
+     1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
