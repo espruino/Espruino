@@ -68,6 +68,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * STM32VLDISCOVERY - WORKING - limited memory so some features removed
 * STM32F3DISCOVERY - WORKING
 * STM32F4DISCOVERY - WORKING
+* STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
 * HY STM32 2.4" - WORKING
 * HY STM32 2.8" - WORKING - limited memory so some features removed
