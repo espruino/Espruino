@@ -96,7 +96,7 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
         "description" : [ "Open a file" ],
         "params" : [ [ "path", "JsVar", "the path to the file to open." ],
                       [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."] ],
-        "return" : ["JsVar", "A File object"]
+        "return" : ["JsVar", "A File object"], "return_object":"File"
 }*/
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
@@ -154,7 +154,6 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
           fileSetVar(&file);
           // add to list of open files
           jsvArrayPush(arr, file.fileVar);
-          jsvUnLock(arr);
         } else {
           // File open failed
           jsvUnLock(file.fileVar);
@@ -168,6 +167,8 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
     } else {
       jsError("Path is undefined");
     }
+
+    jsvUnLock(arr);
   }
 
 

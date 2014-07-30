@@ -86,6 +86,11 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg) {
         "generate" : "jswrap_error_toString",
         "return" : ["JsVar", "A String"]
 }*/
+/*JSON{ "type":"method",
+        "class" : "InternalError", "name" : "toString",
+        "generate" : "jswrap_error_toString",
+        "return" : ["JsVar", "A String"]
+}*/
 JsVar *jswrap_error_toString(JsVar *parent) {
   JsVar *str = jsvObjectGetChild(parent, "type", 0);
   if (!str) str = jsvNewFromString("Error");
@@ -93,8 +98,14 @@ JsVar *jswrap_error_toString(JsVar *parent) {
 
   JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
   if (msg) {
-    jsvAppendPrintf(str, ": %v", msg);
-    jsvUnLock(msg);
+    JsVar *newStr = jsvNewFromEmptyString();
+    if (newStr) {
+      jsvAppendPrintf(newStr, "%v: %v", str, msg);
+      jsvUnLock(msg);
+
+      jsvUnLock(str);
+      str = newStr;
+    }
   }
 
   return str;

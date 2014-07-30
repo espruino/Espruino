@@ -1,11 +1,11 @@
-digitalRead(["D12","D13","D14","D15"]);
+digitalRead(["D0","D1","D2","D3"]);
 
 var n=1; 
 function f() { 
   print(n);
   n=n<<1; 
   if (n>15) n=1; 
-  digitalWrite(["D12","D13","D14","D15"],n); 
+  digitalWrite(["D0","D1","D2","D3"],n); 
   if (n==1) clearInterval(timer);
 }; 
 

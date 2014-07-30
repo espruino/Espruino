@@ -15,12 +15,12 @@
 
 import pinutils;
 info = {
- 'name' : "Normal Linux Compile",
+ 'name' : "Arietta G25",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_linux',
+ 'binary_name' : 'espruino_%v_arietta',
 };
 chip = {
-  'part' : "LINUX",
+  'part' : "ARMV5TEJL",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,
@@ -42,6 +42,8 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,7)  
-  # just fake pins D0 .. D7
-  return pins
+  pins = pinutils.generate_pins(0,31)  
+  pinutils.findpin(pins, "PD7", True)["functions"]["SPI1_SCK"]=0;
+  pinutils.findpin(pins, "PD8", True)["functions"]["SPI1_MOSI"]=0;
+  pinutils.findpin(pins, "PD10", True)["functions"]["SPI1_MISO"]=0;
+  return pins  

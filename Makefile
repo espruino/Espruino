@@ -27,6 +27,8 @@
 STM32F401CDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
+# BEAGLEBONE=1
+# ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # Or nothing for standard linux compile
@@ -54,10 +56,6 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
-ifeq ($(shell uname -m),armv6l)
-RASPBERRYPI=1 # just a guess
-endif
-
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -65,14 +63,6 @@ endif
 
 ifeq ($(OS),Windows_NT)
 MINGW=1
-endif
-
-# Gordon's car ECU (extremely beta!)
-ifdef ECU
-STM32F4DISCOVERY=1
-#HYSTM32_32=1
-USE_TRIGGER=1
-DEFINES += -DECU
 endif
 
 ifdef RELEASE
@@ -148,6 +138,7 @@ else ifdef HYSTM32_24
 EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_24
@@ -169,11 +160,21 @@ else ifdef HYSTM32_32
 EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-Os
+else ifdef ECU
+EMBEDDED=1
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES += -DUSE_USB_OTG_FS=1 -DECU
+BOARD=ECU
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
@@ -239,6 +240,19 @@ MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
 PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
 OPTIMIZEFLAGS+=-O3
+else ifdef ECU
+# Gordon's car ECU (extremely beta!)
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES +=-DECU -DSTM32F4DISCOVERY
+USB=1
+DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+CHIP=STM32F407
+BOARD=ECU
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -247,7 +261,23 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
-else ifdef RASPBERRYPI
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+else
+ifeq ($(shell uname -m),armv6l)
+RASPBERRYPI=1 # just a guess
+else ifeq ($(shell uname -n),beaglebone)
+BEAGLEBONE=1
+else ifeq ($(shell uname -n),arietta)
+ARIETTA=1
+endif
+
+ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -256,13 +286,22 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
-else ifdef LCTECH_STM32F103RBT6
+else ifdef BEAGLEBONE
 EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
+BOARD=BEAGLEBONE_BLACK
+DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
+else ifdef ARIETTA
+EMBEDDED=1
+BOARD=ARIETTA_G25
+DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
 else
 BOARD=LINUX
 LINUX=1
@@ -278,6 +317,7 @@ else ifdef MINGW
 DEFINES += -DHAS_STDLIB=1
 else  # Linux
 USE_NET=1
+endif
 endif
 endif
 
@@ -819,6 +859,7 @@ endif
 
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
+
 
 # 4.6
 #export CCPREFIX=arm-linux-gnueabi-

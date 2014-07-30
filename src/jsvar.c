@@ -116,12 +116,12 @@ void jsvInit() {
 
 void jsvKill() {
 #ifdef RESIZABLE_JSVARS
-  jsVarsSize = 0;
   unsigned int i;
   for (i=0;i<jsVarsSize>>JSVAR_BLOCK_SHIFT;i++)
     free(jsVarBlocks[i]);
   free(jsVarBlocks);
   jsVarBlocks = 0;
+  jsVarsSize = 0;
 #endif
 }
 
@@ -235,7 +235,8 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
       // return pointer
       return v;
   }
-  /* we don't have memort - second last hope - run garbage collector */
+  jsErrorFlags |= JSERR_LOW_MEMORY;
+  /* we don't have memory - second last hope - run garbage collector */
   if (jsvGarbageCollect())
     return jsvNewWithFlags(flags); // if it freed something, continue
   /* we don't have memory - last hope - ask jsInteractive to try and free some it
@@ -248,7 +249,9 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   return jsvNewWithFlags(flags);
 #else
   // On a micro, we're screwed.
-  jsError("Out of Memory!");
+  if (!(jsErrorFlags&JSERR_MEMORY))
+    jsError("Out of Memory!");
+  jsErrorFlags |= JSERR_MEMORY;
   jspSetInterrupted(true);
   return 0;
 #endif
@@ -518,7 +521,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
   assert(jsvIsInt(var) || jsvIsString(var));
-  if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
+  if (jsvIsInt(var)) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | JSV_NAME_INT;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | (JSV_NAME_STRING_0 + jsvGetCharactersInVar(var));
@@ -547,7 +550,7 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount) {
   return arr;
 }
 
-JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned int argTypes) {
+JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   JsVar *func = jsvNewWithFlags(JSV_FUNCTION | JSV_NATIVE);
   if (!func) return 0;
   func->varData.native.ptr = ptr;
@@ -724,6 +727,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jsvUnLock(toStringFn);
       return result;
     } else {
+      jsvUnLock(toStringFn);
       return jsvNewFromString("[object Object]");
     }
   } else {
@@ -1695,7 +1699,7 @@ JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild) {
   assert(jsvHasChildren(obj));
   JsVar *childName = jsvFindChildFromString(obj, name, createChild!=0);
   JsVar *child = jsvSkipName(childName);
-  if (!child && createChild) {
+  if (!child && createChild && childName!=0/*out of memory?*/) {
     child = jsvNewWithFlags(createChild);
     jsvSetValueOfName(childName, child);
     jsvUnLock(childName);
@@ -2013,7 +2017,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
       // add the value
       JsVar *value = jsvIteratorGetValue(&it);
       if (value && !jsvIsNull(value)) {
-        JsVar *valueStr = jsvAsString(value, true /* UNLOCK */);
+        JsVar *valueStr = jsvAsString(value, false);
         if (valueStr) { // could be out of memory
           jsvAppendStringVarComplete(str, valueStr);
           jsvUnLock(valueStr);
@@ -2021,6 +2025,7 @@ JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler) {
           hasMemory = false;
         }
       }
+      jsvUnLock(value);
     }
     jsvUnLock(key);
     jsvIteratorNext(&it);
@@ -2696,7 +2701,12 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!it->var->lastChild);
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
-    if (!next) return; // out of memory
+    if (!next) {
+      jsvUnLock(it->var);
+      it->var = 0;
+      it->charIdx = 0;
+      return; // out of memory
+    }
     // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
     it->var->lastChild = jsvGetRef(next);
     jsvUnLock(it->var);

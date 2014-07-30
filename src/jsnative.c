@@ -39,7 +39,7 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
 
 
   // run through all arguments
-  while (argumentSpecifier) {
+  while (argumentSpecifier & JSWAT_MASK) {
     // Get the parameter data
     JsVar *param = (paramNumber<paramCount) ? paramData[paramNumber] : (JsVar *)0;
     paramNumber++;
@@ -80,7 +80,6 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
         argData[argCount++] = jsvGetBool(param);
         break;
       case JSWAT_INT32: // 32 bit int
-      case JSWAT_JSVARINT:  // 32 bit int
         argData[argCount++] = (uint32_t)jsvGetInteger(param);
         break;
       case JSWAT_PIN: // 16 bit int
@@ -168,7 +167,6 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     case JSWAT_PIN:
       return jsvNewFromPin((Pin)result);
     case JSWAT_INT32: // 32 bit int
-    case JSWAT_JSVARINT: // 32 bit int
       return jsvNewFromInteger((JsVarInt)result);
     case JSWAT_JSVARFLOAT: // 64 bit float
       return jsvNewFromFloat(*(JsVarFloat*)&result);

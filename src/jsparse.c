@@ -30,7 +30,7 @@ JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 // ----------------------------------------------- Utils
-#define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { jspSetError(true); CLEANUP_CODE; return RETURN_VAL; } }
+#define JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, CLEANUP_CODE, RETURN_VAL) { if (!jslMatch(execInfo.lex,(TOKEN))) { CLEANUP_CODE; return RETURN_VAL; } }
 #define JSP_MATCH_WITH_RETURN(TOKEN, RETURN_VAL) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , RETURN_VAL)
 #define JSP_MATCH(TOKEN) JSP_MATCH_WITH_CLEANUP_AND_RETURN(TOKEN, , 0) // Match where the user could have given us the wrong token
 #define JSP_ASSERT_MATCH(TOKEN) { assert(execInfo.lex->tk==(TOKEN));jslGetNextToken(execInfo.lex); } // Match where if we have the wrong token, it's an internal error
@@ -185,15 +185,16 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
       if (objName) {
         JsVar *result = 0;
         JsVar *obj = jsvSkipNameAndUnLock(objName);
-        if (obj) {
+        // could be something the user has made - eg. 'Array=1'
+        if (jsvHasChildren(obj)) {
           // We have found an object with this name - search for the prototype var
           JsVar *proto = jsvObjectGetChild(obj, JSPARSE_PROTOTYPE_VAR, 0);
           if (proto) {
             result = jsvFindChildFromString(proto, name, false);
             jsvUnLock(proto);
           }
-          jsvUnLock(obj);
         }
+        jsvUnLock(obj);
         if (result) return result;
       }
       /* We haven't found anything in the actual object, we should check the 'Object' itself
@@ -439,7 +440,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         argCount = 0;
         while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_RETURN(',', 0);
+          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',while(argCount)jsvUnLock(argPtr[--argCount]);, 0);
         }
         JSP_MATCH(')');
       }
@@ -623,8 +624,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
                   jsvAppendPrintf(stackTrace, "system\n");
                 jsvUnLock(stackTrace);
               }
-
-              jspSetError(execInfo.lex!=0);
             }
           }
 
@@ -760,6 +759,13 @@ JsVar *jspGetNamedField(JsVar *object, const char* name, bool returnName) {
 
   if (!child) {
     child = jspGetNamedFieldInParents(object, name, returnName);
+
+    // If not found and is the prototype, create it
+    if (!child && jsvIsFunction(object) && strcmp(name, JSPARSE_PROTOTYPE_VAR)==0) {
+      JsVar *value = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
+      child = jsvAddNamedChild(object, value, JSPARSE_PROTOTYPE_VAR);
+      jsvUnLock(value);
+    }
   }
 
   if (returnName) return child;
@@ -1134,7 +1140,7 @@ NO_INLINE JsVar *jspeFactor() {
         v = jsvNewFromInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
       } else {
         JsVarFloat f = stringToFloatWithRadix(jslGetTokenValueAsString(execInfo.lex), 0);
-        if (f>=-2147483648 && f<=2147483647)
+        if (f>=-2147483648.0 && f<=2147483647.0)
           v = jsvNewFromInteger((JsVarInt)f);
         else
           v = jsvNewFromFloat(f);
@@ -1227,7 +1233,7 @@ NO_INLINE JsVar *jspeUnaryExpression() {
       short tk = execInfo.lex->tk;
       JSP_ASSERT_MATCH(tk);
       if (!JSP_SHOULD_EXECUTE) {
-        return jspePostfixExpression();
+        return jspeUnaryExpression();
       }
       if (tk=='!') { // logical not
         return jsvNewFromBool(!jsvGetBoolAndUnLock(jsvSkipNameAndUnLock(jspeUnaryExpression())));
@@ -1992,7 +1998,7 @@ NO_INLINE JsVar *jspeStatementTry() {
     jspeBlock();
     JSP_RESTORE_EXECUTE();
   }
-  if (execInfo.lex->tk == LEX_R_FINALLY || !hadCatch) {
+  if (execInfo.lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);
     // clear the exception flag - but only momentarily!
     if (hadException) execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
@@ -2048,7 +2054,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       return 0;
     }
   }
-  JSP_MATCH(LEX_ID);
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(funcName), 0);
   funcVar = jspeFunctionDefinition(false);
   if (actuallyCreateFunction) {
     // find a function with the same name (or make one)
@@ -2148,7 +2154,6 @@ NO_INLINE JsVar *jspeStatement() {
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *instanceOf) {
   JsVar *objFunc = jswFindBuiltInFunction(0, instanceOf);
-  assert(objFunc);
   if (!objFunc) return 0; // out of memory
   return objFunc;
 }

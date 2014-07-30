@@ -414,6 +414,15 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
 }
 
+// For internal use - like jswrap_object_removeAllListeners but takes a C string
+void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event) {
+  JsVar *s = jsvNewFromString(event);
+  if (s) {
+    jswrap_object_removeAllListeners(parent, s);
+    jsvUnLock(s);
+  }
+}
+
 // ------------------------------------------------------------------------------
 
 /*JSON{ "type":"method", "class": "Function", "name" : "replaceWith",

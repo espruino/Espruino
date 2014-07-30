@@ -15,20 +15,20 @@
 
 import pinutils;
 info = {
- 'name' : "Normal Linux Compile",
+ 'name' : "Beaglebone Black",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_linux',
+ 'binary_name' : 'espruino_%v_beaglebone',
 };
 chip = {
-  'part' : "LINUX",
+  'part' : "BEAGLEBONEBLACK",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,
   'flash' : -1,
   'speed' : -1,
   'usart' : 0,
-  'spi' : 1,
-  'i2c' : 0,
+  'spi' : 0,
+  'i2c' : 1,
   'adc' : 0,
   'dac' : 0,
 };
@@ -42,6 +42,7 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,7)  
-  # just fake pins D0 .. D7
+  pins = pinutils.generate_pins(2,127)  
+  pinutils.findpin(pins, "PD19", True)["functions"]["I2C2_SCL"]=0;
+  pinutils.findpin(pins, "PD20", True)["functions"]["I2C2_SDA"]=0;
   return pins

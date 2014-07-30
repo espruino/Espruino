@@ -19,6 +19,10 @@
 #include "jswrap_error.h"
 #include "jswrap_json.h"
 
+/** Error flags for things that we don't really want to report on the console,
+ * but which are good to know about */
+JsErrorFlags jsErrorFlags;
+
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
         return false;
@@ -164,6 +168,9 @@ NO_INLINE void jsError(const char *fmt, ...) {
 }
 
 NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
+  // If we already had an exception, forget this
+  if (jspHasError()) return;
+
   jsiConsoleRemoveInputLine();
 
   JsVar *var = jsvNewFromEmptyString();
@@ -437,7 +444,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
       val*=radix;
-      while (((fractionalDigits<0) && (val > stopAtError)) || (fractionalDigits > 0)) {
+      while (((fractionalDigits<0) && (fractionalDigits>-12) && (val > stopAtError)) || (fractionalDigits > 0)) {
         int v = (int)(val+((fractionalDigits==1) ? 0.4 : 0.00000001) );
         val = (val-v)*radix;
         if (--len <= 0) { *str=0; return; } // bounds check

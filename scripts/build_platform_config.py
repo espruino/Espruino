@@ -235,6 +235,14 @@ codeOut("#define ADCS                            "+str(board.chip["adc"]))
 codeOut("#define DACS                            "+str(board.chip["dac"]))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
+if "default_console_tx" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_TX_PIN "+toPinDef(board.info["default_console_tx"]))
+if "default_console_rx" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_RX_PIN "+toPinDef(board.info["default_console_rx"]))
+if "default_console_baudrate" in board.info:
+  codeOut("#define DEFAULT_CONSOLE_BAUDRATE "+board.info["default_console_baudrate"])
+
+
 codeOut("");
 if LINUX:
   bufferSizeIO = 256
@@ -244,9 +252,13 @@ else:
   bufferSizeIO = 64 if board.chip["ram"]<20 else 128
   bufferSizeTX = 32 if board.chip["ram"]<20 else 128
   bufferSizeTimer = 4 if board.chip["ram"]<20 else 16
+
+if 'util_timer_tasks' in board.info:
+  bufferSizeTimer = board.info['util_timer_tasks']
+
 codeOut("#define IOBUFFERMASK "+str(bufferSizeIO-1)+" // (max 255) amount of items in event buffer - events take ~9 bytes each")
 codeOut("#define TXBUFFERMASK "+str(bufferSizeTX-1)+" // (max 255)")
-codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer-1)+") // Must be power of 2 - and max 256")
+codeOut("#define UTILTIMERTASK_TASKS ("+str(bufferSizeTimer)+") // Must be power of 2 - and max 256")
 
 codeOut("");
 
@@ -267,6 +279,14 @@ for device in simpleDevices:
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+
+if "LCD" in board.devices:
+  for i in range(0,16):
+    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))    
+  codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
+  codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
+  codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
+  codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD

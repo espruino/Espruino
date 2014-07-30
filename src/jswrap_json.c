@@ -24,6 +24,11 @@ const unsigned int JSON_LIMIT_STRING_AMOUNT = 40; // how big are strings before 
 const unsigned int JSON_LIMITED_STRING_AMOUNT = 17; // When limited, how many chars do we show at the beginning and end
 const char *JSON_LIMIT_TEXT = " ... ";
 
+
+/*JSON{ "type":"class", "class" : "JSON",
+         "description" : "An Object that handles conversion to and from the JSON data interchange format"
+}*/
+
 /*JSON{ "type":"staticmethod",
          "class" : "JSON", "name" : "stringify",
          "description" : "Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval",

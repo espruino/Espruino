@@ -23,6 +23,10 @@
 #include "jswrap_fs.h"
 #endif
 
+/*JSON{ "type":"class", "class" : "Modules",
+         "description" : "Built-in class that caches the modules used by the `require` command"
+}*/
+
 static JsVar *jswrap_modules_getModuleList() {
   return jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_MODULE_CACHE_NAME, JSV_OBJECT);
 }
