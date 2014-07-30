@@ -181,26 +181,26 @@ USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_HS=1 -DUSE_EMBEDDED_PHY -DSTM32F40_41xxx
 BOARD=STM32F4DISCOVERY
-STLIB=STM32F4XX
+STLIB=STM32F40_41xxx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F401CDISCOVERY
 USB=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_HS=1 -DUSE_EMBEDDED_PHY -DSTM32F40_41xxx
+DEFINES += -DUSE_USB_OTG_FS=1 
 FAMILY=STM32F4
 BOARD=STM32F401CDISCOVERY
-STLIB=STM32F4XX
+STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_HS=1 -DUSE_EMBEDDED_PHY -DSTM32F429_439xx
+DEFINES += -DUSE_USB_OTG_HS=1 -DUSE_EMBEDDED_PHY
 FAMILY=STM32F4
 BOARD=STM32F429IDISCOVERY
-STLIB=STM32F4XX
+STLIB=STM32F429_439xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f427xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
@@ -753,7 +753,6 @@ targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
-targetlibs/stm32f4/lib/stm32f4xx_fsmc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \

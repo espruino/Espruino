@@ -90,6 +90,10 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_SPI2 GPIO_AF_5
 #endif
 
+#if defined(STM32F401xx)
+#define NO_USART3
+#endif
+
 
 
 static inline uint8_t pinToEVEXTI(Pin ipin) {
@@ -1828,7 +1832,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#if USARTS>= 3
+#if USARTS>= 3 && !defined(NO_USART3)
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif

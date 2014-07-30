@@ -181,7 +181,17 @@ codeOut("""
 """);
 
 if board.chip["class"]=="STM32":
-  if "subfamily" in board.chip and board.chip["subfamily"]=="MD" : 
+  if board.chip["part"][:9]=="STM32F401":
+# FIXME - need to remove TIM5 from jspininfo
+   codeOut("""
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
+""")
+  elif "subfamily" in board.chip and board.chip["subfamily"]=="MD": 
+
    codeOut("""
 // frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
 #define UTIL_TIMER TIM4
