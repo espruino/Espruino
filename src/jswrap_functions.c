@@ -105,17 +105,13 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   if (jsvIsFloat(v) && !isfinite(jsvGetFloat(v)))
     return jsvNewFromFloat(NAN);
 
-  // shortcut for values that are already numbers
-  if ((radix==0 || radix==10) && jsvIsNumeric(v)) {
-    return jsvNewFromInteger(jsvGetInteger(v));
-  }
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError = false;
-  JsVarInt i = stringToIntWithRadix(buffer, radix, &hasError);
+  long long i = stringToIntWithRadix(buffer, radix, &hasError);
   if (hasError) return jsvNewFromFloat(NAN);
-  return jsvNewFromInteger(i);
+  return jsvNewFromLongInteger(i);
 }
 
 /*JSON{ "type":"function", "name" : "parseFloat",

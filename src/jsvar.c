@@ -517,6 +517,14 @@ JsVar *jsvNewFromFloat(JsVarFloat value) {
   var->varData.floating = value;
   return var;
 }
+JsVar *jsvNewFromLongInteger(long long value) {
+  if (value>=-2147483648LL && value<=2147483647LL)
+    return jsvNewFromInteger((JsVarInt)value);
+  else
+    return jsvNewFromFloat((JsVarFloat)value);
+}
+
+
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(var->refs==0); // make sure it's unused
@@ -1123,7 +1131,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
-      return stringToInt(buf);
+      return (JsVarInt)stringToInt(buf);
     }
     return 0;
 }
@@ -2139,9 +2147,9 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
             JsVarInt da = jsvGetInteger(a);
             JsVarInt db = jsvGetInteger(b);
             switch (op) {
-                case '+': return jsvNewFromInteger(da+db);
-                case '-': return jsvNewFromInteger(da-db);
-                case '*': return jsvNewFromInteger(da*db);
+                case '+': return jsvNewFromLongInteger((long long)da + (long long)db);
+                case '-': return jsvNewFromLongInteger((long long)da - (long long)db);
+                case '*': return jsvNewFromLongInteger((long long)da * (long long)db);
                 case '/': return jsvNewFromFloat((JsVarFloat)da/(JsVarFloat)db);
                 case '&': return jsvNewFromInteger(da&db);
                 case '|': return jsvNewFromInteger(da|db);

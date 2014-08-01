@@ -122,13 +122,13 @@ int chtod(char ch) {
 }
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
   const char *numberStart = s;
 
   bool isNegated = false;
-  JsVarInt v = 0;
+  long long v = 0;
   if (*s == '-') {
     isNegated = true;
     s++;
@@ -153,7 +153,7 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 }
 
 /* convert hex, binary, octal or decimal string into an int */
-JsVarInt stringToInt(const char *s) {
+long long stringToInt(const char *s) {
     return stringToIntWithRadix(s,0,0);
 }
 

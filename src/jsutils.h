@@ -336,9 +336,9 @@ const char *escapeCharacter(char ch);
 /// Convert a character to the hexadecimal equivalent (or -1)
 int chtod(char ch);
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, int radix, bool *hasError);
+long long stringToIntWithRadix(const char *s, int radix, bool *hasError);
 /* convert hex, binary, octal or decimal string into an int */
-JsVarInt stringToInt(const char *s);
+long long stringToInt(const char *s);
 
 // forward decl
 struct JsLex;

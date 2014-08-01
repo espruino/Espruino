@@ -39,7 +39,7 @@ volatile unsigned char txHead=0, txTail=0;
 // Queue a character for transmission
 void jshTransmit(IOEventFlags device, unsigned char data) {
   if (device==EV_LOOPBACKA || device==EV_LOOPBACKB) {
-    jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, data);
+    jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, (char)data);
     return;
   }
 #ifndef LINUX

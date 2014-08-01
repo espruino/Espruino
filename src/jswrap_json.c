@@ -50,9 +50,9 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     case LEX_R_FALSE: jslGetNextToken(lex); return jsvNewFromBool(false);
     case LEX_R_NULL:  jslGetNextToken(lex); return jsvNewWithFlags(JSV_NULL);
     case LEX_INT: {
-      JsVarInt v = stringToInt(jslGetTokenValueAsString(lex));
+      long long v = stringToInt(jslGetTokenValueAsString(lex));
       jslGetNextToken(lex);
-      return jsvNewFromInteger(v);
+      return jsvNewFromLongInteger(v);
     }
     case LEX_FLOAT: {
       JsVarFloat v = stringToFloat(jslGetTokenValueAsString(lex));

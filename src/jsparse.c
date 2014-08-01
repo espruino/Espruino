@@ -1136,15 +1136,7 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (execInfo.lex->tk==LEX_INT) {
     JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
-      if (jslGetTokenLength(execInfo.lex) < 10) {
-        v = jsvNewFromInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
-      } else {
-        JsVarFloat f = stringToFloatWithRadix(jslGetTokenValueAsString(execInfo.lex), 0);
-        if (f>=-2147483648.0 && f<=2147483647.0)
-          v = jsvNewFromInteger((JsVarInt)f);
-        else
-          v = jsvNewFromFloat(f);
-      }
+      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
     }
     JSP_ASSERT_MATCH(LEX_INT);
     return v;

@@ -249,7 +249,7 @@ JsVar *jswrap_onewire_search(JsVar *parent, int command) {
        }
 
        // issue the search command
-       OneWireWrite(pin, 8, command);
+       OneWireWrite(pin, 8, (unsigned long long)command);
 
        // loop to do the search
        do

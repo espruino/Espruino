@@ -329,11 +329,11 @@ JsVar *jswrap_date_toString(JsVar *parent) {
 
 
 static JsVarInt _parse_int(JsLex *lex) {
-  return stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
+  return (int)stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
 }
 
 static bool _parse_time(JsLex *lex, TimeInDay *time, int initialChars) {
-  time->hour = stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
+  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
   jslGetNextToken(lex);
   if (lex->tk==':') {
     jslGetNextToken(lex);
