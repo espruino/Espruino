@@ -115,6 +115,9 @@ double jswrap_math_mod(double x, double y) {
   double a, b;
   const double c = x;
 
+  if (!isfinite(x) || isnan(y))
+    return NAN;
+
   if (0 > c) {
     x = -x;
   }
