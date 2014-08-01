@@ -72,8 +72,14 @@ bool interruptedDuringEvent; ///< Were we interrupted while executing an event? 
 // ----------------------------------------------------------------------------
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
-  // Built-in classes have their object data set to the device name
-  return jshFromDeviceString(class->varData.str);
+  // Devices have their Object data set up to something special
+  // See jspNewObject
+  if (class->varData.str[0]=='D' &&
+      class->varData.str[1]=='E' &&
+      class->varData.str[2]=='V')
+    return (IOEventFlags)class->varData.str[3];
+
+  return EV_NONE;
 }
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
@@ -356,20 +362,10 @@ void jsiSetSleep(JsiSleepType isSleep) {
 }
 
 static JsVarRef _jsiInitNamedArray(const char *name) {
-  JsVar *arrayName = jsvFindChildFromString(execInfo.hiddenRoot, name, true);
-  if (!arrayName) return 0; // out of memory
-  if (!arrayName->firstChild) {
-    JsVar *array = jsvNewWithFlags(JSV_ARRAY);
-    if (!array) { // out of memory
-      jsvUnLock(arrayName);
-      return 0;
-    }
-
-    arrayName->firstChild = jsvGetRef(jsvRef(array));
-    jsvUnLock(array);
-  }
-  JsVarRef arrayRef = jsvRefRef(arrayName->firstChild);
-  jsvUnLock(arrayName);
+  JsVar *array = jsvObjectGetChild(execInfo.hiddenRoot, name, JSV_ARRAY);
+  JsVarRef arrayRef = 0;
+  if (array) arrayRef = jsvGetRef(jsvRef(array));
+  jsvUnLock(array);
   return arrayRef;
 }
 
@@ -392,15 +388,12 @@ void jsiSoftInit() {
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
   // Now run initialisation code
-  JsVar *initName = jsvFindChildFromString(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, false);
-  if (initName && initName->firstChild) {
-    //jsiConsolePrint("Running initialisation code...\n");
-    JsVar *initCode = jsvLock(initName->firstChild);
+  JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
+  if (initCode) {
     jsvUnLock(jspEvaluateVar(initCode, 0, false));
     jsvUnLock(initCode);
-    jsvRemoveChild(execInfo.hiddenRoot, initName);
+    jsvRemoveNamedChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME);
   }
-  jsvUnLock(initName);
 
   // Check any existing watches and set up interrupts for them
   if (watchArray) {
@@ -423,18 +416,17 @@ void jsiSoftInit() {
   // to fiddle with them.
 
   // And look for onInit function
-  JsVar *onInit = jsvFindChildFromString(execInfo.root, JSI_ONINIT_NAME, false);
-  if (onInit && onInit->firstChild) {
+  JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
+  if (onInit) {
     if (echo) jsiConsolePrint("Running onInit()...\n");
-    JsVar *func = jsvSkipName(onInit);
-    if (jsvIsFunction(func))
-      jsvUnLock(jspExecuteFunction(func, 0, 0, (JsVar**)0));
-    else if (jsvIsString(func))
-      jsvUnLock(jspEvaluateVar(func, 0, false));
+    if (jsvIsFunction(onInit))
+      jsvUnLock(jspExecuteFunction(onInit, 0, 0, (JsVar**)0));
+    else if (jsvIsString(onInit))
+      jsvUnLock(jspEvaluateVar(onInit, 0, false));
     else
       jsError("onInit is not a Function or a String");
+    jsvUnLock(onInit);
   }
-  jsvUnLock(onInit);
 
   jsiLastIdleTime = jshGetSystemTime();
 }
@@ -605,7 +597,6 @@ void jsiInit(bool autoLoad) {
     jsvSoftInit();
     jspSoftInit();
   }
-  //jsvTrace(jsvGetRef(execInfo.root), 0)
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
@@ -674,19 +665,8 @@ bool jsiFreeMoreMemory() {
 // Add a new line to the command history
 void jsiHistoryAddLine(JsVar *newLine) {
   if (!newLine || jsvGetStringLength(newLine)==0) return;
-  JsVar *history = jsvFindChildFromString(execInfo.hiddenRoot, JSI_HISTORY_NAME, true);
+  JsVar *history = jsvObjectGetChild(execInfo.hiddenRoot, JSI_HISTORY_NAME, JSV_ARRAY);
   if (!history) return; // out of memory
-  // ensure we actually have the history array
-  if (!history->firstChild) {
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-    if (!arr) {// out of memory
-      jsvUnLock(history);
-      return;
-    }
-    history->firstChild = jsvGetRef(jsvRef(arr));
-    jsvUnLock(arr);
-  }
-  history = jsvSkipNameAndUnLock(history);
   // if it was already in history, remove it - we'll put it back in front
   JsVar *alreadyInHistory = jsvGetArrayIndexOf(history, newLine, false/*not exact*/);
   if (alreadyInHistory) {
@@ -704,10 +684,10 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
   if (history) {
     JsVar *idx = jsvGetArrayIndexOf(history, inputLine, true/*exact*/); // get index of current line
     if (idx) {
-      if (previous && idx->prevSibling) {
-        historyLine = jsvSkipNameAndUnLock(jsvLock(idx->prevSibling));
-      } else if (!previous && idx->nextSibling) {
-        historyLine = jsvSkipNameAndUnLock(jsvLock(idx->nextSibling));
+      if (previous && jsvGetPrevSibling(idx)) {
+        historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetPrevSibling(idx)));
+      } else if (!previous && jsvGetNextSibling(idx)) {
+        historyLine = jsvSkipNameAndUnLock(jsvLock(jsvGetNextSibling(idx)));
       }
       jsvUnLock(idx);
     } else {
@@ -1175,13 +1155,15 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *a
 
   if (callbackNoNames) {
     if (jsvIsArray(callbackNoNames)) {
-      JsVarRef next = callbackNoNames->firstChild;
-      while (next) {
-        JsVar *child = jsvLock(next);
+      JsvArrayIterator it;
+      jsvArrayIteratorNew(&it, callbackNoNames);
+      while (jsvArrayIteratorHasElement(&it)) {
+        JsVar *child = jsvArrayIteratorGetElement(&it);
         jsiExecuteEventCallback(child, arg0, arg1);
-        next = child->nextSibling;
         jsvUnLock(child);
+        jsvArrayIteratorNext(&it);
       }
+      jsvArrayIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
        JsVar *parent = 0;
@@ -1202,7 +1184,7 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *a
 bool jsiHasTimers() {
   if (!timerArray) return false;
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  bool hasTimers = timerArrayPtr->firstChild;
+  bool hasTimers = jsvGetFirstChild(timerArrayPtr)!=0;
   jsvUnLock(timerArrayPtr);
   return hasTimers;
 }
@@ -1301,7 +1283,7 @@ void jsiIdle() {
       // we have an event... find out what it was for...
       // Check everything in our Watch array
       JsVar *watchArrayPtr = jsvLock(watchArray);
-      JsVarRef watchName = watchArrayPtr->firstChild;
+      JsVarRef watchName = jsvGetFirstChild(watchArrayPtr);
       while (watchName) {
         JsVar *watchNamePtr = jsvLock(watchName); // effectively the array index
         JsVar *watchPtr = jsvSkipName(watchNamePtr);
@@ -1395,7 +1377,7 @@ void jsiIdle() {
         }
 
         jsvUnLock(watchPtr);
-        watchName = watchNamePtr->nextSibling;
+        watchName = jsvGetNextSibling(watchNamePtr);
         jsvUnLock(watchNamePtr);
       }
       jsvUnLock(watchArrayPtr);
@@ -1416,14 +1398,14 @@ void jsiIdle() {
   jsiLastIdleTime = time;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  JsVarRef timer = timerArrayPtr->firstChild;
+  JsVarRef timer = jsvGetFirstChild(timerArrayPtr);
   while (timer) {
     JsVar *timerNamePtr = jsvLock(timer);
-    timer = timerNamePtr->nextSibling; // ptr to next
+    timer = jsvGetNextSibling(timerNamePtr); // ptr to next
     JsVar *timerPtr = jsvSkipName(timerNamePtr);
-    JsVar *timerTime = jsvObjectGetChild(timerPtr, "time", 0);
-    JsVarInt timeUntilNext = jsvGetInteger(timerTime) - timePassed;
-    jsvSetInteger(timerTime, timeUntilNext);// update timer time
+    JsVarInt timerTime = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
+    JsVarInt timeUntilNext = timerTime - timePassed;
+
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
     if (timeUntilNext<=0) {
@@ -1484,10 +1466,7 @@ void jsiIdle() {
 
       if (intervalRecurring) {
         JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
-        if (interval<=0)
-          jsvSetInteger(timerTime, 0); // just set to current system time
-        else
-          jsvSetInteger(timerTime, jsvGetInteger(timerTime) + interval);
+        timeUntilNext = (interval<=0) ? 0 : (timerTime + interval);
       } else {
         // free all
         JsVar *foundChild = jsvGetArrayIndexOf(timerArrayPtr, timerPtr, true);
@@ -1500,9 +1479,10 @@ void jsiIdle() {
       jsvUnLock(timerCallback);
 
     }
-    jsvUnLock(timerTime);
+    // update the timer's time
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(timeUntilNext)));
     jsvUnLock(timerPtr);
-    JsVarRef currentTimer = timerNamePtr->nextSibling;
+    JsVarRef currentTimer = jsvGetNextSibling(timerNamePtr);
     jsvUnLock(timerNamePtr);
     if (currentTimer != timer) {
       // Whoa! the timer list has changed!
@@ -1679,7 +1659,7 @@ NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
 
 /** Output current interpreter state such that it can be copied to a new device */
 void jsiDumpState() {
-  JsVarRef childRef = execInfo.root->firstChild;
+  JsVarRef childRef = jsvGetFirstChild(execInfo.root);
   while (childRef) {
     JsVar *child = jsvLock(childRef);
     char childName[JSLEX_MAX_TOKEN_LENGTH];
@@ -1725,7 +1705,7 @@ void jsiDumpState() {
       }
     }
     jsvUnLock(data);
-    childRef = child->nextSibling;
+    childRef = jsvGetNextSibling(child);
     jsvUnLock(child);
   }
   // Now do timers

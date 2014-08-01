@@ -576,17 +576,17 @@ void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
 }*/
 void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  if (!jsvIsArray(poly)) return;
+  if (!jsvIsIterable(poly)) return;
   const int maxVerts = 128;
   short verts[maxVerts];
   int idx = 0;
-  JsVarRef item = poly->firstChild;
-  while (item && idx<maxVerts) {
-    JsVar *val = jsvLock(item);
-    verts[idx++] = (short)jsvGetIntegerAndUnLock(jsvSkipName(val));
-    item = val->nextSibling;
-    jsvUnLock(val);
+  JsvIterator it;
+  jsvIteratorNew(&it, poly);
+  while (jsvIteratorHasElement(&it) && idx<maxVerts) {
+    verts[idx++] = (short)jsvIteratorGetIntegerValue(&it);
+    jsvIteratorNext(&it);
   }
+  jsvIteratorFree(&it);
   if (idx==maxVerts) {
     jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }

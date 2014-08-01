@@ -23,6 +23,7 @@
             Swap HY2.4 board to software LCD driver as well, work out pin mappings from PY file
             Fix inaccuracy in setInterval, which had started since 32 bit switch in 1v65
             Store JSWAT_EXECUTE_IMMEDIATELY in a way that will fit in 16 bit function decls
+            Allow bit-packing of refs for low memory boards (fix #145)
             Now dump 'debounce' for setWatch
             Make sure that dump() outputs correct JS for undefined variables
             Allow pin counts per port of >31 on Linux-based systems

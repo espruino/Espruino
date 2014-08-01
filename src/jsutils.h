@@ -78,9 +78,10 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 #ifdef RESIZABLE_JSVARS
  //  probably linux - allow us to allocate more blocks of variables
   typedef unsigned int JsVarRef;
-  #define JSVAR_SIZE 30
-  #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-  #define JSVAR_DATA_STRING_MAX_LEN 24 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX - WE HAVE TO CLIP!
+  typedef int JsVarRefSigned;
+  #define JSVARREF_MIN (-2147483648)
+  #define JSVARREF_MAX 2147483647
+  #define JSVARREF_SIZE 4
 #else
    /** JsVerRef stores References for variables - We treat 0 as null
    *  NOTE: we store JSVAR_DATA_STRING_* as actual values so we can do #if on them below
@@ -88,16 +89,41 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
    */
   #if JSVAR_CACHE_SIZE <= 254
     typedef unsigned char JsVarRef;
-    #define JSVAR_SIZE 15
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 12 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too
+    typedef char JsVarRefSigned;
+    #define JSVARREF_MIN (-128)
+    #define JSVARREF_MAX 127
+    #define JSVARREF_SIZE 1
+  #elif JSVAR_CACHE_SIZE <= 1023
+    /* for this, we use 10 bit refs. GCC can't do that so store refs as
+     * single bytes and then manually pack an extra 2 bits for each of
+     * the 4 refs into a byte called 'pack'
+     *
+     * Note that JsVarRef/JsVarRefSigned are still 2 bytes, which means
+     * we're only messing around when loading/storing refs - not when
+     * passing them around.
+     */
+    #define JSVARREF_PACKED_BITS 2
+    typedef unsigned short JsVarRef;
+    typedef short JsVarRefSigned;
+    #define JSVARREF_MIN (-512)
+    #define JSVARREF_MAX 511
+    #define JSVARREF_SIZE 1
   #else
     typedef unsigned short JsVarRef;
-    #define JSVAR_SIZE 20
-    #define JSVAR_DATA_STRING_LEN  8 // Actually 9 seems like a good number as 'prototype'==9
-    #define JSVAR_DATA_STRING_MAX_LEN 16 // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter)) - but see JSV_STRING_LEN_MAX too - WE HAVE TO CLIP!
+    typedef short JsVarRefSigned;
+    #define JSVARREF_MIN (-32768)
+    #define JSVARREF_MAX 32767
+    #define JSVARREF_SIZE 2
   #endif
 #endif
+
+#if __WORDSIZE == 64
+// 64 bit needs extra space to be able to store a function pointer
+#define JSVAR_DATA_STRING_LEN  8
+#else
+#define JSVAR_DATA_STRING_LEN  4
+#endif
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
 typedef int32_t JsVarInt;
 typedef uint32_t JsVarIntUnsigned;
@@ -199,30 +225,34 @@ typedef enum {
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
     JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    _JSV_NUMERIC_START = JSV_FUNCTION+1, ///< --------- Start of numeric variable types
-    JSV_INTEGER     = _JSV_NUMERIC_START, ///< integer number (note JSV_NUMERICMASK)
+    JSV_INTEGER     = JSV_FUNCTION+1, ///< integer number (note JSV_NUMERICMASK)
+  _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
     JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
 
-    _JSV_NAME_START = JSV_PIN+1,
-    JSV_ARRAYBUFFERNAME = _JSV_NAME_START, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
-    _JSV_NAME_INT_START = JSV_ARRAYBUFFERNAME+1,
-    JSV_NAME_INT    = _JSV_NAME_INT_START, ///< integer array/object index
-    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value - NOT CURRENTLY USED
-    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value - NOT CURRENTLY USED
-    _JSV_NAME_INT_END = JSV_NAME_INT_BOOL,
-    _JSV_NUMERIC_END  = _JSV_NAME_INT_END, ///< --------- End of numeric variable types
-    _JSV_STRING_START =  _JSV_NUMERIC_END+1,
-    JSV_NAME_STRING_0    = _JSV_STRING_START, // array/object index as string of length 0
+    JSV_ARRAYBUFFERNAME = JSV_PIN+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
+  _JSV_NAME_START = JSV_ARRAYBUFFERNAME, ///< ---------- Start of NAMEs (names of variables, object fields/etc)
+    JSV_NAME_INT    = JSV_ARRAYBUFFERNAME+1, ///< integer array/object index
+  _JSV_NAME_INT_START = JSV_NAME_INT,
+    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value
+  _JSV_NAME_WITH_VALUE_START = JSV_NAME_INT_INT, ///< ---------- Start of names that have literal values, NOT references, in firstChild
+    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value
+  _JSV_NAME_INT_END = JSV_NAME_INT_BOOL,
+  _JSV_NUMERIC_END  = JSV_NAME_INT_BOOL, ///< --------- End of numeric variable types
+    JSV_NAME_STRING_INT_0    = JSV_NAME_INT_BOOL+1, // array/object index as string of length 0 WITH integer value
+  _JSV_STRING_START =  JSV_NAME_STRING_INT_0,
+    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_LEN,
+  _JSV_NAME_WITH_VALUE_END = JSV_NAME_STRING_INT_MAX, ///< ---------- End of names that have literal values, NOT references, in firstChild
+    JSV_NAME_STRING_0    = JSV_NAME_STRING_INT_MAX+1, // array/object index as string of length 0
     JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
-    _JSV_NAME_END    = JSV_NAME_STRING_MAX,
-    JSV_STRING_0    = _JSV_NAME_END+1, // simple string value of length 0
+  _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
+    JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
-    _JSV_STRING_END = JSV_STRING_MAX,
-    JSV_STRING_EXT_0 = _JSV_STRING_END+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+  _JSV_STRING_END = JSV_STRING_MAX,
+    JSV_STRING_EXT_0 = JSV_STRING_MAX+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
-    _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
+  _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
 
     JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1,
 

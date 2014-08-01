@@ -212,7 +212,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
     typedArr->varData.arraybuffer.type = type;
     typedArr->varData.arraybuffer.byteOffset = (unsigned short)byteOffset;
     typedArr->varData.arraybuffer.length = (unsigned short)length;
-    typedArr->firstChild = jsvGetRef(jsvRef(arrayBuffer));
+    jsvSetFirstChild(typedArr, jsvGetRef(jsvRef(arrayBuffer)));
 
     if (copyData) {
       // if we were given an array, populate this ArrayBuffer
@@ -239,7 +239,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
 
 /*JSON{ "type":"property", "class": "ArrayBufferView",  "name": "buffer",
          "description" : "The buffer this view references",
-         "generate_full" : "jsvLock(parent->firstChild)",
+         "generate_full" : "jsvLock(jsvGetFirstChild(parent))",
          "return" : [ "JsVar", "An ArrayBuffer object" ]
 }*/
 /*JSON{ "type":"property", "class": "ArrayBufferView",  "name": "byteLength",

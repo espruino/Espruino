@@ -236,7 +236,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
     jsiConsolePrint("ASSERT FAILED AT ");
   jsiConsolePrintf("%s:%d\n",file,line);
 
-  jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
+  jsvTrace(jsvFindOrCreateRoot(), 2);
   exit(1);
 }
 

@@ -345,7 +345,7 @@ JsVar *jswHandleFunctionCall(JsVar *parent, JsVar *parentName, const char *name)
         } else if (CMP4(name[1],'u','f','f','e') && CMP2(name[5],'r','\0')) {
           // ArrayBufferView.buffer  (src/jswrap_arraybuffer.c)
           jspParseVariableName();
-          JsVar *_r = jsvLock(parent->firstChild);
+          JsVar *_r = jsvLock(jsvGetFirstChild(parent));
           return _r;
         }
       }

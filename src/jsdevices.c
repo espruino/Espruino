@@ -319,5 +319,7 @@ IOEventFlags jshFromDeviceString(const char *device) {
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
+  NOT_USED(device);
+  NOT_USED(hostShouldTransmit);
 }
 

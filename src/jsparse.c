@@ -69,7 +69,7 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   // If this is an index in an array buffer, write directly into the array buffer
   if (jsvIsArrayBufferName(dst)) {
     size_t idx = (size_t)jsvGetInteger(dst);
-    JsVar *arrayBuffer = jsvLock(dst->firstChild);
+    JsVar *arrayBuffer = jsvLock(jsvGetFirstChild(dst));
     jsvArrayBufferSet(arrayBuffer, idx, src);
     jsvUnLock(arrayBuffer);
     return;
@@ -86,12 +86,12 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
    */
   if (jsvIsNewChild(dst)) {
     // Get what it should have been a child of
-    JsVar *parent = jsvLock(dst->nextSibling);
+    JsVar *parent = jsvLock(jsvGetNextSibling(dst));
     // Remove the 'new child' flagging
     jsvUnRef(parent);
-    dst->nextSibling = 0;
+    jsvSetNextSibling(dst, 0);
     jsvUnRef(parent);
-    dst->prevSibling = 0;
+    jsvSetPrevSibling(dst, 0);
     // Add to the parent
     jsvAddName(parent, dst);
     jsvUnLock(parent);
@@ -221,7 +221,6 @@ JsVar *jspeiGetScopesAsVar() {
       jsvAddName(arr, idx);
       jsvUnLock(idx);
   }
-  //printf("%d\n",arr->firstChild);
   return arr;
 }
 
@@ -484,7 +483,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
        *
        * IN THAT ORDER.
        */
-      JsVarRef v = function->firstChild;
+      JsVarRef v = jsvGetFirstChild(function);
       if (isParsing) {
         int hadParams = 0;
         // grab in all parameters. We go around this loop until we've run out
@@ -514,7 +513,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jsvUnLock(value);
             if (execInfo.lex->tk!=')') JSP_MATCH(',');
           }
-          if (paramDefined) v = param->nextSibling;
+          if (paramDefined) v = jsvGetNextSibling(param);
           jsvUnLock(param);
         }
         JSP_MATCH(')');
@@ -532,7 +531,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           } else
             jspSetError(false);
           args++;
-          if (paramDefined) v = param->nextSibling;
+          if (paramDefined) v = jsvGetNextSibling(param);
           jsvUnLock(param);
         }
       }
@@ -552,7 +551,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             }
           }
         }
-        v = param->nextSibling;
+        v = jsvGetNextSibling(param);
         jsvUnLock(param);
       }
 
@@ -1450,7 +1449,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         JsVar *rhs;
         /* If we're assigning to this and we don't have a parent,
          * add it to the symbol table root as per JavaScript. */
-        if (JSP_SHOULD_EXECUTE && lhs && !lhs->refs) {
+        if (JSP_SHOULD_EXECUTE && lhs && !jsvGetRefs(lhs)) {
           if (jsvIsName(lhs)) {
             if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
               jsvAddName(execInfo.root, lhs);
@@ -1479,7 +1478,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
                 else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
                 if (op=='+' && jsvIsName(lhs)) {
                   JsVar *currentValue = jsvSkipName(lhs);
-                  if (jsvIsString(currentValue) && currentValue->refs==1) {
+                  if (jsvIsString(currentValue) && jsvGetRefs(currentValue)==1) {
                     /* A special case for string += where this is the only use of the string,
                      * as we may be able to do a simple append (rather than clone + append)*/
                     JsVar *str = jsvAsString(rhs, false);
@@ -1780,7 +1779,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       return 0;
     }
     bool addedIteratorToScope = false;
-    if (JSP_SHOULD_EXECUTE && !forStatement->refs) {
+    if (JSP_SHOULD_EXECUTE && !jsvGetRefs(forStatement)) {
       // if the variable did not exist, add it to the scope
       addedIteratorToScope = true;
       jsvAddName(execInfo.root, forStatement);
@@ -1818,7 +1817,7 @@ NO_INLINE JsVar *jspeStatementFor() {
                                   jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
                                   loopIndexVar;
             if (indexValue) { // could be out of memory
-              assert(!jsvIsName(indexValue) && indexValue->refs==0);
+              assert(!jsvIsName(indexValue) && jsvGetRefs(indexValue)==0);
               jsvSetValueOfName(forStatement, indexValue);
               if (indexValue!=loopIndexVar) jsvUnLock(indexValue);
   
@@ -2188,8 +2187,16 @@ NO_INLINE JsVar *jspNewObject(const char *name, const char *instanceOf) {
     return 0;
   }
   if (name) {
-    // set object data to be object name
-    strncpy(obj->varData.str, name, sizeof(obj->varData));
+    // If it's a device, set the device number up as the Object data
+    // See jsiGetDeviceFromClass
+    IOEventFlags device = jshFromDeviceString(name);
+    if (device!=EV_NONE) {
+      obj->varData.str[0] = 'D';
+      obj->varData.str[1] = 'E';
+      obj->varData.str[2] = 'V';
+      obj->varData.str[3] = (char)device;
+    }
+
   }
   // add __proto__
   JsVar *prototypeVar = jsvSkipName(prototypeName);

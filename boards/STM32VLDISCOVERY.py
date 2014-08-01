@@ -17,7 +17,7 @@ import pinutils;
 info = {
  'name' : "STM32 VL Discovery",
  'link' :  [ "http://www.st.com/stm32-discovery" ],
- 'variables' : 254,
+ 'variables' : 500,
  'binary_name' : 'espruino_%v_stm32vldiscovery.bin',
 };
 chip = {
