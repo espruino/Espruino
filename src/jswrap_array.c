@@ -661,14 +661,37 @@ JsVar *jswrap_array_fill(JsVar *parent, JsVar *value, JsVarInt start, JsVar *end
 
   JsvIterator it;
   jsvIteratorNew(&it, parent);
-  while (jsvIteratorHasElement(&it)) {
+  JsVarInt last = start;
+  while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
     JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
+    // as it could be a sparse array, we may have missed items out...
+    while (last<idx && !jspIsInterrupted()) {
+      if (last>=start && last<end) {
+        JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromInteger(last), value);
+        if (namedChild) {
+          jsvAddName(parent, namedChild);
+          jsvUnLock(namedChild);
+        }
+      }
+      last++;
+    }
     if (idx>=start && idx<end) {
       jsvIteratorSetValue(&it, value);
     }
+    last = idx+1;
     jsvIteratorNext(&it);
   }
   jsvIteratorFree(&it);
+  while (last<end && !jspIsInterrupted()) {
+    if (last>=start) {
+      JsVar *namedChild = jsvMakeIntoVariableName(jsvNewFromInteger(last), value);
+      if (namedChild) {
+        jsvAddName(parent, namedChild);
+        jsvUnLock(namedChild);
+      }
+    }
+    last++;
+  }
 
   return jsvLockAgain(parent);
 }
