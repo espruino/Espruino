@@ -2,6 +2,7 @@
             Fix parseInt for values too large to go in an int (#406)
             Fix integer maths when result is too large for an integer
             Fix mod operator with NaN/Infinity (fix #315)
+            Fix signed array values in PACKED_BIT devices
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)

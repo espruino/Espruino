@@ -158,6 +158,7 @@ typedef struct {
 
 #ifndef JSVARREF_PACKED_BITS
 static inline JsVarRef jsvGetFirstChild(const JsVar *v) { return v->varData.ref.firstChild; }
+static inline JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) { return (JsVarRefSigned)v->varData.ref.firstChild; }
 static inline JsVarRef jsvGetLastChild(const JsVar *v) { return v->varData.ref.lastChild; }
 static inline JsVarRef jsvGetNextSibling(const JsVar *v) { return v->varData.ref.nextSibling; }
 static inline JsVarRef jsvGetPrevSibling(const JsVar *v) { return v->varData.ref.prevSibling; }
@@ -168,6 +169,7 @@ static inline void jsvSetPrevSibling(JsVar *v, JsVarRef r) { v->varData.ref.prev
 #else
 // for packed bits, functions are not inlined to save space
 JsVarRef jsvGetFirstChild(const JsVar *v);
+JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v);
 JsVarRef jsvGetLastChild(const JsVar *v);
 JsVarRef jsvGetNextSibling(const JsVar *v);
 JsVarRef jsvGetPrevSibling(const JsVar *v);

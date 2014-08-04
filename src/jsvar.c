@@ -59,6 +59,12 @@ JsVar *_jsvGetAddressOf(JsVarRef ref) {
 #ifdef JSVARREF_PACKED_BITS
 #define JSVARREF_PACKED_BIT_MASK ((1U<<JSVARREF_PACKED_BITS)-1)
 JsVarRef jsvGetFirstChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.firstChild | (((v->varData.ref.pack)&JSVARREF_PACKED_BIT_MASK))<<8); }
+JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) {
+  JsVarRefSigned r = (JsVarRefSigned)jsvGetFirstChild(v);
+  if (r & (1<<(JSVARREF_PACKED_BITS+7)))
+    r -= 1<<(JSVARREF_PACKED_BITS+8);
+  return r;
+}
 JsVarRef jsvGetLastChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.lastChild | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*1))&JSVARREF_PACKED_BIT_MASK))<<8); }
 JsVarRef jsvGetNextSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.nextSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*2))&JSVARREF_PACKED_BIT_MASK))<<8); }
 JsVarRef jsvGetPrevSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.prevSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*3))&JSVARREF_PACKED_BIT_MASK))<<8); }
@@ -1286,7 +1292,7 @@ JsVar *jsvSkipName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)(JsVarRefSigned)jsvGetFirstChild(pa));
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
   while (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
@@ -1305,7 +1311,7 @@ JsVar *jsvSkipOneName(JsVar *a) {
   JsVar *pa = a;
   if (!a) return 0;
   if (jsvIsArrayBufferName(pa)) return jsvArrayBufferGetFromName(pa);
-  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)(JsVarRefSigned)jsvGetFirstChild(pa));
+  if (jsvIsNameInt(pa)) return jsvNewFromInteger((JsVarInt)jsvGetFirstChildSigned(pa));
   if (jsvIsNameIntBool(pa)) return jsvNewFromBool(jsvGetFirstChild(pa)!=0);
   if (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
@@ -2438,7 +2444,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
 
   // print a value if it was stored in here as well...
   if (jsvIsNameInt(var)) {
-    jsiConsolePrintf("= int %d\n", (JsVarRefSigned)jsvGetFirstChild(var));
+    jsiConsolePrintf("= int %d\n", (int)jsvGetFirstChildSigned(var));
     return;
   } else if (jsvIsNameIntBool(var)) {
     jsiConsolePrintf("= bool %s\n", jsvGetFirstChild(var)?"true":"false");
