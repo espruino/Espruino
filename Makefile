@@ -605,7 +605,7 @@ DEFINES += -DUSB
 endif
 
 ifeq ($(FAMILY), STM32F1)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f1 -I$(ROOT)/targetlibs/stm32f1/lib
@@ -660,7 +660,7 @@ endif #USB
 endif #STM32F1
 
 ifeq ($(FAMILY), STM32F2)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f2 -I$(ROOT)/targetlibs/stm32f2/lib
@@ -724,7 +724,7 @@ endif #USB
 endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f3 -I$(ROOT)/targetlibs/stm32f3/lib
@@ -773,7 +773,7 @@ endif #USB
 endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
