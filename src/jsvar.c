@@ -1611,7 +1611,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
           }
         }
       } else if (jsvIsString(name)) {
-        if ((jsvIsInt(src))) {
+        if (jsvIsInt(src) && !jsvIsPin(src)) {
           JsVarInt v = src->varData.integer;
           if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
             name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_NAME_STRING_INT_0 + jsvGetCharactersInVar(name));
