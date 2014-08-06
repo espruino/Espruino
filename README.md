@@ -176,6 +176,7 @@ Currently there are a bunch of different files to modify. Eventually the plan is
 * Most build options handled in `Makefile`
 * Extra libraries like USB/LCD/filesystem in `Makefile`
 * `boards/*.py` files describe the CPU, available pins, and connections - so the relevant linker script, headers + docs can be created
+* `boards/pins/*.csv` are copies of the 'pin definitions' table in the chip's datasheet. They are read in for STM32 chips by the `boards/*.py` files, but they are not required - see `boards/RASPBERRYPI.py` for an example.
 * Processor-specific code in `targets/ARCH` - eg. `targets/stm32`, `targets/linux`
 * Processor-specific libs in `targetlibs/foo` 
 * `src/jshardware.h` is effectively a simple abstraction layer for SPI/I2C/etc
