@@ -2145,10 +2145,10 @@ bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
 }
 #endif
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
 #if defined(STM32F3)
-  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, I2C_AutoEnd_Mode, I2C_Generate_Start_Write);
+  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, sendStop ? I2C_AutoEnd_Mode : I2C_SoftEnd_Mode, I2C_Generate_Start_Write);
   int i;
   for (i=0;i<nBytes;i++) {
     WAIT_UNTIL((I2C_GetFlagStatus(I2C, I2C_FLAG_TXE) != RESET) ||
@@ -2176,16 +2176,16 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
-  I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
+  if (sendStop) I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
   int i;
 
 #if defined(STM32F3)
-  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
+  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, sendStop ? I2C_AutoEnd_Mode : I2C_SoftEnd_Mode, I2C_Generate_Start_Read);
   for (i=0;i<nBytes;i++) {
     WAIT_UNTIL((I2C_GetFlagStatus(I2C, I2C_FLAG_RXNE) != RESET) ||
                (I2C_GetFlagStatus(I2C, I2C_FLAG_NACKF) != RESET), "I2C Read RXNE2");
@@ -2209,7 +2209,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);  
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED), "I2C Read Receive Mode");
   for (i=0;i<nBytes;i++) {
-    if (i == nBytes-1) {
+    if (sendStop && i == nBytes-1) {
       I2C_AcknowledgeConfig(I2C, DISABLE); /* Send STOP Condition */
       I2C_GenerateSTOP(I2C, ENABLE); // Note F4 errata - sending STOP too early completely kills I2C
     }
@@ -2217,8 +2217,10 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     data[i] = I2C_ReceiveData(I2C);
   }
   /*enable NACK bit */
-  WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
-  I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
+  if (sendStop) {
+    WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
+    I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
+  }
 #endif
 }
 

@@ -4,7 +4,8 @@
             Fix mod operator with NaN/Infinity (fix #315)
             Fix signed array values in PACKED_BIT devices
             Drop JsVar size from 20 bytes to 16, increase Espruino variable count accordingly
-            Fix Array.fill on sparse arrays (fix #410)
+            Fix Array.fill on sparse arrays (fix #410) 
+            Allow I2C repeated start (fixes some odd I2C devices, fix #390)
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)

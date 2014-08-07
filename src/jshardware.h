@@ -215,9 +215,9 @@ static inline void jshI2CInitInfo(JshI2CInfo *inf) {
 }
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
-/** Addresses are 7 bit - that is, between 0 and 0x7F */
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data);
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data);
+/** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop);
 
 
 /// Save contents of JsVars into Flash
