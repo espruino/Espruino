@@ -1079,6 +1079,9 @@ else
 endif
 endif
 
+#DFU will look a lot like:
+#sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+
 serialflash: all
 	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0
 	python scripts/stm32loader.py -b 460800 -a $(BASEADDRESS) -ew $(STM32LOADER_FLAGS) $(PROJ_NAME).bin
