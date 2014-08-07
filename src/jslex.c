@@ -677,7 +677,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
 
   assert(len>=10);
   strncpy(str, "?[",len);
-  itoa(token, &str[2], 10);
+  itostr(token, &str[2], 10);
   strncat(str, "]",len);
 }
 

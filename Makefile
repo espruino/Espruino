@@ -31,6 +31,7 @@
 # ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
+# ARDUINOMEGA2560=1
 # Or nothing for standard linux compile
 #
 # Also:
@@ -249,11 +250,16 @@ DEFINES +=-DECU -DSTM32F4DISCOVERY
 USB=1
 DEFINES += -DUSE_USB_OTG_FS=1
 FAMILY=STM32F4
-CHIP=STM32F407
 BOARD=ECU
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
+else ifdef ARDUINOMEGA2560
+EMBEDDED=1
+DEFINES+=-D__AVR_ATmega2560__
+BOARD=ARDUINOMEGA2560
+ARDUINO_AVR=1
+OPTIMIZEFLAGS+=-Os
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -846,6 +852,33 @@ SOURCES += targets/mbed/main.c
 CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
+ifdef ARDUINO_AVR
+MCU = atmega2560
+F_CPU = 16000000
+FORMAT = ihex
+
+ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
+ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+LDFLAGS += --relax
+AVR=1
+INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
+DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
+SOURCES += \
+$(ARDUINO_LIB)/wiring.c \
+$(ARDUINO_LIB)/wiring_digital.c
+
+CPPSOURCES += \
+$(ARDUINO_LIB)/main.cpp \
+$(ARDUINO_LIB)/new.cpp \
+$(ARDUINO_LIB)/WString.cpp \
+$(ARDUINO_LIB)/Print.cpp \
+$(ARDUINO_LIB)/HardwareSerial.cpp \
+targets/arduino/jshardware.cpp \
+targets/arduino/espruino.cpp 
+
+export CCPREFIX=avr-
+endif
+
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
@@ -862,12 +895,6 @@ endif
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
 
-
-# 4.6
-#export CCPREFIX=arm-linux-gnueabi-
-# 4.5
-#export CCPREFIX=~/sat/bin/arm-none-eabi-
-# 4.4
 export CCPREFIX=arm-none-eabi-
 endif # ARM
 

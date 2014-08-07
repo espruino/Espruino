@@ -337,22 +337,22 @@ static inline size_t jsvGetCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static inline void jsvSetCharactersInVar(JsVar *v, size_t chars) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
-  JsVarFlags m = (JsVarFlags)v->flags&~JSV_VARTYPEMASK;
+  JsVarFlags m = (JsVarFlags)(v->flags&~JSV_VARTYPEMASK);
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
          (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
   if (f<=JSV_NAME_STRING_MAX) {
       if (f<=JSV_NAME_STRING_INT_MAX)
-        v->flags = m | (JSV_NAME_STRING_INT_0+chars);
+        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
       else
-        v->flags = m | (JSV_NAME_STRING_0+chars);
+        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
     } else {
       if (f<=JSV_STRING_MAX) {
-        v->flags = m | (JSV_STRING_0+chars);
+        v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
       } else {
         assert(f <= JSV_STRING_EXT_MAX);
-        v->flags = m | (JSV_STRING_EXT_0+chars);
+        v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
       }
     }
 }
@@ -360,7 +360,7 @@ static inline void jsvSetCharactersInVar(JsVar *v, size_t chars) {
 static inline void jsvMakeFunctionParameter(JsVar *v) {
   assert(jsvIsString(v));
   if (!jsvIsName(v)) jsvMakeIntoVariableName(v,0);
-  v->flags |= JSV_NATIVE;
+  v->flags = (JsVarFlags)(v->flags | JSV_NATIVE);
 }
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,

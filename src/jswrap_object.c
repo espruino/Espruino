@@ -75,7 +75,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
     if (radix>=2 && radix<=36) {
       char buf[JS_NUMBER_BUFFER_SIZE];
       if (jsvIsInt(parent))
-        itoa(jsvGetInteger(parent), buf, (unsigned int)radix);
+        itostr(jsvGetInteger(parent), buf, (unsigned int)radix);
       else
         ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), (int)radix, -1);
       return jsvNewFromString(buf);

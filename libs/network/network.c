@@ -63,7 +63,7 @@ void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *
       data[l++] = itoch(ip[i]>>4);
       data[l++] = itoch(ip[i]&15);
     } else {
-      itoa((int)ip[i], &data[l], base);
+      itostr((int)ip[i], &data[l], base);
     }
     l = (int)strlen(data);
     if (i+dir!=nBytes && separator) {

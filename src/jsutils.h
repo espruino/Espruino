@@ -24,7 +24,7 @@
 #include <stdarg.h> // for va_args
 #include <stdint.h>
 
-#ifdef LINUX
+#if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
 #else
 // these are in maths, but are used all over the place
@@ -43,8 +43,7 @@ extern int isfinite ( double );
   OPT - potential for speed optimisation
 */
 
-// surely bool is defined??
-#ifdef ARM
+#if defined(ARM) || defined(AVR)
 typedef unsigned int size_t;
 #define alloca(x) __builtin_alloca(x)
 #endif
@@ -58,8 +57,11 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 //#define FALSE (0)
 #endif
 
+#ifndef Arduino_h
 #define true (1)
 #define false (0)
+#endif
+
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
 
@@ -415,9 +417,7 @@ unsigned int rand();
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
 
-#ifndef HAS_STDLIB
-void itoa(JsVarInt val,char *str,unsigned int base);
-#endif
+void itostr(JsVarInt val,char *str,unsigned int base); // like itoa, but uses JsVarInt (good on non-32 bit systems)
 char itoch(int val);
 
 // super ftoa that does fixed point and radix

@@ -78,7 +78,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * Raspberry Pi - WORKING - GPIO via filesystem (no SPI or I2C)
 * Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
 * MBed platforms - have not worked for a while - full hardware wrapper still required
-* Arduino - has never worked. Used to compile but probably doesn't any more
+* ARDUINOMEGA2560 - has never worked
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 
 
@@ -111,12 +111,14 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 Just run `make`
 
-## Arduino (ALPHA)
+## Arduino
 
 This will not work - these steps are only to get you started.
 
-* Ensure that `targets/arduino/utility` is symlinked to `src`
-* Symlink `...arduino_workspace/libraries/Espruino` to `targets/arduino`
+* `sudo apt-get install gcc-avr avr-libc avrdude`
+* `sudo cp -r /usr/share/arduino/hardware/arduino targetlibs/arduino_avr`
+* `ARDUINOMEGA2560=1 make`
+* You'll need to flash it yourself
 
 ### Raspberry Pi
 

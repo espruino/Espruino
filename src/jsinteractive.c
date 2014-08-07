@@ -166,7 +166,7 @@ void jsiConsolePrintf(const char *fmt, ...) {
 
 NO_INLINE void jsiConsolePrintInt(JsVarInt d) {
     char buf[32];
-    itoa(d, buf, 10);
+    itostr(d, buf, 10);
     jsiConsolePrint(buf);
 }
 

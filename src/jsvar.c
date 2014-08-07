@@ -714,7 +714,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
      strncpy(str, s, len);
      return strlen(s);
    } else if (jsvIsInt(v)) {
-     itoa(v->varData.integer, str, 10);
+     itostr(v->varData.integer, str, 10);
      return strlen(str);
    } else if (jsvIsFloat(v)) {
      ftoa_bounded(v->varData.floating, str, len);
@@ -797,7 +797,7 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
       jshGetPinString(buf, (Pin)v->varData.integer);
       str = jsvNewFromString(buf);
     } else if (jsvIsInt(v)) {
-      itoa(v->varData.integer, buf, 10);
+      itostr(v->varData.integer, buf, 10);
       str = jsvNewFromString(buf);
     } else if (jsvIsFloat(v)) {
       ftoa_bounded(v->varData.floating, buf, sizeof(buf));

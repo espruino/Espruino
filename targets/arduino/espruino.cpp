@@ -11,31 +11,24 @@ extern "C" {
 #include "jsinteractive.h"
 }
 
-#include "Espruino.h"
 #include "Arduino.h"
 #include "HardwareSerial.h"
 
 
-// Constructor /////////////////////////////////////////////////////////////////
-// Function that handles the creation and setup of instances
-
-Espruino::Espruino(void) {
-}
-
-void Espruino::init(void) {
+void setup(void) {
   Serial.println("jshInit...");
   jshInit();
   bool buttonState = false;
-  buttonState = jshPinInput(BTN_PININDEX) == BTN_ONSTATE;
+  buttonState = false;
+#ifdef BTN_PININDEX
+  jshPinInput(BTN_PININDEX) == BTN_ONSTATE;
+#endif
   Serial.println("jsiInit...");
   jsiInit(!buttonState); // pressing USER button skips autoload
   Serial.println("Init done.");
 }
 
-// Public Methods //////////////////////////////////////////////////////////////
-// Functions available in Wiring sketches, this library, and other libraries
-
-void Espruino::loop(void) {
-//  jsiLoop();
+void loop(void) {
+  jsiLoop();
 }
 

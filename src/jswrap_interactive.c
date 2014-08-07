@@ -231,7 +231,7 @@ JsVar *jswrap_interface_getSerial() {
 
   for (i=0;i<serialSize;i++) {
     if ((i&3)==0 && i) jsvAppendString(str, "-");
-    itoa(serial[i] | 0x100, buf, 16);
+    itostr(serial[i] | 0x100, buf, 16);
     jsvAppendString(str, &buf[1]);
   }
   return str;

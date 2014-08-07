@@ -386,8 +386,7 @@ char itoch(int val) {
   return (char)('a'+val-10);
 }
 
-#ifndef HAS_STDLIB
-void itoa(JsVarInt vals,char *str,unsigned int base) {
+void itostr(JsVarInt vals,char *str,unsigned int base) {
   JsVarIntUnsigned val;
   // handle negative numbers
   if (vals<0) {
@@ -411,7 +410,6 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
   }
   str[digits] = 0;
 }
-#endif
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
   const JsVarFloat stopAtError = 0.0000001;
@@ -500,7 +498,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         int digits = (*fmt++) - '0';
         assert('d' == *fmt); // of the form '%02d'
         fmt++; // skip over 'd'
-        itoa(va_arg(argp, int), buf, 10);
+        itostr(va_arg(argp, int), buf, 10);
         int len = (int)strlen(buf);
         while (len < digits) {
           user_callback("0",user_data);
@@ -509,12 +507,12 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         user_callback(buf,user_data);
         break;
       }
-      case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
-      case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
+      case 'd': itostr(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
+      case 'x': itostr(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
       case 'L': {
         unsigned int rad = 10;
         if (*fmt=='x') { rad=16; fmt++; }
-        itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
+        itostr(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
       } break;
       case 'f': ftoa_bounded(va_arg(argp, JsVarFloat), buf, sizeof(buf)); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;

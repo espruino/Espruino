@@ -153,6 +153,8 @@ elif board.chip["family"]=="STM32F4":
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
+elif board.chip["family"]=="AVR":
+  board.chip["class"]="AVR"
 else:
   die('Unknown chip family '+board.chip["family"])
 

@@ -57,7 +57,7 @@ void sysfs_write(const char *path, const char *data) {
 
 void sysfs_write_int(const char *path, JsVarInt val) {
   char buf[20];
-  itoa(val, buf, 10);
+  itostr(val, buf, 10);
   sysfs_write(path, buf);
 }
 
@@ -291,7 +291,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     if (gpioState[pin] == JSHPINSTATE_UNDEFINED)
       sysfs_write_int(SYSFS_GPIO_DIR"/export", pin);
     char path[64] = SYSFS_GPIO_DIR"/gpio";
-    itoa(pin, &path[strlen(path)], 10);
+    itostr(pin, &path[strlen(path)], 10);
     strcat(&path[strlen(path)], "/direction");
     sysfs_write(path, JSHPINSTATE_IS_OUTPUT(state)?"out":"in");
     gpioState[pin] = state;
@@ -309,7 +309,7 @@ JshPinState jshPinGetState(Pin pin) {
 void jshPinSetValue(Pin pin, bool value) {
 #ifdef SYSFS_GPIO_DIR
   char path[64] = SYSFS_GPIO_DIR"/gpio";
-  itoa(pin, &path[strlen(path)], 10);
+  itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   sysfs_write_int(path, value?1:0);
 #endif
@@ -318,7 +318,7 @@ void jshPinSetValue(Pin pin, bool value) {
 bool jshPinGetValue(Pin pin) {
 #ifdef SYSFS_GPIO_DIR
   char path[64] = SYSFS_GPIO_DIR"/gpio";
-  itoa(pin, &path[strlen(path)], 10);
+  itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   return sysfs_read_int(path);
 #else
