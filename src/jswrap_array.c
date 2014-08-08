@@ -109,15 +109,15 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   if (!jsvIsArray(parent)) return -1;
   JsVarInt len = -1;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, args);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *el = jsvArrayIteratorGetElement(&it);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, args);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *el = jsvObjectIteratorGetValue(&it);
     len = jsvArrayPush(parent, el);
     jsvUnLock(el);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   if (len<0) 
     len = jsvGetArrayLength(parent);
   return len;
@@ -336,24 +336,24 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   bool needToAdd = false;
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, parent);
-  while (jsvArrayIteratorHasElement(&it) && !needToAdd) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, parent);
+  while (jsvObjectIteratorHasValue(&it) && !needToAdd) {
     bool goToNext = true;
-    JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
+    JsVar *idxVar = jsvObjectIteratorGetKey(&it);
     if (idxVar && jsvIsInt(idxVar)) {
       JsVarInt idx = jsvGetInteger(idxVar);
       if (idx<index) {
         // do nothing...
       } else if (idx<index+howMany) { // must delete
         if (result) { // append to result array
-          JsVar *el = jsvArrayIteratorGetElement(&it);
+          JsVar *el = jsvObjectIteratorGetValue(&it);
           jsvArrayPushAndUnLock(result, el);
         }
         // delete
         goToNext = false;
-        JsVar *toRemove = jsvArrayIteratorGetIndex(&it);
-        jsvArrayIteratorNext(&it);
+        JsVar *toRemove = jsvObjectIteratorGetKey(&it);
+        jsvObjectIteratorNext(&it);
         jsvRemoveChild(parent, toRemove);
         jsvUnLock(toRemove);
       } else { // we're greater than the amount we need to remove now
@@ -362,31 +362,31 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
       }
     }
     jsvUnLock(idxVar);
-    if (goToNext) jsvArrayIteratorNext(&it);
+    if (goToNext) jsvObjectIteratorNext(&it);
   }
   // now we add everything
-  JsVar *beforeIndex = jsvArrayIteratorGetIndex(&it);
-  JsvArrayIterator itElement;
-  jsvArrayIteratorNew(&itElement, elements);
-  while (jsvArrayIteratorHasElement(&itElement)) {
-    JsVar *element = jsvArrayIteratorGetElement(&itElement);
+  JsVar *beforeIndex = jsvObjectIteratorGetKey(&it);
+  JsvObjectIterator itElement;
+  jsvObjectIteratorNew(&itElement, elements);
+  while (jsvObjectIteratorHasValue(&itElement)) {
+    JsVar *element = jsvObjectIteratorGetValue(&itElement);
     jsvArrayInsertBefore(parent, beforeIndex, element);
     jsvUnLock(element);
-    jsvArrayIteratorNext(&itElement);
+    jsvObjectIteratorNext(&itElement);
   }
-  jsvArrayIteratorFree(&itElement);
+  jsvObjectIteratorFree(&itElement);
   jsvUnLock(beforeIndex);
   // And finally renumber
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *idxVar = jsvArrayIteratorGetIndex(&it);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *idxVar = jsvObjectIteratorGetKey(&it);
     if (idxVar && jsvIsInt(idxVar)) {
       jsvSetInteger(idxVar, jsvGetInteger(idxVar)+shift);
     }
     jsvUnLock(idxVar);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
   // free
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   // and reset array size
   jsvSetArrayLength(parent, len + shift, false);
@@ -614,29 +614,29 @@ JsVar *jswrap_array_sort (JsVar *array, JsVar *compareFn) {
 JsVar *jswrap_array_concat(JsVar *parent, JsVar *args) {
   JsVar *result = jsvNewWithFlags(JSV_ARRAY);
 
-  JsvArrayIterator argsIt;
-  jsvArrayIteratorNew(&argsIt, args);
+  JsvObjectIterator argsIt;
+  jsvObjectIteratorNew(&argsIt, args);
 
   // Append parent's elements first (parent is always an array)
   JsVar *source = jsvLockAgain(parent);
   do {
     if (jsvIsArray(source)) {
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, source);
-      while (jsvArrayIteratorHasElement(&it)) {
-        jsvArrayPushAndUnLock(result, jsvArrayIteratorGetElement(&it));
-        jsvArrayIteratorNext(&it);
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, source);
+      while (jsvObjectIteratorHasValue(&it)) {
+        jsvArrayPushAndUnLock(result, jsvObjectIteratorGetValue(&it));
+        jsvObjectIteratorNext(&it);
       }
-      jsvArrayIteratorFree(&it);
+      jsvObjectIteratorFree(&it);
     } else
       jsvArrayPush(result, source);
     // Next, append arguments
     jsvUnLock(source);
-    source = jsvArrayIteratorHasElement(&argsIt) ? jsvArrayIteratorGetElement(&argsIt) : 0;
-    jsvArrayIteratorNext(&argsIt);
+    source = jsvObjectIteratorHasValue(&argsIt) ? jsvObjectIteratorGetValue(&argsIt) : 0;
+    jsvObjectIteratorNext(&argsIt);
   } while (source);
 
-  jsvArrayIteratorFree(&argsIt);
+  jsvObjectIteratorFree(&argsIt);
   return result;
 }
 

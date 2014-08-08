@@ -263,7 +263,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
         JsvObjectIterator it;
         jsvObjectIteratorNew(&it, var);
         cbprintf(user_callback, user_data, "{");
-        while (jsvObjectIteratorHasElement(&it) && !jspIsInterrupted()) {
+        while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
           JsVar *index = jsvObjectIteratorGetKey(&it);
           JsVar *item = jsvObjectIteratorGetValue(&it);
           bool hidden = jsvIsInternalObjectKey(index) ||

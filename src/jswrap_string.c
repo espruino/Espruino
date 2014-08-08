@@ -53,14 +53,14 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
   JsVar *r = jsvNewFromEmptyString();
   if (!r) return 0;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, arr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    char ch = (char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
+    char ch = (char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
     jsvAppendStringBuf(r, &ch, 1);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   return r;
 }

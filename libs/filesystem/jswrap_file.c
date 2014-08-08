@@ -64,15 +64,15 @@ void jswrap_file_kill() {
   {
     JsVar *arr = fsGetArray(false);
     if (arr) {
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, arr);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *file = jsvArrayIteratorGetElement(&it);
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, arr);
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *file = jsvObjectIteratorGetValue(&it);
         jswrap_file_close(file);
         jsvUnLock(file);
-        jsvArrayIteratorNext(&it);
+        jsvObjectIteratorNext(&it);
       }
-      jsvArrayIteratorFree(&it);
+      jsvObjectIteratorFree(&it);
       jsvRemoveAllChildren(arr);
       jsvUnLock(arr);
     }

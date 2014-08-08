@@ -195,11 +195,11 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
     if (!dst) return 0;
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, srcdata);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, srcdata);
     int incount = 0, outcount = 0;
-    while (jsvArrayIteratorHasElement(&it) && !jspIsInterrupted()) {
-      unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
+    while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
+      unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
       incount++;
       int out = spiSend(in, spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
       if (out>=0) {
@@ -207,9 +207,9 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
         JsVar *outVar = jsvNewFromInteger(out);
         jsvArrayPushAndUnLock(dst, outVar);
       }
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;

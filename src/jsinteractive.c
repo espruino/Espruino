@@ -398,17 +398,17 @@ void jsiSoftInit() {
   // Check any existing watches and set up interrupts for them
   if (watchArray) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, watchArrayPtr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *watch = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, watchArrayPtr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *watch = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), true);
       jsvUnLock(watchPin);
       jsvUnLock(watch);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     jsvUnLock(watchArrayPtr);
   }
 
@@ -546,17 +546,17 @@ void jsiSoftKill() {
   if (watchArray) {
     // Check any existing watches and disable interrupts for them
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, watchArrayPtr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, watchArrayPtr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
       jsvUnLock(watchPin);
       jsvUnLock(watchPtr);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     jsvUnRef(watchArrayPtr);
     jsvUnLock(watchArrayPtr);
     watchArray=0;
@@ -1086,15 +1086,15 @@ void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount) { // an array o
   } else {
     assert(jsvIsArray(callback));
 
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, callback);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *callbackFunc = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, callback);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *callbackFunc = jsvObjectIteratorGetValue(&it);
       jsiQueueEventInternal(callbackFunc, args, argCount);
       jsvUnLock(callbackFunc);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
   }
 }
 
@@ -1155,15 +1155,15 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *a
 
   if (callbackNoNames) {
     if (jsvIsArray(callbackNoNames)) {
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, callbackNoNames);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *child = jsvArrayIteratorGetElement(&it);
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, callbackNoNames);
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *child = jsvObjectIteratorGetValue(&it);
         jsiExecuteEventCallback(child, arg0, arg1);
         jsvUnLock(child);
-        jsvArrayIteratorNext(&it);
+        jsvObjectIteratorNext(&it);
       }
-      jsvArrayIteratorFree(&it);
+      jsvObjectIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
        JsVar *parent = 0;
@@ -1200,18 +1200,18 @@ bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
 bool jsiIsWatchingPin(Pin pin) {
   bool isWatched = false;
   JsVar *watchArrayPtr = jsvLock(watchArray);
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, watchArrayPtr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, watchArrayPtr);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
     JsVar *pinVar = jsvObjectGetChild(watchPtr, "pin", 0);
     if (jshGetPinFromVar(pinVar) == pin)
       isWatched = true;
     jsvUnLock(pinVar);
     jsvUnLock(watchPtr);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   jsvUnLock(watchArrayPtr);
   return isWatched;
 }
@@ -1629,7 +1629,7 @@ NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
   JsvIsInternalChecker checker = jsvGetInternalFunctionCheckerFor(parent);
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, parent);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *child = jsvObjectIteratorGetKey(&it);
     JsVar *data = jsvObjectIteratorGetValue(&it);
 
@@ -1709,13 +1709,13 @@ void jsiDumpState() {
     jsvUnLock(child);
   }
   // Now do timers
-  JsvArrayIterator it;
+  JsvObjectIterator it;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
-  jsvArrayIteratorNew(&it, timerArrayPtr);
+  jsvObjectIteratorNew(&it, timerArrayPtr);
   jsvUnLock(timerArrayPtr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *timer = jsvArrayIteratorGetElement(&it);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
     bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
     JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
@@ -1725,15 +1725,15 @@ void jsiDumpState() {
     jsvUnLock(timerCallback);
     // next
     jsvUnLock(timer);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   // Now do watches
   JsVar *watchArrayPtr = jsvLock(watchArray);
-  jsvArrayIteratorNew(&it, watchArrayPtr);
+  jsvObjectIteratorNew(&it, watchArrayPtr);
   jsvUnLock(watchArrayPtr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *watch = jsvArrayIteratorGetElement(&it);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *watch = jsvObjectIteratorGetValue(&it);
     JsVar *watchCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(watch, "callback", false));
     bool watchRecur = jsvGetBoolAndUnLock(jsvObjectGetChild(watch, "recur", 0));
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
@@ -1752,9 +1752,9 @@ void jsiDumpState() {
     jsvUnLock(watchCallback);
     // next
     jsvUnLock(watch);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   // and now serial
   JsVar *str = jsvNewFromEmptyString();

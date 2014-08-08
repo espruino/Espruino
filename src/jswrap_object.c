@@ -353,17 +353,17 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   const int MAX_ARGS = 4;
   JsVar *args[MAX_ARGS];
   int n = 0;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, argArray);
-  while (jsvArrayIteratorHasElement(&it)) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, argArray);
+  while (jsvObjectIteratorHasValue(&it)) {
     if (n>=MAX_ARGS) {
       jsWarn("Too many arguments");
       break;
     }
-    args[n++] = jsvArrayIteratorGetElement(&it);
-    jsvArrayIteratorNext(&it);
+    args[n++] = jsvObjectIteratorGetValue(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
 
   jsiQueueObjectCallbacks(parent, eventName, args, n);
@@ -395,7 +395,7 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
     // Eep. We must remove everything beginning with '#on'
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, parent);
-    while (jsvObjectIteratorHasElement(&it)) {
+    while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
       if (jsvIsString(key) &&
@@ -445,7 +445,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   // now re-add other entries
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, newFunc);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *el = jsvObjectIteratorGetKey(&it);
     jsvObjectIteratorNext(&it);
     if (!jsvIsStringEqual(el, JSPARSE_FUNCTION_SCOPE_NAME)) {
@@ -492,17 +492,17 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
 
 
     for (i=0;i<argC;i++) args[i] = 0;
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, argsArray);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, argsArray);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       if (idx>=0 && idx<(int)argC) {
         assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvArrayIteratorGetElement(&it);
+        args[idx] = jsvObjectIteratorGetValue(&it);
       }
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
   } else if (!jsvIsUndefined(argsArray)) {
     jsWarn("Second argument to Function.apply must be an array");
   }

@@ -227,13 +227,13 @@ JsVar *jspeiGetScopesAsVar() {
 void jspeiLoadScopesFromVar(JsVar *arr) {
     execInfo.scopeCount = 0;
 
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, arr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      execInfo.scopes[execInfo.scopeCount++] = jsvArrayIteratorGetElement(&it);
-      jsvArrayIteratorNext(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, arr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      execInfo.scopes[execInfo.scopeCount++] = jsvObjectIteratorGetValue(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
 }
 // -----------------------------------------------
 bool jspCheckStackPosition() {

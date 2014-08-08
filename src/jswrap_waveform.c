@@ -52,10 +52,10 @@ static JsVar *jswrap_waveform_getBuffer(JsVar *waveform, int bufferNumber, bool 
 bool jswrap_waveform_idle() {
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, waveforms);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *waveform = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, waveforms);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *waveform = jsvObjectIteratorGetValue(&it);
 
       bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
       if (running) {
@@ -91,11 +91,11 @@ bool jswrap_waveform_idle() {
       jsvUnLock(waveform);
       // if not running, remove waveform from this list
       if (!running)
-        jsvArrayIteratorRemoveAndGotoNext(&it, waveforms);
+        jsvObjectIteratorRemoveAndGotoNext(&it, waveforms);
       else
-        jsvArrayIteratorNext(&it);
+        jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     jsvUnLock(waveforms);
   }
   return false; // no need to stay awake - an IRQ will wake us
@@ -105,10 +105,10 @@ bool jswrap_waveform_idle() {
 void jswrap_waveform_kill() { // be sure to remove all waveforms...
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, 0);
   if (waveforms) {
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, waveforms);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *waveform = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, waveforms);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *waveform = jsvObjectIteratorGetValue(&it);
       bool running = jsvGetBoolAndUnLock(jsvObjectGetChild(waveform, "running", 0));
       if (running) {
         JsVar *buffer = jswrap_waveform_getBuffer(waveform,0,0);
@@ -119,9 +119,9 @@ void jswrap_waveform_kill() { // be sure to remove all waveforms...
       }
       jsvUnLock(waveform);
       // if not running, remove waveform from this list
-      jsvArrayIteratorRemoveAndGotoNext(&it, waveforms);
+      jsvObjectIteratorRemoveAndGotoNext(&it, waveforms);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     jsvUnLock(waveforms);
   }
 }

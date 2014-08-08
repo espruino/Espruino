@@ -115,74 +115,12 @@ static inline void jsvStringIteratorFree(JsvStringIterator *it) {
 void jsvStringIteratorPrintfCallback(const char *str, void *user_data);
 
 // --------------------------------------------------------------------------------------------
-typedef struct JsvArrayIterator {
-  JsVar *var;
-} JsvArrayIterator;
-
-static inline void jsvArrayIteratorNew(JsvArrayIterator *it, JsVar *arr) {
-  assert(jsvIsArray(arr));
-  it->var = jsvGetFirstChild(arr) ? jsvLock(jsvGetFirstChild(arr)) : 0;
-}
-
-/// Clone the iterator
-static inline JsvArrayIterator jsvArrayIteratorClone(JsvArrayIterator *it) {
-  JsvArrayIterator i = *it;
-  if (i.var) jsvLockAgain(i.var);
-  return i;
-}
-
-/// Gets the current array element (or 0)
-static inline JsVar *jsvArrayIteratorGetElement(JsvArrayIterator *it) {
-  if (!it->var) return 0; // end of array
-  return jsvSkipName(it->var); // might even be undefined
-}
-
-/// Set the current array element
-static inline void jsvArrayIteratorSetElement(JsvArrayIterator *it, JsVar *value) {
-  if (!it->var) return; // end of array
-  jsvSetValueOfName(it->var, value);
-}
-
-/// Gets the current array element index (or 0)
-static inline JsVar *jsvArrayIteratorGetIndex(JsvArrayIterator *it) {
-  if (!it->var) return 0;
-  return jsvLockAgain(it->var);
-}
-
-/// Do we have a character, or are we at the end?
-static inline bool jsvArrayIteratorHasElement(JsvArrayIterator *it) {
-  return it->var != 0;
-}
-
-/// Move to next element
-static inline void jsvArrayIteratorNext(JsvArrayIterator *it) {
-  if (it->var) {
-    JsVarRef next = jsvGetNextSibling(it->var);
-    jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
-  }
-}
-
-/// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvArrayIteratorNew) as we don't store it
-static inline void jsvArrayIteratorRemoveAndGotoNext(JsvArrayIterator *it, JsVar *parent) {
-  if (it->var) {
-    JsVarRef next = jsvGetNextSibling(it->var);
-    jsvRemoveChild(parent, it->var);
-    jsvUnLock(it->var);
-    it->var = next ? jsvLock(next) : 0;
-  }
-}
-
-static inline void jsvArrayIteratorFree(JsvArrayIterator *it) {
-  jsvUnLock(it->var);
-}
-// --------------------------------------------------------------------------------------------
 typedef struct JsvObjectIterator {
   JsVar *var;
 } JsvObjectIterator;
 
 static inline void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsObject(obj) || jsvIsFunction(obj));
+  assert(jsvIsArray(arr) || jsvIsObject(obj) || jsvIsFunction(obj));
   it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
 }
 
@@ -213,7 +151,7 @@ static inline void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value
 
 
 /// Do we have a key, or are we at the end?
-static inline bool jsvObjectIteratorHasElement(JsvObjectIterator *it) {
+static inline bool jsvObjectIteratorHasValue(JsvObjectIterator *it) {
   return it->var != 0;
 }
 
@@ -221,6 +159,16 @@ static inline bool jsvObjectIteratorHasElement(JsvObjectIterator *it) {
 static inline void jsvObjectIteratorNext(JsvObjectIterator *it) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);
+    jsvUnLock(it->var);
+    it->var = next ? jsvLock(next) : 0;
+  }
+}
+
+/// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvArrayIteratorNew) as we don't store it
+static inline void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
+  if (it->var) {
+    JsVarRef next = jsvGetNextSibling(it->var);
+    jsvRemoveChild(parent, it->var);
     jsvUnLock(it->var);
     it->var = next ? jsvLock(next) : 0;
   }
@@ -266,13 +214,12 @@ void   jsvArrayBufferIteratorFree(JsvArrayBufferIterator *it);
 union JsvIteratorUnion {
   JsvStringIterator str;
   JsvObjectIterator obj;
-  JsvArrayIterator arr;
   JsvArrayBufferIterator buf;
 };
 
 /** General Purpose iterator, for Strings, Arrays, Objects, Typed Arrays */
 typedef struct JsvIterator {
-  enum {JSVI_STRING, JSVI_ARRAY, JSVI_OBJECT, JSVI_ARRAYBUFFER } type;
+  enum {JSVI_STRING, JSVI_OBJECT, JSVI_ARRAYBUFFER } type;
   union JsvIteratorUnion it;
 } JsvIterator;
 

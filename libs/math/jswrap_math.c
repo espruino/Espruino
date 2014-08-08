@@ -296,15 +296,15 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
   JsVarFloat v = isMax ? -INFINITY : INFINITY;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, args);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVarFloat arg = jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it));
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, args);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVarFloat arg = jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
     if ((isMax && arg > v) || (!isMax && arg < v) || isnan(arg))
       v = arg;
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   return v;
 }

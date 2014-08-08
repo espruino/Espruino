@@ -135,16 +135,16 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   if (jsvIsArray(pinVar)) {
     int pins = 0;
     JsVarInt value = 0;
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, pinVar);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *pinPtr = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, pinVar);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *pinPtr = jsvObjectIteratorGetValue(&it);
       value = (value<<1) | (JsVarInt)jshPinInput(jshGetPinFromVar(pinPtr));
       jsvUnLock(pinPtr);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
       pins++;
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     if (pins==0) return 0; // return undefined if array empty
     return value;
   } else {
@@ -286,17 +286,17 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
 
   if (jsvIsUndefined(idVar)) {
     JsVar *watchArrayPtr = jsvLock(watchArray);
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, watchArrayPtr);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVar *watchPtr = jsvArrayIteratorGetElement(&it);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, watchArrayPtr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
       jsvUnLock(watchPin);
       jsvUnLock(watchPtr);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     // remove all items
     jsvRemoveAllChildren(watchArrayPtr);
     jsvUnLock(watchArrayPtr);

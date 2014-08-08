@@ -39,7 +39,7 @@ JsVar *jswrap_arguments() {
 
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, scope);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *idx = jsvObjectIteratorGetKey(&it);
     if (jsvIsFunctionParameter(idx)) {
       JsVar *val = jsvSkipOneName(idx);

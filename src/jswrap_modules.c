@@ -106,7 +106,7 @@ JsVar *jswrap_modules_getCached() {
 
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, moduleList);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *idx = jsvObjectIteratorGetKey(&it);
     JsVar *idxCopy  = jsvCopyNameOnly(idx, false, false);
     jsvArrayPushAndUnLock(arr, idxCopy);

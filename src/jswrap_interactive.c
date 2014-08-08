@@ -121,20 +121,20 @@ void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
 
   jsiConsoleRemoveInputLine();
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, v);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *v = jsvArrayIteratorGetElement(&it);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, v);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *v = jsvObjectIteratorGetValue(&it);
     if (jsvIsString(v)) 
       jsiConsolePrintStringVar(v);
     else
       jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);
     jsvUnLock(v);
-    jsvArrayIteratorNext(&it);
-    if (jsvArrayIteratorHasElement(&it))
+    jsvObjectIteratorNext(&it);
+    if (jsvObjectIteratorHasValue(&it))
       jsiConsolePrint(" ");
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   jsiConsolePrint("\n");
 }
 
