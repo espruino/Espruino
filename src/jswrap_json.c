@@ -132,13 +132,15 @@ JsVar *jswrap_json_parse(JsVar *v) {
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data) {
   assert(jsvIsFunction(var));
-  JsVarRef coderef = 0; // TODO: this should really be in jsvAsString
-  JsVarRef childref = jsvGetFirstChild(var);
+  JsVar *codeVar = 0; // TODO: this should really be in jsvAsString
+
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, var);
+
   bool firstParm = true;
   cbprintf(user_callback, user_data, "(");
-  while (childref) {
-    JsVar *child = jsvLock(childref);
-    childref = jsvGetNextSibling(child);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *child = jsvObjectIteratorGetKey(&it);
     if (jsvIsFunctionParameter(child)) {
       if (firstParm)
         firstParm=false;
@@ -146,25 +148,26 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         cbprintf(user_callback, user_data, ",");
       cbprintf(user_callback, user_data, "%v", child);
     } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
-      coderef = jsvGetFirstChild(child);
+      codeVar = jsvObjectIteratorGetValue(&it);
     }
     jsvUnLock(child);
+    jsvObjectIteratorNext(&it);
   }
+  jsvObjectIteratorFree(&it);
   cbprintf(user_callback, user_data, ") ");
 
   if (jsvIsNative(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
   } else {
-    if (coderef) {
+    if (codeVar) {
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-       JsVar *codeVar = jsvLock(coderef);
-       cbprintf(user_callback, user_data, "%v", codeVar);
-       jsvUnLock(codeVar);
+        cbprintf(user_callback, user_data, "%v", codeVar);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
+  jsvUnLock(codeVar);
 }
 
 void jsfGetEscapedString(JsVar *var, vcbprintf_callback user_callback, void *user_data) {

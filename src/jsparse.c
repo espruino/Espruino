@@ -483,14 +483,14 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
        *
        * IN THAT ORDER.
        */
-      JsVarRef v = jsvGetFirstChild(function);
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, function);
       if (isParsing) {
         int hadParams = 0;
         // grab in all parameters. We go around this loop until we've run out
         // of named parameters AND we've parsed all the supplied arguments
         while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')') {
-          JsVar *param = 0;
-          if (v) param = jsvLock(v);
+          JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
           if (execInfo.lex->tk!=')' || paramDefined) {
             hadParams++;
@@ -513,14 +513,14 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jsvUnLock(value);
             if (execInfo.lex->tk!=')') JSP_MATCH(',');
           }
-          if (paramDefined) v = jsvGetNextSibling(param);
           jsvUnLock(param);
+          if (paramDefined) jsvObjectIteratorNext(&it);
         }
         JSP_MATCH(')');
       } else if (JSP_SHOULD_EXECUTE) {  // and NOT isParsing
         int args = 0;
         while (args<argCount) {
-          JsVar *param = v ? jsvLock(v) : 0;
+          JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
           JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
           if (paramName) {
@@ -531,13 +531,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           } else
             jspSetError(false);
           args++;
-          if (paramDefined) v = jsvGetNextSibling(param);
           jsvUnLock(param);
+          if (paramDefined) jsvObjectIteratorNext(&it);
         }
       }
       // Now go through what's left
-      while (v) {
-        JsVar *param = jsvLock(v);
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *param = jsvObjectIteratorGetKey(&it);
         if (jsvIsString(param)) {
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
@@ -551,9 +551,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             }
           }
         }
-        v = jsvGetNextSibling(param);
         jsvUnLock(param);
+        jsvObjectIteratorNext(&it);
       }
+      jsvObjectIteratorFree(&it);
 
       // setup a the function's name (if a named function)
       if (functionInternalName) {
