@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_string.h"
+#include "jsvariterator.h"
 
 /*JSON{ "type":"class",
         "class" : "String",

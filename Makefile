@@ -410,6 +410,7 @@ src/jswrap_waveform.c
 SOURCES = \
 src/jslex.c \
 src/jsvar.c \
+src/jsvariterator.c \
 src/jsutils.c \
 src/jsnative.c \
 src/jsparse.c \

@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_http.h"
+#include "jsvariterator.h"
 #include "httpserver.h"
 #include "../network.h"
 

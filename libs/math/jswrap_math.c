@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_math.h"
+#include "jsvariterator.h"
 
 static bool isNegativeZero(double x) {
   double NEGATIVE_ZERO = -0.0;
