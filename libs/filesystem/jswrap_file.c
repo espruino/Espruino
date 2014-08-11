@@ -18,14 +18,59 @@
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
 
-// from jswrap_fat
-extern bool jsfsInit();
-extern void jsfsReportError(const char *msg, FRESULT res);
+
+#ifndef LINUX
+FATFS jsfsFAT;
+#endif
+
+bool fat_initialised = false;
+
+void jsfsReportError(const char *msg, FRESULT res) {
+  const char *errStr = "UNKNOWN";
+  if (res==FR_OK             ) errStr = "OK";
+#ifndef LINUX
+  else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
+  else if (res==FR_INT_ERR        ) errStr = "INT_ERR";
+  else if (res==FR_NOT_READY      ) errStr = "NOT_READY";
+  else if (res==FR_NO_FILE        ) errStr = "NO_FILE";
+  else if (res==FR_NO_PATH        ) errStr = "NO_PATH";
+  else if (res==FR_INVALID_NAME   ) errStr = "INVALID_NAME";
+  else if (res==FR_DENIED         ) errStr = "DENIED";
+  else if (res==FR_EXIST          ) errStr = "EXIST";
+  else if (res==FR_INVALID_OBJECT ) errStr = "INVALID_OBJECT";
+  else if (res==FR_WRITE_PROTECTED) errStr = "WRITE_PROTECTED";
+  else if (res==FR_INVALID_DRIVE  ) errStr = "INVALID_DRIVE";
+  else if (res==FR_NOT_ENABLED    ) errStr = "NOT_ENABLED";
+  else if (res==FR_NO_FILESYSTEM  ) errStr = "NO_FILESYSTEM";
+  else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
+  else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
+#endif
+  jsError("%s : %s", msg, errStr);
+}
+
+bool jsfsInit() {
+#ifndef LINUX
+  if (!fat_initialised) {
+    FRESULT res;
+    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
+      jsfsReportError("Unable to mount SD card", res);
+      return false;
+    }
+    fat_initialised = true;
+  }
+#endif
+  return true;
+}
+
+
+
+
 
 /*JSON{ "type":"library",
         "class" : "File",
         "description" : ["This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).",
-                         "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information." ]
+                         "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information.",
+                         "**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card." ]
 }*/
 
 static JsVar* fsGetArray(bool create) {
@@ -61,22 +106,37 @@ static void fileSetVar(JsFile *file) {
 
 /*JSON{ "type":"kill", "generate" : "jswrap_file_kill" }*/
 void jswrap_file_kill() {
-  {
-    JsVar *arr = fsGetArray(false);
-    if (arr) {
-      JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, arr);
-      while (jsvObjectIteratorHasValue(&it)) {
-        JsVar *file = jsvObjectIteratorGetValue(&it);
-        jswrap_file_close(file);
-        jsvUnLock(file);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-      jsvRemoveAllChildren(arr);
-      jsvUnLock(arr);
+  JsVar *arr = fsGetArray(false);
+  if (arr) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, arr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *file = jsvObjectIteratorGetValue(&it);
+      jswrap_file_close(file);
+      jsvUnLock(file);
+      jsvObjectIteratorNext(&it);
     }
+    jsvObjectIteratorFree(&it);
+    jsvRemoveAllChildren(arr);
+    jsvUnLock(arr);
   }
+  // close fs library
+#ifndef LINUX
+  if (fat_initialised) {
+    fat_initialised = false;
+    f_mount(0, 0, 0);
+  }
+#endif
+}
+
+/*JSON{ "type":"staticmethod",
+        "class" : "E",
+        "name" : "unmountSD",
+        "generate" : "jswrap_E_unmountSD",
+        "description" : [ "Unmount the SD card, so it can be removed. If you remove the SD card without calling this you may cause corruption, and you will be unable to access another SD card until you reset Espruino or call `E.unmountSD()`." ]
+}*/
+void jswrap_E_unmountSD() {
+  jswrap_file_kill();
 }
 
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
