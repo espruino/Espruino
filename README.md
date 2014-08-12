@@ -82,12 +82,12 @@ If you are a board manufacturer interested in getting your board officially supp
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 
 
-Building
---------
+Building under Linux
+------------------
   
-Espruino is easy to build under Linux, and it is possible to build under MacOS. We'd strongly suggest that you *DO NOT TRY AND BUILD UNDER WINDOWS*, and instead use a Virtual Machine. There's a good post on how to do this here: http://forum.espruino.com/conversations/151
+Espruino is easy to build under Linux, and it is possible to build under MacOS with some effort. If you don't have Linux it's **much** easier to just use a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information.
 
-### For ARM Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
+### Building for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
   
 We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may need changing...
 
@@ -96,31 +96,31 @@ We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may
 * See the top of Makefile for board names
 * Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
 * `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for Espruino + HY boards)
-* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if discovery, or maple bootloader if using that board
+* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if it's a discovery board, or the maple bootloader if using that board
 
 It may complain that there isn't enough space on the chip. This isn't an issue unless you save to flash, but you can fix the error in a few ways:
 
-* Disable the check
-* Change the compile flags from `-O3` to `-Os`
-* Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need
+* Disable the check by adding `TRAVIS=1`
+* Change the compile flags from `-O3` to `-Os` in the `Makefile`
+* Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need in the `Makefile`
 * Try different compilers. `codesourcery-2013.05-23-arm-none-eabi` provides low binary size for `-O3`
 
-**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved upwards 10kb to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones on the Espruino website) use `scripts/create_espruino_image_1v3.sh`.
+**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
-### Linux
+### Building for Linux
 
-Just run `make`
+Simple: Just run `make`
 
-## Arduino
+## Building for Arduino
 
-This will not work - these steps are only to get you started.
+This does not work right now - these steps are only to get you started!
 
 * `sudo apt-get install gcc-avr avr-libc avrdude`
 * `sudo cp -r /usr/share/arduino/hardware/arduino targetlibs/arduino_avr`
 * `ARDUINOMEGA2560=1 make`
-* You'll need to flash it yourself
+* You'll then need to flash the binary yourself
 
-### Raspberry Pi
+### Building for Raspberry Pi
 
 On the Pi, just run `make`.
 
@@ -134,18 +134,57 @@ git clone git://github.com/raspberrypi/tools.git
 sudo apt-get install ia32-libs
 ```
 
-### Carambola (OpenWRT)
+### Building for Carambola (OpenWRT)
 
 To cross compile,
 
 * Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
 * Run ```CARAMBOLA=1 make```
 
-### Documentation
+### Building Documentation
 
-```  python scripts/build_docs.py ```
+```python scripts/build_docs.py ```
 
 This will create a file called ```functions.html```
+
+
+Building under Windows/MacOS with a VM
+---------------------------------
+
+* Download and install the correct [VirtualBox](https://www.virtualbox.org/) for your platform. eg. If you have Windows, download 'VirtualBox for Windows Hosts'.
+* Download the [Ubuntu 14.04 32 bit Desktop ISO Image](http://www.ubuntu.com/download/desktop)
+* Run VirtualBox, and click the 'New' button
+* Give the new OS a name, choose `Linux` as the type, and `Ubuntu (32 bit)` as the version
+* Click `Next`, choose 2048MB of memory, and not to create a hard disk image (ignore the warning). **Note:** We're going to run Ubuntu right from the virtual CD without installing (because it's a bit faster and easier). If you have time you might want to create a hard disk image (you won't need as much memory then) and then choose to install Ubuntu when given the chance.
+* Click start, and when prompted for a CD image choose the Ubuntu ISO you downloaded
+* Wait until a picture of a keyboard appears at the bottom of the screen, then press enter
+* Select a language, and then choose `Try Ubuntu` with the arrow keys
+* When it's booted, press Alt-F2, type `gnome-terminal`, then enter. **Note:** You could also just press Ctrl-Alt-F2 to get a faster but less shiny-looking terminal window.
+* In the terminal, type: `sudo add-apt-repository ppa:terry.guo/gcc-arm-embedded` and press enter when prompted
+* Type `sudo apt-get update`
+* Type `sudo apt-get install gcc-arm-none-eabi git` and press 'Y' if prompted
+* Type `git clone https://github.com/espruino/Espruino.git`
+* Type `cd Espruino`
+* Type `ESPRUINO_1V3=1 make` and wait
+* Espruino is now built. See the documentation under **Building under Linux** for more examples.
+* When you exit the VM, make sure you choose `Save State`. If you `Power Off` you will lose everything you've done so far.
+
+There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made Amazon EC2 instance.
+
+
+### To flash Espruino from the VM
+
+* Plug the Espruino board in while holding BTN1, and wait for Windows to finish connecting to the USB device
+* Go into the VirtualBox Manager (There's no need to stop your VM)
+* Click on `USB`, then click on the icon with the `+` sign (With the tooltip 'Adds a new USB filter ... selected USB device')
+* Click on the device labelled `STMicroelectronics STM32 ...`
+* Now unplug the Espruino board, wait a few seconds, and plug it back in (holding BTN1 again)
+* Go back into the VM, and type `sudo ESPRUINO_1V3=1 make serialflash` 
+* Your board will now be flashed
+
+**Note:** if you want to you can change permissions so you don't need `sudo` by typing `sudo cp misc/45-espruino.rules /etc/udev/rules.d;sudo udevadm control --reload-rules` and then re-inserting the board.
+
+
 
 Testing
 ------
