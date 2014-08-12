@@ -562,7 +562,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   assert(jsvIsInt(var) || jsvIsString(var));
   if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
     int t = JSV_NAME_INT;
-    if (jsvIsInt(valueOrZero) || jsvIsBoolean(valueOrZero)) {
+    if ((jsvIsInt(valueOrZero) || jsvIsBoolean(valueOrZero)) && !jsvIsPin(valueOrZero)) {
       JsVarInt v = valueOrZero->varData.integer;
       if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
         t = jsvIsInt(valueOrZero) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL;
@@ -573,7 +573,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
     var->flags = (JsVarFlags)(var->flags & ~JSV_VARTYPEMASK) | t;
   } else if ((var->flags & JSV_VARTYPEMASK)>=JSV_STRING_0 && (var->flags & JSV_VARTYPEMASK)<=JSV_STRING_MAX) {
     size_t t = JSV_NAME_STRING_0;
-    if (jsvIsInt(valueOrZero)) {
+    if (jsvIsInt(valueOrZero) && !jsvIsPin(valueOrZero)) {
       JsVarInt v = valueOrZero->varData.integer;
       if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
         t = JSV_NAME_STRING_INT_0;
@@ -1602,7 +1602,7 @@ JsVar *jsvSetValueOfName(JsVar *name, JsVar *src) {
     jsvUnRefRef(jsvGetFirstChild(name)); // free existing
   if (src) {
       if (jsvIsInt(name)) {
-        if ((jsvIsInt(src) || jsvIsBoolean(src))) {
+        if ((jsvIsInt(src) || jsvIsBoolean(src)) && !jsvIsPin(src)) {
           JsVarInt v = src->varData.integer;
           if (v>=JSVARREF_MIN && v<=JSVARREF_MAX) {
             name->flags = (name->flags & (JsVarFlags)~JSV_VARTYPEMASK) | (jsvIsInt(src) ? JSV_NAME_INT_INT : JSV_NAME_INT_BOOL);
