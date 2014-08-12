@@ -169,7 +169,7 @@ Building under Windows/MacOS with a VM
 * Espruino is now built. See the documentation under **Building under Linux** for more examples.
 * When you exit the VM, make sure you choose `Save State`. If you `Power Off` you will lose everything you've done so far.
 
-There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made Amazon EC2 instance.
+There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made [Amazon EC2 instance](http://forum.espruino.com/conversations/151/?offset=25#comment20326).
 
 
 ### To flash Espruino from the VM
