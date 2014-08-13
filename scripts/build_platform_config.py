@@ -76,21 +76,35 @@ if not LINUX:
   var_cache_size = var_size*variables
   flash_needed = var_cache_size + 4 # for magic number
   flash_page_size = 1024 # just a guess
+  flash_saved_code_sector = ""
   if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
-  if board.chip["family"]=="STM32F2": flash_page_size = 128*1024
+  if board.chip["family"]=="STM32F2": 
+    flash_page_size = 128*1024
+    flash_saved_code_sector = 11
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
-  if board.chip["family"]=="STM32F4": flash_page_size = 128*1024
+  if board.chip["family"]=="STM32F4": 
+    flash_page_size = 128*1024
+    flash_saved_code_sector = 11
   # F4 has different page sizes in different places
-  flash_pages = (flash_needed+flash_page_size-1)/flash_page_size
+  flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
-  flash_available_for_code = total_flash - (flash_pages*flash_page_size)
-  if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
+
+  if "saved_code" in board.chip:
+    flash_saved_code_start = board.chip["saved_code"]["address"]
+    flash_page_size = board.chip["saved_code"]["page_size"]
+    flash_saved_code_sector = board.chip["saved_code"]["page_number"]
+    flash_saved_code_pages = board.chip["saved_code"]["pages"]
+    flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
+  else:
+    flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
+    flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
+    if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
 
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
   print "VarCache size = "+str(var_cache_size)
   print "Flash page size = "+str(flash_page_size)
-  print "Flash pages = "+str(flash_pages)
+  print "Flash pages = "+str(flash_saved_code_pages)
   print "Total flash = "+str(total_flash)
   print "Flash available for code = "+str(flash_available_for_code)
 
@@ -222,12 +236,13 @@ else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-  codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_pages))
+  codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_saved_code_pages))
   codeOut("#define FLASH_START                     "+hex(0x08000000))
+  if flash_saved_code_sector!="": codeOut("#define FLASH_SAVED_CODE_SECTOR                 "+str(flash_saved_code_sector))
   if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
-  codeOut("#define FLASH_SAVED_CODE_START (FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)")
+  codeOut("#define FLASH_SAVED_CODE_START "+str(flash_saved_code_start))
   codeOut("#define FLASH_MAGIC_LOCATION (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
   codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");

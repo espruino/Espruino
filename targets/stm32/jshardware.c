@@ -2249,7 +2249,10 @@ void jshSaveToFlash() {
 
   jsiConsolePrint("Erasing Flash...");
 #if defined(STM32F2) || defined(STM32F4) 
-  FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
+  for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
+    FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
+    jsiConsolePrint(".");
+  }
 #else
   /* Erase the FLASH pages */
   for(i=0;i<FLASH_SAVED_CODE_PAGES;i++) {

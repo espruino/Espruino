@@ -15,11 +15,11 @@
 
 import pinutils;
 info = {
- 'name' : "STM32F401 Discovery",
- 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1848/PF259098" ],
- 'default_console' : "EV_SERIAL2",
- 'variables' : 2650,
- 'binary_name' : 'espruino_%v_stm32f401Cdiscovery.bin',
+  'name' : "STM32F401C Discovery",
+  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1848/PF259098" ],
+  'default_console' : "EV_SERIAL2",
+  'variables' : 3040,
+  'binary_name' : 'espruino_%v_stm32f401cdiscovery.bin',
 };
 chip = {
   'part' : "STM32F401VCT6",
@@ -33,6 +33,14 @@ chip = {
   'i2c' : 3,
   'adc' : 1,
   'dac' : 0,
+  'saved_code' : {
+    'address' : 0x08004000,
+    'page_size' : 16384, # size of pages
+    'page_number' : 1, # number of page we start at (0 based)
+    'pages' : 3, # number of pages we're using
+    'flash_available' : 256 # binary will have a hole in it, so we just want to test against full size
+  },
+  'place_text_section' : 0x08010000, # note flash_available above
 };
 # left-right, or top-bottom order
 board = {
