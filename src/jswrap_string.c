@@ -267,7 +267,11 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   for (idx=0;idx<=l;idx++) {
     if (splitlen==0 && idx==0) continue; // special case for where split string is ""
     if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
-      if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+      if (idx==l) {
+        idx=l+splitlen; // if the last element, do to the end of the string
+        if (splitlen==0) break;
+      }
+
       JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));
       if (!part) break; // out of memory
       jsvArrayPush(array, part);

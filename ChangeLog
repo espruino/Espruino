@@ -9,6 +9,7 @@
             Refactoring to use iterators wherever possible
             Merge fs_kill and file_kill to ensure that files always die before the filesystem
             Add `E.unmountSD()` to allow SD cards to be removed once they have been used
+            Stop String.split("") adding an empty elementy to the array
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
