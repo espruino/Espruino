@@ -14,6 +14,7 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
+# ESPRUINI_1V0=1          # Espruini board rev 1.0
 # OLIMEXINO_STM32=1                # Olimexino STM32
 # OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
@@ -112,6 +113,15 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
+else ifdef ESPRUINI_1V0
+EMBEDDED=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0 
+USB=1
+USE_GRAPHICS=1
+BOARD=ESPRUINIBOARD_R1_0
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
 USE_FILESYSTEM=1
@@ -191,7 +201,6 @@ USB=1
 USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1 
-FAMILY=STM32F4
 BOARD=STM32F401CDISCOVERY
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -200,7 +209,6 @@ else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1 
-FAMILY=STM32F4
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F429_439xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
@@ -223,7 +231,6 @@ OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
 SAVE_ON_FLASH=1
-FAMILY=STM32F1
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
@@ -249,7 +256,6 @@ USE_FILESYSTEM=1
 DEFINES +=-DECU -DSTM32F4DISCOVERY
 USB=1
 DEFINES += -DUSE_USB_OTG_FS=1
-FAMILY=STM32F4
 BOARD=ECU
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
@@ -1068,20 +1074,17 @@ proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
-ifdef OLIMEXINO_STM32_BOOTLOADER
+ifdef ESPRUINI_1R0
+	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
-else
-ifdef MBED
+else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
-endif
-
-#DFU will look a lot like:
-#sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
 
 serialflash: all
 	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0

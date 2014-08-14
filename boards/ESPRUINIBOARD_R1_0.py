@@ -17,15 +17,14 @@ import pinutils;
 info = {
  'name' : "Espruini Board rev 1.0",
  'link' : [ "http://www.espruino.com/EspruinoBoard" ],
- 'variables' : 1800,
- 'bootloader' : 1,
- 'serial_bootloader' : True,
+ 'default_console' : "EV_SERIAL1",
+ 'variables' : 3040,
  'binary_name' : 'espruino_%v_espruini_1r0.bin',
 };
 chip = {
   'part' : "STM32F401CCU6",
   'family' : "STM32F4",
-  'package' : "UQFN48", # UFQFPN48
+  'package' : "UQFN48", 
   'ram' : 64,
   'flash' : 256,
   'speed' : 84,
@@ -34,6 +33,14 @@ chip = {
   'i2c' : 3,
   'adc' : 1,
   'dac' : 0,
+  'saved_code' : {
+    'address' : 0x08004000,
+    'page_size' : 16384, # size of pages
+    'page_number' : 1, # number of page we start at (0 based)
+    'pages' : 3, # number of pages we're using
+    'flash_available' : 256 # binary will have a hole in it, so we just want to test against full size
+  },
+  'place_text_section' : 0x08010000, # note flash_available above
 };
 # left-right, or top-bottom order
 board = {
@@ -51,6 +58,7 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
+  'BTN1' : { 'pin' : 'C13' }, 
   'LED1' : { 'pin' : 'B12' }, 
   'LED2' : { 'pin' : 'B2' },
   'USB' : { 'pin_charge' :  'B0',
