@@ -17,6 +17,11 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #include "jswrap_error.h"
+#include "jswrap_json.h"
+
+/** Error flags for things that we don't really want to report on the console,
+ * but which are good to know about */
+JsErrorFlags jsErrorFlags;
 
 bool isIDString(const char *s) {
     if (!isAlpha(*s))
@@ -117,13 +122,13 @@ int chtod(char ch) {
 }
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
   const char *numberStart = s;
 
   bool isNegated = false;
-  JsVarInt v = 0;
+  long long v = 0;
   if (*s == '-') {
     isNegated = true;
     s++;
@@ -148,7 +153,7 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 }
 
 /* convert hex, binary, octal or decimal string into an int */
-JsVarInt stringToInt(const char *s) {
+long long stringToInt(const char *s) {
     return stringToIntWithRadix(s,0,0);
 }
 
@@ -163,6 +168,9 @@ NO_INLINE void jsError(const char *fmt, ...) {
 }
 
 NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
+  // If we already had an exception, forget this
+  if (jspHasError()) return;
+
   jsiConsoleRemoveInputLine();
 
   JsVar *var = jsvNewFromEmptyString();
@@ -228,7 +236,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
     jsiConsolePrint("ASSERT FAILED AT ");
   jsiConsolePrintf("%s:%d\n",file,line);
 
-  jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
+  jsvTrace(jsvFindOrCreateRoot(), 2);
   exit(1);
 }
 
@@ -378,8 +386,7 @@ char itoch(int val) {
   return (char)('a'+val-10);
 }
 
-#ifndef HAS_STDLIB
-void itoa(JsVarInt vals,char *str,unsigned int base) {
+void itostr(JsVarInt vals,char *str,unsigned int base) {
   JsVarIntUnsigned val;
   // handle negative numbers
   if (vals<0) {
@@ -403,7 +410,6 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
   }
   str[digits] = 0;
 }
-#endif
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
   const JsVarFloat stopAtError = 0.0000001;
@@ -436,7 +442,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
       val*=radix;
-      while (((fractionalDigits<0) && (val > stopAtError)) || (fractionalDigits > 0)) {
+      while (((fractionalDigits<0) && (fractionalDigits>-12) && (val > stopAtError)) || (fractionalDigits > 0)) {
         int v = (int)(val+((fractionalDigits==1) ? 0.4 : 0.00000001) );
         val = (val-v)*radix;
         if (--len <= 0) { *str=0; return; } // bounds check
@@ -475,6 +481,7 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
  *   %c = char
  *   %v = JsVar * (doesn't have to be a string - it'll be converted)
  *   %q = JsVar * (in quotes, and escaped)
+ *   %j = Variable printed as JSON
  *   %t = Type of variable
  *   %p = Pin
  *
@@ -491,7 +498,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         int digits = (*fmt++) - '0';
         assert('d' == *fmt); // of the form '%02d'
         fmt++; // skip over 'd'
-        itoa(va_arg(argp, int), buf, 10);
+        itostr(va_arg(argp, int), buf, 10);
         int len = (int)strlen(buf);
         while (len < digits) {
           user_callback("0",user_data);
@@ -500,12 +507,12 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         user_callback(buf,user_data);
         break;
       }
-      case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
-      case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
+      case 'd': itostr(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
+      case 'x': itostr(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
       case 'L': {
         unsigned int rad = 10;
         if (*fmt=='x') { rad=16; fmt++; }
-        itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
+        itostr(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
       } break;
       case 'f': ftoa_bounded(va_arg(argp, JsVarFloat), buf, sizeof(buf)); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;
@@ -534,6 +541,11 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         }
         if (quoted) user_callback("\"",user_data);
       } break;
+      case 'j': {
+        JsVar *v = jsvAsString(va_arg(argp, JsVar*), false/*no unlock*/);
+        jsfGetJSONWithCallback(v, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+        break;
+      }
       case 't': {
         JsVar *v = va_arg(argp, JsVar*);
         const char *n = jsvIsNull(v)?"null":jswGetBasicObjectName(v);
@@ -572,3 +584,4 @@ size_t jsuGetFreeStack() {
   return 100000000; // lots.
 #endif
 }
+

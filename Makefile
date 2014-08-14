@@ -24,17 +24,21 @@
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
+# STM32F401CDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
+# BEAGLEBONE=1
+# ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
+# ARDUINOMEGA2560=1
 # Or nothing for standard linux compile
 #
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-# RELEASE=1               # Force release-style compile (no asserts, etc)
-# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+RELEASE=1               # Force release-style compile (no asserts, etc)
+SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
@@ -53,10 +57,6 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
-ifeq ($(shell uname -m),armv6l)
-RASPBERRYPI=1 # just a guess
-endif
-
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -64,14 +64,6 @@ endif
 
 ifeq ($(OS),Windows_NT)
 MINGW=1
-endif
-
-# Gordon's car ECU (extremely beta!)
-ifdef ECU
-STM32F4DISCOVERY=1
-#HYSTM32_32=1
-USE_TRIGGER=1
-DEFINES += -DECU
 endif
 
 ifdef RELEASE
@@ -147,6 +139,7 @@ else ifdef HYSTM32_24
 EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_24
@@ -168,28 +161,49 @@ else ifdef HYSTM32_32
 EMBEDDED=1
 USE_GRAPHICS=1
 USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
 USE_FILESYSTEM=1
 USE_FILESYSTEM_SDIO=1
 BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-Os
+else ifdef ECU
+EMBEDDED=1
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES += -DUSE_USB_OTG_FS=1 -DECU
+BOARD=ECU
+STLIB=STM32F40_41xxx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
 BOARD=STM32F4DISCOVERY
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+STLIB=STM32F40_41xxx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef STM32F401CDISCOVERY
+USB=1
+USE_NET=1
+USE_GRAPHICS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
+FAMILY=STM32F4
+BOARD=STM32F401CDISCOVERY
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
+FAMILY=STM32F4
 BOARD=STM32F429IDISCOVERY
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+STLIB=STM32F429_439xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
 EMBEDDED=1
@@ -208,8 +222,8 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
+SAVE_ON_FLASH=1
 FAMILY=STM32F1
-CHIP=STM32F100RB
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
@@ -228,6 +242,24 @@ MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
 PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
 OPTIMIZEFLAGS+=-O3
+else ifdef ECU
+# Gordon's car ECU (extremely beta!)
+USE_TRIGGER=1
+USE_FILESYSTEM=1
+DEFINES +=-DECU -DSTM32F4DISCOVERY
+USB=1
+DEFINES += -DUSE_USB_OTG_FS=1
+FAMILY=STM32F4
+BOARD=ECU
+STLIB=STM32F4XX
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef ARDUINOMEGA2560
+EMBEDDED=1
+DEFINES+=-D__AVR_ATmega2560__
+BOARD=ARDUINOMEGA2560
+ARDUINO_AVR=1
+OPTIMIZEFLAGS+=-Os
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -236,7 +268,23 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
-else ifdef RASPBERRYPI
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+else
+ifeq ($(shell uname -m),armv6l)
+RASPBERRYPI=1 # just a guess
+else ifeq ($(shell uname -n),beaglebone)
+BEAGLEBONE=1
+else ifeq ($(shell uname -n),arietta)
+ARIETTA=1
+endif
+
+ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
 DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
@@ -245,13 +293,22 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
-else ifdef LCTECH_STM32F103RBT6
+else ifdef BEAGLEBONE
 EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
+BOARD=BEAGLEBONE_BLACK
+DEFINES += -DBEAGLEBONE_BLACK -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
+else ifdef ARIETTA
+EMBEDDED=1
+BOARD=ARIETTA_G25
+DEFINES += -DARIETTA_G25 -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
 else
 BOARD=LINUX
 LINUX=1
@@ -267,6 +324,7 @@ else ifdef MINGW
 DEFINES += -DHAS_STDLIB=1
 else  # Linux
 USE_NET=1
+endif
 endif
 endif
 
@@ -352,6 +410,7 @@ src/jswrap_waveform.c
 SOURCES = \
 src/jslex.c \
 src/jsvar.c \
+src/jsvariterator.c \
 src/jsutils.c \
 src/jsnative.c \
 src/jsparse.c \
@@ -553,7 +612,7 @@ DEFINES += -DUSB
 endif
 
 ifeq ($(FAMILY), STM32F1)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f1 -I$(ROOT)/targetlibs/stm32f1/lib
@@ -608,7 +667,7 @@ endif #USB
 endif #STM32F1
 
 ifeq ($(FAMILY), STM32F2)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f2 -I$(ROOT)/targetlibs/stm32f2/lib
@@ -672,7 +731,7 @@ endif #USB
 endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f3 -I$(ROOT)/targetlibs/stm32f3/lib
@@ -721,7 +780,7 @@ endif #USB
 endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
@@ -739,19 +798,21 @@ targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
 targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
-targetlibs/stm32f4/lib/stm32f4xx_fsmc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
 targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
@@ -759,6 +820,7 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c 
 
 ifdef USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
@@ -791,6 +853,33 @@ SOURCES += targets/mbed/main.c
 CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
+ifdef ARDUINO_AVR
+MCU = atmega2560
+F_CPU = 16000000
+FORMAT = ihex
+
+ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
+ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+LDFLAGS += --relax
+AVR=1
+INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
+DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
+SOURCES += \
+$(ARDUINO_LIB)/wiring.c \
+$(ARDUINO_LIB)/wiring_digital.c
+
+CPPSOURCES += \
+$(ARDUINO_LIB)/main.cpp \
+$(ARDUINO_LIB)/new.cpp \
+$(ARDUINO_LIB)/WString.cpp \
+$(ARDUINO_LIB)/Print.cpp \
+$(ARDUINO_LIB)/HardwareSerial.cpp \
+targets/arduino/jshardware.cpp \
+targets/arduino/espruino.cpp 
+
+export CCPREFIX=avr-
+endif
+
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
@@ -807,11 +896,6 @@ endif
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
 
-# 4.6
-#export CCPREFIX=arm-linux-gnueabi-
-# 4.5
-#export CCPREFIX=~/sat/bin/arm-none-eabi-
-# 4.4
 export CCPREFIX=arm-none-eabi-
 endif # ARM
 
@@ -995,6 +1079,9 @@ else
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 endif
+
+#DFU will look a lot like:
+#sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
 
 serialflash: all
 	echo STM32 inbuilt serial bootloader, set BOOT0=1, BOOT1=0

@@ -24,6 +24,11 @@ const unsigned int JSON_LIMIT_STRING_AMOUNT = 40; // how big are strings before 
 const unsigned int JSON_LIMITED_STRING_AMOUNT = 17; // When limited, how many chars do we show at the beginning and end
 const char *JSON_LIMIT_TEXT = " ... ";
 
+
+/*JSON{ "type":"class", "class" : "JSON",
+         "description" : "An Object that handles conversion to and from the JSON data interchange format"
+}*/
+
 /*JSON{ "type":"staticmethod",
          "class" : "JSON", "name" : "stringify",
          "description" : "Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval",
@@ -45,9 +50,9 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     case LEX_R_FALSE: jslGetNextToken(lex); return jsvNewFromBool(false);
     case LEX_R_NULL:  jslGetNextToken(lex); return jsvNewWithFlags(JSV_NULL);
     case LEX_INT: {
-      JsVarInt v = stringToInt(jslGetTokenValueAsString(lex));
+      long long v = stringToInt(jslGetTokenValueAsString(lex));
       jslGetNextToken(lex);
-      return jsvNewFromInteger(v);
+      return jsvNewFromLongInteger(v);
     }
     case LEX_FLOAT: {
       JsVarFloat v = stringToFloat(jslGetTokenValueAsString(lex));
@@ -127,13 +132,15 @@ JsVar *jswrap_json_parse(JsVar *v) {
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */
 void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user_callback, void *user_data) {
   assert(jsvIsFunction(var));
-  JsVarRef coderef = 0; // TODO: this should really be in jsvAsString
-  JsVarRef childref = var->firstChild;
+  JsVar *codeVar = 0; // TODO: this should really be in jsvAsString
+
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, var);
+
   bool firstParm = true;
   cbprintf(user_callback, user_data, "(");
-  while (childref) {
-    JsVar *child = jsvLock(childref);
-    childref = child->nextSibling;
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *child = jsvObjectIteratorGetKey(&it);
     if (jsvIsFunctionParameter(child)) {
       if (firstParm)
         firstParm=false;
@@ -141,25 +148,26 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
         cbprintf(user_callback, user_data, ",");
       cbprintf(user_callback, user_data, "%v", child);
     } else if (jsvIsString(child) && jsvIsStringEqual(child, JSPARSE_FUNCTION_CODE_NAME)) {
-      coderef = child->firstChild;
+      codeVar = jsvObjectIteratorGetValue(&it);
     }
     jsvUnLock(child);
+    jsvObjectIteratorNext(&it);
   }
+  jsvObjectIteratorFree(&it);
   cbprintf(user_callback, user_data, ") ");
 
   if (jsvIsNative(var)) {
     cbprintf(user_callback, user_data, "{ [native code] }");
   } else {
-    if (coderef) {
+    if (codeVar) {
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-       JsVar *codeVar = jsvLock(coderef);
-       cbprintf(user_callback, user_data, "%v", codeVar);
-       jsvUnLock(codeVar);
+        cbprintf(user_callback, user_data, "%v", codeVar);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
+  jsvUnLock(codeVar);
 }
 
 void jsfGetEscapedString(JsVar *var, vcbprintf_callback user_callback, void *user_data) {
@@ -258,7 +266,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
         JsvObjectIterator it;
         jsvObjectIteratorNew(&it, var);
         cbprintf(user_callback, user_data, "{");
-        while (jsvObjectIteratorHasElement(&it) && !jspIsInterrupted()) {
+        while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
           JsVar *index = jsvObjectIteratorGetKey(&it);
           JsVar *item = jsvObjectIteratorGetValue(&it);
           bool hidden = jsvIsInternalObjectKey(index) ||

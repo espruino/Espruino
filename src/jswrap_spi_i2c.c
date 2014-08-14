@@ -195,11 +195,11 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
     if (!dst) return 0;
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, srcdata);
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, srcdata);
     int incount = 0, outcount = 0;
-    while (jsvArrayIteratorHasElement(&it) && !jspIsInterrupted()) {
-      unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
+    while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
+      unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
       incount++;
       int out = spiSend(in, spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
       if (out>=0) {
@@ -207,9 +207,9 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
         JsVar *outVar = jsvNewFromInteger(out);
         jsvArrayPushAndUnLock(dst, outVar);
       }
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
@@ -521,12 +521,21 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
 }
 
 
+static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
+  *sendStop = true;
+  if (jsvIsObject(address)) {
+    JsVar *stopVar = jsvObjectGetChild(address, "stop", 0);
+    if (stopVar) *sendStop = jsvGetBoolAndUnLock(stopVar);
+    return jsvGetIntegerAndUnLock(jsvObjectGetChild(address, "address", 0));
+  } else
+    return jsvGetInteger(address);
+}
 
 
 /*JSON{ "type":"method", "class": "I2C", "name" : "writeTo",
          "description" : "Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.",
          "generate" : "jswrap_i2c_writeTo",
-         "params" : [ [ "address", "int32", "The 7 bit address of the device to transmit to" ],
+         "params" : [ [ "address", "JsVar", "The 7 bit address of the device to transmit to, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal." ],
                       [ "data", "JsVarArray", "One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`." ]]
 }*/
 typedef struct { unsigned char *buf; int idx; } JsI2CWriteCbData;
@@ -534,9 +543,12 @@ static void jswrap_i2c_writeToCb(int data, void *userData) {
   JsI2CWriteCbData *cbData = (JsI2CWriteCbData*)userData;
   cbData->buf[cbData->idx++] = (unsigned char)data;
 }
-void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *args) {
+void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return;
+
+  bool sendStop = true;
+  int address = i2c_get_address(addressVar, &sendStop);
 
   size_t l = (size_t)jsvIterateCallbackCount(args);
   if (l+256 > jsuGetFreeStack()) {
@@ -549,19 +561,22 @@ void jswrap_i2c_writeTo(JsVar *parent, int address, JsVar *args) {
   cbData.idx = 0;
   jsvIterateCallback(args, jswrap_i2c_writeToCb, (void*)&cbData);
 
-  jshI2CWrite(device, (unsigned char)address, cbData.idx, cbData.buf);
+  jshI2CWrite(device, (unsigned char)address, cbData.idx, cbData.buf, sendStop);
 }
 
 /*JSON{ "type":"method", "class": "I2C", "name" : "readFrom",
          "description" : "Request bytes from the given slave device, and return them as an array. This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP",
          "generate" : "jswrap_i2c_readFrom",
-         "params" : [ [ "address", "int32", "The 7 bit address of the device to request bytes from" ],
+         "params" : [ [ "address", "JsVar", "The 7 bit address of the device to request bytes from, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal." ],
                       [ "quantity", "int32", "The number of bytes to request" ] ],
          "return" : [ "JsVar", "The data that was returned - an array of bytes" ]
 }*/
-JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
+JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return 0;
+
+  bool sendStop = true;
+  int address = i2c_get_address(addressVar, &sendStop);
 
   if (nBytes<=0)
     return 0;
@@ -571,7 +586,7 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, int address, int nBytes) {
   }
   unsigned char *buf = (unsigned char *)alloca((size_t)nBytes);
 
-  jshI2CRead(device, (unsigned char)address, nBytes, buf);
+  jshI2CRead(device, (unsigned char)address, nBytes, buf, sendStop);
 
   // OPT: could use ArrayBuffer for return values
   JsVar *array = jsvNewWithFlags(JSV_ARRAY);

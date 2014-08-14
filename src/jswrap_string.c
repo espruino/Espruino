@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_string.h"
+#include "jsvariterator.h"
 
 /*JSON{ "type":"class",
         "class" : "String",
@@ -52,14 +53,14 @@ JsVar *jswrap_string_fromCharCode(JsVar *arr) {
   JsVar *r = jsvNewFromEmptyString();
   if (!r) return 0;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, arr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    char ch = (char)jsvGetIntegerAndUnLock(jsvArrayIteratorGetElement(&it));
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
+    char ch = (char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
     jsvAppendStringBuf(r, &ch, 1);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   return r;
 }
@@ -257,8 +258,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
     return array;
   }
 
-  split = jsvAsString(split, true);
-
+  split = jsvAsString(split, false);
 
   int idx, last = 0;
   int splitlen = jsvIsUndefined(split) ? 0 : (int)jsvGetStringLength(split);
@@ -267,7 +267,11 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
   for (idx=0;idx<=l;idx++) {
     if (splitlen==0 && idx==0) continue; // special case for where split string is ""
     if (idx==l || splitlen==0 || jsvCompareString(parent, split, (size_t)idx, 0, true)==0) {
-      if (idx==l) idx=l+splitlen; // if the last element, do to the end of the string
+      if (idx==l) {
+        idx=l+splitlen; // if the last element, do to the end of the string
+        if (splitlen==0) break;
+      }
+
       JsVar *part = jsvNewFromStringVar(parent, (size_t)last, (size_t)(idx-last));
       if (!part) break; // out of memory
       jsvArrayPush(array, part);
@@ -275,6 +279,7 @@ JsVar *jswrap_string_split(JsVar *parent, JsVar *split) {
       last = idx+splitlen;
     }
   }
+  jsvUnLock(split);
   return array;
 }
 

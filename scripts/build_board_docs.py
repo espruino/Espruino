@@ -265,7 +265,7 @@ writeHTML('   <TR><TH>USB</TH><TD>'+("Yes" if "USB" in board.devices else "No")+
 writeHTML('   <TR><TH>DACs</TH><TD>'+(str(board.chip['dac']) if board.chip['dac']>0 else "No")+'</TD></TR>')
 writeHTML('   <TR><TH>SD Card</TH><TD>'+("Yes" if "SD" in board.devices else "No")+'</TD></TR>')
 writeHTML('  </TABLE>')
-writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/kick">support us on KickStarter</a>!</P>')
+writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/Order">support us by buying our board</a>!</P>')
 writeHTML('  <H2>Pinout</H2>')
 writeHTML('  <P>Hover the mouse over a pin function for more information</P>')
 writeHTML('  <DIV id="boardcontainer">')

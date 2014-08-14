@@ -90,6 +90,10 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_SPI2 GPIO_AF_5
 #endif
 
+#if defined(STM32F401xx)
+#define NO_USART3
+#endif
+
 
 
 static inline uint8_t pinToEVEXTI(Pin ipin) {
@@ -684,7 +688,7 @@ void jshDoSysTick() {
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
       RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
-    jshRTCPrescalerReciprocal = (((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
+    jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
     //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
@@ -776,7 +780,7 @@ inline void jshPinSetState(Pin pin, JshPinState state) {
             state==JSHPINSTATE_USART_IN ||
             state==JSHPINSTATE_USART_OUT ||
             state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP;
+  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
   bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
@@ -871,8 +875,12 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   bool remap = (func&JSH_MASK_AF)!=JSH_AF0;
   if ((func&JSH_MASK_TYPE)==JSH_TIMER1)       GPIO_PinRemapConfig( GPIO_FullRemap_TIM1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER2)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM2, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3)  GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
+  else if ((func&JSH_MASK_TYPE)==JSH_TIMER3) {
+    if (pin == JSH_PORTB_OFFSET+4 || pin == JSH_PORTB_OFFSET+5)
+      GPIO_PinRemapConfig( GPIO_PartialRemap_TIM3, remap );
+    else
+      GPIO_PinRemapConfig( GPIO_FullRemap_TIM3, remap );
+  } else if ((func&JSH_MASK_TYPE)==JSH_TIMER4)  GPIO_PinRemapConfig( GPIO_Remap_TIM4, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_TIMER15) GPIO_PinRemapConfig( GPIO_Remap_TIM15, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_I2C1) GPIO_PinRemapConfig( GPIO_Remap_I2C1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_SPI1) GPIO_PinRemapConfig( GPIO_Remap_SPI1, remap );
@@ -908,6 +916,23 @@ static inline unsigned int getSystemTimerFreq() {
 }
 
 // ----------------------------------------------------------------------------
+static void jshResetSerial() {
+  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
+    JshUSARTInfo inf;
+    jshUSARTInitInfo(&inf);
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+#endif
+#ifdef DEFAULT_CONSOLE_BAUDRATE
+    inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
+#endif
+    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
+  }
+}
+
 void jshInit() {
   int i;
   // reset some vars
@@ -1014,23 +1039,16 @@ void jshInit() {
   lastSysTickTime = smoothLastSysTickTime = jshGetRTCSystemTime();
 #endif
 
-  if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
-    JshUSARTInfo inf;
-    jshUSARTInitInfo(&inf);
-    jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
-  }
+  jshResetSerial();
 
 #ifdef STM32F1
-  // reclaim B3 and B4!
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST, ENABLE);    
-  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
-#endif
-#ifdef ESPRUINOBOARD
-  // reclaim A13 and A14 (do we need the two above now?)
 #ifndef DEBUG
+  // reclaim B3, B4, A13 and A14
+
   // don't disable this when compiling with DEBUG=1, because we need SWD
   // for in-circuit debugging and we probably don't care about the LEDs
   // see http://www.espruino.com/AdvancedDebug
+
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
 #endif
 #endif
@@ -1207,9 +1225,20 @@ void jshInit() {
 
 void jshReset() {
   Pin i;
-  for (i=0;i<JSH_PIN_COUNT;i++)
-    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i))
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+#ifdef DEFAULT_CONSOLE_TX_PIN
+    if (i==DEFAULT_CONSOLE_TX_PIN) continue;
+#endif
+#ifdef DEFAULT_CONSOLE_RX_PIN
+    if (i==DEFAULT_CONSOLE_RX_PIN) continue;
+#endif
+    if (!IS_PIN_USED_INTERNALLY(i) && !IS_PIN_A_BUTTON(i)) {
       jshPinSetState(i, JSHPINSTATE_ADC_IN);
+    }
+  }
+
+  // re-initialise serial port (like was done on jshInit)
+  jshResetSerial();
 }
 
 void jshKill() {
@@ -1350,7 +1379,7 @@ bool jshPinInput(Pin pin) {
       jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
     value = jshPinGetValue(pin);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
   return value;
 }
 
@@ -1537,7 +1566,7 @@ void jshPinOutput(Pin pin, bool value) {
     if (!jshGetPinStateIsManual(pin)) 
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
 }
 
 
@@ -1635,7 +1664,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_OCInitStructure.TIM_OutputNState = (func & JSH_TIMER_NEGATED) ? TIM_OutputNState_Enable : TIM_OutputNState_Disable;
   TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
   TIM_OCInitStructure.TIM_Pulse = (uint16_t)(value*TIM_TimeBaseStructure.TIM_Period);
-  if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-TIM_OCInitStructure.TIM_Pulse);
+
+  // So it looks like even if we have CH1N/etc, the output isn't
+  // always negated. Probably because of the CCxNP bits, the output
+  // doesn't need negating in software
+  //if (func & JSH_TIMER_NEGATED) TIM_OCInitStructure.TIM_Pulse = (uint16_t)(TIM_TimeBaseStructure.TIM_Period-TIM_OCInitStructure.TIM_Pulse);
 
   if ((func&JSH_MASK_TIMER_CH)==JSH_TIMER_CH1) {
     TIM_OC1Init(TIMx, &TIM_OCInitStructure);
@@ -1695,7 +1728,7 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     s.EXTI_LineCmd = shouldWatch ? ENABLE : DISABLE;
     EXTI_Init(&s);
-  } else jsError("Invalid pin!");
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
@@ -1828,7 +1861,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#if USARTS>= 3
+#if USARTS>= 3 && !defined(NO_USART3)
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
@@ -2104,7 +2137,7 @@ bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
   JsSysTime endTime = jshGetSystemTime() + jshGetTimeFromMilliseconds(0.1);
   while (!(I2C_GetFlagStatus(I2C, I2C_FLAG_SB))) {
     if (jspIsInterrupted() || (jshGetSystemTime() > endTime)) {
-      jsWarn("I2C device not responding");
+      jsExceptionHere(JSET_ERROR, "I2C device not responding");
       return false;
     }
   }
@@ -2112,10 +2145,10 @@ bool jshI2CWaitStartBit(I2C_TypeDef *I2C) {
 }
 #endif
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
 #if defined(STM32F3)
-  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, I2C_AutoEnd_Mode, I2C_Generate_Start_Write);
+  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, sendStop ? I2C_AutoEnd_Mode : I2C_SoftEnd_Mode, I2C_Generate_Start_Write);
   int i;
   for (i=0;i<nBytes;i++) {
     WAIT_UNTIL((I2C_GetFlagStatus(I2C, I2C_FLAG_TXE) != RESET) ||
@@ -2139,18 +2172,20 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);   
-    WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED), "I2C Write Transmit");
+    int timeout = WAIT_UNTIL_N_CYCLES;
+    while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
+    if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
-  I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
+  if (sendStop) I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   I2C_TypeDef *I2C = getI2CFromDevice(device);
   int i;
 
 #if defined(STM32F3)
-  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, I2C_AutoEnd_Mode, I2C_Generate_Start_Read);
+  I2C_TransferHandling(I2C, (unsigned char)(address << 1), (uint8_t)nBytes, sendStop ? I2C_AutoEnd_Mode : I2C_SoftEnd_Mode, I2C_Generate_Start_Read);
   for (i=0;i<nBytes;i++) {
     WAIT_UNTIL((I2C_GetFlagStatus(I2C, I2C_FLAG_RXNE) != RESET) ||
                (I2C_GetFlagStatus(I2C, I2C_FLAG_NACKF) != RESET), "I2C Read RXNE2");
@@ -2174,7 +2209,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);  
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED), "I2C Read Receive Mode");
   for (i=0;i<nBytes;i++) {
-    if (i == nBytes-1) {
+    if (sendStop && i == nBytes-1) {
       I2C_AcknowledgeConfig(I2C, DISABLE); /* Send STOP Condition */
       I2C_GenerateSTOP(I2C, ENABLE); // Note F4 errata - sending STOP too early completely kills I2C
     }
@@ -2182,8 +2217,10 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     data[i] = I2C_ReceiveData(I2C);
   }
   /*enable NACK bit */
-  WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
-  I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
+  if (sendStop) {
+    WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
+    I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
+  }
 #endif
 }
 
@@ -2212,7 +2249,10 @@ void jshSaveToFlash() {
 
   jsiConsolePrint("Erasing Flash...");
 #if defined(STM32F2) || defined(STM32F4) 
-  FLASH_EraseSector(FLASH_Sector_11, VoltageRange_3);
+  for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
+    FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
+    jsiConsolePrint(".");
+  }
 #else
   /* Erase the FLASH pages */
   for(i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
@@ -2221,9 +2261,7 @@ void jshSaveToFlash() {
   }
 #endif
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrint("\nProgramming ");
-  jsiConsolePrintInt(dataSize);
-  jsiConsolePrint(" Bytes...");
+  jsiConsolePrintf("\nProgramming %d Bytes...", dataSize);
 
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
@@ -2454,10 +2492,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
       // we're going to wake on a System Tick timer anyway, so don't bother
     }
 
-    // TODO: we can do better than this. look at lastSysTickTime
     jsiSetSleep(JSI_SLEEP_ASLEEP);
     __WFI(); // Wait for Interrupt
     jsiSetSleep(JSI_SLEEP_AWAKE);
+
+    /* We may have woken up before the wakeup event. If so
+    then make sure we clear the event */
+    jstClearWakeUp();
     return true;
   }
 
@@ -2550,7 +2591,7 @@ void jshUtilTimerStart(JsSysTime period) {
 void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   // ---- USE TIMER FOR PULSE
   if (!jshIsPinValid(pin)) {
-       jsError("Invalid pin!");
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
        return;
   }
   if (pulseTime<=0) {
@@ -2595,7 +2636,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {
-      unsigned int period = (int)TIMx->ARR; // No getter available
+      unsigned int period = (unsigned int)TIMx->ARR; // No getter available
       uint16_t timerVal =  (uint16_t)(((unsigned int)value * period) >> 16);
       switch (func & JSH_MASK_TIMER_CH) {
       case JSH_TIMER_CH1:  TIM_SetCompare1(TIMx, timerVal); break;
@@ -2624,11 +2665,11 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     int reload = (int)(timeout * 40000 / 256);
     if (reload < 2) {
       reload = 2;
-      jsError("Minimum watchdog timeout exceeded");
+      jsExceptionHere(JSET_ERROR, "Minimum watchdog timeout exceeded");
     }
     if (reload > 0xFFF) {
       reload = 0xFFF;
-      jsError("Maximum watchdog timeout exceeded");
+      jsExceptionHere(JSET_ERROR, "Maximum watchdog timeout exceeded");
     }
     IWDG_SetReload((uint16_t)reload);
 

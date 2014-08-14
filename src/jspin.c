@@ -69,36 +69,44 @@ Pin jshGetPinFromString(const char *s) {
 
   if ((s[0]>='A' && s[0]<='H') && s[1]) { // first 6 are analogs
     int port = JSH_PORTA+s[0]-'A';
-    Pin pin = 127;
-    if (!s[2] && (s[1]>='0' && s[1]<='9')) { // D0-D9
-      pin = (Pin)(s[1]-'0');
-    } else if (!s[3] && (s[1]>='1' && s[1]<='3' && s[2]>='0' && s[2]<='9')) { // D1X-D3X
-      pin = (Pin)((s[1]-'0')*10 + (s[2]-'0'));
+    int pin = -1;
+    if (s[1]>='0' && s[1]<='9') {
+      if (!s[2]) { // D0-D9
+        pin = (s[1]-'0');
+      } else if (s[2]>='0' && s[2]<='9') {
+        if (!s[3]) {
+          pin = ((s[1]-'0')*10 + (s[2]-'0'));
+        } else if (!s[4] && s[3]>='0' && s[3]<='9') {
+          pin = ((s[1]-'0')*100 + (s[2]-'0')*10 + (s[3]-'0'));
+        }
+      }
     }
-    if (port == JSH_PORTA) {
-      if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
-    } else if (port == JSH_PORTB) {
-      if (pin<JSH_PORTB_COUNT) return (Pin)(JSH_PORTB_OFFSET + pin);
-    } else if (port == JSH_PORTC) {
-      if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
-    } else if (port == JSH_PORTD) {
-      if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
+    if (pin>=0) {
+      if (port == JSH_PORTA) {
+        if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
+      } else if (port == JSH_PORTB) {
+        if (pin<JSH_PORTB_COUNT) return (Pin)(JSH_PORTB_OFFSET + pin);
+      } else if (port == JSH_PORTC) {
+        if (pin<JSH_PORTC_COUNT) return (Pin)(JSH_PORTC_OFFSET + pin);
+      } else if (port == JSH_PORTD) {
+        if (pin<JSH_PORTD_COUNT) return (Pin)(JSH_PORTD_OFFSET + pin);
 #if JSH_PORTE_OFFSET!=-1
-    } else if (port == JSH_PORTE) {
-      if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
+      } else if (port == JSH_PORTE) {
+        if (pin<JSH_PORTE_COUNT) return (Pin)(JSH_PORTE_OFFSET + pin);
 #endif
 #if JSH_PORTF_OFFSET!=-1
-    } else if (port == JSH_PORTF) {
-      if (pin<JSH_PORTF_COUNT) return (Pin)(JSH_PORTF_OFFSET + pin);
+      } else if (port == JSH_PORTF) {
+        if (pin<JSH_PORTF_COUNT) return (Pin)(JSH_PORTF_OFFSET + pin);
 #endif
 #if JSH_PORTG_OFFSET!=-1
-    } else if (port == JSH_PORTG) {
-      if (pin<JSH_PORTG_COUNT) return (Pin)(JSH_PORTG_OFFSET + pin);
+      } else if (port == JSH_PORTG) {
+        if (pin<JSH_PORTG_COUNT) return (Pin)(JSH_PORTG_OFFSET + pin);
 #endif
 #if JSH_PORTH_OFFSET!=-1
-    } else if (port == JSH_PORTH) {
-      if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
+      } else if (port == JSH_PORTH) {
+        if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
 #endif
+      }
     }
   }
 
@@ -114,35 +122,35 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
       pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
     result[0]='A';
-    itoa(pin-JSH_PORTA_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTA_OFFSET,&result[1],10);
   } else if (pin>=JSH_PORTB_OFFSET && pin<JSH_PORTB_OFFSET+JSH_PORTB_COUNT) {
     result[0]='B';
-    itoa(pin-JSH_PORTB_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTB_OFFSET,&result[1],10);
   } else if (pin>=JSH_PORTC_OFFSET && pin<JSH_PORTC_OFFSET+JSH_PORTC_COUNT) {
     result[0]='C';
-    itoa(pin-JSH_PORTC_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTC_OFFSET,&result[1],10);
   } else if (pin>=JSH_PORTD_OFFSET && pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
     result[0]='D';
-    itoa(pin-JSH_PORTD_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTD_OFFSET,&result[1],10);
 #if JSH_PORTE_OFFSET!=-1
   } else if (pin>=JSH_PORTE_OFFSET && pin<JSH_PORTE_OFFSET+JSH_PORTE_COUNT) {
     result[0]='E';
-    itoa(pin-JSH_PORTE_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTE_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTF_OFFSET!=-1
   } else if (pin>=JSH_PORTF_OFFSET && pin<JSH_PORTF_OFFSET+JSH_PORTF_COUNT) {
     result[0]='F';
-    itoa(pin-JSH_PORTF_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTF_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTG_OFFSET!=-1
   } else if (pin>=JSH_PORTG_OFFSET && pin<JSH_PORTG_OFFSET+JSH_PORTG_COUNT) {
     result[0]='G';
-    itoa(pin-JSH_PORTG_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTG_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTH_OFFSET!=-1
   } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
     result[0]='H';
-    itoa(pin-JSH_PORTH_OFFSET,&result[1],10);
+    itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
 #endif
   } else {
     strncpy(result, "UNKNOWN", 8);

@@ -32,9 +32,9 @@
 #define HTTP_NAME_ON_CONNECT "#onconnect"
 #define HTTP_NAME_ON_CLOSE "#onclose"
 
-#define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS JS_HIDDEN_CHAR_STR"HttpCC"
-#define HTTP_ARRAY_HTTP_SERVERS JS_HIDDEN_CHAR_STR"HttpS"
-#define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS JS_HIDDEN_CHAR_STR"HttpSC"
+#define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS "HttpCC"
+#define HTTP_ARRAY_HTTP_SERVERS "HttpS"
+#define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS "HttpSC"
 
 // -----------------------------
 
@@ -42,7 +42,7 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
   // append headers
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, headerObject);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *k = jsvAsString(jsvObjectIteratorGetKey(&it), true);
     JsVar *v = jsvAsString(jsvObjectIteratorGetValue(&it), true);
     jsvAppendStringVarComplete(string, k);
@@ -59,7 +59,7 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
 }
 
 static JsVar *httpGetArray(const char *name, bool create) {
-  return jsvObjectGetChild(execInfo.root, name, create?JSV_ARRAY:0);
+  return jsvObjectGetChild(execInfo.hiddenRoot, name, create?JSV_ARRAY:0);
 }
 
 // httpParseHeaders(&receiveData, reqVar, true) // server
@@ -199,15 +199,15 @@ void _httpConnectionKill(JsNetwork *net, JsVar *connection) {
 NO_INLINE static void _httpCloseAllConnectionsFor(JsNetwork *net, char *name) {
   JsVar *arr = httpGetArray(name, false);
   if (!arr) return;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, arr);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *connection = jsvArrayIteratorGetElement(&it);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *connection = jsvObjectIteratorGetValue(&it);
     _httpConnectionKill(net, connection);
     jsvUnLock(connection);
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   jsvRemoveAllChildren(arr);
   jsvUnLock(arr);
 }
@@ -264,11 +264,11 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
   if (!arr) return false;
 
   bool hadSockets = false;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, arr);
-  while (jsvArrayIteratorHasElement(&it)) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
     hadSockets = true;
-    JsVar *connection = jsvArrayIteratorGetElement(&it);
+    JsVar *connection = jsvObjectIteratorGetValue(&it);
     JsVar *connectReponse = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
@@ -337,16 +337,16 @@ bool httpServerConnectionsIdle(JsNetwork *net) {
       jsiQueueObjectCallbacks(connectReponse, HTTP_NAME_ON_CLOSE, 0, 0);
 
       _httpConnectionKill(net, connection);
-      JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
-      jsvArrayIteratorNext(&it);
+      JsVar *connectionName = jsvObjectIteratorGetKey(&it);
+      jsvObjectIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
       jsvUnLock(connectionName);
     } else
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     jsvUnLock(connection);
     jsvUnLock(connectReponse);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   jsvUnLock(arr);
 
   return hadSockets;
@@ -361,11 +361,11 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
   if (!arr) return false;
 
   bool hadSockets = false;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, arr);
-  while (jsvArrayIteratorHasElement(&it)) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  while (jsvObjectIteratorHasValue(&it)) {
     hadSockets = true;
-    JsVar *connection = jsvArrayIteratorGetElement(&it);
+    JsVar *connection = jsvObjectIteratorGetValue(&it);
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
     if (sckt<0) closeConnectionNow = true;
@@ -374,12 +374,14 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
 
     /* We do this up here because we want to wait until we have been once
      * around the idle loop (=callbacks have been executed) before we run this */
-    if (hadHeaders && receiveData) {
+    if (hadHeaders && receiveData && jsvGetStringLength(receiveData)) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
       jswrap_stream_pushData(resVar, receiveData);
       jsvUnLock(resVar);
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      jsvUnLock(receiveData);
+      receiveData = 0;
     }
 
     if (!closeConnectionNow) {
@@ -420,19 +422,26 @@ bool httpClientConnectionsIdle(JsNetwork *net) {
       }
       jsvUnLock(sendData);
     }
-    jsvUnLock(receiveData);
+
     if (closeConnectionNow) {
       JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
+      if (receiveData && jsvGetStringLength(receiveData)) {
+        jswrap_stream_pushData(resVar, receiveData);
+      }
+
       jsiQueueObjectCallbacks(resVar, HTTP_NAME_ON_CLOSE, 0, 0);
       jsvUnLock(resVar);
 
       _httpConnectionKill(net, connection);
-      JsVar *connectionName = jsvArrayIteratorGetIndex(&it);
-      jsvArrayIteratorNext(&it);
+      JsVar *connectionName = jsvObjectIteratorGetKey(&it);
+      jsvObjectIteratorNext(&it);
       jsvRemoveChild(arr, connectionName);
       jsvUnLock(connectionName);
-    } else
-      jsvArrayIteratorNext(&it);
+    } else {
+      jsvObjectIteratorNext(&it);
+    }
+
+    jsvUnLock(receiveData);
     jsvUnLock(connection);
   }
   jsvUnLock(arr);
@@ -451,12 +460,12 @@ bool httpIdle(JsNetwork *net) {
   bool hadSockets = false;
   JsVar *arr = httpGetArray(HTTP_ARRAY_HTTP_SERVERS,false);
   if (arr) {
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, arr);
-    while (jsvArrayIteratorHasElement(&it)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, arr);
+    while (jsvObjectIteratorHasValue(&it)) {
       hadSockets = true;
 
-      JsVar *server = jsvArrayIteratorGetElement(&it);
+      JsVar *server = jsvObjectIteratorGetValue(&it);
       int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
       int theClient = net->accept(net, sckt);
@@ -483,9 +492,9 @@ bool httpIdle(JsNetwork *net) {
       }
 
       jsvUnLock(server);
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
     jsvUnLock(arr);
   }
 

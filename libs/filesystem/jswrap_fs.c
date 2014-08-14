@@ -52,67 +52,11 @@
   #define GET_FILENAME(Finfo) Finfo.fname
 #endif
 
-FATFS jsfsFAT;
 #endif
 
-void jsfsReportError(const char *msg, FRESULT res) {
-  const char *errStr = "UNKNOWN";
-  if (res==FR_OK             ) errStr = "OK";
-#ifndef LINUX
-  else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
-  else if (res==FR_INT_ERR        ) errStr = "INT_ERR";
-  else if (res==FR_NOT_READY      ) errStr = "NOT_READY";
-  else if (res==FR_NO_FILE        ) errStr = "NO_FILE";
-  else if (res==FR_NO_PATH        ) errStr = "NO_PATH";
-  else if (res==FR_INVALID_NAME   ) errStr = "INVALID_NAME";
-  else if (res==FR_DENIED         ) errStr = "DENIED";
-  else if (res==FR_EXIST          ) errStr = "EXIST";
-  else if (res==FR_INVALID_OBJECT ) errStr = "INVALID_OBJECT";
-  else if (res==FR_WRITE_PROTECTED) errStr = "WRITE_PROTECTED";
-  else if (res==FR_INVALID_DRIVE  ) errStr = "INVALID_DRIVE";
-  else if (res==FR_NOT_ENABLED    ) errStr = "NOT_ENABLED";
-  else if (res==FR_NO_FILESYSTEM  ) errStr = "NO_FILESYSTEM";
-  else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
-  else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
-#endif
-  jsError("%s : %s", msg, errStr);
-}
-
-bool fat_initialised = false;
-
-bool jsfsInit() {
-#ifndef LINUX
-  if (!fat_initialised) {
-    FRESULT res;
-    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
-      jsfsReportError("Unable to mount SD card", res);
-      return false;
-    }
-    fat_initialised = true;
-  }
-#endif
-  return true;
-}
-
-
-
-/* Unmount...
-    if (res==FR_OK) {
-      jsiConsolePrint("Unmounting...\n");
-      res = f_mount(0, 0);
-    }
- */
-
-/*JSON{ "type":"kill", "generate" : "jswrap_fs_kill", "ifndef" : "SAVE_ON_FLASH" }*/
-void jswrap_fs_kill() { // Uninitialise fat
-#ifndef LINUX
-  if (fat_initialised) {
-    fat_initialised = false;
-    f_mount(0, 0, 0);
-  }
-#endif
-}
-
+// from jswrap_file
+extern bool jsfsInit();
+extern void jsfsReportError(const char *msg, FRESULT res);
 
 /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readdir",
          "generate" : "jswrap_fs_readdir",

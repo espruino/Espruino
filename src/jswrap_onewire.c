@@ -191,13 +191,22 @@ JsVarInt jswrap_onewire_read(JsVar *parent) {
          "generate" : "jswrap_onewire_search",
          "return" : [ "JsVar", "An array of devices that were found" ]
 }*/
-JsVar *jswrap_onewire_search(JsVar *parent) {
+/*JSON{ "type":"method", "class": "OneWire", "name" : "search",
+         "description" : "Search for devices",
+         "generate" : "jswrap_onewire_search",
+         "params" : [ [ "command", "int32", "(Optional) command byte. If not specified (or zero), this defaults to 0xF0. This can could be set to 0xEC to perform a DS18B20 'Alarm Search Command'" ] ],
+         "return" : [ "JsVar", "An array of devices that were found" ]
+}*/
+JsVar *jswrap_onewire_search(JsVar *parent, int command) {
   // search - code from http://www.maximintegrated.com/app-notes/index.mvp/id/187
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return 0;
 
   JsVar *array = jsvNewWithFlags(JSV_ARRAY);
   if (!array) return 0;
+
+  if (command<=0 || command>255)
+    command = 0xF0; // normal search command
 
   // global search state
   unsigned char ROM_NO[8];
@@ -240,7 +249,7 @@ JsVar *jswrap_onewire_search(JsVar *parent) {
        }
 
        // issue the search command
-       OneWireWrite(pin, 8, 0xF0);
+       OneWireWrite(pin, 8, (unsigned long long)command);
 
        // loop to do the search
        do

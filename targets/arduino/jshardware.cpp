@@ -34,6 +34,9 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 void jshInit() {
 }
 
+void jshReset() {
+}
+
 void jshKill() {
 }
 
@@ -63,7 +66,18 @@ void jshDelayMicroseconds(int microsec) {
   delayMicroseconds(microsec);
 }
 
+/// Is the pin state manual (has the user asked us explicitly to change it?)
+bool jshGetPinStateIsManual(Pin pin) {
+}
+
+void jshSetPinStateIsManual(Pin pin, bool manual) {
+}
+
 void jshPinSetState(Pin pin, JshPinState state) {
+}
+
+JshPinState jshPinGetState(Pin pin) {
+  return JSHPINSTATE_UNDEFINED;
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -71,10 +85,6 @@ void jshPinSetValue(Pin pin, bool value) {
 
 bool jshPinGetValue(Pin pin) {
   return false;
-}
-
-bool jshIsPinValid(Pin pin) {
-  return true;
 }
 
 bool jshIsDeviceInitialised(IOEventFlags device) { return true; }
@@ -114,6 +124,9 @@ JsVarFloat jshPinAnalog(Pin pin) {
   return value;
 }
 
+int jshPinAnalogFast(Pin pin) {
+}
+
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {
@@ -125,6 +138,15 @@ void jshPinOutput(Pin pin, bool value) {
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
 }
 
+void jshSetOutputValue(JshPinFunction func, int value) {
+}
+
+void jshEnableWatchDog(JsVarFloat timeout) {
+}
+
+bool jshGetWatchedPinState(IOEventFlags device) {
+}
+
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
   if (jshIsPinValid(pin)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
@@ -134,16 +156,17 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
   } else jsError("Invalid pin!");
 }
 
+bool jshCanWatch(Pin pin) {
+  return false;
+}
+
 void jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
-#ifdef SYSFS_GPIO_DIR
-    gpioShouldWatch[pin] = shouldWatch;
-    if (shouldWatch) {
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-      gpioLastState[pin] = jshPinGetValue(pin);
-    }
-#endif
   } else jsError("Invalid pin!");
+}
+
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  return JSH_NOTHING;
 }
 
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
@@ -185,10 +208,10 @@ void jshSPISet16(IOEventFlags device, bool is16) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
 }
 
 

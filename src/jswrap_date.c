@@ -165,7 +165,7 @@ JsVarFloat jswrap_date_now() {
         "generate" : "jswrap_date_constructor",
         "description" : [ "Creates a date object" ],
         "params" : [ [ "args", "JsVarArray", "Either nothing (current time), one numeric argument (milliseconds since 1970), a date string (see `Date.parse`), or [year, month, day, hour, minute, second, millisecond] "] ],
-        "return" : ["JsVar", "A Date object"]
+        "return" : ["JsVar", "A Date object"], "return_object":"Date"
 }*/
 JsVar *jswrap_date_constructor(JsVar *args) {
   JsVar *d = jspNewObject(0,"Date");
@@ -195,6 +195,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     td.min = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 4));
     td.sec = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 5));
     td.ms = (int)jsvGetIntegerAndUnLock(jsvGetArrayItem(args, 6));
+    td.zone = 0;
     time = fromTimeInDay(&td);
   }
 
@@ -293,7 +294,7 @@ int jswrap_date_getDate(JsVar *parent) {
 
 
 /*JSON{ "type":"method", "class": "Date", "name" : "getMonth",
-         "description" : "Month of the year 1..12",
+         "description" : "Month of the year 0..11",
          "generate" : "jswrap_date_getMonth",
          "return" : ["int32", ""]
 }*/
@@ -328,11 +329,11 @@ JsVar *jswrap_date_toString(JsVar *parent) {
 
 
 static JsVarInt _parse_int(JsLex *lex) {
-  return stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
+  return (int)stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
 }
 
 static bool _parse_time(JsLex *lex, TimeInDay *time, int initialChars) {
-  time->hour = stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
+  time->hour = (int)stringToIntWithRadix(&jslGetTokenValueAsString(lex)[initialChars], 10, 0);
   jslGetNextToken(lex);
   if (lex->tk==':') {
     jslGetNextToken(lex);

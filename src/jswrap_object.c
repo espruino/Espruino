@@ -75,7 +75,7 @@ JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0) {
     if (radix>=2 && radix<=36) {
       char buf[JS_NUMBER_BUFFER_SIZE];
       if (jsvIsInt(parent))
-        itoa(jsvGetInteger(parent), buf, (unsigned int)radix);
+        itostr(jsvGetInteger(parent), buf, (unsigned int)radix);
       else
         ftoa_bounded_extra(jsvGetFloat(parent), buf, sizeof(buf), (int)radix, -1);
       return jsvNewFromString(buf);
@@ -209,7 +209,7 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
     return 0;
   }
 
-  jsvTrace(jsvGetRef(varName), 5);
+  //jsvTrace(varName, 5);
   JsVar *var = jsvSkipName(varName);
 
   bool isBuiltIn = jsvIsNewChild(varName);
@@ -353,17 +353,17 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   const int MAX_ARGS = 4;
   JsVar *args[MAX_ARGS];
   int n = 0;
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, argArray);
-  while (jsvArrayIteratorHasElement(&it)) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, argArray);
+  while (jsvObjectIteratorHasValue(&it)) {
     if (n>=MAX_ARGS) {
       jsWarn("Too many arguments");
       break;
     }
-    args[n++] = jsvArrayIteratorGetElement(&it);
-    jsvArrayIteratorNext(&it);
+    args[n++] = jsvObjectIteratorGetValue(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
 
   jsiQueueObjectCallbacks(parent, eventName, args, n);
@@ -395,7 +395,7 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
     // Eep. We must remove everything beginning with '#on'
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, parent);
-    while (jsvObjectIteratorHasElement(&it)) {
+    while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
       if (jsvIsString(key) &&
@@ -411,6 +411,15 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   } else {
     jsWarn("First argument to EventEmitter.removeAllListeners(..) must be a string, or undefined");
     return;
+  }
+}
+
+// For internal use - like jswrap_object_removeAllListeners but takes a C string
+void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event) {
+  JsVar *s = jsvNewFromString(event);
+  if (s) {
+    jswrap_object_removeAllListeners(parent, s);
+    jsvUnLock(s);
   }
 }
 
@@ -436,7 +445,7 @@ void jswrap_function_replaceWith(JsVar *oldFunc, JsVar *newFunc) {
   // now re-add other entries
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, newFunc);
-  while (jsvObjectIteratorHasElement(&it)) {
+  while (jsvObjectIteratorHasValue(&it)) {
     JsVar *el = jsvObjectIteratorGetKey(&it);
     jsvObjectIteratorNext(&it);
     if (!jsvIsStringEqual(el, JSPARSE_FUNCTION_SCOPE_NAME)) {
@@ -483,17 +492,17 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
 
 
     for (i=0;i<argC;i++) args[i] = 0;
-    JsvArrayIterator it;
-    jsvArrayIteratorNew(&it, argsArray);
-    while (jsvArrayIteratorHasElement(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvArrayIteratorGetIndex(&it));
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, argsArray);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
       if (idx>=0 && idx<(int)argC) {
         assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvArrayIteratorGetElement(&it);
+        args[idx] = jsvObjectIteratorGetValue(&it);
       }
-      jsvArrayIteratorNext(&it);
+      jsvObjectIteratorNext(&it);
     }
-    jsvArrayIteratorFree(&it);
+    jsvObjectIteratorFree(&it);
   } else if (!jsvIsUndefined(argsArray)) {
     jsWarn("Second argument to Function.apply must be an array");
   }

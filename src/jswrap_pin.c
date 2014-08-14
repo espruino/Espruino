@@ -76,7 +76,7 @@ void jswrap_pin_write(JsVar *parent, bool value) {
 }
 
 /*JSON{ "type":"method", "class": "Pin", "name" : "writeAtTime", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Sets the output state of the pin to the parameter given at the specified time",
+         "description" : "Sets the output state of the pin to the parameter given at the specified time. Note that this doesn't change the mode of the pin to an output. To do that, you need to use `pin.write(0)` or `pinMode(pin, 'output')`.",
          "generate" : "jswrap_pin_writeAtTime",
          "params" : [ [ "value", "bool", "Whether to set output high (true/1) or low (false/0)"],
                       ["time", "float", "Time at which to write"] ]

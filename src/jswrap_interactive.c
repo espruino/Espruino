@@ -17,6 +17,11 @@
 #include "jswrap_json.h" // for print/console.log
 #include "jsinteractive.h"
 
+/*JSON{ "type":"class", "class" : "console",
+         "description" : "An Object that contains functions for writing to the interactive console"
+}*/
+
+
 /*JSON{ "type":"function", "name" : "setBusyIndicator",
          "description" : "When Espruino is busy, set the pin specified here high. Set this to undefined to disable the feature.",
          "generate" : "jswrap_interface_setBusyIndicator",
@@ -66,9 +71,9 @@ void jswrap_interface_setDeepSleep(bool sleep) {
 }*/
 void jswrap_interface_trace(JsVar *root) {
   if (jsvIsUndefined(root)) {
-    jsvTrace(jsvGetRef(execInfo.root), 0);
+    jsvTrace(execInfo.root, 0);
   } else {
-    jsvTrace(jsvGetRef(root), 0);
+    jsvTrace(root, 0);
   }
 }
 
@@ -116,20 +121,20 @@ void jswrap_interface_print(JsVar *v) {
   assert(jsvIsArray(v));
 
   jsiConsoleRemoveInputLine();
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, v);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVar *v = jsvArrayIteratorGetElement(&it);
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, v);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *v = jsvObjectIteratorGetValue(&it);
     if (jsvIsString(v)) 
       jsiConsolePrintStringVar(v);
     else
       jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);
     jsvUnLock(v);
-    jsvArrayIteratorNext(&it);
-    if (jsvArrayIteratorHasElement(&it))
+    jsvObjectIteratorNext(&it);
+    if (jsvObjectIteratorHasValue(&it))
       jsiConsolePrint(" ");
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
   jsiConsolePrint("\n");
 }
 
@@ -146,7 +151,7 @@ void jswrap_interface_edit(JsVar *funcName) {
     func = jsvSkipNameAndUnLock(jsvFindChildFromVar(execInfo.root, funcName, 0));
   } else {
     func = funcName;
-    funcName = jsvGetPathTo(execInfo.root, func, 2);
+    funcName = jsvGetPathTo(execInfo.root, func, 2, 0);
   }
 
   if (jsvIsString(funcName)) {
@@ -226,7 +231,7 @@ JsVar *jswrap_interface_getSerial() {
 
   for (i=0;i<serialSize;i++) {
     if ((i&3)==0 && i) jsvAppendString(str, "-");
-    itoa(serial[i] | 0x100, buf, 16);
+    itostr(serial[i] | 0x100, buf, 16);
     jsvAppendString(str, &buf[1]);
   }
   return str;

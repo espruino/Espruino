@@ -126,16 +126,19 @@ SECTIONS
   /* Then code, then constants */
   .text :
   {
+""")
+
+if "place_text_section" in board.chip:
+  codeOut("""    /* In the .py file we were told to place text here (to skip out what was before) */
+    . = ALIGN("""+hex(board.chip["place_text_section"]-FLASH_BASE)+"""); /* hacky! really want it absolute */
+""");
+
+codeOut("""
     . = ALIGN(4);
     *(.text)  
     *(.text*) 
     *(.rodata)  
     *(.rodata*) 
-    *(.glue_7)  
-    *(.glue_7t) 
-
-    KEEP (*(.init))
-    KEEP (*(.fini))
 
     . = ALIGN(4);
     _etext = .;
@@ -169,10 +172,8 @@ SECTIONS
 
     . = ALIGN(4);
     _ebss = .;         /* define a global symbol at bss end */
-    __bss_end__ = _ebss;
   } >RAM
 
-  PROVIDE ( end = _ebss );
   PROVIDE ( _end = _ebss );
 
   /* Remove stuff we don't want */

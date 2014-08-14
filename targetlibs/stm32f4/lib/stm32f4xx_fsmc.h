@@ -2,21 +2,27 @@
   ******************************************************************************
   * @file    stm32f4xx_fsmc.h
   * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    30-September-2011
+  * @version V1.3.0
+  * @date    08-November-2013
   * @brief   This file contains all the functions prototypes for the FSMC firmware 
   *          library.
   ******************************************************************************
   * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2013 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */
 
@@ -91,7 +97,7 @@ typedef struct
                                           This parameter can be a value of @ref FSMC_NORSRAM_Bank */
 
   uint32_t FSMC_DataAddressMux;      /*!< Specifies whether the address and data values are
-                                          multiplexed on the databus or not. 
+                                          multiplexed on the data bus or not. 
                                           This parameter can be a value of @ref FSMC_Data_Address_Bus_Multiplexing */
 
   uint32_t FSMC_MemoryType;          /*!< Specifies the type of external memory attached to
@@ -125,7 +131,7 @@ typedef struct
   uint32_t FSMC_WriteOperation;      /*!< Enables or disables the write operation in the selected bank by the FSMC. 
                                           This parameter can be a value of @ref FSMC_Write_Operation */
 
-  uint32_t FSMC_WaitSignal;          /*!< Enables or disables the wait-state insertion via wait
+  uint32_t FSMC_WaitSignal;          /*!< Enables or disables the wait state insertion via wait
                                           signal, valid for Flash memory access in burst mode. 
                                           This parameter can be a value of @ref FSMC_Wait_Signal */
 
@@ -135,9 +141,9 @@ typedef struct
   uint32_t FSMC_WriteBurst;          /*!< Enables or disables the write burst operation.
                                           This parameter can be a value of @ref FSMC_Write_Burst */ 
 
-  FSMC_NORSRAMTimingInitTypeDef* FSMC_ReadWriteTimingStruct; /*!< Timing Parameters for write and read access if the  ExtendedMode is not used*/  
+  FSMC_NORSRAMTimingInitTypeDef* FSMC_ReadWriteTimingStruct; /*!< Timing Parameters for write and read access if the  Extended Mode is not used*/  
 
-  FSMC_NORSRAMTimingInitTypeDef* FSMC_WriteTimingStruct;     /*!< Timing Parameters for write access if the  ExtendedMode is used*/      
+  FSMC_NORSRAMTimingInitTypeDef* FSMC_WriteTimingStruct;     /*!< Timing Parameters for write access if the  Extended Mode is used*/      
 }FSMC_NORSRAMInitTypeDef;
 
 /** 
@@ -146,26 +152,26 @@ typedef struct
 typedef struct
 {
   uint32_t FSMC_SetupTime;      /*!< Defines the number of HCLK cycles to setup address before
-                                     the command assertion for NAND-Flash read or write access
+                                     the command assertion for NAND Flash read or write access
                                      to common/Attribute or I/O memory space (depending on
                                      the memory space timing to be configured).
                                      This parameter can be a value between 0 and 0xFF.*/
 
   uint32_t FSMC_WaitSetupTime;  /*!< Defines the minimum number of HCLK cycles to assert the
-                                     command for NAND-Flash read or write access to
+                                     command for NAND Flash read or write access to
                                      common/Attribute or I/O memory space (depending on the
                                      memory space timing to be configured). 
                                      This parameter can be a number between 0x00 and 0xFF */
 
   uint32_t FSMC_HoldSetupTime;  /*!< Defines the number of HCLK clock cycles to hold address
-                                     (and data for write access) after the command deassertion
-                                     for NAND-Flash read or write access to common/Attribute
+                                     (and data for write access) after the command de-assertion
+                                     for NAND Flash read or write access to common/Attribute
                                      or I/O memory space (depending on the memory space timing
                                      to be configured).
                                      This parameter can be a number between 0x00 and 0xFF */
 
   uint32_t FSMC_HiZSetupTime;   /*!< Defines the number of HCLK clock cycles during which the
-                                     databus is kept in HiZ after the start of a NAND-Flash
+                                     data bus is kept in HiZ after the start of a NAND Flash
                                      write access to common/Attribute or I/O memory space (depending
                                      on the memory space timing to be configured).
                                      This parameter can be a number between 0x00 and 0xFF */
@@ -666,4 +672,4 @@ void FSMC_ClearITPendingBit(uint32_t FSMC_Bank, uint32_t FSMC_IT);
   * @}
   */ 
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

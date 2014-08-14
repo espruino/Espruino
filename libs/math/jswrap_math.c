@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_math.h"
+#include "jsvariterator.h"
 
 static bool isNegativeZero(double x) {
   double NEGATIVE_ZERO = -0.0;
@@ -25,14 +26,6 @@ static bool isNegativeZero(double x) {
         "description" : "This is a standard JavaScript class that contains useful Maths routines"
 }*/
 
- // -------------------------------------------------------------------- Double
-/*JSON{ "type":"staticmethod",
-         "class" : "Double", "name" : "doubleToIntBits",
-         "generate_full" : "*(JsVarInt*)&x",
-         "description" : " Convert the floating point value given into an integer representing the bits contained in it",
-         "params" : [ [ "x", "float", "A floating point number"] ],
-         "return" : ["int", "The integer representation of x"]
-}*/
 // -------------------------------------------------------------------- Math
 /*JSON{ "type":"staticproperty",
          "class" : "Math", "name" : "E",
@@ -122,6 +115,9 @@ JsVarFloat jswrap_math_abs(JsVarFloat x) {
 double jswrap_math_mod(double x, double y) {
   double a, b;
   const double c = x;
+
+  if (!isfinite(x) || isnan(y))
+    return NAN;
 
   if (0 > c) {
     x = -x;
@@ -300,15 +296,15 @@ JsVarFloat jswrap_math_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 JsVarFloat jswrap_math_minmax(JsVar *args, bool isMax) {
   JsVarFloat v = isMax ? -INFINITY : INFINITY;
 
-  JsvArrayIterator it;
-  jsvArrayIteratorNew(&it, args);
-  while (jsvArrayIteratorHasElement(&it)) {
-    JsVarFloat arg = jsvGetFloatAndUnLock(jsvArrayIteratorGetElement(&it));
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, args);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVarFloat arg = jsvGetFloatAndUnLock(jsvObjectIteratorGetValue(&it));
     if ((isMax && arg > v) || (!isMax && arg < v) || isnan(arg))
       v = arg;
-    jsvArrayIteratorNext(&it);
+    jsvObjectIteratorNext(&it);
   }
-  jsvArrayIteratorFree(&it);
+  jsvObjectIteratorFree(&it);
 
   return v;
 }

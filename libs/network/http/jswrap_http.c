@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jswrap_http.h"
+#include "jsvariterator.h"
 #include "httpserver.h"
 #include "../network.h"
 
@@ -153,7 +154,7 @@ void jswrap_http_kill() {
          "generate" : "jswrap_http_createServer",
          "description" : ["Create an HTTP Server", "When a request to the server is made, the callback is called. In the callback you can use the methods on the response (httpSRs) to send data. You can also add `request.on('data',function() { ... })` to listen for POSTed data" ],
          "params" : [ [ "callback", "JsVar", "A function(request,response) that will be called when a connection is made"] ],
-         "return" : ["JsVar", "Returns a new httpSrv object"]
+         "return" : ["JsVar", "Returns a new httpSrv object"], "return_object" : "httpSrv"
 }*/
 
 JsVar *jswrap_http_createServer(JsVar *callback) {
@@ -173,7 +174,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
          "description" : ["Create an HTTP Request - end() must be called on it to complete the operation" ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
                        [ "callback", "JsVar", "A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."] ],
-         "return" : ["JsVar", "Returns a new httpCRq object"]
+         "return" : ["JsVar", "Returns a new httpCRq object"], "return_object" : "httpCRq"
 }*/
 
 JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
@@ -204,7 +205,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
          "description" : ["Create an HTTP Request - convenience function for ```http.request()```. `options.method` is set to 'get', and end is called automatically. See [the Internet page](/Internet) for more usage examples." ],
          "params" : [  [ "options", "JsVar", "An object containing host,port,path,method fields"],
                        [ "callback", "JsVar", "A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."] ],
-         "return" : ["JsVar", "Returns a new httpCRq object"]
+         "return" : ["JsVar", "Returns a new httpCRq object"], "return_object" : "httpCRq"
 }*/
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   JsNetwork net;
@@ -224,7 +225,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   }
   jsvUnLock(skippedCallback);
   JsVar *cliReq = jswrap_http_request(options, callback);
-  httpClientRequestEnd(&net, cliReq);
+  if (cliReq) httpClientRequestEnd(&net, cliReq);
   networkFree(&net);
   return cliReq;
 }

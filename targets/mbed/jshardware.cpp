@@ -213,10 +213,10 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
 }
 
 

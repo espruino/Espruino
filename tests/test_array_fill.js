@@ -15,6 +15,13 @@ r.push(a.join(",") == "2,2,2,2,2,3,4,5,5,5");
 a.fill(6,-2,-1);
 r.push(a.join(",") == "2,2,2,2,2,3,4,5,6,5");
 
+// https://github.com/espruino/Espruino/issues/410
+var b = new Array(5);
+b.fill(2,1,-1);
+r.push(b.join(",") == ",2,2,2,");
+b.fill(3);
+r.push(b.join(",") == "3,3,3,3,3");
+
 var pass = 0;
 r.forEach(function(n) { if (n) pass++; });
 result = pass == r.length;

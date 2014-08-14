@@ -1,4 +1,73 @@
+     1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
+            Fix parseInt for values too large to go in an int (#406)
+            Fix integer maths when result is too large for an integer
+            Fix mod operator with NaN/Infinity (fix #315)
+            Fix signed array values in PACKED_BIT devices
+            Drop JsVar size from 20 bytes to 16, increase Espruino variable count accordingly
+            Fix Array.fill on sparse arrays (fix #410) 
+            Allow I2C repeated start (fixes some odd I2C devices, fix #390)
+            Refactoring to use iterators wherever possible
+            Merge fs_kill and file_kill to ensure that files always die before the filesystem
+            Add `E.unmountSD()` to allow SD cards to be removed once they have been used
+            Stop String.split("") adding an empty elementy to the array
+            Tidy up linker script, allow F401 to use 3x16kB pages for storing program data
+
+     1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
+            Add configurable OneWire search command (for finding DS18B20s with alarm set)
+
+     1v68 : Fix memory leak in String.split
+            Fix references to `this` - you can now write `this["LED1"]`
+            Fix memory leak when calling toString on a normal object
+            Fix memory leak in Graphics.createArrayBuffer
+            Fix memory leak when joining arrays containing null
+            Fix memory leak when syntax error while getting function arguments
+            Fix memory leak test when running on Linux
+            Fix memory leak in filesystem file open (when failure)
+            Fix memory leak on Syntax error
+            Stop multiple exceptions from being reported (eg. Syntax Errors)
+            Fix parsing of '!!' when not executing
+            Improve Error.toString, and fix bug when an exception was thrown from a function
+            Improve jsvObjectGetChild when out of memory
+            Switch native function decls from 32 bits to 16
+            Swap HY2.4 board to software LCD driver as well, work out pin mappings from PY file
+            Fix inaccuracy in setInterval, which had started since 32 bit switch in 1v65
+            Store JSWAT_EXECUTE_IMMEDIATELY in a way that will fit in 16 bit function decls
+            Allow bit-packing of refs for low memory boards (fix #145)
+            Now dump 'debounce' for setWatch
+            Make sure that dump() outputs correct JS for undefined variables
+            Allow pin counts per port of >31 on Linux-based systems
+            Fix issue with lost high-speed events when using setWatch with small debounce
+            Fix HTTP client regression
+            Fix Date constructor issue (uninitialised variable) (fix #408)
+            Fix invalid conversion of large ints to floats on ARM
+            Fix reset behaviour for non-standard default Serial ports
+
+     1v67 : Lower size of timer task array of devices with little RAM (fix #401)
+            Move hidden lists out of the root scope (fix #357)
+            Fixed exception catching
+            Fix Serial1 initialisation after 'reset()'
+            Fix parsing of try..catch when a serious error (not an exception) occurred
+            Stop the utility timer queue filling with WAKEUP tasks if Espruino gets woken up early
+            Add ability to specify default Serial TX and RX pins in BOARD.py
+            Reduce how many digits of floating point values are normally displayed
+            Fixed PWM output on B4 + B5
+            Fix regression when using pins as array indices
+            Remove negation for CHxN outputs - it seems they don't negate after all. Fixes PWM polarity on A7,B1,B13,B14,B15
+            Add pullup to USART RX. Reduces wakeups and random characters on Serial1.
+            Add error flags and E.getErrorFlags to report possible issues like buffer overflows and low memory (fix #136)
+            I2C timeouts now throw exceptions (fix #403)
+            Fix String.prototype.split with non-string args
+            Add fake digital pins D0..D7 under linux (helps with testing)
+            Rewrite ff_wtoupper and save 650 bytes \o/ (fix #368)
+            Update Makefile to make it easier to cross-compile RPi->Espruino board
+            Fix HYSTM32_32 LCD at the expense of a bit of speed (fix #137, fix #327)
+
      1v66 : Ensure that analogWrite(pin,1) works on negated outputs
+            Allow multiple Waveform playback on one pin (+ wave fixes)
+            Improve dump() for objects and Serial.on('data') (part of #397)
+            Fix Date.getSeconds,Milliseconds, and documentation on getMonth (#399)
+            Fix memory leak on Serial receive
+            Fix all Serial receive characters being 0 if no bytesize is specified
 
      1v65 : SPI.send/I2C.write/Serial.write can now take variable number of arguments (fix #370)
             Don't check for token matches where we already know what it should be (fix #280)

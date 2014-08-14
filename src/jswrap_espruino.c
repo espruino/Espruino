@@ -17,6 +17,7 @@
 #include "jswrap_math.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
+#include "jstimer.h"
 
 /*JSON{ "type":"class",
         "class" : "E",
@@ -48,7 +49,6 @@ int nativeCallGetCType(JsLex *lex) {
     int t = -1;
     char *name = jslGetTokenValueAsString(lex);
     if (strcmp(name,"int")==0) t=JSWAT_INT32;
-    if (strcmp(name,"long")==0) t=JSWAT_JSVARINT;
     if (strcmp(name,"double")==0) t=JSWAT_JSVARFLOAT;
     if (strcmp(name,"bool")==0) t=JSWAT_BOOL;
     if (strcmp(name,"Pin")==0) t=JSWAT_PIN;
@@ -67,7 +67,7 @@ int nativeCallGetCType(JsLex *lex) {
                           "If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.",
                           "Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses."],
          "params" : [ [ "addr", "int", "The address in memory of the function"],
-                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`long`,`double`,`Pin`,`JsVar`"] ],
+                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"] ],
          "return" : ["JsVar", "The native function"]
 }*/
 JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
@@ -93,6 +93,8 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     }
     if (ok) ok = jslMatch(&lex, ')');
     jslKill(&lex);
+    if (argTypes & (unsigned int)~0xFFFF)
+      ok = false;
     if (!ok) {
       jsExceptionHere(JSET_ERROR, "Error Parsing signature at argument number %d", argNumber);
       return 0;
@@ -102,7 +104,7 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     return 0;
   }
 
-  return jsvNewNativeFunction((void *)(size_t)addr, argTypes);
+  return jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
 }
 
 
@@ -469,13 +471,36 @@ void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   jshEnableWatchDog(time);
 }
 
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "getErrorFlags",
+         "generate" : "jswrap_espruino_getErrorFlags",
+         "description" : ["Get and reset the error flags. Returns an array that can contain:",
+                          "`'FIFO_FULL'`: The receive FIFO filled up and data was lost. This could be state transitions for setWatch, or received characters.",
+                          "`'BUFFER_FULL'`: A buffer for a stream filled up and characters were lost. This can happen to any stream - Serial,HTTP,etc.",
+                          "`'CALLBACK'`: A callback (s`etWatch`, `setInterval`, `on('data',...)`) caused an error and so was removed.",
+                          "`'LOW_MEMORY'`: Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history",
+                          "`'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed."],
+         "return" : [ "JsVar", "An array of error flags" ]
+}*/
+JsVar *jswrap_espruino_getErrorFlags() {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0;
+  if (jsErrorFlags&JSERR_RX_FIFO_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("FIFO_FULL"));
+  if (jsErrorFlags&JSERR_BUFFER_FULL) jsvArrayPushAndUnLock(arr, jsvNewFromString("BUFFER_FULL"));
+  if (jsErrorFlags&JSERR_CALLBACK) jsvArrayPushAndUnLock(arr, jsvNewFromString("CALLBACK"));
+  if (jsErrorFlags&JSERR_LOW_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("LOW_MEMORY"));
+  if (jsErrorFlags&JSERR_MEMORY) jsvArrayPushAndUnLock(arr, jsvNewFromString("MEMORY"));
+  jsErrorFlags = JSERR_NONE;
+  return arr;
+}
+
 /*JSON{ "type":"staticmethod",
          "class" : "E", "name" : "toArrayBuffer",
          "generate" : "jswrap_espruino_toArrayBuffer",
          "description" : [ "Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.",
                            "Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`." ],
          "params" : [ [ "str", "JsVar", "The string to convert to an ArrayBuffer"] ],
-         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ]
+         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ], "return_object":"ArrayBufferView"
 }*/
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   if (!jsvIsString(str)) return 0;
@@ -495,5 +520,15 @@ int jswrap_espruino_reverseByte(int v) {
   unsigned int b = v&0xFF;
   // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
   return (((b * 0x0802LU & 0x22110LU) | (b * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16) & 0xFF;
+}
+
+
+/*JSON{ "type":"staticmethod",
+         "class" : "E", "name" : "dumpTimers", "ifndef":"RELEASE",
+         "description" : ["Output the current list of Utility Timer Tasks - for debugging only"],
+         "generate" : "jswrap_espruino_dumpTimers"
+}*/
+void jswrap_espruino_dumpTimers() {
+  jstDumpUtilityTimers();
 }
 

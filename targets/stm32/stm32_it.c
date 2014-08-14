@@ -473,6 +473,10 @@ void OTG_FS_IRQHandler(void)
 }
 
 #ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+
+extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+
 /**
   * @brief  This function handles EP1_IN Handler.
   * @param  None

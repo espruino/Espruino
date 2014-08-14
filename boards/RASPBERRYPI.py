@@ -36,6 +36,7 @@ chip = {
 board = {
 };
 devices = {
+  'LED1' : { 'pin' : 'D16' }
 };
 
 board_css = """

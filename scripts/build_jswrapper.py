@@ -63,7 +63,7 @@ def toArgumentType(argName):
   if argName=="bool": return "JSWAT_BOOL";
   if argName=="pin": return "JSWAT_PIN";
   if argName=="int32": return "JSWAT_INT32";
-  if argName=="int": return "JSWAT_JSVARINT";
+  if argName=="int": return "JSWAT_INT32";
   if argName=="float": return "JSWAT_JSVARFLOAT";
   sys.stderr.write("ERROR: toArgumentType: Unknown argument name "+argName+"\n")
   exit(1)
@@ -241,7 +241,7 @@ JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *
     const JswSymPtr *sym = &symbolsPtr->symbols[idx];
     int cmp = strcmp(name, &symbolsPtr->symbolChars[sym->strOffset]);
     if (cmp==0) {
-      if (sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY)
+      if ((sym->functionSpec & JSWAT_EXECUTE_IMMEDIATELY_MASK) == JSWAT_EXECUTE_IMMEDIATELY)
         return jsnCallFunction(sym->functionPtr, sym->functionSpec, parent, 0, 0);
       return jsvNewNativeFunction(sym->functionPtr, sym->functionSpec);
     } else {
@@ -312,7 +312,7 @@ codeOut('');
 
 codeOut('JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name) {')
 codeOut('  JsVar *v;')
-codeOut('  if (parent) {')
+codeOut('  if (parent && !jsvIsRoot(parent)) {')
 
 codeOut('    // ------------------------------------------ INSTANCE + STATIC METHODS')
 nativeCheck = "jsvIsNativeFunction(parent) && "

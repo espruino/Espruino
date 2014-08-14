@@ -13,7 +13,6 @@
  */
 #include "jsvar.h"
 
-void jswrap_fs_kill();
 JsVar *jswrap_fs_readdir(JsVar *path);
 bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
 JsVar *jswrap_fs_readFile(JsVar *path);
