@@ -118,7 +118,10 @@ def die(err):
   sys.exit(1)
 
 def toPinDef(pin):
-  return "(Pin)(JSH_PORT"+pin[0]+"_OFFSET + "+pin[1:]+")"
+  for p in pins:
+    if p["name"]=="P"+pin:
+      return str(pins.index(p))+"/* "+pin+" */";
+  die("Pin named '"+pin+"' not found");
 
 def codeOutDevice(device):
   if device in board.devices:
