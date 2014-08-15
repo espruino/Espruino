@@ -1016,7 +1016,9 @@ void jshInit() {
 #endif
 
   // initialise button
+#ifdef BTN1_PININDEX
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
 
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); 
