@@ -175,7 +175,9 @@
 #endif
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
-#define VBUS_SENSING_ENABLED
+#ifndef ESPRUINI
+#define VBUS_SENSING_ENABLED // No - we don't want a pin for this.
+#endif
 
 /****************** USB OTG MODE CONFIGURATION ********************************/
 //#define USE_HOST_MODE

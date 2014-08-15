@@ -18,6 +18,8 @@ info = {
  'name' : "Espruini Board rev 1.0",
  'link' : [ "http://www.espruino.com/EspruinoBoard" ],
  'default_console' : "EV_SERIAL1",
+ 'default_console_tx' : "B6",
+ 'default_console_rx' : "B7",
  'variables' : 3040,
  'binary_name' : 'espruino_%v_espruini_1r0.bin',
 };
