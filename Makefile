@@ -896,7 +896,7 @@ endif
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
 
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX?=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
