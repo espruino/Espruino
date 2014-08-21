@@ -32,6 +32,7 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 
 // ----------------------------------------------------------------------------
 void jshInit() {
+  Serial.begin(DEFAULT_BAUD_RATE);
 }
 
 void jshReset() {
@@ -182,7 +183,6 @@ void jshUSARTKick(IOEventFlags device) {
    int c;
    while ((c = jshGetCharToTransmit(EV_SERIAL1)) >= 0) {
       Serial.write((char)c);
-      Serial.print(":");
    }  
 }
 
