@@ -1078,6 +1078,9 @@ ifndef TRAVIS
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+ifdef ARDUINO_AVR
+proj: $(PROJ_NAME).hex
+endif
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
