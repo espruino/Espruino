@@ -860,7 +860,7 @@ FORMAT = ihex
 
 ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
 ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-LDFLAGS += --relax
+LDFLAGS += -mrelax
 AVR=1
 INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
 DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
