@@ -957,10 +957,8 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-ifndef MACOSX
-LDFLAGS += -Wl,--gc-sections
-else ifdef EMBEDDED
-LDFLAGS += -Wl,--gc-sections
+ifdef EMBEDDED
+LDFLAGS += -nostartfiles -Wl,--gc-sections -lc -lm -lgcc -lnosys
 endif
 
 ifdef LINKER_FILE
