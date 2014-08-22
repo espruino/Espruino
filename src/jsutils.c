@@ -389,7 +389,7 @@ char itoch(int val) {
 void itostr(JsVarInt vals,char *str,unsigned int base) {
   JsVarIntUnsigned val;
   // handle negative numbers
-  if (vals<0) {
+  if (base == 10 && vals<0) {
     *(str++)='-';
     val = (JsVarIntUnsigned)(-vals);
   } else {
