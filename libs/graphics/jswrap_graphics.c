@@ -27,6 +27,8 @@
 #endif
 #include "bitmap_font_4x6.h"
 
+#include <string.h>
+
 /*JSON{ "type":"class",
         "class" : "Graphics",
         "description" : ["This class provides Graphics operations that can be applied to a surface.",
@@ -109,6 +111,32 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else
         jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
+    }
+    JsVar *colorv;
+    char color_order[4];
+    size_t len;
+    if ((colorv = jsvObjectGetChild(options, "color_order", 0)) != NULL) {
+      len = jsvGetString(colorv, color_order, 4);
+      jsvUnLock(colorv);
+
+      if (len != 3)
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+      if (!strcasecmp(color_order, "rgb"))
+	; // The default
+      else if (!strcasecmp(color_order, "brg"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BRG);
+      else if (!strcasecmp(color_order, "bgr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BGR);
+      else if (!strcasecmp(color_order, "gbr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GBR);
+      else if (!strcasecmp(color_order, "grb"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GRB);
+      else if (!strcasecmp(color_order, "RBG"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_RBG);
+      else {
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+	return 0; // XXX: free parent?
+      }
     }
   }
 
@@ -308,6 +336,31 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
     if (ri<0) ri=0;
     if (gi<0) gi=0;
     if (bi<0) bi=0;
+    // Check if we need to twiddle colors
+    if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK) {
+      int tmpr, tmpg, tmpb;
+      tmpr = ri;
+      tmpg = gi;
+      tmpb = bi;
+      if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BRG) {
+	ri = tmpb;
+	gi = tmpr;
+	bi = tmpg;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BGR) {
+	ri = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GBR) {
+	ri = tmpg;
+	gi = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GRB) {
+	ri = tmpg;
+	gi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_RBG) {
+	gi = tmpb;
+	bi = tmpg;
+      }
+    }
     if (gfx.data.bpp==16) {
       color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
     } else if (gfx.data.bpp==32) {
