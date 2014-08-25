@@ -971,7 +971,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 ifdef EMBEDDED
-LDFLAGS += -nostartfiles -Wl,--gc-sections -lc -lgcc -lnosys
+LDFLAGS += -Wl,--gc-sections
 endif
 
 ifdef LINKER_FILE
