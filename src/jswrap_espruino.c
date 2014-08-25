@@ -532,3 +532,15 @@ void jswrap_espruino_dumpTimers() {
   jstDumpUtilityTimers();
 }
 
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
+         "class" : "E", "name" : "getSizeOf",
+         "generate" : "jswrap_espruino_getSizeOf",
+         "description" : [ "Return the number of Variable Blocks used by the supplied variable. This is useful if you're running out of memory and you want to be able to see what is taking up most of the available space.",
+                           "See http://www.espruino.com/Internals for more information" ],
+         "params" : [ [ "v", "JsVar", "A variable to get the size of"] ],
+         "return" : [ "int32", "The number of variable 'blocks' as an integer" ]
+}*/
+int jswrap_espruino_getSizeOf(JsVar *v) {
+  return (int)jsvCountJsVarsUsed(v);
+}
+

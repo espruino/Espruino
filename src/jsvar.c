@@ -1888,7 +1888,7 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
       jsvUnLock(child);
     }
   }
-  if (jsvIsName(v) && jsvGetFirstChild(v)) {
+  if (jsvIsName(v) && !jsvIsNameWithValue(v) && jsvGetFirstChild(v)) {
     JsVar *child = jsvLock(jsvGetFirstChild(v));
     count += jsvCountJsVarsUsed(child);
     jsvUnLock(child);
