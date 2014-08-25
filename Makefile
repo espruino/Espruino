@@ -909,7 +909,7 @@ endif
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
 
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX?=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
@@ -970,10 +970,8 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-ifndef MACOSX
-LDFLAGS += -Wl,--gc-sections
-else ifdef EMBEDDED
-LDFLAGS += -Wl,--gc-sections
+ifdef EMBEDDED
+LDFLAGS += -nostartfiles -Wl,--gc-sections -lc -lgcc -lnosys
 endif
 
 ifdef LINKER_FILE

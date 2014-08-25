@@ -912,6 +912,12 @@ void jsiHandleChar(char ch) {
   // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
   //
   // special stuff
+  // 1 - Ctrl-a - beginning of line
+  // 4 - Ctrl-d - backwards delete
+  // 5 - Ctrl-e - end of line
+  // 21 - Ctrl-u - delete line
+  // 23 - Ctrl-w - delete word (currently just does the same as Ctrl-u)
+  //
   // 27 then 91 then 68 - left
   // 27 then 91 then 67 - right
   // 27 then 91 then 65 - up
@@ -929,6 +935,14 @@ void jsiHandleChar(char ch) {
 
   if (ch == 0) {
     inputState = IS_NONE; // ignore 0 - it's scary
+  } else if (ch == 1) { // Ctrl-a
+    jsiHandleHome();
+  } else if (ch == 4) { // Ctrl-d
+      jsiHandleDelete(false/*not backspace*/);
+  } else if (ch == 5) { // Ctrl-e
+    jsiHandleEnd();
+  } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
+      jsiClearInputLine();
   } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
