@@ -11,6 +11,8 @@
             Add `E.unmountSD()` to allow SD cards to be removed once they have been used
             Stop String.split("") adding an empty elementy to the array
             Tidy up linker script, allow F401 to use 3x16kB pages for storing program data
+            Fix regression in long timeouts (fix #416)
+            Use 'interval' var to specify if we're an interval or not (don't use 'recur' var)
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)

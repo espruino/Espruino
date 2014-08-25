@@ -1183,6 +1183,18 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     return 0;
 }
 
+long long jsvGetLongInteger(const JsVar *v) {
+  if (jsvIsInt(v)) return jsvGetInteger(v);
+  return (long long)jsvGetFloat(v);
+}
+
+long long jsvGetLongIntegerAndUnLock(JsVar *v) {
+  long long i = jsvGetLongInteger(v);
+  jsvUnLock(v);
+  return i;
+}
+
+
 void jsvSetInteger(JsVar *v, JsVarInt value) {
   assert(jsvIsInt(v));
   v->varData.integer  = value;

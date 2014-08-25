@@ -938,11 +938,11 @@ void jsiHandleChar(char ch) {
   } else if (ch == 1) { // Ctrl-a
     jsiHandleHome();
   } else if (ch == 4) { // Ctrl-d
-      jsiHandleDelete(false/*not backspace*/);
+    jsiHandleDelete(false/*not backspace*/);
   } else if (ch == 5) { // Ctrl-e
     jsiHandleEnd();
   } else if (ch == 21 || ch == 23) { // Ctrl-u or Ctrl-w
-      jsiClearInputLine();
+    jsiClearInputLine();
   } else if (ch == 27) {
     inputState = IS_HAD_27;
   } else if (inputState==IS_HAD_27) {
@@ -1411,7 +1411,7 @@ void jsiIdle() {
   // Check timers
   JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
-  JsVarInt timePassed = (JsVarInt)(time - jsiLastIdleTime);
+  JsSysTime timePassed = (JsVarInt)(time - jsiLastIdleTime);
   jsiLastIdleTime = time;
 
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -1420,8 +1420,8 @@ void jsiIdle() {
   while (jsvObjectIteratorHasValue(&it)) {
     bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
-    JsVarInt timerTime = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
-    JsVarInt timeUntilNext = timerTime - timePassed;
+    JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
+    JsSysTime timeUntilNext = timerTime - timePassed;
 
     if (timeUntilNext < minTimeUntilNext)
       minTimeUntilNext = timeUntilNext;
@@ -1451,12 +1451,11 @@ void jsiIdle() {
         }
         jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
       }
-      bool intervalRecurring = jsvGetBoolAndUnLock(jsvObjectGetChild(timerPtr, "recur", 0));
+      JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (exec) {
-        if (!jsiExecuteEventCallback(timerCallback, data, 0) && intervalRecurring) {
+        if (!jsiExecuteEventCallback(timerCallback, data, 0) && interval) {
           jsError("Error processing interval - removing it.");
           jsErrorFlags |= JSERR_CALLBACK;
-          intervalRecurring = false;
         }
       }
       jsvUnLock(data);
@@ -1481,9 +1480,9 @@ void jsiIdle() {
         jsvUnLock(watchPtr);
       }
 
-      if (intervalRecurring) {
-        JsVarInt interval = jsvGetIntegerAndUnLock(jsvObjectGetChild(timerPtr, "interval", 0));
-        timeUntilNext = (interval<=0) ? 0 : (timerTime + interval);
+      if (interval) {
+        timeUntilNext = timerTime + jsvGetLongIntegerAndUnLock(interval);
+        jsvUnLock(interval);
       } else {
         // free
         // Beware... may have already been removed!
@@ -1496,7 +1495,7 @@ void jsiIdle() {
 
     }
     // update the timer's time
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromInteger(timeUntilNext)));
+    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger(timeUntilNext)));
     jsvUnLock(timerPtr);
     if (!hasDeletedTimer)
       jsvObjectIteratorNext(&it);
@@ -1731,10 +1730,11 @@ void jsiDumpState() {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
     bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
-    JsSysTime timerInterval = (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timer, "interval", 0));
-    jsiConsolePrint(recur ? "setInterval(" : "setTimeout(");
+    JsVar *timerInterval = jsvObjectGetChild(timer, "interval", 0);
+    jsiConsolePrint(timerInterval ? "setInterval(" : "setTimeout(");
     jsiDumpJSON(timerCallback, 0);
-    jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval));
+    jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval ? jsvGetLongInteger(timerInterval) : jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timer, "time", 0))));
+    jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next
     jsvUnLock(timer);
