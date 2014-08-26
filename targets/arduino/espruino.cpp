@@ -16,8 +16,8 @@ extern "C" {
 
 
 void setup(void) {
-  Serial.println("jshInit...");
   jshInit();
+  Serial.println("jshInit...");
   bool buttonState = false;
   buttonState = false;
 #ifdef BTN_PININDEX

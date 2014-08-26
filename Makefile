@@ -863,7 +863,7 @@ FORMAT = ihex
 
 ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
 ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-LDFLAGS += --relax
+LDFLAGS += -mrelax
 AVR=1
 INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
 DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
@@ -878,7 +878,20 @@ $(ARDUINO_LIB)/WString.cpp \
 $(ARDUINO_LIB)/Print.cpp \
 $(ARDUINO_LIB)/HardwareSerial.cpp \
 targets/arduino/jshardware.cpp \
-targets/arduino/espruino.cpp 
+targets/arduino/espruino.cpp
+
+# Arduino 1.5.1 and up has one extra file
+ifneq ($(wildcard $(ARDUINO_LIB)/hooks.c),)
+CPPSOURCES += $(ARDUINO_LIB)/hooks.c
+endif
+# Arduino 1.5.6 and up splits HardwareSerial into multiple files
+ifneq ($(wildcard $(ARDUINO_LIB)/HardwareSerial0.cpp),)
+CPPSOURCES += \
+$(ARDUINO_LIB)/HardwareSerial0.cpp \
+$(ARDUINO_LIB)/HardwareSerial1.cpp \
+$(ARDUINO_LIB)/HardwareSerial2.cpp \
+$(ARDUINO_LIB)/HardwareSerial3.cpp
+endif
 
 export CCPREFIX=avr-
 endif
@@ -899,7 +912,7 @@ endif
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
 OPTIMIZEFLAGS += --param inline-unit-growth=8
 
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX?=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
@@ -960,9 +973,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-ifndef MACOSX
-LDFLAGS += -Wl,--gc-sections
-else ifdef EMBEDDED
+ifdef EMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 
@@ -1068,6 +1079,9 @@ ifndef TRAVIS
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+ifdef ARDUINO_AVR
+proj: $(PROJ_NAME).hex
+endif
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all

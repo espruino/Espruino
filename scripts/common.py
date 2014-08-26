@@ -252,6 +252,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
+  if d=="RELEASE": return "release builds"
   print "WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description"
   return d
 

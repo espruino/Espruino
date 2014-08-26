@@ -400,7 +400,9 @@ JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
 JsVarFloat jsvGetFloat(const JsVar *v); ///< Get the floating point representation of this var
 bool jsvGetBool(const JsVar *v);
+long long jsvGetLongInteger(const JsVar *v);
 JsVar *jsvAsNumber(JsVar *var); ///< Convert the given variable to a number
+
 static inline JsVar *jsvAsNumberAndUnLock(JsVar *v) { JsVar *n = jsvAsNumber(v); jsvUnLock(v); return n; }
 static inline JsVarInt _jsvGetIntegerAndUnLock(JsVar *v) { JsVarInt i = jsvGetInteger(v); jsvUnLock(v); return i; }
 static inline JsVarFloat _jsvGetFloatAndUnLock(JsVar *v) { JsVarFloat f = jsvGetFloat(v); jsvUnLock(v); return f; }
@@ -414,6 +416,8 @@ bool jsvGetBoolAndUnLock(JsVar *v);
 #define jsvGetFloatAndUnLock _jsvGetFloatAndUnLock
 #define jsvGetBoolAndUnLock _jsvGetBoolAndUnLock
 #endif
+long long jsvGetLongIntegerAndUnLock(JsVar *v);
+
 
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);

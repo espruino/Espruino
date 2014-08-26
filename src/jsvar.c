@@ -1183,6 +1183,18 @@ JsVarInt jsvGetInteger(const JsVar *v) {
     return 0;
 }
 
+long long jsvGetLongInteger(const JsVar *v) {
+  if (jsvIsInt(v)) return jsvGetInteger(v);
+  return (long long)jsvGetFloat(v);
+}
+
+long long jsvGetLongIntegerAndUnLock(JsVar *v) {
+  long long i = jsvGetLongInteger(v);
+  jsvUnLock(v);
+  return i;
+}
+
+
 void jsvSetInteger(JsVar *v, JsVarInt value) {
   assert(jsvIsInt(v));
   v->varData.integer  = value;
@@ -1876,7 +1888,7 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
       jsvUnLock(child);
     }
   }
-  if (jsvIsName(v) && jsvGetFirstChild(v)) {
+  if (jsvIsName(v) && !jsvIsNameWithValue(v) && jsvGetFirstChild(v)) {
     JsVar *child = jsvLock(jsvGetFirstChild(v));
     count += jsvCountJsVarsUsed(child);
     jsvUnLock(child);

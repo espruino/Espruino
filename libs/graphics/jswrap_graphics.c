@@ -27,6 +27,8 @@
 #endif
 #include "bitmap_font_4x6.h"
 
+#include <string.h>
+
 /*JSON{ "type":"class",
         "class" : "Graphics",
         "description" : ["This class provides Graphics operations that can be applied to a surface.",
@@ -109,6 +111,32 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
       else
         jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
+    }
+    JsVar *colorv;
+    char color_order[4];
+    size_t len;
+    if ((colorv = jsvObjectGetChild(options, "color_order", 0)) != NULL) {
+      len = jsvGetString(colorv, color_order, 4);
+      jsvUnLock(colorv);
+
+      if (len != 3)
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+      if (!strcasecmp(color_order, "rgb"))
+	; // The default
+      else if (!strcasecmp(color_order, "brg"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BRG);
+      else if (!strcasecmp(color_order, "bgr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BGR);
+      else if (!strcasecmp(color_order, "gbr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GBR);
+      else if (!strcasecmp(color_order, "grb"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GRB);
+      else if (!strcasecmp(color_order, "RBG"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_RBG);
+      else {
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+	return 0; // XXX: free parent?
+      }
     }
   }
 
@@ -280,34 +308,137 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   gfx.data.cursorY = (short)y;
 }
 
+// Convert HSV to RGB
+// From http://www.cs.rit.edu/~ncs/color/t_convert.html
+static void HSVtoRGB(JsVarFloat h, JsVarFloat s, JsVarFloat v, JsVarFloat *r, JsVarFloat *g, JsVarFloat *b) {
+  int i;
+  JsVarFloat f, p, q, t;
+  if (s == 0)
+    // achromatic (grey)
+    *r = *g = *b = v;
+
+  h = h / 60;			// sector 0 to 5
+  i = (int)h;
+  f = h - i;			// fractional part of h
+  p = v * (1 - s);
+  q = v * (1 - s * f);
+  t = v * (1 - s * (1 - f));
+  switch(i) {
+  case 0:
+    *r = v;
+    *g = t;
+    *b = p;
+    break;
+  case 1:
+    *r = q;
+    *g = v;
+    *b = p;
+    break;
+  case 2:
+    *r = p;
+    *g = v;
+    *b = t;
+    break;
+  case 3:
+    *r = p;
+    *g = q;
+    *b = v;
+    break;
+  case 4:
+    *r = t;
+    *g = p;
+    *b = v;
+    break;
+  default:
+    *r = v;
+    *g = p;
+    *b = q;
+    break;
+  }
+};
 
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setColor",
          "description" : "Set the color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
-         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth" ],
+         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true, false)",
+         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order" ],
                       [ "g", "JsVar", "Green (between 0 and 1)" ],
                       [ "b", "JsVar", "Blue (between 0 and 1)" ] ]
 }*/
 /*JSON{ "type":"method", "class": "Graphics", "name" : "setBgColor",
          "description" : "Set the background color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
-         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth" ],
+         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false, false)",
+         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order" ],
                       [ "g", "JsVar", "Green (between 0 and 1)" ],
                       [ "b", "JsVar", "Blue (between 0 and 1)" ] ]
 }*/
-void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
+
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setColorHSV",
+         "description" : "Set the HSV color to use for subsequent drawing operations",
+         "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, true, true)",
+         "params" : [ [ "h", "JsVar", "Hue (between 0 and 1)" ],
+                      [ "s", "JsVar", "Saturation (between 0 and 1)" ],
+                      [ "v", "JsVar", "Value (between 0 and 1)" ] ]
+}*/
+/*JSON{ "type":"method", "class": "Graphics", "name" : "setBgColorHSV",
+         "description" : "Set the background HSV color to use for subsequent drawing operations",
+         "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, false, true)",
+         "params" : [ [ "h", "JsVar", "Hue (between 0 and 1)" ],
+                      [ "s", "JsVar", "Saturation (between 0 and 1)" ],
+                      [ "v", "JsVar", "Value (between 0 and 1)" ] ]
+}*/
+void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground, bool isHSV) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int color = 0;
+  JsVarFloat rf, gf, bf;
+  if (isHSV) {
+    if (jsvIsUndefined(r) || jsvIsUndefined(g) || jsvIsUndefined(b)) {
+      jsExceptionHere(JSET_ERROR, "h, s and v must be defined");
+      return;
+    }
+    JsVarFloat hf = jsvGetFloat(r);
+    JsVarFloat sf = jsvGetFloat(g);
+    JsVarFloat vf = jsvGetFloat(b);
+    HSVtoRGB(hf, sf, vf, &rf, &gf, &bf);
+  } else {
+    rf = jsvGetFloat(r);
+    gf = jsvGetFloat(g);
+    bf = jsvGetFloat(b);
+  }
   if (!jsvIsUndefined(g) && !jsvIsUndefined(b)) {
-    int ri = (int)(jsvGetFloat(r)*256);
-    int gi = (int)(jsvGetFloat(g)*256);
-    int bi = (int)(jsvGetFloat(b)*256);
+    int ri = (int)(rf*256);
+    int gi = (int)(gf*256);
+    int bi = (int)(bf*256);
     if (ri>255) ri=255;
     if (gi>255) gi=255;
     if (bi>255) bi=255;
     if (ri<0) ri=0;
     if (gi<0) gi=0;
     if (bi<0) bi=0;
+    // Check if we need to twiddle colors
+    if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK) {
+      int tmpr, tmpg, tmpb;
+      tmpr = ri;
+      tmpg = gi;
+      tmpb = bi;
+      if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BRG) {
+	ri = tmpb;
+	gi = tmpr;
+	bi = tmpg;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BGR) {
+	ri = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GBR) {
+	ri = tmpg;
+	gi = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GRB) {
+	ri = tmpg;
+	gi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_RBG) {
+	gi = tmpb;
+	bi = tmpg;
+      }
+    }
     if (gfx.data.bpp==16) {
       color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
     } else if (gfx.data.bpp==32) {
