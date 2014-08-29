@@ -386,10 +386,10 @@ char itoch(int val) {
   return (char)('a'+val-10);
 }
 
-void itostr(JsVarInt vals,char *str,unsigned int base) {
+void itostr_extra(JsVarInt vals,char *str,bool signedVal, unsigned int base) {
   JsVarIntUnsigned val;
   // handle negative numbers
-  if (vals<0) {
+  if (signedVal && vals<0) {
     *(str++)='-';
     val = (JsVarIntUnsigned)(-vals);
   } else {
@@ -508,11 +508,12 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         break;
       }
       case 'd': itostr(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
-      case 'x': itostr(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
+      case 'x': itostr_extra(va_arg(argp, int), buf, false, 16); user_callback(buf,user_data); break;
       case 'L': {
         unsigned int rad = 10;
-        if (*fmt=='x') { rad=16; fmt++; }
-        itostr(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
+        bool signedVal = true;
+        if (*fmt=='x') { rad=16; fmt++; signedVal = false; }
+        itostr_extra(va_arg(argp, JsVarInt), buf, signedVal, rad); user_callback(buf,user_data);
       } break;
       case 'f': ftoa_bounded(va_arg(argp, JsVarFloat), buf, sizeof(buf)); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;
