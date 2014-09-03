@@ -107,6 +107,9 @@ JsSysTime jshGetSystemTime() {
   return 0;
 }
 
+void jshSetSystemTime(JsSysTime time) {
+}
+
 // ----------------------------------------------------------------------------
 
 bool jshPinInput(Pin pin) {

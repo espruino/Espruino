@@ -347,6 +347,9 @@ JsSysTime jshGetSystemTime() {
   return tm.tv_sec*1000000L + tm.tv_usec;
 }
 
+void jshSetSystemTime(JsSysTime time) {
+}
+
 // ----------------------------------------------------------------------------
 
 bool jshPinInput(Pin pin) {

@@ -1355,7 +1355,7 @@ JsSysTime jshGetRTCSystemTime() {
   cdate.day = date.RTC_Date;
   cdate.month = date.RTC_Month;
   cdate.year = 2000+date.RTC_Year;
-  cdate.dow = 0;
+  cdate.dow = date.RTC_WeekDay%7;
   ctime.daysSinceEpoch = fromCalenderDate(&cdate);
   ctime.zone = 0;
   ctime.ms = 0;
@@ -1404,6 +1404,43 @@ JsSysTime jshGetSystemTime() {
   } while (major1!=major2 || major2!=major3 || major3!=major4);
   return major1 - (JsSysTime)minor;
 #endif
+}
+
+void jshSetSystemTime(JsSysTime newTime) {
+  jshInterruptOff();
+  // NOTE: Subseconds are not set here
+#ifdef USE_RTC
+
+#ifdef STM32F1
+  RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
+#else
+  RTC_TimeTypeDef time;
+  RTC_DateTypeDef date;
+
+
+  TimeInDay ctime = getTimeFromMilliSeconds(newTime * 1000 / JSSYSTIME_SECOND);
+  CalendarDate cdate = getCalendarDate(ctime.daysSinceEpoch);
+
+  date.RTC_Date = cdate.day;
+  date.RTC_Month = cdate.month;
+  date.RTC_Year = cdate.year - 2000;
+  date.RTC_WeekDay = cdate.dow+1;
+
+  time.RTC_Seconds = ctime.sec;
+  time.RTC_Minutes = ctime.min;
+  time.RTC_Hours = ctime.hour;
+  time.RTC_H12 = 0;
+
+  RTC_SetTime(RTC_Format_BIN, &time);
+  RTC_SetDate(RTC_Format_BIN, &date);
+#endif
+
+#else
+  SysTickMajor = time;
+#endif
+  hasSystemSlept = true;
+  jshInterruptOn();
+  jshGetSystemTime(); // force update of the time
 }
 
 // ----------------------------------------------------------------------------
