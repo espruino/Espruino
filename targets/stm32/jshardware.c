@@ -1346,9 +1346,9 @@ JsSysTime jshGetRTCSystemTime() {
 #else
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
+  uint16_t dl = (uint16_t)RTC_GetSubSecond(); // get first, as this freezes the time + date
   RTC_GetTime(RTC_Format_BIN, &time);
   RTC_GetDate(RTC_Format_BIN, &date);
-  uint16_t dl = (uint16_t)RTC_GetSubSecond();
 
   CalendarDate cdate;
   TimeInDay ctime;
