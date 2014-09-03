@@ -31,7 +31,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-
+#ifdef ESPRUINI
+#define USE_RTC
+#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -41,6 +43,9 @@
 #define IRQ_PRIOR_LOW 15
 
 #ifdef USE_RTC
+
+#include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
+
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
@@ -692,8 +697,10 @@ void jshDoSysTick() {
     //RTC_SetCounter(7900);
     RCC_RTCCLKCmd(ENABLE); // enable RTC
     RTC_WaitForSynchro();
+#ifdef STM32F1
     RTC_SetPrescaler(jshRTCPrescaler - 1U);
     RTC_WaitForLastTask();
+#endif
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -999,7 +1006,7 @@ void jshInit() {
 #ifndef STM32F3
   GPIO_Init(GPIOG, &GPIO_InitStructure);
 #endif
-#endif
+#endif // ESPRUINOBOARD
 
 #ifdef LED1_PININDEX
   // turn led on (status)
@@ -1077,7 +1084,11 @@ void jshInit() {
   NVIC_Init(&NVIC_InitStructure);
 #ifdef USE_RTC
   // Set the RTC alarm (waking up from sleep)
+#ifdef STM32F1
   NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
+#else // if we have wakeup, use that rather than the alarm
+  NVIC_InitStructure.NVIC_IRQChannel = RTC_WKUP_IRQn;
+#endif
   NVIC_Init(&NVIC_InitStructure);
   /* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
   EXTI_InitTypeDef EXTI_InitStructure;
@@ -1322,6 +1333,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 
 #ifdef USE_RTC
 JsSysTime jshGetRTCSystemTime() {
+#ifdef STM32F1
   volatile uint16_t dl,ch,cl,cl1;
   do {
     cl1 = RTC->CNTL;
@@ -1331,6 +1343,28 @@ JsSysTime jshGetRTCSystemTime() {
   } while(cl1!=cl);
 
   unsigned int c = (((unsigned int)ch)<<16) | (unsigned int)cl;
+#else
+  RTC_TimeTypeDef time;
+  RTC_DateTypeDef date;
+  RTC_GetTime(RTC_Format_BIN, &time);
+  RTC_GetDate(RTC_Format_BIN, &date);
+  uint16_t dl = (uint16_t)RTC_GetSubSecond();
+
+  CalendarDate cdate;
+  TimeInDay ctime;
+  cdate.day = date.RTC_Date;
+  cdate.month = date.RTC_Month;
+  cdate.year = 2000+date.RTC_Year;
+  cdate.dow = 0;
+  ctime.daysSinceEpoch = fromCalenderDate(&cdate);
+  ctime.zone = 0;
+  ctime.ms = 0;
+  ctime.sec = time.RTC_Seconds;
+  ctime.min = time.RTC_Minutes;
+  ctime.hour = time.RTC_Hours;
+
+  JsSysTime c = (JsSysTime)(fromTimeInDay(&ctime)/1000);
+#endif
   return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
 }
 #endif
@@ -2374,25 +2408,7 @@ bool jshFlashContainsCode() {
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-
-/*#ifdef ESPRUINOBOARD
-  // This code gets power consumption down to 6.5mA on idle - from 15mA
-  while(USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) { } // HACK - wait for USART1
-  // Switch to HSI
-  RCC_HSICmd(ENABLE);
-  while(RCC_GetFlagStatus(RCC_FLAG_HSIRDY) == RESET);   
-  RCC_SYSCLKConfig(RCC_SYSCLKSource_HSI); 
-  while(RCC_GetSYSCLKSource() !=  0x00);
-  RCC_PLLCmd ( DISABLE ) ;
-  RCC_HSEConfig(RCC_HSE_OFF);
-  // set peripherals for new clock rates
-  SystemCoreClockUpdate();
-  JshUSARTInfo inf;
-  jshUSARTInitInfo(&inf);
-  jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
-#endif*/
-
-#ifdef ESPRUINOBOARD
+#ifdef USE_RTC
   /* TODO:
        Check jsiGetConsoleDevice to make sure we don't have to wake on USART (we can't do this fast enough)
        Check that we're not using EXTI 11 for something else
@@ -2418,9 +2434,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
 #ifdef USB
  //   PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
+  #ifdef STM32F1
     USB_Cable_Config(DISABLE);
     _SetCNTR(_GetCNTR() | CNTR_PDWN);
-#endif
+  #endif // STM32F1
+#endif // USB
 
     /* Add EXTI for Serial port */
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
@@ -2431,7 +2449,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
-#endif
+#endif // USB
 
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
       unsigned int ticks = (unsigned int)(timeUntilWake/jshGetTimeForSecond()); // ensure we round down and leave a little time
@@ -2440,10 +2458,18 @@ bool jshSleep(JsSysTime timeUntilWake) {
        * wake up, we execute our timer immediately (even if it is a bit late)
        * and don't waste power in shallow sleep. This is documented in setInterval */
       if (ticks>3) ticks++; // sleep longer than we need
+
+#ifdef STM32F1
       RTC_SetAlarm(RTC_GetCounter() + ticks);
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
+#else // If available, just use the WakeUp counter
+      RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits); // TODO: more accurate if time is small enough?
+      if (ticks > 65535) ticks = 65535;
+      RTC_SetWakeUpCounter(ticks);
+      RTC_WakeUpCmd(ENABLE);
+#endif
     }
     // set flag in case there happens to be a SysTick
     hasSystemSlept = true;
@@ -2452,8 +2478,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
     // -----------------------------------------------
     if (timeUntilWake!=JSSYSTIME_MAX) { // disable alarm
+#ifdef STM32F1
       RTC_ITConfig(RTC_IT_ALR, DISABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
+#else
+      RTC_WakeUpCmd(DISABLE);
+#endif
     }
 #ifdef USB
     bool wokenByUSB = jshPinGetValue(usbPin)==0;
@@ -2472,8 +2502,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
     RTC_WaitForSynchro(); // make sure any RTC reads will be
 #ifdef USB
+  #ifdef STM32F1
     _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);
+  #endif
   //  PowerOn(); // USB on
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
@@ -2506,21 +2538,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
 
   return false;
-
-/*#ifdef ESPRUINOBOARD
-  // recover...
-  RCC_HSEConfig ( RCC_HSE_ON ) ;
-  while(RCC_GetFlagStatus(RCC_FLAG_HSERDY) == RESET);
-  RCC_PLLCmd ( ENABLE ) ;
-  while ( RCC_GetFlagStatus ( RCC_FLAG_PLLRDY ) == RESET ) ;
-  RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
-  while(RCC_GetSYSCLKSource() != 0x08);
-  RCC_HSICmd(DISABLE);
-  // re-initialise peripherals
-  SystemCoreClockUpdate();
-  jshUSARTInitInfo(&inf);
-  jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
-#endif*/
 }
 
 

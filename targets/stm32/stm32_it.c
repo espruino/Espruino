@@ -280,6 +280,16 @@ void RTCAlarm_IRQHandler(void) {
   EXTI_ClearITPendingBit(EXTI_Line17);
 }
 
+#ifndef STM32F1
+void RTC_WKUP_IRQHandler(void)
+{
+  if (RTC_GetITStatus(RTC_IT_WUT) != RESET) {
+    RTC_ClearITPendingBit(RTC_IT_WUT);
+    EXTI_ClearITPendingBit(EXTI_Line20);
+  }
+}
+#endif
+
 static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
      /* Clear the USART Receive interrupt */
