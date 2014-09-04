@@ -31,9 +31,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-//#ifdef ESPRUINI
+#ifdef ESPRUINI
 #define USE_RTC
-//#endif
+#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -684,7 +684,11 @@ void jshDoSysTick() {
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
       // LSE is not working - turn it off and use LSI
-      jshRTCPrescaler = 40000; // 40kHz for LSI
+#ifdef STM32F1
+      jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+#else
+      jshRTCPrescaler = 32768; // 32kHz for LSI
+#endif
       RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
       RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
     } else {
@@ -700,6 +704,15 @@ void jshDoSysTick() {
 #ifdef STM32F1
     RTC_SetPrescaler(jshRTCPrescaler - 1U);
     RTC_WaitForLastTask();
+#else
+    RTC_InitTypeDef RTC_InitStructure;
+    RTC_StructInit(&RTC_InitStructure);
+    //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+    //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
+    RTC_InitStructure.RTC_AsynchPrediv = 0;
+    RTC_InitStructure.RTC_SynchPrediv =  jshRTCPrescaler-1; // TODO: power consumption - but then timestamps are less accurate
+    RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+    RTC_Init(&RTC_InitStructure);
 #endif
   }
 
@@ -1102,16 +1115,6 @@ void jshInit() {
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
-
-#ifndef STM32F1
-  // Calendar Configuration
-  RTC_InitTypeDef RTC_InitStructure;
-  RTC_StructInit(&RTC_InitStructure);
-  RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-  RTC_InitStructure.RTC_SynchPrediv =  0x120; /* (37KHz / 128) - 1 = 0x120*/
-  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-  RTC_Init(&RTC_InitStructure);
-#endif
 #endif // USE_RTC
 
 #ifdef STM32F4
@@ -1449,10 +1452,10 @@ void jshSetSystemTime(JsSysTime newTime) {
   RTC_SetDate(RTC_Format_BIN, &date);
 #endif
 
-#else
-  SysTickMajor = time;
-#endif
   hasSystemSlept = true;
+#else
+  SysTickMajor = newTime;
+#endif
   jshInterruptOn();
   jshGetSystemTime(); // force update of the time
 }
@@ -2468,7 +2471,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
   if (allowDeepSleep &&  // from setDeepSleep
-      (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake
+#ifdef STM32F1
+      (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
+#else
+      (timeUntilWake > (jshGetTimeForSecond()*16*2/jshRTCPrescaler)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
+#endif
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
@@ -2495,30 +2502,39 @@ bool jshSleep(JsSysTime timeUntilWake) {
     //jshPinWatch(JSH_PORTA_OFFSET+10, true);
     /* add exti for USB */
 #ifdef USB
+#ifdef STM32F1
     // USB has 15k pull-down resistors (and STM32 has 40k pull up)
     Pin usbPin = JSH_PORTA_OFFSET+11;
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN_PULLUP);
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
+#endif
 #endif // USB
 
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
       unsigned int ticks = (unsigned int)(timeUntilWake/jshGetTimeForSecond()); // ensure we round down and leave a little time
+
+#ifdef STM32F1
       /* If we're going asleep for more than a few seconds,
        * add one second to the sleep time so that when we
        * wake up, we execute our timer immediately (even if it is a bit late)
        * and don't waste power in shallow sleep. This is documented in setInterval */
       if (ticks>3) ticks++; // sleep longer than we need
 
-#ifdef STM32F1
       RTC_SetAlarm(RTC_GetCounter() + ticks);
       RTC_ITConfig(RTC_IT_ALR, ENABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, ENABLE);
       RTC_WaitForLastTask();
 #else // If available, just use the WakeUp counter
-      RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits); // TODO: more accurate if time is small enough?
-      if (ticks > 65535) ticks = 65535;
-      RTC_SetWakeUpCounter(ticks);
+      if (ticks < ((65536*16) / jshRTCPrescaler)) {
+        // if the delay is small enough, clock the WakeUp counter faster so we can sleep more accurately
+        RTC_WakeUpClockConfig(RTC_WakeUpClock_RTCCLK_Div16);
+        ticks = (unsigned int)((timeUntilWake*jshRTCPrescaler) / (jshGetTimeForSecond()*16));
+      } else { // wakeup in seconds
+        RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits);
+        if (ticks > 65535) ticks = 65535;
+      }
+      RTC_SetWakeUpCounter(ticks - 1); // 0 based
       RTC_ITConfig(RTC_IT_WUT, ENABLE);
       RTC_WakeUpCmd(ENABLE);
       RTC_ClearFlag(RTC_FLAG_WUTF);
@@ -2540,11 +2556,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     }
 #ifdef USB
+#ifdef STM32F1
     bool wokenByUSB = jshPinGetValue(usbPin)==0;
     // remove watches on pins
     jshPinWatch(usbPin, false);
     if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
+#endif
 #endif
     // recover oscillator
     RCC_HSEConfig(RCC_HSE_ON);
@@ -2554,15 +2572,15 @@ bool jshSleep(JsSysTime timeUntilWake) {
       RCC_SYSCLKConfig(RCC_SYSCLKSource_PLLCLK);
       while(RCC_GetSYSCLKSource() != 0x08);
     }
-    RTC_WaitForSynchro(); // make sure any RTC reads will be
+    RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
-  #ifdef STM32F1
+#ifdef STM32F1
     _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);
-  #endif
   //  PowerOn(); // USB on
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
+#endif
 #endif
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else
