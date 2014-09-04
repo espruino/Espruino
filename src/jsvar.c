@@ -1172,7 +1172,7 @@ JsVarInt jsvGetInteger(const JsVar *v) {
       return jsvGetIntegerAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
     if (jsvIsFloat(v)) {
       if (isfinite(v->varData.floating))
-        return (JsVarInt)(uint32_t)v->varData.floating;
+        return (JsVarInt)(long long)v->varData.floating;
       return 0;
     }
     if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {

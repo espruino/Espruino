@@ -19,6 +19,7 @@
             Make hidden names smaller to save a few JsVars
             If there's only one function scope, don't define an array and save 2 JsVars
             Fix setInterval on non-F1 boards (fix #415)
+            Fix issue where large doubles (> +/- 2^31) were converted to -1 rather than truncated ints
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
