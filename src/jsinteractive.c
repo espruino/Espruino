@@ -1481,8 +1481,7 @@ void jsiIdle() {
       }
 
       if (interval) {
-        timeUntilNext = timerTime + jsvGetLongIntegerAndUnLock(interval);
-        jsvUnLock(interval);
+        timeUntilNext = timeUntilNext + jsvGetLongIntegerAndUnLock(interval);
       } else {
         // free
         // Beware... may have already been removed!
@@ -1495,10 +1494,11 @@ void jsiIdle() {
 
     }
     // update the timer's time
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger(timeUntilNext)));
-    jsvUnLock(timerPtr);
-    if (!hasDeletedTimer)
+    if (!hasDeletedTimer) {
+      jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger(timeUntilNext)));
       jsvObjectIteratorNext(&it);
+    }
+    jsvUnLock(timerPtr);
   }
   jsvObjectIteratorFree(&it);
   jsvUnLock(timerArrayPtr);
@@ -1729,7 +1729,6 @@ void jsiDumpState() {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
-    bool recur = jsvGetBoolAndUnLock(jsvObjectGetChild(timer, "recur", 0));
     JsVar *timerInterval = jsvObjectGetChild(timer, "interval", 0);
     jsiConsolePrint(timerInterval ? "setInterval(" : "setTimeout(");
     jsiDumpJSON(timerCallback, 0);
