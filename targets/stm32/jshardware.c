@@ -31,9 +31,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
+//#ifdef ESPRUINI
 #define USE_RTC
-#endif
+//#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -1093,12 +1093,26 @@ void jshInit() {
   /* Configure EXTI Line17(RTC Alarm) to generate an interrupt on rising edge */
   EXTI_InitTypeDef EXTI_InitStructure;
   EXTI_ClearITPendingBit(EXTI_Line17);
-  EXTI_InitStructure.EXTI_Line = EXTI_Line17;
+#ifdef STM32F1
+  EXTI_InitStructure.EXTI_Line = EXTI_Line17; // Alarm
+#else
+  EXTI_InitStructure.EXTI_Line = EXTI_Line22; // WKUP
+#endif
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
+
+#ifndef STM32F1
+  // Calendar Configuration
+  RTC_InitTypeDef RTC_InitStructure;
+  RTC_StructInit(&RTC_InitStructure);
+  RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+  RTC_InitStructure.RTC_SynchPrediv =  0x120; /* (37KHz / 128) - 1 = 0x120*/
+  RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+  RTC_Init(&RTC_InitStructure);
 #endif
+#endif // USE_RTC
 
 #ifdef STM32F4
   ADC_CommonInitTypeDef ADC_CommonInitStructure;
@@ -1418,17 +1432,17 @@ void jshSetSystemTime(JsSysTime newTime) {
   RTC_DateTypeDef date;
 
 
-  TimeInDay ctime = getTimeFromMilliSeconds(newTime * 1000 / JSSYSTIME_SECOND);
+  TimeInDay ctime = getTimeFromMilliSeconds((JsVarFloat)newTime * 1000 / JSSYSTIME_SECOND);
   CalendarDate cdate = getCalendarDate(ctime.daysSinceEpoch);
 
-  date.RTC_Date = cdate.day;
-  date.RTC_Month = cdate.month;
-  date.RTC_Year = cdate.year - 2000;
-  date.RTC_WeekDay = cdate.dow+1;
+  date.RTC_Date = (uint8_t)cdate.day;
+  date.RTC_Month = (uint8_t)cdate.month;
+  date.RTC_Year = (uint8_t)(cdate.year - 2000);
+  date.RTC_WeekDay = (uint8_t)(cdate.dow + 1);
 
-  time.RTC_Seconds = ctime.sec;
-  time.RTC_Minutes = ctime.min;
-  time.RTC_Hours = ctime.hour;
+  time.RTC_Seconds = (uint8_t)ctime.sec;
+  time.RTC_Minutes = (uint8_t)ctime.min;
+  time.RTC_Hours = (uint8_t)ctime.hour;
   time.RTC_H12 = 0;
 
   RTC_SetTime(RTC_Format_BIN, &time);
@@ -2505,7 +2519,9 @@ bool jshSleep(JsSysTime timeUntilWake) {
       RTC_WakeUpClockConfig(RTC_WakeUpClock_CK_SPRE_16bits); // TODO: more accurate if time is small enough?
       if (ticks > 65535) ticks = 65535;
       RTC_SetWakeUpCounter(ticks);
+      RTC_ITConfig(RTC_IT_WUT, ENABLE);
       RTC_WakeUpCmd(ENABLE);
+      RTC_ClearFlag(RTC_FLAG_WUTF);
 #endif
     }
     // set flag in case there happens to be a SysTick
@@ -2519,6 +2535,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       RTC_ITConfig(RTC_IT_ALR, DISABLE);
       //RTC_AlarmCmd(RTC_Alarm_A, DISABLE);
 #else
+      RTC_ITConfig(RTC_IT_WUT, DISABLE);
       RTC_WakeUpCmd(DISABLE);
 #endif
     }

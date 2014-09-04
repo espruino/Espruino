@@ -280,12 +280,15 @@ void RTCAlarm_IRQHandler(void) {
   EXTI_ClearITPendingBit(EXTI_Line17);
 }
 
-#ifndef STM32F1
+#ifdef STM32F4
+#include "stm32f4xx_rtc.h"
+#include "stm32f4xx_pwr.h"
 void RTC_WKUP_IRQHandler(void)
 {
   if (RTC_GetITStatus(RTC_IT_WUT) != RESET) {
+    EXTI_ClearITPendingBit(EXTI_Line22);
     RTC_ClearITPendingBit(RTC_IT_WUT);
-    EXTI_ClearITPendingBit(EXTI_Line20);
+    RTC_ClearFlag(RTC_FLAG_WUTF);
   }
 }
 #endif

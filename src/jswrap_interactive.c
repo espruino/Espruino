@@ -215,6 +215,17 @@ void jswrap_interface_echo(bool echoOn) {
          "return" : ["float", ""]
 }*/
 
+/*JSON{ "type":"function", "name" : "setTime",
+         "description" : "Set the current system time in seconds (to the nearest second)",
+         "generate" : "jswrap_interactive_setTime",
+         "params" : [ [ "time", "float", ""] ]
+}*/
+void jswrap_interactive_setTime(JsVarFloat time) {
+  JsSysTime stime = jshGetTimeFromMilliseconds(time*1000);
+  jsiLastIdleTime = stime;
+  jshSetSystemTime(stime);
+}
+
 
 /*JSON{ "type":"function", "name" : "getSerial",
          "description" : "Get the serial number of this board",
