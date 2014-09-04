@@ -15,6 +15,10 @@
 #include "jspin.h"
 #include "jspininfo.h" // auto-generated
 
+#ifdef ESPRUINI
+#define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
+#endif
+
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
   return pin < JSH_PIN_COUNT && pinInfo[pin].port!=JSH_PORT_NONE;
@@ -67,7 +71,7 @@ Pin jshGetPinFromString(const char *s) {
 #endif
   }
 
-  if ((s[0]>='A' && s[0]<='H') && s[1]) { // first 6 are analogs
+  if ((s[0]>='A' && s[0]<='H') && s[1]) {
     int port = JSH_PORTA+s[0]-'A';
     int pin = -1;
     if (s[1]>='0' && s[1]<='9') {
@@ -82,6 +86,12 @@ Pin jshGetPinFromString(const char *s) {
       }
     }
     if (pin>=0) {
+#ifdef PIN_NAMES_DIRECT
+      int i;
+      for (i=0;i<JSH_PIN_COUNT;i++)
+        if (pinInfo[i].port == port && pinInfo[i].pin==pin)
+          return i;
+#else
       if (port == JSH_PORTA) {
         if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
       } else if (port == JSH_PORTB) {
@@ -107,6 +117,7 @@ Pin jshGetPinFromString(const char *s) {
         if (pin<JSH_PORTH_COUNT) return (Pin)(JSH_PORTH_OFFSET + pin);
 #endif
       }
+#endif
     }
   }
 
@@ -116,6 +127,11 @@ Pin jshGetPinFromString(const char *s) {
 /** Write the pin name to a string. String must have at least 8 characters (to be safe) */
 void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
+#ifdef PIN_NAMES_DIRECT
+  if (jshIsPinValid(pin)) {
+    result[0]='A'+pinInfo[pin].port-JSH_PORTA;
+    itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
+#else
   if (
 #if JSH_PORTA_OFFSET!=0
       pin>=JSH_PORTA_OFFSET &&
@@ -151,6 +167,7 @@ void jshGetPinString(char *result, Pin pin) {
   } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
     result[0]='H';
     itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
+#endif
 #endif
   } else {
     strncpy(result, "UNKNOWN", 8);
