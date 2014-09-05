@@ -60,7 +60,7 @@ devices = {
             'pin_out' : 'H1' }, # checked
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
-  'BTN1' : { 'pin' : 'C13' }, 
+  'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' }, 
   'LED1' : { 'pin' : 'B12' }, 
   'LED2' : { 'pin' : 'B2' },
   'USB' : { 'pin_charge' :  'B0',

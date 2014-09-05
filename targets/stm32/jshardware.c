@@ -1048,7 +1048,11 @@ void jshInit() {
 
   // initialise button
 #ifdef BTN1_PININDEX
+#ifdef BTN1_PINSTATE
+  jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
+#else
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
+#endif
 #endif
 
   // PREEMPTION
