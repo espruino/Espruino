@@ -209,7 +209,11 @@ JsVar *jspeiFindChildFromStringInParents(JsVar *parent, const char *name) {
 }
 
 JsVar *jspeiGetScopesAsVar() {
-  if (execInfo.scopeCount==0) return 0;
+  if (execInfo.scopeCount==0)
+    return 0;
+  if (execInfo.scopeCount==1)
+    return jsvLockAgain(execInfo.scopes[0]);
+
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   int i;
   for (i=0;i<execInfo.scopeCount;i++) {
@@ -227,13 +231,16 @@ JsVar *jspeiGetScopesAsVar() {
 void jspeiLoadScopesFromVar(JsVar *arr) {
     execInfo.scopeCount = 0;
 
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, arr);
-    while (jsvObjectIteratorHasValue(&it)) {
-      execInfo.scopes[execInfo.scopeCount++] = jsvObjectIteratorGetValue(&it);
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
+    if (jsvIsArray(arr)) {
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, arr);
+      while (jsvObjectIteratorHasValue(&it)) {
+        execInfo.scopes[execInfo.scopeCount++] = jsvObjectIteratorGetValue(&it);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+    } else
+      execInfo.scopes[execInfo.scopeCount++] = jsvLockAgain(arr);
 }
 // -----------------------------------------------
 bool jspCheckStackPosition() {
