@@ -78,6 +78,17 @@ BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 JsSysTime jshLastWokenByUSB = 0;
 #endif
 
+// Values from datasheets
+#if defined(STM32F1)
+#define V_REFINT 1.20
+#define V_TEMP_25 1.43
+#define V_TEMP_SLOPE 0.0043
+#else // defined(STM32F4)
+#define V_REFINT 1.21
+#define V_TEMP_25 0.76
+#define V_TEMP_SLOPE -0.0025
+#endif
+
 // ----------------------------------------------------------------------------
 //                                                                        PINS
 #if defined(STM32F3)
@@ -710,7 +721,7 @@ void jshDoSysTick() {
     //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
     //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
     RTC_InitStructure.RTC_AsynchPrediv = 0;
-    RTC_InitStructure.RTC_SynchPrediv =  jshRTCPrescaler-1; // TODO: power consumption - but then timestamps are less accurate
+    RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
     RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
     RTC_Init(&RTC_InitStructure);
 #endif
@@ -1622,31 +1633,31 @@ int jshPinAnalogFast(Pin pin) {
   return jshAnalogRead(pinInfo[pin].analog, true);
 }
 
-#ifdef STM32F1
+#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature() {
   // enable sensor
-  ADC1->CR2 |= ADC_CR2_TSVREFE;
+  ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
   // read
   JsVarFloat varVolts = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
   JsVarFloat valTemp = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH16, false) / (JsVarFloat)65535;
-  JsVarFloat vSense = valTemp * 1.2 / varVolts;
+  JsVarFloat vSense = valTemp * V_REFINT / varVolts;
   // disable sensor
-  ADC1->CR2 &= ~ADC_CR2_TSVREFE;
-  return ((1.43/*V25*/ - vSense) / 0.0043/*Avg_Slope*/) + 25;
+  ADC_TempSensorVrefintCmd(DISABLE);
+  return ((V_TEMP_25 - vSense) / V_TEMP_SLOPE) + 25;
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
   // enable sensor
-  ADC1->CR2 |= ADC_CR2_TSVREFE;
+  ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
   // read
   JsVarFloat r = jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false) / (JsVarFloat)65535;
   // disable sensor
-  ADC1->CR2 &= ~ADC_CR2_TSVREFE;
-  return 1.20 / r;
+  ADC_TempSensorVrefintCmd(DISABLE);
+  return V_REFINT / r;
 }
 #endif
 

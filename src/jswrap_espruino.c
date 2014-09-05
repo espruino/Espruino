@@ -24,18 +24,20 @@
         "description" : ["This is the built-in JavaScript class for Espruino utility functions." ]
 }*/
 
-/*JSON{ "type":"staticmethod", "ifdef" : "STM32F1", "ifndef" : "SAVE_ON_FLASH",
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
          "class": "E", "name" : "getTemperature",
          "generate_full" : "jshReadTemperature()",
          "description" : ["Use the STM32's internal thermistor to work out the temperature.",
+                          "While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.",
                           "**Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though."],
          "return" : ["float", "The temperature in degrees C"]
 }*/
 
-/*JSON{ "type":"staticmethod", "ifdef" : "STM32F1", "ifndef" : "SAVE_ON_FLASH",
+/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
          "class": "E", "name" : "getAnalogVRef",
          "generate_full" : "jshReadVRef()",
-         "description" : "Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` ",
+         "description" : ["Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` ",
+                          "While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN."],
          "return" : ["float", "The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
 }*/
 
