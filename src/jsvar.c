@@ -1862,19 +1862,24 @@ JsVarInt jsvGetLength(JsVar *src) {
 }
 
 /** Count the amount of JsVars used. Mostly useful for debugging */
-size_t jsvCountJsVarsUsed(JsVar *v) {
-
+static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
   // Use IS_RECURSING  flag to stop recursion
-  if (v->flags & JSV_IS_RECURSING)
-    return 0;
-  v->flags |= JSV_IS_RECURSING;
+  if (resetRecursionFlag) {
+    if (!(v->flags & JSV_IS_RECURSING))
+      return 0;
+    v->flags &= ~JSV_IS_RECURSING;
+  } else {
+    if (v->flags & JSV_IS_RECURSING)
+      return 0;
+    v->flags |= JSV_IS_RECURSING;
+  }
 
   size_t count = 1;
   if (jsvHasChildren(v)) {
     JsVarRef childref = jsvGetFirstChild(v);
     while (childref) {
       JsVar *child = jsvLock(childref);
-      count += jsvCountJsVarsUsed(child);
+      count += _jsvCountJsVarsUsedRecursive(child, resetRecursionFlag);
       childref = jsvGetNextSibling(child);
       jsvUnLock(child);
     }
@@ -1890,11 +1895,18 @@ size_t jsvCountJsVarsUsed(JsVar *v) {
   }
   if (jsvIsName(v) && !jsvIsNameWithValue(v) && jsvGetFirstChild(v)) {
     JsVar *child = jsvLock(jsvGetFirstChild(v));
-    count += jsvCountJsVarsUsed(child);
+    count += _jsvCountJsVarsUsedRecursive(child, resetRecursionFlag);
     jsvUnLock(child);
   }
-  v->flags &= ~JSV_IS_RECURSING;
   return count;
+}
+
+/** Count the amount of JsVars used. Mostly useful for debugging */
+size_t jsvCountJsVarsUsed(JsVar *v) {
+  // we do this so we don't count the same item twice, but don't use too much memory
+  size_t c = _jsvCountJsVarsUsedRecursive(v, false);
+  _jsvCountJsVarsUsedRecursive(v, true);
+  return c;
 }
 
 
