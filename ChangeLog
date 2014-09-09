@@ -22,6 +22,7 @@
             Fix issue where large doubles (> +/- 2^31) were converted to -1 rather than truncated ints
             Fix E.getSizeOf (fix #424)
             Fixed JSON indentation issue
+            Made 'pretty' JSON output look a bit better
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
