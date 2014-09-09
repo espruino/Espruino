@@ -151,6 +151,9 @@ JsSysTime jshGetSystemTime() {
   return ((JsSysTime)t);// + ((JsSysTime)systemTimeHigh)<<32;
 }
 
+void jshSetSystemTime(JsSysTime time) {
+}
+
 // ----------------------------------------------------------------------------
 
 bool jshPinInput(Pin pin) {

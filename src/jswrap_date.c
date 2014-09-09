@@ -32,17 +32,6 @@ const char *DAYNAMES = "Sun\0Mon\0Tue\0Wed\0Thu\0Fri\0Sat";
 /* NOTE: we use / and % here because the compiler is smart enough to
  * condense them into one op. */
 
-typedef struct {
-  int daysSinceEpoch;
-  int ms,sec,min,hour;
-  int zone; // timezone in minutes
-} TimeInDay;
-
-typedef struct {
-  int daysSinceEpoch;
-  int day,month,year,dow;
-} CalendarDate;
-
 TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in) {
   TimeInDay t;
   t.daysSinceEpoch = (int)(ms_in / MSDAY);

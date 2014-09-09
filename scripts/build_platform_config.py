@@ -118,13 +118,18 @@ def die(err):
   sys.exit(1)
 
 def toPinDef(pin):
-  return "(Pin)(JSH_PORT"+pin[0]+"_OFFSET + "+pin[1:]+")"
+  for p in pins:
+    if p["name"]=="P"+pin:
+      return str(pins.index(p))+"/* "+pin+" */";
+  die("Pin named '"+pin+"' not found");
 
 def codeOutDevice(device):
   if device in board.devices:
     codeOut("#define "+device+"_PININDEX "+toPinDef(board.devices[device]["pin"]))
     if device=="BTN1":
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
+      if "pinstate" in board.devices[device]:
+        codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
   
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:

@@ -39,6 +39,8 @@ bool jshIsUSBSERIALConnected(); // is the serial device connected?
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime();
+/// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
+void jshSetSystemTime(JsSysTime time);
 /// Convert a time in Milliseconds to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 /// Convert ticks to a time in Milliseconds
@@ -257,11 +259,14 @@ void jshKickUSBWatchdog();
 void jshSPIPush(IOEventFlags device, uint16_t data);
 #endif
 
-#ifdef STM32F1
+#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
+#else
+static JsVarFloat jshReadTemperature() { return NAN; };
+static JsVarFloat jshReadVRef()  { return NAN; };
 #endif
 
 #ifdef STM32F3

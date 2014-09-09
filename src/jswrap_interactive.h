@@ -21,6 +21,7 @@ void jswrap_interface_trace(JsVar *root);
 void jswrap_interface_print(JsVar *v);
 void jswrap_interface_edit(JsVar *funcName);
 void jswrap_interface_echo(bool echoOn);
+void jswrap_interactive_setTime(JsVarFloat time);
 JsVar *jswrap_interface_getSerial();
 
 JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout);
