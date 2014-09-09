@@ -52,6 +52,8 @@ Builtin.prototype.getTernType = function() {
     var args = [];     
     if ("params" in this)
       args = this.params.map(function (p) {
+        if (p[0]=="pin" && p[1]=="JsVar")
+          return "pin: +Pin"; // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
         return p[0]+": "+getBasicTernType(p[1]);
       });
     var ret = "";
