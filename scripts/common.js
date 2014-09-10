@@ -81,7 +81,12 @@ exports.readWrapperFile = function(filename) {
   var builtins = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
-    var j = new Builtin(JSON.parse(comment.slice(6,-2)));
+    comment = comment.slice(6,-2); // pull off /*JSON ... */ bit
+    var endOfJson = comment.indexOf("\n}")+2;
+    var json = comment.substr(0,endOfJson);
+    var description =  comment.substr(endOfJson).trim();
+    var j = new Builtin(JSON.parse(json));
+    if (description.length) j.description = description;
     j.implementation = filename;
     builtins.push(j);
   });

@@ -1,4 +1,4 @@
-#!/bin/node
+#!/usr/bin/node
 // This build a JSON description file for Tern.js as
 // specified here: http://ternjs.net/doc/manual.html#typedef
 

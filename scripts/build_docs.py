@@ -57,15 +57,14 @@ def htmlify(d):
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
   return d
 
-def html_description(ds,current):
-  if not isinstance(ds, list): ds = [ ds ]
-  for d in ds:
-    for link in links:
-      if link!=current:
-        d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
-        d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
-        d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")    
-    html("   <p class=\"description\">"+htmlify(d)+"</p>")
+def html_description(d,current):
+  if isinstance(d, list): d = "\n".join(d)
+  for link in links:
+    if link!=current:
+      d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
+      d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
+      d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")    
+  html("   <p class=\"description\">" + htmlify(d.replace("\n","</p>\n   <p class=\"description\">")) + "</p>")
 
 def get_prefixed_name(jsondata):
   s=""
@@ -205,7 +204,7 @@ for jsondata in detail:
     html("<h2 class=\"class\"><a name=\""+linkName+"\">"+niceName+"</a></h2>")
     html("  <p class=\"top\"><a href=\"#top\">(top)</a></p>")
     for j in jsondatas:
-      if (j["type"]=="class" or j["type"]=="library") and j["class"]==className:
+      if (j["type"]=="class" or j["type"]=="library") and j["class"]==className and "description" in j:
         ds = html_description(j["description"], className)
 
     instances = []
@@ -217,7 +216,7 @@ for jsondata in detail:
       html("  <ul>")
       for j in instances:
         html("    <li><p class=\"instance\">"+j["name"]+"</p>");
-        html_description(j["description"], j["name"])
+        if "description" in j: html_description(j["description"], j["name"])
         html("    </li>")
       html("  </ul>")
     
