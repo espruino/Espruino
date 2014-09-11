@@ -47,7 +47,7 @@ common.getWrapperFiles(function(files) {
       var description = json["description"];
       delete json["description"];
       if (Array.isArray(description))
-        description = description.join("\n");
+        description = description.join("\n\n");
       // now reconstruct
       var newBlock = "/*JSON" + formatJSON(json);
       if (description!==undefined)

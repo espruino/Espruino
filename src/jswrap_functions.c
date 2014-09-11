@@ -19,11 +19,14 @@
 #include "jsinteractive.h"
 
 
-/*JSON{ "type":"variable", "name" : "arguments",
-         "description" : "A variable containing the arguments given to the function",
-         "generate" : "jswrap_arguments",
-         "return" : ["JsVar", "An array containing all the arguments given to the function"]
-}*/
+/*JSON{
+  "type" : "variable",
+  "name" : "arguments",
+  "generate" : "jswrap_arguments",
+  "return" : ["JsVar","An array containing all the arguments given to the function"]
+}
+A variable containing the arguments given to the function
+*/
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
@@ -54,14 +57,18 @@ JsVar *jswrap_arguments() {
 }
 
 
-/*JSON{ "type":"constructor",
-        "class" : "Function",
-        "name" : "Function",
-        "generate" : "jswrap_function_constructor",
-        "description" : [ "Creates a function" ],
-        "params" : [ [ "code", "JsVar", "A string representing the code to run"] ],
-        "return" : ["JsVar", "A Number object"]
-}*/
+/*JSON{
+  "type" : "constructor",
+  "class" : "Function",
+  "name" : "Function",
+  "generate" : "jswrap_function_constructor",
+  "params" : [
+    ["code","JsVar","A string representing the code to run"]
+  ],
+  "return" : ["JsVar","A Number object"]
+}
+Creates a function
+*/
 JsVar *jswrap_function_constructor(JsVar *code) {
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
@@ -76,12 +83,17 @@ JsVar *jswrap_function_constructor(JsVar *code) {
   return fn;
 }
 
-/*JSON{ "type":"function", "name" : "eval",
-         "description" : "Evaluate a string containing JavaScript code",
-         "generate" : "jswrap_eval",
-         "params" : [ [ "code", "JsVar", ""] ],
-         "return" : ["JsVar", "The result of evaluating the string"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "eval",
+  "generate" : "jswrap_eval",
+  "params" : [
+    ["code","JsVar",""]
+  ],
+  "return" : ["JsVar","The result of evaluating the string"]
+}
+Evaluate a string containing JavaScript code
+*/
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
@@ -90,13 +102,18 @@ JsVar *jswrap_eval(JsVar *v) {
   return result;
 }
 
-/*JSON{ "type":"function", "name" : "parseInt",
-         "description" : "Convert a string representing a number into an integer",
-         "generate" : "jswrap_parseInt",
-         "params" :  [ [ "string", "JsVar", ""],
-                       [ "radix", "JsVar", "The Radix of the string (optional)"] ],
-         "return" : ["JsVar", "The integer value of the string (or NaN)"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "parseInt",
+  "generate" : "jswrap_parseInt",
+  "params" : [
+    ["string","JsVar",""],
+    ["radix","JsVar","The Radix of the string (optional)"]
+  ],
+  "return" : ["JsVar","The integer value of the string (or NaN)"]
+}
+Convert a string representing a number into an integer
+*/
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   int radix = 0/*don't force radix*/;
   if (jsvIsNumeric(radixVar))
@@ -114,24 +131,34 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   return jsvNewFromLongInteger(i);
 }
 
-/*JSON{ "type":"function", "name" : "parseFloat",
-         "description" : "Convert a string representing a number into an float",
-         "generate" : "jswrap_parseFloat",
-         "params" :  [ [ "string", "JsVar", ""] ],
-         "return" : ["float", "The value of the string"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "parseFloat",
+  "generate" : "jswrap_parseFloat",
+  "params" : [
+    ["string","JsVar",""]
+  ],
+  "return" : ["float","The value of the string"]
+}
+Convert a string representing a number into an float
+*/
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   return stringToFloat(buffer);
 }
 
-/*JSON{ "type":"function", "name" : "isNaN",
-         "description" : "Whether the x is NaN (Not a Number) or not",
-         "generate" : "jswrap_isNaN",
-         "params" :  [ [ "x", "JsVar", ""] ],
-         "return" : ["bool", "True is the value is NaN, false if not."]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "isNaN",
+  "generate" : "jswrap_isNaN",
+  "params" : [
+    ["x","JsVar",""]
+  ],
+  "return" : ["bool","True is the value is NaN, false if not."]
+}
+Whether the x is NaN (Not a Number) or not
+*/
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
@@ -175,12 +202,18 @@ NO_INLINE static int jswrap_atob_decode(int c) {
   return -1; // not found
 }
 
-/*JSON{ "type":"function", "name" : "btoa", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Convert the supplied string (or array) into a base64 string",
-         "generate" : "jswrap_btoa",
-         "params" :  [ [ "binaryData", "JsVar", "A string of data to encode"] ],
-         "return" : ["JsVar", "A base64 encoded string"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "btoa",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_btoa",
+  "params" : [
+    ["binaryData","JsVar","A string of data to encode"]
+  ],
+  "return" : ["JsVar","A base64 encoded string"]
+}
+Convert the supplied string (or array) into a base64 string
+*/
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
@@ -226,12 +259,18 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
 }
 
 
-/*JSON{ "type":"function", "name" : "atob", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Convert the supplied base64 string into a base64 string",
-         "generate" : "jswrap_atob",
-         "params" :  [ [ "binaryData", "JsVar", "A string of base64 data to decode"] ],
-         "return" : ["JsVar", "A string containing the decoded data"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "atob",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_atob",
+  "params" : [
+    ["binaryData","JsVar","A string of base64 data to decode"]
+  ],
+  "return" : ["JsVar","A string containing the decoded data"]
+}
+Convert the supplied base64 string into a base64 string
+*/
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);

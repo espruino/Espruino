@@ -17,10 +17,12 @@
 #include "jsdevices.h"
 #include "jsinteractive.h"
 
-/*JSON{ "type":"class",
-        "class" : "OneWire",
-        "description" : ["This class provides a software-defined OneWire master. It is designed to be similar to Arduino's OneWire library." ]
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "OneWire"
+}
+This class provides a software-defined OneWire master. It is designed to be similar to Arduino's OneWire library.
+*/
 
 static inline Pin onewire_getpin(JsVar *parent) {
   return jshGetPinFromVarAndUnLock(jsvObjectGetChild(parent, "pin", 0));
@@ -86,13 +88,18 @@ static void NO_INLINE OneWireWrite(Pin pin, int bits, unsigned long long data) {
   }
 }
 
-/*JSON{ "type":"constructor", "class": "OneWire",  "name": "OneWire",
-         "description" : "Create a software OneWire implementation on the given pin",
-         "generate" : "jswrap_onewire_constructor",
-         "params" : [ [ "pin", "pin", "The pin to implement OneWire on" ] ],
-         "return" : [ "JsVar", "A OneWire object" ]
-
-}*/
+/*JSON{
+  "type" : "constructor",
+  "class" : "OneWire",
+  "name" : "OneWire",
+  "generate" : "jswrap_onewire_constructor",
+  "params" : [
+    ["pin","pin","The pin to implement OneWire on"]
+  ],
+  "return" : ["JsVar","A OneWire object"]
+}
+Create a software OneWire implementation on the given pin
+*/
 JsVar *jswrap_onewire_constructor(Pin pin) {
   JsVar *ow = jspNewObject(0, "OneWire");
   if (!ow) return 0;
@@ -101,22 +108,32 @@ JsVar *jswrap_onewire_constructor(Pin pin) {
 }
 
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "reset",
-         "description" : "Perform a reset cycle",
-         "generate" : "jswrap_onewire_reset",
-         "return" : [ "bool", "True is a device was present (it held the bus low)" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "reset",
+  "generate" : "jswrap_onewire_reset",
+  "return" : ["bool","True is a device was present (it held the bus low)"]
+}
+Perform a reset cycle
+*/
 bool jswrap_onewire_reset(JsVar *parent) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return 0;
   return OneWireReset(pin);
 }
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "select",
-         "description" : "Select a ROM - reset needs to be done first",
-         "generate" : "jswrap_onewire_select",
-         "params" : [ [ "rom", "JsVar", "The device to select (get this using `OneWire.search()`)" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "select",
+  "generate" : "jswrap_onewire_select",
+  "params" : [
+    ["rom","JsVar","The device to select (get this using `OneWire.search()`)"]
+  ]
+}
+Select a ROM - reset needs to be done first
+*/
 void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
@@ -147,22 +164,32 @@ void jswrap_onewire_select(JsVar *parent, JsVar *rom) {
   OneWireWrite(pin, 64, romdata);
 }
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "skip",
-         "description" : "Skip a ROM",
-         "generate" : "jswrap_onewire_skip"
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "skip",
+  "generate" : "jswrap_onewire_skip"
+}
+Skip a ROM
+*/
 void jswrap_onewire_skip(JsVar *parent) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
   OneWireWrite(pin, 8, 0xCC);
 }
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "write",
-         "description" : "Write a byte",
-         "generate" : "jswrap_onewire_write",
-         "params" : [ [ "data", "int32", "A byte to write" ],
-                      [ "power", "bool", "Whether to leave power on after write (default is false)" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "write",
+  "generate" : "jswrap_onewire_write",
+  "params" : [
+    ["data","int32","A byte to write"],
+    ["power","bool","Whether to leave power on after write (default is false)"]
+  ]
+}
+Write a byte
+*/
 void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
@@ -174,11 +201,15 @@ void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
   }
 }
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "read",
-         "description" : "Read a byte",
-         "generate" : "jswrap_onewire_read",
-         "return" : [ "int", "The byte that was read" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "read",
+  "generate" : "jswrap_onewire_read",
+  "return" : ["int","The byte that was read"]
+}
+Read a byte
+*/
 JsVarInt jswrap_onewire_read(JsVar *parent) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return -1;
@@ -186,17 +217,27 @@ JsVarInt jswrap_onewire_read(JsVar *parent) {
 }
 
 
-/*JSON{ "type":"method", "class": "OneWire", "name" : "search",
-         "description" : "Search for devices",
-         "generate" : "jswrap_onewire_search",
-         "return" : [ "JsVar", "An array of devices that were found" ]
-}*/
-/*JSON{ "type":"method", "class": "OneWire", "name" : "search",
-         "description" : "Search for devices",
-         "generate" : "jswrap_onewire_search",
-         "params" : [ [ "command", "int32", "(Optional) command byte. If not specified (or zero), this defaults to 0xF0. This can could be set to 0xEC to perform a DS18B20 'Alarm Search Command'" ] ],
-         "return" : [ "JsVar", "An array of devices that were found" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "search",
+  "generate" : "jswrap_onewire_search",
+  "return" : ["JsVar","An array of devices that were found"]
+}
+Search for devices
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "OneWire",
+  "name" : "search",
+  "generate" : "jswrap_onewire_search",
+  "params" : [
+    ["command","int32","(Optional) command byte. If not specified (or zero), this defaults to 0xF0. This can could be set to 0xEC to perform a DS18B20 'Alarm Search Command'"]
+  ],
+  "return" : ["JsVar","An array of devices that were found"]
+}
+Search for devices
+*/
 JsVar *jswrap_onewire_search(JsVar *parent, int command) {
   // search - code from http://www.maximintegrated.com/app-notes/index.mvp/id/187
   Pin pin = onewire_getpin(parent);

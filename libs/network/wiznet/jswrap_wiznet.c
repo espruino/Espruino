@@ -58,17 +58,25 @@ uint8_t wizchip_read()
 }
 
 
-/*JSON{ "type":"library",
-        "class" : "WIZnet",
-        "description" : ""
-}*/
-/*JSON{ "type":"staticmethod", 
-         "class" : "WIZnet", "name" : "connect",
-         "generate" : "jswrap_wiznet_connect",
-         "description" : "Initialise the WIZnet module and return an Ethernet object",
-         "params" : [ ],
-         "return" : ["JsVar", "An Ethernet Object"], "return_object":"Ethernet"
-}*/
+/*JSON{
+  "type" : "library",
+  "class" : "WIZnet"
+}
+
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "WIZnet",
+  "name" : "connect",
+  "generate" : "jswrap_wiznet_connect",
+  "params" : [
+    
+  ],
+  "return" : ["JsVar","An Ethernet Object"],
+  "return_object" : "Ethernet"
+}
+Initialise the WIZnet module and return an Ethernet object
+*/
 JsVar *jswrap_wiznet_connect() {
   JsVar *ethObj = jspNewObject(0, "Ethernet");
 
@@ -117,17 +125,22 @@ JsVar *jswrap_wiznet_connect() {
   return ethObj;
 }
 
-/*JSON{ "type":"class",
-        "class" : "Ethernet",
-        "description" : "An instantiation of an Ethernet network adaptor"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "Ethernet"
+}
+An instantiation of an Ethernet network adaptor
+*/
 
-/*JSON{ "type":"method",
-         "class" : "Ethernet", "name" : "getIP",
-         "generate" : "jswrap_ethernet_getIP",
-         "description" : "Get the current IP address",
-         "return" : ["JsVar", ""]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Ethernet",
+  "name" : "getIP",
+  "generate" : "jswrap_ethernet_getIP",
+  "return" : ["JsVar",""]
+}
+Get the current IP address
+*/
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
 
@@ -160,13 +173,18 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   }
 }
 
-/*JSON{ "type":"method",
-         "class" : "Ethernet", "name" : "setIP",
-         "generate" : "jswrap_ethernet_setIP",
-         "description" : "Set the current IP address for get an IP from DHCP (if no options object is specified)",
-         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."] ],
-         "return" : ["bool", "True on success"]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Ethernet",
+  "name" : "setIP",
+  "generate" : "jswrap_ethernet_setIP",
+  "params" : [
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+  ],
+  "return" : ["bool","True on success"]
+}
+Set the current IP address for get an IP from DHCP (if no options object is specified)
+*/
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);
 

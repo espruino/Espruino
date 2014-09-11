@@ -26,17 +26,25 @@ const unsigned int JSON_ITEMS_ON_LINE_OBJECT = 4; // How many items are allowed 
 const char *JSON_LIMIT_TEXT = " ... ";
 
 
-/*JSON{ "type":"class", "class" : "JSON",
-         "description" : "An Object that handles conversion to and from the JSON data interchange format"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "JSON"
+}
+An Object that handles conversion to and from the JSON data interchange format
+*/
 
-/*JSON{ "type":"staticmethod",
-         "class" : "JSON", "name" : "stringify",
-         "description" : "Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval",
-         "generate" : "jswrap_json_stringify",
-         "params" : [ [ "data", "JsVar", "The data to be converted to a JSON string"] ],
-         "return" : ["JsVar", "A JSON string"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "JSON",
+  "name" : "stringify",
+  "generate" : "jswrap_json_stringify",
+  "params" : [
+    ["data","JsVar","The data to be converted to a JSON string"]
+  ],
+  "return" : ["JsVar","A JSON string"]
+}
+Convert the given object into a JSON string which can subsequently be parsed with JSON.parse or eval
+*/
 JsVar *jswrap_json_stringify(JsVar *v) {
   JsVar *result = jsvNewFromEmptyString();
   if (result) // could be out of memory
@@ -114,14 +122,20 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
   }
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "JSON", "name" : "parse",
-         "description" : [ "Parse the given JSON string into a JavaScript object",
-                           "NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed."],
-         "generate" : "jswrap_json_parse",
-         "params" : [ [ "string", "JsVar", "A JSON string"] ],
-         "return" : ["JsVar", "The JavaScript object created by parsing the data string"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "JSON",
+  "name" : "parse",
+  "generate" : "jswrap_json_parse",
+  "params" : [
+    ["string","JsVar","A JSON string"]
+  ],
+  "return" : ["JsVar","The JavaScript object created by parsing the data string"]
+}
+Parse the given JSON string into a JavaScript object
+
+NOTE: This implementation uses eval() internally, and as such it is unsafe as it can allow arbitrary JS commands to be executed.
+*/
 JsVar *jswrap_json_parse(JsVar *v) {
   JsLex lex;
   jslInit(&lex, v);

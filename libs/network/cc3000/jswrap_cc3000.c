@@ -26,37 +26,52 @@
 #include "cc3000/hci.h"
 
 
-/*JSON{ "type":"library",
-        "class" : "CC3000",
-        "description" : ""
-}*/
-/*JSON{ "type":"staticmethod", 
-         "class" : "CC3000", "name" : "connect",
-         "generate" : "jswrap_cc3000_connect",
-         "description" : "Initialise the CC3000 and return a WLAN object",
-         "params" : [ ],
-         "return" : ["JsVar", "A WLAN Object"], "return_object":"WLAN"
-}*/
+/*JSON{
+  "type" : "library",
+  "class" : "CC3000"
+}
+
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "CC3000",
+  "name" : "connect",
+  "generate" : "jswrap_cc3000_connect",
+  "params" : [
+    
+  ],
+  "return" : ["JsVar","A WLAN Object"],
+  "return_object" : "WLAN"
+}
+Initialise the CC3000 and return a WLAN object
+*/
 JsVar *jswrap_cc3000_connect() {
   JsVar *wlanObj = jspNewObject(0, "WLAN");
   cc3000_initialise(wlanObj);
   return wlanObj;
 }
 
-/*JSON{ "type":"class",
-        "class" : "WLAN",
-        "description" : "An instantiation of a WiFi network adaptor"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "WLAN"
+}
+An instantiation of a WiFi network adaptor
+*/
 
-/*JSON{ "type":"method",
-         "class" : "WLAN", "name" : "connect",
-         "generate" : "jswrap_wlan_connect",
-         "description" : "Connect to a wireless network",
-         "params" : [ [ "ap", "JsVar", "Access point name" ],
-                      [ "key", "JsVar", "WPA2 key (or undefined for unsecured connection)" ],
-                      [ "callback", "JsVar", "Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'" ] ],
-         "return" : ["bool", "True if connection succeeded, false if it didn't." ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "WLAN",
+  "name" : "connect",
+  "generate" : "jswrap_wlan_connect",
+  "params" : [
+    ["ap","JsVar","Access point name"],
+    ["key","JsVar","WPA2 key (or undefined for unsecured connection)"],
+    ["callback","JsVar","Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'"]
+  ],
+  "return" : ["bool","True if connection succeeded, false if it didn't."]
+}
+Connect to a wireless network
+*/
 bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
   if (!(jsvIsUndefined(callback) || jsvIsFunction(callback))) {
     jsError("Expecting callback Function but got %t", callback);
@@ -95,11 +110,14 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
   return connected;
 }
 
-/*JSON{ "type":"method",
-         "class" : "WLAN", "name" : "disconnect",
-         "generate" : "jswrap_wlan_disconnect",
-         "description" : "Completely uninitialise and power down the CC3000. After this you'll have to use ```require(\"CC3000\").connect()``` again."
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "WLAN",
+  "name" : "disconnect",
+  "generate" : "jswrap_wlan_disconnect"
+}
+Completely uninitialise and power down the CC3000. After this you'll have to use ```require("CC3000").connect()``` again.
+*/
 void jswrap_wlan_disconnect(JsVar *wlanObj) {
   jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(true)));
   networkState = NETWORKSTATE_OFFLINE; // force offline
@@ -107,11 +125,14 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
   wlan_stop();
 }
 
-/*JSON{ "type":"method",
-         "class" : "WLAN", "name" : "reconnect",
-         "generate" : "jswrap_wlan_reconnect",
-         "description" : "Completely uninitialise and power down the CC3000, then reconnect to the old access point."
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "WLAN",
+  "name" : "reconnect",
+  "generate" : "jswrap_wlan_reconnect"
+}
+Completely uninitialise and power down the CC3000, then reconnect to the old access point.
+*/
 void jswrap_wlan_reconnect(JsVar *wlanObj) {
   JsVar *ap = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"AP", 0);
   JsVar *key = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"KEY", 0);
@@ -125,12 +146,15 @@ void jswrap_wlan_reconnect(JsVar *wlanObj) {
 
 
 
-/*JSON{ "type":"method",
-         "class" : "WLAN", "name" : "getIP",
-         "generate" : "jswrap_wlan_getIP",
-         "description" : "Get the current IP address",
-         "return" : ["JsVar", ""]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "WLAN",
+  "name" : "getIP",
+  "generate" : "jswrap_wlan_getIP",
+  "return" : ["JsVar",""]
+}
+Get the current IP address
+*/
 JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
 
@@ -164,14 +188,20 @@ static void _wlan_getIP_set_address(JsVar *options, char *name, unsigned char *p
   }
 }
 
-/*JSON{ "type":"method",
-         "class" : "WLAN", "name" : "setIP",
-         "generate" : "jswrap_wlan_setIP",
-         "description" : ["Set the current IP address for get an IP from DHCP (if no options object is specified).",
-                          "**Note:** Changes are written to non-volatile memory, but will only take effect after calling `wlan.reconnect()`" ],
-         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."] ],
-         "return" : ["bool", "True on success"]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "WLAN",
+  "name" : "setIP",
+  "generate" : "jswrap_wlan_setIP",
+  "params" : [
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+  ],
+  "return" : ["bool","True on success"]
+}
+Set the current IP address for get an IP from DHCP (if no options object is specified).
+
+**Note:** Changes are written to non-volatile memory, but will only take effect after calling `wlan.reconnect()`
+*/
 bool jswrap_wlan_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);
 

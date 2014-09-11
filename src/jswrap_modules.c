@@ -23,20 +23,28 @@
 #include "jswrap_fs.h"
 #endif
 
-/*JSON{ "type":"class", "class" : "Modules",
-         "description" : "Built-in class that caches the modules used by the `require` command"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "Modules"
+}
+Built-in class that caches the modules used by the `require` command
+*/
 
 static JsVar *jswrap_modules_getModuleList() {
   return jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_MODULE_CACHE_NAME, JSV_OBJECT);
 }
 
-/*JSON{ "type":"function", "name" : "require",
-         "description" : "Load the given module, and return the exported functions",
-         "generate" : "jswrap_require",
-         "params" : [ [ "moduleName", "JsVar", "A String containing the name of the given module"] ],
-         "return" : ["JsVar", "The result of evaluating the string"]
-}*/
+/*JSON{
+  "type" : "function",
+  "name" : "require",
+  "generate" : "jswrap_require",
+  "params" : [
+    ["moduleName","JsVar","A String containing the name of the given module"]
+  ],
+  "return" : ["JsVar","The result of evaluating the string"]
+}
+Load the given module, and return the exported functions
+*/
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
     jsWarn("Expecting a module name as a string, but got %t", moduleName);
@@ -91,12 +99,15 @@ JsVar *jswrap_require(JsVar *moduleName) {
   return moduleExport;
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "Modules", "name" : "getCached",
-         "description" : "Return an array of module names that have been cached",
-         "generate" : "jswrap_modules_getCached",
-         "return" : ["JsVar", "An array of module names"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Modules",
+  "name" : "getCached",
+  "generate" : "jswrap_modules_getCached",
+  "return" : ["JsVar","An array of module names"]
+}
+Return an array of module names that have been cached
+*/
 JsVar *jswrap_modules_getCached() {
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   if (!arr) return 0; // out of memory
@@ -118,12 +129,17 @@ JsVar *jswrap_modules_getCached() {
   return arr;
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "Modules", "name" : "removeCached",
-         "description" : "Remove the given module from the list of cached modules",
-         "generate" : "jswrap_modules_removeCached",
-         "params" : [ [ "id", "JsVar", "The module name to remove"] ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Modules",
+  "name" : "removeCached",
+  "generate" : "jswrap_modules_removeCached",
+  "params" : [
+    ["id","JsVar","The module name to remove"]
+  ]
+}
+Remove the given module from the list of cached modules
+*/
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
     jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
@@ -143,11 +159,14 @@ void jswrap_modules_removeCached(JsVar *id) {
   jsvUnLock(moduleList);
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "Modules", "name" : "removeAllCached",
-         "description" : "Remove all cached modules",
-         "generate" : "jswrap_modules_removeAllCached"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Modules",
+  "name" : "removeAllCached",
+  "generate" : "jswrap_modules_removeAllCached"
+}
+Remove all cached modules
+*/
 void jswrap_modules_removeAllCached() {
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return; // out of memory
@@ -155,13 +174,18 @@ void jswrap_modules_removeAllCached() {
   jsvUnLock(moduleList);
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "Modules", "name" : "addCached",
-         "description" : "Add the given module to the cache",
-         "generate" : "jswrap_modules_addCached",
-         "params" : [ [ "id", "JsVar", "The module name to add" ],
-                      [  "sourcecode", "JsVar", "The module's sourcecode" ] ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Modules",
+  "name" : "addCached",
+  "generate" : "jswrap_modules_addCached",
+  "params" : [
+    ["id","JsVar","The module name to add"],
+    ["sourcecode","JsVar","The module's sourcecode"]
+  ]
+}
+Add the given module to the cache
+*/
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
     jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");

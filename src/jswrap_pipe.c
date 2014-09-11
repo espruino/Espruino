@@ -29,10 +29,13 @@
 #include "jswrap_pipe.h"
 #include "jswrap_object.h"
 
-/*JSON{ "type":"library", "ifndef" : "SAVE_ON_FLASH",
-        "class" : "Pipe",
-        "description" : ["This is the Pipe container for async related IO." ]
-}*/
+/*JSON{
+  "type" : "library",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "Pipe"
+}
+This is the Pipe container for async related IO.
+*/
 
 static JsVar* pipeGetArray(bool create) {
   return jsvObjectGetChild(execInfo.hiddenRoot, "pipes", create ? JSV_ARRAY : 0);
@@ -123,7 +126,11 @@ static bool handlePipe(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   return dataTransferred;
 }
 
-/*JSON{ "type":"idle", "generate" : "jswrap_pipe_idle", "ifndef" : "SAVE_ON_FLASH" }*/
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_pipe_idle",
+  "ifndef" : "SAVE_ON_FLASH"
+}*/
 bool jswrap_pipe_idle() {
   bool wasBusy = false;
   JsVar *arr = pipeGetArray(false);
@@ -142,7 +149,11 @@ bool jswrap_pipe_idle() {
   return wasBusy;
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_pipe_kill", "ifndef" : "SAVE_ON_FLASH" }*/
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_pipe_kill",
+  "ifndef" : "SAVE_ON_FLASH"
+}*/
 void jswrap_pipe_kill() {
   // now remove all pipes...
   JsVar *arr = pipeGetArray(false);
@@ -200,14 +211,17 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
   }
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "jswrap_pipe",
-         "params" : [ ["source", "JsVar", "The source file/stream that will send content."],
-                      ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
-                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`",
-                                             "chunkSize : The amount of data to pipe from source to destination at a time",
-                                             "complete : a function to call when the pipe activity is complete",
-                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "pipe",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_pipe",
+  "params" : [
+    ["source","JsVar","The source file/stream that will send content."],
+    ["destination","JsVar","The destination file/stream that will receive content from the source."],
+    ["options","JsVar",["An optional object `{ chunkSize : int=64, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ]
 }*/
 void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
   if (!source || !dest) return;

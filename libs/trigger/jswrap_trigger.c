@@ -16,18 +16,27 @@
 #include "trigger.h"
 #include "jswrap_trigger.h"
 
-/*JSON{ "type":"class",
-        "class" : "Trig",
-        "description" : ["This class exists in order to interface Espruino with fast-moving trigger wheels. Trigger wheels are physical discs with evenly spaced teeth cut into them, and often with one or two teeth next to each other missing. A sensor sends a signal whenever a tooth passed by, and this allows a device to measure not only RPM, but absolute position.",
-                         "This class is currently in testing - it is NOT AVAILABLE on normal boards." ]
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "Trig"
+}
+This class exists in order to interface Espruino with fast-moving trigger wheels. Trigger wheels are physical discs with evenly spaced teeth cut into them, and often with one or two teeth next to each other missing. A sensor sends a signal whenever a tooth passed by, and this allows a device to measure not only RPM, but absolute position.
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "getPosAtTime",
-         "description" : "Get the position of the trigger wheel at the given time (from getTime)",
-         "generate" : "jswrap_trig_getPosAtTime",
-         "params" : [ [ "time", "float", "The time at which to find the position" ] ],
-         "return" : [ "float", "The position of the trigger wheel in degrees - as a floating point number" ]
-}*/
+This class is currently in testing - it is NOT AVAILABLE on normal boards.
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "getPosAtTime",
+  "generate" : "jswrap_trig_getPosAtTime",
+  "params" : [
+    ["time","float","The time at which to find the position"]
+  ],
+  "return" : ["float","The position of the trigger wheel in degrees - as a floating point number"]
+}
+Get the position of the trigger wheel at the given time (from getTime)
+*/
 JsVarFloat jswrap_trig_getPosAtTime(JsVarFloat time) {
   JsSysTime sTime = (JsSysTime)(time * (JsVarFloat)jshGetTimeFromMilliseconds(1000));
   TriggerStruct *trig = &mainTrigger;
@@ -35,12 +44,18 @@ JsVarFloat jswrap_trig_getPosAtTime(JsVarFloat time) {
   return wrapAround((position * 360 / trig->teethTotal) + trig->keyPosition, 360);
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "setup",
-         "description" : "Initialise the trigger class",
-         "generate" : "jswrap_trig_setup",
-         "params" : [ [ "pin", "pin", "The pin to use for triggering" ],
-                      ["options", "JsVar", "Additional options as an object. defaults are: ```{teethTotal:60,teethMissing:2,minRPM:30,keyPosition:0}```" ]]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "setup",
+  "generate" : "jswrap_trig_setup",
+  "params" : [
+    ["pin","pin","The pin to use for triggering"],
+    ["options","JsVar","Additional options as an object. defaults are: ```{teethTotal:60,teethMissing:2,minRPM:30,keyPosition:0}```"]
+  ]
+}
+Initialise the trigger class
+*/
 void jswrap_trig_setup(Pin pin, JsVar *options) {
   if (!jshIsPinValid(pin)) {
     jsError("Invalid pin supplied as an argument to Trig.setup");
@@ -90,14 +105,20 @@ void jswrap_trig_setup(Pin pin, JsVar *options) {
   jshPinWatch(trig->sensorPin, true);
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "setTrigger",
-         "description" : "Set a trigger for a certain point in the cycle",
-         "generate" : "jswrap_trig_setTrigger",
-         "params" : [ ["num", "int", "The trigger number (0..7)"],
-                      ["pos", "float", "The position (in degrees) to fire the trigger at" ],
-                      ["pins", "JsVar", "An array of pins to pulse (max 4)" ],
-                      ["pulseLength", "float", "The time (in msec) to pulse for" ]]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "setTrigger",
+  "generate" : "jswrap_trig_setTrigger",
+  "params" : [
+    ["num","int","The trigger number (0..7)"],
+    ["pos","float","The position (in degrees) to fire the trigger at"],
+    ["pins","JsVar","An array of pins to pulse (max 4)"],
+    ["pulseLength","float","The time (in msec) to pulse for"]
+  ]
+}
+Set a trigger for a certain point in the cycle
+*/
 void jswrap_trig_setTrigger(JsVarInt num, JsVarFloat position, JsVar *pins, JsVarFloat pulseLength) {
   TriggerStruct *trig = &mainTrigger;
   if (num<0 || num>=TRIGGER_TRIGGERS_COUNT) {
@@ -132,11 +153,17 @@ void jswrap_trig_setTrigger(JsVarInt num, JsVarFloat position, JsVar *pins, JsVa
   // all done!
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "killTrigger",
-         "description" : "Disable a trigger",
-         "generate" : "jswrap_trig_killTrigger",
-         "params" : [ ["num", "int", "The trigger number (0..7)"] ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "killTrigger",
+  "generate" : "jswrap_trig_killTrigger",
+  "params" : [
+    ["num","int","The trigger number (0..7)"]
+  ]
+}
+Disable a trigger
+*/
 void jswrap_trig_killTrigger(JsVarInt num) {
   TriggerStruct *trig = &mainTrigger;
   if (num<0 || num>=TRIGGER_TRIGGERS_COUNT) {
@@ -149,12 +176,18 @@ void jswrap_trig_killTrigger(JsVarInt num) {
   tp->newTooth = TRIGGERPOINT_TOOTH_DISABLE;
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "getTrigger",
-         "description" : "Get the current state of a trigger",
-         "generate" : "jswrap_trig_getTrigger",
-         "params" : [ ["num", "int", "The trigger number (0..7)"] ],
-         "return" : [ "JsVar", "A structure containing all information about the trigger" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "getTrigger",
+  "generate" : "jswrap_trig_getTrigger",
+  "params" : [
+    ["num","int","The trigger number (0..7)"]
+  ],
+  "return" : ["JsVar","A structure containing all information about the trigger"]
+}
+Get the current state of a trigger
+*/
 JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   TriggerStruct *trig = &mainTrigger;
   if (num<0 || num>=TRIGGER_TRIGGERS_COUNT) {
@@ -191,11 +224,15 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   return obj;
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "getRPM",
-         "description" : "Get the RPM of the trigger wheel",
-         "generate" : "jswrap_trig_getRPM",
-         "return" : [ "float", "The current RPM of the trigger wheel" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "getRPM",
+  "generate" : "jswrap_trig_getRPM",
+  "return" : ["float","The current RPM of the trigger wheel"]
+}
+Get the RPM of the trigger wheel
+*/
 JsVarFloat jswrap_trig_getRPM() {
   TriggerStruct *trig = &mainTrigger;
 
@@ -203,11 +240,15 @@ JsVarFloat jswrap_trig_getRPM() {
   return jshGetTimeFromMilliseconds(60000) / (JsVarFloat)(trig->avrTooth * trig->teethTotal);
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "getErrors",
-         "description" : "Get the current error flags from the trigger wheel - and zero them",
-         "generate" : "jswrap_trig_getErrors",
-         "return" : [ "int", "The error flags" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "getErrors",
+  "generate" : "jswrap_trig_getErrors",
+  "return" : ["int","The error flags"]
+}
+Get the current error flags from the trigger wheel - and zero them
+*/
 JsVarInt jswrap_trig_getErrors() {
   TriggerStruct *trig = &mainTrigger;
   TriggerError errors = trig->errors;
@@ -215,11 +256,15 @@ JsVarInt jswrap_trig_getErrors() {
   return (JsVarInt)errors;
 }
 
-/*JSON{ "type":"staticmethod", "class": "Trig", "name" : "getErrorArray",
-         "description" : "Get the current error flags from the trigger wheel - and zero them",
-         "generate" : "jswrap_trig_getErrorArray",
-         "return" : [ "JsVar", "An array of error strings" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Trig",
+  "name" : "getErrorArray",
+  "generate" : "jswrap_trig_getErrorArray",
+  "return" : ["JsVar","An array of error strings"]
+}
+Get the current error flags from the trigger wheel - and zero them
+*/
 JsVar* jswrap_trig_getErrorArray() {
   TriggerStruct *trig = &mainTrigger;
   TriggerError errors = trig->errors;
