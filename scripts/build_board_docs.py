@@ -223,25 +223,25 @@ writeHTML("""
       var e = document.getElementById(ttid);
       e.style.display = "none";
     }
-function drawLine(x1, y1, x2, y2, hover) {
-    if (x2 < x1) {
+    function drawLine(x1, y1, x2, y2, hover) {
+      if (x2 < x1) {
         var temp = x1;
         x1 = x2;
         x2 = temp;
         temp = y1;
         y1 = y2;
         y2 = temp;
-    }
-    var line = $('<div class="line" alt="'+hover+'"></div>').appendTo($("body"));
-    var length = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-    line.css('width', length + "px");
-    var angle = Math.atan((y2 - y1) / (x2 - x1));
-    line.css('top', y1 + 0.5 * length * Math.sin(angle) + "px");
-    line.css('left', x1 - 0.5 * length * (1 - Math.cos(angle)) + "px");
-    line.css('-moz-transform', "rotate(" + angle + "rad)");
-    line.css('-webkit-transform', "rotate(" + angle + "rad)");
-    line.css('-o-transform', "rotate(" + angle + "rad)");
- }
+      }
+      var line = $('<div class="line" alt="'+hover+'"></div>').appendTo($("body"));
+      var length = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+      line.css('width', length + "px");
+      var angle = Math.atan((y2 - y1) / (x2 - x1));
+      line.css('top', y1 + 0.5 * length * Math.sin(angle) + "px");
+      line.css('left', x1 - 0.5 * length * (1 - Math.cos(angle)) + "px");
+      line.css('-moz-transform', "rotate(" + angle + "rad)");
+      line.css('-webkit-transform', "rotate(" + angle + "rad)");
+      line.css('-o-transform', "rotate(" + angle + "rad)");
+     }
   </SCRIPT>
 """)
 writeHTML(" </HEAD>")
@@ -298,44 +298,42 @@ if otherpins>0:
   writeHTML('  </DIV>')
 writeHTML('  <P></P>')
 
-writeHTML('<SCRIPT type="text/javascript"> $(function() {');
-writeHTML('var x = $("#board").offset().left+500;');
-writeHTML('var y = $("#board").offset().top+200;');
-d = 12
-writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(-5*d)+');');
-writeHTML('drawLine(x+'+str(5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(5*d)+');');
-writeHTML('drawLine(x+'+str(5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(5*d)+');');
-writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(-5*d)+');');
-writeHTML('var p;');
-for pinstrip in board.board:
-  if pinstrip[0]!='_':
-    for pin in board.board[pinstrip]:       
-      if pin in pinmap:
-        pin = pinmap[pin];      
-      pininfo = pinutils.findpin(pins, pin, False)
-      if "UQFN48" in pininfo["csv"]:
-        n = int(pininfo["csv"]["UQFN48"])-1        
-        n = (n+12) % 48
-        if n<12:
-          px = (n-6)*d
-          py = -6*d
-        elif n<24:
-          px = 6*d
-          py = ((n-12)-6)*d
-        elif n<36:
-          px = (6-(n-24))*d
-          py = 6*d
-        else:
-          px = -6*d
-          py = (6-(n-36))*d
-
-        writeHTML("p=$('.pinname:contains(\""+pin+".\")');");
-        pinx = "p.offset().left+p.width()/2";
-        piny = "p.offset().top+p.height()/2";
-        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+pinx+','+piny+', "'+pin+'");');
-
-
-writeHTML('});</SCRIPT>');
+#writeHTML('<SCRIPT type="text/javascript"> $(function() {');
+#writeHTML('var x = $("#board").offset().left+500;');
+#writeHTML('var y = $("#board").offset().top+200;');
+#d = 12
+#writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(-5*d)+');');
+#writeHTML('drawLine(x+'+str(5*d)+',y+'+str(-5*d)+',x+'+str(5*d)+',y+'+str(5*d)+');');
+#writeHTML('drawLine(x+'+str(5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(5*d)+');');
+#writeHTML('drawLine(x+'+str(-5*d)+',y+'+str(5*d)+',x+'+str(-5*d)+',y+'+str(-5*d)+');');
+#writeHTML('var p;');
+#for pinstrip in board.board:
+#  if pinstrip[0]!='_':
+#    for pin in board.board[pinstrip]:       
+#      if pin in pinmap:
+#        pin = pinmap[pin];      
+#      pininfo = pinutils.findpin(pins, pin, False)
+#      if "UQFN48" in pininfo["csv"]:
+#        n = int(pininfo["csv"]["UQFN48"])-1        
+#        n = (n+12) % 48
+#        if n<12:
+#          px = (n-6)*d
+#          py = -6*d
+#        elif n<24:
+#          px = 6*d
+#          py = ((n-12)-6)*d
+#        elif n<36:
+#          px = (6-(n-24))*d
+#          py = 6*d
+#        else:
+#          px = -6*d
+#          py = (6-(n-36))*d
+#
+#        writeHTML("p=$('.pinname:contains(\""+pin+".\")');");
+#        pinx = "p.offset().left+p.width()/2";
+#        piny = "p.offset().top+p.height()/2";
+#        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+pinx+','+piny+', "'+pin+'");');
+#writeHTML('});</SCRIPT>');
 
 writeHTML(" </BODY>")
 writeHTML("</HTML>")
