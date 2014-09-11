@@ -369,6 +369,7 @@ ifdef WIZNET
 USE_WIZNET=1
 else
 USE_CC3000=1
+USE_ESP8266=1
 endif
 endif
 endif
@@ -598,6 +599,14 @@ libs/network/http/httpserver.c
  libs/network/wiznet/Ethernet/wizchip_conf.c \
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
+ endif
+
+ ifdef USE_ESP8266
+ DEFINES += -DUSE_ESP8266
+ WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+ INCLUDE += -I$(ROOT)/libs/network/esp8266
+ SOURCES += \
+ libs/network/wiznet/network_esp8266.c
  endif
 endif
 

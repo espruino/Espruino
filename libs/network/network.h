@@ -35,7 +35,7 @@ typedef enum {
   JSNETWORKTYPE_SOCKET,  ///< Standard linux socket API
   JSNETWORKTYPE_CC3000,  ///< TI CC3000 support
   JSNETWORKTYPE_W5500,  ///< WIZnet W5500 support
-  // enc28j60?
+  JSNETWORKTYPE_ESP8266,  ///< ExpressIF ESP8266 support
 } JsNetworkType;
 
 typedef struct {
