@@ -74,7 +74,7 @@ def dump_pin(pin, pinstrip):
          not_five_volt = True
 
       writeHTML('    <DIV class="'+pinstrip+'pin pin">');
-      pinHTML = '     <SPAN class="pinname">'+pin+".</SPAN>";
+      pinHTML = '     <SPAN class="pinname">'+pin+"</SPAN>";
       pinHTML2 = '';
 
       if not_five_volt:
@@ -106,7 +106,12 @@ def dump_pin(pin, pinstrip):
 
       for func in sorted(pinfuncs.items(),key=lambda x: x[1]['cls']):
         pf = func[1]
+        url = False
+        if pf["cls"] in pinutils.URLS: url = pinutils.URLS[pf["cls"]]
+        
+        if url != False: writeHTML('     <A href="'+url+'" class="pinfunctionlink">');
         writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'" onMouseOver="showTT(\''+pf["id"]+'\')" onMouseOut="hideTT(\''+pf["id"]+'\')">'+pf["name"]+'</SPAN>')
+        if url != False: writeHTML('     </A>');
         writeHTML('     <SPAN class="pintooltip" id="'+pf["id"]+'" style="display:none;">'+pf["title"]+'</SPAN>')        
           
       if reverse: writeHTML(pinHTML2+"\n"+pinHTML)
@@ -136,6 +141,10 @@ writeHTML("""
      padding-left: 2px;
      padding-right: 2px; 
    }
+   .pinfunctionlink { 
+      color : black;
+      text-decoration: none;
+   } 
    .pintooltip {
       background-color: #FFD;
       border:1px solid black; 
