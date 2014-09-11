@@ -10,8 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains built-in functions for CC3000 WiFi Access
- * EXTREMELY BETA AND LIKELY TO CHANGE DRASTICALLY
+ * Contains built-in functions for WIZnet Ethernet Access
  * ----------------------------------------------------------------------------
  */
 
@@ -62,7 +61,7 @@ uint8_t wizchip_read()
   "type" : "library",
   "class" : "WIZnet"
 }
-
+Library for communication with the WIZnet Ethernet module
 */
 /*JSON{
   "type" : "staticmethod",

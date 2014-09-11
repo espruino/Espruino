@@ -11,8 +11,7 @@
  * This file is designed to be parsed during the build process
  *
  * Contains built-in functions for CC3000 WiFi Access
- * EXTREMELY BETA AND LIKELY TO CHANGE DRASTICALLY
- * ----------------------------------------------------------------------------
+  * ----------------------------------------------------------------------------
  */
 
 #include "jswrap_cc3000.h"
