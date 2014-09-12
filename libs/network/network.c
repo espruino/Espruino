@@ -32,6 +32,8 @@ JsNetworkState networkState =
 #endif
     ;
 
+JsNetwork *networkCurrentStruct = 0;
+
 unsigned long networkParseIPAddress(const char *ip) {
   int n = 0;
   unsigned long addr = 0;
@@ -136,6 +138,7 @@ bool networkGetFromVar(JsNetwork *net) {
     networkFree(net);
     return false;
   }
+  networkCurrentStruct = net;
   return true;
 }
 
@@ -154,5 +157,10 @@ void networkSet(JsNetwork *net) {
 }
 
 void networkFree(JsNetwork *net) {
+  networkCurrentStruct = 0;
   jsvUnLock(net->networkVar);
+}
+
+JsNetwork *networkGetCurrent() {
+  return networkCurrentStruct;
 }

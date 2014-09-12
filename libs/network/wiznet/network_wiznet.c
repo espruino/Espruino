@@ -15,8 +15,6 @@
 #include "network.h"
 #include "network_wiznet.h"
 
-void wizchip_setCurrentNet(JsNetwork *n);
-
 #define INVALID_SOCKET ((SOCKET)(-1))
 #define SOCKET_ERROR (-1)
 
@@ -53,12 +51,10 @@ uint8_t net_wiznet_getFreeSocket() {
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
-  wizchip_setCurrentNet(net);
   NOT_USED(net);
   if (dns_query(0, net_wiznet_getFreeSocket(), (uint8_t*)hostName) == 1) {
     *out_ip_addr = *(unsigned long*)&Server_IP_Addr[0];
   }
-  wizchip_setCurrentNet(0);
 }
 
 /// Called on idle. Do any checks required for this device
@@ -75,7 +71,6 @@ bool net_wiznet_checkError(JsNetwork *net) {
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
-  wizchip_setCurrentNet(net);
   int sckt = -1;
   if (host!=0) { // ------------------------------------------------- host (=client)
 
@@ -84,7 +79,6 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
     sckt = socket(net_wiznet_getFreeSocket(), Sn_MR_TCP, (uint16_t)((rand() & 32767) + 2000), 0); // we set nonblocking later
      
     if (sckt<0) {
-      wizchip_setCurrentNet(0);
       return sckt; // error
     }
 
@@ -102,13 +96,11 @@ int net_wiznet_createsocket(JsNetwork *net, unsigned long host, unsigned short p
   }
   wiznetSocketPorts[sckt&7] = port;
   //jsiConsolePrintf("Created socket %d\n", sckt);
-  wizchip_setCurrentNet(0);
   return sckt;
 }
 
 /// destroys the given socket
 void net_wiznet_closesocket(JsNetwork *net, int sckt) {
-  wizchip_setCurrentNet(&net);
   // try and close gracefully
   disconnect((uint8_t)sckt);
   JsSysTime timeout = jshGetSystemTime()+jshGetTimeFromMilliseconds(1000);
@@ -126,17 +118,14 @@ void net_wiznet_closesocket(JsNetwork *net, int sckt) {
     // Be sure to mark it as not a client socket any more
     wiznetSocketAsServerClient = wiznetSocketAsServerClient & (unsigned char)~(1<<(sckt&7));
   }
-  wizchip_setCurrentNet(0);
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
 int net_wiznet_accept(JsNetwork *net, int sckt) {
-  wizchip_setCurrentNet(net);
 
   // On WIZnet the same server socket is reused for clients - keep track so we don't get confused
   // and try and allocate a new HTTP Server Client
   if (wiznetSocketAsServerClient & (1<<sckt)) {
-    wizchip_setCurrentNet(0);
     return -1;
   }
 
@@ -149,7 +138,6 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
   int status = getSn_SR((uint8_t)sckt);
   if (status == SOCK_ESTABLISHED) {
     wiznetSocketAsServerClient = wiznetSocketAsServerClient | (unsigned char)(1<<sckt); // mark that it's now being used as a client socket
-    wizchip_setCurrentNet(0);
     return ((int)sckt) | WIZNET_SERVER_CLIENT; // we deal with the client on the same socket (we use the flag so we know that it really is different!)
   }
 
@@ -158,34 +146,28 @@ int net_wiznet_accept(JsNetwork *net, int sckt) {
     // make sure we force-close again and re-init as a listener
     net_wiznet_closesocket(net, (uint16_t)(sckt | WIZNET_SERVER_CLIENT));
   }
-  wizchip_setCurrentNet(0);
   return -1;
 }
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
-  wizchip_setCurrentNet(net);
   int num = 0;
   if (getSn_SR((uint8_t)sckt) == SOCK_LISTEN) {
     // socket is operating as a TCP server - something has gone wrong.
     // just return -1 to close this connection immediately
-    wizchip_setCurrentNet(0);
     return -1;
   } else {
     // receive data - if none available it'll just return SOCK_BUSY
     num = (int)recv((uint8_t)sckt,buf,(uint16_t)len,0);
     if (num==SOCK_BUSY) num=0;
   }
-  wizchip_setCurrentNet(0);
   if (jspIsInterrupted()) return -1;
   return num;
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_wiznet_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
-  wizchip_setCurrentNet(net);
   int r = (int)send((uint8_t)sckt, buf, (uint16_t)len, MSG_NOSIGNAL);
-  wizchip_setCurrentNet(0);
   if (jspIsInterrupted()) return -1;
   return r;
 }

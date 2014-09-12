@@ -32,26 +32,20 @@
 #define ETH_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
 // -------------------------------
 
-/** We need this variable so we know what pins to use to communicate */
-JsNetwork *currentNet = 0;
-void wizchip_setCurrentNet(JsNetwork *n) {
-  currentNet = n;
-}
-
 void  wizchip_select(void) {
-  assert(currentNet);
-  jshPinOutput(currentNet->data.pinCS, 0); // active low
+  assert(networkGetCurrent());
+  jshPinOutput(networkGetCurrent()->data.pinCS, 0); // active low
 }
 
 void  wizchip_deselect(void) {
-  assert(currentNet);
-  jshPinOutput(currentNet->data.pinCS, 1); // active low
+  assert(networkGetCurrent());
+  jshPinOutput(networkGetCurrent()->data.pinCS, 1); // active low
 }
 
 static uint8_t wizchip_rw(uint8_t data) {
-  assert(currentNet);
-  int r = jshSPISend(currentNet->data.device, data);
-  if (r<0) r = jshSPISend(currentNet->data.device, -1);
+  assert(networkGetCurrent());
+  int r = jshSPISend(networkGetCurrent()->data.device, data);
+  if (r<0) r = jshSPISend(networkGetCurrent()->data.device, -1);
   return (uint8_t)r;
 }
 
@@ -77,7 +71,7 @@ Library for communication with the WIZnet Ethernet module
   "generate" : "jswrap_wiznet_connect",
   "params" : [
     ["spi", "JsVar", "Device to use for SPI (or undefined to use the default)"],
-    ["cs", "pin", "The pin to use for SPI cs"]
+    ["cs", "pin", "The pin to use for Chip Select"]
   ],
   "return" : ["JsVar","An Ethernet Object"],
   "return_object" : "Ethernet"
@@ -113,13 +107,12 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
   net.data.device = spiDevice;
   net.data.pinCS = cs;
   networkSet(&net);
-  wizchip_setCurrentNet(&net);
 
   JsVar *ethObj = jspNewObject(0, "Ethernet");
 
   // CS Configuration
-  jshSetPinStateIsManual(cs, false);
-  jshPinOutput(cs, 1); // de-assert CS
+  jshSetPinStateIsManual(net.data.pinCS, false);
+  jshPinOutput(net.data.pinCS, 1); // de-assert CS
 
   // Initialise WIZnet functions
   reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
@@ -133,7 +126,6 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
   {
     jsiConsolePrint("WIZnet Initialize failed.\r\n");
     networkFree(&net);
-    wizchip_setCurrentNet(0);
     return 0;
   }
 
@@ -142,13 +134,11 @@ JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
     if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1) {
       jsiConsolePrint("Unknown PHY Link status.\r\n");
       networkFree(&net);
-      wizchip_setCurrentNet(0);
       return 0;
     }
   } while (tmp == PHY_LINK_OFF);
 
   networkFree(&net);
-  wizchip_setCurrentNet(0);
 
   networkState = NETWORKSTATE_ONLINE;
 
@@ -180,8 +170,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   }
 
   JsNetwork net;
-  if (!networkGetFromVar(&net)) return false;
-  wizchip_setCurrentNet(&net);
+  if (!networkGetFromVar(&net)) return 0;
 
   wiz_NetInfo gWIZNETINFO;
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
@@ -195,7 +184,6 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
 
   networkFree(&net);
-  wizchip_setCurrentNet(0);
 
   return data;
 }
@@ -233,7 +221,6 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
 
   JsNetwork net;
   if (!networkGetFromVar(&net)) return false;
-  wizchip_setCurrentNet(&net);
 
   bool success = false;
   wiz_NetInfo gWIZNETINFO;
@@ -262,7 +249,6 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   ctlnetwork(CN_SET_NETINFO, (void*)&gWIZNETINFO);
 
   networkFree(&net);
-  wizchip_setCurrentNet(0);
 
   return success;
 }
