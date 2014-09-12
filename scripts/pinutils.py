@@ -99,6 +99,11 @@ URLS = {
  "USART":"/USART",
  "DAC":"/DAC",
  "ADC":"/ADC",
+ "OSC_RTC":"/Clocks",
+ "LED1":"/Flashing+Lights",
+ "LED2":"/Flashing+Lights",
+ "LED3":"/Flashing+Lights",
+ "BLUETOOTH":"/Bluetooth",
 };
 
 # is a pin name valid

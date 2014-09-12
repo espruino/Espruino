@@ -102,12 +102,13 @@ def dump_pin(pin, pinstrip):
           if name in pinfuncs:
             pinfuncs[name]["title"] = pinfuncs[name]["title"] + " " + title
           else:
-            pinfuncs[name] = { 'cls': cls, 'title': "["+pin+"] "+title, 'name': name, 'id': pin+"_"+func };
+            pinfuncs[name] = { 'cls': cls, 'title': "["+pin+"] "+title, 'name': name, 'id': pin+"_"+func, 'func' : func };
 
       for func in sorted(pinfuncs.items(),key=lambda x: x[1]['cls']):
         pf = func[1]
         url = False
         if pf["cls"] in pinutils.URLS: url = pinutils.URLS[pf["cls"]]
+        if pf["func"] in pinutils.URLS: url = pinutils.URLS[pf["func"]]
         
         if url != False: writeHTML('     <A href="'+url+'" class="pinfunctionlink">');
         writeHTML('     <SPAN class="pinfunction '+pf["cls"]+'" title="'+pf["title"]+'" onMouseOver="showTT(\''+pf["id"]+'\')" onMouseOut="hideTT(\''+pf["id"]+'\')">'+pf["name"]+'</SPAN>')
@@ -276,7 +277,24 @@ writeHTML('   <TR><TH>SD Card</TH><TD>'+("Yes" if "SD" in board.devices else "No
 writeHTML('  </TABLE>')
 writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/Order">support us by buying our board</a>!</P>')
 writeHTML('  <H2>Pinout</H2>')
-writeHTML('  <P>Hover the mouse over a pin function for more information</P>')
+writeHTML("""
+  <P>Hover the mouse over a pin function for more information. Clicking in a function will tell you how to use it in Espruino.</P>
+  <ul>
+    <li><span class="pinfunction DEVICE">Purple</span> boxes show pins that are used for other functionality on the board. You should avoid using these unless you know that the marked device is not used.</li>
+    <li><span class="pinfunction NOT_5V">3.3v</span> boxes mark pins that are not 5v tolerant (they only take inputs from 0 - 3.3v, not 0 - 5v).</li>
+    <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>
+    <li><span class="pinfunction">GND</span> is ground (0v).</li>
+    <li><span class="pinfunction">VBAT</span> is the battery voltage output (see <a href="/EspruinoBoard">the Espruino Board Reference</a>).</li>
+    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>
+    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>
+    <li><span class="pinfunction PWM">PWM</span> is for <a href="/PWM">Pulse Width Modulation</a>. This creates analog voltages from a digital output by sending a series of pulses.</li>
+    <li><span class="pinfunction SPI">SPI</span> is the 3 wire <a href="/SPI">Serial Peripheral Interface</a>.</li>
+    <li><span class="pinfunction USART">USART</span> is a 2 wire peripheral for <a href="/USART">Serial Data</a>.</li>
+    <li><span class="pinfunction I2C">I2C</span> is the 2 wire <a href="/I2C">Inter-Integrated Circuit</a> bus.</li>
+    <li><span class="pinfunction CAN">CAN</span> is for the <a href="http://en.wikipedia.org/wiki/CAN_bus">Controller Area Network</a>. It is only available on some devices and is not supported by Espruino.</li>
+
+  </ul>
+""");
 writeHTML('  <DIV id="boardcontainer">')
 writeHTML('  <DIV id="board">')
 usedpins = []
