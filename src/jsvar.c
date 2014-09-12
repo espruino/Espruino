@@ -1107,6 +1107,21 @@ char jsvGetCharInString(JsVar *v, size_t idx) {
   return ch;
 }
 
+/// Get the index of a character in a string, or -1
+int jsvGetStringIndexOf(JsVar *str, char ch) {
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (jsvStringIteratorGetChar(&it) == ch) {
+      jsvStringIteratorFree(&it);
+      return (int)it.charIdx;
+    };
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  return -1;
+}
+
 /** Does this string contain only Numeric characters (with optional '-' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
 bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   assert(jsvIsString(var));
@@ -2620,4 +2635,51 @@ JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
   if (jsvIsFunction(v)) return jsvIsInternalFunctionKey;
   if (jsvIsObject(v)) return jsvIsInternalObjectKey;
   return 0;
+}
+
+/** Using 'configs', this reads 'object' into the given pointers, returns true on success.
+ *  If object is not undefined and not an object, an error is raised.
+ *  If there are fields that are not  in the list of configs, an error is raised
+ */
+bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) {
+  if (jsvIsUndefined(object)) return true;
+  if (!jsvIsObject(object)) {
+    jsExceptionHere(JSET_ERROR, "Expecting an Object, or undefined");
+    return false;
+  }
+  // Ok, it's an object
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, object);
+  bool ok = true;
+  while (ok && jsvObjectIteratorHasValue(&it)) {
+    JsVar *key = jsvObjectIteratorGetKey(&it);
+    bool found = false;
+    int i;
+    for (i=0;i<nConfigs;i++) {
+      if (jsvIsStringEqual(key, configs[i].name)) {
+        JsVar *val = jsvObjectIteratorGetValue(&it);
+        found = true;
+        switch (configs[i].type) {
+          case JSV_OBJECT:
+          case JSV_STRING_0:
+          case JSV_ARRAY:
+          case JSV_FUNCTION:
+            *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
+          case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;
+          case JSV_BOOLEAN: *((bool*)configs[i].ptr) = jsvGetBool(val); break;
+          case JSV_INTEGER: *((JsVarInt*)configs[i].ptr) = jsvGetInteger(val); break;
+          case JSV_FLOAT: *((JsVarFloat*)configs[i].ptr) = jsvGetFloat(val); break;
+          default: assert(0); break;
+        }
+        jsvUnLock(val);
+      }
+    }
+    if (!found)
+      jsWarn("Unknown option %q", key);
+    jsvUnLock(key);
+
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  return ok;
 }

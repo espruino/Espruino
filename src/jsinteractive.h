@@ -36,6 +36,9 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
+
+void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event); ///< Called from idle loop
+
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...

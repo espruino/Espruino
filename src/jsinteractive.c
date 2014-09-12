@@ -1230,6 +1230,44 @@ bool jsiIsWatchingPin(Pin pin) {
   return isWatched;
 }
 
+void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+  /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
+   * check the options and work out the masking here than it is to
+   * do it in the IRQ */
+  unsigned char bytesize = 8;
+  JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
+  if(jsvIsObject(options)) {
+    unsigned char c = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
+    if (c>=7 && c<10) bytesize = c;
+  }
+  jsvUnLock(options);
+
+  JsVar *stringData = jsvNewFromEmptyString();
+  if (stringData) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, stringData, 0);
+
+    int i, chars = IOEVENTFLAGS_GETCHARS(event->flags);
+    while (chars) {
+      for (i=0;i<chars;i++) {
+        char ch = (char)(event->data.chars[i] & ((1<<bytesize)-1)); // mask
+        jsvStringIteratorAppend(&it, ch);
+      }
+      // look down the stack and see if there is more data
+      if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
+        jshPopIOEvent(event);
+        chars = IOEVENTFLAGS_GETCHARS(event->flags);
+      } else
+        chars = 0;
+    }
+    jsvStringIteratorFree(&it);
+
+    // Now run the handler
+    jswrap_stream_pushData(usartClass, stringData);
+    jsvUnLock(stringData);
+  }
+}
+
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -1256,41 +1294,7 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (jsvIsObject(usartClass)) {
-        /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
-         * check the options and work out the masking here than it is to
-         * do it in the IRQ */
-        unsigned char bytesize = 8;
-        JsVar *options = jsvObjectGetChild(usartClass, DEVICE_OPTIONS_NAME, 0);
-        if(jsvIsObject(options)) {
-          unsigned char c = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "bytesize", 0));
-          if (c>=7 && c<10) bytesize = c;
-        }
-        jsvUnLock(options);
-
-        JsVar *stringData = jsvNewFromEmptyString();
-        if (stringData) {
-          JsvStringIterator it;
-          jsvStringIteratorNew(&it, stringData, 0);
-
-          int i, chars = IOEVENTFLAGS_GETCHARS(event.flags);
-          while (chars) {
-            for (i=0;i<chars;i++) {
-              char ch = (char)(event.data.chars[i] & ((1<<bytesize)-1)); // mask
-              jsvStringIteratorAppend(&it, ch);
-            }
-            // look down the stack and see if there is more data
-            if (jshIsTopEvent(eventType)) {
-              jshPopIOEvent(&event);
-              chars = IOEVENTFLAGS_GETCHARS(event.flags);
-            } else
-              chars = 0;
-          }
-          jsvStringIteratorFree(&it);
-
-          // Now run the handler
-          jswrap_stream_pushData(usartClass, stringData);
-          jsvUnLock(stringData);
-        }
+        jsiHandleIOEventForUSART(usartClass, &event);
       }
       jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH

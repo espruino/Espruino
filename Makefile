@@ -606,7 +606,7 @@ libs/network/http/httpserver.c
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
- libs/network/wiznet/network_esp8266.c
+ libs/network/esp8266/network_esp8266.c
  endif
 endif
 

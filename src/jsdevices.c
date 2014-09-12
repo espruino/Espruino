@@ -182,7 +182,6 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
 }
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
-
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
     jshIOEventOverflowed();
@@ -199,6 +198,28 @@ bool jshPopIOEvent(IOEvent *result) {
   *result = ioBuffer[ioTail];
   ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
   return true;
+}
+
+// returns true on success
+bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
+  unsigned char i = ioTail;
+  while (ioHead!=ioTail) {
+    if (IOEVENTFLAGS_GETTYPE(ioBuffer[i].flags) == eventType) {
+      *result = ioBuffer[i];
+      // work back and shift all items in out queue
+      int n = (unsigned char)((n+IOBUFFERMASK-1) & IOBUFFERMASK);
+      while (n!=ioTail) {
+        ioBuffer[i] = ioBuffer[n];
+        i = n;
+        n = (unsigned char)((n+IOBUFFERMASK-1) & IOBUFFERMASK);
+      }
+      // finally update the tail pointer, and return
+      ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+      return true;
+    }
+    i = (unsigned char)((i+1) & IOBUFFERMASK);
+  }
+  return false;
 }
 
 bool jshHasEvents() {

@@ -395,6 +395,7 @@ static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
 char jsvGetCharInString(JsVar *v, size_t idx);
+int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character in a string, or -1
 
 JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
@@ -553,5 +554,18 @@ bool jsvIsInternalObjectKey(JsVar *v);
 
 /// Get the correct checker function for the given variable. see jsvIsInternalFunctionKey/jsvIsInternalObjectKey
 JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v);
+
+/// See jsvReadConfigObject
+typedef struct {
+  char *name;
+  JsVarFlags type;
+  void *ptr;
+} jsvConfigObject;
+
+/** Using 'configs', this reads 'object' into the given pointers, returns true on success.
+ *  If object is not undefined and not an object, an error is raised.
+ *  If there are fields that are not  in the list of configs, an error is raised
+ */
+bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
 #endif /* JSVAR_H_ */

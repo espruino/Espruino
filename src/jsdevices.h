@@ -98,6 +98,7 @@ static inline void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigne
   for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
 }
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
+bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result); ///< returns true on success
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
 /// Check if the top event is for the given device
