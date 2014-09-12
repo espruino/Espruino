@@ -18,6 +18,11 @@
   #include "usb_conf.h"
   #include "usb_pwr.h"
  #endif
+ #ifdef STM32F4
+  #include "usb_regs.h"
+  #include "usb_defines.h"
+  #include "usbd_conf.h"
+ #endif
 #endif
 
 #include "jshardware.h"
@@ -2475,6 +2480,30 @@ bool jshFlashContainsCode() {
   return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
 }
 
+#ifdef USB
+void jshSetUSBPower(bool isOn) {
+#ifdef STM32F1
+  if (isOn) {
+    _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
+    USB_Cable_Config(ENABLE);
+  } else {
+    USB_Cable_Config(DISABLE);
+    _SetCNTR(_GetCNTR() | CNTR_PDWN);
+  }
+#endif // STM32F1
+#ifdef STM32F4
+  /*if (isOn) {
+    USB_OTG_CoreInit(&USB_OTG_dev);
+  } else {
+    USB_OTG_GCCFG_TypeDef    gccfg;
+    gccfg.d32 = USB_OTG_READ_REG32(USB_OTG_dev.regs.GREGS->GCCFG);
+    gccfg.b.pwdn = 0; // 0 = usb off, 1 = usb on
+    USB_OTG_WRITE_REG32 (USB_OTG_dev.regs.GREGS->GCCFG, gccfg.d32);
+  }*/
+#endif // STM32F4
+}
+#endif
+
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 #ifdef USE_RTC
@@ -2506,11 +2535,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
     ADC_Cmd(ADC4, DISABLE); // ADC off
 #endif
 #ifdef USB
- //   PowerOff(); // USB disconnect - brings us down to 0.12mA - but seems to lock Espruino up afterwards!
-  #ifdef STM32F1
-    USB_Cable_Config(DISABLE);
-    _SetCNTR(_GetCNTR() | CNTR_PDWN);
-  #endif // STM32F1
+    jshSetUSBPower(false);
 #endif // USB
 
     /* Add EXTI for Serial port */
@@ -2558,6 +2583,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
     // set flag in case there happens to be a SysTick
     hasSystemSlept = true;
     // -----------------------------------------------
+#ifdef STM32F4
+    /* FLASH Deep Power Down Mode enabled */
+    PWR_FlashPowerDownCmd(ENABLE);
+#endif
     /* Request to enter STOP mode with regulator in low power mode*/
     PWR_EnterSTOPMode(PWR_Regulator_LowPower, PWR_STOPEntry_WFI);
     // -----------------------------------------------
@@ -2589,10 +2618,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     }
     RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
+    jshSetUSBPower(true);
 #ifdef STM32F1
-    _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
-    USB_Cable_Config(ENABLE);
-  //  PowerOn(); // USB on
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
 #endif

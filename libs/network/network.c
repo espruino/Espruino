@@ -35,6 +35,8 @@ JsNetworkState networkState =
 #endif
     ;
 
+JsNetwork *networkCurrentStruct = 0;
+
 unsigned long networkParseIPAddress(const char *ip) {
   int n = 0;
   unsigned long addr = 0;
@@ -103,6 +105,10 @@ void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
   net->data.type = type;
+  net->data.device = EV_NONE;
+  net->data.pinCS = PIN_UNDEFINED;
+  net->data.pinIRQ = PIN_UNDEFINED;
+  net->data.pinEN = PIN_UNDEFINED;
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar));
   networkSet(net);
   networkGetFromVar(net);
@@ -138,6 +144,7 @@ bool networkGetFromVar(JsNetwork *net) {
     networkFree(net);
     return false;
   }
+  networkCurrentStruct = net;
   return true;
 }
 
@@ -156,5 +163,10 @@ void networkSet(JsNetwork *net) {
 }
 
 void networkFree(JsNetwork *net) {
+  networkCurrentStruct = 0;
   jsvUnLock(net->networkVar);
+}
+
+JsNetwork *networkGetCurrent() {
+  return networkCurrentStruct;
 }

@@ -59,8 +59,8 @@ void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
 void SpiPauseSpi(void);
 void cc3000_spi_resume(void);
 
-#define ASSERT_CS()          jshPinSetValue(WLAN_CS_PIN, 0)
-#define DEASSERT_CS()        jshPinSetValue(WLAN_CS_PIN, 1)
+#define ASSERT_CS()          jshPinSetValue(networkGetCurrent()->data.pinCS, 0)
+#define DEASSERT_CS()        jshPinSetValue(networkGetCurrent()->data.pinCS, 1)
 
 
 // The magic number that resides at the end of the TX/RX buffer (1 byte after
@@ -76,23 +76,13 @@ bool cc3000_spi_inited = false;
 
 void  cc3000_spi_open(void)
 {
-  // SPI config
-  JshSPIInfo inf;
-  jshSPIInitInfo(&inf);
-  inf.pinSCK =  WLAN_CLK_PIN;
-  inf.pinMISO = WLAN_MISO_PIN;
-  inf.pinMOSI = WLAN_MOSI_PIN;
-  inf.baudRate = 1000000;
-  inf.spiMode = SPIF_SPI_MODE_1;  // Mode 1   CPOL= 0  CPHA= 1
-  jshSPISetup(WLAN_SPI, &inf);
-
-  // WLAN CS, EN and WALN IRQ Configuration
-  jshSetPinStateIsManual(WLAN_CS_PIN, false);
-  jshPinOutput(WLAN_CS_PIN, 1); // de-assert CS
-  jshSetPinStateIsManual(WLAN_EN_PIN, false);
-  jshPinOutput(WLAN_EN_PIN, 0); // disable WLAN
-  jshSetPinStateIsManual(WLAN_IRQ_PIN, true);
-  jshPinSetState(WLAN_IRQ_PIN, JSHPINSTATE_GPIO_IN_PULLUP); // flip into read mode with pullup
+  // WLAN CS, EN and WLAN IRQ Configuration
+  jshSetPinStateIsManual(networkGetCurrent()->data.pinCS, false);
+  jshPinOutput(networkGetCurrent()->data.pinCS, 1); // de-assert CS
+  jshSetPinStateIsManual(networkGetCurrent()->data.pinEN, false);
+  jshPinOutput(networkGetCurrent()->data.pinEN, 0); // disable WLAN
+  jshSetPinStateIsManual(networkGetCurrent()->data.pinIRQ, true);
+  jshPinSetState(networkGetCurrent()->data.pinIRQ, JSHPINSTATE_GPIO_IN_PULLUP); // flip into read mode with pullup
 
   // wait a little (ensure that WLAN takes effect)
   jshDelayMicroseconds(500*1000); // force a 500ms delay! FIXME
@@ -221,7 +211,7 @@ SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 
   int bSend = 0, bRecv = 0;
   while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
-    int r = jshSPISend(WLAN_SPI, (bSend<size)?data[bSend]:-1);
+    int r = jshSPISend(networkGetCurrent()->data.device, (bSend<size)?data[bSend]:-1);
     bSend++;
     if (bSend>0 && r>=0) bRecv++;
   }
@@ -237,7 +227,7 @@ SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 
   int bSend = 0, bRecv = 0;
   while ((bSend<size || bRecv<size) && !jspIsInterrupted()) {
-    int r = jshSPISend(WLAN_SPI, (bSend<size)?READ:-1);
+    int r = jshSPISend(networkGetCurrent()->data.device, (bSend<size)?READ:-1);
     bSend++;
     if (bSend>0 && r>=0) data[bRecv++] = (unsigned char)r;
   }
@@ -359,7 +349,7 @@ void cc3000_irq_handler_x(void)
 
 long cc3000_read_irq_pin(void)
 {
-    return jshPinGetValue(WLAN_IRQ_PIN);
+    return jshPinGetValue(networkGetCurrent()->data.pinIRQ);
 }
 
 void cc3000_irq_enable(void) {
@@ -431,7 +421,7 @@ const unsigned char *sendNoPatch(unsigned long *Length) {
 
 void cc3000_write_en_pin( unsigned char val )
 {
-  jshPinOutput(WLAN_EN_PIN, val == WLAN_ENABLE);
+  jshPinOutput(networkGetCurrent()->data.pinEN, val == WLAN_ENABLE);
 }
 
 void cc3000_initialise(JsVar *wlanObj) {

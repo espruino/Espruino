@@ -11,8 +11,7 @@
  * This file is designed to be parsed during the build process
  *
  * Contains built-in functions for CC3000 WiFi Access
- * EXTREMELY BETA AND LIKELY TO CHANGE DRASTICALLY
- * ----------------------------------------------------------------------------
+  * ----------------------------------------------------------------------------
  */
 
 #include "jswrap_cc3000.h"
@@ -26,6 +25,16 @@
 #include "cc3000/hci.h"
 
 
+// ------------------------------ defaults
+#define WLAN_SPI          EV_SPI3
+#define WLAN_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
+#define WLAN_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
+#define WLAN_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
+#define WLAN_EN_PIN       (Pin)(JSH_PORTB_OFFSET + 7) // active high
+#define WLAN_IRQ_PIN      (Pin)(JSH_PORTB_OFFSET + 8) // active low
+#define WLAN_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 6) // active low
+// -------------------------------------------
+
 /*JSON{
   "type" : "library",
   "class" : "CC3000"
@@ -38,16 +47,57 @@
   "name" : "connect",
   "generate" : "jswrap_cc3000_connect",
   "params" : [
-    
+    ["spi", "JsVar", "Device to use for SPI (or undefined to use the default). SPI should be 1,000,000 baud, and set to 'mode 1'"],
+    ["cs", "pin", "The pin to use for Chip Select"],
+    ["en", "pin", "The pin to use for Enable"],
+    ["irq", "pin", "The pin to use for Interrupts"]
   ],
   "return" : ["JsVar","A WLAN Object"],
   "return_object" : "WLAN"
 }
 Initialise the CC3000 and return a WLAN object
 */
-JsVar *jswrap_cc3000_connect() {
+JsVar *jswrap_cc3000_connect(JsVar *spi, Pin cs, Pin en, Pin irq) {
+  IOEventFlags spiDevice;
+  if (spi) {
+    spiDevice = jsiGetDeviceFromClass(spi);
+    if (!DEVICE_IS_SPI(spiDevice)) {
+      jsExceptionHere(JSET_ERROR, "Expecting SPI device, got %q", spi);
+      return 0;
+    }
+  } else {
+    // SPI config
+    // SPI config
+    JshSPIInfo inf;
+    jshSPIInitInfo(&inf);
+    inf.pinSCK =  WLAN_CLK_PIN;
+    inf.pinMISO = WLAN_MISO_PIN;
+    inf.pinMOSI = WLAN_MOSI_PIN;
+    inf.baudRate = 1000000;
+    inf.spiMode = SPIF_SPI_MODE_1;  // Mode 1   CPOL= 0  CPHA= 1
+    jshSPISetup(WLAN_SPI, &inf);
+    spiDevice = WLAN_SPI;
+  }
+  if (!jshIsPinValid(cs))
+    cs = WLAN_CS_PIN;
+  if (!jshIsPinValid(en))
+    en = WLAN_EN_PIN;
+  if (!jshIsPinValid(irq))
+    irq = WLAN_IRQ_PIN;
+
+  JsNetwork net;
+  networkCreate(&net, JSNETWORKTYPE_CC3000);
+  net.data.device = spiDevice;
+  net.data.pinCS = cs;
+  net.data.pinEN = en;
+  net.data.pinIRQ = irq;
+  networkSet(&net);
+
   JsVar *wlanObj = jspNewObject(0, "WLAN");
   cc3000_initialise(wlanObj);
+
+  networkFree(&net);
+
   return wlanObj;
 }
 
@@ -77,6 +127,10 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
     jsError("Expecting callback Function but got %t", callback);
     return 0;
   }
+
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return false;
+
   // if previously completely disconnected, try and reconnect
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC",0))) {
     cc3000_initialise(wlanObj);
@@ -101,11 +155,7 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
   // might want to set wlan_ioctl_set_connection_policy
   bool connected =  wlan_connect(security, ap, (long)strlen(ap), NULL, (unsigned char*)key, (long)strlen(key))==0;
 
-  if (connected) {
-    JsNetwork net;
-    networkCreate(&net, JSNETWORKTYPE_CC3000);
-    networkFree(&net);
-  }
+  networkFree(&net);
   // note that we're only online (for networkState) when DHCP succeeds
   return connected;
 }
@@ -119,10 +169,15 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
 Completely uninitialise and power down the CC3000. After this you'll have to use ```require("CC3000").connect()``` again.
 */
 void jswrap_wlan_disconnect(JsVar *wlanObj) {
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return;
+
   jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(true)));
   networkState = NETWORKSTATE_OFFLINE; // force offline
   //wlan_disconnect();
   wlan_stop();
+
+  networkFree(&net);
 }
 
 /*JSON{
@@ -134,6 +189,9 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
 Completely uninitialise and power down the CC3000, then reconnect to the old access point.
 */
 void jswrap_wlan_reconnect(JsVar *wlanObj) {
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return;
+
   JsVar *ap = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"AP", 0);
   JsVar *key = jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"KEY", 0);
   JsVar *cb = jsvObjectGetChild(wlanObj,CC3000_ON_STATE_CHANGE, 0);
@@ -142,6 +200,8 @@ void jswrap_wlan_reconnect(JsVar *wlanObj) {
   jsvUnLock(ap);
   jsvUnLock(key);
   jsvUnLock(cb);
+
+  networkFree(&net);
 }
 
 
@@ -163,8 +223,13 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
     return 0;
   }
 
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return 0;
+
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
+
+  networkFree(&net);
   /* If byte 1 is 0 we don't have a valid address */
   if (ipconfig.aucIP[3] == 0) return 0;
   JsVar *data = jsvNewWithFlags(JSV_OBJECT);
@@ -174,6 +239,7 @@ JsVar *jswrap_wlan_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "dhcp", &ipconfig.aucDHCPServer[0], -4, 10, '.');
   networkPutAddressAsString(data, "dns", &ipconfig.aucDNSServer[0], -4, 10, '.');
   networkPutAddressAsString(data, "mac", &ipconfig.uaMacAddr[0], -6, 16, 0);
+
   return data;
 }
 
@@ -210,6 +276,9 @@ bool jswrap_wlan_setIP(JsVar *wlanObj, JsVar *options) {
     return false;
   }
 
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return false;
+
   tNetappIpconfigRetArgs ipconfig;
   netapp_ipconfig(&ipconfig);
 
@@ -225,10 +294,14 @@ bool jswrap_wlan_setIP(JsVar *wlanObj, JsVar *options) {
     *((unsigned long*)&ipconfig.aucDefaultGateway) = 0;
   }
 
-  return netapp_dhcp(
+  bool result =  netapp_dhcp(
       (unsigned long *)&ipconfig.aucIP[0],
       (unsigned long *)&ipconfig.aucSubnetMask[0],
       (unsigned long *)&ipconfig.aucDefaultGateway[0],
       (unsigned long *)&ipconfig.aucDNSServer[0]) == 0;
+
+  networkFree(&net);
+
+  return result;
 }
 

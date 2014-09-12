@@ -1,4 +1,4 @@
-     1v71 : ...
+     1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)

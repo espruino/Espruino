@@ -41,8 +41,8 @@ typedef enum {
 typedef struct {
   JsNetworkType type;
   // Info for accessing specific devices
-  //IOEventFlags spi;
-  //Pin pinCS, pinIRQ, pinEN;
+  IOEventFlags device;
+  Pin pinCS, pinIRQ, pinEN;
 } PACKED_FLAGS JsNetworkData;
 
 
@@ -78,6 +78,8 @@ bool networkGetFromVar(JsNetwork *net);
 bool networkGetFromVarIfOnline(JsNetwork *net); // only return true (and network) if we're online, otherwise warn
 void networkSet(JsNetwork *net);
 void networkFree(JsNetwork *net);
+
+JsNetwork *networkGetCurrent(); ///< Get the currently active network structure. can be 0!
 // ---------------------------------------------------------
 
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
