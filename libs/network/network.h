@@ -41,8 +41,8 @@ typedef enum {
 typedef struct {
   JsNetworkType type;
   // Info for accessing specific devices
-  //IOEventFlags spi;
-  //Pin pinCS, pinIRQ, pinEN;
+  IOEventFlags device;
+  Pin pinCS, pinIRQ, pinEN;
 } PACKED_FLAGS JsNetworkData;
 
 
