@@ -370,10 +370,7 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
 
-  JsVar *str = jsvNewFromEmptyString();
-  if (!str) return 0;
-  jsvAppendPrintf(str, "%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
-  return str;
+  return jsvVarPrintf("%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
 }
 
 

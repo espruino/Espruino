@@ -203,15 +203,15 @@ bool jshPopIOEvent(IOEvent *result) {
 // returns true on success
 bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
   unsigned char i = ioTail;
-  while (ioHead!=ioTail) {
+  while (ioHead!=i) {
     if (IOEVENTFLAGS_GETTYPE(ioBuffer[i].flags) == eventType) {
       *result = ioBuffer[i];
       // work back and shift all items in out queue
-      int n = (unsigned char)((n+IOBUFFERMASK-1) & IOBUFFERMASK);
+      unsigned char n = (unsigned char)((n+IOBUFFERMASK) & IOBUFFERMASK);
       while (n!=ioTail) {
         ioBuffer[i] = ioBuffer[n];
         i = n;
-        n = (unsigned char)((n+IOBUFFERMASK-1) & IOBUFFERMASK);
+        n = (unsigned char)((n+IOBUFFERMASK) & IOBUFFERMASK);
       }
       // finally update the tail pointer, and return
       ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);

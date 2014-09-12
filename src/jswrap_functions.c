@@ -73,12 +73,7 @@ JsVar *jswrap_function_constructor(JsVar *code) {
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
 
-  JsVar *codeStr = jsvNewFromEmptyString();
-  if (!codeStr) {
-    jsvUnLock(fn);
-    return 0;
-  }
-  jsvAppendPrintf(codeStr, "{\n%v\n}", code);
+  JsVar *codeStr = jsvVarPrintf("{\n%v\n}", code);
   jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
   return fn;
 }

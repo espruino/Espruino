@@ -14,6 +14,6 @@
 #include "network.h"
 
 void esp8266_send(JsVar *msg);
-bool esp8266_wait_for(const char *text, int milliseconds);
+bool esp8266_wait_for(const char *text, int milliseconds, bool justTheStart);
 
 void netSetCallbacks_esp8266(JsNetwork *net);

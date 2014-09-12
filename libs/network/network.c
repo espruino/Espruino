@@ -55,7 +55,7 @@ unsigned long networkParseIPAddress(const char *ip) {
   return addr;
 }
 
-void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";
   int i = 0, dir = 1, l = 0;
   if (nBytes<0) {
@@ -77,8 +77,11 @@ void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *
     }
   }
 
-  JsVar *dataVar = jsvNewFromString(data);
-  jsvUnLock(jsvObjectSetChild(object, name, dataVar));
+  return jsvNewFromString(data);
+}
+
+void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+  jsvUnLock(jsvObjectSetChild(object, name, networkGetAddressAsString(ip, nBytes, base, separator)));
 }
 
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */

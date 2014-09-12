@@ -384,12 +384,20 @@ size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines 
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
+
+
+/**
+  jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
+  jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+*/
+bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 bool jsvAppendStringBuf(JsVar *var, const char *str, size_t length); ///< Append the given string to this one - but does not use null-terminated strings. returns false on failure (from out of memory)
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
+JsVar *jsvVarPrintf( const char *fmt, ...); ///< Create a var from the formatted string
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)

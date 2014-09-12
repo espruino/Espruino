@@ -572,10 +572,9 @@ void httpClientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
   if (!sendData) {
     JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
     if (options) {
-      sendData = jsvNewFromString("");
       JsVar *method = jsvObjectGetChild(options, "method", 0);
       JsVar *path = jsvObjectGetChild(options, "path", 0);
-      jsvAppendPrintf(sendData, "%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
+      sendData = jsvVarPrintf("%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
       jsvUnLock(method);
       jsvUnLock(path);
       JsVar *headers = jsvObjectGetChild(options, "headers", 0);
@@ -676,8 +675,7 @@ void httpServerResponseData(JsVar *httpServerResponseVar, JsVar *data) {
     // no sendData, so no headers - add them!
     JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
     if (sendHeaders) {
-      sendData = jsvNewFromEmptyString();
-      jsvAppendPrintf(sendData, "HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
+      sendData = jsvVarPrintf("HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
       httpAppendHeaders(sendData, sendHeaders);
       jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
       jsvUnLock(sendHeaders);

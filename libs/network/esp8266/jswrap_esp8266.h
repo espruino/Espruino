@@ -13,7 +13,8 @@
  */
 #include "jsvar.h"
 
-JsVar *jswrap_esp8266_connect();
+JsVar *jswrap_esp8266_connect_device(JsVar *usart, JsVar *callback);
+bool jswrap_esp8266_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback);
 
 JsVar *jswrap_esp8266_getIP(JsVar *wlanObj);
 bool jswrap_esp8266_setIP(JsVar *wlanObj, JsVar *options);

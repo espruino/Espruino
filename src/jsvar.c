@@ -1050,6 +1050,22 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
   jsvStringIteratorFree(&it);
 }
 
+JsVar *jsvVarPrintf( const char *fmt, ...) {
+  JsVar *str = jsvNewFromEmptyString();
+  if (!str) return 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  jsvStringIteratorGotoEnd(&it);
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsvStringIteratorPrintfCallback,&it, fmt, argp);
+  va_end(argp);
+
+  jsvStringIteratorFree(&it);
+  return str;
+}
+
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength) {
   JsVar *block = jsvLockAgain(var);
@@ -1113,8 +1129,9 @@ int jsvGetStringIndexOf(JsVar *str, char ch) {
   jsvStringIteratorNew(&it, str, 0);
   while (jsvStringIteratorHasChar(&it)) {
     if (jsvStringIteratorGetChar(&it) == ch) {
+      int idx = (int)jsvStringIteratorGetIndex(&it);
       jsvStringIteratorFree(&it);
-      return (int)it.charIdx;
+      return idx;
     };
     jsvStringIteratorNext(&it);
   }
@@ -1370,8 +1387,11 @@ JsVar *jsvSkipToLastName(JsVar *a) {
 }
 
 
-// Also see jsvIsBasicVarEqual
-bool jsvIsStringEqual(JsVar *var, const char *str) {
+/*
+jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
+jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+*/
+bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith) {
   if (!jsvHasCharacterData(var)) {
     return 0; // not a string so not equal!
   }
@@ -1381,7 +1401,8 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   while (jsvStringIteratorHasChar(&it) && *str) {
     if (jsvStringIteratorGetChar(&it) != *str) {
       jsvStringIteratorFree(&it);
-      return false;
+      if (!isStartsWith) return false;
+      return *str==0;
     }
     str++;
     jsvStringIteratorNext(&it);
@@ -1389,6 +1410,11 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   bool eq = jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
   jsvStringIteratorFree(&it);
   return eq;
+}
+
+// Also see jsvIsBasicVarEqual
+bool jsvIsStringEqual(JsVar *var, const char *str) {
+  return jsvIsStringEqualOrStartsWith(var, str, false);
 }
 
 
@@ -2377,14 +2403,7 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
       if (n) {
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
-        JsVar *name = jsvNewFromEmptyString();
-        if (name) {
-          if (jsvIsObject(el)) {
-            jsvAppendPrintf(name, "%v.%v",keyName,n);
-          } else { // array
-            jsvAppendPrintf(name, "%v[%q]",keyName,n);
-          }
-        }
+        JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
         jsvUnLock(keyName);
         jsvUnLock(n);
         jsvIteratorFree(&it);

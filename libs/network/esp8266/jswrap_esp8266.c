@@ -31,16 +31,17 @@ Library for the Espressif ESP8266 WiFi Module
   "type" : "staticmethod",
   "class" : "ESP8266",
   "name" : "connect",
-  "generate" : "jswrap_esp8266_connect",
+  "generate" : "jswrap_esp8266_connect_device",
   "params" : [
-    ["serial","JsVar","The Serial port used for communications with the ESP8266 (must already be setup)"]
+    ["serial","JsVar","The Serial port used for communications with the ESP8266 (must already be setup)"],
+    ["callback","JsVar","Function to call back when connected"]
   ],
   "return" : ["JsVar","An ESP8266 Object"],
   "return_object" : "ESP8266"
 }
 Initialise the WIZnet module and return an Ethernet object
 */
-JsVar *jswrap_esp8266_connect(JsVar *usart) {
+JsVar *jswrap_esp8266_connect_device(JsVar *usart, JsVar *callback) {
 
   IOEventFlags usartDevice;
   usartDevice = jsiGetDeviceFromClass(usart);
@@ -54,15 +55,15 @@ JsVar *jswrap_esp8266_connect(JsVar *usart) {
   net.data.device = usartDevice;
   networkSet(&net);
 
-  JsVar *ethObj = 0;
+  JsVar *wifiObj = 0;
 
-  JsVar *cmd = jsvNewFromString("AT+RST");
+  JsVar *cmd = jsvNewFromString("AT+RST\r\n");
   esp8266_send(cmd);
   jsvUnLock(cmd);
-  if (esp8266_wait_for("OK", 100)) {
-    if (esp8266_wait_for("ready", 500)) {
+  if (esp8266_wait_for("OK", 100, false)) {
+    if (esp8266_wait_for("ready", 4000, false)) {
       networkState = NETWORKSTATE_ONLINE;
-      ethObj = jspNewObject(0, "ESP8266");
+      wifiObj = jspNewObject(0, "ESPWifi");
     } else {
       jsExceptionHere(JSET_ERROR, "Module not ready");
     }
@@ -73,19 +74,56 @@ JsVar *jswrap_esp8266_connect(JsVar *usart) {
 
   networkFree(&net);
 
-  return ethObj;
+  if (callback)
+    jsiQueueEvents(callback, 0, 0);
+
+  return wifiObj;
 }
 
 /*JSON{
   "type" : "class",
-  "class" : "ESP8266"
+  "class" : "ESPWifi"
 }
 An instantiation of an ESP8266 network adaptor
 */
 
 /*JSON{
   "type" : "method",
-  "class" : "Ethernet",
+  "class" : "ESPWifi",
+  "name" : "connect",
+  "generate" : "jswrap_esp8266_connect",
+  "params" : [
+    ["ap","JsVar","Access point name"],
+    ["key","JsVar","WPA2 key (or undefined for unsecured connection)"],
+    ["callback","JsVar","Function to call back with connection status. It has one argument which is one of 'connect'/'disconnect'/'dhcp'"]
+  ],
+  "return" : ["bool",""]
+}
+Connect to an access point
+*/
+bool jswrap_esp8266_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback) {
+  NOT_USED(wlanObj);
+
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return false;
+  // 'AT+CWMODE=1\r' ? seems to be the default
+  JsVar *msg = jsvVarPrintf("AT+CWJAP=%q,%q\r", vAP, vKey);
+  esp8266_send(msg);
+  jsvUnLock(msg);
+  if (!esp8266_wait_for("OK",500, false))
+    return false;
+
+  networkFree(&net);
+
+  if (callback)
+    jsiQueueEvents(callback, 0, 0);
+
+  return true;
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "ESPWifi",
   "name" : "getIP",
   "generate" : "jswrap_esp8266_getIP",
   "return" : ["JsVar",""]
@@ -124,7 +162,7 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
 
 /*JSON{
   "type" : "method",
-  "class" : "Ethernet",
+  "class" : "ESPWifi",
   "name" : "setIP",
   "generate" : "jswrap_esp8266_setIP",
   "params" : [
