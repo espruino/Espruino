@@ -31,31 +31,81 @@ void esp8266_send(JsVar *msg) {
 }
 
 const char *esp8266_idle_compare = 0;
+size_t esp8266_ipd_buffer_size = 0;
 bool esp8266_idle_compare_only_start = false;
+
+void esp8266_got_data(JsVar *data) {
+  jsiConsolePrintf("ESP8266 IPD> %q\n", data);
+}
 
 bool esp8266_idle(JsVar *usartClass) {
   bool found = false;
+  bool hasChanged = false;
   JsVar *buf = jsvObjectGetChild(usartClass, STREAM_BUFFER_NAME, 0);
   if (jsvIsString(buf)) {
-    int idx = jsvGetStringIndexOf(buf, '\n');
-    bool hasChanged = false;
-    while (!found && idx>0/* because we want a \r before it */) {
-      hasChanged = true;
-      JsVar *line = jsvNewFromStringVar(buf,0,(size_t)(idx-1)); // \r\n - so idx is of '\n' and we want to remove '\r' too
-      jsiConsoleRemoveInputLine();
-      jsiConsolePrintf("ESP8266> %q\n", line);
-      if (esp8266_idle_compare && jsvIsStringEqualOrStartsWith(line, esp8266_idle_compare, esp8266_idle_compare_only_start))
-        found = true;
-      jsvUnLock(line);
-      JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(idx+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
+    if (esp8266_ipd_buffer_size) {
+      size_t nChars = jsvGetStringLength(buf);
+      if (nChars > esp8266_ipd_buffer_size)
+        nChars = esp8266_ipd_buffer_size;
+      esp8266_ipd_buffer_size -= nChars;
+      JsVar *data = jsvNewFromStringVar(buf,0,(size_t)nChars);
+      JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(nChars+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
       jsvUnLock(buf);
       buf = newBuf;
-      idx = jsvGetStringIndexOf(buf, '\n');
-    }
-    if (hasChanged) {
-      jsvObjectSetChild(usartClass, STREAM_BUFFER_NAME, buf);
+      hasChanged = true;
+      esp8266_got_data(data);
+    } else {
+      char chars[10];
+      jsvGetStringChars(buf, 0, chars, sizeof(chars));
+      if (chars[0]=='+' && chars[1]=='I' && chars[2]=='P' && chars[3]=='D' && chars[4]==',') {
+        int i = 5;
+        while (i<sizeof(chars)-1 && chars[i]!=':' && chars[i]!=0) i++;
+        if (chars[i]==':') {
+          chars[i]=0;
+          esp8266_ipd_buffer_size = stringToInt(&chars[5]);
+          size_t len = jsvGetStringLength(buf);
+          if (len > i) {
+            size_t nChars = len-i;
+            if (nChars > esp8266_ipd_buffer_size)
+              nChars = esp8266_ipd_buffer_size;
+            esp8266_ipd_buffer_size -= nChars;
+            JsVar *data = jsvNewFromStringVar(buf,(size_t)(i+1),(size_t)nChars);
+            JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(i+nChars+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
+            jsvUnLock(buf);
+            buf = newBuf;
+            hasChanged = true;
+            esp8266_got_data(data);
+            jsvUnLock(data);
+          } else {
+            // Do nothing - our string isn't big enough
+          }
+        } else if (chars[i]!=0) {
+          // invalid data. Kill it.
+          jsWarn("ESP8266 expecting +IPD string, got %q", buf);
+          jsvUnLock(buf);
+          buf = 0;
+          hasChanged = true;
+        }
+      } else { // string doesn't start with '+IPD'
+        int idx = jsvGetStringIndexOf(buf, '\n');
+        while (!found && idx>0/* because we want a \r before it */) {
+          hasChanged = true;
+          JsVar *line = jsvNewFromStringVar(buf,0,(size_t)(idx-1)); // \r\n - so idx is of '\n' and we want to remove '\r' too
+          jsiConsoleRemoveInputLine();
+          jsiConsolePrintf("ESP8266> %q\n", line);
+          if (esp8266_idle_compare && jsvIsStringEqualOrStartsWith(line, esp8266_idle_compare, esp8266_idle_compare_only_start))
+            found = true;
+          jsvUnLock(line);
+          JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(idx+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
+          jsvUnLock(buf);
+          buf = newBuf;
+          idx = jsvGetStringIndexOf(buf, '\n');
+        }
+      }
     }
   }
+  if (hasChanged)
+    jsvObjectSetChild(usartClass, STREAM_BUFFER_NAME, buf);
   jsvUnLock(buf);
   return found;
 }

@@ -752,6 +752,25 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     }
 }
 
+/// Get len bytes of string data from this string. Does not error if string len is not equal to len
+size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len) {
+  assert(!jsvHasCharacterData(v));
+  size_t l = len;
+  JsvStringIterator it;
+  jsvStringIteratorNewConst(&it, v, startChar);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (l--<=0) {
+      jsvStringIteratorFree(&it);
+      return len;
+    }
+    *(str++) = jsvStringIteratorGetChar(&it);
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  *str = 0;
+  return len-l;
+}
+
 /// Set the Data in this string. This must JUST overwrite - not extend or shrink
 void jsvSetString(JsVar *v, char *str, size_t len) {
   assert(jsvHasCharacterData(v));
