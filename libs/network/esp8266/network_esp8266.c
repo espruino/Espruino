@@ -19,6 +19,8 @@
 #define INVALID_SOCKET ((SOCKET)(-1))
 #define SOCKET_ERROR (-1)
 
+#define ESP8266_IPD_NAME JS_HIDDEN_CHAR_STR"IPD"
+
 void esp8266_send(JsVar *msg) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, msg, 0);
@@ -35,7 +37,13 @@ size_t esp8266_ipd_buffer_size = 0;
 bool esp8266_idle_compare_only_start = false;
 
 void esp8266_got_data(JsVar *data) {
-  jsiConsolePrintf("ESP8266 IPD> %q\n", data);
+  JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, 0);
+  if (!ipd) {
+    jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, data);
+  } else {
+    jsvAppendStringVar(ipd, data, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    jsvUnLock(ipd);
+  }
 }
 
 bool esp8266_idle(JsVar *usartClass) {
@@ -58,11 +66,11 @@ bool esp8266_idle(JsVar *usartClass) {
       char chars[10];
       jsvGetStringChars(buf, 0, chars, sizeof(chars));
       if (chars[0]=='+' && chars[1]=='I' && chars[2]=='P' && chars[3]=='D' && chars[4]==',') {
-        int i = 5;
+        size_t i = 5;
         while (i<sizeof(chars)-1 && chars[i]!=':' && chars[i]!=0) i++;
         if (chars[i]==':') {
           chars[i]=0;
-          esp8266_ipd_buffer_size = stringToInt(&chars[5]);
+          esp8266_ipd_buffer_size = (size_t)stringToInt(&chars[5]);
           size_t len = jsvGetStringLength(buf);
           if (len > i) {
             size_t nChars = len-i;
@@ -191,7 +199,17 @@ int net_esp8266_accept(JsNetwork *net, int sckt) {
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_esp8266_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
-  return 0;
+  JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, 0);
+  size_t chars = 0;
+  if (ipd) {
+    chars = jsvGetStringLength(ipd);
+    jsvGetStringChars(ipd, 0, buf, len);
+
+    JsVar *newIpd = (chars>len) ? jsvNewFromStringVar(ipd, len, JSVAPPENDSTRINGVAR_MAXLENGTH) : 0;
+    jsvUnLock(ipd);
+    jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, newIpd));
+  }
+  return (chars>len) ? len : chars;
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
