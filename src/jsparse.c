@@ -615,6 +615,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             oldLex = execInfo.lex;
             execInfo.lex = &newLex;
             JSP_SAVE_EXECUTE();
+            execInfo.execute = EXEC_YES; // force execute without any previous state
             jspeBlock();
             bool hasError = JSP_HAS_ERROR;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
