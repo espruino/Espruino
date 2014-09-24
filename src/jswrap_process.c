@@ -79,9 +79,11 @@ usage : Memory that has been used
 
 total : Total memory
 
-history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'.
+history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
 
-On ARM, stackEndAddress is the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion, the bytes above this can be used.
+stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+
+Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
 */
 #ifdef ARM
 extern int _end; // end of ram used (variables)
