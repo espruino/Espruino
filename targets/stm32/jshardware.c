@@ -970,6 +970,7 @@ static void jshResetSerial() {
 }
 
 void jshInit() {
+  jshInitDevices();
   int i;
   // reset some vars
   for (i=0;i<16;i++)
@@ -1953,6 +1954,8 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   jshSetDeviceInitialised(device, true);
+
+  jshSetFlowControlEnabled(device, inf->xOnXOff);
 
   if (device == EV_USBSERIAL) {
     return; // eep!

@@ -142,6 +142,7 @@ typedef struct {
   unsigned char bytesize;
   unsigned char parity;
   unsigned char stopbits;
+  bool xOnXOff; // XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;
 
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
@@ -151,6 +152,7 @@ static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
+  inf->xOnXOff = false;
 }
 
 /** Set up a UART, if pins are -1 they will be guessed */

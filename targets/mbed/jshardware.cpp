@@ -58,6 +58,7 @@ void mbedSerialIRQ(uint32_t id, SerialIrq event) {
 // ----------------------------------------------------------------------------
 // for non-blocking IO
 void jshInit() {
+  jshInitDevices();
   systemTimeWasHigh = false;
   systemTimeHigh = 0;
   systemTime.start();

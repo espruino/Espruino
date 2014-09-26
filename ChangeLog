@@ -2,6 +2,7 @@
             Fix break inside loop inside case inside function (fix 428)
             Added fs.stat and File.seek (fix #429, fix #430)
             Allow use of DLE (char 16) on an empty line to turn echo off for *just that line*
+            Add XON/XOFF flow control on Serial + USB. This is enabled by default for Serial (fix #20)
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)

@@ -17,6 +17,8 @@
 #include "jsutils.h"
 #include "platform_config.h"
 
+void jshInitDevices(); // called from jshInit
+
 typedef enum {
  // device type
  EV_NONE,
@@ -129,5 +131,8 @@ int jshGetCharToTransmit(IOEventFlags device);
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
+
+/// Set whether to use flow control on the given device or not
+void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff);
 
 #endif /* JSDEVICES_H_ */
