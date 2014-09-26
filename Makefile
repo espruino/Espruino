@@ -369,7 +369,7 @@ ifdef WIZNET
 USE_WIZNET=1
 else
 USE_CC3000=1
-USE_ESP8266=1
+#USE_ESP8266=1
 endif
 endif
 endif
@@ -919,7 +919,7 @@ OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
 
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-OPTIMIZEFLAGS += --param inline-unit-growth=8
+OPTIMIZEFLAGS += --param inline-unit-growth=6
 
 export CCPREFIX?=arm-none-eabi-
 endif # ARM
