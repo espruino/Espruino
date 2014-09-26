@@ -30,7 +30,8 @@ CalendarDate getCalendarDate(int d);
 int fromCalenderDate(CalendarDate *date);
 
 JsVarFloat jswrap_date_now();
-JsVar *jswrap_date_constructor();
+JsVar *jswrap_date_from_milliseconds(JsVarFloat time);
+JsVar *jswrap_date_constructor(JsVar *args);
 
 JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
 JsVarFloat jswrap_date_getTime(JsVar *parent);

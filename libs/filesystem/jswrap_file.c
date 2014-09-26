@@ -402,10 +402,6 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
   if (buffer)
     jsvStringIteratorFree(&it);
 
-  // automatically close this file if we're at the end of it
-  if (bytesRead!=(size_t)length)
-    jswrap_file_close(parent);
-
   return buffer;
 }
 
@@ -413,16 +409,27 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
   "type" : "method",
   "class" : "File",
   "name" : "skip",
-  "generate" : "jswrap_file_skip",
+  "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,true)",
+  "params" : [
+    ["nBytes","int32","is a positive integer specifying the number of bytes to skip forwards."]
+  ]
+}
+Skip the specified number of bytes forward in the file
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "seek",
+  "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,false)",
   "params" : [
     ["nBytes","int32","is an integer specifying the number of bytes to skip forwards."]
   ]
 }
-Skip the specified number of bytes forwards
+Seek to a certain position in the file
 */
-void jswrap_file_skip(JsVar* parent, int length) {
-  if (length<=0) {
-    jsWarn("length for skip must be greater than 0");
+void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
+  if (nBytes<0) {
+    jsWarn(is_skip ? "Bytes to skip must be >=0" : "Position to seek to must be >=0");
     return;
   }
   FRESULT res = 0;
@@ -431,15 +438,15 @@ void jswrap_file_skip(JsVar* parent, int length) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)f_tell(&file.data.handle) + (DWORD)length);
+        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(is_skip ? f_tell(&file.data.handle) : 0) + (DWORD)nBytes);
   #else
-        fseek(file.data.handle, length, SEEK_CUR);
+        fseek(file.data.handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
   #endif
         fileSetVar(&file);
       }
     }
   }
-  if (res) jsfsReportError("Unable to skip", res);
+  if (res) jsfsReportError(is_skip?"Unable to skip":"Unable to seek", res);
 }
 
 /*JSON{
