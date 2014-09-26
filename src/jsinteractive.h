@@ -108,10 +108,20 @@ typedef enum {
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
 
+typedef enum {
+  JSIS_NONE,
+  JSIS_ECHO_OFF = 1, ///< do we provide any user feedback? OFF=no
+  JSIS_ECHO_OFF_FOR_LINE = 2,
+  JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
+
+  JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
+} PACKED_FLAGS JsiStatus;
+
+extern JsiStatus jsiStatus;
+bool jsiEcho();
+
 extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
-extern bool echo;
-extern bool allowDeepSleep;
 extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
 
 void jsiDumpState();

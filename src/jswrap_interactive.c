@@ -80,7 +80,10 @@ Set whether we can enter deep sleep mode, which reduces power consumption to aro
 Please see http://www.espruino.com/Power+Consumption for more details on this.
 */
 void jswrap_interface_setDeepSleep(bool sleep) {
-  allowDeepSleep = sleep;
+  if (sleep)
+    jsiStatus |= JSIS_ALLOW_DEEP_SLEEP;
+  else
+    jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
 }
 
 
@@ -276,7 +279,10 @@ void jswrap_interface_edit(JsVar *funcName) {
 Should TinyJS echo what you type back to you? true = yes (Default), false = no. When echo is off, the result of executing a command is not returned. Instead, you must use 'print' to send output.
 */
 void jswrap_interface_echo(bool echoOn) {
-  echo = echoOn;
+  if (echoOn)
+    jsiStatus &= ~JSIS_ECHO_OFF;
+  else
+    jsiStatus |= JSIS_ECHO_OFF;
 }
 
 /*JSON{
