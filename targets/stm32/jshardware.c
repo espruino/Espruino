@@ -36,9 +36,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
-#define USE_RTC
-#endif
+//#ifdef ESPRUINI
+//#define USE_RTC
+//#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -970,6 +970,7 @@ static void jshResetSerial() {
 }
 
 void jshInit() {
+  jshInitDevices();
   int i;
   // reset some vars
   for (i=0;i<16;i++)
@@ -1954,6 +1955,8 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   jshSetDeviceInitialised(device, true);
 
+  jshSetFlowControlEnabled(device, inf->xOnXOff);
+
   if (device == EV_USBSERIAL) {
     return; // eep!
   }
@@ -2514,7 +2517,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
        What about EXTI line 18 - USB Wakeup event
        Check time until wake against where we are in the RTC counter - we can sleep for 0.1 sec if we're 90% of the way through the counter...
    */
-  if (allowDeepSleep &&  // from setDeepSleep
+  if ((jsiStatus & JSIS_ALLOW_DEEP_SLEEP) &&  // from setDeepSleep
 #ifdef STM32F1
       (timeUntilWake > (jshGetTimeForSecond()*3/2)) &&  // if there's less time that this then we can't go to sleep because we can't be sure we'll wake in time
 #else

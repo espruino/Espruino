@@ -154,6 +154,14 @@ JsVarFloat jswrap_date_now() {
 }
 
 
+JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
+  JsVar *d = jspNewObject(0,"Date");
+  if (!d) return 0;
+  jsvUnLock(jsvObjectSetChild(d, "ms", jsvNewFromFloat(time)));
+  return d;
+}
+
+
 /*JSON{
   "type" : "constructor",
   "class" : "Date",
@@ -168,9 +176,6 @@ JsVarFloat jswrap_date_now() {
 Creates a date object
 */
 JsVar *jswrap_date_constructor(JsVar *args) {
-  JsVar *d = jspNewObject(0,"Date");
-  if (!d) return 0;
-
   JsVarFloat time = 0;
 
   if (jsvGetArrayLength(args)==0) {
@@ -199,9 +204,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
     time = fromTimeInDay(&td);
   }
 
-  jsvUnLock(jsvObjectSetChild(d, "ms", jsvNewFromFloat(time)));
-
-  return d;
+  return jswrap_date_from_milliseconds(time);
 }
 
 /*JSON{
@@ -370,10 +373,7 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
 
-  JsVar *str = jsvNewFromEmptyString();
-  if (!str) return 0;
-  jsvAppendPrintf(str, "%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
-  return str;
+  return jsvVarPrintf("%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
 }
 
 

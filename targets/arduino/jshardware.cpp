@@ -32,6 +32,7 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 
 // ----------------------------------------------------------------------------
 void jshInit() {
+  jshInitDevices();
   Serial.begin(DEFAULT_BAUD_RATE);
 }
 

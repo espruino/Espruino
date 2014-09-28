@@ -20,6 +20,9 @@
 #if defined(USE_WIZNET)
   #include "network_wiznet.h"
 #endif
+#if defined(USE_ESP8266)
+  #include "network_esp8266.h"
+#endif
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
@@ -52,7 +55,7 @@ unsigned long networkParseIPAddress(const char *ip) {
   return addr;
 }
 
-void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";
   int i = 0, dir = 1, l = 0;
   if (nBytes<0) {
@@ -74,8 +77,11 @@ void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *
     }
   }
 
-  JsVar *dataVar = jsvNewFromString(data);
-  jsvUnLock(jsvObjectSetChild(object, name, dataVar));
+  return jsvNewFromString(data);
+}
+
+void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+  jsvUnLock(jsvObjectSetChild(object, name, networkGetAddressAsString(ip, nBytes, base, separator)));
 }
 
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
@@ -129,6 +135,9 @@ bool networkGetFromVar(JsNetwork *net) {
 #endif
 #if defined(USE_WIZNET)
   case JSNETWORKTYPE_W5500 : netSetCallbacks_wiznet(net); break;
+#endif
+#if defined(USE_ESP8266)
+  case JSNETWORKTYPE_ESP8266 : netSetCallbacks_esp8266(net); break;
 #endif
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;

@@ -376,6 +376,7 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 const char *jsvGetTypeOf(const JsVar *v); ///< Return the 'type' of the JS variable (eg. JS's typeof operator)
 size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
@@ -384,17 +385,26 @@ size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines 
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
+
+
+/**
+  jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
+  jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+*/
+bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
 bool jsvIsStringEqual(JsVar *var, const char *str);
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
 bool jsvAppendStringBuf(JsVar *var, const char *str, size_t length); ///< Append the given string to this one - but does not use null-terminated strings. returns false on failure (from out of memory)
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
+JsVar *jsvVarPrintf( const char *fmt, ...); ///< Create a var from the formatted string
 static inline void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
 #define JSVAPPENDSTRINGVAR_MAXLENGTH (0x7FFFFFFF)
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength); ///< Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH)
 void jsvAppendStringVarComplete(JsVar *var, const JsVar *str); ///< Append all of str to var. Both must be strings.
 char jsvGetCharInString(JsVar *v, size_t idx);
+int jsvGetStringIndexOf(JsVar *str, char ch); ///< Get the index of a character in a string, or -1
 
 JsVarInt jsvGetInteger(const JsVar *v);
 void jsvSetInteger(JsVar *v, JsVarInt value); ///< Set an integer value (use carefully!)
@@ -553,5 +563,18 @@ bool jsvIsInternalObjectKey(JsVar *v);
 
 /// Get the correct checker function for the given variable. see jsvIsInternalFunctionKey/jsvIsInternalObjectKey
 JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v);
+
+/// See jsvReadConfigObject
+typedef struct {
+  char *name;
+  JsVarFlags type;
+  void *ptr;
+} jsvConfigObject;
+
+/** Using 'configs', this reads 'object' into the given pointers, returns true on success.
+ *  If object is not undefined and not an object, an error is raised.
+ *  If there are fields that are not  in the list of configs, an error is raised
+ */
+bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
 #endif /* JSVAR_H_ */

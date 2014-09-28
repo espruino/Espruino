@@ -46,14 +46,13 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'GND', '3V3', 'BOOT0', 'NRST' ],
-#  'left2' : [ 'GND', 'A12', 'A11', 'VCC' ],
-  'top' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
-  'bottom' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
+  'left' : [ 'NRST', 'BOOT0', '3V3', 'GND' ],
+  'bottom' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
+  'top' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
 
 
-  'right2' : ['A9','A0','A1','A3'],
-  'right' : ['A10','A8','A2','A4'],        
+  'right2' : ['A3','A1','A0','A9'],
+  'right' : ['A4','A2','A8','A10'],        
 };
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
@@ -86,35 +85,35 @@ board_css = """
   height: 585px;
 }
 #left {
-  top: 105px;
+  top: 95px;
   right: 560px;  
 }
 #left2  {
-  top: 105px;
+  top: 95px;
   left: -100px;
 }
 #top {
   bottom: 320px;
-  left: 240px;
+  left: 262px;
 }
 #bottom {
   top: 320px;
-  left: 240px;
+  left: 262px;
 }
 
 #right  {
-  top: 105px;
-  left: 820px;
+  top: 95px;
+  left: 800px;
 }
 #right2  {
-  top: 105px;
+  top: 95px;
   right: 105px;
 }
 
 .leftpin { height: 48px; }
 .left2pin { height: 48px; }
-.toppin { width: 48px; }
-.bottompin { width: 48px; }
+.toppin { width: 44px; }
+.bottompin { width: 44px; }
 
 .rightpin { height: 48px; }
 .right2pin { height: 48px; }

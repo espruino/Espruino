@@ -8,13 +8,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for SD card access, based on node.js 'fs' module
+ * Implementation of JsNetwork for ESP8266 devices
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
+#include "network.h"
 
-JsVar *jswrap_fs_readdir(JsVar *path);
-bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
-JsVar *jswrap_fs_readFile(JsVar *path);
-bool jswrap_fs_unlink(JsVar *path);
-JsVar *jswrap_fs_stat(JsVar *path);
+void esp8266_send(JsVar *msg);
+bool esp8266_wait_for(const char *text, int milliseconds, bool justTheStart);
+
+void netSetCallbacks_esp8266(JsNetwork *net);

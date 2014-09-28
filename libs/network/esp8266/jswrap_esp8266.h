@@ -8,13 +8,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains built-in functions for SD card access, based on node.js 'fs' module
+ * Contains built-in functions for Espressif ESP8266 WiFi Access
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
 
-JsVar *jswrap_fs_readdir(JsVar *path);
-bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append);
-JsVar *jswrap_fs_readFile(JsVar *path);
-bool jswrap_fs_unlink(JsVar *path);
-JsVar *jswrap_fs_stat(JsVar *path);
+JsVar *jswrap_esp8266_connect_device(JsVar *usart, JsVar *callback);
+bool jswrap_esp8266_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callback);
+
+JsVar *jswrap_esp8266_getIP(JsVar *wlanObj);
+bool jswrap_esp8266_setIP(JsVar *wlanObj, JsVar *options);

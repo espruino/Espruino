@@ -168,6 +168,7 @@ int getch()
 
 
 void jshInit() {
+  jshInitDevices();
 #ifndef __MINGW32__
   if (!terminal_set) {
     struct termios new_termios;

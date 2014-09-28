@@ -20,11 +20,13 @@
 #include "jsvar.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrap_date.h"
 
 #ifndef LINUX
 #include "ff.h" // filesystem stuff
 #else
 #include <stdio.h>
+#include <sys/stat.h>
 #include <dirent.h> // for readdir
 #endif
 
@@ -266,7 +268,7 @@ Delete the given file
 
 NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
 */
-  /*JSON{
+/*JSON{
   "type" : "staticmethod",
   "class" : "fs",
   "name" : "unlinkSync",
@@ -300,3 +302,66 @@ bool jswrap_fs_unlink(JsVar *path) {
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "statSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_stat",
+  "params" : [
+    ["path","JsVar","The path of the file to get information on"]
+  ],
+  "return" : ["JsVar","An object describing the file, or undefined on failure"]
+}
+Return information on the given file. This returns an object with the following
+fields:
+
+size: size in bytes
+dir: a boolean specifying if the file is a directory or not
+mtime: A Date structure specifying the time the file was last modified
+*/
+JsVar *jswrap_fs_stat(JsVar *path) {
+  char pathStr[JS_DIR_BUF_SIZE] = "";
+  if (!jsvIsUndefined(path))
+    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+
+#ifndef LINUX
+  FRESULT res = 0;
+  if (jsfsInit()) {
+    FILINFO info;
+    res = f_stat(pathStr, &info);
+    if (res==0 /*ok*/) {
+      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      if (!obj) return 0;
+      jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize)));
+      jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR)));
+
+      CalendarDate date;
+      date.year = 1980+(int)((info.fdate>>9)&127);
+      date.month = (int)((info.fdate>>5)&15);
+      date.day = (int)((info.fdate)&31);
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = (int)((info.ftime>>11)&31);
+      td.min = (int)((info.ftime>>5)&63);
+      td.sec = (int)((info.ftime)&63);
+      td.ms = 0;
+      td.zone = 0;
+      jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td))));
+      return obj;
+    }
+  }
+#else
+  struct stat info;
+  if (stat(pathStr, &info)==0 /*ok*/) {
+    JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+    if (!obj) return 0;
+    jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size)));
+    jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode))));
+    jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0)));
+    return obj;
+  }
+#endif
+
+  return 0;
+}

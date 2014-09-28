@@ -17,6 +17,8 @@
 #include "jsutils.h"
 #include "platform_config.h"
 
+void jshInitDevices(); // called from jshInit
+
 typedef enum {
  // device type
  EV_NONE,
@@ -98,6 +100,7 @@ static inline void jshPushIOCharEvents(IOEventFlags channel, char *data, unsigne
   for (i=0;i<count;i++) jshPushIOCharEvent(channel, data[i]);
 }
 bool jshPopIOEvent(IOEvent *result); ///< returns true on success
+bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result); ///< returns true on success
 /// Do we have any events pending? Will jshPopIOEvent return true?
 bool jshHasEvents();
 /// Check if the top event is for the given device
@@ -128,5 +131,8 @@ int jshGetCharToTransmit(IOEventFlags device);
 
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit);
+
+/// Set whether to use flow control on the given device or not
+void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff);
 
 #endif /* JSDEVICES_H_ */

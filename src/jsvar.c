@@ -752,6 +752,25 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     }
 }
 
+/// Get len bytes of string data from this string. Does not error if string len is not equal to len
+size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len) {
+  assert(!jsvHasCharacterData(v));
+  size_t l = len;
+  JsvStringIterator it;
+  jsvStringIteratorNewConst(&it, v, startChar);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (l--<=0) {
+      jsvStringIteratorFree(&it);
+      return len;
+    }
+    *(str++) = jsvStringIteratorGetChar(&it);
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  *str = 0;
+  return len-l;
+}
+
 /// Set the Data in this string. This must JUST overwrite - not extend or shrink
 void jsvSetString(JsVar *v, char *str, size_t len) {
   assert(jsvHasCharacterData(v));
@@ -1050,6 +1069,22 @@ void jsvAppendPrintf(JsVar *var, const char *fmt, ...) {
   jsvStringIteratorFree(&it);
 }
 
+JsVar *jsvVarPrintf( const char *fmt, ...) {
+  JsVar *str = jsvNewFromEmptyString();
+  if (!str) return 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  jsvStringIteratorGotoEnd(&it);
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsvStringIteratorPrintfCallback,&it, fmt, argp);
+  va_end(argp);
+
+  jsvStringIteratorFree(&it);
+  return str;
+}
+
 /** Append str to var. Both must be strings. stridx = start char or str, maxLength = max number of characters (can be JSVAPPENDSTRINGVAR_MAXLENGTH) */
 void jsvAppendStringVar(JsVar *var, const JsVar *str, size_t stridx, size_t maxLength) {
   JsVar *block = jsvLockAgain(var);
@@ -1105,6 +1140,22 @@ char jsvGetCharInString(JsVar *v, size_t idx) {
   char ch = jsvStringIteratorGetChar(&it);
   jsvStringIteratorFree(&it);
   return ch;
+}
+
+/// Get the index of a character in a string, or -1
+int jsvGetStringIndexOf(JsVar *str, char ch) {
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    if (jsvStringIteratorGetChar(&it) == ch) {
+      int idx = (int)jsvStringIteratorGetIndex(&it);
+      jsvStringIteratorFree(&it);
+      return idx;
+    };
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  return -1;
 }
 
 /** Does this string contain only Numeric characters (with optional '-' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
@@ -1355,8 +1406,11 @@ JsVar *jsvSkipToLastName(JsVar *a) {
 }
 
 
-// Also see jsvIsBasicVarEqual
-bool jsvIsStringEqual(JsVar *var, const char *str) {
+/*
+jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
+jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+*/
+bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith) {
   if (!jsvHasCharacterData(var)) {
     return 0; // not a string so not equal!
   }
@@ -1366,7 +1420,8 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   while (jsvStringIteratorHasChar(&it) && *str) {
     if (jsvStringIteratorGetChar(&it) != *str) {
       jsvStringIteratorFree(&it);
-      return false;
+      if (!isStartsWith) return false;
+      return *str==0;
     }
     str++;
     jsvStringIteratorNext(&it);
@@ -1374,6 +1429,11 @@ bool jsvIsStringEqual(JsVar *var, const char *str) {
   bool eq = jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
   jsvStringIteratorFree(&it);
   return eq;
+}
+
+// Also see jsvIsBasicVarEqual
+bool jsvIsStringEqual(JsVar *var, const char *str) {
+  return jsvIsStringEqualOrStartsWith(var, str, false);
 }
 
 
@@ -2362,14 +2422,7 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
       if (n) {
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
-        JsVar *name = jsvNewFromEmptyString();
-        if (name) {
-          if (jsvIsObject(el)) {
-            jsvAppendPrintf(name, "%v.%v",keyName,n);
-          } else { // array
-            jsvAppendPrintf(name, "%v[%q]",keyName,n);
-          }
-        }
+        JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
         jsvUnLock(keyName);
         jsvUnLock(n);
         jsvIteratorFree(&it);
@@ -2620,4 +2673,51 @@ JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v) {
   if (jsvIsFunction(v)) return jsvIsInternalFunctionKey;
   if (jsvIsObject(v)) return jsvIsInternalObjectKey;
   return 0;
+}
+
+/** Using 'configs', this reads 'object' into the given pointers, returns true on success.
+ *  If object is not undefined and not an object, an error is raised.
+ *  If there are fields that are not  in the list of configs, an error is raised
+ */
+bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) {
+  if (jsvIsUndefined(object)) return true;
+  if (!jsvIsObject(object)) {
+    jsExceptionHere(JSET_ERROR, "Expecting an Object, or undefined");
+    return false;
+  }
+  // Ok, it's an object
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, object);
+  bool ok = true;
+  while (ok && jsvObjectIteratorHasValue(&it)) {
+    JsVar *key = jsvObjectIteratorGetKey(&it);
+    bool found = false;
+    int i;
+    for (i=0;i<nConfigs;i++) {
+      if (jsvIsStringEqual(key, configs[i].name)) {
+        JsVar *val = jsvObjectIteratorGetValue(&it);
+        found = true;
+        switch (configs[i].type) {
+          case JSV_OBJECT:
+          case JSV_STRING_0:
+          case JSV_ARRAY:
+          case JSV_FUNCTION:
+            *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
+          case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;
+          case JSV_BOOLEAN: *((bool*)configs[i].ptr) = jsvGetBool(val); break;
+          case JSV_INTEGER: *((JsVarInt*)configs[i].ptr) = jsvGetInteger(val); break;
+          case JSV_FLOAT: *((JsVarFloat*)configs[i].ptr) = jsvGetFloat(val); break;
+          default: assert(0); break;
+        }
+        jsvUnLock(val);
+      }
+    }
+    if (!found)
+      jsWarn("Unknown option %q", key);
+    jsvUnLock(key);
+
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  return ok;
 }
