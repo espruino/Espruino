@@ -52,6 +52,8 @@ Builtin.prototype.getTernType = function() {
     var args = [];     
     if ("params" in this)
       args = this.params.map(function (p) {
+        if (p[0]=="pin" && p[1]=="JsVar")
+          return "pin: +Pin"; // hack because digitalRead/Write can also take arrays/objects (but most use cases are Pins)
         return p[0]+": "+getBasicTernType(p[1]);
       });
     var ret = "";
@@ -79,7 +81,12 @@ exports.readWrapperFile = function(filename) {
   var builtins = [];
   var comments = contents.match( /\/\*JSON(?:(?!\*\/).|[\n\r])*\*\//g );
   if (comments) comments.forEach(function(comment) {
-    var j = new Builtin(JSON.parse(comment.slice(6,-2)));
+    comment = comment.slice(6,-2); // pull off /*JSON ... */ bit
+    var endOfJson = comment.indexOf("\n}")+2;
+    var json = comment.substr(0,endOfJson);
+    var description =  comment.substr(endOfJson).trim();
+    var j = new Builtin(JSON.parse(json));
+    if (description.length) j.description = description;
     j.implementation = filename;
     builtins.push(j);
   });

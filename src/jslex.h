@@ -16,6 +16,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsvariterator.h"
 
 typedef struct JslCharPos {
   JsvStringIterator it;

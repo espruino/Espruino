@@ -35,14 +35,14 @@ typedef enum {
   JSNETWORKTYPE_SOCKET,  ///< Standard linux socket API
   JSNETWORKTYPE_CC3000,  ///< TI CC3000 support
   JSNETWORKTYPE_W5500,  ///< WIZnet W5500 support
-  // enc28j60?
+  JSNETWORKTYPE_ESP8266,  ///< ExpressIF ESP8266 support
 } JsNetworkType;
 
 typedef struct {
   JsNetworkType type;
   // Info for accessing specific devices
-  //IOEventFlags spi;
-  //Pin pinCS, pinIRQ, pinEN;
+  IOEventFlags device;
+  Pin pinCS, pinIRQ, pinEN;
 } PACKED_FLAGS JsNetworkData;
 
 
@@ -78,12 +78,16 @@ bool networkGetFromVar(JsNetwork *net);
 bool networkGetFromVarIfOnline(JsNetwork *net); // only return true (and network) if we're online, otherwise warn
 void networkSet(JsNetwork *net);
 void networkFree(JsNetwork *net);
+
+JsNetwork *networkGetCurrent(); ///< Get the currently active network structure. can be 0!
 // ---------------------------------------------------------
 
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
 void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
 /// Parse the given IP address - return 0 on failure
 unsigned long networkParseIPAddress(const char *ip);
+/// if nBytes<0, addresses are printed out backwards
+JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator);
 /// Given an address (pointed to by ip) put it in a string named 'name', in the given object. if nBytes<0, addresses are printed out backwards
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator);
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */

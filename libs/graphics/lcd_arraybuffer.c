@@ -14,6 +14,7 @@
 #include "jswrap_arraybuffer.h"
 #include "lcd_arraybuffer.h"
 #include "jsvar.h"
+#include "jsvariterator.h"
 
 // returns the BIT index, so the bottom 3 bits specify the bit in the byte
 size_t lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {

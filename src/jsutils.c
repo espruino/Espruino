@@ -122,13 +122,13 @@ int chtod(char ch) {
 }
 
 /* convert a number in the given radix to an int. if radix=0, autodetect */
-JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
+long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
   const char *numberStart = s;
 
   bool isNegated = false;
-  JsVarInt v = 0;
+  long long v = 0;
   if (*s == '-') {
     isNegated = true;
     s++;
@@ -153,7 +153,7 @@ JsVarInt stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 }
 
 /* convert hex, binary, octal or decimal string into an int */
-JsVarInt stringToInt(const char *s) {
+long long stringToInt(const char *s) {
     return stringToIntWithRadix(s,0,0);
 }
 
@@ -236,7 +236,7 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
     jsiConsolePrint("ASSERT FAILED AT ");
   jsiConsolePrintf("%s:%d\n",file,line);
 
-  jsvTrace(jsvGetRef(jsvFindOrCreateRoot()), 2);
+  jsvTrace(jsvFindOrCreateRoot(), 2);
   exit(1);
 }
 
@@ -386,11 +386,10 @@ char itoch(int val) {
   return (char)('a'+val-10);
 }
 
-#ifndef HAS_STDLIB
-void itoa(JsVarInt vals,char *str,unsigned int base) {
+void itostr_extra(JsVarInt vals,char *str,bool signedVal, unsigned int base) {
   JsVarIntUnsigned val;
   // handle negative numbers
-  if (vals<0) {
+  if (signedVal && vals<0) {
     *(str++)='-';
     val = (JsVarIntUnsigned)(-vals);
   } else {
@@ -411,7 +410,6 @@ void itoa(JsVarInt vals,char *str,unsigned int base) {
   }
   str[digits] = 0;
 }
-#endif
 
 void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fractionalDigits) {
   const JsVarFloat stopAtError = 0.0000001;
@@ -500,7 +498,7 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         int digits = (*fmt++) - '0';
         assert('d' == *fmt); // of the form '%02d'
         fmt++; // skip over 'd'
-        itoa(va_arg(argp, int), buf, 10);
+        itostr(va_arg(argp, int), buf, 10);
         int len = (int)strlen(buf);
         while (len < digits) {
           user_callback("0",user_data);
@@ -509,12 +507,13 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
         user_callback(buf,user_data);
         break;
       }
-      case 'd': itoa(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
-      case 'x': itoa(va_arg(argp, int), buf, 16); user_callback(buf,user_data); break;
+      case 'd': itostr(va_arg(argp, int), buf, 10); user_callback(buf,user_data); break;
+      case 'x': itostr_extra(va_arg(argp, int), buf, false, 16); user_callback(buf,user_data); break;
       case 'L': {
         unsigned int rad = 10;
-        if (*fmt=='x') { rad=16; fmt++; }
-        itoa(va_arg(argp, JsVarInt), buf, rad); user_callback(buf,user_data);
+        bool signedVal = true;
+        if (*fmt=='x') { rad=16; fmt++; signedVal = false; }
+        itostr_extra(va_arg(argp, JsVarInt), buf, signedVal, rad); user_callback(buf,user_data);
       } break;
       case 'f': ftoa_bounded(va_arg(argp, JsVarFloat), buf, sizeof(buf)); user_callback(buf,user_data);  break;
       case 's': user_callback(va_arg(argp, char *), user_data); break;

@@ -22,9 +22,10 @@ typedef enum {
   JSON_PRETTY            = 2, // insert extra spaces between commas
   JSON_LIMIT             = 4, // limit the amount we print (for the console)
   JSON_IGNORE_FUNCTIONS  = 8, // don't output functions
-  JSON_INDENT            = 16, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
-  JSON_SHOW_DEVICES      = 32, // Show built-in device names like SPI/etc
-  JSON_NO_UNDEFINED      = 64, // don't output undefined keys in objects, and use null for undefined in arrays
+  JSON_SHOW_DEVICES      = 16, // Show built-in device names like SPI/etc
+  JSON_NO_UNDEFINED      = 32, // don't output undefined keys in objects, and use null for undefined in arrays
+  // ...
+  JSON_INDENT            = 64, // MUST BE THE LAST ENTRY IN JSONFlags - we use this to count the amount of indents
 } JSONFlags;
 
 /* This is like jsfGetJSONWithCallback, but handles ONLY functions (and does not print the initial 'function' text) */

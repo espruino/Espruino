@@ -10,8 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains built-in functions for CC3000 WiFi Access
- * EXTREMELY BETA AND LIKELY TO CHANGE DRASTICALLY
+ * Contains built-in functions for WIZnet Ethernet Access
  * ----------------------------------------------------------------------------
  */
 
@@ -25,78 +24,108 @@
 #include "network_wiznet.h"
 #include "DHCP/dhcp.h"
 
+// -------------------- defaults...
 #define ETH_SPI          EV_SPI3
 #define ETH_CS_PIN       (Pin)(JSH_PORTB_OFFSET + 2) // active low
 #define ETH_CLK_PIN      (Pin)(JSH_PORTB_OFFSET + 3)
 #define ETH_MISO_PIN     (Pin)(JSH_PORTB_OFFSET + 4)
 #define ETH_MOSI_PIN     (Pin)(JSH_PORTB_OFFSET + 5)
+// -------------------------------
 
-void  wizchip_select(void)
-{
-  jshPinOutput(ETH_CS_PIN, 0); // active low
+void  wizchip_select(void) {
+  assert(networkGetCurrent());
+  jshPinOutput(networkGetCurrent()->data.pinCS, 0); // active low
 }
 
-void  wizchip_deselect(void)
-{
-  jshPinOutput(ETH_CS_PIN, 1); // active low
+void  wizchip_deselect(void) {
+  assert(networkGetCurrent());
+  jshPinOutput(networkGetCurrent()->data.pinCS, 1); // active low
 }
 
 static uint8_t wizchip_rw(uint8_t data) {
-  int r = jshSPISend(ETH_SPI, data);
-  if (r<0) r = jshSPISend(ETH_SPI, -1);
+  assert(networkGetCurrent());
+  int r = jshSPISend(networkGetCurrent()->data.device, data);
+  if (r<0) r = jshSPISend(networkGetCurrent()->data.device, -1);
   return (uint8_t)r;
 }
 
-void  wizchip_write(uint8_t wb)
-{
+void  wizchip_write(uint8_t wb) {
   wizchip_rw(wb);
 }
 
-uint8_t wizchip_read()
-{
+uint8_t wizchip_read() {
    return wizchip_rw(0xFF);
 }
 
 
-/*JSON{ "type":"library",
-        "class" : "WIZnet",
-        "description" : ""
-}*/
-/*JSON{ "type":"staticmethod", 
-         "class" : "WIZnet", "name" : "connect",
-         "generate" : "jswrap_wiznet_connect",
-         "description" : "Initialise the WIZnet module and return an Ethernet object",
-         "params" : [ ],
-         "return" : ["JsVar", "An Ethernet Object"], "return_object":"Ethernet"
-}*/
-JsVar *jswrap_wiznet_connect() {
+/*JSON{
+  "type" : "library",
+  "class" : "WIZnet"
+}
+Library for communication with the WIZnet Ethernet module
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "WIZnet",
+  "name" : "connect",
+  "generate" : "jswrap_wiznet_connect",
+  "params" : [
+    ["spi", "JsVar", "Device to use for SPI (or undefined to use the default)"],
+    ["cs", "pin", "The pin to use for Chip Select"]
+  ],
+  "return" : ["JsVar","An Ethernet Object"],
+  "return_object" : "Ethernet"
+}
+Initialise the WIZnet module and return an Ethernet object
+*/
+JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs) {
+
+  IOEventFlags spiDevice;
+  if (spi) {
+    spiDevice = jsiGetDeviceFromClass(spi);
+    if (!DEVICE_IS_SPI(spiDevice)) {
+      jsExceptionHere(JSET_ERROR, "Expecting SPI device, got %q", spi);
+      return 0;
+    }
+  } else {
+    // SPI config
+    JshSPIInfo inf;
+    jshSPIInitInfo(&inf);
+    inf.pinSCK =  ETH_CLK_PIN;
+    inf.pinMISO = ETH_MISO_PIN;
+    inf.pinMOSI = ETH_MOSI_PIN;
+    inf.baudRate = 1000000;
+    inf.spiMode = SPIF_SPI_MODE_0;
+    jshSPISetup(ETH_SPI, &inf);
+    spiDevice = ETH_SPI;
+  }
+  if (!jshIsPinValid(cs))
+    cs = ETH_CS_PIN;
+
+  JsNetwork net;
+  networkCreate(&net, JSNETWORKTYPE_W5500);
+  net.data.device = spiDevice;
+  net.data.pinCS = cs;
+  networkSet(&net);
+
   JsVar *ethObj = jspNewObject(0, "Ethernet");
 
-  // SPI config
-  JshSPIInfo inf;
-  jshSPIInitInfo(&inf);
-  inf.pinSCK =  ETH_CLK_PIN;
-  inf.pinMISO = ETH_MISO_PIN;
-  inf.pinMOSI = ETH_MOSI_PIN;
-  inf.baudRate = 1000000;
-  inf.spiMode = SPIF_SPI_MODE_0;
-  jshSPISetup(ETH_SPI, &inf);
-
   // CS Configuration
-  jshSetPinStateIsManual(ETH_CS_PIN, false);
-  jshPinOutput(ETH_CS_PIN, 1); // de-assert CS
+  jshSetPinStateIsManual(net.data.pinCS, false);
+  jshPinOutput(net.data.pinCS, 1); // de-assert CS
 
-  // Wiznet
+  // Initialise WIZnet functions
   reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
   reg_wizchip_spi_cbfunc(wizchip_read, wizchip_write);
 
   /* wizchip initialize*/
   uint8_t tmp;
-  uint8_t memsize[2][8] = { {2,2,2,2,2,2,2,2},{2,2,2,2,2,2,2,2}};
+  uint8_t memsize[2][8] = { {2,2,2,2,2,2,2,2}, {2,2,2,2,2,2,2,2}};
 
   if(ctlwizchip(CW_INIT_WIZCHIP,(void*)memsize) == -1)
   {
-    jsiConsolePrint("WIZCHIP Initialized fail.\r\n");
+    jsiConsolePrint("WIZnet Initialize failed.\r\n");
+    networkFree(&net);
     return 0;
   }
 
@@ -104,12 +133,11 @@ JsVar *jswrap_wiznet_connect() {
   do {
     if(ctlwizchip(CW_GET_PHYLINK, (void*)&tmp) == -1) {
       jsiConsolePrint("Unknown PHY Link status.\r\n");
+      networkFree(&net);
       return 0;
     }
   } while (tmp == PHY_LINK_OFF);
 
-  JsNetwork net;
-  networkCreate(&net, JSNETWORKTYPE_W5500);
   networkFree(&net);
 
   networkState = NETWORKSTATE_ONLINE;
@@ -117,17 +145,22 @@ JsVar *jswrap_wiznet_connect() {
   return ethObj;
 }
 
-/*JSON{ "type":"class",
-        "class" : "Ethernet",
-        "description" : "An instantiation of an Ethernet network adaptor"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "Ethernet"
+}
+An instantiation of an Ethernet network adaptor
+*/
 
-/*JSON{ "type":"method",
-         "class" : "Ethernet", "name" : "getIP",
-         "generate" : "jswrap_ethernet_getIP",
-         "description" : "Get the current IP address",
-         "return" : ["JsVar", ""]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Ethernet",
+  "name" : "getIP",
+  "generate" : "jswrap_ethernet_getIP",
+  "return" : ["JsVar",""]
+}
+Get the current IP address
+*/
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
 
@@ -135,6 +168,9 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
     jsError("Not connected to the internet");
     return 0;
   }
+
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return 0;
 
   wiz_NetInfo gWIZNETINFO;
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
@@ -146,6 +182,9 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');
   networkPutAddressAsString(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
   networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
+
+  networkFree(&net);
+
   return data;
 }
 
@@ -160,13 +199,18 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   }
 }
 
-/*JSON{ "type":"method",
-         "class" : "Ethernet", "name" : "setIP",
-         "generate" : "jswrap_ethernet_setIP",
-         "description" : "Set the current IP address for get an IP from DHCP (if no options object is specified)",
-         "params" : [ [ "options", "JsVar", "Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."] ],
-         "return" : ["bool", "True on success"]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Ethernet",
+  "name" : "setIP",
+  "generate" : "jswrap_ethernet_setIP",
+  "params" : [
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+  ],
+  "return" : ["bool","True on success"]
+}
+Set the current IP address for get an IP from DHCP (if no options object is specified)
+*/
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);
 
@@ -174,6 +218,9 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
     jsError("Not connected to the internet");
     return false;
   }
+
+  JsNetwork net;
+  if (!networkGetFromVar(&net)) return false;
 
   bool success = false;
   wiz_NetInfo gWIZNETINFO;
@@ -200,6 +247,9 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   }
 
   ctlnetwork(CN_SET_NETINFO, (void*)&gWIZNETINFO);
+
+  networkFree(&net);
+
   return success;
 }
 

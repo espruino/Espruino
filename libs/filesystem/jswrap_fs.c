@@ -20,22 +20,29 @@
 #include "jsvar.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jswrap_date.h"
 
 #ifndef LINUX
 #include "ff.h" // filesystem stuff
 #else
 #include <stdio.h>
+#include <sys/stat.h>
 #include <dirent.h> // for readdir
 #endif
 
 
-/*JSON{ "type":"library",
-        "class" : "fs",
-        "description" : ["This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.",
-                         "Currently this provides minimal file IO - it's great for logging and loading/saving settings, but not good for loading large amounts of data as you will soon fill your memory up.",
-                         "It is currently only available on boards that contain an SD card slot, such as the Olimexino and the HY. It can not currently be added to boards that did not ship with a card slot.",
-                         "To use this, you must type ```var fs = require('fs')``` to get access to the library" ]
-}*/
+/*JSON{
+  "type" : "library",
+  "class" : "fs"
+}
+This library handles interfacing with a FAT32 filesystem on an SD card. The API is designed to be similar to node.js's - However Espruino does not currently support asynchronous file IO, so the functions behave like node.js's xxxxSync functions. Versions of the functions with 'Sync' after them are also provided for compatibility.
+
+Currently this provides minimal file IO - it's great for logging and loading/saving settings, but not good for loading large amounts of data as you will soon fill your memory up.
+
+It is currently only available on boards that contain an SD card slot, such as the Olimexino and the HY. It can not currently be added to boards that did not ship with a card slot.
+
+To use this, you must type ```var fs = require('fs')``` to get access to the library
+*/
 
 #ifndef LINUX
 #define JS_DIR_BUF_SIZE 64
@@ -52,80 +59,39 @@
   #define GET_FILENAME(Finfo) Finfo.fname
 #endif
 
-FATFS jsfsFAT;
 #endif
 
-void jsfsReportError(const char *msg, FRESULT res) {
-  const char *errStr = "UNKNOWN";
-  if (res==FR_OK             ) errStr = "OK";
-#ifndef LINUX
-  else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
-  else if (res==FR_INT_ERR        ) errStr = "INT_ERR";
-  else if (res==FR_NOT_READY      ) errStr = "NOT_READY";
-  else if (res==FR_NO_FILE        ) errStr = "NO_FILE";
-  else if (res==FR_NO_PATH        ) errStr = "NO_PATH";
-  else if (res==FR_INVALID_NAME   ) errStr = "INVALID_NAME";
-  else if (res==FR_DENIED         ) errStr = "DENIED";
-  else if (res==FR_EXIST          ) errStr = "EXIST";
-  else if (res==FR_INVALID_OBJECT ) errStr = "INVALID_OBJECT";
-  else if (res==FR_WRITE_PROTECTED) errStr = "WRITE_PROTECTED";
-  else if (res==FR_INVALID_DRIVE  ) errStr = "INVALID_DRIVE";
-  else if (res==FR_NOT_ENABLED    ) errStr = "NOT_ENABLED";
-  else if (res==FR_NO_FILESYSTEM  ) errStr = "NO_FILESYSTEM";
-  else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
-  else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
-#endif
-  jsError("%s : %s", msg, errStr);
+// from jswrap_file
+extern bool jsfsInit();
+extern void jsfsReportError(const char *msg, FRESULT res);
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "readdir",
+  "generate" : "jswrap_fs_readdir",
+  "params" : [
+    ["path","JsVar","The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory"]
+  ],
+  "return" : ["JsVar","An array of filename strings (or undefined if the directory couldn't be listed)"]
 }
+List all files in the supplied directory, returning them as an array of strings.
 
-bool fat_initialised = false;
-
-bool jsfsInit() {
-#ifndef LINUX
-  if (!fat_initialised) {
-    FRESULT res;
-    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
-      jsfsReportError("Unable to mount SD card", res);
-      return false;
-    }
-    fat_initialised = true;
-  }
-#endif
-  return true;
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "readdirSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_readdir",
+  "params" : [
+    ["path","JsVar","The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory"]
+  ],
+  "return" : ["JsVar","An array of filename strings (or undefined if the directory couldn't be listed)"]
 }
-
-
-
-/* Unmount...
-    if (res==FR_OK) {
-      jsiConsolePrint("Unmounting...\n");
-      res = f_mount(0, 0);
-    }
- */
-
-/*JSON{ "type":"kill", "generate" : "jswrap_fs_kill", "ifndef" : "SAVE_ON_FLASH" }*/
-void jswrap_fs_kill() { // Uninitialise fat
-#ifndef LINUX
-  if (fat_initialised) {
-    fat_initialised = false;
-    f_mount(0, 0, 0);
-  }
-#endif
-}
-
-
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readdir",
-         "generate" : "jswrap_fs_readdir",
-         "description" : [ "List all files in the supplied directory, returning them as an array of strings.", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
-         "params" : [ [ "path", "JsVar", "The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory" ] ],
-         "return" : [ "JsVar", "An array of filename strings (or undefined if the directory couldn't be listed)" ]
-}*/
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readdirSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "jswrap_fs_readdir",
-         "description" : [ "List all files in the supplied directory, returning them as an array of strings." ],
-         "params" : [ [ "path", "JsVar", "The path of the directory to list. If it is not supplied, '' is assumed, which will list the root directory" ] ],
-         "return" : [ "JsVar", "An array of filename strings (or undefined if the directory couldn't be listed)" ]
-}*/
+List all files in the supplied directory, returning them as an array of strings.
+*/
 
 JsVar *jswrap_fs_readdir(JsVar *path) {
   JsVar *arr = 0; // undefined unless we can open card
@@ -178,34 +144,64 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
   return arr;
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "writeFile",
-         "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
-         "description" : [ "Write the data to the given file", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
-         "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ],
-         "return" : [ "bool", "True on success, false on failure" ]
-}*/
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "writeFileSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
-         "description" : [ "Write the data to the given file" ],
-         "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ],
-         "return" : [ "bool", "True on success, false on failure" ]
-}*/
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "appendFile",
-         "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, true)",
-         "description" : [ "Append the data to the given file, created a new file if it doesn't exist", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
-         "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ],
-         "return" : [ "bool", "True on success, false on failure" ]
-}*/
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "appendFileSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate_full" : "jswrap_fs_writeOrAppendFile(path, data, true)",
-         "description" : [ "Append the data to the given file, created a new file if it doesn't exist" ],
-         "params" : [ [ "path", "JsVar", "The path of the file to write" ],
-                      [ "data", "JsVar", "The data to write to the file" ] ],
-         "return" : [ "bool", "True on success, false on failure" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "writeFile",
+  "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
+  "params" : [
+    ["path","JsVar","The path of the file to write"],
+    ["data","JsVar","The data to write to the file"]
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Write the data to the given file
+
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "writeFileSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, false)",
+  "params" : [
+    ["path","JsVar","The path of the file to write"],
+    ["data","JsVar","The data to write to the file"]
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Write the data to the given file
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "appendFile",
+  "generate_full" : " jswrap_fs_writeOrAppendFile(path, data, true)",
+  "params" : [
+    ["path","JsVar","The path of the file to write"],
+    ["data","JsVar","The data to write to the file"]
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Append the data to the given file, created a new file if it doesn't exist
+
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "appendFileSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_fs_writeOrAppendFile(path, data, true)",
+  "params" : [
+    ["path","JsVar","The path of the file to write"],
+    ["data","JsVar","The data to write to the file"]
+  ],
+  "return" : ["bool","True on success, false on failure"]
+}
+Append the data to the given file, created a new file if it doesn't exist
+*/
 bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
   JsVar *fMode = jsvNewFromString(append ? "a" : "w");
   JsVar *f = jswrap_E_openFile(path, fMode);
@@ -217,18 +213,35 @@ bool jswrap_fs_writeOrAppendFile(JsVar *path, JsVar *data, bool append) {
   return amt>0;
 }
 
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFile",
-         "generate" : "jswrap_fs_readFile",
-         "description" : [ "Read all data from a file and return as a string", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
-         "params" : [ [ "path", "JsVar", "The path of the file to read" ] ],
-         "return" : [ "JsVar", "A string containing the contents of the file (or undefined if the file doesn't exist)" ]
-}*/
-/*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "readFileSync", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "jswrap_fs_readFile",
-         "description" : [ "Read all data from a file and return as a string.","**Note:** The size of files you can load using this method is limited by the amount of available RAM. To read files a bit at a time, see the `File` class." ],
-         "params" : [ [ "path", "JsVar", "The path of the file to read" ] ],
-         "return" : [ "JsVar", "A string containing the contents of the file (or undefined if the file doesn't exist)" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "readFile",
+  "generate" : "jswrap_fs_readFile",
+  "params" : [
+    ["path","JsVar","The path of the file to read"]
+  ],
+  "return" : ["JsVar","A string containing the contents of the file (or undefined if the file doesn't exist)"]
+}
+Read all data from a file and return as a string
+
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "readFileSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_readFile",
+  "params" : [
+    ["path","JsVar","The path of the file to read"]
+  ],
+  "return" : ["JsVar","A string containing the contents of the file (or undefined if the file doesn't exist)"]
+}
+Read all data from a file and return as a string.
+
+**Note:** The size of files you can load using this method is limited by the amount of available RAM. To read files a bit at a time, see the `File` class.
+*/
 JsVar *jswrap_fs_readFile(JsVar *path) {
   JsVar *fMode = jsvNewFromString("r");
   JsVar *f = jswrap_E_openFile(path, fMode);
@@ -240,18 +253,34 @@ JsVar *jswrap_fs_readFile(JsVar *path) {
   return buffer;
 }
 
-  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlink", "ifndef" : "SAVE_ON_FLASH",
-           "generate" : "jswrap_fs_unlink",
-           "description" : [ "Delete the given file", "NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version." ],
-           "params" : [ [ "path", "JsVar", "The path of the file to delete" ] ],
-           "return" : [ "bool", "True on success, or false on failure" ]
-  }*/
-  /*JSON{  "type" : "staticmethod", "class" : "fs", "name" : "unlinkSync", "ifndef" : "SAVE_ON_FLASH",
-           "generate" : "jswrap_fs_unlink",
-           "description" : [ "Delete the given file" ],
-           "params" : [ [ "path", "JsVar", "The path of the file to delete" ] ],
-           "return" : [ "bool", "True on success, or false on failure" ]
-  }*/
+  /*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "unlink",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_unlink",
+  "params" : [
+    ["path","JsVar","The path of the file to delete"]
+  ],
+  "return" : ["bool","True on success, or false on failure"]
+}
+Delete the given file
+
+NOTE: Espruino does not yet support Async file IO, so this function behaves like the 'Sync' version.
+*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "unlinkSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_unlink",
+  "params" : [
+    ["path","JsVar","The path of the file to delete"]
+  ],
+  "return" : ["bool","True on success, or false on failure"]
+}
+Delete the given file
+*/
 bool jswrap_fs_unlink(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
@@ -273,3 +302,66 @@ bool jswrap_fs_unlink(JsVar *path) {
   return true;
 }
 
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "fs",
+  "name" : "statSync",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_fs_stat",
+  "params" : [
+    ["path","JsVar","The path of the file to get information on"]
+  ],
+  "return" : ["JsVar","An object describing the file, or undefined on failure"]
+}
+Return information on the given file. This returns an object with the following
+fields:
+
+size: size in bytes
+dir: a boolean specifying if the file is a directory or not
+mtime: A Date structure specifying the time the file was last modified
+*/
+JsVar *jswrap_fs_stat(JsVar *path) {
+  char pathStr[JS_DIR_BUF_SIZE] = "";
+  if (!jsvIsUndefined(path))
+    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+
+#ifndef LINUX
+  FRESULT res = 0;
+  if (jsfsInit()) {
+    FILINFO info;
+    res = f_stat(pathStr, &info);
+    if (res==0 /*ok*/) {
+      JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+      if (!obj) return 0;
+      jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize)));
+      jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR)));
+
+      CalendarDate date;
+      date.year = 1980+(int)((info.fdate>>9)&127);
+      date.month = (int)((info.fdate>>5)&15);
+      date.day = (int)((info.fdate)&31);
+      TimeInDay td;
+      td.daysSinceEpoch = fromCalenderDate(&date);
+      td.hour = (int)((info.ftime>>11)&31);
+      td.min = (int)((info.ftime>>5)&63);
+      td.sec = (int)((info.ftime)&63);
+      td.ms = 0;
+      td.zone = 0;
+      jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td))));
+      return obj;
+    }
+  }
+#else
+  struct stat info;
+  if (stat(pathStr, &info)==0 /*ok*/) {
+    JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+    if (!obj) return 0;
+    jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size)));
+    jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode))));
+    jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0)));
+    return obj;
+  }
+#endif
+
+  return 0;
+}

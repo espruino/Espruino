@@ -14,6 +14,7 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
+# ESPRUINI_1V0=1          # Espruini board rev 1.0
 # OLIMEXINO_STM32=1                # Olimexino STM32
 # OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
@@ -24,19 +25,21 @@
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
+# STM32F401CDISCOVERY=1
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # BEAGLEBONE=1
 # ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
+# ARDUINOMEGA2560=1
 # Or nothing for standard linux compile
 #
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-# RELEASE=1               # Force release-style compile (no asserts, etc)
-# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+RELEASE=1               # Force release-style compile (no asserts, etc)
+SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
@@ -110,6 +113,14 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
+else ifdef ESPRUINI_1V0
+EMBEDDED=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0 
+USE_GRAPHICS=1
+BOARD=ESPRUINIBOARD_R1_0
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
 USE_FILESYSTEM=1
@@ -172,25 +183,34 @@ USE_TRIGGER=1
 USE_FILESYSTEM=1
 DEFINES += -DUSE_USB_OTG_FS=1 -DECU
 BOARD=ECU
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+STLIB=STM32F40_41xxx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
 BOARD=STM32F4DISCOVERY
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+STLIB=STM32F40_41xxx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef STM32F401CDISCOVERY
+EMBEDDED=1
+USE_NET=1
+USE_GRAPHICS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
+BOARD=STM32F401CDISCOVERY
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1
+DEFINES += -DUSE_USB_OTG_FS=1 
 BOARD=STM32F429IDISCOVERY
-STLIB=STM32F4XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
+STLIB=STM32F429_439xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
 EMBEDDED=1
@@ -209,8 +229,7 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f3/lib/startup_stm32f30x.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32VLDISCOVERY
 EMBEDDED=1
-FAMILY=STM32F1
-CHIP=STM32F100RB
+SAVE_ON_FLASH=1
 BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
@@ -234,14 +253,16 @@ else ifdef ECU
 USE_TRIGGER=1
 USE_FILESYSTEM=1
 DEFINES +=-DECU -DSTM32F4DISCOVERY
-USB=1
 DEFINES += -DUSE_USB_OTG_FS=1
-FAMILY=STM32F4
-CHIP=STM32F407
 BOARD=ECU
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
+else ifdef ARDUINOMEGA2560
+EMBEDDED=1
+BOARD=ARDUINOMEGA2560
+ARDUINO_AVR=1
+OPTIMIZEFLAGS+=-Os
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -348,6 +369,7 @@ ifdef WIZNET
 USE_WIZNET=1
 else
 USE_CC3000=1
+#USE_ESP8266=1
 endif
 endif
 endif
@@ -392,6 +414,7 @@ src/jswrap_waveform.c
 SOURCES = \
 src/jslex.c \
 src/jsvar.c \
+src/jsvariterator.c \
 src/jsutils.c \
 src/jsnative.c \
 src/jsparse.c \
@@ -577,6 +600,14 @@ libs/network/socketserver.c
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
  endif
+
+ ifdef USE_ESP8266
+ DEFINES += -DUSE_ESP8266
+ WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+ INCLUDE += -I$(ROOT)/libs/network/esp8266
+ SOURCES += \
+ libs/network/esp8266/network_esp8266.c
+ endif
 endif
 
 
@@ -593,7 +624,7 @@ DEFINES += -DUSB
 endif
 
 ifeq ($(FAMILY), STM32F1)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd  -mthumb-interwork -mfloat-abi=soft
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f1 -I$(ROOT)/targetlibs/stm32f1/lib
@@ -648,7 +679,7 @@ endif #USB
 endif #STM32F1
 
 ifeq ($(FAMILY), STM32F2)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f2 -I$(ROOT)/targetlibs/stm32f2/lib
@@ -712,7 +743,7 @@ endif #USB
 endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f3 -I$(ROOT)/targetlibs/stm32f3/lib
@@ -761,7 +792,7 @@ endif #USB
 endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
+ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
@@ -779,19 +810,21 @@ targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
 targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
-targetlibs/stm32f4/lib/stm32f4xx_fsmc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash.c       \
 targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
 targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
@@ -799,6 +832,7 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c 
 
 ifdef USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
@@ -831,6 +865,46 @@ SOURCES += targets/mbed/main.c
 CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
+ifdef ARDUINO_AVR
+MCU = atmega2560
+F_CPU = 16000000
+FORMAT = ihex
+
+ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
+ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
+LDFLAGS += -mrelax
+AVR=1
+INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
+DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
+SOURCES += \
+$(ARDUINO_LIB)/wiring.c \
+$(ARDUINO_LIB)/wiring_digital.c
+
+CPPSOURCES += \
+$(ARDUINO_LIB)/main.cpp \
+$(ARDUINO_LIB)/new.cpp \
+$(ARDUINO_LIB)/WString.cpp \
+$(ARDUINO_LIB)/Print.cpp \
+$(ARDUINO_LIB)/HardwareSerial.cpp \
+targets/arduino/jshardware.cpp \
+targets/arduino/espruino.cpp
+
+# Arduino 1.5.1 and up has one extra file
+ifneq ($(wildcard $(ARDUINO_LIB)/hooks.c),)
+CPPSOURCES += $(ARDUINO_LIB)/hooks.c
+endif
+# Arduino 1.5.6 and up splits HardwareSerial into multiple files
+ifneq ($(wildcard $(ARDUINO_LIB)/HardwareSerial0.cpp),)
+CPPSOURCES += \
+$(ARDUINO_LIB)/HardwareSerial0.cpp \
+$(ARDUINO_LIB)/HardwareSerial1.cpp \
+$(ARDUINO_LIB)/HardwareSerial2.cpp \
+$(ARDUINO_LIB)/HardwareSerial3.cpp
+endif
+
+export CCPREFIX=avr-
+endif
+
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
@@ -845,15 +919,9 @@ OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 endif
 
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-OPTIMIZEFLAGS += --param inline-unit-growth=8
+OPTIMIZEFLAGS += --param inline-unit-growth=6
 
-
-# 4.6
-#export CCPREFIX=arm-linux-gnueabi-
-# 4.5
-#export CCPREFIX=~/sat/bin/arm-none-eabi-
-# 4.4
-export CCPREFIX=arm-none-eabi-
+export CCPREFIX?=arm-none-eabi-
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
@@ -914,9 +982,7 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-ifndef MACOSX
-LDFLAGS += -Wl,--gc-sections
-else ifdef EMBEDDED
+ifdef EMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 
@@ -1022,19 +1088,22 @@ ifndef TRAVIS
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+ifdef ARDUINO_AVR
+proj: $(PROJ_NAME).hex
+endif
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
-ifdef OLIMEXINO_STM32_BOOTLOADER
+ifdef ESPRUINI_1V0
+	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
+else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
-else
-ifdef MBED
+else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
-endif
 endif
 
 serialflash: all

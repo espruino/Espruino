@@ -107,10 +107,16 @@ def get_jsondata(is_for_document, parseArgs = True):
             continue
 
           for comment in re.findall(r"/\*JSON.*?\*/", code, re.VERBOSE | re.MULTILINE | re.DOTALL):
-            jsonstring = comment[6:-2]
+            # Strip off /*JSON .. */ bit
+            comment = comment[6:-2]
+
+            endOfJson = comment.find("\n}")+2;
+            jsonstring = comment[0:endOfJson];
+            description =  comment[endOfJson:].strip();
 #            print "Parsing "+jsonstring
             try:
               jsondata = json.loads(jsonstring)
+              if len(description): jsondata["description"] = description;
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
               if (not is_for_document) and("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
@@ -252,6 +258,7 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
+  if d=="RELEASE": return "release builds"
   print "WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description"
   return d
 

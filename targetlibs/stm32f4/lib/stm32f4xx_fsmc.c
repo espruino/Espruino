@@ -2,27 +2,32 @@
   ******************************************************************************
   * @file    stm32f4xx_fsmc.c
   * @author  MCD Application Team
-  * @version V1.0.0
-  * @date    30-September-2011
+  * @version V1.3.0
+  * @date    08-November-2013
  * @brief    This file provides firmware functions to manage the following 
   *          functionalities of the FSMC peripheral:           
-  *           - Interface with SRAM, PSRAM, NOR and OneNAND memories
-  *           - Interface with NAND memories
-  *           - Interface with 16-bit PC Card compatible memories  
-  *           - Interrupts and flags management   
+  *           + Interface with SRAM, PSRAM, NOR and OneNAND memories
+  *           + Interface with NAND memories
+  *           + Interface with 16-bit PC Card compatible memories  
+  *           + Interrupts and flags management   
   *           
   ******************************************************************************
-
   * @attention
   *
-  * THE PRESENT FIRMWARE WHICH IS FOR GUIDANCE ONLY AIMS AT PROVIDING CUSTOMERS
-  * WITH CODING INFORMATION REGARDING THEIR PRODUCTS IN ORDER FOR THEM TO SAVE
-  * TIME. AS A RESULT, STMICROELECTRONICS SHALL NOT BE HELD LIABLE FOR ANY
-  * DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES WITH RESPECT TO ANY CLAIMS ARISING
-  * FROM THE CONTENT OF SUCH FIRMWARE AND/OR THE USE MADE BY CUSTOMERS OF THE
-  * CODING INFORMATION CONTAINED HEREIN IN CONNECTION WITH THEIR PRODUCTS.
+  * <h2><center>&copy; COPYRIGHT 2013 STMicroelectronics</center></h2>
   *
-  * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
+  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
+  * You may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at:
+  *
+  *        http://www.st.com/software_license_agreement_liberty_v2
+  *
+  * Unless required by applicable law or agreed to in writing, software 
+  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  *
   ******************************************************************************
   */
 
@@ -69,41 +74,41 @@
  *
 @verbatim   
  ===============================================================================
-                    NOR/SRAM Controller functions
+                    ##### NOR and SRAM Controller functions #####
  ===============================================================================  
 
- The following sequence should be followed to configure the FSMC to interface with
- SRAM, PSRAM, NOR or OneNAND memory connected to the NOR/SRAM Bank:
+ [..] The following sequence should be followed to configure the FSMC to interface
+      with SRAM, PSRAM, NOR or OneNAND memory connected to the NOR/SRAM Bank:
  
-   1. Enable the clock for the FSMC and associated GPIOs using the following functions:
+   (#) Enable the clock for the FSMC and associated GPIOs using the following functions:
           RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOx, ENABLE);
 
-   2. FSMC pins configuration 
-       - Connect the involved FSMC pins to AF12 using the following function 
-          GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
-       - Configure these FSMC pins in alternate function mode by calling the function
-          GPIO_Init();    
+   (#) FSMC pins configuration 
+       (++) Connect the involved FSMC pins to AF12 using the following function 
+            GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
+       (++) Configure these FSMC pins in alternate function mode by calling the function
+            GPIO_Init();    
        
-   3. Declare a FSMC_NORSRAMInitTypeDef structure, for example:
+   (#) Declare a FSMC_NORSRAMInitTypeDef structure, for example:
           FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
       and fill the FSMC_NORSRAMInitStructure variable with the allowed values of
       the structure member.
       
-   4. Initialize the NOR/SRAM Controller by calling the function
+   (#) Initialize the NOR/SRAM Controller by calling the function
           FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure); 
 
-   5. Then enable the NOR/SRAM Bank, for example:
+   (#) Then enable the NOR/SRAM Bank, for example:
           FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);  
 
-   6. At this stage you can read/write from/to the memory connected to the NOR/SRAM Bank. 
+   (#) At this stage you can read/write from/to the memory connected to the NOR/SRAM Bank. 
    
 @endverbatim
   * @{
   */
 
 /**
-  * @brief  Deinitializes the FSMC NOR/SRAM Banks registers to their default 
+  * @brief  De-initializes the FSMC NOR/SRAM Banks registers to their default 
   *   reset values.
   * @param  FSMC_Bank: specifies the FSMC Bank to be used
   *          This parameter can be one of the following values:
@@ -290,46 +295,48 @@ void FSMC_NORSRAMCmd(uint32_t FSMC_Bank, FunctionalState NewState)
  *
 @verbatim   
  ===============================================================================
-                    NAND Controller functions
+                    ##### NAND Controller functions #####
  ===============================================================================  
 
- The following sequence should be followed to configure the FSMC to interface with
- 8-bit or 16-bit NAND memory connected to the NAND Bank:
+ [..]  The following sequence should be followed to configure the FSMC to interface 
+       with 8-bit or 16-bit NAND memory connected to the NAND Bank:
  
-   1. Enable the clock for the FSMC and associated GPIOs using the following functions:
-          RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
-          RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOx, ENABLE);
+  (#) Enable the clock for the FSMC and associated GPIOs using the following functions:
+      (++)  RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
+      (++)  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOx, ENABLE);
 
-   2. FSMC pins configuration 
-       - Connect the involved FSMC pins to AF12 using the following function 
-          GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
-       - Configure these FSMC pins in alternate function mode by calling the function
-          GPIO_Init();    
+  (#) FSMC pins configuration 
+      (++) Connect the involved FSMC pins to AF12 using the following function 
+           GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
+      (++) Configure these FSMC pins in alternate function mode by calling the function
+           GPIO_Init();    
        
-   3. Declare a FSMC_NANDInitTypeDef structure, for example:
-          FSMC_NANDInitTypeDef  FSMC_NANDInitStructure;
+  (#) Declare a FSMC_NANDInitTypeDef structure, for example:
+      FSMC_NANDInitTypeDef  FSMC_NANDInitStructure;
       and fill the FSMC_NANDInitStructure variable with the allowed values of
       the structure member.
       
-   4. Initialize the NAND Controller by calling the function
-          FSMC_NANDInit(&FSMC_NANDInitStructure); 
+  (#) Initialize the NAND Controller by calling the function
+      FSMC_NANDInit(&FSMC_NANDInitStructure); 
 
-   5. Then enable the NAND Bank, for example:
-          FSMC_NANDCmd(FSMC_Bank3_NAND, ENABLE);  
+  (#) Then enable the NAND Bank, for example:
+      FSMC_NANDCmd(FSMC_Bank3_NAND, ENABLE);  
 
-   6. At this stage you can read/write from/to the memory connected to the NAND Bank. 
+  (#) At this stage you can read/write from/to the memory connected to the NAND Bank. 
    
-@note To enable the Error Correction Code (ECC), you have to use the function
-          FSMC_NANDECCCmd(FSMC_Bank3_NAND, ENABLE);  
-      and to get the current ECC value you have to use the function
-          ECCval = FSMC_GetECC(FSMC_Bank3_NAND); 
+ [..]
+  (@) To enable the Error Correction Code (ECC), you have to use the function
+      FSMC_NANDECCCmd(FSMC_Bank3_NAND, ENABLE);  
+ [..]
+  (@) and to get the current ECC value you have to use the function
+      ECCval = FSMC_GetECC(FSMC_Bank3_NAND); 
 
 @endverbatim
   * @{
   */
   
 /**
-  * @brief  Deinitializes the FSMC NAND Banks registers to their default reset values.
+  * @brief  De-initializes the FSMC NAND Banks registers to their default reset values.
   * @param  FSMC_Bank: specifies the FSMC Bank to be used
   *          This parameter can be one of the following values:
   *            @arg FSMC_Bank2_NAND: FSMC Bank2 NAND 
@@ -566,41 +573,41 @@ uint32_t FSMC_GetECC(uint32_t FSMC_Bank)
  *
 @verbatim   
  ===============================================================================
-                    PCCARD Controller functions
+                    ##### PCCARD Controller functions #####
  ===============================================================================  
 
- The following sequence should be followed to configure the FSMC to interface with
- 16-bit PC Card compatible memory connected to the PCCARD Bank:
+ [..]  he following sequence should be followed to configure the FSMC to interface 
+       with 16-bit PC Card compatible memory connected to the PCCARD Bank:
  
-   1. Enable the clock for the FSMC and associated GPIOs using the following functions:
-          RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
-          RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOx, ENABLE);
+  (#)  Enable the clock for the FSMC and associated GPIOs using the following functions:
+       (++)  RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
+       (++)  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOx, ENABLE);
 
-   2. FSMC pins configuration 
-       - Connect the involved FSMC pins to AF12 using the following function 
-          GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
-       - Configure these FSMC pins in alternate function mode by calling the function
-          GPIO_Init();    
+  (#) FSMC pins configuration 
+       (++) Connect the involved FSMC pins to AF12 using the following function 
+            GPIO_PinAFConfig(GPIOx, GPIO_PinSourcex, GPIO_AF_FSMC); 
+       (++) Configure these FSMC pins in alternate function mode by calling the function
+            GPIO_Init();    
        
-   3. Declare a FSMC_PCCARDInitTypeDef structure, for example:
-          FSMC_PCCARDInitTypeDef  FSMC_PCCARDInitStructure;
+  (#) Declare a FSMC_PCCARDInitTypeDef structure, for example:
+      FSMC_PCCARDInitTypeDef  FSMC_PCCARDInitStructure;
       and fill the FSMC_PCCARDInitStructure variable with the allowed values of
       the structure member.
       
-   4. Initialize the PCCARD Controller by calling the function
-          FSMC_PCCARDInit(&FSMC_PCCARDInitStructure); 
+  (#) Initialize the PCCARD Controller by calling the function
+      FSMC_PCCARDInit(&FSMC_PCCARDInitStructure); 
 
-   5. Then enable the PCCARD Bank:
-          FSMC_PCCARDCmd(ENABLE);  
+  (#) Then enable the PCCARD Bank:
+      FSMC_PCCARDCmd(ENABLE);  
 
-   6. At this stage you can read/write from/to the memory connected to the PCCARD Bank. 
+  (#) At this stage you can read/write from/to the memory connected to the PCCARD Bank. 
  
 @endverbatim
   * @{
   */
 
 /**
-  * @brief  Deinitializes the FSMC PCCARD Bank registers to their default reset values.
+  * @brief  De-initializes the FSMC PCCARD Bank registers to their default reset values.
   * @param  None                       
   * @retval None
   */
@@ -723,8 +730,8 @@ void FSMC_PCCARDCmd(FunctionalState NewState)
  *
 @verbatim   
  ===============================================================================
-                     Interrupts and flags management functions
- ===============================================================================  
+             ##### Interrupts and flags management functions #####
+ ===============================================================================   
 
 @endverbatim
   * @{
@@ -979,4 +986,4 @@ void FSMC_ClearITPendingBit(uint32_t FSMC_Bank, uint32_t FSMC_IT)
   * @}
   */
 
-/******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

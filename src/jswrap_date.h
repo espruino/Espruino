@@ -13,8 +13,25 @@
  */
 #include "jsvar.h"
 
+typedef struct {
+  int daysSinceEpoch;
+  int ms,sec,min,hour;
+  int zone; // timezone in minutes
+} TimeInDay;
+
+typedef struct {
+  int daysSinceEpoch;
+  int day,month,year,dow;
+} CalendarDate;
+
+TimeInDay getTimeFromMilliSeconds(JsVarFloat ms_in);
+JsVarFloat fromTimeInDay(TimeInDay *td);
+CalendarDate getCalendarDate(int d);
+int fromCalenderDate(CalendarDate *date);
+
 JsVarFloat jswrap_date_now();
-JsVar *jswrap_date_constructor();
+JsVar *jswrap_date_from_milliseconds(JsVarFloat time);
+JsVar *jswrap_date_constructor(JsVar *args);
 
 JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent);
 JsVarFloat jswrap_date_getTime(JsVar *parent);

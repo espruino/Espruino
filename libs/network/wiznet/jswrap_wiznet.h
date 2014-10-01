@@ -12,8 +12,9 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jspin.h"
 
-JsVar *jswrap_wiznet_connect();
+JsVar *jswrap_wiznet_connect(JsVar *spi, Pin cs);
 
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj);
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options);

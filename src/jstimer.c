@@ -39,8 +39,8 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
      * we can't lock easily. We could get an IRQ right as some other code was in the
      * middle of read/modify/write of the flags member, and then the locks would get
      * out of sync. */
-    if (task->data.buffer.var->lastChild) {
-      task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.var->lastChild);
+    if (jsvGetLastChild(task->data.buffer.var)) {
+      task->data.buffer.var = _jsvGetAddressOf(jsvGetLastChild(task->data.buffer.var));
     } else { // else no more... move on to the next
       if (task->data.buffer.nextBuffer) {
         task->data.buffer.charIdx = 0;
@@ -273,7 +273,7 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
     task.data.set.pins[i] = (Pin)((i<pinCount) ? pins[i] : PIN_UNDEFINED);
   task.data.set.value = value;
 
-//  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
 }
 

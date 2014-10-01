@@ -27,20 +27,32 @@
 #endif
 #include "bitmap_font_4x6.h"
 
-/*JSON{ "type":"class",
-        "class" : "Graphics",
-        "description" : ["This class provides Graphics operations that can be applied to a surface.",
-                         "Use Graphics.createXXX to create a graphics object that renders in the way you want.",
-                         "NOTE: On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```" ]
-}*/
+#include <string.h>
 
-/*JSON{ "type":"idle", "generate" : "jswrap_graphics_idle" }*/
+/*JSON{
+  "type" : "class",
+  "class" : "Graphics"
+}
+This class provides Graphics operations that can be applied to a surface.
+
+Use Graphics.createXXX to create a graphics object that renders in the way you want.
+
+NOTE: On boards that contain an LCD, there is a built-in 'LCD' object of type Graphics. For instance to draw a line you'd type: ```LCD.drawLine(0,0,100,100)```
+*/
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_graphics_idle"
+}*/
 bool jswrap_graphics_idle() {
   graphicsIdle();
   return false;
 }
 
-/*JSON{ "type":"init", "generate" : "jswrap_graphics_init" }*/
+/*JSON{
+  "type" : "init",
+  "generate" : "jswrap_graphics_init"
+}*/
 void jswrap_graphics_init() {
 #ifdef USE_LCD_FSMC
   JsVar *parent = jspNewObject("LCD", "Graphics");
@@ -68,17 +80,22 @@ static bool isValidBPP(int bpp) {
   return bpp==1 || bpp==2 || bpp==4 || bpp==8 || bpp==16 || bpp==24 || bpp==32; // currently one colour can't ever be spread across multiple bytes
 }
 
-/*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createArrayBuffer",
-         "description" : "Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself",
-         "generate" : "jswrap_graphics_createArrayBuffer",
-         "params" : [ [ "width", "int32", "Pixels wide" ],
-                      [ "height", "int32", "Pixels high" ],
-                      [ "bpp", "int32", "Number of bits per pixel" ],
-                      [ "options", "JsVar", ["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```",
-                                             "zigzag = whether to alternate the direction of scanlines for rows",
-                                             "vertical_byte = whether to align bits in a byte vertically or not"] ] ],
-         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "createArrayBuffer",
+  "generate" : "jswrap_graphics_createArrayBuffer",
+  "params" : [
+    ["width","int32","Pixels wide"],
+    ["height","int32","Pixels high"],
+    ["bpp","int32","Number of bits per pixel"],
+    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not"]]
+  ],
+  "return" : ["JsVar","The new Graphics object"],
+  "return_object" : "Graphics"
+}
+Create a Graphics object that renders to an Array Buffer. This will have a field called 'buffer' that can get used to get at the buffer itself
+*/
 JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *options) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {
     jsWarn("Invalid Size");
@@ -110,6 +127,32 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
       else
         jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
     }
+    JsVar *colorv;
+    char color_order[4];
+    size_t len;
+    if ((colorv = jsvObjectGetChild(options, "color_order", 0)) != NULL) {
+      len = jsvGetString(colorv, color_order, 4);
+      jsvUnLock(colorv);
+
+      if (len != 3)
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+      if (!strcasecmp(color_order, "rgb"))
+	; // The default
+      else if (!strcasecmp(color_order, "brg"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BRG);
+      else if (!strcasecmp(color_order, "bgr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BGR);
+      else if (!strcasecmp(color_order, "gbr"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GBR);
+      else if (!strcasecmp(color_order, "grb"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GRB);
+      else if (!strcasecmp(color_order, "RBG"))
+        gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_RBG);
+      else {
+	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
+	return 0; // XXX: free parent?
+      }
+    }
   }
 
   lcdInit_ArrayBuffer(&gfx);
@@ -117,15 +160,22 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   return parent;
 }
 
-/*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createCallback",
-         "description" : "Create a Graphics object that renders by calling a JavaScript callback function to draw pixels",
-         "generate" : "jswrap_graphics_createCallback",
-         "params" : [ [ "width", "int32", "Pixels wide" ],
-                      [ "height", "int32", "Pixels high" ],
-                      [ "bpp", "int32", "Number of bits per pixel" ],
-                      [ "callback", "JsVar", "A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked." ] ],
-         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "createCallback",
+  "generate" : "jswrap_graphics_createCallback",
+  "params" : [
+    ["width","int32","Pixels wide"],
+    ["height","int32","Pixels high"],
+    ["bpp","int32","Number of bits per pixel"],
+    ["callback","JsVar","A function of the form ```function(x,y,col)``` that is called whenever a pixel needs to be drawn, or an object with: ```{setPixel:function(x,y,col),fillRect:function(x1,y1,x2,y2,col)}```. All arguments are already bounds checked."]
+  ],
+  "return" : ["JsVar","The new Graphics object"],
+  "return_object" : "Graphics"
+}
+Create a Graphics object that renders by calling a JavaScript callback function to draw pixels
+*/
 JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *callback) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {
     jsWarn("Invalid Size");
@@ -171,13 +221,21 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
 }
 
 #ifdef USE_LCD_SDL
-/*JSON{ "type":"staticmethod", "class": "Graphics", "name" : "createSDL", "ifdef" : "USE_LCD_SDL",
-         "description" : "Create a Graphics object that renders to SDL window (Linux-based devices only)",
-         "generate" : "jswrap_graphics_createSDL",
-         "params" : [ [ "width", "int32", "Pixels wide" ],
-                      [ "height", "int32", "Pixels high" ] ],
-         "return" : [ "JsVar", "The new Graphics object" ], "return_object":"Graphics"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Graphics",
+  "name" : "createSDL",
+  "ifdef" : "USE_LCD_SDL",
+  "generate" : "jswrap_graphics_createSDL",
+  "params" : [
+    ["width","int32","Pixels wide"],
+    ["height","int32","Pixels high"]
+  ],
+  "return" : ["JsVar","The new Graphics object"],
+  "return_object" : "Graphics"
+}
+Create a Graphics object that renders to SDL window (Linux-based devices only)
+*/
 JsVar *jswrap_graphics_createSDL(int width, int height) {
   if (width<=0 || height<=0 || width>1023 || height>1023) {
     jsWarn("Invalid Size");
@@ -199,16 +257,24 @@ JsVar *jswrap_graphics_createSDL(int width, int height) {
 }
 #endif
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "getWidth",
-         "description" : "The width of the LCD",
-         "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
-         "return" : [ "int", "The width of the LCD" ]
-}*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "getHeight",
-         "description" : "The height of the LCD",
-         "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
-         "return" : [ "int", "The height of the LCD" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getWidth",
+  "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, false)",
+  "return" : ["int","The width of the LCD"]
+}
+The width of the LCD
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getHeight",
+  "generate_full" : "jswrap_graphics_getWidthOrHeight(parent, true)",
+  "return" : ["int","The height of the LCD"]
+}
+The height of the LCD
+*/
 int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   if (gfx.data.flags & JSGRAPHICSFLAGS_SWAP_XY)
@@ -216,60 +282,88 @@ int jswrap_graphics_getWidthOrHeight(JsVar *parent, bool height) {
   return height ? gfx.data.height : gfx.data.width;
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "clear",
-         "description" : "Clear the LCD with the Background Color",
-         "generate" : "jswrap_graphics_clear"
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "clear",
+  "generate" : "jswrap_graphics_clear"
+}
+Clear the LCD with the Background Color
+*/
 void jswrap_graphics_clear(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsClear(&gfx);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "fillRect",
-         "description" : "Fill a rectangular area in the Foreground Color",
-         "generate" : "jswrap_graphics_fillRect",
-         "params" : [ [ "x1", "int32", "The left" ],
-                      [ "y1", "int32", "The top" ],
-                      [ "x2", "int32", "The right" ],
-                      [ "y2", "int32", "The bottom" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillRect",
+  "generate" : "jswrap_graphics_fillRect",
+  "params" : [
+    ["x1","int32","The left"],
+    ["y1","int32","The top"],
+    ["x2","int32","The right"],
+    ["y2","int32","The bottom"]
+  ]
+}
+Fill a rectangular area in the Foreground Color
+*/
 void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "drawRect",
-         "description" : "Draw an unfilled rectangle 1px wide in the Foreground Color",
-         "generate" : "jswrap_graphics_drawRect",
-         "params" : [ [ "x1", "int32", "The left" ],
-                      [ "y1", "int32", "The top" ],
-                      [ "x2", "int32", "The right" ],
-                      [ "y2", "int32", "The bottom" ]]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawRect",
+  "generate" : "jswrap_graphics_drawRect",
+  "params" : [
+    ["x1","int32","The left"],
+    ["y1","int32","The top"],
+    ["x2","int32","The right"],
+    ["y2","int32","The bottom"]
+  ]
+}
+Draw an unfilled rectangle 1px wide in the Foreground Color
+*/
 void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "getPixel",
-         "description" : "Get a pixel's color",
-         "generate" : "jswrap_graphics_getPixel",
-         "params" : [ [ "x", "int32", "The left" ],
-                      [ "y", "int32", "The top" ] ],
-         "return" : [ "int32", "The color" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getPixel",
+  "generate" : "jswrap_graphics_getPixel",
+  "params" : [
+    ["x","int32","The left"],
+    ["y","int32","The top"]
+  ],
+  "return" : ["int32","The color"]
+}
+Get a pixel's color
+*/
 int jswrap_graphics_getPixel(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   return (int)graphicsGetPixel(&gfx, (short)x, (short)y);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setPixel",
-         "description" : "Set a pixel's color",
-         "generate" : "jswrap_graphics_setPixel",
-         "params" : [ [ "x", "int32", "The left" ],
-                      [ "y", "int32", "The top" ],
-                      [ "col", "JsVar", "The color" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setPixel",
+  "generate" : "jswrap_graphics_setPixel",
+  "params" : [
+    ["x","int32","The left"],
+    ["y","int32","The top"],
+    ["col","JsVar","The color"]
+  ]
+}
+Set a pixel's color
+*/
 void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int col = gfx.data.fgColor;
@@ -280,34 +374,161 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   gfx.data.cursorY = (short)y;
 }
 
+// Convert HSV to RGB
+// From http://www.cs.rit.edu/~ncs/color/t_convert.html
+static void HSVtoRGB(JsVarFloat h, JsVarFloat s, JsVarFloat v, JsVarFloat *r, JsVarFloat *g, JsVarFloat *b) {
+  int i;
+  JsVarFloat f, p, q, t;
+  if (s == 0)
+    // achromatic (grey)
+    *r = *g = *b = v;
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setColor",
-         "description" : "Set the color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
-         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth" ],
-                      [ "g", "JsVar", "Green (between 0 and 1)" ],
-                      [ "b", "JsVar", "Blue (between 0 and 1)" ] ]
-}*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setBgColor",
-         "description" : "Set the background color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
-         "params" : [ [ "r", "JsVar", "Red (between 0 and 1) OR an integer representing the color in the current bit depth" ],
-                      [ "g", "JsVar", "Green (between 0 and 1)" ],
-                      [ "b", "JsVar", "Blue (between 0 and 1)" ] ]
-}*/
-void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
+  h = h / 60;			// sector 0 to 5
+  i = (int)h;
+  f = h - i;			// fractional part of h
+  p = v * (1 - s);
+  q = v * (1 - s * f);
+  t = v * (1 - s * (1 - f));
+  switch(i) {
+  case 0:
+    *r = v;
+    *g = t;
+    *b = p;
+    break;
+  case 1:
+    *r = q;
+    *g = v;
+    *b = p;
+    break;
+  case 2:
+    *r = p;
+    *g = v;
+    *b = t;
+    break;
+  case 3:
+    *r = p;
+    *g = q;
+    *b = v;
+    break;
+  case 4:
+    *r = t;
+    *g = p;
+    *b = v;
+    break;
+  default:
+    *r = v;
+    *g = p;
+    *b = q;
+    break;
+  }
+};
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setColor",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true, false)",
+  "params" : [
+    ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
+    ["g","JsVar","Green (between 0 and 1)"],
+    ["b","JsVar","Blue (between 0 and 1)"]
+  ]
+}
+Set the color to use for subsequent drawing operations
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setBgColor",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false, false)",
+  "params" : [
+    ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
+    ["g","JsVar","Green (between 0 and 1)"],
+    ["b","JsVar","Blue (between 0 and 1)"]
+  ]
+}
+Set the background color to use for subsequent drawing operations
+*/
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setColorHSV",
+  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, true, true)",
+  "params" : [
+    ["h","JsVar","Hue (between 0 and 1)"],
+    ["s","JsVar","Saturation (between 0 and 1)"],
+    ["v","JsVar","Value (between 0 and 1)"]
+  ]
+}
+Set the HSV color to use for subsequent drawing operations
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setBgColorHSV",
+  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, false, true)",
+  "params" : [
+    ["h","JsVar","Hue (between 0 and 1)"],
+    ["s","JsVar","Saturation (between 0 and 1)"],
+    ["v","JsVar","Value (between 0 and 1)"]
+  ]
+}
+Set the background HSV color to use for subsequent drawing operations
+*/
+void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground, bool isHSV) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int color = 0;
+  JsVarFloat rf, gf, bf;
+  if (isHSV) {
+    if (jsvIsUndefined(r) || jsvIsUndefined(g) || jsvIsUndefined(b)) {
+      jsExceptionHere(JSET_ERROR, "h, s and v must be defined");
+      return;
+    }
+    JsVarFloat hf = jsvGetFloat(r);
+    JsVarFloat sf = jsvGetFloat(g);
+    JsVarFloat vf = jsvGetFloat(b);
+    HSVtoRGB(hf, sf, vf, &rf, &gf, &bf);
+  } else {
+    rf = jsvGetFloat(r);
+    gf = jsvGetFloat(g);
+    bf = jsvGetFloat(b);
+  }
   if (!jsvIsUndefined(g) && !jsvIsUndefined(b)) {
-    int ri = (int)(jsvGetFloat(r)*256);
-    int gi = (int)(jsvGetFloat(g)*256);
-    int bi = (int)(jsvGetFloat(b)*256);
+    int ri = (int)(rf*256);
+    int gi = (int)(gf*256);
+    int bi = (int)(bf*256);
     if (ri>255) ri=255;
     if (gi>255) gi=255;
     if (bi>255) bi=255;
     if (ri<0) ri=0;
     if (gi<0) gi=0;
     if (bi<0) bi=0;
+    // Check if we need to twiddle colors
+    if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK) {
+      int tmpr, tmpg, tmpb;
+      tmpr = ri;
+      tmpg = gi;
+      tmpb = bi;
+      if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BRG) {
+	ri = tmpb;
+	gi = tmpr;
+	bi = tmpg;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BGR) {
+	ri = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GBR) {
+	ri = tmpg;
+	gi = tmpb;
+	bi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GRB) {
+	ri = tmpg;
+	gi = tmpr;
+      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_RBG) {
+	gi = tmpb;
+	bi = tmpg;
+      }
+    }
     if (gfx.data.bpp==16) {
       color = (unsigned int)((bi>>3) | (gi>>2)<<5 | (ri>>3)<<11);
     } else if (gfx.data.bpp==32) {
@@ -327,30 +548,49 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
   graphicsSetVar(&gfx);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "getColor",
-         "description" : "Get the color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_getColorX(parent, true)",
-         "return" : [ "int", "The integer value of the colour" ]
-}*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "getBgColor",
-         "description" : "Get the background color to use for subsequent drawing operations",
-         "generate_full" : "jswrap_graphics_getColorX(parent, false)",
-         "return" : [ "int", "The integer value of the colour" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getColor",
+  "generate_full" : "jswrap_graphics_getColorX(parent, true)",
+  "return" : ["int","The integer value of the colour"]
+}
+Get the color to use for subsequent drawing operations
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getBgColor",
+  "generate_full" : "jswrap_graphics_getColorX(parent, false)",
+  "return" : ["int","The integer value of the colour"]
+}
+Get the background color to use for subsequent drawing operations
+*/
 JsVarInt jswrap_graphics_getColorX(JsVar *parent, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
   return (JsVarInt)((isForeground ? gfx.data.fgColor : gfx.data.bgColor) & ((1UL<<gfx.data.bpp)-1));
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontBitmap",
-         "description" : "Set Graphics to draw with a Bitmapped Font",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
-}*/
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontVector", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Set Graphics to draw with a Vector Font of the given size",
-         "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
-         "params" : [ [ "size", "int32", "The size as an integer" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontBitmap",
+  "generate_full" : "jswrap_graphics_setFontSizeX(parent, JSGRAPHICS_FONTSIZE_4X6, false)"
+}
+Set Graphics to draw with a Bitmapped Font
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontVector",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate_full" : "jswrap_graphics_setFontSizeX(parent, size, true)",
+  "params" : [
+    ["size","int32","The size as an integer"]
+  ]
+}
+Set Graphics to draw with a Vector Font of the given size
+*/
 void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
@@ -367,14 +607,20 @@ void jswrap_graphics_setFontSizeX(JsVar *parent, int size, bool checkValid) {
   gfx.data.fontSize = (short)size;
   graphicsSetVar(&gfx);
 }
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setFontCustom",
-         "description" : "Set Graphics to draw with a Custom Font",
-         "generate" : "jswrap_graphics_setFontCustom",
-         "params" : [ [ "bitmap", "JsVar", "A column-first, MSB-first, 1bpp bitmap containing the font bitmap" ],
-                      [ "firstChar", "int32", "The first character in the font - usually 32 (space)" ],
-                      [ "width", "JsVar", "The width of each character in the font. Either an integer, or a string where each character represents the width" ],
-                      [ "height", "int32", "The height as an integer" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setFontCustom",
+  "generate" : "jswrap_graphics_setFontCustom",
+  "params" : [
+    ["bitmap","JsVar","A column-first, MSB-first, 1bpp bitmap containing the font bitmap"],
+    ["firstChar","int32","The first character in the font - usually 32 (space)"],
+    ["width","JsVar","The width of each character in the font. Either an integer, or a string where each character represents the width"],
+    ["height","int32","The height as an integer"]
+  ]
+}
+Set Graphics to draw with a Custom Font
+*/
 void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, JsVar *width, int height) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
@@ -403,13 +649,19 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
 }
 
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "drawString",
-         "description" : "Draw a string of text in the current font",
-         "generate" : "jswrap_graphics_drawString",
-         "params" : [ [ "str", "JsVar", "The string" ],
-                      [ "x", "int32", "The left" ],
-                      [ "y", "int32", "The top" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawString",
+  "generate" : "jswrap_graphics_drawString",
+  "params" : [
+    ["str","JsVar","The string"],
+    ["x","int32","The left"],
+    ["y","int32","The top"]
+  ]
+}
+Draw a string of text in the current font
+*/
 void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
@@ -485,12 +737,18 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
   jsvUnLock(customWidth);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "stringWidth",
-         "description" : "Return the size in pixels of a string of text in the current font",
-         "generate" : "jswrap_graphics_stringWidth",
-         "params" : [ [ "str", "JsVar", "The string" ] ],
-         "return" : [ "int", "The length of the string in pixels" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "stringWidth",
+  "generate" : "jswrap_graphics_stringWidth",
+  "params" : [
+    ["str","JsVar","The string"]
+  ],
+  "return" : ["int","The length of the string in pixels"]
+}
+Return the size in pixels of a string of text in the current font
+*/
 JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
 
@@ -529,25 +787,37 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
   return width;
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "drawLine",
-         "description" : "Draw a line between x1,y1 and x2,y2 in the current foreground color",
-         "generate" : "jswrap_graphics_drawLine",
-         "params" : [ [ "x1", "int32", "The left" ],
-                      [ "y1", "int32", "The top" ],
-                      [ "x2", "int32", "The right" ],
-                      [ "y2", "int32", "The bottom" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawLine",
+  "generate" : "jswrap_graphics_drawLine",
+  "params" : [
+    ["x1","int32","The left"],
+    ["y1","int32","The top"],
+    ["x2","int32","The right"],
+    ["y2","int32","The bottom"]
+  ]
+}
+Draw a line between x1,y1 and x2,y2 in the current foreground color
+*/
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawLine(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "lineTo",
-         "description" : "Draw a line from the last position of lineTo or moveTo to this position",
-         "generate" : "jswrap_graphics_lineTo",
-         "params" : [ [ "x", "int32", "X value" ],
-                      [ "y", "int32", "Y value" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "lineTo",
+  "generate" : "jswrap_graphics_lineTo",
+  "params" : [
+    ["x","int32","X value"],
+    ["y","int32","Y value"]
+  ]
+}
+Draw a line from the last position of lineTo or moveTo to this position
+*/
 void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawLine(&gfx, gfx.data.cursorX, gfx.data.cursorY, (short)x, (short)y);
@@ -556,12 +826,18 @@ void jswrap_graphics_lineTo(JsVar *parent, int x, int y) {
   graphicsSetVar(&gfx);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "moveTo",
-         "description" : "Move the cursor to a position - see lineTo",
-         "generate" : "jswrap_graphics_moveTo",
-         "params" : [ [ "x", "int32", "X value" ],
-                      [ "y", "int32", "Y value" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "moveTo",
+  "generate" : "jswrap_graphics_moveTo",
+  "params" : [
+    ["x","int32","X value"],
+    ["y","int32","Y value"]
+  ]
+}
+Move the cursor to a position - see lineTo
+*/
 void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   gfx.data.cursorX = (short)x;
@@ -569,36 +845,48 @@ void jswrap_graphics_moveTo(JsVar *parent, int x, int y) {
   graphicsSetVar(&gfx);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "fillPoly",
-         "description" : "Draw a filled polygon in the current foreground color",
-         "generate" : "jswrap_graphics_fillPoly",
-         "params" : [ [ "poly", "JsVar", "An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "fillPoly",
+  "generate" : "jswrap_graphics_fillPoly",
+  "params" : [
+    ["poly","JsVar","An array of vertices, of the form ```[x1,y1,x2,y2,x3,y3,etc]```"]
+  ]
+}
+Draw a filled polygon in the current foreground color
+*/
 void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
-  if (!jsvIsArray(poly)) return;
+  if (!jsvIsIterable(poly)) return;
   const int maxVerts = 128;
   short verts[maxVerts];
   int idx = 0;
-  JsVarRef item = poly->firstChild;
-  while (item && idx<maxVerts) {
-    JsVar *val = jsvLock(item);
-    verts[idx++] = (short)jsvGetIntegerAndUnLock(jsvSkipName(val));
-    item = val->nextSibling;
-    jsvUnLock(val);
+  JsvIterator it;
+  jsvIteratorNew(&it, poly);
+  while (jsvIteratorHasElement(&it) && idx<maxVerts) {
+    verts[idx++] = (short)jsvIteratorGetIntegerValue(&it);
+    jsvIteratorNext(&it);
   }
+  jsvIteratorFree(&it);
   if (idx==maxVerts) {
     jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }
   graphicsFillPoly(&gfx, idx/2, verts);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "setRotation",
-         "description" : "Set the current rotation of the graphics device.",
-         "generate" : "jswrap_graphics_setRotation",
-         "params" : [ [ "rotation", "int32", "The clockwise rotation. 0 for no rotation, 1 for 90 degrees, 2 for 180, 3 for 270" ],
-                      [ "reflect", "bool", "Whether to reflect the image" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "setRotation",
+  "generate" : "jswrap_graphics_setRotation",
+  "params" : [
+    ["rotation","int32","The clockwise rotation. 0 for no rotation, 1 for 90 degrees, 2 for 180, 3 for 270"],
+    ["reflect","bool","Whether to reflect the image"]
+  ]
+}
+Set the current rotation of the graphics device.
+*/
 void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
 
@@ -629,13 +917,19 @@ void jswrap_graphics_setRotation(JsVar *parent, int rotation, bool reflect) {
   graphicsSetVar(&gfx);
 }
 
-/*JSON{ "type":"method", "class": "Graphics", "name" : "drawImage",
-         "description" : "Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first",
-         "generate" : "jswrap_graphics_drawImage",
-         "params" : [ [ "image", "JsVar", "An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent" ],
-                      [ "x", "int32", "The X offset to draw the image" ],
-                      [ "y", "int32", "The Y offset to draw the image" ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "drawImage",
+  "generate" : "jswrap_graphics_drawImage",
+  "params" : [
+    ["image","JsVar","An object with the following fields `{ width : int, height : int, bpp : int, buffer : ArrayBuffer, transparent: optional int }`. bpp = bits per pixel, transparent (if defined) is the colour that will be treated as transparent"],
+    ["x","int32","The X offset to draw the image"],
+    ["y","int32","The Y offset to draw the image"]
+  ]
+}
+Draw an image at the specified position. If the image is 1 bit, the graphics foreground/background colours will be used. Otherwise color data will be copied as-is. Bitmaps are rendered MSB-first
+*/
 void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   if (!jsvIsObject(image)) {

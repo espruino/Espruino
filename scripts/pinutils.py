@@ -92,6 +92,20 @@ for D in DEVICES:
  CLASSES[D]="DEVICE"
  NAMES[D]=DEVICES[D]
 
+URLS = {
+ "PWM":"/PWM",
+ "SPI":"/SPI",
+ "I2C":"/I2S",
+ "USART":"/USART",
+ "DAC":"/DAC",
+ "ADC":"/ADC",
+ "OSC_RTC":"/Clocks",
+ "LED1":"/Flashing+Lights",
+ "LED2":"/Flashing+Lights",
+ "LED3":"/Flashing+Lights",
+ "BLUETOOTH":"/Bluetooth",
+};
+
 # is a pin name valid
 def isvalidpin(pinname):
   pinport = pinname[1:2]

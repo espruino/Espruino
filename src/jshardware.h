@@ -21,9 +21,9 @@
 #include "jsvar.h"
 #include "jsdevices.h"
 #include "jspin.h"
-#ifndef LINUX
 #include "jspininfo.h"
-#else
+
+#ifdef LINUX
 #include <inttypes.h>
 #endif
 
@@ -39,6 +39,8 @@ bool jshIsUSBSERIALConnected(); // is the serial device connected?
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime();
+/// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
+void jshSetSystemTime(JsSysTime time);
 /// Convert a time in Milliseconds to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
 /// Convert ticks to a time in Milliseconds
@@ -140,6 +142,7 @@ typedef struct {
   unsigned char bytesize;
   unsigned char parity;
   unsigned char stopbits;
+  bool xOnXOff; // XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;
 
 static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
@@ -149,6 +152,7 @@ static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
+  inf->xOnXOff = false;
 }
 
 /** Set up a UART, if pins are -1 they will be guessed */
@@ -215,9 +219,9 @@ static inline void jshI2CInitInfo(JshI2CInfo *inf) {
 }
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
-/** Addresses are 7 bit - that is, between 0 and 0x7F */
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data);
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data);
+/** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop);
 
 
 /// Save contents of JsVars into Flash
@@ -257,11 +261,14 @@ void jshKickUSBWatchdog();
 void jshSPIPush(IOEventFlags device, uint16_t data);
 #endif
 
-#ifdef STM32F1
+#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
+#else
+static JsVarFloat jshReadTemperature() { return NAN; };
+static JsVarFloat jshReadVRef()  { return NAN; };
 #endif
 
 #ifdef STM32F3

@@ -19,25 +19,40 @@
 #include "jsinteractive.h"
 #include "jstimer.h"
 
-/*JSON{ "type":"class",
-        "class" : "E",
-        "description" : ["This is the built-in JavaScript class for Espruino utility functions." ]
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "E"
+}
+This is the built-in JavaScript class for Espruino utility functions.
+*/
 
-/*JSON{ "type":"staticmethod", "ifdef" : "STM32F1", "ifndef" : "SAVE_ON_FLASH",
-         "class": "E", "name" : "getTemperature",
-         "generate_full" : "jshReadTemperature()",
-         "description" : ["Use the STM32's internal thermistor to work out the temperature.",
-                          "**Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though."],
-         "return" : ["float", "The temperature in degrees C"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "getTemperature",
+  "generate_full" : "jshReadTemperature()",
+  "return" : ["float","The temperature in degrees C"]
+}
+Use the STM32's internal thermistor to work out the temperature.
 
-/*JSON{ "type":"staticmethod", "ifdef" : "STM32F1", "ifndef" : "SAVE_ON_FLASH",
-         "class": "E", "name" : "getAnalogVRef",
-         "generate_full" : "jshReadVRef()",
-         "description" : "Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` ",
-         "return" : ["float", "The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
-}*/
+While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
+
+**Note:** This is not entirely accurate and varies by a few degrees from chip to chip. It measures the **die temperature**, so when connected to USB it could be reading 10 over degrees C above ambient temperature. When running from battery with `setDeepSleep(true)` it is much more accurate though.
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "getAnalogVRef",
+  "generate_full" : "jshReadVRef()",
+  "return" : ["float","The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
+}
+Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` 
+
+While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
+*/
 
 
 int nativeCallGetCType(JsLex *lex) {
@@ -59,17 +74,26 @@ int nativeCallGetCType(JsLex *lex) {
   return -1; // unknown
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "nativeCall",
-         "generate" : "jswrap_espruino_nativeCall",
-         "description" : ["ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing",
-                          "Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)` ",
-                          "If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.",
-                          "Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses."],
-         "params" : [ [ "addr", "int", "The address in memory of the function"],
-                      [ "sig", "JsVar", "The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"] ],
-         "return" : ["JsVar", "The native function"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "nativeCall",
+  "generate" : "jswrap_espruino_nativeCall",
+  "params" : [
+    ["addr","int","The address in memory of the function"],
+    ["sig","JsVar","The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"]
+  ],
+  "return" : ["JsVar","The native function"]
+}
+ADVANCED: This is a great way to crash Espruino if you're not sure what you are doing
+
+Create a native function that executes the code at the given address. Eg. `E.nativeCall(0x08012345,'double (double,double)')(1.1, 2.2)` 
+
+If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.
+
+Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses.
+*/
 JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
   unsigned int argTypes = 0;
   if (jsvIsUndefined(signature)) {
@@ -108,15 +132,21 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
 }
 
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "clip",
-         "generate" : "jswrap_espruino_clip",
-         "description" : "Clip a number to be between min and max (inclusive)",
-         "params" : [ [ "x", "float", "A floating point value to clip"],
-                      [ "min", "float", "The smallest the value should be"],
-                      [ "max", "float", "The largest the value should be"] ],
-         "return" : ["float", "The value of x, clipped so as not to be below min or above max."]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "clip",
+  "generate" : "jswrap_espruino_clip",
+  "params" : [
+    ["x","float","A floating point value to clip"],
+    ["min","float","The smallest the value should be"],
+    ["max","float","The largest the value should be"]
+  ],
+  "return" : ["float","The value of x, clipped so as not to be below min or above max."]
+}
+Clip a number to be between min and max (inclusive)
+*/
 JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
   if (x<min) x=min;
   if (x>max) x=max;
@@ -124,13 +154,19 @@ JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max) {
 }
 
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "sum",
-         "generate" : "jswrap_espruino_sum",
-         "description" : "Sum the contents of the given Array, String or ArrayBuffer and return the result",
-         "params" : [ [ "arr", "JsVar", "The array to sum"] ],
-         "return" : ["float", "The sum of the given buffer"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "sum",
+  "generate" : "jswrap_espruino_sum",
+  "params" : [
+    ["arr","JsVar","The array to sum"]
+  ],
+  "return" : ["float","The sum of the given buffer"]
+}
+Sum the contents of the given Array, String or ArrayBuffer and return the result
+*/
 JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
@@ -148,13 +184,20 @@ JsVarFloat jswrap_espruino_sum(JsVar *arr) {
   return sum;
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "variance",
-         "generate" : "jswrap_espruino_variance",
-         "description" : "Work out the variance of the contents of the given Array, String or ArrayBuffer and return the result. This is equivalent to `v=0;for (i in arr) v+=Math.pow(mean-arr[i],2)`",
-         "params" : [ [ "arr", "JsVar", "The array to work out the variance for"], ["mean", "float", "The mean value of the array" ] ],
-         "return" : ["float", "The variance of the given buffer"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "variance",
+  "generate" : "jswrap_espruino_variance",
+  "params" : [
+    ["arr","JsVar","The array to work out the variance for"],
+    ["mean","float","The mean value of the array"]
+  ],
+  "return" : ["float","The variance of the given buffer"]
+}
+Work out the variance of the contents of the given Array, String or ArrayBuffer and return the result. This is equivalent to `v=0;for (i in arr) v+=Math.pow(mean-arr[i],2)`
+*/
 JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   if (!(jsvIsIterable(arr))) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be iterable, not %t", arr);
@@ -174,15 +217,21 @@ JsVarFloat jswrap_espruino_variance(JsVar *arr, JsVarFloat mean) {
   return variance;
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "convolve",
-         "generate" : "jswrap_espruino_convolve",
-         "description" : "Convolve arr1 with arr2. This is equivalent to `v=0;for (i in arr1) v+=arr1[i] * arr2[(i+offset) % arr2.length]`",
-         "params" : [ [ "arr1", "JsVar", "An array to convolve"],
-                      [ "arr2", "JsVar", "An array to convolve"],
-                      [ "offset", "int32", "The mean value of the array" ] ],
-         "return" : ["float", "The variance of the given buffer"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "convolve",
+  "generate" : "jswrap_espruino_convolve",
+  "params" : [
+    ["arr1","JsVar","An array to convolve"],
+    ["arr2","JsVar","An array to convolve"],
+    ["offset","int32","The mean value of the array"]
+  ],
+  "return" : ["float","The variance of the given buffer"]
+}
+Convolve arr1 with arr2. This is equivalent to `v=0;for (i in arr1) v+=arr1[i] * arr2[(i+offset) % arr2.length]`
+*/
 JsVarFloat jswrap_espruino_convolve(JsVar *arr1, JsVar *arr2, int offset) {
   if (!(jsvIsIterable(arr1)) ||
       !(jsvIsIterable(arr2))) {
@@ -296,14 +345,20 @@ short FFT(short int dir,long m,double *x,double *y)
    return(TRUE);
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "FFT",
-         "generate" : "jswrap_espruino_FFT",
-         "description" : "Performs a Fast Fourier Transform (fft) on the supplied data and writes it back into the original arrays. Note that if only one array is supplied, the data written back is the modulus of the complex result `sqrt(r*r+i*i)`.",
-         "params" : [ [ "arrReal", "JsVar", "An array of real values"],
-                      [ "arrImage", "JsVar", "An array of imaginary values (or if undefined, all values will be taken to be 0)"],
-                      [ "inverse", "bool", "Set this to true if you want an inverse FFT - otherwise leave as 0" ] ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "FFT",
+  "generate" : "jswrap_espruino_FFT",
+  "params" : [
+    ["arrReal","JsVar","An array of real values"],
+    ["arrImage","JsVar","An array of imaginary values (or if undefined, all values will be taken to be 0)"],
+    ["inverse","bool","Set this to true if you want an inverse FFT - otherwise leave as 0"]
+  ]
+}
+Performs a Fast Fourier Transform (fft) on the supplied data and writes it back into the original arrays. Note that if only one array is supplied, the data written back is the modulus of the complex result `sqrt(r*r+i*i)`.
+*/
 void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   if (!(jsvIsIterable(arrReal)) ||
       !(jsvIsUndefined(arrImag) || jsvIsIterable(arrImag))) {
@@ -385,12 +440,20 @@ void jswrap_espruino_FFT(JsVar *arrReal, JsVar *arrImag, bool inverse) {
   }
 }
 
-/*JSON{ "type":"staticmethod", "class": "E",  "name": "interpolate", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Interpolate between two adjacent values in the Typed Array",
-         "generate" : "jswrap_espruino_interpolate",
-         "params" : [ [ "array", "JsVar", "A Typed Array to interpolate between" ], [ "index", "float", "Floating point index to access" ] ],
-         "return" : [ "float", "The result of interpolating between (int)index and (int)(index+1)" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "interpolate",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_espruino_interpolate",
+  "params" : [
+    ["array","JsVar","A Typed Array to interpolate between"],
+    ["index","float","Floating point index to access"]
+  ],
+  "return" : ["float","The result of interpolating between (int)index and (int)(index+1)"]
+}
+Interpolate between two adjacent values in the Typed Array
+*/
 JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex) {
   if (!jsvIsArrayBuffer(array)) return 0;
   size_t idx = (size_t)findex;
@@ -412,15 +475,22 @@ JsVarFloat jswrap_espruino_interpolate(JsVar *array, JsVarFloat findex) {
   return fa*(1-a) + fb*a;
 }
 
-/*JSON{ "type":"staticmethod", "class": "E",  "name": "interpolate2d", "ifndef" : "SAVE_ON_FLASH",
-         "description" : "Interpolate between four adjacent values in the Typed Array, in 2D.",
-         "generate" : "jswrap_espruino_interpolate2d",
-         "params" : [ [ "array", "JsVar", "A Typed Array to interpolate between" ],
-                      [ "width", "int32", "Integer 'width' of 2d array" ],
-                      [ "x", "float", "Floating point X index to access" ],
-                      [ "y", "float", "Floating point Y index to access" ] ],
-         "return" : [ "float", "The result of interpolating in 2d between the 4 surrounding cells" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "interpolate2d",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_espruino_interpolate2d",
+  "params" : [
+    ["array","JsVar","A Typed Array to interpolate between"],
+    ["width","int32","Integer 'width' of 2d array"],
+    ["x","float","Floating point X index to access"],
+    ["y","float","Floating point Y index to access"]
+  ],
+  "return" : ["float","The result of interpolating in 2d between the 4 surrounding cells"]
+}
+Interpolate between four adjacent values in the Typed Array, in 2D.
+*/
 JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, JsVarFloat y) {
   if (!jsvIsArrayBuffer(array)) return 0;
   int yidx = (int)y;
@@ -460,28 +530,43 @@ JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, 
   return ya*(1-ay) + yb*ay;
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "enableWatchdog",
-         "generate" : "jswrap_espruino_enableWatchdog",
-         "description" : "Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout. NOTE: This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.",
-         "params" : [ [ "timeout", "float", "The timeout in seconds before a watchdog reset"] ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "enableWatchdog",
+  "generate" : "jswrap_espruino_enableWatchdog",
+  "params" : [
+    ["timeout","float","The timeout in seconds before a watchdog reset"]
+  ]
+}
+Enable the watchdog timer. This will reset Espruino if it isn't able to return to the idle loop within the timeout. NOTE: This will not work with `setDeepSleep` unless you explicitly wake Espruino up with an interval of less than the timeout.
+*/
 void jswrap_espruino_enableWatchdog(JsVarFloat time) {
   if (time<0 || isnan(time)) time=1;
   jshEnableWatchDog(time);
 }
 
-/*JSON{ "type":"staticmethod", "ifndef" : "SAVE_ON_FLASH",
-         "class" : "E", "name" : "getErrorFlags",
-         "generate" : "jswrap_espruino_getErrorFlags",
-         "description" : ["Get and reset the error flags. Returns an array that can contain:",
-                          "`'FIFO_FULL'`: The receive FIFO filled up and data was lost. This could be state transitions for setWatch, or received characters.",
-                          "`'BUFFER_FULL'`: A buffer for a stream filled up and characters were lost. This can happen to any stream - Serial,HTTP,etc.",
-                          "`'CALLBACK'`: A callback (s`etWatch`, `setInterval`, `on('data',...)`) caused an error and so was removed.",
-                          "`'LOW_MEMORY'`: Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history",
-                          "`'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed."],
-         "return" : [ "JsVar", "An array of error flags" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "getErrorFlags",
+  "generate" : "jswrap_espruino_getErrorFlags",
+  "return" : ["JsVar","An array of error flags"]
+}
+Get and reset the error flags. Returns an array that can contain:
+
+`'FIFO_FULL'`: The receive FIFO filled up and data was lost. This could be state transitions for setWatch, or received characters.
+
+`'BUFFER_FULL'`: A buffer for a stream filled up and characters were lost. This can happen to any stream - Serial,HTTP,etc.
+
+`'CALLBACK'`: A callback (s`etWatch`, `setInterval`, `on('data',...)`) caused an error and so was removed.
+
+`'LOW_MEMORY'`: Memory is running low - Espruino had to run a garbage collection pass or remove some of the command history
+
+`'MEMORY'`: Espruino ran out of memory and was unable to allocate some data that it needed.
+*/
 JsVar *jswrap_espruino_getErrorFlags() {
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   if (!arr) return 0;
@@ -494,28 +579,42 @@ JsVar *jswrap_espruino_getErrorFlags() {
   return arr;
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "E", "name" : "toArrayBuffer",
-         "generate" : "jswrap_espruino_toArrayBuffer",
-         "description" : [ "Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.",
-                           "Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`." ],
-         "params" : [ [ "str", "JsVar", "The string to convert to an ArrayBuffer"] ],
-         "return" : [ "JsVar", "An ArrayBuffer that uses the given string" ], "return_object":"ArrayBufferView"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "toArrayBuffer",
+  "generate" : "jswrap_espruino_toArrayBuffer",
+  "params" : [
+    ["str","JsVar","The string to convert to an ArrayBuffer"]
+  ],
+  "return" : ["JsVar","An ArrayBuffer that uses the given string"],
+  "return_object" : "ArrayBufferView"
+}
+Create an ArrayBuffer from the given string. This is done via a reference, not a copy - so it is very fast and memory efficient.
+
+Note that this is an ArrayBuffer, not a Uint8Array. To get one of those, do: `new Uint8Array(E.toArrayBuffer('....'))`.
+*/
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   if (!jsvIsString(str)) return 0;
   return jsvNewArrayBufferFromString(str, 0);
 }
 
-/*JSON{ "type":"staticmethod",
-         "class" : "E", "name" : "reverseByte",
-         "generate" : "jswrap_espruino_reverseByte",
-         "description" : [ "Reverse the 8 bits in a byte, swapping MSB and LSB.",
-                           "For example, `E.reverseByte(0b10010000) == 0b00001001`.",
-                           "Note that you can reverse all the bytes in an array with: `arr = arr.map(E.reverseByte)`" ],
-         "params" : [ [ "x", "int32", "A byte value to reverse the bits of"] ],
-         "return" : [ "int32", "The byte with reversed bits" ]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "reverseByte",
+  "generate" : "jswrap_espruino_reverseByte",
+  "params" : [
+    ["x","int32","A byte value to reverse the bits of"]
+  ],
+  "return" : ["int32","The byte with reversed bits"]
+}
+Reverse the 8 bits in a byte, swapping MSB and LSB.
+
+For example, `E.reverseByte(0b10010000) == 0b00001001`.
+
+Note that you can reverse all the bytes in an array with: `arr = arr.map(E.reverseByte)`
+*/
 int jswrap_espruino_reverseByte(int v) {
   unsigned int b = v&0xFF;
   // http://graphics.stanford.edu/~seander/bithacks.html#ReverseByteWith64Bits
@@ -523,12 +622,35 @@ int jswrap_espruino_reverseByte(int v) {
 }
 
 
-/*JSON{ "type":"staticmethod",
-         "class" : "E", "name" : "dumpTimers", "ifndef":"RELEASE",
-         "description" : ["Output the current list of Utility Timer Tasks - for debugging only"],
-         "generate" : "jswrap_espruino_dumpTimers"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "dumpTimers",
+  "ifndef" : "RELEASE",
+  "generate" : "jswrap_espruino_dumpTimers"
+}
+Output the current list of Utility Timer Tasks - for debugging only
+*/
 void jswrap_espruino_dumpTimers() {
   jstDumpUtilityTimers();
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "getSizeOf",
+  "generate" : "jswrap_espruino_getSizeOf",
+  "params" : [
+    ["v","JsVar","A variable to get the size of"]
+  ],
+  "return" : ["int32","The number of variable 'blocks' as an integer"]
+}
+Return the number of Variable Blocks used by the supplied variable. This is useful if you're running out of memory and you want to be able to see what is taking up most of the available space.
+
+See http://www.espruino.com/Internals for more information
+*/
+int jswrap_espruino_getSizeOf(JsVar *v) {
+  return (int)jsvCountJsVarsUsed(v);
 }
 

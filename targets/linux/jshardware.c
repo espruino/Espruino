@@ -29,7 +29,6 @@
 #include "jsutils.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
-#include "jspininfo.h"
 
 // ----------------------------------------------------------------------------
 #ifdef SYSFS_GPIO_DIR
@@ -58,7 +57,7 @@ void sysfs_write(const char *path, const char *data) {
 
 void sysfs_write_int(const char *path, JsVarInt val) {
   char buf[20];
-  itoa(val, buf, 10);
+  itostr(val, buf, 10);
   sysfs_write(path, buf);
 }
 
@@ -169,6 +168,7 @@ int getch()
 
 
 void jshInit() {
+  jshInitDevices();
 #ifndef __MINGW32__
   if (!terminal_set) {
     struct termios new_termios;
@@ -292,7 +292,7 @@ void jshPinSetState(Pin pin, JshPinState state) {
     if (gpioState[pin] == JSHPINSTATE_UNDEFINED)
       sysfs_write_int(SYSFS_GPIO_DIR"/export", pin);
     char path[64] = SYSFS_GPIO_DIR"/gpio";
-    itoa(pin, &path[strlen(path)], 10);
+    itostr(pin, &path[strlen(path)], 10);
     strcat(&path[strlen(path)], "/direction");
     sysfs_write(path, JSHPINSTATE_IS_OUTPUT(state)?"out":"in");
     gpioState[pin] = state;
@@ -310,7 +310,7 @@ JshPinState jshPinGetState(Pin pin) {
 void jshPinSetValue(Pin pin, bool value) {
 #ifdef SYSFS_GPIO_DIR
   char path[64] = SYSFS_GPIO_DIR"/gpio";
-  itoa(pin, &path[strlen(path)], 10);
+  itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   sysfs_write_int(path, value?1:0);
 #endif
@@ -319,7 +319,7 @@ void jshPinSetValue(Pin pin, bool value) {
 bool jshPinGetValue(Pin pin) {
 #ifdef SYSFS_GPIO_DIR
   char path[64] = SYSFS_GPIO_DIR"/gpio";
-  itoa(pin, &path[strlen(path)], 10);
+  itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   return sysfs_read_int(path);
 #else
@@ -346,6 +346,9 @@ JsSysTime jshGetSystemTime() {
   struct timeval tm;
   gettimeofday(&tm, 0);
   return tm.tv_sec*1000000L + tm.tv_usec;
+}
+
+void jshSetSystemTime(JsSysTime time) {
 }
 
 // ----------------------------------------------------------------------------
@@ -464,10 +467,10 @@ void jshSPISet16(IOEventFlags device, bool is16) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
 }
 
 

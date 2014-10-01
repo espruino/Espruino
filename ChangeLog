@@ -1,3 +1,38 @@
+     1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
+            Fix break inside loop inside case inside function (fix 428)
+            Added fs.stat and File.seek (fix #429, fix #430)
+            Allow use of DLE (char 16) on an empty line to turn echo off for *just that line*
+            Add XON/XOFF flow control on Serial + USB. This is enabled by default for Serial (fix #20)
+
+     1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
+            Fix parseInt for values too large to go in an int (#406)
+            Fix integer maths when result is too large for an integer
+            Fix mod operator with NaN/Infinity (fix #315)
+            Fix signed array values in PACKED_BIT devices
+            Drop JsVar size from 20 bytes to 16, increase Espruino variable count accordingly
+            Fix Array.fill on sparse arrays (fix #410) 
+            Allow I2C repeated start (fixes some odd I2C devices, fix #390)
+            Refactoring to use iterators wherever possible
+            Merge fs_kill and file_kill to ensure that files always die before the filesystem
+            Add `E.unmountSD()` to allow SD cards to be removed once they have been used
+            Stop String.split("") adding an empty elementy to the array
+            Tidy up linker script, allow F401 to use 3x16kB pages for storing program data
+            Fix regression in long timeouts (fix #416)
+            Use 'interval' var to specify if we're an interval or not (don't use 'recur' var)
+            Stop while/for/etc resetting exception state (fix #419)
+            Add  E.getSizeOf (fix #421)
+            Fix jsvCountJsVarsUsed for names with values
+            Make hidden names smaller to save a few JsVars
+            If there's only one function scope, don't define an array and save 2 JsVars
+            Fix setInterval on non-F1 boards (fix #415)
+            Fix issue where large doubles (> +/- 2^31) were converted to -1 rather than truncated ints
+            Fix E.getSizeOf (fix #424)
+            Fixed JSON indentation issue
+            Made 'pretty' JSON output look a bit better
+
+     1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
+            Add configurable OneWire search command (for finding DS18B20s with alarm set)
+
      1v68 : Fix memory leak in String.split
             Fix references to `this` - you can now write `this["LED1"]`
             Fix memory leak when calling toString on a normal object
@@ -15,12 +50,15 @@
             Swap HY2.4 board to software LCD driver as well, work out pin mappings from PY file
             Fix inaccuracy in setInterval, which had started since 32 bit switch in 1v65
             Store JSWAT_EXECUTE_IMMEDIATELY in a way that will fit in 16 bit function decls
+            Allow bit-packing of refs for low memory boards (fix #145)
             Now dump 'debounce' for setWatch
             Make sure that dump() outputs correct JS for undefined variables
             Allow pin counts per port of >31 on Linux-based systems
             Fix issue with lost high-speed events when using setWatch with small debounce
             Fix HTTP client regression
             Fix Date constructor issue (uninitialised variable) (fix #408)
+            Fix invalid conversion of large ints to floats on ARM
+            Fix reset behaviour for non-standard default Serial ports
 
      1v67 : Lower size of timer task array of devices with little RAM (fix #401)
             Move hidden lists out of the root scope (fix #357)

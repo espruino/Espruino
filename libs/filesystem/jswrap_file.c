@@ -18,15 +18,64 @@
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
 
-// from jswrap_fat
-extern bool jsfsInit();
-extern void jsfsReportError(const char *msg, FRESULT res);
 
-/*JSON{ "type":"library",
-        "class" : "File",
-        "description" : ["This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).",
-                         "To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information." ]
-}*/
+#ifndef LINUX
+FATFS jsfsFAT;
+#endif
+
+bool fat_initialised = false;
+
+void jsfsReportError(const char *msg, FRESULT res) {
+  const char *errStr = "UNKNOWN";
+  if (res==FR_OK             ) errStr = "OK";
+#ifndef LINUX
+  else if (res==FR_DISK_ERR       ) errStr = "DISK_ERR";
+  else if (res==FR_INT_ERR        ) errStr = "INT_ERR";
+  else if (res==FR_NOT_READY      ) errStr = "NOT_READY";
+  else if (res==FR_NO_FILE        ) errStr = "NO_FILE";
+  else if (res==FR_NO_PATH        ) errStr = "NO_PATH";
+  else if (res==FR_INVALID_NAME   ) errStr = "INVALID_NAME";
+  else if (res==FR_DENIED         ) errStr = "DENIED";
+  else if (res==FR_EXIST          ) errStr = "EXIST";
+  else if (res==FR_INVALID_OBJECT ) errStr = "INVALID_OBJECT";
+  else if (res==FR_WRITE_PROTECTED) errStr = "WRITE_PROTECTED";
+  else if (res==FR_INVALID_DRIVE  ) errStr = "INVALID_DRIVE";
+  else if (res==FR_NOT_ENABLED    ) errStr = "NOT_ENABLED";
+  else if (res==FR_NO_FILESYSTEM  ) errStr = "NO_FILESYSTEM";
+  else if (res==FR_MKFS_ABORTED   ) errStr = "MKFS_ABORTED";
+  else if (res==FR_TIMEOUT        ) errStr = "TIMEOUT";
+#endif
+  jsError("%s : %s", msg, errStr);
+}
+
+bool jsfsInit() {
+#ifndef LINUX
+  if (!fat_initialised) {
+    FRESULT res;
+    if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
+      jsfsReportError("Unable to mount SD card", res);
+      return false;
+    }
+    fat_initialised = true;
+  }
+#endif
+  return true;
+}
+
+
+
+
+
+/*JSON{
+  "type" : "library",
+  "class" : "File"
+}
+This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).
+
+To create a File object, you must type ```var fd = E.openFile('filepath','mode')``` - see [E.openFile](#l_E_openFile) for more information.
+
+**Note:** If you want to remove an SD card after you have started using it, you *must* call `E.unmountSD()` or you may cause damage to the card.
+*/
 
 static JsVar* fsGetArray(bool create) {
   return jsvObjectGetChild(execInfo.hiddenRoot, JS_FS_OPEN_FILES_NAME, create ? JSV_ARRAY : 0);
@@ -59,24 +108,44 @@ static void fileSetVar(JsFile *file) {
   jsvUnLock(data);
 }
 
-/*JSON{ "type":"kill", "generate" : "jswrap_file_kill" }*/
+/*JSON{
+  "type" : "kill",
+  "generate" : "jswrap_file_kill"
+}*/
 void jswrap_file_kill() {
-  {
-    JsVar *arr = fsGetArray(false);
-    if (arr) {
-      JsvArrayIterator it;
-      jsvArrayIteratorNew(&it, arr);
-      while (jsvArrayIteratorHasElement(&it)) {
-        JsVar *file = jsvArrayIteratorGetElement(&it);
-        jswrap_file_close(file);
-        jsvUnLock(file);
-        jsvArrayIteratorNext(&it);
-      }
-      jsvArrayIteratorFree(&it);
-      jsvRemoveAllChildren(arr);
-      jsvUnLock(arr);
+  JsVar *arr = fsGetArray(false);
+  if (arr) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, arr);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *file = jsvObjectIteratorGetValue(&it);
+      jswrap_file_close(file);
+      jsvUnLock(file);
+      jsvObjectIteratorNext(&it);
     }
+    jsvObjectIteratorFree(&it);
+    jsvRemoveAllChildren(arr);
+    jsvUnLock(arr);
   }
+  // close fs library
+#ifndef LINUX
+  if (fat_initialised) {
+    fat_initialised = false;
+    f_mount(0, 0, 0);
+  }
+#endif
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "unmountSD",
+  "generate" : "jswrap_E_unmountSD"
+}
+Unmount the SD card, so it can be removed. If you remove the SD card without calling this you may cause corruption, and you will be unable to access another SD card until you reset Espruino or call `E.unmountSD()`.
+*/
+void jswrap_E_unmountSD() {
+  jswrap_file_kill();
 }
 
 static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
@@ -89,15 +158,20 @@ static bool allocateJsFile(JsFile* file,FileMode mode, FileType type) {
   return true;
 }
 
-/*JSON{ "type":"staticmethod",
-        "class" : "E",
-        "name" : "openFile",
-        "generate" : "jswrap_E_openFile",
-        "description" : [ "Open a file" ],
-        "params" : [ [ "path", "JsVar", "the path to the file to open." ],
-                      [ "mode", "JsVar", "The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."] ],
-        "return" : ["JsVar", "A File object"], "return_object":"File"
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "openFile",
+  "generate" : "jswrap_E_openFile",
+  "params" : [
+    ["path","JsVar","the path to the file to open."],
+    ["mode","JsVar","The mode to use when opening the file. Valid values for mode are 'r' for read, 'w' for write new, 'w+' for write existing, and 'a' for append. If not specified, the default is 'r'."]
+  ],
+  "return" : ["JsVar","A File object"],
+  "return_object" : "File"
+}
+Open a file
+*/
 JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   FRESULT res = FR_INVALID_NAME;
   JsFile file;
@@ -175,10 +249,14 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
   return file.fileVar;
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "close",
-         "generate_full" : "jswrap_file_close(parent)",
-         "description" : [ "Close an open file."]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "close",
+  "generate_full" : "jswrap_file_close(parent)"
+}
+Close an open file.
+*/
 void jswrap_file_close(JsVar* parent) {
   if (jsfsInit()) {
     JsFile file;
@@ -206,12 +284,18 @@ void jswrap_file_close(JsVar* parent) {
   }
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "write",
-         "generate" : "jswrap_file_write",
-         "description" : [ "write data to a file"],
-         "params" : [ ["buffer", "JsVar", "A string containing the bytes to write"] ],
-         "return" : [ "int32", "the number of bytes written" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "write",
+  "generate" : "jswrap_file_write",
+  "params" : [
+    ["buffer","JsVar","A string containing the bytes to write"]
+  ],
+  "return" : ["int32","the number of bytes written"]
+}
+write data to a file
+*/
 size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   FRESULT res = 0;
   size_t bytesWritten = 0;
@@ -261,12 +345,18 @@ size_t jswrap_file_write(JsVar* parent, JsVar* buffer) {
   return bytesWritten;
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "read",
-         "generate" : "jswrap_file_read",
-         "description" : [ "Read data in a file in byte size chunks"],
-         "params" : [ ["length", "int32", "is an integer specifying the number of bytes to read."] ],
-         "return" : [ "JsVar", "A string containing the characters that were read" ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "read",
+  "generate" : "jswrap_file_read",
+  "params" : [
+    ["length","int32","is an integer specifying the number of bytes to read."]
+  ],
+  "return" : ["JsVar","A string containing the characters that were read"]
+}
+Read data in a file in byte size chunks
+*/
 JsVar *jswrap_file_read(JsVar* parent, int length) {
   JsVar *buffer = 0;
   JsvStringIterator it;
@@ -312,21 +402,34 @@ JsVar *jswrap_file_read(JsVar* parent, int length) {
   if (buffer)
     jsvStringIteratorFree(&it);
 
-  // automatically close this file if we're at the end of it
-  if (bytesRead!=(size_t)length)
-    jswrap_file_close(parent);
-
   return buffer;
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "skip",
-         "generate" : "jswrap_file_skip",
-         "description" : [ "Skip the specified number of bytes forwards"],
-         "params" : [ ["nBytes", "int32", "is an integer specifying the number of bytes to skip forwards."] ]
-}*/
-void jswrap_file_skip(JsVar* parent, int length) {
-  if (length<=0) {
-    jsWarn("length for skip must be greater than 0");
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "skip",
+  "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,true)",
+  "params" : [
+    ["nBytes","int32","is a positive integer specifying the number of bytes to skip forwards."]
+  ]
+}
+Skip the specified number of bytes forward in the file
+*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "seek",
+  "generate_full" : "jswrap_file_skip_or_seek(parent,nBytes,false)",
+  "params" : [
+    ["nBytes","int32","is an integer specifying the number of bytes to skip forwards."]
+  ]
+}
+Seek to a certain position in the file
+*/
+void jswrap_file_skip_or_seek(JsVar* parent, int nBytes, bool is_skip) {
+  if (nBytes<0) {
+    jsWarn(is_skip ? "Bytes to skip must be >=0" : "Position to seek to must be >=0");
     return;
   }
   FRESULT res = 0;
@@ -335,23 +438,27 @@ void jswrap_file_skip(JsVar* parent, int length) {
     if (fileGetFromVar(&file, parent)) {
       if(file.data.mode == FM_READ || file.data.mode == FM_WRITE || file.data.mode == FM_READ_WRITE) {
   #ifndef LINUX
-        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)f_tell(&file.data.handle) + (DWORD)length);
+        res = (FRESULT)f_lseek(&file.data.handle, (DWORD)(is_skip ? f_tell(&file.data.handle) : 0) + (DWORD)nBytes);
   #else
-        fseek(file.data.handle, length, SEEK_CUR);
+        fseek(file.data.handle, nBytes, is_skip ? SEEK_CUR : SEEK_SET);
   #endif
         fileSetVar(&file);
       }
     }
   }
-  if (res) jsfsReportError("Unable to skip", res);
+  if (res) jsfsReportError(is_skip?"Unable to skip":"Unable to seek", res);
 }
 
-/*JSON{  "type" : "method", "class" : "File", "name" : "pipe", "ifndef" : "SAVE_ON_FLASH",
-         "generate" : "jswrap_pipe",
-         "description" : [ "Pipe this file to a stream (an object with a 'write' method)"],
-         "params" : [ ["destination", "JsVar", "The destination file/stream that will receive content from the source."],
-                      ["options", "JsVar", [ "An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`",
-                                             "chunkSize : The amount of data to pipe from source to destination at a time",
-                                             "complete : a function to call when the pipe activity is complete",
-                                             "end : call the 'end' function on the destination when the source is finished"] ] ]
-}*/
+/*JSON{
+  "type" : "method",
+  "class" : "File",
+  "name" : "pipe",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_pipe",
+  "params" : [
+    ["destination","JsVar","The destination file/stream that will receive content from the source."],
+    ["options","JsVar",["An optional object `{ chunkSize : int=32, end : bool=true, complete : function }`","chunkSize : The amount of data to pipe from source to destination at a time","complete : a function to call when the pipe activity is complete","end : call the 'end' function on the destination when the source is finished"]]
+  ]
+}
+Pipe this file to a stream (an object with a 'write' method)
+*/

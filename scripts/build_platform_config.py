@@ -63,8 +63,8 @@ if not LINUX:
   variable_storage = board.chip["ram"] - space_for_stack
   # work out # of variables
   # We need to know if we should be using 8 or 16 bit addresses
-  #variables_8bit = (variable_storage*1024 )/ 16
-  #variables_16bit = (variable_storage*1024) / 20
+  #variables_8bit = (variable_storage*1024 ) / 12
+  #variables_16bit = (variable_storage*1024) / 16
   #if variables_8bit > 254 and variables_16bit > 254:
   #  variables = variables_16bit
   #else:
@@ -72,24 +72,39 @@ if not LINUX:
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
 
-  var_size = 16 if variables<255 else 20
+  var_size = 12 if variables<255 else 16
   var_cache_size = var_size*variables
   flash_needed = var_cache_size + 4 # for magic number
-  flash_page_size = 1024 # just a geuss
+  flash_page_size = 1024 # just a guess
+  flash_saved_code_sector = ""
   if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
-  if board.chip["family"]=="STM32F2": flash_page_size = 128*1024
+  if board.chip["family"]=="STM32F2": 
+    flash_page_size = 128*1024
+    flash_saved_code_sector = 11
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
-  if board.chip["family"]=="STM32F4": flash_page_size = 128*1024
-  flash_pages = (flash_needed+flash_page_size-1)/flash_page_size
+  if board.chip["family"]=="STM32F4": 
+    flash_page_size = 128*1024
+    flash_saved_code_sector = 11
+  # F4 has different page sizes in different places
+  flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
-  flash_available_for_code = total_flash - (flash_pages*flash_page_size)
-  if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
+
+  if "saved_code" in board.chip:
+    flash_saved_code_start = board.chip["saved_code"]["address"]
+    flash_page_size = board.chip["saved_code"]["page_size"]
+    flash_saved_code_sector = board.chip["saved_code"]["page_number"]
+    flash_saved_code_pages = board.chip["saved_code"]["pages"]
+    flash_available_for_code = board.chip["saved_code"]["flash_available"]*1024
+  else:
+    flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
+    flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
+    if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
 
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
   print "VarCache size = "+str(var_cache_size)
   print "Flash page size = "+str(flash_page_size)
-  print "Flash pages = "+str(flash_pages)
+  print "Flash pages = "+str(flash_saved_code_pages)
   print "Total flash = "+str(total_flash)
   print "Flash available for code = "+str(flash_available_for_code)
 
@@ -103,13 +118,18 @@ def die(err):
   sys.exit(1)
 
 def toPinDef(pin):
-  return "(Pin)(JSH_PORT"+pin[0]+"_OFFSET + "+pin[1:]+")"
+  for p in pins:
+    if p["name"]=="P"+pin:
+      return str(pins.index(p))+"/* "+pin+" */";
+  die("Pin named '"+pin+"' not found");
 
 def codeOutDevice(device):
   if device in board.devices:
     codeOut("#define "+device+"_PININDEX "+toPinDef(board.devices[device]["pin"]))
     if device=="BTN1":
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
+      if "pinstate" in board.devices[device]:
+        codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
   
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
@@ -152,6 +172,8 @@ elif board.chip["family"]=="STM32F4":
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
+elif board.chip["family"]=="AVR":
+  board.chip["class"]="AVR"
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -181,7 +203,17 @@ codeOut("""
 """);
 
 if board.chip["class"]=="STM32":
-  if "subfamily" in board.chip and board.chip["subfamily"]=="MD" : 
+  if board.chip["part"][:9]=="STM32F401":
+# FIXME - need to remove TIM5 from jspininfo
+   codeOut("""
+// Used by various pins, but always with other options
+#define UTIL_TIMER TIM5
+#define UTIL_TIMER_IRQn TIM5_IRQn
+#define UTIL_TIMER_IRQHandler TIM5_IRQHandler
+#define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
+""")
+  elif "subfamily" in board.chip and board.chip["subfamily"]=="MD": 
+
    codeOut("""
 // frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
 #define UTIL_TIMER TIM4
@@ -209,12 +241,13 @@ else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-  codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_pages))
+  codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_saved_code_pages))
   codeOut("#define FLASH_START                     "+hex(0x08000000))
+  if flash_saved_code_sector!="": codeOut("#define FLASH_SAVED_CODE_SECTOR                 "+str(flash_saved_code_sector))
   if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
-  codeOut("#define FLASH_SAVED_CODE_START (FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)")
+  codeOut("#define FLASH_SAVED_CODE_START "+str(flash_saved_code_start))
   codeOut("#define FLASH_MAGIC_LOCATION (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
   codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
@@ -276,7 +309,8 @@ if "LCD" in board.devices:
   codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
   codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
   codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
-  codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
+  if "pin_rs" in board.devices["LCD"]:
+    codeOutDevicePin("LCD", "pin_rs", "LCD_FSMC_RS")
 
 if "SD" in board.devices:
   if not "pin_d3" in board.devices["SD"]: # NOT SDIO - normal SD

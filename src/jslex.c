@@ -40,8 +40,8 @@ static void NO_INLINE jslGetNextCh(JsLex *lex) {
   lex->it.charIdx++;
   if (lex->it.charIdx >= lex->it.charsInVar) {
     lex->it.charIdx -= lex->it.charsInVar;
-    if (lex->it.var && lex->it.var->lastChild) {
-      lex->it.var = _jsvGetAddressOf(lex->it.var->lastChild);
+    if (lex->it.var && jsvGetLastChild(lex->it.var)) {
+      lex->it.var = _jsvGetAddressOf(jsvGetLastChild(lex->it.var));
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
@@ -677,7 +677,7 @@ void jslTokenAsString(int token, char *str, size_t len) {
 
   assert(len>=10);
   strncpy(str, "?[",len);
-  itoa(token, &str[2], 10);
+  itostr(token, &str[2], 10);
   strncat(str, "]",len);
 }
 
@@ -755,7 +755,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) break; // out of memory
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
-      block->lastChild = jsvGetRef(next);
+      jsvSetLastChild(block, jsvGetRef(next));
       jsvUnLock(block);
       block = next;
       blockChars=0; // it's new, so empty

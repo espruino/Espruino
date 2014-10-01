@@ -18,24 +18,32 @@
 #include "jswrap_interactive.h"
 #include "jsinteractive.h"
 
-/*JSON{ "type":"class",
-        "class" : "process",
-        "description" : "This class contains information about Espruino itself"
-}*/
+/*JSON{
+  "type" : "class",
+  "class" : "process"
+}
+This class contains information about Espruino itself
+*/
 
-/*JSON{ "type":"staticproperty",
-         "class" : "process", "name" : "version",
-         "description" : "Returns the version of Espruino as a String",
-         "generate_full" : "jsvNewFromString(JS_VERSION)",
-         "return" : ["JsVar", "The version of Espruino"]
-}*/
+/*JSON{
+  "type" : "staticproperty",
+  "class" : "process",
+  "name" : "version",
+  "generate_full" : "jsvNewFromString(JS_VERSION)",
+  "return" : ["JsVar","The version of Espruino"]
+}
+Returns the version of Espruino as a String
+*/
 
-/*JSON{ "type":"staticproperty",
-         "class" : "process", "name" : "env",
-         "description" : "Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION",
-         "generate" : "jswrap_process_env",
-         "return" : ["JsVar", "An object"]
-}*/
+/*JSON{
+  "type" : "staticproperty",
+  "class" : "process",
+  "name" : "env",
+  "generate" : "jswrap_process_env",
+  "return" : ["JsVar","An object"]
+}
+Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
+*/
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   jsvUnLock(jsvObjectSetChild(obj, "VERSION", jsvNewFromString(JS_VERSION)));
@@ -56,17 +64,27 @@ JsVar *jswrap_process_env() {
 }
 
 
-/*JSON{ "type":"staticmethod",
-        "class" : "process", "name" : "memory",
-        "description" : ["Run a Garbage Collection pass, and return an object containing information on memory usage.",
-                         "free : Memory that is available to be used",
-                         "usage : Memory that has been used",
-                         "total : Total memory",
-                         "history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'.",
-                         "On ARM, stackEndAddress is the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion, the bytes above this can be used."],
-        "generate" : "jswrap_process_memory",
-        "return" : ["JsVar", "Information about memory usage"]
-}*/
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "process",
+  "name" : "memory",
+  "generate" : "jswrap_process_memory",
+  "return" : ["JsVar","Information about memory usage"]
+}
+Run a Garbage Collection pass, and return an object containing information on memory usage.
+
+free : Memory that is available to be used
+
+usage : Memory that has been used
+
+total : Total memory
+
+history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
+
+stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+
+Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
+*/
 #ifdef ARM
 extern int _end; // end of ram used (variables)
 extern int _etext; // end of flash text (binary) section

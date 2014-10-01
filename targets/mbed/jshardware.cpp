@@ -58,6 +58,7 @@ void mbedSerialIRQ(uint32_t id, SerialIrq event) {
 // ----------------------------------------------------------------------------
 // for non-blocking IO
 void jshInit() {
+  jshInitDevices();
   systemTimeWasHigh = false;
   systemTimeHigh = 0;
   systemTime.start();
@@ -151,6 +152,9 @@ JsSysTime jshGetSystemTime() {
   return ((JsSysTime)t);// + ((JsSysTime)systemTimeHigh)<<32;
 }
 
+void jshSetSystemTime(JsSysTime time) {
+}
+
 // ----------------------------------------------------------------------------
 
 bool jshPinInput(Pin pin) {
@@ -213,10 +217,10 @@ int jshSPISend(IOEventFlags device, int data) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
-void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data) {
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
 }
 
-void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data) {
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
 }
 
 
