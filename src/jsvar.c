@@ -1158,7 +1158,7 @@ int jsvGetStringIndexOf(JsVar *str, char ch) {
   return -1;
 }
 
-/** Does this string contain only Numeric characters (with optional '-' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
+/** Does this string contain only Numeric characters (with optional '-'/'+' at the front)? NOT '.'/'e' and similar (allowDecimalPoint is for '.' only) */
 bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
   assert(jsvIsString(var));
   JsvStringIterator it;
@@ -1169,10 +1169,10 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     jsvStringIteratorNext(&it);
 
   // skip a minus. if there was one
-  if (jsvStringIteratorHasChar(&it) && jsvStringIteratorGetChar(&it)=='-')
+  if (jsvStringIteratorHasChar(&it) && (jsvStringIteratorGetChar(&it)=='-' || jsvStringIteratorGetChar(&it)=='+'))
     jsvStringIteratorNext(&it);
   // now check...
-  int chars = 0;
+  int chars=0;
   while (jsvStringIteratorHasChar(&it)) {
     chars++;
     char ch = jsvStringIteratorGetChar(&it);
@@ -1185,7 +1185,7 @@ bool jsvIsStringNumericInt(const JsVar *var, bool allowDecimalPoint) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  return true;
+  return chars>0;
 }
 
 /** Does this string contain only Numeric characters? This is for arrays
@@ -1275,6 +1275,9 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (jsvIsString(v)) {
       char buf[32];
       jsvGetString(v, buf, sizeof(buf));
+      if (buf[0]==0) return 0; // empty string -> 0
+      if (!strcmp(buf,"Infinity")) return INFINITY;
+      if (!strcmp(buf,"-Infinity")) return -INFINITY;
       return stringToFloat(buf);
     }
     return NAN;
@@ -1289,9 +1292,14 @@ JsVar *jsvAsNumber(JsVar *var) {
       jsvIsPin(var) ||
       jsvIsNull(var) ||
       jsvIsBoolean(var) ||
-      jsvIsArrayBufferName(var) ||
-      (jsvIsString(var) && (jsvGetStringLength(var)==0 || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))))
+      jsvIsArrayBufferName(var))
     return jsvNewFromInteger(jsvGetInteger(var));
+  if (jsvIsString(var) && (jsvIsEmptyString(var) || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))) {
+    // handle strings like this, in case they're too big for an int
+    char buf[32];
+    jsvGetString(var, buf, sizeof(buf));
+    return jsvNewFromLongInteger(stringToInt(buf));
+  }
   // Else just try and get a float
   return jsvNewFromFloat(jsvGetFloat(var));
 }
