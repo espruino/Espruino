@@ -36,9 +36,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-//#ifdef ESPRUINI
-//#define USE_RTC
-//#endif
+#ifdef ESPRUINI
+#define USE_RTC
+#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -54,7 +54,7 @@
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
-#define RTC_PRESCALER_RECIPROCAL_SHIFT 11
+#define RTC_PRESCALER_RECIPROCAL_SHIFT 10
 #define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
@@ -1403,7 +1403,7 @@ JsSysTime jshGetRTCSystemTime() {
 
   JsSysTime c = (JsSysTime)(fromTimeInDay(&ctime)/1000);
 #endif
-  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
+  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)((((unsigned int)jshRTCPrescaler - (unsigned int)(dl+1))*(unsigned int)jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
 }
 #endif
 
