@@ -4,6 +4,7 @@
             Allow use of DLE (char 16) on an empty line to turn echo off for *just that line*
             Add XON/XOFF flow control on Serial + USB. This is enabled by default for Serial (fix #20)
             Fix irregular timing on Espruino boards with clock crystal (inc rev 1v4)
+            Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)
