@@ -5,6 +5,7 @@
             Add XON/XOFF flow control on Serial + USB. This is enabled by default for Serial (fix #20)
             Fix irregular timing on Espruino boards with clock crystal (inc rev 1v4)
             Sort out 'Number()' constructor not being picky enough - parseFloat now parses 'Infinity' (Fix #325, mostly fix #322)
+            Stop iterator in FOR loop being called once more after a break
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)

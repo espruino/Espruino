@@ -1938,7 +1938,7 @@ NO_INLINE JsVar *jspeStatementFor() {
               hasHadBreak = true;
             }
         }
-        if (JSP_SHOULD_EXECUTE && loopCond) {
+        if (JSP_SHOULD_EXECUTE && loopCond && !hasHadBreak) {
             jslSeekToP(execInfo.lex, &forIterStart);
             if (execInfo.lex->tk != ')') jsvUnLock(jspeExpression());
         }
