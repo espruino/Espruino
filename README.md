@@ -66,7 +66,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * [Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
 * Linux - WORKING
 * STM32VLDISCOVERY - WORKING - limited memory so some features removed
-* STM32F3DISCOVERY - WORKING
+* STM32F3DISCOVERY - setWatch is broken (issue #183)
 * STM32F4DISCOVERY - WORKING
 * STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
@@ -78,7 +78,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * Raspberry Pi - WORKING - GPIO via filesystem (no SPI or I2C)
 * Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
 * MBed platforms - have not worked for a while - full hardware wrapper still required
-* ARDUINOMEGA2560 - has never worked
+* ARDUINOMEGA2560 - compiles, but has never worked. Almost certainly due to ints being 16 bits.
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
 
 
