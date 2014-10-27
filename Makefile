@@ -35,7 +35,7 @@
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # ARDUINOMEGA2560=1
 # ARMINARM=1
-NUCLEOF401RE=1
+# NUCLEOF401RE=1
 # Or nothing for standard linux compile
 #
 # Also:
