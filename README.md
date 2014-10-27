@@ -80,6 +80,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * MBed platforms - have not worked for a while - full hardware wrapper still required
 * ARDUINOMEGA2560 - compiles, but has never worked. Almost certainly due to ints being 16 bits.
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
+* ST Nucleo F401RE - setWatch is broken, early alpha status
 
 
 Building under Linux
