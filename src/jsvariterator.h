@@ -120,7 +120,7 @@ typedef struct JsvObjectIterator {
 } JsvObjectIterator;
 
 static inline void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(arr) || jsvIsObject(obj) || jsvIsFunction(obj));
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
   it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
 }
 
