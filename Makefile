@@ -39,8 +39,8 @@
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-RELEASE=1               # Force release-style compile (no asserts, etc)
-SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+# RELEASE=1               # Force release-style compile (no asserts, etc)
+# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
@@ -113,7 +113,7 @@ USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef ESPRUINI_1V0
 EMBEDDED=1
 USE_DFU=1
