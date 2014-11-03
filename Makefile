@@ -1,6 +1,7 @@
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
 # Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+# Copyright (C) 2014 Alain Sézille for NucleoF401RE specific lines of this file
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -34,6 +35,7 @@
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # ARDUINOMEGA2560=1
 # ARMINARM=1
+# NUCLEOF401RE=1
 # Or nothing for standard linux compile
 #
 # Also:
@@ -113,11 +115,11 @@ USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
+OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINI_1V0
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0 
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0
 USE_GRAPHICS=1
 BOARD=ESPRUINIBOARD_R1_0
 STLIB=STM32F401xx
@@ -197,11 +199,17 @@ BOARD=ECU
 STLIB=STM32F40_41xxx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
+else ifdef NUCLEOF401RE
+EMBEDDED=1
+BOARD=NUCLEOF401RE
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F40_41xxx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
@@ -210,7 +218,7 @@ else ifdef STM32F401CDISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F401CDISCOVERY
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -218,7 +226,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F429_439xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
@@ -427,7 +435,7 @@ src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
 src/jswrap_string.c \
-src/jswrap_waveform.c 
+src/jswrap_waveform.c
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
@@ -853,7 +861,7 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
-#targetlibs/stm32f4/lib/stm324xx_fsmc.c 
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c
 
 ifdef USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
@@ -1122,6 +1130,11 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
+else ifdef NUCLEOF401RE
+# TODO make it smarter with the destination folder, needs to take properly in account the user name
+# TODO this destination folder is somehow defined per default by the logged user when connecting the Nucleo board
+# TODO So at worst should be finnaly used in an environment var rather than hidden in the middle of this file
+	cp $(PROJ_NAME).bin /media/$$USER/NUCLEO;sync
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)

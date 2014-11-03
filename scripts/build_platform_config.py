@@ -21,9 +21,12 @@ import importlib;
 import common;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
-basedir = scriptdir+"/../"
-sys.path.append(basedir+"scripts");
-sys.path.append(basedir+"boards");
+# added os.path.normpath to get a correct reckognition of the subsequent path
+# by Ubuntu 14.04 LTS
+basedir = os.path.normpath(scriptdir+"/../")
+# added leading / as a consequence of use of os.path.normpath
+sys.path.append(basedir+"/scripts");
+sys.path.append(basedir+"/boards");
 
 import pinutils;
 
@@ -78,11 +81,11 @@ if not LINUX:
   flash_page_size = 1024 # just a guess
   flash_saved_code_sector = ""
   if board.chip["family"]=="STM32F1": flash_page_size = 1024 if "subfamily" in board.chip and board.chip["subfamily"]=="MD" else 2048
-  if board.chip["family"]=="STM32F2": 
+  if board.chip["family"]=="STM32F2":
     flash_page_size = 128*1024
     flash_saved_code_sector = 11
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
-  if board.chip["family"]=="STM32F4": 
+  if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
     flash_saved_code_sector = 11
   # F4 has different page sizes in different places
@@ -130,7 +133,7 @@ def codeOutDevice(device):
       codeOut("#define "+device+"_ONSTATE "+("0" if "inverted" in board.devices[device] else "1"))
       if "pinstate" in board.devices[device]:
         codeOut("#define "+device+"_PINSTATE JSHPINSTATE_GPIO_"+board.devices[device]["pinstate"]);
-  
+
 def codeOutDevicePin(device, pin, definition_name):
   if device in board.devices:
     codeOut("#define "+definition_name+" "+toPinDef(board.devices[device][pin]))
@@ -165,7 +168,7 @@ elif board.chip["family"]=="STM32F3":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f30x.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
-  codeOut("#define USB_INT_DEFAULT") # hack 
+  codeOut("#define USB_INT_DEFAULT") # hack
 elif board.chip["family"]=="STM32F4":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f4xx.h"')
@@ -212,7 +215,7 @@ if board.chip["class"]=="STM32":
 #define UTIL_TIMER_IRQHandler TIM5_IRQHandler
 #define UTIL_TIMER_APB1 RCC_APB1Periph_TIM5
 """)
-  elif "subfamily" in board.chip and board.chip["subfamily"]=="MD": 
+  elif "subfamily" in board.chip and board.chip["subfamily"]=="MD":
 
    codeOut("""
 // frustratingly the 103_MD (non-VL) chips in Olimexino don't have any timers other than 1-4
@@ -291,8 +294,8 @@ simpleDevices = [
 usedPinChecks = ["false"];
 ledChecks = ["false"];
 btnChecks = ["false"];
-for device in simpleDevices:  
-  if device in board.devices: 
+for device in simpleDevices:
+  if device in board.devices:
     codeOutDevice(device)
     check = "(PIN)==" + toPinDef(board.devices[device]["pin"])
     if device[:3]=="LED": ledChecks.append(check)
@@ -305,7 +308,7 @@ if "USB" in board.devices:
 
 if "LCD" in board.devices:
   for i in range(0,16):
-    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))    
+    codeOutDevicePin("LCD", "pin_d"+str(i), "LCD_FSMC_D"+str(i))
   codeOutDevicePin("LCD", "pin_rd", "LCD_FSMC_RD")
   codeOutDevicePin("LCD", "pin_wr", "LCD_FSMC_WR")
   codeOutDevicePin("LCD", "pin_cs", "LCD_FSMC_CS")
@@ -317,7 +320,7 @@ if "SD" in board.devices:
     if "pin_cs" in board.devices["SD"]: codeOutDevicePin("SD", "pin_cs", "SD_CS_PIN")
     if "pin_di" in board.devices["SD"]: codeOutDevicePin("SD", "pin_di", "SD_DI_PIN")
     if "pin_do" in board.devices["SD"]: codeOutDevicePin("SD", "pin_do", "SD_DO_PIN")
-    if "pin_clk" in board.devices["SD"]: 
+    if "pin_clk" in board.devices["SD"]:
       codeOutDevicePin("SD", "pin_clk", "SD_CLK_PIN")
       sdClkPin = pinutils.findpin(pins, "P"+board.devices["SD"]["pin_clk"], False)
       spiNum = 0
@@ -329,7 +332,7 @@ if "SD" in board.devices:
 
 for device in ["USB","SD","LCD","JTAG"]:
   if device in board.devices:
-    for entry in board.devices[device]: 
+    for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
 
 codeOut("")
@@ -343,5 +346,3 @@ codeOut("#define IS_PIN_A_BUTTON(PIN) (("+")||(".join(btnChecks)+"))")
 codeOut("""
 #endif // _PLATFORM_CONFIG_H
 """);
-
-
