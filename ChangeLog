@@ -8,7 +8,7 @@
             Stop iterator in FOR loop being called once more after a break
             Fix bug allObjects found with iterating over undefined
             Fix ArrayBuffer.sort issue with element size >1
-            
+            Fix network de-initialisation on Linux
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)
