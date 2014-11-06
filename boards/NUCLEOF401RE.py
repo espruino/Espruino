@@ -20,32 +20,36 @@ info = {
   'name' : "NUCLEOF401RE",
   'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000#tab-3"],
   'default_console' : "EV_SERIAL2", # USART2 par défaut USART2_TX sur PA2, USART2_RX sur PA3
-  'variables' : 5376, # 3040, # TODO A VERIFIER (à priori beaucoup plus car plus de RAM (96K au lieu de 64K pour 3040 var))
+  'variables' : 5376, # (96-12)*1024/16-1
   'binary_name' : 'espruino_%v_nucleof401re.bin',
 };
 chip = {
   'part' : "STM32F401RET6",
   'family' : "STM32F4",
   'package' : "LQFP64",
-  'ram' : 96,
-  'flash' : 512,
+  'ram' : 96, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
+  'flash' : 512, # 0x0008 0000 long, from 0x0800 0000 to 0x0807 FFFF
   'speed' : 84,
   'usart' : 3,
   'spi' : 4,
   'i2c' : 3,
   'adc' : 1,
   'dac' : 0,
-#  'saved_code' : { # TODO A VERIFIER
-#    'address' : 0x08004000, # TODO A VERIFIER dépend de la taille du code compilé
-#    'page_size' : 16384, # size of pages
-#    'page_number' : 1, # number of page we start at (0 based)
-#    'pages' : 3, # number of pages we're using
-#    'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
-#  },
+  'saved_code' : {
+    # code size 225248 = 0x36FE0 starts at 0x0800 0000 ends at 0x0803 6FE0
+    # so we have some left room for Espruino firmware and no risk to clear it while saving
+    'address' : 0x08060000, # flash_saved_code_start 0x0806 0000 to 0x807 5000
+    # we have enough flash space in this single flash page to save all of the ram
+    'page_size' :  131072, # size of pages : on STM32F401, last 2 pages are 128 Kbytes
+    # we use the last flash page only, furthermore it persists after a firmware flash of the board
+    'page_number' : 7, # number of the flash page we save at (0 based, must be coherent with address)
+    'pages' : 1, # count of pages we're using to save RAM to Flash,
+    'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
+  },
   'place_text_section' : 0x08010000, # note flash_available above # TODO A VERIFIER
 };
 # left-right, or top-bottom order
-# TODO A VERIFIER
+# TODO add Arduino. prefix to the pins concerned in left3 and right3
 board = {
   'left' :   [ 'C10', 'C12', 'VDD', 'BOOT0', 'NC', 'NC', 'A13', 'A14', 'A15', 'GND', 'B7', 'C13', 'C14', 'C15', 'H0', 'H1', 'VBAT', 'C2', 'C3'],
   'left2' :  [ 'C11', 'D2', 'E5V', 'GND', 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'NC', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
@@ -60,10 +64,11 @@ devices = {
   'OSC_RTC' : { 'pin_1' : 'C14', # MB1136 C-02 corresponds to a board configured with on-board 32kHz oscillator
                 'pin_2' : 'C15' },
   'LED1' : { 'pin' : 'A5' },
-#  'LED2' : { 'pin' : 'D12' },
-#  'LED3' : { 'pin' : 'D14' },
-#  'LED4' : { 'pin' : 'D15' },
-  'BTN1' : { 'pin' : 'C13' },
+  # TODO make it work with setWatch
+  'BTN1' : { 'pin' : 'C13',
+             'inverted' : True, # 1 when unpressed, 0 when pressed! (Espruino board is 1 when pressed)
+             'pinstate': 'IN_PULLUP', # to specify INPUT, OUPUT PULL_UP PULL_DOWN..
+           },
 #  'USB' : { 'pin_otg_pwr' : 'C0',
 #            'pin_dm' : 'A11',
 #            'pin_dp' : 'A12',
