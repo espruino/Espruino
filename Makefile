@@ -1121,10 +1121,7 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
 else ifdef NUCLEOF401RE
-# TODO make it smarter with the destination folder, needs to take properly in account the user name
-# TODO this destination folder is somehow defined per default by the logged user when connecting the Nucleo board
-# TODO So at worst should be finnaly used in an environment var rather than hidden in the middle of this file
-	cp $(PROJ_NAME).bin /media/$$USER/NUCLEO;sync
+	cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
