@@ -335,6 +335,14 @@ for device in ["USB","SD","LCD","JTAG"]:
     for entry in board.devices[device]:
       if entry[:3]=="pin": usedPinChecks.append("(PIN)==" + toPinDef(board.devices[device][entry])+"/* "+device+" */")
 
+# Specific hacks for nucleo boards
+if "NUCLEO_A" in board.devices:
+  for n,pin in enumerate(board.devices["NUCLEO_A"]):
+      codeOut("#define NUCLEO_A"+str(n)+" "+toPinDef(pin))
+if "NUCLEO_D" in board.devices:
+  for n,pin in enumerate(board.devices["NUCLEO_D"]):
+      codeOut("#define NUCLEO_D"+str(n)+" "+toPinDef(pin))
+
 codeOut("")
 
 codeOut("// definition to avoid compilation when Pin/platform config is not defined")

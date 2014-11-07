@@ -201,6 +201,7 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF401RE
 EMBEDDED=1
+NUCLEO=1
 BOARD=NUCLEOF401RE
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -997,6 +998,10 @@ targets/linux/jshardware.c
 LIBS += -lm # maths lib
 endif
 
+ifdef NUCLEO
+WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
+endif
+
 SOURCES += $(WRAPPERSOURCES)
 SOURCEOBJS = $(SOURCES:.c=.o) $(CPPSOURCES:.cpp=.o)
 OBJS = $(SOURCEOBJS) $(PRECOMPILED_OBJS)
@@ -1131,7 +1136,8 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
 else ifdef NUCLEOF401RE
-	cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync
+	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
+	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
