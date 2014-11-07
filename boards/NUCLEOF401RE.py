@@ -53,8 +53,6 @@ chip = {
 board = {
   'left' :   [ 'C10', 'C12', 'VDD', 'BOOT0', 'NC', 'NC', 'A13', 'A14', 'A15', 'GND', 'B7', 'C13', 'C14', 'C15', 'H0', 'H1', 'VBAT', 'C2', 'C3'],
   'left2' :  [ 'C11', 'D2', 'E5V', 'GND', 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'NC', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
-  'left3' :  [ 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
-  'right3' : [ 'B8', 'B9', 'AVDD', 'GND', 'A5', 'A6', 'A7', 'B6','C7','A9','A8','B10','B4','B5','B3','A10','A2','A3'],
   'right2' : [ 'C9', 'B8', 'B9', 'AVDD', 'GND', 'A5', 'A6', 'A7', 'B6','C7','A9','A8','B10','B4','B5','B3','A10','A2','A3'],
   'right' :  [ 'C8', 'C6', 'C5', 'U5V', 'NC', 'A12', 'A11', 'B12', 'NC', 'GND', 'B2', 'B1', 'B15', 'B14', 'B13', 'AGND', 'C4', 'NC', 'NC'],
 };
@@ -81,8 +79,8 @@ devices = {
 
 board_css = """
 #board {
-  width: 680px;
-  height: 1020px;
+  width: 713px;
+  height: 800px;
   left: 200px;
   background-image: url(img/NUCLEOF401RE.jpg);
 }
@@ -90,21 +88,21 @@ board_css = """
   height: 1020px;
 }
 #left {
-  top: 375px;
-  right: 590px;
+  top: 310px;
+  right: 640px;
 }
 #left2 {
-  top: 375px;
-  left: 105px;
+  top: 310px;
+  left: 85px;
 }
 
 #right  {
-  top: 375px;
-  left: 550px;
+  top: 310px;
+  left: 615px;
 }
 #right2  {
-  top: 375px;
-  right: 145px;
+  top: 310px;
+  right: 105px;
 }
 """;
 
