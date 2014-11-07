@@ -987,7 +987,8 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
  #elif defined(STM32F2) || defined(STM32F4) 
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
+                         RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
                          RCC_AHB1Periph_GPIOC | 
@@ -1007,6 +1008,7 @@ void jshInit() {
         RCC_APB2Periph_GPIOE |
         RCC_APB2Periph_GPIOF |
         RCC_APB2Periph_GPIOG |
+        RCC_APB2Periph_SYSCFG |
         RCC_APB2Periph_AFIO, ENABLE);
  #endif
 
