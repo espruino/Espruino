@@ -80,6 +80,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * MBed platforms - have not worked for a while - full hardware wrapper still required
 * ARDUINOMEGA2560 - compiles, but has never worked. Almost certainly due to ints being 16 bits.
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
+* ST NUCLEO-F401RE - early alpha status
 
 
 Building under Linux
@@ -89,9 +90,11 @@ Espruino is easy to build under Linux, and it is possible to build under MacOS w
 
 ### Building for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
   
-We suggest that you use the CodeSourcery GCC compiler, but paths in Makefile may need changing...
+The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
-```  BOARDNAME=1 RELEASE=1 make```
+Download the compiler, set up your path so you have access to it, and run:
+
+```YOUR_BOARD_NAME=1 RELEASE=1 make```
 
 * See the top of Makefile for board names
 * Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)

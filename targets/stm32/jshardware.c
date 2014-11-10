@@ -979,6 +979,7 @@ void jshInit() {
   // enable clocks
  #if defined(STM32F3)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
                          RCC_AHBPeriph_GPIOA |
                          RCC_AHBPeriph_GPIOB |
@@ -987,7 +988,8 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
  #elif defined(STM32F2) || defined(STM32F4) 
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
+                         RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
                          RCC_AHB1Periph_GPIOC | 
@@ -1451,7 +1453,8 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 #ifdef STM32F1
   RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
-#else
+  RTC_WaitForLastTask();
+#else // !STM32F1
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
 
@@ -1471,12 +1474,14 @@ void jshSetSystemTime(JsSysTime newTime) {
 
   RTC_SetTime(RTC_Format_BIN, &time);
   RTC_SetDate(RTC_Format_BIN, &date);
-#endif
+  RTC_WaitForSynchro();
+#endif // !STM32F1
+
 
   hasSystemSlept = true;
-#else
+#else // !USE_RTC
   SysTickMajor = newTime;
-#endif
+#endif // !USE_RTC
   jshInterruptOn();
   jshGetSystemTime(); // force update of the time
 }

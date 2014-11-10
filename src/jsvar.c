@@ -1807,26 +1807,36 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 void jsvRemoveChild(JsVar *parent, JsVar *child) {
     assert(jsvHasChildren(parent));
     JsVarRef childref = jsvGetRef(child);
+    bool wasChild = false;
     // unlink from parent
-    if (jsvGetFirstChild(parent) == childref)
+    if (jsvGetFirstChild(parent) == childref) {
       jsvSetFirstChild(parent, jsvGetNextSibling(child));
-    if (jsvGetLastChild(parent) == childref)
+      wasChild = true;
+    }
+    if (jsvGetLastChild(parent) == childref) {
       jsvSetLastChild(parent, jsvGetPrevSibling(child));
+      wasChild = true;
+    }
     // unlink from child list
     if (jsvGetPrevSibling(child)) {
         JsVar *v = jsvLock(jsvGetPrevSibling(child));
+        assert(jsvGetNextSibling(v) == jsvGetRef(child));
         jsvSetNextSibling(v, jsvGetNextSibling(child));
         jsvUnLock(v);
+        wasChild = true;
     }
     if (jsvGetNextSibling(child)) {
         JsVar *v = jsvLock(jsvGetNextSibling(child));
+        assert(jsvGetPrevSibling(v) == jsvGetRef(child));
         jsvSetPrevSibling(v, jsvGetPrevSibling(child));
         jsvUnLock(v);
+        wasChild = true;
     }
+
     jsvSetPrevSibling(child, 0);
     jsvSetNextSibling(child, 0);
-
-    jsvUnRef(child);
+    if (wasChild)
+      jsvUnRef(child);
 }
 
 void jsvRemoveAllChildren(JsVar *parent) {

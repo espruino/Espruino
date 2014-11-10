@@ -120,7 +120,7 @@ typedef struct JsvObjectIterator {
 } JsvObjectIterator;
 
 static inline void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(arr) || jsvIsObject(obj) || jsvIsFunction(obj));
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
   it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
 }
 
@@ -205,6 +205,7 @@ JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it);
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it);
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value);
+void   jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value);
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it);
 bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it);
