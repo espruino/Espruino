@@ -17,7 +17,7 @@
 
 import pinutils;
 info = {
-  'name' : "NUCLEOF401RE",
+  'name' : "ST NUCLEO-F401RE",
   'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000"],
   'default_console' : "EV_SERIAL2", # USART2 par défaut USART2_TX sur PA2, USART2_RX sur PA3
   'variables' : 5376, # (96-12)*1024/16-1
