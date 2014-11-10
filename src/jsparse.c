@@ -1858,7 +1858,7 @@ NO_INLINE JsVar *jspeStatementFor() {
         }
         assert(!foundPrototype);
         jsvIteratorFree(&it);
-      } else {
+      } else if (!jsvIsUndefined(array)) {
         jsExceptionHere(JSET_ERROR, "FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
       }
     }
