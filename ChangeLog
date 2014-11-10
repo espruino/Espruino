@@ -1,10 +1,20 @@
+     1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
+
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
             Added fs.stat and File.seek (fix #429, fix #430)
             Allow use of DLE (char 16) on an empty line to turn echo off for *just that line*
             Add XON/XOFF flow control on Serial + USB. This is enabled by default for Serial (fix #20)
             Fix irregular timing on Espruino boards with clock crystal (inc rev 1v4)
-            Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
+            Sort out 'Number()' constructor not being picky enough - parseFloat now parses 'Infinity' (Fix #325, mostly fix #322)
+            Stop iterator in FOR loop being called once more after a break
+            Fix bug allObjects found with iterating over undefined
+            Fix ArrayBuffer.sort issue with element size >1
+            Fix network de-initialisation on Linux
+            Fix reference count issue caused by removing a timer that had already been removed
+            Power up SYSCFG on F2/3/4 parts, allowing watch to work on ports other than A
+            Wait after setting the RTC time, to allow registers to update (fix #438, fix #441)
+            Now using gcc-arm-none-eabi-4_8-2014q3 for compilation - CodeSourcery stopped being supported
 
      1v70 : Make pipe remove its drain/close listeners. Stops out of memory for repeated piping.
             Fix parseInt for values too large to go in an int (#406)

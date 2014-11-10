@@ -44,9 +44,11 @@ void jswrap_http_init() {
 }*/
 void jswrap_http_kill() {
   JsNetwork net;
-  if (!networkGetFromVar(&net)) return;
-  httpKill(&net);
-  networkFree(&net);
+  if (networkWasCreated()) {
+    if (!networkGetFromVar(&net)) return;
+    httpKill(&net);
+    networkFree(&net);
+  }
 }
 
 

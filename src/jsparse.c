@@ -1805,60 +1805,62 @@ NO_INLINE JsVar *jspeStatementFor() {
     execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
 
-    if (jsvIsIterable(array)) {
-      JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(array);
-      JsVar *foundPrototype = 0;
+    if (JSP_SHOULD_EXECUTE) {
+      if (jsvIsIterable(array)) {
+        JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(array);
+        JsVar *foundPrototype = 0;
 
-      JsvIterator it;
-      jsvIteratorNew(&it, array);
-      bool hasHadBreak = false;
-      while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
-          JsVar *loopIndexVar = jsvIteratorGetKey(&it);
-          bool ignore = false;
-          if (checkerFunction && checkerFunction(loopIndexVar)) {
-            ignore = true;
-            if (jsvIsString(loopIndexVar) &&
-                jsvIsStringEqual(loopIndexVar, JSPARSE_INHERITS_VAR))
-              foundPrototype = jsvSkipName(loopIndexVar);
-          }
-          if (!ignore) {
-            JsVar *indexValue = jsvIsName(loopIndexVar) ?
-                                  jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
-                                  loopIndexVar;
-            if (indexValue) { // could be out of memory
-              assert(!jsvIsName(indexValue) && jsvGetRefs(indexValue)==0);
-              jsvSetValueOfName(forStatement, indexValue);
-              if (indexValue!=loopIndexVar) jsvUnLock(indexValue);
-  
-              jsvIteratorNext(&it);
- 
-              jslSeekToP(execInfo.lex, &forBodyStart);
-              execInfo.execute |= EXEC_IN_LOOP;
-              jsvUnLock(jspeBlockOrStatement());
-              execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
-
-              if (execInfo.execute == EXEC_CONTINUE)
-                execInfo.execute = EXEC_YES;
-              if (execInfo.execute == EXEC_BREAK) {
-                execInfo.execute = EXEC_YES;
-                hasHadBreak = true;
-              }
+        JsvIterator it;
+        jsvIteratorNew(&it, array);
+        bool hasHadBreak = false;
+        while (JSP_SHOULD_EXECUTE && jsvIteratorHasElement(&it) && !hasHadBreak) {
+            JsVar *loopIndexVar = jsvIteratorGetKey(&it);
+            bool ignore = false;
+            if (checkerFunction && checkerFunction(loopIndexVar)) {
+              ignore = true;
+              if (jsvIsString(loopIndexVar) &&
+                  jsvIsStringEqual(loopIndexVar, JSPARSE_INHERITS_VAR))
+                foundPrototype = jsvSkipName(loopIndexVar);
             }
-          } else
-            jsvIteratorNext(&it);
-          jsvUnLock(loopIndexVar);
+            if (!ignore) {
+              JsVar *indexValue = jsvIsName(loopIndexVar) ?
+                                    jsvCopyNameOnly(loopIndexVar, false/*no copy children*/, false/*not a name*/) :
+                                    loopIndexVar;
+              if (indexValue) { // could be out of memory
+                assert(!jsvIsName(indexValue) && jsvGetRefs(indexValue)==0);
+                jsvSetValueOfName(forStatement, indexValue);
+                if (indexValue!=loopIndexVar) jsvUnLock(indexValue);
 
-          if (!jsvIteratorHasElement(&it) && foundPrototype) {
-            jsvIteratorFree(&it);
-            jsvIteratorNew(&it, foundPrototype);
-            jsvUnLock(foundPrototype);
-            foundPrototype = 0;
-          }
+                jsvIteratorNext(&it);
+
+                jslSeekToP(execInfo.lex, &forBodyStart);
+                execInfo.execute |= EXEC_IN_LOOP;
+                jsvUnLock(jspeBlockOrStatement());
+                execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+  
+                if (execInfo.execute == EXEC_CONTINUE)
+                  execInfo.execute = EXEC_YES;
+                if (execInfo.execute == EXEC_BREAK) {
+                  execInfo.execute = EXEC_YES;
+                  hasHadBreak = true;
+                }
+              }
+            } else
+              jsvIteratorNext(&it);
+            jsvUnLock(loopIndexVar);
+
+            if (!jsvIteratorHasElement(&it) && foundPrototype) {
+              jsvIteratorFree(&it);
+              jsvIteratorNew(&it, foundPrototype);
+              jsvUnLock(foundPrototype);
+              foundPrototype = 0;
+            }
+        }
+        assert(!foundPrototype);
+        jsvIteratorFree(&it);
+      } else if (!jsvIsUndefined(array)) {
+        jsExceptionHere(JSET_ERROR, "FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
       }
-      assert(!foundPrototype);
-      jsvIteratorFree(&it);
-    } else {
-      jsExceptionHere(JSET_ERROR, "FOR loop can only iterate over Arrays, Strings or Objects, not %t", array);
     }
     jslSeekToP(execInfo.lex, &forBodyEnd);
     jslCharPosFree(&forBodyStart);
@@ -1938,7 +1940,7 @@ NO_INLINE JsVar *jspeStatementFor() {
               hasHadBreak = true;
             }
         }
-        if (JSP_SHOULD_EXECUTE && loopCond) {
+        if (JSP_SHOULD_EXECUTE && loopCond && !hasHadBreak) {
             jslSeekToP(execInfo.lex, &forIterStart);
             if (execInfo.lex->tk != ')') jsvUnLock(jspeExpression());
         }

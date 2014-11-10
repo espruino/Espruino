@@ -50,6 +50,10 @@ espruino_#v##_stm32f3discovery.bin
 espruino_#v##_stm32f4discovery.bin
    - STM32F4DISCOVERY board
 
+espruino_#v##_nucleof401re.bin
+   - NUCLEO-F401RE board
+
+
 espruino_#v##_raspberrypi
    - Raspberry Pi executable (just copy it to the device and run it)
    NOTE: There is GPIO support (which requires you to run Espruino as root)

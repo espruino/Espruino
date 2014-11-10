@@ -125,14 +125,17 @@ int chtod(char ch) {
 long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   // skip whitespace (strange parseInt behaviour)
   while (isWhitespace(*s)) s++;
-  const char *numberStart = s;
 
   bool isNegated = false;
   long long v = 0;
   if (*s == '-') {
     isNegated = true;
     s++;
+  } else if (*s == '+') {
+    s++;
   }
+
+  const char *numberStart = s;
 
   int radix = getRadix(&s, forceRadix, hasError);
   if (!radix) return 0;
@@ -307,18 +310,24 @@ unsigned int rand() {
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
+
+  bool isNegated = false;
+  if (*s == '-') {
+    isNegated = true;
+    s++;
+  } else if (*s == '+') {
+    s++;
+  }
+
   const char *numberStart = s;
 
   int radix = getRadix(&s, forceRadix, 0);
   if (!radix) return NAN;
 
-  bool isNegated = false;
+
   JsVarFloat v = 0;
   JsVarFloat mul = 0.1;
-  if (*s == '-') {
-    isNegated = true;
-    s++;
-  }
+
   // handle integer part
   while (*s) {
     int digit = chtod(*s);
@@ -370,7 +379,7 @@ JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
     }
   }
   // check that we managed to parse something at least
-  if (numberStart==s) return NAN;
+  if (numberStart==s || (numberStart[0]=='.' && numberStart[1]==0)) return NAN;
 
   if (isNegated) return -v;
   return v;

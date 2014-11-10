@@ -29,16 +29,37 @@ This is the built-in JavaScript class for numbers.
   "name" : "Number",
   "generate" : "jswrap_number_constructor",
   "params" : [
-    ["value","JsVar","A value to be converted to a number"]
+    ["value","JsVarArray","A single value to be converted to a number"]
   ],
   "return" : ["JsVar","A Number object"]
 }
 Creates a number
 */
-JsVar *jswrap_number_constructor(JsVar *val) {
-  // FIXME: difference between Number()==0 and Number(udefined)==NaN
-  if (jsvIsUndefined(val)) return jsvNewFromInteger(0);
-  return jsvAsNumber(val);
+JsVar *jswrap_number_constructor(JsVar *args) {
+  if (jsvGetArrayLength(args)==0) return jsvNewFromInteger(0);
+  JsVar *val = jsvGetArrayItem(args, 0);
+  JsVar *result = 0;
+
+  if (jsvIsArray(val)) {
+    JsVarInt l = jsvGetArrayLength(val);
+    if (l==0) result = jsvNewFromInteger(0);
+    else if (l==1) {
+      JsVar *n = jsvGetArrayItem(val, 0);
+      if (jsvIsString(n) && jsvIsEmptyString(n)) result = jsvNewFromInteger(0);
+      else if (!jsvIsBoolean(n)) result=jsvAsNumber(n);
+      jsvUnLock(n);
+    } // else NaN
+  } else if (jsvIsUndefined(val) || jsvIsObject(val))
+    result = 0;
+  else {
+    if (jsvIsString(val) && jsvIsEmptyString(val)) {
+      result = jsvNewFromInteger(0);
+    } else
+      result = jsvAsNumber(val);
+  }
+  jsvUnLock(val);
+  if (result) return result;
+  return jsvNewFromFloat(NAN);
 }
 
 

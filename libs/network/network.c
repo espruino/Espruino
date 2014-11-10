@@ -107,6 +107,7 @@ void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip
 
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
+  if (!net->networkVar) return;
   net->data.type = type;
   net->data.device = EV_NONE;
   net->data.pinCS = PIN_UNDEFINED;
@@ -117,12 +118,22 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   networkGetFromVar(net);
 }
 
+bool networkWasCreated() {
+  JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
+  if (v) {
+    jsvUnLock(v);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool networkGetFromVar(JsNetwork *net) {
   net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
   if (!net->networkVar) {
 #ifdef LINUX
     networkCreate(net, JSNETWORKTYPE_SOCKET);
-    return true;
+    return net->networkVar != 0;
 #else
     return false;
 #endif
