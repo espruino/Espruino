@@ -130,7 +130,7 @@ SECTIONS
 
 if "place_text_section" in board.chip:
   codeOut("""    /* In the .py file we were told to place text here (to skip out what was before) */
-    . = ALIGN("""+hex(board.chip["place_text_section"]-FLASH_BASE)+"""); /* hacky! really want it absolute */
+    . = ALIGN("""+hex(board.chip["place_text_section"] & 0x00FFFFFF)+"""); /* hacky! really want it absolute */
 """);
 
 codeOut("""

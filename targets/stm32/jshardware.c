@@ -1453,7 +1453,8 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 #ifdef STM32F1
   RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
-#else
+  RTC_WaitForLastTask();
+#else // !STM32F1
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
 
@@ -1473,12 +1474,14 @@ void jshSetSystemTime(JsSysTime newTime) {
 
   RTC_SetTime(RTC_Format_BIN, &time);
   RTC_SetDate(RTC_Format_BIN, &date);
-#endif
+  RTC_WaitForSynchro();
+#endif // !STM32F1
+
 
   hasSystemSlept = true;
-#else
+#else // !USE_RTC
   SysTickMajor = newTime;
-#endif
+#endif // !USE_RTC
   jshInterruptOn();
   jshGetSystemTime(); // force update of the time
 }
