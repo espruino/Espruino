@@ -155,9 +155,9 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
 }
 Set the digital value of the given pin
 
-If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB.
+If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated as an array of bits where the last array element is the least significant bit. 
 
-In the case of an array of pins, pin values are set LSB first (from the right-hand side of the array of pins).
+In this case, pin values are set last significant bit first (from the right-hand side of the array of pins). This means you can use the same pin multiple times, for example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
 */
 void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
   if (jsvIsArray(pinVar)) {
@@ -189,7 +189,7 @@ void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
 }
 Get the digital value of the given pin
 
-If pin is an array of pins, eg. ```[A2,A1,A0]``` the value will be treated as an integer where the first array element is the MSB
+If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
 */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   if (jsvIsArray(pinVar)) {
