@@ -53,7 +53,8 @@ endif
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
-CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
+CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option 
+LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")

@@ -117,7 +117,7 @@ JsSysTime jshLastWokenByUSB = 0;
 
 
 
-static inline uint8_t pinToEVEXTI(Pin ipin) {
+static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
   /*if (pin==JSH_PIN0 ) return EV_EXTI0;
@@ -140,7 +140,7 @@ static inline uint8_t pinToEVEXTI(Pin ipin) {
   return EV_NONE;*/
 }
 
-static inline uint16_t stmPin(Pin ipin) {
+static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint16_t)(1 << (pin-JSH_PIN0));
 /*  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
@@ -162,7 +162,7 @@ static inline uint16_t stmPin(Pin ipin) {
   jsExceptionHere(JSET_INTERNALERROR, "stmPin");
   return GPIO_Pin_0;*/
 }
-static inline uint32_t stmExtI(Pin ipin) {
+static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint32_t)(1 << (pin-JSH_PIN0));
 /*  if (pin==JSH_PIN0 ) return EXTI_Line0;
@@ -185,7 +185,7 @@ static inline uint32_t stmExtI(Pin ipin) {
   return EXTI_Line0;*/
 }
 
-static inline GPIO_TypeDef *stmPort(Pin pin) {
+static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
   /*if (port == JSH_PORTA) return GPIOA;
@@ -202,7 +202,7 @@ static inline GPIO_TypeDef *stmPort(Pin pin) {
   return GPIOA;*/
 }
 
-static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
+static ALWAYS_INLINE uint8_t stmPinSource(JsvPinInfoPin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(pin-JSH_PIN0);
   /*if (pin==JSH_PIN0 ) return GPIO_PinSource0;
@@ -225,7 +225,7 @@ static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
   return GPIO_PinSource0;*/
 }
 
-static inline uint8_t stmPortSource(Pin pin) {
+static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
   return (uint8_t)(port-JSH_PORTA);
 /*#ifdef STM32API2
@@ -254,7 +254,7 @@ static inline uint8_t stmPortSource(Pin pin) {
 #endif*/
 }
 
-static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
+static ALWAYS_INLINE ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   if (analog & JSH_ANALOG1) return ADC1;
   if (analog & JSH_ANALOG2) return ADC2;
   if (analog & JSH_ANALOG3) return ADC3;
@@ -265,7 +265,7 @@ static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   return ADC1;
 }
 
-static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
+static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
   switch (analog & JSH_MASK_ANALOG_CH) {
 #ifndef STM32F3XX
   case JSH_ANALOG_CH0  : return ADC_Channel_0;
@@ -292,7 +292,7 @@ static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 }
 
 #ifdef STM32API2
-static inline uint8_t functionToAF(JshPinFunction func) {
+static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 #if defined(STM32F4) || defined(STM32F2)
   switch (func & JSH_MASK_TYPE) {
   case JSH_SPI1    : return GPIO_AF_SPI1;
@@ -822,7 +822,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
   BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
 
-inline void jshPinSetState(Pin pin, JshPinState state) {
+ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -943,7 +943,7 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
 #endif
 }
 
-inline void jshPinSetValue(Pin pin, bool value) {
+ALWAYS_INLINE void jshPinSetValue(Pin pin, bool value) {
 #ifdef STM32API2
     if (value)
       GPIO_SetBits(stmPort(pin), stmPin(pin));
@@ -957,11 +957,11 @@ inline void jshPinSetValue(Pin pin, bool value) {
 #endif
 }
 
-inline bool jshPinGetValue(Pin pin) {
+ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
-static inline unsigned int getSystemTimerFreq() {
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
   return SystemCoreClock;
 }
 

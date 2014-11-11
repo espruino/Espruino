@@ -83,7 +83,7 @@ NO_INLINE bool jsiEcho() {
   return ((jsiStatus&JSIS_ECHO_OFF_MASK)==0);
 }
 
-static inline bool jsiShowInputLine() {
+static bool jsiShowInputLine() {
   return jsiEcho() && !inputLineRemoved;
 }
 

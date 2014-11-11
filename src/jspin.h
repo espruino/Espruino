@@ -196,18 +196,7 @@ Pin jshGetPinFromString(const char *s);
 void jshGetPinString(char *result, Pin pin);
 
 /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
-static inline Pin jshGetPinFromVar(JsVar *pinv) {
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    return jshGetPinFromString(&pinv->varData.str[0]);
-  } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
-    return (Pin)jsvGetInteger(pinv);
-  } else return PIN_UNDEFINED;
-}
-
-static inline Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
-  Pin pin = jshGetPinFromVar(pinv);
-  jsvUnLock(pinv);
-  return pin;
-}
+Pin jshGetPinFromVar(JsVar *pinv);
+Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
 
 #endif //JSPIN_H

@@ -589,6 +589,12 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   return var;
 }
 
+void jsvMakeFunctionParameter(JsVar *v) {
+  assert(jsvIsString(v));
+  if (!jsvIsName(v)) jsvMakeIntoVariableName(v,0);
+  v->flags = (JsVarFlags)(v->flags | JSV_NATIVE);
+}
+
 JsVar *jsvNewFromPin(int pin) {
   JsVar *v = jsvNewFromInteger((JsVarInt)pin);
   if (v) {
@@ -861,6 +867,13 @@ JsVar *jsvAsArrayIndex(JsVar *index) {
 
   // else if it's not a simple numeric type, convert it to a string
   return jsvAsString(index, false);
+}
+
+/** Same as jsvAsArrayIndex, but ensures that 'index' is unlocked */
+JsVar *jsvAsArrayIndexAndUnLock(JsVar *a) {
+  JsVar *b = jsvAsArrayIndex(a);
+  jsvUnLock(a);
+  return b;
 }
 
 /// Returns true if the string is empty - faster than jsvGetStringLength(v)==0
@@ -1413,6 +1426,20 @@ JsVar *jsvSkipToLastName(JsVar *a) {
   return 0; // not called
 }
 
+/** Same as jsvSkipName, but ensures that 'a' is unlocked */
+JsVar *jsvSkipNameAndUnLock(JsVar *a) {
+  JsVar *b = jsvSkipName(a);
+  jsvUnLock(a);
+  return b;
+}
+
+/** Same as jsvSkipOneName, but ensures that 'a' is unlocked */
+JsVar *jsvSkipOneNameAndUnLock(JsVar *a) {
+  JsVar *b = jsvSkipOneName(a);
+  jsvUnLock(a);
+  return b;
+}
+
 
 /*
 jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
@@ -1848,6 +1875,13 @@ void jsvRemoveAllChildren(JsVar *parent) {
     }
 }
 
+void jsvRemoveNamedChild(JsVar *parent, const char *name) {
+  JsVar *child = jsvFindChildFromString(parent, name, false);
+  if (child) {
+    jsvRemoveChild(parent, child);
+    jsvUnLock(child);
+  }
+}
 
 /// Check if the given name is a child of the parent
 bool jsvIsChild(JsVar *parent, JsVar *child) {
