@@ -204,6 +204,8 @@ int jshSPISend(IOEventFlags device, int data);
 void jshSPISend16(IOEventFlags device, int data);
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
+/** Wait until SPI send is finished, and flush all received data */
+void jshSPIWait(IOEventFlags device);
 
 typedef struct {
   Pin pinSCL;

@@ -2241,6 +2241,15 @@ void jshSPISet16(IOEventFlags device, bool is16) {
   SPI_DataSizeConfig(SPI, is16 ? SPI_DataSize_16b : SPI_DataSize_8b);
 }
 
+/** Wait until SPI send is finished, */
+void jshSPIWait(IOEventFlags device) {
+  int n = device-EV_SPI1;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
+  /* Clear SPI receive buffer */
+  jshSPIBufTail[n] = jshSPIBufHead[n];
+}
 
 /** Set up I2S, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
