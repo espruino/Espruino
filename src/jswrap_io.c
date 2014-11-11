@@ -126,21 +126,37 @@ void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   "params" : [
     ["pin","pin","The pin to use"],
     ["value","bool","Whether to pulse high (true) or low (false)"],
-    ["time","float","A time in milliseconds"]
+    ["time","JsVar","A time in milliseconds, or an array of times (in which case a square wave will be output starting with a pulse of 'value')"]
   ]
 }
 Pulse the pin with the value for the given time in milliseconds. It uses a hardware timer to produce accurate pulses, and returns immediately (before the pulse has finished). Use `digitalPulse(A0,1,0)` to wait until a previous pulse has finished.
 
-eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms
+eg. `digitalPulse(A0,1,5);` pulses A0 high for 5ms. `digitalPulse(A0,1,[5,2,4]);` pulses A0 high for 5ms, low for 2ms, and high for 4ms
 
 digitalPulse is for SHORT pulses that need to be very accurate. If you're doing anything over a few milliseconds, use setTimeout instead.
 */
-void jswrap_io_digitalPulse(Pin pin, bool value, JsVarFloat time) {
-  if (time<0 || isnan(time)) {
-    jsExceptionHere(JSET_ERROR, "Pulse Time given for digitalPulse is less than 0, or not a number");
+void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
+  if (jsvIsNumeric(times)) {
+    JsVarFloat time = jsvGetFloat(times);
+    if (time<0 || isnan(time)) {
+      jsExceptionHere(JSET_ERROR, "Pulse Time given for digitalPulse is less than 0, or not a number");
+    } else {
+      jshPinPulse(pin, value, time);
+    }
+  } else if (jsvIsIterable(times)) {
+    // iterable, so output a square wave
+    JsvIterator it;
+    jsvIteratorNew(&it, times);
+    while (jsvIteratorHasElement(&it)) {
+      JsVarFloat time = jsvIteratorGetFloatValue(&it);
+      if (time>=0 && !isnan(time))
+        jshPinPulse(pin, value, time);
+      value = !value;
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
   } else {
-    //jsPrintInt((JsVarInt)(time*1000));
-    jshPinPulse(pin, value, time);
+    jsExceptionHere(JSET_ERROR, "Expecting a number or array, got %t", times);
   }
 }
 

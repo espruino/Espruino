@@ -261,15 +261,10 @@ void jshKickUSBWatchdog();
 void jshSPIPush(IOEventFlags device, uint16_t data);
 #endif
 
-#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
-#else
-static JsVarFloat jshReadTemperature() { return NAN; };
-static JsVarFloat jshReadVRef()  { return NAN; };
-#endif
 
 #ifdef STM32F3
 #define SPI_I2S_SendData SPI_I2S_SendData16

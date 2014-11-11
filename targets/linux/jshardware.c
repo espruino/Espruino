@@ -370,6 +370,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 int jshPinAnalogFast(Pin pin) {
+  return 0;
 }
 
 void jshPinOutput(Pin pin, bool value) {
@@ -452,6 +453,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
+  return 0;
 }
 
 /** Send 16 bit data through the given SPI device. */
@@ -555,3 +557,6 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 
 void jshEnableWatchDog(JsVarFloat timeout) {
 }
+
+JsVarFloat jshReadTemperature() { return NAN; };
+JsVarFloat jshReadVRef()  { return NAN; };

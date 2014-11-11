@@ -245,4 +245,7 @@ void jshUtilTimerReschedule(JsSysTime period) {
 void jshUtilTimerStart(JsSysTime period) {
 }
 
+JsVarFloat jshReadTemperature() { return NAN; };
+JsVarFloat jshReadVRef()  { return NAN; };
+
 }

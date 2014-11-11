@@ -576,26 +576,29 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
   JsVar **args = 0;
   size_t argC = 0;
 
-  if (jsvIsArray(argsArray)) {
-    argC = (size_t)jsvGetArrayLength(argsArray);
-    if (argC>64) argC=64; // sanity
+  if (jsvIsIterable(argsArray)) {
+    argC = (size_t)jsvGetLength(argsArray);
+    if (argC>64) {
+      jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum 64 arguments, got %d", argC);
+      return 0;
+    }
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
-
-
     for (i=0;i<argC;i++) args[i] = 0;
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, argsArray);
-    while (jsvObjectIteratorHasValue(&it)) {
-      JsVarInt idx = jsvGetIntegerAndUnLock(jsvObjectIteratorGetKey(&it));
+
+    JsvIterator it;
+    jsvIteratorNew(&it, argsArray);
+    while (jsvIteratorHasElement(&it)) {
+      JsVarInt idx = jsvGetIntegerAndUnLock(jsvIteratorGetKey(&it));
       if (idx>=0 && idx<(int)argC) {
         assert(!args[idx]); // just in case there were dups
-        args[idx] = jsvObjectIteratorGetValue(&it);
+        args[idx] = jsvIteratorGetValue(&it);
       }
-      jsvObjectIteratorNext(&it);
+      jsvIteratorNext(&it);
     }
-    jsvObjectIteratorFree(&it);
+    jsvIteratorFree(&it);
   } else if (!jsvIsUndefined(argsArray)) {
-    jsWarn("Second argument to Function.apply must be an array");
+    jsExceptionHere(JSET_ERROR, "Second argument to Function.apply must be iterable, got %t", argsArray);
+    return 0;
   }
 
   JsVar *r = jspeFunctionCall(parent, 0, thisArg, false, (int)argC, args);
