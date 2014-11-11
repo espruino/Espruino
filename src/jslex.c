@@ -195,7 +195,7 @@ const jslJumpTableEnum jslJumpTable[jslJumpTableEnd+1-jslJumpTableStart] = {
 };
 
 // handle a single char
-static void jslSingleChar(JsLex *lex) {
+static ALWAYS_INLINE void jslSingleChar(JsLex *lex) {
   lex->tk = lex->currCh;
   jslGetNextCh(lex);
 }

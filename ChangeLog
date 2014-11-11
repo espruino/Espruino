@@ -1,6 +1,7 @@
      1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
             Allow Function.apply to take typed arrays (fix #442)
             Allow arrays to be passed to digitalPulse so square waves can be created easily
+            Force inlining of jsvLock/UnLock on most systems - improves performance a lot
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
