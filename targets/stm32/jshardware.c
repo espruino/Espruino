@@ -1665,9 +1665,9 @@ int jshPinAnalogFast(Pin pin) {
   return jshAnalogRead(pinInfo[pin].analog, true);
 }
 
-#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature() {
+#if defined(STM32F1) || defined(STM32F4)
   // enable sensor
   ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
@@ -1678,10 +1678,14 @@ JsVarFloat jshReadTemperature() {
   // disable sensor
   ADC_TempSensorVrefintCmd(DISABLE);
   return ((V_TEMP_25 - vSense) / V_TEMP_SLOPE) + 25;
+#else
+  return NAN;
+#endif
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
+#if defined(STM32F1) || defined(STM32F4)
   // enable sensor
   ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
@@ -1690,8 +1694,10 @@ JsVarFloat jshReadVRef() {
   // disable sensor
   ADC_TempSensorVrefintCmd(DISABLE);
   return V_REFINT / r;
-}
+#else
+  return NAN;
 #endif
+}
 
 
 void jshPinOutput(Pin pin, bool value) {
