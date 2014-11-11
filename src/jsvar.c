@@ -42,7 +42,7 @@ JsVarRef jsVarFirstEmpty; ///< reference of first unused variable (variables are
 
 /** Return a pointer - UNSAFE for null refs.
  * This is effectively a Lock without locking! */
-static inline JsVar *jsvGetAddressOf(JsVarRef ref) {
+static ALWAYS_INLINE JsVar *jsvGetAddressOf(JsVarRef ref) {
   assert(ref);
 #ifdef RESIZABLE_JSVARS
   JsVarRef t = ref-1;
@@ -293,7 +293,7 @@ static inline void jsvFreePtrInternal(JsVar *var) {
   jsVarFirstEmpty = jsvGetRef(var);
 }
 
-void jsvFreePtr(JsVar *var) {
+ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     /* To be here, we're not supposed to be part of anything else. If
      * we were, we'd have been freed by jsvGarbageCollect */
     assert((!jsvGetNextSibling(var) && !jsvGetPrevSibling(var)) || // check that next/prevSibling are not set
@@ -358,7 +358,7 @@ void jsvFreePtr(JsVar *var) {
 }
 
 /// Get a reference from a var - SAFE for null vars
-JsVarRef jsvGetRef(JsVar *var) {
+ALWAYS_INLINE JsVarRef jsvGetRef(JsVar *var) {
     if (!var) return 0;
  #ifdef RESIZABLE_JSVARS
     unsigned int i, c = jsVarsSize>>JSVAR_BLOCK_SHIFT;
@@ -375,7 +375,7 @@ JsVarRef jsvGetRef(JsVar *var) {
 }
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
-JsVar *jsvLock(JsVarRef ref) {
+ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref) {
   JsVar *var = jsvGetAddressOf(ref);
   //var->locks++;
   assert(jsvGetLocks(var) < JSV_LOCK_MAX);
@@ -390,26 +390,36 @@ JsVar *jsvLock(JsVarRef ref) {
 }
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
-JsVar *jsvLockAgain(JsVar *var) {
+ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var) {
   assert(var);
   assert(jsvGetLocks(var) < JSV_LOCK_MAX);
   var->flags += JSV_LOCK_ONE;
   return var;
 }
 
-/// Unlock this variable - this is SAFE for null variables
-void jsvUnLock(JsVar *var) {
-  if (!var) return;
-  assert(jsvGetLocks(var)>0);
-  var->flags -= JSV_LOCK_ONE;
-  /* if we know we're free, then we can just free
-   * this variable right now. Loops of variables
-   * are handled by the Garbage Collector.
-   * Note: we check var->refs first as it is fastest and most likely to be false */
-  if (jsvGetRefs(var) == 0 && jsvHasRef(var) && jsvGetLocks(var) == 0 && (var->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
+// CALL ONLY FROM jsvUnlock
+// jsvGetLocks(var) must == 0
+static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
+  assert(jsvGetLocks(var) == 0);
+  /* if we know we're free, then we can just free this variable right now.
+   * Loops of variables are handled by the Garbage Collector.
+   * Note: we checked locks already in jsvUnLock as it is fastest to check */
+  if (jsvGetRefs(var) == 0 && jsvHasRef(var) && (var->flags&JSV_VARTYPEMASK)!=JSV_UNUSED) {
     jsvFreePtr(var);
   }
 }
+
+
+/// Unlock this variable - this is SAFE for null variables
+ALWAYS_INLINE void jsvUnLock(JsVar *var) {
+  if (!var) return;
+  assert(jsvGetLocks(var)>0);
+  var->flags -= JSV_LOCK_ONE;
+  // Now see if we can properly free the data
+  // Note: we check locks first as they are already in a register
+  if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
+}
+
 
 /// Reference - set this variable as used by something
 JsVar *jsvRef(JsVar *v) {

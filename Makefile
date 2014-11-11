@@ -460,6 +460,7 @@ ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
 endif
+DEFINES+=-DSAVE_ON_FLASH # hack, as without link time optimisation the always_inlines will fail (even though they are not used)
 BUILD_LINKER_FLAGS+=--bootloader
 PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
 WRAPPERSOURCES =

@@ -220,23 +220,20 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array con
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
-/// DO NOT CALL THIS DIRECTLY - this frees an unreffed/locked var
-void jsvFreePtr(JsVar *var);
-
 /// Get a reference from a var - SAFE for null vars
-JsVarRef jsvGetRef(JsVar *var);
+ALWAYS_INLINE JsVarRef jsvGetRef(JsVar *var);
 
 /// SCARY - only to be used for vital stuff like load/save
-JsVar *_jsvGetAddressOf(JsVarRef ref);
+ALWAYS_INLINE JsVar *_jsvGetAddressOf(JsVarRef ref);
 
 /// Lock this reference and return a pointer - UNSAFE for null refs
-JsVar *jsvLock(JsVarRef ref);
+ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref);
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
-JsVar *jsvLockAgain(JsVar *var);
+ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var);
 
 /// Unlock this variable - this is SAFE for null variables
-void jsvUnLock(JsVar *var);
+ALWAYS_INLINE void jsvUnLock(JsVar *var);
 
 
 /// Reference - set this variable as used by something
