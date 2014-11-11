@@ -184,7 +184,11 @@ typedef long long JsSysTime;
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
 /// Put before functions that we always want inlined
+#ifndef SAVE_ON_FLASH
 #define ALWAYS_INLINE inline __attribute__((always_inline))
+#else
+#define ALWAYS_INLINE inline
+#endif
 
 /// Maximum amount of locks we ever expect to have on a variable (this could limit recursion) must be 2^n-1
 #define JSV_LOCK_MAX  15
