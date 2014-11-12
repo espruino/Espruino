@@ -1711,7 +1711,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!loopCond) jspSetNoExecute();
   execInfo.execute |= EXEC_IN_LOOP;
   jsvUnLock(jspeBlockOrStatement());
-  JslCharPos whileBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
+
   execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
   if (execInfo.execute == EXEC_CONTINUE)
     execInfo.execute = EXEC_YES;
@@ -1730,6 +1730,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     jsvUnLock(cond);
     JSP_MATCH(')');
   }
+
+  JslCharPos whileBodyEnd;
+  whileBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
 
   while (!hasHadBreak && loopCond
 #ifdef JSPARSE_MAX_LOOP_ITERATIONS

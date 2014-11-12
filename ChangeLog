@@ -3,6 +3,7 @@
             Allow arrays to be passed to digitalPulse so square waves can be created easily
             Force inlining of jsvLock/UnLock on most systems - improves performance a lot
             Fix issues with SPI.write, CS, and out of sync receive bytes
+            Fix do..while without trailing semi-colon
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
