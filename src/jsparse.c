@@ -1255,8 +1255,8 @@ NO_INLINE JsVar *jspeUnaryExpression() {
 }
 
 
-// Get the precedence of a LogicalExpression - or return 0 if not one
-unsigned int jspeGetLogicalExpressionPrecedence(int op) {
+// Get the precedence of a BinaryExpression - or return 0 if not one
+unsigned int jspeGetBinaryExpressionPrecedence(int op) {
   switch (op) {
     case LEX_OROR: return 1; break;
     case LEX_ANDAND: return 2; break;
@@ -1293,7 +1293,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
    * We deal with an expression in recursion ONLY if it's of higher precedence
    * than the current one, otherwise we stick in the while loop.
    */
-  unsigned int precedence = jspeGetLogicalExpressionPrecedence(execInfo.lex->tk);
+  unsigned int precedence = jspeGetBinaryExpressionPrecedence(execInfo.lex->tk);
   while (precedence && precedence>lastPrecedence) {
     int op = execInfo.lex->tk;
     JSP_ASSERT_MATCH(op);
@@ -1363,7 +1363,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
       }
       jsvUnLock(b);
     }
-    precedence = jspeGetLogicalExpressionPrecedence(execInfo.lex->tk);
+    precedence = jspeGetBinaryExpressionPrecedence(execInfo.lex->tk);
   }
   return a;
 }
