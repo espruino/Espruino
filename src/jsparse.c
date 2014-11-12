@@ -969,7 +969,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   return a;
 }
 
-NO_INLINE JsVar *jspeFactorId() {
+JsVar *jspeFactorId() {
   return jspeFactorSingleId();
 }
 
@@ -1211,6 +1211,7 @@ NO_INLINE JsVar *__jspePostfixExpression(JsVar *a) {
 
 NO_INLINE JsVar *jspePostfixExpression() {
   JsVar *a;
+  // TODO: should be in jspeUnaryExpression
   if (execInfo.lex->tk==LEX_PLUSPLUS || execInfo.lex->tk==LEX_MINUSMINUS) {
       int op = execInfo.lex->tk;
       JSP_ASSERT_MATCH(op);
@@ -1253,127 +1254,6 @@ NO_INLINE JsVar *jspeUnaryExpression() {
       return jspePostfixExpression();
 }
 
-NO_INLINE JsVar *__MultiplicativeExpression(JsVar *a) {
-    while (execInfo.lex->tk=='*' || execInfo.lex->tk=='/' || execInfo.lex->tk=='%') {
-        JsVar *b;
-        int op = execInfo.lex->tk;
-        JSP_ASSERT_MATCH(op);
-        b = jspeUnaryExpression();
-        if (JSP_SHOULD_EXECUTE) {
-          JsVar *res = jsvMathsOpSkipNames(a, b, op);
-          jsvUnLock(a); a = res;
-        }
-        jsvUnLock(b);
-    }
-    return a;
-}
-
-NO_INLINE JsVar *jspeMultiplicativeExpression() {
-    return __MultiplicativeExpression(jspeUnaryExpression());
-}
-
-NO_INLINE JsVar *__jspeAdditiveExpression(JsVar *a) {
-  while (execInfo.lex->tk=='+' || execInfo.lex->tk=='-') {
-      int op = execInfo.lex->tk;
-      JSP_ASSERT_MATCH(op);
-      JsVar *b = jspeMultiplicativeExpression();
-      if (JSP_SHOULD_EXECUTE) {
-          // not in-place, so just replace
-        JsVar *res = jsvMathsOpSkipNames(a, b, op);
-        jsvUnLock(a); a = res;
-      }
-      jsvUnLock(b);
-  }
-  return a;
-}
-
-
-NO_INLINE JsVar *jspeAdditiveExpression() {
-    return __jspeAdditiveExpression(jspeMultiplicativeExpression());
-}
-
-NO_INLINE JsVar *__jspeShiftExpression(JsVar *a) {
-  while (execInfo.lex->tk==LEX_LSHIFT || execInfo.lex->tk==LEX_RSHIFT || execInfo.lex->tk==LEX_RSHIFTUNSIGNED) {
-    JsVar *b;
-    int op = execInfo.lex->tk;
-    JSP_ASSERT_MATCH(op);
-    b = jspeAdditiveExpression();
-    if (JSP_SHOULD_EXECUTE) {
-      JsVar *res = jsvMathsOpSkipNames(a, b, op);
-      jsvUnLock(a); a = res;
-    }
-    jsvUnLock(b);
-  }
-  return a;
-}
-
-NO_INLINE JsVar *jspeShiftExpression() {
-  return __jspeShiftExpression(jspeAdditiveExpression());
-}
-
-NO_INLINE JsVar *__jspeRelationalExpression(JsVar *a) {
-    JsVar *b;
-    while (execInfo.lex->tk==LEX_EQUAL || execInfo.lex->tk==LEX_NEQUAL ||
-           execInfo.lex->tk==LEX_TYPEEQUAL || execInfo.lex->tk==LEX_NTYPEEQUAL ||
-           execInfo.lex->tk==LEX_LEQUAL || execInfo.lex->tk==LEX_GEQUAL ||
-           execInfo.lex->tk=='<' || execInfo.lex->tk=='>' ||
-           execInfo.lex->tk==LEX_R_INSTANCEOF ||
-           (execInfo.lex->tk==LEX_R_IN && !(execInfo.execute&EXEC_FOR_INIT))) {
-        int op = execInfo.lex->tk;
-        JSP_ASSERT_MATCH(op);
-        b = jspeShiftExpression();
-        if (JSP_SHOULD_EXECUTE) {
-          JsVar *res = 0;
-          if (op==LEX_R_IN) {
-            JsVar *av = jsvSkipName(a); // needle
-            JsVar *bv = jsvSkipName(b); // haystack
-            if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
-              av = jsvAsArrayIndexAndUnLock(av);
-              JsVar *varFound = jsvFindChildFromVar( bv, av, false);
-              res = jsvNewFromBool(varFound!=0);
-              jsvUnLock(varFound);
-            } // else it will be undefined
-            jsvUnLock(av);
-            jsvUnLock(bv);
-          } else if (op==LEX_R_INSTANCEOF) {
-            bool inst = false;
-            JsVar *av = jsvSkipName(a);
-            JsVar *bv = jsvSkipName(b);
-            if (!jsvIsFunction(bv)) {
-              jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
-            } else {
-              if (jsvIsObject(av)) {
-                JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
-                JsVar *constructor = 0;
-                if (proto)
-                  constructor = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
-                if (constructor==bv) inst=true;
-                else inst = jspIsConstructor(bv,"Object");
-                jsvUnLock(constructor);
-              } else {
-                const char *name = jswGetBasicObjectName(av);
-                if (name) {
-                  inst = jspIsConstructor(bv, name);
-                }
-              }
-            }
-            jsvUnLock(av);
-            jsvUnLock(bv);
-            res = jsvNewFromBool(inst);
-          } else {
-            res = jsvMathsOpSkipNames(a, b, op);
-
-          }
-          jsvUnLock(a); a = res;
-        }
-        jsvUnLock(b);
-    }
-    return a;
-}
-
-NO_INLINE JsVar *jspeRelationalExpression() {
-  return __jspeRelationalExpression(jspeShiftExpression());
-}
 
 // Get the precedence of a LogicalExpression - or return 0 if not one
 unsigned int jspeGetLogicalExpressionPrecedence(int op) {
@@ -1383,11 +1263,29 @@ unsigned int jspeGetLogicalExpressionPrecedence(int op) {
     case '|' : return 3; break;
     case '^' : return 4; break;
     case '&' : return 5; break;
+    case LEX_EQUAL:
+    case LEX_NEQUAL:
+    case LEX_TYPEEQUAL:
+    case LEX_NTYPEEQUAL: return 6;
+    case LEX_LEQUAL:
+    case LEX_GEQUAL:
+    case '<':
+    case '>':
+    case LEX_R_INSTANCEOF: return 7;
+    case LEX_R_IN: return (execInfo.execute&EXEC_FOR_INIT)?0:7;
+    case LEX_LSHIFT:
+    case LEX_RSHIFT:
+    case LEX_RSHIFTUNSIGNED: return 8;
+    case '+':
+    case '-': return 9;
+    case '*':
+    case '/':
+    case '%': return 10;
     default: return 0;
   }
 }
 
-NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a, unsigned int lastPrecedence) {
+NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
   /* This one's a bit strange. Basically all the ops have their own precedence, it's not
    * like & and | share the same precedence. We don't want to recurse for each one,
    * so instead we do this.
@@ -1410,18 +1308,58 @@ NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a, unsigned int lastPrecedence) 
         // use first argument (A)
         JSP_SAVE_EXECUTE();
         jspSetNoExecute();
-        jsvUnLock(__jspeLogicalExpression(jspeRelationalExpression(),precedence));
+        jsvUnLock(__jspeBinaryExpression(jspeUnaryExpression(),precedence));
         JSP_RESTORE_EXECUTE();
       } else {
         // use second argument (B)
         jsvUnLock(a);
-        a = __jspeLogicalExpression(jspeRelationalExpression(),precedence);
+        a = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       }
     } else { // else it's a more 'normal' logical expression - just use Maths
-      JsVar *b = __jspeLogicalExpression(jspeRelationalExpression(),precedence);
+      JsVar *b = __jspeBinaryExpression(jspeUnaryExpression(),precedence);
       if (JSP_SHOULD_EXECUTE) {
+        if (op==LEX_R_IN) {
+          JsVar *av = jsvSkipName(a); // needle
+          JsVar *bv = jsvSkipName(b); // haystack
+          if (jsvIsArray(bv) || jsvIsObject(bv)) { // search keys, NOT values
+            av = jsvAsArrayIndexAndUnLock(av);
+            JsVar *varFound = jsvFindChildFromVar( bv, av, false);
+            jsvUnLock(a);
+            a = jsvNewFromBool(varFound!=0);
+            jsvUnLock(varFound);
+          } // else it will be undefined
+          jsvUnLock(av);
+          jsvUnLock(bv);
+        } else if (op==LEX_R_INSTANCEOF) {
+          bool inst = false;
+          JsVar *av = jsvSkipName(a);
+          JsVar *bv = jsvSkipName(b);
+          if (!jsvIsFunction(bv)) {
+            jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
+          } else {
+            if (jsvIsObject(av)) {
+              JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
+              JsVar *constructor = 0;
+              if (proto)
+                constructor = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
+              if (constructor==bv) inst=true;
+              else inst = jspIsConstructor(bv,"Object");
+              jsvUnLock(constructor);
+            } else {
+              const char *name = jswGetBasicObjectName(av);
+              if (name) {
+                inst = jspIsConstructor(bv, name);
+              }
+            }
+          }
+          jsvUnLock(av);
+          jsvUnLock(bv);
+          jsvUnLock(a);
+          a = jsvNewFromBool(inst);
+        } else {  // --------------------------------------------- NORMAL
           JsVar *res = jsvMathsOpSkipNames(a, b, op);
           jsvUnLock(a); a = res;
+        }
       }
       jsvUnLock(b);
     }
@@ -1430,8 +1368,8 @@ NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a, unsigned int lastPrecedence) 
   return a;
 }
 
-NO_INLINE JsVar *jspeLogicalExpression() {
-  return __jspeLogicalExpression(jspeRelationalExpression(),0);
+JsVar *jspeBinaryExpression() {
+  return __jspeBinaryExpression(jspeUnaryExpression(),0);
 }
 
 NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
@@ -1466,8 +1404,8 @@ NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
   return lhs;
 }
 
-NO_INLINE JsVar *jspeConditionalExpression() {
-  return __jspeConditionalExpression(jspeLogicalExpression());
+JsVar *jspeConditionalExpression() {
+  return __jspeConditionalExpression(jspeBinaryExpression());
 }
 
 NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
@@ -1532,7 +1470,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
 }
 
 
-NO_INLINE JsVar *jspeAssignmentExpression() {
+JsVar *jspeAssignmentExpression() {
   return __jspeAssignmentExpression(jspeConditionalExpression());
 }
 
@@ -1818,7 +1756,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       jsvAddName(execInfo.root, forStatement);
     }
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_IN, jsvUnLock(forStatement), 0);
-    JsVar *array = jsvSkipNameAndUnLock(jspeAdditiveExpression());
+    JsVar *array = jsvSkipNameAndUnLock(jspeExpression());
     JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(forStatement);jsvUnLock(array), 0);
     JslCharPos forBodyStart = jslCharPosClone(&execInfo.lex->tokenStart);
     JSP_SAVE_EXECUTE();
