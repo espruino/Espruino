@@ -1375,42 +1375,63 @@ NO_INLINE JsVar *jspeRelationalExpression() {
   return __jspeRelationalExpression(jspeShiftExpression());
 }
 
-NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a) {
-    while (execInfo.lex->tk=='&' || execInfo.lex->tk=='|' || execInfo.lex->tk=='^' || execInfo.lex->tk==LEX_ANDAND || execInfo.lex->tk==LEX_OROR) {
-        int op = execInfo.lex->tk;
-        JSP_ASSERT_MATCH(op);
-        
-        // if we have short-circuit ops, then if we know the outcome
-        // we don't bother to execute the other op. Even if not
-        // we need to tell mathsOp it's an & or |
-        if (op==LEX_ANDAND || op==LEX_OROR) {
-            bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
-            if ((!aValue && op==LEX_ANDAND) ||
-                (aValue && op==LEX_OROR)) {
-              // use first argument (A)
-              JSP_SAVE_EXECUTE();
-              jspSetNoExecute();
-              jsvUnLock(jspeRelationalExpression());
-              JSP_RESTORE_EXECUTE();
-            } else {
-              // use second argument (B)
-              jsvUnLock(a);
-              a = jspeRelationalExpression();
-            }
-        } else { // else it's a more 'normal' logical expression - just use Maths
-          JsVar *b = jspeRelationalExpression();
-          if (JSP_SHOULD_EXECUTE) {
-              JsVar *res = jsvMathsOpSkipNames(a, b, op);
-              jsvUnLock(a); a = res;
-          }
-          jsvUnLock(b);
-        }
+// Get the precedence of a LogicalExpression - or return 0 if not one
+unsigned int jspeGetLogicalExpressionPrecedence(int op) {
+  switch (op) {
+    case LEX_OROR: return 1; break;
+    case LEX_ANDAND: return 2; break;
+    case '|' : return 3; break;
+    case '^' : return 4; break;
+    case '&' : return 5; break;
+    default: return 0;
+  }
+}
+
+NO_INLINE JsVar *__jspeLogicalExpression(JsVar *a, unsigned int lastPrecedence) {
+  /* This one's a bit strange. Basically all the ops have their own precedence, it's not
+   * like & and | share the same precedence. We don't want to recurse for each one,
+   * so instead we do this.
+   *
+   * We deal with an expression in recursion ONLY if it's of higher precedence
+   * than the current one, otherwise we stick in the while loop.
+   */
+  unsigned int precedence = jspeGetLogicalExpressionPrecedence(execInfo.lex->tk);
+  while (precedence && precedence>lastPrecedence) {
+    int op = execInfo.lex->tk;
+    JSP_ASSERT_MATCH(op);
+
+    // if we have short-circuit ops, then if we know the outcome
+    // we don't bother to execute the other op. Even if not
+    // we need to tell mathsOp it's an & or |
+    if (op==LEX_ANDAND || op==LEX_OROR) {
+      bool aValue = jsvGetBoolAndUnLock(jsvSkipName(a));
+      if ((!aValue && op==LEX_ANDAND) ||
+          (aValue && op==LEX_OROR)) {
+        // use first argument (A)
+        JSP_SAVE_EXECUTE();
+        jspSetNoExecute();
+        jsvUnLock(__jspeLogicalExpression(jspeRelationalExpression(),precedence));
+        JSP_RESTORE_EXECUTE();
+      } else {
+        // use second argument (B)
+        jsvUnLock(a);
+        a = __jspeLogicalExpression(jspeRelationalExpression(),precedence);
+      }
+    } else { // else it's a more 'normal' logical expression - just use Maths
+      JsVar *b = __jspeLogicalExpression(jspeRelationalExpression(),precedence);
+      if (JSP_SHOULD_EXECUTE) {
+          JsVar *res = jsvMathsOpSkipNames(a, b, op);
+          jsvUnLock(a); a = res;
+      }
+      jsvUnLock(b);
     }
-    return a;
+    precedence = jspeGetLogicalExpressionPrecedence(execInfo.lex->tk);
+  }
+  return a;
 }
 
 NO_INLINE JsVar *jspeLogicalExpression() {
-  return __jspeLogicalExpression(jspeRelationalExpression());
+  return __jspeLogicalExpression(jspeRelationalExpression(),0);
 }
 
 NO_INLINE JsVar *__jspeConditionalExpression(JsVar *lhs) {
