@@ -19,7 +19,9 @@ import pinutils;
 info = {
   'name' : "ST NUCLEO-F401RE",
   'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000"],
-  'default_console' : "EV_SERIAL2", # USART2 par défaut USART2_TX sur PA2, USART2_RX sur PA3
+  'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
+  'default_console_tx' : "A2", # USART2_TX on PA2,
+  'default_console_rx' : "A3", # USART2_RX on PA3
   'variables' : 5376, # (96-12)*1024/16-1
   'binary_name' : 'espruino_%v_nucleof401re.bin',
 };
@@ -46,10 +48,9 @@ chip = {
     'pages' : 1, # count of pages we're using to save RAM to Flash,
     'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
   },
-  'place_text_section' : 0x08010000, # note flash_available above # TODO A VERIFIER
+  #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
 };
 # left-right, or top-bottom order
-# TODO add Arduino. prefix to the pins concerned in left3 and right3
 board = {
   'left' :   [ 'C10', 'C12', 'VDD', 'BOOT0', 'NC', 'NC', 'A13', 'A14', 'A15', 'GND', 'B7', 'C13', 'C14', 'C15', 'H0', 'H1', 'VBAT', 'C2', 'C3'],
   'left2' :  [ 'C11', 'D2', 'E5V', 'GND', 'NC', 'IOREF', 'RESET', '3V3', '5V', 'GND', 'GND', 'VIN', 'NC', 'A0', 'A1', 'A4', 'B0', 'C1', 'C0'],
@@ -62,7 +63,6 @@ devices = {
   'OSC_RTC' : { 'pin_1' : 'C14', # MB1136 C-02 corresponds to a board configured with on-board 32kHz oscillator
                 'pin_2' : 'C15' },
   'LED1' : { 'pin' : 'A5' },
-  # TODO make it work with setWatch
   'BTN1' : { 'pin' : 'C13',
              'inverted' : True, # 1 when unpressed, 0 when pressed! (Espruino board is 1 when pressed)
              'pinstate': 'IN_PULLUP', # to specify INPUT, OUPUT PULL_UP PULL_DOWN..
