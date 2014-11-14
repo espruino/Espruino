@@ -6,6 +6,7 @@
             Fix do..while without trailing semi-colon
             Ensure that &,|,^,etc all have different precedences (without extra recursion)
             Used new semi-recursive parse for expressions
+            Fix filled column when fillpoly is off the end of the screen
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
