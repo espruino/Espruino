@@ -80,8 +80,8 @@ If you are a board manufacturer interested in getting your board officially supp
 * MBed platforms - have not worked for a while - full hardware wrapper still required
 * ARDUINOMEGA2560 - compiles, but has never worked. Almost certainly due to ints being 16 bits.
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
-* ST NUCLEO-F401RE - early alpha status
-
+* ST NUCLEO-F401RE - beta status
+* ST NUCLEO-F411RE - early alpha status
 
 Building under Linux
 ------------------
@@ -243,4 +243,3 @@ However if you're planning on selling the Espruino software on your own board, p
 * You won't be able to call your board an 'Espruino' board unless it's agreed with us (we own the trademark)
 * You must explain clearly in your documentation that your device uses Espruino internally
 * If you're profiting from our hard work without contributing anything back, we're not going to very motivated to support you (or your users)
-

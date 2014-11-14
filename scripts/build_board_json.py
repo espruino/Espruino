@@ -22,7 +22,7 @@ import string;
 
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
-basedir = scriptdir+"/../"
+basedir = os.path.normalize(scriptdir+"/../")
 sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
 
@@ -105,4 +105,3 @@ boarddata = {
 jsonFile = open(jsonFilename, 'w')
 jsonFile.write(json.dumps(boarddata, indent=1));
 jsonFile.close();
-
