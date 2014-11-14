@@ -206,7 +206,7 @@ codeOut("""
 """);
 
 if board.chip["class"]=="STM32":
-  if board.chip["part"][:9]=="STM32F401":
+  if (board.chip["part"][:9]=="STM32F401") | (board.chip["part"][:9]=="STM32F411"):
 # FIXME - need to remove TIM5 from jspininfo
    codeOut("""
 // Used by various pins, but always with other options
