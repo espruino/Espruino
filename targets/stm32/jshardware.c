@@ -601,7 +601,7 @@ static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
   // This (oddly) looks the same on F1/2/3/4. It's probably not
   bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
 #ifndef STM32F3
-              TIMx==TIM5 || 
+              TIMx==TIM5 ||
 #endif
               TIMx==TIM6 || TIMx==TIM7 ||
 #ifndef STM32F3
@@ -814,7 +814,7 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) { 
+bool jshGetPinStateIsManual(Pin pin) {
   return BITFIELD_GET(jshPinStateIsManual, pin);
 }
 
@@ -1001,12 +1001,12 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOD |
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
- #elif defined(STM32F2) || defined(STM32F4) 
+ #elif defined(STM32F2) || defined(STM32F4)
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
                          RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
-                         RCC_AHB1Periph_GPIOC | 
+                         RCC_AHB1Periph_GPIOC |
                          RCC_AHB1Periph_GPIOD |
                          RCC_AHB1Periph_GPIOE |
                          RCC_AHB1Periph_GPIOF |
@@ -1031,7 +1031,7 @@ void jshInit() {
   SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA;
 
   /* Configure all GPIO as analog to reduce current consumption on non used IOs */
-  /* When using the small packages (48 and 64 pin packages), the GPIO pins which 
+  /* When using the small packages (48 and 64 pin packages), the GPIO pins which
      are not present on these packages, must not be configured in analog mode.*/
   /* Enable GPIOs clock */
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -1043,7 +1043,7 @@ void jshInit() {
 #endif
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
-  GPIO_Init(GPIOA, &GPIO_InitStructure); 
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   GPIO_Init(GPIOC, &GPIO_InitStructure);
   GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -1081,7 +1081,7 @@ void jshInit() {
 #endif
 
   // PREEMPTION
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); 
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
 #ifdef STM32VLDISCOVERY
   RCC_PCLK1Config(RCC_HCLK_Div2);
@@ -1212,7 +1212,7 @@ void jshInit() {
   jshInterruptOn();
 
 
-  
+
 /*  jsiConsolePrint("\r\nstart = ");jsiConsolePrintInt(tStart);
   jsiConsolePrint("\r\nend1 = ");jsiConsolePrintInt(tEnd1);
   jsiConsolePrint("\r\nend2 = ");jsiConsolePrintInt(tEnd2);
@@ -1508,7 +1508,7 @@ void jshSetSystemTime(JsSysTime newTime) {
 bool jshPinInput(Pin pin) {
   bool value = false;
   if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin)) 
+    if (!jshGetPinStateIsManual(pin))
       jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
     value = jshPinGetValue(pin);
@@ -1702,7 +1702,7 @@ JsVarFloat jshReadVRef() {
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin)) 
+    if (!jshGetPinStateIsManual(pin))
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
@@ -2033,15 +2033,15 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_InitStructure.USART_BaudRate = (uint32_t)inf->baudRate;
 
   // 7-bit + 1-bit (parity odd or even) = 8-bit
-  // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and 
-  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case 
+  // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and
+  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case
   // the register is 9-bits long.
 
   if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   }
   else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
-    USART_InitStructure.USART_WordLength = USART_WordLength_9b; 
+    USART_InitStructure.USART_WordLength = USART_WordLength_9b;
   }
   else {
     jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size.");
@@ -2061,7 +2061,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
 
   // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2
-  if(inf->parity == 0) { 
+  if(inf->parity == 0) {
     USART_InitStructure.USART_Parity = USART_Parity_No ;
   }
   else if(inf->parity == 1) {
@@ -2317,11 +2317,11 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   if (!jshI2CWaitStartBit(I2C)) return;
 
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
-  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter); 
+  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
   int i;
   for (i=0;i<nBytes;i++) {
-    I2C_SendData(I2C, data[i]);   
+    I2C_SendData(I2C, data[i]);
     int timeout = WAIT_UNTIL_N_CYCLES;
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
@@ -2349,14 +2349,14 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   }
 #else
   WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
-  I2C_GenerateSTART(I2C, ENABLE);    
+  I2C_GenerateSTART(I2C, ENABLE);
   if (!jshI2CWaitStartBit(I2C)) {
     for (i=0;i<nBytes;i++) data[i]=0;
     return;
   }
 
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Read Mode 1");
-  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);  
+  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED), "I2C Read Receive Mode");
   for (i=0;i<nBytes;i++) {
     if (sendStop && i == nBytes-1) {
@@ -2388,8 +2388,8 @@ void jshSaveToFlash() {
 
   unsigned int i;
   /* Clear All pending flags */
-#if defined(STM32F2) || defined(STM32F4) 
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | 
+#if defined(STM32F2) || defined(STM32F4)
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
                   FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
 #elif defined(STM32F3)
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
@@ -2398,7 +2398,7 @@ void jshSaveToFlash() {
 #endif
 
   jsiConsolePrint("Erasing Flash...");
-#if defined(STM32F2) || defined(STM32F4) 
+#if defined(STM32F2) || defined(STM32F4)
   for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
     FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
     jsiConsolePrint(".");
@@ -2416,14 +2416,14 @@ void jshSaveToFlash() {
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
   jsvUnLock(firstData);
-#if defined(STM32F2) || defined(STM32F4) 
+#if defined(STM32F2) || defined(STM32F4)
   for (i=0;i<dataSize;i+=4) {
       while (FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
       if ((i&1023)==0) jsiConsolePrint(".");
   }
   while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
 #else
-  /* Program Flash Bank */  
+  /* Program Flash Bank */
   for (i=0;i<dataSize;i+=4) {
       FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]);
       if ((i&1023)==0) jsiConsolePrint(".");

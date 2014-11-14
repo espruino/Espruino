@@ -3,7 +3,7 @@
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
 # Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
-# Copyright (C) 2014 Alain Sézille for NucleoF401RE specific lines of this file
+# Copyright (C) 2014 Alain Sézille for NucleoF411RE specific lines of this file
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,21 +17,21 @@
 
 import pinutils;
 info = {
-  'name' : "ST NUCLEO-F401RE",
-  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260000"],
+  'name' : "ST NUCLEO-F411RE",
+  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1847/PF260320"],
   'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
   'default_console_tx' : "A2", # USART2_TX on PA2,
   'default_console_rx' : "A3", # USART2_RX on PA3
-  'variables' : 5376, # (96-12)*1024/16-1
-  'binary_name' : 'espruino_%v_nucleof401re.bin',
+  'variables' :  7423, # (128-12)*1024/16-1
+  'binary_name' : 'espruino_%v_nucleof411re.bin',
 };
 chip = {
-  'part' : "STM32F401RET6",
+  'part' : "STM32F411RET6",
   'family' : "STM32F4",
   'package' : "LQFP64",
-  'ram' : 96, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
+  'ram' : 128, # 0x0001 8000 long, from 0x2000 0000 to 0x2001 7FFF
   'flash' : 512, # 0x0008 0000 long, from 0x0800 0000 to 0x0807 FFFF
-  'speed' : 84,
+  'speed' : 100,
   'usart' : 3,
   'spi' : 4,
   'i2c' : 3,
@@ -42,7 +42,7 @@ chip = {
     # so we have some left room for Espruino firmware and no risk to clear it while saving
     'address' : 0x08060000, # flash_saved_code_start 0x0806 0000 to 0x807 5000
     # we have enough flash space in this single flash page to save all of the ram
-    'page_size' :  131072, # size of pages : on STM32F401, last 2 pages are 128 Kbytes
+    'page_size' :  131072, # size of pages : on STM32F411, last 2 pages are 128 Kbytes
     # we use the last flash page only, furthermore it persists after a firmware flash of the board
     'page_number' : 7, # number of the flash page we save at (0 based, must be coherent with address)
     'pages' : 1, # count of pages we're using to save RAM to Flash,
@@ -82,7 +82,7 @@ board_css = """
   width: 713px;
   height: 800px;
   left: 200px;
-  background-image: url(img/NUCLEOF401RE.jpg);
+  background-image: url(img/NUCLEOF411RE.jpg);
 }
 #boardcontainer {
   height: 1020px;

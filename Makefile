@@ -1,7 +1,7 @@
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
 # Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
-# Copyright (C) 2014 Alain Sézille for NucleoF401RE specific lines of this file
+# Copyright (C) 2014 Alain Sézille for NucleoF401RE, NucleoF411RE specific lines of this file
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -36,6 +36,7 @@
 # ARDUINOMEGA2560=1
 # ARMINARM=1
 # NUCLEOF401RE=1
+# NUCLEOF411RE=1
 # Or nothing for standard linux compile
 #
 # Also:
@@ -53,7 +54,7 @@ endif
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
-CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option 
+CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
 LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
@@ -129,7 +130,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINI_1V1
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V1 
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V1
 USE_GRAPHICS=1
 BOARD=ESPRUINIBOARD_R1_1
 STLIB=STM32F401xx
@@ -204,6 +205,13 @@ else ifdef NUCLEOF401RE
 EMBEDDED=1
 NUCLEO=1
 BOARD=NUCLEOF401RE
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef NUCLEOF411RE
+EMBEDDED=1
+NUCLEO=1
+BOARD=NUCLEOF411RE
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
@@ -1137,7 +1145,7 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
-else ifdef NUCLEOF401RE
+else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
