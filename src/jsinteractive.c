@@ -508,6 +508,11 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       if (!isOn && IS_PIN_A_LED(pin)) continue;
       jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
     } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
+#ifdef DEFAULT_CONSOLE_RX_PIN
+      // the console input pin is always a pullup now - which is expected
+      if (pin == DEFAULT_CONSOLE_RX_PIN &&
+          statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
+#endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";

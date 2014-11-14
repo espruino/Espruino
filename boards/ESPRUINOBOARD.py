@@ -17,6 +17,9 @@ import pinutils;
 info = {
  'name' : "Espruino Board rev 1.3",
  'link' : [ "http://www.espruino.com/EspruinoBoard" ],
+ 'default_console' : "EV_SERIAL1",
+ 'default_console_tx' : "A9",
+ 'default_console_rx' : "A10",
  'variables' : 2250,
  'bootloader' : 1,
  'serial_bootloader' : True,
