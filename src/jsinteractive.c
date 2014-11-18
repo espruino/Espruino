@@ -1284,7 +1284,8 @@ void jsiIdle() {
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
   IOEvent event;
-  while (jshPopIOEvent(&event)) {
+  int maxEvents = IOBUFFERMASK+1; // ensure we can't get totally swamped by having more events than we can process
+  while (maxEvents-- && jshPopIOEvent(&event)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     wasBusy = true;
 

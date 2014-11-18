@@ -9,6 +9,7 @@
             Fix filled column when fillpoly is off the end of the screen
             Fixed reporting of Serial RX pullup in `dump()`
             Add input thread on Linux, and fix idle and Ctrl+C behaviour (fix #451)
+            Stop huge amounts of input events blocking Espruino's timers (fix #452)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
