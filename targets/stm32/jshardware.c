@@ -686,8 +686,15 @@ void jshKickUSBWatchdog() {
 }
 #endif //USB
 
-static bool jshIsRTCAlreadySetup() {
-  return (RCC->BDCR & RCC_BDCR_RTCEN) != 0;
+static bool jshIsRTCAlreadySetup(bool andRunning) {
+  if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0)
+    return false; // RTC was off - return false
+  if (!andRunning) return true;
+  // Check what we're running the RTC off and make sure that it's running!
+  if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE)
+    return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
+  else
+    return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
 
@@ -704,7 +711,7 @@ void jshDoSysTick() {
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     // If RTC is already enabled, we've come back from a reset...
     // we're going to want to keep everything as it was
-    bool alreadySetup = jshIsRTCAlreadySetup();
+    bool alreadySetup = jshIsRTCAlreadySetup(true);
     if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
       // LSE is not working - turn it off and use LSI
 #ifdef STM32F1
@@ -721,8 +728,8 @@ void jshDoSysTick() {
       jshRTCPrescaler = 32768; // 32kHz for LSE
       if (!alreadySetup) {
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
-        RCC_LSICmd(DISABLE); // disable low speed internal oscillator
       }
+      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
     }
 
     if (!alreadySetup) {
@@ -1061,13 +1068,14 @@ void jshInit() {
 #ifdef USE_RTC
   // allow access to backup domain, and reset it (we need this so we can fiddle with the RTC)
   PWR_BackupAccessCmd(ENABLE);
+  // enable low speed internal oscillator (reset always kills this, and we might need it)
+  RCC_LSICmd(ENABLE);
   // If RTC is already setup, just leave it alone!
-  if (!jshIsRTCAlreadySetup()) {
+  if (!jshIsRTCAlreadySetup(false)) {
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
-    // Turn both LSI and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
+    // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
-    RCC_LSICmd(ENABLE); // low speed internal oscillator
   }
 #endif
 
