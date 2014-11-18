@@ -166,9 +166,6 @@ void jshIOEventOverflowed() {
 void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   if (charData==3 && channel==jsiGetConsoleDevice()) {
     // Ctrl-C - force interrupt
-#ifdef LINUX
-    raise(SIGINT);
-#endif
     execInfo.execute |= EXEC_CTRL_C;
     return;
   }

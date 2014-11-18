@@ -1624,6 +1624,9 @@ bool jsiLoop() {
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
+#ifndef EMBEDDED
+    if (jsvIsEmptyString(inputLine)) exit(0); // exit if ctrl-c on empty input line
+#endif
     jsiClearInputLine();
   }
 

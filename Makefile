@@ -1006,6 +1006,7 @@ SOURCES +=                              \
 targets/linux/main.c                    \
 targets/linux/jshardware.c
 LIBS += -lm # maths lib
+LIBS += -lpthread # thread lib for input processing
 endif
 
 ifdef NUCLEO

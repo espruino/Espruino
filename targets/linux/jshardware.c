@@ -30,6 +30,8 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
+#include <pthread.h>
+
 // ----------------------------------------------------------------------------
 #ifdef SYSFS_GPIO_DIR
 
@@ -160,11 +162,45 @@ int getch()
     if ((r = read(0, &c, sizeof(c))) < 0) {
         return r;
     } else {
-        if (c=='\3') exit(0); // ctrl-c
         return c;
     }
 }
 #endif//__MINGW32__
+
+pthread_t inputThread;
+bool isInitialised;
+
+void jshInputThread() {
+  while (isInitialised) {
+    /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
+    if (execInfo.execute & EXEC_CTRL_C_WAIT)
+      execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
+    if (execInfo.execute & EXEC_CTRL_C)
+      execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
+
+    while (kbhit()) {
+      int ch = getch();
+      if (ch<0) break;
+      jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
+    }
+    bool hasWatches = false;
+#ifdef SYSFS_GPIO_DIR
+    Pin pin;
+    for (pin=0;pin<JSH_PIN_COUNT;pin++)
+      if (gpioShouldWatch[pin]) {
+        hasWatches = true;
+        bool state = jshPinGetValue(pin);
+        if (state != gpioLastState[pin]) {
+          jshPushIOEvent(pinToEVEXTI(pin) | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
+          gpioLastState[pin] = state;
+        }
+      }
+#endif
+
+    usleep(hasWatches ? 1000 : 50000);
+  }
+}
+
 
 
 void jshInit() {
@@ -192,12 +228,18 @@ void jshInit() {
     gpioEventFlags[i] = 0;
   }
 #endif
+
+  isInitialised = true;
+  int err = pthread_create(&inputThread, NULL, &jshInputThread, NULL);
+  if (err != 0)
+      printf("Unable to create input thread, %s", strerror(err));
 }
 
 void jshReset() {
 }
 
 void jshKill() {
+  isInitialised = false;
 #ifdef SYSFS_GPIO_DIR
   int i;
   // unexport any GPIO that we exported
@@ -208,23 +250,7 @@ void jshKill() {
 }
 
 void jshIdle() {
-  while (kbhit()) {
-    int ch = getch();
-    if (ch<0) break;
-    jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
-  }
-
-#ifdef SYSFS_GPIO_DIR
-  Pin pin;
-  for (pin=0;pin<JSH_PIN_COUNT;pin++)
-    if (gpioShouldWatch[pin]) {
-      bool state = jshPinGetValue(pin);
-      if (state != gpioLastState[pin]) {
-        jshPushIOEvent(pinToEVEXTI(pin) | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
-        gpioLastState[pin] = state;
-      }
-    }
-#endif
+  // all done in the thread now...
 }
 
 // ----------------------------------------------------------------------------
@@ -533,7 +559,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     if (gpioShouldWatch[pin]) hasWatches = true;
 #endif
  
-  unsigned int usecs = (unsigned int)(jshGetMillisecondsFromTime(timeUntilWake)*1000);
+  JsVarFloat usecfloat = jshGetMillisecondsFromTime(timeUntilWake)*1000;
+  unsigned int usecs = (usecfloat < 0xFFFFFFFF) ? (unsigned int)usecfloat : 0xFFFFFFFF;
   if (hasWatches && usecs>1000) 
     usecs=1000; // don't sleep much if we have watches - we need to keep polling them
   if (usecs > 50000)
