@@ -1027,7 +1027,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+
 ifdef EMBEDDED
+DEFINES += -DEMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 
