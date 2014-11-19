@@ -32,7 +32,7 @@ typedef struct {
   unsigned char data;         // data to transmit
 } PACKED_FLAGS TxBufferItem;
 
-TxBufferItem txBuffer[TXBUFFERMASK+1];
+volatile TxBufferItem txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
 
 typedef enum {
@@ -68,6 +68,13 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
     return;
   }
 #endif
+#else // if PC, just put to stdout
+  if (device==DEFAULT_CONSOLE_DEVICE) {
+    fputc(data, stdout);
+    fflush(stdout);
+    return;
+  }
+#endif
   if (device==EV_NONE) return;
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   if (txHeadNext==txTail) {
@@ -86,13 +93,12 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   txHead = txHeadNext;
 
   jshUSARTKick(device); // set up interrupts if required
+}
 
-#else // if PC, just put to stdout
-  if (device==DEFAULT_CONSOLE_DEVICE) {
-    fputc(data, stdout);
-    fflush(stdout);
-  }
-#endif
+// Return the device at the top of the transmit queue (or EV_NONE)
+IOEventFlags jshGetDeviceToTransmit() {
+  if (!jshHasTransmitData()) return EV_NONE;
+  return IOEVENTFLAGS_GETTYPE(txBuffer[txTail].flags);
 }
 
 // Try and get a character for transmission - could just return -1 if nothing
@@ -143,16 +149,12 @@ void jshTransmitClearDevice(IOEventFlags device) {
 }
 
 bool jshHasTransmitData() {
-#ifndef LINUX
   return txHead != txTail;
-#else
-  return false;
-#endif
 }
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
-IOEvent ioBuffer[IOBUFFERMASK+1];
+volatile IOEvent ioBuffer[IOBUFFERMASK+1];
 volatile unsigned char ioHead=0, ioTail=0;
 // ----------------------------------------------------------------------------
 
@@ -166,9 +168,6 @@ void jshIOEventOverflowed() {
 void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   if (charData==3 && channel==jsiGetConsoleDevice()) {
     // Ctrl-C - force interrupt
-#ifdef LINUX
-    raise(SIGINT);
-#endif
     execInfo.execute |= EXEC_CTRL_C;
     return;
   }
@@ -176,6 +175,7 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
     jshSetFlowControlXON(channel, false);
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
   unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+#ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
   if (ioHead!=ioTail && ioHead!=nextTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
@@ -188,6 +188,7 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
       return;
     }
   }
+#endif
   // Make new buffer
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
@@ -391,6 +392,13 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
       }
     }
   }
+}
+
+/// Gets a device's object from a device, or return 0 if it doesn't exist
+JsVar *jshGetDeviceObject(IOEventFlags device) {
+  const char *deviceStr = jshGetDeviceString(device);
+  if (!deviceStr) return 0;
+  return jsvObjectGetChild(execInfo.root, deviceStr, 0);
 }
 
 /// Set whether to use flow control on the given device or not

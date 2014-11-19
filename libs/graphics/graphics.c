@@ -281,8 +281,8 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
   short maxx[gfx->data.height];
   short y;
   for (y=miny;y<=maxy;y++) {
-    minx[y] = (short)(gfx->data.width-1);
-    maxx[y] = 0;
+    minx[y] = (short)(gfx->data.width);
+    maxx[y] = -1;
   }
   int j = (points-1)*2;
   for (i=0;i<points*2;i+=2) {
@@ -290,7 +290,7 @@ void graphicsFillPoly(JsGraphics *gfx, int points, short *vertices) {
     j = i;
   }
   for (y=miny;y<=maxy;y++) {
-    if (maxx[y]>=minx[y]) {
+    if (maxx[y]>=minx[y] && maxx[y]>=0 && minx[y]<gfx->data.width) {
       // clip
       if (minx[y]<0) minx[y]=0;
       if (maxx[y]>=gfx->data.width) maxx[y]=(short)(gfx->data.width-1);

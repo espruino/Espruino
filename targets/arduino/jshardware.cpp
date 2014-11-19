@@ -209,6 +209,10 @@ void jshSPISend16(IOEventFlags device, int data) {
 void jshSPISet16(IOEventFlags device, bool is16) {
 }
 
+/** Wait until SPI send is finished, */
+void jshSPIWait(IOEventFlags device) {
+}
+
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
@@ -244,5 +248,8 @@ void jshUtilTimerReschedule(JsSysTime period) {
 
 void jshUtilTimerStart(JsSysTime period) {
 }
+
+JsVarFloat jshReadTemperature() { return NAN; };
+JsVarFloat jshReadVRef()  { return NAN; };
 
 }

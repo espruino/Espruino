@@ -83,7 +83,7 @@ NO_INLINE bool jsiEcho() {
   return ((jsiStatus&JSIS_ECHO_OFF_MASK)==0);
 }
 
-static inline bool jsiShowInputLine() {
+static bool jsiShowInputLine() {
   return jsiEcho() && !inputLineRemoved;
 }
 
@@ -508,6 +508,11 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       if (!isOn && IS_PIN_A_LED(pin)) continue;
       jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
     } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
+#ifdef DEFAULT_CONSOLE_RX_PIN
+      // the console input pin is always a pullup now - which is expected
+      if (pin == DEFAULT_CONSOLE_RX_PIN &&
+          statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
+#endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
@@ -1279,7 +1284,8 @@ void jsiIdle() {
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
   IOEvent event;
-  while (jshPopIOEvent(&event)) {
+  int maxEvents = IOBUFFERMASK+1; // ensure we can't get totally swamped by having more events than we can process
+  while (maxEvents-- && jshPopIOEvent(&event)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     wasBusy = true;
 
@@ -1619,6 +1625,9 @@ bool jsiLoop() {
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
+#ifndef EMBEDDED
+    if (jsvIsEmptyString(inputLine)) exit(0); // exit if ctrl-c on empty input line
+#endif
     jsiClearInputLine();
   }
 

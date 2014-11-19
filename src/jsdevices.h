@@ -16,6 +16,7 @@
 
 #include "jsutils.h"
 #include "platform_config.h"
+#include "jsvar.h"
 
 void jshInitDevices(); // called from jshInit
 
@@ -115,6 +116,9 @@ bool jshHasEventSpaceForChars(int n);
 const char *jshGetDeviceString(IOEventFlags device);
 IOEventFlags jshFromDeviceString(const char *device);
 
+/// Gets a device's object from a device, or return 0 if it doesn't exist
+JsVar *jshGetDeviceObject(IOEventFlags device);
+
 // ----------------------------------------------------------------------------
 //                                                         DATA TRANSMIT BUFFER
 /// Queue a character for transmission
@@ -125,6 +129,8 @@ void jshTransmitFlush();
 void jshTransmitClearDevice(IOEventFlags device);
 /// Do we have anything we need to send?
 bool jshHasTransmitData();
+// Return the device at the top of the transmit queue (or EV_NONE)
+IOEventFlags jshGetDeviceToTransmit();
 /// Try and get a character for transmission - could just return -1 if nothing
 int jshGetCharToTransmit(IOEventFlags device);
 

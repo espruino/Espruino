@@ -187,6 +187,10 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       inf.xOnXOff = true;
     else jsExceptionHere(JSET_ERROR, "Invalid flow control: %q", v);
     jsvUnLock(v);
+
+#ifdef LINUX
+    jsvUnLock(jsvObjectSetChild(parent, "path", jsvObjectGetChild(options, "path", 0)));
+#endif
   }
 
   jshUSARTSetup(device, &inf);

@@ -293,7 +293,7 @@ void RTC_WKUP_IRQHandler(void)
 }
 #endif
 
-static inline void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
      /* Clear the USART Receive interrupt */
      USART_ClearITPendingBit(USART, USART_IT_RXNE);
@@ -342,7 +342,7 @@ void USART6_IRQHandler(void) {
 #endif
 
 
-static inline void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
+static void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
    while (SPI_I2S_GetITStatus(SPIx, SPI_I2S_IT_RXNE) != RESET) {
       // Read one byte/word from the receive data register
       jshSPIPush(device, SPI_I2S_ReceiveData(SPIx));

@@ -42,7 +42,7 @@ typedef struct JsvStringIterator {
 void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx);
 
 /// Clone the string iterator
-static inline JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
+static ALWAYS_INLINE JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
   JsvStringIterator i = *it;
   if (i.var) jsvLockAgain(i.var);
   return i;
@@ -50,30 +50,30 @@ static inline JsvStringIterator jsvStringIteratorClone(JsvStringIterator *it) {
 
 
 /// Gets the current character (or 0)
-static inline char jsvStringIteratorGetChar(JsvStringIterator *it) {
+static ALWAYS_INLINE char jsvStringIteratorGetChar(JsvStringIterator *it) {
   if (!it->var) return 0;
   return  it->var->varData.str[it->charIdx];
 }
 
 /// Gets the current (>=0) character (or -1)
-static inline int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
+static ALWAYS_INLINE int jsvStringIteratorGetCharOrMinusOne(JsvStringIterator *it) {
   if (!it->var) return -1;
   return (int)(unsigned char)it->var->varData.str[it->charIdx];
 }
 
 /// Do we have a character, or are we at the end?
-static inline bool jsvStringIteratorHasChar(JsvStringIterator *it) {
+static ALWAYS_INLINE bool jsvStringIteratorHasChar(JsvStringIterator *it) {
   return it->charIdx < it->charsInVar;
 }
 
 /// Sets a character (will not extend the string - just overwrites)
-static inline void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
+static ALWAYS_INLINE void jsvStringIteratorSetChar(JsvStringIterator *it, char c) {
   if (jsvStringIteratorHasChar(it))
     it->var->varData.str[it->charIdx] = c;
 }
 
 /// Gets the current index in the string
-static inline size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
+static ALWAYS_INLINE size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
   return it->varIndex + it->charIdx;
 }
 
@@ -81,7 +81,7 @@ static inline size_t jsvStringIteratorGetIndex(JsvStringIterator *it) {
 void jsvStringIteratorNext(JsvStringIterator *it);
 
 /// Move to next character (this one is inlined where speed is needed)
-static inline void jsvStringIteratorNextInline(JsvStringIterator *it) {
+static ALWAYS_INLINE void jsvStringIteratorNextInline(JsvStringIterator *it) {
   it->charIdx++;
   if (it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
@@ -107,7 +107,7 @@ void jsvStringIteratorGotoEnd(JsvStringIterator *it);
 /// Append a character TO THE END of a string iterator
 void jsvStringIteratorAppend(JsvStringIterator *it, char ch);
 
-static inline void jsvStringIteratorFree(JsvStringIterator *it) {
+static ALWAYS_INLINE void jsvStringIteratorFree(JsvStringIterator *it) {
   jsvUnLock(it->var);
 }
 
@@ -119,44 +119,44 @@ typedef struct JsvObjectIterator {
   JsVar *var;
 } JsvObjectIterator;
 
-static inline void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
-  assert(jsvIsArray(arr) || jsvIsObject(obj) || jsvIsFunction(obj));
+static ALWAYS_INLINE void jsvObjectIteratorNew(JsvObjectIterator *it, JsVar *obj) {
+  assert(jsvIsArray(obj) || jsvIsObject(obj) || jsvIsFunction(obj));
   it->var = jsvGetFirstChild(obj) ? jsvLock(jsvGetFirstChild(obj)) : 0;
 }
 
 /// Clone the iterator
-static inline JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
+static ALWAYS_INLINE JsvObjectIterator jsvObjectIteratorClone(JsvObjectIterator *it) {
   JsvObjectIterator i = *it;
   if (i.var) jsvLockAgain(i.var);
   return i;
 }
 
 /// Gets the current object element key (or 0)
-static inline JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
+static ALWAYS_INLINE JsVar *jsvObjectIteratorGetKey(JsvObjectIterator *it) {
   if (!it->var) return 0; // end of object
   return jsvLockAgain(it->var);
 }
 
 /// Gets the current object element value (or 0)
-static inline JsVar *jsvObjectIteratorGetValue(JsvObjectIterator *it) {
+static ALWAYS_INLINE JsVar *jsvObjectIteratorGetValue(JsvObjectIterator *it) {
   if (!it->var) return 0; // end of object
   return jsvSkipName(it->var); // might even be undefined
 }
 
 /// Set the current array element
-static inline void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
+static ALWAYS_INLINE void jsvObjectIteratorSetValue(JsvObjectIterator *it, JsVar *value) {
   if (!it->var) return; // end of object
   jsvSetValueOfName(it->var, value);
 }
 
 
 /// Do we have a key, or are we at the end?
-static inline bool jsvObjectIteratorHasValue(JsvObjectIterator *it) {
+static ALWAYS_INLINE bool jsvObjectIteratorHasValue(JsvObjectIterator *it) {
   return it->var != 0;
 }
 
 /// Move to next character
-static inline void jsvObjectIteratorNext(JsvObjectIterator *it) {
+static ALWAYS_INLINE void jsvObjectIteratorNext(JsvObjectIterator *it) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);
     jsvUnLock(it->var);
@@ -165,7 +165,7 @@ static inline void jsvObjectIteratorNext(JsvObjectIterator *it) {
 }
 
 /// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvArrayIteratorNew) as we don't store it
-static inline void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
+static ALWAYS_INLINE void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);
     jsvRemoveChild(parent, it->var);
@@ -174,7 +174,7 @@ static inline void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsV
   }
 }
 
-static inline void jsvObjectIteratorFree(JsvObjectIterator *it) {
+static ALWAYS_INLINE void jsvObjectIteratorFree(JsvObjectIterator *it) {
   jsvUnLock(it->var);
 }
 // --------------------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ typedef struct JsvArrayBufferIterator {
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index);
 
 /// Clone the iterator
-static inline JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
+static ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArrayBufferIterator *it) {
   JsvArrayBufferIterator i = *it;
   i.it = jsvStringIteratorClone(&it->it);
   return i;
@@ -205,6 +205,7 @@ JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it);
 JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it);
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value);
+void   jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value);
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it);
 bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it);

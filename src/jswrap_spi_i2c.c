@@ -152,6 +152,11 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
 
   if (DEVICE_IS_SPI(device)) {
     jshSPISetup(device, &inf);
+#ifdef LINUX
+    if (jsvIsObject(options)) {
+      jsvUnLock(jsvObjectSetChild(parent, "path", jsvObjectGetChild(options, "path", 0)));
+    }
+#endif
   } else if (device == EV_NONE) {
     // software mode - at least configure pins properly
     if (inf.pinSCK != PIN_UNDEFINED)
@@ -350,6 +355,10 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
     }
     jsvUnLock(last);
   }
+
+  // Wait until SPI send is finished, and flush data
+  if (DEVICE_IS_SPI(device))
+    jshSPIWait(device);
 
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);

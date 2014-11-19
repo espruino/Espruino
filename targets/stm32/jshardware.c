@@ -36,9 +36,9 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-//#ifdef ESPRUINI
-//#define USE_RTC
-//#endif
+#ifdef ESPRUINI
+#define USE_RTC
+#endif
 
 #define IRQ_PRIOR_MASSIVE 0
 #define IRQ_PRIOR_SPI 0 // we want to be very sure of not losing SPI (this is handled quickly too)
@@ -54,7 +54,7 @@
 // TODO: could jshRTCPrescaler (and the hardware prescaler) be modified on SysTick, to calibrate the LSI against the HSE?
 unsigned short jshRTCPrescaler;
 unsigned short jshRTCPrescalerReciprocal; // (JSSYSTIME_SECOND << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler;
-#define RTC_PRESCALER_RECIPROCAL_SHIFT 11
+#define RTC_PRESCALER_RECIPROCAL_SHIFT 10
 #define RTC_INITIALISE_TICKS 4 // SysTicks before we initialise the RTC - we need to wait until the LSE starts up properly
 #define JSSYSTIME_EXTRA_BITS 8 // extra bits we shove on under the RTC (we try and get these from SysTick)
 #define JSSYSTIME_SECOND_SHIFT 20
@@ -117,7 +117,7 @@ JsSysTime jshLastWokenByUSB = 0;
 
 
 
-static inline uint8_t pinToEVEXTI(Pin ipin) {
+static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
   /*if (pin==JSH_PIN0 ) return EV_EXTI0;
@@ -140,7 +140,7 @@ static inline uint8_t pinToEVEXTI(Pin ipin) {
   return EV_NONE;*/
 }
 
-static inline uint16_t stmPin(Pin ipin) {
+static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint16_t)(1 << (pin-JSH_PIN0));
 /*  if (pin==JSH_PIN0 ) return GPIO_Pin_0;
@@ -162,7 +162,7 @@ static inline uint16_t stmPin(Pin ipin) {
   jsExceptionHere(JSET_INTERNALERROR, "stmPin");
   return GPIO_Pin_0;*/
 }
-static inline uint32_t stmExtI(Pin ipin) {
+static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint32_t)(1 << (pin-JSH_PIN0));
 /*  if (pin==JSH_PIN0 ) return EXTI_Line0;
@@ -185,7 +185,7 @@ static inline uint32_t stmExtI(Pin ipin) {
   return EXTI_Line0;*/
 }
 
-static inline GPIO_TypeDef *stmPort(Pin pin) {
+static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
   return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
   /*if (port == JSH_PORTA) return GPIOA;
@@ -202,7 +202,7 @@ static inline GPIO_TypeDef *stmPort(Pin pin) {
   return GPIOA;*/
 }
 
-static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
+static ALWAYS_INLINE uint8_t stmPinSource(JsvPinInfoPin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(pin-JSH_PIN0);
   /*if (pin==JSH_PIN0 ) return GPIO_PinSource0;
@@ -225,7 +225,7 @@ static inline uint8_t stmPinSource(JsvPinInfoPin ipin) {
   return GPIO_PinSource0;*/
 }
 
-static inline uint8_t stmPortSource(Pin pin) {
+static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
   JsvPinInfoPort port = pinInfo[pin].port;
   return (uint8_t)(port-JSH_PORTA);
 /*#ifdef STM32API2
@@ -254,7 +254,7 @@ static inline uint8_t stmPortSource(Pin pin) {
 #endif*/
 }
 
-static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
+static ALWAYS_INLINE ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   if (analog & JSH_ANALOG1) return ADC1;
   if (analog & JSH_ANALOG2) return ADC2;
   if (analog & JSH_ANALOG3) return ADC3;
@@ -265,7 +265,7 @@ static inline ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   return ADC1;
 }
 
-static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
+static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
   switch (analog & JSH_MASK_ANALOG_CH) {
 #ifndef STM32F3XX
   case JSH_ANALOG_CH0  : return ADC_Channel_0;
@@ -292,7 +292,7 @@ static inline uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 }
 
 #ifdef STM32API2
-static inline uint8_t functionToAF(JshPinFunction func) {
+static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 #if defined(STM32F4) || defined(STM32F2)
   switch (func & JSH_MASK_TYPE) {
   case JSH_SPI1    : return GPIO_AF_SPI1;
@@ -601,7 +601,7 @@ static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
   // This (oddly) looks the same on F1/2/3/4. It's probably not
   bool APB1 = TIMx==TIM2 || TIMx==TIM3 || TIMx==TIM4 ||
 #ifndef STM32F3
-              TIMx==TIM5 || 
+              TIMx==TIM5 ||
 #endif
               TIMx==TIM6 || TIMx==TIM7 ||
 #ifndef STM32F3
@@ -686,6 +686,10 @@ void jshKickUSBWatchdog() {
 }
 #endif //USB
 
+static bool jshIsRTCAlreadySetup() {
+  return (RCC->BDCR & RCC_BDCR_RTCEN) != 0;
+}
+
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -698,6 +702,9 @@ void jshDoSysTick() {
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
+    // If RTC is already enabled, we've come back from a reset...
+    // we're going to want to keep everything as it was
+    bool alreadySetup = jshIsRTCAlreadySetup();
     if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
       // LSE is not working - turn it off and use LSI
 #ifdef STM32F1
@@ -705,31 +712,38 @@ void jshDoSysTick() {
 #else
       jshRTCPrescaler = 32768; // 32kHz for LSI
 #endif
-      RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
-      RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
+      if (!alreadySetup) {
+        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
+        RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
+      }
     } else {
       // LSE working! Yay! turn LSI off now
       jshRTCPrescaler = 32768; // 32kHz for LSE
-      RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
-      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
+      if (!alreadySetup) {
+        RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
+        RCC_LSICmd(DISABLE); // disable low speed internal oscillator
+      }
     }
+
+    if (!alreadySetup) {
+      RCC_RTCCLKCmd(ENABLE); // enable RTC
+      RTC_WaitForSynchro();
+  #ifdef STM32F1
+      RTC_SetPrescaler(jshRTCPrescaler - 1U);
+      RTC_WaitForLastTask();
+  #else
+      RTC_InitTypeDef RTC_InitStructure;
+      RTC_StructInit(&RTC_InitStructure);
+      //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+      //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
+      RTC_InitStructure.RTC_AsynchPrediv = 0;
+      RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
+      RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+      RTC_Init(&RTC_InitStructure);
+  #endif
+    }
+
     jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
-    //RTC_SetCounter(7900);
-    RCC_RTCCLKCmd(ENABLE); // enable RTC
-    RTC_WaitForSynchro();
-#ifdef STM32F1
-    RTC_SetPrescaler(jshRTCPrescaler - 1U);
-    RTC_WaitForLastTask();
-#else
-    RTC_InitTypeDef RTC_InitStructure;
-    RTC_StructInit(&RTC_InitStructure);
-    //RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
-    //RTC_InitStructure.RTC_SynchPrediv =  0xFF; /* (32KHz / (RTC_AsynchPrediv+1)) - 1 = 0xFF */
-    RTC_InitStructure.RTC_AsynchPrediv = 0;
-    RTC_InitStructure.RTC_SynchPrediv =  (uint32_t)(jshRTCPrescaler-1); // TODO: RTC_AsynchPrediv larger for power consumption - but then timestamps are less accurate
-    RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
-    RTC_Init(&RTC_InitStructure);
-#endif
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -800,7 +814,7 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) { 
+bool jshGetPinStateIsManual(Pin pin) {
   return BITFIELD_GET(jshPinStateIsManual, pin);
 }
 
@@ -808,7 +822,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
   BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
 
-inline void jshPinSetState(Pin pin, JshPinState state) {
+ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -929,7 +943,7 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
 #endif
 }
 
-inline void jshPinSetValue(Pin pin, bool value) {
+ALWAYS_INLINE void jshPinSetValue(Pin pin, bool value) {
 #ifdef STM32API2
     if (value)
       GPIO_SetBits(stmPort(pin), stmPin(pin));
@@ -943,11 +957,11 @@ inline void jshPinSetValue(Pin pin, bool value) {
 #endif
 }
 
-inline bool jshPinGetValue(Pin pin) {
+ALWAYS_INLINE bool jshPinGetValue(Pin pin) {
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
-static inline unsigned int getSystemTimerFreq() {
+static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
   return SystemCoreClock;
 }
 
@@ -979,6 +993,7 @@ void jshInit() {
   // enable clocks
  #if defined(STM32F3)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
                          RCC_AHBPeriph_GPIOA |
                          RCC_AHBPeriph_GPIOB |
@@ -986,11 +1001,12 @@ void jshInit() {
                          RCC_AHBPeriph_GPIOD |
                          RCC_AHBPeriph_GPIOE |
                          RCC_AHBPeriph_GPIOF, ENABLE);
- #elif defined(STM32F2) || defined(STM32F4) 
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+ #elif defined(STM32F2) || defined(STM32F4)
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 |
+                         RCC_APB2Periph_SYSCFG, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                          RCC_AHB1Periph_GPIOB |
-                         RCC_AHB1Periph_GPIOC | 
+                         RCC_AHB1Periph_GPIOC |
                          RCC_AHB1Periph_GPIOD |
                          RCC_AHB1Periph_GPIOE |
                          RCC_AHB1Periph_GPIOF |
@@ -1015,7 +1031,7 @@ void jshInit() {
   SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA;
 
   /* Configure all GPIO as analog to reduce current consumption on non used IOs */
-  /* When using the small packages (48 and 64 pin packages), the GPIO pins which 
+  /* When using the small packages (48 and 64 pin packages), the GPIO pins which
      are not present on these packages, must not be configured in analog mode.*/
   /* Enable GPIOs clock */
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -1027,7 +1043,7 @@ void jshInit() {
 #endif
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
-  GPIO_Init(GPIOA, &GPIO_InitStructure); 
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
   GPIO_Init(GPIOB, &GPIO_InitStructure);
   GPIO_Init(GPIOC, &GPIO_InitStructure);
   GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -1045,11 +1061,14 @@ void jshInit() {
 #ifdef USE_RTC
   // allow access to backup domain, and reset it (we need this so we can fiddle with the RTC)
   PWR_BackupAccessCmd(ENABLE);
-  RCC_BackupResetCmd(ENABLE);
-  RCC_BackupResetCmd(DISABLE);
-  // Turn both LSI and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
-  RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
-  RCC_LSICmd(ENABLE); // low speed internal oscillator
+  // If RTC is already setup, just leave it alone!
+  if (!jshIsRTCAlreadySetup()) {
+    RCC_BackupResetCmd(ENABLE);
+    RCC_BackupResetCmd(DISABLE);
+    // Turn both LSI and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
+    RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
+    RCC_LSICmd(ENABLE); // low speed internal oscillator
+  }
 #endif
 
   // initialise button
@@ -1062,7 +1081,7 @@ void jshInit() {
 #endif
 
   // PREEMPTION
-  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); 
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
 #ifdef STM32VLDISCOVERY
   RCC_PCLK1Config(RCC_HCLK_Div2);
@@ -1193,7 +1212,7 @@ void jshInit() {
   jshInterruptOn();
 
 
-  
+
 /*  jsiConsolePrint("\r\nstart = ");jsiConsolePrintInt(tStart);
   jsiConsolePrint("\r\nend1 = ");jsiConsolePrintInt(tEnd1);
   jsiConsolePrint("\r\nend2 = ");jsiConsolePrintInt(tEnd2);
@@ -1403,7 +1422,7 @@ JsSysTime jshGetRTCSystemTime() {
 
   JsSysTime c = (JsSysTime)(fromTimeInDay(&ctime)/1000);
 #endif
-  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)(((jshRTCPrescaler - (dl+1))*jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
+  return (((JsSysTime)c) << JSSYSTIME_SECOND_SHIFT) | (JsSysTime)((((unsigned int)jshRTCPrescaler - (unsigned int)(dl+1))*(unsigned int)jshRTCPrescalerReciprocal) >> RTC_PRESCALER_RECIPROCAL_SHIFT);
 }
 #endif
 
@@ -1451,7 +1470,8 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 #ifdef STM32F1
   RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
-#else
+  RTC_WaitForLastTask();
+#else // !STM32F1
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
 
@@ -1471,12 +1491,14 @@ void jshSetSystemTime(JsSysTime newTime) {
 
   RTC_SetTime(RTC_Format_BIN, &time);
   RTC_SetDate(RTC_Format_BIN, &date);
-#endif
+  RTC_WaitForSynchro();
+#endif // !STM32F1
+
 
   hasSystemSlept = true;
-#else
+#else // !USE_RTC
   SysTickMajor = newTime;
-#endif
+#endif // !USE_RTC
   jshInterruptOn();
   jshGetSystemTime(); // force update of the time
 }
@@ -1486,7 +1508,7 @@ void jshSetSystemTime(JsSysTime newTime) {
 bool jshPinInput(Pin pin) {
   bool value = false;
   if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin)) 
+    if (!jshGetPinStateIsManual(pin))
       jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
     value = jshPinGetValue(pin);
@@ -1643,9 +1665,9 @@ int jshPinAnalogFast(Pin pin) {
   return jshAnalogRead(pinInfo[pin].analog, true);
 }
 
-#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature() {
+#if defined(STM32F1) || defined(STM32F4)
   // enable sensor
   ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
@@ -1656,10 +1678,14 @@ JsVarFloat jshReadTemperature() {
   // disable sensor
   ADC_TempSensorVrefintCmd(DISABLE);
   return ((V_TEMP_25 - vSense) / V_TEMP_SLOPE) + 25;
+#else
+  return NAN;
+#endif
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
+#if defined(STM32F1) || defined(STM32F4)
   // enable sensor
   ADC_TempSensorVrefintCmd(ENABLE);
   jshDelayMicroseconds(10);
@@ -1668,13 +1694,15 @@ JsVarFloat jshReadVRef() {
   // disable sensor
   ADC_TempSensorVrefintCmd(DISABLE);
   return V_REFINT / r;
-}
+#else
+  return NAN;
 #endif
+}
 
 
 void jshPinOutput(Pin pin, bool value) {
   if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin)) 
+    if (!jshGetPinStateIsManual(pin))
       jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
@@ -2005,15 +2033,15 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_InitStructure.USART_BaudRate = (uint32_t)inf->baudRate;
 
   // 7-bit + 1-bit (parity odd or even) = 8-bit
-  // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and 
-  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case 
+  // USART_ReceiveData(USART1) & 0x7F; for the 7-bit case and
+  // USART_ReceiveData(USART1) & 0xFF; for the 8-bit case
   // the register is 9-bits long.
 
   if((inf->bytesize == 7 && inf->parity > 0) || (inf->bytesize == 8 && inf->parity == 0)) {
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
   }
   else if((inf->bytesize == 8 && inf->parity > 0) || (inf->bytesize == 9 && inf->parity == 0)) {
-    USART_InitStructure.USART_WordLength = USART_WordLength_9b; 
+    USART_InitStructure.USART_WordLength = USART_WordLength_9b;
   }
   else {
     jsExceptionHere(JSET_INTERNALERROR, "Unsupported serial byte size.");
@@ -2033,7 +2061,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
 
   // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2
-  if(inf->parity == 0) { 
+  if(inf->parity == 0) {
     USART_InitStructure.USART_Parity = USART_Parity_No ;
   }
   else if(inf->parity == 1) {
@@ -2213,6 +2241,15 @@ void jshSPISet16(IOEventFlags device, bool is16) {
   SPI_DataSizeConfig(SPI, is16 ? SPI_DataSize_16b : SPI_DataSize_8b);
 }
 
+/** Wait until SPI send is finished, */
+void jshSPIWait(IOEventFlags device) {
+  int n = device-EV_SPI1;
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
+  /* Clear SPI receive buffer */
+  jshSPIBufTail[n] = jshSPIBufHead[n];
+}
 
 /** Set up I2S, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
@@ -2280,11 +2317,11 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   if (!jshI2CWaitStartBit(I2C)) return;
 
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
-  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter); 
+  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
   int i;
   for (i=0;i<nBytes;i++) {
-    I2C_SendData(I2C, data[i]);   
+    I2C_SendData(I2C, data[i]);
     int timeout = WAIT_UNTIL_N_CYCLES;
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
@@ -2312,14 +2349,14 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   }
 #else
   WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
-  I2C_GenerateSTART(I2C, ENABLE);    
+  I2C_GenerateSTART(I2C, ENABLE);
   if (!jshI2CWaitStartBit(I2C)) {
     for (i=0;i<nBytes;i++) data[i]=0;
     return;
   }
 
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Read Mode 1");
-  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);  
+  I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Receiver);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED), "I2C Read Receive Mode");
   for (i=0;i<nBytes;i++) {
     if (sendStop && i == nBytes-1) {
@@ -2351,8 +2388,8 @@ void jshSaveToFlash() {
 
   unsigned int i;
   /* Clear All pending flags */
-#if defined(STM32F2) || defined(STM32F4) 
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR | 
+#if defined(STM32F2) || defined(STM32F4)
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
                   FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
 #elif defined(STM32F3)
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
@@ -2361,7 +2398,7 @@ void jshSaveToFlash() {
 #endif
 
   jsiConsolePrint("Erasing Flash...");
-#if defined(STM32F2) || defined(STM32F4) 
+#if defined(STM32F2) || defined(STM32F4)
   for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
     FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
     jsiConsolePrint(".");
@@ -2379,14 +2416,14 @@ void jshSaveToFlash() {
   JsVar *firstData = jsvLock(1);
   uint32_t *basePtr = (uint32_t *)firstData;
   jsvUnLock(firstData);
-#if defined(STM32F2) || defined(STM32F4) 
+#if defined(STM32F2) || defined(STM32F4)
   for (i=0;i<dataSize;i+=4) {
       while (FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
       if ((i&1023)==0) jsiConsolePrint(".");
   }
   while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
 #else
-  /* Program Flash Bank */  
+  /* Program Flash Bank */
   for (i=0;i<dataSize;i+=4) {
       FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]);
       if ((i&1023)==0) jsiConsolePrint(".");

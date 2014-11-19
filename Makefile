@@ -1,6 +1,7 @@
 # This file is part of Espruino, a JavaScript interpreter for Microcontrollers
 #
 # Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+# Copyright (C) 2014 Alain Sézille for NucleoF401RE, NucleoF411RE specific lines of this file
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,13 +34,16 @@
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
 # ARDUINOMEGA2560=1
+# ARMINARM=1
+# NUCLEOF401RE=1
+# NUCLEOF411RE=1
 # Or nothing for standard linux compile
 #
 # Also:
 #
 # DEBUG=1                 # add debug symbols (-g)
-RELEASE=1               # Force release-style compile (no asserts, etc)
-SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
+# RELEASE=1               # Force release-style compile (no asserts, etc)
+# SINGLETHREAD=1          # Compile single-threaded to make compilation errors easier to find
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
@@ -50,7 +54,8 @@ endif
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
-CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
+CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration
+LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
@@ -112,12 +117,22 @@ USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef ESPRUINI_1V0
 EMBEDDED=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0 
+USE_DFU=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0
 USE_GRAPHICS=1
 BOARD=ESPRUINIBOARD_R1_0
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef ESPRUINI_1V1
+EMBEDDED=1
+USE_DFU=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V1
+USE_GRAPHICS=1
+BOARD=ESPRUINIBOARD_R1_1
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
@@ -186,11 +201,29 @@ BOARD=ECU
 STLIB=STM32F40_41xxx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
+else ifdef NUCLEOF401RE
+EMBEDDED=1
+NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
+BOARD=NUCLEOF401RE
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef NUCLEOF411RE
+EMBEDDED=1
+NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
+BOARD=NUCLEOF411RE
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F4DISCOVERY
 STLIB=STM32F40_41xxx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
@@ -199,7 +232,7 @@ else ifdef STM32F401CDISCOVERY
 EMBEDDED=1
 USE_NET=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F401CDISCOVERY
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -207,7 +240,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
 EMBEDDED=1
 USE_GRAPHICS=1
-DEFINES += -DUSE_USB_OTG_FS=1 
+DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F429IDISCOVERY
 STLIB=STM32F429_439xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
@@ -263,6 +296,16 @@ EMBEDDED=1
 BOARD=ARDUINOMEGA2560
 ARDUINO_AVR=1
 OPTIMIZEFLAGS+=-Os
+else ifdef ARMINARM
+EMBEDDED=1
+USE_NET=1
+USE_GRAPHICS=1
+USE_FILESYSTEM=1
+BOARD=ARMINARM
+DEFINES+=-DESPRUINOBOARD
+STLIB=STM32F10X_HD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -406,7 +449,7 @@ src/jswrap_serial.c \
 src/jswrap_spi_i2c.c \
 src/jswrap_stream.c \
 src/jswrap_string.c \
-src/jswrap_waveform.c 
+src/jswrap_waveform.c
 
 # it is important that _pin comes before stuff which uses
 # integers (as the check for int *includes* the chek for pin)
@@ -429,6 +472,7 @@ ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
 endif
+DEFINES+=-DSAVE_ON_FLASH # hack, as without link time optimisation the always_inlines will fail (even though they are not used)
 BUILD_LINKER_FLAGS+=--bootloader
 PROJ_NAME=$(BOOTLOADER_PROJ_NAME)
 WRAPPERSOURCES =
@@ -832,7 +876,7 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
-#targetlibs/stm32f4/lib/stm324xx_fsmc.c 
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c
 
 ifdef USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
@@ -966,6 +1010,11 @@ SOURCES +=                              \
 targets/linux/main.c                    \
 targets/linux/jshardware.c
 LIBS += -lm # maths lib
+LIBS += -lpthread # thread lib for input processing
+endif
+
+ifdef NUCLEO
+WRAPPERSOURCES += targets/nucleo/jswrap_nucleo.c
 endif
 
 SOURCES += $(WRAPPERSOURCES)
@@ -982,7 +1031,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
 LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+
 ifdef EMBEDDED
+DEFINES += -DEMBEDDED
 LDFLAGS += -Wl,--gc-sections
 endif
 
@@ -1094,13 +1145,16 @@ endif
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
-ifdef ESPRUINI_1V0
+ifdef USE_DFU
 	sudo dfu-util -a 0 -s 0x08000000 -D $(PROJ_NAME).bin
 else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 else ifdef MBED
 	cp $(PROJ_NAME).bin /media/MBED;sync
+else ifdef NUCLEO
+	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
+	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)

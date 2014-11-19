@@ -143,7 +143,6 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     it->varIndex += it->charIdx;
     it->charIdx = 0; // it's new, so empty
   }
-
   it->var->varData.str[it->charIdx] = ch;
   it->charsInVar = it->charIdx+1;
   jsvSetCharactersInVar(it->var, it->charsInVar);
@@ -273,6 +272,14 @@ void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) 
   if (dataLen!=1) it->hasAccessedElement = true;
 }
 
+void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value) {
+  JsvStringIterator oldIt = jsvStringIteratorClone(&it->it);
+  jsvArrayBufferIteratorSetValue(it, value);
+  jsvStringIteratorFree(&it->it);
+  it->it = oldIt;
+  it->hasAccessedElement = false;
+}
+
 void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value) {
   // FIXME: Do this without the allocation!
   JsVar *val = jsvNewFromInteger(value);
@@ -361,7 +368,7 @@ JsVar *jsvIteratorSetValue(JsvIterator *it, JsVar *value) {
   switch (it->type) {
   case JSVI_OBJECT : jsvObjectIteratorSetValue(&it->it.obj, value); break;
   case JSVI_STRING : jsvStringIteratorSetChar(&it->it.str, (char)(jsvIsString(value) ? value->varData.str[0] : (char)jsvGetInteger(value))); break;
-  case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorSetValue(&it->it.buf, value); break;
+  case JSVI_ARRAYBUFFER : jsvArrayBufferIteratorSetValueAndRewind(&it->it.buf, value); break;
   default: assert(0); break;
   }
   return value;

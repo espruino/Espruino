@@ -24,7 +24,7 @@
 This class provides a software-defined OneWire master. It is designed to be similar to Arduino's OneWire library.
 */
 
-static inline Pin onewire_getpin(JsVar *parent) {
+static Pin onewire_getpin(JsVar *parent) {
   return jshGetPinFromVarAndUnLock(jsvObjectGetChild(parent, "pin", 0));
 }
 

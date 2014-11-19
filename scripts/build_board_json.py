@@ -105,4 +105,3 @@ boarddata = {
 jsonFile = open(jsonFilename, 'w')
 jsonFile.write(json.dumps(boarddata, indent=1));
 jsonFile.close();
-

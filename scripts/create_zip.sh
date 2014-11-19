@@ -26,8 +26,11 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINO_1V1 STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
+for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINO_1V1 NUCLEOF401RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
 do
+  echo ------------------------------
+  echo                  $BOARDNAME
+  echo ------------------------------
   EXTRADEFS=
   EXTRANAME=
   if [ "$BOARDNAME" == "ESPRUINO_1V3_WIZ" ]; then

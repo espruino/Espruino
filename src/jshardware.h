@@ -140,7 +140,7 @@ typedef struct {
   Pin pinRX;
   Pin pinTX;
   unsigned char bytesize;
-  unsigned char parity;
+  unsigned char parity; // 0=none, 1=odd, 2=even
   unsigned char stopbits;
   bool xOnXOff; // XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;
@@ -204,6 +204,8 @@ int jshSPISend(IOEventFlags device, int data);
 void jshSPISend16(IOEventFlags device, int data);
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
+/** Wait until SPI send is finished, and flush all received data */
+void jshSPIWait(IOEventFlags device);
 
 typedef struct {
   Pin pinSCL;
@@ -261,15 +263,10 @@ void jshKickUSBWatchdog();
 void jshSPIPush(IOEventFlags device, uint16_t data);
 #endif
 
-#if defined(STM32F1) || defined(STM32F4)
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
-#else
-static JsVarFloat jshReadTemperature() { return NAN; };
-static JsVarFloat jshReadVRef()  { return NAN; };
-#endif
 
 #ifdef STM32F3
 #define SPI_I2S_SendData SPI_I2S_SendData16
