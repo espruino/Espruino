@@ -770,7 +770,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
 
 /// Get len bytes of string data from this string. Does not error if string len is not equal to len
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len) {
-  assert(!jsvHasCharacterData(v));
+  assert(jsvHasCharacterData(v));
   size_t l = len;
   JsvStringIterator it;
   jsvStringIteratorNewConst(&it, v, startChar);
