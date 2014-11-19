@@ -32,7 +32,7 @@ typedef struct {
   unsigned char data;         // data to transmit
 } PACKED_FLAGS TxBufferItem;
 
-TxBufferItem txBuffer[TXBUFFERMASK+1];
+volatile TxBufferItem txBuffer[TXBUFFERMASK+1];
 volatile unsigned char txHead=0, txTail=0;
 
 typedef enum {
@@ -154,7 +154,7 @@ bool jshHasTransmitData() {
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
-IOEvent ioBuffer[IOBUFFERMASK+1];
+volatile IOEvent ioBuffer[IOBUFFERMASK+1];
 volatile unsigned char ioHead=0, ioTail=0;
 // ----------------------------------------------------------------------------
 
@@ -175,6 +175,7 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
     jshSetFlowControlXON(channel, false);
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
   unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+#ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
   if (ioHead!=ioTail && ioHead!=nextTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
@@ -187,6 +188,7 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
       return;
     }
   }
+#endif
   // Make new buffer
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {

@@ -190,6 +190,8 @@ bool isInitialised;
 
 void jshInputThread() {
   while (isInitialised) {
+
+    bool shortSleep = false;
     /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
     if (execInfo.execute & EXEC_CTRL_C_WAIT)
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
@@ -201,31 +203,40 @@ void jshInputThread() {
       if (ch<0) break;
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
     }
-    // Read from any open devices
-    int i;
-    for (i=0;i<=EV_DEVICE_MAX;i++) {
-      if (ioDevices[i]) {
-        char buf[32];
-        // read can return -1 (EAGAIN) because O_NONBLOCK is set
-        int bytes = (int)read(ioDevices[i], buf, sizeof(buf));
-        if (bytes>0) jshPushIOCharEvents(i, buf, (unsigned int)bytes);
+    // Read from any open devices - if we have space
+    if (jshGetEventsUsed() < IOBUFFERMASK/2) {
+      int i;
+      for (i=0;i<=EV_DEVICE_MAX;i++) {
+        if (ioDevices[i]) {
+          char buf[32];
+          // read can return -1 (EAGAIN) because O_NONBLOCK is set
+          int bytes = (int)read(ioDevices[i], buf, sizeof(buf));
+          if (bytes>0) {
+            //int j; for (j=0;j<bytes;j++) printf("]] '%c'\r\n", buf[j]);
+            jshPushIOCharEvents(i, buf, (unsigned int)bytes);
+            shortSleep = true;
+          }
+        }
       }
     }
     // Write any data we have
     IOEventFlags device = jshGetDeviceToTransmit();
     while (device != EV_NONE) {
       char ch = (char)jshGetCharToTransmit(device);
-      if (ioDevices[device])
+      //printf("[[ '%c'\r\n", ch);
+      if (ioDevices[device]) {
         write(ioDevices[device], &ch, 1);
+        shortSleep = true;
+      }
       device = jshGetDeviceToTransmit();
     }
 
-    bool hasWatches = false;
+
 #ifdef SYSFS_GPIO_DIR
     Pin pin;
     for (pin=0;pin<JSH_PIN_COUNT;pin++)
       if (gpioShouldWatch[pin]) {
-        hasWatches = true;
+        shortSleep = true;
         bool state = jshPinGetValue(pin);
         if (state != gpioLastState[pin]) {
           jshPushIOEvent(pinToEVEXTI(pin) | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
@@ -234,7 +245,7 @@ void jshInputThread() {
       }
 #endif
 
-    usleep(hasWatches ? 1000 : 50000);
+    usleep(shortSleep ? 1000 : 50000);
   }
 }
 
