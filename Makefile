@@ -54,7 +54,7 @@ endif
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
-CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fdiagnostics-show-option
+CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration
 LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
@@ -204,6 +204,8 @@ OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF401RE
 EMBEDDED=1
 NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
 BOARD=NUCLEOF401RE
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -211,6 +213,8 @@ OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF411RE
 EMBEDDED=1
 NUCLEO=1
+USE_GRAPHICS=1
+USE_NET=1
 BOARD=NUCLEOF411RE
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
