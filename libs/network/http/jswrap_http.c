@@ -260,7 +260,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  return serverNew(callback);
+  return serverNew(ST_HTTP, callback);
 }
 
 /*JSON{
@@ -295,7 +295,7 @@ JsVar *jswrap_http_request(JsVar *options, JsVar *callback) {
     return 0;
   }
   jsvUnLock(skippedCallback);
-  JsVar *rq = clientRequestNew(options, callback);
+  JsVar *rq = clientRequestNew(ST_HTTP, options, callback);
   if (unlockOptions) jsvUnLock(options);
   return rq;
 }
