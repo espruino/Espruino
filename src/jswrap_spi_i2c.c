@@ -152,6 +152,11 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
 
   if (DEVICE_IS_SPI(device)) {
     jshSPISetup(device, &inf);
+#ifdef LINUX
+    if (jsvIsObject(options)) {
+      jsvUnLock(jsvObjectSetChild(parent, "path", jsvObjectGetChild(options, "path", 0)));
+    }
+#endif
   } else if (device == EV_NONE) {
     // software mode - at least configure pins properly
     if (inf.pinSCK != PIN_UNDEFINED)

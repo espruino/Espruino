@@ -68,6 +68,13 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
     return;
   }
 #endif
+#else // if PC, just put to stdout
+  if (device==DEFAULT_CONSOLE_DEVICE) {
+    fputc(data, stdout);
+    fflush(stdout);
+    return;
+  }
+#endif
   if (device==EV_NONE) return;
   unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
   if (txHeadNext==txTail) {
@@ -86,13 +93,12 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   txHead = txHeadNext;
 
   jshUSARTKick(device); // set up interrupts if required
+}
 
-#else // if PC, just put to stdout
-  if (device==DEFAULT_CONSOLE_DEVICE) {
-    fputc(data, stdout);
-    fflush(stdout);
-  }
-#endif
+// Return the device at the top of the transmit queue (or EV_NONE)
+IOEventFlags jshGetDeviceToTransmit() {
+  if (!jshHasTransmitData()) return EV_NONE;
+  return IOEVENTFLAGS_GETTYPE(txBuffer[txTail].flags);
 }
 
 // Try and get a character for transmission - could just return -1 if nothing
@@ -143,11 +149,7 @@ void jshTransmitClearDevice(IOEventFlags device) {
 }
 
 bool jshHasTransmitData() {
-#ifndef LINUX
   return txHead != txTail;
-#else
-  return false;
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -388,6 +390,13 @@ void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
       }
     }
   }
+}
+
+/// Gets a device's object from a device, or return 0 if it doesn't exist
+JsVar *jshGetDeviceObject(IOEventFlags device) {
+  const char *deviceStr = jshGetDeviceString(device);
+  if (!deviceStr) return 0;
+  return jsvObjectGetChild(execInfo.root, deviceStr, 0);
 }
 
 /// Set whether to use flow control on the given device or not
