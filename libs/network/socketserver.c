@@ -673,7 +673,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   char hostName[128];
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
   if (jsvIsUndefined(hostNameVar))
-    strcpy(hostName, "localhost");
+    strncpy(hostName, "localhost", sizeof(hostName));
   else
     jsvGetString(hostNameVar, hostName, sizeof(hostName));
   jsvUnLock(hostNameVar);
