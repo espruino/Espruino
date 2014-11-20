@@ -29,7 +29,7 @@
 #define HTTP_NAME_CODE "code"
 #define HTTP_NAME_HEADERS "hdr"
 #define HTTP_NAME_CLOSENOW "closeNow"
-#define HTTP_NAME_CLOSE "close"
+#define HTTP_NAME_CLOSE "close" // close after sending
 #define HTTP_NAME_ON_CONNECT "#onconnect"
 #define HTTP_NAME_ON_CLOSE "#onclose"
 #define HTTP_NAME_ON_END "#onend"
@@ -414,6 +414,9 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         if (!b)
           closeConnectionNow = true;
         jsvObjectSetChild(connection, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
+      } else {
+        if (jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSE, false)))
+          closeConnectionNow = true;
       }
       // Now read data if possible
       int num = net->recv(net, sckt, buf, sizeof(buf));
@@ -520,6 +523,7 @@ bool socketIdle(JsNetwork *net) {
               jsvUnLock(arr);
             }
             jsvUnLock(jsvObjectSetChild(sock, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1)));
+            jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, &sock, 1);
             jsvUnLock(sock);
           }
         }
@@ -711,8 +715,8 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     // on HTTP, this actually means we connect
     clientRequestConnect(net, httpClientReqVar);
   } else {
-    // on normal sockets, we actually force close
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+    // on normal sockets, we actually request close after all data sent
+    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true)));
   }
 }
 
