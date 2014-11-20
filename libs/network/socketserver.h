@@ -11,6 +11,10 @@
  * Contains HTTP client and server
  * ----------------------------------------------------------------------------
  */
+#ifndef SOCKETSERVER_H
+#define SOCKETSERVER_H
+
+
 #include "jsutils.h"
 #include "jsvar.h"
 #include "../network.h"
@@ -34,8 +38,11 @@ void serverClose(JsNetwork *net, JsVar *server);
 
 JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback);
 void clientRequestWrite(JsVar *httpClientReqVar, JsVar *data);
+void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 
 void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers);
 void serverResponseData(JsVar *httpServerResponseVar, JsVar *data);
 void serverResponseEnd(JsVar *httpServerResponseVar);
+
+#endif // SOCKETSERVER_H

@@ -602,8 +602,10 @@ endif
 
 ifdef USE_NET
 DEFINES += -DUSE_NET
-INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
-WRAPPERSOURCES += libs/network/http/jswrap_http.c
+INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
+WRAPPERSOURCES += \
+libs/network/jswrap_net.c \
+libs/network/http/jswrap_http.c
 SOURCES += \
 libs/network/network.c \
 libs/network/socketserver.c
