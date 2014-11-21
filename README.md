@@ -12,21 +12,25 @@ http://www.espruino.com
 About
 -----
 
-It'd probably help to browse the [Espruino Website](http://www.espruino.com). read the [FAQ](http://www.espruino.com/FAQ).
+Espruino is a JavaScript interpreter for microcontrollers. It is designed to fit into devices with as little as 128kB Flash and 8kB RAM.
 
-There's also the auto-generated [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as the [Tutorials](http://www.espruino.com/Tutorials) on the website. However please note that this repository is under heavy development, and the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but **not** the latest version on GitHub.
+Please support Espruino by [ordering one of our official boards](espruino.com/Order).
+
+
+Documentation
+------------
+
+It'd be best to browse the [Espruino Website](http://www.espruino.com) and read the [FAQ](http://www.espruino.com/FAQ) first.
+
+There's also a [Reference](http://www.espruino.com/Reference) for JavaScript commands as well as [Tutorials](http://www.espruino.com/Tutorials). However please note that this repository is under heavy development, and the documentation on the Espruino website will match the version [available for download](http://www.espruino.com/Download) but **not** the latest version on GitHub.
 
 Builds for the [Espruino Board](http://www.espruino.com/EspruinoBoard) (built automatically for each Git commit) are [available from here](http://www.espruino.com/binaries/git)
 
-Other Documentation
-------------------
-
-As well as above, please see:
+Other documentation of use is:
 
 * [The Forum](http://forum.espruino.com/)
 * [FAQ](http://www.espruino.com//FAQ)
 * [Troubleshooting](http://www.espruino.com/Troubleshooting)
-
 * [Performance Notes](http://www.espruino.com/Performance)
 * [Implementation Notes](http://www.espruino.com/Internals)
 * [Debugging Notes](http://www.espruino.com/AdvancedDebug)
@@ -45,7 +49,7 @@ Please check that:
 * It hasn't [already been found](https://github.com/espruino/Espruino/issues) or [been covered on our forum](http://www.espruino.com/Forum)
 * You're not just looking at outdated documentation (See the [Building](#Building) section to see how to build documentation)
 
-Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (ideally a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues, so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
+Please [submit bugs](https://github.com/espruino/Espruino/issues) with clear steps to reproduce them (ideally with a test case for the ```tests``` directory), and if at all possible try and include a patch to fix them. Please be aware that we have a whole bunch of outstanding issues, so if you report something (especially if it doesn't contain a test or a pull request) it may not be fixed for quite some time.
 
 
 Contributing
@@ -86,7 +90,7 @@ If you are a board manufacturer interested in getting your board officially supp
 Building under Linux
 ------------------
   
-Espruino is easy to build under Linux, and it is possible to build under MacOS with some effort. If you don't have Linux it's **much** easier to just use a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information.
+Espruino is easy to build under Linux, and it is possible to build under MacOS with some effort. If you don't have Linux it's **much** easier to install it in a Virtual Machine. See the heading **Building under Windows/MacOS with a VM** below for more information.
 
 ### Building for STM32 Boards (incl. [Espruino Board](http://www.espruino.com/EspruinoBoard))
   
@@ -98,8 +102,8 @@ Download the compiler, set up your path so you have access to it, and run:
 
 * See the top of Makefile for board names
 * Without `RELEASE=1`, assertions are kept in the code (which is good for debugging, bad for performance + code size)
-* `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for Espruino + HY boards)
-* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if it's a discovery board, or the maple bootloader if using that board
+* `BOARDNAME=1 RELEASE=1 make serialflash` will flash to /dev/ttyUSB0 using the STM32 serial bootloader (what's needed for the Espruino and HY boards)
+* `BOARDNAME=1 RELEASE=1 make flash` will flash using st-flash if it's a discovery board, the maple bootloader if using that board, or will copy the binary to `/media/NUCLEO` if using a Nucleo board.
 
 It may complain that there isn't enough space on the chip. This isn't an issue unless you save to flash, but you can fix the error in a few ways:
 
