@@ -13,6 +13,7 @@
             Add ability to use serial ports on Linux with Serial1.setup({path:"/dev/ttyUSB0"})
             Started ability to use SPI from Linux
             Added 'net' library with support for sockets
+            Fix JSON parse of negative numbers (fix #456)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
