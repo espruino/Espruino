@@ -58,6 +58,16 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     case LEX_R_TRUE:  jslGetNextToken(lex); return jsvNewFromBool(true);
     case LEX_R_FALSE: jslGetNextToken(lex); return jsvNewFromBool(false);
     case LEX_R_NULL:  jslGetNextToken(lex); return jsvNewWithFlags(JSV_NULL);
+    case '-': {
+      jslGetNextToken(lex);
+      if (lex->tk!=LEX_INT && lex->tk!=LEX_FLOAT) return 0;
+      JsVar *v = jswrap_json_parse_internal(lex);
+      JsVar *zero = jsvNewFromInteger(0);
+      JsVar *r = jsvMathsOp(zero, v, '-');
+      jsvUnLock(v);
+      jsvUnLock(zero);
+      return r;
+    }
     case LEX_INT: {
       long long v = stringToInt(jslGetTokenValueAsString(lex));
       jslGetNextToken(lex);

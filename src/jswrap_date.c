@@ -376,6 +376,23 @@ JsVar *jswrap_date_toString(JsVar *parent) {
   return jsvVarPrintf("%s %s %d %d %02d:%02d:%02d GMT+0000", &DAYNAMES[date.dow*4], &MONTHNAMES[date.month*4], date.day, date.year, time.hour, time.min, time.sec);
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Date",
+  "name" : "toUTCString",
+  "generate" : "jswrap_date_toUTCString",
+  "return" : ["JsVar","A String"]
+}
+Converts to a String, eg: `Fri, 20 Jun 2014 14:52:20 GMT`
+
+**Note:** This always assumes a timezone of GMT
+*/
+JsVar *jswrap_date_toUTCString(JsVar *parent) {
+  TimeInDay time = getTimeFromDateVar(parent);
+  CalendarDate date = getCalendarDate(time.daysSinceEpoch);
+
+  return jsvVarPrintf("%s, %d %s %d %02d:%02d:%02d GMT", &DAYNAMES[date.dow*4], date.day, &MONTHNAMES[date.month*4], date.year, time.hour, time.min, time.sec);
+}
 
 static JsVarInt _parse_int(JsLex *lex) {
   return (int)stringToIntWithRadix(jslGetTokenValueAsString(lex), 10, 0);
