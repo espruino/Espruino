@@ -709,31 +709,40 @@ void jshDoSysTick() {
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
-    // If RTC is already enabled, we've come back from a reset...
-    // we're going to want to keep everything as it was
+    /* If RTC is already enabled, we've come back from a reset...
+     * we're going to want to keep everything as it was */
     bool alreadySetup = jshIsRTCAlreadySetup(true);
-    if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
-      // LSE is not working - turn it off and use LSI
+    /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
+     * changing */
+     
+    if (!alreadySetup) {
+      bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
+      
+      if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
+        // Uh-oh - RTC *was* set up for something, but it's not
+        // the case any more. It needs totally resetting so we can change it
+        RCC_BackupResetCmd(ENABLE);
+        RCC_BackupResetCmd(DISABLE);
+	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      }
+      
+      if (isUsingLSI) {
+        // LSE is not working - turn it off and use LSI
 #ifdef STM32F1
-      jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+        jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
 #else
-      jshRTCPrescaler = 32768; // 32kHz for LSI
+        jshRTCPrescaler = 32768; // 32kHz for LSI
 #endif
-      if (!alreadySetup) {
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
         RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
-      }
-    } else {
-      // LSE working! Yay! turn LSI off now
-      jshRTCPrescaler = 32768; // 32kHz for LSE
-      if (!alreadySetup) {
+      } else {
+        // LSE working! Yay! turn LSI off now
+        jshRTCPrescaler = 32768; // 32kHz for LSE
+        RCC_LSEConfig(RCC_LSE_ON);
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
+        RCC_LSICmd(DISABLE); // disable low speed internal oscillator
       }
-      RCC_LSICmd(DISABLE); // disable low speed internal oscillator
-    }
-
-    if (!alreadySetup) {
-      RCC_RTCCLKCmd(ENABLE); // enable RTC
+      RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
       RTC_WaitForSynchro();
   #ifdef STM32F1
       RTC_SetPrescaler(jshRTCPrescaler - 1U);
@@ -748,6 +757,13 @@ void jshDoSysTick() {
       RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
       RTC_Init(&RTC_InitStructure);
   #endif
+    } else { // alreadySetup
+      // Already set up, so just turn off the relevant oscillator
+      if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE) {
+        RCC_LSICmd(DISABLE);
+      } else {
+        RCC_LSEConfig(RCC_LSE_OFF);
+      }
     }
 
     jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
@@ -1066,12 +1082,13 @@ void jshInit() {
   jshPinOutput(LED1_PININDEX, 1);
 #endif
 #ifdef USE_RTC
-  // allow access to backup domain, and reset it (we need this so we can fiddle with the RTC)
+  // allow access to backup domain
   PWR_BackupAccessCmd(ENABLE);
   // enable low speed internal oscillator (reset always kills this, and we might need it)
   RCC_LSICmd(ENABLE);
   // If RTC is already setup, just leave it alone!
   if (!jshIsRTCAlreadySetup(false)) {
+    // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
@@ -1467,7 +1484,6 @@ JsSysTime jshGetSystemTime() {
     major3 = SysTickMajor;
     major4 = SysTickMajor;
   } while (major1!=major2 || major2!=major3 || major3!=major4);
-  return major1 - (JsSysTime)minor;
 #endif
 }
 
@@ -2570,7 +2586,9 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
+#ifdef USB
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
+#endif
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);
