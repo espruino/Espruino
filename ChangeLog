@@ -15,6 +15,7 @@
             Added 'net' library with support for sockets
             Fix JSON parse of negative numbers (fix #456)
             Only keep RTC settings if the relevant oscillator is running (fix #444)
+            Finally fixed sporadic compilation problems with '-Os'
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

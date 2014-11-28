@@ -54,8 +54,8 @@ extern DEVICE_PROP*	pProperty;
 /*  at the end of interrupt process */
 extern USER_STANDARD_REQUESTS *pUser_Standard_Requests;
 
-extern uint16_t	SaveState ;
-extern uint16_t wInterrupt_Mask;
+extern volatile uint16_t SaveState ;
+extern volatile uint16_t wInterrupt_Mask;
 
 #endif /* __USB_INIT_H */
 
