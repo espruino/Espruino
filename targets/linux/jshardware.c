@@ -21,6 +21,7 @@
 #else//!__MINGW32__
  #include <sys/select.h>
  #include <termios.h>
+ #include <fcntl.h>
 #endif//__MINGW32__
  #include <signal.h>
  #include <inttypes.h>
@@ -33,9 +34,10 @@
 #include <pthread.h>
 
 // ----------------------------------------------------------------------------
+int ioDevices[EV_DEVICE_MAX+1]; // list of open IO devices (or 0)
+
 #ifdef SYSFS_GPIO_DIR
 
-#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -107,6 +109,22 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 
 #endif
 
+// Get the path associated with a device. Returns false on failure.
+bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
+  JsVar *obj = jshGetDeviceObject(device);
+  if (!obj) return false;
+
+  bool success = false;
+  JsVar *str = jsvObjectGetChild(obj, "path", 0);
+  if (jsvIsString(str)) {
+    jsvGetString(str, buf, bufSize);
+    success = true;
+  }
+  jsvUnLock(str);
+  jsvUnLock(obj);
+  return success;
+}
+
 // ----------------------------------------------------------------------------
 // for non-blocking IO
 #ifdef __MINGW32__
@@ -159,7 +177,7 @@ int getch()
 {
     int r;
     unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
+    if ((r = (int)read(STDIN_FILENO, &c, sizeof(c))) < 0) {
         return r;
     } else {
         return c;
@@ -172,23 +190,53 @@ bool isInitialised;
 
 void jshInputThread() {
   while (isInitialised) {
+
+    bool shortSleep = false;
     /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
     if (execInfo.execute & EXEC_CTRL_C_WAIT)
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C_WAIT) | EXEC_INTERRUPTED;
     if (execInfo.execute & EXEC_CTRL_C)
       execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
-
+    // Read from the console
     while (kbhit()) {
       int ch = getch();
       if (ch<0) break;
       jshPushIOCharEvent(EV_USBSERIAL, (char)ch);
     }
-    bool hasWatches = false;
+    // Read from any open devices - if we have space
+    if (jshGetEventsUsed() < IOBUFFERMASK/2) {
+      int i;
+      for (i=0;i<=EV_DEVICE_MAX;i++) {
+        if (ioDevices[i]) {
+          char buf[32];
+          // read can return -1 (EAGAIN) because O_NONBLOCK is set
+          int bytes = (int)read(ioDevices[i], buf, sizeof(buf));
+          if (bytes>0) {
+            //int j; for (j=0;j<bytes;j++) printf("]] '%c'\r\n", buf[j]);
+            jshPushIOCharEvents(i, buf, (unsigned int)bytes);
+            shortSleep = true;
+          }
+        }
+      }
+    }
+    // Write any data we have
+    IOEventFlags device = jshGetDeviceToTransmit();
+    while (device != EV_NONE) {
+      char ch = (char)jshGetCharToTransmit(device);
+      //printf("[[ '%c'\r\n", ch);
+      if (ioDevices[device]) {
+        write(ioDevices[device], &ch, 1);
+        shortSleep = true;
+      }
+      device = jshGetDeviceToTransmit();
+    }
+
+
 #ifdef SYSFS_GPIO_DIR
     Pin pin;
     for (pin=0;pin<JSH_PIN_COUNT;pin++)
       if (gpioShouldWatch[pin]) {
-        hasWatches = true;
+        shortSleep = true;
         bool state = jshPinGetValue(pin);
         if (state != gpioLastState[pin]) {
           jshPushIOEvent(pinToEVEXTI(pin) | (state?EV_EXTI_IS_HIGH:0), jshGetSystemTime());
@@ -197,13 +245,17 @@ void jshInputThread() {
       }
 #endif
 
-    usleep(hasWatches ? 1000 : 50000);
+    usleep(shortSleep ? 1000 : 50000);
   }
 }
 
 
 
 void jshInit() {
+  int i;
+  for (i=0;i<=EV_DEVICE_MAX;i++)
+    ioDevices[i] = 0;
+
   jshInitDevices();
 #ifndef __MINGW32__
   if (!terminal_set) {
@@ -221,7 +273,6 @@ void jshInit() {
   }
 #endif//!__MINGW32__
 #ifdef SYSFS_GPIO_DIR
-  int i;
   for (i=0;i<JSH_PIN_COUNT;i++) {
     gpioState[i] = JSHPINSTATE_UNDEFINED;
     gpioShouldWatch[i] = false;
@@ -239,9 +290,18 @@ void jshReset() {
 }
 
 void jshKill() {
-  isInitialised = false;
-#ifdef SYSFS_GPIO_DIR
   int i;
+
+  isInitialised = false;
+
+  for (i=0;i<=EV_DEVICE_MAX;i++)
+    if (ioDevices[i]) {
+      close(ioDevices[i]);
+      ioDevices[i]=0;
+    }
+
+#ifdef SYSFS_GPIO_DIR
+
   // unexport any GPIO that we exported
   for (i=0;i<JSH_PIN_COUNT;i++)
     if (gpioState[i] != JSHPINSTATE_UNDEFINED)
@@ -465,21 +525,111 @@ bool jshIsEventForPin(IOEvent *event, Pin pin) {
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  assert(DEVICE_IS_USART(device));
+  if (ioDevices[device]) close(ioDevices[device]);
+  ioDevices[device] = 0;
+  char path[256];
+  if (jshGetDevicePath(device, path, sizeof(path))) {
+    ioDevices[device] = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (!ioDevices[device]) {
+      jsError("Open of path %s failed", path);
+    } else {
+      struct termios settings;
+      tcgetattr(ioDevices[device], &settings); // get current settings
+
+      int baud = 0;
+      switch (inf->baudRate) {
+        case 50      : baud = B50     ;break;
+        case 75      : baud = B75     ;break;
+        case 110     : baud = B110    ;break;
+        case 134     : baud = B134    ;break;
+        case 150     : baud = B150    ;break;
+        case 200     : baud = B200    ;break;
+        case 300     : baud = B300    ;break;
+        case 600     : baud = B600    ;break;
+        case 1200    : baud = B1200   ;break;
+        case 1800    : baud = B1800   ;break;
+        case 2400    : baud = B2400   ;break;
+        case 4800    : baud = B4800   ;break;
+        case 9600    : baud = B9600   ;break;
+        case 19200   : baud = B19200  ;break;
+        case 38400   : baud = B38400  ;break;
+        case 57600   : baud = B57600  ;break;
+        case 115200  : baud = B115200 ;break;
+        case 230400  : baud = B230400 ;break;
+        case 460800  : baud = B460800 ;break;
+        case 500000  : baud = B500000 ;break;
+        case 576000  : baud = B576000 ;break;
+        case 921600  : baud = B921600 ;break;
+        case 1000000 : baud = B1000000;break;
+        case 1152000 : baud = B1152000;break;
+        case 1500000 : baud = B1500000;break;
+        case 2000000 : baud = B2000000;break;
+        case 2500000 : baud = B2500000;break;
+        case 3000000 : baud = B3000000;break;
+        case 3500000 : baud = B3500000;break;
+        case 4000000 : baud = B4000000;break;
+      }
+      if (baud) {
+        cfsetispeed(&settings, baud); // set baud rates
+        cfsetospeed(&settings, baud);
+      }
+
+      settings.c_cflag &= ~(PARENB|PARODD); // none
+      if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
+      if (inf->parity == 2) settings.c_cflag |= PARENB; // even
+      settings.c_cflag &= ~CSTOPB;
+      if (inf->stopbits) settings.c_cflag |= CSTOPB;
+
+      settings.c_cflag &= ~CSIZE;
+      switch (inf->bytesize) {
+        case 5 : settings.c_cflag |= CS5; break;
+        case 6 : settings.c_cflag |= CS6; break;
+        case 7 : settings.c_cflag |= CS7; break;
+        case 8 : settings.c_cflag |= CS8; break;
+      }
+
+      // raw mode
+      cfmakeraw(&settings);
+      // finally set current settings
+      tcsetattr(ioDevices[device], TCSANOW, &settings);
+    }
+  } else {
+    jsError("No path defined for device");
+  }
 }
 
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
+  assert(DEVICE_IS_USART(device));
+  // all done by the idle loop
 }
 
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+  assert(DEVICE_IS_SPI(device));
+   if (ioDevices[device]) close(ioDevices[device]);
+   ioDevices[device] = 0;
+   char path[256];
+   if (jshGetDevicePath(device, path, sizeof(path))) {
+     ioDevices[device] = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
+     if (!ioDevices[device]) {
+       jsError("Open of path %s failed", path);
+     } else {
+     }
+   } else {
+     jsError("No path defined for device");
+   }
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(IOEventFlags device, int data) {
-  return 0;
+  jshTransmit(device, (unsigned char)data);
+  // FIXME
+  // use jshPopIOEventOfType(device) but be aware that it may return >1 char!
+  return -1;
 }
 
 /** Send 16 bit data through the given SPI device. */

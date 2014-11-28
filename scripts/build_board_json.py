@@ -22,7 +22,7 @@ import string;
 
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
-basedir = os.path.normalize(scriptdir+"/../")
+basedir = scriptdir+"/../"
 sys.path.append(basedir+"scripts");
 sys.path.append(basedir+"boards");
 

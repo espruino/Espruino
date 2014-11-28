@@ -140,7 +140,7 @@ typedef struct {
   Pin pinRX;
   Pin pinTX;
   unsigned char bytesize;
-  unsigned char parity;
+  unsigned char parity; // 0=none, 1=odd, 2=even
   unsigned char stopbits;
   bool xOnXOff; // XON XOFF flow control?
 } PACKED_FLAGS JshUSARTInfo;

@@ -15,7 +15,7 @@
 #include "network_cc3000.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
-#include "httpserver.h"
+#include "socketserver.h"
 
 #include <string.h> // for memset
 
@@ -60,8 +60,8 @@ bool net_cc3000_checkError(JsNetwork *net) {
     jspSetInterrupted(false);
     // remove all existing connections
     networkState = NETWORKSTATE_OFFLINE; // ensure we don't try and send the CC3k anything
-    httpKill(net);
-    httpInit();
+    socketKill(net);
+    socketInit();
     // power cycle
     JsVar *wlan = jsvObjectGetChild(execInfo.hiddenRoot, CC3000_OBJ_NAME, 0);
     if (wlan) {
