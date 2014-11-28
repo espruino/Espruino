@@ -21,6 +21,38 @@
 
 #define ESP8266_IPD_NAME JS_HIDDEN_CHAR_STR"IPD"
 
+// ---------------------------------------------------------------------------
+typedef enum {
+  ESP8266_IDLE,
+  ESP8266_RESET_WAIT,
+  ESP8266_WAIT_OK,
+  ESP8266_WAIT_OK_THEN_READY,
+  ESP8266_WAIT_READY,
+} ESP8266State;
+
+ESP8266State esp8266State = ESP8266_IDLE;
+JsSysTime stateTimeout;
+const char *stateTimeoutMessage;
+JsVar *stateTimeoutCallback = 0;
+
+void net_esp8266_setState(ESP8266State state, int timeout, JsVar *callback, const char *timeoutMessage) {
+  esp8266State = state;
+  if (timeout) {
+    stateTimeout = jshGetSystemTime() + jshGetTimeFromMilliseconds(timeout);
+    stateTimeoutMessage = timeoutMessage;
+  } else {
+    stateTimeout = -1;
+    stateTimeoutMessage = 0;
+  }
+  if (stateTimeoutCallback) jsvUnLock(stateTimeoutCallback);
+  stateTimeoutCallback = callback ? jsvLock(callback) : 0;
+}
+
+ESP8266State net_esp8266_getState() {
+  return esp8266State;
+}
+// ---------------------------------------------------------------------------
+
 void esp8266_send(JsVar *msg) {
   JsvStringIterator it;
   jsvStringIteratorNew(&it, msg, 0);
@@ -101,6 +133,35 @@ bool esp8266_idle(JsVar *usartClass) {
           JsVar *line = jsvNewFromStringVar(buf,0,(size_t)(idx-1)); // \r\n - so idx is of '\n' and we want to remove '\r' too
           jsiConsoleRemoveInputLine();
           jsiConsolePrintf("ESP8266> %q\n", line);
+          switch (net_esp8266_getState()) {
+          case ESP8266_IDLE: break; // ignore?
+          case ESP8266_WAIT_OK_THEN_READY:
+            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+              if (stateTimeoutCallback) {
+                jsiQueueEvents(stateTimeoutCallback, 0, 0);
+                jsvUnLock(stateTimeoutCallback);
+                stateTimeoutCallback = 0;
+              }
+            }
+            break;
+          case ESP8266_WAIT_OK_THEN_READY:
+            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+              net_esp8266_setState(ESP8266_WAIT_READY, 4000, net_esp8266_getStateCallback(), "Module not ready");
+            }
+            break;
+          case ESP8266_WAIT_OK_THEN_READY:
+            if (jsvIsStringEqualOrStartsWith(line, "ready", false)) {
+              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+              if (stateTimeoutCallback) {
+                jsiQueueEvents(stateTimeoutCallback, 0, 0);
+                jsvUnLock(stateTimeoutCallback);
+                stateTimeoutCallback = 0;
+              }
+            }
+            break;
+          }
+
           if (esp8266_idle_compare && jsvIsStringEqualOrStartsWith(line, esp8266_idle_compare, esp8266_idle_compare_only_start))
             found = true;
           jsvUnLock(line);
@@ -115,6 +176,13 @@ bool esp8266_idle(JsVar *usartClass) {
   if (hasChanged)
     jsvObjectSetChild(usartClass, STREAM_BUFFER_NAME, buf);
   jsvUnLock(buf);
+
+  if (net_esp8266_getState() != ESP8266_IDLE && stateTimeout>=0 && jshGetSystemTime()>stateTimeout) {
+    jsExceptionHere(JSET_ERROR, stateTimeoutMessage ? stateTimeoutMessage : "ESP8266 timeout");
+    stateTimeoutMessage = 0;
+    net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+  }
+
   return found;
 }
 
@@ -145,12 +213,24 @@ bool esp8266_wait_for(const char *text, int milliseconds, bool justTheStart) {
   return found;
 }
 
-typedef enum {
-  ESP8266_IDLE,
-  ESP8266_RESET_WAIT,
-} ESP8266State;
 
 
+bool net_esp8266_initialise(JsVar *callback) {
+  JsVar *cmd = jsvNewFromString("AT+RST\r\n");
+  esp8266_send(cmd);
+  jsvUnLock(cmd);
+  net_esp8266_setState(ESP8266_WAIT_OK_THEN_READY, 100, callback, "No Acknowledgement");
+}
+
+bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
+  // 'AT+CWMODE=1\r' ? seems to be the default
+  JsVar *msg = jsvVarPrintf("AT+CWJAP=%q,%q\r", vAP, vKey);
+  esp8266_send(msg);
+  jsvUnLock(msg);
+  net_esp8266_setState(ESP8266_WAIT_OK, 500, callback, "No Acknowledgement");
+}
+
+// ------------------------------------------------------------------------------------------------------------------------
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_esp8266_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
@@ -177,10 +257,7 @@ int net_esp8266_createsocket(JsNetwork *net, unsigned long host, unsigned short 
   jsvUnLock(hostStr);
   esp8266_send(msg);
   jsvUnLock(msg);
-  if (!esp8266_wait_for("OK",100,false))
-    return -1;
-  if (!esp8266_wait_for("Linked",4000,false))
-    return -1;
+  net_esp8266_setState(ESP8266_WAIT_OK_THEN_LINKED, 100, 0, "No Acknowledgement");
   return 0;
 }
 
@@ -189,7 +266,7 @@ void net_esp8266_closesocket(JsNetwork *net, int sckt) {
   JsVar *msg = jsvVarPrintf("AT+CIPCLOSE\r");
   esp8266_send(msg);
   jsvUnLock(msg);
-  esp8266_wait_for("OK",100,false);
+  net_esp8266_setState(ESP8266_WAIT_OK, 100, callback, "No Acknowledgement");
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
@@ -229,6 +306,8 @@ int net_esp8266_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
   esp8266_wait_for(">",1000,false); // ideally we wouldn't wait for the newline...
   return len;
 }
+
+// ------------------------------------------------------------------------------------------------------------------------
 
 void netSetCallbacks_esp8266(JsNetwork *net) {
   net->idle = net_esp8266_idle;

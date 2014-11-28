@@ -55,27 +55,11 @@ JsVar *jswrap_esp8266_connect_device(JsVar *usart, JsVar *callback) {
   net.data.device = usartDevice;
   networkSet(&net);
 
-  JsVar *wifiObj = 0;
+  JsVar *wifiObj = jspNewObject(0, "ESPWifi");
 
-  JsVar *cmd = jsvNewFromString("AT+RST\r\n");
-  esp8266_send(cmd);
-  jsvUnLock(cmd);
-  if (esp8266_wait_for("OK", 100, false)) {
-    if (esp8266_wait_for("ready", 4000, false)) {
-      networkState = NETWORKSTATE_ONLINE;
-      wifiObj = jspNewObject(0, "ESPWifi");
-    } else {
-      jsExceptionHere(JSET_ERROR, "Module not ready");
-    }
-  } else {
-    jsExceptionHere(JSET_ERROR, "No Acknowledgement");
-  }
-
+  net_esp8266_initialise(callback);
 
   networkFree(&net);
-
-  if (callback)
-    jsiQueueEvents(callback, 0, 0);
 
   return wifiObj;
 }
@@ -106,17 +90,10 @@ bool jswrap_esp8266_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *call
 
   JsNetwork net;
   if (!networkGetFromVar(&net)) return false;
-  // 'AT+CWMODE=1\r' ? seems to be the default
-  JsVar *msg = jsvVarPrintf("AT+CWJAP=%q,%q\r", vAP, vKey);
-  esp8266_send(msg);
-  jsvUnLock(msg);
-  if (!esp8266_wait_for("OK",500, false))
-    return false;
+
+  net_esp8266_connect(vAP, vKey, callback);
 
   networkFree(&net);
-
-  if (callback)
-    jsiQueueEvents(callback, 0, 0);
 
   return true;
 }
