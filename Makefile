@@ -63,6 +63,8 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
+USE_HASHLIB=1
+
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -667,6 +669,14 @@ endif
 
 ifdef USB
 DEFINES += -DUSB
+endif
+
+ifdef USE_HASHLIB
+INCLUDE += -I$(ROOT)/libs/hashlib
+WRAPPERSOURCES += \
+libs/hashlib/jswrap_hashlib.c
+SOURCES += \
+libs/hashlib/sha2.c
 endif
 
 ifeq ($(FAMILY), STM32F1)
