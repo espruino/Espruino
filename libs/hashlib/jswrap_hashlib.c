@@ -241,8 +241,8 @@ JsVar *jswrap_hashlib_hash_hexdigest(const JsVar *parent) {
 
   for(i = 0; i < hashFunctions[type].digest_size; i++) {
     char c[2];
-    c[0] = a[ buff[i] >> 4 ];
-    c[1] = a[ buff[i] & 0x0F ];
+    c[0] = a[ (unsigned char)(buff[i]) >> 4 ];
+    c[1] = a[ (unsigned char)(buff[i]) & 0x0F ];
     jsvAppendStringBuf(digest, c, sizeof(c));
   }
 
