@@ -26,15 +26,15 @@ typedef struct {
 
 typedef enum {
   HASH_SHA224,
-  HASH_SHA256,
+  HASH_SHA256/*,
   HASH_SHA384,
-  HASH_SHA512
+  HASH_SHA512*/
 } JsHashType;
 
 JsVar *jswrap_hashlib_sha224(JsVar *message);
 JsVar *jswrap_hashlib_sha256(JsVar *message);
-JsVar *jswrap_hashlib_sha384(JsVar *message);
-JsVar *jswrap_hashlib_sha512(JsVar *message);
+// JsVar *jswrap_hashlib_sha384(JsVar *message);
+// JsVar *jswrap_hashlib_sha512(JsVar *message);
 
 JsVar *jswrap_hashlib_sha2(JsHashType hash_type);
 
