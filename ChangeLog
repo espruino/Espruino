@@ -17,6 +17,7 @@
             Only keep RTC settings if the relevant oscillator is running (fix #444)
             Finally fixed sporadic compilation problems with '-Os'
             Fixed issues with intervals in onInit (#462)
+            Remove libraries from root scope (fix #463)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
@@ -58,7 +59,7 @@
             Fix issue where large doubles (> +/- 2^31) were converted to -1 rather than truncated ints
             Fix E.getSizeOf (fix #424)
             Fixed JSON indentation issue
-            Made 'pretty' JSON output look a bit better
+            Made 'pretty' JSON output look a bit better            
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)
