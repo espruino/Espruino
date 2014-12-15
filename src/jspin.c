@@ -15,7 +15,7 @@
 #include "jspin.h"
 #include "jspininfo.h" // auto-generated
 
-#ifdef ESPRUINI
+#if defined(ESPRUINI) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
 #define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
 #endif
 

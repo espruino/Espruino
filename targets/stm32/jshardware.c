@@ -1752,9 +1752,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 
   if (!func) {
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
+#if defined(DACS) && DACS>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
+#endif
     return;
   }
 

@@ -18,6 +18,7 @@
             Finally fixed sporadic compilation problems with '-Os'
             Fixed issues with intervals in onInit (#462)
             Remove libraries from root scope (fix #463)
+            Fix pin namings on Nucleo boards
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
