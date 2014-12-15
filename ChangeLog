@@ -19,6 +19,7 @@
             Fixed issues with intervals in onInit (#462)
             Remove libraries from root scope (fix #463)
             Fix pin namings on Nucleo boards
+            Fix addition of stdlib's exit on Nucleo debug
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

@@ -410,7 +410,6 @@ extern JsErrorFlags jsErrorFlags;
 
 
 #ifdef FAKE_STDLIB
-void exit(int errcode);
 char *strncat(char *dst, const char *src, size_t c);
 char *strncpy(char *dst, const char *src, size_t c);
 size_t strlen(const char *s);
