@@ -1864,7 +1864,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -1893,7 +1893,10 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     s.EXTI_LineCmd = shouldWatch ? ENABLE : DISABLE;
     EXTI_Init(&s);
+
+    return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {

@@ -110,7 +110,7 @@ void jshPinOutput(Pin pin, bool value);
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 bool jshCanWatch(Pin pin); ///< Can the given pin be watched? it may not be possible because of conflicts
-void jshPinWatch(Pin pin, bool shouldWatch);
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch); // start watching pin - return the EXTI associated with it
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin);

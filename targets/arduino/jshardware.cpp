@@ -165,9 +165,10 @@ bool jshCanWatch(Pin pin) {
   return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
   } else jsError("Invalid pin!");
+  return EV_NONE;
 }
 
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {

@@ -489,7 +489,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
 #ifdef SYSFS_GPIO_DIR
     IOEventFlags exti = getNewEVEXTI();
@@ -506,8 +506,10 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
       gpioShouldWatch[pin] = false;
       gpioEventFlags[pin] = 0;
     }
+    return shouldWatch ? exti : EV_NONE;
 #endif
   } else jsError("Invalid pin!");
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {

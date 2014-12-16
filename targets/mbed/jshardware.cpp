@@ -180,7 +180,8 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
