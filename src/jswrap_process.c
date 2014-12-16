@@ -18,6 +18,11 @@
 #include "jswrap_interactive.h"
 #include "jsinteractive.h"
 
+#ifdef LINUX
+#include <unistd.h>
+extern char **environ;
+#endif
+
 /*JSON{
   "type" : "class",
   "class" : "process"
@@ -45,6 +50,10 @@ Returns the version of Espruino as a String
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
 */
 JsVar *jswrap_process_env() {
+#ifdef LINUX
+  int i = 0;
+  char *p;
+#endif
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   jsvUnLock(jsvObjectSetChild(obj, "VERSION", jsvNewFromString(JS_VERSION)));
   jsvUnLock(jsvObjectSetChild(obj, "BUILD_DATE", jsvNewFromString(__DATE__)));
@@ -59,7 +68,15 @@ JsVar *jswrap_process_env() {
   jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
   jsvUnLock(jsvObjectSetChild(obj, "SERIAL", jswrap_interface_getSerial()));
   jsvUnLock(jsvObjectSetChild(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice()))));
-
+#ifdef LINUX
+  while(environ[i] != NULL) {
+    p = strchr(environ[i], '=');
+    *p = '\0';
+    jsvUnLock(jsvObjectSetChild(obj, environ[i], jsvNewFromString(p+1)));
+    *p = '=';
+    i++;
+  }
+#endif
   return obj;
 }
 
