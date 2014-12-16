@@ -286,7 +286,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 #endif
 }
 
-static inline void jsvFreePtrInternal(JsVar *var) {
+ALWAYS_INLINE void jsvFreePtrInternal(JsVar *var) {
   var->flags = (var->flags & ~JSV_VARTYPEMASK) | JSV_UNUSED;
   // add this to our free list
   jsvSetNextSibling(var, jsVarFirstEmpty);
