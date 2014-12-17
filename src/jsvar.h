@@ -139,18 +139,19 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
- * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   | argTypes       | format      |
- * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   | argTypes       | format      |
- * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
- * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR |
+ * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|
+ * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     |
+ * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   | argTypes       | format      | -        |
+ * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   | argTypes       | format      | -        |
+ * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     |
+ * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        |
+ * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           | nextPtr  |
+ * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    |
  *
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
+ * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
  *
  * For Objects that represent hardware devices, 'nativePtr' is actually set to a special string that
  * contains the device number. See jsiGetDeviceFromClass/jspNewObject
@@ -201,6 +202,7 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount);
 
 // Note that jsvNew* don't REF a variable for you, but the do LOCK it
 JsVar *jsvNewWithFlags(JsVarFlags flags); ///< Create a new variable with the given flags
+JsVar *jsvNewFlatStringOfLength(unsigned int byteLength); ///< Try and create a special flat string
 JsVar *jsvNewFromString(const char *str); ///< Create a new string
 JsVar *jsvNewStringOfLength(unsigned int byteLength); ///< Create a new string of the given length - full of 0s
 static ALWAYS_INLINE JsVar *jsvNewFromEmptyString() { JsVar *v = jsvNewWithFlags(JSV_STRING_0); return v; } ;///< Create a new empty string
@@ -255,6 +257,7 @@ static ALWAYS_INLINE bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV
 static ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
 static ALWAYS_INLINE bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_STRING_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_STRING_END; }
 static ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_EXT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
+static ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLAT_STRING; }
 static ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NUMERIC_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NUMERIC_END; }
 static ALWAYS_INLINE bool jsvIsFunction(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FUNCTION; }
 static ALWAYS_INLINE bool jsvIsFunctionParameter(const JsVar *v) { return v && (v->flags&JSV_NATIVE) && jsvIsString(v); }
@@ -316,6 +319,8 @@ static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
+  if (f == JSV_FLAT_STRING)
+    return v->varData.integer;
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
@@ -373,6 +378,7 @@ void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this st
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
+size_t jsvGetFlatStringBlocks(JsVar *v); ///< return the number of blocks used by the given flat string
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null

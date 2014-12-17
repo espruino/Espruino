@@ -144,7 +144,11 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
     jsExceptionHere(JSET_ERROR, "ArrayBuffer too long\n");
     return 0;
   }
-  JsVar *arrData = jsvNewStringOfLength((unsigned int)byteLength);
+  // try and use a flat string - which will be faster
+  JsVar *arrData = jsvNewFlatStringOfLength((unsigned int)byteLength);
+  // if we haven't found one, spread it out
+  if (!arrData)
+    arrData = jsvNewStringOfLength((unsigned int)byteLength);
   if (!arrData) return 0;
   JsVar *v = jsvNewArrayBufferFromString(arrData, (unsigned int)byteLength);
   jsvUnLock(arrData);

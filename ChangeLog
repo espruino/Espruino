@@ -23,6 +23,8 @@
             Allow setWatch to execute native functions inside the IRQ
             When dumping typed arrays, use the size if all elements are 0 (fix #448)
             eval() can now access local variables and function arguments (fix #460)
+            Added 'flat strings' for typed arrays. 
+              These use a continuous chunk of memory so are much faster
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
