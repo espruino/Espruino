@@ -1,3 +1,5 @@
+var hashlib = require("hashlib");
+
 var messages = [
     "abc",
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

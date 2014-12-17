@@ -63,8 +63,6 @@ DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
 # Espruino flags...
 USE_MATH=1
 
-USE_HASHLIB=1
-
 ifeq ($(shell uname),Darwin)
 MACOSX=1
 CFLAGS+=-D__MACOSX__
@@ -361,6 +359,7 @@ else
 BOARD=LINUX
 LINUX=1
 USE_FILESYSTEM=1
+USE_HASHLIB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 
