@@ -593,7 +593,7 @@ JshPinFunction getPinFunctionFromDevice(IOEventFlags device) {
  }
 }
 
-static unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
+unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
   // TIM2-7, 12-14  on APB1, everything else is on APB2
   RCC_ClocksTypeDef clocks;
   RCC_GetClocksFreq(&clocks);
