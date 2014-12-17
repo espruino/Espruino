@@ -626,7 +626,6 @@ int jswrap_espruino_reverseByte(int v) {
   "type" : "staticmethod",
   "class" : "E",
   "name" : "dumpTimers",
-  "ifndef" : "RELEASE",
   "generate" : "jswrap_espruino_dumpTimers"
 }
 Output the current list of Utility Timer Tasks - for debugging only
@@ -654,3 +653,20 @@ int jswrap_espruino_getSizeOf(JsVar *v) {
   return (int)jsvCountJsVarsUsed(v);
 }
 
+extern void tv_init(JsVar *v);
+
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "tv",
+  "generate" : "jswrap_espruino_tv",
+  "params" : [
+    ["v","JsVar","An arraybuffer"]
+  ]
+}
+Output the current list of Utility Timer Tasks - for debugging only
+*/
+void jswrap_espruino_tv(JsVar *v) {
+  tv_init(v);
+}

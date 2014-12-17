@@ -1010,6 +1010,7 @@ ifndef BOOTLOADER
 SOURCES +=                              \
 targets/stm32/main.c                    \
 targets/stm32/jshardware.c              \
+targets/stm32/television.c              \
 targets/stm32/stm32_it.c
 endif
 endif

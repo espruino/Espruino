@@ -22,7 +22,7 @@ volatile unsigned char utilTimerTasksTail = 0;
 
 volatile bool utilTimerOn = false;
 unsigned int utilTimerBit;
-bool utilTimerState;
+bool utilTimerInIRQ = false;
 unsigned int utilTimerData;
 uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReload1L;
 
@@ -65,10 +65,13 @@ static inline unsigned char *jstUtilTimerInterruptHandlerByte(UtilTimerTask *tas
 
 void jstUtilTimerInterruptHandler() {
   if (utilTimerOn) {
+    utilTimerInIRQ = true;
     JsSysTime time = jshGetSystemTime();
     // execute any timers that are due
     while (utilTimerTasksTail!=utilTimerTasksHead && utilTimerTasks[utilTimerTasksTail].time <= time) {
       UtilTimerTask *task = &utilTimerTasks[utilTimerTasksTail];
+      void (*executeFn)(JsSysTime time) = 0;
+
       // actually perform the task
       switch (task->type) {
         case UET_SET: {
@@ -122,6 +125,9 @@ void jstUtilTimerInterruptHandler() {
           jshSetOutputValue(task->data.buffer.pinFunction, sum);
           break;
         }
+        case UET_EXECUTE:
+          executeFn = task->data.execute;
+          break;
 #endif
         case UET_WAKEUP: // we've already done our job by waking the device up
         default: break;
@@ -144,10 +150,15 @@ void jstUtilTimerInterruptHandler() {
           ta = tb;
           tb = (tb+1) & (UTILTIMERTASK_TASKS-1);
         }
+
+
       } else {
         // Otherwise no repeat - just go straight to the next one!
         utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
       }
+
+      // execute the function if we had one (we do this now, because if we did it earlier we'd have to cope with everything changing)
+      if (executeFn) executeFn(time);
     }
 
     // re-schedule the timer if there is something left to do
@@ -157,6 +168,7 @@ void jstUtilTimerInterruptHandler() {
       utilTimerOn = false;
       jshUtilTimerDisable();
     }
+    utilTimerInIRQ = false;
   } else {
     // Nothing left to do - disable the timer
     jshUtilTimerDisable();
@@ -225,12 +237,12 @@ static bool utilTimerIsFull() {
 }
 
 // Queue a task up to be executed when a timer fires... return false on failure
-static bool utilTimerInsertTask(UtilTimerTask *task) {
+bool utilTimerInsertTask(UtilTimerTask *task) {
   // check if queue is full or not
   if (utilTimerIsFull()) return false;
 
 
-  jshInterruptOff();
+  if (!utilTimerInIRQ) jshInterruptOff();
 
   // find out where to insert
   unsigned char insertPos = utilTimerTasksTail;
@@ -258,7 +270,7 @@ static bool utilTimerInsertTask(UtilTimerTask *task) {
     jshUtilTimerStart(utilTimerTasks[utilTimerTasksTail].time - jshGetSystemTime());
   }
 
-  jshInterruptOn();
+  if (!utilTimerInIRQ) jshInterruptOn();
   return true;
 }
 
@@ -422,6 +434,7 @@ void jstDumpUtilityTimers() {
     case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
     case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
     case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
+    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x\n", task.data.execute); break;
 #endif
     default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
     }

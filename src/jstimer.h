@@ -26,6 +26,7 @@ typedef enum {
   UET_READ_BYTE, ///< Read a byte from an analog input
   UET_WRITE_SHORT, ///< Write a short to a DAC/Timer
   UET_READ_SHORT, ///< Read a short from an analog input
+  UET_EXECUTE, ///< Execute something
 #endif
 } PACKED_FLAGS UtilTimerEventType;
 
@@ -76,6 +77,7 @@ typedef struct UtilTimerTaskBuffer {
 typedef union UtilTimerTaskData {
   UtilTimerTaskSet set;
   UtilTimerTaskBuffer buffer;
+  void (*execute)(JsSysTime time);
 } UtilTimerTaskData;
 
 typedef struct UtilTimerTask {
@@ -121,6 +123,9 @@ void jstReset();
 
 /// Dump the current list of timers
 void jstDumpUtilityTimers();
+
+// Queue a task up to be executed when a timer fires... return false on failure
+bool utilTimerInsertTask(UtilTimerTask *task);
 
 #endif /* JSTIMER_H_ */
 
