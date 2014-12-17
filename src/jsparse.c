@@ -2234,16 +2234,20 @@ void jspKill() {
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   JsLex lex;
   JsVar *v = 0;
-  JSP_SAVE_EXECUTE();
-  JsExecInfo oldExecInfo = execInfo;
 
   assert(jsvIsString(str));
   jslInit(&lex, str);
 
-  jspeiInit(&lex);
+  JSP_SAVE_EXECUTE();
+  JsExecInfo oldExecInfo = execInfo;
+  execInfo.lex = &lex;
+  execInfo.execute = EXEC_YES;
   bool scopeAdded = false;
-  if (scope)
+  if (scope) {
+    // if we're adding a scope, make sure it's the *only* scope
+    execInfo.scopeCount = 0;
     scopeAdded = jspeiAddScope(scope);
+  }
 
   if (parseTwice) {
     JsExecFlags oldFlags = execInfo.execute;
@@ -2261,11 +2265,11 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
     v = jspeBlockOrStatement();
   }
   // clean up
-  if (scopeAdded) jspeiRemoveScope();
-  jspeiKill();
+  if (scopeAdded)
+    jspeiRemoveScope();
   jslKill(&lex);
 
-  // restore state
+  // restore state and execInfo
   JSP_RESTORE_EXECUTE();
   oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
