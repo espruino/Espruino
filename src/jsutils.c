@@ -288,6 +288,11 @@ void *memcpy(void *dst, const void *src, size_t size) {
         return dst;
 }
 
+void *memset(void *dst, int c, size_t size) {
+  char *d = (char*)dst;
+  while (size--) *(d++) = c;
+}
+
 unsigned int rand() {
     static unsigned int m_w = 0xDEADBEEF;    /* must not be zero */
     static unsigned int m_z = 0xCAFEBABE;    /* must not be zero */

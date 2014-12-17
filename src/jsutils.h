@@ -416,6 +416,7 @@ char *strncpy(char *dst, const char *src, size_t c);
 size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
+void *memset(void *dst, int c, size_t size);
 #define RAND_MAX (0xFFFFFFFFU)
 unsigned int rand();
 #endif

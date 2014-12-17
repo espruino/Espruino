@@ -320,7 +320,7 @@ static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
 static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   if (f == JSV_FLAT_STRING)
-    return v->varData.integer;
+    return (size_t)v->varData.integer;
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
