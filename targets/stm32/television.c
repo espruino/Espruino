@@ -91,15 +91,15 @@ static inline void setTimer(unsigned int mSec) {
 }
 
 bool tvIsVideo() {
-  return (line>=5 && line<=309) || (line>=317 && line<=622);
+  return (line>=5 && line<=308);
 }
 
 bool tvIsSync1Long() {
-  return (line<=2) || (line==313) || (line==314);
+  return (line<=2);
 }
 
 bool tvIsSync2Long() {
-  return (line<=1) || ((line>=312) && (line<=314));
+  return (line<=1);
 }
 
 void TVTIMER_IRQHandler() {
@@ -162,7 +162,7 @@ void TVTIMER_IRQHandler() {
   }
 
   if (tvState == TVS_SYNC1_START) {
-    if (line++ > 624) line=0; // count lines
+    if (line++ > 312) line=0; // count lines
   }
 }
 
