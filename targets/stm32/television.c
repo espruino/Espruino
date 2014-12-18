@@ -17,18 +17,20 @@
 
 // http://martin.hinner.info/vga/pal.html
 
-#define TV_OUT_HEIGHT 144 // 288 max
+#define TV_OUT_HEIGHT 135 // 288 max
+#define PAL_VBLANK 25 // amount of extra height that is just blank
 #define TV_OUT_WIDTH 192 // 4/3 of 144
 #define TV_OUT_STRIDE (TV_OUT_WIDTH>>3)
 
 #define PAL_LINE 64
 #define PAL_HALF_LINE (PAL_LINE/2)
-#define PAL_PULSE_SHORT_ON 4
-#define PAL_PULSE_LONG_ON 28
+#define PAL_PULSE_SHORT_ON 5
+#define PAL_PULSE_LONG_ON 27
 #define PAL_PULSE_SHORT_OFF (PAL_HALF_LINE-PAL_PULSE_SHORT_ON)
 #define PAL_PULSE_LONG_OFF (PAL_HALF_LINE-PAL_PULSE_LONG_ON)
-#define PAL_FRONTPORCH 10
-#define PAL_BACKPORCH 4
+#define PAL_FRONTPORCH 8
+#define PAL_BACKPORCH 7
+
 
 #define TVSPIDEVICE            EV_SPI1
 #define TVSPI                  SPI1
@@ -59,15 +61,17 @@ static ALWAYS_INLINE void sync_end() {
 ALWAYS_INLINE void tv_start_line_video() {
   int lineIdx;
   if (line <= 313) {
-    lineIdx = (line-5) >> 1;
+    lineIdx = (line-(5+PAL_VBLANK)) >> 1;
   } else {
-    lineIdx = (line-317) >> 1;
+    lineIdx = (line-(317+PAL_VBLANK)) >> 1;
   }
-
-  DMA_Channel_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
-  DMA_Channel_TVSPI_TX->CNDTR = TV_OUT_STRIDE;
-  DMA_Channel_TVSPI_TX->CMAR = (uint32_t)(screenPtr + lineIdx*TV_OUT_STRIDE);
-  DMA_Channel_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
+  if (lineIdx>=0 && lineIdx<TV_OUT_HEIGHT) {
+    jshPinSetState(videoPin, JSHPINSTATE_AF_OUT); // re-enable output for SPI
+    DMA_Channel_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
+    DMA_Channel_TVSPI_TX->CNDTR = TV_OUT_STRIDE;
+    DMA_Channel_TVSPI_TX->CMAR = (uint32_t)(screenPtr + lineIdx*TV_OUT_STRIDE);
+    DMA_Channel_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
+  }
 }
 
 
@@ -102,12 +106,12 @@ void TVTIMER_IRQHandler() {
   TIM_ClearITPendingBit(TVTIMER, TIM_IT_Update);
   switch (tvState) {
   case TVS_SYNC1_START:
+    sync_start();
     if (tvIsVideo() || !tvIsSync1Long()) {
       setTimer(PAL_PULSE_SHORT_ON);
     } else {
       setTimer(PAL_PULSE_LONG_ON);
     }
-    sync_start();
     tvState = TVS_SYNC1_END;
     break;
   case TVS_SYNC1_END:
@@ -126,8 +130,9 @@ void TVTIMER_IRQHandler() {
     break;
   case TVS_VID_START:
     setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
-    jshPinSetState(videoPin, JSHPINSTATE_AF_OUT); // re-enable output for SPI
-    tv_start_line_video();
+    if (line>PAL_VBLANK) {
+      tv_start_line_video();
+    }
     tvState = TVS_VID_BACKPORCH;
     break;
   case TVS_VID_BACKPORCH:
@@ -136,22 +141,22 @@ void TVTIMER_IRQHandler() {
     tvState = TVS_SYNC1_START;
     break;
   case TVS_SYNC2_START:
+    sync_start();
     if (tvIsSync2Long()) {
       setTimer(PAL_PULSE_LONG_ON);
     } else { // short
       setTimer(PAL_PULSE_SHORT_ON);
     }
-    sync_start();
     tvState = TVS_SYNC2_END;
     break;
   case TVS_SYNC2_END:
   default:
+    sync_end();
     if (tvIsSync1Long()) {
       setTimer(PAL_PULSE_LONG_OFF);
     } else { // short
       setTimer(PAL_PULSE_SHORT_OFF);
     }
-    sync_end();
     tvState = TVS_SYNC1_START;
     break;
   }
