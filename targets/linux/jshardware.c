@@ -38,6 +38,10 @@
 //   git clone git://git.drogon.net/wiringPi
 //   cd wiringPi;./build
 #include <wiringPi.h>
+
+ #ifdef SYSFS_GPIO_DIR
+  #error USE_WIRINGPI and SYSFS_GPIO_DIR can't coexist
+ #endif
 #endif
 
 // ----------------------------------------------------------------------------
@@ -107,6 +111,7 @@ void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI12); }
 void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
 void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
 void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
+void irqEXTIDoNothing() { }
 
 void (*irqEXTIs[16])(void) = {
     irqEXTI0,
@@ -324,12 +329,12 @@ void jshInit() {
   }
 #endif//!__MINGW32__
   for (i=0;i<JSH_PIN_COUNT;i++) {
-      gpioState[i] = JSHPINSTATE_UNDEFINED;
+    gpioState[i] = JSHPINSTATE_UNDEFINED;
+    gpioEventFlags[i] = 0;
   }
 #ifdef SYSFS_GPIO_DIR
   for (i=0;i<JSH_PIN_COUNT;i++) {
-    gpioShouldWatch[i] = false;
-    gpioEventFlags[i] = 0;
+    gpioShouldWatch[i] = false;    
   }
 #endif
 
@@ -553,10 +558,8 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
 
 bool jshCanWatch(Pin pin) {
   if (jshIsPinValid(pin)) {
-#ifdef SYSFS_GPIO_DIR
      IOEventFlags exti = getNewEVEXTI();
      if (exti) return true;
-#endif
      return false;
   } else
     return false;
@@ -564,34 +567,41 @@ bool jshCanWatch(Pin pin) {
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
-#ifdef SYSFS_GPIO_DIR
     IOEventFlags exti = getNewEVEXTI();
     if (shouldWatch) {
       if (exti) {
-        gpioShouldWatch[pin] = true;
         gpioEventFlags[pin] = exti;
         jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+#ifdef SYSFS_GPIO_DIR
+        gpioShouldWatch[pin] = true;
         gpioLastState[pin] = jshPinGetValue(pin);
+#endif
+#ifdef USE_WIRINGPI
+        wiringPiISR(pin, INT_EDGE_BOTH, irqEXTIs[exti-EV_EXTI0]);
+#endif
       } else 
         jsError("You can only have a maximum of 16 watches!");
     }
     if (!shouldWatch || !exti) {
-      gpioShouldWatch[pin] = false;
       gpioEventFlags[pin] = 0;
+#ifdef SYSFS_GPIO_DIR
+      gpioShouldWatch[pin] = false;
+#endif
+#ifdef USE_WIRINGPI
+      wiringPiISR(pin, INT_EDGE_BOTH, irqEXTIDoNothing);
+#endif
+
     }
     return shouldWatch ? exti : EV_NONE;
-#endif
   } else jsError("Invalid pin!");
   return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
-#ifdef SYSFS_GPIO_DIR
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++)
     if (gpioEventFlags[i]==device)
       return jshPinGetValue(i);
-#endif
   return false;
 }
 

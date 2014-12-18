@@ -333,7 +333,7 @@ endif
 ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+DEFINES += -DRASPBERRYPI 
 LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
@@ -342,6 +342,7 @@ USE_NET=1
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
 else
+DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 $(info *************************************************************)
 $(info *  WIRINGPI NOT FOUND, and you probably want it             *)
 $(info *  see  http://wiringpi.com/download-and-install/           *)
