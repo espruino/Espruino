@@ -184,7 +184,7 @@ typedef long long JsSysTime;
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
 /// Put before functions that we always want inlined
-#if !defined(SAVE_ON_FLASH) && !defined(DEBUG)
+#if !defined(SAVE_ON_FLASH) && !defined(DEBUG)  && !defined(NO_ALWAYS_INLINE)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 #else
 #define ALWAYS_INLINE inline

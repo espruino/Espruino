@@ -339,6 +339,8 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+OPTIMIZEFLAGS+=-O3
+DEFINES+=-DNO_ALWAYS_INLINE # needed for Pi optimized compile as it's GCC 4.6 (we use 4.8 for the STM32)
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
 else
