@@ -34,6 +34,9 @@
 #include <pthread.h>
 
 #ifdef USE_WIRINGPI
+// see http://wiringpi.com/download-and-install/
+//   git clone git://git.drogon.net/wiringPi
+//   cd wiringPi;./build
 #include <wiringPi.h>
 #endif
 
@@ -105,7 +108,7 @@ void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
 void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
 void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
 
-void (*irqEXTIs)(void)[16] = {
+void (*irqEXTIs[16])(void) = {
     irqEXTI0,
     irqEXTI1,
     irqEXTI2,
@@ -289,6 +292,17 @@ void jshInputThread() {
 
 
 void jshInit() {
+
+#ifdef USE_WIRINGPI
+  if (geteuid() == 0) {
+    printf("RUNNING AS SUDO - awesome. You'll get proper IRQ support\n");
+    wiringPiSetup();
+  } else {
+    printf("NOT RUNNING AS SUDO - sorry, you'll get rubbish realtime IO. You also need to export the pins you want to use first.\n");
+    wiringPiSetupSys() ;
+  }
+#endif
+
   int i;
   for (i=0;i<=EV_DEVICE_MAX;i++)
     ioDevices[i] = 0;
@@ -544,6 +558,10 @@ void jshPinOutput(Pin pin, bool value) {
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
 #ifdef USE_WIRINGPI
   // todo pwmSetRange and pwmSetClock for freq?
+  int v = (int)(value*1024);
+  if (v<0) v=0;
+  if (v>1023) v=1023;
+  jshPinSetState(pin, JSHPINSTATE_AF_OUT);
   pwmWrite(pin, (int)(value*1024));
 #endif
 }
