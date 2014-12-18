@@ -339,7 +339,15 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
+else
+$(info *************************************************************)
+$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+$(info *  see  http://wiringpi.com/download-and-install/           *)
+$(info *************************************************************)
+endif
+
 else ifdef BEAGLEBONE
 EMBEDDED=1
 BOARD=BEAGLEBONE_BLACK
