@@ -17,9 +17,9 @@
 
 // http://martin.hinner.info/vga/pal.html
 
-#define TV_OUT_HEIGHT 135 // 288 max
+#define TV_OUT_HEIGHT 270 // 288 max
 #define PAL_VBLANK 25 // amount of extra height that is just blank
-#define TV_OUT_WIDTH 192 // 4/3 of 144
+#define TV_OUT_WIDTH 384 // 4/3 of 144
 #define TV_OUT_STRIDE (TV_OUT_WIDTH>>3)
 
 #define PAL_LINE 64
@@ -61,9 +61,9 @@ static ALWAYS_INLINE void sync_end() {
 ALWAYS_INLINE void tv_start_line_video() {
   int lineIdx;
   if (line <= 313) {
-    lineIdx = (line-(5+PAL_VBLANK)) >> 1;
+    lineIdx = (line-(5+PAL_VBLANK)) ;
   } else {
-    lineIdx = (line-(317+PAL_VBLANK)) >> 1;
+    lineIdx = (line-(317+PAL_VBLANK));
   }
   if (lineIdx>=0 && lineIdx<TV_OUT_HEIGHT) {
     jshPinSetState(videoPin, JSHPINSTATE_AF_OUT); // re-enable output for SPI
@@ -91,31 +91,31 @@ static inline void setTimer(unsigned int mSec) {
 }
 
 bool tvIsVideo() {
-  return (line>=5 && line<=308);
+  return (line>=5 && line<=309) || (line>=317 && line<=622);
 }
 
 bool tvIsSync1Long() {
-  return (line<=2);
+  return (line<=2) || (line==313) || (line==314);
 }
 
 bool tvIsSync2Long() {
-  return (line<=1);
+  return (line<=1) || ((line>=312) && (line<=314));
 }
 
 void TVTIMER_IRQHandler() {
+  jshInterruptOff();
   TIM_ClearITPendingBit(TVTIMER, TIM_IT_Update);
   switch (tvState) {
   case TVS_SYNC1_START:
-    sync_start();
     if (tvIsVideo() || !tvIsSync1Long()) {
       setTimer(PAL_PULSE_SHORT_ON);
     } else {
       setTimer(PAL_PULSE_LONG_ON);
     }
+    sync_start();
     tvState = TVS_SYNC1_END;
     break;
   case TVS_SYNC1_END:
-    sync_end();
     if (tvIsVideo()) {
       setTimer(PAL_FRONTPORCH);
       tvState = TVS_VID_START;
@@ -127,6 +127,7 @@ void TVTIMER_IRQHandler() {
       }
       tvState = TVS_SYNC2_START;
     }
+    sync_end();
     break;
   case TVS_VID_START:
     setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
@@ -141,29 +142,30 @@ void TVTIMER_IRQHandler() {
     tvState = TVS_SYNC1_START;
     break;
   case TVS_SYNC2_START:
-    sync_start();
     if (tvIsSync2Long()) {
       setTimer(PAL_PULSE_LONG_ON);
     } else { // short
       setTimer(PAL_PULSE_SHORT_ON);
     }
+    sync_start();
     tvState = TVS_SYNC2_END;
     break;
   case TVS_SYNC2_END:
   default:
-    sync_end();
     if (tvIsSync1Long()) {
       setTimer(PAL_PULSE_LONG_OFF);
     } else { // short
       setTimer(PAL_PULSE_SHORT_OFF);
     }
+    sync_end();
     tvState = TVS_SYNC1_START;
     break;
   }
 
   if (tvState == TVS_SYNC1_START) {
-    if (line++ > 312) line=0; // count lines
+    if (line++ > 624) line=0; // count lines
   }
+  jshInterruptOn();
 }
 
 unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx);
