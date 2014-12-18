@@ -77,8 +77,6 @@ volatile unsigned char jshSPIBufHead[SPIS];
 volatile unsigned char jshSPIBufTail[SPIS];
 volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
 
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
-
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
 #endif
@@ -837,14 +835,6 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
-}
-
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
@@ -1529,17 +1519,6 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
-
 static unsigned char jshADCInitialised = 0;
 
 static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
@@ -1722,16 +1701,6 @@ JsVarFloat jshReadVRef() {
   return NAN;
 #endif
 }
-
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-}
-
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;

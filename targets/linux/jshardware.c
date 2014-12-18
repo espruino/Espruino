@@ -404,13 +404,6 @@ void jshDelayMicroseconds(int microsec) {
   usleep(microsec);
 }
 
-bool jshGetPinStateIsManual(Pin pin) { 
-  return false; 
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) { 
-}
-
 void jshPinSetState(Pin pin, JshPinState state) {
 #ifdef SYSFS_GPIO_DIR
   if (gpioState[pin] != state) {
@@ -514,16 +507,6 @@ void jshSetSystemTime(JsSysTime time) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsError("Invalid pin!");
-  return value;
-}
-
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
   jsError("Analog is not supported on this device.");
@@ -532,13 +515,6 @@ JsVarFloat jshPinAnalog(Pin pin) {
 
 int jshPinAnalogFast(Pin pin) {
   return 0;
-}
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsError("Invalid pin!");
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used

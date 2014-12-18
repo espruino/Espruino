@@ -199,4 +199,14 @@ void jshGetPinString(char *result, Pin pin);
 Pin jshGetPinFromVar(JsVar *pinv);
 Pin jshGetPinFromVarAndUnLock(JsVar *pinv);
 
+
+/// Is the pin state manual (has the user asked us explicitly to change it?)
+bool jshGetPinStateIsManual(Pin pin);
+/// Set whether the pin state is manual (has the user asked us explicitly to change it?)
+void jshSetPinStateIsManual(Pin pin, bool manual);
+
+bool jshPinInput(Pin pin);
+void jshPinOutput(Pin pin, bool value);
+
+
 #endif //JSPIN_H
