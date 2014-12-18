@@ -21,6 +21,15 @@
 #define TV_OUT_WIDTH 192 // 4/3 of 144
 #define TV_OUT_STRIDE (TV_OUT_WIDTH>>3)
 
+#define PAL_LINE 64
+#define PAL_HALF_LINE (PAL_LINE/2)
+#define PAL_PULSE_SHORT_ON 4
+#define PAL_PULSE_LONG_ON 28
+#define PAL_PULSE_SHORT_OFF (PAL_HALF_LINE-PAL_PULSE_SHORT_ON)
+#define PAL_PULSE_LONG_OFF (PAL_HALF_LINE-PAL_PULSE_LONG_ON)
+#define PAL_FRONTPORCH 10
+#define PAL_BACKPORCH 4
+
 #define TVSPIDEVICE            EV_SPI1
 #define TVSPI                  SPI1
 #define DMA_Channel_TVSPI_TX   DMA1_Channel3
@@ -35,7 +44,7 @@
 Pin videoPin = 0;
 Pin syncPin = 0;
 DMA_InitTypeDef DMA_InitStructure;
-const char *screenPtr = 0x20000000;
+const char *screenPtr = (const char *)0;
 int line = 0;
 unsigned int ticksPerLine = 0; // timer ticks
 
@@ -65,7 +74,9 @@ ALWAYS_INLINE void tv_start_line_video() {
 typedef enum {
   TVS_SYNC1_START,
   TVS_SYNC1_END,
-  TVS_SYNC1_VIDEO,
+  TVS_VID_START,  // output white
+  TVS_VID_VIDEO, // actual start of video
+  TVS_VID_BACKPORCH, // back porch
   TVS_SYNC2_START,
   TVS_SYNC2_END,
 } TvState;
@@ -91,42 +102,44 @@ void TVTIMER_IRQHandler() {
   TIM_ClearITPendingBit(TVTIMER, TIM_IT_Update);
   switch (tvState) {
   case TVS_SYNC1_START:
-    if (tvIsVideo()) {
-      setTimer(5);
-    } else if (tvIsSync1Long()) {
-      setTimer(18);
-    } else { // short
-      setTimer(4);
+    if (tvIsVideo() || !tvIsSync1Long()) {
+      setTimer(PAL_PULSE_SHORT_ON);
+    } else {
+      setTimer(PAL_PULSE_LONG_ON);
     }
-    jshPinSetState(videoPin, JSHPINSTATE_GPIO_OUT);
     sync_start();
     tvState = TVS_SYNC1_END;
     break;
   case TVS_SYNC1_END:
+    sync_end();
     if (tvIsVideo()) {
-      setTimer(5);
-      tvState = TVS_SYNC1_VIDEO;
+      setTimer(PAL_FRONTPORCH);
+      tvState = TVS_VID_START;
     } else {
       if (tvIsSync1Long()) {
-        setTimer(4);
+        setTimer(PAL_PULSE_LONG_OFF);
       } else { // short
-        setTimer(28);
+        setTimer(PAL_PULSE_SHORT_OFF);
       }
-      sync_end();
       tvState = TVS_SYNC2_START;
     }
     break;
-  case TVS_SYNC1_VIDEO:
-    setTimer(54);
+  case TVS_VID_START:
+    setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
     jshPinSetState(videoPin, JSHPINSTATE_AF_OUT); // re-enable output for SPI
     tv_start_line_video();
+    tvState = TVS_VID_BACKPORCH;
+    break;
+  case TVS_VID_BACKPORCH:
+    setTimer(PAL_BACKPORCH);
+    jshPinSetState(videoPin, JSHPINSTATE_GPIO_OUT);
     tvState = TVS_SYNC1_START;
     break;
   case TVS_SYNC2_START:
     if (tvIsSync2Long()) {
-      setTimer(28);
+      setTimer(PAL_PULSE_LONG_ON);
     } else { // short
-      setTimer(4);
+      setTimer(PAL_PULSE_SHORT_ON);
     }
     sync_start();
     tvState = TVS_SYNC2_END;
@@ -134,9 +147,9 @@ void TVTIMER_IRQHandler() {
   case TVS_SYNC2_END:
   default:
     if (tvIsSync1Long()) {
-      setTimer(4);
+      setTimer(PAL_PULSE_LONG_OFF);
     } else { // short
-      setTimer(28);
+      setTimer(PAL_PULSE_SHORT_OFF);
     }
     sync_end();
     tvState = TVS_SYNC1_START;
@@ -157,7 +170,7 @@ void tv_init(JsVar *v) {
   // init SPI
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate =  TV_OUT_WIDTH * 2 * 1000000 / 52;
+  inf.baudRate =  TV_OUT_WIDTH * 1000000 / 52;
   inf.spiMSB = false;
   videoPin = jshGetPinFromString("A7");
   syncPin = jshGetPinFromString("A6");
