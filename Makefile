@@ -339,6 +339,7 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+USE_WIRINGPI=1
 else ifdef BEAGLEBONE
 EMBEDDED=1
 BOARD=BEAGLEBONE_BLACK
@@ -676,6 +677,12 @@ WRAPPERSOURCES += \
 libs/hashlib/jswrap_hashlib.c
 SOURCES += \
 libs/hashlib/sha2.c
+endif
+
+ifdef USE_WIRINGPI
+DEFINES += -DUSE_WIRINGPI
+LIBS += -lwiringPi
+INCLUDE += -I/usr/local/include -L/usr/local/lib 
 endif
 
 ifeq ($(FAMILY), STM32F1)

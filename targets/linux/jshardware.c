@@ -33,8 +33,13 @@
 
 #include <pthread.h>
 
+#ifdef USE_WIRINGPI
+#include <wiringPi.h>
+#endif
+
 // ----------------------------------------------------------------------------
 int ioDevices[EV_DEVICE_MAX+1]; // list of open IO devices (or 0)
+JshPinState gpioState[JSH_PIN_COUNT]; // will be set to UNDEFINED if it isn't exported
 
 #ifdef SYSFS_GPIO_DIR
 
@@ -43,8 +48,7 @@ int ioDevices[EV_DEVICE_MAX+1]; // list of open IO devices (or 0)
 
 bool gpioShouldWatch[JSH_PIN_COUNT]; // whether we should watch this pin for changes
 bool gpioLastState[JSH_PIN_COUNT]; // the last state of this pin
-JshPinState gpioState[JSH_PIN_COUNT]; // will be set to UNDEFINED if it isn't exported
-IOEventFlags gpioEventFlags[JSH_PIN_COUNT];
+
 
 // functions for accessing the sysfs GPIO
 void sysfs_write(const char *path, const char *data) {
@@ -81,8 +85,47 @@ JsVarInt sysfs_read_int(const char *path) {
   sysfs_read(path, buf, sizeof(buf));
   return stringToIntWithRadix(buf, 10, 0);
 }
-
+#endif
 // ----------------------------------------------------------------------------
+#ifdef USE_WIRINGPI
+void irqEXTI0() { jshPushIOWatchEvent(EV_EXTI0); }
+void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI1); }
+void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI2); }
+void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI3); }
+void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI4); }
+void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI5); }
+void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI6); }
+void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI7); }
+void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI8); }
+void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI9); }
+void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI10); }
+void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI11); }
+void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI12); }
+void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
+void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
+void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
+
+void (*irqEXTIs)(void)[16] = {
+    irqEXTI0,
+    irqEXTI1,
+    irqEXTI2,
+    irqEXTI3,
+    irqEXTI4,
+    irqEXTI5,
+    irqEXTI6,
+    irqEXTI7,
+    irqEXTI8,
+    irqEXTI9,
+    irqEXTI10,
+    irqEXTI11,
+    irqEXTI12,
+    irqEXTI13,
+    irqEXTI14,
+    irqEXTI15,
+};
+#endif
+// ----------------------------------------------------------------------------
+IOEventFlags gpioEventFlags[JSH_PIN_COUNT];
 
 IOEventFlags pinToEVEXTI(Pin pin) {
   return gpioEventFlags[pin];
@@ -102,12 +145,6 @@ IOEventFlags getNewEVEXTI() {
   }
   return 0;
 }
-#else
-IOEventFlags pinToEVEXTI(Pin pin) {
-  return 0;
-}
-
-#endif
 
 // Get the path associated with a device. Returns false on failure.
 bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
@@ -272,9 +309,11 @@ void jshInit() {
     terminal_set = 1;
   }
 #endif//!__MINGW32__
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+      gpioState[i] = JSHPINSTATE_UNDEFINED;
+  }
 #ifdef SYSFS_GPIO_DIR
   for (i=0;i<JSH_PIN_COUNT;i++) {
-    gpioState[i] = JSHPINSTATE_UNDEFINED;
     gpioShouldWatch[i] = false;
     gpioEventFlags[i] = 0;
   }
@@ -381,16 +420,29 @@ void jshPinSetState(Pin pin, JshPinState state) {
     itostr(pin, &path[strlen(path)], 10);
     strcat(&path[strlen(path)], "/direction");
     sysfs_write(path, JSHPINSTATE_IS_OUTPUT(state)?"out":"in");
-    gpioState[pin] = state;
   }
 #endif
+#ifdef USE_WIRINGPI
+  if (JSHPINSTATE_IS_OUTPUT(state)) {
+    if (state==JSHPINSTATE_AF_OUT || state==JSHPINSTATE_AF_OUT_OPENDRAIN)
+      pinMode(pin,PWM_OUTPUT);
+    else
+      pinMode(pin,OUTPUT);
+  } else {
+    pinMode(pin,INPUT);
+    if (state==JSHPINSTATE_GPIO_IN_PULLUP)
+      pullUpDnControl (pin, PUD_UP) ;
+    else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN)
+      pullUpDnControl (pin, PUD_DOWN) ;
+    else
+      pullUpDnControl (pin, PUD_OFF) ;
+  }
+#endif
+  gpioState[pin] = state;
 }
 
 JshPinState jshPinGetState(Pin pin) {
-#ifdef SYSFS_GPIO_DIR
   return gpioState[pin];
-#endif
-  return JSHPINSTATE_UNDEFINED;
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -400,6 +452,9 @@ void jshPinSetValue(Pin pin, bool value) {
   strcat(&path[strlen(path)], "/value");
   sysfs_write_int(path, value?1:0);
 #endif
+#ifdef USE_WIRINGPI
+  digitalWrite(pin,value);
+#endif
 }
 
 bool jshPinGetValue(Pin pin) {
@@ -408,6 +463,8 @@ bool jshPinGetValue(Pin pin) {
   itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   return sysfs_read_int(path);
+#elif defined(USE_WIRINGPI)
+  return digitalRead(pin);
 #else
   return false;
 #endif
@@ -427,14 +484,32 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return ((JsVarFloat)time)/1000;
 }
 
+#ifdef USE_WIRINGPI
+JsSysTime baseSystemTime = 0;
+#endif
 
 JsSysTime jshGetSystemTime() {
+#ifdef USE_WIRINGPI
+  /* use micros, and cope with wrapping...
+   basically we're going to use getTime more often than once every 71 mins
+   (the time it takes to wrap) so we can just cope with wraps be seeing if
+   it has wrapped, and incrementing a bigger counter */
+  unsigned int us = micros();
+  static unsigned int lastUs = 0;
+  if (us<lastUs) baseSystemTime += 0x100000000LL;
+  lastUs = us;
+  return baseSystemTime + (JsSysTime)us;
+#else
   struct timeval tm;
   gettimeofday(&tm, 0);
   return tm.tv_sec*1000000L + tm.tv_usec;
+#endif
 }
 
 void jshSetSystemTime(JsSysTime time) {
+#ifdef USE_WIRINGPI
+  baseSystemTime = time - micros();
+#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -467,6 +542,10 @@ void jshPinOutput(Pin pin, bool value) {
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+#ifdef USE_WIRINGPI
+  // todo pwmSetRange and pwmSetClock for freq?
+  pwmWrite(pin, (int)(value*1024));
+#endif
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
