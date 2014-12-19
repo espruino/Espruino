@@ -49,12 +49,12 @@ do
   BINARY_NAME=`python scripts/get_board_info.py $BOARDNAMEX "common.get_board_binary_name(board)"`
   rm $BINARY_NAME
   if [ "$BOARDNAME" == "ESPRUINO_1V3" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo 'Build failed' ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   elif [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then      
-    bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh" || { echo 'Build failed' ; exit 1; }
+    bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else 
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
-    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo 'Build failed' ; exit 1; }
+    bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   fi
   # rename binary if needed
   if [ -n "$EXTRANAME" ]; then 
@@ -63,7 +63,7 @@ do
     NEW_BINARY_NAME=$BINARY_NAME
   fi
   # copy...
-  cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo 'Build failed' ; exit 1; }
+  cp $BINARY_NAME $ZIPDIR/$NEW_BINARY_NAME || { echo "Build of $BOARDNAME failed" ; exit 1; }
 done
 
 cd $DIR

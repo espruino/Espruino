@@ -26,9 +26,9 @@ chip = {
   'ram' : -1,
   'flash' : -1,
   'speed' : -1,
-  'usart' : 0,
-  'spi' : 1,
-  'i2c' : 0,
+  'usart' : 6,
+  'spi' : 3,
+  'i2c' : 3,
   'adc' : 0,
   'dac' : 0,
 };
@@ -36,6 +36,7 @@ chip = {
 board = {
 };
 devices = {
+  'USB' : {} # to convince code that we have a USB port (it's used for the console ion Linux)
 };
 
 board_css = """

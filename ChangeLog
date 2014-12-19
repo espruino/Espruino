@@ -25,6 +25,7 @@
             eval() can now access local variables and function arguments (fix #460)
             Added 'flat strings' for typed arrays. 
               These use a continuous chunk of memory so are much faster
+            Ensure that we only create as many Serial/I2C/etc items in Symbol table as we need (fix #453)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
