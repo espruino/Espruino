@@ -2004,6 +2004,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
+#ifndef STM32F401xx // STM32F401 devices have USART6, but not 4 or 5!
 #if USARTS>= 4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
@@ -2011,6 +2012,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 #if USARTS>= 5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
+#endif
 #endif
 #if USARTS>= 6
   } else if (device == EV_SERIAL6) {
