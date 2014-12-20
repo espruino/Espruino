@@ -64,7 +64,6 @@ bool jspHasError() {
   return JSP_HAS_ERROR;
 }
 
-///< Same as jsvSetValueOfName, but nice error message
 void jspReplaceWith(JsVar *dst, JsVar *src) {
   // If this is an index in an array buffer, write directly into the array buffer
   if (jsvIsArrayBufferName(dst)) {
