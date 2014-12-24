@@ -2313,13 +2313,14 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   if (!scope) return 0; // out of mem
   JsVar *scopeExports = jsvNewWithFlags(JSV_OBJECT);
   if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
-  jsvUnLock(jsvAddNamedChild(scope, scopeExports, "exports"));
+  JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
+  jsvUnLock(scopeExports);
 
   // TODO: maybe we do want to parse twice here, to get functions defined after their use?
   jsvUnLock(jspEvaluateVar(moduleContents, scope, false));
 
   jsvUnLock(scope);
-  return scopeExports;
+  return jsvSkipNameAndUnLock(exportsName);
 }
 
 /** Get the owner of the current prototype. We assume that it's
