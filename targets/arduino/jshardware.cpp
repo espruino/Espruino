@@ -68,13 +68,6 @@ void jshDelayMicroseconds(int microsec) {
   delayMicroseconds(microsec);
 }
 
-/// Is the pin state manual (has the user asked us explicitly to change it?)
-bool jshGetPinStateIsManual(Pin pin) {
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-}
-
 void jshPinSetState(Pin pin, JshPinState state) {
 }
 
@@ -113,16 +106,6 @@ void jshSetSystemTime(JsSysTime time) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsError("Invalid pin!");
-  return value;
-}
-
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
   jsError("Analog is not supported on this device.");
@@ -130,14 +113,6 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 int jshPinAnalogFast(Pin pin) {
-}
-
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsError("Invalid pin!");
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
@@ -165,9 +140,10 @@ bool jshCanWatch(Pin pin) {
   return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
   } else jsError("Invalid pin!");
+  return EV_NONE;
 }
 
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {

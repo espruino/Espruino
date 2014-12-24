@@ -18,6 +18,7 @@ import re;
 import json;
 import sys;
 import os;
+import importlib;
 
 silent = os.getenv("SILENT");
 if silent:
@@ -80,6 +81,13 @@ def get_jsondata(is_for_document, parseArgs = True):
             if arg[0]=="-":
               if arg[1]=="D": 
                 defines.append(arg[2:])
+              elif arg[1]=="B": 
+                board = importlib.import_module(arg[2:])
+                if "usart" in board.chip: defines.append("USARTS="+str(board.chip["usart"]));
+                if "spi" in board.chip: defines.append("SPIS="+str(board.chip["spi"]));
+                if "i2c" in board.chip: defines.append("I2CS="+str(board.chip["i2c"]));
+                if "USB" in board.devices: defines.append("defined(USB)=True"); 
+                else: defines.append("defined(USB)=False");
               else:
                 print "Unknown command-line option"
                 exit(1)
@@ -91,7 +99,7 @@ def get_jsondata(is_for_document, parseArgs = True):
 
         if len(defines)>1:
           print "Got #DEFINES:"
-          for d in defines: print d
+          for d in defines: print "   "+d
 
         jsondatas = []
         for jswrap in jswraps:
@@ -119,17 +127,39 @@ def get_jsondata(is_for_document, parseArgs = True):
               if len(description): jsondata["description"] = description;
               jsondata["filename"] = jswrap
               jsondata["include"] = jswrap[:-2]+".h"
-              if (not is_for_document) and("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
-                print "Dropped because of #ifndef "+jsondata["ifndef"]
-              elif (not is_for_document) and ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
-                print "Dropped because of #ifdef "+jsondata["ifdef"]
-              else:
+              dropped_prefix = "Dropped "
+              if "name" in jsondata: dropped_prefix += jsondata["name"]+" "
+              elif "class" in jsondata: dropped_prefix += jsondata["class"]+" "
+              drop = False
+              if not is_for_document:
+                if ("ifndef" in jsondata) and (jsondata["ifndef"] in defines):
+                  print dropped_prefix+" because of #ifndef "+jsondata["ifndef"]
+                  drop = True
+                if ("ifdef" in jsondata) and not (jsondata["ifdef"] in defines):
+                  print dropped_prefix+" because of #ifdef "+jsondata["ifdef"]
+                  drop = True
+                if ("#if" in jsondata):
+                  expr = jsondata["#if"]
+                  for defn in defines:
+                    if defn.find('=')!=-1:
+                      dname = defn[:defn.find('=')]
+                      dkey = defn[defn.find('=')+1:]                      
+                      expr = expr.replace(dname, dkey);
+                  try: 
+                    r = eval(expr)
+                  except:
+                    print "WARNING: error evaluating '"+expr+"' - from '"+jsondata["#if"]+"'"
+                    r = True
+                  if not r:
+                    print dropped_prefix+" because of #if "+jsondata["#if"]+ " -> "+expr
+                    drop = True
+              if not drop:
                 jsondatas.append(jsondata)
             except ValueError as e:
               sys.stderr.write( "JSON PARSE FAILED for " +  jsonstring + " - "+ str(e) + "\n")
               exit(1)
             except:
-              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+sys.exc_info()[0] + "\n" )
+              sys.stderr.write( "JSON PARSE FAILED for " + jsonstring + " - "+str(sys.exc_info()[0]) + "\n" )
               exit(1)
         print "Scanning finished."
         return jsondatas
@@ -200,7 +230,6 @@ def get_struct_from_jsondata(jsondata):
 
   def addLib(details):
     context["modules"][details["class"]] = {"desc": details.get("description", "")}
-
   def addVar(details):
     return
 

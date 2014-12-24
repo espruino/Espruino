@@ -333,12 +333,24 @@ endif
 ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+DEFINES += -DRASPBERRYPI 
 LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+OPTIMIZEFLAGS+=-O3
+DEFINES+=-DNO_ALWAYS_INLINE # needed for Pi optimized compile as it's GCC 4.6 (we use 4.8 for the STM32)
+ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+USE_WIRINGPI=1
+else
+DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+$(info *************************************************************)
+$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+$(info *  see  http://wiringpi.com/download-and-install/           *)
+$(info *************************************************************)
+endif
+
 else ifdef BEAGLEBONE
 EMBEDDED=1
 BOARD=BEAGLEBONE_BLACK
@@ -359,6 +371,7 @@ else
 BOARD=LINUX
 LINUX=1
 USE_FILESYSTEM=1
+USE_HASHLIB=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 
@@ -667,6 +680,20 @@ endif
 
 ifdef USB
 DEFINES += -DUSB
+endif
+
+ifdef USE_HASHLIB
+INCLUDE += -I$(ROOT)/libs/hashlib
+WRAPPERSOURCES += \
+libs/hashlib/jswrap_hashlib.c
+SOURCES += \
+libs/hashlib/sha2.c
+endif
+
+ifdef USE_WIRINGPI
+DEFINES += -DUSE_WIRINGPI
+LIBS += -lwiringPi
+INCLUDE += -I/usr/local/include -L/usr/local/lib 
 endif
 
 ifeq ($(FAMILY), STM32F1)
@@ -1070,7 +1097,7 @@ $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py

@@ -77,8 +77,6 @@ volatile unsigned char jshSPIBufHead[SPIS];
 volatile unsigned char jshSPIBufTail[SPIS];
 volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
 
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
-
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
 #endif
@@ -837,14 +835,6 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
-}
-
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
@@ -1529,17 +1519,6 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
-
 static unsigned char jshADCInitialised = 0;
 
 static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
@@ -1723,16 +1702,6 @@ JsVarFloat jshReadVRef() {
 #endif
 }
 
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-}
-
-
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
@@ -1752,9 +1721,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 
   if (!func) {
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
+#if defined(DACS) && DACS>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
+#endif
     return;
   }
 
@@ -1862,7 +1833,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -1891,7 +1862,10 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     s.EXTI_LineCmd = shouldWatch ? ENABLE : DISABLE;
     EXTI_Init(&s);
+
+    return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
@@ -2030,6 +2004,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
+#ifndef STM32F401xx // STM32F401 devices have USART6, but not 4 or 5!
 #if USARTS>= 4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
@@ -2037,6 +2012,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 #if USARTS>= 5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
+#endif
 #endif
 #if USARTS>= 6
   } else if (device == EV_SERIAL6) {

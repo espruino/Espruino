@@ -184,7 +184,7 @@ typedef long long JsSysTime;
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
 /// Put before functions that we always want inlined
-#ifndef SAVE_ON_FLASH
+#if !defined(SAVE_ON_FLASH) && !defined(DEBUG)  && !defined(NO_ALWAYS_INLINE)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 #else
 #define ALWAYS_INLINE inline
@@ -257,8 +257,9 @@ typedef enum {
   _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
     JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
-  _JSV_STRING_END = JSV_STRING_MAX,
-    JSV_STRING_EXT_0 = JSV_STRING_MAX+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+    JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
+  _JSV_STRING_END = JSV_FLAT_STRING,
+    JSV_STRING_EXT_0 = JSV_FLAT_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
   _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
 
@@ -410,12 +411,12 @@ extern JsErrorFlags jsErrorFlags;
 
 
 #ifdef FAKE_STDLIB
-void exit(int errcode);
 char *strncat(char *dst, const char *src, size_t c);
 char *strncpy(char *dst, const char *src, size_t c);
 size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
+void *memset(void *dst, int c, size_t size);
 #define RAND_MAX (0xFFFFFFFFU)
 unsigned int rand();
 #endif
