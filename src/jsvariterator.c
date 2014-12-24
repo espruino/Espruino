@@ -80,8 +80,16 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
   assert(jsvHasCharacterData(str));
   it->var = jsvLockAgain(str);
   it->charsInVar = jsvGetCharactersInVar(str);
-  it->charIdx = startIdx;
-  it->varIndex = 0;
+  if (jsvIsFlatString(str)) {
+    /* Flat strings use the first var to store the size, and subsequent vars
+       to store the actual data, so we tweak charIdx to handle this */
+    it->varIndex = -sizeof(JsVar);
+    it->charsInVar += sizeof(JsVar);
+    it->charIdx = sizeof(JsVar)+startIdx;
+  } else {
+    it->varIndex = 0;
+    it->charIdx = startIdx;
+  }
   while (it->charIdx>0 && it->charIdx >= it->charsInVar) {
     it->charIdx -= it->charsInVar;
     it->varIndex += it->charsInVar;
@@ -100,7 +108,6 @@ void jsvStringIteratorNew(JsvStringIterator *it, JsVar *str, size_t startIdx) {
       }
     }
   }
-  it->varIndex = startIdx - it->charIdx;
 }
 
 void jsvStringIteratorNext(JsvStringIterator *it) {

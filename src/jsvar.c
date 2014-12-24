@@ -97,22 +97,30 @@ void jsvSetMaxVarsUsed(unsigned int size) {
   jsVarsSize = size;
 }
 
-
 // maps the empty variables in...
-void jsvSoftInit() {
+void jsvCreateEmptyVarList() {
   jsVarFirstEmpty = 0;
   JsVar *lastEmpty = 0;
   JsVarRef i;
   for (i=1;i<=jsVarsSize;i++) {
-    if ((jsvGetAddressOf(i)->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
-      jsvSetNextSibling(jsvGetAddressOf(i), 0);
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
+      jsvSetNextSibling(var, 0);
       if (lastEmpty)
         jsvSetNextSibling(lastEmpty, i);
       else
         jsVarFirstEmpty = i;
-      lastEmpty = jsvGetAddressOf(i);
+      lastEmpty = var;
+    } else if (jsvIsFlatString(var)) {
+      // skip over used blocks for flat strings
+      i += jsvGetFlatStringBlocks(var);
     }
   }
+}
+
+
+void jsvSoftInit() {
+  jsvCreateEmptyVarList();
 }
 
 void jsvSoftKill() {
@@ -243,26 +251,29 @@ bool jsvHasSingleChild(const JsVar *v) {
          (jsvIsName(v) && !jsvIsNameWithValue(v));
 }
 
+void jsvResetVariable(JsVar *v, JsVarFlags flags) {
+  assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
+  // make sure we clear all data...
+  ((unsigned int*)&v->varData.integer)[0] = 0;
+  ((unsigned int*)&v->varData.integer)[1] = 0;
+  // and the rest...
+  jsvSetNextSibling(v, 0);
+  jsvSetPrevSibling(v, 0);
+  v->varData.ref.refs = 0;
+  jsvSetFirstChild(v, 0);
+  jsvSetLastChild(v, 0);
+  // set flags
+  assert(!(flags & JSV_LOCK_MASK));
+  v->flags = flags | JSV_LOCK_ONE;
+}
+
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
-      JsVar *v = jsvLock(jsVarFirstEmpty);
-      jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
-      assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
-      // make sure we clear all data...
-      ((unsigned int*)&v->varData.integer)[0] = 0;
-      ((unsigned int*)&v->varData.integer)[1] = 0;
-      // and the rest...
-      jsvSetNextSibling(v, 0);
-      jsvSetPrevSibling(v, 0);
-      v->varData.ref.refs = 0;
-      jsvSetFirstChild(v, 0);
-      jsvSetLastChild(v, 0);
-      // set flags
-      assert(!(flags & JSV_LOCK_MASK));
-      v->flags = flags | JSV_LOCK_ONE;
-
-      // return pointer
-      return v;
+    JsVar *v = jsvLock(jsVarFirstEmpty);
+    jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
+    jsvResetVariable(v, flags);
+    // return pointer
+    return v;
   }
   jsErrorFlags |= JSERR_LOW_MEMORY;
   /* we don't have memory - second last hope - run garbage collector */
@@ -286,7 +297,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 #endif
 }
 
-static inline void jsvFreePtrInternal(JsVar *var) {
+ALWAYS_INLINE void jsvFreePtrInternal(JsVar *var) {
   var->flags = (var->flags & ~JSV_VARTYPEMASK) | JSV_UNUSED;
   // add this to our free list
   jsvSetNextSibling(var, jsVarFirstEmpty);
@@ -325,6 +336,15 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
         jsvFreePtrInternal(child);
         jsvUnLock(child);
       }
+      // We might be a flat string
+      if (jsvIsFlatString(var)) {
+        // in which case we need to free all the blocks.
+        int count = jsvGetFlatStringBlocks(var);
+        JsVarRef i = jsvGetRef(var)+count;
+        // do it in reverse, so the free list ends up in kind of the right order
+        while (count--)
+          jsvFreePtrInternal(jsvGetAddressOf(i--));
+      }
     }
     /* NO ELSE HERE - because jsvIsNewChild stuff can be for Names, which
     can be ints or strings */
@@ -353,6 +373,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
         }
       }
     }
+
     // free!
     jsvFreePtrInternal(var);
 }
@@ -455,6 +476,37 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
   assert(!jsvIsStringExt(v));
   jsvUnRef(v);
   jsvUnLock(v);
+  return 0;
+}
+
+JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
+  // Work out how many blocks we need. One for the header, plus some for the characters
+  unsigned int blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
+  // Now try and find them
+  int blockCount = 0;
+  JsVarRef i;
+  for (i=1;i<=jsVarsSize;i++)  {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
+      blockCount++;
+      if (blockCount>=blocks) { // Wohoo! We found enough blocks
+        var = jsvGetAddressOf(i+1-blocks); // the first block
+        // Set up the header block
+        jsvResetVariable(var, JSV_FLAT_STRING);
+        var->varData.integer = byteLength;
+        // clear data
+        memset(sizeof(JsVar)+(char*)var, 0, sizeof(JsVar)*(blocks-1));
+        // Now re-link all the free variables
+        jsvCreateEmptyVarList();
+        return var;
+      }
+    } else {
+      blockCount = 0; // non-continuous
+      if (jsvIsFlatString(var))
+        i += jsvGetFlatStringBlocks(var);
+    }
+  }
+  // can't make it - return undefined
   return 0;
 }
 
@@ -912,7 +964,10 @@ size_t jsvGetStringLength(JsVar *v) {
   return strLength;
 }
 
-
+size_t jsvGetFlatStringBlocks(JsVar *v) {
+  assert(jsvIsFlatString(v));
+  return (v->varData.integer+sizeof(JsVar)-1) / sizeof(JsVar);
+}
 
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {
@@ -2576,7 +2631,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
       blocks += jsvCountJsVarsUsed(v);
       jsvUnLock(v);
     }
-    jsiConsolePrintf("String [%d blocks] %q", blocks, var);
+    jsiConsolePrintf("%sString [%d blocks] %q", jsvIsFlatString(var)?"Flat":"", blocks, var);
   } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
   }
@@ -2661,15 +2716,22 @@ bool jsvGarbageCollect() {
   // clear garbage collect flags
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
-    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) // if it is not unused
+    if ((var->flags&JSV_VARTYPEMASK) != JSV_UNUSED) { // if it is not unused
       var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
+      // if we have a flat string, skip that many blocks
+      if (jsvIsFlatString(var))
+        i += jsvGetFlatStringBlocks(var);
+    }
   }
   // recursively add 'native' vars
   for (i=1;i<=jsVarsSize;i++)  {
-      JsVar *var = jsvGetAddressOf(i);
+    JsVar *var = jsvGetAddressOf(i);
     if ((var->flags & JSV_GARBAGE_COLLECT) && // not already GC'd
         jsvGetLocks(var)>0) // or it is locked
       jsvGarbageCollectMarkUsed(var);
+    // if we have a flat string, skip that many blocks
+    if (jsvIsFlatString(var))
+      i += jsvGetFlatStringBlocks(var);
   }
   // now sweep for things that we can GC!
   bool freedSomething = false;
@@ -2683,6 +2745,9 @@ bool jsvGarbageCollect() {
       jsvSetNextSibling(var, jsVarFirstEmpty);
       jsVarFirstEmpty = jsvGetRef(var);
     }
+    // if we have a flat string, skip that many blocks
+    if (jsvIsFlatString(var))
+      i += jsvGetFlatStringBlocks(var);
   }
   return freedSomething;
 }

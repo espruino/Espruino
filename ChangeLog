@@ -16,6 +16,16 @@
             Fix JSON parse of negative numbers (fix #456)
             Only keep RTC settings if the relevant oscillator is running (fix #444)
             Finally fixed sporadic compilation problems with '-Os'
+            Fixed issues with intervals in onInit (#462)
+            Remove libraries from root scope (fix #463)
+            Fix pin namings on Nucleo boards
+            Fix addition of stdlib's exit on Nucleo debug
+            Allow setWatch to execute native functions inside the IRQ
+            When dumping typed arrays, use the size if all elements are 0 (fix #448)
+            eval() can now access local variables and function arguments (fix #460)
+            Added 'flat strings' for typed arrays. 
+              These use a continuous chunk of memory so are much faster
+            Ensure that we only create as many Serial/I2C/etc items in Symbol table as we need (fix #453)
             Allow modules to return whatever was assigned to exports - not just the original object
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
@@ -58,7 +68,7 @@
             Fix issue where large doubles (> +/- 2^31) were converted to -1 rather than truncated ints
             Fix E.getSizeOf (fix #424)
             Fixed JSON indentation issue
-            Made 'pretty' JSON output look a bit better
+            Made 'pretty' JSON output look a bit better            
 
      1v69 : Fix 1v67's regression of digitalPulse when doing lots of pulses
             Add configurable OneWire search command (for finding DS18B20s with alarm set)

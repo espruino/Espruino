@@ -411,6 +411,10 @@ void jsiSoftInit() {
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
 
+  // Make sure we set up lastIdleTime, as this could be used
+  // when adding an interval from onInit (called below)
+  jsiLastIdleTime = jshGetSystemTime();
+
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
   if (onInit) {
@@ -423,8 +427,6 @@ void jsiSoftInit() {
       jsError("onInit is not a Function or a String");
     jsvUnLock(onInit);
   }
-
-  jsiLastIdleTime = jshGetSystemTime();
 }
 
 /** Append the code required to initialise a serial port to this string */

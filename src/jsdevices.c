@@ -22,8 +22,11 @@
 #include "trigger.h"
 #endif
 
+
+
 // ----------------------------------------------------------------------------
-//                                                                     BUFFERS
+//                                                              WATCH CALLBACKS
+JshEventCallbackCallback jshEventCallbacks[EV_EXTI_MAX+1-EV_EXTI0];
 
 // ----------------------------------------------------------------------------
 //                                                         DATA TRANSMIT BUFFER
@@ -45,12 +48,23 @@ typedef enum {
 JshSerialDeviceState jshSerialDeviceStates[USARTS+1];
 
 // ----------------------------------------------------------------------------
+//                                                              IO EVENT BUFFER
+volatile IOEvent ioBuffer[IOBUFFERMASK+1];
+volatile unsigned char ioHead=0, ioTail=0;
+
+// ----------------------------------------------------------------------------
+
+
 
 void jshInitDevices() { // called from jshInit
   int i;
+  // setup flow control
   jshSerialDeviceStates[0] = SDS_FLOW_CONTROL_XON_XOFF; // USB
   for (i=1;i<=USARTS;i++)
     jshSerialDeviceStates[i] = SDS_NONE;
+  // set up callbacks for events
+  for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
+    jshEventCallbacks[i-EV_EXTI0] = 0;
 }
 
 // ----------------------------------------------------------------------------
@@ -152,12 +166,6 @@ bool jshHasTransmitData() {
   return txHead != txTail;
 }
 
-// ----------------------------------------------------------------------------
-//                                                              IO EVENT BUFFER
-volatile IOEvent ioBuffer[IOBUFFERMASK+1];
-volatile unsigned char ioHead=0, ioTail=0;
-// ----------------------------------------------------------------------------
-
 
 void jshIOEventOverflowed() {
   // Error here - just set flag so we don't dump a load of data out
@@ -202,10 +210,17 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
 }
 
 void jshPushIOWatchEvent(IOEventFlags channel) {
- JsSysTime time = jshGetSystemTime();
- bool state = jshGetWatchedPinState(channel);
+  bool state = jshGetWatchedPinState(channel);
+
+  if (jshEventCallbacks[channel-EV_EXTI0]) {
+    jshEventCallbacks[channel-EV_EXTI0](state);
+    return;
+  }
+
+  JsSysTime time = jshGetSystemTime();
 
 #ifdef USE_TRIGGER
+  // TODO: move to using jshSetEventCallback
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
     return;
 #endif
@@ -409,4 +424,10 @@ void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff) {
     (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
   else
     (*deviceState) &= ~SDS_FLOW_CONTROL_XON_XOFF;
+}
+
+/// Set a callback function to be called when an event occurs
+void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback) {
+  assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
+  jshEventCallbacks[channel-EV_EXTI0] = callback;
 }

@@ -315,9 +315,14 @@ The function may also take an argument, which is an object of type `{time:float,
 
 `time` is the time in seconds at which the pin changed state, `lastTime` is the time in seconds at which the pin last changed state, and `state` is the current state of the pin.
 
-For instance, if you want to measure the length of a positive pusle you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```
+For instance, if you want to measure the length of a positive pulse you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```
 
-This can also be removed using clearWatch
+If the callback is a native function `void (bool state)`
+then you can also add `irq:true` to options, which will cause the function to be
+called from within the IRQ. When doing this, interruptions will happen on both
+edges and there will be no debouncing.
+
+Watches set with `setWatch` can be removed using `clearWatch`
 */
 JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
 
@@ -329,6 +334,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
   bool repeat = false;
   JsVarFloat debounce = 0;
   int edge = 0;
+  bool isIRQ = false;
   if (jsvIsObject(repeatOrObject)) {
     JsVar *v;
     repeat = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "repeat", 0));
@@ -343,6 +349,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
     } else if (!jsvIsUndefined(v))
       jsWarn("'edge' in setWatch should be a string - either 'rising', 'falling' or 'both'");
     jsvUnLock(v);
+    isIRQ = jsvGetBoolAndUnLock(jsvObjectGetChild(repeatOrObject, "irq", 0));
   } else
     repeat = jsvGetBool(repeatOrObject);
 
@@ -361,13 +368,31 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
     }
 
     // If nothing already watching the pin, set up a watch
+    IOEventFlags exti = EV_NONE;
     if (!jsiIsWatchingPin(pin))
-      jshPinWatch(pin, true);
+      exti = jshPinWatch(pin, true);
+    // disable event callbacks by default
+    if (exti) {
+      jshSetEventCallback(exti, 0);
+      if (isIRQ) {
+        if (jsvIsNativeFunction(func)) {
+          jshSetEventCallback(exti, func->varData.native.ptr);
+        } else {
+          jsExceptionHere(JSET_ERROR, "irq=true set, but function is not a native function");
+        }
+      }
+    } else {
+      if (isIRQ)
+        jsExceptionHere(JSET_ERROR, "irq=true set, but watch is already used");
+    }
+
 
     JsVar *watchArrayPtr = jsvLock(watchArray);
     itemIndex = jsvArrayAddToEnd(watchArrayPtr, watchPtr, 1) - 1;
     jsvUnLock(watchArrayPtr);
     jsvUnLock(watchPtr);
+
+
   }
   return (itemIndex>=0) ? jsvNewFromInteger(itemIndex) : 0/*undefined*/;
 }
