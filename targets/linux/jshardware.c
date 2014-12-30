@@ -642,6 +642,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         case 57600   : baud = B57600  ;break;
         case 115200  : baud = B115200 ;break;
         case 230400  : baud = B230400 ;break;
+#ifndef __MACOSX__
         case 460800  : baud = B460800 ;break;
         case 500000  : baud = B500000 ;break;
         case 576000  : baud = B576000 ;break;
@@ -654,30 +655,38 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         case 3000000 : baud = B3000000;break;
         case 3500000 : baud = B3500000;break;
         case 4000000 : baud = B4000000;break;
+#endif
       }
+
       if (baud) {
         cfsetispeed(&settings, baud); // set baud rates
         cfsetospeed(&settings, baud);
+
+        settings.c_cflag &= ~(PARENB|PARODD); // none
+        
+        if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
+        if (inf->parity == 2) settings.c_cflag |= PARENB; // even
+        
+        settings.c_cflag &= ~CSTOPB;
+        if (inf->stopbits) settings.c_cflag |= CSTOPB;
+
+        settings.c_cflag &= ~CSIZE;
+
+        switch (inf->bytesize) {
+          case 5 : settings.c_cflag |= CS5; break;
+          case 6 : settings.c_cflag |= CS6; break;
+          case 7 : settings.c_cflag |= CS7; break;
+          case 8 : settings.c_cflag |= CS8; break;
+        }
+
+        // raw mode
+        cfmakeraw(&settings);
+
+        // finally set current settings
+        tcsetattr(ioDevices[device], TCSANOW, &settings);
+      } else {
+        jsError("No baud rate defined for device");
       }
-
-      settings.c_cflag &= ~(PARENB|PARODD); // none
-      if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
-      if (inf->parity == 2) settings.c_cflag |= PARENB; // even
-      settings.c_cflag &= ~CSTOPB;
-      if (inf->stopbits) settings.c_cflag |= CSTOPB;
-
-      settings.c_cflag &= ~CSIZE;
-      switch (inf->bytesize) {
-        case 5 : settings.c_cflag |= CS5; break;
-        case 6 : settings.c_cflag |= CS6; break;
-        case 7 : settings.c_cflag |= CS7; break;
-        case 8 : settings.c_cflag |= CS8; break;
-      }
-
-      // raw mode
-      cfmakeraw(&settings);
-      // finally set current settings
-      tcsetattr(ioDevices[device], TCSANOW, &settings);
     }
   } else {
     jsError("No path defined for device");
