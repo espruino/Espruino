@@ -113,7 +113,7 @@ void jsvCreateEmptyVarList() {
       lastEmpty = var;
     } else if (jsvIsFlatString(var)) {
       // skip over used blocks for flat strings
-      i += jsvGetFlatStringBlocks(var);
+      i += (JsVarRef)jsvGetFlatStringBlocks(var);
     }
   }
 }
@@ -248,6 +248,7 @@ bool jsvHasChildren(const JsVar *v) {
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v) {
   return jsvIsArrayBuffer(v) ||
+         jsvIsNativeFunction(v) ||
          (jsvIsName(v) && !jsvIsNameWithValue(v));
 }
 
@@ -339,8 +340,8 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       // We might be a flat string
       if (jsvIsFlatString(var)) {
         // in which case we need to free all the blocks.
-        int count = jsvGetFlatStringBlocks(var);
-        JsVarRef i = jsvGetRef(var)+count;
+        size_t count = jsvGetFlatStringBlocks(var);
+        JsVarRef i = jsvGetRef(var)+(JsVarRef)count;
         // do it in reverse, so the free list ends up in kind of the right order
         while (count--)
           jsvFreePtrInternal(jsvGetAddressOf(i--));
@@ -483,14 +484,14 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   // Work out how many blocks we need. One for the header, plus some for the characters
   unsigned int blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
   // Now try and find them
-  int blockCount = 0;
+  unsigned int blockCount = 0;
   JsVarRef i;
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
       blockCount++;
       if (blockCount>=blocks) { // Wohoo! We found enough blocks
-        var = jsvGetAddressOf(i+1-blocks); // the first block
+        var = jsvGetAddressOf(i+1-(JsVarRef)blocks); // the first block
         // Set up the header block
         jsvResetVariable(var, JSV_FLAT_STRING);
         var->varData.integer = byteLength;
@@ -906,6 +907,26 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
   return str;
 }
 
+JsVar *jsvAsFlatString(JsVar *var) {
+  if (jsvIsFlatString(var)) return jsvLockAgain(var);
+  JsVar *str = jsvAsString(var, false);
+  JsVar *flat = jsvNewFlatStringOfLength(jsvGetStringLength(str));
+  if (flat) {
+    JsvStringIterator src,dst;
+    jsvStringIteratorNew(&src, str, 0);
+    jsvStringIteratorNew(&dst, flat, 0);
+    while (jsvStringIteratorHasChar(&src)) {
+      jsvStringIteratorSetChar(&dst, jsvStringIteratorGetChar(&src));    
+      jsvStringIteratorNext(&src);
+      jsvStringIteratorNext(&dst);  
+    }
+    jsvStringIteratorFree(&src);
+    jsvStringIteratorFree(&dst);
+  }
+  jsvUnLock(str);
+  return flat;
+}
+
 /** Given a JsVar meant to be an index to an array, convert it to
  * the actual variable type we'll use to access the array. For example
  * a["0"] is actually translated to a[0]
@@ -966,7 +987,13 @@ size_t jsvGetStringLength(JsVar *v) {
 
 size_t jsvGetFlatStringBlocks(JsVar *v) {
   assert(jsvIsFlatString(v));
-  return (v->varData.integer+sizeof(JsVar)-1) / sizeof(JsVar);
+  return ((size_t)v->varData.integer+sizeof(JsVar)-1) / sizeof(JsVar);
+}
+
+char *jsvGetFlatStringPointer(JsVar *v) {
+  assert(jsvIsFlatString(v));
+  if (!jsvIsFlatString(v)) return 0;
+  return (char*)v+1; // pointer to the next JsVar
 }
 
 //  IN A STRING  get the number of lines in the string (min=1)
@@ -2720,7 +2747,7 @@ bool jsvGarbageCollect() {
       var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
       // if we have a flat string, skip that many blocks
       if (jsvIsFlatString(var))
-        i += jsvGetFlatStringBlocks(var);
+        i += (JsVarRef)jsvGetFlatStringBlocks(var);
     }
   }
   // recursively add 'native' vars
@@ -2731,7 +2758,7 @@ bool jsvGarbageCollect() {
       jsvGarbageCollectMarkUsed(var);
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
-      i += jsvGetFlatStringBlocks(var);
+      i += (JsVarRef)jsvGetFlatStringBlocks(var);
   }
   // now sweep for things that we can GC!
   bool freedSomething = false;
@@ -2747,7 +2774,7 @@ bool jsvGarbageCollect() {
     }
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
-      i += jsvGetFlatStringBlocks(var);
+      i += (JsVarRef)jsvGetFlatStringBlocks(var);
   }
   return freedSomething;
 }

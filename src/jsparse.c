@@ -456,7 +456,22 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       else
         execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
-      returnVar = jsnCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+      /* see descriptions in jsvar.h. If firstChild points to a flat string then
+      nativePtr is just an index in that string */
+      void *nativePtr;
+      if (jsvGetFirstChild(function)) {
+        JsVar *flatString = jsvLock(jsvGetFirstChild(function));
+        nativePtr = (void*)((int)function->varData.native.ptr + (char*)jsvGetFlatStringPointer(flatString)); 
+        jsvUnLock(flatString);
+      } else
+        nativePtr = function->varData.native.ptr;
+
+      if (nativePtr) {
+        returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+      } else {
+        assert(0); // in case something went horribly wrong
+        returnVar = 0;
+      }
 
       // unlock values if we locked them
       if (isParsing) {
