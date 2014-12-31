@@ -37,13 +37,13 @@ Returns the version of Espruino as a String
 */
 
 const void *exportPtrs[] = {
-  jsvLock,jsvLockAgain,jsvUnLock,jsvMathsOp,jsvMathsOpSkipNames,
+  jsvLock,jsvLockAgain,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
   jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
   jsvGetFloat,jsvGetInteger,jsvGetBool,
   jspeiFindInScopes,jspReplaceWith,
 };
 const char *exportNames = 
-"jsvLock,jsvLockAgain,jsvUnLock,jsvMathsOp,jsvMathsOpSkipNames,"
+"jsvLock,jsvLockAgain,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,"
 "jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,"
 "jsvGetFloat,jsvGetInteger,jsvGetBool,"
 "jspeiFindInScopes,jspReplaceWith,";
