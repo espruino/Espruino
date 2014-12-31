@@ -113,7 +113,7 @@ void jsvCreateEmptyVarList() {
       lastEmpty = var;
     } else if (jsvIsFlatString(var)) {
       // skip over used blocks for flat strings
-      i += (JsVarRef)jsvGetFlatStringBlocks(var);
+      i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
 }
@@ -272,7 +272,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
     JsVar *v = jsvLock(jsVarFirstEmpty);
     jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
-    jsvResetVariable(v, flags);
+    jsvResetVariable(v, flags); // setup variable, and add one lock
     // return pointer
     return v;
   }
@@ -341,7 +341,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       if (jsvIsFlatString(var)) {
         // in which case we need to free all the blocks.
         size_t count = jsvGetFlatStringBlocks(var);
-        JsVarRef i = jsvGetRef(var)+(JsVarRef)count;
+        JsVarRef i = (JsVarRef)(jsvGetRef(var)+count);
         // do it in reverse, so the free list ends up in kind of the right order
         while (count--)
           jsvFreePtrInternal(jsvGetAddressOf(i--));
@@ -491,10 +491,10 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
     if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
       blockCount++;
       if (blockCount>=blocks) { // Wohoo! We found enough blocks
-        var = jsvGetAddressOf(i+1-(JsVarRef)blocks); // the first block
-        // Set up the header block
+        var = jsvGetAddressOf((JsVarRef)(i+1-(int)blocks)); // the first block
+        // Set up the header block (including one lock)
         jsvResetVariable(var, JSV_FLAT_STRING);
-        var->varData.integer = byteLength;
+        var->varData.integer = (JsVarInt)byteLength;
         // clear data
         memset(sizeof(JsVar)+(char*)var, 0, sizeof(JsVar)*(blocks-1));
         // Now re-link all the free variables
@@ -504,7 +504,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
     } else {
       blockCount = 0; // non-continuous
       if (jsvIsFlatString(var))
-        i += jsvGetFlatStringBlocks(var);
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
   // can't make it - return undefined
@@ -910,15 +910,19 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
 JsVar *jsvAsFlatString(JsVar *var) {
   if (jsvIsFlatString(var)) return jsvLockAgain(var);
   JsVar *str = jsvAsString(var, false);
-  JsVar *flat = jsvNewFlatStringOfLength(jsvGetStringLength(str));
+  int len = (int)jsvGetStringLength(str);
+  JsVar *flat = jsvNewFlatStringOfLength(len);
   if (flat) {
-    JsvStringIterator src,dst;
+    JsvStringIterator src;
+    JsvStringIterator dst;
     jsvStringIteratorNew(&src, str, 0);
     jsvStringIteratorNew(&dst, flat, 0);
-    while (jsvStringIteratorHasChar(&src)) {
+    while (len--) {
       jsvStringIteratorSetChar(&dst, jsvStringIteratorGetChar(&src));    
-      jsvStringIteratorNext(&src);
-      jsvStringIteratorNext(&dst);  
+      if (len>0) {
+        jsvStringIteratorNext(&src);
+        jsvStringIteratorNext(&dst);  
+      }
     }
     jsvStringIteratorFree(&src);
     jsvStringIteratorFree(&dst);
@@ -2747,7 +2751,7 @@ bool jsvGarbageCollect() {
       var->flags |= (JsVarFlags)JSV_GARBAGE_COLLECT;
       // if we have a flat string, skip that many blocks
       if (jsvIsFlatString(var))
-        i += (JsVarRef)jsvGetFlatStringBlocks(var);
+        i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
     }
   }
   // recursively add 'native' vars
@@ -2758,7 +2762,7 @@ bool jsvGarbageCollect() {
       jsvGarbageCollectMarkUsed(var);
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
-      i += (JsVarRef)jsvGetFlatStringBlocks(var);
+      i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
   }
   // now sweep for things that we can GC!
   bool freedSomething = false;
@@ -2774,7 +2778,7 @@ bool jsvGarbageCollect() {
     }
     // if we have a flat string, skip that many blocks
     if (jsvIsFlatString(var))
-      i += (JsVarRef)jsvGetFlatStringBlocks(var);
+      i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
   }
   return freedSomething;
 }
