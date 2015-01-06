@@ -308,6 +308,7 @@ def get_name_or_space(jsondata):
         return ""
 
 def get_bootloader_size(board):
+        if board.chip["family"]=="STM32F4": return 16*1024; # 16kb Pages, so we have no choice
         return 10*1024;
 
 def get_board_binary_name(board):

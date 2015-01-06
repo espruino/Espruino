@@ -85,6 +85,10 @@ if IS_BOOTLOADER:
 elif IS_USING_BOOTLOADER:
   FLASH_BASE += BOOTLOADER_SIZE
   FLASH_SIZE -= BOOTLOADER_SIZE
+  # If we had to put everything elsewhere then the bootloader must know about it.
+  # no need to place the vector table right at the start
+  if "place_text_section" in board.chip:
+    FLASH_BASE = board.chip["place_text_section"]
 
 STACK_START = RAM_BASE + RAM_SIZE
 
@@ -128,7 +132,7 @@ SECTIONS
   {
 """)
 
-if "place_text_section" in board.chip:
+if not IS_USING_BOOTLOADER and not IS_BOOTLOADER and "place_text_section" in board.chip:
   codeOut("""    /* In the .py file we were told to place text here (to skip out what was before) */
     . = ALIGN("""+hex(board.chip["place_text_section"] & 0x00FFFFFF)+"""); /* hacky! really want it absolute */
 """);

@@ -24,7 +24,6 @@
 #define CMD_WRITE (0x31)
 #define CMD_EXTERASE (0x44)
 
-#define FLASH_START 0x08000000
 #define RAM_START 0x20000000
 
 #define ACK (0x79)
@@ -38,15 +37,18 @@ typedef enum {
 } BootloaderState;
 
 void setLEDs(int l) {
-  jshPinOutput(LED1_PININDEX, l&1);
-  jshPinOutput(LED2_PININDEX, (l>>1)&1);
 #ifdef LED3_PININDEX
   jshPinOutput(LED3_PININDEX, (l>>2)&1);
+#else
+  if (l&4) l|=3;
 #endif
+  jshPinOutput(LED1_PININDEX, l&1);
+  jshPinOutput(LED2_PININDEX, (l>>1)&1);
 }
 
 int main(void) {
   initHardware();
+  setLEDs(0b11);
   int flashy = 0;
   BootloaderState state = BLS_UNDEFINED;
   char currentCommand = 0;
@@ -199,7 +201,7 @@ int main(void) {
               if (nPages == 0xFFFF) {
                 // all pages (except us!)
                 setLEDs(1); // red =  write
-                #ifdef STM32API2
+                #if defined(STM32F2) || defined(STM32F4)
                   FLASH_Unlock();
                 #else
                   FLASH_UnlockBank1();
@@ -212,13 +214,18 @@ int main(void) {
                 #else
                   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
                 #endif
-                for (i=BOOTLOADER_SIZE;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE) {
-                  setLEDs(1 << (i%3)); // R,G,B,etc
-                  FLASH_ErasePage((uint32_t)(FLASH_START + i));
-                }
-                #ifdef STM32API2
+
+                #if defined(STM32F2) || defined(STM32F4)
+                  for (i=1;i<8;i++) { // might as well do all of them
+                    setLEDs(1 << (i%3)); // R,G,B,etc
+                    FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*i, VoltageRange_3); // a FLASH_Sector_## constant
+                  }
                   FLASH_Lock();
                 #else
+                  for (i=BOOTLOADER_SIZE;i<FLASH_TOTAL;i+=FLASH_PAGE_SIZE) {
+                    setLEDs(1 << (i%3)); // R,G,B,etc
+                    FLASH_ErasePage((uint32_t)(FLASH_START + i));
+                  }
                   FLASH_LockBank1();
                 #endif
                 setLEDs(0); // off
