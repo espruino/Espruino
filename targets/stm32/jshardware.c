@@ -36,7 +36,8 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
+
+#ifdef PICO
 #define USE_RTC
 #endif
 

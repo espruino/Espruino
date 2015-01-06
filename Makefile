@@ -15,7 +15,9 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
-# ESPRUINI_1V0=1          # Espruini board rev 1.0
+# PICO_1V0=1          # Espruino Pico board rev 1.0
+# PICO_1V1=1          # Espruino Pico board rev 1.1
+# PICO_1V2=1          # Espruino Pico board rev 1.2
 # OLIMEXINO_STM32=1                # Olimexino STM32
 # OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
@@ -118,21 +120,30 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
-else ifdef ESPRUINI_1V0
+else ifdef PICO_1V0
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
 USE_GRAPHICS=1
-BOARD=ESPRUINIBOARD_R1_0
+BOARD=PICO_R1_0
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
-else ifdef ESPRUINI_1V1
+else ifdef PICO_1V1
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V1
 USE_GRAPHICS=1
-BOARD=ESPRUINIBOARD_R1_1
+BOARD=PICO_R1_1
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef PICO_1V2
+EMBEDDED=1
+USE_DFU=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V2
+USE_GRAPHICS=1
+BOARD=PICO_R1_2
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
