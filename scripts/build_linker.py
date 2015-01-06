@@ -69,7 +69,7 @@ if BOARD_BOOTLOADER != (IS_BOOTLOADER or IS_USING_BOOTLOADER):
 linkerFile = open(linkerFilename, 'w')
 def codeOut(s): linkerFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
-BOOTLOADER_SIZE = common.get_bootloader_size();
+BOOTLOADER_SIZE = common.get_bootloader_size(board);
 RAM_BASE = 0x20000000;
 FLASH_BASE = 0x00000000;
 RAM_SIZE = board.chip["ram"]*1024;

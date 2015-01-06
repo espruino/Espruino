@@ -307,7 +307,7 @@ def get_name_or_space(jsondata):
         if "name" in jsondata: return jsondata["name"]
         return ""
 
-def get_bootloader_size():
+def get_bootloader_size(board):
         return 10*1024;
 
 def get_board_binary_name(board):

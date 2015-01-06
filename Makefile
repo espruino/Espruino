@@ -515,7 +515,7 @@ else # !BOOTLOADER but using a bootloader
   else
     STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
   endif
-  BASEADDRESS=$(shell python -c "import sys;sys.path.append('scripts');import common;print hex(0x08000000+common.get_bootloader_size())")
+  BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_bootloader_size(board))")
  endif
 endif
 

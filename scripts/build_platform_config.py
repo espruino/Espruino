@@ -101,7 +101,7 @@ if not LINUX:
   else:
     flash_saved_code_start = "(FLASH_START + FLASH_TOTAL - FLASH_SAVED_CODE_LENGTH)"
     flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
-    if has_bootloader: flash_available_for_code -= common.get_bootloader_size()
+    if has_bootloader: flash_available_for_code -= common.get_bootloader_size(board)
 
   print "Variables = "+str(variables)
   print "JsVar size = "+str(var_size)
@@ -247,7 +247,7 @@ else:
   codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_saved_code_pages))
   codeOut("#define FLASH_START                     "+hex(0x08000000))
   if flash_saved_code_sector!="": codeOut("#define FLASH_SAVED_CODE_SECTOR                 "+str(flash_saved_code_sector))
-  if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size()))
+  if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
   codeOut("#define FLASH_SAVED_CODE_START "+str(flash_saved_code_start))
