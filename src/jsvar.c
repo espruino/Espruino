@@ -688,8 +688,10 @@ void *jsvGetNativeFunctionPtr(const JsVar *function) {
    * then we execute code straight from that */
   JsVar *flatString = jsvFindChildFromString((JsVar*)function, JSPARSE_FUNCTION_CODE_NAME, 0);
   if (flatString) {
-    return (void*)((size_t)function->varData.native.ptr + (char*)jsvGetFlatStringPointer(flatString));
+    flatString = jsvSkipNameAndUnLock(flatString);
+    void *v = (void*)((size_t)function->varData.native.ptr + (char*)jsvGetFlatStringPointer(flatString));
     jsvUnLock(flatString);
+    return v;
   } else
     return (void *)function->varData.native.ptr;
 }
