@@ -134,7 +134,7 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
   JsVar *fn = jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
   if (data) {
     JsVar *flat = jsvAsFlatString(data);
-    jsvSetFirstChild(fn, jsvGetRef(jsvRef(flat)));
+    jsvUnLock(jsvAddNamedChild(fn, flat, JSPARSE_FUNCTION_CODE_NAME));
     jsvUnLock(flat);
   }
   return fn;
