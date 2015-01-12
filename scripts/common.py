@@ -317,7 +317,7 @@ def get_bootloader_size(board):
 def get_espruino_binary_address(board):
         if "place_text_section" in board.chip:
           return board.chip["place_text_section"]
-        if "bootloader" in board.info and borard.info["bootloader"]==1:
+        if "bootloader" in board.info and board.info["bootloader"]==1:
           return get_bootloader_size(board);
         return 0;
 
