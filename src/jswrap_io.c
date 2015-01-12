@@ -376,7 +376,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
       jshSetEventCallback(exti, 0);
       if (isIRQ) {
         if (jsvIsNativeFunction(func)) {
-          jshSetEventCallback(exti, func->varData.native.ptr);
+          jshSetEventCallback(exti, (JshEventCallbackCallback)jsvGetNativeFunctionPtr(func));
         } else {
           jsExceptionHere(JSET_ERROR, "irq=true set, but function is not a native function");
         }

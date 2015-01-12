@@ -248,7 +248,6 @@ bool jsvHasChildren(const JsVar *v) {
 /// Is this variable a type that uses firstChild to point to a single Variable (ie. it doesn't have multiple children)
 bool jsvHasSingleChild(const JsVar *v) {
   return jsvIsArrayBuffer(v) ||
-         jsvIsNativeFunction(v) ||
          (jsvIsName(v) && !jsvIsNameWithValue(v));
 }
 
@@ -482,7 +481,7 @@ JsVarRef jsvUnRefRef(JsVarRef ref) {
 
 JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   // Work out how many blocks we need. One for the header, plus some for the characters
-  unsigned int blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
+  size_t blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
   // Now try and find them
   unsigned int blockCount = 0;
   JsVarRef i;
@@ -491,7 +490,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
     if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
       blockCount++;
       if (blockCount>=blocks) { // Wohoo! We found enough blocks
-        var = jsvGetAddressOf((JsVarRef)(i+1-(int)blocks)); // the first block
+        var = jsvGetAddressOf((JsVarRef)(unsigned int)((unsigned)i+1-blocks)); // the first block
         // Set up the header block (including one lock)
         jsvResetVariable(var, JSV_FLAT_STRING);
         var->varData.integer = (JsVarInt)byteLength;
@@ -682,6 +681,19 @@ JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes) {
   func->varData.native.ptr = ptr;
   func->varData.native.argTypes = argTypes;
   return func;
+}
+
+void *jsvGetNativeFunctionPtr(const JsVar *function) {
+  /* see descriptions in jsvar.h. If we have a child called JSPARSE_FUNCTION_CODE_NAME
+   * then we execute code straight from that */
+  JsVar *flatString = jsvFindChildFromString((JsVar*)function, JSPARSE_FUNCTION_CODE_NAME, 0);
+  if (flatString) {
+    flatString = jsvSkipNameAndUnLock(flatString);
+    void *v = (void*)((size_t)function->varData.native.ptr + (char*)jsvGetFlatStringPointer(flatString));
+    jsvUnLock(flatString);
+    return v;
+  } else
+    return (void *)function->varData.native.ptr;
 }
 
 /// Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
@@ -910,8 +922,8 @@ JsVar *jsvAsString(JsVar *v, bool unlockVar) {
 JsVar *jsvAsFlatString(JsVar *var) {
   if (jsvIsFlatString(var)) return jsvLockAgain(var);
   JsVar *str = jsvAsString(var, false);
-  int len = (int)jsvGetStringLength(str);
-  JsVar *flat = jsvNewFlatStringOfLength(len);
+  size_t len = jsvGetStringLength(str);
+  JsVar *flat = jsvNewFlatStringOfLength((unsigned int)len);
   if (flat) {
     JsvStringIterator src;
     JsvStringIterator dst;
@@ -1321,6 +1333,7 @@ bool jsvIsStringNumericStrict(const JsVar *var) {
   jsvStringIteratorFree(&it);
   return chars>0 && (!hasLeadingZero || chars==1);
 }
+
 
 JsVarInt jsvGetInteger(const JsVar *v) {
     if (!v) return 0; // undefined
@@ -2499,7 +2512,8 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       if (jsvIsNativeFunction(a) || jsvIsNativeFunction(b)) {
         // even if one is not native, the contents will be different
         equal = a->varData.native.ptr == b->varData.native.ptr &&
-                a->varData.native.argTypes == b->varData.native.argTypes;
+                a->varData.native.argTypes == b->varData.native.argTypes &&
+                jsvGetFirstChild(a) == jsvGetFirstChild(b);
       }
 
       /* Just check pointers */

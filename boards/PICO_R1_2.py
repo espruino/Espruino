@@ -25,10 +25,10 @@ info = {
  'binary_name' : 'espruino_%v_pico_1r2.bin',
 };
 chip = {
-  'part' : "STM32F401CCU6",
+  'part' : "STM32F401CDU6",
   'family' : "STM32F4",
   'package' : "UQFN48", 
-  'ram' : 64,
+  'ram' : 96,
   'flash' : 384,
   'speed' : 84,
   'usart' : 6,
