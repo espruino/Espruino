@@ -16,13 +16,13 @@ cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
 
-BOARDNAME=ESPRUINOBOARD
+BOARDNAME=PICO_R1_2
 ESPRUINOFILE=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
 BOOTLOADERFILE=bootloader_$ESPRUINOFILE
-IMGFILE=espruino_full.bin
+IMGFILE=pico_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export ESPRUINO_1V3=1
+export PICO_1V2=1
 # export USB_PRODUCT_ID=0x5741 # For test harness board only
 # export DEBUG=1
 export RELEASE=1
@@ -33,7 +33,7 @@ BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }
 make clean
 make || { echo 'Build failed' ; exit 1; }
 
-BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_bootloader_size(board)"`
+BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_espruino_binary_address(board)"`
 IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
 
 echo ---------------------
