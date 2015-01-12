@@ -28,6 +28,8 @@
             Ensure that we only create as many Serial/I2C/etc items in Symbol table as we need (fix #453)
             Allow modules to return whatever was assigned to exports - not just the original object
             Allowed E.nativeCall (assembler/compiled functions) to execute directly from a flat string
+            Working F401 USB VCP bootloader
+            Make Press-poweron-release-press boot back into Espruino (this may confuse your OS)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

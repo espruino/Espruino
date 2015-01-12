@@ -311,5 +311,15 @@ def get_bootloader_size(board):
         if board.chip["family"]=="STM32F4": return 16*1024; # 16kb Pages, so we have no choice
         return 10*1024;
 
+# On normal chips this is 0x00000000
+# On boards with bootloaders it's generally + 10240
+# On F401, because of the setup of pages we put the bootloader in the first 16k, then in the 16+16+16 we put the saved code, and then finally we but the binary somewhere else
+def get_espruino_binary_address(board):
+        if "place_text_section" in board.chip:
+          return board.chip["place_text_section"]
+        if "bootloader" in board.info and borard.info["bootloader"]==1:
+          return get_bootloader_size(board);
+        return 0;
+
 def get_board_binary_name(board):
         return board.info["binary_name"].replace("%v", get_version());

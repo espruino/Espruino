@@ -247,7 +247,9 @@ else:
   codeOut("#define FLASH_SAVED_CODE_PAGES          "+str(flash_saved_code_pages))
   codeOut("#define FLASH_START                     "+hex(0x08000000))
   if flash_saved_code_sector!="": codeOut("#define FLASH_SAVED_CODE_SECTOR                 "+str(flash_saved_code_sector))
-  if has_bootloader: codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
+  if has_bootloader: 
+    codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
+    codeOut("#define ESPRUINO_BINARY_ADDRESS         "+hex(common.get_espruino_binary_address(board)))
   codeOut("")
   codeOut("#define FLASH_SAVED_CODE_LENGTH (FLASH_PAGE_SIZE*FLASH_SAVED_CODE_PAGES)")
   codeOut("#define FLASH_SAVED_CODE_START "+str(flash_saved_code_start))

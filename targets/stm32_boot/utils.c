@@ -43,37 +43,17 @@ int rxHead=0, rxTail=0;
 char txBuffer[BUFFERMASK+1];
 int txHead=0, txTail=0;
 
-uint16_t stmPin(Pin ipin) {
-  JsvPinInfoPin pin = JSH_PIN0;
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) pin = ipin-JSH_PORTF_OFFSET;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) pin = ipin-JSH_PORTE_OFFSET;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) pin = ipin-JSH_PORTC_OFFSET;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) pin = ipin-JSH_PORTB_OFFSET;
-  else if (JSH_PORTA_OFFSET >= 0 && ipin > JSH_PORTA_OFFSET) pin = ipin-JSH_PORTA_OFFSET;
-  return 1 << pin;
+static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
+  JsvPinInfoPin pin = pinInfo[ipin].pin;
+  return (uint16_t)(1 << (pin-JSH_PIN0));
 }
 
-GPIO_TypeDef *stmPort(Pin ipin) {
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) return GPIOF;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) return GPIOE;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) return GPIOD;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) return GPIOC;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) return GPIOB;
-  //else if (ipin > JSH_PORTA_OFFSET) return GPIOA;
-  return GPIOA;
+static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
+  JsvPinInfoPort port = pinInfo[pin].port;
+  return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 }
 
 bool jshPinGetValue(Pin pin) {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = stmPin(pin);
-#ifdef STM32API2
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-#else
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-#endif
-  GPIO_Init(stmPort(pin), &GPIO_InitStructure);
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
@@ -104,6 +84,11 @@ void jshPinOutput(Pin pin, bool value) {
 }
 
 #ifdef STM32F4
+
+void WWDG_IRQHandler() {
+  // why do we need this on the F401?
+}
+
 /******************************************************************************/
 /*                 STM32 Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
@@ -265,6 +250,19 @@ void putc(char charData) {
   txHead = (txHead+1) & BUFFERMASK;
 }
 
+bool isButtonPressed() {
+  return jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+}
+
+bool jumpToEspruinoBinary() {
+  unsigned int *ResetHandler = (unsigned int *)(0x08000000 + ESPRUINO_BINARY_ADDRESS + 4);
+  if (ResetHandler==0 || ResetHandler==0xFFFFFFFF)
+    return false;
+  void (*startPtr)() = *ResetHandler;
+  startPtr();
+  return true; // should never get here
+}
+
 void initHardware() {
 #if defined(STM32F3)
  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
@@ -298,29 +296,32 @@ void initHardware() {
        RCC_APB2Periph_AFIO, ENABLE);
 #endif
 
- jshPinOutput(LED1_PININDEX, 1);
- jshPinOutput(LED2_PININDEX, 1);
-
 #ifdef BTN1_PININDEX
+ GPIO_InitTypeDef GPIO_InitStructure;
+#ifdef STM32API2
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
+
  #if defined(BTN1_PINSTATE) 
   #if BTN1_PINSTATE==JSHPINSTATE_GPIO_IN_PULLDOWN
- GPIO_InitTypeDef GPIO_InitStructure;
- GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
- GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
- GPIO_InitStructure.GPIO_Pin = stmPin(BTN1_PININDEX);
- GPIO_Init(stmPort(BTN1_PININDEX), &GPIO_InitStructure);
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; 
   #else
    #error Unknown pin state for BTN1
   #endif
  #endif
 #endif
+ GPIO_InitStructure.GPIO_Pin = stmPin(BTN1_PININDEX);
+ GPIO_Init(stmPort(BTN1_PININDEX), &GPIO_InitStructure);
 
+ jshPinOutput(LED1_PININDEX, 1);
 
-  // if button is not set, jump to this address
-  if (jshPinGetValue(BTN1_PININDEX) != BTN1_ONSTATE) {
-    unsigned int *ResetHandler = (unsigned int *)(0x08000000 + BOOTLOADER_SIZE + 4);
-    void (*startPtr)() = *ResetHandler;
-    startPtr();
+  // if button is not set, jump to the address of the binary
+  if (!isButtonPressed()) {
+    jumpToEspruinoBinary();
+    // we could return here - binary might be very obviously corrupted
   }
 
   // PREEMPTION

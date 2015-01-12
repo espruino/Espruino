@@ -83,12 +83,8 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
 elif IS_USING_BOOTLOADER:
-  FLASH_BASE += BOOTLOADER_SIZE
+  FLASH_BASE = common.get_espruino_binary_address(board)
   FLASH_SIZE -= BOOTLOADER_SIZE
-  # If we had to put everything elsewhere then the bootloader must know about it.
-  # no need to place the vector table right at the start
-  if "place_text_section" in board.chip:
-    FLASH_BASE = board.chip["place_text_section"]
 
 STACK_START = RAM_BASE + RAM_SIZE
 

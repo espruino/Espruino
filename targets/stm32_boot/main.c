@@ -52,15 +52,37 @@ int main(void) {
   int flashy = 0;
   BootloaderState state = BLS_UNDEFINED;
   char currentCommand = 0;
+  
+  unsigned int buttonLifted = 0;
+  unsigned int buttonPressed = 0;
 
   while (1) {
+    // if we pressed the button to enter the bootloader, then released,
+    // then pressed again (with debounce) then let's jump back to Espruino
+    if (isButtonPressed()) {
+      if (buttonPressed<0xFFFFFFFF) 
+        buttonPressed++;
+      if (buttonLifted>10000 && buttonPressed>10000) {
+        setLEDs(0);
+        jumpToEspruinoBinary();
+      }
+    } else {
+      if (buttonLifted<0xFFFFFFFF) 
+        buttonLifted++;
+    }
+
     if (!jshIsUSBSERIALConnected()) {
       setLEDs(0b0101);
       // reset, led off
     } else {
       int f = (flashy>>9) & 0x7F;
       if (f&0x40) f=128-f;
-      setLEDs((((flashy++)&0xFF)<f) ? 4 : 0);
+      bool ledState = (((flashy++)&0xFF)<f);
+#ifdef LED3_PININDEX
+      setLEDs(ledState ? 4 : 0); // glow blue
+#else
+      setLEDs(ledState? ((flashy&0x10000)?1:2) : 0); // glow red/green
+#endif
 
       // flash led
       int d = getc();
@@ -96,7 +118,12 @@ int main(void) {
               putc(1); // 2 bytes
               // 0x430 F1 XL density
               // 0x414 F1 high density
+              // 0x6433 F401 CD
+#ifdef STM32F401
+              putc(0x64); putc(0x33);
+#else
               putc(0x04); putc(0x14);
+#endif
               putc(ACK); // last byte
               break;
             case CMD_READ: // read memory
@@ -116,6 +143,7 @@ int main(void) {
               for (i=0;i<=nBytesMinusOne;i++)
                 putc(((unsigned char*)addr)[i]);
               setLEDs(0); // off
+              flashy = 0; // reset glowing
               break;
             case CMD_GO: // read memory
               putc(ACK);
@@ -190,6 +218,7 @@ int main(void) {
               }
                 
               setLEDs(0); // off
+              flashy = 0; // reset glowing
               putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
               break;
             case CMD_EXTERASE: // erase memory
@@ -217,7 +246,7 @@ int main(void) {
 
                 #if defined(STM32F2) || defined(STM32F4)
                   for (i=1;i<8;i++) { // might as well do all of them
-                    setLEDs(1 << (i%3)); // R,G,B,etc
+                    setLEDs(1 << (i&1)); // R,G,R,G,...
                     FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*i, VoltageRange_3); // a FLASH_Sector_## constant
                   }
                   FLASH_Lock();

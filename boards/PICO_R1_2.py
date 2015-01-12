@@ -43,7 +43,7 @@ chip = {
     'pages' : 3, # number of pages we're using
     'flash_available' : 384 # binary will have a hole in it, so we just want to test against full size
   },
-  'place_text_section' : 0x08010000, # note flash_available above
+  'place_text_section' : 0x00010000, # note flash_available above
 };
 # left-right, or top-bottom order
 board = {
