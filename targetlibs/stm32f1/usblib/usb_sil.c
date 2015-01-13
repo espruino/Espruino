@@ -50,6 +50,9 @@ uint32_t USB_SIL_Init(void)
   /* USB interrupts initialization */
   /* clear pending interrupts */
   _SetISTR(0);
+  // See http://stackoverflow.com/questions/27192018/stm32-usb-unreliable-compilation-with-gcc-os
+  asm volatile ("" : : : "memory");
+  // ^^^ This is a mess - it seems GCC manages to re-order volatile writes in this case
   wInterrupt_Mask = IMR_MSK;
   /* set interrupts mask */
   _SetCNTR(wInterrupt_Mask);

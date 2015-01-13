@@ -240,24 +240,15 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   jsiConsolePrintf("%s:%d\n",file,line);
 
   jsvTrace(jsvFindOrCreateRoot(), 2);
+#ifdef FAKE_STDLIB
+  jsiConsolePrint("EXIT CALLED.\n");
+  while (1);
+#else
   exit(1);
-}
-
-#ifdef SDCC
-void exit(int errcode) {dst;
-    jsiConsolePrint("EXIT CALLED.\n");
-}
 #endif
+}
 
 #ifdef FAKE_STDLIB
-int __errno;
-
-void exit(int errcode) {
-    NOT_USED(errcode);
-    jsiConsolePrint("EXIT CALLED.\n");
-    while (1);
-}
-
 char * strncat(char *dst, const char *src, size_t c) {
         char *dstx = dst;
         while (*(++dstx)) c--;
@@ -295,6 +286,11 @@ void *memcpy(void *dst, const void *src, size_t size) {
         for (i=0;i<size;i++)
                 ((char*)dst)[i] = ((char*)src)[i];
         return dst;
+}
+
+void *memset(void *dst, int c, size_t size) {
+  char *d = (char*)dst;
+  while (size--) *(d++) = c;
 }
 
 unsigned int rand() {

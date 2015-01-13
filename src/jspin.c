@@ -14,8 +14,9 @@
 
 #include "jspin.h"
 #include "jspininfo.h" // auto-generated
+#include "jshardware.h"
 
-#ifdef ESPRUINI
+#if defined(PICO) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
 #define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
 #endif
 
@@ -188,3 +189,38 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
   jsvUnLock(pinv);
   return pin;
 }
+
+// ----------------------------------------------------------------------------
+
+BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
+
+bool jshGetPinStateIsManual(Pin pin) {
+  return BITFIELD_GET(jshPinStateIsManual, pin);
+}
+
+void jshSetPinStateIsManual(Pin pin, bool manual) {
+  BITFIELD_SET(jshPinStateIsManual, pin, manual);
+}
+
+// ----------------------------------------------------------------------------
+
+bool jshPinInput(Pin pin) {
+  bool value = false;
+  if (jshIsPinValid(pin)) {
+    if (!jshGetPinStateIsManual(pin))
+      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+
+    value = jshPinGetValue(pin);
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return value;
+}
+
+
+void jshPinOutput(Pin pin, bool value) {
+  if (jshIsPinValid(pin)) {
+    if (!jshGetPinStateIsManual(pin))
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    jshPinSetValue(pin, value);
+  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+}
+

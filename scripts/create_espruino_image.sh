@@ -32,9 +32,7 @@ BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }
 make clean
 make || { echo 'Build failed' ; exit 1; }
 
-cd $BASEDIR/scripts
-BOOTLOADERSIZE=`python -c "import common;print common.get_bootloader_size()"`
-cd $BASEDIR
+BOOTLOADERSIZE=`python scripts/get_board_info.py $BOARDNAME "common.get_bootloader_size(board)"`
 IMGSIZE=$(expr $BOOTLOADERSIZE + $(stat -c%s "$ESPRUINOFILE"))
 
 echo ---------------------

@@ -14,7 +14,7 @@
 #include "jsvar.h"
 #include "jshardware.h"
 
-JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature);
+JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data);
 
 JsVarFloat jswrap_espruino_clip(JsVarFloat x, JsVarFloat min, JsVarFloat max);
 JsVarFloat jswrap_espruino_sum(JsVar *arr);

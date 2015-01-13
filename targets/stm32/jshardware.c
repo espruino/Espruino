@@ -36,7 +36,8 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
+
+#ifdef PICO
 #define USE_RTC
 #endif
 
@@ -76,8 +77,6 @@ Pin watchedPins[16];
 volatile unsigned char jshSPIBufHead[SPIS];
 volatile unsigned char jshSPIBufTail[SPIS];
 volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
-
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
@@ -686,8 +685,15 @@ void jshKickUSBWatchdog() {
 }
 #endif //USB
 
-static bool jshIsRTCAlreadySetup() {
-  return (RCC->BDCR & RCC_BDCR_RTCEN) != 0;
+static bool jshIsRTCAlreadySetup(bool andRunning) {
+  if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0)
+    return false; // RTC was off - return false
+  if (!andRunning) return true;
+  // Check what we're running the RTC off and make sure that it's running!
+  if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE)
+    return RCC_GetFlagStatus(RCC_FLAG_LSERDY) == SET;
+  else
+    return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
 
@@ -702,31 +708,40 @@ void jshDoSysTick() {
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
-    // If RTC is already enabled, we've come back from a reset...
-    // we're going to want to keep everything as it was
-    bool alreadySetup = jshIsRTCAlreadySetup();
-    if (RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET) {
-      // LSE is not working - turn it off and use LSI
+    /* If RTC is already enabled, we've come back from a reset...
+     * we're going to want to keep everything as it was */
+    bool alreadySetup = jshIsRTCAlreadySetup(true);
+    /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
+     * changing */
+     
+    if (!alreadySetup) {
+      bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
+      
+      if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
+        // Uh-oh - RTC *was* set up for something, but it's not
+        // the case any more. It needs totally resetting so we can change it
+        RCC_BackupResetCmd(ENABLE);
+        RCC_BackupResetCmd(DISABLE);
+	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
+      }
+      
+      if (isUsingLSI) {
+        // LSE is not working - turn it off and use LSI
 #ifdef STM32F1
-      jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+        jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
 #else
-      jshRTCPrescaler = 32768; // 32kHz for LSI
+        jshRTCPrescaler = 32768; // 32kHz for LSI
 #endif
-      if (!alreadySetup) {
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
         RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
-      }
-    } else {
-      // LSE working! Yay! turn LSI off now
-      jshRTCPrescaler = 32768; // 32kHz for LSE
-      if (!alreadySetup) {
+      } else {
+        // LSE working! Yay! turn LSI off now
+        jshRTCPrescaler = 32768; // 32kHz for LSE
+        RCC_LSEConfig(RCC_LSE_ON);
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
         RCC_LSICmd(DISABLE); // disable low speed internal oscillator
       }
-    }
-
-    if (!alreadySetup) {
-      RCC_RTCCLKCmd(ENABLE); // enable RTC
+      RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
       RTC_WaitForSynchro();
   #ifdef STM32F1
       RTC_SetPrescaler(jshRTCPrescaler - 1U);
@@ -741,6 +756,13 @@ void jshDoSysTick() {
       RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
       RTC_Init(&RTC_InitStructure);
   #endif
+    } else { // alreadySetup
+      // Already set up, so just turn off the relevant oscillator
+      if ((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSE) {
+        RCC_LSICmd(DISABLE);
+      } else {
+        RCC_LSEConfig(RCC_LSE_OFF);
+      }
     }
 
     jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
@@ -812,14 +834,6 @@ void jshDelayMicroseconds(int microsec) {
 //  iter -= JSH_DELAY_OVERHEAD;
   if (iter<0) iter=0;
   while (iter--) __NOP();
-}
-
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }
 
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
@@ -1059,21 +1073,24 @@ void jshInit() {
   jshPinOutput(LED1_PININDEX, 1);
 #endif
 #ifdef USE_RTC
-  // allow access to backup domain, and reset it (we need this so we can fiddle with the RTC)
+  // allow access to backup domain
   PWR_BackupAccessCmd(ENABLE);
+  // enable low speed internal oscillator (reset always kills this, and we might need it)
+  RCC_LSICmd(ENABLE);
   // If RTC is already setup, just leave it alone!
-  if (!jshIsRTCAlreadySetup()) {
+  if (!jshIsRTCAlreadySetup(false)) {
+    // Reset backup domain - allows us to set the RTC clock source
     RCC_BackupResetCmd(ENABLE);
     RCC_BackupResetCmd(DISABLE);
-    // Turn both LSI and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
+    // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
-    RCC_LSICmd(ENABLE); // low speed internal oscillator
   }
 #endif
 
   // initialise button
 #ifdef BTN1_PININDEX
 #ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 #else
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
@@ -1459,7 +1476,6 @@ JsSysTime jshGetSystemTime() {
     major3 = SysTickMajor;
     major4 = SysTickMajor;
   } while (major1!=major2 || major2!=major3 || major3!=major4);
-  return major1 - (JsSysTime)minor;
 #endif
 }
 
@@ -1504,17 +1520,6 @@ void jshSetSystemTime(JsSysTime newTime) {
 }
 
 // ----------------------------------------------------------------------------
-
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
 
 static unsigned char jshADCInitialised = 0;
 
@@ -1699,16 +1704,6 @@ JsVarFloat jshReadVRef() {
 #endif
 }
 
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-}
-
-
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
@@ -1728,9 +1723,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
 
   if (!func) {
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
+#if defined(DACS) && DACS>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
+#endif
     return;
   }
 
@@ -1838,7 +1835,7 @@ bool jshCanWatch(Pin pin) {
     return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
     // TODO: check for DUPs, also disable interrupt
     /*int idx = pinToPinSource(IOPIN_DATA[pin].pin);
@@ -1867,7 +1864,10 @@ void jshPinWatch(Pin pin, bool shouldWatch) {
     s.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
     s.EXTI_LineCmd = shouldWatch ? ENABLE : DISABLE;
     EXTI_Init(&s);
+
+    return shouldWatch ? (EV_EXTI0+pinInfo[pin].pin)  : EV_NONE;
   } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
@@ -2006,6 +2006,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
+#ifndef STM32F401xx // STM32F401 devices have USART6, but not 4 or 5!
 #if USARTS>= 4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
@@ -2013,6 +2014,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 #if USARTS>= 5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
+#endif
 #endif
 #if USARTS>= 6
   } else if (device == EV_SERIAL6) {
@@ -2562,7 +2564,9 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
+#ifdef USB
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
+#endif
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);

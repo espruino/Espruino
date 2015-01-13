@@ -70,8 +70,10 @@ const JswSymList *jswGetSymbolListForObjectProto(JsVar *parent);
 /// Given the name of an Object, see if we should set it up as a builtin or not
 bool jswIsBuiltInObject(const char *name);
 
-/// If we get this in 'require', should we make an object with this name?
-bool jswIsBuiltInLibrary(const char *name);
+/** If we get this in 'require', do we have the object for this
+  inside the interpreter already? If so, return the native function
+  pointer of the object's constructor */
+void *jswGetBuiltInLibrary(const char *name);
 
 /** Given a variable, return the basic object name of it */
 const char *jswGetBasicObjectName(JsVar *var);

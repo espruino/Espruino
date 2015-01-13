@@ -19,5 +19,6 @@ unsigned char getc_blocking();
 void putc(char charData);
 
 
-
+bool isButtonPressed();
+bool jumpToEspruinoBinary();
 void initHardware();

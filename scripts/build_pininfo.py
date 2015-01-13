@@ -137,6 +137,9 @@ writesource("")
 writeheader("// auto-generated pin info file")
 writeheader("// for board "+boardname)
 writeheader("")
+writeheader("#ifndef JSPININFO_H")
+writeheader("#define JSPININFO_H")
+writeheader("")
 writeheader("#include \"jspin.h\"")
 writeheader("")
 writeheader("#define JSH_PIN_COUNT "+str(len(pins)));
@@ -156,4 +159,6 @@ writeheader("  JshPinFunction functions[JSH_PININFO_FUNCTIONS];")
 writeheader("} PACKED_FLAGS JshPinInfo;")
 writeheader("")
 writeheader("extern const JshPinInfo pinInfo[JSH_PIN_COUNT];");
+writeheader("")
+writeheader("#endif // JSPININFO_H")
 

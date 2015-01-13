@@ -18,7 +18,10 @@ import re;
 import json;
 import sys;
 import os;
-sys.path.append(".");
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+basedir = scriptdir+"/../"
+sys.path.append(basedir+"scripts");
+sys.path.append(basedir+"boards");
 import common
 
 # ------------------------------------------------------------------------------------------------------
@@ -134,6 +137,9 @@ def codeOutSymbolTable(builtin):
   strLen = 0
   for sym in builtin["functions"]:
     symName = sym["name"];
+
+    if builtin["name"]=="global" and symName in libraries:
+      continue # don't include libraries on global namespace
     if "generate" in sym:
       listSymbols.append("{"+", ".join([str(strLen), "(void (*)(void))"+sym["generate"], getArgumentSpecifier(sym)])+"}")
       listChars = listChars + symName + "\\0";
@@ -263,6 +269,13 @@ codeOut('// --------------------------------------------------------------------
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('');
 codeOut('');
+
+print "Finding Libraries"
+libraries = []
+for jsondata in jsondatas:
+  if jsondata["type"]=="library":
+    print "Found library "+jsondata["class"]
+    libraries.append(jsondata["class"])
 
 print "Classifying Functions"
 builtins = {}
@@ -414,18 +427,11 @@ codeOut('}')
 codeOut('')
 codeOut('')
 
-builtinLibraryChecks = []
-for jsondata in jsondatas:
-  if jsondata["type"]=="library":
-    check = 'strcmp(name, "'+jsondata["class"]+'")==0';
-    builtinLibraryChecks.append(check)
-
-
 builtinChecks = []
 for jsondata in jsondatas:
   if "class" in jsondata:
     check = 'strcmp(name, "'+jsondata["class"]+'")==0';
-    if not check in builtinLibraryChecks:
+    if not jsondata["class"] in libraries:
       if not check in builtinChecks:
         builtinChecks.append(check)
 
@@ -438,11 +444,10 @@ codeOut('')
 codeOut('')
 
 
-codeOut('bool jswIsBuiltInLibrary(const char *name) {') 
-if len(builtinLibraryChecks)==0:
-  codeOut('  return false;')
-else:
-  codeOut('  return\n'+" ||\n    ".join(builtinLibraryChecks)+';')
+codeOut('void *jswGetBuiltInLibrary(const char *name) {') 
+for lib in libraries:
+  codeOut('if (strcmp(name, "'+lib+'")==0) return (void*)gen_jswrap_'+lib+'_'+lib+';');
+codeOut('  return 0;')
 codeOut('}')
 
 codeOut('')

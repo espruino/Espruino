@@ -175,7 +175,7 @@
 #endif
 
 /****************** USB OTG MISC CONFIGURATION ********************************/
-#ifndef ESPRUINI
+#ifndef PICO_1V0 // NOT on later revisions
 #define VBUS_SENSING_ENABLED // No - we don't want a pin for this.
 #endif
 

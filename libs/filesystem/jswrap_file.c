@@ -66,8 +66,10 @@ bool jsfsInit() {
 
 
 
+/* TODO: maybe this should be in the 'E' library. However we don't currently
+ * have a way of doing that in build_jswrapper.py  */
 /*JSON{
-  "type" : "library",
+  "type" : "class",
   "class" : "File"
 }
 This is the File object - it allows you to stream data to and from files (As opposed to the `require('fs').readFile(..)` style functions that read an entire file).

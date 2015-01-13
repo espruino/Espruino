@@ -33,8 +33,20 @@
 
 #include <pthread.h>
 
+#ifdef USE_WIRINGPI
+// see http://wiringpi.com/download-and-install/
+//   git clone git://git.drogon.net/wiringPi
+//   cd wiringPi;./build
+#include <wiringPi.h>
+
+ #ifdef SYSFS_GPIO_DIR
+  #error USE_WIRINGPI and SYSFS_GPIO_DIR can't coexist
+ #endif
+#endif
+
 // ----------------------------------------------------------------------------
 int ioDevices[EV_DEVICE_MAX+1]; // list of open IO devices (or 0)
+JshPinState gpioState[JSH_PIN_COUNT]; // will be set to UNDEFINED if it isn't exported
 
 #ifdef SYSFS_GPIO_DIR
 
@@ -43,8 +55,7 @@ int ioDevices[EV_DEVICE_MAX+1]; // list of open IO devices (or 0)
 
 bool gpioShouldWatch[JSH_PIN_COUNT]; // whether we should watch this pin for changes
 bool gpioLastState[JSH_PIN_COUNT]; // the last state of this pin
-JshPinState gpioState[JSH_PIN_COUNT]; // will be set to UNDEFINED if it isn't exported
-IOEventFlags gpioEventFlags[JSH_PIN_COUNT];
+
 
 // functions for accessing the sysfs GPIO
 void sysfs_write(const char *path, const char *data) {
@@ -81,8 +92,48 @@ JsVarInt sysfs_read_int(const char *path) {
   sysfs_read(path, buf, sizeof(buf));
   return stringToIntWithRadix(buf, 10, 0);
 }
-
+#endif
 // ----------------------------------------------------------------------------
+#ifdef USE_WIRINGPI
+void irqEXTI0() { jshPushIOWatchEvent(EV_EXTI0); }
+void irqEXTI1() { jshPushIOWatchEvent(EV_EXTI1); }
+void irqEXTI2() { jshPushIOWatchEvent(EV_EXTI2); }
+void irqEXTI3() { jshPushIOWatchEvent(EV_EXTI3); }
+void irqEXTI4() { jshPushIOWatchEvent(EV_EXTI4); }
+void irqEXTI5() { jshPushIOWatchEvent(EV_EXTI5); }
+void irqEXTI6() { jshPushIOWatchEvent(EV_EXTI6); }
+void irqEXTI7() { jshPushIOWatchEvent(EV_EXTI7); }
+void irqEXTI8() { jshPushIOWatchEvent(EV_EXTI8); }
+void irqEXTI9() { jshPushIOWatchEvent(EV_EXTI9); }
+void irqEXTI10() { jshPushIOWatchEvent(EV_EXTI10); }
+void irqEXTI11() { jshPushIOWatchEvent(EV_EXTI11); }
+void irqEXTI12() { jshPushIOWatchEvent(EV_EXTI12); }
+void irqEXTI13() { jshPushIOWatchEvent(EV_EXTI13); }
+void irqEXTI14() { jshPushIOWatchEvent(EV_EXTI14); }
+void irqEXTI15() { jshPushIOWatchEvent(EV_EXTI15); }
+void irqEXTIDoNothing() { }
+
+void (*irqEXTIs[16])(void) = {
+    irqEXTI0,
+    irqEXTI1,
+    irqEXTI2,
+    irqEXTI3,
+    irqEXTI4,
+    irqEXTI5,
+    irqEXTI6,
+    irqEXTI7,
+    irqEXTI8,
+    irqEXTI9,
+    irqEXTI10,
+    irqEXTI11,
+    irqEXTI12,
+    irqEXTI13,
+    irqEXTI14,
+    irqEXTI15,
+};
+#endif
+// ----------------------------------------------------------------------------
+IOEventFlags gpioEventFlags[JSH_PIN_COUNT];
 
 IOEventFlags pinToEVEXTI(Pin pin) {
   return gpioEventFlags[pin];
@@ -102,12 +153,6 @@ IOEventFlags getNewEVEXTI() {
   }
   return 0;
 }
-#else
-IOEventFlags pinToEVEXTI(Pin pin) {
-  return 0;
-}
-
-#endif
 
 // Get the path associated with a device. Returns false on failure.
 bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
@@ -252,6 +297,17 @@ void jshInputThread() {
 
 
 void jshInit() {
+
+#ifdef USE_WIRINGPI
+  if (geteuid() == 0) {
+    printf("RUNNING AS SUDO - awesome. You'll get proper IRQ support\n");
+    wiringPiSetup();
+  } else {
+    printf("NOT RUNNING AS SUDO - sorry, you'll get rubbish realtime IO. You also need to export the pins you want to use first.\n");
+    wiringPiSetupSys() ;
+  }
+#endif
+
   int i;
   for (i=0;i<=EV_DEVICE_MAX;i++)
     ioDevices[i] = 0;
@@ -272,11 +328,13 @@ void jshInit() {
     terminal_set = 1;
   }
 #endif//!__MINGW32__
-#ifdef SYSFS_GPIO_DIR
   for (i=0;i<JSH_PIN_COUNT;i++) {
     gpioState[i] = JSHPINSTATE_UNDEFINED;
-    gpioShouldWatch[i] = false;
     gpioEventFlags[i] = 0;
+  }
+#ifdef SYSFS_GPIO_DIR
+  for (i=0;i<JSH_PIN_COUNT;i++) {
+    gpioShouldWatch[i] = false;    
   }
 #endif
 
@@ -365,13 +423,6 @@ void jshDelayMicroseconds(int microsec) {
   usleep(microsec);
 }
 
-bool jshGetPinStateIsManual(Pin pin) { 
-  return false; 
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) { 
-}
-
 void jshPinSetState(Pin pin, JshPinState state) {
 #ifdef SYSFS_GPIO_DIR
   if (gpioState[pin] != state) {
@@ -381,16 +432,29 @@ void jshPinSetState(Pin pin, JshPinState state) {
     itostr(pin, &path[strlen(path)], 10);
     strcat(&path[strlen(path)], "/direction");
     sysfs_write(path, JSHPINSTATE_IS_OUTPUT(state)?"out":"in");
-    gpioState[pin] = state;
   }
 #endif
+#ifdef USE_WIRINGPI
+  if (JSHPINSTATE_IS_OUTPUT(state)) {
+    if (state==JSHPINSTATE_AF_OUT || state==JSHPINSTATE_AF_OUT_OPENDRAIN)
+      pinMode(pin,PWM_OUTPUT);
+    else
+      pinMode(pin,OUTPUT);
+  } else {
+    pinMode(pin,INPUT);
+    if (state==JSHPINSTATE_GPIO_IN_PULLUP)
+      pullUpDnControl (pin, PUD_UP) ;
+    else if (state==JSHPINSTATE_GPIO_IN_PULLDOWN)
+      pullUpDnControl (pin, PUD_DOWN) ;
+    else
+      pullUpDnControl (pin, PUD_OFF) ;
+  }
+#endif
+  gpioState[pin] = state;
 }
 
 JshPinState jshPinGetState(Pin pin) {
-#ifdef SYSFS_GPIO_DIR
   return gpioState[pin];
-#endif
-  return JSHPINSTATE_UNDEFINED;
 }
 
 void jshPinSetValue(Pin pin, bool value) {
@@ -400,6 +464,9 @@ void jshPinSetValue(Pin pin, bool value) {
   strcat(&path[strlen(path)], "/value");
   sysfs_write_int(path, value?1:0);
 #endif
+#ifdef USE_WIRINGPI
+  digitalWrite(pin,value);
+#endif
 }
 
 bool jshPinGetValue(Pin pin) {
@@ -408,6 +475,8 @@ bool jshPinGetValue(Pin pin) {
   itostr(pin, &path[strlen(path)], 10);
   strcat(&path[strlen(path)], "/value");
   return sysfs_read_int(path);
+#elif defined(USE_WIRINGPI)
+  return digitalRead(pin);
 #else
   return false;
 #endif
@@ -427,27 +496,35 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
   return ((JsVarFloat)time)/1000;
 }
 
+#ifdef USE_WIRINGPI
+JsSysTime baseSystemTime = 0;
+#endif
 
 JsSysTime jshGetSystemTime() {
+#ifdef USE_WIRINGPI
+  /* use micros, and cope with wrapping...
+   basically we're going to use getTime more often than once every 71 mins
+   (the time it takes to wrap) so we can just cope with wraps be seeing if
+   it has wrapped, and incrementing a bigger counter */
+  unsigned int us = micros();
+  static unsigned int lastUs = 0;
+  if (us<lastUs) baseSystemTime += 0x100000000LL;
+  lastUs = us;
+  return baseSystemTime + (JsSysTime)us;
+#else
   struct timeval tm;
   gettimeofday(&tm, 0);
   return tm.tv_sec*1000000L + tm.tv_usec;
+#endif
 }
 
 void jshSetSystemTime(JsSysTime time) {
+#ifdef USE_WIRINGPI
+  baseSystemTime = time - micros();
+#endif
 }
 
 // ----------------------------------------------------------------------------
-
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsError("Invalid pin!");
-  return value;
-}
 
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
@@ -459,14 +536,15 @@ int jshPinAnalogFast(Pin pin) {
   return 0;
 }
 
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsError("Invalid pin!");
-}
-
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+#ifdef USE_WIRINGPI
+  // todo pwmSetRange and pwmSetClock for freq?
+  int v = (int)(value*1024);
+  if (v<0) v=0;
+  if (v>1023) v=1023;
+  jshPinSetState(pin, JSHPINSTATE_AF_OUT);
+  pwmWrite(pin, (int)(value*1024));
+#endif
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
@@ -480,43 +558,50 @@ void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
 
 bool jshCanWatch(Pin pin) {
   if (jshIsPinValid(pin)) {
-#ifdef SYSFS_GPIO_DIR
      IOEventFlags exti = getNewEVEXTI();
      if (exti) return true;
-#endif
      return false;
   } else
     return false;
 }
 
-void jshPinWatch(Pin pin, bool shouldWatch) {
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
   if (jshIsPinValid(pin)) {
-#ifdef SYSFS_GPIO_DIR
     IOEventFlags exti = getNewEVEXTI();
     if (shouldWatch) {
       if (exti) {
-        gpioShouldWatch[pin] = true;
         gpioEventFlags[pin] = exti;
         jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+#ifdef SYSFS_GPIO_DIR
+        gpioShouldWatch[pin] = true;
         gpioLastState[pin] = jshPinGetValue(pin);
+#endif
+#ifdef USE_WIRINGPI
+        wiringPiISR(pin, INT_EDGE_BOTH, irqEXTIs[exti-EV_EXTI0]);
+#endif
       } else 
         jsError("You can only have a maximum of 16 watches!");
     }
     if (!shouldWatch || !exti) {
-      gpioShouldWatch[pin] = false;
       gpioEventFlags[pin] = 0;
-    }
+#ifdef SYSFS_GPIO_DIR
+      gpioShouldWatch[pin] = false;
 #endif
+#ifdef USE_WIRINGPI
+      wiringPiISR(pin, INT_EDGE_BOTH, irqEXTIDoNothing);
+#endif
+
+    }
+    return shouldWatch ? exti : EV_NONE;
   } else jsError("Invalid pin!");
+  return EV_NONE;
 }
 
 bool jshGetWatchedPinState(IOEventFlags device) {
-#ifdef SYSFS_GPIO_DIR
   Pin i;
   for (i=0;i<JSH_PIN_COUNT;i++)
     if (gpioEventFlags[i]==device)
       return jshPinGetValue(i);
-#endif
   return false;
 }
 
@@ -557,6 +642,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         case 57600   : baud = B57600  ;break;
         case 115200  : baud = B115200 ;break;
         case 230400  : baud = B230400 ;break;
+#ifndef __MACOSX__
         case 460800  : baud = B460800 ;break;
         case 500000  : baud = B500000 ;break;
         case 576000  : baud = B576000 ;break;
@@ -569,30 +655,38 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         case 3000000 : baud = B3000000;break;
         case 3500000 : baud = B3500000;break;
         case 4000000 : baud = B4000000;break;
+#endif
       }
+
       if (baud) {
         cfsetispeed(&settings, baud); // set baud rates
         cfsetospeed(&settings, baud);
+
+        settings.c_cflag &= ~(PARENB|PARODD); // none
+        
+        if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
+        if (inf->parity == 2) settings.c_cflag |= PARENB; // even
+        
+        settings.c_cflag &= ~CSTOPB;
+        if (inf->stopbits) settings.c_cflag |= CSTOPB;
+
+        settings.c_cflag &= ~CSIZE;
+
+        switch (inf->bytesize) {
+          case 5 : settings.c_cflag |= CS5; break;
+          case 6 : settings.c_cflag |= CS6; break;
+          case 7 : settings.c_cflag |= CS7; break;
+          case 8 : settings.c_cflag |= CS8; break;
+        }
+
+        // raw mode
+        cfmakeraw(&settings);
+
+        // finally set current settings
+        tcsetattr(ioDevices[device], TCSANOW, &settings);
+      } else {
+        jsError("No baud rate defined for device");
       }
-
-      settings.c_cflag &= ~(PARENB|PARODD); // none
-      if (inf->parity == 1) settings.c_cflag |= PARENB|PARODD; // odd
-      if (inf->parity == 2) settings.c_cflag |= PARENB; // even
-      settings.c_cflag &= ~CSTOPB;
-      if (inf->stopbits) settings.c_cflag |= CSTOPB;
-
-      settings.c_cflag &= ~CSIZE;
-      switch (inf->bytesize) {
-        case 5 : settings.c_cflag |= CS5; break;
-        case 6 : settings.c_cflag |= CS6; break;
-        case 7 : settings.c_cflag |= CS7; break;
-        case 8 : settings.c_cflag |= CS8; break;
-      }
-
-      // raw mode
-      cfmakeraw(&settings);
-      // finally set current settings
-      tcsetattr(ioDevices[device], TCSANOW, &settings);
     }
   } else {
     jsError("No path defined for device");

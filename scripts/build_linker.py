@@ -69,7 +69,7 @@ if BOARD_BOOTLOADER != (IS_BOOTLOADER or IS_USING_BOOTLOADER):
 linkerFile = open(linkerFilename, 'w')
 def codeOut(s): linkerFile.write(s+"\n");
 # -----------------------------------------------------------------------------------------
-BOOTLOADER_SIZE = common.get_bootloader_size();
+BOOTLOADER_SIZE = common.get_bootloader_size(board);
 RAM_BASE = 0x20000000;
 FLASH_BASE = 0x00000000;
 RAM_SIZE = board.chip["ram"]*1024;
@@ -83,7 +83,7 @@ if board.chip["family"]=="STM32F4" and RAM_SIZE > 128*1204:
 if IS_BOOTLOADER:
   FLASH_SIZE = BOOTLOADER_SIZE
 elif IS_USING_BOOTLOADER:
-  FLASH_BASE += BOOTLOADER_SIZE
+  FLASH_BASE = common.get_espruino_binary_address(board)
   FLASH_SIZE -= BOOTLOADER_SIZE
 
 STACK_START = RAM_BASE + RAM_SIZE
@@ -128,7 +128,7 @@ SECTIONS
   {
 """)
 
-if "place_text_section" in board.chip:
+if not IS_USING_BOOTLOADER and not IS_BOOTLOADER and "place_text_section" in board.chip:
   codeOut("""    /* In the .py file we were told to place text here (to skip out what was before) */
     . = ALIGN("""+hex(board.chip["place_text_section"] & 0x00FFFFFF)+"""); /* hacky! really want it absolute */
 """);
