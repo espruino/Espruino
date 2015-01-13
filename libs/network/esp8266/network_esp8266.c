@@ -24,8 +24,9 @@
 // ---------------------------------------------------------------------------
 typedef enum {
   ESP8266_IDLE,
-  ESP8266_RESET_WAIT,
+ // ESP8266_RESET_WAIT,
   ESP8266_WAIT_OK,
+  ESP8266_WAIT_OK_THEN_LINKED,
   ESP8266_WAIT_OK_THEN_READY,
   ESP8266_WAIT_READY,
 } ESP8266State;
@@ -45,12 +46,13 @@ void net_esp8266_setState(ESP8266State state, int timeout, JsVar *callback, cons
     stateTimeoutMessage = 0;
   }
   if (stateTimeoutCallback) jsvUnLock(stateTimeoutCallback);
-  stateTimeoutCallback = callback ? jsvLock(callback) : 0;
+  stateTimeoutCallback = jsvLockAgainSafe(callback);
 }
 
 ESP8266State net_esp8266_getState() {
   return esp8266State;
 }
+
 // ---------------------------------------------------------------------------
 
 void esp8266_send(JsVar *msg) {
@@ -135,28 +137,33 @@ bool esp8266_idle(JsVar *usartClass) {
           jsiConsolePrintf("ESP8266> %q\n", line);
           switch (net_esp8266_getState()) {
           case ESP8266_IDLE: break; // ignore?
-          case ESP8266_WAIT_OK_THEN_READY:
+          case ESP8266_WAIT_OK:
             if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+              JsVar *cb = jsvLockAgainSafe(stateTimeoutCallback);
               net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
-              if (stateTimeoutCallback) {
-                jsiQueueEvents(stateTimeoutCallback, 0, 0);
-                jsvUnLock(stateTimeoutCallback);
-                stateTimeoutCallback = 0;
+              if (cb) {
+                jsiQueueEvents(cb, 0, 0);
+                jsvUnLock(cb);
               }
             }
             break;
+          case ESP8266_WAIT_OK_THEN_LINKED:
+            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+              // FIXME what now?
+            }
           case ESP8266_WAIT_OK_THEN_READY:
             if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
-              net_esp8266_setState(ESP8266_WAIT_READY, 4000, net_esp8266_getStateCallback(), "Module not ready");
+              net_esp8266_setState(ESP8266_WAIT_READY, 6000, jsvLockAgainSafe(stateTimeoutCallback), "Module not ready");
             }
             break;
-          case ESP8266_WAIT_OK_THEN_READY:
+          case ESP8266_WAIT_READY:
             if (jsvIsStringEqualOrStartsWith(line, "ready", false)) {
+              JsVar *cb = jsvLockAgainSafe(stateTimeoutCallback);
               net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
-              if (stateTimeoutCallback) {
-                jsiQueueEvents(stateTimeoutCallback, 0, 0);
-                jsvUnLock(stateTimeoutCallback);
-                stateTimeoutCallback = 0;
+              if (cb) {
+                jsiQueueEvents(cb, 0, 0);
+                jsvUnLock(cb);
               }
             }
             break;
@@ -220,6 +227,7 @@ bool net_esp8266_initialise(JsVar *callback) {
   esp8266_send(cmd);
   jsvUnLock(cmd);
   net_esp8266_setState(ESP8266_WAIT_OK_THEN_READY, 100, callback, "No Acknowledgement");
+  return true;
 }
 
 bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
@@ -228,8 +236,8 @@ bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
   esp8266_send(msg);
   jsvUnLock(msg);
   net_esp8266_setState(ESP8266_WAIT_OK, 500, callback, "No Acknowledgement");
+  return true;
 }
-
 // ------------------------------------------------------------------------------------------------------------------------
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
@@ -266,7 +274,7 @@ void net_esp8266_closesocket(JsNetwork *net, int sckt) {
   JsVar *msg = jsvVarPrintf("AT+CIPCLOSE\r");
   esp8266_send(msg);
   jsvUnLock(msg);
-  net_esp8266_setState(ESP8266_WAIT_OK, 100, callback, "No Acknowledgement");
+  net_esp8266_setState(ESP8266_WAIT_OK, 100, 0, "No Acknowledgement");
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
