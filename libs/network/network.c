@@ -37,14 +37,14 @@ JsNetworkState networkState =
 
 JsNetwork *networkCurrentStruct = 0;
 
-unsigned long networkParseIPAddress(const char *ip) {
+uint32_t networkParseIPAddress(const char *ip) {
   int n = 0;
-  unsigned long addr = 0;
+  uint32_t addr = 0;
   while (*ip) {
     if (*ip>='0' && *ip<='9') {
       n = n*10 + (*ip-'0');
     } else if (*ip>='.') {
-      addr = (addr>>8) | (unsigned long)(n<<24);
+      addr = (addr>>8) | (uint32_t)(n<<24);
       n=0;
     } else {
       return 0; // not an ip address
@@ -94,7 +94,7 @@ unsigned long networkFlipIPAddress(unsigned long addr) {
 }
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void networkGetHostByName(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void networkGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   assert(out_ip_addr);
   *out_ip_addr = 0;
 

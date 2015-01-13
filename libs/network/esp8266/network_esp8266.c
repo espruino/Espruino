@@ -10,6 +10,8 @@
  * ----------------------------------------------------------------------------
  * Implementation of JsNetwork for ESP8266 devices
  * ----------------------------------------------------------------------------
+ *
+ * AT+CIUPDATE can do the updates for you
  */
 #include "jsinteractive.h"
 #include "network.h"
@@ -24,17 +26,30 @@
 // ---------------------------------------------------------------------------
 typedef enum {
   ESP8266_IDLE,
- // ESP8266_RESET_WAIT,
+  ESP8266_DELAY, // just delay and execute after the timeout
   ESP8266_WAIT_OK,
+  ESP8266_WAIT_CWMODE_THEN_RESET_THEN_READY_THEN_CIPMUX,
+  ESP8266_WAIT_RESET_THEN_READY_THEN_CIPMUX,
+  ESP8266_WAIT_READY_THEN_CIPMUX,
   ESP8266_WAIT_OK_THEN_LINKED,
-  ESP8266_WAIT_OK_THEN_READY,
-  ESP8266_WAIT_READY,
+  ESP8266_WAIT_OK_THEN_DELAY_10S,
+  ESP8266_WAIT_LINKED,
+  ESP8266_WAIT_SEND_OK,
+  /*ESP8266_WAIT_OK_THEN_READY,
+  ESP8266_WAIT_READY,*/
 } ESP8266State;
 
-ESP8266State esp8266State = ESP8266_IDLE;
-JsSysTime stateTimeout;
-const char *stateTimeoutMessage;
-JsVar *stateTimeoutCallback = 0;
+ESP8266State esp8266State = ESP8266_IDLE; // current state - see above
+JsSysTime stateTimeout; // the timout to allow
+const char *stateTimeoutMessage; // the message to be displayed if we get a timeout
+JsVar *stateSuccessCallback = 0; // if all goes well, this is what gets called
+char currentSocket = -1; // if esp8266State!=IDLE, this could be a socket on which to report errors
+unsigned char socketErrors = 0; // bit mask of errors on sockets
+
+const char *esp8266_idle_compare = 0;
+char esp8266_ipd_buffer_sckt = 0;
+size_t esp8266_ipd_buffer_size = 0;
+bool esp8266_idle_compare_only_start = false;
 
 void net_esp8266_setState(ESP8266State state, int timeout, JsVar *callback, const char *timeoutMessage) {
   esp8266State = state;
@@ -45,8 +60,17 @@ void net_esp8266_setState(ESP8266State state, int timeout, JsVar *callback, cons
     stateTimeout = -1;
     stateTimeoutMessage = 0;
   }
-  if (stateTimeoutCallback) jsvUnLock(stateTimeoutCallback);
-  stateTimeoutCallback = jsvLockAgainSafe(callback);
+  if (stateSuccessCallback) jsvUnLock(stateSuccessCallback);
+  stateSuccessCallback = jsvLockAgainSafe(callback);
+}
+
+void net_esp8266_execute_and_set_idle() {
+  JsVar *cb = jsvLockAgainSafe(stateSuccessCallback);
+  net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+  if (cb) {
+    jsiQueueEvents(cb, 0, 0);
+    jsvUnLock(cb);
+  }
 }
 
 ESP8266State net_esp8266_getState() {
@@ -56,6 +80,7 @@ ESP8266State net_esp8266_getState() {
 // ---------------------------------------------------------------------------
 
 void esp8266_send(JsVar *msg) {
+  jsiConsolePrintf(">>> %q\n", msg);
   JsvStringIterator it;
   jsvStringIteratorNew(&it, msg, 0);
   while (jsvStringIteratorHasChar(&it)) {
@@ -66,11 +91,7 @@ void esp8266_send(JsVar *msg) {
   jsvStringIteratorFree(&it);
 }
 
-const char *esp8266_idle_compare = 0;
-size_t esp8266_ipd_buffer_size = 0;
-bool esp8266_idle_compare_only_start = false;
-
-void esp8266_got_data(JsVar *data) {
+void esp8266_got_data(int sckt, JsVar *data) {
   JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, 0);
   if (!ipd) {
     jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, data);
@@ -95,33 +116,37 @@ bool esp8266_idle(JsVar *usartClass) {
       jsvUnLock(buf);
       buf = newBuf;
       hasChanged = true;
-      esp8266_got_data(data);
+      esp8266_got_data(esp8266_ipd_buffer_sckt, data);
     } else {
-      char chars[10];
+      char chars[20];
       jsvGetStringChars(buf, 0, chars, sizeof(chars));
       if (chars[0]=='+' && chars[1]=='I' && chars[2]=='P' && chars[3]=='D' && chars[4]==',') {
-        size_t i = 5;
-        while (i<sizeof(chars)-1 && chars[i]!=':' && chars[i]!=0) i++;
-        if (chars[i]==':') {
-          chars[i]=0;
-          esp8266_ipd_buffer_size = (size_t)stringToInt(&chars[5]);
+        size_t sckt_idx = 5;
+        while (sckt_idx<sizeof(chars)-1 && chars[sckt_idx]!=',' && chars[sckt_idx]!=0) sckt_idx++;
+        size_t len_idx = sckt_idx;
+        while (len_idx<sizeof(chars)-1 && chars[len_idx]!=':' && chars[len_idx]!=0) len_idx++;
+        if (chars[sckt_idx]==',' && chars[len_idx]==':') {
+          chars[sckt_idx]=0;
+          esp8266_ipd_buffer_sckt = (char)stringToInt(&chars[5]);
+          chars[len_idx]=0;
+          esp8266_ipd_buffer_size = (size_t)stringToInt(&chars[sckt_idx+1]);
           size_t len = jsvGetStringLength(buf);
-          if (len > i) {
-            size_t nChars = len-i;
+          if (len > len_idx) {
+            size_t nChars = len-len_idx;
             if (nChars > esp8266_ipd_buffer_size)
               nChars = esp8266_ipd_buffer_size;
             esp8266_ipd_buffer_size -= nChars;
-            JsVar *data = jsvNewFromStringVar(buf,(size_t)(i+1),(size_t)nChars);
-            JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(i+nChars+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
+            JsVar *data = jsvNewFromStringVar(buf,(size_t)(len_idx+1),(size_t)nChars);
+            JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(len_idx+nChars+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
             jsvUnLock(buf);
             buf = newBuf;
             hasChanged = true;
-            esp8266_got_data(data);
+            esp8266_got_data(esp8266_ipd_buffer_sckt, data);
             jsvUnLock(data);
           } else {
             // Do nothing - our string isn't big enough
           }
-        } else if (chars[i]!=0) {
+        } else if (chars[len_idx]!=0) {
           // invalid data. Kill it.
           jsWarn("ESP8266 expecting +IPD string, got %q", buf);
           jsvUnLock(buf);
@@ -130,43 +155,68 @@ bool esp8266_idle(JsVar *usartClass) {
         }
       } else { // string doesn't start with '+IPD'
         int idx = jsvGetStringIndexOf(buf, '\n');
+        if (idx<0 && esp8266_idle_compare && esp8266_idle_compare[0]=='>' && esp8266_idle_compare[1]==0 && buf && buf->varData.str[0]=='>')
+          idx=2; // pretend we had /r/n - this only works because right now we're only expecting one char
         while (!found && idx>0/* because we want a \r before it */) {
           hasChanged = true;
           JsVar *line = jsvNewFromStringVar(buf,0,(size_t)(idx-1)); // \r\n - so idx is of '\n' and we want to remove '\r' too
           jsiConsoleRemoveInputLine();
           jsiConsolePrintf("ESP8266> %q\n", line);
           switch (net_esp8266_getState()) {
-          case ESP8266_IDLE: break; // ignore?
-          case ESP8266_WAIT_OK:
-            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
-              JsVar *cb = jsvLockAgainSafe(stateTimeoutCallback);
-              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
-              if (cb) {
-                jsiQueueEvents(cb, 0, 0);
-                jsvUnLock(cb);
+            case ESP8266_IDLE: break; // ignore?
+            case ESP8266_DELAY: break; // ignore here - see stateTimeout below
+            case ESP8266_WAIT_OK:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                net_esp8266_execute_and_set_idle();
               }
-            }
-            break;
-          case ESP8266_WAIT_OK_THEN_LINKED:
-            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
-              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
-              // FIXME what now?
-            }
-          case ESP8266_WAIT_OK_THEN_READY:
-            if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
-              net_esp8266_setState(ESP8266_WAIT_READY, 6000, jsvLockAgainSafe(stateTimeoutCallback), "Module not ready");
-            }
-            break;
-          case ESP8266_WAIT_READY:
-            if (jsvIsStringEqualOrStartsWith(line, "ready", false)) {
-              JsVar *cb = jsvLockAgainSafe(stateTimeoutCallback);
-              net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
-              if (cb) {
-                jsiQueueEvents(cb, 0, 0);
-                jsvUnLock(cb);
+              break;
+            case ESP8266_WAIT_CWMODE_THEN_RESET_THEN_READY_THEN_CIPMUX:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false) || jsvIsStringEqualOrStartsWith(line, "no change", false)) {
+                JsVar *cmd = jsvNewFromString("AT+RST\r\n"); // sent reset command
+                esp8266_send(cmd);
+                jsvUnLock(cmd);
+                net_esp8266_setState(ESP8266_WAIT_RESET_THEN_READY_THEN_CIPMUX, 500, jsvLockAgainSafe(stateSuccessCallback), stateTimeoutMessage);
               }
-            }
-            break;
+            case ESP8266_WAIT_RESET_THEN_READY_THEN_CIPMUX:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                net_esp8266_setState(ESP8266_WAIT_READY_THEN_CIPMUX, 6000, jsvLockAgainSafe(stateSuccessCallback), stateTimeoutMessage);
+              }
+            case ESP8266_WAIT_READY_THEN_CIPMUX:
+              if (jsvIsStringEqualOrStartsWith(line, "ready", false)) {
+                JsVar *cmd = jsvNewFromString("AT+CIPMUX=1\r\n"); // sent reset command
+                esp8266_send(cmd);
+                jsvUnLock(cmd);
+                net_esp8266_setState(ESP8266_WAIT_OK, 500, jsvLockAgainSafe(stateSuccessCallback), stateTimeoutMessage);
+              }
+              break;
+
+            case ESP8266_WAIT_OK_THEN_DELAY_10S:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                // we got ok, now just delay for 5S
+                net_esp8266_setState(ESP8266_DELAY, 10000, jsvLockAgainSafe(stateSuccessCallback), stateTimeoutMessage);
+              }
+              break;
+            case ESP8266_WAIT_OK_THEN_LINKED:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                net_esp8266_setState(ESP8266_WAIT_LINKED, 5000, jsvLockAgainSafe(stateSuccessCallback), stateTimeoutMessage);
+                // FIXME what now?
+              }
+              break;
+            case ESP8266_WAIT_LINKED:
+                if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                  net_esp8266_execute_and_set_idle();
+                }
+                break;
+            case ESP8266_WAIT_SEND_OK:
+              if (jsvIsStringEqualOrStartsWith(line, "SEND OK", false)) {
+                net_esp8266_execute_and_set_idle();
+              }
+              break;
+/*            case ESP8266_WAIT_OK_THEN_READY:
+              if (jsvIsStringEqualOrStartsWith(line, "OK", false)) {
+                net_esp8266_setState(ESP8266_WAIT_READY, 6000, jsvLockAgainSafe(stateSuccessCallback), "Module not ready");
+              }
+              break;*/
           }
 
           if (esp8266_idle_compare && jsvIsStringEqualOrStartsWith(line, esp8266_idle_compare, esp8266_idle_compare_only_start))
@@ -185,9 +235,17 @@ bool esp8266_idle(JsVar *usartClass) {
   jsvUnLock(buf);
 
   if (net_esp8266_getState() != ESP8266_IDLE && stateTimeout>=0 && jshGetSystemTime()>stateTimeout) {
-    jsExceptionHere(JSET_ERROR, stateTimeoutMessage ? stateTimeoutMessage : "ESP8266 timeout");
-    stateTimeoutMessage = 0;
-    net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+    if (net_esp8266_getState() == ESP8266_DELAY) {
+      net_esp8266_execute_and_set_idle();
+    } else {
+      if (currentSocket>=0) {
+        socketErrors |= 1<<currentSocket;
+        currentSocket = -1;
+      }
+      jsExceptionHere(JSET_ERROR, stateTimeoutMessage ? stateTimeoutMessage : "ESP8266 timeout");
+      stateTimeoutMessage = 0;
+      net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
+    }
   }
 
   return found;
@@ -223,19 +281,20 @@ bool esp8266_wait_for(const char *text, int milliseconds, bool justTheStart) {
 
 
 bool net_esp8266_initialise(JsVar *callback) {
-  JsVar *cmd = jsvNewFromString("AT+RST\r\n");
+  JsVar *cmd = jsvNewFromString("AT+CWMODE=3\r\n");
   esp8266_send(cmd);
   jsvUnLock(cmd);
-  net_esp8266_setState(ESP8266_WAIT_OK_THEN_READY, 100, callback, "No Acknowledgement");
+  net_esp8266_setState(ESP8266_WAIT_CWMODE_THEN_RESET_THEN_READY_THEN_CIPMUX, 500, callback, "No Acknowledgement");
   return true;
 }
 
 bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
   // 'AT+CWMODE=1\r' ? seems to be the default
-  JsVar *msg = jsvVarPrintf("AT+CWJAP=%q,%q\r", vAP, vKey);
+  JsVar *msg = jsvVarPrintf("AT+CWJAP=%q,%q\r\n", vAP, vKey);
   esp8266_send(msg);
   jsvUnLock(msg);
-  net_esp8266_setState(ESP8266_WAIT_OK, 500, callback, "No Acknowledgement");
+  // TODO: use Serial1.print("AT+CIFSR\r\n") to check if connected, rather than just delaying
+  net_esp8266_setState(ESP8266_WAIT_OK_THEN_DELAY_10S, 500, callback, "No Acknowledgement");
   return true;
 }
 // ------------------------------------------------------------------------------------------------------------------------
@@ -259,22 +318,27 @@ bool net_esp8266_checkError(JsNetwork *net) {
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
-int net_esp8266_createsocket(JsNetwork *net, unsigned long host, unsigned short port) {
+int net_esp8266_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+  int sckt = 2;
+
+  socketErrors &= ~(1<<sckt);
   JsVar *hostStr = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
-  JsVar *msg = jsvVarPrintf("AT+CIPSTART=\"TCP\",%q,%d\r", hostStr, port);
+  JsVar *msg = jsvVarPrintf("AT+CIPSTART=%d,\"TCP\",%q,%d\r\n", sckt, hostStr, port);
   jsvUnLock(hostStr);
   esp8266_send(msg);
   jsvUnLock(msg);
-  net_esp8266_setState(ESP8266_WAIT_OK_THEN_LINKED, 100, 0, "No Acknowledgement");
-  return 0;
+  currentSocket = sckt;
+  net_esp8266_setState(ESP8266_WAIT_OK, 60000, 0, "Couldn't create connection");
+  return sckt;
 }
 
 /// destroys the given socket
 void net_esp8266_closesocket(JsNetwork *net, int sckt) {
-  JsVar *msg = jsvVarPrintf("AT+CIPCLOSE\r");
+  JsVar *msg = jsvVarPrintf("AT+CIPCLOSE=%d\r\n", sckt);
   esp8266_send(msg);
   jsvUnLock(msg);
   net_esp8266_setState(ESP8266_WAIT_OK, 100, 0, "No Acknowledgement");
+  socketErrors &= ~(1<<sckt); // clear socket error
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
@@ -284,6 +348,8 @@ int net_esp8266_accept(JsNetwork *net, int sckt) {
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_esp8266_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+  if (socketErrors & (1<<sckt)) return -1; // socket error
+
   JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ESP8266_IPD_NAME, 0);
   size_t chars = 0;
   if (ipd) {
@@ -299,20 +365,22 @@ int net_esp8266_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_esp8266_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
-  JsVar *msg = jsvVarPrintf("AT+CIPSEND=%d\r",len);
+  if (net_esp8266_getState() != ESP8266_IDLE) return 0; // can't send
+  if (socketErrors & (1<<sckt)) return -1; // socket error
+
+  JsVar *msg = jsvVarPrintf("AT+CIPSEND=%d,%d\r\n",sckt,len);
   esp8266_send(msg);
   jsvUnLock(msg);
 
   // doesn't seem to return this until it's done, but we need to wait anyway
-  esp8266_wait_for("AT+CIPSEND",100,true);
-  // -------------------------------------------------
-
-  size_t i;
-  for (i=0;i<len;i++)
-    jshTransmit(networkGetCurrent()->data.device, ((unsigned char *)buf)[i]);
-  jshTransmit(networkGetCurrent()->data.device, '\r');
-  esp8266_wait_for(">",1000,false); // ideally we wouldn't wait for the newline...
-  return len;
+  if (esp8266_wait_for(">",10000,true)) {
+    size_t i;
+    for (i=0;i<len;i++)
+      jshTransmit(networkGetCurrent()->data.device, ((unsigned char *)buf)[i]);
+    net_esp8266_setState(ESP8266_WAIT_SEND_OK, 10000, 0, "Send failed");
+    return len;
+  }
+  return -1; // broken!
 }
 
 // ------------------------------------------------------------------------------------------------------------------------
