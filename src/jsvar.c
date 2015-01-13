@@ -418,6 +418,11 @@ ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var) {
   return var;
 }
 
+/// Lock this pointer and return a pointer - UNSAFE for null pointer
+ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var) {
+  return var ? jsvLockAgain(var) : 0;
+}
+
 // CALL ONLY FROM jsvUnlock
 // jsvGetLocks(var) must == 0
 static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {

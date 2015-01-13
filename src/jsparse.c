@@ -889,7 +889,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               }
             }
             jsvUnLock(parent);
-            parent = aVar ? jsvLockAgain(aVar) : 0;
+            parent = jsvLockAgainSafe(aVar);
             jsvUnLock(a);
             a = child;
             jsvUnLock(aVar);

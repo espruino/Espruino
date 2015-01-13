@@ -237,6 +237,9 @@ ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref);
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var);
 
+/// Lock this pointer and return a pointer - SAFE for null pointer
+ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var);
+
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var);
 
