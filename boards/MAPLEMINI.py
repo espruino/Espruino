@@ -18,7 +18,7 @@ import pinutils;
 import json;
 info = {
  'name' : "Leaflabs Maple Mini",
- 'link' :  [ "http://leaflabs.com/devices/maple/" ],
+ 'link' :  [ "http://leaflabs.com/docs/hardware/maple-mini.html" ],
  'variables' : 715,
  'binary_name' : 'espruino_%v_maplemini.bin',
 };
