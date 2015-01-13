@@ -668,7 +668,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
         if (inf->parity == 2) settings.c_cflag |= PARENB; // even
         
         settings.c_cflag &= ~CSTOPB;
-        if (inf->stopbits) settings.c_cflag |= CSTOPB;
+        if (inf->stopbits==2) settings.c_cflag |= CSTOPB;
 
         settings.c_cflag &= ~CSIZE;
 
