@@ -15,11 +15,11 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
-# PICO_1V0=1          # Espruino Pico board rev 1.0
-# PICO_1V1=1          # Espruino Pico board rev 1.1
-# PICO_1V2=1          # Espruino Pico board rev 1.2
-# OLIMEXINO_STM32=1                # Olimexino STM32
-# OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
+# PICO_1V0=1              # Espruino Pico board rev 1.0
+# PICO_1V1=1              # Espruino Pico board rev 1.1
+# PICO_1V2=1              # Espruino Pico board rev 1.2
+# OLIMEXINO_STM32=1       # Olimexino STM32
+# MAPLEMINI=1             # Leaflabs Maple Mini
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
@@ -155,12 +155,10 @@ BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
-else ifdef OLIMEXINO_STM32_BOOTLOADER
+else ifdef MAPLEMINI
 EMBEDDED=1
-USE_FILESYSTEM=1
-DEFINES += -DSTM32F103RB
 SAVE_ON_FLASH=1
-BOARD=OLIMEXINO_STM32_BOOTLOADER
+BOARD=MAPLEMINI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
