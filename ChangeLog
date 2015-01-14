@@ -30,6 +30,7 @@
             Allowed E.nativeCall (assembler/compiled functions) to execute directly from a flat string
             Working F401 USB VCP bootloader
             Make Press-poweron-release-press boot back into Espruino (this may confuse your OS)
+            Assert failures (in non-release builds) now reboot the system on ARM
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

@@ -232,20 +232,31 @@ NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos)
 }
 
 NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
+  static bool inAssertFail = false;
+  bool wasInAssertFail = inAssertFail;
+  inAssertFail = true;
   jsiConsoleRemoveInputLine();
   if (expr) {
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
   } else
     jsiConsolePrint("ASSERT FAILED AT ");
   jsiConsolePrintf("%s:%d\n",file,line);
-
-  jsvTrace(jsvFindOrCreateRoot(), 2);
+  if (!wasInAssertFail) {
+    jsvTrace(jsvFindOrCreateRoot(), 2);
+  }
 #ifdef FAKE_STDLIB
-  jsiConsolePrint("EXIT CALLED.\n");
+#ifdef ARM
+  jsiConsolePrint("REBOOTING.\n");
+  jshTransmitFlush();
+  NVIC_SystemReset();
+#else
+  jsiConsolePrint("HALTING.\n");
   while (1);
+#endif
 #else
   exit(1);
 #endif
+  inAssertFail = false;
 }
 
 #ifdef FAKE_STDLIB
@@ -290,7 +301,8 @@ void *memcpy(void *dst, const void *src, size_t size) {
 
 void *memset(void *dst, int c, size_t size) {
   char *d = (char*)dst;
-  while (size--) *(d++) = c;
+  while (size--) *(d++) = (char)c;
+  return dst;
 }
 
 unsigned int rand() {
