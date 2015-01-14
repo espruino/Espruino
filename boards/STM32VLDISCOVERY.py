@@ -48,6 +48,11 @@ devices = {
   'LED1' : { 'pin' : 'C9' },
   'LED2' : { 'pin' : 'C8' },
   'BTN1' : { 'pin' : 'A0' },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          },
 };
 
 board_css = """

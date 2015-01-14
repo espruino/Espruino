@@ -75,6 +75,11 @@ devices = {
                'pin_lrck' :  'A4',
                'pin_nrst' :  'D4',    
                 },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          },
 };
 
 

@@ -21,7 +21,7 @@ info = {
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
  'variables' : 3040,
- 'bootloader' : 1,
+# 'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r2.bin',
 };
 chip = {
