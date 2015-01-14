@@ -49,6 +49,7 @@
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -433,8 +434,11 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-#USE_CC3000=1
+ifdef ESP8266
 USE_ESP8266=1
+else
+USE_CC3000=1
+endif
 endif
 endif
 endif

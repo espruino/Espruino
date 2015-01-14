@@ -24,7 +24,7 @@
 #define ESP8266_IPD_NAME JS_HIDDEN_CHAR_STR"ID"
 #define ESP8266_IPD_NAME_LEN 3 // strlen(ESP8266_IPD_NAME)
 
-#define ESP8266_DEBUG
+//#define ESP8266_DEBUG
 
 // ---------------------------------------------------------------------------
 typedef enum {
