@@ -214,7 +214,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF401RE
 EMBEDDED=1
 NUCLEO=1
-#USE_GRAPHICS=1
+USE_GRAPHICS=1
 USE_NET=1
 BOARD=NUCLEOF401RE
 STLIB=STM32F401xx
@@ -1196,9 +1196,9 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
 #else ifdef MBED
 	#cp $(PROJ_NAME).bin /media/MBED;sync
-#else ifdef NUCLEO
-	#if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
-#	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
+else ifdef NUCLEO
+	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
+	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	echo ST-LINK flash
 	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)

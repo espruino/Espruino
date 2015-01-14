@@ -180,8 +180,14 @@ unsigned int jsvGetMemoryUsage() {
   unsigned int i;
   for (i=1;i<=jsVarsSize;i++) {
     JsVar *v = jsvGetAddressOf((JsVarRef)i);
-    if ((v->flags&JSV_VARTYPEMASK) != JSV_UNUSED)
+    if ((v->flags&JSV_VARTYPEMASK) != JSV_UNUSED) {
       usage++;
+      if (jsvIsFlatString(v)) {
+        unsigned int b = (unsigned int)jsvGetFlatStringBlocks(v);
+        i+=b;
+        usage+=b;
+      }
+    }
   }
   return usage;
 }
@@ -269,6 +275,7 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
 
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
+    assert(jsvGetAddressOf(jsVarFirstEmpty)->flags == JSV_UNUSED);
     JsVar *v = jsvLock(jsVarFirstEmpty);
     jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
     jsvResetVariable(v, flags); // setup variable, and add one lock
@@ -298,7 +305,8 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
 }
 
 ALWAYS_INLINE void jsvFreePtrInternal(JsVar *var) {
-  var->flags = (var->flags & ~JSV_VARTYPEMASK) | JSV_UNUSED;
+  assert(jsvGetLocks(var)==0);
+  var->flags = JSV_UNUSED;
   // add this to our free list
   jsvSetNextSibling(var, jsVarFirstEmpty);
   jsVarFirstEmpty = jsvGetRef(var);
@@ -330,11 +338,10 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       JsVarRef stringDataRef = jsvGetLastChild(var);
       jsvSetLastChild(var, 0);
       while (stringDataRef) {
-        JsVar *child = jsvLock(stringDataRef);
+        JsVar *child = jsvGetAddressOf(stringDataRef);
         assert(jsvIsStringExt(child));
         stringDataRef = jsvGetLastChild(child);
         jsvFreePtrInternal(child);
-        jsvUnLock(child);
       }
       // We might be a flat string
       if (jsvIsFlatString(var)) {
@@ -342,8 +349,11 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
         size_t count = jsvGetFlatStringBlocks(var);
         JsVarRef i = (JsVarRef)(jsvGetRef(var)+count);
         // do it in reverse, so the free list ends up in kind of the right order
-        while (count--)
-          jsvFreePtrInternal(jsvGetAddressOf(i--));
+        while (count--) {
+          JsVar *p = jsvGetAddressOf(i--);
+          p->flags = JSV_UNUSED; // just so the assert in jsvFreePtrInternal doesn't get fed up
+          jsvFreePtrInternal(p);
+        }
       }
     }
     /* NO ELSE HERE - because jsvIsNewChild stuff can be for Names, which
