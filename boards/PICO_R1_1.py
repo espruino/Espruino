@@ -111,4 +111,5 @@ board_css = """
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
