@@ -57,7 +57,7 @@ To see it in action, follow the `USE_TRIGGER` definition.
 
 ## Compile and test!
 
-First run `make`, now you can run `.\espruino` and test your new `Hello.world()` command.
+First run `make`, now you can run `./espruino` and test your new `Hello.world()` command.
 
 ```sh
 >Hello.world()
