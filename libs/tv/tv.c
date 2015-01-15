@@ -21,8 +21,7 @@
 // http://martin.hinner.info/vga/pal.html
 
 unsigned short tvWidth, tvHeight; // width and height of buffer
-Pin videoPin = 0;
-Pin syncPin = 0;
+Pin tvPinVideo, tvPinSync;
 const char *screenPtr = (const char *)0;
 int line = 0;
 unsigned short ticksPerLine = 0; // timer ticks
@@ -67,11 +66,11 @@ unsigned short ticksPerLine = 0; // timer ticks
 
 
 static ALWAYS_INLINE void sync_start() {
-  jshPinSetValue(syncPin, 0);
+  jshPinSetValue(tvPinSync, 0);
 }
 
 static ALWAYS_INLINE void sync_end() {
-  jshPinSetValue(syncPin, 1);
+  jshPinSetValue(tvPinSync, 1);
 }
 
 ALWAYS_INLINE void tv_start_line_video() {
@@ -83,7 +82,7 @@ ALWAYS_INLINE void tv_start_line_video() {
   }
   if (lineIdx>=0 && lineIdx<270) {
     lineIdx = lineIdx*tvHeight/270;
-    jshPinSetState(videoPin, JSHPINSTATE_AF_OUT); // re-enable output for SPI
+    jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
 #ifdef STM32F4
     DMA_Channel_TVSPI_TX->CR &= ~DMA_SxCR_EN; // disable
     DMA_Channel_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
@@ -162,7 +161,7 @@ void TVTIMER_IRQHandler() {
     break;
   case TVS_VID_BACKPORCH:
     setTimer(PAL_BACKPORCH);
-    jshPinSetState(videoPin, JSHPINSTATE_GPIO_OUT);
+    jshPinSetState(tvPinVideo, JSHPINSTATE_GPIO_OUT);
     tvState = TVS_SYNC1_START;
     break;
   case TVS_SYNC2_START:
@@ -198,6 +197,8 @@ unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx);
 JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
   tvHeight = (unsigned short)height;
+  tvPinVideo = pinVideo;
+  tvPinSync = pinSync;
   JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
   if (!gfx) return 0;
   JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
@@ -210,11 +211,9 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   jshSPIInitInfo(&inf);
   inf.baudRate =  tvWidth * 1000000 / 52;
   inf.spiMSB = false;
-  videoPin = jshGetPinFromString("A7");
-  syncPin = jshGetPinFromString("A6");
-  inf.pinMOSI = videoPin;
-  jshPinOutput(syncPin, 0); // setup output state
-  jshPinSetValue(videoPin, 0); // set default video output state
+  inf.pinMOSI = tvPinVideo;
+  jshPinOutput(tvPinSync, 0); // setup output state
+  jshPinSetValue(tvPinVideo, 0); // set default video output state
   jshSPISetup(TVSPIDEVICE, &inf);
   // disable IRQs - because jsHardware enabled them
   SPI_I2S_ITConfig(TVSPI, SPI_I2S_IT_RXNE, DISABLE);

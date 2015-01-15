@@ -49,8 +49,8 @@ This initialises the TV output. Options for PAL are as follows:
 
 ```
 var g = require('tv').setup({ type : "pal",
-  video : Pin, // SPI MOSI Pin for Video output
-  sync : Pin, // Timer output pin to use for video sync
+  video : A7, // Pin - SPI MOSI Pin for Video output
+  sync : A6, // Pin - Timer output pin to use for video sync
   width : 384,
   height : 270, // max 270
 });
