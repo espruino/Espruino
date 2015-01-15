@@ -216,7 +216,10 @@ JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it) {
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
     return jsvNewFromFloat(jsvArrayBufferIteratorDataToFloat(it, data));
   } else {
-    return jsvNewFromInteger(jsvArrayBufferIteratorDataToInt(it, data));
+    JsVarInt i = jsvArrayBufferIteratorDataToInt(it, data);
+    if (it->type == ARRAYBUFFERVIEW_UINT32)
+      return jsvNewFromLongInteger((long long)(uint32_t)i);
+    return jsvNewFromInteger(i);
   }
 }
 

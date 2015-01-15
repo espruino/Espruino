@@ -32,6 +32,7 @@
             Make Press-poweron-release-press boot back into Espruino (this may confuse your OS)
             Assert failures (in non-release builds) now reboot the system on ARM
             Fix issues with freeing of variables not clearing the lock flags (fix #474)
+            Make Uint32Array actually return uints (even if they're so big they have to be represented as doubles)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)
