@@ -34,6 +34,8 @@
             Fix issues with freeing of variables not clearing the lock flags (fix #474)
             Make Uint32Array actually return uints (even if they're so big they have to be represented as doubles)
             Allow peek/poke to read and write arrays of values
+            Add Boolean constructor (fix #311)
+            Fix difference between String() and String(undefined) (fix #312)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

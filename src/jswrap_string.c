@@ -32,15 +32,16 @@ Text Strings in Espruino are not zero-terminated, so you can store zeros in them
   "name" : "String",
   "generate" : "jswrap_string_constructor",
   "params" : [
-    ["str","JsVar","A value to turn into a string. If undefined or not supplied, an empty String is created."]
+    ["str","JsVarArray","A value to turn into a string. If undefined or not supplied, an empty String is created."]
   ],
   "return" : ["JsVar","A String"]
 }
 Create a new String
 */
-JsVar *jswrap_string_constructor(JsVar *a) {
-  if (!a) return jsvNewFromEmptyString(); // no argument - return an empty string
-  return jsvAsString(a, false);
+JsVar *jswrap_string_constructor(JsVar *args) {
+  if (jsvGetArrayLength(args)==0)
+    return jsvNewFromEmptyString(); // no argument - return an empty string
+  return jsvAsString(jsvGetArrayItem(args, 0), true);
 }
 
 /*JSON{
