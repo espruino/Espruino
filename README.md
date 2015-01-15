@@ -234,6 +234,8 @@ Currently there are a bunch of different files to modify. Eventually the plan is
 * Create `jswrap_mylib.c/h` in `libs/`
 * Create library functions (see examples in other jswrap files, also the comments in `scripts/common.py`)
 
+See [libs/README.md](libs/README.md) for a short tutorial on how to add your own libraries.
+
 
 Using Espruino in your Projects
 ---------------------------
