@@ -63,11 +63,6 @@ devices = {
             'pin_dm' : 'D40',
             'pin_dp' : 'D41' 
           },
-  'JTAG' : {
-        'pin_MS' : 'A13',
-        'pin_CK' : 'A14', 
-        'pin_DI' : 'A15' 
-          },
   'SD' :  { 'pin_cs' :  'D25',#'D2',
             'pin_di' :  'D34',#'B15',
             'pin_do' :  'D33',#'B14',
