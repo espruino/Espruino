@@ -2886,21 +2886,24 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
     int i;
     for (i=0;i<nConfigs;i++) {
       if (jsvIsStringEqual(key, configs[i].name)) {
-        JsVar *val = jsvObjectIteratorGetValue(&it);
         found = true;
-        switch (configs[i].type) {
-          case JSV_OBJECT:
-          case JSV_STRING_0:
-          case JSV_ARRAY:
-          case JSV_FUNCTION:
-            *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
-          case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;
-          case JSV_BOOLEAN: *((bool*)configs[i].ptr) = jsvGetBool(val); break;
-          case JSV_INTEGER: *((JsVarInt*)configs[i].ptr) = jsvGetInteger(val); break;
-          case JSV_FLOAT: *((JsVarFloat*)configs[i].ptr) = jsvGetFloat(val); break;
-          default: assert(0); break;
+        if (configs[i].ptr) {
+          JsVar *val = jsvObjectIteratorGetValue(&it);
+          switch (configs[i].type) {
+            case 0: break;
+            case JSV_OBJECT:
+            case JSV_STRING_0:
+            case JSV_ARRAY:
+            case JSV_FUNCTION:
+              *((JsVar**)configs[i].ptr) = jsvLockAgain(val); break;
+            case JSV_PIN: *((Pin*)configs[i].ptr) = jshGetPinFromVar(val); break;
+            case JSV_BOOLEAN: *((bool*)configs[i].ptr) = jsvGetBool(val); break;
+            case JSV_INTEGER: *((JsVarInt*)configs[i].ptr) = jsvGetInteger(val); break;
+            case JSV_FLOAT: *((JsVarFloat*)configs[i].ptr) = jsvGetFloat(val); break;
+            default: assert(0); break;
+          }
+          jsvUnLock(val);
         }
-        jsvUnLock(val);
       }
     }
     if (!found)
