@@ -40,13 +40,15 @@ const void *exportPtrs[] = {
   jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
   jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
   jsvGetFloat,jsvGetInteger,jsvGetBool,
-  jspeiFindInScopes,jspReplaceWith,
+  jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,
+  jsvNewWithFlags,
 };
 const char *exportNames = 
 "jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,"
 "jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,"
 "jsvGetFloat,jsvGetInteger,jsvGetBool,"
-"jspeiFindInScopes,jspReplaceWith,";
+"jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,"
+"jsvNewWithFlags,";
 
 /*JSON{
   "type" : "staticproperty",

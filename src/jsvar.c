@@ -276,8 +276,10 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
 JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
     assert(jsvGetAddressOf(jsVarFirstEmpty)->flags == JSV_UNUSED);
+    jshInterruptOff(); // to allow this to be used from an IRQ
     JsVar *v = jsvLock(jsVarFirstEmpty);
     jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
+    jshInterruptOn();
     jsvResetVariable(v, flags); // setup variable, and add one lock
     // return pointer
     return v;
@@ -308,8 +310,10 @@ ALWAYS_INLINE void jsvFreePtrInternal(JsVar *var) {
   assert(jsvGetLocks(var)==0);
   var->flags = JSV_UNUSED;
   // add this to our free list
+  jshInterruptOff(); // to allow this to be used from an IRQ
   jsvSetNextSibling(var, jsVarFirstEmpty);
   jsVarFirstEmpty = jsvGetRef(var);
+  jshInterruptOn();
 }
 
 ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
