@@ -117,6 +117,7 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
+USE_TV=1
 BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -134,7 +135,9 @@ else ifdef PICO_1V1
 EMBEDDED=1
 USE_DFU=1
 DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V1
+USE_NET=1
 USE_GRAPHICS=1
+USE_TV=1
 BOARD=PICO_R1_1
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -143,7 +146,9 @@ else ifdef PICO_1V2
 EMBEDDED=1
 USE_DFU=1
 DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V2
+USE_NET=1
 USE_GRAPHICS=1
+USE_TV=1
 BOARD=PICO_R1_2
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -202,15 +207,6 @@ BOARD=HYSTM32_32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
-else ifdef ECU
-EMBEDDED=1
-USE_TRIGGER=1
-USE_FILESYSTEM=1
-DEFINES += -DUSE_USB_OTG_FS=1 -DECU
-BOARD=ECU
-STLIB=STM32F40_41xxx
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
-OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF401RE
 EMBEDDED=1
 NUCLEO=1
@@ -684,13 +680,20 @@ libs/network/socketserver.c
  endif
 endif
 
+ifdef USE_TV
+DEFINES += -DUSE_TV
+WRAPPERSOURCES += libs/tv/jswrap_tv.c
+INCLUDE += -I$(ROOT)/libs/tv
+SOURCES += \
+libs/tv/tv.c
+endif
 
 ifdef USE_TRIGGER
 DEFINES += -DUSE_TRIGGER
 WRAPPERSOURCES += libs/trigger/jswrap_trigger.c
 INCLUDE += -I$(ROOT)/libs/trigger
 SOURCES += \
-./libs/trigger/trigger.c
+libs/trigger/trigger.c
 endif
 
 ifdef USB
@@ -1043,7 +1046,6 @@ ifndef BOOTLOADER
 SOURCES +=                              \
 targets/stm32/main.c                    \
 targets/stm32/jshardware.c              \
-targets/stm32/television.c              \
 targets/stm32/stm32_it.c
 endif
 endif

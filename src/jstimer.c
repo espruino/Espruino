@@ -150,8 +150,6 @@ void jstUtilTimerInterruptHandler() {
           ta = tb;
           tb = (tb+1) & (UTILTIMERTASK_TASKS-1);
         }
-
-
       } else {
         // Otherwise no repeat - just go straight to the next one!
         utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
