@@ -14,6 +14,9 @@
 #include "jsvar.h"
 #include "jsinteractive.h"
 
+JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize);
+void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize);
+
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options);
 void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times);
 void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value);

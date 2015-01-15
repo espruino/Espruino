@@ -15,25 +15,27 @@
  */
 #include "jswrap_io.h"
 #include "jsvar.h"
+#include "jswrap_arraybuffer.h" // for jswrap_io_peek
 
 /*JSON{
   "type" : "function",
   "name" : "peek8",
-  "generate_full" : "(JsVarInt)*(unsigned char*)(size_t)addr",
+  "generate_full" : "jswrap_io_peek(addr,count,1)",
   "params" : [
-    ["addr","int","The address in memory to read"]
+    ["addr","int","The address in memory to read"],
+    ["count","int","(optional) the number of items to read. If >1 a Uint8Array will be returned."]
   ],
-  "return" : ["int","The value of memory at the given location"]
+  "return" : ["JsVar","The value of memory at the given location"]
 }
 Read 8 bits of memory at the given location - DANGEROUS!
 */
 /*JSON{
   "type" : "function",
   "name" : "poke8",
-  "generate_full" : "(*(unsigned char*)(size_t)addr) = (unsigned char)value",
+  "generate_full" : "jswrap_io_poke(addr,value,1)",
   "params" : [
     ["addr","int","The address in memory to write"],
-    ["value","int","The value to write"]
+    ["value","JsVar","The value to write, or an array of values"]
   ]
 }
 Write 8 bits of memory at the given location - VERY DANGEROUS!
@@ -41,21 +43,22 @@ Write 8 bits of memory at the given location - VERY DANGEROUS!
 /*JSON{
   "type" : "function",
   "name" : "peek16",
-  "generate_full" : "(JsVarInt)*(unsigned short*)(size_t)addr",
+  "generate_full" : "jswrap_io_peek(addr,count,2)",
   "params" : [
-    ["addr","int","The address in memory to read"]
+    ["addr","int","The address in memory to read"],
+    ["count","int","(optional) the number of items to read. If >1 a Uint16Array will be returned."]
   ],
-  "return" : ["int","The value of memory at the given location"]
+  "return" : ["JsVar","The value of memory at the given location"]
 }
 Read 16 bits of memory at the given location - DANGEROUS!
 */
 /*JSON{
   "type" : "function",
   "name" : "poke16",
-  "generate_full" : "(*(unsigned short*)(size_t)addr) = (unsigned short)value",
+  "generate_full" : "jswrap_io_poke(addr,value,2)",
   "params" : [
     ["addr","int","The address in memory to write"],
-    ["value","int","The value to write"]
+    ["value","JsVar","The value to write, or an array of values"]
   ]
 }
 Write 16 bits of memory at the given location - VERY DANGEROUS!
@@ -63,25 +66,80 @@ Write 16 bits of memory at the given location - VERY DANGEROUS!
 /*JSON{
   "type" : "function",
   "name" : "peek32",
-  "generate_full" : "(JsVarInt)*(unsigned int*)(size_t)addr",
+  "generate_full" : "jswrap_io_peek(addr,count,4)",
   "params" : [
-    ["addr","int","The address in memory to read"]
+    ["addr","int","The address in memory to read"],
+    ["count","int","(optional) the number of items to read. If >1 a Uint32Array will be returned."]
   ],
-  "return" : ["int","The value of memory at the given location"]
+  "return" : ["JsVar","The value of memory at the given location"]
 }
 Read 32 bits of memory at the given location - DANGEROUS!
 */
 /*JSON{
   "type" : "function",
   "name" : "poke32",
-  "generate_full" : "(*(unsigned int*)(size_t)addr) = (unsigned int)value",
+  "generate_full" : "jswrap_io_poke(addr,value,4)",
   "params" : [
     ["addr","int","The address in memory to write"],
-    ["value","int","The value to write"]
+    ["value","JsVar","The value to write, or an array of values"]
   ]
 }
 Write 32 bits of memory at the given location - VERY DANGEROUS!
 */
+
+uint32_t _jswrap_io_peek(JsVarInt addr, int wordSize) {
+  if (wordSize==1) return (uint32_t)*(unsigned char*)(size_t)addr;
+  if (wordSize==2) return (uint32_t)*(unsigned short*)(size_t)addr;
+  if (wordSize==4) return (uint32_t)*(unsigned int*)(size_t)addr;
+  return 0;
+}
+
+JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
+  if (count<=1) {
+    return jsvNewFromLongInteger((long long)_jswrap_io_peek(addr, wordSize));
+  } else {
+    JsVarDataArrayBufferViewType aType;
+    if (wordSize==1) aType=ARRAYBUFFERVIEW_UINT8;
+    if (wordSize==2) aType=ARRAYBUFFERVIEW_UINT16;
+    if (wordSize==4) aType=ARRAYBUFFERVIEW_UINT32;
+    JsVar *aSize = jsvNewFromInteger(count);
+    if (!aSize) return 0;
+    JsVar *arr = jswrap_typedarray_constructor(aType, aSize, 0, 0);
+    jsvUnLock(aSize);
+    if (!arr) return 0;
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, arr, 0);
+    while (jsvArrayBufferIteratorHasElement(&it)) {
+      jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)_jswrap_io_peek(addr, wordSize));
+      addr += wordSize;
+      jsvArrayBufferIteratorNext(&it);
+    }
+    jsvArrayBufferIteratorFree(&it);
+    return arr;
+  }
+}
+
+void _jswrap_io_poke(JsVarInt addr, uint32_t data, int wordSize) {
+  if (wordSize==1) (*(unsigned char*)(size_t)addr) = (unsigned char)data;
+  else if (wordSize==2) (*(unsigned short*)(size_t)addr) = (unsigned short)data;
+  else if (wordSize==4) (*(unsigned int*)(size_t)addr) = (unsigned int)data;
+}
+
+void jswrap_io_poke(JsVarInt addr, JsVar *data, int wordSize) {
+  if (jsvIsNumeric(data)) {
+    _jswrap_io_poke(addr, (uint32_t)jsvGetInteger(data), wordSize);
+  } else if (jsvIsIterable(data)) {
+    JsvIterator it;
+    jsvIteratorNew(&it, data);
+    while (jsvIteratorHasElement(&it)) {
+      _jswrap_io_poke(addr, (uint32_t)jsvIteratorGetIntegerValue(&it), wordSize);
+      addr += wordSize;
+      jsvIteratorNext(&it);
+    }
+    jsvIteratorFree(&it);
+  }
+}
+
 
 /*JSON{
   "type" : "function",
