@@ -67,6 +67,11 @@ devices = {
              'inverted' : True, # 1 when unpressed, 0 when pressed! (Espruino board is 1 when pressed)
              'pinstate': 'IN_PULLUP', # to specify INPUT, OUPUT PULL_UP PULL_DOWN..
            },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          },
 #  'USB' : { 'pin_otg_pwr' : 'C0',
 #            'pin_dm' : 'A11',
 #            'pin_dp' : 'A12',
@@ -108,4 +113,5 @@ board_css = """
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])

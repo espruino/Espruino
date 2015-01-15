@@ -15,9 +15,11 @@
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
 # ESPRUINO_1V3=1          # Espruino board rev 1.3
-# ESPRUINI_1V0=1          # Espruini board rev 1.0
-# OLIMEXINO_STM32=1                # Olimexino STM32
-# OLIMEXINO_STM32_BOOTLOADER=1     # Olimexino STM32 with bootloader
+# PICO_1V0=1              # Espruino Pico board rev 1.0
+# PICO_1V1=1              # Espruino Pico board rev 1.1
+# PICO_1V2=1              # Espruino Pico board rev 1.2
+# OLIMEXINO_STM32=1       # Olimexino STM32
+# MAPLEMINI=1             # Leaflabs Maple Mini
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
@@ -47,6 +49,7 @@
 # BOOTLOADER=1            # make the bootloader (not Espruino)
 # PROFILE=1               # Compile with gprof profiling info
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -118,21 +121,30 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
-else ifdef ESPRUINI_1V0
+else ifdef PICO_1V0
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V0
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
 USE_GRAPHICS=1
-BOARD=ESPRUINIBOARD_R1_0
+BOARD=PICO_R1_0
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
-else ifdef ESPRUINI_1V1
+else ifdef PICO_1V1
 EMBEDDED=1
 USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DESPRUINI -DESPRUINI_1V1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V1
 USE_GRAPHICS=1
-BOARD=ESPRUINIBOARD_R1_1
+BOARD=PICO_R1_1
+STLIB=STM32F401xx
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O3
+else ifdef PICO_1V2
+EMBEDDED=1
+USE_DFU=1
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V2
+USE_GRAPHICS=1
+BOARD=PICO_R1_2
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
@@ -144,12 +156,10 @@ BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
-else ifdef OLIMEXINO_STM32_BOOTLOADER
+else ifdef MAPLEMINI
 EMBEDDED=1
-USE_FILESYSTEM=1
-DEFINES += -DSTM32F103RB
 SAVE_ON_FLASH=1
-BOARD=OLIMEXINO_STM32_BOOTLOADER
+BOARD=MAPLEMINI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
@@ -333,12 +343,24 @@ endif
 ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+DEFINES += -DRASPBERRYPI 
 LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+OPTIMIZEFLAGS+=-O3
+DEFINES+=-DNO_ALWAYS_INLINE # needed for Pi optimized compile as it's GCC 4.6 (we use 4.8 for the STM32)
+ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
+USE_WIRINGPI=1
+else
+DEFINES+=-DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+$(info *************************************************************)
+$(info *  WIRINGPI NOT FOUND, and you probably want it             *)
+$(info *  see  http://wiringpi.com/download-and-install/           *)
+$(info *************************************************************)
+endif
+
 else ifdef BEAGLEBONE
 EMBEDDED=1
 BOARD=BEAGLEBONE_BLACK
@@ -412,11 +434,16 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
+ifdef ESP8266
+USE_ESP8266=1
+else
 USE_CC3000=1
-#USE_ESP8266=1
 endif
 endif
 endif
+endif
+
+USE_ESP8266=1
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
@@ -492,7 +519,7 @@ else # !BOOTLOADER but using a bootloader
   else
     STM32LOADER_FLAGS+=-k -p /dev/ttyACM0
   endif
-  BASEADDRESS=$(shell python -c "import sys;sys.path.append('scripts');import common;print hex(0x08000000+common.get_bootloader_size())")
+  BASEADDRESS=$(shell python scripts/get_board_info.py $(BOARD) "hex(0x08000000+common.get_espruino_binary_address(board))")
  endif
 endif
 
@@ -676,6 +703,12 @@ WRAPPERSOURCES += \
 libs/hashlib/jswrap_hashlib.c
 SOURCES += \
 libs/hashlib/sha2.c
+endif
+
+ifdef USE_WIRINGPI
+DEFINES += -DUSE_WIRINGPI
+LIBS += -lwiringPi
+INCLUDE += -I/usr/local/include -L/usr/local/lib 
 endif
 
 ifeq ($(FAMILY), STM32F1)
@@ -1080,7 +1113,7 @@ $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
 	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
-	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES)
+	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 
 ifdef PININFOFILE
 $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
@@ -1162,8 +1195,8 @@ ifdef USE_DFU
 else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
-else ifdef MBED
-	cp $(PROJ_NAME).bin /media/MBED;sync
+#else ifdef MBED
+	#cp $(PROJ_NAME).bin /media/MBED;sync
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi

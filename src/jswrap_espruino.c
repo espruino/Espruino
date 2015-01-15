@@ -81,8 +81,9 @@ int nativeCallGetCType(JsLex *lex) {
   "name" : "nativeCall",
   "generate" : "jswrap_espruino_nativeCall",
   "params" : [
-    ["addr","int","The address in memory of the function"],
-    ["sig","JsVar","The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"]
+    ["addr","int","The address in memory of the function (or offset in `data` if it was supplied"],
+    ["sig","JsVar","The signature of the call, `returnType (arg1,arg2,...)`. Allowed types are `void`,`bool`,`int`,`double`,`Pin`,`JsVar`"],
+    ["data","JsVar","(Optional) A string containing the function itself. If not supplied then 'addr' is used as an absolute address."]
   ],
   "return" : ["JsVar","The native function"]
 }
@@ -92,9 +93,11 @@ Create a native function that executes the code at the given address. Eg. `E.nat
 
 If you're executing a thumb function, you'll almost certainly need to set the bottom bit of the address to 1.
 
-Note it's not guaranteed that the call signature you provide can be used - it has to be something that a function in Espruino already uses.
+Note it's not guaranteed that the call signature you provide can be used - there are limits on the number of arguments allowed.
+
+When supplying `data`, if it is a 'flat string' then it will be used directly, otherwise it'll be converted to a flat string and used.
 */
-JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
+JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) {
   unsigned int argTypes = 0;
   if (jsvIsUndefined(signature)) {
     // Nothing to do
@@ -128,7 +131,13 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature) {
     return 0;
   }
 
-  return jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
+  JsVar *fn = jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
+  if (data) {
+    JsVar *flat = jsvAsFlatString(data);
+    jsvUnLock(jsvAddNamedChild(fn, flat, JSPARSE_FUNCTION_CODE_NAME));
+    jsvUnLock(flat);
+  }
+  return fn;
 }
 
 

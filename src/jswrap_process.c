@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"
+#include "jsparse.h"
 #include "jswrap_process.h"
 #include "jswrap_interactive.h"
 #include "jsinteractive.h"
@@ -34,6 +35,20 @@ This class contains information about Espruino itself
 }
 Returns the version of Espruino as a String
 */
+
+const void *exportPtrs[] = {
+  jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
+  jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
+  jsvGetFloat,jsvGetInteger,jsvGetBool,
+  jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,
+  jsvNewWithFlags,
+};
+const char *exportNames = 
+"jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,"
+"jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,"
+"jsvGetFloat,jsvGetInteger,jsvGetBool,"
+"jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,"
+"jsvNewWithFlags,";
 
 /*JSON{
   "type" : "staticproperty",
@@ -59,6 +74,12 @@ JsVar *jswrap_process_env() {
   jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
   jsvUnLock(jsvObjectSetChild(obj, "SERIAL", jswrap_interface_getSerial()));
   jsvUnLock(jsvObjectSetChild(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice()))));
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (arr) {
+    jsvArrayPushAndUnLock(arr, jsvNewFromString(exportNames));
+    jsvArrayPushAndUnLock(arr, jsvNewFromInteger((JsVarInt)exportPtrs));
+    jsvUnLock(jsvObjectSetChild(obj, "EXPORT", arr));
+  }  
 
   return obj;
 }

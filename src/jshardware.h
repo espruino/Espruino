@@ -88,25 +88,17 @@ typedef enum {
              (state)==JSHPINSTATE_I2C              ||       \
 0)
 
-/// Is the pin state manual (has the user asked us explicitly to change it?)
-bool jshGetPinStateIsManual(Pin pin);
-/// Is the pin state manual (has the user asked us explicitly to change it?)
-void jshSetPinStateIsManual(Pin pin, bool manual);
 /// Set the pin state
 void jshPinSetState(Pin pin, JshPinState state);
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin);
 
-
-bool jshPinInput(Pin pin);
-
-//s Returns an analog value between 0 and 1
+// Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin);
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin);
 
-void jshPinOutput(Pin pin, bool value);
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 bool jshCanWatch(Pin pin); ///< Can the given pin be watched? it may not be possible because of conflicts

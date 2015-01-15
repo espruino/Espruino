@@ -18,7 +18,10 @@ import re;
 import json;
 import sys;
 import os;
-sys.path.append(".");
+scriptdir = os.path.dirname(os.path.realpath(__file__))
+basedir = scriptdir+"/../"
+sys.path.append(basedir+"scripts");
+sys.path.append(basedir+"boards");
 import common
 
 # ------------------------------------------------------------------------------------------------------

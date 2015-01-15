@@ -64,7 +64,6 @@ bool jspHasError() {
   return JSP_HAS_ERROR;
 }
 
-///< Same as jsvSetValueOfName, but nice error message
 void jspReplaceWith(JsVar *dst, JsVar *src) {
   // If this is an index in an array buffer, write directly into the array buffer
   if (jsvIsArrayBufferName(dst)) {
@@ -457,7 +456,14 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       else
         execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
-      returnVar = jsnCallFunction(function->varData.native.ptr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+      void *nativePtr = jsvGetNativeFunctionPtr(function);
+
+      if (nativePtr) {
+        returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+      } else {
+        assert(0); // in case something went horribly wrong
+        returnVar = 0;
+      }
 
       // unlock values if we locked them
       if (isParsing) {
@@ -883,7 +889,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
               }
             }
             jsvUnLock(parent);
-            parent = aVar ? jsvLockAgain(aVar) : 0;
+            parent = jsvLockAgainSafe(aVar);
             jsvUnLock(a);
             a = child;
             jsvUnLock(aVar);
@@ -2317,13 +2323,14 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   if (!scope) return 0; // out of mem
   JsVar *scopeExports = jsvNewWithFlags(JSV_OBJECT);
   if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
-  jsvUnLock(jsvAddNamedChild(scope, scopeExports, "exports"));
+  JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
+  jsvUnLock(scopeExports);
 
   // TODO: maybe we do want to parse twice here, to get functions defined after their use?
   jsvUnLock(jspEvaluateVar(moduleContents, scope, false));
 
   jsvUnLock(scope);
-  return scopeExports;
+  return jsvSkipNameAndUnLock(exportsName);
 }
 
 /** Get the owner of the current prototype. We assume that it's

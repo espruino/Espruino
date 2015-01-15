@@ -157,21 +157,9 @@ void jshSetSystemTime(JsSysTime time) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  if (jshIsPinValid(pin))
-    return jshPinGetValue(pin);
-  return false;
-}
-
 JsVarFloat jshPinAnalog(Pin pin) {
   JsVarFloat value = 0;
   return value;
-}
-
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin))
-    jshPinSetValue(pin, value);
 }
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used

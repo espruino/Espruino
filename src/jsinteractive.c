@@ -87,7 +87,9 @@ static bool jsiShowInputLine() {
   return jsiEcho() && !inputLineRemoved;
 }
 
-/// Called when the input line/cursor is modified *and its iterator should be reset*
+/** Called when the input line/cursor is modified *and its iterator should be reset
+ * Because JsvStringIterator doesn't lock the string, it's REALLY IMPORTANT
+ * that we call this BEFORE we do jsvUnLock(inputLine) */
 static NO_INLINE void jsiInputLineCursorMoved() {
   // free string iterator
   if (inputLineIterator.var) {
@@ -335,9 +337,9 @@ void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
 void jsiClearInputLine() {
   jsiConsoleRemoveInputLine();
   // clear input line
+  jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine = jsvNewFromEmptyString();
-  jsiInputLineCursorMoved();
 }
 
 void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
@@ -530,10 +532,11 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
 // Used when shutting down before flashing
 // 'release' anything we are using, but ensure that it doesn't get freed
 void jsiSoftKill() {
-  jsvUnLock(inputLine);
-  inputLine=0;
   inputCursorPos = 0;
   jsiInputLineCursorMoved();
+  jsvUnLock(inputLine);
+  inputLine=0;
+
 
   // Stop all active timer tasks
   jstReset();
@@ -720,10 +723,10 @@ void jsiReplaceInputLine(JsVar *newLine) {
     jsiConsoleEraseStringVarBackwards(inputLine);
     jsiConsolePrintStringVarWithNewLineChar(newLine,0,':');
   }
+  jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine = jsvLockAgain(newLine);
   inputCursorPos = jsvGetStringLength(inputLine);
-  jsiInputLineCursorMoved();
 }
 
 void jsiChangeToHistory(bool previous) {
@@ -736,10 +739,10 @@ void jsiChangeToHistory(bool previous) {
     if (jsiShowInputLine()) {
       jsiConsoleEraseStringVarBackwards(inputLine);
     }
+    jsiInputLineCursorMoved();
     jsvUnLock(inputLine);
     inputLine = jsvNewFromEmptyString();
     inputCursorPos = 0;
-    jsiInputLineCursorMoved();
   }
 }
 
@@ -751,9 +754,9 @@ void jsiIsAboutToEditInputLine() {
     if (jsiIsInHistory(inputLine)) {
       JsVar *newLine = jsvCopy(inputLine);
       if (newLine) { // could have been out of memory!
+        jsiInputLineCursorMoved();
         jsvUnLock(inputLine);
         inputLine = newLine;
-        jsiInputLineCursorMoved();
       }
     }
   }
@@ -782,9 +785,9 @@ void jsiHandleDelete(bool isBackspace) {
   if (isBackspace) p--;
   if (p>0) jsvAppendStringVar(v, inputLine, 0, p); // add before cursor (delete)
   if (p+1<l) jsvAppendStringVar(v, inputLine, p+1, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+  jsiInputLineCursorMoved();
   jsvUnLock(inputLine);
   inputLine=v;
-  jsiInputLineCursorMoved();
   if (isBackspace)
     inputCursorPos--; // move cursor back
 
@@ -868,10 +871,10 @@ void jsiHandleNewLine(bool execute) {
 
       // Get line to execute, and reset inputLine
       JsVar *lineToExecute = jsvStringTrimRight(inputLine);
+      jsiInputLineCursorMoved();
       jsvUnLock(inputLine);
       inputLine = jsvNewFromEmptyString();
       inputCursorPos = 0;
-      jsiInputLineCursorMoved();
       // execute!
       JsVar *v = jspEvaluateVar(lineToExecute, 0, false);
       // add input line to history
@@ -902,6 +905,7 @@ void jsiHandleNewLine(bool execute) {
     if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
     jsvAppendCharacter(v, '\n');
     jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    jsiInputLineCursorMoved();
     jsvUnLock(inputLine);
     inputLine=v;
     if (jsiShowInputLine()) { // now print the rest
@@ -909,7 +913,6 @@ void jsiHandleNewLine(bool execute) {
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos+1); // move cursor back
     }
     inputCursorPos++;
-    jsiInputLineCursorMoved();
   }
 }
 
@@ -1069,9 +1072,9 @@ void jsiHandleChar(char ch) {
         if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
         jsvAppendString(v, strToAppend);
         jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+        jsiInputLineCursorMoved();
         jsvUnLock(inputLine);
         inputLine=v;
-        jsiInputLineCursorMoved();
         if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
       }
       inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended

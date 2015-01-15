@@ -348,7 +348,7 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
     jsExceptionHere(JSET_ERROR, "Array.%s's first argument should be a function", name);
     return 0;
   }
-  JsVar *previousValue = initialValue ? jsvLockAgain(initialValue) : 0;
+  JsVar *previousValue = jsvLockAgainSafe(initialValue);
   JsvIterator it;
   jsvIteratorNew(&it, parent);
   if (!previousValue) {

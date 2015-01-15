@@ -318,8 +318,24 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
   jsvUnLock(propName);
   return contains;
 }
+// --------------------------------------------------------------------------
+//                                                         Misc constructors
 
-
+/*JSON{
+  "type" : "constructor",
+  "class" : "Boolean",
+  "name" : "Boolean",
+  "generate" : "jswrap_boolean_constructor",
+  "params" : [
+    ["value","JsVar","A single value to be converted to a number"]
+  ],
+  "return" : ["bool","A Boolean object"]
+}
+Creates a number
+*/
+bool jswrap_boolean_constructor(JsVar *value) {
+  return jsvGetBool(value);
+}
 
 
 // --------------------------------------------------------------------------

@@ -24,7 +24,19 @@
             When dumping typed arrays, use the size if all elements are 0 (fix #448)
             eval() can now access local variables and function arguments (fix #460)
             Added 'flat strings' for typed arrays. 
-              These use a continuous chunk of memory so are much faster
+              - these use a continuous chunk of memory so are much faster
+            Ensure that we only create as many Serial/I2C/etc items in Symbol table as we need (fix #453)
+            Allow modules to return whatever was assigned to exports - not just the original object
+            Allowed E.nativeCall (assembler/compiled functions) to execute directly from a flat string
+            Working F401 USB VCP bootloader
+            Make Press-poweron-release-press boot back into Espruino (this may confuse your OS)
+            Assert failures (in non-release builds) now reboot the system on ARM
+            Fix issues with freeing of variables not clearing the lock flags (fix #474)
+            Make Uint32Array actually return uints (even if they're so big they have to be represented as doubles)
+            Allow peek/poke to read and write arrays of values
+            Add Boolean constructor (fix #311)
+            Fix difference between String() and String(undefined) (fix #312)
+            Fix I2C/SPI on F401/F411-based boards (fix #470, fix #473)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

@@ -36,7 +36,8 @@
 // STM32F1 boards should work with this - but for some reason they crash on init
 #define USE_RTC
 #endif
-#ifdef ESPRUINI
+
+#ifdef PICO
 #define USE_RTC
 #endif
 
@@ -76,8 +77,6 @@ Pin watchedPins[16];
 volatile unsigned char jshSPIBufHead[SPIS];
 volatile unsigned char jshSPIBufTail[SPIS];
 volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
-
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
@@ -837,14 +836,6 @@ void jshDelayMicroseconds(int microsec) {
   while (iter--) __NOP();
 }
 
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
-
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
-}
-
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
@@ -1099,6 +1090,7 @@ void jshInit() {
   // initialise button
 #ifdef BTN1_PININDEX
 #ifdef BTN1_PINSTATE
+  jshSetPinStateIsManual(BTN1_PININDEX, true); // so subsequent reads don't overwrite the state
   jshPinSetState(BTN1_PININDEX, BTN1_PINSTATE);
 #else
   jshPinSetState(BTN1_PININDEX, JSHPINSTATE_GPIO_IN);
@@ -1529,17 +1521,6 @@ void jshSetSystemTime(JsSysTime newTime) {
 
 // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
-
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
-
 static unsigned char jshADCInitialised = 0;
 
 static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion) {
@@ -1722,16 +1703,6 @@ JsVarFloat jshReadVRef() {
   return NAN;
 #endif
 }
-
-
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-}
-
 
 void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
@@ -2035,6 +2006,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
+#ifndef STM32F401xx // STM32F401 devices have USART6, but not 4 or 5!
 #if USARTS>= 4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
@@ -2042,6 +2014,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 #if USARTS>= 5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
+#endif
 #endif
 #if USARTS>= 6
   } else if (device == EV_SERIAL6) {

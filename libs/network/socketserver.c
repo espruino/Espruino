@@ -678,7 +678,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     jsvGetString(hostNameVar, hostName, sizeof(hostName));
   jsvUnLock(hostNameVar);
 
-  unsigned long host_addr = 0;
+  uint32_t host_addr = 0;
   networkGetHostByName(net, hostName, &host_addr);
 
   if(!host_addr) {

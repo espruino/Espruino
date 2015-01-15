@@ -54,7 +54,7 @@ typedef struct {
 
 /// Data for native functions
 typedef struct {
-  void (*ptr)(void); ///< Function pointer
+  void (*ptr)(void); ///< Function pointer - this may not be the real address - see jsvGetNativeFunctionPtr
   unsigned short argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
@@ -139,19 +139,20 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR |
- * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|
- * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     |
- * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   | argTypes       | format      | -        |
- * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   | argTypes       | format      | -        |
- * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     |
- * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           | nextPtr  |
- * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    |
+ * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR | NATIVE_FUNC |
+ * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|-------------|
+ * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
+ * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
+ * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
+ * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
+ * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
+ * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           | nextPtr  | -           |
+ * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
  *
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
+ * NATIVE_FUNCTION's nativePtr is a pointer to code if there is no child called JSPARSE_FUNCTION_CODE_NAME, but if there is one, it's an index into that child
  *
  * For Objects that represent hardware devices, 'nativePtr' is actually set to a special string that
  * contains the device number. See jsiGetDeviceFromClass/jspNewObject
@@ -222,6 +223,8 @@ JsVar *jsvNewArray(JsVar **elements, int elementCount); ///< Create an array con
 JsVar *jsvNewNativeFunction(void (*ptr)(void), unsigned short argTypes); ///< Create an array containing the given elements
 JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero); ///< Create a new ArrayBuffer backed by the given string. If length is not specified, it will be worked out
 
+void *jsvGetNativeFunctionPtr(const JsVar *function); ///< Get the actual pointer from a native function - this may not be the contents of varData.native.ptr
+
 /// Get a reference from a var - SAFE for null vars
 ALWAYS_INLINE JsVarRef jsvGetRef(JsVar *var);
 
@@ -233,6 +236,9 @@ ALWAYS_INLINE JsVar *jsvLock(JsVarRef ref);
 
 /// Lock this pointer and return a pointer - UNSAFE for null pointer
 ALWAYS_INLINE JsVar *jsvLockAgain(JsVar *var);
+
+/// Lock this pointer and return a pointer - SAFE for null pointer
+ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var);
 
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var);
@@ -376,9 +382,11 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var a
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
+JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string)
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 size_t jsvGetFlatStringBlocks(JsVar *v); ///< return the number of blocks used by the given flat string
+char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null

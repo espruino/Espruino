@@ -12,11 +12,29 @@
  * ----------------------------------------------------------------------------
  */
 #include "platform_config.h"
-#include "usb_utils.h"
-#include "usb_lib.h"
-#include "usb_desc.h"
-#include "usb_pwr.h"
-#include "usb_istr.h"
+#ifdef USB
+ #ifdef STM32F1
+  #include "usb_utils.h"
+  #include "usb_lib.h"
+  #include "usb_conf.h"
+  #include "usb_pwr.h"
+  #include "usb_istr.h"
+ #endif
+ #ifdef STM32F4
+  #include "usb_regs.h"
+  #include "usb_defines.h"
+  #include "usbd_conf.h"
+  #include "usbd_cdc_core.h"
+  #include "usbd_usr.h"
+  #include "usb_conf.h"
+  #include "usbd_desc.h"
+  #include "usb_core.h"
+  #include "usbd_core.h"
+  #include "usbd_cdc_core.h"
+  #include "usb_dcd_int.h"
+ #endif
+#endif
+
 #include "jshardware.h"
 
 #define BUFFERMASK 8191
@@ -25,37 +43,17 @@ int rxHead=0, rxTail=0;
 char txBuffer[BUFFERMASK+1];
 int txHead=0, txTail=0;
 
-uint16_t stmPin(Pin ipin) {
-  JsvPinInfoPin pin = JSH_PIN0;
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) pin = ipin-JSH_PORTF_OFFSET;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) pin = ipin-JSH_PORTE_OFFSET;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) pin = ipin-JSH_PORTD_OFFSET;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) pin = ipin-JSH_PORTC_OFFSET;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) pin = ipin-JSH_PORTB_OFFSET;
-  else if (JSH_PORTA_OFFSET >= 0 && ipin > JSH_PORTA_OFFSET) pin = ipin-JSH_PORTA_OFFSET;
-  return 1 << pin;
+static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
+  JsvPinInfoPin pin = pinInfo[ipin].pin;
+  return (uint16_t)(1 << (pin-JSH_PIN0));
 }
 
-GPIO_TypeDef *stmPort(Pin ipin) {
-  if (JSH_PORTF_OFFSET >= 0 && ipin > JSH_PORTF_OFFSET) return GPIOF;
-  else if (JSH_PORTE_OFFSET >= 0 && ipin > JSH_PORTE_OFFSET) return GPIOE;
-  else if (JSH_PORTD_OFFSET >= 0 && ipin > JSH_PORTD_OFFSET) return GPIOD;
-  else if (JSH_PORTC_OFFSET >= 0 && ipin > JSH_PORTC_OFFSET) return GPIOC;
-  else if (JSH_PORTB_OFFSET >= 0 && ipin > JSH_PORTB_OFFSET) return GPIOB;
-  //else if (ipin > JSH_PORTA_OFFSET) return GPIOA;
-  return GPIOA;
+static ALWAYS_INLINE GPIO_TypeDef *stmPort(Pin pin) {
+  JsvPinInfoPort port = pinInfo[pin].port;
+  return (GPIO_TypeDef *)((char*)GPIOA + (port-JSH_PORTA)*0x0400);
 }
 
 bool jshPinGetValue(Pin pin) {
-  GPIO_InitTypeDef GPIO_InitStructure;
-  GPIO_InitStructure.GPIO_Pin = stmPin(pin);
-#ifdef STM32API2
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-#else
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-#endif
-  GPIO_Init(stmPort(pin), &GPIO_InitStructure);
   return GPIO_ReadInputDataBit(stmPort(pin), stmPin(pin)) != 0;
 }
 
@@ -85,6 +83,108 @@ void jshPinOutput(Pin pin, bool value) {
 #endif
 }
 
+#ifdef STM32F4
+
+void WWDG_IRQHandler() {
+  // why do we need this on the F401?
+}
+
+/******************************************************************************/
+/*                 STM32 Peripherals Interrupt Handlers                   */
+/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+/*  available peripheral interrupt handler's name please refer to the startup */
+/*  file (startup_stm32xxx.s).                                            */
+/******************************************************************************/
+
+/*******************************************************************************
+* Function Name  : PPP_IRQHandler
+* Description    : This function handles PPP interrupt request.
+* Input          : None
+* Output         : None
+* Return         : None
+*******************************************************************************/
+/*void PPP_IRQHandler(void)
+{
+}*/
+
+/**
+  * @brief  This function handles EXTI15_10_IRQ Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_FS
+void OTG_FS_WKUP_IRQHandler(void)
+{
+  if(USB_OTG_dev.cfg.low_power)
+  {
+    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+    SystemInit();
+    USB_OTG_UngateClock(&USB_OTG_dev);
+  }
+  EXTI_ClearITPendingBit(EXTI_Line18);
+}
+#endif
+
+/**
+  * @brief  This function handles EXTI15_10_IRQ Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_HS
+void OTG_HS_WKUP_IRQHandler(void)
+{
+  if(USB_OTG_dev.cfg.low_power)
+  {
+    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
+    SystemInit();
+    USB_OTG_UngateClock(&USB_OTG_dev);
+  }
+  EXTI_ClearITPendingBit(EXTI_Line20);
+}
+#endif
+
+/**
+  * @brief  This function handles OTG_HS Handler.
+  * @param  None
+  * @retval None
+  */
+#ifdef USE_USB_OTG_HS
+void OTG_HS_IRQHandler(void)
+#else
+void OTG_FS_IRQHandler(void)
+#endif
+{
+  USBD_OTG_ISR_Handler (&USB_OTG_dev);
+}
+
+#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
+
+extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
+
+/**
+  * @brief  This function handles EP1_IN Handler.
+  * @param  None
+  * @retval None
+  */
+void OTG_HS_EP1_IN_IRQHandler(void)
+{
+  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
+}
+
+/**
+  * @brief  This function handles EP1_OUT Handler.
+  * @param  None
+  * @retval None
+  */
+void OTG_HS_EP1_OUT_IRQHandler(void)
+{
+  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
+}
+#endif
+
+#else  // STM32F4
+
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   USB_Istr();
@@ -94,6 +194,10 @@ void USBWakeUp_IRQHandler(void)
 {
   EXTI_ClearITPendingBit(EXTI_Line18);
 }
+
+#endif // not STM32F4
+
+
 
 unsigned int SysTickUSBWatchdog = SYSTICKS_BEFORE_USB_DISCONNECT;
 
@@ -146,18 +250,30 @@ void putc(char charData) {
   txHead = (txHead+1) & BUFFERMASK;
 }
 
+bool isButtonPressed() {
+  return jshPinGetValue(BTN1_PININDEX) == BTN1_ONSTATE;
+}
+
+bool jumpToEspruinoBinary() {
+  unsigned int *ResetHandler = (unsigned int *)(0x08000000 + ESPRUINO_BINARY_ADDRESS + 4);
+  if (ResetHandler==0 || ResetHandler==0xFFFFFFFF)
+    return false;
+  void (*startPtr)() = *ResetHandler;
+  startPtr();
+  return true; // should never get here
+}
+
 void initHardware() {
 #if defined(STM32F3)
  RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
- RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12 |
-                        RCC_AHBPeriph_GPIOA |
+ RCC_AHBPeriphClockCmd( RCC_AHBPeriph_GPIOA |
                         RCC_AHBPeriph_GPIOB |
                         RCC_AHBPeriph_GPIOC |
                         RCC_AHBPeriph_GPIOD |
                         RCC_AHBPeriph_GPIOE |
                         RCC_AHBPeriph_GPIOF, ENABLE);
 #elif defined(STM32F2) || defined(STM32F4)
- RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+ RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA |
                         RCC_AHB1Periph_GPIOB |
                         RCC_AHB1Periph_GPIOC |
@@ -180,11 +296,32 @@ void initHardware() {
        RCC_APB2Periph_AFIO, ENABLE);
 #endif
 
-  // if button is not set, jump to this address
-  if (jshPinGetValue(BTN1_PININDEX) != BTN1_ONSTATE) {
-    unsigned int *ResetHandler = (unsigned int *)(0x08000000 + BOOTLOADER_SIZE + 4);
-    void (*startPtr)() = *ResetHandler;
-    startPtr();
+#ifdef BTN1_PININDEX
+ GPIO_InitTypeDef GPIO_InitStructure;
+#ifdef STM32API2
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+#else
+ GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+#endif
+
+ #if defined(BTN1_PINSTATE) 
+  #if BTN1_PINSTATE==JSHPINSTATE_GPIO_IN_PULLDOWN
+ GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN; 
+  #else
+   #error Unknown pin state for BTN1
+  #endif
+ #endif
+#endif
+ GPIO_InitStructure.GPIO_Pin = stmPin(BTN1_PININDEX);
+ GPIO_Init(stmPort(BTN1_PININDEX), &GPIO_InitStructure);
+
+ jshPinOutput(LED1_PININDEX, 1);
+
+  // if button is not set, jump to the address of the binary
+  if (!isButtonPressed()) {
+    jumpToEspruinoBinary();
+    // we could return here - binary might be very obviously corrupted
   }
 
   // PREEMPTION
@@ -207,12 +344,10 @@ void initHardware() {
   NVIC_SetPriority(SysTick_IRQn, 0); // Super high priority
 
 
-#ifdef USB
 #if defined(STM32F1) || defined(STM32F3)
   USB_Init_Hardware();
   USB_Init();
-#endif
-#ifdef STM32F4
+#else
   USBD_Init(&USB_OTG_dev,
 #ifdef USE_USB_OTG_HS
             USB_OTG_HS_CORE_ID,
@@ -222,6 +357,5 @@ void initHardware() {
             &USR_desc,
             &USBD_CDC_cb,
             &USR_cb);
-#endif
 #endif
 }

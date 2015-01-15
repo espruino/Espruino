@@ -66,7 +66,7 @@ typedef struct UtilTimerTaskBuffer {
   JsVarRef currentBuffer; ///< The current buffer we're reading from (or 0)
   JsVarRef nextBuffer; ///< Subsequent buffer to read from (or 0)
   unsigned short currentValue; ///< current value being written (for writes)
-  unsigned char charIdx; ///< Index of character in variable
+  unsigned short charIdx; ///< Index of character in variable
   union {
     JshPinFunction pinFunction; ///< Pin function to write to
     Pin pin; ///< Pin to read from

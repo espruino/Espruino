@@ -143,6 +143,11 @@ devices = {
             'pin_sdclk' : 'G8',
             'pin_sdncas' : 'G15',
   },
+  'JTAG' : {
+        'pin_MS' : 'A13',
+        'pin_CK' : 'A14', 
+        'pin_DI' : 'A15' 
+          },
 };
 
 

@@ -15,13 +15,13 @@
 
 import pinutils;
 info = {
- 'name' : "Espruini Board rev 1.0",
- 'link' : [ "http://www.espruino.com/EspruinoBoard" ],
+ 'name' : "Espruino Pico rev 1.1",
+ 'link' : [ "http://www.espruino.com/Pico" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
  'variables' : 3040,
- 'binary_name' : 'espruino_%v_espruini_1r0.bin',
+ 'binary_name' : 'espruino_%v_pico_1r1.bin',
 };
 chip = {
   'part' : "STM32F401CCU6",
@@ -30,7 +30,7 @@ chip = {
   'ram' : 64,
   'flash' : 256,
   'speed' : 84,
-  'usart' : 3,
+  'usart' : 6,
   'spi' : 3,
   'i2c' : 3,
   'adc' : 1,
@@ -42,17 +42,16 @@ chip = {
     'pages' : 3, # number of pages we're using
     'flash_available' : 256 # binary will have a hole in it, so we just want to test against full size
   },
-  'place_text_section' : 0x08010000, # note flash_available above
+  'place_text_section' : 0x00010000, # note flash_available above
 };
 # left-right, or top-bottom order
 board = {
-  'left' : [ 'NRST', 'BOOT0', '3V3', 'GND' ],
-  'bottom' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
-  'top' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
+  'top' : [ 'GND', '5V', 'VDD', 'B3', 'B4', 'B5', 'B6', 'B7'],
+  'bottom' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A5' ], 
 
 
-  'right2' : ['A3','A1','A0','A9'],
-  'right' : ['A4','A2','A8','A10'],        
+  'right2' : ['B8','GND','A0','A1','A3','B2'],
+  'right' : ['B9','A10','A8','A2','A4','A6'],        
 };
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
@@ -63,7 +62,7 @@ devices = {
   'LED1' : { 'pin' : 'B12' }, 
   'LED2' : { 'pin' : 'B2' },
   'USB' : { 'pin_charge' :  'B0',
-            'pin_vsense' :  'B1',
+            'pin_vsense' :  'A9',
             'pin_dm' : 'A11',   # checked
             'pin_dp' : 'A12' }, # checked
   'JTAG' : {
@@ -75,51 +74,42 @@ devices = {
 
 board_css = """
 #board {
-  width: 835px;
-  height: 365px;
-  top: 200px;
+  width: 507px;
+  height: 256px;
+  top: 300px;
   left : 100px;
-  background-image: url(img/ESPRUINIBOARD_R1_0.png);
+  background-image: url(img/PICO_R1_1.png);
 }
 #boardcontainer {
-  height: 585px;
-}
-#left {
-  top: 95px;
-  right: 560px;  
-}
-#left2  {
-  top: 95px;
-  left: -100px;
+  height: 800px;
 }
 #top {
-  bottom: 320px;
-  left: 262px;
+  bottom: 240px;
+  left: 148px;
 }
 #bottom {
-  top: 320px;
-  left: 262px;
+  top: 270px;
+  left: 148px;
 }
 
 #right  {
-  top: 95px;
-  left: 800px;
+  top: 30px;
+  left: 600px;
 }
 #right2  {
-  top: 95px;
-  right: 105px;
+  top: 30px;
+  right: -80px;
 }
 
-.leftpin { height: 48px; }
-.left2pin { height: 48px; }
-.toppin { width: 44px; }
-.bottompin { width: 44px; }
+.toppin { width: 32px; }
+.bottompin { width: 32px; }
 
-.rightpin { height: 48px; }
-.right2pin { height: 48px; }
+.rightpin { height: 34px; }
+.right2pin { height: 34px; }
 
 """;
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])

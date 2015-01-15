@@ -28,7 +28,7 @@ chip = {
   'ram' : 64,
   'flash' : 256,
   'speed' : 84,
-  'usart' : 3,
+  'usart' : 6,
   'spi' : 3,
   'i2c' : 3,
   'adc' : 1,
@@ -40,7 +40,7 @@ chip = {
     'pages' : 3, # number of pages we're using
     'flash_available' : 256 # binary will have a hole in it, so we just want to test against full size
   },
-  'place_text_section' : 0x08010000, # note flash_available above
+  'place_text_section' : 0x00010000, # note flash_available above
 };
 # left-right, or top-bottom order
 board = {
@@ -124,4 +124,7 @@ board_css = """
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f401.csv', 5, 8, 9)
+  pins = pinutils.scan_pin_af_file(pins, 'stm32f401_af.csv', 0, 1)
   return pinutils.only_from_package(pinutils.fill_gaps_in_pin_list(pins), chip["package"])
+
+
