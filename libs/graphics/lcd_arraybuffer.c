@@ -59,13 +59,30 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
     size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
-    short p;
-    for (p=0;p<pixelCount;p++) { // writing individual bits
+
+    unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
+    bool shortCut = col==0 || (col&whiteMask)==whiteMask; // simple black or white fill
+
+    while (pixelCount--) { // writing individual bits
       if (gfx->data.bpp&7/*not a multiple of one byte*/) {
         idx = idx & 7;
+        if (shortCut && idx==0) {
+          // Basically, if we're aligned and we're filling all 0 or all 1
+          // then we can go really quickly and can just fill
+          int wholeBytes = (gfx->data.bpp*(pixelCount+1)) >> 3;
+          if (wholeBytes) {
+            char c = (char)(col?0xFF:0);
+            pixelCount = (short)(pixelCount+1 - (wholeBytes*8/gfx->data.bpp));
+            while (wholeBytes--) {
+              jsvArrayBufferIteratorSetByteValue(&it,  c);
+              jsvArrayBufferIteratorNext(&it);
+            }
+            continue;
+          }
+        }
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
+        jsvArrayBufferIteratorSetByteValue(&it, (char)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
         if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
           jsvArrayBufferIteratorNext(&it);
         } else {
@@ -75,7 +92,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       } else { // we're writing whole bytes
         int i;
         for (i=0;i<gfx->data.bpp;i+=8) {
-          jsvArrayBufferIteratorSetIntegerValue(&it, (JsVarInt)(col >> i));
+          jsvArrayBufferIteratorSetByteValue(&it, (char)(col >> i));
           jsvArrayBufferIteratorNext(&it);
         }
       }

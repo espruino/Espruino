@@ -207,6 +207,7 @@ JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value);
+void   jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c); ///< special case for when we know we're writing to a byte array
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it);
 bool   jsvArrayBufferIteratorHasElement(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorNext(JsvArrayBufferIterator *it);

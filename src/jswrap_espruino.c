@@ -662,4 +662,3 @@ See http://www.espruino.com/Internals for more information
 int jswrap_espruino_getSizeOf(JsVar *v) {
   return (int)jsvCountJsVarsUsed(v);
 }
-
