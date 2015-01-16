@@ -254,6 +254,32 @@ JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it) {
   }
 }
 
+void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt v) {
+  if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
+  assert(!it->hasAccessedElement); // we just haven't implemented this case yet
+  char data[8];
+  unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
+
+  if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
+    if (dataLen==4) { float f = (float)v; memcpy(data,&f,dataLen); }
+    else if (dataLen==8) { double f = (double)v; memcpy(data,&f,dataLen); }
+    else assert(0);
+  } else {
+    // we don't care about sign when writing - as it gets truncated
+    if (dataLen==1) { data[0] = (char)v; }
+    else if (dataLen==2) { *(short*)data = (short)v; }
+    else if (dataLen==4) { *(int*)data = (int)v; }
+    else if (dataLen==8) { *(long long*)data = (long long)v; }
+    else assert(0);
+  }
+
+  for (i=0;i<dataLen;i++) {
+    jsvStringIteratorSetChar(&it->it, data[i]);
+    if (dataLen!=1) jsvStringIteratorNext(&it->it);
+  }
+  if (dataLen!=1) it->hasAccessedElement = true;
+}
+
 void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
@@ -268,10 +294,10 @@ void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) 
   } else {
     JsVarInt v = jsvGetInteger(value);
     // we don't care about sign when writing - as it gets truncated
-    if (dataLen==1) { char c = (char)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==2) { short c = (short)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==4) { int c = (int)v; memcpy(data,&c,dataLen); }
-    else if (dataLen==8) { long long c = (long long)v; memcpy(data,&c,dataLen); }
+    if (dataLen==1) { data[0] = (char)v; }
+    else if (dataLen==2) { *(short*)data = (short)v; }
+    else if (dataLen==4) { *(int*)data = (int)v; }
+    else if (dataLen==8) { *(long long*)data = (long long)v; }
     else assert(0);
   }
 
@@ -282,6 +308,14 @@ void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) 
   if (dataLen!=1) it->hasAccessedElement = true;
 }
 
+void jsvArrayBufferIteratorSetByteValue(JsvArrayBufferIterator *it, char c) {
+  if (JSV_ARRAYBUFFER_GET_SIZE(it->type)!=1) {
+    assert(0);
+    return;
+  }
+  jsvStringIteratorSetChar(&it->it, c);
+}
+
 void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value) {
   JsvStringIterator oldIt = jsvStringIteratorClone(&it->it);
   jsvArrayBufferIteratorSetValue(it, value);
@@ -290,12 +324,6 @@ void jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *
   it->hasAccessedElement = false;
 }
 
-void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt value) {
-  // FIXME: Do this without the allocation!
-  JsVar *val = jsvNewFromInteger(value);
-  jsvArrayBufferIteratorSetValue(it, val);
-  jsvUnLock(val);
-}
 
 JsVar* jsvArrayBufferIteratorGetIndex(JsvArrayBufferIterator *it) {
   return jsvNewFromInteger((JsVarInt)it->index);
