@@ -75,7 +75,9 @@ if not LINUX:
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
 
-  var_size = 12 if variables<255 else 16
+       
+  var_size = 12 if variables<1023 else 16
+  # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
   var_cache_size = var_size*variables
   flash_needed = var_cache_size + 4 # for magic number
   flash_page_size = 1024 # just a guess
