@@ -435,6 +435,8 @@ bool jsvGetBoolAndUnLock(JsVar *v);
 long long jsvGetLongIntegerAndUnLock(JsVar *v);
 
 
+
+
 /** Get the item at the given location in the array buffer and return the result */
 size_t jsvGetArrayBufferLength(JsVar *arrayBuffer);
 /** Get the String the contains the data for this arrayBuffer */
@@ -445,6 +447,9 @@ JsVar *jsvArrayBufferGet(JsVar *arrayBuffer, size_t index);
 void jsvArrayBufferSet(JsVar *arrayBuffer, size_t index, JsVar *value);
 /** Given an integer name that points to an arraybuffer or an arraybufferview, evaluate it and return the result */
 JsVar *jsvArrayBufferGetFromName(JsVar *name);
+
+/** Get the number of arguments for a given function */
+JsVar *jsvGetFunctionArgumentLength(JsVar *scope);
 
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
