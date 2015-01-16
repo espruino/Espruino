@@ -82,11 +82,6 @@ int main(void){
 
   while (1) {
     jsiLoop();
-
-/*#ifdef LED1_PORT
-    counter++;
-    GPIO_WriteBit(LED1_PORT,LED1_PIN, (counter>>13) & 1);
-#endif*/
   }
   //jsiKill();
   //jsvKill();
