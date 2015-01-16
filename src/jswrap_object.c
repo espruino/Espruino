@@ -18,6 +18,7 @@
 #include "jsinteractive.h"
 #include "jswrapper.h"
 #include "jswrap_stream.h"
+#include "jswrap_functions.h"
 #ifdef __MINGW32__
 #include "malloc.h" // needed for alloca
 #endif//__MINGW32__
@@ -62,7 +63,9 @@ JsVar *jswrap_object_length(JsVar *parent) {
   } else if (jsvIsString(parent)) {
     l = (JsVarInt)jsvGetStringLength(parent);
   } else if (jsvIsFunction(parent)) {
-    l = jsvGetArrayLength(jsvGetFunctionArgumentLength(parent));
+    JsVar *args = jsvGetFunctionArgumentLength(parent);
+    l = jsvGetArrayLength(args);
+    jsvUnLock(args);
   } else
     return 0;
   return jsvNewFromInteger(l);
