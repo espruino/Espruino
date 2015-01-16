@@ -22,8 +22,8 @@
 
 unsigned short tvWidth, tvHeight; // width and height of buffer
 Pin tvPinVideo, tvPinSync;
-const char *screenPtr = (const char *)0;
-int line = 0;
+const char *tvPixelPtr = (const char *)0;
+int tvCurrentLine = 0;
 unsigned short ticksPerLine = 0; // timer ticks
 
 #define PAL_VBLANK 25 // amount of extra height that is just blank
@@ -37,12 +37,14 @@ unsigned short ticksPerLine = 0; // timer ticks
 #define PAL_FRONTPORCH 8
 #define PAL_BACKPORCH 7
 
+
+// See STM32 reference on DMA for the mappings to SPI1_TX
 #ifdef STM32F4
 #define TVSPIDEVICE            EV_SPI1
 #define TVSPI                  SPI1
-#define DMA_Channel_TVSPI_TX   DMA1_Stream3
-#define DMA_FLAG_TVSPI_TC_TX   DMA1_FLAG_TC3
-#define RCC_AHB1Periph_TVDMA    RCC_AHB1Periph_DMA1
+#define DMA_TVSPI_TX   DMA2_Stream3
+#define DMA_Channel_TVSPI_TX DMA_Channel_3
+#define RCC_AHB1Periph_TVDMA   RCC_AHB1Periph_DMA2
 
 #define TVTIMER               TIM4
 #define RCC_APB1Periph_TVTIMER  RCC_APB1Periph_TIM4
@@ -51,8 +53,7 @@ unsigned short ticksPerLine = 0; // timer ticks
 #else
 #define TVSPIDEVICE            EV_SPI1
 #define TVSPI                  SPI1
-#define DMA_Channel_TVSPI_TX   DMA1_Channel3
-#define DMA_FLAG_TVSPI_TC_TX   DMA1_FLAG_TC3
+#define DMA_TVSPI_TX   DMA1_Channel3
 #define RCC_AHBPeriph_TVDMA    RCC_AHBPeriph_DMA1
 
 #define TVTIMER               TIM6
@@ -75,24 +76,24 @@ static ALWAYS_INLINE void sync_end() {
 
 ALWAYS_INLINE void tv_start_line_video() {
   int lineIdx;
-  if (line <= 313) {
-    lineIdx = (line-(5+PAL_VBLANK)) ;
+  if (tvCurrentLine <= 313) {
+    lineIdx = (tvCurrentLine-(5+PAL_VBLANK)) ;
   } else {
-    lineIdx = (line-(317+PAL_VBLANK));
+    lineIdx = (tvCurrentLine-(317+PAL_VBLANK));
   }
   if (lineIdx>=0 && lineIdx<270) {
     lineIdx = lineIdx*tvHeight/270;
     jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
 #ifdef STM32F4
-    DMA_Channel_TVSPI_TX->CR &= ~DMA_SxCR_EN; // disable
-    DMA_Channel_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
-    DMA_Channel_TVSPI_TX->M0AR = (uint32_t)(screenPtr + lineIdx*DMA_Channel_TVSPI_TX->NDTR);
-    DMA_Channel_TVSPI_TX->CR |= DMA_SxCR_EN; // enable
+    DMA_TVSPI_TX->CR &= ~DMA_SxCR_EN; // disable
+    DMA_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
+    DMA_TVSPI_TX->M0AR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->NDTR);
+    DMA_TVSPI_TX->CR |= DMA_SxCR_EN; // enable
 #else
-    DMA_Channel_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
-    DMA_Channel_TVSPI_TX->CNDTR = tvWidth>>3/*bytes*/;
-    DMA_Channel_TVSPI_TX->CMAR = (uint32_t)(screenPtr + lineIdx*DMA_Channel_TVSPI_TX->CNDTR);
-    DMA_Channel_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
+    DMA_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
+    DMA_TVSPI_TX->CNDTR = tvWidth>>3/*bytes*/;
+    DMA_TVSPI_TX->CMAR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->CNDTR);
+    DMA_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
 #endif
   }
 }
@@ -114,15 +115,15 @@ static ALWAYS_INLINE void setTimer(unsigned int mSec) {
 }
 
 bool tvIsVideo() {
-  return (line>=5 && line<=309) || (line>=317 && line<=622);
+  return (tvCurrentLine>=5 && tvCurrentLine<=309) || (tvCurrentLine>=317 && tvCurrentLine<=622);
 }
 
 bool tvIsSync1Long() {
-  return (line<=2) || (line==313) || (line==314);
+  return (tvCurrentLine<=2) || (tvCurrentLine==313) || (tvCurrentLine==314);
 }
 
 bool tvIsSync2Long() {
-  return (line<=1) || ((line>=312) && (line<=314));
+  return (tvCurrentLine<=1) || ((tvCurrentLine>=312) && (tvCurrentLine<=314));
 }
 
 void TVTIMER_IRQHandler() {
@@ -154,7 +155,7 @@ void TVTIMER_IRQHandler() {
     break;
   case TVS_VID_START:
     setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
-    if (line>PAL_VBLANK) {
+    if (tvCurrentLine>PAL_VBLANK) {
       tv_start_line_video();
     }
     tvState = TVS_VID_BACKPORCH;
@@ -186,7 +187,7 @@ void TVTIMER_IRQHandler() {
   }
 
   if (tvState == TVS_SYNC1_START) {
-    if (line++ > 624) line=0; // count lines
+    if (tvCurrentLine++ > 624) tvCurrentLine=0; // count lines
   }
   jshInterruptOn();
 }
@@ -204,7 +205,7 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
   JsVar *ab = jsvGetArrayBufferBackingString(buffer);
   jsvUnLock(buffer);
-  screenPtr = (char*)(ab+1);
+  tvPixelPtr = (char*)(ab+1);
   jsvUnLock(ab);
   // init SPI
   JshSPIInfo inf;
@@ -229,23 +230,30 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   DMA_StructInit(&DMA_InitStructure);
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&(TVSPI->DR));
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte; // DMA_PeripheralDataSize_HalfWord and 16 bit?
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-  DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;
 #ifdef STM32F4
-  DMA_InitStructure.DMA_Memory0BaseAddr = (u32)screenPtr;
+  DMA_InitStructure.DMA_Channel = DMA_Channel_TVSPI_TX; // needed for SPI TX
+  DMA_InitStructure.DMA_Memory0BaseAddr = (u32)tvPixelPtr;
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+  DMA_InitStructure.DMA_MemoryBurst =DMA_MemoryBurst_Single;
+  DMA_InitStructure.DMA_PeripheralBurst =DMA_PeripheralBurst_Single;
 #else
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)screenPtr;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)tvPixelPtr;
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 #endif
   DMA_InitStructure.DMA_BufferSize = tvWidth>>3/*bytes*/;
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-  DMA_DeInit(DMA_Channel_TVSPI_TX);
-  DMA_Init(DMA_Channel_TVSPI_TX, &DMA_InitStructure);
-  DMA_Cmd(DMA_Channel_TVSPI_TX, ENABLE);
+
+  DMA_DeInit(DMA_TVSPI_TX);
+  DMA_Init(DMA_TVSPI_TX, &DMA_InitStructure);
   SPI_I2S_DMACmd(TVSPI, SPI_I2S_DMAReq_Tx, ENABLE);
+  DMA_Cmd(DMA_TVSPI_TX, ENABLE);
+
 
 
   /*Timer configuration------------------------------------------------*/

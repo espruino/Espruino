@@ -82,4 +82,5 @@ JsVar *jswrap_tv_setup(JsVar *options) {
 
   jsExceptionHere(JSET_ERROR, "Unknown TV output type %q", tvType);
   jsvUnLock(tvType);
+  return 0;
 }
