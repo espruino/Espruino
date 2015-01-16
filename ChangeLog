@@ -39,6 +39,7 @@
             Fix I2C/SPI on F401/F411-based boards (fix #470, fix #473)
             Improved ArrayBuffer write performance
             Massively improved ArrayBuffer Graphics fill performance for bpp<8
+            Fix issues with floating point on devices with <1024 vars (using 12 byte JsVar)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

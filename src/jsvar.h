@@ -91,7 +91,7 @@ typedef struct {
    */
   JsVarRef lastChild;
 
-#else // not JSVARREF_PACKED_BITS
+#else // JSVARREF_PACKED_BITS
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   unsigned char nextSibling;
   unsigned char prevSibling;
@@ -99,7 +99,7 @@ typedef struct {
   unsigned char firstChild;
   unsigned char lastChild;
 
-  unsigned char pack; // extra packed bits
+  unsigned char pack; // extra packed bits if JSVARREF_PACKED_BITS
 #endif
 } PACKED_FLAGS JsVarDataRef;
 
@@ -146,9 +146,10 @@ typedef struct {
  * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
  * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
  * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           | nextPtr  | -           |
+ * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |
  * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
  *
+ * For DOUBLE on 12 byte JsVar systems, the ref count it stored in 'lastChild' instead.
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
@@ -181,7 +182,21 @@ void jsvSetNextSibling(JsVar *v, JsVarRef r);
 void jsvSetPrevSibling(JsVar *v, JsVarRef r);
 #endif
 
+#if JSVARREF_SIZE==1
+// For 12 byte JsVars we have a problem as doubles will overwrite the ref count - so in this case we must use 'lastChild' instead
+static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) {
+  return (JsVarRefCounter)(((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)?v->varData.ref.lastChild:v->varData.ref.refs);
+}
+static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) {
+  if ((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)
+    v->varData.ref.lastChild = refs;
+  else
+    v->varData.ref.refs = refs;
+}
+#else
 static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
+static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }
+#endif
 static ALWAYS_INLINE unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 // For debugging/testing ONLY - maximum # of vars we are allowed to use

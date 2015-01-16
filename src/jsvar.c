@@ -265,7 +265,7 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
   // and the rest...
   jsvSetNextSibling(v, 0);
   jsvSetPrevSibling(v, 0);
-  v->varData.ref.refs = 0;
+  jsvSetRefs(v, 0);
   jsvSetFirstChild(v, 0);
   jsvSetLastChild(v, 0);
   // set flags
@@ -377,8 +377,13 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
         jsvUnLock(child);
       }
     } else {
+#if JSVARREF_SIZE==1
+      assert(jsvIsFloat(var) || !jsvGetFirstChild(var));
+      assert(jsvIsFloat(var) || !jsvGetLastChild(var));
+#else
       assert(!jsvGetFirstChild(var));
       assert(!jsvGetLastChild(var));
+#endif
       if (jsvIsName(var)) {
         assert(jsvGetNextSibling(var)==jsvGetPrevSibling(var)); // the case for jsvIsNewChild
         if (jsvGetNextSibling(var)) {
@@ -462,16 +467,16 @@ ALWAYS_INLINE void jsvUnLock(JsVar *var) {
 
 
 /// Reference - set this variable as used by something
-JsVar *jsvRef(JsVar *v) {
-  assert(v && jsvHasRef(v));
-  v->varData.ref.refs++;
-  return v;
+JsVar *jsvRef(JsVar *var) {
+  assert(var && jsvHasRef(var));
+  jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)+1));
+  return var;
 }
 
 /// Unreference - set this variable as not used by anything
 void jsvUnRef(JsVar *var) {
   assert(var && jsvGetRefs(var)>0 && jsvHasRef(var));
-  var->varData.ref.refs--;
+  jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)-1));
   // locks are never 0 here, so why bother checking!
   assert(jsvGetLocks(var)>0);
 }
