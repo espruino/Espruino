@@ -1497,6 +1497,27 @@ JsVar *jsvArrayBufferGetFromName(JsVar *name) {
   return value;
 }
 
+
+JsVar *jsvGetFunctionArgumentLength(JsVar *functionScope) {
+  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
+  if (!args) return 0; // out of memory
+
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, functionScope);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *idx = jsvObjectIteratorGetKey(&it);
+    if (jsvIsFunctionParameter(idx)) {
+      JsVar *val = jsvSkipOneName(idx);
+      jsvArrayPushAndUnLock(args, val);
+    }
+    jsvUnLock(idx);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+
+  return args;
+}
+
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
  * return 0. */

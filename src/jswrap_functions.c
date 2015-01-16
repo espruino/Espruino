@@ -37,24 +37,9 @@ JsVar *jswrap_arguments() {
     return 0;
   }
 
-  JsVar *args = jsvNewWithFlags(JSV_ARRAY);
-  if (!args) return 0; // out of memory
-
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, scope);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *idx = jsvObjectIteratorGetKey(&it);
-    if (jsvIsFunctionParameter(idx)) {
-      JsVar *val = jsvSkipOneName(idx);
-      jsvArrayPushAndUnLock(args, val);
-    }
-    jsvUnLock(idx);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
-
-  return args;
+  return jsvGetFunctionArgumentLength(scope);
 }
+
 
 
 /*JSON{
