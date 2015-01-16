@@ -527,6 +527,8 @@ ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
 endif
 
+ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
+
 ifdef USE_FILESYSTEM
 DEFINES += -DUSE_FILESYSTEM
 INCLUDE += -I$(ROOT)/libs/filesystem
@@ -696,10 +698,6 @@ SOURCES += \
 libs/trigger/trigger.c
 endif
 
-ifdef USB
-DEFINES += -DUSB
-endif
-
 ifdef USE_HASHLIB
 INCLUDE += -I$(ROOT)/libs/hashlib
 WRAPPERSOURCES += \
@@ -712,6 +710,12 @@ ifdef USE_WIRINGPI
 DEFINES += -DUSE_WIRINGPI
 LIBS += -lwiringPi
 INCLUDE += -I/usr/local/include -L/usr/local/lib 
+endif
+
+endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
+
+ifdef USB
+DEFINES += -DUSB
 endif
 
 ifeq ($(FAMILY), STM32F1)
