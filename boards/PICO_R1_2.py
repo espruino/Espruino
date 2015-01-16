@@ -47,12 +47,11 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'top' : [ 'GND', '5V', 'VDD', 'B3', 'B4', 'B5', 'B6', 'B7','A8'],
-  'bottom' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5' ], 
+  'top' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A6', 'A5' ], 
+  'bottom' : [ 'GND', '5V', 'VDD', 'B3', 'B4', 'B5', 'B6', 'B7','A8'],
 
-
-  'bottom2' : ['5V','VDD','GND'],
-  'right' : ['B8','B9','A10','A0','A1','A2','A3','A4'],        
+  'top2' : ['5V','VDD','GND'],
+  'right' : ['A4', 'A3', 'A2', 'A1', 'A0', 'A10', 'B9', 'B8'],
 };
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
@@ -97,8 +96,8 @@ board_css = """
   top: 60px;
   left: 540px;
 }
-#bottom2  {
-  bottom: 80px;
+#top2  {
+  top: 80px;
   right: 50px;
 }
 
@@ -106,7 +105,7 @@ board_css = """
 .bottompin { width: 32px; }
 
 .rightpin { height: 17px; }
-.bottom2pin { width: 14px; }
+.top2pin { width: 14px; }
 
 """;
 
