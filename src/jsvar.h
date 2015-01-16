@@ -448,8 +448,8 @@ void jsvArrayBufferSet(JsVar *arrayBuffer, size_t index, JsVar *value);
 /** Given an integer name that points to an arraybuffer or an arraybufferview, evaluate it and return the result */
 JsVar *jsvArrayBufferGetFromName(JsVar *name);
 
-/** Get the number of arguments for a given function */
-JsVar *jsvGetFunctionArgumentLength(JsVar *scope);
+/** Return an array containing the arguments of the given function */
+JsVar *jsvGetFunctionArgumentLength(JsVar *function);
 
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY

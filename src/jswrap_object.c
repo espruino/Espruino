@@ -54,16 +54,18 @@ This is the built-in class for Functions
 Find the length of the object
 */
 JsVar *jswrap_object_length(JsVar *parent) {
+  JsVarInt l;
   if (jsvIsArray(parent)) {
-    return jsvNewFromInteger(jsvGetArrayLength(parent));
+    l = jsvGetArrayLength(parent);
   } else if (jsvIsArrayBuffer(parent)) {
-    return jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
+    l = (JsVarInt)jsvGetArrayBufferLength(parent);
   } else if (jsvIsString(parent)) {
-    return jsvNewFromInteger((JsVarInt)jsvGetStringLength(parent));
+    l = (JsVarInt)jsvGetStringLength(parent);
   } else if (jsvIsFunction(parent)) {
-    return jswrap_object_length(jsvGetFunctionArgumentLength(parent));
-  }
-  return 0;
+    l = jsvGetArrayLength(jsvGetFunctionArgumentLength(parent));
+  } else
+    return 0;
+  return jsvNewFromInteger(l);
 }
 
 /*JSON{

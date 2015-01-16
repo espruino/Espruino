@@ -2097,6 +2097,7 @@ JsVar *jsvGetFirstName(JsVar *v) {
 }
 
 JsVarInt jsvGetArrayLength(const JsVar *arr) {
+  if (!arr) return 0;
   return arr->varData.integer;
 }
 
