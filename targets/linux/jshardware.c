@@ -536,7 +536,7 @@ int jshPinAnalogFast(Pin pin) {
   return 0;
 }
 
-void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
 #ifdef USE_WIRINGPI
   // todo pwmSetRange and pwmSetClock for freq?
   int v = (int)(value*1024);
@@ -545,6 +545,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   jshPinSetState(pin, JSHPINSTATE_AF_OUT);
   pwmWrite(pin, (int)(value*1024));
 #endif
+  return 0;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {

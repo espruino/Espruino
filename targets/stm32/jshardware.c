@@ -1704,7 +1704,7 @@ JsVarFloat jshReadVRef() {
 #endif
 }
 
-void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
   JshPinFunction func = 0;
@@ -1728,7 +1728,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
 #endif
-    return;
+    return 0;
   }
 
   if (JSH_PINFUNCTION_IS_DAC(func)) {
@@ -1764,11 +1764,11 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
     } else
 #endif
       jsExceptionHere(JSET_INTERNALERROR, "Unknown DAC");
-    return;
+    return func;
   }
 
   TIM_TypeDef* TIMx = (TIM_TypeDef*)setDeviceClockCmd(func, ENABLE);
-  if (!TIMx) return;
+  if (!TIMx) return 0;
 
   /* Time base configuration */
   TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
@@ -1826,6 +1826,7 @@ void jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq
   TIM_CtrlPWMOutputs(TIMx, ENABLE);
   // Set the pin to output this special function
   jshPinSetFunction(pin, func);
+  return func;
 }
 
 bool jshCanWatch(Pin pin) {
