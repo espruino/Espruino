@@ -19,6 +19,7 @@
 # PICO_1V1=1              # Espruino Pico board rev 1.1
 # PICO_1V2=1              # Espruino Pico board rev 1.2
 # OLIMEXINO_STM32=1       # Olimexino STM32
+# MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
 # MAPLEMINI=1             # Leaflabs Maple Mini
 # EMBEDDED_PI=1           # COOCOX STM32 Embedded Pi boards
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
@@ -161,6 +162,14 @@ BOARD=OLIMEXINO_STM32
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef MAPLERET6_STM32
+EMBEDDED=1
+USE_FILESYSTEM=0
+SAVE_ON_FLASH=0
+BOARD=MAPLERET6_STM32
+STLIB=STM32F10X_XL
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
 else ifdef MAPLEMINI
 EMBEDDED=1
 SAVE_ON_FLASH=1
