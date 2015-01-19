@@ -37,12 +37,12 @@ unsigned short ticksPerLine = 0; // timer ticks
 #define PAL_FRONTPORCH 8
 #define PAL_BACKPORCH 7
 
-
 // See STM32 reference on DMA for the mappings to SPI1_TX
 #ifdef STM32F4
 #define TVSPIDEVICE            EV_SPI1
 #define TVSPI                  SPI1
 #define DMA_TVSPI_TX   DMA2_Stream3
+#define DMA_TVSPI_FLAG_TCIF DMA_FLAG_TCIF3
 #define DMA_Channel_TVSPI_TX DMA_Channel_3
 #define RCC_AHB1Periph_TVDMA   RCC_AHB1Periph_DMA2
 
@@ -85,10 +85,10 @@ ALWAYS_INLINE void tv_start_line_video() {
     lineIdx = lineIdx*tvHeight/270;
     jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
 #ifdef STM32F4
-    DMA_TVSPI_TX->CR &= ~DMA_SxCR_EN; // disable
+    DMA_ClearFlag(DMA_TVSPI_TX, DMA_TVSPI_FLAG_TCIF);
     DMA_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
     DMA_TVSPI_TX->M0AR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->NDTR);
-    DMA_TVSPI_TX->CR |= DMA_SxCR_EN; // enable
+    DMA_Cmd(DMA_TVSPI_TX, ENABLE);
 #else
     DMA_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
     DMA_TVSPI_TX->CNDTR = tvWidth>>3/*bytes*/;
@@ -200,6 +200,10 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   tvHeight = (unsigned short)height;
   tvPinVideo = pinVideo;
   tvPinSync = pinSync;
+
+  JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 0.5, 15625);
+  if (!timer) return 0; // couldn't set up the timer
+
   JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
   if (!gfx) return 0;
   JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
@@ -210,7 +214,8 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   // init SPI
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate =  tvWidth * 1000000 / 52;
+  inf.baudRate =  tvWidth * 1000000 / 52; // 52uS of picture
+  inf.baudRateSpec = SPIB_MINIMUM; // we don't want SPI to be any slower than this
   inf.spiMSB = false;
   inf.pinMOSI = tvPinVideo;
   jshPinOutput(tvPinSync, 0); // setup output state
@@ -251,8 +256,9 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
 
   DMA_DeInit(DMA_TVSPI_TX);
   DMA_Init(DMA_TVSPI_TX, &DMA_InitStructure);
-  SPI_I2S_DMACmd(TVSPI, SPI_I2S_DMAReq_Tx, ENABLE);
   DMA_Cmd(DMA_TVSPI_TX, ENABLE);
+  SPI_I2S_DMACmd(TVSPI, SPI_I2S_DMAReq_Tx, ENABLE);
+
 
 
 

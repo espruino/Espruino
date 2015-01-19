@@ -2144,6 +2144,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   for (i=0;i<sizeof(baudRatesDivisors)/sizeof(unsigned int);i++) {
     //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
     unsigned int rate = spiFreq / baudRatesDivisors[i];
+    if (inf->baudRateSpec==SPIB_MAXIMUM && rate > inf->baudRate) continue;
+    if (inf->baudRateSpec==SPIB_MINIMUM && rate < inf->baudRate) continue;
+
     //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
     int rateDiff = inf->baudRate - (int)rate;
     if (rateDiff<0) rateDiff *= -1;
