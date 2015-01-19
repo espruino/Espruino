@@ -85,9 +85,9 @@ ALWAYS_INLINE void tv_start_line_video() {
     lineIdx = lineIdx*tvHeight/270;
     jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
 #ifdef STM32F4
-    DMA_ClearFlag(DMA_TVSPI_TX, DMA_TVSPI_FLAG_TCIF);
     DMA_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
     DMA_TVSPI_TX->M0AR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->NDTR);
+    DMA_ClearFlag(DMA_TVSPI_TX, DMA_TVSPI_FLAG_TCIF);
     DMA_Cmd(DMA_TVSPI_TX, ENABLE);
 #else
     DMA_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
