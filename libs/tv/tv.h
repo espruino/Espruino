@@ -13,3 +13,4 @@
  */
 
 JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height);
+JsVar *tv_setup_vga(Pin pinVideo, Pin pinSync, Pin pinSyncV, int width, int height);

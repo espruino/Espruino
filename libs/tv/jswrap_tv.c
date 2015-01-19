@@ -49,10 +49,23 @@ This initialises the TV output. Options for PAL are as follows:
 
 ```
 var g = require('tv').setup({ type : "pal",
-  video : A7, // Pin - SPI MOSI Pin for Video output
-  sync : A6, // Pin - Timer output pin to use for video sync
+  video : A7, // Pin - SPI MOSI Pin for Video output (MUST BE SPI1)
+  sync : A6, // Pin - Timer pin to use for video sync
   width : 384,
   height : 270, // max 270
+});
+```
+
+and for VGA:
+
+
+```
+var g = require('tv').setup({ type : "vga",
+  video : A7, // Pin - SPI MOSI Pin for Video output (MUST BE SPI1)
+  hsync : A6, // Pin - Timer pin to use for video sync
+  vsync : A5, // Pin - pin to use for video sync
+  width : 220,
+  height : 480,
 });
 ```
 */
@@ -76,6 +89,22 @@ JsVar *jswrap_tv_setup(JsVar *options) {
     };
     if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
       return tv_setup_pal(pinVideo, pinSync, width, height);
+    }
+    return 0;
+  } else if (jsvIsStringEqual(tvType, "vga")) {
+    jsvUnLock(tvType);
+    Pin pinVideo, pinSync, pinSyncV;
+    int width,height;
+    jsvConfigObject configs[] = {
+        {"type", 0, 0},
+        {"video", JSV_PIN, &pinVideo},
+        {"hsync", JSV_PIN, &pinSync},
+        {"vsync", JSV_PIN, &pinSyncV},
+        {"width", JSV_INTEGER, &width},
+        {"height", JSV_INTEGER, &height},
+    };
+    if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+      return tv_setup_vga(pinVideo, pinSync, pinSyncV, width, height);
     }
     return 0;
   }

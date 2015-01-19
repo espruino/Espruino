@@ -41,6 +41,7 @@
             Massively improved ArrayBuffer Graphics fill performance for bpp<8
             Fix issues with floating point on devices with <1024 vars (using 12 byte JsVar)
             Add ability to change I2C bit rate from I2C.setup
+            Added VGA TV output
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

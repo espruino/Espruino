@@ -21,7 +21,7 @@
 // http://martin.hinner.info/vga/pal.html
 
 unsigned short tvWidth, tvHeight; // width and height of buffer
-Pin tvPinVideo, tvPinSync;
+Pin tvPinVideo, tvPinSync, tvPinSyncV;
 const char *tvPixelPtr = (const char *)0;
 int tvCurrentLine = 0;
 unsigned short ticksPerLine = 0; // timer ticks
@@ -62,163 +62,31 @@ unsigned short ticksPerLine = 0; // timer ticks
 #define TVTIMER_IRQn TIM6_IRQn
 #endif
 
+unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx);
 
+void nullFunc() {};
+void (*tvTimerFunc)();
 
-
-
-static ALWAYS_INLINE void sync_start() {
-  jshPinSetValue(tvPinSync, 0);
-}
-
-static ALWAYS_INLINE void sync_end() {
-  jshPinSetValue(tvPinSync, 1);
-}
-
-ALWAYS_INLINE void tv_start_line_video() {
-  int lineIdx;
-  if (tvCurrentLine <= 313) {
-    lineIdx = (tvCurrentLine-(5+PAL_VBLANK)) ;
-  } else {
-    lineIdx = (tvCurrentLine-(317+PAL_VBLANK));
-  }
-  if (lineIdx>=0 && lineIdx<270) {
-    lineIdx = lineIdx*tvHeight/270;
-    jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
-#ifdef STM32F4
-    DMA_TVSPI_TX->NDTR = tvWidth>>3/*bytes*/;
-    DMA_TVSPI_TX->M0AR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->NDTR);
-    DMA_ClearFlag(DMA_TVSPI_TX, DMA_TVSPI_FLAG_TCIF);
-    DMA_Cmd(DMA_TVSPI_TX, ENABLE);
-#else
-    DMA_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
-    DMA_TVSPI_TX->CNDTR = tvWidth>>3/*bytes*/;
-    DMA_TVSPI_TX->CMAR = (uint32_t)(tvPixelPtr + ((uint32_t)lineIdx)*DMA_TVSPI_TX->CNDTR);
-    DMA_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
-#endif
-  }
-}
-
-
-typedef enum {
-  TVS_SYNC1_START,
-  TVS_SYNC1_END,
-  TVS_VID_START,  // output white
-  TVS_VID_VIDEO, // actual start of video
-  TVS_VID_BACKPORCH, // back porch
-  TVS_SYNC2_START,
-  TVS_SYNC2_END,
-} TvState;
-TvState tvState = TVS_SYNC1_START;
-
-static ALWAYS_INLINE void setTimer(unsigned int mSec) {
-  TVTIMER->ARR = (uint16_t)(ticksPerLine * mSec / 64);
-}
-
-bool tvIsVideo() {
-  return (tvCurrentLine>=5 && tvCurrentLine<=309) || (tvCurrentLine>=317 && tvCurrentLine<=622);
-}
-
-bool tvIsSync1Long() {
-  return (tvCurrentLine<=2) || (tvCurrentLine==313) || (tvCurrentLine==314);
-}
-
-bool tvIsSync2Long() {
-  return (tvCurrentLine<=1) || ((tvCurrentLine>=312) && (tvCurrentLine<=314));
+static ALWAYS_INLINE void setTVTimerIRQ(void (*f)()) {
+  tvTimerFunc = f;
 }
 
 void TVTIMER_IRQHandler() {
   jshInterruptOff();
   TIM_ClearITPendingBit(TVTIMER, TIM_IT_Update);
-  switch (tvState) {
-  case TVS_SYNC1_START:
-    if (tvIsVideo() || !tvIsSync1Long()) {
-      setTimer(PAL_PULSE_SHORT_ON);
-    } else {
-      setTimer(PAL_PULSE_LONG_ON);
-    }
-    sync_start();
-    tvState = TVS_SYNC1_END;
-    break;
-  case TVS_SYNC1_END:
-    if (tvIsVideo()) {
-      setTimer(PAL_FRONTPORCH);
-      tvState = TVS_VID_START;
-    } else {
-      if (tvIsSync1Long()) {
-        setTimer(PAL_PULSE_LONG_OFF);
-      } else { // short
-        setTimer(PAL_PULSE_SHORT_OFF);
-      }
-      tvState = TVS_SYNC2_START;
-    }
-    sync_end();
-    break;
-  case TVS_VID_START:
-    setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
-    if (tvCurrentLine>PAL_VBLANK) {
-      tv_start_line_video();
-    }
-    tvState = TVS_VID_BACKPORCH;
-    break;
-  case TVS_VID_BACKPORCH:
-    setTimer(PAL_BACKPORCH);
-    jshPinSetState(tvPinVideo, JSHPINSTATE_GPIO_OUT);
-    tvState = TVS_SYNC1_START;
-    break;
-  case TVS_SYNC2_START:
-    if (tvIsSync2Long()) {
-      setTimer(PAL_PULSE_LONG_ON);
-    } else { // short
-      setTimer(PAL_PULSE_SHORT_ON);
-    }
-    sync_start();
-    tvState = TVS_SYNC2_END;
-    break;
-  case TVS_SYNC2_END:
-  default:
-    if (tvIsSync1Long()) {
-      setTimer(PAL_PULSE_LONG_OFF);
-    } else { // short
-      setTimer(PAL_PULSE_SHORT_OFF);
-    }
-    sync_end();
-    tvState = TVS_SYNC1_START;
-    break;
-  }
-
-  if (tvState == TVS_SYNC1_START) {
-    if (tvCurrentLine++ > 624) tvCurrentLine=0; // count lines
-  }
+  tvTimerFunc();
   jshInterruptOn();
 }
 
-unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx);
 
-
-JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
-  tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
-  tvHeight = (unsigned short)height;
-  tvPinVideo = pinVideo;
-  tvPinSync = pinSync;
-
-  JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 0.5, 15625);
-  if (!timer) return 0; // couldn't set up the timer
-
-  JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
-  if (!gfx) return 0;
-  JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
-  JsVar *ab = jsvGetArrayBufferBackingString(buffer);
-  jsvUnLock(buffer);
-  tvPixelPtr = (char*)(ab+1);
-  jsvUnLock(ab);
+void dma_setup(int bitRate) {
   // init SPI
   JshSPIInfo inf;
   jshSPIInitInfo(&inf);
-  inf.baudRate =  tvWidth * 1000000 / 52; // 52uS of picture
+  inf.baudRate =  bitRate;
   inf.baudRateSpec = SPIB_MINIMUM; // we don't want SPI to be any slower than this
   inf.spiMSB = false;
   inf.pinMOSI = tvPinVideo;
-  jshPinOutput(tvPinSync, 0); // setup output state
   jshPinSetValue(tvPinVideo, 0); // set default video output state
   jshSPISetup(TVSPIDEVICE, &inf);
   // disable IRQs - because jsHardware enabled them
@@ -256,11 +124,168 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
 
   DMA_DeInit(DMA_TVSPI_TX);
   DMA_Init(DMA_TVSPI_TX, &DMA_InitStructure);
-  DMA_Cmd(DMA_TVSPI_TX, ENABLE);
   SPI_I2S_DMACmd(TVSPI, SPI_I2S_DMAReq_Tx, ENABLE);
+}
+
+void dma_start(uint32_t addr, uint32_t count) {
+#ifdef STM32F4
+    DMA_TVSPI_TX->NDTR = count;
+    DMA_TVSPI_TX->M0AR = addr;
+    DMA_ClearFlag(DMA_TVSPI_TX, DMA_TVSPI_FLAG_TCIF);
+    DMA_Cmd(DMA_TVSPI_TX, ENABLE);
+#else
+    DMA_TVSPI_TX->CCR &= ~DMA_CCR5_EN; // disable
+    DMA_TVSPI_TX->CNDTR = count;
+    DMA_TVSPI_TX->CMAR = addr;
+    DMA_TVSPI_TX->CCR |= DMA_CCR5_EN; // enable
+#endif
+}
 
 
 
+static ALWAYS_INLINE void sync_start() {
+  jshPinSetValue(tvPinSync, 0);
+}
+
+static ALWAYS_INLINE void sync_end() {
+  jshPinSetValue(tvPinSync, 1);
+}
+
+ALWAYS_INLINE void tv_start_line_video() {
+  uint32_t lineIdx;
+  if (tvCurrentLine <= 313) {
+    lineIdx = ((uint32_t)tvCurrentLine-(5+PAL_VBLANK)) ;
+  } else {
+    lineIdx = ((uint32_t)tvCurrentLine-(317+PAL_VBLANK));
+  }
+  if (lineIdx<270) {
+    lineIdx = lineIdx*tvHeight/270;
+    jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // re-enable output for SPI
+    uint32_t lsize = tvWidth>>3/*bytes*/;
+    dma_start((uint32_t)tvPixelPtr + lineIdx*lsize, lsize);
+  }
+}
+
+static ALWAYS_INLINE void setTimer(unsigned int mSec) {
+  TVTIMER->ARR = (uint16_t)(ticksPerLine * mSec / 64);
+}
+
+bool tvIsVideo() {
+  return (tvCurrentLine>=5 && tvCurrentLine<=309) || (tvCurrentLine>=317 && tvCurrentLine<=622);
+}
+
+bool tvIsSync1Long() {
+  return (tvCurrentLine<=2) || (tvCurrentLine==313) || (tvCurrentLine==314);
+}
+
+bool tvIsSync2Long() {
+  return (tvCurrentLine<=1) || ((tvCurrentLine>=312) && (tvCurrentLine<=314));
+}
+
+void tv_pal_irq_sync1_start();
+void tv_pal_irq_sync1_end();
+void tv_pal_irq_vid_start();
+void tv_pal_irq_vid_backporch();
+void tv_pal_irq_sync2_start();
+void tv_pal_irq_sync2_end();
+
+void tv_pal_irq_sync1_start() {
+  if (tvCurrentLine++ > 624) tvCurrentLine=0; // count lines
+
+  if (tvIsVideo() || !tvIsSync1Long()) {
+    setTimer(PAL_PULSE_SHORT_ON);
+  } else {
+    setTimer(PAL_PULSE_LONG_ON);
+  }
+  sync_start();
+  setTVTimerIRQ(tv_pal_irq_sync1_end);
+}
+
+void tv_pal_irq_sync1_end() {
+  if (tvIsVideo()) {
+    setTimer(PAL_FRONTPORCH);
+    setTVTimerIRQ(tv_pal_irq_vid_start);
+  } else {
+    if (tvIsSync1Long()) {
+      setTimer(PAL_PULSE_LONG_OFF);
+    } else { // short
+      setTimer(PAL_PULSE_SHORT_OFF);
+    }
+    setTVTimerIRQ(tv_pal_irq_sync2_start);
+  }
+  sync_end();
+}
+
+void tv_pal_irq_vid_start() {
+  setTimer(PAL_LINE-(PAL_PULSE_SHORT_ON+PAL_FRONTPORCH+PAL_BACKPORCH));
+  if (tvCurrentLine>PAL_VBLANK) {
+    tv_start_line_video();
+  }
+  setTVTimerIRQ(tv_pal_irq_vid_backporch);
+}
+
+void tv_pal_irq_vid_backporch() {
+  setTimer(PAL_BACKPORCH);
+  jshPinSetState(tvPinVideo, JSHPINSTATE_GPIO_OUT);
+  setTVTimerIRQ(tv_pal_irq_sync1_start);
+}
+
+void tv_pal_irq_sync2_start() {
+  if (tvIsSync2Long()) {
+    setTimer(PAL_PULSE_LONG_ON);
+  } else { // short
+    setTimer(PAL_PULSE_SHORT_ON);
+  }
+  sync_start();
+  setTVTimerIRQ(tv_pal_irq_sync2_end);
+}
+
+void tv_pal_irq_sync2_end() {
+  if (tvIsSync1Long()) {
+    setTimer(PAL_PULSE_LONG_OFF);
+  } else { // short
+    setTimer(PAL_PULSE_SHORT_OFF);
+  }
+  sync_end();
+  setTVTimerIRQ(tv_pal_irq_sync1_start);
+}
+
+
+void tv_vga_irq() {
+  jshPinSetValue(tvPinSync, 0);
+  jshPinSetValue(tvPinSyncV, tvCurrentLine>=2); // 2 lines of sync
+  jshDelayMicroseconds(1);
+  jshPinSetValue(tvPinSync, 1);
+  jshDelayMicroseconds(1);
+
+  uint32_t lineIdx = (uint32_t)tvCurrentLine - 20; // 20px = front porch
+  if (lineIdx < tvHeight) {
+    uint32_t lsize = tvWidth>>3/*bytes*/;
+    dma_start((uint32_t)tvPixelPtr + lineIdx*lsize, lsize);
+  }
+
+  if (tvCurrentLine++ > tvHeight+40) tvCurrentLine=0; // count lines
+}
+
+
+JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
+  tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
+  tvHeight = (unsigned short)height;
+  tvPinVideo = pinVideo;
+  tvPinSync = pinSync;
+  tvPinSyncV = 0;
+
+  jshPinOutput(tvPinSync, 0); // setup output state
+
+  JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
+  if (!gfx) return 0;
+  JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
+  JsVar *ab = jsvGetArrayBufferBackingString(buffer);
+  jsvUnLock(buffer);
+  tvPixelPtr = (char*)(ab+1);
+  jsvUnLock(ab);
+
+  dma_setup(tvWidth * 1000000 / 52); // 52uS of picture
 
   /*Timer configuration------------------------------------------------*/
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TVTIMER, ENABLE);
@@ -278,6 +303,7 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   nvicStructure.NVIC_IRQChannelSubPriority = 0;
   nvicStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&nvicStructure);
+  setTVTimerIRQ(tv_pal_irq_sync1_start);
 
   //TIM_ARRPreloadConfig(TVTIMER, DISABLE);
   TIM_ITConfig(TVTIMER, TIM_IT_Update, ENABLE);
@@ -285,3 +311,54 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
 
   return gfx;
 }
+
+JsVar *tv_setup_vga(Pin pinVideo, Pin pinSync, Pin pinSyncV, int width, int height) {
+  tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
+  tvHeight = (unsigned short)height;
+  tvPinVideo = pinVideo;
+  tvPinSync = pinSync;
+  tvPinSyncV = pinSyncV;
+
+  //JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 1-0.12 /* */, 31468);
+  //if (!timer) return 0; // couldn't set up the timer
+
+  jshPinOutput(tvPinSync, 1); // setup output state
+  jshPinOutput(tvPinSyncV, 1); // setup output state
+
+
+  JsVar *gfx = jswrap_graphics_createArrayBuffer(tvWidth,tvHeight,1,0);
+  if (!gfx) return 0;
+  JsVar *buffer = jsvObjectGetChild(gfx, "buffer", 0);
+  JsVar *ab = jsvGetArrayBufferBackingString(buffer);
+  jsvUnLock(buffer);
+  tvPixelPtr = (char*)(ab+1);
+  jsvUnLock(ab);
+
+  dma_setup(tvWidth * 1000000 / 25); // 25uS of picture
+  jshPinSetState(tvPinVideo, JSHPINSTATE_AF_OUT); // enable output for SPI
+
+  /*Timer configuration------------------------------------------------*/
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TVTIMER, ENABLE);
+
+  TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStruct;
+  TIM_TimeBaseStructInit(&TIM_TimeBaseInitStruct);
+  ticksPerLine = (unsigned short)(jshGetTimerFreq(TVTIMER) / 31468);
+  TIM_TimeBaseInitStruct.TIM_Prescaler = 0;
+  TIM_TimeBaseInitStruct.TIM_Period = (uint16_t)ticksPerLine;
+  TIM_TimeBaseInit(TVTIMER, &TIM_TimeBaseInitStruct);
+
+  NVIC_InitTypeDef nvicStructure;
+  nvicStructure.NVIC_IRQChannel = TVTIMER_IRQn;
+  nvicStructure.NVIC_IRQChannelPreemptionPriority = 0;
+  nvicStructure.NVIC_IRQChannelSubPriority = 0;
+  nvicStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&nvicStructure);
+  setTVTimerIRQ(tv_vga_irq);
+
+  //TIM_ARRPreloadConfig(TVTIMER, DISABLE);
+  TIM_ITConfig(TVTIMER, TIM_IT_Update, ENABLE);
+  TIM_Cmd(TVTIMER, ENABLE);  /* enable counter */
+
+  return gfx;
+}
+
