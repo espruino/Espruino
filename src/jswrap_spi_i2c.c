@@ -570,7 +570,7 @@ The third I2C port
   "name" : "setup",
   "generate" : "jswrap_i2c_setup",
   "params" : [
-    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker."]]
+    ["options","JsVar",["An optional structure containing extra information on initialising the I2C port","```{scl:pin, sda:pin, bitrate:100000}```","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `I2C` marker."]]
   ]
 }
 Set up this I2C port
@@ -585,6 +585,9 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   if (jsvIsObject(options)) {
     inf.pinSCL = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "scl", 0));
     inf.pinSDA = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sda", 0));
+    JsVar *v = jsvObjectGetChild(options, "bitrate", 0);
+    if (v)
+      inf.bitrate = jsvGetIntegerAndUnLock(v);
   }
   jshI2CSetup(device, &inf);
   // Set up options, so we can initialise it on startup

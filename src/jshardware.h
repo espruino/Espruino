@@ -203,13 +203,14 @@ typedef struct {
   Pin pinSCL;
   Pin pinSDA;
   char slaveAddr; // or -1 if it is master!
-  // speed? 100khz std
+  int bitrate;
   // timeout?
 } PACKED_FLAGS JshI2CInfo;
 static inline void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
   inf->slaveAddr = (char)-1; // master
+  inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
 }
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);

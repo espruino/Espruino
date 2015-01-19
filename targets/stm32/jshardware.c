@@ -2275,10 +2275,10 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 #if defined(STM32F3)
   I2C_InitStructure.I2C_AnalogFilter = I2C_AnalogFilter_Enable;
   I2C_InitStructure.I2C_DigitalFilter = 0x00;
-  I2C_InitStructure.I2C_Timing = 0x00902025;
+  I2C_InitStructure.I2C_Timing = 0x00902025; // FIXME - no user-specced timing for F0 or F3 parts
 #else
   I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-  I2C_InitStructure.I2C_ClockSpeed = 50000; // 50 kHz I2C speed
+  I2C_InitStructure.I2C_ClockSpeed = inf->bitrate; // 50 kHz I2C speed
 #endif
 
   I2C_Init(I2Cx, &I2C_InitStructure);
