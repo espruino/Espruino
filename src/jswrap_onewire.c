@@ -184,16 +184,21 @@ void jswrap_onewire_skip(JsVar *parent) {
   "name" : "write",
   "generate" : "jswrap_onewire_write",
   "params" : [
-    ["data","int32","A byte to write"],
+    ["data","JsVar","A byte (or array of bytes) to write"],
     ["power","bool","Whether to leave power on after write (default is false)"]
   ]
 }
-Write a byte
+Write one or more bytes
 */
-void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
+void _jswrap_onewire_write_cb(int data, Pin *pin) {
+  OneWireWrite(*pin, 8, (unsigned int)data);
+}
+
+void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return;
-  OneWireWrite(pin, 8, (unsigned int)data);
+
+  jsvIterateCallback(data, (void (*)(int,  void *))_jswrap_onewire_write_cb, (void*)&pin);
 
   if (!leavePowerOn) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
@@ -206,14 +211,28 @@ void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn) {
   "class" : "OneWire",
   "name" : "read",
   "generate" : "jswrap_onewire_read",
-  "return" : ["int","The byte that was read"]
+  "params" : [["count","int32","(optional) The amount of bytes to read"]],
+  "return" : ["JsVar","The byte that was read, or a Uint8Array if count was specified and >=0"]
 }
 Read a byte
 */
-JsVarInt jswrap_onewire_read(JsVar *parent) {
+JsVar *jswrap_onewire_read(JsVar *parent, int count) {
   Pin pin = onewire_getpin(parent);
   if (!jshIsPinValid(pin)) return -1;
-  return OneWireRead(pin, 8);
+  if (count>=0) {
+    JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, count);
+    if (!arr) return 0;
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, arr, 0);
+    while (count--) {
+      jsvArrayBufferIteratorSetByteValue(&it, (char)OneWireRead(pin, 8));
+      jsvArrayBufferIteratorNext(&it);
+    }
+    jsvArrayBufferIteratorFree(&it);
+    return arr;
+  } else {
+    return jsvNewFromInteger(OneWireRead(pin, 8));
+  }
 }
 
 

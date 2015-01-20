@@ -18,6 +18,6 @@ JsVar *jswrap_onewire_constructor(Pin pin);
 bool jswrap_onewire_reset(JsVar *parent);
 void jswrap_onewire_select(JsVar *parent, JsVar *rom);
 void jswrap_onewire_skip(JsVar *parent);
-void jswrap_onewire_write(JsVar *parent, int data, bool leavePowerOn);
-JsVarInt jswrap_onewire_read(JsVar *parent);
+void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn);
+JsVar *jswrap_onewire_read(JsVar *parent, int count);
 JsVar *jswrap_onewire_search(JsVar *parent, int command);
