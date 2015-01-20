@@ -28,6 +28,9 @@ JsVarFloat jswrap_espruino_interpolate2d(JsVar *array, int width, JsVarFloat x, 
 void jswrap_espruino_enableWatchdog(JsVarFloat time);
 JsVar *jswrap_espruino_getErrorFlags();
 JsVar *jswrap_espruino_toArrayBuffer(JsVar *str);
+JsVar *jswrap_espruino_toUint8Array(JsVar *args);
+JsVar *jswrap_espruino_toString(JsVar *args);
+
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
 int jswrap_espruino_getSizeOf(JsVar *v);

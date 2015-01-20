@@ -2150,8 +2150,8 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     if (rateDiff<0) rateDiff *= -1;
 
     // if this is outside what we want, make sure it's considered a bad choice
-    if (inf->baudRateSpec==SPIB_MAXIMUM && rate > inf->baudRate) rateDiff += 0x10000000;
-    if (inf->baudRateSpec==SPIB_MINIMUM && rate < inf->baudRate) rateDiff += 0x10000000;
+    if (inf->baudRateSpec==SPIB_MAXIMUM && rate > (unsigned int)inf->baudRate) rateDiff += 0x10000000;
+    if (inf->baudRateSpec==SPIB_MINIMUM && rate < (unsigned int)inf->baudRate) rateDiff += 0x10000000;
 
     //jsiConsolePrint(" diff "); jsiConsolePrintInt(rateDiff);
     if (rateDiff < bestDifference) {
@@ -2284,7 +2284,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   I2C_InitStructure.I2C_Timing = 0x00902025; // FIXME - no user-specced timing for F0 or F3 parts
 #else
   I2C_InitStructure.I2C_DutyCycle = I2C_DutyCycle_2;
-  I2C_InitStructure.I2C_ClockSpeed = inf->bitrate; // 50 kHz I2C speed
+  I2C_InitStructure.I2C_ClockSpeed = (uint32_t)inf->bitrate; // 50 kHz I2C speed
 #endif
 
   I2C_Init(I2Cx, &I2C_InitStructure);

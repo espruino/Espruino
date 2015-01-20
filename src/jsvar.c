@@ -19,7 +19,7 @@
 #include "jswrapper.h"
 #include "jswrap_math.h" // for jswrap_math_mod
 #include "jswrap_object.h" // for jswrap_object_toString
-
+#include "jswrap_arraybuffer.h" // for jsvNewTypedArray
 
 /** Basically, JsVars are stored in one big array, so save the need for
  * lots of memory allocation. On Linux, the arrays are in blocks, so that
@@ -2941,4 +2941,12 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs) 
   }
   jsvObjectIteratorFree(&it);
   return ok;
+}
+
+JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
+  JsVar *lenVar = jsvNewFromInteger(length);
+  if (!lenVar) return 0;
+  JsVar *array = jswrap_typedarray_constructor(type, lenVar,0,0);
+  jsvUnLock(lenVar);
+  return array;
 }

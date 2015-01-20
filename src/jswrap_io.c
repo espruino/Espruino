@@ -102,10 +102,7 @@ JsVar *jswrap_io_peek(JsVarInt addr, JsVarInt count, int wordSize) {
     if (wordSize==1) aType=ARRAYBUFFERVIEW_UINT8;
     if (wordSize==2) aType=ARRAYBUFFERVIEW_UINT16;
     if (wordSize==4) aType=ARRAYBUFFERVIEW_UINT32;
-    JsVar *aSize = jsvNewFromInteger(count);
-    if (!aSize) return 0;
-    JsVar *arr = jswrap_typedarray_constructor(aType, aSize, 0, 0);
-    jsvUnLock(aSize);
+    JsVar *arr = jsvNewTypedArray(aType, count);
     if (!arr) return 0;
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, arr, 0);

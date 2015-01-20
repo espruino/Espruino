@@ -585,4 +585,7 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
+// Create a new typed array of the given type and length
+JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
 #endif /* JSVAR_H_ */

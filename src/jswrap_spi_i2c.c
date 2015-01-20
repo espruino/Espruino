@@ -271,9 +271,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
       jsvAppendStringBuf(dst, (char*)&out, 1);
     }
   } else if (jsvIsIterable(srcdata)) {
-    JsVar *lenVar = jsvNewFromInteger(jsvGetLength(srcdata));
-    dst = jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8, lenVar,0,0);
-    jsvUnLock(lenVar);
+    dst = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, jsvGetLength(srcdata));
     if (!dst) return 0;
     JsvIterator it;
     JsvArrayBufferIterator dstit;
@@ -656,9 +654,10 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
     ["address","JsVar","The 7 bit address of the device to request bytes from, or an object of the form `{address:12, stop:false}` to send this data without a STOP signal."],
     ["quantity","int32","The number of bytes to request"]
   ],
-  "return" : ["JsVar","The data that was returned - an array of bytes"]
+  "return" : ["JsVar","The data that was returned - as a Uint8Array"],
+  "return_object" : "Uint8Array"
 }
-Request bytes from the given slave device, and return them as an array. This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP
+Request bytes from the given slave device, and return them as a Uint8Array (packed array of bytes). This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP
 */
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -677,14 +676,16 @@ JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
 
   jshI2CRead(device, (unsigned char)address, nBytes, buf, sendStop);
 
-  // OPT: could use ArrayBuffer for return values
-  JsVar *array = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *array = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, nBytes);
   if (array) {
-    int i;
-    for (i=0;i<nBytes;i++) {
-      JsVar *v = jsvNewFromInteger(buf[i]);
-      jsvArrayPushAndUnLock(array, v);
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, array, 0);
+    unsigned int i;
+    for (i=0;i<(unsigned)nBytes;i++) {
+      jsvArrayBufferIteratorSetByteValue(&it, (char)buf[i]);
+      jsvArrayBufferIteratorNext(&it);
     }
+    jsvArrayBufferIteratorFree(&it);
   }
   return array;
 }

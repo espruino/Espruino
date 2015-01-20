@@ -15,6 +15,7 @@
  */
 #include "jswrap_espruino.h"
 #include "jswrap_math.h"
+#include "jswrap_arraybuffer.h"
 #include "jswrapper.h"
 #include "jsinteractive.h"
 #include "jstimer.h"
@@ -607,6 +608,69 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   if (!jsvIsString(str)) return 0;
   return jsvNewArrayBufferFromString(str, 0);
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "toString",
+  "generate" : "jswrap_espruino_toString",
+  "params" : [
+    ["args","JsVarArray","The arguments to convert to a String"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "String"
+}
+This creates a string from the given arguments. If an argument is a String or an Array,
+each element is traversed and added as an 8 bit character. If it is anything else, it is
+converted to a character directly.
+*/
+void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
+  jsvStringIteratorAppend(it, (char)ch);
+}
+
+JsVar *jswrap_espruino_toString(JsVar *args) {
+  JsVar *str = jsvNewFromEmptyString();
+  if (!str) return 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, str, 0);
+  jsvIterateCallback(args, (void (*)(int,  void *))_jswrap_espruino_toString_char, &it);
+  jsvStringIteratorFree(&it);
+
+  return str;
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "E",
+  "name" : "toUint8Array",
+  "generate" : "jswrap_espruino_toUint8Array",
+  "params" : [
+    ["args","JsVarArray","The arguments to convert to a Uint8Array"]
+  ],
+  "return" : ["JsVar","A String"],
+  "return_object" : "Uint8Array"
+}
+This creates a Uint8Array from the given arguments. If an argument is a String or an Array,
+each element is traversed and added as if it were an 8 bit value. If it is anything else, it is
+converted to an 8 bit value directly.
+*/
+void (_jswrap_espruino_toUint8Array_char)(int ch,  JsvArrayBufferIterator *it) {
+  jsvArrayBufferIteratorSetByteValue(it, (char)ch);
+  jsvArrayBufferIteratorNext(it);
+}
+
+JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
+  JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, jsvIterateCallbackCount(args));
+  if (!arr) return 0;
+
+  JsvArrayBufferIterator it;
+  jsvArrayBufferIteratorNew(&it, arr, 0);
+  jsvIterateCallback(args, (void (*)(int,  void *))_jswrap_espruino_toUint8Array_char, &it);
+  jsvArrayBufferIteratorFree(&it);
+
+  return arr;
+}
+
 
 /*JSON{
   "type" : "staticmethod",

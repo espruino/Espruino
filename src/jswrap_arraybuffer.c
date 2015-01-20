@@ -285,8 +285,6 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
 */
 
-
-
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length) {
   JsVar *arrayBuffer = 0;
   // Only allow use of byteOffset/length if we're passing an ArrayBuffer - NOT A VIEW.
@@ -439,9 +437,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
 
   // create ArrayBuffer result
   JsVarDataArrayBufferViewType arrayBufferType = parent->varData.arraybuffer.type;
-  JsVar *arrayBufferLength = jsvNewFromInteger((JsVarInt)jsvGetArrayBufferLength(parent));
-  JsVar *array = jswrap_typedarray_constructor(arrayBufferType, arrayBufferLength, 0, 0);
-  jsvUnLock(arrayBufferLength);
+  JsVar *array = jsvNewTypedArray(arrayBufferType, (JsVarInt)jsvGetArrayBufferLength(parent));
   if (!array) return 0;
 
   // now iterate

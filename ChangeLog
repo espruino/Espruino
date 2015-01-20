@@ -42,6 +42,10 @@
             Fix issues with floating point on devices with <1024 vars (using 12 byte JsVar)
             Add ability to change I2C bit rate from I2C.setup
             Added VGA TV output
+            Added E.toString (for converting anything into a string)
+            Pulled Typed Array creation into its own function
+            Added E.toString and E.toUint8Array
+            Made I2C.readFrom return a Uint8Array (fix #479)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

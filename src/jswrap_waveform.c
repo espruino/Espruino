@@ -171,12 +171,10 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
     jsExceptionHere(JSET_ERROR, "Expecting options to be undefined or an Object, not %t", options);
   }
 
-  JsVar *arrayLength = jsvNewFromInteger(samples);
   JsVarDataArrayBufferViewType bufferType = use16bit ? ARRAYBUFFERVIEW_UINT16 : ARRAYBUFFERVIEW_UINT8;
-  JsVar *arrayBuffer = jswrap_typedarray_constructor(bufferType, arrayLength, 0, 0);
+  JsVar *arrayBuffer = jsvNewTypedArray(bufferType, samples);
   JsVar *arrayBuffer2 = 0;
-  if (doubleBuffer) arrayBuffer2 = jswrap_typedarray_constructor(bufferType, arrayLength, 0, 0);
-  jsvUnLock(arrayLength);
+  if (doubleBuffer) arrayBuffer2 = jsvNewTypedArray(bufferType, samples);
   JsVar *waveform = jspNewObject(0, "Waveform");
 
 
