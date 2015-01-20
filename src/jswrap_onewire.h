@@ -19,5 +19,5 @@ bool jswrap_onewire_reset(JsVar *parent);
 void jswrap_onewire_select(JsVar *parent, JsVar *rom);
 void jswrap_onewire_skip(JsVar *parent);
 void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn);
-JsVar *jswrap_onewire_read(JsVar *parent, int count);
+JsVar *jswrap_onewire_read(JsVar *parent, JsVar *count);
 JsVar *jswrap_onewire_search(JsVar *parent, int command);

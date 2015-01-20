@@ -136,7 +136,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 Create an Array Buffer object
 */
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
-  if (byteLength <= 0 || byteLength>65535) {
+  if (byteLength < 0 || byteLength>65535) {
     jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer\n");
     return 0;
   }

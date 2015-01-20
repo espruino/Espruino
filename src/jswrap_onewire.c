@@ -211,20 +211,21 @@ void jswrap_onewire_write(JsVar *parent, JsVar *data, bool leavePowerOn) {
   "class" : "OneWire",
   "name" : "read",
   "generate" : "jswrap_onewire_read",
-  "params" : [["count","int32","(optional) The amount of bytes to read"]],
+  "params" : [["count","JsVar","(optional) The amount of bytes to read"]],
   "return" : ["JsVar","The byte that was read, or a Uint8Array if count was specified and >=0"]
 }
 Read a byte
 */
-JsVar *jswrap_onewire_read(JsVar *parent, int count) {
+JsVar *jswrap_onewire_read(JsVar *parent, JsVar *count) {
   Pin pin = onewire_getpin(parent);
-  if (!jshIsPinValid(pin)) return -1;
-  if (count>=0) {
-    JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, count);
+  if (!jshIsPinValid(pin)) return 0;
+  if (jsvIsNumeric(count)) {
+    JsVarInt c = jsvGetInteger(count);
+    JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, c);
     if (!arr) return 0;
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, arr, 0);
-    while (count--) {
+    while (c--) {
       jsvArrayBufferIteratorSetByteValue(&it, (char)OneWireRead(pin, 8));
       jsvArrayBufferIteratorNext(&it);
     }
