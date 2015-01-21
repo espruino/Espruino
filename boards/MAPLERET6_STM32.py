@@ -67,10 +67,10 @@ devices = {
             'pin_dm' : 'D40',
             'pin_dp' : 'D41' 
           },
-  'SD' :  { 'pin_cs' :  'D25',#'D2',
-            'pin_di' :  'D34',#'B15',
-            'pin_do' :  'D33',#'B14',
-            'pin_clk' :  'D32'}, #'B13'
+#  'SD' :  { 'pin_cs' :  'D25',#'D2',
+#            'pin_di' :  'D34',#'B15',
+#            'pin_do' :  'D33',#'B14',
+#            'pin_clk' :  'D32'}, #'B13'
 };
 
 board_css = """
