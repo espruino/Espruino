@@ -163,7 +163,11 @@ static ALWAYS_INLINE uint16_t stmPin(Pin ipin) {
 }
 static ALWAYS_INLINE uint32_t stmExtI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
+#ifdef STM32F3
+  return (uint32_t)(pin-JSH_PIN0); // STM32F3 is different - thanks @Frida!
+#else
   return (uint32_t)(1 << (pin-JSH_PIN0));
+#endif
 /*  if (pin==JSH_PIN0 ) return EXTI_Line0;
   if (pin==JSH_PIN1 ) return EXTI_Line1;
   if (pin==JSH_PIN2 ) return EXTI_Line2;
