@@ -47,6 +47,7 @@
             Added E.toString and E.toUint8Array
             Made I2C.readFrom return a Uint8Array (fix #479)
             Allow multiple byte OneWire reads and writes
+            Fix setWatch on F3Discovery (fix #183)
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

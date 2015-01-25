@@ -448,8 +448,6 @@ endif
 endif
 endif
 
-USE_ESP8266=1
-
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
 OPTIMIZEFLAGS=-g
