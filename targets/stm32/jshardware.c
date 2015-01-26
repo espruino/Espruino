@@ -1480,6 +1480,7 @@ JsSysTime jshGetSystemTime() {
     major3 = SysTickMajor;
     major4 = SysTickMajor;
   } while (major1!=major2 || major2!=major3 || major3!=major4);
+  return major1 - (JsSysTime)minor;
 #endif
 }
 
