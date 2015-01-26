@@ -43,10 +43,8 @@ board = {
 
   'left' : [],
   'left2' : [],
-#  'left' : [ '3V3','D7','D29','D12','D13' ],
-#  'left2' : [ 'GND','D8','D20','D11','D4' ],
-   'bottomright' : [ 'D21' ],
-   'bottomright2' : [ 'D22'],
+  'bottomright' : [ 'D21' ],
+  'bottomright2' : [ 'D22'],
 
   '_pinmap' : { 'A0':'D15', 'A1':'D16', 'A2':'D17', 'A3':'D18', 'A4':'D19', 'A5':'D20' }
 };
@@ -61,16 +59,15 @@ devices = {
   'OSC_RTC' : { 'pin_1' :  'D22',
                 'pin_2' : 'D23' },
   'LED1' : { 'pin' : 'D13' },
-#  'LED2' : { 'pin' : 'D3' },
   'BTN1' : { 'pin' : 'D38' }, # 'C9'
   'USB' : { 'pin_disc' :  'D39',
             'pin_dm' : 'D40',
             'pin_dp' : 'D41' 
           },
-  'SD' :  { 'pin_cs' :  'D25',#'D2',
-            'pin_di' :  'D34',#'B15',
-            'pin_do' :  'D33',#'B14',
-            'pin_clk' :  'D32'}, #'B13'
+#  'SD' :  { 'pin_cs' :  'D25',#'D2',
+#            'pin_di' :  'D34',#'B15',
+#            'pin_do' :  'D33',#'B14',
+#            'pin_clk' :  'D32'}, #'B13'
 };
 
 board_css = """
