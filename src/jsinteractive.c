@@ -621,7 +621,7 @@ void jsiInit(bool autoLoad) {
               "|   __|_ -| . |  _| | | |   | . |\n"
               "|_____|___|  _|_| |___|_|_|_|___|\n"    
               "          |_| http://espruino.com\n"
-              " "JS_VERSION" Copyright 2014 G.Williams\n");
+              " "JS_VERSION" Copyright 2015 G.Williams\n");
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
