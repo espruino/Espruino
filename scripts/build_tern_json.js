@@ -47,6 +47,7 @@ require("./common.js").readAllWrapperFiles(function(json) {
         // TODO: handle events
       } else if (["constructor"].indexOf(j.type)>=0) { 
         var o = tern[j.class]; // overwrite existing class with constructor
+        if (o===undefined) o=tern[j.class]={};
         o["!type"] = j.getTernType();
         o["!doc"] = j.getDescription();
         o["!url"] = j.getURL();
