@@ -145,7 +145,11 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
     return 0;
   }
   // try and use a flat string - which will be faster
-  JsVar *arrData = jsvNewFlatStringOfLength((unsigned int)byteLength);
+  JsVar *arrData = 0;
+  /* if the bytes could fit into 1 or 2 normal string blocks, do that.
+   * It's faster to allocate and can use less memory (if it fits into one block) */
+  if (byteLength > (JSVAR_DATA_STRING_LEN+JSVAR_DATA_STRING_MAX_LEN))
+    arrData = jsvNewFlatStringOfLength((unsigned int)byteLength);
   // if we haven't found one, spread it out
   if (!arrData)
     arrData = jsvNewStringOfLength((unsigned int)byteLength);
