@@ -1,4 +1,4 @@
-     1v73 : ...
+     1v73 : Add Uint8ClampedArray, remove code duplication in ArrayBuffer (fix #486)
 
      1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
             Allow Function.apply to take typed arrays (fix #442)

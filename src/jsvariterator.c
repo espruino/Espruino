@@ -254,23 +254,37 @@ JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it) {
   }
 }
 
-void   jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt v) {
+static void jsvArrayBufferIteratorIntToData(char *data, unsigned int dataLen, int type, JsVarInt v) {
+  if (JSV_ARRAYBUFFER_IS_CLAMPED(type)) {
+    assert(dataLen==1 && !JSV_ARRAYBUFFER_IS_SIGNED(type)); // all we support right now
+    if (v<0) v=0;
+    if (v>255) v=255;
+  }
+  // we don't care about sign when writing - as it gets truncated
+  if (dataLen==1) { data[0] = (char)v; }
+  else if (dataLen==2) { *(short*)data = (short)v; }
+  else if (dataLen==4) { *(int*)data = (int)v; }
+  else if (dataLen==8) { *(long long*)data = (long long)v; }
+  else assert(0);
+}
+
+static void jsvArrayBufferIteratorFloatToData(char *data,  unsigned int dataLen, int type, JsVarFloat v) {
+  NOT_USED(type);
+  if (dataLen==4) { *(float*)data = (float)v; }
+  else if (dataLen==8) { *(double*)data = (double)v; }
+  else assert(0);
+}
+
+void jsvArrayBufferIteratorSetIntegerValue(JsvArrayBufferIterator *it, JsVarInt v) {
   if (it->type == ARRAYBUFFERVIEW_UNDEFINED) return;
   assert(!it->hasAccessedElement); // we just haven't implemented this case yet
   char data[8];
   unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
-    if (dataLen==4) { float f = (float)v; memcpy(data,&f,dataLen); }
-    else if (dataLen==8) { double f = (double)v; memcpy(data,&f,dataLen); }
-    else assert(0);
+    jsvArrayBufferIteratorFloatToData(data, dataLen, it->type, (JsVarFloat)v);
   } else {
-    // we don't care about sign when writing - as it gets truncated
-    if (dataLen==1) { data[0] = (char)v; }
-    else if (dataLen==2) { *(short*)data = (short)v; }
-    else if (dataLen==4) { *(int*)data = (int)v; }
-    else if (dataLen==8) { *(long long*)data = (long long)v; }
-    else assert(0);
+    jsvArrayBufferIteratorIntToData(data, dataLen, it->type, v);
   }
 
   for (i=0;i<dataLen;i++) {
@@ -287,18 +301,9 @@ void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value) 
   unsigned int i,dataLen = JSV_ARRAYBUFFER_GET_SIZE(it->type);
 
   if (JSV_ARRAYBUFFER_IS_FLOAT(it->type)) {
-    JsVarFloat v = jsvGetFloat(value);       ;
-    if (dataLen==4) { float f = (float)v; memcpy(data,&f,dataLen); }
-    else if (dataLen==8) { double f = (double)v; memcpy(data,&f,dataLen); }
-    else assert(0);
+    jsvArrayBufferIteratorFloatToData(data, dataLen, it->type, jsvGetFloat(value));
   } else {
-    JsVarInt v = jsvGetInteger(value);
-    // we don't care about sign when writing - as it gets truncated
-    if (dataLen==1) { data[0] = (char)v; }
-    else if (dataLen==2) { *(short*)data = (short)v; }
-    else if (dataLen==4) { *(int*)data = (int)v; }
-    else if (dataLen==8) { *(long long*)data = (long long)v; }
-    else assert(0);
+    jsvArrayBufferIteratorIntToData(data, dataLen, it->type, jsvGetInteger(value));
   }
 
   for (i=0;i<dataLen;i++) {

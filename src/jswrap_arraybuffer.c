@@ -46,6 +46,17 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 */
 /*JSON{
   "type" : "class",
+  "class" : "Uint8ClampedArray",
+  "prototype" : "ArrayBufferView",
+  "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==(ARRAYBUFFERVIEW_UINT8|ARRAYBUFFERVIEW_CLAMPED)",
+  "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
+}
+This is the built-in JavaScript class for a typed array.
+
+Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
+*/
+/*JSON{
+  "type" : "class",
   "class" : "Int8Array",
   "prototype" : "ArrayBufferView",
   "check" : "jsvIsArrayBuffer(var) && var->varData.arraybuffer.type==ARRAYBUFFERVIEW_INT8",
@@ -182,6 +193,23 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
+*/
+/*JSON{
+  "type" : "constructor",
+  "class" : "Uint8ClampedArray",
+  "name" : "Uint8ClampedArray",
+  "generate_full" : "jswrap_typedarray_constructor(ARRAYBUFFERVIEW_UINT8|ARRAYBUFFERVIEW_CLAMPED, arr, byteOffset, length)",
+  "params" : [
+    ["arr","JsVar","The array or typed array to base this off, or an integer which is the array length"],
+    ["byteOffset","int","The byte offset in the ArrayBuffer  (ONLY IF the first argument was an ArrayBuffer)"],
+    ["length","int","The length (ONLY IF the first argument was an ArrayBuffer)"]
+  ],
+  "return" : ["JsVar","A typed array"],
+  "return_object" : "ArrayBufferView"
+}
+Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
+
+Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. e.g. after `a[0]=12345;`, `a[0]==255`.
 */
 /*JSON{
   "type" : "constructor",
