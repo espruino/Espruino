@@ -1,3 +1,5 @@
+     1v73 : Add Uint8ClampedArray, remove code duplication in ArrayBuffer (fix #486)
+
      1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
             Allow Function.apply to take typed arrays (fix #442)
             Allow arrays to be passed to digitalPulse so square waves can be created easily
@@ -48,6 +50,9 @@
             Made I2C.readFrom return a Uint8Array (fix #479)
             Allow multiple byte OneWire reads and writes
             Fix setWatch on F3Discovery (fix #183)
+            Ensure that E.getSizeOf() works for ArrayBuffers (fix #484)
+            Don't allocate Flat Strings if we can get away with 2 normal string blocks
+              - it's actually faster to allocate and uses less memory
 
      1v71 : Allowed WIZnet + CC3000 to be instantiated on any pins
             Fix break inside loop inside case inside function (fix 428)

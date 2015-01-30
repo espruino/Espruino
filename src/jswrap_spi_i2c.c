@@ -138,12 +138,10 @@ static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
   "name" : "setup",
   "generate" : "jswrap_spi_setup",
   "params" : [
-    ["options","JsVar",["An optional structure containing extra information on initialising the SPI port","Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%","```{sck:pin, miso:pin, mosi:pin, baud:integer, mode:integer=0, order:'msb'/'lsb'='msb' }```","If sck,miso and mosi are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `SPI` marker.","The SPI ```mode``` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase","On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this."]]
+    ["options","JsVar",["An optional structure containing extra information on initialising the SPI port","Please note that baud rate is set to the nearest that can be managed - which may be -+ 50%","```{sck:pin, miso:pin, mosi:pin, baud:integer=100000, mode:integer=0, order:'msb'/'lsb'='msb' }```","If sck,miso and mosi are left out, they will automatically be chosen. However if one or more is specified then the unspecified pins will not be set up.","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `SPI` marker.","The SPI ```mode``` is between 0 and 3 - see http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus#Clock_polarity_and_phase","On STM32F1-based parts, you cannot mix AF and non-AF pins (SPI pins are usually grouped on the chip - and you can't mix pins from two groups). Espruino will not warn you about this."]]
   ]
 }
-Set up this SPI port as SPI Master, with no checksum
-
-If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)
+Set up this SPI port as an SPI Master.
 */
 void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);

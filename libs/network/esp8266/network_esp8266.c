@@ -23,6 +23,7 @@
 
 #define ESP8266_IPD_NAME JS_HIDDEN_CHAR_STR"ID"
 #define ESP8266_IPD_NAME_LEN 3 // strlen(ESP8266_IPD_NAME)
+#define ESP8266_DNS_NAME JS_HIDDEN_CHAR_STR"DNS"
 
 //#define ESP8266_DEBUG
 
@@ -126,7 +127,7 @@ void esp8266_got_data(int sckt, JsVar *data) {
     esp8266State = ESP8266_WAIT_SEND_OK;
   }
 
-  char ipdName[ESP8266_IPD_NAME_LEN+1] = ESP8266_IPD_NAME"x";
+  char ipdName[ESP8266_IPD_NAME_LEN+2] = ESP8266_IPD_NAME"x";
   ipdName[ESP8266_IPD_NAME_LEN] = (char)('0' + sckt); // make ipdName different for each socket
   JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ipdName, 0);
   if (!ipd) {
@@ -383,6 +384,9 @@ bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
 void net_esp8266_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+  // hacky - save the last checked name so we can put it straight into the request
+  *out_ip_addr = 0xFFFFFFFF;
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_DNS_NAME, jsvNewFromString(hostName)));
 }
 
 /// Called on idle. Do any checks required for this device
@@ -415,7 +419,13 @@ int net_esp8266_createsocket(JsNetwork *net, uint32_t host, unsigned short port)
     }
     socketErrors = (unsigned char)(socketErrors & ~(1<<sckt));
     socketUsage = (unsigned char)(socketUsage | 1<<sckt);
-    JsVar *hostStr = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
+    JsVar *hostStr = 0;
+    if (host==0xFFFFFFFF) {
+      hostStr = jsvObjectGetChild(execInfo.hiddenRoot, ESP8266_DNS_NAME, 0);
+      jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_DNS_NAME, 0);
+    }
+    if (!hostStr)
+      hostStr = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
     JsVar *msg = jsvVarPrintf("AT+CIPSTART=%d,\"TCP\",%q,%d\r\n", sckt, hostStr, port);
     jsvUnLock(hostStr);
     esp8266_send(msg);
@@ -463,7 +473,7 @@ void net_esp8266_closesocket(JsNetwork *net, int sckt) {
 int net_esp8266_accept(JsNetwork *net, int serverSckt) {
   NOT_USED(serverSckt); // only one server allowed, so no need to check
   assert(serverSckt==SOCKET_COUNT);
-  char ipdName[ESP8266_IPD_NAME_LEN+1] = ESP8266_IPD_NAME"x";
+  char ipdName[ESP8266_IPD_NAME_LEN+2] = ESP8266_IPD_NAME"x";
   char sckt;
   // Basically we only have a connection if there's been data on it
   for (sckt=0;sckt<SOCKET_COUNT;sckt++) {
@@ -486,7 +496,7 @@ int net_esp8266_accept(JsNetwork *net, int serverSckt) {
 int net_esp8266_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
   if (socketErrors & (1<<sckt)) return -1; // socket error
 
-  char ipdName[ESP8266_IPD_NAME_LEN+1] = ESP8266_IPD_NAME"x";
+  char ipdName[ESP8266_IPD_NAME_LEN+2] = ESP8266_IPD_NAME"x";
   ipdName[ESP8266_IPD_NAME_LEN] = (char)('0' + sckt); // make ipdName different for each socket
 
   JsVar *ipd = jsvObjectGetChild(execInfo.hiddenRoot, ipdName, 0);
@@ -507,7 +517,7 @@ int net_esp8266_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
   if (net_esp8266_getState() != ESP8266_IDLE) return 0; // can't send
   if (socketErrors & (1<<sckt)) return -1; // socket error
 
-  JsVar *msg = jsvVarPrintf("AT+CIPSEND=%d,%d\r\n",sckt,len);
+  JsVar *msg = jsvVarPrintf("AT+CIPSEND=%d,%d\r",sckt,len); // no \n !
   esp8266_send(msg);
   jsvUnLock(msg);
 

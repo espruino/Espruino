@@ -61,6 +61,8 @@ JsVar *jswrap_esp8266_connect_device(JsVar *usart, JsVar *callback) {
 
   networkFree(&net);
 
+  networkState = NETWORKSTATE_ONLINE;
+
   return wifiObj;
 }
 

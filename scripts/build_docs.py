@@ -51,7 +51,8 @@ htmlFile = open('functions.html', 'w')
 def html(s): htmlFile.write(s+"\n");
 
 def htmlify(d):
-  d = re.sub(r'```([^`]+)```', r'<code>\1</code>', d) # code tags
+  d = re.sub(r'\n\s*```\n?([^`]+)```', r'\n   <p class=\"description\"><pre><code>\1</code></pre></p>', d) # code tags
+  d = re.sub(r'```\n?([^`]+)```', r'\n<code>\1</code>', d) # code tags
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
@@ -64,7 +65,18 @@ def html_description(d,current):
       d = d.replace(" "+link+" ", " <a href=\"#"+links[link]+"\">"+link+"</a> ")
       d = d.replace(" "+link+".", " <a href=\"#"+links[link]+"\">"+link+"</a>.")
       d = d.replace(" "+link+"(", " <a href=\"#"+links[link]+"\">"+link+"</a>(")    
-  html("   <p class=\"description\">" + htmlify(d.replace("\n","</p>\n   <p class=\"description\">")) + "</p>")
+  # Apply <p>, but not inside code snippets
+  inCode = False
+  final = ""
+  for s in htmlify(d).splitlines():
+    if "<code>" in s: inCode = True
+    singleLine = "<code>" in s and "</code>" in s
+    if singleLine or not inCode : final = final + "   <p class=\"description\">"
+    final = final + s
+    if singleLine or not inCode : final = final + "</p>"
+    final = final + "\n"
+    if "</code>" in s: inCode = False
+  html(final)
 
 def get_prefixed_name(jsondata):
   s=""

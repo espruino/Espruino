@@ -2142,7 +2142,11 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
   }
 
   size_t count = 1;
-  if (jsvHasChildren(v)) {
+  if (jsvHasSingleChild(v)) {
+    JsVar *child = jsvLock(jsvGetFirstChild(v));
+    count += _jsvCountJsVarsUsedRecursive(child, resetRecursionFlag);
+    jsvUnLock(child);
+  } else if (jsvHasChildren(v)) {
     JsVarRef childref = jsvGetFirstChild(v);
     while (childref) {
       JsVar *child = jsvLock(childref);
@@ -2150,7 +2154,8 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
       childref = jsvGetNextSibling(child);
       jsvUnLock(child);
     }
-  }
+  } else if (jsvIsFlatString(v))
+    count += jsvGetFlatStringBlocks(v);
   if (jsvHasCharacterData(v)) {
     JsVarRef childref = jsvGetLastChild(v);
     while (childref) {
