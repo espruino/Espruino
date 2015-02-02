@@ -846,7 +846,9 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             const char *name = jslGetTokenValueAsString(execInfo.lex);
 
             JsVar *aVar = jsvSkipName(a);
-            JsVar *child = jspGetNamedField(aVar, name, true);
+            JsVar *child = 0;
+            if (aVar)
+              child = jspGetNamedField(aVar, name, true);
             if (!child) {
               if (jsvHasChildren(aVar)) {
                 // if no child found, create a pointer to where it could be
@@ -877,7 +879,9 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
           if (JSP_SHOULD_EXECUTE) {
             index = jsvAsArrayIndexAndUnLock(index);
             JsVar *aVar = jsvSkipName(a);
-            JsVar *child = jspGetVarNamedField(aVar, index, true);
+            JsVar *child = 0;
+            if (aVar)
+              child = jspGetVarNamedField(aVar, index, true);
 
             if (!child) {
               if (jsvHasChildren(aVar)) {
