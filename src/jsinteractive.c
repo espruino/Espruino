@@ -867,7 +867,8 @@ void jsiHandleNewLine(bool execute) {
       if (jsiShowInputLine()) {
         jsiConsolePrint("\n");
       }
-      inputLineRemoved = true;
+      if (!(jsiStatus & JSIS_ECHO_OFF_FOR_LINE))
+        inputLineRemoved = true;
 
       // Get line to execute, and reset inputLine
       JsVar *lineToExecute = jsvStringTrimRight(inputLine);
