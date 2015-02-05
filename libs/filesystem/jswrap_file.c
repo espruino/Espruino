@@ -19,12 +19,17 @@
 #define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
 #define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
 
+#if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
+#define SD_CARD_ANYWHERE
+#endif
+
 
 #ifndef LINUX
 FATFS jsfsFAT;
-
 bool fat_initialised = false;
+#endif
 
+#ifdef SD_CARD_ANYWHERE
 void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
 #endif
@@ -55,7 +60,7 @@ void jsfsReportError(const char *msg, FRESULT res) {
 bool jsfsInit() {
 #ifndef LINUX
   if (!fat_initialised) {
-
+#ifdef SD_CARD_ANYWHERE
     if (!isSdSPISetup()) {
 #ifdef SD_SPI
       const char *deviceStr = jshGetDeviceString(SD_SPI);
@@ -73,6 +78,7 @@ bool jsfsInit() {
       return false;
 #endif
     }
+#endif
 
     FRESULT res;
     if ((res = f_mount(&jsfsFAT, "", 1/*immediate*/)) != FR_OK) {
@@ -108,7 +114,7 @@ console.log(require("fs").readdirSync());
 ```
 */
 void jswrap_E_connectSDCard(JsVar *spi, Pin csPin) {
-#ifndef LINUX
+#ifdef SD_CARD_ANYWHERE
   if (!jsvIsObject(spi)) {
     jsExceptionHere(JSET_ERROR, "First argument is a %t, not an SPI object\n", spi);
     return;
@@ -193,6 +199,8 @@ void jswrap_file_kill() {
     fat_initialised = false;
     f_mount(0, 0, 0);
   }
+#endif
+#ifdef SD_CARD_ANYWHERE
   sdSPISetup(0,0);
 #endif
 }
