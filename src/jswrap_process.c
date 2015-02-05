@@ -36,18 +36,21 @@ This class contains information about Espruino itself
 Returns the version of Espruino as a String
 */
 
+// TODO: the jspeiFindInScopes export won't be needed soon
 const void *exportPtrs[] = {
   jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
   jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
   jsvGetFloat,jsvGetInteger,jsvGetBool,
-  jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,
+  jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,
+  jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,
   jsvNewWithFlags,
 };
 const char *exportNames = 
 "jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,"
 "jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,"
 "jsvGetFloat,jsvGetInteger,jsvGetBool,"
-"jspeiFindInScopes,jspGetVarNamedField,jspReplaceWith,jspeFunctionCall,"
+"jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,"
+"jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,"
 "jsvNewWithFlags,";
 
 /*JSON{

@@ -156,6 +156,9 @@ bool jspParseEmptyFunction();    ///< parse function with no arguments
 JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr);
 
 
+// Find a variable (or built-in function) based on the current scopes
+JsVar *jspGetNamedVariable(const char *tokenName);
+
 /** Get the named function/variable on the object - whether it's built in, or predefined.
  * If !returnName, returns the function/variable itself or undefined, but
  * if returnName, return a name (could be fake) referencing the parent.

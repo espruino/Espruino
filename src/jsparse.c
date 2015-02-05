@@ -675,10 +675,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   } else return 0;
 }
 
-JsVar *jspeFactorSingleId() {
-  JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(jslGetTokenValueAsString(execInfo.lex)) : 0;
+// Find a variable (or built-in function) based on the current scopes
+JsVar *jspGetNamedVariable(const char *tokenName) {
+  JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(tokenName) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
-    const char *tokenName = jslGetTokenValueAsString(execInfo.lex); // BEWARE - this won't hang around forever!
     /* Special case! We haven't found the variable, so check out
      * and see if it's one of our builtins...  */
     if (jswIsBuiltInObject(tokenName)) {
@@ -697,12 +697,16 @@ JsVar *jspeFactorSingleId() {
       if (!a) {
         /* Variable doesn't exist! JavaScript says we should create it
          * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
+        a = jsvMakeIntoVariableName(jsvNewFromString(tokenName), 0);
       }
     }
   }
-  JSP_MATCH_WITH_RETURN(LEX_ID, a);
+  return a;
+}
 
+JsVar *jspeFactorSingleId() {
+  JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(execInfo.lex));
+  JSP_MATCH_WITH_RETURN(LEX_ID, a);
   return a;
 }
 
