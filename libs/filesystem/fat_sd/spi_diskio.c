@@ -36,6 +36,7 @@
 #include "platform_config.h"
 #include "jsutils.h"
 #include "jshardware.h"
+#include "jsspi.h"
 #include "diskio.h"
 
 /* Card type flags (CardType) */
@@ -66,13 +67,8 @@
 #define CMD58	(0x40+58)	/* READ_OCR */
 
 /* Card-Select Controls  (Platform dependent) */
-#define SELECT()        jshPinOutput(SD_CS_PIN, 0)    /* MMC CS = L */
-#define DESELECT()      jshPinOutput(SD_CS_PIN, 1)      /* MMC CS = H */
-
-/* Manley EK-STM32F board does not offer socket contacts -> dummy values: */
-#define SOCKPORT	1			/* Socket contact port */
-#define SOCKWP		0			/* Write protect switch (PB5) */
-#define SOCKINS		0			/* Card detect switch (PB4) */
+#define SELECT()        jshPinOutput(sdCSPin, 0)    /* MMC CS = L */
+#define DESELECT()      jshPinOutput(sdCSPin, 1)      /* MMC CS = H */
 
 /*--------------------------------------------------------------------------
 
@@ -80,46 +76,46 @@
 
 ---------------------------------------------------------------------------*/
 
-typedef DWORD socket_state_t;
+static volatile DSTATUS Stat = STA_NOINIT;	/* Disk status */
+static BYTE CardType;			/* Card type flags */
 
-static volatile
-DSTATUS Stat = STA_NOINIT;	/* Disk status */
-
-static
-BYTE CardType;			/* Card type flags */
-
-enum speed_setting { INTERFACE_SLOW, INTERFACE_FAST };
+static Pin sdCSPin = PIN_UNDEFINED; // SD_CS_PIN
+static JsVar *sdSPI = 0;
 
 static inline bool chk_power() { return 1; }
 
+
 /*-----------------------------------------------------------------------*/
-/* Transmit/Receive a byte to MMC via SPI  (Platform dependent)          */
+/* Setup                                                                 */
 /*-----------------------------------------------------------------------*/
-static BYTE stm32_spi_rw( BYTE out )
-{
-    int b = jshSPISend(SD_SPI, (unsigned char)out);
-    if (b<0) b = jshSPISend(SD_SPI, -1);
-    return (BYTE)b;
+
+bool isSdSPISetup() {
+  return sdSPI && jshIsPinValid(sdCSPin);
+}
+
+
+void sdSPISetup(JsVar *spi, Pin csPin) {
+  jsvUnLock(sdSPI);
+  sdSPI = jsvLockAgainSafe(spi);
+  sdCSPin = csPin;
+  if (isSdSPISetup()) DESELECT();
 }
 
 /*-----------------------------------------------------------------------*/
-/* Transmit a byte to MMC via SPI  (Platform dependent)                  */
+/* Receive a byte from MMC via SPI                                       */
 /*-----------------------------------------------------------------------*/
 
-#define xmit_spi(dat)  stm32_spi_rw(dat)
-
-/*-----------------------------------------------------------------------*/
-/* Receive a byte from MMC via SPI  (Platform dependent)                 */
-/*-----------------------------------------------------------------------*/
-
-static
-BYTE rcvr_spi (void)
+static void xmit_spi_buf (BYTE *data, UINT len)
 {
-	return stm32_spi_rw(0xff);
+  jsspiSend(sdSPI, 0, (char*)data, len);
 }
 
-/* Alternative macro to receive data fast */
-#define rcvr_spi_m(dst)  *(dst)=stm32_spi_rw(0xff)
+static BYTE rcvr_spi (void)
+{
+  char data = 0xFF;
+  jsspiSend(sdSPI, 0, &data, 1);
+  return (BYTE)data;
+}
 
 
 
@@ -134,6 +130,7 @@ BYTE wait_ready (void)
 
 
 	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(500);	/* Wait for ready in timeout of 500ms */
+
 	rcvr_spi();
 	do
 		res = rcvr_spi();
@@ -166,15 +163,6 @@ void power_on (void)
 {
 	/* Deselect the Card: Chip Select high */
 	DESELECT();
-
-	/* Configure SPI pins */
-	JshSPIInfo inf;
-	jshSPIInitInfo(&inf);
-	inf.pinMISO = SD_DO_PIN;
-	inf.pinMOSI = SD_DI_PIN;
-	inf.pinSCK = SD_CLK_PIN;
-	inf.baudRate = 1000000;
-	jshSPISetup(SD_SPI, &inf);
 }
 
 static
@@ -209,22 +197,19 @@ bool rcvr_datablock (
 {
 	BYTE token;
 
-
 	JsSysTime endTime = jshGetSystemTime()+jshGetTimeFromMilliseconds(100); /* Wait for data packet in timeout of 100ms */
 	do {
 		token = rcvr_spi();
 	} while ((token == 0xFF) && (jshGetSystemTime() < endTime));
 	if(token != 0xFE) return FALSE;	/* If not valid data token, return with error */
 
-	do {							/* Receive the data block into buffer */
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-		rcvr_spi_m(buff++);
-	} while (btr -= 4);
+	UINT i;
+	for (i=0;i<btr;i++)
+	  buff[i] = 0xFF; // make sure we send 0xFF
+	xmit_spi_buf(buff, btr);
 
-	rcvr_spi();						/* Discard CRC */
-	rcvr_spi();
+    BYTE crc[2] = {0xFF,0xFF};
+    xmit_spi_buf(crc, 2); // discard 2 byte CRC
 
 	return TRUE;					/* Return with success */
 }
@@ -242,24 +227,16 @@ bool xmit_datablock (
 	BYTE token			/* Data/Stop token */
 )
 {
-	BYTE resp;
-	BYTE wc;
-
 	if (wait_ready() != 0xFF) return FALSE;
 
-	xmit_spi(token);					/* Xmit data token */
+	xmit_spi_buf(&token, 1);	/* Xmit data token */
 	if (token != 0xFD) {	/* Is data token */
 
-		wc = 0;
-		do {							/* Xmit the 512 byte data block to MMC */
-			xmit_spi(*buff++);
-			xmit_spi(*buff++);
-		} while (--wc);
+	    xmit_spi_buf((BYTE *)buff, 512); /* Xmit the 512 byte data block to MMC */
 
-		xmit_spi(0xFF);					/* CRC (Dummy) */
-		xmit_spi(0xFF);
-		resp = rcvr_spi();				/* Receive data response */
-		if ((resp & 0x1F) != 0x05)		/* If not accepted, return with error */
+		BYTE resp[3] = {0xFF,0xFF,0xFF};
+		xmit_spi_buf(resp, 3); // discard 2 byte CRC and get 1 byte response
+		if ((resp[2] & 0x1F) != 0x05)		/* If not accepted, return with error */
 			return FALSE;
 	}
 
@@ -295,16 +272,19 @@ BYTE send_cmd (
 		return 0xFF;
 	}
 
+    n = 0x01;                           /* Dummy CRC + Stop */
+    if (cmd == CMD0) n = 0x95;          /* Valid CRC for CMD0(0) */
+    if (cmd == CMD8) n = 0x87;          /* Valid CRC for CMD8(0x1AA) */
+
 	/* Send command packet */
-	xmit_spi(cmd);						/* Start + Command index */
-	xmit_spi((BYTE)(arg >> 24));		/* Argument[31..24] */
-	xmit_spi((BYTE)(arg >> 16));		/* Argument[23..16] */
-	xmit_spi((BYTE)(arg >> 8));			/* Argument[15..8] */
-	xmit_spi((BYTE)arg);				/* Argument[7..0] */
-	n = 0x01;							/* Dummy CRC + Stop */
-	if (cmd == CMD0) n = 0x95;			/* Valid CRC for CMD0(0) */
-	if (cmd == CMD8) n = 0x87;			/* Valid CRC for CMD8(0x1AA) */
-	xmit_spi(n);
+    /* Start + Command index */
+    /* Argument[31..24] */
+    /* Argument[23..16] */
+    /* Argument[15..8] */
+    /* Argument[7..0] */
+    /* CRC */
+    BYTE packet[6] = {cmd, (BYTE)(arg >> 24), (BYTE)(arg >> 16), (BYTE)(arg >> 8), (BYTE)(arg), n};
+    xmit_spi_buf(packet, 6); // discard 2 byte CRC and get 1 byte response
 
 	/* Receive command response */
 	if (cmd == CMD12) rcvr_spi();		/* Skip a stuff byte when stop reading */

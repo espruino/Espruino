@@ -254,14 +254,13 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
     jsvUnLock(last);
   }
 
-  // Wait until SPI send is finished, and flush data
-  if (DEVICE_IS_SPI(device))
-    jshSPIWait(device);
-
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
   // Write data
   jsvIterateCallback(args, (void (*)(int,  void *))spiSend, &spiSendData);
+  // Wait until SPI send is finished, and flush data
+  if (DEVICE_IS_SPI(device))
+    jshSPIWait(device);
   // de-assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
 }

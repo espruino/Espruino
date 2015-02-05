@@ -104,6 +104,33 @@ bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data
   return false;
 }
 
+// Send data over SPI. If andReceive is true, write it back into the same buffer
+bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
+  spi_sender spiSend;
+  spi_sender_data spiSendData;
+  if (!jsspiGetSendFunction(spiDevice, &spiSend, &spiSendData))
+    return false;
+
+  size_t txPtr = 0;
+  size_t rxPtr = 0;
+  // transmit the data
+  while (txPtr<len && !jspIsInterrupted()) {
+    int data = spiSend(buf[txPtr++], &spiSendData);
+    if (data>=0) buf[rxPtr++] = (char)data;
+  }
+  // clear the rx buffer
+  while (rxPtr<len && !jspIsInterrupted()) {
+    buf[rxPtr++] = (char)spiSend(-1, &spiSendData);
+  }
+  // wait if we need to
+  if (flags & JSSPI_WAIT) {
+    IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
+    if (DEVICE_IS_SPI(device)) jshSPIWait(device);
+  }
+  return true;
+}
+
+
 // used by jswrap_spi_send4bit
 void jsspiSend4bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
   unsigned char lookup[] = {
