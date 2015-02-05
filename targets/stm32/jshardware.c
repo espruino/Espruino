@@ -700,6 +700,20 @@ static bool jshIsRTCAlreadySetup(bool andRunning) {
     return RCC_GetFlagStatus(RCC_FLAG_LSIRDY) == SET;
 }
 
+#ifdef USE_RTC
+void jshSetupRTCPrescaler(bool isUsingLSI) {
+  if (isUsingLSI) {
+#ifdef STM32F1
+    jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
+#else
+    jshRTCPrescaler = 32768; // 32kHz for LSI
+#endif
+  } else {
+    jshRTCPrescaler = 32768; // 32kHz for LSE
+  }
+  jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
+}
+#endif
 
 void jshDoSysTick() {
   /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
@@ -731,20 +745,15 @@ void jshDoSysTick() {
       
       if (isUsingLSI) {
         // LSE is not working - turn it off and use LSI
-#ifdef STM32F1
-        jshRTCPrescaler = 40000; // 40kHz for LSI on F1 parts
-#else
-        jshRTCPrescaler = 32768; // 32kHz for LSI
-#endif
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
         RCC_LSEConfig(RCC_LSE_OFF);  // disable low speed external oscillator
       } else {
         // LSE working! Yay! turn LSI off now
-        jshRTCPrescaler = 32768; // 32kHz for LSE
         RCC_LSEConfig(RCC_LSE_ON);
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE); // set clock source to low speed external
         RCC_LSICmd(DISABLE); // disable low speed internal oscillator
       }
+      jshSetupRTCPrescaler(isUsingLSI);
       RCC_RTCCLKCmd(ENABLE); // enable RTC (in backup domain)
       RTC_WaitForSynchro();
   #ifdef STM32F1
@@ -768,8 +777,6 @@ void jshDoSysTick() {
         RCC_LSEConfig(RCC_LSE_OFF);
       }
     }
-
-    jshRTCPrescalerReciprocal = (unsigned short)((((unsigned int)JSSYSTIME_SECOND) << RTC_PRESCALER_RECIPROCAL_SHIFT) /  jshRTCPrescaler);
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -1089,6 +1096,8 @@ void jshInit() {
     // Turn both LSI(above) and LSE clock on - in a few SysTicks we'll check if LSE is ok and use that if possible
     RCC_LSEConfig(RCC_LSE_ON); // try and start low speed external oscillator - it can take a while
   }
+  // set yp the RTC prescaler for now, so at least we can get some sensible numbers as it starts
+  jshSetupRTCPrescaler((RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) == RCC_RTCCLKSource_LSI);
 #endif
 
   // initialise button
@@ -1450,7 +1459,7 @@ JsSysTime jshGetRTCSystemTime() {
 JsSysTime jshGetSystemTime() {
 #ifdef USE_RTC
   if (ticksSinceStart<=RTC_INITIALISE_TICKS)
-    return 0; // Clock hasn't stabilised yet
+    return jshGetRTCSystemTime(); // Clock hasn't stabilised yet, just use whatever RTC value we currently have
   if (hasSystemSlept) {
     // reset SysTick counter. This will hopefully cause it
     // to fire off a SysTick IRQ, which will reset lastSysTickTime

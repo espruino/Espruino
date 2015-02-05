@@ -2,6 +2,8 @@
             Fix regression where accessing certain member names of an undefined variable would cause a crash (fix #488)
             Fix behaviour of char code 16 at beginning of the line (it now doesn't re-add the prompt after processing the line)
             Added jspGetNamedVariable for use in compiled JS
+            Fix glitchy time values on the Espruino Board (fix #394)
+            Fix getTime()==0 in onInit, which could break timeouts in onInit after a reset (fix #462)
 
      1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
             Allow Function.apply to take typed arrays (fix #442)
