@@ -4,6 +4,7 @@
             Added jspGetNamedVariable for use in compiled JS
             Fix glitchy time values on the Espruino Board (fix #394)
             Fix getTime()==0 in onInit, which could break timeouts in onInit after a reset (fix #462)
+            Refactor Software SPI code into jsspi.c
 
      1v72 : Stop RTC being reset by hard reset (getTime will now be time since power first applied) (fix #412)
             Allow Function.apply to take typed arrays (fix #442)

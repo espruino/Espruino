@@ -13,6 +13,7 @@
  * JavaScript SPI and I2C Functions
  * ----------------------------------------------------------------------------
  */
+#include "jsspi.h"
 #include "jswrap_spi_i2c.h"
 #include "jsdevices.h"
 #include "jsinteractive.h"
@@ -50,51 +51,6 @@ The second SPI port
 The third SPI port
 */
 
-
-typedef int (*spi_sender)(int data, void *info);
-
-int spi_sender_hardware(int data, void *info) {
-  IOEventFlags device = *(IOEventFlags*)info;
-  return jshSPISend(device, data);
-}
-
-int spi_sender_software(int data, void *info) {
-  if (data<0) return -1;
-  JshSPIInfo *inf = (JshSPIInfo*)info;
-
-  bool CPHA = (inf->spiMode & SPIF_CPHA)!=0;
-  bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
-
-  int result = 0;
-  int bit = inf->spiMSB ? 7 : 0;
-  int bitDir = inf->spiMSB ? -1 : 1;
-  int endBit = inf->spiMSB ? -1 : 8;
-
-  for (;bit!=endBit;bit+=bitDir) {
-    if (!CPHA) { // 'Normal' SPI, CPHA=0
-      if (inf->pinMOSI != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 0 : 1 );
-      if (inf->pinMISO != PIN_UNDEFINED)
-         result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 1 : 0 );
-    } else { // CPHA=1
-      if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 0 : 1 );
-      if (inf->pinMOSI != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
-      if (inf->pinSCK != PIN_UNDEFINED)
-         jshPinSetValue(inf->pinSCK, CPOL ? 1 : 0 );
-      if (inf->pinMISO != PIN_UNDEFINED)
-         result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
-    }
-  }
-
-  return result;
-}
-
 /*JSON{
   "type" : "constructor",
   "class" : "SPI",
@@ -105,31 +61,6 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
-}
-
-
-static void jswrap_spi_populate_info(JshSPIInfo *inf, JsVar *options) {
-  jshSPIInitInfo(inf);
-  if (jsvIsObject(options)) {
-    inf->pinSCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
-    inf->pinMISO = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "miso", 0));
-    inf->pinMOSI = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "mosi", 0));
-    JsVar *v;
-    v = jsvObjectGetChild(options, "baud", 0);
-    if (jsvIsNumeric(v))
-      inf->baudRate = (int)jsvGetInteger(v);
-    v = jsvObjectGetChild(options, "mode", 0);
-    if (jsvIsNumeric(v))
-      inf->spiMode = ((int)jsvGetInteger(v))&3;
-    v = jsvObjectGetChild(options, "order", 0);
-    if (jsvIsString(v) && jsvIsStringEqual(v, "msb")) {
-      inf->spiMSB = true;
-    } else if (jsvIsString(v) && jsvIsStringEqual(v, "lsb")) {
-      inf->spiMSB = false;
-    } else if (!jsvIsUndefined(v))
-      jsWarn("SPI order should be 'msb' or 'lsb'");
-    jsvUnLock(v);
-  }
 }
 
 /*JSON{
@@ -146,7 +77,7 @@ Set up this SPI port as an SPI Master.
 void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshSPIInfo inf;
-  jswrap_spi_populate_info(&inf, options);
+  jsspiPopulateSPIInfo(&inf, options);
 
   if (DEVICE_IS_SPI(device)) {
     jshSPISetup(device, &inf);
@@ -189,26 +120,10 @@ Sending multiple bytes in one call to send is preferable as they can then be tra
 */
 JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   NOT_USED(parent);
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
-
   spi_sender spiSend;
-  void *spiSendData;
-  if (DEVICE_IS_SPI(device)) {
-    if (!jshIsDeviceInitialised(device)) {
-      JshSPIInfo inf;
-      jshSPIInitInfo(&inf);
-      jshSPISetup(device, &inf);
-    }
-    spiSend = spi_sender_hardware;
-    spiSendData = &device;
-  } else if (device == EV_NONE) {
-    JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-    JshSPIInfo inf;
-    jswrap_spi_populate_info(&inf, options);
-    jsvUnLock(options);
-    spiSend = spi_sender_software;
-    spiSendData = &inf;
-  } else return 0;
+  spi_sender_data spiSendData;
+  if (!jsspiGetSendFunction(parent, &spiSend, &spiSendData))
+    return 0;
 
   JsVar *dst = 0;
 
@@ -217,8 +132,8 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
 
   // send data
   if (jsvIsNumeric(srcdata)) {
-    int r = spiSend((unsigned char)jsvGetInteger(srcdata), spiSendData);
-    if (r<0) r = spiSend(-1, spiSendData);
+    int r = spiSend((unsigned char)jsvGetInteger(srcdata), &spiSendData);
+    if (r<0) r = spiSend(-1, &spiSendData);
     dst = jsvNewFromInteger(r); // retrieve the byte (no send!)
   } else if (jsvIsArray(srcdata)) {
     dst = jsvNewWithFlags(JSV_ARRAY);
@@ -229,7 +144,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
       incount++;
-      int out = spiSend(in, spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
+      int out = spiSend(in, &spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
       if (out>=0) {
         outcount++;
         JsVar *outVar = jsvNewFromInteger(out);
@@ -241,7 +156,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
-      int out = spiSend(-1, spiSendData);
+      int out = spiSend(-1, &spiSendData);
       JsVar *outVar = jsvNewFromInteger(out);
       jsvArrayPushAndUnLock(dst, outVar);
     }
@@ -253,7 +168,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     while (jsvStringIteratorHasChar(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvStringIteratorGetChar(&it);
       incount++;
-      int out = spiSend(in, spiSendData);
+      int out = spiSend(in, &spiSendData);
       if (out>=0) {
         outcount++;
         char outc = (char)out;
@@ -265,7 +180,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
-      unsigned char out = (unsigned char)spiSend(-1, spiSendData);
+      unsigned char out = (unsigned char)spiSend(-1, &spiSendData);
       jsvAppendStringBuf(dst, (char*)&out, 1);
     }
   } else if (jsvIsIterable(srcdata)) {
@@ -279,7 +194,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
       incount++;
-      int out = spiSend(in, spiSendData);
+      int out = spiSend(in, &spiSendData);
       if (out>=0) {
         outcount++;
         jsvArrayBufferIteratorSetIntegerValue(&dstit, (char)out);
@@ -292,7 +207,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
-      jsvArrayBufferIteratorSetIntegerValue(&dstit, (unsigned char)spiSend(-1, spiSendData));
+      jsvArrayBufferIteratorSetIntegerValue(&dstit, (unsigned char)spiSend(-1, &spiSendData));
       jsvArrayBufferIteratorNext(&dstit);
     }
     jsvArrayBufferIteratorFree(&dstit);
@@ -322,23 +237,10 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   spi_sender spiSend;
-  void *spiSendData;
-  if (DEVICE_IS_SPI(device)) {
-    if (!jshIsDeviceInitialised(device)) {
-      JshSPIInfo inf;
-      jshSPIInitInfo(&inf);
-      jshSPISetup(device, &inf);
-    }
-    spiSend = spi_sender_hardware;
-    spiSendData = &device;
-  } else if (device == EV_NONE) {
-    JsVar *options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-    JshSPIInfo inf;
-    jswrap_spi_populate_info(&inf, options);
-    jsvUnLock(options);
-    spiSend = spi_sender_software;
-    spiSendData = &inf;
-  } else return;
+  spi_sender_data spiSendData;
+  if (!jsspiGetSendFunction(parent, &spiSend, &spiSendData))
+    return;
+
 
   Pin nss_pin = PIN_UNDEFINED;
   // If the last value is a pin, use it as the NSS pin
@@ -359,39 +261,9 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
   // Write data
-  jsvIterateCallback(args, (void (*)(int,  void *))spiSend, spiSendData);
+  jsvIterateCallback(args, (void (*)(int,  void *))spiSend, &spiSendData);
   // de-assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
-}
-
-
-// used by jswrap_spi_send4bit
-void spi_send4bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
-  unsigned char lookup[] = {
-      (unsigned char)((bit0<<4) | bit0),
-      (unsigned char)((bit0<<4) | bit1),
-      (unsigned char)((bit1<<4) | bit0),
-      (unsigned char)((bit1<<4) | bit1),
-  };
-  // Send each bit as 4 bits, MSB first
-  /*jshSPISend(device, lookup[(data>>6)&3]);
-  jshSPISend(device, lookup[(data>>4)&3]);
-  jshSPISend(device, lookup[(data>>2)&3]);
-  jshSPISend(device, lookup[(data   )&3]);*/
-  jshSPISend16(device, (lookup[(data>>6)&3]<<8) | lookup[(data>>4)&3]);
-  jshSPISend16(device, (lookup[(data>>2)&3]<<8) | lookup[(data   )&3]);
-}
-
-// used by jswrap_spi_send8bit
-void spi_send8bit(IOEventFlags device, unsigned char data, int bit0, int bit1) {
-  // Send each bit as 8 bits, MSB first
-  /*int i;
-  for (i=7;i>=0;i--)
-    jshSPISend(device, (unsigned char)(((data>>i)&1) ? bit1 : bit0));*/
-  jshSPISend(device, ((((data>>7)&1) ? bit1 : bit0)<<8) | (((data>>6)&1) ? bit1 : bit0));
-  jshSPISend(device, ((((data>>5)&1) ? bit1 : bit0)<<8) | (((data>>4)&1) ? bit1 : bit0));
-  jshSPISend(device, ((((data>>3)&1) ? bit1 : bit0)<<8) | (((data>>2)&1) ? bit1 : bit0));
-  jshSPISend(device, ((((data>>1)&1) ? bit1 : bit0)<<8) | (((data>>0)&1) ? bit1 : bit0));
 }
 
 /*JSON{
@@ -438,14 +310,14 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 
   // send data
   if (jsvIsNumeric(srcdata)) {
-    spi_send4bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
+    jsspiSend4bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
     jsvIteratorNew(&it, srcdata);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
-      spi_send4bit(device, in, bit0, bit1);
+      jsspiSend4bit(device, in, bit0, bit1);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
@@ -503,14 +375,14 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 
   // send data
   if (jsvIsNumeric(srcdata)) {
-    spi_send8bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
+    jsspiSend8bit(device, (unsigned char)jsvGetInteger(srcdata), bit0, bit1);
   } else if (jsvIsIterable(srcdata)) {
     jshInterruptOff();
     JsvIterator it;
     jsvIteratorNew(&it, srcdata);
     while (jsvIteratorHasElement(&it)) {
       unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
-      spi_send8bit(device, in, bit0, bit1);
+      jsspiSend8bit(device, in, bit0, bit1);
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);

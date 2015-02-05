@@ -496,6 +496,7 @@ src/jspin.c \
 src/jsinteractive.c \
 src/jsdevices.c \
 src/jstimer.c \
+src/jsspi.c \
 $(WRAPPERFILE)
 CPPSOURCES =
 
