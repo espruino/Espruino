@@ -341,7 +341,7 @@ int main(int argc, char **argv) {
   }
   jsiConsolePrint("\n");
   jsiKill();
-
+  jsvGarbageCollect();
   jsvShowAllocated();
   jsvKill();
   jshKill();
