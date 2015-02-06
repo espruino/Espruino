@@ -42,7 +42,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 
 void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar *headers);
-void serverResponseData(JsVar *httpServerResponseVar, JsVar *data);
+void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data);
 void serverResponseEnd(JsVar *httpServerResponseVar);
 
 #endif // SOCKETSERVER_H

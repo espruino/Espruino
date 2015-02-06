@@ -741,7 +741,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
 }
 
 
-void serverResponseData(JsVar *httpServerResponseVar, JsVar *data) {
+void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
   // Append data to sendData
   JsVar *sendData = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
@@ -769,7 +769,7 @@ void serverResponseData(JsVar *httpServerResponseVar, JsVar *data) {
 }
 
 void serverResponseEnd(JsVar *httpServerResponseVar) {
-  serverResponseData(httpServerResponseVar, 0); // force connection->sendData to be created even if data not called
+  serverResponseWrite(httpServerResponseVar, 0); // force connection->sendData to be created even if data not called
   jsvUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CLOSE, jsvNewFromBool(true)));
 }
 

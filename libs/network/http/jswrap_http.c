@@ -322,7 +322,7 @@ Stop listening for new HTTP connections
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }*/
 bool jswrap_httpSRs_write(JsVar *parent, JsVar *data) {
-  serverResponseData(parent, data);
+  serverResponseWrite(parent, data);
   return false;
 }
 
