@@ -34,6 +34,8 @@ JsHashLib hashFunctions[4] = {
   "type" : "library",
   "class" : "hashlib"
 }
+**Note:** This library is currently only included in builds for the original Espruino boards.
+For other boards you will have to make build your own firmware.
 */
 
 // ---------------------------------------------------------------------------------
@@ -46,6 +48,8 @@ JsHashLib hashFunctions[4] = {
   "library" : "hashlib",
   "class" : "HASH"
 }
+**Note:** This class is currently only included in builds for the original Espruino boards.
+For other boards you will have to make build your own firmware.
 */
 
 /*JSON{
