@@ -1419,6 +1419,11 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 }
 
 #ifdef USE_RTC
+#ifdef STM32F1
+unsigned short rtcHighBits = 0;
+unsigned int rtcLastCall = 0;
+#endif
+
 JsSysTime jshGetRTCSystemTime() {
 #ifdef STM32F1
   volatile uint16_t dl,ch,cl,cl1;
@@ -1429,7 +1434,13 @@ JsSysTime jshGetRTCSystemTime() {
     cl = RTC->CNTL;
   } while(cl1!=cl);
 
-  unsigned int c = (((unsigned int)ch)<<16) | (unsigned int)cl;
+  unsigned int chl = (((unsigned int)ch)<<16) | (unsigned int)cl;
+  if (chl < rtcLastCall) {
+    rtcLastCall = chl;
+    rtcHighBits++;
+  }
+  JsSysTime c = chl | (((JsSysTime)rtcHighBits)<<32);
+
 #else
   RTC_TimeTypeDef time;
   RTC_DateTypeDef date;
@@ -1499,7 +1510,10 @@ void jshSetSystemTime(JsSysTime newTime) {
 #ifdef USE_RTC
 
 #ifdef STM32F1
-  RTC_SetCounter((uint32_t)(newTime>>JSSYSTIME_SECOND_SHIFT));
+  rtcLastCall = (unsigned int)(newTime>>JSSYSTIME_SECOND_SHIFT);
+  rtcHighBits = (unsigned short)(newTime>>(JSSYSTIME_SECOND_SHIFT+32));
+  RTC_SetCounter(rtcLastCall);
+
   RTC_WaitForLastTask();
 #else // !STM32F1
   RTC_TimeTypeDef time;
