@@ -78,15 +78,14 @@ bool jswrap_waveform_idle() {
               task.data.buffer.nextBuffer != task.data.buffer.currentBuffer) {
             // if it is a double-buffered task
             int currentBuffer = (jsvGetRef(buffer)==task.data.buffer.currentBuffer) ? 0 : 1;
-            JsVar *oldBuffer = jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER);
-            if (jsvGetInteger(oldBuffer) !=currentBuffer) {
+            int oldBuffer = jsvGetIntegerAndUnLock(jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER));
+            if (oldBuffer != currentBuffer) {
               // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
-              jsvSetInteger(oldBuffer, currentBuffer);
+              jsvUnLock(jsvObjectSetChild(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer)));
               JsVar *arrayBuffer = jsvObjectGetChild(waveform, (currentBuffer==0) ? "buffer" : "buffer2", 0);
               jsiQueueObjectCallbacks(waveform, "#onbuffer", &arrayBuffer, 1);
               jsvUnLock(arrayBuffer);
             }
-            jsvUnLock(oldBuffer);
           }
         }
         jsvUnLock(buffer);

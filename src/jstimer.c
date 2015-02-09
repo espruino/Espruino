@@ -28,12 +28,23 @@ uint16_t utilTimerReload0H, utilTimerReload0L, utilTimerReload1H, utilTimerReloa
 
 
 #ifndef SAVE_ON_FLASH
+
+static void jstUtilTimerSetupBuffer(UtilTimerTask *task) {
+  task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.currentBuffer);
+  if (jsvIsFlatString(task->data.buffer.var)) {
+    task->data.buffer.charIdx = sizeof(JsVar);
+    task->data.buffer.endIdx =  (unsigned short)(sizeof(JsVar) + jsvGetCharactersInVar(task->data.buffer.var));
+  } else {
+    task->data.buffer.charIdx = 0;
+    task->data.buffer.endIdx = (unsigned short)jsvGetCharactersInVar(task->data.buffer.var);
+  }
+}
+
 static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
   // move to next element in var
   task->data.buffer.charIdx++;
-  size_t maxChars = jsvGetCharactersInVar(task->data.buffer.var);
-  if (task->data.buffer.charIdx >= maxChars) {
-    task->data.buffer.charIdx = (unsigned char)(task->data.buffer.charIdx - maxChars);
+  if (task->data.buffer.charIdx >= task->data.buffer.endIdx) {
+    task->data.buffer.charIdx = (unsigned short)(task->data.buffer.charIdx - task->data.buffer.endIdx);
     /* NOTE: We don't Lock/UnLock here. We assume that the string has already been
      * referenced elsewhere (in the Waveform class) so won't get freed. Why? Because
      * we can't lock easily. We could get an IRQ right as some other code was in the
@@ -41,14 +52,15 @@ static void jstUtilTimerInterruptHandlerNextByte(UtilTimerTask *task) {
      * out of sync. */
     if (jsvGetLastChild(task->data.buffer.var)) {
       task->data.buffer.var = _jsvGetAddressOf(jsvGetLastChild(task->data.buffer.var));
+      task->data.buffer.endIdx = (unsigned short)jsvGetCharactersInVar(task->data.buffer.var);
     } else { // else no more... move on to the next
       if (task->data.buffer.nextBuffer) {
-        task->data.buffer.charIdx = 0;
-        task->data.buffer.var = _jsvGetAddressOf(task->data.buffer.nextBuffer);
         // flip buffers
         JsVarRef t = task->data.buffer.nextBuffer;
         task->data.buffer.nextBuffer = task->data.buffer.currentBuffer;
         task->data.buffer.currentBuffer = t;
+        // Setup new buffer
+        jstUtilTimerSetupBuffer(task);
       } else {
         task->data.buffer.var = 0;
         // No more data - make sure we don't repeat!
@@ -337,6 +349,8 @@ void jstClearWakeUp() {
 
 #ifndef SAVE_ON_FLASH
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
+  assert(jsvIsString(currentData));
+  assert(jsvIsUndefined(nextData) || jsvIsString(nextData));
   if (!jshIsPinValid(pin)) return false;
   UtilTimerTask task;
   task.repeatInterval = (unsigned int)period;
@@ -354,8 +368,6 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
     assert(0);
     return false;
   }
-  task.data.buffer.charIdx = 0;
-  task.data.buffer.var = currentData; // no locks (this needs to already be reffed)
   task.data.buffer.currentBuffer = jsvGetRef(currentData);
   if (nextData) {
     // then we're repeating!
@@ -364,6 +376,8 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
     // then we're not repeating
     task.data.buffer.nextBuffer = 0;
   }
+  jstUtilTimerSetupBuffer(&task);
+
   return utilTimerInsertTask(&task);
 }
 

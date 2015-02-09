@@ -2727,6 +2727,9 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
       blocks += jsvCountJsVarsUsed(v);
       jsvUnLock(v);
     }
+    if (jsvIsFlatString(var)) {
+      blocks += jsvGetFlatStringBlocks(var);
+    }
     jsiConsolePrintf("%sString [%d blocks] %q", jsvIsFlatString(var)?"Flat":"", blocks, var);
   } else {
     jsiConsolePrintf("Unknown %d", var->flags & (JsVarFlags)~(JSV_LOCK_MASK));
