@@ -394,6 +394,7 @@ for className in builtins:
   builtin = builtins[className]
   if not className in ["parent","!parent"] and not builtin["isProto"]:
     codeOut("  if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
+  codeOut("  if (parent==execInfo.root) return &jswSymbolTables[jswSymbolIndex_global];");
 codeOut("  return 0;")
 codeOut('}')
 

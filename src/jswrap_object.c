@@ -187,7 +187,7 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
       if (protoOwner) {
         symbols = jswGetSymbolListForObjectProto(protoOwner);
         jsvUnLock(protoOwner);
-      } else if (!jsvIsObject(obj)) {
+      } else if (!jsvIsObject(obj) || jsvIsRoot(obj)) {
         // get symbols, but only if we're not doing it on a basic object
         symbols = jswGetSymbolListForObject(obj);
       }
