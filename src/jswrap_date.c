@@ -150,7 +150,8 @@ The built-in class for handling Dates
 Get the number of milliseconds elapsed since 1970 (or on embedded platforms, since startup)
 */
 JsVarFloat jswrap_date_now() {
-  return (JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1);
+  // Not quite sure why we need this, but (JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1) in inaccurate on STM32
+  return ((JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1000)) * 1000;
 }
 
 
