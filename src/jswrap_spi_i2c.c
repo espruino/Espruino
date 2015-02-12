@@ -325,6 +325,8 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
   }
 
+  jshSPIWait(); // wait until SPI send finished and clear the RX buffer
+
   // de-assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
   jshSPISet16(device, false); // back to 8 bit
@@ -389,6 +391,8 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
   } else {
     jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
   }
+
+  jshSPIWait(); // wait until SPI send finished and clear the RX buffer
 
   // de-assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
