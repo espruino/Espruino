@@ -391,7 +391,11 @@ JsVar *jsvIteratorGetValue(JsvIterator *it) {
 
 JsVarInt jsvIteratorGetIntegerValue(JsvIterator *it) {
   switch (it->type) {
-  case JSVI_OBJECT : return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  case JSVI_OBJECT : {
+    // fast path for arrays of ints
+    if (jsvIsNameInt(it->it.obj.var)) return (JsVarInt)jsvGetFirstChildSigned(it->it.obj.var);
+    return jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it->it.obj));
+  }
   case JSVI_STRING : return (JsVarInt)jsvStringIteratorGetChar(&it->it.str);
   case JSVI_ARRAYBUFFER : return jsvArrayBufferIteratorGetIntegerValue(&it->it.buf);
   default: assert(0); return 0;

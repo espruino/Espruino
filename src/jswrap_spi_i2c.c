@@ -117,6 +117,8 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
 Send data down SPI, and return the result
 
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
+
+For maximum speeds, please pass either Strings or Typed Arrays as arguments.
 */
 JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   NOT_USED(parent);
@@ -230,7 +232,9 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     ["data","JsVarArray",["One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`.","If the last argument is a pin, it is taken to be the NSS pin"]]
   ]
 }
-Write a character or array of characters to SPI - without reading the result back
+Write a character or array of characters to SPI - without reading the result back.
+
+For maximum speeds, please pass either Strings or Typed Arrays as arguments.
 */
 void jswrap_spi_write(JsVar *parent, JsVar *args) {
   NOT_USED(parent);
