@@ -84,12 +84,12 @@ board_css = """
   height: 800px;
 }
 #top {
-  bottom: 250px;
-  left: 188px;
+  bottom: 253px;
+  left: 194px;
 }
 #bottom {
-  top: 245px;
-  left: 188px;
+  top: 255px;
+  left: 192px;
 }
 
 #right  {
@@ -98,7 +98,7 @@ board_css = """
 }
 #top2  {
   top: 80px;
-  right: 50px;
+  right: 66px;
 }
 
 .toppin { width: 32px; }
