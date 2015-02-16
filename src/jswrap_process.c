@@ -46,12 +46,12 @@ const void *exportPtrs[] = {
   jsvNewWithFlags,
 };
 const char *exportNames = 
-"jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,"
-"jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,"
-"jsvGetFloat,jsvGetInteger,jsvGetBool,"
-"jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,"
-"jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,"
-"jsvNewWithFlags,";
+"jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
+"jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
+"jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
+"jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
+"jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
+"jsvNewWithFlags\0\0";
 
 /*JSON{
   "type" : "staticproperty",
@@ -77,11 +77,17 @@ JsVar *jswrap_process_env() {
   jsvUnLock(jsvObjectSetChild(obj, "RAM", jsvNewFromInteger(RAM_TOTAL)));
   jsvUnLock(jsvObjectSetChild(obj, "SERIAL", jswrap_interface_getSerial()));
   jsvUnLock(jsvObjectSetChild(obj, "CONSOLE", jsvNewFromString(jshGetDeviceString(jsiGetConsoleDevice()))));
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
   if (arr) {
-    jsvArrayPushAndUnLock(arr, jsvNewFromString(exportNames));
-    jsvArrayPushAndUnLock(arr, jsvNewFromInteger((JsVarInt)exportPtrs));
-    jsvUnLock(jsvObjectSetChild(obj, "EXPORT", arr));
+    const char *s = exportNames;
+    void **p = exportPtrs;
+    while (*s) {
+      jsvUnLock(jsvObjectSetChild(arr, s, jsvNewFromInteger((JsVarInt)*p)));
+      p++;
+      while (*s) s++; // skip until 0
+      s++; // skip over 0
+    }
+    jsvUnLock(jsvObjectSetChild(obj, "EXPORTS", arr));
   }  
 
   return obj;

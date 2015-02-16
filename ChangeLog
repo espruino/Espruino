@@ -3,6 +3,7 @@
             Added 'global' built-in value
             Fix inaccuracy of 'Date.now()' on STM32
             Improve jsvIteratorGetIntegerValue speed for arrays (fix #493)
+            Change process.env.EXPORTS to something more useful for compiler
 
      1v73 : Add Uint8ClampedArray, remove code duplication in ArrayBuffer (fix #486)
             Fix regression where accessing certain member names of an undefined variable would cause a crash (fix #488)
