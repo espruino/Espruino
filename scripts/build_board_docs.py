@@ -78,7 +78,10 @@ def dump_pin(pin, pinstrip):
       pinHTML2 = '';
 
       if not_five_volt:
-        pinHTML2 += '<SPAN class="pinfunction NOT_5V" title="Not 5v Tolerant">3.3v</SPAN>';
+        pinHTML2 += '<SPAN class="pinfunction NOT_5V" title="Not 5v Tolerant">3.3v</SPAN>\n';
+
+      if ("_notes" in board.board) and (pin in board.board["_notes"]):
+        pinHTML2 += '<SPAN class="pinfunction NOTE" title="'+board.board["_notes"][pin]+'">!</SPAN>\n';
 
       reverse = pinstrip=="left" or pinstrip=="right2";
       if not reverse: writeHTML(pinHTML+"\n"+pinHTML2)
@@ -164,6 +167,7 @@ writeHTML("""
    .I2C { background-color: #F88; }
    .DEVICE { background-color: #F8F; }
    .NOT_5V { background-color: #FDD; }
+   .NOTE { background-color: #F80; }
 
 #top { white-space: nowrap; }
 #top2 { white-space: nowrap; }
@@ -219,8 +223,9 @@ writeHTML("""
 
 """);
 for pinstrip in board.board:
-  writeHTML("   #"+pinstrip+" { position: absolute; }")
-  writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
+  if pinstrip[0]!='_':
+    writeHTML("   #"+pinstrip+" { position: absolute; }")
+    writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
 writeHTML(board.board_css)
 writeHTML("  </STYLE>"+'<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>')
 writeHTML("""
@@ -281,6 +286,7 @@ writeHTML("""
   <P>Hover the mouse over a pin function for more information. Clicking in a function will tell you how to use it in Espruino.</P>
   <ul>
     <li><span class="pinfunction DEVICE">Purple</span> boxes show pins that are used for other functionality on the board. You should avoid using these unless you know that the marked device is not used.</li>
+    <li><span class="pinfunction NOTE">!</span> boxes contain extra information about the pin. Hover your mouse over them to see it.</li>
     <li><span class="pinfunction NOT_5V">3.3v</span> boxes mark pins that are not 5v tolerant (they only take inputs from 0 - 3.3v, not 0 - 5v).</li>
     <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>
     <li><span class="pinfunction">GND</span> is ground (0v).</li>

@@ -42,8 +42,12 @@ chip = {
 board = {
   'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
   'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B12', 'C12', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
-  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ]
+  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ],
         
+  '_notes' : {
+    'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outouts we'd recommend that you don't use B4 and B5 with analogWrite.",
+    'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outouts we'd recommend that you don't use B4 and B5 with analogWrite.",
+  }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',
