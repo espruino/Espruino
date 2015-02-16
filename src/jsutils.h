@@ -48,7 +48,7 @@ typedef unsigned int size_t;
 #define alloca(x) __builtin_alloca(x)
 #endif
 
-#if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) // it is defined in this file too!
+#if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
 typedef enum {FALSE = 0, TRUE = !FALSE} bool;
