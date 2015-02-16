@@ -34,4 +34,4 @@ JsVar *jswrap_espruino_toString(JsVar *args);
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
 int jswrap_espruino_getSizeOf(JsVar *v);
-void jswrap_espruino_tv(JsVar *v);
+
