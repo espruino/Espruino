@@ -61,7 +61,7 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
 
     unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
-    bool shortCut = col==0 || (col&whiteMask)==whiteMask; // simple black or white fill
+    bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE); // simple black or white fill
 
     while (pixelCount--) { // writing individual bits
       if (gfx->data.bpp&7/*not a multiple of one byte*/) {
