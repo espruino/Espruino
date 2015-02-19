@@ -56,6 +56,8 @@ def htmlify(d):
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
+  d = re.sub(r'\*\*([^*]*)\*\*', r'<b>\1</b>', d) # bold
+  d = re.sub(r'\*([^*]*)\*', r'<i>\1</i>', d) # italic
   return d
 
 def html_description(d,current):
