@@ -601,3 +601,20 @@ Fill this array with the given value, for every index `>= start` and `< end`
 }
 Reverse the contents of this arraybuffer in-place
 */
+/*JSON{
+  "type" : "method",
+  "class" : "ArrayBufferView",
+  "name" : "slice",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_array_slice",
+  "params" : [
+    ["start","int","Start index"],
+    ["end","JsVar","End index (optional)"]
+  ],
+  "return" : ["JsVar","A new array"],
+  "return_object" : "Array"
+}
+Return a copy of a portion of this array (in a new array).
+
+**Note:** This currently returns a normal Array, not an ArrayBuffer
+*/

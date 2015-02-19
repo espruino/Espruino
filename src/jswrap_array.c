@@ -539,7 +539,7 @@ JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   ],
   "return" : ["JsVar","A new array"]
 }
-Return a copy of a portion of the calling array
+Return a copy of a portion of this array (in a new array)
 */
 JsVar *jswrap_array_slice(JsVar *parent, JsVarInt start, JsVar *endVar) {
   JsVarInt len = jsvGetLength(parent);
