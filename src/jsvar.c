@@ -645,7 +645,7 @@ JsVar *jsvNewFromLongInteger(long long value) {
 JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
   if (!var) return 0;
   assert(jsvGetRefs(var)==0); // make sure it's unused
-  assert(jsvIsInt(var) || jsvIsString(var));
+  assert(jsvIsSimpleInt(var) || jsvIsString(var));
   if ((var->flags & JSV_VARTYPEMASK)==JSV_INTEGER) {
     int t = JSV_NAME_INT;
     if ((jsvIsInt(valueOrZero) || jsvIsBoolean(valueOrZero)) && !jsvIsPin(valueOrZero)) {
@@ -972,7 +972,7 @@ JsVar *jsvAsFlatString(JsVar *var) {
  * a["0"] is actually translated to a[0]
  */
 JsVar *jsvAsArrayIndex(JsVar *index) {
-  if (jsvIsInt(index)) {
+  if (jsvIsSimpleInt(index)) {
     return jsvLockAgain(index); // we're ok!
   } else if (jsvIsString(index)) {
     /* Index filtering (bug #19) - if we have an array index A that is:

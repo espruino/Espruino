@@ -1,4 +1,4 @@
-     1v75 : ...
+     1v75 : Fixed issue with Pins/Bools as Array indices
 
      1v74 : On Espruino Board, allow setTime to use full 64 bits so setTime(Date.parse("...")/1000) works
             Fixed issues with Waveform after 1v72 update to flat strings
