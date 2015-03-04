@@ -1088,7 +1088,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
     jsvUnLock(lastName);
   }
   JsVar *constructor = jsvFindChildFromString(prototypeVar, JSPARSE_CONSTRUCTOR_VAR, true);
-  jsvSetValueOfName(constructor, instanceOf);
+  if (constructor) jsvSetValueOfName(constructor, instanceOf);
   jsvUnLock(constructor);
 
   jsvUnLock(prototypeVar);
@@ -1686,9 +1686,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   jsvUnLock(jspeBlockOrStatement());
 
   execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
-  if (execInfo.execute == EXEC_CONTINUE)
+  if (execInfo.execute & EXEC_CONTINUE)
     execInfo.execute = EXEC_YES;
-  if (execInfo.execute == EXEC_BREAK) {
+  else if (execInfo.execute & EXEC_BREAK) {
     execInfo.execute = EXEC_YES;
     hasHadBreak = true; // fail loop condition, so we exit
   }
@@ -1721,9 +1721,9 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
           execInfo.execute |= EXEC_IN_LOOP;
           jsvUnLock(jspeBlockOrStatement());
           execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
-          if (execInfo.execute == EXEC_CONTINUE)
+          if (execInfo.execute & EXEC_CONTINUE)
             execInfo.execute = EXEC_YES;
-          if (execInfo.execute == EXEC_BREAK) {
+          else if (execInfo.execute & EXEC_BREAK) {
             execInfo.execute = EXEC_YES;
             hasHadBreak = true;
           }
@@ -1744,6 +1744,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 NO_INLINE JsVar *jspeStatementFor() {
   JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
+  bool wasInLoop = execInfo.execute&EXEC_IN_LOOP;
   execInfo.execute |= EXEC_FOR_INIT;
   // initialisation
   JsVar *forStatement = 0;
@@ -1778,7 +1779,7 @@ NO_INLINE JsVar *jspeStatementFor() {
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
     JslCharPos forBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
-    execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+    if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
     JSP_RESTORE_EXECUTE();
 
     if (JSP_SHOULD_EXECUTE) {
@@ -1812,11 +1813,11 @@ NO_INLINE JsVar *jspeStatementFor() {
                 jslSeekToP(execInfo.lex, &forBodyStart);
                 execInfo.execute |= EXEC_IN_LOOP;
                 jsvUnLock(jspeBlockOrStatement());
-                execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+                if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
   
-                if (execInfo.execute == EXEC_CONTINUE)
+                if (execInfo.execute & EXEC_CONTINUE)
                   execInfo.execute = EXEC_YES;
-                if (execInfo.execute == EXEC_BREAK) {
+                else if (execInfo.execute & EXEC_BREAK) {
                   execInfo.execute = EXEC_YES;
                   hasHadBreak = true;
                 }
@@ -1878,12 +1879,14 @@ NO_INLINE JsVar *jspeStatementFor() {
     execInfo.execute |= EXEC_IN_LOOP;
     jsvUnLock(jspeBlockOrStatement());
     JslCharPos forBodyEnd = jslCharPosClone(&execInfo.lex->tokenStart);
-    execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
-    if (execInfo.execute == EXEC_CONTINUE)
-      execInfo.execute = EXEC_YES;
-    if (execInfo.execute == EXEC_BREAK) {
-      execInfo.execute = EXEC_YES;
-      hasHadBreak = true;
+    if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+    if (loopCond || !JSP_SHOULD_EXECUTE) {
+      if (execInfo.execute & EXEC_CONTINUE)
+        execInfo.execute = EXEC_YES;
+      else if (execInfo.execute & EXEC_BREAK) {
+        execInfo.execute = EXEC_YES;
+        hasHadBreak = true;
+      }
     }
     if (!loopCond) JSP_RESTORE_EXECUTE();
     if (loopCond) {
@@ -1908,10 +1911,10 @@ NO_INLINE JsVar *jspeStatementFor() {
             jslSeekToP(execInfo.lex, &forBodyStart);
             execInfo.execute |= EXEC_IN_LOOP;
             jsvUnLock(jspeBlockOrStatement());
-            execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
-            if (execInfo.execute == EXEC_CONTINUE)
+            if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+            if (execInfo.execute & EXEC_CONTINUE)
               execInfo.execute = EXEC_YES;
-            if (execInfo.execute == EXEC_BREAK) {
+            else if (execInfo.execute & EXEC_BREAK) {
               execInfo.execute = EXEC_YES;
               hasHadBreak = true;
             }
@@ -2112,7 +2115,7 @@ NO_INLINE JsVar *jspeStatement() {
         if (!(execInfo.execute & EXEC_IN_LOOP))
           jsExceptionHere(JSET_SYNTAXERROR, "CONTINUE statement outside of FOR or WHILE loop");
         else
-          execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) |  EXEC_CONTINUE;
+          execInfo.execute = (execInfo.execute & (JsExecFlags)~EXEC_RUN_MASK) | EXEC_CONTINUE;
       }
     } else if (execInfo.lex->tk==LEX_R_BREAK) {
       JSP_ASSERT_MATCH(LEX_R_BREAK);
