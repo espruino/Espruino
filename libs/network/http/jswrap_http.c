@@ -233,7 +233,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
   "name" : "request",
     "generate_full" : "jswrap_net_connect(options, callback, ST_HTTP)",
   "params" : [
-    ["options","JsVar","An object containing host,port,path,method fields"],
+    ["options","JsVar","An object containing host,port,path,method,headers fields"],
     ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new httpCRq object"],
