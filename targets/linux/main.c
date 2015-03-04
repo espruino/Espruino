@@ -225,6 +225,24 @@ void die(const char *txt) {
   exit(1);
 }
 
+int handleErrors() {
+  int e = 0;
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+    e = 1;
+  }
+
+  if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted.\n");
+    jspSetInterrupted(false);
+    e = 1;
+  }
+  return e;
+}
+
 int main(int argc, char **argv) {
   int i;
   for (i=1;i<argc;i++) {
@@ -241,14 +259,15 @@ int main(int argc, char **argv) {
         jsiInit(true);
         addNativeFunction("quit", nativeQuit);
         jsvUnLock(jspEvaluate(argv[i+1], false));
-        isRunning = true;
+        int errCode = handleErrors();
+        isRunning = !errCode;
         bool isBusy = true;
         while (isRunning && (jsiHasTimers() || isBusy))
           isBusy = jsiLoop();
         jsiKill();
         jsvKill();
         jshKill();
-        exit(0);
+        exit(errCode);
       } else if (!strcmp(a,"--test")) {
         if (i+1>=argc) die("Expecting an extra argument\n");
         bool ok = run_test(argv[i+1]);
@@ -292,15 +311,16 @@ int main(int argc, char **argv) {
     jsiInit(false /* do not autoload!!! */);
     addNativeFunction("quit", nativeQuit);
     jsvUnLock(jspEvaluate(cmd, true));
+    int errCode = handleErrors();
     free(buffer);
-    isRunning = true;
+    isRunning = !errCode;
     bool isBusy = true;
     while (isRunning && (jsiHasTimers() || isBusy))
       isBusy = jsiLoop();
     jsiKill();
     jsvKill();
     jshKill();
-    exit(0);
+    exit(errCode);
   } else {
     printf("Unknown arguments!\n");
     show_help();
