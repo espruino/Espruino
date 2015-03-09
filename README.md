@@ -154,6 +154,19 @@ To cross compile,
 
 This will create a file called ```functions.html```
 
+### Building under Windows/MacOS with a VM (Vagrant)
+
+* Clone this repository.
+* Download and install the correct [VirtualBox](https://www.virtualbox.org/) for your platform. eg. If you have Windows, download 'VirtualBox for Windows Hosts'.
+* Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
+  > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
+* In your terminal application, navigate to your cloned working copy.
+* Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
+* When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
+* Execute `cd /vagrant && ESPRUINO_1V3=1 make` and wait.
+* Espruino is now built. See the documentation under **Building under Linux** for more examples.
+* To terminate the ssh session, simply execute `exit`.
+* `vagrant suspend` will pause the VM, `vagrant halt` will stop it, and `vagrant up` will bring it back up again.  See Vagrant's ["Getting Started"](http://docs.vagrantup.com/v2/getting-started/index.html) page for further information.
 
 Building under Windows/MacOS with a VM
 ---------------------------------
