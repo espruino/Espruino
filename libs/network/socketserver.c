@@ -93,6 +93,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   strIdx = 0;
   int firstSpace = -1;
   int secondSpace = -1;
+  int firstEOL = -1;
   int lineNumber = 0;
   int lastLineStart = 0;
   int colonPos = 0;
@@ -106,6 +107,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
       }
       if (ch == ':' && colonPos<0) colonPos = strIdx;
       if (ch == '\r') {
+        if (firstEOL<0) firstEOL=strIdx;
         if (lineNumber>0 && colonPos>lastLineStart && lastLineStart<strIdx) {
           JsVar *hVal = jsvNewFromEmptyString();
           if (hVal)
@@ -133,18 +135,12 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   jsvUnLock(vHeaders);
   // try and pull out methods/etc
   if (isServer) {
-    JsVar *vMethod = jsvNewFromEmptyString();
-    if (vMethod) {
-      jsvAppendStringVar(vMethod, *receiveData, 0, (size_t)firstSpace);
-      jsvUnLock(jsvAddNamedChild(objectForData, vMethod, "method"));
-      jsvUnLock(vMethod);
-    }
-    JsVar *vUrl = jsvNewFromEmptyString();
-    if (vUrl) {
-      jsvAppendStringVar(vUrl, *receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)));
-      jsvUnLock(jsvAddNamedChild(objectForData, vUrl, "url"));
-      jsvUnLock(vUrl);
-    }
+    jsvUnLock(jsvObjectSetChild(objectForData, "method", jsvNewFromStringVar(*receiveData, 0, (size_t)firstSpace)));
+    jsvUnLock(jsvObjectSetChild(objectForData, "url", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)))));
+  } else {
+    jsvUnLock(jsvObjectSetChild(objectForData, "httpVersion", jsvNewFromStringVar(*receiveData, 5, (size_t)firstSpace-5)));
+    jsvUnLock(jsvObjectSetChild(objectForData, "statusCode", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)))));
+    jsvUnLock(jsvObjectSetChild(objectForData, "statusMessage", jsvNewFromStringVar(*receiveData, (size_t)(secondSpace+1), (size_t)(firstEOL-(secondSpace+1)))));
   }
   // strip out the header
   JsVar *afterHeaders = jsvNewFromStringVar(*receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
