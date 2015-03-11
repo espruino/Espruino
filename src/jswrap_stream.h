@@ -25,5 +25,10 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars);
  * This either calls the on('data') handler if it exists, or it
  * puts the data in a buffer. This MAY CLAIM the string that is
  * passed in.
+ *
+ * This will return true on success, or false if the buffer is
+ * full. Setting force=true will attempt to fill the buffer as
+ * full as possible, and will raise an error flag if data is lost.
  */
-void jswrap_stream_pushData(JsVar *parent, JsVar *dataString);
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force);
+

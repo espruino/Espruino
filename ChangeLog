@@ -3,6 +3,7 @@
             Fix continue statement in nested loops (fix #501)
             On Linux, Exit nonzero when an error occurs (fix #499)
             Ensure that pipes 'complete' if the source closes (was previously only the destination)
+            Make HTTP/Sockets throttle reads so internal buffers don't get full when piping
 
      1v74 : On Espruino Board, allow setTime to use full 64 bits so setTime(Date.parse("...")/1000) works
             Fixed issues with Waveform after 1v72 update to flat strings

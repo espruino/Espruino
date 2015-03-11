@@ -311,10 +311,11 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
             }
             if (hadHeaders && !jsvIsEmptyString(receiveData)) {
               // execute 'data' callback or save data
-              jswrap_stream_pushData(connection, receiveData);
-              // clear received data
-              jsvUnLock(receiveData);
-              receiveData = 0;
+              if (jswrap_stream_pushData(connection, receiveData, false)) {
+                // clear received data
+                jsvUnLock(receiveData);
+                receiveData = 0;
+              }
             }
             // if received data changed, update it
             if (receiveData != oldReceiveData)
@@ -342,7 +343,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
       if (hadHeaders && !jsvIsEmptyString(receiveData)) {
         // execute 'data' callback or save data
-        jswrap_stream_pushData(connection, receiveData);
+        jswrap_stream_pushData(connection, receiveData, true);
       }
       jsvUnLock(receiveData);
       // fire the close listeners
@@ -368,11 +369,12 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
 void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **receiveData) {
   if (*receiveData && jsvGetStringLength(*receiveData)) {
-    jswrap_stream_pushData(socket, *receiveData);
-    // clear - because we have issued a callback
-    jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
-    jsvUnLock(*receiveData);
-    *receiveData = 0;
+    if (jswrap_stream_pushData(socket, *receiveData, false)) {
+      // clear - because we have issued a callback
+      jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
+      jsvUnLock(*receiveData);
+      *receiveData = 0;
+    }
   }
 }
 
@@ -418,29 +420,31 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         if (jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSE, false)))
           closeConnectionNow = true;
       }
-      // Now read data if possible
-      int num = net->recv(net, sckt, buf, sizeof(buf));
-      if (num<0) {
-        // we probably disconnected so just get rid of this
-        closeConnectionNow = true;
-      } else {
-        // add it to our request string
-        if (num>0) {
-          if (!receiveData) {
-            receiveData = jsvNewFromEmptyString();
-            jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
-          }
-          if (receiveData) { // could be out of memory
-            jsvAppendStringBuf(receiveData, buf, (size_t)num);
-            if (socketType==ST_HTTP && !hadHeaders) {
-              JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
-              if (httpParseHeaders(&receiveData, resVar, false)) {
-                hadHeaders = true;
-                jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
-                jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
-              }
-              jsvUnLock(resVar);
+      // Now read data if possible (and we have space for it)
+      if (!receiveData || !hadHeaders) {
+        int num = net->recv(net, sckt, buf, sizeof(buf));
+        if (num<0) {
+          // we probably disconnected so just get rid of this
+          closeConnectionNow = true;
+        } else {
+          // add it to our request string
+          if (num>0) {
+            if (!receiveData) {
+              receiveData = jsvNewFromEmptyString();
               jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
+            }
+            if (receiveData) { // could be out of memory
+              jsvAppendStringBuf(receiveData, buf, (size_t)num);
+              if (socketType==ST_HTTP && !hadHeaders) {
+                JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
+                if (httpParseHeaders(&receiveData, resVar, false)) {
+                  hadHeaders = true;
+                  jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
+                  jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
+                }
+                jsvUnLock(resVar);
+                jsvObjectSetChild(connection, HTTP_NAME_RECEIVE_DATA, receiveData);
+              }
             }
           }
         }
@@ -448,18 +452,24 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       jsvUnLock(sendData);
     }
 
+    bool closed = false;
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
-      if (socketType != ST_HTTP)
-        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
-      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
+      if (!receiveData && jswrap_stream_available(socket)==0) {
+        if (socketType != ST_HTTP)
+          jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
-      _socketConnectionKill(net, connection);
-      JsVar *connectionName = jsvObjectIteratorGetKey(&it);
-      jsvObjectIteratorNext(&it);
-      jsvRemoveChild(arr, connectionName);
-      jsvUnLock(connectionName);
-    } else {
+        _socketConnectionKill(net, connection);
+        JsVar *connectionName = jsvObjectIteratorGetKey(&it);
+        jsvObjectIteratorNext(&it);
+        jsvRemoveChild(arr, connectionName);
+        jsvUnLock(connectionName);
+        closed = true;
+      }
+    }
+
+    if (!closed) {
       jsvObjectIteratorNext(&it);
     }
 

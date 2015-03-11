@@ -65,10 +65,15 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
  * This either calls the on('data') handler if it exists, or it
  * puts the data in a buffer. This MAY CLAIM the string that is
  * passed in.
+ *
+ * This will return true on success, or false if the buffer is
+ * full. Setting force=true will attempt to fill the buffer as
+ * full as possible, and will raise an error flag if data is lost.
  */
-void jswrap_stream_pushData(JsVar *parent, JsVar *dataString) {
+bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
   assert(jsvIsObject(parent));
   assert(jsvIsString(dataString));
+  bool ok = true;
 
   JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
   if (callback) {
@@ -89,12 +94,14 @@ void jswrap_stream_pushData(JsVar *parent, JsVar *dataString) {
       size_t bufLen = jsvGetStringLength(buf);
       size_t dataLen = jsvGetStringLength(dataString);
       if (bufLen + dataLen > STREAM_MAX_BUFFER_SIZE) {
-        jsErrorFlags |= JSERR_BUFFER_FULL;
+        if (force) jsErrorFlags |= JSERR_BUFFER_FULL;
         // jsWarn("String buffer overflowed maximum size (%d)", STREAM_MAX_BUFFER_SIZE);
+        ok = false;
       }
-      if (bufLen < STREAM_MAX_BUFFER_SIZE)
+      if ((ok || force) && (bufLen < STREAM_MAX_BUFFER_SIZE))
         jsvAppendStringVar(buf, dataString, 0, STREAM_MAX_BUFFER_SIZE-bufLen);
+      jsvUnLock(buf);
     }
-    jsvUnLock(buf);
   }
+  return ok;
 }
