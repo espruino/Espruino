@@ -50,7 +50,7 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
     JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
     if (destination) {
       // remove our drain and close listeners.
-      // This removes ALL listeners. Maybe we should just remove ours?
+      // TODO: This removes ALL listeners. Maybe we should just remove ours?
       jswrap_object_removeAllListeners_cstr(destination, "drain");
       jswrap_object_removeAllListeners_cstr(destination, "close");
       // execute the 'end' function
@@ -59,16 +59,27 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
         jsvUnLock(jspExecuteFunction(endFunc, destination, 0, 0));
         jsvUnLock(endFunc);
       }
+      // execute the 'close' function
+      JsVar *closeFunc = jspGetNamedField(destination, "close", false);
+      if (closeFunc) {
+        jsvUnLock(jspExecuteFunction(closeFunc, destination, 0, 0));
+        jsvUnLock(closeFunc);
+      }
       jsvUnLock(destination);
     }
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
     set end:false */
     JsVar *source = jsvObjectGetChild(pipe,"source",0);
-    JsVar *closeFunc = jspGetNamedField(source, "close", false);
-    if (closeFunc) {
-      jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
-      jsvUnLock(closeFunc);
+    if (source) {
+      // TODO: This removes ALL listeners. Maybe we should just remove ours?
+      jswrap_object_removeAllListeners_cstr(source, "close");
+      // execute the 'close' function
+      JsVar *closeFunc = jspGetNamedField(source, "close", false);
+      if (closeFunc) {
+        jsvUnLock(jspExecuteFunction(closeFunc, source, 0, 0));
+        jsvUnLock(closeFunc);
+      }
     }
     jsvUnLock(source);
   }
@@ -188,7 +199,7 @@ static void jswrap_pipe_drain_listener(JsVar *destination) {
 }
 
 /** This gets called when the destination closes and we need to clean up */
-static void jswrap_pipe_close_listener(JsVar *destination) {
+static void jswrap_pipe_close_listener(JsVar *destination, const char *name) {
   if (!jsvIsObject(destination)) return;
   // try and find it...
   JsVar *arr = pipeGetArray(false);
@@ -197,7 +208,7 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
     jsvObjectIteratorNew(&it, arr);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *pipe = jsvObjectIteratorGetValue(&it);
-      JsVar *dst = jsvObjectGetChild(pipe,"destination",0);
+      JsVar *dst = jsvObjectGetChild(pipe,name,0);
       if (dst == destination) {
         // found it! said wait to false
         handlePipeClose(arr, &it, pipe);
@@ -209,6 +220,13 @@ static void jswrap_pipe_close_listener(JsVar *destination) {
     jsvObjectIteratorFree(&it);
     jsvUnLock(arr);
   }
+}
+
+static void jswrap_pipe_src_close_listener(JsVar *source) {
+  jswrap_pipe_close_listener(source, "source");
+}
+static void jswrap_pipe_dst_close_listener(JsVar *destination) {
+  jswrap_pipe_close_listener(destination, "destination");
 }
 
 /*JSON{
@@ -258,7 +276,8 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
         }
         // set up our drain and close event listeners
         jswrap_object_addEventListener(dest, "drain", jswrap_pipe_drain_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
-        jswrap_object_addEventListener(dest, "close", jswrap_pipe_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(source, "close", jswrap_pipe_src_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
+        jswrap_object_addEventListener(dest, "close", jswrap_pipe_dst_close_listener, JSWAT_VOID | (JSWAT_JSVAR << (JSWAT_BITS*1)));
         // set up the rest of the pipe
         jsvUnLock(jsvObjectSetChild(pipe, "chunkSize", jsvNewFromInteger(chunkSize)));
         jsvUnLock(jsvObjectSetChild(pipe, "end", jsvNewFromBool(callEnd)));

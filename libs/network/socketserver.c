@@ -346,8 +346,8 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       }
       jsvUnLock(receiveData);
       // fire the close listeners
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, 0, 0);
-      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, 0, 0);
+      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, &connection, 1);
+      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
       _socketConnectionKill(net, connection);
       JsVar *connectionName = jsvObjectIteratorGetKey(&it);
@@ -451,8 +451,8 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (socketType != ST_HTTP)
-        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, 0, 0);
-      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, 0, 0);
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
+      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
       _socketConnectionKill(net, connection);
       JsVar *connectionName = jsvObjectIteratorGetKey(&it);
