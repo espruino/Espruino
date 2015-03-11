@@ -16,14 +16,13 @@ cd `dirname $0` # scripts
 cd ..            # main dir
 BASEDIR=`pwd`
 
-BOARDNAME=PICO_R1_2
+BOARDNAME=PICO_R1_3
 ESPRUINOFILE=`python scripts/get_board_info.py $BOARDNAME "common.get_board_binary_name(board)"`
 BOOTLOADERFILE=bootloader_$ESPRUINOFILE
 IMGFILE=pico_full.bin
 rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 
-export PICO_1V2=1
-# export USB_PRODUCT_ID=0x5741 # For test harness board only
+export PICO_1V3=1
 # export DEBUG=1
 export RELEASE=1
 export WIZNET=1

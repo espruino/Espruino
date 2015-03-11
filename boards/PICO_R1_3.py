@@ -15,14 +15,14 @@
 
 import pinutils;
 info = {
- 'name' : "Espruino Pico rev 1.2",
+ 'name' : "Espruino Pico rev 1.3",
  'link' : [ "http://www.espruino.com/Pico" ],
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
  'variables' : 3040,
  'bootloader' : 1,
- 'binary_name' : 'espruino_%v_pico_1r2.bin',
+ 'binary_name' : 'espruino_%v_pico_1r3.bin',
 };
 chip = {
   'part' : "STM32F401CDU6",
@@ -59,8 +59,8 @@ devices = {
   'OSC_RTC' : { 'pin_in' :  'C14', # checked
                 'pin_out' : 'C15' }, # checked
   'BTN1' : { 'pin' : 'C13', 'pinstate' : 'IN_PULLDOWN' }, 
-  'LED1' : { 'pin' : 'B12' }, 
-  'LED2' : { 'pin' : 'B2' },
+  'LED1' : { 'pin' : 'B2' }, 
+  'LED2' : { 'pin' : 'B12' },
   'USB' : { 'pin_charge' :  'B0',
             'pin_vsense' :  'A9',
             'pin_dm' : 'A11',   # checked
