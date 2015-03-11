@@ -12,13 +12,22 @@ http://www.espruino.com
 There are a few different binaries in this ZIP file, for different
 types of Microcontroller:
 
-espruino_#v##_espruino_1r3.bin  
-   - The firmware image for the latest Espruino Boards.
-     We'd strongly suggest that you use the Web IDE to flash this.
 
-espruino_#v##_espruino_1r3_wiznet.bin  
-   - The firmware image for the latest Espruino Boards, that works with WIZnet W5500 ethernet
+espruino_#v##_pico_1r3_cc3000.bin  
+espruino_#v##_pico_1r3_wiznet.bin  
+espruino_#v##_pico_1r3_esp8266.bin  
+   - The firmware image for the latest Espruino Pico Boards.
      We'd strongly suggest that you use the Web IDE to flash this.
+     Each image is for a different type of networking device.
+     If you don't want a network device, it doesn't matter which you choose.
+
+espruino_#v##_espruino_1r3.bin  
+espruino_#v##_espruino_1r3_wiznet.bin  
+espruino_#v##_espruino_1r3_esp8266.bin  
+   - The firmware image for the latest Espruino Boards (rev 1v3 and 1v4)
+     We'd strongly suggest that you use the Web IDE to flash this.
+     Each image is for a different type of networking device.
+     If you don't want a network device, it doesn't matter which you choose.
 
 espruino_#v##_espruino_1r1.bin  
    - The firmware image for older, rev 1v1 and 1v2 boards

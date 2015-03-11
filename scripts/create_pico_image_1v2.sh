@@ -26,7 +26,6 @@ export PICO_1V2=1
 # export USB_PRODUCT_ID=0x5741 # For test harness board only
 # export DEBUG=1
 export RELEASE=1
-export WIZNET=1
 
 BOOTLOADER=1 make clean
 BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }

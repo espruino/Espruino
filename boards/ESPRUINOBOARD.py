@@ -24,6 +24,11 @@ info = {
  'bootloader' : 1,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_espruino_1r3.bin',
+ 'binaries' : [
+  { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking support"},
+  { 'filename' : 'espruino_%v_espruino_1r3_esp8266.bin', 'description' : "EspressIF ESP8266 WiFi Networking support"},
+  { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 WiFi Networking support"},
+ ]
 };
 chip = {
   'part' : "STM32F103RCT6",

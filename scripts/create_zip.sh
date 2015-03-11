@@ -26,7 +26,7 @@ echo ------------------------------------------------------
 echo                          Building Version $VERSION
 echo ------------------------------------------------------
 
-for BOARDNAME in ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINO_1V3_ESP ESPRUINO_1V1 NUCLEOF401RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
+for BOARDNAME in PICO_1V3_CC3000 PICO_1V3_WIZ PICO_1V3_ESP ESPRUINO_1V3 ESPRUINO_1V3_WIZ ESPRUINO_1V3_ESP ESPRUINO_1V1 NUCLEOF401RE STM32VLDISCOVERY STM32F3DISCOVERY STM32F4DISCOVERY OLIMEXINO_STM32 HYSTM32_24 HYSTM32_28 HYSTM32_32 RASPBERRYPI
 do
   echo ------------------------------
   echo                  $BOARDNAME
@@ -40,6 +40,20 @@ do
   fi
   if [ "$BOARDNAME" == "ESPRUINO_1V3_ESP" ]; then
     BOARDNAME=ESPRUINO_1V3
+    EXTRADEFS=ESP8266=1
+    EXTRANAME=_esp8266
+  fi
+  if [ "$BOARDNAME" == "PICO_1V3_CC3000" ]; then
+    BOARDNAME=PICO_R1_3
+    EXTRANAME=_cc3000
+  fi
+  if [ "$BOARDNAME" == "PICO_1V3_WIZ" ]; then
+    BOARDNAME=PICO_R1_3
+    EXTRADEFS=WIZNET=1
+    EXTRANAME=_wiznet
+  fi
+  if [ "$BOARDNAME" == "PICO_1V3_ESP" ]; then
+    BOARDNAME=PICO_R1_3
     EXTRADEFS=ESP8266=1
     EXTRANAME=_esp8266
   fi
@@ -57,6 +71,8 @@ do
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   elif [ "$BOARDNAME" == "ESPRUINO_1V1" ]; then      
     bash -c "$EXTRADEFS scripts/create_espruino_image_1v1.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
+  elif [ "$BOARDNAME" == "PICO_R1_3" ]; then      
+    bash -c "$EXTRADEFS scripts/create_pico_image_1v3.sh" || { echo "Build of $BOARDNAME failed" ; exit 1; }
   else 
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make clean"
     bash -c "$EXTRADEFS RELEASE=1 $BOARDNAME=1 make" || { echo "Build of $BOARDNAME failed" ; exit 1; }

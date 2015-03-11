@@ -25,7 +25,6 @@ rm -f $ESPRUINOFILE $BOOTLOADERFILE $IMGFILE
 export PICO_1V3=1
 # export DEBUG=1
 export RELEASE=1
-export WIZNET=1
 
 BOOTLOADER=1 make clean
 BOOTLOADER=1 make || { echo 'Build failed' ; exit 1; }

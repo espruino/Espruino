@@ -23,6 +23,11 @@ info = {
  'variables' : 3040,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
+ 'binaries' : [
+  { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking support"},
+  { 'filename' : 'espruino_%v_pico_1r3_esp8266.bin', 'description' : "EspressIF ESP8266 WiFi Networking support"},
+  { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 WiFi Networking support"},
+ ]
 };
 chip = {
   'part' : "STM32F401CDU6",
