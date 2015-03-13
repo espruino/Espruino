@@ -13,4 +13,7 @@
  */
 #include "network.h"
 
+// Set the built-in object for network access
+void net_js_setObj(JsVar *obj);
+
 void netSetCallbacks_js(JsNetwork *net);

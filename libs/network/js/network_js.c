@@ -19,6 +19,28 @@
 #define JSNET_NAME "JSN"
 #define JSNET_DNS_NAME "DNS"
 
+// Set the built-in object for network access
+void net_js_setObj(JsVar *obj) {
+  jsvObjectSetChild(execInfo.hiddenRoot, JSNET_NAME, obj);
+}
+
+/// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
+JsVar *callFn(char* name, int argCount, JsVar **argPtr) {
+  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
+  JsVar *child = jspGetNamedField(netObj, name, false);
+
+  JsVar *r = 0;
+  if (jsvIsFunction(child)) {
+    JsExecInfo oldExecInfo = execInfo;
+    execInfo.execute = EXEC_YES;
+    r = jspeFunctionCall(child, 0, netObj, false, argCount, argPtr);
+    execInfo = oldExecInfo;
+  }
+  jsvUnLock(child);
+  jsvUnLock(netObj);
+  return r;
+}
+
 // ------------------------------------------------------------------------------------------------------------------------
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
@@ -49,27 +71,23 @@ int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
       hostVar = networkGetAddressAsString((unsigned char *)&host, 4,10,'.');
   }
   // else server, hostVar=0
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
   JsVar *args[2] = {
       hostVar,
       jsvNewFromInteger(port)
   };
-  int sckt = jsvGetIntegerAndUnLock(jspCallNamedFunction(net, "create", 2, args));
+  int sckt = jsvGetIntegerAndUnLock(callFn("create", 2, args));
   jsvUnLock(args[0]);
   jsvUnLock(args[1]);
-  jsvUnLock(netObj);
   return sckt;
 }
 
 /// destroys the given socket
 void net_js_closesocket(JsNetwork *net, int sckt) {
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
   JsVar *args[1] = {
       jsvNewFromInteger(sckt)
   };
-  jspCallNamedFunction(net, "recv", 2, args);
+  jsvUnLock(callFn("close", 1, args));
   jsvUnLock(args[0]);
-  jsvUnLock(netObj);
 }
 
 /// If the given server socket can accept a connection, return it (or return < 0)
@@ -78,7 +96,8 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
   JsVar *args[1] = {
       jsvNewFromInteger(serverSckt)
   };
-  int sckt = jsvGetIntegerAndUnLock(jspCallNamedFunction(net, "accept", 1, args));
+
+  int sckt = jsvGetIntegerAndUnLock(callFn("accept", 1, args));
   jsvUnLock(args[0]);
   jsvUnLock(netObj);
   return sckt;
@@ -86,28 +105,33 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
-  JsVar *args[1] = {
-      jsvNewFromInteger(sckt)
+  JsVar *args[2] = {
+      jsvNewFromInteger(sckt),
+      jsvNewFromInteger(len),
   };
-  int r = jsvGetIntegerAndUnLock(jspCallNamedFunction(net, "recv", 1, args));
+  JsVar *res = callFn( "recv", 2, args);
   jsvUnLock(args[0]);
-  jsvUnLock(netObj);
+  jsvUnLock(args[1]);
+  int r = -1; // fail
+  if (jsvIsString(res)) {
+    r = jsvGetStringLength(res);
+    if (r>len) r=len;
+    jsvGetStringChars(res, 0, buf, r);
+  }
+  jsvUnLock(res);
   return r;
 }
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
-  JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
   JsVar *args[2] = {
       jsvNewFromInteger(sckt),
       jsvNewFromEmptyString()
   };
   jsvAppendStringBuf(args[1], buf, len);
-  int r = jsvGetIntegerAndUnLock(jspCallNamedFunction(net, "send", 2, args));
+  int r = jsvGetIntegerAndUnLock(callFn( "send", 2, args));
   jsvUnLock(args[0]);
   jsvUnLock(args[1]);
-  jsvUnLock(netObj);
   return r;
 }
 
