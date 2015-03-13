@@ -834,8 +834,11 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
 /// Call the named function on the object - whether it's built in, or predefined. Returns the return value of the function.
 JsVar *jspCallNamedFunction(JsVar *object, char* name, int argCount, JsVar **argPtr) {
   JsVar *child = jspGetNamedField(object, name, false);
-  if (!jsvIsFunction(child)) return 0;
-  return jspeFunctionCall(child, 0, object, false, argCount, argPtr);
+  JsVar *r = 0;
+  if (jsvIsFunction(child))
+    r = jspeFunctionCall(child, 0, object, false, argCount, argPtr);
+  jsvUnLock(child);
+  return r;
 }
 
 NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
