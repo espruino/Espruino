@@ -26,6 +26,7 @@
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
+#include "network_js.h"
 
 JsNetworkState networkState =
 #ifdef LINUX
@@ -153,6 +154,7 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;
 #endif
+  case JSNETWORKTYPE_JS : netSetCallbacks_js(net); break;
   default:
     jsError("Unknown network device %d", net->data.type);
     networkFree(net);

@@ -671,6 +671,12 @@ SOURCES += \
 libs/network/network.c \
 libs/network/socketserver.c
 
+# 
+WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
+INCLUDE += -I$(ROOT)/libs/network/js
+SOURCES += \
+libs/network/js/network_js.c
+
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
  SOURCES += \
