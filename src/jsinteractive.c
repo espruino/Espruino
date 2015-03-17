@@ -537,7 +537,8 @@ void jsiSoftKill() {
   jsvUnLock(inputLine);
   inputLine=0;
 
-
+  // kill any wrapped stuff
+  jswKill();
   // Stop all active timer tasks
   jstReset();
   // Unref Watches/etc
@@ -574,8 +575,6 @@ void jsiSoftKill() {
     jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
-
-  jswKill();
 }
 
 void jsiInit(bool autoLoad) {

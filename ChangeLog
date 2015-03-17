@@ -1,3 +1,6 @@
+     1v76 : Merged in NetworkJS library (for JS networking implementations)
+            Ensure that 'wrapped' libraries are killed before timers/watches
+
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object
             Fix continue statement in nested loops (fix #501)
