@@ -1,5 +1,9 @@
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
+            Made 'Field or method doesn't exist' report back the field that doesn't exist
+            Added quick and dirty scripts/test262.js runner script
+            Fix propogation of Errors and Exceptions through function calls
+            Allow parsing of integers > base 16
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object

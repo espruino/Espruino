@@ -623,11 +623,12 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JSP_SAVE_EXECUTE();
             execInfo.execute = EXEC_YES; // force execute without any previous state
             jspeBlock();
-            bool hasError = JSP_HAS_ERROR;
+            JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
             jslKill(&newLex);
             execInfo.lex = oldLex;
             if (hasError) {
+              execInfo.execute |= hasError; // propogate error
               JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
               if (stackTrace) {
                 jsvAppendPrintf(stackTrace, jsvIsString(functionName)?"in function %q called from ":
@@ -865,7 +866,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 jsvUnLock(nameVar);
               } else {
                 // could have been a string...
-                jsExceptionHere(JSET_ERROR, "Field or method does not already exist, and can't create it on %t", aVar);
+                jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
               }
             }
             JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
@@ -896,7 +897,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
                 // as we don't want to allocate it until it's written
                 child = jsvCreateNewChild(aVar, index, 0);
               } else {
-                jsExceptionHere(JSET_ERROR, "Field or method does not already exist, and can't create it on %t", aVar);
+                jsExceptionHere(JSET_ERROR, "Field or method %q does not already exist, and can't create it on %t", index, aVar);
               }
             }
             jsvUnLock(parent);
@@ -1866,7 +1867,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
       jsvUnLock(cond);
     }
-    JSP_MATCH(';');
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(';',jslCharPosFree(&forCondStart);,0);
     JslCharPos forIterStart = jslCharPosClone(&execInfo.lex->tokenStart);
     if (execInfo.lex->tk != ')')  { // we could have 'for (;;)'
       JSP_SAVE_EXECUTE();
@@ -1874,7 +1875,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       jsvUnLock(jspeExpression()); // iterator
       JSP_RESTORE_EXECUTE();
     }
-    JSP_MATCH(')');
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&forCondStart);jslCharPosFree(&forIterStart);,0);
 
     JslCharPos forBodyStart = jslCharPosClone(&execInfo.lex->tokenStart); // actual for body
     JSP_SAVE_EXECUTE();

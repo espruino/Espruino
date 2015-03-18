@@ -114,9 +114,9 @@ static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
 int chtod(char ch) {
   if (ch >= '0' && ch <= '9')
     return ch - '0';
-  else if (ch >= 'a' && ch <= 'f')
+  else if (ch >= 'a' && ch <= 'z')
     return 10 + ch - 'a';
-  else if (ch >= 'A' && ch <= 'F')
+  else if (ch >= 'A' && ch <= 'Z')
     return 10 + ch - 'A';
   else return -1;
 }
