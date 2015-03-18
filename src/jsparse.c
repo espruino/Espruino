@@ -1688,7 +1688,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
-    JSP_MATCH(')');
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileCondStart);,0);
   }
   JslCharPos whileBodyStart = jslCharPosClone(&execInfo.lex->tokenStart);
   JSP_SAVE_EXECUTE();
@@ -1707,13 +1707,13 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!loopCond) JSP_RESTORE_EXECUTE();
 
   if (!isWhile) { // do..while loop
-    JSP_MATCH(LEX_R_WHILE);
-    JSP_MATCH('(');
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_R_WHILE,jslCharPosFree(&whileBodyStart);,0);
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN('(',jslCharPosFree(&whileBodyStart);if (isWhile)jslCharPosFree(&whileCondStart);,0);
     whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
     cond = jspeAssignmentExpression();
     loopCond = JSP_SHOULD_EXECUTE && jsvGetBoolAndUnLock(jsvSkipName(cond));
     jsvUnLock(cond);
-    JSP_MATCH(')');
+    JSP_MATCH_WITH_CLEANUP_AND_RETURN(')',jslCharPosFree(&whileBodyStart);jslCharPosFree(&whileCondStart);,0);
   }
 
   JslCharPos whileBodyEnd;

@@ -5,6 +5,7 @@
             Fix propogation of Errors and Exceptions through function calls
             Allow parsing of integers > base 16
             Now allow functions with >16 arguments (fix #490)
+            Fix assert fail for syntax error in do or while loop
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object
