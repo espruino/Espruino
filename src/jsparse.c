@@ -440,13 +440,21 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
      */
     if (jsvIsNative(function)) {
       if (isParsing) {
-#define MAX_ARGS 16
-        argPtr = (JsVar**)alloca(sizeof(JsVar*)*MAX_ARGS);
+        int argPtrSize = 16;
+        argPtr = (JsVar**)alloca(sizeof(JsVar*)*argPtrSize);
         argCount = 0;
-        while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF && argCount<MAX_ARGS) {
+        while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
           if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',while(argCount)jsvUnLock(argPtr[--argCount]);, 0);
+          if (argCount>=argPtrSize) {
+            // allocate more space on stack
+            JsVar **a = (JsVar**)alloca(sizeof(JsVar*)*argPtrSize*4);
+            memcpy(a, argPtr, argPtrSize*sizeof(JsVar*));
+            argPtr = a;
+            argPtrSize *= 4;
+          }
         }
+
         JSP_MATCH(')');
       }
 
