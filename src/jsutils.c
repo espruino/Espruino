@@ -199,6 +199,7 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
     JsVar *obj = 0;
     if (type == JSET_ERROR) obj = jswrap_error_constructor(var);
     if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
+    if (type == JSET_TYPEERROR) obj = jswrap_typeerror_constructor(var);
     if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
     jsvUnLock(var);
     var = obj;

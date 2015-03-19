@@ -739,8 +739,8 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
   // OPT: would this be useful as compare instead?
   assert(jsvIsBasic(a) && jsvIsBasic(b));
   if (jsvIsNumeric(a) && jsvIsNumeric(b)) {
-    if (jsvIsInt(a)) {
-      if (jsvIsInt(b)) {
+    if (jsvIsIntegerish(a)) {
+      if (jsvIsIntegerish(b)) {
         return a->varData.integer == b->varData.integer;
       } else {
         assert(jsvIsFloat(b));
@@ -748,7 +748,7 @@ bool jsvIsBasicVarEqual(JsVar *a, JsVar *b) {
       }
     } else {
       assert(jsvIsFloat(a));
-      if (jsvIsInt(b)) {
+      if (jsvIsIntegerish(b)) {
         return a->varData.floating == b->varData.integer;
       } else {
         assert(jsvIsFloat(b));
@@ -2257,7 +2257,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
     assert(jsvIsName(childIndex))
     JsVar *childValue = jsvSkipName(childIndex);
     if (childValue==value ||
-        (!matchExact && jsvIsBasicVarEqual(childValue, value))) {
+        (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
       jsvUnLock(childValue);
       return childIndex;
     }
@@ -2478,22 +2478,27 @@ JsVar *jsvMathsOpError(int op, const char *datatype) {
   return 0;
 }
 
+bool jsvMathsOpTypeEqual(JsVar *a, JsVar *b) {
+  // check type first, then call again to check data
+  bool eql = (a==0) == (b==0);
+  if (a && b) {
+    // Check whether both are numbers, otherwise check the variable
+    // type flags themselves
+    eql = ((jsvIsInt(a)||jsvIsFloat(a)) && (jsvIsInt(b)||jsvIsFloat(b))) ||
+          ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
+  }
+  if (eql) {
+    JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
+    if (!jsvGetBool(contents)) eql = false;
+    jsvUnLock(contents);
+  }
+  return eql;
+}
+
 JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
   // Type equality check
   if (op == LEX_TYPEEQUAL || op == LEX_NTYPEEQUAL) {
-    // check type first, then call again to check data
-    bool eql = (a==0) == (b==0);
-    if (a && b) {
-      // Check whether both are numbers, otherwise check the variable
-      // type flags themselves
-      eql = ((jsvIsInt(a)||jsvIsFloat(a)) && (jsvIsInt(b)||jsvIsFloat(b))) ||
-            ((a->flags & JSV_VARTYPEMASK) == (b->flags & JSV_VARTYPEMASK));
-    }
-    if (eql) {
-      JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
-      if (!jsvGetBool(contents)) eql = false;
-      jsvUnLock(contents);
-    }
+    bool eql = jsvMathsOpTypeEqual(a,b);
     if (op == LEX_TYPEEQUAL)
       return jsvNewFromBool(eql);
     else

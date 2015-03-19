@@ -30,6 +30,12 @@ The base class for syntax errors
 */
 /*JSON{
   "type" : "class",
+  "class" : "TypeError"
+}
+The base class for type errors
+*/
+/*JSON{
+  "type" : "class",
   "class" : "InternalError"
 }
 The base class for internal errors
@@ -77,6 +83,21 @@ Creates a SyntaxError object
 */
 JsVar *jswrap_syntaxerror_constructor(JsVar *msg) {
   return _jswrap_error_constructor(msg, "SyntaxError");
+}
+/*JSON{
+  "type" : "constructor",
+  "class" : "TypeError",
+  "name" : "TypeError",
+  "generate" : "jswrap_typeerror_constructor",
+  "params" : [
+    ["message","JsVar","An optional message string"]
+  ],
+  "return" : ["JsVar","A TypeError object"]
+}
+Creates a TypeError object
+*/
+JsVar *jswrap_typeerror_constructor(JsVar *msg) {
+  return _jswrap_error_constructor(msg, "TypeError");
 }
 /*JSON{
   "type" : "constructor",

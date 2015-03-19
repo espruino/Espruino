@@ -8,6 +8,8 @@
             Fix assert fail for syntax error in do or while loop
             Maths operations now call Object.valueOf if it's needed
             Fix assert fail when jswrap_object_getOwnPropertyDescriptor called with non-string
+            Fix Array.indexOf when array contains non-basic values
+            valueOf returns a type error when called on undefined            
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object

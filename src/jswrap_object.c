@@ -81,6 +81,10 @@ JsVar *jswrap_object_length(JsVar *parent) {
 Returns the primitive value of this object.
 */
 JsVar *jswrap_object_valueOf(JsVar *parent) {
+  if (!parent) {
+    jsExceptionHere(JSET_TYPEERROR, "Invalid type %t for valueOf", parent);
+    return 0;
+  }
   return jsvLockAgain(parent);
 }
 

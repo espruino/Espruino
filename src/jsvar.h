@@ -504,6 +504,7 @@ JsVar *jsvAsName(JsVar *var);
 
 /// MATHS!
 JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op);
+bool jsvMathsOpTypeEqual(JsVar *a, JsVar *b);
 JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op);
 /// Negates an integer/double value
 JsVar *jsvNegateAndUnLock(JsVar *v);

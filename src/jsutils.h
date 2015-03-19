@@ -387,6 +387,7 @@ typedef enum {
   JSET_STRING,
   JSET_ERROR,
   JSET_SYNTAXERROR,
+  JSET_TYPEERROR,
   JSET_INTERNALERROR,
 } JsExceptionType;
 
