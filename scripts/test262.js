@@ -1,6 +1,12 @@
 #!/bin/node
-// This expects that you've cloned https://github.com/tc39/test262 at the same
-// level as the Espruino directory. 
+/*
+
+Runs Test262 Ecmascript tests on Espruino.
+
+This expects that you've cloned https://github.com/tc39/test262 at the same
+level as the Espruino directory. 
+
+*/
 
 
 process.chdir(__dirname);
@@ -18,7 +24,7 @@ var wrapBegin =
 '}\n'+
 '\n'+
 'function runTestCase(fn) {\n'+
-'  $HADERROR = fn() && !$HADERROR;\n'+
+'  $HADERROR = !fn() || $HADERROR;\n'+
 '}\n';
 var wrapEnd =
 '\nif ($HADERROR) throw "FAIL";';
@@ -39,16 +45,25 @@ function getTest(path) {
 function runTest(path, callback) {
   console.log("------------- "+path);
   var test = getTest(path);
+
+  if (test.indexOf("\\u")>=0) {
+    console.log("Not run because of Unicode");    
+    return callback();
+  }
+
   var negative;
   if (test.indexOf("/*---")>0) {
     var desc = test.substring(test.indexOf("/*---")+5, test.indexOf("---*/"));
     var neg = desc.indexOf("negative:");
-    if (neg>=0) negative = desc.substring(neg+9, desc.indexOf("\n",neg)).trim();
+    if (neg>=0) {
+      negative = desc.substring(neg+9, desc.indexOf("\n",neg)).trim();
+      console.log("Expecting fail with '"+negative+"'");
+    }
   }
 
   require("fs").writeFileSync("test.js", test); 
   var result = require('child_process').exec('../espruino test.js', { timeout : 10 }, function (error, stdout, stderr) {
-    require("fs").unlink("test.js"); 
+    require("fs").unlinkSync("test.js"); 
     if (error) {
       (stdout+"\n"+stderr).split("\n").forEach(function(l) {
         if (!error) return;
@@ -59,7 +74,7 @@ function runTest(path, callback) {
           console.log("NEGATIVE PASS");
           error = false;
         }
-        if (l.indexOf("ASSERT")==0) assertFails.push(path);        
+        if (l.indexOf("ASSERT")==0) assertFails.push([path, l]);        
         if (commonFailures[l]===undefined) commonFailures[l]=1;
         else commonFailures[l]++;
       });      
@@ -69,6 +84,8 @@ function runTest(path, callback) {
       testPasses.push(path);
     } else {
       testFails.push(path);
+      if (negative) console.log("FAIL - expecting '"+negative+"'");
+      else console.log("FAIL");
     }
     callback();
   });
@@ -108,7 +125,7 @@ if (process.argv.length==2) {
     console.log("Common failures:"); 
     var fails = Object.keys(commonFailures);
     fails.sort(function(a,b) { return commonFailures[b]-commonFailures[a]; });
-    for (var i=0;i<20 && i<fails.length;i++) {
+    for (var i=0;i<50 && i<fails.length;i++) {
       console.log(commonFailures[fails[i]]+":"+fails[i]);
     }
   });
