@@ -254,8 +254,11 @@ Get information on the given property in the object, or undefined
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   if (!jswrap_object_hasOwnProperty(parent, name))
     return 0;
+ 
+  JsVar *propName = jsvAsArrayIndex(name);
+  JsVar *varName = jspGetVarNamedField(parent, propName, true);
+  jsvUnLock(propName);
 
-  JsVar *varName = jspGetVarNamedField(parent, name, true);
   assert(varName); // we had it! (apparently)
   if (!varName) return 0;
 
