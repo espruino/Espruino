@@ -874,10 +874,10 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
   #ifdef STM32API2
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
     if (af) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   #else
     GPIO_InitStructure.GPIO_Mode = pulldown ? GPIO_Mode_IPD : (pullup ? GPIO_Mode_IPU : GPIO_Mode_IN_FLOATING);
   #endif
+    if (state==JSHPINSTATE_ADC_IN) GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
   }
 #ifdef STM32API2
   GPIO_InitStructure.GPIO_PuPd = pulldown ? GPIO_PuPd_DOWN : (pullup ? GPIO_PuPd_UP : GPIO_PuPd_NOPULL);
@@ -1687,8 +1687,8 @@ JsVarFloat jshPinAnalog(Pin pin) {
     jshPrintCapablePins(pin, "Analog Input", 0,0,0,0, true);
     return 0;
   }
-  jshSetPinStateIsManual(pin, false);
-  jshPinSetState(pin, JSHPINSTATE_ADC_IN);
+  if (!jshGetPinStateIsManual(pin))
+    jshPinSetState(pin, JSHPINSTATE_ADC_IN);
 
   return jshAnalogRead(pinInfo[pin].analog, false) / (JsVarFloat)65535;
 }

@@ -10,6 +10,8 @@
             Fix assert fail when jswrap_object_getOwnPropertyDescriptor called with non-string
             Fix Array.indexOf when array contains non-basic values
             valueOf returns a type error when called on undefined            
+            Make sure analogRead doesn't overwrite pin state if it was set previously with pinMode
+            Make sure pinMode works with ADC input mode
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object
