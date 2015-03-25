@@ -83,7 +83,7 @@ board_css = """
   height: 272px;
   top: 300px;
   left : 100px;
-  background-image: url(img/PICO_R1_2.png);
+  background-image: url(img/PICO_R1_3.png);
 }
 #boardcontainer {
   height: 800px;
