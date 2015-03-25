@@ -104,6 +104,7 @@ URLS = {
  "LED2":"/Flashing+Lights",
  "LED3":"/Flashing+Lights",
  "BLUETOOTH":"/Bluetooth",
+ "JTAG":"/AdvancedDebug"
 };
 
 # is a pin name valid

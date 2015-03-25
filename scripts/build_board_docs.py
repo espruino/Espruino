@@ -30,36 +30,53 @@ import pinutils;
 
 # Now scan AF file
 print "Script location "+scriptdir
-#if len(sys.argv)!=3:
-#  print "ERROR, USAGE: build_board_docs.py BOARD_NAME HTML_FILENAME"
-#  exit(1)
-if len(sys.argv)!=2:
-  print "ERROR, USAGE: build_board_docs.py BOARD_NAME"
+embeddable = False
+boardname = ""
+if len(sys.argv)==3 and sys.argv[2]=="pinout":
+  embeddable = True 
+  boardname = sys.argv[1]
+if len(sys.argv)==2:
+  boardname = sys.argv[1]
+if boardname=="":
+  print "ERROR..."
+  print "USAGE: build_board_docs.py BOARD_NAME [pinout]"
+  print "          'pinout' will output embeddable HTML of just the pinout"
   exit(1)
-boardname = sys.argv[1]
+
+print "BOARD "+boardname
+
 #htmlFilename = sys.argv[2]
 htmlFilename = "boards/"+boardname+".html"
 print "HTML_FILENAME "+htmlFilename
-print "BOARD "+boardname
+htmlFile = open(htmlFilename, 'w')
+def writeHTML(s): htmlFile.write(s+"\n");
+
 # import the board def
 board = importlib.import_module(boardname)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'
 pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
 
+#if not embeddable and  "link" in board.info and board.info["link"][0].startswith("http://www.espruino.com"):
+#  writeHTML('<html><head><meta http-equiv="refresh" content="0; url="'+board.info["link"][0]+'"></head><body>Please wait. redirecting...</body></html>');
+#  exit(0);
+
 # -----------------------------------------------------------------------------------------
+functionsOnBoard = [];
+
 for pin in pins:
   if pin["name"][0] == 'P':
     pin["name"] = pin["name"][1:];
+  for func in pin["functions"]:
+    if func in pinutils.CLASSES:
+      if not pinutils.CLASSES[func] in functionsOnBoard:
+        functionsOnBoard.append(pinutils.CLASSES[func])
 
 pinmap = {};
 if '_pinmap' in board.board:
   pinmap = board.board['_pinmap'];
 
 # -----------------------------------------------------------------------------------------
-htmlFile = open(htmlFilename, 'w')
-def writeHTML(s): htmlFile.write(s+"\n");
-
 
 def dump_pin(pin, pinstrip):
 
@@ -121,11 +138,11 @@ def dump_pin(pin, pinstrip):
       if reverse: writeHTML(pinHTML2+"\n"+pinHTML)
       writeHTML('    </DIV>')    
 
-
-writeHTML("""
-<HTML>
+if not embeddable:
+  writeHTML("""<HTML>
  <HEAD>
-  <STYLE>
+""");
+writeHTML("""  <STYLE>
    #boardcontainer { position: relative; }
    #board { 
      position: absolute; 
@@ -232,11 +249,11 @@ writeHTML("""
   <SCRIPT type="text/javascript"> 
     function showTT(ttid) { 
       var e = document.getElementById(ttid);
-      e.style.display = "block";
+      e.style.display = 'block';
     }
     function hideTT(ttid) { 
       var e = document.getElementById(ttid);
-      e.style.display = "none";
+      e.style.display = 'none';
     }
     function drawLine(x1, y1, x2, y2, hover) {
       if (x2 < x1) {
@@ -259,29 +276,33 @@ writeHTML("""
      }
   </SCRIPT>
 """)
-writeHTML(" </HEAD>")
-writeHTML(" <BODY>")
-writeHTML('  <H1>'+board.info["name"]+'</H1>')
-writeHTML('  <!-- '+boardname+' -->')
-if "link" in board.info:
-  for link in board.info["link"]:
-    writeHTML('  <P><a href=\"'+link+'\"" target="_blank">'+link+'</a></P>')    
-writeHTML('  <H2>Specifications</H2>')
-writeHTML('  <TABLE style="margin-left:100px;">')
-writeHTML('   <TR><TH width="256">Chip</TH><TD>'+board.chip['part']+'</TD></TR>')
-writeHTML('   <TR><TH>Package</TH><TD>'+board.chip['package']+'</TD></TR>')
-writeHTML('   <TR><TH>RAM</TH><TD>'+str(board.chip['ram'])+' kBytes</TD></TR>')
-writeHTML('   <TR><TH>Flash</TH><TD>'+str(board.chip['flash'])+' kBytes</TD></TR>')
-writeHTML('   <TR><TH>Speed</TH><TD>'+str(board.chip['speed'])+' Mhz</TD></TR>')
-writeHTML('   <TR><TH>USARTs</TH><TD>'+str(board.chip['usart'])+'</TD></TR>')
-writeHTML('   <TR><TH>SPIs</TH><TD>'+str(board.chip['spi'])+'</TD></TR>')
-writeHTML('   <TR><TH>I2Cs</TH><TD>'+str(board.chip['i2c'])+'</TD></TR>')
-writeHTML('   <TR><TH>USB</TH><TD>'+("Yes" if "USB" in board.devices else "No")+'</TD></TR>')
-writeHTML('   <TR><TH>DACs</TH><TD>'+(str(board.chip['dac']) if board.chip['dac']>0 else "No")+'</TD></TR>')
-writeHTML('   <TR><TH>SD Card</TH><TD>'+("Yes" if "SD" in board.devices else "No")+'</TD></TR>')
-writeHTML('  </TABLE>')
-writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/Order">support us by buying our board</a>!</P>')
-writeHTML('  <H2>Pinout</H2>')
+if not embeddable:
+  writeHTML(" </HEAD>")
+  writeHTML(" <BODY>")
+  writeHTML('  <H1>'+board.info["name"]+'</H1>')
+  writeHTML('  <!-- '+boardname+' -->')
+  if "link" in board.info:
+    for link in board.info["link"]:
+      writeHTML('  <P><a href=\"'+link+'\"" target="_blank">'+link+'</a></P>')    
+  writeHTML('  <H2>Specifications</H2>')
+  writeHTML('  <TABLE style="margin-left:100px;">')
+  writeHTML('   <TR><TH width="256">Chip</TH><TD>'+board.chip['part']+'</TD></TR>')
+  writeHTML('   <TR><TH>Package</TH><TD>'+board.chip['package']+'</TD></TR>')
+  writeHTML('   <TR><TH>RAM</TH><TD>'+str(board.chip['ram'])+' kBytes</TD></TR>')
+  writeHTML('   <TR><TH>Flash</TH><TD>'+str(board.chip['flash'])+' kBytes</TD></TR>')
+  writeHTML('   <TR><TH>Speed</TH><TD>'+str(board.chip['speed'])+' Mhz</TD></TR>')
+  writeHTML('   <TR><TH>USARTs</TH><TD>'+str(board.chip['usart'])+'</TD></TR>')
+  writeHTML('   <TR><TH>SPIs</TH><TD>'+str(board.chip['spi'])+'</TD></TR>')
+  writeHTML('   <TR><TH>I2Cs</TH><TD>'+str(board.chip['i2c'])+'</TD></TR>')
+  writeHTML('   <TR><TH>USB</TH><TD>'+("Yes" if "USB" in board.devices else "No")+'</TD></TR>')
+  writeHTML('   <TR><TH>DACs</TH><TD>'+(str(board.chip['dac']) if board.chip['dac']>0 else "No")+'</TD></TR>')
+  writeHTML('   <TR><TH>SD Card</TH><TD>'+("Yes" if "SD" in board.devices else "No")+'</TD></TR>')
+  writeHTML('  </TABLE>')
+  writeHTML('  <P>Like this? Please tell your friends, blog, or <a href="http://www.espruino.com/Order">support us by buying our board</a>!</P>')
+  writeHTML('  <H2>Pinout</H2>')
+
+
+
 writeHTML("""
   <P>Hover the mouse over a pin function for more information. Clicking in a function will tell you how to use it in Espruino.</P>
   <ul>
@@ -291,16 +312,17 @@ writeHTML("""
     <li><span class="pinfunction">3.3</span> is a 3.3v output from the on-board Voltage regulator.</li>
     <li><span class="pinfunction">GND</span> is ground (0v).</li>
     <li><span class="pinfunction">VBAT</span> is the battery voltage output (see <a href="/EspruinoBoard">the Espruino Board Reference</a>).</li>
-    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>
-    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>
-    <li><span class="pinfunction PWM">PWM</span> is for <a href="/PWM">Pulse Width Modulation</a>. This creates analog voltages from a digital output by sending a series of pulses.</li>
+    <li><span class="pinfunction ADC">ADC</span> is an <a href="/ADC">Analog to Digital Converter</a> (for reading analog voltages)</li>""");
+if "DAC" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction DAC">DAC</span> is a <a href="/DAC">Digital to Analog Converter</a> (for creating analog voltages). This is not available on all boards.</li>""")
+writeHTML("""    <li><span class="pinfunction PWM">PWM</span> is for <a href="/PWM">Pulse Width Modulation</a>. This creates analog voltages from a digital output by sending a series of pulses.</li>
     <li><span class="pinfunction SPI">SPI</span> is the 3 wire <a href="/SPI">Serial Peripheral Interface</a>.</li>
     <li><span class="pinfunction USART">USART</span> is a 2 wire peripheral for <a href="/USART">Serial Data</a>.</li>
     <li><span class="pinfunction I2C">I2C</span> is the 2 wire <a href="/I2C">Inter-Integrated Circuit</a> bus.</li>
-    <li><span class="pinfunction CAN">CAN</span> is for the <a href="http://en.wikipedia.org/wiki/CAN_bus">Controller Area Network</a>. It is only available on some devices and is not supported by Espruino.</li>
-
-  </ul>
 """);
+if "CAN" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction CAN">CAN</span> is for the <a href="http://en.wikipedia.org/wiki/CAN_bus">Controller Area Network</a>. It is not supported by Espruino.</li>""")
+
+writeHTML("  </ul>");
+
 writeHTML('  <DIV id="boardcontainer">')
 writeHTML('  <DIV id="board">')
 usedpins = []
@@ -368,6 +390,7 @@ writeHTML('  <P></P>')
 #        writeHTML('drawLine(x+'+str(px)+',y+'+str(py)+','+pinx+','+piny+', "'+pin+'");');
 #writeHTML('});</SCRIPT>');
 
-writeHTML(" </BODY>")
-writeHTML("</HTML>")
+if not embeddable:
+  writeHTML(" </BODY>")
+  writeHTML("</HTML>")
 
