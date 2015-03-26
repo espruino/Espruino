@@ -3,7 +3,7 @@
 |   __|_ -| . |  _| | | |   | . |                                               
 |_____|___|  _|_| |___|_|_|_|___|                                               
           |_|                                                               
-   Copyright 2013 Gordon Williams
+   Copyright 2015 Gordon Williams
                                                
 http://www.espruino.com
 
@@ -15,7 +15,6 @@ types of Microcontroller:
 
 espruino_#v##_pico_1r3_cc3000.bin  
 espruino_#v##_pico_1r3_wiznet.bin  
-espruino_#v##_pico_1r3_esp8266.bin  
    - The firmware image for the latest Espruino Pico Boards.
      We'd strongly suggest that you use the Web IDE to flash this.
      Each image is for a different type of networking device.
@@ -23,7 +22,6 @@ espruino_#v##_pico_1r3_esp8266.bin
 
 espruino_#v##_espruino_1r3.bin  
 espruino_#v##_espruino_1r3_wiznet.bin  
-espruino_#v##_espruino_1r3_esp8266.bin  
    - The firmware image for the latest Espruino Boards (rev 1v3 and 1v4)
      We'd strongly suggest that you use the Web IDE to flash this.
      Each image is for a different type of networking device.
