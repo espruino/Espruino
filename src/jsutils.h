@@ -353,7 +353,13 @@ typedef enum LEX_TYPES {
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
+    return (ch==0x09) || // \t - tabe
+           (ch==0x08) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (ch==0xA0) || // no break space
+           (ch=='\n') ||
+           (ch=='\r');
 }
 
 static inline bool isNumeric(char ch) {
