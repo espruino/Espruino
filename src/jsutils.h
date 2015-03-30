@@ -190,7 +190,7 @@ typedef long long JsSysTime;
 // Don't do this on Mac because no need, and clang doesn't like the inline + attribute (at least according to c05b5e701a118ec0b7146f2a6bb8c06a26d0652c)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 #else
-#define ALWAYS_INLINE inline
+#define ALWAYS_INLINE
 #endif
 
 /// Maximum amount of locks we ever expect to have on a variable (this could limit recursion) must be 2^n-1
