@@ -40,13 +40,13 @@ bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event); ///< Called from idle loop
 
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
-void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount);
+void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
 /// Execute the given function/string/array of functions and return true on success, false on failure (error)
-bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1);
+bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, JsVar *arg0, JsVar *arg1);
 
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);

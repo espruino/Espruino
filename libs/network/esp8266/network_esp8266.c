@@ -82,7 +82,7 @@ void net_esp8266_execute_and_set_idle() {
   JsVar *cb = jsvLockAgainSafe(stateSuccessCallback);
   net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
   if (cb) {
-    jsiQueueEvents(cb, 0, 0);
+    jsiQueueEvents(0, cb, 0, 0);
     jsvUnLock(cb);
   }
 }

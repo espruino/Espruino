@@ -77,7 +77,7 @@ bool jswrap_stream_pushData(JsVar *parent, JsVar *dataString, bool force) {
 
   JsVar *callback = jsvFindChildFromString(parent, STREAM_CALLBACK_NAME, false);
   if (callback) {
-    if (!jsiExecuteEventCallback(callback, dataString, 0)) {
+    if (!jsiExecuteEventCallback(parent, callback, dataString, 0)) {
       jsError("Error processing Serial data handler - removing it.");
       jsErrorFlags |= JSERR_CALLBACK;
       jsvRemoveNamedChild(parent, STREAM_CALLBACK_NAME);
