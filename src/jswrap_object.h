@@ -31,6 +31,7 @@ void jswrap_object_removeAllListeners_cstr(JsVar *parent, const char *event);
 
 void jswrap_function_replaceWith(JsVar *parent, JsVar *newFunc);
 JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray);
+JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray);
 
 bool jswrap_boolean_constructor(JsVar *value);
 

@@ -13,6 +13,7 @@
             Make sure analogRead doesn't overwrite pin state if it was set previously with pinMode
             Make sure pinMode works with ADC input mode
             Tweak event handling - events such as `Serial.on('data'` now set `this` to `Serial`
+            Add Function.bind (fix #318)
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object

@@ -2735,12 +2735,13 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   char endBracket = ' ';
   if (jsvIsObject(var)) { jsiConsolePrint("Object { "); endBracket = '}'; }
   else if (jsvIsArray(var)) { jsiConsolePrintf("Array(%d) [ ", var->varData.integer); endBracket = ']'; }
+  else if (jsvIsNativeFunction(var)) { jsiConsolePrintf("NativeFunction 0x%x { ", var->varData.native.ptr); endBracket = '}'; }
   else if (jsvIsFunction(var)) { jsiConsolePrint("Function { "); endBracket = '}'; }
   else if (jsvIsPin(var)) jsiConsolePrintf("Pin %d", jsvGetInteger(var));
   else if (jsvIsInt(var)) jsiConsolePrintf("Integer %d", jsvGetInteger(var));
   else if (jsvIsBoolean(var)) jsiConsolePrintf("Bool %s", jsvGetBool(var)?"true":"false");
   else if (jsvIsFloat(var)) jsiConsolePrintf("Double %f", jsvGetFloat(var));
-  else if (jsvIsFunctionParameter(var)) jsiConsolePrint("Param ");
+  else if (jsvIsFunctionParameter(var)) jsiConsolePrintf("Param %q ", var);
   else if (jsvIsArrayBufferName(var)) jsiConsolePrintf("ArrayBufferName[%d] ", jsvGetInteger(var));
   else if (jsvIsArrayBuffer(var)) jsiConsolePrintf("%s ", jswGetBasicObjectName(var)); // way to get nice name
   else if (jsvIsString(var)) {
