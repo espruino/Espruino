@@ -399,3 +399,40 @@ JsVar *jswrap_string_toUpperLowerCase(JsVar *parent, bool upper) {
   return res;
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "String",
+  "name" : "trim",
+  "generate" : "jswrap_string_trim",
+  "return" : ["JsVar","A String with Whitespace removed from the beginning and end"],
+  "return_object" : "String"
+}
+Return the integer value of a single character at the given position in the String.
+
+Note that this returns 0 not 'NaN' for out of bounds characters
+*/
+JsVar *jswrap_string_trim(JsVar *parent) {
+  JsVar *s = jsvAsString(parent, false);
+  if (!s) return s;
+  unsigned int start = 0;
+  int end = -1;
+
+  // work out beginning and end
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, s, 0);
+  while (jsvStringIteratorHasChar(&it)) {
+    bool ws = isWhitespace(jsvStringIteratorGetChar(&it));
+    if (!ws) {
+      if (end<0) start = jsvStringIteratorGetIndex(&it);
+      end = (int)jsvStringIteratorGetIndex(&it); // last
+    }
+    jsvStringIteratorNext(&it);
+  }
+  jsvStringIteratorFree(&it);
+  // work out length
+  unsigned int len = 0;
+  if (end>=start) len = 1+(unsigned int)end-start;
+  JsVar *res = jsvNewFromStringVar(s, start, len);
+  jsvUnLock(s);
+  return res;
+}

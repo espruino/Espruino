@@ -163,7 +163,9 @@ typedef long long JsSysTime;
 #define JS_HIDDEN_CHAR_STR ">"
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"cod" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
+#define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
+
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
 #define JSPARSE_STACKTRACE_VAR "sTrace" // for errors/exceptions, a stack trace is stored as a string
 #define JSPARSE_MODULE_CACHE_NAME "modules"
@@ -188,7 +190,7 @@ typedef long long JsSysTime;
 // Don't do this on Mac because no need, and clang doesn't like the inline + attribute (at least according to c05b5e701a118ec0b7146f2a6bb8c06a26d0652c)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
 #else
-#define ALWAYS_INLINE inline
+#define ALWAYS_INLINE
 #endif
 
 /// Maximum amount of locks we ever expect to have on a variable (this could limit recursion) must be 2^n-1
@@ -351,7 +353,13 @@ typedef enum LEX_TYPES {
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==' ') || (ch=='\t') || (ch=='\n') || (ch=='\r');
+    return (ch==0x09) || // \t - tabe
+           (ch==0x08) || // vertical tab
+           (ch==0x0C) || // form feed
+           (ch==0x20) || // space
+           (ch==0xA0) || // no break space
+           (ch=='\n') ||
+           (ch=='\r');
 }
 
 static inline bool isNumeric(char ch) {

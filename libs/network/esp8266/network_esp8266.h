@@ -9,6 +9,8 @@
  *
  * ----------------------------------------------------------------------------
  * Implementation of JsNetwork for ESP8266 devices
+ *
+ * DEPRECATED - YOU SHOULD NOW USE THE ESP8266.js MODULE
  * ----------------------------------------------------------------------------
  */
 #include "network.h"

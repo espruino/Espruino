@@ -9,9 +9,9 @@
  *
  * ----------------------------------------------------------------------------
  * Implementation of JsNetwork for ESP8266 devices
- * ----------------------------------------------------------------------------
  *
- * AT+CIUPDATE can do the updates for you
+ * DEPRECATED - YOU SHOULD NOW USE THE ESP8266.js MODULE
+ * ----------------------------------------------------------------------------
  */
 #include "jsinteractive.h"
 #include "network.h"
@@ -25,7 +25,7 @@
 #define ESP8266_IPD_NAME_LEN 3 // strlen(ESP8266_IPD_NAME)
 #define ESP8266_DNS_NAME JS_HIDDEN_CHAR_STR"DNS"
 
-//#define ESP8266_DEBUG
+#define ESP8266_DEBUG
 
 // ---------------------------------------------------------------------------
 typedef enum {
@@ -82,7 +82,7 @@ void net_esp8266_execute_and_set_idle() {
   JsVar *cb = jsvLockAgainSafe(stateSuccessCallback);
   net_esp8266_setState(ESP8266_IDLE, 0, 0, 0);
   if (cb) {
-    jsiQueueEvents(cb, 0, 0);
+    jsiQueueEvents(0, cb, 0, 0);
     jsvUnLock(cb);
   }
 }
@@ -195,7 +195,7 @@ bool esp8266_idle(JsVar *usartClass) {
           hasChanged = true;
         }
       } else { // string doesn't start with '+IPD'
-        int idx = jsvGetStringIndexOf(buf, '\n');
+        int idx = jsvGetStringIndexOf(buf, '\r');
         if (idx<0 && esp8266_idle_compare && esp8266_idle_compare[0]=='>' && esp8266_idle_compare[1]==0 && buf && buf->varData.str[0]=='>')
           idx=2; // pretend we had /r/n - this only works because right now we're only expecting one char
         while ((!found) && idx>=0) {
@@ -300,7 +300,7 @@ bool esp8266_idle(JsVar *usartClass) {
           JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)(idx+1), JSVAPPENDSTRINGVAR_MAXLENGTH);
           jsvUnLock(buf);
           buf = newBuf;
-          idx = jsvGetStringIndexOf(buf, '\n');
+          idx = jsvGetStringIndexOf(buf, '\r');
         }
       }
     }

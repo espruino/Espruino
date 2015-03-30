@@ -635,3 +635,102 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
   for (i=0;i<argC;i++) jsvUnLock(args[i]);
   return r;
 }
+
+/*JSON{
+  "type" : "method",
+  "class" : "Function",
+  "name" : "bind",
+  "generate" : "jswrap_function_bind",
+  "params" : [
+    ["this","JsVar","The value to use as the 'this' argument when executing the function"],
+    ["params","JsVarArray","Optional Default parameters that are prepended to the call"]
+  ],
+  "return" : ["JsVar","The 'bound' function"]
+}
+This executes the function with the supplied 'this' argument and parameters
+*/
+JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
+  if (!jsvIsFunction(parent)) {
+    jsExceptionHere(JSET_TYPEERROR, "Function.bind expects to be called on function, got %t", parent);
+    return 0;
+  }
+  JsVar *fn;
+  if (jsvIsNativeFunction(parent))
+    fn = jsvNewNativeFunction(parent->varData.native.ptr, parent->varData.native.argTypes);
+  else
+    fn = jsvNewWithFlags(JSV_FUNCTION);
+  if (!fn) return 0;
+
+  // Old function info
+  JsvObjectIterator fnIt;
+  jsvObjectIteratorNew(&fnIt, parent);
+  // add p[reviously bound arguments
+  while (jsvObjectIteratorHasValue(&fnIt)) {
+    JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+    JsVar *defaultValue = jsvObjectIteratorGetValue(&fnIt);
+    bool wasBound = jsvIsFunctionParameter(param) && defaultValue;
+    if (wasBound) {
+      JsVar *newParam = jsvCopy(param);
+      if (newParam) { // could be out of memory
+        jsvAddName(fn, newParam);
+        jsvUnLock(newParam);
+      }
+    }
+    jsvUnLock(param);
+    jsvUnLock(defaultValue);
+    if (!wasBound) break;
+    jsvObjectIteratorNext(&fnIt);
+  }
+
+  // add bound arguments
+  JsvObjectIterator argIt;
+  jsvObjectIteratorNew(&argIt, argsArray);
+  while (jsvObjectIteratorHasValue(&argIt)) {
+    JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
+    bool addedParam = false;
+    while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
+      JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+      if (!jsvIsFunctionParameter(param)) {
+        jsvUnLock(param);
+        break;
+      }
+      JsVar *newParam = jsvCopyNameOnly(param, false,  true);
+      jsvSetValueOfName(newParam, defaultValue);
+      jsvAddName(fn, newParam);
+      addedParam = true;
+      jsvUnLock(param);
+      jsvUnLock(newParam);
+      jsvObjectIteratorNext(&fnIt);
+    }
+
+    if (!addedParam) {
+      JsVar *paramName = jsvNewFromEmptyString();
+      if (paramName) {
+        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+        jsvSetValueOfName(paramName, defaultValue);
+        jsvAddName(fn, paramName);
+        jsvUnLock(paramName);
+      }
+    }
+    jsvUnLock(defaultValue);
+    jsvObjectIteratorNext(&argIt);
+  }
+  jsvObjectIteratorFree(&argIt);
+
+  // Copy the rest of the old function's info
+  while (jsvObjectIteratorHasValue(&fnIt)) {
+    JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+    JsVar *newParam = jsvCopy(param);
+    if (newParam) { // could be out of memory
+      jsvAddName(fn, newParam);
+      jsvUnLock(newParam);
+    }
+    jsvUnLock(param);
+    jsvObjectIteratorNext(&fnIt);
+  }
+  jsvObjectIteratorFree(&fnIt);
+  // Add 'this'
+  jsvObjectSetChild(fn, JSPARSE_FUNCTION_THIS_NAME, thisArg); // no unlock needed
+
+  return fn;
+}

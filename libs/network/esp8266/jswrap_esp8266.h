@@ -9,6 +9,8 @@
  *
  * ----------------------------------------------------------------------------
  * Contains built-in functions for Espressif ESP8266 WiFi Access
+ *
+ * DEPRECATED - YOU SHOULD NOW USE THE ESP8266.js MODULE
  * ----------------------------------------------------------------------------
  */
 #include "jsvar.h"

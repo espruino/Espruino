@@ -423,6 +423,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
     JsVar *functionRoot;
     JsVar *returnVarName;
     JsVar *returnVar;
+    JsVar *thisVar = thisArg;
     if (!jsvIsFunction(function)) {
       jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
       return 0;
@@ -438,52 +439,93 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
      *   a) args were pre-parsed and we have to populate the function
      *   b) we parse our own args, which is possibly better
      */
-    if (jsvIsNative(function)) {
+    if (jsvIsNative(function)) { // ------------------------------------- NATIVE
+
+      unsigned int argPtrSize = 0;
+      int boundArgs = 0;
+      // Add 'bound' parameters if there were any
+      JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, function);
+      JsVar *param = jsvObjectIteratorGetKey(&it);
+      while (jsvIsFunctionParameter(param)) {
+        if (argCount>=argPtrSize) {
+          // allocate more space on stack if needed
+          unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
+          JsVar **newArgPtr = (JsVar**)alloca(sizeof(JsVar*)*newArgPtrSize);
+          memcpy(newArgPtr, argPtr, argCount*sizeof(JsVar*));
+          argPtr = newArgPtr;
+          argPtrSize = newArgPtrSize;
+        }
+        // if we already had arguments - shift them up...
+        int i;
+        for (i=argCount-1;i>=boundArgs;i--)
+            argPtr[i+1] = argPtr[i];
+        // add bound argument
+        argPtr[boundArgs] = jsvSkipName(param);
+        argCount++;
+        boundArgs++;
+        jsvUnLock(param);
+        jsvObjectIteratorNext(&it);
+        param = jsvObjectIteratorGetKey(&it);
+      }
+      // check if 'this' was defined
+      while (param) {
+        if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) {
+          thisVar = jsvSkipName(param);
+          break;
+        }
+        jsvUnLock(param);
+        jsvObjectIteratorNext(&it);
+        param = jsvObjectIteratorGetKey(&it);
+      }
+      jsvUnLock(param);
+      jsvObjectIteratorFree(&it);
+
+      // Now, if we're parsing add the rest of the arguments
+      int allocatedArgCount = boundArgs;
       if (isParsing) {
-        int argPtrSize = 16;
-        argPtr = (JsVar**)alloca(sizeof(JsVar*)*argPtrSize);
-        argCount = 0;
         while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
-          argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',while(argCount)jsvUnLock(argPtr[--argCount]);, 0);
           if (argCount>=argPtrSize) {
             // allocate more space on stack
-            JsVar **a = (JsVar**)alloca(sizeof(JsVar*)*argPtrSize*4);
-            memcpy(a, argPtr, argPtrSize*sizeof(JsVar*));
-            argPtr = a;
-            argPtrSize *= 4;
+            unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
+            JsVar **newArgPtr = (JsVar**)alloca(sizeof(JsVar*)*newArgPtrSize);
+            memcpy(newArgPtr, argPtr, argCount*sizeof(JsVar*));
+            argPtr = newArgPtr;
+            argPtrSize = newArgPtrSize;
           }
+          argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
+          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',while(argCount)jsvUnLock(argPtr[--argCount]);, 0);
         }
 
         JSP_MATCH(')');
+        allocatedArgCount = argCount;
       }
 
       JsVar *oldThisVar = execInfo.thisVar;
-      if (thisArg)
-        execInfo.thisVar = jsvRef(thisArg);
+      if (thisVar)
+        execInfo.thisVar = jsvRef(thisVar);
       else
         execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
       void *nativePtr = jsvGetNativeFunctionPtr(function);
 
       if (nativePtr) {
-        returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisArg, argPtr, argCount);
+        returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
       } else {
         assert(0); // in case something went horribly wrong
         returnVar = 0;
       }
 
       // unlock values if we locked them
-      if (isParsing) {
-        while (argCount--)
-          jsvUnLock(argPtr[argCount]);
-      }
+      while (allocatedArgCount--)
+        jsvUnLock(argPtr[allocatedArgCount]);
 
       /* Return to old 'this' var. No need to unlock as we never locked before */
       if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);
       execInfo.thisVar = oldThisVar;
 
-    } else {
+    } else { // ----------------------------------------------------- NOT NATIVE
+
       // create a new symbol table entry for execution of this function
       // OPT: can we cache this function execution environment + param variables?
       // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
@@ -506,6 +548,26 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
        */
       JsvObjectIterator it;
       jsvObjectIteratorNew(&it, function);
+
+      JsVar *param = jsvObjectIteratorGetKey(&it);
+      JsVar *value = jsvObjectIteratorGetValue(&it);
+      while (jsvIsFunctionParameter(param) && value) {
+        JsVar *paramName = jsvCopy(param);
+        if (paramName) { // could be out of memory
+          jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+          jsvSetValueOfName(paramName, value);
+          jsvAddName(functionRoot, paramName);
+          jsvUnLock(paramName);
+        } else
+          jspSetError(false);
+        jsvUnLock(value);
+        jsvUnLock(param);
+        jsvObjectIteratorNext(&it);
+        param = jsvObjectIteratorGetKey(&it);
+        value = jsvObjectIteratorGetValue(&it);
+      }
+      jsvUnLock(value);
+      jsvUnLock(param);
       if (isParsing) {
         int hadParams = 0;
         // grab in all parameters. We go around this loop until we've run out
@@ -520,17 +582,15 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             if (execInfo.lex->tk!=')')
               value = jspeAssignmentExpression();
             // and if execute, copy it over
-            if (JSP_SHOULD_EXECUTE) {
-              value = jsvSkipNameAndUnLock(value);
-              JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
-              if (paramName) { // could be out of memory
-                jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
-                jsvSetValueOfName(paramName, value);
-                jsvAddName(functionRoot, paramName);
-                jsvUnLock(paramName);
-              } else
-                jspSetError(false);
-            }
+            value = jsvSkipNameAndUnLock(value);
+            JsVar *paramName = paramDefined ? jsvCopyNameOnly(param,false,true) : jsvNewFromEmptyString();
+            if (paramName) { // could be out of memory
+              jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+              jsvSetValueOfName(paramName, value);
+              jsvAddName(functionRoot, paramName);
+              jsvUnLock(paramName);
+            } else
+              jspSetError(false);
             jsvUnLock(value);
             if (execInfo.lex->tk!=')') JSP_MATCH(',');
           }
@@ -538,12 +598,12 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (paramDefined) jsvObjectIteratorNext(&it);
         }
         JSP_MATCH(')');
-      } else if (JSP_SHOULD_EXECUTE) {  // and NOT isParsing
+      } else {  // and NOT isParsing
         int args = 0;
         while (args<argCount) {
           JsVar *param = jsvObjectIteratorGetKey(&it);
           bool paramDefined = jsvIsFunctionParameter(param);
-          JsVar *paramName = paramDefined ? jsvCopy(param) : jsvNewFromEmptyString();
+          JsVar *paramName = paramDefined ? jsvCopyNameOnly(param,false,true) : jsvNewFromEmptyString();
           if (paramName) {
             jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
             jsvSetValueOfName(paramName, argPtr[args]);
@@ -563,6 +623,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           if (jsvIsStringEqual(param, JSPARSE_FUNCTION_SCOPE_NAME)) functionScope = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) thisVar = jsvSkipName(param);
           else if (jsvIsFunctionParameter(param)) {
             JsVar *paramName = jsvCopy(param);
             // paramName is already a name (it's a function parameter)
@@ -612,8 +673,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
            */
 
           JsVar *oldThisVar = execInfo.thisVar;
-          if (thisArg)
-            execInfo.thisVar = jsvRef(thisArg);
+          if (thisVar)
+            execInfo.thisVar = jsvRef(thisVar);
           else
             execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
 
@@ -674,7 +735,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       jsvUnLock(functionRoot);
     }
 
-
+    // If we grabbed a new 'this' from a bound function
+    // we unlock it here
+    if (thisVar != thisArg)
+      jsvUnLock(thisVar);
 
     return returnVar;
   } else if (isParsing) { // ---------------------------------- function, but not executing - just parse args and be done

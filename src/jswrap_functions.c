@@ -291,3 +291,4 @@ JsVar *jswrap_atob(JsVar *base64Data) {
 
   return binaryData;
 }
+

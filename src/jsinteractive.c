@@ -1085,13 +1085,13 @@ void jsiHandleChar(char ch) {
   }
 }
 
-void jsiQueueEventInternal(JsVar *callbackFunc, JsVar **args, int argCount) {
+/// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
+void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
   assert(argCount<10);
-  assert(jsvIsFunction(callbackFunc) || jsvIsString(callbackFunc));
 
   JsVar *event = jsvNewWithFlags(JSV_OBJECT);
   if (event) { // Could be out of memory error!
-    jsvUnLock(jsvAddNamedChild(event, callbackFunc, "func"));
+    jsvUnLock(jsvAddNamedChild(event, callback, "func"));
 
     int i;
     for (i=0;i<argCount;i++) {
@@ -1099,29 +1099,9 @@ void jsiQueueEventInternal(JsVar *callbackFunc, JsVar **args, int argCount) {
       argName[3] = (char)('0'+i);
       jsvUnLock(jsvAddNamedChild(event, args[i], argName));
     }
+    if (object) jsvUnLock(jsvAddNamedChild(event, object, "this"));
 
     jsvArrayPushAndUnLock(events, event);
-  }
-}
-
-/// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
-void jsiQueueEvents(JsVar *callback, JsVar **args, int argCount) { // an array of functions, a string, or a single function
-  if (!callback) return;
-  // if it is a single callback, just add it
-  if (jsvIsFunction(callback) || jsvIsString(callback)) {
-    jsiQueueEventInternal(callback, args, argCount);
-  } else {
-    assert(jsvIsArray(callback));
-
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, callback);
-    while (jsvObjectIteratorHasValue(&it)) {
-      JsVar *callbackFunc = jsvObjectIteratorGetValue(&it);
-      jsiQueueEventInternal(callbackFunc, args, argCount);
-      jsvUnLock(callbackFunc);
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
   }
 }
 
@@ -1135,7 +1115,7 @@ bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName) {
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
   JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
   if (!callback) return;
-  jsiQueueEvents(callback, args, argCount);
+  jsiQueueEvents(object, callback, args, argCount);
   jsvUnLock(callback);
 }
 
@@ -1147,25 +1127,18 @@ void jsiExecuteEvents() {
     JsVar *event = jsvSkipNameAndUnLock(jsvArrayPopFirst(events));
     // Get function to execute
     JsVar *func = jsvObjectGetChild(event, "func", 0);
+    JsVar *thisVar = jsvObjectGetChild(event, "this", 0);
     JsVar *args[2];
     // TODO: make this faster by iterating over the children (and support varying numbers of args)
     args[0] = jsvObjectGetChild(event, "arg0", 0);
     args[1] = jsvObjectGetChild(event, "arg1", 0);
-    // free
+    // free actual event
     jsvUnLock(event);
-
-
     // now run..
-    if (func) {
-      if (jsvIsFunction(func))
-        jsvUnLock(jspExecuteFunction(func, 0, 2, args));
-      else if (jsvIsString(func))
-        jsvUnLock(jspEvaluateVar(func, 0, false));
-      else 
-        jsError("Unknown type of callback in Event Queue");
-    }
+    jsiExecuteEventCallback(thisVar, func, args[0], args[1]);
     //jsPrint("Event Done\n");
     jsvUnLock(func);
+    jsvUnLock(thisVar);
     jsvUnLock(args[0]);
     jsvUnLock(args[1]);
   }
@@ -1176,7 +1149,7 @@ void jsiExecuteEvents() {
   }
 }
 
-NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
+NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
   bool wasInterrupted = jspHasError();
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
@@ -1186,15 +1159,14 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *callbackVar, JsVar *arg0, JsVar *a
       jsvObjectIteratorNew(&it, callbackNoNames);
       while (jsvObjectIteratorHasValue(&it)) {
         JsVar *child = jsvObjectIteratorGetValue(&it);
-        jsiExecuteEventCallback(child, arg0, arg1);
+        jsiExecuteEventCallback(thisVar, child, arg0, arg1);
         jsvUnLock(child);
         jsvObjectIteratorNext(&it);
       }
       jsvObjectIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
        JsVar *args[2] = { arg0, arg1 };
-       JsVar *parent = 0;
-       jsvUnLock(jspExecuteFunction(callbackNoNames, parent, 2, args));
+       jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, 2, args));
     } else if (jsvIsString(callbackNoNames))
       jsvUnLock(jspEvaluateVar(callbackNoNames, 0, false));
     else 
@@ -1391,7 +1363,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(data, "pin", jsvNewFromPin(pin)));
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
-              if (!jsiExecuteEventCallback(watchCallback, data, 0) && watchRecurring) {
+              if (!jsiExecuteEventCallback(0, watchCallback, data, 0) && watchRecurring) {
                 jsError("Error processing Watch - removing it.");
                 jsErrorFlags |= JSERR_CALLBACK;
                 watchRecurring = false;
@@ -1472,7 +1444,7 @@ void jsiIdle() {
       }
       JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (exec) {
-        if (!jsiExecuteEventCallback(timerCallback, data, 0) && interval) {
+        if (!jsiExecuteEventCallback(0, timerCallback, data, 0) && interval) {
           jsError("Error processing interval - removing it.");
           jsErrorFlags |= JSERR_CALLBACK;
         }

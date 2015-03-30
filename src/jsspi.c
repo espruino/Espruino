@@ -62,13 +62,18 @@ void jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options) {
     inf->pinSCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
     inf->pinMISO = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "miso", 0));
     inf->pinMOSI = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "mosi", 0));
+
     JsVar *v;
     v = jsvObjectGetChild(options, "baud", 0);
     if (jsvIsNumeric(v))
       inf->baudRate = (int)jsvGetInteger(v);
+    jsvUnLock(v);
+
     v = jsvObjectGetChild(options, "mode", 0);
     if (jsvIsNumeric(v))
       inf->spiMode = ((int)jsvGetInteger(v))&3;
+    jsvUnLock(v);
+
     v = jsvObjectGetChild(options, "order", 0);
     if (jsvIsString(v) && jsvIsStringEqual(v, "msb")) {
       inf->spiMSB = true;
