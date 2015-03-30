@@ -664,12 +664,29 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   // Old function info
   JsvObjectIterator fnIt;
   jsvObjectIteratorNew(&fnIt, parent);
+  // add p[reviously bound arguments
+  while (jsvObjectIteratorHasValue(&fnIt)) {
+    JsVar *param = jsvObjectIteratorGetKey(&fnIt);
+    JsVar *defaultValue = jsvObjectIteratorGetValue(&fnIt);
+    bool wasBound = jsvIsFunctionParameter(param) && defaultValue;
+    if (wasBound) {
+      JsVar *newParam = jsvCopy(param);
+      if (newParam) { // could be out of memory
+        jsvAddName(fn, newParam);
+        jsvUnLock(newParam);
+      }
+    }
+    jsvUnLock(param);
+    jsvUnLock(defaultValue);
+    if (!wasBound) break;
+    jsvObjectIteratorNext(&fnIt);
+  }
+
   // add bound arguments
   JsvObjectIterator argIt;
   jsvObjectIteratorNew(&argIt, argsArray);
   while (jsvObjectIteratorHasValue(&argIt)) {
     JsVar *defaultValue = jsvObjectIteratorGetValue(&argIt);
-
     bool addedParam = false;
     while (!addedParam && jsvObjectIteratorHasValue(&fnIt)) {
       JsVar *param = jsvObjectIteratorGetKey(&fnIt);

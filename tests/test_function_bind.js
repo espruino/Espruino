@@ -24,6 +24,9 @@ test("concat_b.bind('Hello','There')('World')","Hello:There,World");
 test("concat_c.bind('Hello','There')('World')","Hello:There,World");
 test("concat_c.bind('Hello','There','Teeny','Tiny')('World')","Hello:There,Teeny,Tiny,World");
 
+// bind x2
+test("concat_c.bind('Hello','There').bind('Hello','Teeny','Tiny')('World')","Hello:There,Teeny,Tiny,World");
+
 test("Math.max.bind(undefined,42)(23)",42);
 test("Math.max.bind(undefined,42)(51)",51);
 test("Math.max.bind(undefined,42).call(undefined,23)",42);
