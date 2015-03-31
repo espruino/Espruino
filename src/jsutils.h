@@ -187,12 +187,15 @@ typedef long long JsSysTime;
 #define NO_INLINE __attribute__ ((noinline))
 
 /// Put before functions that we always want inlined
-#if defined(__MACOSX__)
-#define ALWAYS_INLINE // If we're not link-time optimising, the compiler (CLang) gets upset if we ask for stuff to be inlined
-#elif !defined(SAVE_ON_FLASH) && !defined(DEBUG)  && !defined(NO_ALWAYS_INLINE)
+#if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
-#else
+#elif defined(__GNUC__)
+// By inlining in GCC we avoid shedloads of warnings
 #define ALWAYS_INLINE inline
+#else
+// clang seems to hate being asked to inline when the definition
+// isn't in the same file
+#define ALWAYS_INLINE
 #endif
 
 /// Maximum amount of locks we ever expect to have on a variable (this could limit recursion) must be 2^n-1
@@ -359,7 +362,7 @@ static inline bool isWhitespace(char ch) {
            (ch==0x08) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
-           (ch==0xA0) || // no break space
+           (((unsigned char)ch)==0xA0) || // no break space
            (ch=='\n') ||
            (ch=='\r');
 }

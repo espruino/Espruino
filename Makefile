@@ -375,7 +375,6 @@ USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
 OPTIMIZEFLAGS+=-O3
-DEFINES+=-DNO_ALWAYS_INLINE # needed for Pi optimized compile as it's GCC 4.6 (we use 4.8 for the STM32)
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
 else
@@ -1052,6 +1051,7 @@ OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 ifndef BOOTLOADER
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+DEFINES += -DLINK_TIME_OPTIMISATION
 endif
 
 # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
