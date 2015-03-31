@@ -18,6 +18,7 @@
             Fix assert fail on debug builds on Waveform output (fix #511)
             Added more allowed types of whitespace
             Added String.prototype.trim() (fix #507)
+            Allow argument lists in Function() (fix #505)
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object
