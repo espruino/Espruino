@@ -105,7 +105,7 @@ Evaluate a string containing JavaScript code
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0, false);
+  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, false);
   jsvUnLock(s);
   return result;
 }
