@@ -40,6 +40,7 @@
 # ARMINARM=1
 # NUCLEOF401RE=1
 # NUCLEOF411RE=1
+# MINISTM32_ANGLED_VE=1
 # Or nothing for standard linux compile
 #
 # Also:
@@ -203,6 +204,18 @@ BOARD=EMBEDDED_PI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef MINISTM32_ANGLED_VE
+EMBEDDED=1
+USE_GRAPHICS=1
+USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
+DEFINES+=-DUSE_RTC
+USE_FILESYSTEM=1
+USE_FILESYSTEM_SDIO=1
+BOARD=MINISTM32_ANGLED_VE
+STLIB=STM32F10X_HD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
 else ifdef HYSTM32_24
 EMBEDDED=1
 USE_GRAPHICS=1
