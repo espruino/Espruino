@@ -1,4 +1,4 @@
-     1v77 : ...
+     1v77 : Add E.mapInPlace
 
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
