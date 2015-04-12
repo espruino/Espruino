@@ -1,3 +1,5 @@
+     1v77 : ...
+
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
             Made 'Field or method doesn't exist' report back the field that doesn't exist
