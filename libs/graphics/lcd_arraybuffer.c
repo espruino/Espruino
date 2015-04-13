@@ -31,14 +31,15 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
   unsigned int col = 0;
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
-    size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
+    unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,1);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
     if (gfx->data.bpp&7/*not a multiple of one byte*/) {
       idx = idx & 7;
       unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
       unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-      col = ((existing>>idx)&mask);
+      unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
+      col = ((existing>>bitIdx)&mask);
     } else {
       int i;
       for (i=0;i<gfx->data.bpp;i+=8) {
@@ -56,12 +57,12 @@ unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {
 void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCount, unsigned int col) {
   JsVar *buf = jsvObjectGetChild(gfx->graphicsVar, "buffer", 0);
   if (buf && jsvIsArrayBuffer(buf)) {
-    size_t idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
+    unsigned int idx = lcdGetPixelIndex_ArrayBuffer(gfx,x,y,pixelCount);
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, buf, idx>>3 );
 
     unsigned int whiteMask = (1U<<gfx->data.bpp)-1;
-    bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE); // simple black or white fill
+    bool shortCut = (col==0 || (col&whiteMask)==whiteMask) && (!(gfx->data.flags&JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)); // simple black or white fill
 
     while (pixelCount--) { // writing individual bits
       if (gfx->data.bpp&7/*not a multiple of one byte*/) {
@@ -82,7 +83,8 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
         }
         unsigned int mask = (unsigned int)(1<<gfx->data.bpp)-1;
         unsigned int existing = (unsigned int)jsvArrayBufferIteratorGetIntegerValue(&it);
-        jsvArrayBufferIteratorSetByteValue(&it, (char)((existing&~(mask<<idx)) | ((col&mask)<<idx)));
+        unsigned int bitIdx = (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_MSB) ? 8-(idx+gfx->data.bpp) : idx;
+        jsvArrayBufferIteratorSetByteValue(&it, (char)((existing&~(mask<<bitIdx)) | ((col&mask)<<bitIdx)));
         if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE) {
           jsvArrayBufferIteratorNext(&it);
         } else {

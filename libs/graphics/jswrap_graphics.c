@@ -89,7 +89,7 @@ static bool isValidBPP(int bpp) {
     ["width","int32","Pixels wide"],
     ["height","int32","Pixels high"],
     ["bpp","int32","Number of bits per pixel"],
-    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default) }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not"]]
+    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default) }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not","msb = when bits<8, store pixels msb first"]]
   ],
   "return" : ["JsVar","The new Graphics object"],
   "return_object" : "Graphics"
@@ -121,6 +121,8 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
   if (jsvIsObject(options)) {
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "zigzag", 0)))
       gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG);
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "msb", 0)))
+      gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_MSB);
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "vertical_byte", 0))) {
       if (gfx.data.bpp==1)
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE);
