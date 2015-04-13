@@ -1,5 +1,6 @@
      1v77 : Add E.mapInPlace           
             Allowed ArrayBuffer Graphics to store pixels MSB-first
+            Added faster software SPI path for simple writes
 
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
