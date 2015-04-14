@@ -33,14 +33,15 @@ typedef enum {
   JSGRAPHICSFLAGS_SWAP_XY = 8, //< All devices: swap X and Y over
   JSGRAPHICSFLAGS_INVERT_X = 16, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
   JSGRAPHICSFLAGS_INVERT_Y = 32, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
+
+  JSGRAPHICSFLAGS_COLOR_RGB = 0,
   JSGRAPHICSFLAGS_COLOR_BRG = 64, //< All devices: color order is BRG
   JSGRAPHICSFLAGS_COLOR_BGR = 128, //< All devices: color order is BGR
-  JSGRAPHICSFLAGS_COLOR_GBR = 256, //< All devices: color order is GBR
-  JSGRAPHICSFLAGS_COLOR_GRB = 512, //< All devices: color order is GRB
-  JSGRAPHICSFLAGS_COLOR_RBG = 1024, //< All devices: color order is RBG
+  JSGRAPHICSFLAGS_COLOR_GBR = 64+128, //< All devices: color order is GBR
+  JSGRAPHICSFLAGS_COLOR_GRB = 256, //< All devices: color order is GRB
+  JSGRAPHICSFLAGS_COLOR_RBG = 256+64, //< All devices: color order is RBG
+  JSGRAPHICSFLAGS_COLOR_MASK = 64+128+256, //< All devices: color order is BRG
 } JsGraphicsFlags;
-
-#define JSGRAPHICSFLAGS_COLOR_MASK (JSGRAPHICSFLAGS_COLOR_BRG | JSGRAPHICSFLAGS_COLOR_BGR | JSGRAPHICSFLAGS_COLOR_GBR | JSGRAPHICSFLAGS_COLOR_GRB | JSGRAPHICSFLAGS_COLOR_RBG)
 
 #define JSGRAPHICS_FONTSIZE_4X6 (-1) // a bitmap font
 #define JSGRAPHICS_FONTSIZE_CUSTOM (-2) // a custom bitmap font made from fields in the graphics object (See below)

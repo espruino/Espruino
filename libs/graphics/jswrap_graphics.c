@@ -27,8 +27,6 @@
 #endif
 #include "bitmap_font_4x6.h"
 
-#include <string.h>
-
 /*JSON{
   "type" : "class",
   "class" : "Graphics"
@@ -89,7 +87,13 @@ static bool isValidBPP(int bpp) {
     ["width","int32","Pixels wide"],
     ["height","int32","Pixels high"],
     ["bpp","int32","Number of bits per pixel"],
-    ["options","JsVar",["An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default) }```","zigzag = whether to alternate the direction of scanlines for rows","vertical_byte = whether to align bits in a byte vertically or not","msb = when bits<8, store pixels msb first"]]
+    ["options","JsVar",[
+      "An object of other options. ```{ zigzag : true/false(default), vertical_byte : true/false(default), msb : true/false(default), color_order: 'rgb'(default),'bgr',etc }```",
+      "zigzag = whether to alternate the direction of scanlines for rows",
+      "vertical_byte = whether to align bits in a byte vertically or not",
+      "msb = when bits<8, store pixels msb first",
+      "color_order = re-orders the colour values that are supplied via setColor"
+    ]]
   ],
   "return" : ["JsVar","The new Graphics object"],
   "return_object" : "Graphics"
@@ -129,31 +133,22 @@ JsVar *jswrap_graphics_createArrayBuffer(int width, int height, int bpp, JsVar *
       else
         jsWarn("vertical_byte only works for 1bpp ArrayBuffers\n");
     }
-    JsVar *colorv;
-    char color_order[4];
-    size_t len;
-    if ((colorv = jsvObjectGetChild(options, "color_order", 0)) != NULL) {
-      len = jsvGetString(colorv, color_order, 4);
-      jsvUnLock(colorv);
-
-      if (len != 3)
-	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
-      if (!strcasecmp(color_order, "rgb"))
-	; // The default
-      else if (!strcasecmp(color_order, "brg"))
+    JsVar *colorv = jsvObjectGetChild(options, "color_order", 0);
+    if (colorv) {
+      if (jsvIsStringEqual(colorv, "rgb")) ; // The default
+      else if (!jsvIsStringEqual(colorv, "brg"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BRG);
-      else if (!strcasecmp(color_order, "bgr"))
+      else if (!jsvIsStringEqual(colorv, "bgr"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_BGR);
-      else if (!strcasecmp(color_order, "gbr"))
+      else if (!jsvIsStringEqual(colorv, "gbr"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GBR);
-      else if (!strcasecmp(color_order, "grb"))
+      else if (!jsvIsStringEqual(colorv, "grb"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_GRB);
-      else if (!strcasecmp(color_order, "RBG"))
+      else if (!jsvIsStringEqual(colorv, "rbg"))
         gfx.data.flags = (JsGraphicsFlags)(gfx.data.flags | JSGRAPHICSFLAGS_COLOR_RBG);
-      else {
-	jsExceptionHere(JSET_ERROR, "color_order must be 3 characters");
-	return 0; // XXX: free parent?
-      }
+      else
+        jsWarn("color_order must be 3 characters");
+      jsvUnLock(colorv);
     }
   }
 
@@ -507,28 +502,36 @@ void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool
     if (gi<0) gi=0;
     if (bi<0) bi=0;
     // Check if we need to twiddle colors
-    if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK) {
+    int colorMask = gfx.data.flags & JSGRAPHICSFLAGS_COLOR_MASK;
+    if (colorMask) {
       int tmpr, tmpg, tmpb;
       tmpr = ri;
       tmpg = gi;
       tmpb = bi;
-      if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BRG) {
-	ri = tmpb;
-	gi = tmpr;
-	bi = tmpg;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_BGR) {
-	ri = tmpb;
-	bi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GBR) {
-	ri = tmpg;
-	gi = tmpb;
-	bi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_GRB) {
-	ri = tmpg;
-	gi = tmpr;
-      } else if (gfx.data.flags & JSGRAPHICSFLAGS_COLOR_RBG) {
-	gi = tmpb;
-	bi = tmpg;
+      switch (colorMask) {
+        case JSGRAPHICSFLAGS_COLOR_BRG:
+          ri = tmpb;
+          gi = tmpr;
+          bi = tmpg;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_BGR:
+          ri = tmpb;
+          bi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_GBR:
+          ri = tmpg;
+          gi = tmpb;
+          bi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_GRB:
+          ri = tmpg;
+          gi = tmpr;
+          break;
+        case JSGRAPHICSFLAGS_COLOR_RBG:
+          gi = tmpb;
+          bi = tmpg;
+          break;
+        default: break;
       }
     }
     if (gfx.data.bpp==16) {
