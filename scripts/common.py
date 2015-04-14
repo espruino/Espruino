@@ -288,6 +288,7 @@ def get_ifdef_description(d):
   if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="RELEASE": return "release builds"
+  if d=="LINUX": return "Linux-based builds"
   print "WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description"
   return d
 

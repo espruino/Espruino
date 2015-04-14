@@ -19,6 +19,19 @@ int jsspiHardwareFunc(int data, spi_sender_data *info) {
   return jshSPISend(device, data);
 }
 
+int jsspiFastSoftwareFunc(int data, spi_sender_data *info) {
+  if (data<0) return -1;
+  JshSPIInfo *inf = (JshSPIInfo*)info;
+  // fast path for common case
+  int bit;
+  for (bit=7;bit>=0;bit--) {
+    jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
+    jshPinSetValue(inf->pinSCK, 1 );
+    jshPinSetValue(inf->pinSCK, 0 );
+  }
+  return 0xFF;
+}
+
 int jsspiSoftwareFunc(int data, spi_sender_data *info) {
   if (data<0) return -1;
   JshSPIInfo *inf = (JshSPIInfo*)info;
@@ -30,29 +43,27 @@ int jsspiSoftwareFunc(int data, spi_sender_data *info) {
   int bit = inf->spiMSB ? 7 : 0;
   int bitDir = inf->spiMSB ? -1 : 1;
   int endBit = inf->spiMSB ? -1 : 8;
-
   for (;bit!=endBit;bit+=bitDir) {
     if (!CPHA) { // 'Normal' SPI, CPHA=0
       if (inf->pinMOSI != PIN_UNDEFINED)
         jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
       if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 0 : 1 );
+        jshPinSetValue(inf->pinSCK, !CPOL );
       if (inf->pinMISO != PIN_UNDEFINED)
-         result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+        result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
       if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 1 : 0 );
+        jshPinSetValue(inf->pinSCK, CPOL );
     } else { // CPHA=1
       if (inf->pinSCK != PIN_UNDEFINED)
-        jshPinSetValue(inf->pinSCK, CPOL ? 0 : 1 );
+        jshPinSetValue(inf->pinSCK, !CPOL );
       if (inf->pinMOSI != PIN_UNDEFINED)
         jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
       if (inf->pinSCK != PIN_UNDEFINED)
-         jshPinSetValue(inf->pinSCK, CPOL ? 1 : 0 );
+         jshPinSetValue(inf->pinSCK, CPOL );
       if (inf->pinMISO != PIN_UNDEFINED)
          result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
     }
   }
-
   return result;
 }
 
@@ -102,7 +113,15 @@ bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data
     static JshSPIInfo inf;
     jsspiPopulateSPIInfo(&inf, options);
     jsvUnLock(options);
-    *spiSend = jsspiSoftwareFunc;
+
+    if (inf.pinMISO == PIN_UNDEFINED &&
+        inf.pinMOSI != PIN_UNDEFINED &&
+        inf.pinSCK != PIN_UNDEFINED &&
+        inf.spiMode == SPIF_SPI_MODE_0 &&
+        inf.spiMSB)
+      *spiSend = jsspiFastSoftwareFunc;
+    else
+      *spiSend = jsspiSoftwareFunc;
     *spiSendData = inf;
     return true;
   }

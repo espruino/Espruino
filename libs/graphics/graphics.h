@@ -29,14 +29,15 @@ typedef enum {
   JSGRAPHICSFLAGS_NONE,
   JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG = 1, ///< ArrayBuffer: zig-zag (even rows reversed)
   JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE = 2, ///< ArrayBuffer: if 1 bpp, treat bytes as stacked vertically
-  JSGRAPHICSFLAGS_SWAP_XY = 4, //< All devices: swap X and Y over
-  JSGRAPHICSFLAGS_INVERT_X = 8, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
-  JSGRAPHICSFLAGS_INVERT_Y = 16, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
-  JSGRAPHICSFLAGS_COLOR_BRG = 32, //< All devices: color order is BRG
-  JSGRAPHICSFLAGS_COLOR_BGR = 64, //< All devices: color order is BRG
-  JSGRAPHICSFLAGS_COLOR_GBR = 128, //< All devices: color order is GBR
-  JSGRAPHICSFLAGS_COLOR_GRB = 256, //< All devices: color order is GRB
-  JSGRAPHICSFLAGS_COLOR_RBG = 512, //< All devices: color order is RBG
+  JSGRAPHICSFLAGS_ARRAYBUFFER_MSB = 4, ///< ArrayBuffer: store pixels MSB first
+  JSGRAPHICSFLAGS_SWAP_XY = 8, //< All devices: swap X and Y over
+  JSGRAPHICSFLAGS_INVERT_X = 16, //< All devices: x = getWidth() - (x+1) - where x is DEVICE X
+  JSGRAPHICSFLAGS_INVERT_Y = 32, //< All devices: y = getHeight() - (y+1) - where y is DEVICE Y
+  JSGRAPHICSFLAGS_COLOR_BRG = 64, //< All devices: color order is BRG
+  JSGRAPHICSFLAGS_COLOR_BGR = 128, //< All devices: color order is BGR
+  JSGRAPHICSFLAGS_COLOR_GBR = 256, //< All devices: color order is GBR
+  JSGRAPHICSFLAGS_COLOR_GRB = 512, //< All devices: color order is GRB
+  JSGRAPHICSFLAGS_COLOR_RBG = 1024, //< All devices: color order is RBG
 } JsGraphicsFlags;
 
 #define JSGRAPHICSFLAGS_COLOR_MASK (JSGRAPHICSFLAGS_COLOR_BRG | JSGRAPHICSFLAGS_COLOR_BGR | JSGRAPHICSFLAGS_COLOR_GBR | JSGRAPHICSFLAGS_COLOR_GRB | JSGRAPHICSFLAGS_COLOR_RBG)

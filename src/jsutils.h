@@ -35,7 +35,7 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v76"
+#define JS_VERSION "1v77"
 /*
   In code:
   TODO - should be fixed
@@ -185,11 +185,16 @@ typedef long long JsSysTime;
 
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
+
 /// Put before functions that we always want inlined
-#if !defined(SAVE_ON_FLASH) && !defined(DEBUG)  && !defined(NO_ALWAYS_INLINE) && !defined(__MACOSX__)
-// Don't do this on Mac because no need, and clang doesn't like the inline + attribute (at least according to c05b5e701a118ec0b7146f2a6bb8c06a26d0652c)
+#if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
+#elif defined(__GNUC__)
+// By inlining in GCC we avoid shedloads of warnings
+#define ALWAYS_INLINE inline
 #else
+// clang seems to hate being asked to inline when the definition
+// isn't in the same file
 #define ALWAYS_INLINE
 #endif
 
@@ -357,7 +362,7 @@ static inline bool isWhitespace(char ch) {
            (ch==0x08) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
-           (ch==0xA0) || // no break space
+           (((unsigned char)ch)==0xA0) || // no break space
            (ch=='\n') ||
            (ch=='\r');
 }

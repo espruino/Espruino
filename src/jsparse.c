@@ -16,6 +16,7 @@
 #include "jswrapper.h"
 #include "jsnative.h"
 #include "jswrap_object.h" // for function_replacewith
+#include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -501,13 +502,27 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         allocatedArgCount = argCount;
       }
 
+      void *nativePtr = jsvGetNativeFunctionPtr(function);
+
       JsVar *oldThisVar = execInfo.thisVar;
       if (thisVar)
         execInfo.thisVar = jsvRef(thisVar);
-      else
-        execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
+      else {
+        if (nativePtr==jswrap_eval) { // eval gets to use the current scope
+          /* Note: proper JS has some utterly insane code that depends on whether 
+           * eval is an lvalue or not:
+           * 
+           * http://stackoverflow.com/questions/9107240/1-evalthis-vs-evalthis-in-javascript
+           * 
+           * Doing this in Espruino is quite an upheaval for that one
+           * slightly insane case - so it's not implemented. */          
+          if (execInfo.thisVar) execInfo.thisVar = jsvRef(execInfo.thisVar);
+        } else {
+          execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
+        }
+      }
 
-      void *nativePtr = jsvGetNativeFunctionPtr(function);
+
 
       if (nativePtr) {
         returnVar = jsnCallFunction(nativePtr, function->varData.native.argTypes, thisVar, argPtr, argCount);
@@ -1567,8 +1582,8 @@ JsVar *jspeAssignmentExpression() {
 // ',' is allowed to add multiple expressions, this is not allowed in jspeAssignmentExpression
 NO_INLINE JsVar *jspeExpression() {
   while (!JSP_SHOULDNT_PARSE) {
-    JsVar *a = jspeAssignmentExpression();
-    if (execInfo.lex->tk!=',') return a;
+  JsVar *a = jspeAssignmentExpression();
+  if (execInfo.lex->tk!=',') return a;
     // if we get a comma, we just forget this data and parse the next bit...
     jsvUnLock(a);
     JSP_ASSERT_MATCH(',');

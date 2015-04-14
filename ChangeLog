@@ -1,3 +1,7 @@
+     1v77 : Add E.mapInPlace           
+            Allowed ArrayBuffer Graphics to store pixels MSB-first
+            Added faster software SPI path for simple writes
+
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
             Made 'Field or method doesn't exist' report back the field that doesn't exist
@@ -18,6 +22,8 @@
             Fix assert fail on debug builds on Waveform output (fix #511)
             Added more allowed types of whitespace
             Added String.prototype.trim() (fix #507)
+            Allow argument lists in Function() (fix #505)
+            Propagate `this` into eval (fix #513)
 
      1v75 : Fixed issue with Pins/Bools as Array indices
             Fix crash when out of memory while creating built-in object

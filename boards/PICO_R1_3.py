@@ -24,9 +24,8 @@ info = {
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
  'binaries' : [
-  { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
-  { 'filename' : 'espruino_%v_pico_1r3_esp8266.bin', 'description' : "EspressIF ESP8266 WiFi Networking"},
   { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
+  { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
  ]
 };
 chip = {

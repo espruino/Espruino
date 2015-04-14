@@ -164,7 +164,7 @@ static ALWAYS_INLINE void jsvObjectIteratorNext(JsvObjectIterator *it) {
   }
 }
 
-/// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvArrayIteratorNew) as we don't store it
+/// Remove the current element and move to next element. Needs the parent supplied (the JsVar passed to jsvObjectIteratorNew) as we don't store it
 static ALWAYS_INLINE void jsvObjectIteratorRemoveAndGotoNext(JsvObjectIterator *it, JsVar *parent) {
   if (it->var) {
     JsVarRef next = jsvGetNextSibling(it->var);

@@ -48,17 +48,45 @@ JsVar *jswrap_arguments() {
   "name" : "Function",
   "generate" : "jswrap_function_constructor",
   "params" : [
-    ["code","JsVar","A string representing the code to run"]
+    ["args","JsVarArray","Zero or more arguments (as strings), followed by a string representing the code to run"]
   ],
   "return" : ["JsVar","A Number object"]
 }
 Creates a function
 */
-JsVar *jswrap_function_constructor(JsVar *code) {
+JsVar *jswrap_function_constructor(JsVar *args) {
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
 
-  JsVar *codeStr = jsvVarPrintf("{\n%v\n}", code);
+  /* Slightly odd form because we want to iterate
+   * over all items, but leave the final one as
+   * that will be for code. */
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, args);
+  JsVar *v = jsvObjectIteratorGetValue(&it);
+  jsvObjectIteratorNext(&it);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *s = jsvAsString(v, false);
+    if (s) {
+      // copy the string - if a string was supplied already we want to make
+      // sure we have a new (unreferenced) string
+      JsVar *paramName = jsvNewFromStringVar(s, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+      jsvUnLock(s);
+      if (paramName) {
+        jsvMakeFunctionParameter(paramName); // force this to be called a function parameter
+        jsvAddName(fn, paramName);
+        jsvUnLock(paramName);
+      }
+    }
+
+    jsvUnLock(v);
+    v = jsvObjectIteratorGetValue(&it);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+
+  JsVar *codeStr = jsvVarPrintf("{\n%v\n}", v);
+  jsvUnLock(v);
   jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
   return fn;
 }
@@ -77,7 +105,7 @@ Evaluate a string containing JavaScript code
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, 0, false);
+  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, false);
   jsvUnLock(s);
   return result;
 }

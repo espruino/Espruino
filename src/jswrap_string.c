@@ -431,7 +431,7 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   jsvStringIteratorFree(&it);
   // work out length
   unsigned int len = 0;
-  if (end>=start) len = 1+(unsigned int)end-start;
+  if (end>=(int)start) len = 1+(unsigned int)end-start;
   JsVar *res = jsvNewFromStringVar(s, start, len);
   jsvUnLock(s);
   return res;
