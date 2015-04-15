@@ -38,7 +38,7 @@ Library that initialises a network device that calls into JavaScript
   ],
   "return" : ["JsVar","The object passed in"]
 }
-Initialise the WIZnet module and return an Ethernet object. For instance:
+Initialise the network using the callbacks given and return the first argument. For instance:
 
 ```
 require("NetworkJS").create({
