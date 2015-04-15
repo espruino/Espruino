@@ -13,6 +13,8 @@
  * Contains JavaScript interface for trigger wheel functionality
  * ----------------------------------------------------------------------------
  */
+
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 #include "trigger.h"
 #include "jswrap_trigger.h"
 
