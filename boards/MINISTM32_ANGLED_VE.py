@@ -35,13 +35,17 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'bottom' : [ 'A3', 'A1', 'C0', 'C2', 'C4', 'B0', '', '', 'E5', 'E2', 'E0', 'B8', 'B10', 'B12', 'B14', 'D12', 'C7', 'D6', 'GND', '3V' ],
+  'top2' : [ 'A5', 'B7', 'A7', 'A6', 'B6', '', '', '', '', 'D8', 'E15', 'GND', 'E14', 'E13', 'E12', 'D9', 'E11', 'GND', 'D13', 'D10' ],
+  'top' : [ '3V3', 'GND', 'E1', 'D4', 'D5', 'D7', 'D11', 'E10', 'E9', 'D1', 'E8', 'E7', '3V3', 'D0', 'D15', 'D14', 'GND', 'GND', '5V', '5V' ],
   'bottom2' : [ 'A2', 'A0', 'C1', 'C3', 'C5', 'B1', '', 'E6', 'E4', 'E3', 'B9', '', '', 'B11', 'B13', 'B15', 'C6', 'A8', 'GND', '3V' ],
-  'lcd' : [ '3V', 'GND', 'RESET', 'RD', 'WR', 'CS', 'RS', 'E10', 'E9', 'D1', 'E8', 'E7', '3V', 'D0', 'D15', 'D14', 'GND', 'GND', '5V', '5V' ],
-  'lcd2' : [ 'A5', 'B7', 'A7', 'A6', 'B6', '', '', '', '', 'D8', 'E15', 'G', 'E14', 'E13', 'E12', 'D9', 'E11', 'G', 'D13', 'D10' ],
+  'bottom' : [ 'A3', 'A1', 'C0', 'C2', 'C4', 'B0', '', '', 'E5', 'E2', 'E0', 'B8', 'B10', 'B12', 'B14', 'D12', 'C7', 'D6', 'GND', '3V' ],
+  'left' : [ '3V3', 'B4', 'A15', 'A13', 'A14', '', 'B3', 'RESET', '', '' ],
 };
-#board["top"].reverse()
-#board["top2"].reverse()
+board["left"].reverse()
+board["top"].reverse()
+board["top2"].reverse()
+board["bottom"].reverse()
+board["bottom2"].reverse()
 devices = {
   'OSC' : { 'pin_1' : 'D0',
             'pin_2' : 'D1' },
@@ -89,7 +93,9 @@ devices = {
             'pin_rd' : 'D4',
             'pin_wr' : 'D5',
             'pin_cs' : 'D7',
-            'pin_rs' : 'D11'
+            'pin_rs' : 'D11',
+            'pin_reset' : 'E1',
+            'pin_bl' : 'D13'
           },
   'JTAG' : {
         'pin_MS' : 'A13',
@@ -101,8 +107,8 @@ devices = {
 
 board_css = """
 #board {
-  width: 1170px;
-  height: 834px;
+  width: 960px;
+  height: 752px;
   left: 100px;
   top: 200px;
   background-image: url(img/MINISTM32_ANGLED.jpg);
@@ -110,25 +116,25 @@ board_css = """
 #boardcontainer {
   height: 1250px;
 }
-#left {
-  top: 130px;
-  right: 1120px;
+#top2 {
+  top: 90px;
+  left: 240px;
 }
 #top {
-  top: 40px;
-  left: 120px;
-}
-#top2 {
-  top: 110px;
-  left: 120px;
-}
-#bottom  {
-  top: 760px;
-  left: 330px;
+  top: 15px;
+  left: 240px;
 }
 #bottom2  {
-  top: 690px;
-  left: 330px;
+  top: 575px;
+  left: 240px;
+}
+#bottom  {
+  top: 650px;
+  left: 240px;
+}
+#left {
+  top: 430px;
+  right: 800px;
 }
 """;
 
