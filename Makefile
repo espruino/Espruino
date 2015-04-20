@@ -14,10 +14,11 @@
 #
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
-# ESPRUINO_1V3=1          # Espruino board rev 1.3
+# ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
 # PICO_1V0=1              # Espruino Pico board rev 1.0
 # PICO_1V1=1              # Espruino Pico board rev 1.1
 # PICO_1V2=1              # Espruino Pico board rev 1.2
+# PICO_1V3=1              # Espruino Pico board rev 1.3
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
 # MAPLEMINI=1             # Leaflabs Maple Mini
@@ -169,6 +170,7 @@ USE_NET=1
 USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
+USE_FILESYSTEM=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o

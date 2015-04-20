@@ -177,9 +177,9 @@ void power_off (void)
 	// TODO: we should have a way of disabling SPI in the hardware API...
 
 	/* All SPI-Pins to input */
-	jshPinInput(SD_DO_PIN);
+/*	jshPinInput(SD_DO_PIN);
 	jshPinInput(SD_DI_PIN);
-	jshPinInput(SD_CLK_PIN);
+	jshPinInput(SD_CLK_PIN);*/
 	
 	Stat |= STA_NOINIT;		/* Set STA_NOINIT */
 }
