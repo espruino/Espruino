@@ -274,6 +274,21 @@ void LCD_init_hardware() {
   jshPinSetState(LCD_FSMC_WR , JSHPINSTATE_GPIO_OUT);
   jshPinSetState(LCD_FSMC_CS , JSHPINSTATE_GPIO_OUT);
   _LCD_STATE(JSHPINSTATE_GPIO_OUT);
+
+#ifdef LCD_BL
+  jshPinSetState(LCD_BL, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(LCD_BL, 1); // BACKLIGHT=1
+#endif
+
+  // Toggle LCD reset pin
+#ifdef LCD_RESET
+  jshPinSetState(LCD_RESET, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(LCD_RESET, 0); //RESET=0
+#endif
+  delay_ms(50);
+#ifdef LCD_RESET
+  jshPinSetValue(LCD_RESET, 1); //RESET=1
+#endif
 }
 
 

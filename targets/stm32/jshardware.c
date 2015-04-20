@@ -1133,6 +1133,10 @@ void jshInit() {
 
   jshResetSerial();
 
+#ifdef SWD_ONLY_NO_JTAG
+  // reclaim A13 and A14
+  GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE); // Disable JTAG so pins are available for LEDs
+#else
 #ifdef STM32F1
 #ifndef DEBUG
   // reclaim B3, B4, A13 and A14
@@ -1142,6 +1146,7 @@ void jshInit() {
   // see http://www.espruino.com/AdvancedDebug
 
   GPIO_PinRemapConfig(GPIO_Remap_SWJ_Disable, ENABLE); // Disable JTAG/SWD so pins are available for LEDs
+#endif
 #endif
 #endif
 
