@@ -1046,7 +1046,7 @@ size_t jsvGetFlatStringBlocks(JsVar *v) {
 char *jsvGetFlatStringPointer(JsVar *v) {
   assert(jsvIsFlatString(v));
   if (!jsvIsFlatString(v)) return 0;
-  return (char*)v+1; // pointer to the next JsVar
+  return (char*)(v+1); // pointer to the next JsVar
 }
 
 //  IN A STRING  get the number of lines in the string (min=1)
@@ -2735,7 +2735,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
   char endBracket = ' ';
   if (jsvIsObject(var)) { jsiConsolePrint("Object { "); endBracket = '}'; }
   else if (jsvIsArray(var)) { jsiConsolePrintf("Array(%d) [ ", var->varData.integer); endBracket = ']'; }
-  else if (jsvIsNativeFunction(var)) { jsiConsolePrintf("NativeFunction 0x%x { ", var->varData.native.ptr); endBracket = '}'; }
+  else if (jsvIsNativeFunction(var)) { jsiConsolePrintf("NativeFunction 0x%x (%d) { ", var->varData.native.ptr, var->varData.native.argTypes); endBracket = '}'; }
   else if (jsvIsFunction(var)) { jsiConsolePrint("Function { "); endBracket = '}'; }
   else if (jsvIsPin(var)) jsiConsolePrintf("Pin %d", jsvGetInteger(var));
   else if (jsvIsInt(var)) jsiConsolePrintf("Integer %d", jsvGetInteger(var));
