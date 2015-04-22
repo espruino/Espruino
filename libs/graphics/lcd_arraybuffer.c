@@ -100,8 +100,8 @@ void lcdSetPixels_ArrayBuffer(JsGraphics *gfx, short x, short y, short pixelCoun
       }
     }
     jsvArrayBufferIteratorFree(&it);
-    jsvUnLock(buf);
   }
+  jsvUnLock(buf);
 }
 
 
