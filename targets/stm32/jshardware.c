@@ -296,7 +296,10 @@ static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 
 #ifdef STM32API2
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
-#if defined(STM32F4) || defined(STM32F2)
+#if defined(STM32F401xx)
+  assert(JSH_AF0==0 && JSH_AF15==15); // check mapping is right
+  return  func & JSH_MASK_AF;
+#elif defined(STM32F4) || defined(STM32F2)
   switch (func & JSH_MASK_TYPE) {
   case JSH_SPI1    : return GPIO_AF_SPI1;
   case JSH_SPI2    : return GPIO_AF_SPI2;
