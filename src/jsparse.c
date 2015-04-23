@@ -449,11 +449,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       jsvObjectIteratorNew(&it, function);
       JsVar *param = jsvObjectIteratorGetKey(&it);
       while (jsvIsFunctionParameter(param)) {
-        if (argCount>=argPtrSize) {
+        if ((unsigned)argCount>=argPtrSize) {
           // allocate more space on stack if needed
           unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
           JsVar **newArgPtr = (JsVar**)alloca(sizeof(JsVar*)*newArgPtrSize);
-          memcpy(newArgPtr, argPtr, argCount*sizeof(JsVar*));
+          memcpy(newArgPtr, argPtr, (unsigned)argCount*sizeof(JsVar*));
           argPtr = newArgPtr;
           argPtrSize = newArgPtrSize;
         }
@@ -486,11 +486,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       int allocatedArgCount = boundArgs;
       if (isParsing) {
         while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk!=')' && execInfo.lex->tk!=LEX_EOF) {
-          if (argCount>=argPtrSize) {
+          if ((unsigned)argCount>=argPtrSize) {
             // allocate more space on stack
             unsigned int newArgPtrSize = argPtrSize?argPtrSize*4:16;
             JsVar **newArgPtr = (JsVar**)alloca(sizeof(JsVar*)*newArgPtrSize);
-            memcpy(newArgPtr, argPtr, argCount*sizeof(JsVar*));
+            memcpy(newArgPtr, argPtr, (unsigned)argCount*sizeof(JsVar*));
             argPtr = newArgPtr;
             argPtrSize = newArgPtrSize;
           }
