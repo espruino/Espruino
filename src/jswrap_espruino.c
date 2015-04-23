@@ -674,6 +674,7 @@ JsVar *jswrap_espruino_toUint8Array(JsVar *args) {
 
 /*JSON{
   "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "reverseByte",
   "generate" : "jswrap_espruino_reverseByte",
@@ -729,6 +730,7 @@ int jswrap_espruino_getSizeOf(JsVar *v) {
 
 /*JSON{
   "type" : "staticmethod",
+    "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "mapInPlace",
   "generate" : "jswrap_espruino_mapInPlace",
