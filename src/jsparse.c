@@ -1443,13 +1443,17 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
             jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
           } else {
             if (jsvIsObject(av)) {
+              JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
               JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
-              JsVar *constructor = 0;
-              if (proto)
-                constructor = jsvObjectGetChild(proto, JSPARSE_CONSTRUCTOR_VAR, 0);
-              if (constructor==bv) inst=true;
-              else inst = jspIsConstructor(bv,"Object");
-              jsvUnLock(constructor);
+              while (proto) {
+                if (proto == bproto) inst=true;
+                // search prototype chain
+                JsVar *childProto = jsvObjectGetChild(proto, JSPARSE_INHERITS_VAR, 0);
+                jsvUnLock(proto);
+                proto = childProto;
+              }
+              if (jspIsConstructor(bv, "Object")) inst = true;
+              jsvUnLock(bproto);
             } else {
               const char *name = jswGetBasicObjectName(av);
               if (name) {
