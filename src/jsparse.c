@@ -2427,9 +2427,13 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   if (!scopeExports) { jsvUnLock(scope); return 0; } // out of mem
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock(scopeExports);
+  jsvUnLock(jsvAddNamedChild(scope, scope, "module"));
 
   // TODO: maybe we do want to parse twice here, to get functions defined after their use?
+  JsVar *oldThisVar = execInfo.thisVar;
+  execInfo.thisVar = scopeExports; // set 'this' variable to exports
   jsvUnLock(jspEvaluateVar(moduleContents, scope, false));
+  execInfo.thisVar = oldThisVar;
 
   jsvUnLock(scope);
   return jsvSkipNameAndUnLock(exportsName);

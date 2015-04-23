@@ -6,6 +6,7 @@
             Fix I2C2/I2C3 on Pico
             Fix issue where garbage collect of a Flat String corrupted the free variable list
             Fix issue where Array.sort on big array with identical elements failed (#515)
+            Add 'modules' variable, and set 'this' to 'exports' when parsing a module (fix #520)
 
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
