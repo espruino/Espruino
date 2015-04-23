@@ -519,7 +519,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
         jsvResetVariable(var, JSV_FLAT_STRING);
         var->varData.integer = (JsVarInt)byteLength;
         // clear data
-        memset(sizeof(JsVar)+(char*)var, 0, sizeof(JsVar)*(blocks-1));
+        memset((char*)&var[1], 0, sizeof(JsVar)*(blocks-1));
         // Now re-link all the free variables
         jsvCreateEmptyVarList();
         return var;
@@ -2862,15 +2862,29 @@ bool jsvGarbageCollect() {
     JsVar *var = jsvGetAddressOf(i);
     if (var->flags & JSV_GARBAGE_COLLECT) {
       freedSomething = true;
-      // free!
-      var->flags = JSV_UNUSED;
-      // add this to our free list
-      jsvSetNextSibling(var, jsVarFirstEmpty);
-      jsVarFirstEmpty = jsvGetRef(var);
-    }
-    // if we have a flat string, skip that many blocks
-    if (jsvIsFlatString(var))
+      if (jsvIsFlatString(var)) {
+        // if we're a flat string, there are more blocks to free
+        // work backwards, so our free list is in the right order
+        int count = 1+jsvGetFlatStringBlocks(var);
+        while (count-- > 0) {
+          var = jsvGetAddressOf(i+count);
+          var->flags = JSV_UNUSED;
+          // add this to our free list
+          jsvSetNextSibling(var, jsVarFirstEmpty);
+          jsVarFirstEmpty = jsvGetRef(var);
+        }
+      } else {
+        // otherwise just free 1 block
+        // free!
+        var->flags = JSV_UNUSED;
+        // add this to our free list
+        jsvSetNextSibling(var, jsVarFirstEmpty);
+        jsVarFirstEmpty = jsvGetRef(var);
+      }
+    } else if (jsvIsFlatString(var)) {
+      // if we have a flat string, skip that many blocks
       i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
+    }
   }
   return freedSomething;
 }

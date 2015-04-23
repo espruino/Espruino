@@ -4,6 +4,7 @@
             Make sure filesystem support gets compiled into Espruino Pico
             Fix jsvGetFlatStringPointer to return the correct address
             Fix I2C2/I2C3 on Pico
+            Fix issue where garbage collect of a Flat String corrupted the free variable list
 
      1v76 : Merged in NetworkJS library (for JS networking implementations)
             Ensure that 'wrapped' libraries are killed before timers/watches
