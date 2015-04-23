@@ -601,15 +601,14 @@ Returns true if the provided object is an array
 */
 
 
-NO_INLINE static bool _jswrap_array_sort_leq(JsVar *a, JsVar *b, JsVar *compareFn) {
+NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *compareFn) {
   if (compareFn) {
     JsVar *args[2] = {a,b};
-    JsVarInt r = jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
-    return r<0;
+    return jsvGetIntegerAndUnLock(jspeFunctionCall(compareFn, 0, 0, false, 2, args));
   } else {
     JsVar *sa = jsvAsString(a, false);
     JsVar *sb = jsvAsString(b, false);
-    bool r = jsvCompareString(sa,sb, 0, 0, false) < 0;
+    JsVarInt r = jsvCompareString(sa,sb, 0, 0, false);
     jsvUnLock(sa);
     jsvUnLock(sb);
     return r;
@@ -620,6 +619,7 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
   if (n < 2) return; // sort done!
 
   JsvIterator pivot = jsvIteratorClone(head);
+  bool pivotLowest = true; // is the pivot the lowest value in here?
   JsVar *pivotValue = jsvIteratorGetValue(&pivot);
   /* We're just going to use the first entry (head) as the pivot...
    * We'll move along with our iterator 'it', and if it < pivot then we'll
@@ -629,10 +629,13 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
   JsvIterator it = jsvIteratorClone(head); //
   jsvIteratorNext(&it);
 
+
   /* Partition and count sizes. */
   while (--n && !jspIsInterrupted()) {
     JsVar *itValue = jsvIteratorGetValue(&it);
-    if (_jswrap_array_sort_leq(itValue, pivotValue, compareFn)) {
+    JsVarInt cmp = _jswrap_array_sort_compare(itValue, pivotValue, compareFn);
+    if (cmp<=0) {
+      if (cmp<0) pivotLowest = false;
       nlo++;
       /* 'it' <= 'pivot', so we need to move it behind.
          In this diagram, P=pivot, L=it
@@ -664,13 +667,22 @@ NO_INLINE static void _jswrap_array_sort(JsvIterator *head, int n, JsVar *compar
   jsvIteratorFree(&it);
   jsvUnLock(pivotValue);
 
-  if (jspIsInterrupted()) return;
+  if (jspIsInterrupted()) {
+    jsvIteratorFree(&pivot);
+    return;
+  }
 
-  // now recurse
-  _jswrap_array_sort(head, nlo, compareFn);
+  // now recurse. Do RHS first because we can
+  // free the pivot early if we do this
   jsvIteratorNext(&pivot);
   _jswrap_array_sort(&pivot, nhigh, compareFn);
   jsvIteratorFree(&pivot);
+  // LHS
+  /* If the pivot is the lowest number in this chunk of numbers, then
+   * we know that anything to the left of it must be joint equal to it.
+   * In that casem there's no need to sort it. */
+  if (!pivotLowest)
+    _jswrap_array_sort(head, nlo, compareFn);
 }
 
 /*JSON{
