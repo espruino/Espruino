@@ -156,8 +156,11 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
     pin = findpin(pins, pinname, False)    
     #print(json.dumps(pin, sort_keys=True, indent=2))  
     for af in range(0, len(pindata)-afoffset):
-      fname = pindata[af+afoffset].strip()
-      pin["functions"][fname] = af
+      fnames = pindata[af+afoffset].split("/")
+      for fname in fnames:
+        fname = fname.strip()
+#        if  fname!="-": print fname
+        pin["functions"][fname] = af
       #print pinname+" --- "+fname+" : "+str(af)
   return pins
 
