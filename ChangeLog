@@ -1,5 +1,6 @@
      1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
             Allow MAC address to be set for WIZnet (fix #527)
+            Ensure res.on('close') is called for empty HTTP requests (fix #528)
 
      1v77 : Add E.mapInPlace           
             Allowed ArrayBuffer Graphics to store pixels MSB-first

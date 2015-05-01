@@ -364,8 +364,9 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
 
 void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **receiveData) {
-  if (*receiveData && jsvGetStringLength(*receiveData)) {
-    if (jswrap_stream_pushData(socket, *receiveData, false)) {
+  if (*receiveData) {
+    if (jsvGetStringLength(*receiveData)==0 ||
+        jswrap_stream_pushData(socket, *receiveData, false)) {
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
       jsvUnLock(*receiveData);
