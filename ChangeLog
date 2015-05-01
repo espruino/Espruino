@@ -1,4 +1,4 @@
-     1v78 : Fix regression where SPI2/3 weren't working on most pins
+     1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
 
      1v77 : Add E.mapInPlace           
             Allowed ArrayBuffer Graphics to store pixels MSB-first
