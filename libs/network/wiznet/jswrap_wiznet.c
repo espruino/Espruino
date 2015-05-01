@@ -159,7 +159,7 @@ An instantiation of an Ethernet network adaptor
   "generate" : "jswrap_ethernet_getIP",
   "return" : ["JsVar",""]
 }
-Get the current IP address
+Get the current IP address, subnet, gateway and mac address.
 */
 JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   NOT_USED(wlanObj);
@@ -181,7 +181,7 @@ JsVar *jswrap_ethernet_getIP(JsVar *wlanObj) {
   networkPutAddressAsString(data, "subnet", &gWIZNETINFO.sn[0], 4, 10, '.');
   networkPutAddressAsString(data, "gateway", &gWIZNETINFO.gw[0], 4, 10, '.');
   networkPutAddressAsString(data, "dns", &gWIZNETINFO.dns[0], 4, 10, '.');
-  networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, 0);
+  networkPutAddressAsString(data, "mac", &gWIZNETINFO.mac[0], 6, 16, ':');
 
   networkFree(&net);
 
@@ -205,11 +205,13 @@ static void _eth_getIP_set_address(JsVar *options, char *name, unsigned char *pt
   "name" : "setIP",
   "generate" : "jswrap_ethernet_setIP",
   "params" : [
-    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns  }`, or do not supply an object in otder to force DHCP."]
+    ["options","JsVar","Object containing IP address options `{ ip : '1,2,3,4', subnet, gateway, dns, mac  }`, or do not supply an object in order to force DHCP."]
   ],
   "return" : ["bool","True on success"]
 }
-Set the current IP address for get an IP from DHCP (if no options object is specified)
+Set the current IP address or get an IP from DHCP (if no options object is specified)
+
+If 'mac' is specified as an option, it must be a string of the form `"00:01:02:03:04:05"`
 */
 bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   NOT_USED(wlanObj);
