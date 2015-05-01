@@ -226,12 +226,34 @@ bool jswrap_ethernet_setIP(JsVar *wlanObj, JsVar *options) {
   wiz_NetInfo gWIZNETINFO;
 
   ctlnetwork(CN_GET_NETINFO, (void*)&gWIZNETINFO);
+  if (!gWIZNETINFO.mac[0] && !gWIZNETINFO.mac[1] &&
+      !gWIZNETINFO.mac[2] && !gWIZNETINFO.mac[3] &&
+      !gWIZNETINFO.mac[4] && !gWIZNETINFO.mac[5]) {
+    // wow - no mac address - WIZ550BoB? Set up a simple one
+    // in WIZnet's range of addresses
+    gWIZNETINFO.mac[0]=0x00;
+    gWIZNETINFO.mac[1]=0x08;
+    gWIZNETINFO.mac[2]=0xDC;
+    gWIZNETINFO.mac[3]=0x01;
+    gWIZNETINFO.mac[4]=0x02;
+    gWIZNETINFO.mac[5]=0x03;
+  }
 
   if (jsvIsObject(options)) {
     _eth_getIP_set_address(options, "ip", &gWIZNETINFO.ip[0]);
     _eth_getIP_set_address(options, "subnet", &gWIZNETINFO.sn[0]);
     _eth_getIP_set_address(options, "gateway", &gWIZNETINFO.gw[0]);
     _eth_getIP_set_address(options, "dns", &gWIZNETINFO.dns[0]);
+
+    JsVar *info = jsvObjectGetChild(options, "mac", 0);
+    if (info) {
+      char buf[64];
+      jsvGetString(info, buf, sizeof(buf));
+      networkParseMACAddress(&gWIZNETINFO.mac[0], buf);
+      // TODO: check failure?
+      jsvUnLock(info);
+    }
+
     gWIZNETINFO.dhcp = NETINFO_STATIC;
     success = true;
   } else {

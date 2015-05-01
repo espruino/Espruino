@@ -44,7 +44,7 @@ uint32_t networkParseIPAddress(const char *ip) {
   while (*ip) {
     if (*ip>='0' && *ip<='9') {
       n = n*10 + (*ip-'0');
-    } else if (*ip>='.') {
+    } else if (*ip=='.') {
       addr = (addr>>8) | (uint32_t)(n<<24);
       n=0;
     } else {
@@ -54,6 +54,28 @@ uint32_t networkParseIPAddress(const char *ip) {
   }
   addr = (addr>>8) | (unsigned long)(n<<24);
   return addr;
+}
+
+/* given 6 pairs of 8 bit hex numbers separated by ':', parse them into a
+ * 6 byte array. returns false on failure */
+bool networkParseMACAddress(unsigned char *addr, const char *ip) {
+  int n = 0;
+  int i = 0;
+  while (*ip) {
+    int v = chtod(*ip);
+    if (v>=0 && v<16) {
+      n = n*10 + v;
+    } else if (*ip==':') {
+      addr[i++] = n;
+      n=0;
+      if (i>5) return false; // too many items!
+    } else {
+      return false; // not a mac address
+    }
+    ip++;
+  }
+  addr[i] = n;
+  return i==5;
 }
 
 JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
