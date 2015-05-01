@@ -1937,6 +1937,18 @@ Pin NO_INLINE findPinForFunction(JshPinFunction functionType, JshPinFunction fun
    * such that D4(AF1) is before D11(AF0) - and there are no SCK/MISO for AF1! */
   if (functionType == JSH_SPI1 && functionInfo==JSH_SPI_MOSI) return JSH_PORTD_OFFSET+11;
 #endif
+#ifdef PICO
+  /* On the Pico, A9 is used for sensing when USB power is applied. Is someone types in
+   * Serial1.setup(9600) it'll get chosen as it's the first pin, but setting it to an output
+   * totally messes up the STM32 as it's fed with 5V. This ensures that it won't get chosen
+   * UNLESS it is explicitly selected.
+   *
+   * TODO: better way of doing this? A JSH_DONT_DEFAULT flag for pin functions? */
+  if (functionType == JSH_USART1) {
+    if (functionInfo==JSH_USART_TX) return JSH_PORTB_OFFSET+6;
+    if (functionInfo==JSH_USART_RX) return JSH_PORTB_OFFSET+7;
+  }
+#endif
   Pin i;
   int j;
   // first, try and find the pin with an AF of 0 - this is usually the 'default'
