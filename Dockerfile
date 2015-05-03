@@ -9,11 +9,11 @@ RUN git clone https://github.com/espruino/Espruino espruino
 WORKDIR /espruino
 
 # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
-ENV WIZNET=1
+#ENV WIZNET=1
 # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 #ENV ESP8266 1
 
 ENV RELEASE 1
-ENV PICO_1V3 1
+#ENV PICO_1V3 1
 
-RUN make
+CMD ["make"]
