@@ -1,4 +1,4 @@
-     1v79 :  ...
+     1v79 : Fix Mac address parsing for top nibbles
 
      1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
             Allow MAC address to be set for WIZnet (fix #527)

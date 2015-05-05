@@ -64,7 +64,7 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
   while (*ip) {
     int v = chtod(*ip);
     if (v>=0 && v<16) {
-      n = n*10 + v;
+      n = n*16 + v;
     } else if (*ip==':') {
       addr[i++] = n;
       n=0;
