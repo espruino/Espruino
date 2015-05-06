@@ -48,9 +48,13 @@ While this is implemented on Espruino boards, it may not be implemented on other
   "class" : "E",
   "name" : "getAnalogVRef",
   "generate_full" : "jshReadVRef()",
-  "return" : ["float","The voltage (in Volts) that a reading of 1 from `analogRead` actually represents"]
+  "return" : ["float","The voltage (in Volts) that a reading of 1 from `analogRead` actually represents - usually around 3.3v"]
 }
-Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()` 
+Check the internal voltage reference. To work out an actual voltage of an input pin, you can use `analogRead(pin)*E.getAnalogVRef()`
+
+**Note:** This value is calculated by reading the voltage on an internal voltage reference with the ADC.
+It will be slightly noisy, so if you need this for accurate measurements we'd recommend that you call
+this function several times and average the results.
 
 While this is implemented on Espruino boards, it may not be implemented on other devices. If so it'll return NaN.
 */
