@@ -785,8 +785,7 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
       args[0] = jsvNewFromInteger(v);
       args[1] = jsvArrayBufferIteratorGetIndex(&itFrom); // child is a variable name, create a new variable for the index
       v2 = jspeFunctionCall(map, 0, 0, false, 2, args);
-      jsvUnLock(args[0]);
-      jsvUnLock(args[1]);
+      jsvUnLockMany(2,args);
     } else if (jsvIsArray(map)) {
       v2 = jsvGetArrayItem(map, v);
     } else {

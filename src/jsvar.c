@@ -465,6 +465,10 @@ ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
 }
 
+/// Unlock an array of variables
+NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
+  while (count) jsvUnLock(vars[--count]);
+}
 
 /// Reference - set this variable as used by something
 JsVar *jsvRef(JsVar *var) {
@@ -2247,6 +2251,22 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
   return 0; // undefined
 }
 
+// Get all elements from arr and put them in itemPtr (unless it'd overflow).
+// Makes sure all of itemPtr either contains a JsVar or 0
+void jsvGetArrayItems(const JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, arr);
+  int i = 0;
+  while (jsvObjectIteratorHasValue(&it)) {
+    if (i<itemCount)
+      itemPtr[i++] = jsvObjectIteratorGetValue(&it);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  while (i<itemCount)
+    itemPtr[i++] = 0; // just ensure we don't end up with bad data
+}
+
 /// Get the index of the value in the array (matchExact==use pointer, not equality check)
 JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   JsVarRef indexref;
@@ -2865,7 +2885,7 @@ bool jsvGarbageCollect() {
       if (jsvIsFlatString(var)) {
         // if we're a flat string, there are more blocks to free
         // work backwards, so our free list is in the right order
-        int count = 1+jsvGetFlatStringBlocks(var);
+        unsigned int count = 1 + (unsigned int)jsvGetFlatStringBlocks(var);
         while (count-- > 0) {
           var = jsvGetAddressOf(i+count);
           var->flags = JSV_UNUSED;

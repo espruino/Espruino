@@ -467,8 +467,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 
   jsiQueueObjectCallbacks(parent, eventName, args, n);
   // unlock
-  while (n--)
-    jsvUnLock(args[n]);
+  jsvUnLockMany(n, args);
 }
 
 /*JSON{
@@ -614,7 +613,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
     }
     args = (JsVar**)alloca((size_t)argC * sizeof(JsVar*));
     for (i=0;i<argC;i++) args[i] = 0;
-
+    // TODO: Use jsvGetArrayItems?
     JsvIterator it;
     jsvIteratorNew(&it, argsArray);
     while (jsvIteratorHasElement(&it)) {
@@ -632,7 +631,7 @@ JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsA
   }
 
   JsVar *r = jspeFunctionCall(parent, 0, thisArg, false, (int)argC, args);
-  for (i=0;i<argC;i++) jsvUnLock(args[i]);
+  jsvUnLockMany(argC, args);
   return r;
 }
 

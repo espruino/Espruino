@@ -488,8 +488,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
       args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
       args[2] = parent;
       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-      jsvUnLock(args[0]);
-      jsvUnLock(args[1]);
+      jsvUnLockMany(2,args);
       if (mapped) {
         jsvArrayBufferIteratorSetValue(&itdst, mapped);
         jsvUnLock(mapped);

@@ -200,8 +200,7 @@ JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVa
         args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
         args[2] = parent;
         cb_result = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-        jsvUnLock(args[0]);
-        jsvUnLock(args[1]);
+        jsvUnLockMany(2,args);
         if (cb_result) {
           bool matched;
           if (isBoolCallback)
@@ -377,9 +376,7 @@ JsVar *jswrap_array_reduce(JsVar *parent, JsVar *funcVar, JsVar *initialValue) {
       args[2] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
       args[3] = parent;
       previousValue = jspeFunctionCall(funcVar, 0, 0, false, 4, args);
-      jsvUnLock(args[0]);
-      jsvUnLock(args[1]);
-      jsvUnLock(args[2]);
+      jsvUnLockMany(3,args);
     }
     jsvUnLock(index);
     jsvIteratorNext(&it);

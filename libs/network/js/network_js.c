@@ -76,8 +76,7 @@ int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
       jsvNewFromInteger(port)
   };
   int sckt = jsvGetIntegerAndUnLock(callFn("create", 2, args));
-  jsvUnLock(args[0]);
-  jsvUnLock(args[1]);
+  jsvUnLockMany(2, args);
   return sckt;
 }
 
@@ -110,8 +109,7 @@ int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
       jsvNewFromInteger(len),
   };
   JsVar *res = callFn( "recv", 2, args);
-  jsvUnLock(args[0]);
-  jsvUnLock(args[1]);
+  jsvUnLockMany(2, args);
   int r = -1; // fail
   if (jsvIsString(res)) {
     r = jsvGetStringLength(res);
@@ -130,8 +128,7 @@ int net_js_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
   };
   jsvAppendStringBuf(args[1], buf, len);
   int r = jsvGetIntegerAndUnLock(callFn( "send", 2, args));
-  jsvUnLock(args[0]);
-  jsvUnLock(args[1]);
+  jsvUnLockMany(2, args);
   return r;
 }
 

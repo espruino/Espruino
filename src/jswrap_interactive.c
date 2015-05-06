@@ -349,17 +349,24 @@ JsVar *jswrap_interface_getSerial() {
   "generate" : "jswrap_interface_setInterval",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
-    ["timeout","float","The time between calls to the function"]
+    ["timeout","float","The time between calls to the function"],
+    ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
   "return" : ["JsVar","An ID that can be passed to clearInterval"]
 }
 Call the function specified REPEATEDLY after the timeout in milliseconds.
 
-The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)
+You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
-for example: ```setInterval(function (e) { print(e.time); }, 1000);```
+```
+setInterval(function (a,b) {
+  console.log(a+" "+b);
+}, 1000, "Hello", "World");
+// prints 'Hello World'
+```
 
-This can also be removed using clearInterval
+If you want to stop your function from being called, pass the number that
+was returned by `setInterval` into the `clearInterval` function.
 
 **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
 */
@@ -369,21 +376,28 @@ This can also be removed using clearInterval
   "generate" : "jswrap_interface_setTimeout",
   "params" : [
     ["function","JsVar","A Function or String to be executed"],
-    ["timeout","float","The time until the function will be executed"]
+    ["timeout","float","The time until the function will be executed"],
+    ["args","JsVarArray","Optional arguments to pass to the function when executed"]
   ],
   "return" : ["JsVar","An ID that can be passed to clearTimeout"]
 }
 Call the function specified ONCE after the timeout in milliseconds.
 
-The function that is being called may also take an argument, which is an object containing a field called 'time' (the time in seconds at which the timer happened)
+You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
-for example: ```setTimeout(function (e) { print(e.time); }, 1000);```
+```
+setTimeout(function (a,b) {
+  console.log(a+" "+b);
+}, 1000, "Hello", "World");
+// prints 'Hello World'
+```
 
-This can also be removed using clearTimeout
+If you want to stop the function from being called, pass the number that
+was returned by `setTimeout` into the `clearInterval` function.
 
 **Note:** If `setDeepSleep(true)` has been called and the interval is greater than 5 seconds, Espruino may execute the interval up to 1 second late. This is because Espruino can only wake from deep sleep every second - and waking early would cause Espruino to waste power while it waited for the correct time.
 */
-JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, bool isTimeout) {
+JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, JsVar *args, bool isTimeout) {
   // NOTE: The 5 sec delay mentioned in the description is handled by jshSleep
   JsVar *itemIndex = 0;
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
@@ -398,6 +412,8 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
       jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromLongInteger(intervalInt)));
     }
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
+    if (jsvGetArrayLength(args))
+      jsvObjectSetChild(timerPtr, "args", args); // intentionally no unlock
 
     // Add to array
     itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
@@ -405,11 +421,11 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
   }
   return itemIndex;
 }
-JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout) {
-  return _jswrap_interface_setTimeoutOrInterval(func, timeout, false);
+JsVar *jswrap_interface_setInterval(JsVar *func, JsVarFloat timeout, JsVar *args) {
+  return _jswrap_interface_setTimeoutOrInterval(func, timeout, args, false);
 }
-JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout) {
-  return _jswrap_interface_setTimeoutOrInterval(func, timeout, true);
+JsVar *jswrap_interface_setTimeout(JsVar *func, JsVarFloat timeout, JsVar *args) {
+  return _jswrap_interface_setTimeoutOrInterval(func, timeout, args, true);
 }
 
 /*JSON{
