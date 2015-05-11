@@ -3,6 +3,7 @@
             Use jsvUnlockMany to tidy up code and save some space
             jsiExecuteEventCallback cal now take an arbitrary number of arguments 
             Allow setTimeout/setInterval to take extra arguments (fix #532)
+            Ensure HTTP is closed even when no data handler (fix #535)
 
      1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
             Allow MAC address to be set for WIZnet (fix #527)

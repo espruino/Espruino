@@ -28,6 +28,7 @@
 
 #include "jswrap_pipe.h"
 #include "jswrap_object.h"
+#include "jswrap_stream.h"
 
 /*JSON{
   "type" : "library",
@@ -44,10 +45,30 @@ static JsVar* pipeGetArray(bool create) {
 
 static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
   jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
+  // Check the source to see if there was more data... It may not be a stream,
+  // but if it is and it has data it should have a a STREAM_BUFFER_NAME field
+  JsVar *source = jsvObjectGetChild(pipe,"source",0);
+  JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
+  if (source && destination) {
+    JsVar *buffer = jsvObjectGetChild(source, STREAM_BUFFER_NAME, 0);
+    if (buffer && jsvGetStringLength(buffer)) {
+      jsvObjectSetChild(source, STREAM_BUFFER_NAME, 0); // remove outstanding data
+      /* call write fn - we ignore drain/etc here because the source has
+      just closed and we want to get this sorted quickly */
+      JsVar *writeFunc = jspGetNamedField(destination, "write", false);
+      if (jsvIsFunction(writeFunc)) // do the objects have the necessary methods on them?
+        jsvUnLock(jspExecuteFunction(writeFunc, destination, 1, &buffer));
+      jsvUnLock(writeFunc);
+      // update position
+      JsVar *position = jsvObjectGetChild(pipe,"position",0);
+      jsvSetInteger(position, jsvGetInteger(position) + (JsVarInt)jsvGetStringLength(buffer));
+      jsvUnLock(position);
+    }
+    jsvUnLock(buffer);
+  }
   // also call 'end' if 'end' was passed as an initialisation option
   if (jsvGetBoolAndUnLock(jsvObjectGetChild(pipe,"end",0))) {
     // call destination.end if available
-    JsVar *destination = jsvObjectGetChild(pipe,"destination",0);
     if (destination) {
       // remove our drain and close listeners.
       // TODO: This removes ALL listeners. Maybe we should just remove ours?
@@ -65,12 +86,10 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
         jsvUnLock(jspExecuteFunction(closeFunc, destination, 0, 0));
         jsvUnLock(closeFunc);
       }
-      jsvUnLock(destination);
     }
     /* call source.close if available - probably not what node does
     but seems very sensible in this case. If you don't want it,
     set end:false */
-    JsVar *source = jsvObjectGetChild(pipe,"source",0);
     if (source) {
       // TODO: This removes ALL listeners. Maybe we should just remove ours?
       jswrap_object_removeAllListeners_cstr(source, "close");
@@ -81,8 +100,9 @@ static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
         jsvUnLock(closeFunc);
       }
     }
-    jsvUnLock(source);
   }
+  jsvUnLock(source);
+  jsvUnLock(destination);
   JsVar *idx = jsvObjectIteratorGetKey(it);
   jsvRemoveChild(arr,idx);
   jsvUnLock(idx);

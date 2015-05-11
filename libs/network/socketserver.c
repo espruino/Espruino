@@ -452,7 +452,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     bool closed = false;
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
-      if (!receiveData && jswrap_stream_available(socket)==0) {
+      if (!receiveData) {
         if (socketType != ST_HTTP)
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
         jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
