@@ -1750,7 +1750,6 @@ unsigned int jshGetRandomNumber() {
   /* Repeatedly read the voltage reference and XOR
    * it into a rotated number to get a random-ish result */
   ADC_TempSensorVrefintCmd(ENABLE);
-  jshDelayMicroseconds(10);
   // don't wait here. We want to be reading as the voltage reference
   // tries to start up, so make things as random as we can!
   int s;
