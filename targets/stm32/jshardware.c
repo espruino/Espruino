@@ -1747,6 +1747,7 @@ JsVarFloat jshReadVRef() {
 }
 
 unsigned int jshGetRandomNumber() {
+#if defined(STM32F1) || defined(STM32F4)
   /* Repeatedly read the voltage reference and XOR
    * it into a rotated number to get a random-ish result */
   ADC_TempSensorVrefintCmd(ENABLE);
@@ -1759,6 +1760,9 @@ unsigned int jshGetRandomNumber() {
   // disable sensor
   ADC_TempSensorVrefintCmd(DISABLE);
   return v;
+#else
+  return rand();
+#endif
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
