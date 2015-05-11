@@ -799,3 +799,30 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
   jsvArrayBufferIteratorFree(&itFrom);
   jsvArrayBufferIteratorFree(&itTo);
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "srand",
+  "generate" : "srand",
+  "params" : [
+    ["v","int","The 32 bit integer seed to use for the random number generator"]
+  ]
+}
+Set the seed for the random number generator used by `Math.random()`.
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "hwRand",
+  "generate" : "jshGetRandomNumber",
+  "return" : ["int32","A random number"]
+}
+Unlike 'Math.random()' which uses a pseudo-random number generator, this
+method reads from the internal voltage reference several times, xoring and
+rotating to try and make a relatively random value from the noise in the
+signal.
+*/

@@ -1205,6 +1205,12 @@ void jshInit() {
   ADC_CommonInit(&ADC_CommonInitStructure);
 #endif
 
+#ifndef SAVE_ON_FLASH
+  // Get a random seed to put into rand's random number generator
+  srand(jshGetRandomNumber());
+#endif
+
+
   /*jsiConsolePrint("\r\n\r\n");
   jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n\r\n");*/
 
@@ -1738,6 +1744,22 @@ JsVarFloat jshReadVRef() {
 #else
   return NAN;
 #endif
+}
+
+unsigned int jshGetRandomNumber() {
+  /* Repeatedly read the voltage reference and XOR
+   * it into a rotated number to get a random-ish result */
+  ADC_TempSensorVrefintCmd(ENABLE);
+  jshDelayMicroseconds(10);
+  // don't wait here. We want to be reading as the voltage reference
+  // tries to start up, so make things as random as we can!
+  int s;
+  unsigned int v = 0;
+  for (s = 0; s < 32; s++)
+    v = (v<<3) ^ (v>>29) ^ (unsigned int)jshAnalogRead(JSH_ANALOG1 | JSH_ANALOG_CH17, false);
+  // disable sensor
+  ADC_TempSensorVrefintCmd(DISABLE);
+  return v;
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used

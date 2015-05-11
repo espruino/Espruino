@@ -836,3 +836,4 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }

@@ -228,5 +228,7 @@ void jshUtilTimerStart(JsSysTime period) {
 
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
 
 }

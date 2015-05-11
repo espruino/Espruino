@@ -268,6 +268,10 @@ void jshSPIPush(IOEventFlags device, uint16_t data);
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
+/* Get a random number - either using special purpose hardware or by
+ * reading noise from an analog input. If unimplemented, this should
+ * default to `rand()` */
+unsigned int jshGetRandomNumber();
 
 #ifdef STM32F3
 #define SPI_I2S_SendData SPI_I2S_SendData16
