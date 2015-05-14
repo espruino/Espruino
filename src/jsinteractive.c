@@ -1175,7 +1175,7 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
       }
       jsvObjectIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
-       jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, argCount, argPtr));
+       jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
     } else if (jsvIsString(callbackNoNames)) {
       jsvUnLock(jspEvaluateVar(callbackNoNames, 0, false));
     } else
@@ -1414,17 +1414,16 @@ void jsiIdle() {
   JsSysTime timePassed = (JsVarInt)(time - jsiLastIdleTime);
   jsiLastIdleTime = time;
 
+  jsiStatus = jsiStatus & ~JSIS_TIMERS_CHANGED;
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, timerArrayPtr);
-  while (jsvObjectIteratorHasValue(&it)) {
+    while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
     bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsSysTime timeUntilNext = timerTime - timePassed;
 
-    if (timeUntilNext < minTimeUntilNext)
-      minTimeUntilNext = timeUntilNext;
     if (timeUntilNext<=0) {
       // we're now doing work
       jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1489,12 +1488,14 @@ void jsiIdle() {
         // Beware... may have already been removed!
         jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
         hasDeletedTimer = true;
-        minTimeUntilNext = 0; // make sure we don't sleep
-        // We'll sort it out next time around idle loop
+        timeUntilNext = -1;
       }
       jsvUnLock(timerCallback);
 
     }
+    // update the time until the next timer
+    if (timeUntilNext>=0 && timeUntilNext < minTimeUntilNext)
+      minTimeUntilNext = timeUntilNext;
     // update the timer's time
     if (!hasDeletedTimer) {
       jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger(timeUntilNext)));
@@ -1504,6 +1505,11 @@ void jsiIdle() {
   }
   jsvObjectIteratorFree(&it);
   jsvUnLock(timerArrayPtr);
+  /* We might have left the timers loop with stuff to do because the contents of it
+   * changed. It's not a big deal because it could only have changed because a timer
+   * got executed - so `wasBusy` got set and we know we're going to go around the
+   * loop again before sleeping.
+   */ 
 
   // Check for events that might need to be processed from other libraries
   if (jswIdle()) wasBusy = true;
@@ -1575,6 +1581,7 @@ void jsiIdle() {
     jsvGarbageCollect();
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
+
   // Go to sleep!
   if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
 #ifdef USB
@@ -1583,6 +1590,7 @@ void jsiIdle() {
       !jshHasEvents() && //no events have arrived in the mean time
       !jshHasTransmitData()/* && //nothing left to send over serial?
       minTimeUntilNext > SYSTICK_RANGE*5/4*/) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
+    jsiConsolePrintf("SLEEP %d\n", minTimeUntilNext);
     jshSleep(minTimeUntilNext);
   }
 }
@@ -1789,4 +1797,8 @@ JsVarInt jsiTimerAdd(JsVar *timerPtr) {
   JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
   jsvUnLock(timerArrayPtr);
   return itemIndex;
+}
+
+void jsiTimersChanged() {
+  jsiStatus |= JSIS_TIMERS_CHANGED;
 }

@@ -5,6 +5,7 @@
             Allow setTimeout/setInterval to take extra arguments (fix #532)
             Ensure HTTP is closed even when no data handler (fix #535)
             Seed random number from analog input, add W.hwRand and E.srand (fix #534)
+            Fix timing bug when setting timeouts from intervals in Deep Sleep
 
      1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
             Allow MAC address to be set for WIZnet (fix #527)

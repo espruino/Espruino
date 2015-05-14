@@ -418,6 +418,7 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     // Add to array
     itemIndex = jsvNewFromInteger(jsiTimerAdd(timerPtr));
     jsvUnLock(timerPtr);
+    jsiTimersChanged(); // mark timers as changed
   }
   return itemIndex;
 }
@@ -476,6 +477,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
     }
   }
   jsvUnLock(timerArrayPtr);
+  jsiTimersChanged(); // mark timers as changed
 }
 void jswrap_interface_clearInterval(JsVar *idVar) {
   _jswrap_interface_clearTimeoutOrInterval(idVar, false);
@@ -505,7 +507,6 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
   JsVar *timerName = jsvIsBasic(idVar) ? jsvFindChildFromVar(timerArrayPtr, idVar, false) : 0;
-
   if (timerName) {
     JsVar *timer = jsvSkipNameAndUnLock(timerName);
     JsVar *v;
@@ -518,6 +519,7 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
     jsvUnLock(v);
     jsvUnLock(timer);
     // timerName already unlocked
+    jsiTimersChanged(); // mark timers as changed
   } else {
     jsExceptionHere(JSET_ERROR, "Unknown Interval");
   }

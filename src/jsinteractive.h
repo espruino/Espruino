@@ -115,6 +115,7 @@ typedef enum {
   JSIS_ECHO_OFF = 1, ///< do we provide any user feedback? OFF=no
   JSIS_ECHO_OFF_FOR_LINE = 2,
   JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
+  JSIS_TIMERS_CHANGED = 8,
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
 } PACKED_FLAGS JsiStatus;
@@ -133,6 +134,7 @@ extern JsVarRef timerArray; // Linked List of timers to check and run
 extern JsVarRef watchArray; // Linked List of input watches to check and run
 
 extern JsVarInt jsiTimerAdd(JsVar *timerPtr);
+extern void jsiTimersChanged(); // Flag timers changed so we can skip out of the loop if needed
 // end for jswrap_interactive/io.c ------------------------------------------------
 
 
