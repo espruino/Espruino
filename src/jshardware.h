@@ -278,8 +278,10 @@ unsigned int jshGetRandomNumber();
 #define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #endif
 
-#ifdef STM32F4
-#define WAIT_UNTIL_N_CYCLES 10000000
+#if defined(STM32F401xx)
+#define WAIT_UNTIL_N_CYCLES 2000000
+#elif defined(STM32F4)
+#define WAIT_UNTIL_N_CYCLES 5000000
 #else
 #define WAIT_UNTIL_N_CYCLES 2000000
 #endif
