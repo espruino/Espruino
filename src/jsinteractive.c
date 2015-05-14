@@ -1590,7 +1590,6 @@ void jsiIdle() {
       !jshHasEvents() && //no events have arrived in the mean time
       !jshHasTransmitData()/* && //nothing left to send over serial?
       minTimeUntilNext > SYSTICK_RANGE*5/4*/) { // we are sure we won't miss anything - leave a little leeway (SysTick will wake us up!)
-    jsiConsolePrintf("SLEEP %d\n", minTimeUntilNext);
     jshSleep(minTimeUntilNext);
   }
 }
