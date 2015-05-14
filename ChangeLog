@@ -1,12 +1,13 @@
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
             Use jsvUnlockMany to tidy up code and save some space
-            jsiExecuteEventCallback cal now take an arbitrary number of arguments 
+            jsiExecuteEventCallback can now take an arbitrary number of arguments 
             Allow setTimeout/setInterval to take extra arguments (fix #532)
             Ensure HTTP is closed even when no data handler (fix #535)
             Seed random number from analog input, add W.hwRand and E.srand (fix #534)
             Fix timing bug when setting timeouts from intervals in Deep Sleep
             Reduce timeout for IO (eg. I2C write) on F401 and F4
+            Tweaks to keep code size low enough for Olimexino
 
      1v78 : Fix regression where SPI2/3 weren't working on most pins (fix #525)
             Allow MAC address to be set for WIZnet (fix #527)

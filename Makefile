@@ -87,7 +87,7 @@ endif
 
 ifdef RELEASE
 # force no asserts to be compiled in
-DEFINES += -DNO_ASSERT
+DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
 CWD = $(shell pwd)

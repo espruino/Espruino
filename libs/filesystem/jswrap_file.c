@@ -96,7 +96,7 @@ bool jsfsInit() {
   "class" : "E",
   "name" : "connectSDCard",
   "generate" : "jswrap_E_connectSDCard",
-  "ifndef" : "LINUX",
+  "ifndef" : "SAVE_ON_FLASH",
   "params" : [
     ["spi","JsVar","The SPI object to use for communication"],
     ["csPin","pin","The pin to use for Chip Select"]
