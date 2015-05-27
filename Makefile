@@ -168,7 +168,7 @@ OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V3
 EMBEDDED=1
 #USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3 -DSTM32F401xE
 USE_NET=1
 USE_GRAPHICS=1
 USE_TV=1
@@ -1013,22 +1013,20 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm324xx_fsmc.c
 
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
+INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 SOURCES +=                                 \
-targetlibs/stm32f4/usblib/usb_core.c          \
-targetlibs/stm32f4/usblib/usbd_cdc_core.c     \
-targetlibs/stm32f4/usblib/usb_dcd.c           \
-targetlibs/stm32f4/usblib/usb_dcd_int.c       \
-targetlibs/stm32f4/usblib/usbd_core.c         \
-targetlibs/stm32f4/usblib/usbd_ioreq.c        \
-targetlibs/stm32f4/usblib/usbd_req.c          \
-targetlibs/stm32f4/usb/usb_bsp.c              \
-targetlibs/stm32f4/usb/usbd_cdc_vcp.c         \
-targetlibs/stm32f4/usb/usbd_desc.c            \
-targetlibs/stm32f4/usb/usbd_usr.c
-#targetlibs/stm32f4/usblib/usb_hcd.c
-#targetlibs/stm32f4/usblib/usb_hcd_int.c
-#targetlibs/stm32f4/usblib/usb_otg.c
+targetlibs/stm32usb/usbd_conf.c \
+targetlibs/stm32usb/usb_device.c \
+targetlibs/stm32usb/usbd_cdc_if.c \
+targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
+targetlibs/stm32usb/Src/usbd_ctlreq.c \
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c \
+targetlibs/stm32usb/Src/usbd_conf_template.c \
+targetlibs/stm32usb/Src/usbd_cdc.c \
+targetlibs/stm32usb/Src/usbd_core.c \
+targetlibs/stm32usb/Src/usbd_ioreq.c \
+targetlibs/stm32usb/usbd_desc.c
 endif #USB
 endif #STM32F4
 

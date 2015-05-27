@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
-  * @file    system_stm32f4xx.h
+  * @file    stm32f4xx_hal_pcd_ex.h
   * @author  MCD Application Team
-  * @version V2.3.0
-  * @date    02-March-2015
-  * @brief   CMSIS Cortex-M4 Device System Source File for STM32F4xx devices.       
-  ******************************************************************************  
+  * @version V1.3.0
+  * @date    09-March-2015
+  * @brief   Header file of PCD HAL module.
+  ******************************************************************************
   * @attention
   *
   * <h2><center>&copy; COPYRIGHT(c) 2015 STMicroelectronics</center></h2>
@@ -32,76 +32,65 @@
   * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
   * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
-  ******************************************************************************  
+  ******************************************************************************
   */ 
 
-/** @addtogroup CMSIS
-  * @{
-  */
-
-/** @addtogroup stm32f4xx_system
-  * @{
-  */  
-  
-/**
-  * @brief Define to prevent recursive inclusion
-  */
-#ifndef __SYSTEM_STM32F4XX_H
-#define __SYSTEM_STM32F4XX_H
+/* Define to prevent recursive inclusion -------------------------------------*/
+#ifndef __STM32F4xx_HAL_PCD_EX_H
+#define __STM32F4xx_HAL_PCD_EX_H
 
 #ifdef __cplusplus
  extern "C" {
-#endif 
+#endif
 
-/** @addtogroup STM32F4xx_System_Includes
+/* Includes ------------------------------------------------------------------*/
+#include "stm32f4xx_hal_def.h"
+   
+/** @addtogroup STM32F4xx_HAL_Driver
   * @{
   */
+
+/** @addtogroup PCDEx
+  * @{
+  */
+/* Exported types ------------------------------------------------------------*/
+#if defined(STM32F446xx)
+typedef enum  
+{
+  PCD_LPM_L0_ACTIVE = 0x00, /* on */
+  PCD_LPM_L1_ACTIVE = 0x01, /* LPM L1 sleep */
+}PCD_LPM_MsgTypeDef;
+#endif /* STM32F446xx */
+
+/* Exported constants --------------------------------------------------------*/
+/* Exported macros -----------------------------------------------------------*/
+/* Exported functions --------------------------------------------------------*/
+/** @addtogroup PCDEx_Exported_Functions PCDEx Exported Functions
+  * @{
+  */
+/** @addtogroup PCDEx_Exported_Functions_Group1 Peripheral Control functions
+  * @{
+  */
+HAL_StatusTypeDef HAL_PCDEx_SetTxFiFo(PCD_HandleTypeDef *hpcd, uint8_t fifo, uint16_t size);
+HAL_StatusTypeDef HAL_PCDEx_SetRxFiFo(PCD_HandleTypeDef *hpcd, uint16_t size);
+#if defined(STM32F446xx)
+HAL_StatusTypeDef HAL_PCDEx_ActivateLPM(PCD_HandleTypeDef *hpcd);
+HAL_StatusTypeDef HAL_PCDEx_DeActivateLPM(PCD_HandleTypeDef *hpcd);
+void HAL_PCDEx_LPM_Callback(PCD_HandleTypeDef *hpcd, PCD_LPM_MsgTypeDef msg);
+#endif /* STM32F446xx */
 
 /**
   * @}
-  */
-
-
-/** @addtogroup STM32F4xx_System_Exported_types
-  * @{
-  */
-  /* This variable is updated in three ways:
-      1) by calling CMSIS function SystemCoreClockUpdate()
-      2) by calling HAL API function HAL_RCC_GetSysClockFreq()
-      3) each time HAL_RCC_ClockConfig() is called to configure the system clock frequency 
-         Note: If you use this function to configure the system clock; then there
-               is no need to call the 2 first functions listed above, since SystemCoreClock
-               variable is updated automatically.
-  */
-extern uint32_t SystemCoreClock;          /*!< System Clock Frequency (Core Clock) */
-
+  */ 
 
 /**
   * @}
-  */
-
-/** @addtogroup STM32F4xx_System_Exported_Constants
-  * @{
-  */
+  */ 
 
 /**
   * @}
-  */
+  */ 
 
-/** @addtogroup STM32F4xx_System_Exported_Macros
-  * @{
-  */
-
-/**
-  * @}
-  */
-
-/** @addtogroup STM32F4xx_System_Exported_Functions
-  * @{
-  */
-  
-extern void SystemInit(void);
-extern void SystemCoreClockUpdate(void);
 /**
   * @}
   */
@@ -110,13 +99,7 @@ extern void SystemCoreClockUpdate(void);
 }
 #endif
 
-#endif /*__SYSTEM_STM32F4XX_H */
 
-/**
-  * @}
-  */
-  
-/**
-  * @}
-  */  
+#endif /* __STM32F4xx_HAL_PCD_EX_H */
+
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

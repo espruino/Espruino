@@ -19,9 +19,21 @@
   #include "usb_pwr.h"
  #endif
  #ifdef STM32F4
-  #include "usb_regs.h"
-  #include "usb_defines.h"
-  #include "usbd_conf.h"
+  #include "stm32f4xx.h"
+  #include "misc.h"
+  #include "stm32f4xx_adc.h"
+  #include "stm32f4xx_flash.h"
+  #include "stm32f4xx_gpio.h"
+  #include "stm32f4xx_exti.h"
+  #include "stm32f4xx_i2c.h"
+  #include "stm32f4xx_iwdg.h"
+  #include "stm32f4xx_pwr.h"
+  #include "stm32f4xx_rcc.h"
+  #include "stm32f4xx_rtc.h"
+  #include "stm32f4xx_spi.h"
+  #include "stm32f4xx_syscfg.h"
+  #include "stm32f4xx_tim.h"
+  #include "stm32f4xx_usart.h"
  #endif
 #endif
 
@@ -259,9 +271,13 @@ static ALWAYS_INLINE uint8_t stmPortSource(Pin pin) {
 
 static ALWAYS_INLINE ADC_TypeDef *stmADC(JsvPinInfoAnalog analog) {
   if (analog & JSH_ANALOG1) return ADC1;
+#ifdef ADC2
   if (analog & JSH_ANALOG2) return ADC2;
+#endif
+#ifdef ADC3
   if (analog & JSH_ANALOG3) return ADC3;
-#if ADCS>3
+#endif
+#ifdef ADC4
   if (analog & JSH_ANALOG4) return ADC4;
 #endif
   jsExceptionHere(JSET_INTERNALERROR, "stmADC");
@@ -374,22 +390,22 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
-#if USARTS>= 3
+#ifdef USART3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#if USARTS>= 4
+#ifdef USART4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#if USARTS>= 5
+#ifdef USART5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#if USARTS>= 6
+#ifdef USART6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
@@ -445,46 +461,67 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device==JSH_TIMER4)  {
     ptr = TIM4;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, cmd);
-#ifndef STM32F3
+#ifdef TIM5
   } else if (device==JSH_TIMER5) {
     ptr = TIM5;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, cmd);
 #endif
-/*    } else if (device==JSH_TIMER6)  { // Not used for outputs
+#ifdef TIM6
+  } else if (device==JSH_TIMER6)  { // Not used for outputs
     ptr = TIM6;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, cmd);
+#endif
+#ifdef TIM7
   } else if (device==JSH_TIMER7)  { // Not used for outputs
     ptr = TIM7;
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, cmd); */
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, cmd);
+#endif
+#ifdef TIM8
   } else if (device==JSH_TIMER8) {
     ptr = TIM8;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, cmd);
-#ifndef STM32F3
+#endif
+#ifdef TIM9
   } else if (device==JSH_TIMER9)  {
     ptr = TIM9;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, cmd);
+#endif
+#ifdef TIM10
   } else if (device==JSH_TIMER10)  {
     ptr = TIM10;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, cmd);
+#endif
+#ifdef TIM11
   } else if (device==JSH_TIMER11)  {
     ptr = TIM11;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM11, cmd);
+#endif
+#ifdef TIM12
   } else if (device==JSH_TIMER12)  {
     ptr = TIM12;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM12, cmd);
+#endif
+#ifdef TIM13
   } else if (device==JSH_TIMER13)  {
     ptr = TIM13;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, cmd);
+#endif
+#ifdef TIM14
   } else if (device==JSH_TIMER14)  {
     ptr = TIM14;
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, cmd);
-#else
+#endif
+#ifdef TIM15
   } else if (device==JSH_TIMER15)  {
     ptr = TIM15;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM15, cmd);
+#endif
+#ifdef TIM16
   } else if (device==JSH_TIMER16)  {
     ptr = TIM16;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM16, cmd);
+#endif
+#ifdef TIM17
   } else if (device==JSH_TIMER17)  {
     ptr = TIM17;
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM17, cmd);
@@ -509,30 +546,51 @@ TIM_TypeDef* getTimerFromPinFunction(JshPinFunction device) {
     case JSH_TIMER5:
       return TIM5;
 #endif
-/*        case JSH_TIMER6: // Not used for outputs
+#ifdef TIM6
+    case JSH_TIMER6: // Not used for outputs
       return TIM6;
-    case JSH_TIMER7: // Not used for outputs
-      return TIM7; */
+#endif
+#ifdef TIM7
+    case JSH_TIMER7:
+      return TIM7;
+#endif
+#ifdef TIM8
     case JSH_TIMER8:
       return TIM8;
-#ifndef STM32F3
+#endif
+#ifdef TIM9
     case JSH_TIMER9:
       return TIM9;
+#endif
+#ifdef TIM10
     case JSH_TIMER10:
       return TIM10;
+#endif
+#ifdef TIM11
     case JSH_TIMER11:
       return TIM11;
+#endif
+#ifdef TIM12
     case JSH_TIMER12:
       return TIM12;
+#endif
+#ifdef TIM13
     case JSH_TIMER13:
       return TIM13;
+#endif
+#ifdef TIM14
     case JSH_TIMER14:
       return TIM14;
-#else
+#endif
+#ifdef TIM15
     case JSH_TIMER15:
       return TIM15;
+#endif
+#ifdef TIM16
     case JSH_TIMER16:
       return TIM16;
+#endif
+#ifdef TIM17
     case JSH_TIMER17:
       return TIM17;
 #endif
@@ -545,14 +603,16 @@ USART_TypeDef* getUsartFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_SERIAL1 : return USART1;
    case EV_SERIAL2 : return USART2;
+#ifdef USART3
    case EV_SERIAL3 : return USART3;
-#if USARTS>=4
+#endif
+#ifdef UART4
    case EV_SERIAL4 : return UART4;
 #endif
-#if USARTS>=5
+#ifdef UART5
    case EV_SERIAL5 : return UART5;
 #endif
-#if USARTS>=6
+#ifdef USART6
    case EV_SERIAL6 : return USART6;
 #endif
    default: return 0;
@@ -572,7 +632,7 @@ I2C_TypeDef* getI2CFromDevice(IOEventFlags device) {
  switch (device) {
    case EV_I2C1 : return I2C1;
    case EV_I2C2 : return I2C2;
-#if I2CS>=3
+#ifdef I2C3
    case EV_I2C3 : return I2C3;
 #endif
    default: return 0;
@@ -609,9 +669,20 @@ unsigned int jshGetTimerFreq(TIM_TypeDef *TIMx) {
 #ifndef STM32F3
               TIMx==TIM5 ||
 #endif
-              TIMx==TIM6 || TIMx==TIM7 ||
-#ifndef STM32F3
-              TIMx==TIM12 || TIMx==TIM13 || TIMx==TIM14 ||
+#ifdef TIM6
+              TIMx==TIM6 ||
+#endif
+#ifdef TIM7
+              TIMx==TIM7 ||
+#endif
+#ifdef TIM12
+              TIMx==TIM12 ||
+#endif
+#ifdef TIM13
+              TIMx==TIM13 ||
+#endif
+#ifdef TIM14
+              TIMx==TIM14 ||
 #endif
               false;
 
@@ -1581,6 +1652,7 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
         #endif
       }
+#ifdef ADC2
     } else if (ADCx == ADC2) {
       if (!(jshADCInitialised&1)) {
         jshADCInitialised |= 1;
@@ -1593,6 +1665,8 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2, ENABLE);
         #endif
       }
+#endif
+#ifdef ADC3
     } else if (ADCx == ADC3) {
       if (!(jshADCInitialised&4)) {
         jshADCInitialised |= 4;
@@ -1605,7 +1679,8 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
           RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3, ENABLE);
         #endif
       }
-  #if ADCS>3
+#endif
+#ifdef ADC4
     } else if (ADCx == ADC4) {
       if (!(jshADCInitialised&8)) {
         jshADCInitialised |= 8;
@@ -2653,9 +2728,13 @@ bool jshSleep(JsSysTime timeUntilWake) {
     // deep sleep!
     jshADCInitialised = 0;
     ADC_Cmd(ADC1, DISABLE); // ADC off
+#ifdef ADC2
     ADC_Cmd(ADC2, DISABLE); // ADC off
+#endif
+#ifdef ADC3
     ADC_Cmd(ADC3, DISABLE); // ADC off
-#if ADCS>3
+#endif
+#ifdef ADC4
     ADC_Cmd(ADC4, DISABLE); // ADC off
 #endif
 #ifdef USB
@@ -2885,11 +2964,13 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 // Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
   if (JSH_PINFUNCTION_IS_DAC(func)) {
+#if DACS>0
     uint16_t dacVal = (uint16_t)value;
     switch (func & JSH_MASK_INFO) {
     case JSH_DAC_CH1:  DAC_SetChannel1Data(DAC_Align_12b_L, dacVal); break;
     case JSH_DAC_CH2:  DAC_SetChannel2Data(DAC_Align_12b_L, dacVal); break;
     }
+#endif
   } else if (JSH_PINFUNCTION_IS_TIMER(func)) {
     TIM_TypeDef* TIMx = getTimerFromPinFunction(func);
     if (TIMx) {

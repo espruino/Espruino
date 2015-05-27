@@ -20,10 +20,7 @@
  #include "usb_pwr.h"
 #endif
 #ifdef STM32F4
-#include "usbd_cdc_core.h"
-#include "usbd_usr.h"
-#include "usb_conf.h"
-#include "usbd_desc.h"
+#include "usb_device.h"
 #endif
 #endif
 #include "jsinteractive.h"
@@ -46,15 +43,7 @@ int main(void){
   USB_Init();
 #endif
 #ifdef STM32F4
-  USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
-            USB_OTG_FS_CORE_ID,
-#endif
-            &USR_desc,
-            &USBD_CDC_cb,
-            &USR_cb);
+  MX_USB_DEVICE_Init();
 #endif
 #endif
 

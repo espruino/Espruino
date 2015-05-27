@@ -38,10 +38,23 @@
  #include "usb_pwr.h"
 #endif
 #ifdef STM32F4
- #include "usb_core.h"
- #include "usbd_core.h"
- #include "usbd_cdc_core.h"
- #include "usb_dcd_int.h"
+  #include "stm32f4xx.h"
+  #include "misc.h"
+  #include "stm32f4xx_adc.h"
+  #include "stm32f4xx_flash.h"
+  #include "stm32f4xx_gpio.h"
+  #include "stm32f4xx_exti.h"
+  #include "stm32f4xx_i2c.h"
+  #include "stm32f4xx_iwdg.h"
+  #include "stm32f4xx_pwr.h"
+  #include "stm32f4xx_rcc.h"
+  #include "stm32f4xx_rtc.h"
+  #include "stm32f4xx_spi.h"
+  #include "stm32f4xx_syscfg.h"
+  #include "stm32f4xx_tim.h"
+  #include "stm32f4xx_usart.h"
+
+  #include "stm32f4xx_hal_pcd.h"
 #endif
 #endif
 #include "jshardware.h"
@@ -323,19 +336,25 @@ void USART2_IRQHandler(void) {
   USART_IRQHandler(USART2, EV_SERIAL2);
 }
 
+#ifdef USART3
 void USART3_IRQHandler(void) {
   USART_IRQHandler(USART3, EV_SERIAL3);
 }
+#endif
 
+#ifdef UART4
 void UART4_IRQHandler(void) {
   USART_IRQHandler(UART4, EV_SERIAL4);
 }
+#endif
 
+#ifdef UART5
 void UART5_IRQHandler(void) {
   USART_IRQHandler(UART5, EV_SERIAL5);
 }
+#endif
 
-#ifdef STM32F4
+#ifdef USART6
 void USART6_IRQHandler(void) {
   USART_IRQHandler(USART6, EV_SERIAL6);
 }
@@ -417,72 +436,29 @@ void USBWakeUp_RMP_IRQHandler(void)
 #endif // STM32F3
 
 #ifdef STM32F4
-/******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
-/*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.s).                                            */
-/******************************************************************************/
-
-/*******************************************************************************
-* Function Name  : PPP_IRQHandler
-* Description    : This function handles PPP interrupt request.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-/*void PPP_IRQHandler(void)
-{
-}*/
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_FS
+* @brief This function handles USB On-The-Go FS Wakeup through EXTI Line18 interrupt.
+*/
 void OTG_FS_WKUP_IRQHandler(void)
 {
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
+  if ((&hpcd_USB_OTG_FS)->Init.low_power_enable) {
+    /* Reset SLEEPDEEP bit of Cortex System Control Register */
+    SCB->SCR &= (uint32_t)~((uint32_t)(SCB_SCR_SLEEPDEEP_Msk | SCB_SCR_SLEEPONEXIT_Msk));
+#ifdef GW_TODO_FIXME // Presumably we need to turn on HSE here
+    SystemClock_Config();
 #endif
+  }
+  __HAL_PCD_UNGATE_PHYCLOCK(&hpcd_USB_OTG_FS);
+  EXTI_ClearITPendingBit(EXTI_Line18); //__HAL_USB_FS_EXTI_CLEAR_FLAG();
+}
 
 /**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line20);
-}
-#endif
-
-/**
-  * @brief  This function handles OTG_HS Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_IRQHandler(void)
-#else
-void OTG_FS_IRQHandler(void)
-#endif
-{
-  USBD_OTG_ISR_Handler (&USB_OTG_dev);
+* @brief This function handles USB On The Go FS global interrupt.
+*/
+void OTG_FS_IRQHandler(void) {
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
 }
 
 #ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
