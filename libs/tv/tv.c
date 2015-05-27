@@ -109,14 +109,14 @@ void dma_setup(int bitRate) {
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 #ifdef STM32F4
   DMA_InitStructure.DMA_Channel = DMA_Channel_TVSPI_TX; // needed for SPI TX
-  DMA_InitStructure.DMA_Memory0BaseAddr = (u32)tvPixelPtr;
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)tvPixelPtr;
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
   DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
   DMA_InitStructure.DMA_MemoryBurst =DMA_MemoryBurst_Single;
   DMA_InitStructure.DMA_PeripheralBurst =DMA_PeripheralBurst_Single;
 #else
-  DMA_InitStructure.DMA_MemoryBaseAddr = (u32)tvPixelPtr;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)tvPixelPtr;
   DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 #endif

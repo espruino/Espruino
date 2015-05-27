@@ -254,6 +254,7 @@ void SPI_I2S_DeInit(SPI_TypeDef* SPIx)
     /* Release SPI4 from reset state */
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI4, DISABLE);
   }
+#ifdef SPI5
   else if (SPIx == SPI5)
   {
     /* Enable SPI5 reset state */
@@ -261,9 +262,9 @@ void SPI_I2S_DeInit(SPI_TypeDef* SPIx)
     /* Release SPI5 from reset state */
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI5, DISABLE);
   }
-  else 
-  {
-    if (SPIx == SPI6)
+#endif
+#ifdef SPI6
+  else if (SPIx == SPI6)
     {
       /* Enable SPI6 reset state */
       RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI6, ENABLE);
@@ -271,6 +272,7 @@ void SPI_I2S_DeInit(SPI_TypeDef* SPIx)
       RCC_APB2PeriphResetCmd(RCC_APB2Periph_SPI6, DISABLE);
     }
   }
+#endif
 }
 
 /**

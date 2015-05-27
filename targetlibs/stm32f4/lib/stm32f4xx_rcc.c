@@ -227,8 +227,10 @@ void RCC_DeInit(void)
   /* Reset PLLI2SCFGR register */
   RCC->PLLI2SCFGR = 0x20003000;
 
+#if defined (STM32F427_437xx) || defined (STM32F429_439xx)
   /* Reset PLLSAICFGR register, only available for STM32F42/43xxx devices */
   RCC->PLLSAICFGR = 0x24003000;
+#endif
  
   /* Reset HSEBYP bit */
   RCC->CR &= (uint32_t)0xFFFBFFFF;
@@ -236,9 +238,10 @@ void RCC_DeInit(void)
   /* Disable all interrupts */
   RCC->CIR = 0x00000000;
 
+#if defined (STM32F427_437xx) || defined (STM32F429_439xx)
   /* Disable Timers clock prescalers selection, only available for STM32F42/43xxx devices */
   RCC->DCKCFGR = 0x00000000; 
-
+#endif
 }
 
 /**
@@ -595,6 +598,7 @@ void RCC_PLLI2SCmd(FunctionalState NewState)
   *   
   * @retval None
   */
+#if defined (STM32F427_437xx) || defined (STM32F429_439xx)
 void RCC_PLLSAIConfig(uint32_t PLLSAIN, uint32_t PLLSAIQ, uint32_t PLLSAIR)
 {
   /* Check the parameters */
@@ -603,6 +607,7 @@ void RCC_PLLSAIConfig(uint32_t PLLSAIN, uint32_t PLLSAIQ, uint32_t PLLSAIR)
 
   RCC->PLLSAICFGR = (PLLSAIN << 6) | (PLLSAIQ << 24) | (PLLSAIR << 28);
 }
+
 
 /**
   * @brief  Enables or disables the PLLSAI. 
@@ -619,6 +624,7 @@ void RCC_PLLSAICmd(FunctionalState NewState)
   assert_param(IS_FUNCTIONAL_STATE(NewState));
   *(__IO uint32_t *) CR_PLLSAION_BB = (uint32_t)NewState;
 }
+#endif
 
 /**
   * @brief  Enables or disables the Clock Security System.
@@ -1240,6 +1246,7 @@ void RCC_I2SCLKConfig(uint32_t RCC_I2SCLKSource)
   *              
   * @retval None
   */
+#if defined (STM32F427_437xx) || defined (STM32F429_439xx)
 void RCC_SAIPLLI2SClkDivConfig(uint32_t RCC_PLLI2SDivQ)  
 {
   uint32_t tmpreg = 0;
@@ -1362,7 +1369,7 @@ void RCC_SAIBlockBCLKConfig(uint32_t RCC_SAIBlockBCLKSource)
   /* Store the new value */
   RCC->DCKCFGR = tmpreg;
 }
-
+#endif
 
 /**
   * @brief  Configures the LTDC clock Divider coming from PLLSAI.
@@ -1377,6 +1384,7 @@ void RCC_SAIBlockBCLKConfig(uint32_t RCC_SAIBlockBCLKSource)
   *            
   * @retval None
   */
+#if defined (STM32F427_437xx) || defined (STM32F429_439xx)
 void RCC_LTDCCLKDivConfig(uint32_t RCC_PLLSAIDivR)
 {
   uint32_t tmpreg = 0;
@@ -1395,6 +1403,7 @@ void RCC_LTDCCLKDivConfig(uint32_t RCC_PLLSAIDivR)
   /* Store the new value */
   RCC->DCKCFGR = tmpreg;
 }
+#endif
 
 /**
   * @brief  Configures the Timers clocks prescalers selection.

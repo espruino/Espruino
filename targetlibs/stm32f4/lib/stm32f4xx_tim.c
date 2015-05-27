@@ -227,26 +227,34 @@ void TIM_DeInit(TIM_TypeDef* TIMx)
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM5, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM5, DISABLE);
   }  
+#ifdef TIM6
   else if (TIMx == TIM6)  
   {    
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM6, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM6, DISABLE);
   }  
+#endif
+#ifdef TIM7
   else if (TIMx == TIM7)
   {      
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM7, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM7, DISABLE);
   }  
+#endif
+#ifdef TIM8
   else if (TIMx == TIM8)
   {      
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM8, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM8, DISABLE);  
   }  
+#endif
+#ifdef TIM9
   else if (TIMx == TIM9)
   {      
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM9, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM9, DISABLE);  
    }  
+#endif
   else if (TIMx == TIM10)
   {      
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM10, ENABLE);
@@ -256,17 +264,22 @@ void TIM_DeInit(TIM_TypeDef* TIMx)
   {     
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, DISABLE);  
-  }  
+  }
+#ifdef TIM12
   else if (TIMx == TIM12)
   {      
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, DISABLE);  
   }  
+#endif
+#ifdef TIM13
   else if (TIMx == TIM13) 
   {       
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM13, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM13, DISABLE);  
   }  
+#endif
+#ifdef TIM14
   else
   { 
     if (TIMx == TIM14) 
@@ -275,6 +288,7 @@ void TIM_DeInit(TIM_TypeDef* TIMx)
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM14, DISABLE); 
     }   
   }
+#endif
 }
 
 /**
@@ -296,7 +310,10 @@ void TIM_TimeBaseInit(TIM_TypeDef* TIMx, TIM_TimeBaseInitTypeDef* TIM_TimeBaseIn
 
   tmpcr1 = TIMx->CR1;  
 
-  if((TIMx == TIM1) || (TIMx == TIM8)||
+  if((TIMx == TIM1) ||
+#ifdef TIM8
+     (TIMx == TIM8)||
+#endif
      (TIMx == TIM2) || (TIMx == TIM3)||
      (TIMx == TIM4) || (TIMx == TIM5)) 
   {
@@ -305,12 +322,14 @@ void TIM_TimeBaseInit(TIM_TypeDef* TIMx, TIM_TimeBaseInitTypeDef* TIM_TimeBaseIn
     tmpcr1 |= (uint32_t)TIM_TimeBaseInitStruct->TIM_CounterMode;
   }
  
+#if defined(TIM6) || defined(TIM7)
   if((TIMx != TIM6) && (TIMx != TIM7))
   {
     /* Set the clock division */
     tmpcr1 &=  (uint16_t)(~TIM_CR1_CKD);
     tmpcr1 |= (uint32_t)TIM_TimeBaseInitStruct->TIM_ClockDivision;
   }
+#endif
 
   TIMx->CR1 = tmpcr1;
 
@@ -320,7 +339,11 @@ void TIM_TimeBaseInit(TIM_TypeDef* TIMx, TIM_TimeBaseInitTypeDef* TIM_TimeBaseIn
   /* Set the Prescaler value */
   TIMx->PSC = TIM_TimeBaseInitStruct->TIM_Prescaler;
     
-  if ((TIMx == TIM1) || (TIMx == TIM8))  
+  if ((TIMx == TIM1)
+#ifdef TIM8
+      || (TIMx == TIM8)
+#endif
+      )
   {
     /* Set the Repetition Counter value */
     TIMx->RCR = TIM_TimeBaseInitStruct->TIM_RepetitionCounter;
@@ -705,7 +728,11 @@ void TIM_OC1Init(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct)
   /* Set the Output State */
   tmpccer |= TIM_OCInitStruct->TIM_OutputState;
     
-  if((TIMx == TIM1) || (TIMx == TIM8))
+  if ((TIMx == TIM1)
+#ifdef TIM8
+      || (TIMx == TIM8)
+#endif
+      )
   {
     assert_param(IS_TIM_OUTPUTN_STATE(TIM_OCInitStruct->TIM_OutputNState));
     assert_param(IS_TIM_OCN_POLARITY(TIM_OCInitStruct->TIM_OCNPolarity));
@@ -787,7 +814,11 @@ void TIM_OC2Init(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct)
   /* Set the Output State */
   tmpccer |= (uint16_t)(TIM_OCInitStruct->TIM_OutputState << 4);
     
-  if((TIMx == TIM1) || (TIMx == TIM8))
+  if ((TIMx == TIM1)
+#ifdef TIM8
+      || (TIMx == TIM8)
+#endif
+      )
   {
     assert_param(IS_TIM_OUTPUTN_STATE(TIM_OCInitStruct->TIM_OutputNState));
     assert_param(IS_TIM_OCN_POLARITY(TIM_OCInitStruct->TIM_OCNPolarity));
@@ -867,7 +898,11 @@ void TIM_OC3Init(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct)
   /* Set the Output State */
   tmpccer |= (uint16_t)(TIM_OCInitStruct->TIM_OutputState << 8);
     
-  if((TIMx == TIM1) || (TIMx == TIM8))
+  if ((TIMx == TIM1)
+#ifdef TIM8
+      || (TIMx == TIM8)
+#endif
+      )
   {
     assert_param(IS_TIM_OUTPUTN_STATE(TIM_OCInitStruct->TIM_OutputNState));
     assert_param(IS_TIM_OCN_POLARITY(TIM_OCInitStruct->TIM_OCNPolarity));
@@ -948,7 +983,11 @@ void TIM_OC4Init(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct)
   /* Set the Output State */
   tmpccer |= (uint16_t)(TIM_OCInitStruct->TIM_OutputState << 12);
   
-  if((TIMx == TIM1) || (TIMx == TIM8))
+  if ((TIMx == TIM1)
+#ifdef TIM8
+      || (TIMx == TIM8)
+#endif
+      )
   {
     assert_param(IS_TIM_OCIDLE_STATE(TIM_OCInitStruct->TIM_OCIdleState));
     /* Reset the Output Compare IDLE State */

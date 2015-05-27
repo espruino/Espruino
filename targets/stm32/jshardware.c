@@ -20,20 +20,6 @@
  #endif
  #ifdef STM32F4
   #include "stm32f4xx.h"
-  #include "misc.h"
-  #include "stm32f4xx_adc.h"
-  #include "stm32f4xx_flash.h"
-  #include "stm32f4xx_gpio.h"
-  #include "stm32f4xx_exti.h"
-  #include "stm32f4xx_i2c.h"
-  #include "stm32f4xx_iwdg.h"
-  #include "stm32f4xx_pwr.h"
-  #include "stm32f4xx_rcc.h"
-  #include "stm32f4xx_rtc.h"
-  #include "stm32f4xx_spi.h"
-  #include "stm32f4xx_syscfg.h"
-  #include "stm32f4xx_tim.h"
-  #include "stm32f4xx_usart.h"
  #endif
 #endif
 

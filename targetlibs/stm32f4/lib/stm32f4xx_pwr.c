@@ -452,6 +452,7 @@ void PWR_OverDriveSWCmd(FunctionalState NewState)
   *          This parameter can be: ENABLE or DISABLE.
   * @retval None
   */
+#ifdef PWR_CR_UDEN
 void PWR_UnderDriveCmd(FunctionalState NewState)
 {
   /* Check the parameters */
@@ -468,6 +469,7 @@ void PWR_UnderDriveCmd(FunctionalState NewState)
     PWR->CR &= (uint32_t)(~PWR_CR_UDEN);
   }
 }
+#endif
 
 /**
   * @}

@@ -174,6 +174,7 @@ elif board.chip["family"]=="STM32F3":
 elif board.chip["family"]=="STM32F4":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f4xx.h"')
+  codeOut('#include "stm32f4xx_conf.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"

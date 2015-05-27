@@ -978,31 +978,17 @@ DEFINES += -DSTM32F4
 SOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_can.c        \
 targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c   \
-targetlibs/stm32f4/lib/stm32f4xx_cryp.c       \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c   \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  \
-targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
-targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
-targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
 targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
-targetlibs/stm32f4/lib/stm32f4xx_hash.c       \
-targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
-targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
-targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
@@ -1010,6 +996,20 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       
+#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      
+#targetlibs/stm32f4/lib/stm32f4xx_can.c        
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
+#targetlibs/stm32f4/lib/stm32f4xx_dac.c        
+#targetlibs/stm32f4/lib/stm32f4xx_hash.c       
+#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
+#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
+#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       
+#targetlibs/stm32f4/lib/stm32f4xx_rng.c        
+#targetlibs/stm32f4/lib/stm32f4xx_sai.c        
 #targetlibs/stm32f4/lib/stm324xx_fsmc.c
 
 ifdef USB
