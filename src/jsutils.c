@@ -309,10 +309,10 @@ void *memset(void *dst, int c, size_t size) {
 unsigned int rand_m_w = 0xDEADBEEF;    /* must not be zero */
 unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
 
-unsigned int rand() {
+int rand() {
   rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
   rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
-  return (rand_m_z << 16) + rand_m_w;  /* 32-bit result */
+  return (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
 }
 
 void srand(unsigned int seed) {
