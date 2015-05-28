@@ -1,30 +1,3 @@
-/**
-  ******************************************************************************
-  * @file    usbd_cdc.h
-  * @author  MCD Application Team
-  * @version V2.4.0
-  * @date    28-February-2015
-  * @brief   header file for the usbd_cdc.c file.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2015 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */ 
- 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __USB_CDC_H
 #define __USB_CDC_H
@@ -36,14 +9,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include  "usbd_ioreq.h"
 
-/** @addtogroup STM32_USB_DEVICE_LIBRARY
-  * @{
-  */
-  
-/** @defgroup usbd_cdc
-  * @brief This file is the Header file for usbd_cdc.c
-  * @{
-  */ 
+#ifdef NOHID
+#define USB_CDC_HID_CONFIG_DESC_SIZ                     67
+#else
+#define USB_CDC_HID_CONFIG_DESC_SIZ                     (67+25)
+#endif
+
 
  // ----------------------------------------------------------------------------
 #define CDC_DATA_FS_MAX_PACKET_SIZE                 16  /* Endpoint IN & OUT Packet size */
@@ -51,15 +22,10 @@
 #define CDC_DATA_FS_IN_PACKET_SIZE                  CDC_DATA_FS_MAX_PACKET_SIZE
 #define CDC_DATA_FS_OUT_PACKET_SIZE                 CDC_DATA_FS_MAX_PACKET_SIZE
 
-/** @defgroup usbd_cdc_Exported_Defines
-  * @{
-  */ 
 #define CDC_IN_EP                                   0x81  /* EP1 for data IN */
 #define CDC_OUT_EP                                  0x01  /* EP1 for data OUT */
 #define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
 
-
-#define USB_CDC_CONFIG_DESC_SIZ                     67
 
 #define CDC_SEND_ENCAPSULATED_COMMAND               0x00
 #define CDC_GET_ENCAPSULATED_RESPONSE               0x01
@@ -73,8 +39,9 @@
 
 // ----------------------------------------------------------------------------
 
- #define HID_EPIN_ADDR                 0x81
- #define HID_EPIN_SIZE                 0x04
+ #define HID_IN_EP                     0x83
+ #define HID_DATA_IN_PACKET_SIZE       0x04 // higher for keyboard
+ #define HID_INTERFACE_NUMBER          2
 
  #define USB_HID_CONFIG_DESC_SIZ       34
  #define USB_HID_DESC_SIZ              9
@@ -108,6 +75,7 @@ typedef struct
   uint8_t  CmdLength;    
   uint8_t cdcTxState;
 
+  uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
   uint32_t             hidProtocol;
   uint32_t             hidIdleState;
   uint32_t             hidAltSetting;
@@ -117,10 +85,7 @@ typedef struct
 // ----------------------------------------------------------------------------
 extern const USBD_ClassTypeDef  USBD_CDC_HID;
 // ----------------------------------------------------------------------------
-uint8_t USBD_HID_SendReport (USBD_HandleTypeDef *pdev,
-                                 uint8_t *report,
-                                 uint16_t len);
-uint32_t USBD_HID_GetPollingInterval (USBD_HandleTypeDef *pdev);
+uint8_t USBD_HID_SendReport (uint8_t *report, int len);
 // ----------------------------------------------------------------------------
 void USB_StartTransmission();
 int USB_IsConnected();
@@ -132,13 +97,4 @@ int USB_IsConnected();
 
 
 
-#endif  /* __USB_CDC_H */
-/**
-  * @}
-  */ 
-
-/**
-  * @}
-  */ 
-  
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+#endif

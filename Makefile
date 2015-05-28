@@ -1016,7 +1016,7 @@ INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 SOURCES +=                                 \
 targetlibs/stm32usb/usbd_conf.c \
 targetlibs/stm32usb/usb_device.c \
-targetlibs/stm32usb/usbd_cdc.c \
+targetlibs/stm32usb/usbd_cdc_hid.c \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
 targetlibs/stm32usb/Src/usbd_ctlreq.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \

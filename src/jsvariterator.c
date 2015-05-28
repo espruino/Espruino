@@ -62,16 +62,33 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
   return ok;
 }
 
-/** If jsvIterateCallback is called, how many times will it call the callback function? */
 static void jsvIterateCallbackCountCb(int n, void *data) {
   NOT_USED(n);
   int *count = (int*)data;
   (*count)++;
 }
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
 int jsvIterateCallbackCount(JsVar *var) {
   int count = 0;
   jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
+}
+
+typedef struct { unsigned char *buf; unsigned int idx, length; } JsvIterateCallbackToBytesData;
+static void jsvIterateCallbackToBytesCb(int data, void *userData) {
+  JsvIterateCallbackToBytesData *cbData = (JsvIterateCallbackToBytesData*)userData;
+  if (cbData->idx < cbData->length)
+    cbData->buf[cbData->idx] = (unsigned char)data;
+  cbData->idx++;
+}
+/** Write all data in array to the data pointer (of size dataSize bytes) */
+unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize) {
+  JsvIterateCallbackToBytesData cbData;
+  cbData.buf = (unsigned char *)data;
+  cbData.idx = 0;
+  cbData.length = dataSize;
+  jsvIterateCallback(var, jsvIterateCallbackToBytesCb, (void*)&cbData);
+  return cbData.idx;
 }
 
 // --------------------------------------------------------------------------------------------

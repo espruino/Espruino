@@ -496,11 +496,7 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
 }
 Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.
 */
-typedef struct { unsigned char *buf; int idx; } JsI2CWriteCbData;
-static void jswrap_i2c_writeToCb(int data, void *userData) {
-  JsI2CWriteCbData *cbData = (JsI2CWriteCbData*)userData;
-  cbData->buf[cbData->idx++] = (unsigned char)data;
-}
+
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return;
@@ -514,12 +510,10 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
     return;
   }
 
-  JsI2CWriteCbData cbData;
-  cbData.buf = (unsigned char *)alloca(l);
-  cbData.idx = 0;
-  jsvIterateCallback(args, jswrap_i2c_writeToCb, (void*)&cbData);
+  unsigned char *data = (unsigned char *)alloca(l);
+  jsvIterateCallbackToBytes(args, data, l);
 
-  jshI2CWrite(device, (unsigned char)address, cbData.idx, cbData.buf, sendStop);
+  jshI2CWrite(device, (unsigned char)address, l, data, sendStop);
 }
 
 /*JSON{

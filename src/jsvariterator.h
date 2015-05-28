@@ -27,6 +27,9 @@ bool jsvIterateCallback(JsVar *var, void (*callback)(int item, void *callbackDat
 /** If jsvIterateCallback is called, how many times will it call the callback function? */
 int jsvIterateCallbackCount(JsVar *var);
 
+/** Write all data in array to the data pointer (of size dataSize bytes) */
+unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize);
+
 // --------------------------------------------------------------------------------------------
 typedef struct JsvStringIterator {
   size_t charIdx; ///< index of character in var

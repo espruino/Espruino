@@ -826,3 +826,26 @@ method reads from the internal voltage reference several times, xoring and
 rotating to try and make a relatively random value from the noise in the
 signal.
 */
+
+
+
+#include "usbd_cdc_hid.h"
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "sendUSBHID",
+  "generate" : "jswrap_espruino_sendUSBHID",
+  "params" : [
+    ["x","JsVar","An array of bytes to send as a HID packet"]
+  ],
+  "return" : ["bool","1 on success, 0 on failure"]
+}
+*/
+bool jswrap_espruino_sendUSBHID(JsVar *arr) {
+  unsigned char data[HID_DATA_IN_PACKET_SIZE];
+  unsigned int l = jsvIterateCallbackToBytes(arr, data, HID_DATA_IN_PACKET_SIZE);
+  if (l>HID_DATA_IN_PACKET_SIZE) return 0;
+
+  return USBD_HID_SendReport(data, l) == USBD_OK;
+}
