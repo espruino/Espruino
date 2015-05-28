@@ -252,10 +252,6 @@ void jshUtilTimerDisable();
 //                                                                      SYSTICK
 // On SYSTick interrupt, call this
 void jshDoSysTick();
-#ifdef USB
-// Kick the USB SysTick watchdog - we need this to see if we have disconnected or not
-void jshKickUSBWatchdog();
-#endif
 
 #endif // ARM
 

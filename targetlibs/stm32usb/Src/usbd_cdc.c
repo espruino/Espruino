@@ -671,7 +671,7 @@ static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
   {
     
     hcdc->TxState = 0;
-
+    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->TxReady();
     return USBD_OK;
   }
   else
@@ -707,7 +707,6 @@ static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
     return USBD_FAIL;
   }
 }
-
 
 
 /**

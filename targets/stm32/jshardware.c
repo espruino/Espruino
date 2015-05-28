@@ -19,7 +19,7 @@
   #include "usb_pwr.h"
  #endif
  #ifdef STM32F4
-  #include "stm32f4xx.h"
+  #include "usbd_cdc_if.h"
  #endif
 #endif
 
@@ -742,12 +742,6 @@ bool hasSystemSlept;
 volatile JsSysTime SysTickMajor = SYSTICK_RANGE;
 #endif
 
-#ifdef USB
-unsigned int SysTickUSBWatchdog = 0;
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
-}
-#endif //USB
 
 static bool jshIsRTCAlreadySetup(bool andRunning) {
   if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0)
@@ -877,12 +871,6 @@ void jshDoSysTick() {
 #else
   SysTickMajor += SYSTICK_RANGE;
 #endif
-
-#ifdef USB
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
-  }
-#endif //USB
 }
 
 // ----------------------------------------------------------------------------
@@ -1466,8 +1454,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 bool jshIsUSBSERIALConnected() {
 #ifdef USB
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
-  // not a check for connected - we just want to have some idea...
+  return USB_IsConnected();
 #else
   return false;
 #endif
@@ -2233,9 +2220,14 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_Cmd(USARTx, ENABLE);
 }
 
+
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
+  if (device == EV_USBSERIAL) {
+    USB_StartTransmission();
+    return;
+  }
   USART_TypeDef *uart = getUsartFromDevice(device);
   if (uart && !jshIsDeviceInitialised(device)) {
     JshUSARTInfo inf;
@@ -2706,6 +2698,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !jstUtilTimerIsRunning() && // if the utility timer is running (eg. digitalPulse, Waveform output, etc) then that would stop
       !jshHasTransmitData() && // if we're transmitting, we don't want USART/etc to get slowed down
 #ifdef USB
+      !jshIsUSBSERIALConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
       true

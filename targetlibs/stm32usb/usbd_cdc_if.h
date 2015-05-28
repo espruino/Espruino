@@ -48,16 +48,9 @@
 /* Exported cariables --------------------------------------------------------*/
 extern USBD_CDC_ItfTypeDef  USBD_Interface_fops_FS;
 
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
-/** @defgroup USBD_CDC_IF_Exported_FunctionsPrototype
-  * @{
-  */ 
-uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
+void USB_StartTransmission();
+int USB_IsConnected();
 
-/**
-  * @}
-  */
 
 #ifdef __cplusplus
 }

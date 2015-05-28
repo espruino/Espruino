@@ -199,20 +199,12 @@ void USBWakeUp_IRQHandler(void)
 
 
 
-unsigned int SysTickUSBWatchdog = SYSTICKS_BEFORE_USB_DISCONNECT;
-
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
-}
 
 void SysTick_Handler(void) {
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
-  }
 }
 
 bool jshIsUSBSERIALConnected() {
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
+  return true;
 }
 
 int jshGetCharToTransmit(IOEventFlags device) {
