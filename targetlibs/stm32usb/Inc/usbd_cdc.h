@@ -133,7 +133,7 @@ USBD_CDC_HandleTypeDef;
   * @{
   */ 
 
-extern USBD_ClassTypeDef  USBD_CDC;
+extern const USBD_ClassTypeDef  USBD_CDC;
 #define USBD_CDC_CLASS    &USBD_CDC
 
 uint8_t  USBD_CDC_RegisterInterface  (USBD_HandleTypeDef   *pdev, 
