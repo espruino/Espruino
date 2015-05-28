@@ -12,7 +12,7 @@
 #ifdef NOHID
 #define USB_CDC_HID_CONFIG_DESC_SIZ                     67
 #else
-#define USB_CDC_HID_CONFIG_DESC_SIZ                     (67+25)
+#define USB_CDC_HID_CONFIG_DESC_SIZ                     (25+67)
 #endif
 
 
@@ -22,10 +22,10 @@
 #define CDC_DATA_FS_IN_PACKET_SIZE                  CDC_DATA_FS_MAX_PACKET_SIZE
 #define CDC_DATA_FS_OUT_PACKET_SIZE                 CDC_DATA_FS_MAX_PACKET_SIZE
 
-#define CDC_IN_EP                                   0x81  /* EP1 for data IN */
-#define CDC_OUT_EP                                  0x01  /* EP1 for data OUT */
+#define CDC_IN_EP                                   0x83  /* EP1 for data IN */
+#define CDC_OUT_EP                                  0x03  /* EP1 for data OUT */
 #define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
-
+#define CDC_INTERFACE_NUMBER                        1
 
 #define CDC_SEND_ENCAPSULATED_COMMAND               0x00
 #define CDC_GET_ENCAPSULATED_RESPONSE               0x01
@@ -39,9 +39,9 @@
 
 // ----------------------------------------------------------------------------
 
- #define HID_IN_EP                     0x83
+ #define HID_IN_EP                     0x81
  #define HID_DATA_IN_PACKET_SIZE       0x04 // higher for keyboard
- #define HID_INTERFACE_NUMBER          2
+ #define HID_INTERFACE_NUMBER          0
 
  #define USB_HID_CONFIG_DESC_SIZ       34
  #define USB_HID_DESC_SIZ              9
