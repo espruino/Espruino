@@ -914,7 +914,6 @@ targetlibs/stm32f2/usblib/usb_core.c \
 targetlibs/stm32f2/usblib/usb_dcd.c
 #targetlibs/stm32f2/usblib/usb_otg.c \
 #targetlibs/stm32f2/usblib/usb_bsp_template.c \
-#targetlibs/stm32f2/usblib/usbd_cdc_if_template.c \
 #targetlibs/stm32f2/usblib/usb_hcd.c \
 #targetlibs/stm32f2/usblib/usb_hcd_int.c
 endif #USB
@@ -1017,13 +1016,11 @@ INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 SOURCES +=                                 \
 targetlibs/stm32usb/usbd_conf.c \
 targetlibs/stm32usb/usb_device.c \
-targetlibs/stm32usb/usbd_cdc_if.c \
+targetlibs/stm32usb/usbd_cdc.c \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
 targetlibs/stm32usb/Src/usbd_ctlreq.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c \
-targetlibs/stm32usb/Src/usbd_conf_template.c \
-targetlibs/stm32usb/Src/usbd_cdc.c \
 targetlibs/stm32usb/Src/usbd_core.c \
 targetlibs/stm32usb/Src/usbd_ioreq.c \
 targetlibs/stm32usb/usbd_desc.c
@@ -1291,7 +1288,7 @@ else ifdef NUCLEO
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	echo ST-LINK flash
-	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
+	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 
 serialflash: all

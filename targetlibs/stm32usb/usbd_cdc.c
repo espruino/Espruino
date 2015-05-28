@@ -6,8 +6,8 @@
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
 // CDC Buffers-----------------------------------
-#define CDC_RX_DATA_SIZE  4
-#define CDC_TX_DATA_SIZE  4
+#define CDC_RX_DATA_SIZE  CDC_DATA_FS_OUT_PACKET_SIZE
+#define CDC_TX_DATA_SIZE  CDC_DATA_FS_IN_PACKET_SIZE
 uint8_t CDCRxBufferFS[CDC_RX_DATA_SIZE];
 uint8_t CDCTxBufferFS[CDC_TX_DATA_SIZE];
 // ..
@@ -36,7 +36,7 @@ static uint8_t  *USBD_CDC_GetCfgDesc (uint16_t *length);
 uint8_t  *USBD_CDC_GetDeviceQualifierDescriptor (uint16_t *length);
 
 /* USB Standard Device Descriptor */
-const __ALIGN_BEGIN static uint8_t USBD_CDC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
+__ALIGN_BEGIN static const uint8_t USBD_CDC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
 {
   USB_LEN_DEV_QUALIFIER_DESC,
   USB_DESC_TYPE_DEVICE_QUALIFIER,
@@ -160,8 +160,8 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_EN
   USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
   CDC_OUT_EP,                        /* bEndpointAddress */
   0x02,                              /* bmAttributes: Bulk */
-  LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize: */
-  HIBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),
+  LOBYTE(CDC_DATA_FS_OUT_PACKET_SIZE),  /* wMaxPacketSize: */
+  HIBYTE(CDC_DATA_FS_OUT_PACKET_SIZE),
   0x00,                              /* bInterval: ignore for Bulk transfer */
   
   /*Endpoint IN Descriptor*/
@@ -169,8 +169,8 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_EN
   USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
   CDC_IN_EP,                         /* bEndpointAddress */
   0x02,                              /* bmAttributes: Bulk */
-  LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize: */
-  HIBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),
+  LOBYTE(CDC_DATA_FS_IN_PACKET_SIZE),  /* wMaxPacketSize: */
+  HIBYTE(CDC_DATA_FS_IN_PACKET_SIZE),
   0x00                               /* bInterval: ignore for Bulk transfer */
 } ;
 
@@ -192,6 +192,7 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_EN
 static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev, 
                                uint8_t cfgidx)
 {
+  NOT_USED(cfgidx);
   uint8_t ret = 0;
   USBD_CDC_HandleTypeDef   *hcdc;
   
@@ -241,6 +242,7 @@ static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev,
 static uint8_t  USBD_CDC_DeInit (USBD_HandleTypeDef *pdev, 
                                  uint8_t cfgidx)
 {
+  NOT_USED(cfgidx);
   uint8_t ret = 0;
   
   /* Open EP IN */
@@ -294,7 +296,7 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
       else
       {
         hcdc->CmdOpCode = req->bRequest;
-        hcdc->CmdLength = req->wLength;
+        hcdc->CmdLength = (uint8_t)req->wLength;
         
         USBD_CtlPrepareRx (pdev, 
                            (uint8_t *)hcdc->data,
@@ -360,8 +362,6 @@ static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
   */
 static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {      
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
-  
   /* Get the received data length */
   unsigned int RxLength = USBD_LL_GetRxDataSize (pdev, epnum);
   
@@ -504,7 +504,7 @@ static void CDC_TxReady(void)
     return;
   jshPinOutput(LED1_PININDEX, 1);
 
-  int len = 0;
+  unsigned int len = 0;
 
   // try and fill the buffer
   int c;
@@ -521,7 +521,7 @@ static void CDC_TxReady(void)
     USBD_LL_Transmit(&hUsbDeviceFS,
                      CDC_IN_EP,
                      CDCTxBufferFS,
-                     len);
+                     (uint16_t)len);
   }
   jshPinOutput(LED1_PININDEX, 0);
 }

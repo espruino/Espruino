@@ -45,6 +45,11 @@
   * @{
   */ 
 
+ // ----------------------------------------------------------------------------
+#define CDC_DATA_FS_MAX_PACKET_SIZE                 16  /* Endpoint IN & OUT Packet size */
+#define CDC_CMD_PACKET_SIZE                         8  /* Control Endpoint Packet size */
+#define CDC_DATA_FS_IN_PACKET_SIZE                  CDC_DATA_FS_MAX_PACKET_SIZE
+#define CDC_DATA_FS_OUT_PACKET_SIZE                 CDC_DATA_FS_MAX_PACKET_SIZE
 
 /** @defgroup usbd_cdc_Exported_Defines
   * @{
@@ -53,17 +58,9 @@
 #define CDC_OUT_EP                                  0x01  /* EP1 for data OUT */
 #define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
 
-/* CDC Endpoints parameters: you can fine tune these values depending on the needed baudrates and performance. */
-#define CDC_DATA_FS_MAX_PACKET_SIZE                 64  /* Endpoint IN & OUT Packet size */
-#define CDC_CMD_PACKET_SIZE                         8  /* Control Endpoint Packet size */ 
 
 #define USB_CDC_CONFIG_DESC_SIZ                     67
-#define CDC_DATA_FS_IN_PACKET_SIZE                  CDC_DATA_FS_MAX_PACKET_SIZE
-#define CDC_DATA_FS_OUT_PACKET_SIZE                 CDC_DATA_FS_MAX_PACKET_SIZE
 
-/*---------------------------------------------------------------------*/
-/*  CDC definitions                                                    */
-/*---------------------------------------------------------------------*/
 #define CDC_SEND_ENCAPSULATED_COMMAND               0x00
 #define CDC_GET_ENCAPSULATED_RESPONSE               0x01
 #define CDC_SET_COMM_FEATURE                        0x02
@@ -74,18 +71,7 @@
 #define CDC_SET_CONTROL_LINE_STATE                  0x22
 #define CDC_SEND_BREAK                              0x23
 
-/**
-  * @}
-  */ 
 
-
-/** @defgroup USBD_CORE_Exported_TypesDefinitions
-  * @{
-  */
-
-/**
-  * @}
-  */ 
 typedef struct
 {
   uint32_t bitrate;
@@ -97,31 +83,55 @@ typedef struct
 
 typedef struct
 {
-  uint32_t data[CDC_DATA_FS_MAX_PACKET_SIZE/4];      /* Force 32bits alignment */
+  uint32_t data[CDC_CMD_PACKET_SIZE/4];      /* Force 32bits alignment */
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
-  
   __IO uint8_t TxState;
 }
 USBD_CDC_HandleTypeDef; 
 
+#if 0
+
+// ----------------------------------------------------------------------------
 
 
-/** @defgroup USBD_CORE_Exported_Macros
-  * @{
-  */ 
-  
-/**
-  * @}
-  */ 
+#define HID_EPIN_ADDR                 0x81
+#define HID_EPIN_SIZE                 0x04
 
-/** @defgroup USBD_CORE_Exported_Variables
-  * @{
-  */ 
+#define USB_HID_CONFIG_DESC_SIZ       34
+#define USB_HID_DESC_SIZ              9
+#define HID_MOUSE_REPORT_DESC_SIZE    74
 
+#define HID_DESCRIPTOR_TYPE           0x21
+#define HID_REPORT_DESC               0x22
+
+#define HID_HS_BINTERVAL               0x07
+#define HID_FS_BINTERVAL               0x0A
+#define HID_POLLING_INTERVAL           0x0A
+#define HID_REQ_SET_PROTOCOL          0x0B
+#define HID_REQ_GET_PROTOCOL          0x03
+#define HID_REQ_SET_IDLE              0x0A
+#define HID_REQ_GET_IDLE              0x02
+#define HID_REQ_SET_REPORT            0x09
+#define HID_REQ_GET_REPORT            0x01
+
+typedef enum
+{
+  HID_IDLE = 0,
+  HID_BUSY,
+} HID_StateTypeDef;
+
+typedef struct
+{
+  uint32_t             Protocol;
+  uint32_t             IdleState;
+  uint32_t             AltSetting;
+  HID_StateTypeDef     state;
+} USBD_HID_HandleTypeDef;
+
+#endif
+// ----------------------------------------------------------------------------
 extern const USBD_ClassTypeDef  USBD_CDC;
-#define USBD_CDC_CLASS    &USBD_CDC
-
 // ----------------------------------------------------------------------------
 void USB_StartTransmission();
 int USB_IsConnected();
