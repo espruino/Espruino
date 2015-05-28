@@ -71,49 +71,29 @@
 #define CDC_SET_CONTROL_LINE_STATE                  0x22
 #define CDC_SEND_BREAK                              0x23
 
-
-typedef struct
-{
-  uint32_t bitrate;
-  uint8_t  format;
-  uint8_t  paritytype;
-  uint8_t  datatype;
-}USBD_CDC_LineCodingTypeDef;
-
-
-typedef struct
-{
-  uint32_t data[CDC_CMD_PACKET_SIZE/4];      /* Force 32bits alignment */
-  uint8_t  CmdOpCode;
-  uint8_t  CmdLength;    
-  __IO uint8_t TxState;
-}
-USBD_CDC_HandleTypeDef; 
-
-#if 0
-
 // ----------------------------------------------------------------------------
 
+ #define HID_EPIN_ADDR                 0x81
+ #define HID_EPIN_SIZE                 0x04
 
-#define HID_EPIN_ADDR                 0x81
-#define HID_EPIN_SIZE                 0x04
+ #define USB_HID_CONFIG_DESC_SIZ       34
+ #define USB_HID_DESC_SIZ              9
+ #define HID_MOUSE_REPORT_DESC_SIZE    74
 
-#define USB_HID_CONFIG_DESC_SIZ       34
-#define USB_HID_DESC_SIZ              9
-#define HID_MOUSE_REPORT_DESC_SIZE    74
+ #define HID_DESCRIPTOR_TYPE           0x21
+ #define HID_REPORT_DESC               0x22
 
-#define HID_DESCRIPTOR_TYPE           0x21
-#define HID_REPORT_DESC               0x22
+ #define HID_HS_BINTERVAL               0x07
+ #define HID_FS_BINTERVAL               0x0A
+ #define HID_POLLING_INTERVAL           0x0A
+ #define HID_REQ_SET_PROTOCOL          0x0B
+ #define HID_REQ_GET_PROTOCOL          0x03
+ #define HID_REQ_SET_IDLE              0x0A
+ #define HID_REQ_GET_IDLE              0x02
+ #define HID_REQ_SET_REPORT            0x09
+ #define HID_REQ_GET_REPORT            0x01
 
-#define HID_HS_BINTERVAL               0x07
-#define HID_FS_BINTERVAL               0x0A
-#define HID_POLLING_INTERVAL           0x0A
-#define HID_REQ_SET_PROTOCOL          0x0B
-#define HID_REQ_GET_PROTOCOL          0x03
-#define HID_REQ_SET_IDLE              0x0A
-#define HID_REQ_GET_IDLE              0x02
-#define HID_REQ_SET_REPORT            0x09
-#define HID_REQ_GET_REPORT            0x01
+// ----------------------------------------------------------------------------
 
 typedef enum
 {
@@ -123,15 +103,24 @@ typedef enum
 
 typedef struct
 {
-  uint32_t             Protocol;
-  uint32_t             IdleState;
-  uint32_t             AltSetting;
-  HID_StateTypeDef     state;
-} USBD_HID_HandleTypeDef;
+  uint32_t data[CDC_CMD_PACKET_SIZE/4];      /* Force 32bits alignment */
+  uint8_t  CmdOpCode;
+  uint8_t  CmdLength;    
+  uint8_t cdcTxState;
 
-#endif
+  uint32_t             hidProtocol;
+  uint32_t             hidIdleState;
+  uint32_t             hidAltSetting;
+  HID_StateTypeDef     hidState;
+} USBD_CDC_HID_HandleTypeDef;
+
 // ----------------------------------------------------------------------------
-extern const USBD_ClassTypeDef  USBD_CDC;
+extern const USBD_ClassTypeDef  USBD_CDC_HID;
+// ----------------------------------------------------------------------------
+uint8_t USBD_HID_SendReport (USBD_HandleTypeDef *pdev,
+                                 uint8_t *report,
+                                 uint16_t len);
+uint32_t USBD_HID_GetPollingInterval (USBD_HandleTypeDef *pdev);
 // ----------------------------------------------------------------------------
 void USB_StartTransmission();
 int USB_IsConnected();

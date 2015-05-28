@@ -1,11 +1,11 @@
-#include "usbd_cdc.h"
+#include "usbd_cdc_hid.h"
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
 #include "jshardware.h"
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
-// CDC Buffers-----------------------------------
+// CDC Buffers -----------------------------------
 #define CDC_RX_DATA_SIZE  CDC_DATA_FS_OUT_PACKET_SIZE
 #define CDC_TX_DATA_SIZE  CDC_DATA_FS_IN_PACKET_SIZE
 uint8_t CDCRxBufferFS[CDC_RX_DATA_SIZE];
@@ -13,30 +13,38 @@ uint8_t CDCTxBufferFS[CDC_TX_DATA_SIZE];
 // ..
 static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length);
 static void CDC_TxReady(void);
+//-------------------------------------------------
 
-static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev, 
-                               uint8_t cfgidx);
+static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
+static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
+static uint8_t  USBD_CDC_HID_Setup (USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *req);
+static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum);
+static uint8_t  USBD_CDC_HID_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum);
+static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev);
+static uint8_t  *USBD_CDC_HID_GetCfgDesc (uint16_t *length);
+uint8_t  *USBD_CDC_HID_GetDeviceQualifierDescriptor (uint16_t *length);
 
-static uint8_t  USBD_CDC_DeInit (USBD_HandleTypeDef *pdev, 
-                                 uint8_t cfgidx);
-
-static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev, 
-                                USBD_SetupReqTypedef *req);
-
-static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, 
-                                 uint8_t epnum);
-
-static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, 
-                                 uint8_t epnum);
-
-static uint8_t  USBD_CDC_EP0_RxReady (USBD_HandleTypeDef *pdev);
-
-static uint8_t  *USBD_CDC_GetCfgDesc (uint16_t *length);
-
-uint8_t  *USBD_CDC_GetDeviceQualifierDescriptor (uint16_t *length);
+/* CDC interface class callbacks structure */
+const USBD_ClassTypeDef  USBD_CDC_HID =
+{
+  USBD_CDC_HID_Init,
+  USBD_CDC_HID_DeInit,
+  USBD_CDC_HID_Setup,
+  NULL,                 /* EP0_TxSent, */
+  USBD_CDC_HID_EP0_RxReady,
+  USBD_CDC_HID_DataIn,
+  USBD_CDC_HID_DataOut,
+  NULL,
+  NULL,
+  NULL,     
+  USBD_CDC_HID_GetCfgDesc,
+  USBD_CDC_HID_GetCfgDesc,
+  USBD_CDC_HID_GetCfgDesc,
+  USBD_CDC_HID_GetDeviceQualifierDescriptor,
+};
 
 /* USB Standard Device Descriptor */
-__ALIGN_BEGIN static const uint8_t USBD_CDC_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
+__ALIGN_BEGIN static const uint8_t USBD_CDC_HID_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
 {
   USB_LEN_DEV_QUALIFIER_DESC,
   USB_DESC_TYPE_DEVICE_QUALIFIER,
@@ -50,37 +58,8 @@ __ALIGN_BEGIN static const uint8_t USBD_CDC_DeviceQualifierDesc[USB_LEN_DEV_QUAL
   0x00,
 };
 
-/**
-  * @}
-  */ 
-
-/** @defgroup USBD_CDC_Private_Variables
-  * @{
-  */ 
-
-
-/* CDC interface class callbacks structure */
-const USBD_ClassTypeDef  USBD_CDC =
-{
-  USBD_CDC_Init,
-  USBD_CDC_DeInit,
-  USBD_CDC_Setup,
-  NULL,                 /* EP0_TxSent, */
-  USBD_CDC_EP0_RxReady,
-  USBD_CDC_DataIn,
-  USBD_CDC_DataOut,
-  NULL,
-  NULL,
-  NULL,     
-  USBD_CDC_GetCfgDesc,
-  USBD_CDC_GetCfgDesc,
-  USBD_CDC_GetCfgDesc,
-  USBD_CDC_GetDeviceQualifierDescriptor,
-};
-
-
 /* USB CDC device Configuration Descriptor */
-const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_END =
+const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_END =
 {
   /*Configuration Descriptor*/
   0x09,   /* bLength: Configuration Descriptor size */
@@ -178,23 +157,23 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USB_CDC_CONFIG_DESC_SIZ] __ALIGN_EN
   * @}
   */ 
 
-/** @defgroup USBD_CDC_Private_Functions
+/** @defgroup USBD_CDC_HID_Private_Functions
   * @{
   */ 
 
 /**
-  * @brief  USBD_CDC_Init
+  * @brief  USBD_CDC_HID_Init
   *         Initialize the CDC interface
   * @param  pdev: device instance
   * @param  cfgidx: Configuration index
   * @retval status
   */
-static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev, 
+static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                                uint8_t cfgidx)
 {
   NOT_USED(cfgidx);
   uint8_t ret = 0;
-  USBD_CDC_HandleTypeDef   *hcdc;
+  USBD_CDC_HID_HandleTypeDef   *hcdc;
   
   /* Open EP IN */
   USBD_LL_OpenEP(pdev,
@@ -214,14 +193,14 @@ static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev,
                  CDC_CMD_PACKET_SIZE);
   
     
-  //pdev->pClassData = USBD_malloc(sizeof (USBD_CDC_HandleTypeDef));
-  static USBD_CDC_HandleTypeDef no_malloc_thx;
+  //pdev->pClassData = USBD_malloc(sizeof (USBD_CDC_HID_HandleTypeDef));
+  static USBD_CDC_HID_HandleTypeDef no_malloc_thx;
   pdev->pClassData = &no_malloc_thx;
 
-  hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+  hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
 
   /* Init Xfer states */
-  hcdc->TxState = 0;
+  hcdc->cdcTxState = 0;
 
   /* Prepare Out endpoint to receive next packet */
   USBD_LL_PrepareReceive(pdev,
@@ -233,13 +212,13 @@ static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev,
 }
 
 /**
-  * @brief  USBD_CDC_Init
+  * @brief  USBD_CDC_HID_Init
   *         DeInitialize the CDC layer
   * @param  pdev: device instance
   * @param  cfgidx: Configuration index
   * @retval status
   */
-static uint8_t  USBD_CDC_DeInit (USBD_HandleTypeDef *pdev, 
+static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
                                  uint8_t cfgidx)
 {
   NOT_USED(cfgidx);
@@ -269,16 +248,16 @@ static uint8_t  USBD_CDC_DeInit (USBD_HandleTypeDef *pdev,
 }
 
 /**
-  * @brief  USBD_CDC_Setup
+  * @brief  USBD_CDC_HID_Setup
   *         Handle the CDC specific requests
   * @param  pdev: instance
   * @param  req: usb requests
   * @retval status
   */
-static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev, 
+static uint8_t  USBD_CDC_HID_Setup (USBD_HandleTypeDef *pdev,
                                 USBD_SetupReqTypedef *req)
 {
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   static uint8_t ifalt = 0;
     
   switch (req->bmRequest & USB_REQ_TYPE_MASK)
@@ -336,14 +315,14 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
   * @param  epnum: endpoint number
   * @retval status
   */
-static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
+static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   
   if(pdev->pClassData != NULL)
   {
     
-    hcdc->TxState = 0;
+    hcdc->cdcTxState = 0;
     CDC_TxReady();
     return USBD_OK;
   }
@@ -354,13 +333,13 @@ static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
 }
 
 /**
-  * @brief  USBD_CDC_DataOut
+  * @brief  USBD_CDC_HID_DataOut
   *         Data received on non-control Out endpoint
   * @param  pdev: device instance
   * @param  epnum: endpoint number
   * @retval status
   */
-static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
+static uint8_t  USBD_CDC_HID_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {      
   /* Get the received data length */
   unsigned int RxLength = USBD_LL_GetRxDataSize (pdev, epnum);
@@ -386,15 +365,15 @@ static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 
 
 /**
-  * @brief  USBD_CDC_DataOut
+  * @brief  USBD_CDC_HID_DataOut
   *         Data received on non-control Out endpoint
   * @param  pdev: device instance
   * @param  epnum: endpoint number
   * @retval status
   */
-static uint8_t  USBD_CDC_EP0_RxReady (USBD_HandleTypeDef *pdev)
+static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
 { 
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   
   if(hcdc->CmdOpCode != 0xFF)
   {
@@ -406,16 +385,16 @@ static uint8_t  USBD_CDC_EP0_RxReady (USBD_HandleTypeDef *pdev)
 }
 
 /**
-  * @brief  USBD_CDC_GetFSCfgDesc 
+  * @brief  USBD_CDC_HID_GetFSCfgDesc
   *         Return configuration descriptor
   * @param  speed : current device speed
   * @param  length : pointer data length
   * @retval pointer to descriptor buffer
   */
-static uint8_t  *USBD_CDC_GetCfgDesc (uint16_t *length)
+static uint8_t  *USBD_CDC_HID_GetCfgDesc (uint16_t *length)
 {
-  *length = sizeof (USBD_CDC_CfgDesc);
-  return USBD_CDC_CfgDesc;
+  *length = sizeof (USBD_CDC_HID_CfgDesc);
+  return USBD_CDC_HID_CfgDesc;
 }
 
 /**
@@ -424,10 +403,10 @@ static uint8_t  *USBD_CDC_GetCfgDesc (uint16_t *length)
 * @param  length : pointer data length
 * @retval pointer to descriptor buffer
 */
-uint8_t  *USBD_CDC_GetDeviceQualifierDescriptor (uint16_t *length)
+uint8_t  *USBD_CDC_HID_GetDeviceQualifierDescriptor (uint16_t *length)
 {
-  *length = sizeof (USBD_CDC_DeviceQualifierDesc);
-  return USBD_CDC_DeviceQualifierDesc;
+  *length = sizeof (USBD_CDC_HID_DeviceQualifierDesc);
+  return USBD_CDC_HID_DeviceQualifierDesc;
 }
 
 //----------------------------------------------------------------------------
@@ -500,7 +479,7 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static void CDC_TxReady(void)
 {
   if (!USB_IsConnected() || // not connected
-      (((USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->TxState!=0)) // already waiting for send
+      (((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcTxState!=0)) // already waiting for send
     return;
   jshPinOutput(LED1_PININDEX, 1);
 
@@ -515,7 +494,7 @@ static void CDC_TxReady(void)
 
   // send data if we have any...
   if (len) {
-    ((USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->TxState = 1;
+    ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcTxState = 1;
 
     /* Transmit next packet */
     USBD_LL_Transmit(&hUsbDeviceFS,
