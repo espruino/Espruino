@@ -19,7 +19,7 @@
   #include "usb_pwr.h"
  #endif
  #ifdef STM32F4
-  #include "usbd_cdc_if.h"
+  #include "usbd_cdc.h"
  #endif
 #endif
 

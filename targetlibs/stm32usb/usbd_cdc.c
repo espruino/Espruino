@@ -1,108 +1,18 @@
-/**
-  ******************************************************************************
-  * @file    usbd_cdc.c
-  * @author  MCD Application Team
-  * @version V2.4.0
-  * @date    28-February-2015
-  * @brief   This file provides the high layer firmware functions to manage the 
-  *          following functionalities of the USB CDC Class:
-  *           - Initialization and Configuration of high and low layer
-  *           - Enumeration as CDC Device (and enumeration for each implemented memory interface)
-  *           - OUT/IN data transfer
-  *           - Command IN transfer (class requests management)
-  *           - Error management
-  *           
-  *  @verbatim
-  *      
-  *          ===================================================================      
-  *                                CDC Class Driver Description
-  *          =================================================================== 
-  *           This driver manages the "Universal Serial Bus Class Definitions for Communications Devices
-  *           Revision 1.2 November 16, 2007" and the sub-protocol specification of "Universal Serial Bus 
-  *           Communications Class Subclass Specification for PSTN Devices Revision 1.2 February 9, 2007"
-  *           This driver implements the following aspects of the specification:
-  *             - Device descriptor management
-  *             - Configuration descriptor management
-  *             - Enumeration as CDC device with 2 data endpoints (IN and OUT) and 1 command endpoint (IN)
-  *             - Requests management (as described in section 6.2 in specification)
-  *             - Abstract Control Model compliant
-  *             - Union Functional collection (using 1 IN endpoint for control)
-  *             - Data interface class
-  * 
-  *           These aspects may be enriched or modified for a specific user application.
-  *          
-  *            This driver doesn't implement the following aspects of the specification 
-  *            (but it is possible to manage these features with some modifications on this driver):
-  *             - Any class-specific aspect relative to communication classes should be managed by user application.
-  *             - All communication classes other than PSTN are not managed
-  *      
-  *  @endverbatim
-  *                                  
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2015 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */ 
-
-/* Includes ------------------------------------------------------------------*/
 #include "usbd_cdc.h"
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
+#include "jshardware.h"
 
-/** @addtogroup STM32_USB_DEVICE_LIBRARY
-  * @{
-  */
-
-
-/** @defgroup USBD_CDC 
-  * @brief usbd core module
-  * @{
-  */ 
-
-/** @defgroup USBD_CDC_Private_TypesDefinitions
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBD_CDC_Private_Defines
-  * @{
-  */ 
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBD_CDC_Private_Macros
-  * @{
-  */ 
-
-/**
-  * @}
-  */ 
-
-
-/** @defgroup USBD_CDC_Private_FunctionPrototypes
-  * @{
-  */
-
+extern USBD_HandleTypeDef hUsbDeviceFS;
+// CDC Buffers-----------------------------------
+#define CDC_RX_DATA_SIZE  4
+#define CDC_TX_DATA_SIZE  4
+uint8_t CDCRxBufferFS[CDC_RX_DATA_SIZE];
+uint8_t CDCTxBufferFS[CDC_TX_DATA_SIZE];
+// ..
+static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length);
+static void CDC_TxReady(void);
 
 static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev, 
                                uint8_t cfgidx);
@@ -306,29 +216,18 @@ static uint8_t  USBD_CDC_Init (USBD_HandleTypeDef *pdev,
   //pdev->pClassData = USBD_malloc(sizeof (USBD_CDC_HandleTypeDef));
   static USBD_CDC_HandleTypeDef no_malloc_thx;
   pdev->pClassData = &no_malloc_thx;
-  
-  if(pdev->pClassData == NULL)
-  {
-    ret = 1; 
-  }
-  else
-  {
-    hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+
+  hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
+
+  /* Init Xfer states */
+  hcdc->TxState = 0;
+
+  /* Prepare Out endpoint to receive next packet */
+  USBD_LL_PrepareReceive(pdev,
+                         CDC_OUT_EP,
+                         CDCRxBufferFS,
+                         CDC_RX_DATA_SIZE);
     
-    /* Init  physical Interface components */
-    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->Init();
-    
-    /* Init Xfer states */
-    hcdc->TxState = 0;
-    hcdc->RxState = 0;
-       
-    /* Prepare Out endpoint to receive next packet */
-    USBD_LL_PrepareReceive(pdev,
-                           CDC_OUT_EP,
-                           hcdc->RxBuffer,
-                           CDC_DATA_FS_OUT_PACKET_SIZE);
-    
-  }
   return ret;
 }
 
@@ -356,15 +255,14 @@ static uint8_t  USBD_CDC_DeInit (USBD_HandleTypeDef *pdev,
   USBD_LL_CloseEP(pdev,
               CDC_CMD_EP);
   
-  
   /* DeInit  physical Interface components */
   if(pdev->pClassData != NULL)
   {
-    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->DeInit();
     //USBD_free(pdev->pClassData);
     pdev->pClassData = NULL;
   }
   
+
   return ret;
 }
 
@@ -388,10 +286,8 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
     {
       if (req->bmRequest & 0x80)
       {
-        ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->Control(req->bRequest,
-                                                          (uint8_t *)hcdc->data,
-                                                          req->wLength);
-          USBD_CtlSendData (pdev, 
+        CDC_Control_FS(req->bRequest, (uint8_t *)hcdc->data, req->wLength);
+        USBD_CtlSendData (pdev,
                             (uint8_t *)hcdc->data,
                             req->wLength);
       }
@@ -408,9 +304,7 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
     }
     else
     {
-      ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->Control(req->bRequest,
-                                                        (uint8_t*)req,
-                                                        0);
+      CDC_Control_FS(req->bRequest, (uint8_t*)req, 0);
     }
     break;
 
@@ -448,7 +342,7 @@ static uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
   {
     
     hcdc->TxState = 0;
-    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->TxReady();
+    CDC_TxReady();
     return USBD_OK;
   }
   else
@@ -469,13 +363,18 @@ static uint8_t  USBD_CDC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
   USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
   
   /* Get the received data length */
-  hcdc->RxLength = USBD_LL_GetRxDataSize (pdev, epnum);
+  unsigned int RxLength = USBD_LL_GetRxDataSize (pdev, epnum);
   
   /* USB data will be immediately processed, this allow next USB traffic being 
   NAKed till the end of the application Xfer */
   if(pdev->pClassData != NULL)
   {
-    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->Receive(hcdc->RxBuffer, &hcdc->RxLength);
+    jshPushIOCharEvents(EV_USBSERIAL, (char*)CDCRxBufferFS, RxLength);
+
+    USBD_LL_PrepareReceive(pdev,
+                           CDC_OUT_EP,
+                           CDCRxBufferFS,
+                           CDC_DATA_FS_OUT_PACKET_SIZE);
 
     return USBD_OK;
   }
@@ -497,11 +396,9 @@ static uint8_t  USBD_CDC_EP0_RxReady (USBD_HandleTypeDef *pdev)
 { 
   USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
   
-  if((pdev->pUserData != NULL) && (hcdc->CmdOpCode != 0xFF))
+  if(hcdc->CmdOpCode != 0xFF)
   {
-    ((USBD_CDC_ItfTypeDef *)pdev->pUserData)->Control(hcdc->CmdOpCode,
-                                                      (uint8_t *)hcdc->data,
-                                                      hcdc->CmdLength);
+    CDC_Control_FS(hcdc->CmdOpCode, (uint8_t *)hcdc->data, hcdc->CmdLength);
       hcdc->CmdOpCode = 0xFF; 
       
   }
@@ -533,134 +430,111 @@ uint8_t  *USBD_CDC_GetDeviceQualifierDescriptor (uint16_t *length)
   return USBD_CDC_DeviceQualifierDesc;
 }
 
-/**
-* @brief  USBD_CDC_RegisterInterface
-  * @param  pdev: device instance
-  * @param  fops: CD  Interface callback
-  * @retval status
-  */
-uint8_t  USBD_CDC_RegisterInterface  (USBD_HandleTypeDef   *pdev, 
-                                      USBD_CDC_ItfTypeDef *fops)
+//----------------------------------------------------------------------------
+
+static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
-  uint8_t  ret = USBD_FAIL;
-  
-  if(fops != NULL)
+  switch (cmd)
   {
-    pdev->pUserData= fops;
-    ret = USBD_OK;    
+  case CDC_SEND_ENCAPSULATED_COMMAND:
+
+    break;
+
+  case CDC_GET_ENCAPSULATED_RESPONSE:
+
+    break;
+
+  case CDC_SET_COMM_FEATURE:
+
+    break;
+
+  case CDC_GET_COMM_FEATURE:
+
+    break;
+
+  case CDC_CLEAR_COMM_FEATURE:
+
+    break;
+
+  /*******************************************************************************/
+  /* Line Coding Structure                                                       */
+  /*-----------------------------------------------------------------------------*/
+  /* Offset | Field       | Size | Value  | Description                          */
+  /* 0      | dwDTERate   |   4  | Number |Data terminal rate, in bits per second*/
+  /* 4      | bCharFormat |   1  | Number | Stop bits                            */
+  /*                                        0 - 1 Stop bit                       */
+  /*                                        1 - 1.5 Stop bits                    */
+  /*                                        2 - 2 Stop bits                      */
+  /* 5      | bParityType |  1   | Number | Parity                               */
+  /*                                        0 - None                             */
+  /*                                        1 - Odd                              */
+  /*                                        2 - Even                             */
+  /*                                        3 - Mark                             */
+  /*                                        4 - Space                            */
+  /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
+  /*******************************************************************************/
+  case CDC_SET_LINE_CODING:
+    // called when plugged in and app connects
+    break;
+
+  case CDC_GET_LINE_CODING:
+
+    break;
+
+  case CDC_SET_CONTROL_LINE_STATE:
+    // called on connect/disconnect by app
+    break;
+
+  case CDC_SEND_BREAK:
+
+    break;
+
+  default:
+    break;
   }
-  
-  return ret;
+
+  return (USBD_OK);
 }
 
-/**
-  * @brief  USBD_CDC_SetTxBuffer
-  * @param  pdev: device instance
-  * @param  pbuff: Tx Buffer
-  * @retval status
-  */
-uint8_t  USBD_CDC_SetTxBuffer  (USBD_HandleTypeDef   *pdev,
-                                uint8_t  *pbuff,
-                                uint16_t length)
+// USB transmit is ready for more data
+static void CDC_TxReady(void)
 {
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
-  
-  hcdc->TxBuffer = pbuff;
-  hcdc->TxLength = length;  
-  
-  return USBD_OK;  
+  if (!USB_IsConnected() || // not connected
+      (((USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->TxState!=0)) // already waiting for send
+    return;
+  jshPinOutput(LED1_PININDEX, 1);
+
+  int len = 0;
+
+  // try and fill the buffer
+  int c;
+  while (len<CDC_TX_DATA_SIZE &&
+         ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
+    CDCTxBufferFS[len++] = (uint8_t)c;
+  }
+
+  // send data if we have any...
+  if (len) {
+    ((USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData)->TxState = 1;
+
+    /* Transmit next packet */
+    USBD_LL_Transmit(&hUsbDeviceFS,
+                     CDC_IN_EP,
+                     CDCTxBufferFS,
+                     len);
+  }
+  jshPinOutput(LED1_PININDEX, 0);
 }
 
 
-/**
-  * @brief  USBD_CDC_SetRxBuffer
-  * @param  pdev: device instance
-  * @param  pbuff: Rx Buffer
-  * @retval status
-  */
-uint8_t  USBD_CDC_SetRxBuffer  (USBD_HandleTypeDef   *pdev,
-                                   uint8_t  *pbuff)
-{
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
-  
-  hcdc->RxBuffer = pbuff;
-  
-  return USBD_OK;
+// ----------------------------------------------------------------------------
+// --------------------------------------------------------- PUBLIC Functions
+// ----------------------------------------------------------------------------
+void USB_StartTransmission() {
+  CDC_TxReady();
 }
 
-/**
-  * @brief  USBD_CDC_DataOut
-  *         Data received on non-control Out endpoint
-  * @param  pdev: device instance
-  * @param  epnum: endpoint number
-  * @retval status
-  */
-uint8_t  USBD_CDC_TransmitPacket(USBD_HandleTypeDef *pdev)
-{      
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
-  
-  if(pdev->pClassData != NULL)
-  {
-    if(hcdc->TxState == 0)
-    {
-      /* Tx Transfer in progress */
-      hcdc->TxState = 1;
-      
-      /* Transmit next packet */
-      USBD_LL_Transmit(pdev,
-                       CDC_IN_EP,
-                       hcdc->TxBuffer,
-                       hcdc->TxLength);
-      
-      return USBD_OK;
-    }
-    else
-    {
-      return USBD_BUSY;
-    }
-  }
-  else
-  {
-    return USBD_FAIL;
-  }
+int USB_IsConnected() {
+  return hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED;
 }
 
-
-/**
-  * @brief  USBD_CDC_ReceivePacket
-  *         prepare OUT Endpoint for reception
-  * @param  pdev: device instance
-  * @retval status
-  */
-uint8_t  USBD_CDC_ReceivePacket(USBD_HandleTypeDef *pdev)
-{      
-  USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;
-  
-  /* Suspend or Resume USB Out process */
-  if(pdev->pClassData != NULL)
-  {
-    /* Prepare Out endpoint to receive next packet */
-    USBD_LL_PrepareReceive(pdev,
-                           CDC_OUT_EP,
-                           hcdc->RxBuffer,
-                           CDC_DATA_FS_OUT_PACKET_SIZE);
-    return USBD_OK;
-  }
-  else
-  {
-    return USBD_FAIL;
-  }
-}
-/**
-  * @}
-  */ 
-
-/**
-  * @}
-  */ 
-
-/**
-  * @}
-  */ 
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
