@@ -339,7 +339,7 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
   hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
   hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL; // MUST KEEP THIS FULL - buffer sizes only big enough for this, not high
-  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE; // NO DMA - we are assuming USBD_CtlSendData/USBD_LL_Transmit don't keep the pointer they are passed
   hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_64; // TODO: MPS 8?
   hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
   hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;

@@ -10,23 +10,11 @@
 #include  "usbd_ioreq.h"
 #include "jsutils.h"
 
-#ifdef NOHID
-#define USB_CDC_HID_CONFIG_DESC_SIZ                     67
-#else
-#define USB_CDC_HID_CONFIG_DESC_SIZ                     (25+67)
-#endif
-
-
  // ----------------------------------------------------------------------------
-#define CDC_DATA_FS_MAX_PACKET_SIZE                 16  /* Endpoint IN & OUT Packet size */
+#define CDC_DATA_FS_MAX_PACKET_SIZE                 64  /* Endpoint IN & OUT Packet size */
 #define CDC_CMD_PACKET_SIZE                         8  /* Control Endpoint Packet size */
 #define CDC_DATA_FS_IN_PACKET_SIZE                  CDC_DATA_FS_MAX_PACKET_SIZE
 #define CDC_DATA_FS_OUT_PACKET_SIZE                 CDC_DATA_FS_MAX_PACKET_SIZE
-
-#define CDC_IN_EP                                   0x83  /* EP1 for data IN */
-#define CDC_OUT_EP                                  0x03  /* EP1 for data OUT */
-#define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
-#define CDC_INTERFACE_NUMBER                        1
 
 #define CDC_SEND_ENCAPSULATED_COMMAND               0x00
 #define CDC_GET_ENCAPSULATED_RESPONSE               0x01
@@ -40,13 +28,7 @@
 
 // ----------------------------------------------------------------------------
 
- #define HID_IN_EP                     0x81
  #define HID_DATA_IN_PACKET_SIZE       0x04 // higher for keyboard
- #define HID_INTERFACE_NUMBER          0
-
- #define USB_HID_CONFIG_DESC_SIZ       34
- #define USB_HID_DESC_SIZ              9
- #define HID_MOUSE_REPORT_DESC_SIZE    74
 
  #define HID_DESCRIPTOR_TYPE           0x21
  #define HID_REPORT_DESC               0x22
@@ -78,7 +60,7 @@ typedef enum
 
 typedef struct
 {
-  uint32_t data[CDC_CMD_PACKET_SIZE/4];      /* Force 32bits alignment */
+  uint32_t data[CDC_DATA_FS_MAX_PACKET_SIZE/4];      /* Force 32bits alignment */
   uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
@@ -99,6 +81,7 @@ uint8_t USBD_HID_SendReport (uint8_t *report, int len);
 void USB_StartTransmission();
 int USB_IsConnected();
 void USB_SysTick(); //< To be called on SysTick timer
+unsigned char *USB_GetHIDReportDesc(unsigned int *len);
 
 #ifdef __cplusplus
 }

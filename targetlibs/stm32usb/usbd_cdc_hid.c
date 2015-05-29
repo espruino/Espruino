@@ -5,6 +5,17 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
+#define NOHID
+
+
+#define CDC_IN_EP                                   0x83  /* EP1 for data IN */
+#define CDC_OUT_EP                                  0x03  /* EP1 for data OUT */
+#define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
+
+#define HID_IN_EP                     0x81
+#define HID_INTERFACE_NUMBER          0
+#define HID_MOUSE_REPORT_DESC_SIZE   74
+
 extern USBD_HandleTypeDef hUsbDeviceFS;
 // CDC Buffers -----------------------------------
 #define CDC_RX_DATA_SIZE  CDC_DATA_FS_OUT_PACKET_SIZE
@@ -59,60 +70,32 @@ __ALIGN_BEGIN static const uint8_t USBD_CDC_HID_DeviceQualifierDesc[USB_LEN_DEV_
   0x00,
 };
 
-/* USB CDC device Configuration Descriptor */
-const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_HID_CONFIG_DESC_SIZ] __ALIGN_END =
+
+/* USB CDC device Configuration Descriptor
+ * ============================================================================
+ *
+ * No HID
+ * CDC on Interfaces 0 and 1
+ */
+#define USBD_CDC_CFGDESC_SIZE              67
+const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USBD_CDC_CFGDESC_SIZE] __ALIGN_END =
 {
   /*Configuration Descriptor*/
   0x09,   /* bLength: Configuration Descriptor size */
   USB_DESC_TYPE_CONFIGURATION,      /* bDescriptorType: Configuration */
-  USB_CDC_HID_CONFIG_DESC_SIZ, 0x00,               /* wTotalLength:no of returned bytes */
-#ifdef NOHID
+  USBD_CDC_CFGDESC_SIZE, 0x00,               /* wTotalLength:no of returned bytes */
   0x02,   /* bNumInterfaces: 2 interface */
-#else
-  0x03,   /* bNumInterfaces: 3 interface */
-#endif
   0x01,   /* bConfigurationValue: Configuration value */
   0x00,   /* iConfiguration: Index of string descriptor describing the configuration */
   0xC0,   /* bmAttributes: self powered */
   0x32,   /* MaxPower 0 mA */
   
-#ifndef NOHID
-  /************** Descriptor of Joystick Mouse interface ****************/
-  /* 0 */
-  0x09,         /*bLength: Interface Descriptor size*/
-  USB_DESC_TYPE_INTERFACE,/*bDescriptorType: Interface descriptor type*/
-  HID_INTERFACE_NUMBER,   /*bInterfaceNumber: Number of Interface*/
-  0x00,         /*bAlternateSetting: Alternate setting*/
-  0x01,         /*bNumEndpoints*/
-  0x03,         /*bInterfaceClass: HID*/
-  0x01,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
-  0x02,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
-  0,            /*iInterface: Index of string descriptor*/
-  /******************** Descriptor of Joystick Mouse HID ********************/
-  /* 9 */
-  0x09,         /*bLength: HID Descriptor size*/
-  HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
-  0x11,         /*bcdHID: HID Class Spec release number*/
-  0x01,
-  0x00,         /*bCountryCode: Hardware target country*/
-  0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
-  0x22,         /*bDescriptorType*/
-  HID_MOUSE_REPORT_DESC_SIZE, 0, /*wItemLength: Total length of Report descriptor*/
-  /******************** Descriptor of Mouse endpoint ********************/
-  /* 18 */
-  0x07,          /*bLength: Endpoint Descriptor size*/
-  USB_DESC_TYPE_ENDPOINT, /*bDescriptorType:*/
-  HID_IN_EP,     /*bEndpointAddress: Endpoint Address (IN)*/
-  0x03,          /*bmAttributes: Interrupt endpoint*/
-  HID_DATA_IN_PACKET_SIZE,0x00, /*wMaxPacketSize: 4 Byte max */
-  HID_FS_BINTERVAL,          /*bInterval: Polling Interval (10 ms)*/
-  /* 25 */
-#endif
-  /*Interface Descriptor */
+  // -----------------------------------------------------------------------
+  /*CDC Interface Descriptor */
   0x09,   /* bLength: Interface Descriptor size */
   USB_DESC_TYPE_INTERFACE,  /* bDescriptorType: Interface */
   /* Interface descriptor type */
-  CDC_INTERFACE_NUMBER,   /* bInterfaceNumber: Number of Interface */
+  0,   /* bInterfaceNumber: Number of Interface */
   0x00,   /* bAlternateSetting: Alternate setting */
   0x01,   /* bNumEndpoints: One endpoints used */
   0x02,   /* bInterfaceClass: Communication Interface Class */
@@ -132,7 +115,7 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_HID_CONFIG_DESC_SIZ] __
   0x24,   /* bDescriptorType: CS_INTERFACE */
   0x01,   /* bDescriptorSubtype: Call Management Func Desc */
   0x00,   /* bmCapabilities: D0+D1 */
-  CDC_INTERFACE_NUMBER+1,   /* bDataInterface */
+  1,   /* bDataInterface */
   
   /*ACM Functional Descriptor*/
   0x04,   /* bFunctionLength */
@@ -144,8 +127,8 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_HID_CONFIG_DESC_SIZ] __
   0x05,   /* bFunctionLength */
   0x24,   /* bDescriptorType: CS_INTERFACE */
   0x06,   /* bDescriptorSubtype: Union func desc */
-  CDC_INTERFACE_NUMBER,   /* bMasterInterface: Communication class interface */
-  CDC_INTERFACE_NUMBER+1,   /* bSlaveInterface0: Data Class Interface */
+  0,   /* bMasterInterface: Communication class interface */
+  1,   /* bSlaveInterface0: Data Class Interface */
   
   /*Endpoint 2 Descriptor*/
   0x07,                           /* bLength: Endpoint Descriptor size */
@@ -160,7 +143,7 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_HID_CONFIG_DESC_SIZ] __
   /*Data class interface descriptor*/
   0x09,   /* bLength: Endpoint Descriptor size */
   USB_DESC_TYPE_INTERFACE,  /* bDescriptorType: */
-  CDC_INTERFACE_NUMBER+1,   /* bInterfaceNumber: Number of Interface */
+  1,   /* bInterfaceNumber: Number of Interface */
   0x00,   /* bAlternateSetting: Alternate setting */
   0x02,   /* bNumEndpoints: Two endpoints used */
   0x0A,   /* bInterfaceClass: CDC */
@@ -185,13 +168,41 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USB_CDC_HID_CONFIG_DESC_SIZ] __
   LOBYTE(CDC_DATA_FS_IN_PACKET_SIZE),  /* wMaxPacketSize: */
   HIBYTE(CDC_DATA_FS_IN_PACKET_SIZE),
   0x00,                               /* bInterval: ignore for Bulk transfer */
-
-
 } ;
 
-/* USB HID device Configuration Descriptor */
-__ALIGN_BEGIN static const uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END  =
+/* USB HID + CDC device Configuration Descriptor
+ * ============================================================================
+ *
+ * HID on Interface 0
+ * CDC on Interfaces 1 and 2
+ */
+#define USBD_CDC_HID_CFGDESC_SIZE              (67+25)
+#define USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX   25
+// NOT CONST - descriptor size needs updating as this is sent out
+__ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_SIZE] __ALIGN_END =
 {
+  /*Configuration Descriptor*/
+  0x09,   /* bLength: Configuration Descriptor size */
+  USB_DESC_TYPE_CONFIGURATION,      /* bDescriptorType: Configuration */
+  USBD_CDC_HID_CFGDESC_SIZE, 0x00,               /* wTotalLength:no of returned bytes */
+  0x03,   /* bNumInterfaces: 3 interface */
+  0x01,   /* bConfigurationValue: Configuration value */
+  0x00,   /* iConfiguration: Index of string descriptor describing the configuration */
+  0xC0,   /* bmAttributes: self powered */
+  0x32,   /* MaxPower 0 mA */
+
+  /************** Descriptor of Joystick Mouse interface ****************/
+  /* 9 */
+  0x09,         /*bLength: Interface Descriptor size*/
+  USB_DESC_TYPE_INTERFACE,/*bDescriptorType: Interface descriptor type*/
+  HID_INTERFACE_NUMBER,   /*bInterfaceNumber: Number of Interface*/
+  0x00,         /*bAlternateSetting: Alternate setting*/
+  0x01,         /*bNumEndpoints*/
+  0x03,         /*bInterfaceClass: HID*/
+  0x01,         /*bInterfaceSubClass : 1=BOOT, 0=no boot*/
+  0x02,         /*nInterfaceProtocol : 0=none, 1=keyboard, 2=mouse*/
+  0,            /*iInterface: Index of string descriptor*/
+  /******************** Descriptor of Joystick Mouse HID ********************/
   /* 18 */
   0x09,         /*bLength: HID Descriptor size*/
   HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
@@ -200,11 +211,113 @@ __ALIGN_BEGIN static const uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END 
   0x00,         /*bCountryCode: Hardware target country*/
   0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
   0x22,         /*bDescriptorType*/
-  HID_MOUSE_REPORT_DESC_SIZE,/*wItemLength: Total length of Report descriptor*/
-  0x00,
+  HID_MOUSE_REPORT_DESC_SIZE, 0, /*wItemLength: Total length of Report descriptor*/
+  /******************** Descriptor of Mouse endpoint ********************/
+  /* 27 */
+  0x07,          /*bLength: Endpoint Descriptor size*/
+  USB_DESC_TYPE_ENDPOINT, /*bDescriptorType:*/
+  HID_IN_EP,     /*bEndpointAddress: Endpoint Address (IN)*/
+  0x03,          /*bmAttributes: Interrupt endpoint*/
+  HID_DATA_IN_PACKET_SIZE,0x00, /*wMaxPacketSize: 4 Byte max */
+  HID_FS_BINTERVAL,          /*bInterval: Polling Interval (10 ms)*/
+
+  // -----------------------------------------------------------------------
+  /*CDC Interface Descriptor */
+  0x09,   /* bLength: Interface Descriptor size */
+  USB_DESC_TYPE_INTERFACE,  /* bDescriptorType: Interface */
+  /* Interface descriptor type */
+  1,   /* bInterfaceNumber: Number of Interface */
+  0x00,   /* bAlternateSetting: Alternate setting */
+  0x01,   /* bNumEndpoints: One endpoints used */
+  0x02,   /* bInterfaceClass: Communication Interface Class */
+  0x02,   /* bInterfaceSubClass: Abstract Control Model */
+  0x01,   /* bInterfaceProtocol: Common AT commands */
+  0x00,   /* iInterface: */
+
+  /*Header Functional Descriptor*/
+  0x05,   /* bLength: Endpoint Descriptor size */
+  0x24,   /* bDescriptorType: CS_INTERFACE */
+  0x00,   /* bDescriptorSubtype: Header Func Desc */
+  0x10,   /* bcdCDC: spec release number */
+  0x01,
+
+  /*Call Management Functional Descriptor*/
+  0x05,   /* bFunctionLength */
+  0x24,   /* bDescriptorType: CS_INTERFACE */
+  0x01,   /* bDescriptorSubtype: Call Management Func Desc */
+  0x00,   /* bmCapabilities: D0+D1 */
+  2,   /* bDataInterface */
+
+  /*ACM Functional Descriptor*/
+  0x04,   /* bFunctionLength */
+  0x24,   /* bDescriptorType: CS_INTERFACE */
+  0x02,   /* bDescriptorSubtype: Abstract Control Management desc */
+  0x02,   /* bmCapabilities */
+
+  /*Union Functional Descriptor*/
+  0x05,   /* bFunctionLength */
+  0x24,   /* bDescriptorType: CS_INTERFACE */
+  0x06,   /* bDescriptorSubtype: Union func desc */
+  1,   /* bMasterInterface: Communication class interface */
+  2,   /* bSlaveInterface0: Data Class Interface */
+
+  /*Endpoint 2 Descriptor*/
+  0x07,                           /* bLength: Endpoint Descriptor size */
+  USB_DESC_TYPE_ENDPOINT,   /* bDescriptorType: Endpoint */
+  CDC_CMD_EP,                     /* bEndpointAddress */
+  0x03,                           /* bmAttributes: Interrupt */
+  LOBYTE(CDC_CMD_PACKET_SIZE),     /* wMaxPacketSize: */
+  HIBYTE(CDC_CMD_PACKET_SIZE),
+  0x10,                           /* bInterval: */
+  /*---------------------------------------------------------------------------*/
+
+  /*Data class interface descriptor*/
+  0x09,   /* bLength: Endpoint Descriptor size */
+  USB_DESC_TYPE_INTERFACE,  /* bDescriptorType: */
+  2,   /* bInterfaceNumber: Number of Interface */
+  0x00,   /* bAlternateSetting: Alternate setting */
+  0x02,   /* bNumEndpoints: Two endpoints used */
+  0x0A,   /* bInterfaceClass: CDC */
+  0x00,   /* bInterfaceSubClass: */
+  0x00,   /* bInterfaceProtocol: */
+  0x00,   /* iInterface: */
+
+  /*Endpoint OUT Descriptor*/
+  0x07,   /* bLength: Endpoint Descriptor size */
+  USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
+  CDC_OUT_EP,                        /* bEndpointAddress */
+  0x02,                              /* bmAttributes: Bulk */
+  LOBYTE(CDC_DATA_FS_OUT_PACKET_SIZE),  /* wMaxPacketSize: */
+  HIBYTE(CDC_DATA_FS_OUT_PACKET_SIZE),
+  0x00,                              /* bInterval: ignore for Bulk transfer */
+
+  /*Endpoint IN Descriptor*/
+  0x07,   /* bLength: Endpoint Descriptor size */
+  USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
+  CDC_IN_EP,                         /* bEndpointAddress */
+  0x02,                              /* bmAttributes: Bulk */
+  LOBYTE(CDC_DATA_FS_IN_PACKET_SIZE),  /* wMaxPacketSize: */
+  HIBYTE(CDC_DATA_FS_IN_PACKET_SIZE),
+  0x00,                               /* bInterval: ignore for Bulk transfer */
+} ;
+
+#define USB_HID_DESC_SIZ              9
+#define USBD_HID_DESC_REPORT_SIZE_IDX 7
+/* USB HID device Configuration Descriptor */
+__ALIGN_BEGIN static uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END  =
+{
+  0x09,         /*bLength: HID Descriptor size*/
+  HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
+  0x11,         /*bcdHID: HID Class Spec release number*/
+  0x01,
+  0x00,         /*bCountryCode: Hardware target country*/
+  0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
+  0x22,         /*bDescriptorType*/
+  HID_MOUSE_REPORT_DESC_SIZE, 0x00, /*wItemLength: Total length of Report descriptor*/
 };
 
-__ALIGN_BEGIN static const uint8_t HID_MOUSE_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE]  __ALIGN_END =
+#ifndef  NOHID
+__ALIGN_BEGIN static const uint8_t HID_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE]  __ALIGN_END =
 {
   0x05,   0x01,
   0x09,   0x02,
@@ -253,8 +366,13 @@ __ALIGN_BEGIN static const uint8_t HID_MOUSE_ReportDesc[HID_MOUSE_REPORT_DESC_SI
 
   0x01,   0xc0
 };
+#endif
 
+#ifdef NOHID
+const int UsingHID = 0;
+#else
 const int UsingHID = 1;
+#endif
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
@@ -417,7 +535,7 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
 static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
                                 USBD_SetupReqTypedef *req)
 {
-  uint16_t len = 0;
+  int len = 0;
   uint8_t  *pbuf = NULL;
   USBD_CDC_HID_HandleTypeDef *hhid = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
 
@@ -460,18 +578,21 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
     case USB_REQ_GET_DESCRIPTOR:
       if( req->wValue >> 8 == HID_REPORT_DESC)
       {
-        len = MIN(HID_MOUSE_REPORT_DESC_SIZE , req->wLength);
-        pbuf = HID_MOUSE_ReportDesc;
+        pbuf = USB_GetHIDReportDesc(&len);
+        len = MIN(len, req->wLength);
       }
       else if( req->wValue >> 8 == HID_DESCRIPTOR_TYPE)
       {
+        USB_GetHIDReportDesc(&len); // get USB HID report size
+        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX] = len;
+        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX+1] = len>>8;
         pbuf = USBD_HID_Desc;
         len = MIN(USB_HID_DESC_SIZ , req->wLength);
       }
 
       USBD_CtlSendData (pdev,
                         pbuf,
-                        len);
+                        (uint16_t)len);
 
       break;
 
@@ -584,8 +705,19 @@ static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
   */
 static uint8_t  *USBD_CDC_HID_GetCfgDesc (uint16_t *length)
 {
-  *length = sizeof (USBD_CDC_HID_CfgDesc);
-  return USBD_CDC_HID_CfgDesc;
+  USBD_CDC_HID_HandleTypeDef     *hhid = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+
+  if (UsingHID) {
+    unsigned int reportLen;
+    USB_GetHIDReportDesc(&reportLen);
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX] = reportLen;
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX+1] = reportLen>>8;
+    *length = USBD_CDC_HID_CFGDESC_SIZE;
+    return USBD_CDC_HID_CfgDesc;
+  } else {
+    *length = USBD_CDC_CFGDESC_SIZE;
+    return USBD_CDC_CfgDesc;
+  }
 }
 
 /**
@@ -737,4 +869,11 @@ void USB_SysTick() {
   }
 }
 
-
+unsigned char *USB_GetHIDReportDesc(unsigned int *len) {
+  if (len) *len = HID_MOUSE_REPORT_DESC_SIZE;
+#ifdef NOHID
+  return 0;
+#else
+  return HID_ReportDesc;
+#endif
+}
