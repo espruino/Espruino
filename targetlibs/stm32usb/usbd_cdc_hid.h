@@ -8,6 +8,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include  "usbd_ioreq.h"
+#include "jsutils.h"
 
 #ifdef NOHID
 #define USB_CDC_HID_CONFIG_DESC_SIZ                     67
@@ -66,16 +67,24 @@ typedef enum
 {
   HID_IDLE = 0,
   HID_BUSY,
-} HID_StateTypeDef;
+} PACKED_FLAGS HID_StateTypeDef;
+
+typedef enum
+{
+  CDC_IDLE = 0,
+  CDC_WRITE_TX_WAIT = 1,
+  CDC_WRITE_DELAY = 2,
+} PACKED_FLAGS CDC_StateTypeDef;
 
 typedef struct
 {
   uint32_t data[CDC_CMD_PACKET_SIZE/4];      /* Force 32bits alignment */
+  uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
-  uint8_t cdcTxState;
+  CDC_StateTypeDef cdcState;
 
-  uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
+
   uint32_t             hidProtocol;
   uint32_t             hidIdleState;
   uint32_t             hidAltSetting;
@@ -89,7 +98,7 @@ uint8_t USBD_HID_SendReport (uint8_t *report, int len);
 // ----------------------------------------------------------------------------
 void USB_StartTransmission();
 int USB_IsConnected();
-
+void USB_SysTick(); //< To be called on SysTick timer
 
 #ifdef __cplusplus
 }

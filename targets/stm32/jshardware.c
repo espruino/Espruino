@@ -871,6 +871,10 @@ void jshDoSysTick() {
 #else
   SysTickMajor += SYSTICK_RANGE;
 #endif
+
+#ifdef USB
+  USB_SysTick();
+#endif
 }
 
 // ----------------------------------------------------------------------------

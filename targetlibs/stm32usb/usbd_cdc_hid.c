@@ -3,6 +3,7 @@
 #include "usbd_ctlreq.h"
 
 #include "jshardware.h"
+#include "jsinteractive.h"
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
 // CDC Buffers -----------------------------------
@@ -297,7 +298,7 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                  CDC_CMD_PACKET_SIZE);
   
   /* Init Xfer states */
-  hcdc->cdcTxState = 0;
+  hcdc->cdcState = CDC_IDLE;
 
   /* Prepare Out endpoint to receive next packet */
   USBD_LL_PrepareReceive(pdev,
@@ -516,7 +517,7 @@ static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
     ((USBD_CDC_HID_HandleTypeDef *)pdev->pClassData)->hidState = HID_IDLE;
   } else {
     // USB CDC
-    hcdc->cdcTxState = 0;
+    hcdc->cdcState &= ~CDC_WRITE_TX_WAIT;
     CDC_TxReady();
   }
 
@@ -569,8 +570,7 @@ static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
   if(hcdc->CmdOpCode != 0xFF)
   {
     CDC_Control_FS(hcdc->CmdOpCode, (uint8_t *)hcdc->data, hcdc->CmdLength);
-      hcdc->CmdOpCode = 0xFF; 
-      
+    hcdc->CmdOpCode = 0xFF;
   }
   return USBD_OK;
 }
@@ -670,22 +670,23 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static void CDC_TxReady(void)
 {
   if (!USB_IsConnected() || // not connected
-      (((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcTxState!=0)) // already waiting for send
+      (((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState & CDC_WRITE_TX_WAIT)) // already waiting for send
     return;
-  jshPinOutput(LED1_PININDEX, 1);
+
+  ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState &= ~CDC_WRITE_DELAY;
 
   unsigned int len = 0;
 
   // try and fill the buffer
   int c;
-  while (len<CDC_TX_DATA_SIZE &&
+  while (len<CDC_TX_DATA_SIZE-1 && // TODO: send max packet size -1 to ensure data is pushed through
          ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
     CDCTxBufferFS[len++] = (uint8_t)c;
   }
 
   // send data if we have any...
   if (len) {
-    ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcTxState = 1;
+    ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState |= CDC_WRITE_TX_WAIT;
 
     /* Transmit next packet */
     USBD_LL_Transmit(&hUsbDeviceFS,
@@ -693,7 +694,6 @@ static void CDC_TxReady(void)
                      CDCTxBufferFS,
                      (uint16_t)len);
   }
-  jshPinOutput(LED1_PININDEX, 0);
 }
 
 
@@ -719,12 +719,22 @@ uint8_t USBD_HID_SendReport     (uint8_t *report,  int len)
   return USBD_FAIL;
 }
 
+
 void USB_StartTransmission() {
-  CDC_TxReady();
+  ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState |= CDC_WRITE_DELAY;
 }
 
 int USB_IsConnected() {
   return hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED;
+}
+
+// To be called on SysTick timer
+void USB_SysTick() {
+  if (!USB_IsConnected()) return;
+  if (((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState & CDC_WRITE_DELAY) {
+    ((USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData)->cdcState &= ~CDC_WRITE_DELAY;
+    CDC_TxReady();
+  }
 }
 
 
