@@ -5,21 +5,15 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
-#define CDC_IN_EP                                   0x83  /* EP1 for data IN */
-#define CDC_OUT_EP                                  0x03  /* EP1 for data OUT */
-#define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
+#define CDC_IN_EP                     0x83  /* EP1 for data IN */
+#define CDC_OUT_EP                    0x03  /* EP1 for data OUT */
+#define CDC_CMD_EP                    0x82  /* EP2 for CDC commands */
 
 #define HID_IN_EP                     0x81
 #define HID_INTERFACE_NUMBER          0
-#define HID_MOUSE_REPORT_DESC_SIZE   74
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
-// CDC Buffers -----------------------------------
-#define CDC_RX_DATA_SIZE  CDC_DATA_FS_OUT_PACKET_SIZE
-#define CDC_TX_DATA_SIZE  CDC_DATA_FS_IN_PACKET_SIZE
-uint8_t CDCRxBufferFS[CDC_RX_DATA_SIZE];
-uint8_t CDCTxBufferFS[CDC_TX_DATA_SIZE];
-// ..
+//-------------------------------------------------
 static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length);
 //-------------------------------------------------
 
@@ -362,8 +356,8 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
   /* Prepare Out endpoint to receive next packet */
   USBD_LL_PrepareReceive(pdev,
                          CDC_OUT_EP,
-                         CDCRxBufferFS,
-                         CDC_RX_DATA_SIZE);
+                         handle->cdcRX,
+                         CDC_DATA_FS_OUT_PACKET_SIZE);
 
   unsigned int reportSize = 0;
   handle->hidReportDesc = USB_GetHIDReportDesc(&reportSize);
@@ -600,13 +594,14 @@ static uint8_t  USBD_CDC_HID_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
   USBD_CDC_HID_HandleTypeDef *handle = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
 
   /* Get the received data length */
-  unsigned int RxLength = USBD_LL_GetRxDataSize (pdev, epnum);
+  unsigned int rxLength = USBD_LL_GetRxDataSize (pdev, epnum);
   
-  /* USB data will be immediately processed, this allow next USB traffic being 
-  NAKed till the end of the application Xfer */
   if (handle) {
-    jshPushIOCharEvents(EV_USBSERIAL, (char*)CDCRxBufferFS, RxLength);
+    // Process data
+    jshPushIOCharEvents(EV_USBSERIAL, (char*)handle->cdcRX, rxLength);
 
+    // Set CDC_READ_WAIT_EMPTY flag - we'll re-enable USB RX using
+    // USBD_LL_PrepareReceive ONLY when we have enough space
     handle->cdcState |= CDC_READ_WAIT_EMPTY;
 
     return USBD_OK;
@@ -626,7 +621,7 @@ static uint8_t  USBD_CDC_HID_SOF (struct _USBD_HandleTypeDef *pdev) {
     handle->cdcState &= ~CDC_READ_WAIT_EMPTY;
     USBD_LL_PrepareReceive(pdev,
                            CDC_OUT_EP,
-                           CDCRxBufferFS,
+                           handle->cdcRX,
                            CDC_DATA_FS_OUT_PACKET_SIZE);
   }
 
@@ -634,9 +629,9 @@ static uint8_t  USBD_CDC_HID_SOF (struct _USBD_HandleTypeDef *pdev) {
     // try and fill the buffer
     unsigned int len = 0;
     int c;
-    while (len<CDC_TX_DATA_SIZE-1 && // TODO: send max packet size -1 to ensure data is pushed through
+    while (len<CDC_DATA_FS_IN_PACKET_SIZE-1 && // TODO: send max packet size -1 to ensure data is pushed through
            ((c = jshGetCharToTransmit(EV_USBSERIAL)) >= 0) ) { // get byte to transmit
-      CDCTxBufferFS[len++] = (uint8_t)c;
+      handle->cdcTX[len++] = (uint8_t)c;
     }
 
     // send data if we have any...
@@ -645,7 +640,7 @@ static uint8_t  USBD_CDC_HID_SOF (struct _USBD_HandleTypeDef *pdev) {
       handle->cdcState |= CDC_WRITE_TX_WAIT;
       USBD_LL_Transmit(pdev,
                        CDC_IN_EP,
-                       CDCTxBufferFS,
+                       handle->cdcTX,
                        (uint16_t)len);
     }
   }

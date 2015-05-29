@@ -62,7 +62,10 @@ typedef enum
 
 typedef struct
 {
+  // TODO: can 'data' be shorter? IMO it only needs CDC_CMD_PACKET_SIZE bytes
   uint32_t data[CDC_DATA_FS_MAX_PACKET_SIZE/4];      /* Force 32bits alignment */
+  uint8_t  cdcRX[CDC_DATA_FS_OUT_PACKET_SIZE];
+  uint8_t  cdcTX[CDC_DATA_FS_IN_PACKET_SIZE];
   uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
