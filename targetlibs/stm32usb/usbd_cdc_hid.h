@@ -64,19 +64,20 @@ typedef struct
   uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
-  CDC_StateTypeDef cdcState;
-
-
+  CDC_StateTypeDef     cdcState;
+  HID_StateTypeDef     hidState;
+  uint16_t             hidReportDescSize; // Nonzero if we're doing HID
+  uint8_t             *hidReportDesc;
   uint32_t             hidProtocol;
   uint32_t             hidIdleState;
   uint32_t             hidAltSetting;
-  HID_StateTypeDef     hidState;
+
 } USBD_CDC_HID_HandleTypeDef;
 
 // ----------------------------------------------------------------------------
 extern const USBD_ClassTypeDef  USBD_CDC_HID;
 // ----------------------------------------------------------------------------
-uint8_t USBD_HID_SendReport (uint8_t *report, int len);
+uint8_t USBD_HID_SendReport (uint8_t *report,unsigned int len);
 // ----------------------------------------------------------------------------
 void USB_StartTransmission();
 int USB_IsConnected();

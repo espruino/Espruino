@@ -211,7 +211,7 @@ __ALIGN_BEGIN uint8_t USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_SIZE] __ALIGN_EN
   0x00,         /*bCountryCode: Hardware target country*/
   0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
   0x22,         /*bDescriptorType*/
-  HID_MOUSE_REPORT_DESC_SIZE, 0, /*wItemLength: Total length of Report descriptor*/
+  0/*HID_REPORT_DESC_SIZE*/, 0, /*wItemLength: Total length of Report descriptor*/
   /******************** Descriptor of Mouse endpoint ********************/
   /* 27 */
   0x07,          /*bLength: Endpoint Descriptor size*/
@@ -313,7 +313,7 @@ __ALIGN_BEGIN static uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END  =
   0x00,         /*bCountryCode: Hardware target country*/
   0x01,         /*bNumDescriptors: Number of HID class descriptors to follow*/
   0x22,         /*bDescriptorType*/
-  HID_MOUSE_REPORT_DESC_SIZE, 0x00, /*wItemLength: Total length of Report descriptor*/
+  0/*HID_REPORT_DESC_SIZE*/, 0x00, /*wItemLength: Total length of Report descriptor*/
 };
 
 #ifndef  NOHID
@@ -368,11 +368,6 @@ __ALIGN_BEGIN static const uint8_t HID_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE]  _
 };
 #endif
 
-#ifdef NOHID
-const int UsingHID = 0;
-#else
-const int UsingHID = 1;
-#endif
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
@@ -393,7 +388,7 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
 
   static USBD_CDC_HID_HandleTypeDef no_malloc_thx;
   pdev->pClassData = &no_malloc_thx;
-  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
 
   NOT_USED(cfgidx);
   uint8_t ret = 0;
@@ -416,7 +411,7 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                  CDC_CMD_PACKET_SIZE);
   
   /* Init Xfer states */
-  hcdc->cdcState = CDC_IDLE;
+  handle->cdcState = CDC_IDLE;
 
   /* Prepare Out endpoint to receive next packet */
   USBD_LL_PrepareReceive(pdev,
@@ -424,13 +419,16 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                          CDCRxBufferFS,
                          CDC_RX_DATA_SIZE);
 
-  if (UsingHID) {
+  unsigned int l = 0;
+  handle->hidReportDesc = USB_GetHIDReportDesc(&l); // do we have a HID report?
+  handle->hidReportDescSize = (uint16_t)l;
+  if (handle->hidReportDescSize) {
     /* Open EP IN */
     USBD_LL_OpenEP(pdev,
                    HID_IN_EP,
                    USBD_EP_TYPE_INTR,
                    HID_DATA_IN_PACKET_SIZE);
-    hcdc->hidState = HID_IDLE;
+    handle->hidState = HID_IDLE;
   }
     
   return ret;
@@ -446,6 +444,7 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
 static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
                                  uint8_t cfgidx)
 {
+  USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   NOT_USED(cfgidx);
   uint8_t ret = 0;
   
@@ -461,7 +460,7 @@ static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
   USBD_LL_CloseEP(pdev,
                CDC_CMD_EP);
 
-  if (UsingHID) {
+  if (handle->hidReportDescSize) {
     USBD_LL_CloseEP(pdev,
                   HID_IN_EP);
   }
@@ -481,7 +480,7 @@ static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
 static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
                                 USBD_SetupReqTypedef *req)
 {
-  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   static uint8_t ifalt = 0;
     
   switch (req->bmRequest & USB_REQ_TYPE_MASK)
@@ -491,18 +490,18 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
     {
       if (req->bmRequest & 0x80)
       {
-        CDC_Control_FS(req->bRequest, (uint8_t *)hcdc->data, req->wLength);
+        CDC_Control_FS(req->bRequest, (uint8_t *)handle->data, req->wLength);
         USBD_CtlSendData (pdev,
-                            (uint8_t *)hcdc->data,
+                            (uint8_t *)handle->data,
                             req->wLength);
       }
       else
       {
-        hcdc->CmdOpCode = req->bRequest;
-        hcdc->CmdLength = (uint8_t)req->wLength;
+        handle->CmdOpCode = req->bRequest;
+        handle->CmdLength = (uint8_t)req->wLength;
         
         USBD_CtlPrepareRx (pdev, 
-                           (uint8_t *)hcdc->data,
+                           (uint8_t *)handle->data,
                            req->wLength);
       }
       
@@ -537,7 +536,7 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
 {
   int len = 0;
   uint8_t  *pbuf = NULL;
-  USBD_CDC_HID_HandleTypeDef *hhid = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef *handle = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
 
   switch (req->bmRequest & USB_REQ_TYPE_MASK)
   {
@@ -547,22 +546,22 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
 
 
     case HID_REQ_SET_PROTOCOL:
-      hhid->hidProtocol = (uint8_t)(req->wValue);
+      handle->hidProtocol = (uint8_t)(req->wValue);
       break;
 
     case HID_REQ_GET_PROTOCOL:
       USBD_CtlSendData (pdev,
-                        (uint8_t *)&hhid->hidProtocol,
+                        (uint8_t *)&handle->hidProtocol,
                         1);
       break;
 
     case HID_REQ_SET_IDLE:
-      hhid->hidIdleState = (uint8_t)(req->wValue >> 8);
+      handle->hidIdleState = (uint8_t)(req->wValue >> 8);
       break;
 
     case HID_REQ_GET_IDLE:
       USBD_CtlSendData (pdev,
-                        (uint8_t *)&hhid->hidIdleState,
+                        (uint8_t *)&handle->hidIdleState,
                         1);
       break;
 
@@ -578,14 +577,13 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
     case USB_REQ_GET_DESCRIPTOR:
       if( req->wValue >> 8 == HID_REPORT_DESC)
       {
-        pbuf = USB_GetHIDReportDesc(&len);
-        len = MIN(len, req->wLength);
+        pbuf = handle->hidReportDesc;
+        len = MIN(handle->hidReportDescSize, req->wLength);
       }
       else if( req->wValue >> 8 == HID_DESCRIPTOR_TYPE)
       {
-        USB_GetHIDReportDesc(&len); // get USB HID report size
-        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX] = len;
-        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX+1] = len>>8;
+        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX] = (uint8_t)handle->hidReportDescSize;
+        USBD_HID_Desc[USBD_HID_DESC_REPORT_SIZE_IDX+1] = (uint8_t)(handle->hidReportDescSize>>8);
         pbuf = USBD_HID_Desc;
         len = MIN(USB_HID_DESC_SIZ , req->wLength);
       }
@@ -598,12 +596,12 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
 
     case USB_REQ_GET_INTERFACE :
       USBD_CtlSendData (pdev,
-                        (uint8_t *)&hhid->hidAltSetting,
+                        (uint8_t *)&handle->hidAltSetting,
                         1);
       break;
 
     case USB_REQ_SET_INTERFACE :
-      hhid->hidAltSetting = (uint8_t)(req->wValue);
+      handle->hidAltSetting = (uint8_t)(req->wValue);
       break;
     }
   }
@@ -612,9 +610,9 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
 
 static uint8_t  USBD_CDC_HID_Setup (USBD_HandleTypeDef *pdev,
                                     USBD_SetupReqTypedef *req) {
+  USBD_CDC_HID_HandleTypeDef *handle = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
 
-  // req->bRequest==USB_REQ_GET_DESCRIPTOR
-  if (UsingHID && req->wIndex == HID_INTERFACE_NUMBER)
+  if (handle->hidReportDescSize && req->wIndex == HID_INTERFACE_NUMBER)
     return USBD_HID_Setup(pdev, req);
   else
     return USBD_CDC_Setup(pdev, req);
@@ -630,7 +628,7 @@ static uint8_t  USBD_CDC_HID_Setup (USBD_HandleTypeDef *pdev,
   */
 static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
-  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   
   if (epnum == (HID_IN_EP&0x7F)) {
     /* Ensure that the FIFO is empty before a new transfer, this condition could
@@ -638,7 +636,7 @@ static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
     ((USBD_CDC_HID_HandleTypeDef *)pdev->pClassData)->hidState = HID_IDLE;
   } else {
     // USB CDC
-    hcdc->cdcState &= ~CDC_WRITE_TX_WAIT;
+    handle->cdcState &= ~CDC_WRITE_TX_WAIT;
     CDC_TxReady();
   }
 
@@ -686,12 +684,12 @@ static uint8_t  USBD_CDC_HID_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
   */
 static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
 { 
-  USBD_CDC_HID_HandleTypeDef   *hcdc = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
+  USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
   
-  if(hcdc->CmdOpCode != 0xFF)
+  if(handle->CmdOpCode != 0xFF)
   {
-    CDC_Control_FS(hcdc->CmdOpCode, (uint8_t *)hcdc->data, hcdc->CmdLength);
-    hcdc->CmdOpCode = 0xFF;
+    CDC_Control_FS(handle->CmdOpCode, (uint8_t *)handle->data, handle->CmdLength);
+    handle->CmdOpCode = 0xFF;
   }
   return USBD_OK;
 }
@@ -705,13 +703,11 @@ static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
   */
 static uint8_t  *USBD_CDC_HID_GetCfgDesc (uint16_t *length)
 {
-  USBD_CDC_HID_HandleTypeDef     *hhid = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  USBD_CDC_HID_HandleTypeDef     *handle = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
 
-  if (UsingHID) {
-    unsigned int reportLen;
-    USB_GetHIDReportDesc(&reportLen);
-    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX] = reportLen;
-    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX+1] = reportLen>>8;
+  if (handle->hidReportDescSize) {
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX] = (uint8_t)handle->hidReportDescSize;
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX+1] = (uint8_t)(handle->hidReportDescSize>>8);
     *length = USBD_CDC_HID_CFGDESC_SIZE;
     return USBD_CDC_HID_CfgDesc;
   } else {
@@ -736,6 +732,8 @@ uint8_t  *USBD_CDC_HID_GetDeviceQualifierDescriptor (uint16_t *length)
 
 static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 {
+  NOT_USED(pbuf);
+  NOT_USED(length);
   switch (cmd)
   {
   case CDC_SEND_ENCAPSULATED_COMMAND:
@@ -833,17 +831,17 @@ static void CDC_TxReady(void)
 // --------------------------------------------------------- PUBLIC Functions
 // ----------------------------------------------------------------------------
 
-uint8_t USBD_HID_SendReport     (uint8_t *report,  int len)
+uint8_t USBD_HID_SendReport     (uint8_t *report,  unsigned int len)
 {
-  USBD_CDC_HID_HandleTypeDef     *hhid = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  USBD_CDC_HID_HandleTypeDef     *handle = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
 
   if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED ) {
-    if(hhid->hidState == HID_IDLE) {
-      hhid->hidState = HID_BUSY;
-      memcpy(hhid->hidData, report, len);
+    if(handle->hidState == HID_IDLE) {
+      handle->hidState = HID_BUSY;
+      memcpy(handle->hidData, report, len);
       USBD_LL_Transmit (&hUsbDeviceFS,
                         HID_IN_EP,
-                        hhid->hidData,
+                        (uint8_t*)handle->hidData,
                         (uint16_t)len);
       return USBD_OK;
     }
