@@ -36,4 +36,5 @@ void jswrap_espruino_dumpTimers();
 int jswrap_espruino_getSizeOf(JsVar *v);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
 
+void jswrap_espruino_setUSBHID(JsVar *arr);
 bool jswrap_espruino_sendUSBHID(JsVar *arr);

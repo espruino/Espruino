@@ -624,16 +624,19 @@ JsVar *jswrap_espruino_toArrayBuffer(JsVar *str) {
   "return" : ["JsVar","A String"],
   "return_object" : "String"
 }
+Returns a 'flat' string representing the data in the arguments.
+
 This creates a string from the given arguments. If an argument is a String or an Array,
 each element is traversed and added as an 8 bit character. If it is anything else, it is
 converted to a character directly.
 */
 void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
-  jsvStringIteratorAppend(it, (char)ch);
+  jsvStringIteratorSetChar(it, (char)ch);
+  jsvStringIteratorNext(it);
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {
-  JsVar *str = jsvNewFromEmptyString();
+  JsVar *str = jsvNewFlatStringOfLength(jsvIterateCallbackCount(args));
   if (!str) return 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -828,16 +831,56 @@ signal.
 */
 
 
+// ----------------------------------------- USB Specific Stuff
 
+#ifdef USE_USB_HID
 #include "usbd_cdc_hid.h"
+
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
+  "ifdef" : "USE_USB_HID",
+  "class" : "E",
+  "name" : "setUSBHID",
+  "generate" : "jswrap_espruino_setUSBHID",
+  "params" : [
+    ["opts","JsVar","An object containing at least reportDescriptor, an array representing the report descriptor. Pass undefined to disable HID."]
+  ]
+}
+USB HID will only take effect next time you unplug and re-plug your Espruino. If you're
+disconnecting it from power you'll have to make sure you have `save()`d after calling
+this function.
+*/
+void jswrap_espruino_setUSBHID(JsVar *arr) {
+  if (jsvIsUndefined(arr)) {
+    // Disable HID
+    jsvObjectSetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, 0);
+    return;
+  }
+  if (!jsvIsObject(arr)) {
+    jsExceptionHere(JSET_TYPEERROR, "Expecting Object, got %t", arr);
+    return;
+  }
+
+  JsVar *report = jsvObjectGetChild(arr, "reportDescriptor", 0);
+  if (!(jsvIsArray(report) || jsvIsArrayBuffer(report) || jsvIsString(report))) {
+    jsExceptionHere(JSET_TYPEERROR, "Object.reportDescriptor should be an Array or String, got %t", arr);
+    jsvUnLock(report);
+    return;
+  }
+  JsVar *s = jswrap_espruino_toString(report);
+  jsvUnLock(report);
+  // Enable HID
+  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, s));
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifdef" : "USE_USB_HID",
   "class" : "E",
   "name" : "sendUSBHID",
   "generate" : "jswrap_espruino_sendUSBHID",
   "params" : [
-    ["x","JsVar","An array of bytes to send as a HID packet"]
+    ["data","JsVar","An array of bytes to send as a USB HID packet"]
   ],
   "return" : ["bool","1 on success, 0 on failure"]
 }
@@ -849,3 +892,4 @@ bool jswrap_espruino_sendUSBHID(JsVar *arr) {
 
   return USBD_HID_SendReport(data, l) == USBD_OK;
 }
+#endif

@@ -5,9 +5,6 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
-#define NOHID
-
-
 #define CDC_IN_EP                                   0x83  /* EP1 for data IN */
 #define CDC_OUT_EP                                  0x03  /* EP1 for data OUT */
 #define CDC_CMD_EP                                  0x82  /* EP2 for CDC commands */
@@ -170,6 +167,7 @@ const __ALIGN_BEGIN uint8_t USBD_CDC_CfgDesc[USBD_CDC_CFGDESC_SIZE] __ALIGN_END 
   0x00,                               /* bInterval: ignore for Bulk transfer */
 } ;
 
+#ifdef USE_USB_HID
 /* USB HID + CDC device Configuration Descriptor
  * ============================================================================
  *
@@ -315,65 +313,14 @@ __ALIGN_BEGIN static uint8_t USBD_HID_Desc[USB_HID_DESC_SIZ]  __ALIGN_END  =
   0x22,         /*bDescriptorType*/
   0/*HID_REPORT_DESC_SIZE*/, 0x00, /*wItemLength: Total length of Report descriptor*/
 };
-
-#ifndef  NOHID
-__ALIGN_BEGIN static const uint8_t HID_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE]  __ALIGN_END =
-{
-  0x05,   0x01,
-  0x09,   0x02,
-  0xA1,   0x01,
-  0x09,   0x01,
-
-  0xA1,   0x00,
-  0x05,   0x09,
-  0x19,   0x01,
-  0x29,   0x03,
-
-  0x15,   0x00,
-  0x25,   0x01,
-  0x95,   0x03,
-  0x75,   0x01,
-
-  0x81,   0x02,
-  0x95,   0x01,
-  0x75,   0x05,
-  0x81,   0x01,
-
-  0x05,   0x01,
-  0x09,   0x30,
-  0x09,   0x31,
-  0x09,   0x38,
-
-  0x15,   0x81,
-  0x25,   0x7F,
-  0x75,   0x08,
-  0x95,   0x03,
-
-  0x81,   0x06,
-  0xC0,   0x09,
-  0x3c,   0x05,
-  0xff,   0x09,
-
-  0x01,   0x15,
-  0x00,   0x25,
-  0x01,   0x75,
-  0x01,   0x95,
-
-  0x02,   0xb1,
-  0x22,   0x75,
-  0x06,   0x95,
-  0x01,   0xb1,
-
-  0x01,   0xc0
-};
 #endif
-
-
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
+
+USBD_CDC_HID_HandleTypeDef cdc_hid;
 
 /**
   * @brief  USBD_CDC_HID_Init
@@ -386,8 +333,7 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                                uint8_t cfgidx)
 {
 
-  static USBD_CDC_HID_HandleTypeDef no_malloc_thx;
-  pdev->pClassData = &no_malloc_thx;
+  pdev->pClassData = &cdc_hid;
   USBD_CDC_HID_HandleTypeDef   *handle = (USBD_CDC_HID_HandleTypeDef*) pdev->pClassData;
 
   NOT_USED(cfgidx);
@@ -419,17 +365,16 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                          CDCRxBufferFS,
                          CDC_RX_DATA_SIZE);
 
-  unsigned int l = 0;
-  handle->hidReportDesc = USB_GetHIDReportDesc(&l); // do we have a HID report?
-  handle->hidReportDescSize = (uint16_t)l;
-  if (handle->hidReportDescSize) {
-    /* Open EP IN */
-    USBD_LL_OpenEP(pdev,
-                   HID_IN_EP,
-                   USBD_EP_TYPE_INTR,
-                   HID_DATA_IN_PACKET_SIZE);
-    handle->hidState = HID_IDLE;
-  }
+  unsigned int reportSize = 0;
+  handle->hidReportDesc = USB_GetHIDReportDesc(&reportSize);
+  handle->hidReportDescSize = (uint16_t)reportSize;
+
+  /* Open HID EP IN - even if we're not using it */
+  USBD_LL_OpenEP(pdev,
+                 HID_IN_EP,
+                 USBD_EP_TYPE_INTR,
+                 HID_DATA_IN_PACKET_SIZE);
+  handle->hidState = HID_IDLE;
     
   return ret;
 }
@@ -460,10 +405,8 @@ static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
   USBD_LL_CloseEP(pdev,
                CDC_CMD_EP);
 
-  if (handle->hidReportDescSize) {
-    USBD_LL_CloseEP(pdev,
-                  HID_IN_EP);
-  }
+  USBD_LL_CloseEP(pdev,
+                HID_IN_EP);
   
   /* DeInit  physical Interface components */
   if(pdev->pClassData != NULL)
@@ -531,6 +474,7 @@ static uint8_t  USBD_CDC_Setup (USBD_HandleTypeDef *pdev,
   return USBD_OK;
 }
 
+#ifdef USE_USB_HID
 static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
                                 USBD_SetupReqTypedef *req)
 {
@@ -607,14 +551,16 @@ static uint8_t  USBD_HID_Setup (USBD_HandleTypeDef *pdev,
   }
   return USBD_OK;
 }
+#endif
 
 static uint8_t  USBD_CDC_HID_Setup (USBD_HandleTypeDef *pdev,
                                     USBD_SetupReqTypedef *req) {
   USBD_CDC_HID_HandleTypeDef *handle = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
-
+#ifdef USE_USB_HID
   if (handle->hidReportDescSize && req->wIndex == HID_INTERFACE_NUMBER)
     return USBD_HID_Setup(pdev, req);
   else
+#endif
     return USBD_CDC_Setup(pdev, req);
 }
 
@@ -703,14 +649,20 @@ static uint8_t  USBD_CDC_HID_EP0_RxReady (USBD_HandleTypeDef *pdev)
   */
 static uint8_t  *USBD_CDC_HID_GetCfgDesc (uint16_t *length)
 {
-  USBD_CDC_HID_HandleTypeDef     *handle = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
+#ifdef USE_USB_HID
+  // Check if we have a HID report here - we do it now so we can actually allow
+  // Espruino to be plugged and unplugged WITHOUT A RESET
+  unsigned int reportSize = 0;
+  USB_GetHIDReportDesc(&reportSize);
 
-  if (handle->hidReportDescSize) {
-    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX] = (uint8_t)handle->hidReportDescSize;
-    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX+1] = (uint8_t)(handle->hidReportDescSize>>8);
+  if (reportSize) {
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX] = (uint8_t)reportSize;
+    USBD_CDC_HID_CfgDesc[USBD_CDC_HID_CFGDESC_REPORT_SIZE_IDX+1] = (uint8_t)(reportSize>>8);
     *length = USBD_CDC_HID_CFGDESC_SIZE;
     return USBD_CDC_HID_CfgDesc;
-  } else {
+  } else
+#endif
+  {
     *length = USBD_CDC_CFGDESC_SIZE;
     return USBD_CDC_CfgDesc;
   }
@@ -831,23 +783,25 @@ static void CDC_TxReady(void)
 // --------------------------------------------------------- PUBLIC Functions
 // ----------------------------------------------------------------------------
 
+#ifdef USE_USB_HID
 uint8_t USBD_HID_SendReport     (uint8_t *report,  unsigned int len)
 {
   USBD_CDC_HID_HandleTypeDef     *handle = (USBD_CDC_HID_HandleTypeDef*)hUsbDeviceFS.pClassData;
 
-  if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED ) {
-    if(handle->hidState == HID_IDLE) {
-      handle->hidState = HID_BUSY;
-      memcpy(handle->hidData, report, len);
-      USBD_LL_Transmit (&hUsbDeviceFS,
-                        HID_IN_EP,
-                        (uint8_t*)handle->hidData,
-                        (uint16_t)len);
-      return USBD_OK;
-    }
+  if (USB_IsConnected() &&
+      handle->hidReportDescSize && // HID enabled?
+      handle->hidState == HID_IDLE) { // busy?
+    handle->hidState = HID_BUSY;
+    memcpy(handle->hidData, report, len);
+    USBD_LL_Transmit (&hUsbDeviceFS,
+                      HID_IN_EP,
+                      (uint8_t*)handle->hidData,
+                      (uint16_t)len);
+    return USBD_OK;
   }
   return USBD_FAIL;
 }
+#endif
 
 
 void USB_StartTransmission() {
@@ -867,11 +821,19 @@ void USB_SysTick() {
   }
 }
 
+#ifdef USE_USB_HID
 unsigned char *USB_GetHIDReportDesc(unsigned int *len) {
-  if (len) *len = HID_MOUSE_REPORT_DESC_SIZE;
-#ifdef NOHID
+  if (execInfo.hiddenRoot) {
+    JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, 0);
+    if (jsvIsFlatString(v)) {
+      if (len) *len = jsvGetStringLength(v);
+      unsigned char *p = jsvGetFlatStringPointer(v);
+      jsvUnLock(v);
+      return p;
+    }
+  }
+
+  if (len) *len = 0;
   return 0;
-#else
-  return HID_ReportDesc;
-#endif
 }
+#endif

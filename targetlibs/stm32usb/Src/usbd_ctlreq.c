@@ -350,12 +350,10 @@ static void USBD_GetDescriptor(USBD_HandleTypeDef *pdev ,
     if(pdev->dev_speed == USBD_SPEED_HIGH )   
     {
       pbuf   = (uint8_t *)pdev->pClass->GetHSConfigDescriptor(&len);
-      pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
     }
     else
     {
       pbuf   = (uint8_t *)pdev->pClass->GetFSConfigDescriptor(&len);
-      pbuf[1] = USB_DESC_TYPE_CONFIGURATION;
     }
     break;
     

@@ -10,6 +10,8 @@
 #include  "usbd_ioreq.h"
 #include "jsutils.h"
 
+#define JS_USB_HID_VAR_NAME "HID"
+
  // ----------------------------------------------------------------------------
 #define CDC_DATA_FS_MAX_PACKET_SIZE                 64  /* Endpoint IN & OUT Packet size */
 #define CDC_CMD_PACKET_SIZE                         8  /* Control Endpoint Packet size */
@@ -28,7 +30,7 @@
 
 // ----------------------------------------------------------------------------
 
- #define HID_DATA_IN_PACKET_SIZE       0x04 // higher for keyboard
+ #define HID_DATA_IN_PACKET_SIZE       0x10 // just in case... mouse=4, kb=8?
 
  #define HID_DESCRIPTOR_TYPE           0x21
  #define HID_REPORT_DESC               0x22
