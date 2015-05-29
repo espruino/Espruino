@@ -871,10 +871,6 @@ void jshDoSysTick() {
 #else
   SysTickMajor += SYSTICK_RANGE;
 #endif
-
-#ifdef USB
-  USB_SysTick();
-#endif
 }
 
 // ----------------------------------------------------------------------------
@@ -2228,10 +2224,6 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
-  if (device == EV_USBSERIAL) {
-    USB_StartTransmission();
-    return;
-  }
   USART_TypeDef *uart = getUsartFromDevice(device);
   if (uart && !jshIsDeviceInitialised(device)) {
     JshUSARTInfo inf;

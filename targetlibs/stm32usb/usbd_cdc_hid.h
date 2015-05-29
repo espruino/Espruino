@@ -57,7 +57,7 @@ typedef enum
 {
   CDC_IDLE = 0,
   CDC_WRITE_TX_WAIT = 1,
-  CDC_WRITE_DELAY = 2,
+  CDC_READ_WAIT_EMPTY = 2,
 } PACKED_FLAGS CDC_StateTypeDef;
 
 typedef struct
@@ -81,9 +81,7 @@ extern const USBD_ClassTypeDef  USBD_CDC_HID;
 // ----------------------------------------------------------------------------
 uint8_t USBD_HID_SendReport (uint8_t *report,unsigned int len);
 // ----------------------------------------------------------------------------
-void USB_StartTransmission();
 int USB_IsConnected();
-void USB_SysTick(); //< To be called on SysTick timer
 unsigned char *USB_GetHIDReportDesc(unsigned int *len);
 
 #ifdef __cplusplus
