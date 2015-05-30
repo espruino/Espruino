@@ -43,6 +43,7 @@ typedef enum {
  EV_SERIAL_START,
  EV_LOOPBACKA = EV_SERIAL_START,
  EV_LOOPBACKB,
+ EV_LIMBO,     // Where console output goes right after boot - one sec later we move it to USB/Serial
  EV_USBSERIAL,
  EV_SERIAL1,
  EV_SERIAL2,
@@ -127,6 +128,8 @@ void jshTransmit(IOEventFlags device, unsigned char data);
 void jshTransmitFlush();
 /// Clear everything from a device
 void jshTransmitClearDevice(IOEventFlags device);
+/// Move all output from one device to another
+void jshTransmitMove(IOEventFlags from, IOEventFlags to);
 /// Do we have anything we need to send?
 bool jshHasTransmitData();
 // Return the device at the top of the transmit queue (or EV_NONE)

@@ -704,6 +704,10 @@ endif
 
 endif
 
+ifdef USE_USB_HID
+DEFINES += -DUSE_USB_HID
+endif
+
 ifdef USE_NET
 DEFINES += -DUSE_NET
 INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http

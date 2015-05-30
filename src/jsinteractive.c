@@ -587,7 +587,7 @@ void jsiInit(bool autoLoad) {
   interruptedDuringEvent = false;
   // Set defaults
   jsiStatus = JSIS_NONE;
-  consoleDevice = DEFAULT_CONSOLE_DEVICE;
+  consoleDevice = EV_LIMBO;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
   if (jshIsUSBSERIALConnected())
     consoleDevice = EV_USBSERIAL;
@@ -627,7 +627,28 @@ void jsiInit(bool autoLoad) {
   }
 }
 
-
+// This should get called from jshardware.c one second after startup,
+// it does initialisation tasks like setting the right console device
+void jsiOneSecondAfterStartup() {
+  /* When we start up, we put all console output into 'Limbo' (EV_LIMBO),
+     because we want to get started immediately, but we don't know where
+     to send any console output (USB takes a while to initialise). Not only
+     that but if we start transmitting on Serial right away, the first
+     char or two can get corrupted.
+   */
+  if (consoleDevice == EV_LIMBO) {
+    consoleDevice = DEFAULT_CONSOLE_DEVICE;
+    if (jshIsUSBSERIALConnected())
+      consoleDevice = EV_USBSERIAL;
+    // now move any output that was made to Limbo to the given device
+    jshTransmitMove(EV_LIMBO, consoleDevice);
+    // finally, kick output - just in case
+    jshUSARTKick(consoleDevice);
+  } else {
+    // the console has already been moved
+    jshTransmitClearDevice(EV_LIMBO);
+  }
+}
 
 void jsiKill() {
   jsiSoftKill();

@@ -47,21 +47,6 @@ int main(void){
 #endif
 #endif
 
-  volatile int w,h;
-//#ifndef ECU
-#ifdef USB
-  for (w=0;w<1000000;w++)
- #ifdef STM32F4 // IT's FAST!
-    for (h=0;h<10;h++); // wait for things to settle (for USB)
- #else
-    for (h=0;h<2;h++); // wait for things to settle (for USB)
- #endif
-#else
-  for (w=0;w<100000;w++)
-    for (h=0;h<2;h++); // wait for things to settle (for Serial comms)
-#endif
-//#endif
-
   bool buttonState = false;
 #ifdef BTN1_PININDEX
   buttonState = jshPinInput(BTN1_PININDEX) == BTN1_ONSTATE;

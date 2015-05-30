@@ -831,6 +831,8 @@ void jshDoSysTick() {
         RCC_LSEConfig(RCC_LSE_OFF);
       }
     }
+    // Now call jsInteractive to let it do its thing
+    jsiOneSecondAfterStartup();
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -1170,6 +1172,7 @@ void jshInit() {
 #endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+  ticksSinceStart = 0;
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
