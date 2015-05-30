@@ -21,17 +21,8 @@
   #include "usb_istr.h"
  #endif
  #ifdef STM32F4
-  #include "usb_regs.h"
-  #include "usb_defines.h"
-  #include "usbd_conf.h"
-  #include "usbd_cdc_core.h"
-  #include "usbd_usr.h"
-  #include "usb_conf.h"
-  #include "usbd_desc.h"
-  #include "usb_core.h"
-  #include "usbd_core.h"
-  #include "usbd_cdc_core.h"
-  #include "usb_dcd_int.h"
+  #include "usb_device.h"
+  #include "usbd_cdc_hid.h"
  #endif
 #endif
 
@@ -89,100 +80,15 @@ void WWDG_IRQHandler() {
   // why do we need this on the F401?
 }
 
-/******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
-/*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.s).                                            */
-/******************************************************************************/
-
-/*******************************************************************************
-* Function Name  : PPP_IRQHandler
-* Description    : This function handles PPP interrupt request.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-/*void PPP_IRQHandler(void)
-{
-}*/
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_FS
-void OTG_FS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line18);
+* @brief This function handles USB On The Go FS global interrupt.
+*/
+void OTG_FS_IRQHandler(void) {
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
 }
-#endif
-
-/**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line20);
-}
-#endif
-
-/**
-  * @brief  This function handles OTG_HS Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_IRQHandler(void)
-#else
-void OTG_FS_IRQHandler(void)
-#endif
-{
-  USBD_OTG_ISR_Handler (&USB_OTG_dev);
-}
-
-#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
-
-extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-
-/**
-  * @brief  This function handles EP1_IN Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_IN_IRQHandler(void)
-{
-  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
-}
-
-/**
-  * @brief  This function handles EP1_OUT Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_OUT_IRQHandler(void)
-{
-  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
-}
-#endif
-
+        
 #else  // STM32F4
 
 void USB_LP_CAN1_RX0_IRQHandler(void)
@@ -224,20 +130,32 @@ bool jshHasEventSpaceForChars(int n) {
   return true;
 }
 
-int getc() {
+int jshGetEventsUsed() {
+  return 0;
+}
+
+
+void jshDelayMicroseconds(int c) {
+  while (c--) {
+    int i;
+    for (i=0;i<80;i++);
+  }
+}
+
+int _getc() {
   if (rxHead == rxTail) return -1;
   unsigned char d = (unsigned char)rxBuffer[rxTail];
   rxTail = (rxTail+1) & BUFFERMASK;
   return d;
 }
 
-unsigned char getc_blocking() {
-  int c = getc();
-  while (c<0) c=getc();
+unsigned char _getc_blocking() {
+  int c = _getc();
+  while (c<0) c=_getc();
   return c;
 }
 
-void putc(char charData) {
+void _putc(char charData) {
   txBuffer[txHead] = charData;
   txHead = (txHead+1) & BUFFERMASK;
 }
@@ -340,14 +258,6 @@ void initHardware() {
   USB_Init_Hardware();
   USB_Init();
 #else
-  USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
-            USB_OTG_FS_CORE_ID,
-#endif
-            &USR_desc,
-            &USBD_CDC_cb,
-            &USR_cb);
+  MX_USB_DEVICE_Init();
 #endif
 }

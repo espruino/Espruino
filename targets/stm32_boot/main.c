@@ -85,7 +85,7 @@ int main(void) {
 #endif
 
       // flash led
-      int d = getc();
+      int d = _getc();
       if (d>=0) { // if we have data
         if (state==BLS_EXPECT_DATA) {
 
@@ -100,89 +100,89 @@ int main(void) {
             // confirmed
             switch (currentCommand) {
             case CMD_GET: // get bootloader info
-              putc(ACK);
-              putc(6); // 7 bytes
+              _putc(ACK);
+              _putc(6); // 7 bytes
               // now report what we support
-              putc(BOOTLOADER_MAJOR_VERSION<<4 | BOOTLOADER_MINOR_VERSION); // Bootloader version
+              _putc(BOOTLOADER_MAJOR_VERSION<<4 | BOOTLOADER_MINOR_VERSION); // Bootloader version
               // list supported commands
-              putc(CMD_GET);
-              putc(CMD_GET_ID);
-              putc(CMD_READ);
-              putc(CMD_GO);
-              putc(CMD_WRITE);
-              putc(CMD_EXTERASE); // erase
-              putc(ACK); // last byte
+              _putc(CMD_GET);
+              _putc(CMD_GET_ID);
+              _putc(CMD_READ);
+              _putc(CMD_GO);
+              _putc(CMD_WRITE);
+              _putc(CMD_EXTERASE); // erase
+              _putc(ACK); // last byte
               break;
             case CMD_GET_ID: // get chip ID
-              putc(ACK);
-              putc(1); // 2 bytes
+              _putc(ACK);
+              _putc(1); // 2 bytes
               // 0x430 F1 XL density
               // 0x414 F1 high density
               // 0x6433 F401 CD
 #ifdef STM32F401
-              putc(0x64); putc(0x33);
+              _putc(0x64); _putc(0x33);
 #else
-              putc(0x04); putc(0x14);
+              _putc(0x04); _putc(0x14);
 #endif
-              putc(ACK); // last byte
+              _putc(ACK); // last byte
               break;
             case CMD_READ: // read memory
-              putc(ACK);
-              addr = getc_blocking() << 24;
-              addr |= getc_blocking()  << 16;
-              addr |= getc_blocking()  << 8;
-              addr |= getc_blocking();
-              chksum = getc_blocking();
+              _putc(ACK);
+              addr = _getc_blocking() << 24;
+              addr |= _getc_blocking()  << 16;
+              addr |= _getc_blocking()  << 8;
+              addr |= _getc_blocking();
+              chksum = _getc_blocking();
               // TODO: check checksum
-              putc(ACK);
+              _putc(ACK);
               setLEDs(2); // green = wait for data
-              nBytesMinusOne = getc_blocking();
-              chksum = getc_blocking();
+              nBytesMinusOne = _getc_blocking();
+              chksum = _getc_blocking();
               // TODO: check checksum
-              putc(ACK);
+              _putc(ACK);
               for (i=0;i<=nBytesMinusOne;i++)
-                putc(((unsigned char*)addr)[i]);
+                _putc(((unsigned char*)addr)[i]);
               setLEDs(0); // off
               flashy = 0; // reset glowing
               break;
             case CMD_GO: // read memory
-              putc(ACK);
-              addr = getc_blocking() << 24;
-              addr |= getc_blocking()  << 16;
-              addr |= getc_blocking()  << 8;
-              addr |= getc_blocking();
-              chksum = getc_blocking();
+              _putc(ACK);
+              addr = _getc_blocking() << 24;
+              addr |= _getc_blocking()  << 16;
+              addr |= _getc_blocking()  << 8;
+              addr |= _getc_blocking();
+              chksum = _getc_blocking();
               // TODO: check checksum
-              putc(ACK);
+              _putc(ACK);
               setLEDs(7); // jumping...
               unsigned int *ResetHandler = (unsigned int *)(addr + 4);
               void (*startPtr)() = *ResetHandler;
               startPtr();
               break;
             case CMD_WRITE: // write memory
-              putc(ACK);
-              addr = getc_blocking() << 24;
-              addr |= getc_blocking()  << 16;
-              addr |= getc_blocking()  << 8;
-              addr |= getc_blocking();
+              _putc(ACK);
+              addr = _getc_blocking() << 24;
+              addr |= _getc_blocking()  << 16;
+              addr |= _getc_blocking()  << 8;
+              addr |= _getc_blocking();
               chksumc = ((addr)&0xFF)^((addr>>8)&0xFF)^((addr>>16)&0xFF)^((addr>>24)&0xFF);
-              chksum = getc_blocking();
+              chksum = _getc_blocking();
               if (chksumc != chksum) {
-                putc(NACK);
+                _putc(NACK);
                 break;
               }
-              putc(ACK);
+              _putc(ACK);
               setLEDs(2); // green = wait for data
-              nBytesMinusOne = getc_blocking();
+              nBytesMinusOne = _getc_blocking();
               chksumc = nBytesMinusOne;
               for (i=0;i<=nBytesMinusOne;i++) {
-                buffer[i] = getc_blocking();
+                buffer[i] = _getc_blocking();
                 chksumc = chksumc^buffer[i];
               }
-              chksum = getc_blocking(); // FIXME found to be stalled here
+              chksum = _getc_blocking(); // FIXME found to be stalled here
               setLEDs(1); // red = write
               if (chksumc != chksum || (nBytesMinusOne+1)&3!=0) {
-                putc(NACK);
+                _putc(NACK);
                 break;
               }
               if (addr>=FLASH_START && addr<RAM_START) {
@@ -219,13 +219,13 @@ int main(void) {
                 
               setLEDs(0); // off
               flashy = 0; // reset glowing
-              putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
+              _putc(ACK); //  TODO - could speed up writes by ACKing beforehand if we have space
               break;
             case CMD_EXTERASE: // erase memory
-              putc(ACK);
-              nPages = getc_blocking() << 8;
-              nPages |= getc_blocking();
-              chksum = getc_blocking();
+              _putc(ACK);
+              nPages = _getc_blocking() << 8;
+              nPages |= _getc_blocking();
+              chksum = _getc_blocking();
               // TODO: check checksum
               if (nPages == 0xFFFF) {
                 // all pages (except us!)
@@ -258,24 +258,24 @@ int main(void) {
                   FLASH_LockBank1();
                 #endif
                 setLEDs(0); // off
-                putc(ACK);
+                _putc(ACK);
               } else {
-                putc(NACK); // not implemented
+                _putc(NACK); // not implemented
               }
               break;
             default: // unknown command
-              putc(NACK);
+              _putc(NACK);
               break;
             }
           } else {
             // not correct
-            putc(NACK);
+            _putc(NACK);
           }
           state = BLS_INITED;
         } else {
           switch (d) {
           case 0x7F: // initialisation byte
-                     putc(state == BLS_UNDEFINED ? ACK : NACK);
+                     _putc(state == BLS_UNDEFINED ? ACK : NACK);
                      state = BLS_INITED;
                      break;
           }

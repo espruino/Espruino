@@ -359,9 +359,14 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
                          handle->cdcRX,
                          CDC_DATA_FS_OUT_PACKET_SIZE);
 
+#ifdef USE_USB_HID
   unsigned int reportSize = 0;
   handle->hidReportDesc = USB_GetHIDReportDesc(&reportSize);
   handle->hidReportDescSize = (uint16_t)reportSize;
+#else
+  handle->hidReportDesc = 0;
+  handle->hidReportDescSize = 0;
+#endif
 
   /* Open HID EP IN - even if we're not using it */
   USBD_LL_OpenEP(pdev,
