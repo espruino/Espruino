@@ -16,12 +16,12 @@ typedef struct {
 typedef struct {
     char *name;
     char *data;
-    void (*init)();
-    void (*update)();
-    void (*final)();
-    int digest_size;
-    int block_size;
-    int ctx_size;
+    void (*init)(); // (void *ctx);
+    void (*update)(); // (void *ctx, const unsigned char *message, unsigned int len);
+    void (*final)(); // (void *, unsigned char *digest);
+    unsigned int digest_size;
+    unsigned int block_size;
+    unsigned int ctx_size;
 } JsHashLib;
 
 typedef enum {
@@ -38,6 +38,6 @@ JsVar *jswrap_hashlib_sha256(JsVar *message);
 
 JsVar *jswrap_hashlib_sha2(JsHashType hash_type);
 
-JsVar *jswrap_hashlib_hash_digest(const JsVar *parent);
-JsVar *jswrap_hashlib_hash_hexdigest(const JsVar *parent);
+JsVar *jswrap_hashlib_hash_digest(JsVar *parent);
+JsVar *jswrap_hashlib_hash_hexdigest(JsVar *parent);
 void jswrap_hashlib_hash_update(JsVar *parent, JsVar *message);

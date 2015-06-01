@@ -449,9 +449,9 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   jsvGetString(event, &eventName[3], sizeof(eventName)-4);
 
   // extract data
-  const int MAX_ARGS = 4;
+  const unsigned int MAX_ARGS = 4;
   JsVar *args[MAX_ARGS];
-  int n = 0;
+  unsigned int n = 0;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, argArray);
   while (jsvObjectIteratorHasValue(&it)) {
@@ -465,7 +465,7 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   jsvObjectIteratorFree(&it);
 
 
-  jsiQueueObjectCallbacks(parent, eventName, args, n);
+  jsiQueueObjectCallbacks(parent, eventName, args, (int)n);
   // unlock
   jsvUnLockMany(n, args);
 }
@@ -603,10 +603,10 @@ This executes the function with the supplied 'this' argument and parameters
 JsVar *jswrap_function_apply_or_call(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   unsigned int i;
   JsVar **args = 0;
-  size_t argC = 0;
+  unsigned int argC = 0;
 
   if (jsvIsIterable(argsArray)) {
-    argC = (size_t)jsvGetLength(argsArray);
+    argC = (unsigned int)jsvGetLength(argsArray);
     if (argC>64) {
       jsExceptionHere(JSET_ERROR, "Array passed to Function.apply is too big! Maximum 64 arguments, got %d", argC);
       return 0;

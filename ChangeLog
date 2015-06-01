@@ -1,4 +1,5 @@
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
+            Fix some potential pointer issues in hashlib
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
