@@ -164,6 +164,7 @@ void jshTransmitClearDevice(IOEventFlags device) {
 
 /// Move all output from one device to another
 void jshTransmitMove(IOEventFlags from, IOEventFlags to) {
+  jshInterruptOff();
   unsigned char ptr = txTail;
   while (ptr != txHead) {
     if (IOEVENTFLAGS_GETTYPE(txBuffer[ptr].flags) == from) {
@@ -171,6 +172,7 @@ void jshTransmitMove(IOEventFlags from, IOEventFlags to) {
     }
     ptr = (unsigned char)((ptr+1)&TXBUFFERMASK);
   }
+  jshInterruptOn();
 }
 
 bool jshHasTransmitData() {
