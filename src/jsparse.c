@@ -495,7 +495,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             argPtrSize = newArgPtrSize;
           }
           argPtr[argCount++] = jsvSkipNameAndUnLock(jspeAssignmentExpression());
-          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany(argCount, argPtr);, 0);
+          if (execInfo.lex->tk!=')') JSP_MATCH_WITH_CLEANUP_AND_RETURN(',',jsvUnLockMany((unsigned)argCount, argPtr);, 0);
         }
 
         JSP_MATCH(')');
@@ -532,7 +532,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       }
 
       // unlock values if we locked them
-      jsvUnLockMany(allocatedArgCount, argPtr);
+      jsvUnLockMany((unsigned)allocatedArgCount, argPtr);
 
       /* Return to old 'this' var. No need to unlock as we never locked before */
       if (execInfo.thisVar) jsvUnRef(execInfo.thisVar);

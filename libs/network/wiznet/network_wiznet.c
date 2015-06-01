@@ -50,7 +50,7 @@ uint8_t net_wiznet_getFreeSocket() {
 
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_wiznet_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   if (dns_query(0, net_wiznet_getFreeSocket(), (uint8_t*)hostName) == 1) {
     *out_ip_addr = *(unsigned long*)&Server_IP_Addr[0];

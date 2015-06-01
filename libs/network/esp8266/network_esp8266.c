@@ -383,7 +383,7 @@ bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
 // ------------------------------------------------------------------------------------------------------------------------
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_esp8266_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_esp8266_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   // hacky - save the last checked name so we can put it straight into the request
   *out_ip_addr = 0xFFFFFFFF;
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_DNS_NAME, jsvNewFromString(hostName)));

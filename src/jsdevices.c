@@ -90,7 +90,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   }
 #endif
   if (device==EV_NONE) return;
-  unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
+  unsigned char txHeadNext = (unsigned char)((txHead+1)&TXBUFFERMASK);
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
     while (txHeadNext==txTail) {
@@ -103,7 +103,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
     jsiSetBusy(BUSY_TRANSMIT, false);
   }
   txBuffer[txHead].flags = device;
-  txBuffer[txHead].data = (char)data;
+  txBuffer[txHead].data = data;
   txHead = txHeadNext;
 
   jshUSARTKick(device); // set up interrupts if required
@@ -182,8 +182,8 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF) 
     jshSetFlowControlXON(channel, false);
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
-  unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
 #ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
+  unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
   if (ioHead!=ioTail && ioHead!=nextTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
