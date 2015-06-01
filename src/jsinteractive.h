@@ -66,8 +66,6 @@ void jsiConsolePrint(const char *str);
 void jsiConsolePrintf(const char *fmt, ...);
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
-/// Transmit an integer
-void jsiConsolePrintInt(JsVarInt d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)

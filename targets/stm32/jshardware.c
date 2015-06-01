@@ -1210,10 +1210,6 @@ void jshInit() {
   srand(jshGetRandomNumber());
 #endif
 
-
-  /*jsiConsolePrint("\r\n\r\n");
-  jsiConsolePrintInt(SystemCoreClock/1000000);jsiConsolePrint(" Mhz\r\n\r\n");*/
-
   /* Work out microsecond delay for jshDelayMicroseconds...
 
    Different compilers/different architectures may run at different speeds so
@@ -1254,68 +1250,6 @@ void jshInit() {
   JSH_DELAY_MULTIPLIER = (int)(1.024 * getSystemTimerFreq() * JSH_DELAY_MULTIPLIER / (tIter*1000));
 //  JSH_DELAY_OVERHEAD = (int)(tOverhead * JSH_DELAY_MULTIPLIER / tIter);
   jshInterruptOn();
-
-
-
-/*  jsiConsolePrint("\r\nstart = ");jsiConsolePrintInt(tStart);
-  jsiConsolePrint("\r\nend1 = ");jsiConsolePrintInt(tEnd1);
-  jsiConsolePrint("\r\nend2 = ");jsiConsolePrintInt(tEnd2);
-  jsiConsolePrint("\r\nend3 = ");jsiConsolePrintInt(tEnd3);
-  jsiConsolePrint("\r\nend4 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nend5 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nend6 = ");jsiConsolePrintInt(tEnd4);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd1-tStart);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd2-tEnd1);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tEnd3-tEnd2);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd4-tEnd3);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd5-tEnd4);
-  jsiConsolePrint("\r\nt for JSH_DELAY_MULTIPLIER*2 = ");jsiConsolePrintInt(tEnd6-tEnd5);
-  jsiConsolePrint("\r\ncalculated t for JSH_DELAY_MULTIPLIER = ");jsiConsolePrintInt(tIter);*/
-
-//  jsiConsolePrint("\r\ncalculated overhead = ");jsiConsolePrintInt(tOverhead);
-//  jsiConsolePrint("\r\nticks per ms =");jsiConsolePrintInt(jshGetTimeFromMilliseconds(1));
-//  jsiConsolePrint("\r\niterations per ms*1000 = ");jsiConsolePrintInt(JSH_DELAY_MULTIPLIER);
-//  jsiConsolePrint("\r\niterations overhead = ");jsiConsolePrintInt(JSH_DELAY_OVERHEAD);
-//  jsiConsolePrint("\r\n");
-//  jshTransmitFlush();
-
-/*  Pin pin = 1;
-  jshPinOutput(pin, 1);
-  jshInterruptOff();
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(100);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(200);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(200);
-  jshPinSetValue(pin, 0);
-  jshDelayMicroseconds(1000);
-  jshPinSetValue(pin, 1);
-  jshDelayMicroseconds(1000);
-  jshPinSetValue(pin, 0);
-  jshInterruptOn();*/
 
   /* Enable Utility Timer Update interrupt. We'll enable the
    * utility timer when we need it. */
@@ -1841,9 +1775,6 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
     unsigned int prescale = clockTicks >> 16; // ensure that maxTime isn't greater than the timer can count to
     TIM_TimeBaseStructure.TIM_Prescaler = (uint16_t)prescale;
     TIM_TimeBaseStructure.TIM_Period = (uint16_t)(clockTicks/(prescale+1));
-    /*jsiConsolePrintInt(SystemCoreClock);jsiConsolePrint(",");
-    jsiConsolePrintInt(TIM_TimeBaseStructure.TIM_Period);jsiConsolePrint(",");
-    jsiConsolePrintInt(prescale);jsiConsolePrint("\n");*/
   }
 
 //  PrescalerValue = (uint16_t) ((SystemCoreClock /2) / 28000000) - 1;
@@ -2213,12 +2144,9 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
       SPI_BaudRatePrescaler_64,SPI_BaudRatePrescaler_128,SPI_BaudRatePrescaler_256 };
   int bestDifference = 0x7FFFFFFF;
   unsigned int i;
-  //jsiConsolePrint("BaudRate ");jsiConsolePrintInt(inf->baudRate);jsiConsolePrint("\n");
   for (i=0;i<sizeof(baudRatesDivisors)/sizeof(unsigned int);i++) {
-    //jsiConsolePrint("Divisor ");jsiConsolePrintInt(baudRatesDivisors[i]);
     unsigned int rate = spiFreq / baudRatesDivisors[i];
 
-    //jsiConsolePrint(" rate "); jsiConsolePrintInt(rate);
     int rateDiff = inf->baudRate - (int)rate;
     if (rateDiff<0) rateDiff *= -1;
 
@@ -2226,13 +2154,10 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
     if (inf->baudRateSpec==SPIB_MAXIMUM && rate > (unsigned int)inf->baudRate) rateDiff += 0x10000000;
     if (inf->baudRateSpec==SPIB_MINIMUM && rate < (unsigned int)inf->baudRate) rateDiff += 0x10000000;
 
-    //jsiConsolePrint(" diff "); jsiConsolePrintInt(rateDiff);
     if (rateDiff < bestDifference) {
-      //jsiConsolePrint(" chosen");
       bestDifference = rateDiff;
       SPI_InitStructure.SPI_BaudRatePrescaler = baudRatesIds[i];
     }
-    //jsiConsolePrint("\n");
   }
 
   uint8_t spiIRQ;

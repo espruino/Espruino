@@ -161,14 +161,6 @@ void jsiConsolePrintf(const char *fmt, ...) {
   va_end(argp);
 }
 
-
-NO_INLINE void jsiConsolePrintInt(JsVarInt d) {
-    char buf[32];
-    itostr(d, buf, 10);
-    jsiConsolePrint(buf);
-}
-
-
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
   size_t chars = 0;
