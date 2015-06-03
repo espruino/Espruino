@@ -1423,29 +1423,31 @@ void jsiIdle() {
       JsVar *timerCallback = jsvObjectGetChild(timerPtr, "callback", 0);
       JsVar *watchPtr = jsvObjectGetChild(timerPtr, "watch", 0); // for debounce - may be undefined
       bool exec = true;
-      JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-      if (data) {
+      JsVar *data = 0;
+      if (watchPtr) {
+        data = jsvNewWithFlags(JSV_OBJECT);
         // if we were from a watch then we were delayed by the debounce time...
-        JsVarInt delay = 0;
-        if (watchPtr)
-          delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
-        // Create the 'time' variable that will be passed to the user
-        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timeUntilNext-delay)/1000);
-        // if it was a watch, set the last state up
-        if (watchPtr) {
+        if (data) {
+          JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
+          // Create the 'time' variable that will be passed to the user
+          JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timeUntilNext-delay)/1000);
+          // if it was a watch, set the last state up
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
           exec = jsiShouldExecuteWatch(watchPtr, state);
           // set up the lastTime variable of data to what was in the watch
           jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
           // set up the watches lastTime to this one
           jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
+          jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
         }
-        jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
       }
       JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (exec) {
         JsVar *argsArray = jsvObjectGetChild(timerPtr, "args", 0);
-        if (!jsiExecuteEventCallbackArgsArray(0, timerCallback, argsArray) && interval) {
+        bool execResult = data ?
+            jsiExecuteEventCallback(0, timerCallback, 1, &data) :
+            jsiExecuteEventCallbackArgsArray(0, timerCallback, argsArray);
+        if (!execResult && interval) {
           jsError("Error processing interval - removing it.");
           jsErrorFlags |= JSERR_CALLBACK;
         }
