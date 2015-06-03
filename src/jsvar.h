@@ -64,15 +64,20 @@ typedef enum {
   _JSV_STRING_END = JSV_FLAT_STRING,
     JSV_STRING_EXT_0 = JSV_FLAT_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
-  _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
+    _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
+    // _JSV_VAR_END is:
+    //     39 on systems with 8 bit JsVarRefs
+    //     43 on systems with 16 bit JsVarRefs
+    //     51 on systems with 32 bit JsVarRefs (more if on a 64 bit platform though)
 
-    JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1,
+    JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1, // probably this is 63
 
     JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
     JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
+    // 3 bits left over here on most systems
 
     JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
