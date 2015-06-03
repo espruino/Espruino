@@ -32,7 +32,7 @@ typedef int SOCKET;
  #define MSG_NOSIGNAL 0x4000 /* don't raise SIGPIPE */ // IGNORED ANYWAY!
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_cc3000_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   gethostbyname(hostName, strlen(hostName), out_ip_addr);
   *out_ip_addr = networkFlipIPAddress(*out_ip_addr);
 }

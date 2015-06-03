@@ -2256,7 +2256,7 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
 void jsvGetArrayItems(const JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, arr);
-  int i = 0;
+  unsigned int i = 0;
   while (jsvObjectIteratorHasValue(&it)) {
     if (i<itemCount)
       itemPtr[i++] = jsvObjectIteratorGetValue(&it);

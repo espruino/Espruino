@@ -1,4 +1,10 @@
-     1v80 : ...
+     1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
+            Fix some potential pointer issues in hashlib
+            Make debounced setWatch output state+time information (regression fix #537)
+            Shorten some internal property names (faster/less mem is 4 chars or under)
+            Change 'internal property' prefix from '>' (fix #540)
+            Duplicate properties in an object defn. now cause second to be used (fix #495)
+            Make sure `E.unmountSD` doesn't forget custom SD card configs from `E.connectSDCard`
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

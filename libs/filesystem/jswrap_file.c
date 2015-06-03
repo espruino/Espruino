@@ -16,8 +16,8 @@
 #include "jswrap_file.h"
 #include "jsparse.h"
 
-#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSdata" // the data in each file
-#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSOpenFiles" // the list of open files
+#define JS_FS_DATA_NAME JS_HIDDEN_CHAR_STR"FSd" // the data in each file
+#define JS_FS_OPEN_FILES_NAME JS_HIDDEN_CHAR_STR"FSo" // the list of open files
 
 #if !defined(LINUX) && !defined(USE_FILESYSTEM_SDIO)
 #define SD_CARD_ANYWHERE
@@ -199,9 +199,6 @@ void jswrap_file_kill() {
     fat_initialised = false;
     f_mount(0, 0, 0);
   }
-#endif
-#ifdef SD_CARD_ANYWHERE
-  sdSPISetup(0,0);
 #endif
 }
 

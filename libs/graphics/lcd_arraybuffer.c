@@ -17,14 +17,14 @@
 #include "jsvariterator.h"
 
 // returns the BIT index, so the bottom 3 bits specify the bit in the byte
-size_t lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {
+unsigned int lcdGetPixelIndex_ArrayBuffer(JsGraphics *gfx, int x, int y, int pixelCount) {
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_ZIGZAG) {
     if (y&1) x = gfx->data.width - (x+pixelCount);
   }
   if (gfx->data.flags & JSGRAPHICSFLAGS_ARRAYBUFFER_VERTICAL_BYTE)
-    return (size_t)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
+    return (unsigned int)(((x + (y>>3)*gfx->data.width)<<3) | (y&7));
   else
-    return (size_t)((x + y*gfx->data.width)*gfx->data.bpp);
+    return (unsigned int)((x + y*gfx->data.width)*gfx->data.bpp);
 }
 
 unsigned int lcdGetPixel_ArrayBuffer(JsGraphics *gfx, short x, short y) {

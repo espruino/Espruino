@@ -132,9 +132,9 @@ bool jswrap_wlan_connect(JsVar *wlanObj, JsVar *vAP, JsVar *vKey, JsVar *callbac
   if (!networkGetFromVar(&net)) return false;
 
   // if previously completely disconnected, try and reconnect
-  if (jsvGetBoolAndUnLock(jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC",0))) {
+  if (jsvGetBoolAndUnLock(jsvObjectGetChild(wlanObj,JS_HIDDEN_CHAR_STR"DIS",0))) {
     cc3000_initialise(wlanObj);
-    jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(false)));
+    jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DIS", jsvNewFromBool(false)));
   }
 
   if (jsvIsFunction(callback)) {
@@ -172,7 +172,7 @@ void jswrap_wlan_disconnect(JsVar *wlanObj) {
   JsNetwork net;
   if (!networkGetFromVar(&net)) return;
 
-  jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DISC", jsvNewFromBool(true)));
+  jsvUnLock(jsvObjectSetChild(wlanObj,JS_HIDDEN_CHAR_STR"DIS", jsvNewFromBool(true)));
   networkState = NETWORKSTATE_OFFLINE; // force offline
   //wlan_disconnect();
   wlan_stop();

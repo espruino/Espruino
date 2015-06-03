@@ -52,7 +52,7 @@ uint32_t networkParseIPAddress(const char *ip) {
     }
     ip++;
   }
-  addr = (addr>>8) | (unsigned long)(n<<24);
+  addr = (addr>>8) | (uint32_t)(n<<24);
   return addr;
 }
 
@@ -66,7 +66,7 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
     if (v>=0 && v<16) {
       n = n*16 + v;
     } else if (*ip==':') {
-      addr[i++] = n;
+      addr[i++] = (unsigned char)n;
       n=0;
       if (i>5) return false; // too many items!
     } else {
@@ -74,7 +74,7 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
     }
     ip++;
   }
-  addr[i] = n;
+  addr[i] = (unsigned char)n;
   return i==5;
 }
 

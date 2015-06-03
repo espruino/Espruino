@@ -80,9 +80,9 @@ JsVar *jswrap_process_env() {
   JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
   if (arr) {
     const char *s = exportNames;
-    void **p = exportPtrs;
+    void **p = (void**)exportPtrs;
     while (*s) {
-      jsvUnLock(jsvObjectSetChild(arr, s, jsvNewFromInteger((JsVarInt)*p)));
+      jsvUnLock(jsvObjectSetChild(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p)));
       p++;
       while (*s) s++; // skip until 0
       s++; // skip over 0

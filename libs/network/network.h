@@ -65,7 +65,7 @@ typedef struct JsNetwork {
   /// If the given server socket can accept a connection, return it (or return < 0)
   int (*accept)(struct JsNetwork *net, int sckt);
   /// Get an IP address from a name
-  void (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
+  void (*gethostbyname)(struct JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure

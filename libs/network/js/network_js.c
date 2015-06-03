@@ -44,7 +44,8 @@ JsVar *callFn(char* name, int argCount, JsVar **argPtr) {
 // ------------------------------------------------------------------------------------------------------------------------
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_js_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_js_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
+  NOT_USED(net);
   // hacky - save the last checked name so we can put it straight into the request
   *out_ip_addr = 0xFFFFFFFF;
   jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, JSNET_DNS_NAME, jsvNewFromString(hostName)));
@@ -52,15 +53,18 @@ void net_js_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip
 
 /// Called on idle. Do any checks required for this device
 void net_js_idle(JsNetwork *net) {
+  NOT_USED(net);
 }
 
 /// Call just before returning to idle loop. This checks for errors and tries to recover. Returns true if no errors.
 bool net_js_checkError(JsNetwork *net) {
+  NOT_USED(net);
   return true;
 }
 
 /// if host=0, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success
 int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
+  NOT_USED(net);
   JsVar *hostVar = 0;
   if (host!=0) {
     // client
@@ -82,6 +86,7 @@ int net_js_createsocket(JsNetwork *net, uint32_t host, unsigned short port) {
 
 /// destroys the given socket
 void net_js_closesocket(JsNetwork *net, int sckt) {
+  NOT_USED(net);
   JsVar *args[1] = {
       jsvNewFromInteger(sckt)
   };
@@ -91,6 +96,7 @@ void net_js_closesocket(JsNetwork *net, int sckt) {
 
 /// If the given server socket can accept a connection, return it (or return < 0)
 int net_js_accept(JsNetwork *net, int serverSckt) {
+  NOT_USED(net);
   JsVar *netObj = jsvObjectGetChild(execInfo.hiddenRoot, JSNET_NAME, 0);
   JsVar *args[1] = {
       jsvNewFromInteger(serverSckt)
@@ -104,17 +110,18 @@ int net_js_accept(JsNetwork *net, int serverSckt) {
 
 /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
+  NOT_USED(net);
   JsVar *args[2] = {
       jsvNewFromInteger(sckt),
-      jsvNewFromInteger(len),
+      jsvNewFromInteger((JsVarInt)len),
   };
   JsVar *res = callFn( "recv", 2, args);
   jsvUnLockMany(2, args);
   int r = -1; // fail
   if (jsvIsString(res)) {
-    r = jsvGetStringLength(res);
-    if (r>len) r=len;
-    jsvGetStringChars(res, 0, buf, r);
+    r = (int)jsvGetStringLength(res);
+    if (r>(int)len) r=(int)len;
+    jsvGetStringChars(res, 0, (char*)buf, (size_t)r);
   }
   jsvUnLock(res);
   return r;
@@ -122,6 +129,7 @@ int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 
 /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
 int net_js_send(JsNetwork *net, int sckt, const void *buf, size_t len) {
+  NOT_USED(net);
   JsVar *args[2] = {
       jsvNewFromInteger(sckt),
       jsvNewFromEmptyString()

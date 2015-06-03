@@ -260,7 +260,7 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
     insertPos = (insertPos+1) & (UTILTIMERTASK_TASKS-1);
 
   bool haveChangedTimer = insertPos==utilTimerTasksTail;
-  //jsiConsolePrint("Insert at ");jsiConsolePrintInt(insertPos);jsiConsolePrint(", Tail is ");jsiConsolePrintInt(utilTimerTasksTail);jsiConsolePrint("\n");
+  //jsiConsolePrintf("Insert at %d, Tail is %d\n",insertPos,utilTimerTasksTail);
   // shift items forward
   int i = utilTimerTasksHead;
   while (i != insertPos) {
@@ -273,7 +273,7 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
   // increase task list size
   utilTimerTasksHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
 
-  //jsiConsolePrint("Head is ");jsiConsolePrintInt(utilTimerTasksHead);jsiConsolePrint("\n");
+  //jsiConsolePrint("Head is %d\n", utilTimerTasksHead);
   // now set up timer if not already set up...
   if (!utilTimerOn || haveChangedTimer) {
     utilTimerOn = true;

@@ -423,7 +423,7 @@ JsVar *jswrap_string_trim(JsVar *parent) {
   while (jsvStringIteratorHasChar(&it)) {
     bool ws = isWhitespace(jsvStringIteratorGetChar(&it));
     if (!ws) {
-      if (end<0) start = jsvStringIteratorGetIndex(&it);
+      if (end<0) start = (unsigned int)jsvStringIteratorGetIndex(&it);
       end = (int)jsvStringIteratorGetIndex(&it); // last
     }
     jsvStringIteratorNext(&it);
