@@ -159,8 +159,8 @@ typedef long long JsSysTime;
 #define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
 // internal names that hopefully nobody will be able to access
-#define JS_HIDDEN_CHAR '>' // initial character of var name determines that we shouldn't see this stuff
-#define JS_HIDDEN_CHAR_STR ">"
+#define JS_HIDDEN_CHAR '\xFF' // initial character of var name determines that we shouldn't see this stuff
+#define JS_HIDDEN_CHAR_STR "\xFF"
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"cod" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
