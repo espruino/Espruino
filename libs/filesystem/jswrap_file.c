@@ -200,9 +200,6 @@ void jswrap_file_kill() {
     f_mount(0, 0, 0);
   }
 #endif
-#ifdef SD_CARD_ANYWHERE
-  sdSPISetup(0,0);
-#endif
 }
 
 /*JSON{
