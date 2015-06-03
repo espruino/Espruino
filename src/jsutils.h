@@ -35,7 +35,12 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v80"
+
+#ifndef BUILDNUMBER
+#define JS_VERSION "1v79"
+#else
+#define JS_VERSION "1v79." BUILDNUMBER
+#endif
 /*
   In code:
   TODO - should be fixed
