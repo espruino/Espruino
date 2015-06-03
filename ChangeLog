@@ -3,6 +3,7 @@
             Make debounced setWatch output state+time information (regression fix #537)
             Shorten some internal property names (faster/less mem is 4 chars or under)
             Change 'internal property' prefix from '>' (fix #540)
+            Duplicate properties in an object defn. now cause second to be used (fix #495)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

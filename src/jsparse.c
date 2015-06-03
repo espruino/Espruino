@@ -1108,13 +1108,13 @@ NO_INLINE JsVar *jspeFactorObject() {
       }
       JSP_MATCH_WITH_CLEANUP_AND_RETURN(':', jsvUnLock(varName), contents);
       if (JSP_SHOULD_EXECUTE) {
-        JsVar *valueVar;
-        JsVar *value = jspeAssignmentExpression(); // value can be 0 (could be undefined!)
-        valueVar = jsvSkipNameAndUnLock(value);
         varName = jsvAsArrayIndexAndUnLock(varName);
-        varName = jsvMakeIntoVariableName(varName, valueVar);
-        jsvAddName(contents, varName);
-        jsvUnLock(valueVar);
+        JsVar *contentsName = jsvFindChildFromVar(contents, varName, true);
+        if (contentsName) {
+          JsVar *value = jsvSkipNameAndUnLock(jspeAssignmentExpression()); // value can be 0 (could be undefined!)
+          jsvUnLock(jsvSetValueOfName(contentsName, value));
+          jsvUnLock(value);
+        }
       }
       jsvUnLock(varName);
       // no need to clean here, as it will definitely be used
