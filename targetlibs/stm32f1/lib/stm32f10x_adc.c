@@ -201,6 +201,7 @@ void ADC_DeInit(ADC_TypeDef* ADCx)
     /* Release ADC2 from reset state */
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC2, DISABLE);
   }
+#ifdef ADC3
   else
   {
     if (ADCx == ADC3)
@@ -211,6 +212,7 @@ void ADC_DeInit(ADC_TypeDef* ADCx)
       RCC_APB2PeriphResetCmd(RCC_APB2Periph_ADC3, DISABLE);
     }
   }
+#endif
 }
 
 /**

@@ -114,7 +114,7 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD_R1_0
 DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
+STLIB=STM32F103xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
@@ -125,7 +125,7 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD_R1_1
 DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
+STLIB=STM32F103xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
 else ifdef ESPRUINO_1V3
@@ -134,10 +134,10 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-USE_TV=1
+#USE_TV=1
 USE_HASHLIB=1
 BOARD=ESPRUINOBOARD
-STLIB=STM32F10X_XL
+STLIB=STM32F103xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
 else ifdef PICO_1V0
@@ -146,7 +146,7 @@ USE_DFU=1
 DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
 USE_GRAPHICS=1
 BOARD=PICO_R1_0
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V1
@@ -157,7 +157,7 @@ USE_NET=1
 USE_GRAPHICS=1
 USE_TV=1
 BOARD=PICO_R1_1
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V2
@@ -169,13 +169,13 @@ USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
 BOARD=PICO_R1_2
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V3
 EMBEDDED=1
 #USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3 -DSTM32F401xE
+DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3
 USE_USB_HID=1
 USE_NET=1
 USE_GRAPHICS=1
@@ -183,7 +183,7 @@ USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
 BOARD=PICO_R1_3
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
@@ -824,112 +824,35 @@ targetlibs/stm32f1/lib/misc.c              \
 targetlibs/stm32f1/lib/stm32f10x_adc.c     \
 targetlibs/stm32f1/lib/stm32f10x_bkp.c     \
 targetlibs/stm32f1/lib/stm32f10x_can.c     \
-targetlibs/stm32f1/lib/stm32f10x_cec.c     \
-targetlibs/stm32f1/lib/stm32f10x_crc.c     \
 targetlibs/stm32f1/lib/stm32f10x_dac.c     \
-targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  \
 targetlibs/stm32f1/lib/stm32f10x_dma.c     \
 targetlibs/stm32f1/lib/stm32f10x_exti.c    \
 targetlibs/stm32f1/lib/stm32f10x_flash.c   \
-targetlibs/stm32f1/lib/stm32f10x_fsmc.c    \
 targetlibs/stm32f1/lib/stm32f10x_gpio.c    \
 targetlibs/stm32f1/lib/stm32f10x_i2c.c     \
 targetlibs/stm32f1/lib/stm32f10x_iwdg.c    \
 targetlibs/stm32f1/lib/stm32f10x_pwr.c     \
 targetlibs/stm32f1/lib/stm32f10x_rcc.c     \
 targetlibs/stm32f1/lib/stm32f10x_rtc.c     \
-targetlibs/stm32f1/lib/stm32f10x_sdio.c    \
 targetlibs/stm32f1/lib/stm32f10x_spi.c     \
 targetlibs/stm32f1/lib/stm32f10x_tim.c     \
 targetlibs/stm32f1/lib/stm32f10x_usart.c   \
 targetlibs/stm32f1/lib/stm32f10x_wwdg.c    \
 targetlibs/stm32f1/lib/system_stm32f10x.c
+#targetlibs/stm32f1/lib/stm32f10x_sdio.c    
+#targetlibs/stm32f1/lib/stm32f10x_cec.c     
+#targetlibs/stm32f1/lib/stm32f10x_crc.c     
+#targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  
+#targetlibs/stm32f1/lib/stm32f10x_fsmc.c    
 
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f1/usblib -I$(ROOT)/targetlibs/stm32f1/usb
-SOURCES +=                              \
-targetlibs/stm32f1/usblib/otgd_fs_cal.c       \
-targetlibs/stm32f1/usblib/otgd_fs_dev.c       \
-targetlibs/stm32f1/usblib/otgd_fs_int.c       \
-targetlibs/stm32f1/usblib/otgd_fs_pcd.c       \
-targetlibs/stm32f1/usblib/usb_core.c          \
-targetlibs/stm32f1/usblib/usb_init.c          \
-targetlibs/stm32f1/usblib/usb_int.c           \
-targetlibs/stm32f1/usblib/usb_mem.c           \
-targetlibs/stm32f1/usblib/usb_regs.c          \
-targetlibs/stm32f1/usblib/usb_sil.c           \
-targetlibs/stm32f1/usb/usb_desc.c              \
-targetlibs/stm32f1/usb/usb_endp.c              \
-targetlibs/stm32f1/usb/usb_istr.c              \
-targetlibs/stm32f1/usb/usb_prop.c              \
-targetlibs/stm32f1/usb/usb_pwr.c               \
-targetlibs/stm32f1/usb/usb_utils.c
-endif #USB
+SOURCES +=                                 \
+targetlibs/stm32usb/Src/stm32f1xx_ll_usb.c \
+targetlibs/stm32usb/Src/stm32f1xx_hal_pcd.c \
+targetlibs/stm32usb/Src/stm32f1xx_hal_pcd_ex.c 
+endif
 
 endif #STM32F1
-
-ifeq ($(FAMILY), STM32F2)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-ARM=1
-STM32=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32f2 -I$(ROOT)/targetlibs/stm32f2/lib
-DEFINES += -DSTM32F2
-SOURCES +=                                 \
-targetlibs/stm32f2/lib/misc.c              \
-targetlibs/stm32f2/lib/stm32f2xx_adc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_can.c     \
-targetlibs/stm32f2/lib/stm32f2xx_crc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_cryp_aes.c\
-targetlibs/stm32f2/lib/stm32f2xx_cryp.c    \
-targetlibs/stm32f2/lib/stm32f2xx_cryp_des.c\
-targetlibs/stm32f2/lib/stm32f2xx_cryp_tdes.c\
-targetlibs/stm32f2/lib/stm32f2xx_dac.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dbgmcu.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dcmi.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dma.c     \
-targetlibs/stm32f2/lib/stm32f2xx_exti.c     \
-targetlibs/stm32f2/lib/stm32f2xx_flash.c     \
-targetlibs/stm32f2/lib/stm32f2xx_fsmc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_gpio.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash_md5.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash_sha1.c     \
-targetlibs/stm32f2/lib/stm32f2xx_i2c.c     \
-targetlibs/stm32f2/lib/stm32f2xx_iwdg.c     \
-targetlibs/stm32f2/lib/stm32f2xx_pwr.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rcc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rng.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rtc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_sdio.c     \
-targetlibs/stm32f2/lib/stm32f2xx_spi.c     \
-targetlibs/stm32f2/lib/stm32f2xx_syscfg.c     \
-targetlibs/stm32f2/lib/stm32f2xx_tim.c     \
-targetlibs/stm32f2/lib/stm32f2xx_usart.c     \
-targetlibs/stm32f2/lib/stm32f2xx_wwdg.c    \
-targetlibs/stm32f2/lib/system_stm32f2xx.c
-
-
-ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f2/usblib -I$(ROOT)/targetlibs/stm32f2/usb
-SOURCES +=                                 \
-targetlibs/stm32f2/usb/usbd_cdc_vcp.c \
-targetlibs/stm32f2/usb/usb_irq_handlers.c \
-targetlibs/stm32f2/usb/usbd_desc.c \
-targetlibs/stm32f2/usb/usbd_usr.c \
-targetlibs/stm32f2/usb/usb_bsp.c \
-targetlibs/stm32f2/usblib/usbd_req.c \
-targetlibs/stm32f2/usblib/usb_dcd_int.c \
-targetlibs/stm32f2/usblib/usbd_core.c \
-targetlibs/stm32f2/usblib/usbd_cdc_core.c \
-targetlibs/stm32f2/usblib/usbd_ioreq.c \
-targetlibs/stm32f2/usblib/usb_core.c \
-targetlibs/stm32f2/usblib/usb_dcd.c
-#targetlibs/stm32f2/usblib/usb_otg.c \
-#targetlibs/stm32f2/usblib/usb_bsp_template.c \
-#targetlibs/stm32f2/usblib/usb_hcd.c \
-#targetlibs/stm32f2/usblib/usb_hcd_int.c
-endif #USB
-endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
@@ -1024,19 +947,12 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm324xx_fsmc.c
 
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 SOURCES +=                                 \
-targetlibs/stm32usb/usbd_conf.c \
-targetlibs/stm32usb/usb_device.c \
-targetlibs/stm32usb/usbd_cdc_hid.c \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
-targetlibs/stm32usb/Src/usbd_ctlreq.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
-targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c \
-targetlibs/stm32usb/Src/usbd_core.c \
-targetlibs/stm32usb/Src/usbd_ioreq.c \
-targetlibs/stm32usb/usbd_desc.c
-endif #USB
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c 
+endif
+
 endif #STM32F4
 
 
@@ -1143,6 +1059,17 @@ targets/stm32/main.c                    \
 targets/stm32/jshardware.c              \
 targets/stm32/stm32_it.c
 endif
+ifdef USB
+INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
+SOURCES +=                                 \
+targetlibs/stm32usb/usbd_conf.c \
+targetlibs/stm32usb/usb_device.c \
+targetlibs/stm32usb/usbd_cdc_hid.c \
+targetlibs/stm32usb/Src/usbd_ctlreq.c \
+targetlibs/stm32usb/Src/usbd_core.c \
+targetlibs/stm32usb/Src/usbd_ioreq.c \
+targetlibs/stm32usb/usbd_desc.c
+endif #USB
 endif
 
 ifdef LINUX

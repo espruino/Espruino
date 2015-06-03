@@ -33,13 +33,18 @@
   ******************************************************************************
 */
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f4xx.h"
-#include "stm32f4xx_hal.h"
+#include "usbd_conf.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
 #include "misc.h"
+#ifdef STM32F1
+#include "stm32f10x_gpio.h"
+#include "stm32f10x_rcc.h"
+#endif
+#ifdef STM32F4
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_rcc.h"
+#endif
 
 #include "Legacy/stm32_hal_legacy.h"
 

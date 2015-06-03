@@ -12,15 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #ifdef USB
- #ifdef STM32F1
-  #include "usb_utils.h"
-  #include "usb_lib.h"
-  #include "usb_conf.h"
-  #include "usb_pwr.h"
- #endif
- #ifdef STM32F4
-  #include "usbd_cdc_hid.h"
- #endif
+#include "usbd_cdc_hid.h"
 #endif
 
 #include "jshardware.h"
@@ -1163,13 +1155,8 @@ void jshInit() {
   // PREEMPTION
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
   // Slow the IO clocks down - we don't need them going so fast!
-#ifdef STM32VLDISCOVERY
-  RCC_PCLK1Config(RCC_HCLK_Div2);
-  RCC_PCLK2Config(RCC_HCLK_Div4);
-#else
   RCC_PCLK1Config(RCC_HCLK_Div2); // PCLK1 must be >13 Mhz for USB to work (see STM32F103 C/D/E errata)
   RCC_PCLK2Config(RCC_HCLK_Div4);
-#endif
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
   ticksSinceStart = 0;
@@ -1224,7 +1211,7 @@ void jshInit() {
 #ifdef USE_RTC
   // Set the RTC alarm (waking up from sleep)
 #ifdef STM32F1
-  NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannel = RTC_Alarm_IRQn;
 #else // if we have wakeup, use that rather than the alarm
   NVIC_InitStructure.NVIC_IRQChannel = RTC_WKUP_IRQn;
 #endif
@@ -2058,21 +2045,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#if USARTS>= 3 && !defined(NO_USART3)
+#ifdef USART3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#ifndef STM32F401xx // STM32F401 devices have USART6, but not 4 or 5!
-#if USARTS>= 4
+#ifdef UART4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if USARTS>= 5
+#ifdef UART5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#endif
-#if USARTS>= 6
+#ifdef USART6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif
@@ -2581,7 +2566,7 @@ bool jshFlashContainsCode() {
 
 #ifdef USB
 void jshSetUSBPower(bool isOn) {
-#ifdef STM32F1
+#ifdef STM32F1_TODO
   if (isOn) {
     _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);

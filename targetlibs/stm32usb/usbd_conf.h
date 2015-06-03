@@ -41,8 +41,14 @@
 //#include <stdio.h>
 //#include <stdlib.h>
 //#include <string.h>
+#ifdef STM32F1
+#include "stm32f1xx.h"
+#include "stm32f1xx_hal.h"
+#endif
+#ifdef STM32F4
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
+#endif
 
 /** @addtogroup USBD_OTG_DRIVER
   * @{

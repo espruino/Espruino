@@ -13,15 +13,7 @@
  */
 #include "platform_config.h"
 #ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
- #include "usb_utils.h"
- #include "usb_lib.h"
- #include "usb_desc.h"
- #include "usb_pwr.h"
-#endif
-#ifdef STM32F4
 #include "usb_device.h"
-#endif
 #endif
 #include "jsinteractive.h"
 #include "jshardware.h"
@@ -38,13 +30,7 @@ int main(void){
 
   jshInit();
 #ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
-  USB_Init_Hardware();
-  USB_Init();
-#endif
-#ifdef STM32F4
   MX_USB_DEVICE_Init();
-#endif
 #endif
 
   bool buttonState = false;

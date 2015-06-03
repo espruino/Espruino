@@ -39,8 +39,14 @@
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#ifdef STM32F1
+#include "stm32f1xx.h"
+#include "stm32f1xx_hal.h"
+#endif
+#ifdef STM32F4
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
+#endif
 #include "usbd_def.h"
 
 extern USBD_HandleTypeDef hUsbDeviceFS;

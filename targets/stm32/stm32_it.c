@@ -31,11 +31,8 @@
 #include "platform_config.h"
 #include "stm32_it.h"
 #ifdef USB
-#if defined(STM32F1) || defined(STM32F3)
- #include "usb_utils.h"
- #include "usb_lib.h"
- #include "usb_istr.h"
- #include "usb_pwr.h"
+#ifdef STM32F1
+  #include "stm32f1xx_hal_pcd.h"
 #endif
 #ifdef STM32F4
   #include "stm32f4xx_hal_pcd.h"
@@ -378,46 +375,21 @@ void SPI3_IRQHandler(void) {
 #ifdef USB
 
 #ifdef STM32F1
-/*******************************************************************************
-* Function Name  : USB_IRQHandler
-* Description    : This function handles USB Low Priority interrupts
-*                  requests.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
+extern PCD_HandleTypeDef hpcd_USB_FS;
+/**
+* @brief This function handles USB low priority or CAN RX0 interrupts.
+*/
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
-  USB_Istr();
-}
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
 
-void USBWakeUp_IRQHandler(void)
-{
-  EXTI_ClearITPendingBit(EXTI_Line18);
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
+
+  /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
 }
 #endif // STM32F1
-
-#ifdef STM32F3
-#if defined (USB_INT_DEFAULT)
-void USB_LP_CAN1_RX0_IRQHandler(void)
-#elif defined (USB_INT_REMAP)
-void USB_LP_IRQHandler(void)
-#endif
-{
-   USB_Istr();
-}
-
-#if defined (USB_INT_DEFAULT)
-void USBWakeUp_IRQHandler(void)
-#elif defined (USB_INT_REMAP)
-void USBWakeUp_RMP_IRQHandler(void)
-#endif
-{
-  /* Initiate external resume sequence (1 step) */
-  Resume(RESUME_EXTERNAL);
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-#endif // STM32F3
 
 #ifdef STM32F4
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -444,32 +416,6 @@ void OTG_FS_WKUP_IRQHandler(void)
 void OTG_FS_IRQHandler(void) {
   HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
 }
-
-#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
-
-extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-
-/**
-  * @brief  This function handles EP1_IN Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_IN_IRQHandler(void)
-{
-  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
-}
-
-/**
-  * @brief  This function handles EP1_OUT Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_OUT_IRQHandler(void)
-{
-  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
-}
-#endif
 
 #endif // STM32F4
 #endif // USB

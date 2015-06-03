@@ -170,46 +170,63 @@ void TIM_DeInit(TIM_TypeDef* TIMx)
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM8, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM8, DISABLE);
   }
+#ifdef TIM9
   else if (TIMx == TIM9)
   {      
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM9, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM9, DISABLE);  
    }  
+#endif
+#ifdef TIM10
   else if (TIMx == TIM10)
   {      
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM10, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM10, DISABLE);  
-  }  
+  }
+#endif
+#ifdef TIM11
   else if (TIMx == TIM11) 
   {     
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, DISABLE);  
   }  
+#endif
+#ifdef TIM12
   else if (TIMx == TIM12)
   {      
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, DISABLE);  
   }  
+#endif
+#ifdef TIM13
   else if (TIMx == TIM13) 
   {       
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM13, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM13, DISABLE);  
   }
+#endif
+#ifdef TIM14
   else if (TIMx == TIM14) 
   {       
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM14, ENABLE);
     RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM14, DISABLE);  
   }        
+#endif
+#ifdef TIM15
   else if (TIMx == TIM15)
   {
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM15, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM15, DISABLE);
   } 
+#endif
+#ifdef TIM16
   else if (TIMx == TIM16)
   {
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM16, ENABLE);
     RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM16, DISABLE);
   } 
+#endif
+#ifdef TIM17
   else
   {
     if (TIMx == TIM17)
@@ -218,6 +235,7 @@ void TIM_DeInit(TIM_TypeDef* TIMx)
       RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM17, DISABLE);
     }  
   }
+#endif
 }
 
 /**
@@ -263,7 +281,11 @@ void TIM_TimeBaseInit(TIM_TypeDef* TIMx, TIM_TimeBaseInitTypeDef* TIM_TimeBaseIn
   /* Set the Prescaler value */
   TIMx->PSC = TIM_TimeBaseInitStruct->TIM_Prescaler;
     
-  if ((TIMx == TIM1) || (TIMx == TIM8)|| (TIMx == TIM15)|| (TIMx == TIM16) || (TIMx == TIM17))  
+  if ((TIMx == TIM1) || (TIMx == TIM8)
+#ifdef TIM15
+      || (TIMx == TIM15) || (TIMx == TIM16) || (TIMx == TIM17)
+#endif
+      )
   {
     /* Set the Repetition Counter value */
     TIMx->RCR = TIM_TimeBaseInitStruct->TIM_RepetitionCounter;
@@ -316,8 +338,11 @@ void TIM_OC1Init(TIM_TypeDef* TIMx, TIM_OCInitTypeDef* TIM_OCInitStruct)
   /* Set the Output State */
   tmpccer |= TIM_OCInitStruct->TIM_OutputState;
     
-  if((TIMx == TIM1) || (TIMx == TIM8)|| (TIMx == TIM15)||
-     (TIMx == TIM16)|| (TIMx == TIM17))
+  if((TIMx == TIM1) || (TIMx == TIM8)
+#ifdef TIM15
+      || (TIMx == TIM15) || (TIMx == TIM16) || (TIMx == TIM17)
+#endif
+      )
   {
     assert_param(IS_TIM_OUTPUTN_STATE(TIM_OCInitStruct->TIM_OutputNState));
     assert_param(IS_TIM_OCN_POLARITY(TIM_OCInitStruct->TIM_OCNPolarity));

@@ -31,7 +31,7 @@
   *    add some code to deal with this issue inside the SetSysClock() function.
   *
   * 4. The default value of HSE crystal is set to 8 MHz (or 25 MHz, depedning on
-  *    the product used), refer to "HSE_VALUE" define in "stm32f10x.h" file. 
+  *    the product used), refer to "HSE_VALUE" define in "stm32f1xx.h" file.
   *    When HSE is used as system clock source, directly or through PLL, and you
   *    are using different crystal you have to adapt the HSE value to your own
   *    configuration.
@@ -68,7 +68,7 @@
   * @{
   */
 
-#include "stm32f10x.h"
+#include "stm32f1xx.h"
 
 /**
   * @}
@@ -1059,7 +1059,7 @@ static void SetSysClockTo72(void)
     /*  PLL configuration: PLLCLK = HSE * 9 = 72 MHz */
     RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLXTPRE |
                                         RCC_CFGR_PLLMULL));
-    RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC_HSE | RCC_CFGR_PLLMULL9);
+    RCC->CFGR |= (uint32_t)(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMULL9);
 #endif /* STM32F10X_CL */
 
     /* Enable PLL */
