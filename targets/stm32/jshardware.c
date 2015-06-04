@@ -1333,7 +1333,7 @@ void jshIdle() {
   bool USBConnected = jshIsUSBSERIALConnected();
   if (wasUSBConnected != USBConnected) {
     wasUSBConnected = USBConnected;
-    if (USBConnected)
+    if (USBConnected && jsiGetConsoleDevice() != EV_LIMBO)
       jsiSetConsoleDevice(EV_USBSERIAL);
     else {
       if (jsiGetConsoleDevice() == EV_USBSERIAL)

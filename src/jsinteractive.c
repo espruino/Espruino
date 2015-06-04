@@ -581,8 +581,6 @@ void jsiInit(bool autoLoad) {
   jsiStatus = JSIS_NONE;
   consoleDevice = EV_LIMBO;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
-  if (jshIsUSBSERIALConnected())
-    consoleDevice = EV_USBSERIAL;
 
   /* If flash contains any code, then we should
      Try and load from it... */

@@ -310,6 +310,7 @@ const char *jshGetDeviceString(IOEventFlags device) {
   switch (device) {
   case EV_LOOPBACKA: return "LoopbackA";
   case EV_LOOPBACKB: return "LoopbackB";
+  case EV_LIMBO: return "Limbo";
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif
