@@ -64,11 +64,16 @@ typedef enum {
  // EV_DEVICE_MAX should not be >64 - see DEVICE_INITIALISED_FLAGS
  // Also helps if we're under 32 so we can fit IOEventFlags into a byte
  EV_TYPE_MASK = NEXT_POWER_2(EV_DEVICE_MAX) - 1,
- EV_CHARS_MASK = 3 * NEXT_POWER_2(EV_DEVICE_MAX), // see IOEVENT_MAXCHARS
- // -----------------------------------------
+ // ----------------------------------------- CHARACTERS RECEIVED
+ EV_CHARS_ONE = EV_TYPE_MASK+1,
+ EV_CHARS_SHIFT = GET_BIT_NUMBER(EV_CHARS_ONE),
+ EV_CHARS_MASK = 3 * EV_CHARS_ONE, // see IOEVENT_MAXCHARS
+ // ----------------------------------------- WATCH EVENTS
  // if the pin we're watching is high, the handler sets this
- EV_EXTI_IS_HIGH = NEXT_POWER_2(EV_DEVICE_MAX),
+ EV_EXTI_IS_HIGH = EV_TYPE_MASK+1,
 } PACKED_FLAGS IOEventFlags;
+
+
 
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
@@ -76,8 +81,8 @@ typedef enum {
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
 
 #define IOEVENTFLAGS_GETTYPE(X) ((X)&EV_TYPE_MASK)
-#define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>5)+1)
-#define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<5)))
+#define IOEVENTFLAGS_GETCHARS(X) ((((X)&EV_CHARS_MASK)>>EV_CHARS_SHIFT)+1)
+#define IOEVENTFLAGS_SETCHARS(X,CHARS) ((X)=(((X)&(IOEventFlags)~EV_CHARS_MASK) | (((CHARS)-1)<<EV_CHARS_SHIFT)))
 #define IOEVENT_MAXCHARS 4 // See EV_CHARS_MASK
 
 typedef union {
