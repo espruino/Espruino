@@ -374,26 +374,24 @@ void SPI3_IRQHandler(void) {
 
 #ifdef USB
 
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+
 #ifdef STM32F1
-extern PCD_HandleTypeDef hpcd_USB_FS;
 /**
 * @brief This function handles USB low priority or CAN RX0 interrupts.
 */
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
-  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+}
 
-  /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
-  HAL_PCD_IRQHandler(&hpcd_USB_FS);
-  /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
-
-  /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
+void USBWakeUp_IRQHandler(void)
+{
+  EXTI_ClearITPendingBit(EXTI_Line18);
 }
 #endif // STM32F1
 
 #ifdef STM32F4
-extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
 /**
 * @brief This function handles USB On-The-Go FS Wakeup through EXTI Line18 interrupt.
 */

@@ -33,18 +33,12 @@
   ******************************************************************************
 */
 /* Includes ------------------------------------------------------------------*/
+#include "platform_config.h"
+#include "jshardware.h"
 #include "usbd_conf.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
 #include "misc.h"
-#ifdef STM32F1
-#include "stm32f10x_gpio.h"
-#include "stm32f10x_rcc.h"
-#endif
-#ifdef STM32F4
-#include "stm32f4xx_gpio.h"
-#include "stm32f4xx_rcc.h"
-#endif
 
 #include "Legacy/stm32_hal_legacy.h"
 
@@ -68,13 +62,10 @@ void SystemClock_Config(void);
 
 void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
 {
+#ifdef STM32F4
   if(hpcd->Instance==USB_OTG_FS)
   {
-  /* USER CODE BEGIN USB_OTG_FS_MspInit 0 */
-
-  /* USER CODE END USB_OTG_FS_MspInit 0 */
     /* Peripheral clock enable */
-
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
     RCC_AHB2PeriphClockCmd(RCC_AHB2Periph_OTG_FS, ENABLE) ; // __USB_OTG_FS_CLK_ENABLE();
 
@@ -84,27 +75,8 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
     PA11     ------> USB_OTG_FS_DM
     PA12     ------> USB_OTG_FS_DP 
     */
-    /*GPIO_InitTypeDef GPIO_InitStruct;
 
-    GPIO_InitStruct.Pin = GPIO_PIN_9;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
-    GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);*/
-
-
-
-
-
-
-
-     /* Configure DM DP Pins */
+    /* Configure DM DP Pins */
     GPIO_InitTypeDef GPIO_InitStructure;
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 |
                                   GPIO_Pin_12;
@@ -127,55 +99,65 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
 
 
     NVIC_InitTypeDef NVIC_InitStructure;
-
     NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12; // set this quite low. it can take a while to fill RX/TX buffers and don't let it break other stuff
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-
-    //HAL_NVIC_SetPriority(OTG_FS_IRQn, 0, 0);
-    //HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
-
-  /* USER CODE BEGIN USB_OTG_FS_MspInit 1 */
-
-  /* USER CODE END USB_OTG_FS_MspInit 1 */
-
   }
+#endif
+#ifdef STM32F1
+  RCC_USBCLKConfig(RCC_USBCLKSource_PLLCLK_1Div5);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, ENABLE);
+
+  NVIC_InitTypeDef NVIC_InitStructure;
+  /* Enable the USB interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 12; // set this quite low. it can take a while to fill RX/TX buffers and don't let it break other stuff
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Enable the USB Wake-up interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USBWakeUp_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_Init(&NVIC_InitStructure);
+
+  jshPinOutput(USB_DISCONNECT_PIN, 0); // turn on USB
+#endif
 
 }
 
 void HAL_PCD_MspDeInit(PCD_HandleTypeDef* hpcd)
 {
+#ifdef STM32F4
   if(hpcd->Instance==USB_OTG_FS)
   {
-  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 0 */
-
-  /* USER CODE END USB_OTG_FS_MspDeInit 0 */
     /* Peripheral clock disable */
-
     RCC_AHB2PeriphClockCmd(RCC_AHB2Periph_OTG_FS, DISABLE); // __USB_OTG_FS_CLK_DISABLE();
 
-    /**USB_OTG_FS GPIO Configuration    
-    PA9     ------> USB_OTG_FS_VBUS
-    PA11     ------> USB_OTG_FS_DM
-    PA12     ------> USB_OTG_FS_DP 
-    */
     //HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9|GPIO_PIN_11|GPIO_PIN_12);
     // TODO GW
 
     /* Peripheral interrupt Deinit*/
-    //HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
     NVIC_InitTypeDef NVIC_InitStructure;
     NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
     NVIC_Init(&NVIC_InitStructure);
-
-
-  /* USER CODE BEGIN USB_OTG_FS_MspDeInit 1 */
-
-  /* USER CODE END USB_OTG_FS_MspDeInit 1 */
   }
+#endif
+#ifdef STM32F1
+  if(hpcd->Instance==USB)
+  {
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USB, DISABLE);
+
+    /* Peripheral interrupt Deinit*/
+    NVIC_InitTypeDef NVIC_InitStructure;
+    NVIC_InitStructure.NVIC_IRQChannel = USB_LP_CAN1_RX0_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_Init(&NVIC_InitStructure);
+  }
+#endif
 }
 
 /**
@@ -232,13 +214,15 @@ void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd)
   /*Set USB Current Speed*/
   switch (hpcd->Init.speed)
   {
+#ifndef STM32F1  
   case PCD_SPEED_HIGH:
     speed = USBD_SPEED_HIGH;
     break;
+#endif    
   case PCD_SPEED_FULL:
     speed = USBD_SPEED_FULL;    
     break;
-	
+
   default:
     speed = USBD_SPEED_FULL;    
     break;    
@@ -256,10 +240,12 @@ void HAL_PCD_ResetCallback(PCD_HandleTypeDef *hpcd)
   * @retval None
   */
 void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd)
-{  
-   /* Inform USB library that core enters in suspend Mode */
+{
+  /* Inform USB library that core enters in suspend Mode */
   USBD_LL_Suspend(hpcd->pData);
+#ifndef STM32F1    
   __HAL_PCD_GATE_PHYCLOCK(hpcd);
+#endif  
   /*Enter in STOP mode */
   /* USER CODE BEGIN 2 */
   if (hpcd->Init.low_power_enable)
@@ -281,6 +267,7 @@ void HAL_PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
   /* USER CODE BEGIN 3 */
   /* USER CODE END 3 */
   USBD_LL_Resume(hpcd->pData);
+
 }
 
 /**
@@ -336,11 +323,10 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
 USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
 { 
   /* Init USB_IP */
-  if (pdev->id == DEVICE_FS) {
-  /* Link The driver to the stack */	
+  /* Link The driver to the stack */  
   hpcd_USB_OTG_FS.pData = pdev;
   pdev->pData = &hpcd_USB_OTG_FS; 
-  
+#ifdef STM32F4
   hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
   hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
   hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL; // MUST KEEP THIS FULL - buffer sizes only big enough for this, not high
@@ -359,7 +345,24 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40); // HID IN
   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x20); // CDC CMD
   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x40); // CDC IN
-  }
+#endif  
+#ifdef STM32F1
+  hpcd_USB_OTG_FS.Instance = USB;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 8;
+  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
+  hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_8;
+  hpcd_USB_OTG_FS.Init.Sof_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.battery_charging_enable = DISABLE;
+  HAL_PCD_Init(&hpcd_USB_OTG_FS);
+
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x00 , PCD_SNG_BUF, 0x18);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x80 , PCD_SNG_BUF, 0x58);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x81 , PCD_SNG_BUF, 0xC0);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x01 , PCD_SNG_BUF, 0x110);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x82 , PCD_SNG_BUF, 0x100);
+#endif  
   return USBD_OK;
 }
 
@@ -401,7 +404,7 @@ USBD_StatusTypeDef  USBD_LL_Stop (USBD_HandleTypeDef *pdev)
   * @param  pdev: Device handle
   * @param  ep_addr: Endpoint Number
   * @param  ep_type: Endpoint Type
-  * @param  ep_mps: Endpoint Max Packet Size                 
+  * @param  ep_mps: Endpoint Max Packet Size
   * @retval USBD Status
   */
 USBD_StatusTypeDef  USBD_LL_OpenEP  (USBD_HandleTypeDef *pdev, 

@@ -2565,26 +2565,21 @@ bool jshFlashContainsCode() {
 }
 
 #ifdef USB
+
+extern USBD_HandleTypeDef hUsbDeviceFS;
+
 void jshSetUSBPower(bool isOn) {
-#ifdef STM32F1_TODO
   if (isOn) {
-    _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
-    USB_Cable_Config(ENABLE);
+    USBD_Stop(&hUsbDeviceFS);
+#ifdef STM32F1
+    jshPinOutput(USB_DISCONNECT_PIN, 0); // turn on USB
+#endif
   } else {
-    USB_Cable_Config(DISABLE);
-    _SetCNTR(_GetCNTR() | CNTR_PDWN);
-  }
+#ifdef STM32F1
+    jshPinOutput(USB_DISCONNECT_PIN, 1); // turn off USB
 #endif // STM32F1
-#ifdef STM32F4
-  /*if (isOn) {
-    USB_OTG_CoreInit(&USB_OTG_dev);
-  } else {
-    USB_OTG_GCCFG_TypeDef    gccfg;
-    gccfg.d32 = USB_OTG_READ_REG32(USB_OTG_dev.regs.GREGS->GCCFG);
-    gccfg.b.pwdn = 0; // 0 = usb off, 1 = usb on
-    USB_OTG_WRITE_REG32 (USB_OTG_dev.regs.GREGS->GCCFG, gccfg.d32);
-  }*/
-#endif // STM32F4
+    USBD_Start(&hUsbDeviceFS);
+  }
 }
 #endif
 
