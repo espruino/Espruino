@@ -299,7 +299,7 @@
   uint32_t SystemCoreClock = 180000000;
 #endif /* STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xx)
+#if defined (STM32F401xE)
   uint32_t SystemCoreClock = 84000000;
 #endif /* STM32F401xx */
 

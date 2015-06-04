@@ -1068,7 +1068,8 @@ targetlibs/stm32usb/usbd_cdc_hid.c \
 targetlibs/stm32usb/Src/usbd_ctlreq.c \
 targetlibs/stm32usb/Src/usbd_core.c \
 targetlibs/stm32usb/Src/usbd_ioreq.c \
-targetlibs/stm32usb/usbd_desc.c
+targetlibs/stm32usb/usbd_desc.c \
+targetlibs/stm32usb/usb_irq.c
 endif #USB
 endif
 

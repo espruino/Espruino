@@ -13,17 +13,8 @@
  */
 #include "platform_config.h"
 #ifdef USB
- #ifdef STM32F1
-  #include "usb_utils.h"
-  #include "usb_lib.h"
-  #include "usb_conf.h"
-  #include "usb_pwr.h"
-  #include "usb_istr.h"
- #endif
- #ifdef STM32F4
-  #include "usb_device.h"
-  #include "usbd_cdc_hid.h"
- #endif
+ #include "usb_device.h"
+ #include "usbd_cdc_hid.h"
 #endif
 
 #include "jshardware.h"
@@ -80,28 +71,7 @@ void WWDG_IRQHandler() {
   // why do we need this on the F401?
 }
 
-extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
-/**
-* @brief This function handles USB On The Go FS global interrupt.
-*/
-void OTG_FS_IRQHandler(void) {
-  HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
-}
-        
-#else  // STM32F4
-
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-  USB_Istr();
-}
-
-void USBWakeUp_IRQHandler(void)
-{
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-
-#endif // not STM32F4
+#endif
 
 
 
@@ -253,11 +223,5 @@ void initHardware() {
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, 0); // Super high priority
 
-
-#if defined(STM32F1) || defined(STM32F3)
-  USB_Init_Hardware();
-  USB_Init();
-#else
   MX_USB_DEVICE_Init();
-#endif
 }
