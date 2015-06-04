@@ -1838,7 +1838,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
 NO_INLINE JsVar *jspeStatementFor() {
   JSP_ASSERT_MATCH(LEX_R_FOR);
   JSP_MATCH('(');
-  bool wasInLoop = execInfo.execute&EXEC_IN_LOOP;
+  bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
   execInfo.execute |= EXEC_FOR_INIT;
   // initialisation
   JsVar *forStatement = 0;

@@ -91,7 +91,7 @@ Pin jshGetPinFromString(const char *s) {
       int i;
       for (i=0;i<JSH_PIN_COUNT;i++)
         if (pinInfo[i].port == port && pinInfo[i].pin==pin)
-          return i;
+          return (Pin)i;
 #else
       if (port == JSH_PORTA) {
         if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
@@ -130,7 +130,7 @@ void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
   if (jshIsPinValid(pin)) {
-    result[0]='A'+pinInfo[pin].port-JSH_PORTA;
+    result[0] = (char)('A'+pinInfo[pin].port-JSH_PORTA);
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
   if (
