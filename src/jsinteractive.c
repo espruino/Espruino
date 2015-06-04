@@ -569,17 +569,13 @@ void jsiSoftKill() {
   }
 }
 
-void jsiInit(bool autoLoad) {
+void jsiSemiInit(bool autoLoad) {
   jspInit();
-
-  /*for (i=0;i<IOPINS;i++)
-     ioPinState[i].callbacks = 0;*/
 
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
   jsiStatus = JSIS_NONE;
-  consoleDevice = EV_LIMBO;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 
   /* If flash contains any code, then we should
@@ -615,6 +611,13 @@ void jsiInit(bool autoLoad) {
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
+}
+
+// The 'proper' init function - this should be called only once at bootup
+void jsiInit(bool autoLoad) {
+  consoleDevice = EV_LIMBO;
+
+  jsiSemiInit(autoLoad);
 }
 
 // This should get called from jshardware.c one second after startup,
@@ -1555,7 +1558,7 @@ void jsiIdle() {
       jsvKill();
       jshReset();
       jsvInit();
-      jsiInit(false); // don't autoload
+      jsiSemiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {
       todo &= (TODOFlags)~TODO_FLASH_SAVE;
