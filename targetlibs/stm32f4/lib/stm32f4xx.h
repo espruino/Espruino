@@ -160,8 +160,10 @@
 #elif defined(STM32F439xx)
   #include "stm32f439xx.h"
 #elif defined(STM32F401xC)
+  #define STM32F401xx
   #include "stm32f401xc.h"
 #elif defined(STM32F401xE)
+  #define STM32F401xx
   #include "stm32f401xe.h"
 #elif defined(STM32F411xE)
   #include "stm32f411xe.h"

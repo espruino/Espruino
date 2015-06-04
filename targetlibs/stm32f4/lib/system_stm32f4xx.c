@@ -267,7 +267,7 @@
 #define PLL_P      2
 #endif /* STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xx) || defined (STM32F401xE)
+#if defined (STM32F401xx)
 #define PLL_N      336
 /* SYSCLK = PLL_VCO / PLL_P */
 #define PLL_P      4
@@ -299,7 +299,7 @@
   uint32_t SystemCoreClock = 180000000;
 #endif /* STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xE)
+#if defined (STM32F401xx)
   uint32_t SystemCoreClock = 84000000;
 #endif /* STM32F401xx */
 

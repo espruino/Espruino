@@ -166,12 +166,16 @@
 #elif defined(STM32F102xB)
   #include "stm32f102xb.h"
 #elif defined(STM32F103x6)
+  #define STM32F103xx
   #include "stm32f103x6.h"
 #elif defined(STM32F103xB)
+  #define STM32F103xx
   #include "stm32f103xb.h"
 #elif defined(STM32F103xE)
+  #define STM32F103xx
   #include "stm32f103xe.h"
 #elif defined(STM32F103xG)
+  #define STM32F103xx
   #include "stm32f103xg.h"
 #elif defined(STM32F105xC)
   #include "stm32f105xc.h"
