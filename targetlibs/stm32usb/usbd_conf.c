@@ -331,20 +331,21 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
   hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL; // MUST KEEP THIS FULL - buffer sizes only big enough for this, not high
   hpcd_USB_OTG_FS.Init.dma_enable = DISABLE; // NO DMA - we are assuming USBD_CtlSendData/USBD_LL_Transmit don't keep the pointer they are passed
-  hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_64; // TODO: MPS 8?
+  hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_8;
   hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
   hpcd_USB_OTG_FS.Init.Sof_enable = ENABLE;
-  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE; // TODO: low power?
-  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE; // TODO: low power?
+  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
+  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
   hpcd_USB_OTG_FS.Init.vbus_sensing_enable = ENABLE;
   hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
   HAL_PCD_Init(&hpcd_USB_OTG_FS);
 
-  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x40);
-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x20); // EP0 ?
-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40); // HID IN
-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x20); // CDC CMD
-  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x40); // CDC IN
+  // USB memory is 1.25kB - lots of room for big FIFO sizes
+  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x100);
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x80); // EP0 IN
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x80); // HID IN
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x80); // CDC CMD
+  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x80); // CDC IN
 #endif  
 #ifdef STM32F1
   hpcd_USB_OTG_FS.Instance = USB;
@@ -357,11 +358,15 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   hpcd_USB_OTG_FS.Init.battery_charging_enable = DISABLE;
   HAL_PCD_Init(&hpcd_USB_OTG_FS);
 
+  // USB memory is 512 bytes according to datasheet, so we should have loads
+  // of space available?
   HAL_PCDEx_PMAConfig(pdev->pData , 0x00 , PCD_SNG_BUF, 0x18);
   HAL_PCDEx_PMAConfig(pdev->pData , 0x80 , PCD_SNG_BUF, 0x58);
-  HAL_PCDEx_PMAConfig(pdev->pData , 0x81 , PCD_SNG_BUF, 0xC0);
-  HAL_PCDEx_PMAConfig(pdev->pData , 0x01 , PCD_SNG_BUF, 0x110);
-  HAL_PCDEx_PMAConfig(pdev->pData , 0x82 , PCD_SNG_BUF, 0x100);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x81 , PCD_SNG_BUF, 0xC0);  // HID IN
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x01 , PCD_SNG_BUF, 0x110); // unused?
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x82 , PCD_SNG_BUF, 0x100); // CDC CMD
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x83 , PCD_SNG_BUF, 0x180); // CDC IN
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x03 , PCD_SNG_BUF, 0x1C0); // CDC OUT
 #endif  
   return USBD_OK;
 }
