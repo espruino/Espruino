@@ -5,6 +5,7 @@
             Change 'internal property' prefix from '>' (fix #540)
             Duplicate properties in an object defn. now cause second to be used (fix #495)
             Make sure `E.unmountSD` doesn't forget custom SD card configs from `E.connectSDCard`
+            Added support for USB CK pin (fix #544)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

@@ -1959,8 +1959,10 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
   // now try and find missing pins
   if (findAllPins)
     for (i=0;i<count;i++)
-      if (!jshIsPinValid(pins[i]))
+      if (!jshIsPinValid(pins[i]) && functions[i]!=JSH_USART_CK) {
+        // We don't automatically find a pin for USART CK (just RX and TX)
         pins[i] = findPinForFunction(device, functions[i]);
+      }
   // now find pin functions
   for (i=0;i<count;i++)
     if (jshIsPinValid(pins[i])) {
@@ -1996,10 +1998,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   JshPinFunction funcType = getPinFunctionFromDevice(device);
 
-  enum {pinRX, pinTX};
-  Pin pins[2] = { inf->pinRX, inf->pinTX };
-  JshPinFunction functions[2] = { JSH_USART_RX, JSH_USART_TX };
-  USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 2, pins, functions);
+  Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
+  JshPinFunction functions[2] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
+  USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
   if (!USARTx) return;
 
   IRQn_Type usartIRQ;
@@ -2033,6 +2034,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   USART_ClockInitTypeDef USART_ClockInitStructure;
 
   USART_ClockStructInit(&USART_ClockInitStructure);
+  if (jshIsPinValid(pins[2]))
+    USART_ClockInitStructure.USART_Clock = USART_Clock_Enable;
   USART_ClockInit(USARTx, &USART_ClockInitStructure);
 
   USART_InitTypeDef USART_InitStructure;
