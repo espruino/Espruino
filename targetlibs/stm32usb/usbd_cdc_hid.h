@@ -66,17 +66,20 @@ typedef struct
   uint32_t data[CDC_DATA_FS_MAX_PACKET_SIZE/4];      /* Force 32bits alignment */
   uint8_t  cdcRX[CDC_DATA_FS_OUT_PACKET_SIZE];
   uint8_t  cdcTX[CDC_DATA_FS_IN_PACKET_SIZE];
+#ifdef USE_USB_HID
   uint32_t hidData[HID_DATA_IN_PACKET_SIZE/4];  /* Force 32bits alignment */
+#endif
   uint8_t  CmdOpCode;
   uint8_t  CmdLength;    
   CDC_StateTypeDef     cdcState;
+#ifdef USE_USB_HID
   HID_StateTypeDef     hidState;
   uint16_t             hidReportDescSize; // Nonzero if we're doing HID
   uint8_t             *hidReportDesc;
   uint32_t             hidProtocol;
   uint32_t             hidIdleState;
   uint32_t             hidAltSetting;
-
+#endif
 } USBD_CDC_HID_HandleTypeDef;
 
 // ----------------------------------------------------------------------------

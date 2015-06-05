@@ -360,13 +360,20 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
 
   // USB memory is 512 bytes according to datasheet, so we should have loads
   // of space available?
-  HAL_PCDEx_PMAConfig(pdev->pData , 0x00 , PCD_SNG_BUF, 0x18);
+  /*HAL_PCDEx_PMAConfig(pdev->pData , 0x00 , PCD_SNG_BUF, 0x18);
   HAL_PCDEx_PMAConfig(pdev->pData , 0x80 , PCD_SNG_BUF, 0x58);
   HAL_PCDEx_PMAConfig(pdev->pData , 0x81 , PCD_SNG_BUF, 0xC0);  // HID IN
   HAL_PCDEx_PMAConfig(pdev->pData , 0x01 , PCD_SNG_BUF, 0x110); // unused?
   HAL_PCDEx_PMAConfig(pdev->pData , 0x82 , PCD_SNG_BUF, 0x100); // CDC CMD
   HAL_PCDEx_PMAConfig(pdev->pData , 0x83 , PCD_SNG_BUF, 0x180); // CDC IN
-  HAL_PCDEx_PMAConfig(pdev->pData , 0x03 , PCD_SNG_BUF, 0x1C0); // CDC OUT
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x03 , PCD_SNG_BUF, 0x1C0); // CDC OUT*/
+  // above doesn't work
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x00 , PCD_SNG_BUF, 0x18);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x80 , PCD_SNG_BUF, 0x58);
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x81 , PCD_SNG_BUF, 0xC0);  // CDC IN
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x01 , PCD_SNG_BUF, 0x110); // CDC OUT
+  HAL_PCDEx_PMAConfig(pdev->pData , 0x82 , PCD_SNG_BUF, 0x100); // CDC CMD
+
 #endif  
   return USBD_OK;
 }

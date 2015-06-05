@@ -5,12 +5,19 @@
 #include "jshardware.h"
 #include "jsinteractive.h"
 
+#ifdef STM32F1
+// don't know why :( probably setup in usdb_conf
+#define CDC_IN_EP                     0x81  /* EP1 for data IN */
+#define CDC_OUT_EP                    0x01  /* EP1 for data OUT */
+#define CDC_CMD_EP                    0x82  /* EP2 for CDC commands */
+#else
 #define CDC_IN_EP                     0x83  /* EP1 for data IN */
 #define CDC_OUT_EP                    0x03  /* EP1 for data OUT */
 #define CDC_CMD_EP                    0x82  /* EP2 for CDC commands */
 
 #define HID_IN_EP                     0x81
 #define HID_INTERFACE_NUMBER          0
+#endif
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
 //-------------------------------------------------
@@ -363,18 +370,16 @@ static uint8_t  USBD_CDC_HID_Init (USBD_HandleTypeDef *pdev,
   unsigned int reportSize = 0;
   handle->hidReportDesc = USB_GetHIDReportDesc(&reportSize);
   handle->hidReportDescSize = (uint16_t)reportSize;
-#else
-  handle->hidReportDesc = 0;
-  handle->hidReportDescSize = 0;
-#endif
 
   /* Open HID EP IN - even if we're not using it */
   USBD_LL_OpenEP(pdev,
                  HID_IN_EP,
                  USBD_EP_TYPE_INTR,
                  HID_DATA_IN_PACKET_SIZE);
+
   handle->hidState = HID_IDLE;
-    
+#endif
+
   return ret;
 }
 
@@ -403,9 +408,10 @@ static uint8_t  USBD_CDC_HID_DeInit (USBD_HandleTypeDef *pdev,
   /* Open Command IN EP */
   USBD_LL_CloseEP(pdev,
                CDC_CMD_EP);
-
+#ifdef USE_USB_HID
   USBD_LL_CloseEP(pdev,
                 HID_IN_EP);
+#endif
   
   /* DeInit  physical Interface components */
   if(pdev->pClassData != NULL)
@@ -575,11 +581,14 @@ static uint8_t  USBD_CDC_HID_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
   USBD_CDC_HID_HandleTypeDef *handle = (USBD_CDC_HID_HandleTypeDef*)pdev->pClassData;
 
+#ifdef USE_USB_HID
   if (epnum == (HID_IN_EP&0x7F)) {
     /* Ensure that the FIFO is empty before a new transfer, this condition could
     be caused by  a new transfer before the end of the previous transfer */
     handle->hidState = HID_IDLE;
-  } else {
+  } else
+#endif
+  {
     // USB CDC
     handle->cdcState &= ~CDC_WRITE_TX_WAIT;
   }
