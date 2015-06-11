@@ -155,6 +155,8 @@ Convert a string representing a number into an float
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (!strcmp(buffer, "Infinity")) return INFINITY;
+  if (!strcmp(buffer, "-Infinity")) return -INFINITY;
   return stringToFloat(buffer);
 }
 
