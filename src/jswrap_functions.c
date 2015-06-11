@@ -134,6 +134,8 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
   bool hasError = false;
+  if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
+    radix = 10; // DON'T assume a number is octal if it starts with 0
   long long i = stringToIntWithRadix(buffer, radix, &hasError);
   if (hasError) return jsvNewFromFloat(NAN);
   return jsvNewFromLongInteger(i);
