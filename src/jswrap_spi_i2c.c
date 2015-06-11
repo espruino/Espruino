@@ -118,7 +118,7 @@ Send data down SPI, and return the result. Sending an integer will return an int
 
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
 
-For maximum speeds, please pass either Strings or Typed Arrays as arguments. Note that you can even pass arrays of arrays: `[1,[2,3,4],5]`
+For maximum speeds, please pass either Strings or Typed Arrays as arguments. Note that you can even pass arrays of arrays, like `[1,[2,3,4],5]`
 
 */
 typedef struct {
