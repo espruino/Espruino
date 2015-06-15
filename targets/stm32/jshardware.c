@@ -1516,8 +1516,8 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
         #endif
       }
     } else if (ADCx == ADC2) {
-      if (!(jshADCInitialised&1)) {
-        jshADCInitialised |= 1;
+      if (!(jshADCInitialised&2)) {
+        jshADCInitialised |= 2;
         needs_init = true;
         #if defined(STM32F3)
           RCC_AHBPeriphClockCmd( RCC_AHBPeriph_ADC12, ENABLE);
