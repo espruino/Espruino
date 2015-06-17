@@ -45,6 +45,22 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
+  } else if (jsvIsArrayBuffer(data)) {
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, data, 0);
+    if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
+      // faster for single byte arrays.
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)(unsigned char)jsvStringIteratorGetChar(&it.it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    } else {
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)jsvArrayBufferIteratorGetIntegerValue(&it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    }
+    jsvArrayBufferIteratorFree(&it);
   } else if (jsvIsIterable(data)) {
     JsvIterator it;
     jsvIteratorNew(&it, data);

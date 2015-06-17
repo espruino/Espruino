@@ -132,7 +132,7 @@ void jswrap_spi_send_cb(int c, jswrap_spi_send_data *data) {
   int result = data->spiSend(c, &data->spiSendData);
   if (c>=0) data->txAmt++;
   if (result>=0) {
-    jsvArrayBufferIteratorSetByteValue(&data->it, result);
+    jsvArrayBufferIteratorSetByteValue(&data->it, (char)result);
     jsvArrayBufferIteratorNext(&data->it);
     data->rxAmt++;
   }
@@ -140,11 +140,16 @@ void jswrap_spi_send_cb(int c, jswrap_spi_send_data *data) {
 
 JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
   NOT_USED(parent);
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+
   jswrap_spi_send_data data;
   if (!jsspiGetSendFunction(parent, &data.spiSend, &data.spiSendData))
     return 0;
 
   JsVar *dst = 0;
+
+  // we're sending and receiving
+  if (DEVICE_IS_SPI(device)) jshSPISetReceive(device, true);
 
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
@@ -232,6 +237,9 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
     jsvUnLock(last);
   }
 
+  // we're only sending (no receive)
+  if (DEVICE_IS_SPI(device)) jshSPISetReceive(device, false);
+
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
   // Write data
@@ -282,6 +290,8 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jshSPISetup(device, &inf);
   }
 
+  // we're just sending (no receive)
+  jshSPISetReceive(device, false);
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
@@ -349,6 +359,8 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jshSPISetup(device, &inf);
   }
 
+  // we're just sending (no receive)
+  jshSPISetReceive(device, false);
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 

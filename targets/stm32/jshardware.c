@@ -1195,16 +1195,6 @@ void jshInit() {
   EXTI_Init(&EXTI_InitStructure);
 #endif // USE_RTC
 
-#ifdef STM32F4
-  ADC_CommonInitTypeDef ADC_CommonInitStructure;
-  ADC_CommonStructInit(&ADC_CommonInitStructure);
-  ADC_CommonInitStructure.ADC_Mode              = ADC_Mode_Independent;
-  ADC_CommonInitStructure.ADC_Prescaler         = ADC_Prescaler_Div2;
-  ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
-  ADC_CommonInitStructure.ADC_TwoSamplingDelay  = ADC_TwoSamplingDelay_5Cycles;
-  ADC_CommonInit(&ADC_CommonInitStructure);
-#endif
-
 #ifndef SAVE_ON_FLASH
   // Get a random seed to put into rand's random number generator
   srand(jshGetRandomNumber());
@@ -1559,15 +1549,10 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
     }
 
     if (needs_init) {
-  #ifdef STM32F3
       ADC_CommonInitTypeDef ADC_CommonInitStructure;
       ADC_CommonStructInit(&ADC_CommonInitStructure);
-      ADC_CommonInitStructure.ADC_Mode          = ADC_Mode_Independent;
-      ADC_CommonInitStructure.ADC_Clock         = ADC_Clock_SynClkModeDiv2;
-      ADC_CommonInitStructure.ADC_DMAAccessMode     = ADC_DMAAccessMode_Disabled;
-      ADC_CommonInitStructure.ADC_TwoSamplingDelay          = ADC_SampleTime_1Cycles5;
-      ADC_CommonInit(ADCx, &ADC_CommonInitStructure);
-  #endif
+      // use defaults
+      ADC_CommonInit(&ADC_CommonInitStructure);
 
       // ADC Structure Initialization
       ADC_InitTypeDef ADC_InitStructure;
@@ -1999,7 +1984,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   JshPinFunction funcType = getPinFunctionFromDevice(device);
 
   Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
-  JshPinFunction functions[2] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
+  JshPinFunction functions[3] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
   USART_TypeDef *USARTx = (USART_TypeDef *)checkPinsForDevice(funcType, 3, pins, functions);
   if (!USARTx) return;
 
@@ -2229,17 +2214,13 @@ int jshSPISend(IOEventFlags device, int data)
 /** Send 16 bit data through the given SPI device. */
 void jshSPISend16(IOEventFlags device, int data)
 {
-  int n = device-EV_SPI1;
-  SPI_TypeDef *SPI = getSPIFromDevice(device);
+   SPI_TypeDef *SPI = getSPIFromDevice(device);
 
   /* Loop while DR register in not empty */
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_TXE) != RESET, "SPI TX");
 
   /* Send a Byte through the SPI peripheral */
   SPI_I2S_SendData(SPI, (uint16_t)data);
-
-  // Throw away any bytes we got
-  jshSPIBufTail[n] = jshSPIBufHead[n];
 }
 
 /** Set whether to send 16 bits or 8 over SPI */
@@ -2251,6 +2232,15 @@ void jshSPISet16(IOEventFlags device, bool is16) {
   SPI_DataSizeConfig(SPI, is16 ? SPI_DataSize_16b : SPI_DataSize_8b);
 }
 
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  SPI_TypeDef *SPI = getSPIFromDevice(device);
+  /* Loop until not sending */
+  WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
+  /* Set receive state */
+  SPI_I2S_ITConfig(SPI, SPI_I2S_IT_RXNE, isReceive ? ENABLE : DISABLE);
+}
+
 /** Wait until SPI send is finished, */
 void jshSPIWait(IOEventFlags device) {
   int n = device-EV_SPI1;
@@ -2259,6 +2249,8 @@ void jshSPIWait(IOEventFlags device) {
   WAIT_UNTIL(SPI_I2S_GetFlagStatus(SPI, SPI_I2S_FLAG_BSY) != SET, "SPI BSY");
   /* Clear SPI receive buffer */
   jshSPIBufTail[n] = jshSPIBufHead[n];
+  /* Just in case we didn't have IRQs, and the register was full... */
+  SPI_I2S_ReceiveData(SPI);
 }
 
 /** Set up I2S, if pins are -1 they will be guessed */

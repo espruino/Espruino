@@ -9,6 +9,8 @@
             ES5 parseInt behaviour - don't treat numbers beginning with 0 as octals (fix #538)
             SPI.send now returns Uint8Array when passed an array. Also takes `{data:X, count:Y}` as argument (fix #485)
             Fix `parseFloat(Infinity)` (fix #314)
+            Speed up jsvIterateCallback for arraybuffers 
+            SPI speed improvements, esp for SPI.write (fix #547)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

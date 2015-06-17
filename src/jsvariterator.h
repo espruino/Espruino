@@ -187,6 +187,10 @@ typedef struct JsvArrayBufferIterator {
   bool hasAccessedElement;
 } JsvArrayBufferIterator;
 
+/* TODO: can we add it->getIntegerValue/etc that get set by jsvArrayBufferIteratorNew?
+   It's be way faster, especially for byte arrays
+*/
+
 void   jsvArrayBufferIteratorNew(JsvArrayBufferIterator *it, JsVar *arrayBuffer, size_t index);
 
 /// Clone the iterator
@@ -200,9 +204,10 @@ static ALWAYS_INLINE JsvArrayBufferIterator jsvArrayBufferIteratorClone(JsvArray
  * once you have read it. That's why we have jsvArrayBufferIteratorGetValueAndRewind
  * which allows this, but is slower. */
 
+
 JsVar *jsvArrayBufferIteratorGetValue(JsvArrayBufferIterator *it);
 JsVar *jsvArrayBufferIteratorGetValueAndRewind(JsvArrayBufferIterator *it);
-JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it);
+JsVarInt jsvArrayBufferIteratorGetIntegerValue(JsvArrayBufferIterator *it); 
 JsVarFloat jsvArrayBufferIteratorGetFloatValue(JsvArrayBufferIterator *it);
 void   jsvArrayBufferIteratorSetValue(JsvArrayBufferIterator *it, JsVar *value);
 void   jsvArrayBufferIteratorSetValueAndRewind(JsvArrayBufferIterator *it, JsVar *value);

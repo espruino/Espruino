@@ -204,6 +204,20 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 }
 
+/** Send 16 bit data through the given SPI device. */
+void jshSPISend16(IOEventFlags device, int data) {
+  jshSPISend(device, data>>8);
+  jshSPISend(device, data&255);
+}
+
+/** Set whether to send 16 bits or 8 over SPI */
+void jshSPISet16(IOEventFlags device, bool is16) {
+}
+
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
