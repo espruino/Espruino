@@ -1549,10 +1549,16 @@ static NO_INLINE int jshAnalogRead(JsvPinInfoAnalog analog, bool fastConversion)
     }
 
     if (needs_init) {
+#ifndef STM32F1
       ADC_CommonInitTypeDef ADC_CommonInitStructure;
       ADC_CommonStructInit(&ADC_CommonInitStructure);
       // use defaults
+#ifdef STM32F3
+      ADC_CommonInit(ADCx, &ADC_CommonInitStructure);
+#else
       ADC_CommonInit(&ADC_CommonInitStructure);
+#endif
+#endif
 
       // ADC Structure Initialization
       ADC_InitTypeDef ADC_InitStructure;
