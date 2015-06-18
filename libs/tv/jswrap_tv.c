@@ -60,6 +60,18 @@ var g = require('tv').setup({ type : "pal",
 
 and for VGA:
 
+```
+var g = require('tv').setup({ type : "vga",
+  video : A7, // Pin - SPI MOSI Pin for Video output (MUST BE SPI1)
+  hsync : A6, // Pin - Timer pin to use for video sync
+  vsync : A5, // Pin - pin to use for video sync
+  width : 220,
+  height : 240,
+  repeat : 2, // amount of times to repeat each line
+});
+```
+
+or
 
 ```
 var g = require('tv').setup({ type : "vga",
@@ -68,6 +80,7 @@ var g = require('tv').setup({ type : "vga",
   vsync : A5, // Pin - pin to use for video sync
   width : 220,
   height : 480,
+  repeat : 1, // amount of times to repeat each line
 });
 ```
 
@@ -82,33 +95,34 @@ JsVar *jswrap_tv_setup(JsVar *options) {
   JsVar *tvType = jsvObjectGetChild(options, "type",0);
   if (jsvIsStringEqual(tvType, "pal")) {
     jsvUnLock(tvType);
-    Pin pinVideo, pinSync;
-    int width,height;
+    tv_info_pal inf;
+    tv_info_pal_init(&inf);
     jsvConfigObject configs[] = {
         {"type", 0, 0},
-        {"video", JSV_PIN, &pinVideo},
-        {"sync", JSV_PIN, &pinSync},
-        {"width", JSV_INTEGER, &width},
-        {"height", JSV_INTEGER, &height},
+        {"video", JSV_PIN, &inf.pinVideo},
+        {"sync", JSV_PIN, &inf.pinSync},
+        {"width", JSV_INTEGER, &inf.width},
+        {"height", JSV_INTEGER, &inf.height},
     };
     if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-      return tv_setup_pal(pinVideo, pinSync, width, height);
+      return tv_setup_pal(&inf);
     }
     return 0;
   } else if (jsvIsStringEqual(tvType, "vga")) {
     jsvUnLock(tvType);
-    Pin pinVideo, pinSync, pinSyncV;
-    int width,height;
+    tv_info_vga inf;
+    tv_info_vga_init(&inf);
     jsvConfigObject configs[] = {
         {"type", 0, 0},
-        {"video", JSV_PIN, &pinVideo},
-        {"hsync", JSV_PIN, &pinSync},
-        {"vsync", JSV_PIN, &pinSyncV},
-        {"width", JSV_INTEGER, &width},
-        {"height", JSV_INTEGER, &height},
+        {"video", JSV_PIN, &inf.pinVideo},
+        {"hsync", JSV_PIN, &inf.pinSync},
+        {"vsync", JSV_PIN, &inf.pinSyncV},
+        {"width", JSV_INTEGER, &inf.width},
+        {"height", JSV_INTEGER, &inf.height},
+        {"repeat", JSV_INTEGER, &inf.lineRepeat},
     };
     if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
-      return tv_setup_vga(pinVideo, pinSync, pinSyncV, width, height);
+      return tv_setup_vga(&inf);
     }
     return 0;
   }

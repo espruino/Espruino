@@ -11,6 +11,7 @@
             Fix `parseFloat(Infinity)` (fix #314)
             Speed up jsvIterateCallback for arraybuffers 
             SPI speed improvements, esp for SPI.write (fix #547)
+            TV out tidyup, and VGA output can now do line doubling
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
