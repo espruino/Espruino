@@ -16,15 +16,30 @@
 #include "jstimer.h"
 #include "jsutils.h"
 #include "jswrap_graphics.h"
+#include "tv.h"
 
 // PAL timing specs - which we're ignoring :)
 // http://martin.hinner.info/vga/pal.html
 
+
+void tv_info_pal_init(tv_info_pal *inf) {
+  inf->width =384;
+  inf->height = 270;
+};
+
+void tv_info_vga_init(tv_info_vga *inf) {
+  inf->width = 220;
+  inf->height = 480;
+  inf->lineRepeat = 1;
+}
+
+
 unsigned short tvWidth, tvHeight; // width and height of buffer
+unsigned char tvLineRepeat;
 Pin tvPinVideo, tvPinSync, tvPinSyncV;
-const char *tvPixelPtr = (const char *)0;
-int tvCurrentLine = 0;
-unsigned short ticksPerLine = 0; // timer ticks
+const char *tvPixelPtr;
+int tvCurrentLine;
+unsigned short ticksPerLine; // timer ticks
 
 #define PAL_VBLANK 25 // amount of extra height that is just blank
 
@@ -258,22 +273,23 @@ void tv_vga_irq() {
   jshPinSetValue(tvPinSync, 1);
   jshDelayMicroseconds(1);
 
-  uint32_t lineIdx = (uint32_t)tvCurrentLine - 20; // 20px = front porch
+  uint32_t lineIdx = ((uint32_t)tvCurrentLine - 20) / tvLineRepeat; // 20px = front porch
   if (lineIdx < tvHeight) {
     uint32_t lsize = tvWidth>>3/*bytes*/;
     dma_start((uint32_t)tvPixelPtr + lineIdx*lsize, lsize);
   }
 
-  if (tvCurrentLine++ > tvHeight+40) tvCurrentLine=0; // count lines
+  if (tvCurrentLine++ > tvHeight*tvLineRepeat + 40) tvCurrentLine=0; // count lines
 }
 
 
-JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
-  tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
-  tvHeight = (unsigned short)height;
-  tvPinVideo = pinVideo;
-  tvPinSync = pinSync;
+JsVar *tv_setup_pal(tv_info_pal *inf) {
+  tvWidth = (unsigned short)((inf->width+7)&~7); // to the nearest byte
+  tvHeight = (unsigned short)inf->height;
+  tvPinVideo = inf->pinVideo;
+  tvPinSync = inf->pinSync;
   tvPinSyncV = 0;
+  tvCurrentLine = 0;
 
   jshPinOutput(tvPinSync, 0); // setup output state
 
@@ -312,12 +328,14 @@ JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height) {
   return gfx;
 }
 
-JsVar *tv_setup_vga(Pin pinVideo, Pin pinSync, Pin pinSyncV, int width, int height) {
-  tvWidth = (unsigned short)((width+7)&~7); // to the nearest byte
-  tvHeight = (unsigned short)height;
-  tvPinVideo = pinVideo;
-  tvPinSync = pinSync;
-  tvPinSyncV = pinSyncV;
+JsVar *tv_setup_vga(tv_info_vga *inf) {
+  tvWidth = (unsigned short)((inf->width+7)&~7); // to the nearest byte
+  tvHeight = (unsigned short)inf->height;
+  tvLineRepeat = (unsigned char)inf->lineRepeat;
+  tvPinVideo = inf->pinVideo;
+  tvPinSync = inf->pinSync;
+  tvPinSyncV = inf->pinSyncV;
+  tvCurrentLine = 0;
 
   //JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 1-0.12 /* */, 31468);
   //if (!timer) return 0; // couldn't set up the timer

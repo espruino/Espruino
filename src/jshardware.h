@@ -131,6 +131,7 @@ typedef struct {
   int baudRate; // FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
+  Pin pinCK;
   unsigned char bytesize;
   unsigned char parity; // 0=none, 1=odd, 2=even
   unsigned char stopbits;
@@ -141,6 +142,7 @@ static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
   inf->pinRX    = PIN_UNDEFINED;
   inf->pinTX    = PIN_UNDEFINED;
+  inf->pinCK    = PIN_UNDEFINED;
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
@@ -204,6 +206,8 @@ int jshSPISend(IOEventFlags device, int data);
 void jshSPISend16(IOEventFlags device, int data);
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive);
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device);
 

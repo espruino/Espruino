@@ -31,6 +31,7 @@ for i in range(1, 3):
 for i in range(1, 7):
   ALLOWED_FUNCTIONS["USART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["USART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
+  ALLOWED_FUNCTIONS["USART"+str(i)+"_CK"] = "JSH_USART"+str(i)+"|JSH_USART_CK";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_TX"] = "JSH_USART"+str(i)+"|JSH_USART_TX";
   ALLOWED_FUNCTIONS["UART"+str(i)+"_RX"] = "JSH_USART"+str(i)+"|JSH_USART_RX";
 for i in range(1, 5):

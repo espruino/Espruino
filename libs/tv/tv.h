@@ -12,5 +12,24 @@
  * ----------------------------------------------------------------------------
  */
 
-JsVar *tv_setup_pal(Pin pinVideo, Pin pinSync, int width, int height);
-JsVar *tv_setup_vga(Pin pinVideo, Pin pinSync, Pin pinSyncV, int width, int height);
+typedef struct {
+  Pin pinVideo;
+  Pin pinSync;
+  int width;
+  int height;
+} tv_info_pal;
+
+typedef struct {
+  Pin pinVideo;
+  Pin pinSync;
+  Pin pinSyncV;
+  int width;
+  int height;
+  int lineRepeat;
+} tv_info_vga;
+
+void tv_info_pal_init(tv_info_pal *inf);
+void tv_info_vga_init(tv_info_vga *inf);
+
+JsVar *tv_setup_pal(tv_info_pal *inf);
+JsVar *tv_setup_vga(tv_info_vga *inf);

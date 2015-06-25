@@ -186,6 +186,10 @@ void jshSPISend16(IOEventFlags device, int data) {
 void jshSPISet16(IOEventFlags device, bool is16) {
 }
 
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 /** Wait until SPI send is finished, */
 void jshSPIWait(IOEventFlags device) {
 }

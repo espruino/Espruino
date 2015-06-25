@@ -152,6 +152,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   if (jsvIsObject(options)) {
     inf.pinRX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "rx", 0));
     inf.pinTX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "tx", 0));    
+    inf.pinCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "ck", 0));
 
     JsVar *v;
     v = jsvObjectGetChild(options, "bytesize", 0);
