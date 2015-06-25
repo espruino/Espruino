@@ -13,8 +13,12 @@
  */
 #include "platform_config.h"
 #ifdef USB
- #include "usb_device.h"
- #include "usbd_cdc_hid.h"
+ #ifdef STM32F1
+  #include "legacy_usb.h"
+ #else
+  #include "usb_device.h"
+  #include "usbd_cdc_hid.h"
+ #endif
 #endif
 
 #include "jshardware.h"
@@ -71,7 +75,7 @@ void WWDG_IRQHandler() {
   // why do we need this on the F401?
 }
 
-#endif
+#endif 
 
 
 
@@ -80,7 +84,7 @@ void SysTick_Handler(void) {
 }
 
 bool jshIsUSBSERIALConnected() {
-  return true;
+  return USB_IsConnected();
 }
 
 int jshGetCharToTransmit(IOEventFlags device) {

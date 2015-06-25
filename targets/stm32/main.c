@@ -13,7 +13,11 @@
  */
 #include "platform_config.h"
 #ifdef USB
-#include "usb_device.h"
+ #if defined(STM32F1) || defined(STM32F3)
+  #include "legacy_usb.h"
+ #else
+  #include "usb_device.h"
+ #endif
 #endif
 #include "jsinteractive.h"
 #include "jshardware.h"

@@ -117,7 +117,7 @@ void DMA_DeInit(DMA_Channel_TypeDef* DMAy_Channelx)
   assert_param(IS_DMA_ALL_PERIPH(DMAy_Channelx));
   
   /* Disable the selected DMAy Channelx */
-  DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR_EN);
+  DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
   
   /* Reset DMAy Channelx control register */
   DMAy_Channelx->CCR  = 0;
@@ -166,7 +166,6 @@ void DMA_DeInit(DMA_Channel_TypeDef* DMAy_Channelx)
     /* Reset interrupt pending bits for DMA1 Channel7 */
     DMA1->IFCR |= DMA1_Channel7_IT_Mask;
   }
-#ifdef DMA2
   else if (DMAy_Channelx == DMA2_Channel1)
   {
     /* Reset interrupt pending bits for DMA2 Channel1 */
@@ -195,7 +194,6 @@ void DMA_DeInit(DMA_Channel_TypeDef* DMAy_Channelx)
       DMA2->IFCR |= DMA2_Channel5_IT_Mask;
     }
   }
-#endif
 }
 
 /**
@@ -308,12 +306,12 @@ void DMA_Cmd(DMA_Channel_TypeDef* DMAy_Channelx, FunctionalState NewState)
   if (NewState != DISABLE)
   {
     /* Enable the selected DMAy Channelx */
-    DMAy_Channelx->CCR |= DMA_CCR_EN;
+    DMAy_Channelx->CCR |= DMA_CCR1_EN;
   }
   else
   {
     /* Disable the selected DMAy Channelx */
-    DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR_EN);
+    DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
   }
 }
 

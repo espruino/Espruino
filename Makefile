@@ -114,7 +114,7 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD_R1_0
 DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F103xE
+STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 else ifdef ESPRUINO_1V1
@@ -125,7 +125,7 @@ USE_GRAPHICS=1
 USE_FILESYSTEM=1
 BOARD=ESPRUINOBOARD_R1_1
 DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F103xE
+STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
 else ifdef ESPRUINO_1V3
@@ -134,10 +134,10 @@ DEFINES+=-DESPRUINO_1V3
 USE_NET=1
 USE_GRAPHICS=1
 USE_FILESYSTEM=1
-#USE_TV=1
+USE_TV=1
 USE_HASHLIB=1
 BOARD=ESPRUINOBOARD
-STLIB=STM32F103xE
+STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
 else ifdef PICO_1V0
@@ -846,11 +846,26 @@ targetlibs/stm32f1/lib/system_stm32f10x.c
 #targetlibs/stm32f1/lib/stm32f10x_fsmc.c    
 
 ifdef USB
-SOURCES +=                                 \
-targetlibs/stm32usb/Src/stm32f1xx_ll_usb.c \
-targetlibs/stm32usb/Src/stm32f1xx_hal_pcd.c \
-targetlibs/stm32usb/Src/stm32f1xx_hal_pcd_ex.c 
-endif
+INCLUDE += -I$(ROOT)/targetlibs/stm32f1/usblib -I$(ROOT)/targetlibs/stm32f1/usb -I$(ROOT)/targetlibs/stm32usb
+SOURCES +=                              \
+targetlibs/stm32f1/usblib/otgd_fs_cal.c       \
+targetlibs/stm32f1/usblib/otgd_fs_dev.c       \
+targetlibs/stm32f1/usblib/otgd_fs_int.c       \
+targetlibs/stm32f1/usblib/otgd_fs_pcd.c       \
+targetlibs/stm32f1/usblib/usb_core.c          \
+targetlibs/stm32f1/usblib/usb_init.c          \
+targetlibs/stm32f1/usblib/usb_int.c           \
+targetlibs/stm32f1/usblib/usb_mem.c           \
+targetlibs/stm32f1/usblib/usb_regs.c          \
+targetlibs/stm32f1/usblib/usb_sil.c           \
+targetlibs/stm32f1/usb/usb_desc.c             \
+targetlibs/stm32f1/usb/usb_endp.c             \
+targetlibs/stm32f1/usb/usb_istr.c             \
+targetlibs/stm32f1/usb/usb_prop.c             \
+targetlibs/stm32f1/usb/usb_pwr.c              \
+targetlibs/stm32f1/usb/usb_utils.c            \
+targetlibs/stm32usb/legacy_usb.c
+endif #USB
 
 endif #STM32F1
 
@@ -951,7 +966,19 @@ SOURCES +=                                 \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c 
-endif
+
+# These could be global for all STM32 once we figure out why it's so flaky on F1
+INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
+SOURCES +=                                 \
+targetlibs/stm32usb/usbd_conf.c \
+targetlibs/stm32usb/usb_device.c \
+targetlibs/stm32usb/usbd_cdc_hid.c \
+targetlibs/stm32usb/Src/usbd_ctlreq.c \
+targetlibs/stm32usb/Src/usbd_core.c \
+targetlibs/stm32usb/Src/usbd_ioreq.c \
+targetlibs/stm32usb/usbd_desc.c \
+targetlibs/stm32usb/usb_irq.c
+endif #USB
 
 endif #STM32F4
 
@@ -1059,18 +1086,6 @@ targets/stm32/main.c                    \
 targets/stm32/jshardware.c              \
 targets/stm32/stm32_it.c
 endif
-ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
-SOURCES +=                                 \
-targetlibs/stm32usb/usbd_conf.c \
-targetlibs/stm32usb/usb_device.c \
-targetlibs/stm32usb/usbd_cdc_hid.c \
-targetlibs/stm32usb/Src/usbd_ctlreq.c \
-targetlibs/stm32usb/Src/usbd_core.c \
-targetlibs/stm32usb/Src/usbd_ioreq.c \
-targetlibs/stm32usb/usbd_desc.c \
-targetlibs/stm32usb/usb_irq.c
-endif #USB
 endif
 
 ifdef LINUX

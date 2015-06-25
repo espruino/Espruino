@@ -616,7 +616,7 @@ FLASH_Status FLASH_EraseAllBank2Pages(void)
   */
 FLASH_Status FLASH_EraseOptionBytes(void)
 {
-  uint16_t rdptmp = RDP_KEY;
+  uint16_t rdptmp = RDP_Key;
 
   FLASH_Status status = FLASH_COMPLETE;
 
@@ -1074,7 +1074,7 @@ FLASH_Status FLASH_ReadOutProtection(FunctionalState NewState)
       }
       else
       {
-        OB->RDP = RDP_KEY;
+        OB->RDP = RDP_Key;  
       }
       /* Wait for last operation to be completed */
       status = FLASH_WaitForLastOperation(EraseTimeout); 
@@ -1432,8 +1432,8 @@ FlagStatus FLASH_GetFlagStatus(uint32_t FLASH_FLAG)
 /**
   * @brief  Clears the FLASH's pending flags.
   * @note   This function can be used for all STM32F10x devices.
-  *         - For STM32F10X_XL devices, this function clears Bank1 or Bank2ï¿½s pending flags
-  *         - For other devices, it clears Bank1ï¿½s pending flags.
+  *         - For STM32F10X_XL devices, this function clears Bank1 or Bank2’s pending flags
+  *         - For other devices, it clears Bank1’s pending flags.
   * @param  FLASH_FLAG: specifies the FLASH flags to clear.
   *   This parameter can be any combination of the following values:         
   *     @arg FLASH_FLAG_PGERR: FLASH Program error flag       

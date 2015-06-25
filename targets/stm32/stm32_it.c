@@ -30,6 +30,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "platform_config.h"
 #include "stm32_it.h"
+#ifdef USB
+#if defined(STM32F1) || defined(STM32F3)
+ #include "usb_utils.h"
+ #include "usb_lib.h"
+ #include "usb_istr.h"
+ #include "usb_pwr.h"
+#endif
+#endif
 #include "jshardware.h"
 
 /* Private typedef -----------------------------------------------------------*/

@@ -87,12 +87,12 @@
 #define IT_Mask                   ((uint16_t)0x001F)  /*!< USART Interrupt Mask */
 
 /* USART OverSampling-8 Mask */
-#define CR1_OVER8_Set             ((uint16_t)0x8000)  /* USART OVER8 mode Enable Mask */
-#define CR1_OVER8_Reset           ((uint16_t)0x7FFF)  /* USART OVER8 mode Disable Mask */
+#define CR1_OVER8_Set             ((u16)0x8000)  /* USART OVER8 mode Enable Mask */
+#define CR1_OVER8_Reset           ((u16)0x7FFF)  /* USART OVER8 mode Disable Mask */
 
 /* USART One Bit Sampling Mask */
-#define CR3_ONEBITE_Set           ((uint16_t)0x0800)  /* USART ONEBITE mode Enable Mask */
-#define CR3_ONEBITE_Reset         ((uint16_t)0xF7FF)  /* USART ONEBITE mode Disable Mask */
+#define CR3_ONEBITE_Set           ((u16)0x0800)  /* USART ONEBITE mode Enable Mask */
+#define CR3_ONEBITE_Reset         ((u16)0xF7FF)  /* USART ONEBITE mode Disable Mask */
 
 /**
   * @}
@@ -437,7 +437,7 @@ void USART_ITConfig(USART_TypeDef* USARTx, uint16_t USART_IT, FunctionalState Ne
 }
 
 /**
-  * @brief  Enables or disables the USARTï¿½s DMA interface.
+  * @brief  Enables or disables the USART’s DMA interface.
   * @param  USARTx: Select the USART or the UART peripheral. 
   *   This parameter can be one of the following values:
   *   USART1, USART2, USART3, UART4 or UART5.
@@ -561,7 +561,7 @@ void USART_LINBreakDetectLengthConfig(USART_TypeDef* USARTx, uint16_t USART_LINB
 }
 
 /**
-  * @brief  Enables or disables the USARTï¿½s LIN mode.
+  * @brief  Enables or disables the USART’s LIN mode.
   * @param  USARTx: Select the USART or the UART peripheral. 
   *   This parameter can be one of the following values:
   *   USART1, USART2, USART3, UART4 or UART5.
@@ -676,7 +676,7 @@ void USART_SetPrescaler(USART_TypeDef* USARTx, uint8_t USART_Prescaler)
 }
 
 /**
-  * @brief  Enables or disables the USARTï¿½s Smart Card mode.
+  * @brief  Enables or disables the USART’s Smart Card mode.
   * @param  USARTx: where x can be 1, 2 or 3 to select the USART peripheral.
   * @param  NewState: new state of the Smart Card mode.
   *   This parameter can be: ENABLE or DISABLE.     
@@ -726,7 +726,7 @@ void USART_SmartCardNACKCmd(USART_TypeDef* USARTx, FunctionalState NewState)
 }
 
 /**
-  * @brief  Enables or disables the USARTï¿½s Half Duplex communication.
+  * @brief  Enables or disables the USART’s Half Duplex communication.
   * @param  USARTx: Select the USART or the UART peripheral. 
   *   This parameter can be one of the following values:
   *   USART1, USART2, USART3, UART4 or UART5.

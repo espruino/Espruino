@@ -12,7 +12,11 @@
  * ----------------------------------------------------------------------------
  */
 #ifdef USB
-#include "usbd_cdc_hid.h"
+ #if defined(STM32F1) || defined(STM32F3)
+  #include "legacy_usb.h"
+ #else
+  #include "usbd_cdc_hid.h"
+ #endif
 #endif
 
 #include "jshardware.h"
@@ -1211,7 +1215,7 @@ void jshInit() {
 #ifdef USE_RTC
   // Set the RTC alarm (waking up from sleep)
 #ifdef STM32F1
-  NVIC_InitStructure.NVIC_IRQChannel = RTC_Alarm_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannel = RTCAlarm_IRQn;
 #else // if we have wakeup, use that rather than the alarm
   NVIC_InitStructure.NVIC_IRQChannel = RTC_WKUP_IRQn;
 #endif
@@ -2567,20 +2571,26 @@ bool jshFlashContainsCode() {
 
 #ifdef USB
 
+#ifndef STM32F1
 extern USBD_HandleTypeDef hUsbDeviceFS;
+#endif
 
 void jshSetUSBPower(bool isOn) {
+#ifdef STM32F1
   if (isOn) {
-    USBD_Stop(&hUsbDeviceFS);
-#ifdef STM32F1
-    jshPinOutput(USB_DISCONNECT_PIN, 0); // turn on USB
-#endif
+    _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
+    USB_Cable_Config(ENABLE);
   } else {
-#ifdef STM32F1
-    jshPinOutput(USB_DISCONNECT_PIN, 1); // turn off USB
-#endif // STM32F1
-    USBD_Start(&hUsbDeviceFS);
+    USB_Cable_Config(DISABLE);
+    _SetCNTR(_GetCNTR() | CNTR_PDWN);
   }
+#else
+  if (isOn) {
+    USBD_Start(&hUsbDeviceFS);
+  } else {    
+    USBD_Stop(&hUsbDeviceFS);
+  }
+#endif
 }
 #endif
 

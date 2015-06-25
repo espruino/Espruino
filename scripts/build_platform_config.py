@@ -161,8 +161,7 @@ if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
 elif board.chip["family"]=="STM32F1":
   board.chip["class"]="STM32"
-  codeOut('#include "stm32f1xx.h"')
-  codeOut('#include "stm32f10x_conf.h"')
+  codeOut('#include "stm32f10x.h"')
 elif board.chip["family"]=="STM32F2":
   board.chip["class"]="STM32"
   codeOut('#include "stm32f2xx.h"')
