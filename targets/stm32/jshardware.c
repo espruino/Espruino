@@ -12,7 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #ifdef USB
- #if defined(STM32F1) || defined(STM32F3)
+ #ifdef LEGACY_USB
   #include "legacy_usb.h"
  #else
   #include "usbd_cdc_hid.h"
@@ -2572,12 +2572,12 @@ bool jshFlashContainsCode() {
 
 #ifdef USB
 
-#ifndef STM32F1
+#ifndef LEGACY_USB
 extern USBD_HandleTypeDef hUsbDeviceFS;
 #endif
 
 void jshSetUSBPower(bool isOn) {
-#ifdef STM32F1
+#ifdef LEGACY_USB
   if (isOn) {
     _SetCNTR(_GetCNTR() & (unsigned)~CNTR_PDWN);
     USB_Cable_Config(ENABLE);

@@ -148,6 +148,7 @@
 #elif defined(STM32F415xx)
   #include "stm32f415xx.h"
 #elif defined(STM32F407xx)
+  #define STM32F40_41xxx // legacy definition
   #include "stm32f407xx.h"
 #elif defined(STM32F417xx)
   #include "stm32f417xx.h"
@@ -163,7 +164,7 @@
   #define STM32F401xx
   #include "stm32f401xc.h"
 #elif defined(STM32F401xE)
-  #define STM32F401xx
+  #define STM32F401xx // legacy definition
   #include "stm32f401xe.h"
 #elif defined(STM32F411xE)
   #include "stm32f411xe.h"

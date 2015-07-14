@@ -311,7 +311,7 @@ USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F4DISCOVERY
-STLIB=STM32F40_41xxx
+STLIB=STM32F407xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F401CDISCOVERY
@@ -834,12 +834,13 @@ targetlibs/stm32f1/lib/stm32f10x_iwdg.c    \
 targetlibs/stm32f1/lib/stm32f10x_pwr.c     \
 targetlibs/stm32f1/lib/stm32f10x_rcc.c     \
 targetlibs/stm32f1/lib/stm32f10x_rtc.c     \
+targetlibs/stm32f1/lib/stm32f10x_sdio.c    \
 targetlibs/stm32f1/lib/stm32f10x_spi.c     \
 targetlibs/stm32f1/lib/stm32f10x_tim.c     \
 targetlibs/stm32f1/lib/stm32f10x_usart.c   \
 targetlibs/stm32f1/lib/stm32f10x_wwdg.c    \
 targetlibs/stm32f1/lib/system_stm32f10x.c
-#targetlibs/stm32f1/lib/stm32f10x_sdio.c    
+    
 #targetlibs/stm32f1/lib/stm32f10x_cec.c     
 #targetlibs/stm32f1/lib/stm32f10x_crc.c     
 #targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  
@@ -896,6 +897,7 @@ SOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
 targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
@@ -920,7 +922,7 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
-#targetlibs/stm32f4/lib/stm32f4xx_dac.c        
+
 #targetlibs/stm32f4/lib/stm32f4xx_hash.c       
 #targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
 #targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
@@ -957,6 +959,7 @@ endif #USB
 # Old Legacy STM32 USB
 # Used for F1 and F3
 ifdef STM32_LEGACY_USB
+DEFINES += -DLEGACY_USB
 INCLUDE += -I$(ROOT)/targetlibs/stm32legacyusb/lib -I$(ROOT)/targetlibs/stm32legacyusb
 SOURCES +=                              \
 targetlibs/stm32legacyusb/lib/otgd_fs_cal.c       \

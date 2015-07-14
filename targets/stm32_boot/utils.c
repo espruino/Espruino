@@ -13,7 +13,7 @@
  */
 #include "platform_config.h"
 #ifdef USB
- #ifdef STM32F1
+ #ifdef LEGACY_USB
   #include "legacy_usb.h"
  #else
   #include "usb_device.h"

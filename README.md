@@ -70,7 +70,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * [Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
 * Linux - WORKING
 * STM32VLDISCOVERY - WORKING - limited memory so some features removed
-* STM32F3DISCOVERY - setWatch is broken (issue #183)
+* STM32F3DISCOVERY - USB BROKEN
 * STM32F4DISCOVERY - WORKING
 * STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
