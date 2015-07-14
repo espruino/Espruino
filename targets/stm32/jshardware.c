@@ -35,7 +35,6 @@
 #define USE_RTC
 #endif
 
-#define IRQ_PRIOR_MASSIVE 1
 #define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
@@ -1163,7 +1162,9 @@ void jshInit() {
   RCC_PCLK2Config(RCC_HCLK_Div4);
   /* System Clock */
   SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK_Div8);
+#ifdef USE_RTC
   ticksSinceStart = 0;
+#endif
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, IRQ_PRIOR_SYSTICK);
 
@@ -2045,11 +2046,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#ifdef UART4
+#if defined(UART4) && defined(UART4_IRQn)
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#ifdef UART5
+#ifdef defined(UART5) && defined(UART5_IRQn)
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
