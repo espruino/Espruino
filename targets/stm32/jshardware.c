@@ -724,8 +724,8 @@ static void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionN
 }
 
 // ----------------------------------------------------------------------------
-#ifdef USE_RTC
 volatile unsigned int ticksSinceStart = 0;
+#ifdef USE_RTC
 // Average time between SysTicks
 volatile unsigned int averageSysTickTime=0, smoothAverageSysTickTime=0;
 // last system time there was a systick
@@ -771,9 +771,9 @@ void jshDoSysTick() {
   if (execInfo.execute & EXEC_CTRL_C)
     execInfo.execute = (execInfo.execute & ~EXEC_CTRL_C) | EXEC_CTRL_C_WAIT;
 
-#ifdef USE_RTC
   if (ticksSinceStart!=0xFFFFFFFF)
     ticksSinceStart++;
+ #ifdef USE_RTC
   if (ticksSinceStart==RTC_INITIALISE_TICKS) {
     /* If RTC is already enabled, we've come back from a reset...
      * we're going to want to keep everything as it was */
@@ -826,8 +826,6 @@ void jshDoSysTick() {
         RCC_LSEConfig(RCC_LSE_OFF);
       }
     }
-    // Now call jsInteractive to let it do its thing
-    jsiOneSecondAfterStartup();
   }
 
   JsSysTime time = jshGetRTCSystemTime();
@@ -868,6 +866,12 @@ void jshDoSysTick() {
 #else
   SysTickMajor += SYSTICK_RANGE;
 #endif
+
+  /* One second after start, call jsinteractive. This is used to swap
+   * to USB (if connected), or the Serial port. */
+  if (ticksSinceStart > 3) {
+    jsiOneSecondAfterStartup();
+  }
 }
 
 // ----------------------------------------------------------------------------

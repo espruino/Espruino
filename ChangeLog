@@ -12,6 +12,7 @@
             Speed up jsvIterateCallback for arraybuffers 
             SPI speed improvements, esp for SPI.write (fix #547)
             TV out tidyup, and VGA output can now do line doubling
+            Merge in USB HID support for STM32F4 (keeping old USB for the F1)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
