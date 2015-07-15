@@ -214,6 +214,8 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   ]
 }
 Print a string to the serial port - without a line feed
+
+**Note:** This function replaces any occurances of `\n` in the string with `\r\n`. To avoid this, use `Serial.write`.
 */
 /*JSON{
   "type" : "method",
@@ -224,8 +226,9 @@ Print a string to the serial port - without a line feed
     ["string","JsVar","A String to print"]
   ]
 }
-Print a line to the serial port (newline character sent are '
-')
+Print a line to the serial port with a newline (`\r\n`) at the end of it.
+
+**Note:** This function replaces any occurances of `\n` in the string with `\r\n`. To avoid this, use `Serial.write`.
 */
 void _jswrap_serial_print(JsVar *parent, JsVar *str, bool newLine) {
   NOT_USED(parent);
@@ -255,7 +258,9 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
     ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
   ]
 }
-Write a character or array of characters to the serial port - without a line feed
+Write a character or array of characters to the serial port - without a line feed. 
+
+This method writes unmodified data. If you'd like occurances of `\n` to be replaced with `\r\n`, use `Serial.print`.
 */
 static void jswrap_serial_write_cb(int data, void *userData) {
   IOEventFlags device = *(IOEventFlags*)userData;
