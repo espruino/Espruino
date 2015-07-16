@@ -616,11 +616,16 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
+#ifdef LINUX
+  consoleDevice = DEFAULT_CONSOLE_DEVICE;
+#else
   consoleDevice = EV_LIMBO;
+#endif
 
   jsiSemiInit(autoLoad);
 }
 
+#ifdef LINUX
 // This should get called from jshardware.c one second after startup,
 // it does initialisation tasks like setting the right console device
 void jsiOneSecondAfterStartup() {
@@ -643,6 +648,7 @@ void jsiOneSecondAfterStartup() {
     jshTransmitClearDevice(EV_LIMBO);
   }
 }
+#endif
 
 void jsiKill() {
   jsiSoftKill();

@@ -27,9 +27,11 @@
 void jsiInit(bool autoLoad);
 void jsiKill();
 
+#ifndef LINUX
 // This should get called from jshardware.c one second after startup,
 // it does initialisation tasks like setting the right console device
 void jsiOneSecondAfterStartup();
+#endif
 
 /// do main loop stuff, return true if it was busy this iteration
 bool jsiLoop();

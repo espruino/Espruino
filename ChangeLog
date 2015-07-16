@@ -15,6 +15,7 @@
             Merge in USB HID support for STM32F4 (keeping old USB for the F1)
             Add built-in 'Flash' module to allow Flash memory to be accessed from user code
             Pulled load/save code out of jshardware into jswrap_flash.c 
+            Remove jsiOneSecondAfterStartup from Linux builds (fix #551)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

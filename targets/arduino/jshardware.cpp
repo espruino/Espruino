@@ -43,9 +43,16 @@ void jshKill() {
 }
 
 void jshIdle() {
-   while (Serial.available() > 0) {
-      jshPushIOCharEvent(EV_SERIAL1, Serial.read());
-   } 
+  // hack in order to get console device set correctly
+  static bool inited = false;
+  if (!inited) {
+    inited = true;
+    jsiOneSecondAfterStartup();
+  }
+
+  while (Serial.available() > 0) {
+    jshPushIOCharEvent(EV_SERIAL1, Serial.read());
+  }
 }
 
 // ----------------------------------------------------------------------------

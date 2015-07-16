@@ -77,6 +77,13 @@ void jshKill() {
 }
 
 void jshIdle() {
+  // hack in order to get console device set correctly
+  static bool inited = false;
+  if (!inited) {
+    inited = true;
+    jsiOneSecondAfterStartup();
+  }
+
   /*static bool foo = false;
   foo = !foo;
   jshPinSetValue(LED1_PININDEX, foo);*/
