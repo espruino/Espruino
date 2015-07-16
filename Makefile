@@ -535,6 +535,7 @@ src/jswrap_arraybuffer.c \
 src/jswrap_date.c \
 src/jswrap_error.c \
 src/jswrap_espruino.c \
+src/jswrap_flash.c \
 src/jswrap_functions.c \
 src/jswrap_interactive.c \
 src/jswrap_io.c \

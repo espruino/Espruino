@@ -230,13 +230,14 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop);
 
-
-/// Save contents of JsVars into Flash
-void jshSaveToFlash();
-/// Load contents of JsVars from Flash
-void jshLoadFromFlash();
-/// Returns true if flash contains something useful
-bool jshFlashContainsCode();
+/// Return start address and size of the flash page the given address resides in. Returns false if no page
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize);
+/// Erase the flash page containing the address
+void jshFlashErasePage(uint32_t addr);
+/// Read data from flash memory into the buffer
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
+/// Write data to flash memory from the buffer
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake);

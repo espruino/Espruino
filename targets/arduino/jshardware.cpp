@@ -203,19 +203,6 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
 }
 
-
-void jshSaveToFlash() {
-  jsError("Flash not implemented on Arduino");
-}
-
-void jshLoadFromFlash() {
-  jsError("Flash not implemented on Arduino");
-}
-
-bool jshFlashContainsCode() {
-  return false;
-}
-
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   return false;
@@ -234,5 +221,17 @@ JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
 unsigned int jshGetRandomNumber() { return rand(); }
 
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  return false;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+}
 
 }

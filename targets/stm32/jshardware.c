@@ -92,6 +92,7 @@ JsSysTime jshLastWokenByUSB = 0;
 // stupid renamed stuff
 #define EXTI2_IRQn EXTI2_TS_IRQn
 #define GPIO_Mode_AIN GPIO_Mode_AN
+#define FLASH_FLAG_WRPERR FLASH_FLAG_WRPRTERR
 // see _gpio.h
 #define GPIO_AF_USART1 GPIO_AF_7
 #define GPIO_AF_USART2 GPIO_AF_7
@@ -2054,7 +2055,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#ifdef defined(UART5) && defined(UART5_IRQn)
+#if defined(UART5) && defined(UART5_IRQn)
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
@@ -2428,152 +2429,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 #endif
 }
 
-
-void jshSaveToFlash() {
-#ifdef STM32API2
-  FLASH_Unlock();
-#else
-  #ifndef FLASH_BANK_2
-    FLASH_UnlockBank1();
-  #else
-    FLASH_UnlockBank2();
-  #endif
-#endif
-
-  unsigned int i;
-  /* Clear All pending flags */
-#if defined(STM32F2) || defined(STM32F4)
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
-#elif defined(STM32F3)
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
-#else
-  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-#endif
-
-  jsiConsolePrint("Erasing Flash...");
-#if defined(STM32F2) || defined(STM32F4)
-  for (i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
-    FLASH_EraseSector(FLASH_Sector_0 + (FLASH_Sector_1-FLASH_Sector_0)*(FLASH_SAVED_CODE_SECTOR+i), VoltageRange_3); // a FLASH_Sector_## constant
-    jsiConsolePrint(".");
-  }
-#else
-  /* Erase the FLASH pages */
-  for(i=0;i<FLASH_SAVED_CODE_PAGES;i++) {
-    FLASH_ErasePage((uint32_t)(FLASH_SAVED_CODE_START + (FLASH_PAGE_SIZE * i)));
-    jsiConsolePrint(".");
-  }
-#endif
-  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrintf("\nProgramming %d Bytes...", dataSize);
-
-  JsVar *firstData = jsvLock(1);
-  uint32_t *basePtr = (uint32_t *)firstData;
-  jsvUnLock(firstData);
-#if defined(STM32F2) || defined(STM32F4)
-  for (i=0;i<dataSize;i+=4) {
-      while (FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]) != FLASH_COMPLETE);
-      if ((i&1023)==0) jsiConsolePrint(".");
-  }
-  while (FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC) != FLASH_COMPLETE);
-#else
-  /* Program Flash Bank */
-  for (i=0;i<dataSize;i+=4) {
-      FLASH_ProgramWord((uint32_t)(FLASH_SAVED_CODE_START+i), basePtr[i>>2]);
-      if ((i&1023)==0) jsiConsolePrint(".");
-  }
-  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
-  FLASH_WaitForLastOperation(0x2000);
-#endif
-#ifdef STM32API2
-  FLASH_Lock();
-#else
-  #ifndef FLASH_BANK_2
-    FLASH_LockBank1();
-  #else
-    FLASH_LockBank2();
-  #endif
-#endif
-  jsiConsolePrint("\nChecking...");
-
-  int errors = 0;
-  for (i=0;i<dataSize;i+=4)
-    if ((*(uint32_t*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
-      errors++;
-
-  if (FLASH_MAGIC != *(unsigned int*)FLASH_MAGIC_LOCATION) {
-    jsiConsolePrint("\nFlash Magic Byte is wrong");
-    errors++;
-  }
-
-  if (errors) {
-      jsiConsolePrintf("\nThere were %d errors!\n>", errors);
-  } else
-      jsiConsolePrint("\nDone!\n");
-
-//  This is nicer, but also broken!
-//  FLASH_UnlockBank1();
-//  /* Clear All pending flags */
-//  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-//
-//  size_t varDataSize = jsvGetVarDataSize();
-//  int *basePtr = jsvGetVarDataPointer();
-//
-//  int page;
-//  for(page=0;page<FLASH_SAVED_CODE_PAGES;page++) {
-//    jsPrint("Flashing Page ");jsPrintInt(page);jsPrint("...\n");
-//    size_t pageOffset = (FLASH_PAGE_SIZE * page);
-//    size_t pagePtr = FLASH_SAVED_CODE_START + pageOffset;
-//    size_t pageSize = varDataSize-pageOffset;
-//    if (pageSize>FLASH_PAGE_SIZE) pageSize = FLASH_PAGE_SIZE;
-//    jsPrint("Offset ");jsPrintInt(pageOffset);jsPrint(", Size ");jsPrintInt(pageSize);jsPrint(" bytes\n");
-//    bool first = true;
-//    int errors = 0;
-//    int i;
-//    for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//      if ((*(int*)(FLASH_SAVED_CODE_START+i)) != basePtr[i>>2])
-//        errors++;
-//    while (errors && !jspIsInterrupted()) {
-//      if (!first) { jsPrintInt(errors);jsPrint(" errors - retrying...\n"); }
-//      first = false;
-//      /* Erase the FLASH page */
-//      FLASH_ErasePage(pagePtr);
-//      /* Program Flash Bank1 */
-//      for (i=pageOffset;i<pageOffset+pageSize;i+=4)
-//          FLASH_ProgramWord(FLASH_SAVED_CODE_START+i, basePtr[i>>2]);
-//      FLASH_WaitForLastOperation(0x20000);
-//    }
-//  }
-//  // finally flash magic byte
-//  FLASH_ProgramWord(FLASH_MAGIC_LOCATION, FLASH_MAGIC);
-//  FLASH_WaitForLastOperation(0x20000);
-//  FLASH_LockBank1();
-//  if (*(int*)FLASH_MAGIC_LOCATION != FLASH_MAGIC)
-//    jsPrint("Flash magic word not flashed correctly!\n");
-//  jsPrint("Flashing Complete\n");
-
-}
-
-void jshLoadFromFlash() {
-  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
-  jsiConsolePrintf("Loading from flash...\n");
-
-  JsVar *firstData = jsvLock(1);
-  uint32_t *basePtr = (uint32_t *)firstData;
-  jsvUnLock(firstData);
-
-  memcpy(basePtr, (int*)FLASH_SAVED_CODE_START, dataSize);
-}
-
-bool jshFlashContainsCode() {
-  /*jsPrint("Magic contains ");
-  jsPrintInt(*(int*)FLASH_MAGIC_LOCATION);
-  jsPrint("we want");
-  jsPrintInt(FLASH_MAGIC);
-  jsPrint("\n");*/
-  return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
-}
-
 #ifdef USB
 
 #ifndef LEGACY_USB
@@ -2915,4 +2770,111 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
     /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
     IWDG_Enable();
+}
+
+#if defined(STM32F2) || defined(STM32F4)
+int jshFlashGetSector(uint32_t addr) {
+  addr -= FLASH_START;
+  if (addr>=FLASH_TOTAL) return -1;
+  if (addr<16*1024) return FLASH_Sector_0;
+  else if (addr<32*1024) return FLASH_Sector_1;
+  else if (addr<48*1024) return FLASH_Sector_2;
+  else if (addr<64*1024) return FLASH_Sector_3;
+  else if (addr<128*1024) return FLASH_Sector_4;
+  else if (addr<256*1024) return FLASH_Sector_5;
+  else if (addr<384*1024) return FLASH_Sector_6;
+  else if (addr<512*1024) return FLASH_Sector_7;
+  else if (addr<640*1024) return FLASH_Sector_8;
+  else if (addr<768*1024) return FLASH_Sector_9;
+  else if (addr<896*1024) return FLASH_Sector_10;
+  else if (addr<1024*1024) return FLASH_Sector_11;
+  assert(0);
+  return -1;
+}
+uint32_t jshFlashGetSectorAddr(int sector) {
+  sector /= FLASH_Sector_1; // make an actual int
+  if (sector <= 4) return FLASH_START + 16*1024*sector;
+  return FLASH_START + 128*1024*(sector-4);
+}
+#endif
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+#if defined(STM32F2) || defined(STM32F4)
+  int sector = jshFlashGetSector(addr);
+  if (sector<0) return false;
+  if (startAddr) *startAddr = jshFlashGetSectorAddr(sector);
+  if (pageSize) *pageSize = jshFlashGetSectorAddr(sector+FLASH_Sector_1)-jshFlashGetSectorAddr(sector);
+  return true;
+#else
+  if (addr<FLASH_START ||
+      addr>=FLASH_START+FLASH_TOTAL)
+    return false;
+  if (startAddr) *startAddr = addr & (uint32_t)~(FLASH_PAGE_SIZE-1);
+  if (pageSize) *pageSize = FLASH_PAGE_SIZE;
+  return true;
+#endif
+}
+
+void jshFlashErasePage(uint32_t addr) {
+#if defined(STM32F2) || defined(STM32F4)
+  int sector = jshFlashGetSector(addr);
+  assert(sector>=0);
+  FLASH_Unlock();
+  // Clear All pending flags
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+  // Erase
+  FLASH_EraseSector(sector, VoltageRange_3);
+
+  FLASH_Lock();
+#else
+  bool bank1 = addr<0x08080000;
+  if (bank1) FLASH_UnlockBank1();
+  else FLASH_UnlockBank2();
+  // Clear All pending flags
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+  // Erase
+  FLASH_ErasePage(addr & (uint32_t)~(FLASH_PAGE_SIZE-1));
+  FLASH_WaitForLastOperation(0x2000);
+
+  if (bank1) FLASH_LockBank1();
+  else FLASH_LockBank2();
+#endif
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+  memcpy(buf, (void*)addr, len);
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+#ifdef STM32API2
+  FLASH_Unlock();
+#else
+  bool bank1 = addr<0x08080000;
+  if (bank1) FLASH_UnlockBank1();
+  else FLASH_UnlockBank2();
+#endif
+
+  unsigned int i;
+
+#if defined(STM32F2) || defined(STM32F4)
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                  FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
+  for (i=0;i<len;i+=4) {
+    while (FLASH_ProgramWord((uint32_t)(addr+i), ((uint32_t*)buf)[i>>2]) != FLASH_COMPLETE);
+  }
+#else
+  FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
+
+  for (i=0;i<len;i+=4)
+    FLASH_ProgramWord(addr+i, ((uint32_t*)buf)[i>>2]);
+  FLASH_WaitForLastOperation(0x2000);
+#endif
+
+#ifdef STM32API2
+  FLASH_Lock();
+#else
+  if (bank1) FLASH_LockBank1();
+  else FLASH_LockBank2();
+#endif
 }

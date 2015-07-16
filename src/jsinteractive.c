@@ -19,6 +19,7 @@
 #include "jswrap_json.h"
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
+#include "jswrap_flash.h" // load and save to flash
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -580,11 +581,11 @@ void jsiSemiInit(bool autoLoad) {
 
   /* If flash contains any code, then we should
      Try and load from it... */
-  bool loadFlash = autoLoad && jshFlashContainsCode();
+  bool loadFlash = autoLoad && jsfFlashContainsCode();
   if (loadFlash) {
     jspSoftKill();
     jsvSoftKill();
-    jshLoadFromFlash();
+    jsfLoadFromFlash();
     jsvSoftInit();
     jspSoftInit();
   }
@@ -1567,7 +1568,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jshSaveToFlash();
+      jsfSaveToFlash();
       jshReset();
       jsvSoftInit();
       jspSoftInit();
@@ -1580,7 +1581,7 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshReset();
-      jshLoadFromFlash();
+      jsfLoadFromFlash();
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit();
