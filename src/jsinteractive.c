@@ -625,8 +625,8 @@ void jsiInit(bool autoLoad) {
   jsiSemiInit(autoLoad);
 }
 
-#ifdef LINUX
-// This should get called from jshardware.c one second after startup,
+#ifndef LINUX
+// This should get jsiOneSecondAfterStartupcalled from jshardware.c one second after startup,
 // it does initialisation tasks like setting the right console device
 void jsiOneSecondAfterStartup() {
   /* When we start up, we put all console output into 'Limbo' (EV_LIMBO),
