@@ -18,6 +18,7 @@
             Remove jsiOneSecondAfterStartup from Linux builds (fix #551)
             Add RLE compression when saving to flash, increase Pico RAM from 3000 to 5000 vars (fix #543)
             Fix `JSON.parse` when not given strings (fix #546)
+            Tweak Olimexino board - 700->1k vars, but lowered code flash to 6k
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

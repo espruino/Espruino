@@ -18,7 +18,7 @@ import json;
 info = {
  'name' : "Olimexino STM32 / Leaflabs Maple",
  'link' :  [ "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32/", "http://leaflabs.com/devices/maple/" ],
- 'variables' : 715,
+ 'variables' : 1020,
  'binary_name' : 'espruino_%v_olimexino_stm32.bin',
 };
 chip = {
@@ -33,6 +33,12 @@ chip = {
   'i2c' : 2,
   'adc' : 3,
   'dac' : 0,
+  'saved_code' : {
+    'address' : 0x08000000 + ((128-6)*1024),
+    'page_size' : 1024, # size of pages
+    'pages' : 6, # number of pages we're using
+    'flash_available' : 128-6 # 6 used for code
+  },
 };
 # left-right, or top-bottom order
 board = {
