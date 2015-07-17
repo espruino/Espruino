@@ -314,19 +314,6 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos) {
   jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
-
-/// Print the contents of a string var to a device - directly
-void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, v, 0);
-  while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
-    jshTransmit(device, (unsigned char)ch);
-    jsvStringIteratorNext(&it);
-  }
-  jsvStringIteratorFree(&it);
-}
-
 void jsiClearInputLine() {
   jsiConsoleRemoveInputLine();
   // clear input line

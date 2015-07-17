@@ -199,9 +199,28 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   jsvUnLock(jsvObjectSetChild(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate)));
   // Do the same for options
   if (options)
-    jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
+    jsvObjectSetChild(parent, DEVICE_OPTIONS_NAME, options);
   else
     jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
+}
+
+
+static void _jswrap_serial_print_cb(int data, void *userData) {
+  IOEventFlags device = *(IOEventFlags*)userData;
+  jshTransmit(device, (unsigned char)data);
+}
+void _jswrap_serial_print(JsVar *parent, JsVar *arg, bool isPrint, bool newLine) {
+  NOT_USED(parent);
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+  if (!DEVICE_IS_USART(device)) return;
+
+  if (isPrint) arg = jsvAsString(arg, false);
+  jsvIterateCallback(arg, _jswrap_serial_print_cb, (void*)&device);
+  if (isPrint) jsvUnLock(arg);
+  if (newLine) {
+    _jswrap_serial_print_cb((unsigned char)'\r', (void*)&device);
+    _jswrap_serial_print_cb((unsigned char)'\n', (void*)&device);
+  }
 }
 
 /*JSON{
@@ -228,26 +247,13 @@ Print a string to the serial port - without a line feed
 }
 Print a line to the serial port with a newline (`\r\n`) at the end of it.
 
-**Note:** This function replaces any occurances of `\n` in the string with `\r\n`. To avoid this, use `Serial.write`.
+**Note:** This function converts data to a string first, eg `Serial.print([1,2,3])` is equivalent to `Serial.print("1,2,3"). If you'd like to write raw bytes, use `Serial.write`.
 */
-void _jswrap_serial_print(JsVar *parent, JsVar *str, bool newLine) {
-  NOT_USED(parent);
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (!DEVICE_IS_USART(device)) return;
-
-  str = jsvAsString(str, false);
-  jsiTransmitStringVar(device,str);
-  jsvUnLock(str);
-  if (newLine) {
-    jshTransmit(device, (unsigned char)'\r');
-    jshTransmit(device, (unsigned char)'\n');
-  }
-}
 void jswrap_serial_print(JsVar *parent, JsVar *str) {
-  _jswrap_serial_print(parent, str, false);
+  _jswrap_serial_print(parent, str, true, false);
 }
 void jswrap_serial_println(JsVar *parent,  JsVar *str) {
-  _jswrap_serial_print(parent, str, true);
+  _jswrap_serial_print(parent, str, true, true);
 }
 /*JSON{
   "type" : "method",
@@ -258,20 +264,12 @@ void jswrap_serial_println(JsVar *parent,  JsVar *str) {
     ["data","JsVarArray","One or more items to write. May be ints, strings, arrays, or objects of the form `{data: ..., count:#}`."]
   ]
 }
-Write a character or array of characters to the serial port - without a line feed. 
+Write a character or array of data to the serial port
 
-This method writes unmodified data. If you'd like occurances of `\n` to be replaced with `\r\n`, use `Serial.print`.
+This method writes unmodified data, eg `Serial.write([1,2,3])` is equivalent to `Serial.write("\1\2\3")`. If you'd like data converted to a string first, use `Serial.print`.
 */
-static void jswrap_serial_write_cb(int data, void *userData) {
-  IOEventFlags device = *(IOEventFlags*)userData;
-  jshTransmit(device, (unsigned char)data);
-}
 void jswrap_serial_write(JsVar *parent, JsVar *args) {
-  NOT_USED(parent);
-  IOEventFlags device = jsiGetDeviceFromClass(parent);
-  if (!DEVICE_IS_USART(device)) return;
-
-  jsvIterateCallback(args, jswrap_serial_write_cb, (void*)&device);
+  _jswrap_serial_print(parent, args, false, false);
 }
 
 /*JSON{
