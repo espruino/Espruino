@@ -118,12 +118,29 @@ void jsvCreateEmptyVarList() {
   }
 }
 
+/* Removes the empty variable counter, cleaving clear runs of 0s
+ where no data resides. This helps if compressing the variables
+ for storage. */
+void jsvClearEmptyVarList() {
+  jsVarFirstEmpty = 0;
+  JsVarRef i;
+  for (i=1;i<=jsVarsSize;i++) {
+    JsVar *var = jsvGetAddressOf(i);
+    if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
+      jsvSetNextSibling(var, 0);
+    } else if (jsvIsFlatString(var)) {
+      // skip over used blocks for flat strings
+      i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));
+    }
+  }
+}
 
 void jsvSoftInit() {
   jsvCreateEmptyVarList();
 }
 
 void jsvSoftKill() {
+  jsvClearEmptyVarList();
 }
 
 /** This links all JsVars together, so we can have our nice

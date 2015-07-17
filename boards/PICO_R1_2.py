@@ -39,7 +39,6 @@ chip = {
   'saved_code' : {
     'address' : 0x08004000,
     'page_size' : 16384, # size of pages
-    'page_number' : 1, # number of page we start at (0 based)
     'pages' : 3, # number of pages we're using
     'flash_available' : 384 # binary will have a hole in it, so we just want to test against full size
   },

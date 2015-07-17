@@ -2830,7 +2830,9 @@ void jshFlashErasePage(uint32_t addr) {
 #else
   bool bank1 = addr<0x08080000;
   if (bank1) FLASH_UnlockBank1();
+#ifdef STM32F10X_XL
   else FLASH_UnlockBank2();
+#endif
   // Clear All pending flags
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
   // Erase
@@ -2838,7 +2840,9 @@ void jshFlashErasePage(uint32_t addr) {
   FLASH_WaitForLastOperation(0x2000);
 
   if (bank1) FLASH_LockBank1();
+#ifdef STM32F10X_XL
   else FLASH_LockBank2();
+#endif
 #endif
 }
 
@@ -2852,7 +2856,9 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #else
   bool bank1 = addr<0x08080000;
   if (bank1) FLASH_UnlockBank1();
+#ifdef STM32F10X_XL
   else FLASH_UnlockBank2();
+#endif
 #endif
 
   unsigned int i;
@@ -2875,6 +2881,8 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
   FLASH_Lock();
 #else
   if (bank1) FLASH_LockBank1();
+#ifdef STM32F10X_XL
   else FLASH_LockBank2();
+#endif
 #endif
 }

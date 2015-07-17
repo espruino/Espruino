@@ -20,7 +20,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 3040,
+ 'variables' : 5100,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
  'binaries' : [
@@ -43,7 +43,6 @@ chip = {
   'saved_code' : {
     'address' : 0x08004000,
     'page_size' : 16384, # size of pages
-    'page_number' : 1, # number of page we start at (0 based)
     'pages' : 3, # number of pages we're using
     'flash_available' : 384 # binary will have a hole in it, so we just want to test against full size
   },
