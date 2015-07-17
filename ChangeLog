@@ -19,6 +19,7 @@
             Add RLE compression when saving to flash, increase Pico RAM from 3000 to 5000 vars (fix #543)
             Fix `JSON.parse` when not given strings (fix #546)
             Tweak Olimexino board - 700->1k vars, but lowered code flash to 6k
+            Disable flash prefetch on Pico (~1% slower, but less power and way more accurate ADC readings) (fix #545)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
