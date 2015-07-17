@@ -148,7 +148,9 @@ NOTE: This implementation uses eval() internally, and as such it is unsafe as it
 */
 JsVar *jswrap_json_parse(JsVar *v) {
   JsLex lex;
-  jslInit(&lex, v);
+  JsVar *str = jsvAsString(v, false);
+  jslInit(&lex, str);
+  jsvUnLock(str);
   JsVar *res = jswrap_json_parse_internal(&lex);
   jslKill(&lex);
   return res;
