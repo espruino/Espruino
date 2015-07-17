@@ -92,7 +92,9 @@ JsSysTime jshLastWokenByUSB = 0;
 // stupid renamed stuff
 #define EXTI2_IRQn EXTI2_TS_IRQn
 #define GPIO_Mode_AIN GPIO_Mode_AN
-#define FLASH_FLAG_WRPERR FLASH_FLAG_WRPRTERR
+#define FLASH_FLAG_WRPRTERR FLASH_FLAG_WRPERR
+#define FLASH_LockBank1 FLASH_Lock
+#define FLASH_UnlockBank1 FLASH_Unlock
 // see _gpio.h
 #define GPIO_AF_USART1 GPIO_AF_7
 #define GPIO_AF_USART2 GPIO_AF_7
