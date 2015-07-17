@@ -1431,7 +1431,11 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
             jsvUnLock(a);
             a = jsvNewFromBool(varFound!=0);
             jsvUnLock(varFound);
-          } // else it will be undefined
+          } else {// else it will be undefined
+            jsExceptionHere(JSET_ERROR, "Cannot use 'in' operator to search a %t", bv);
+            jsvUnLock(a);
+            a = 0;
+          }
           jsvUnLock(av);
           jsvUnLock(bv);
         } else if (op==LEX_R_INSTANCEOF) {
