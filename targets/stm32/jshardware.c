@@ -2777,7 +2777,13 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 #if defined(STM32F2) || defined(STM32F4)
 int jshFlashGetSector(uint32_t addr) {
   addr -= FLASH_START;
-  if (addr>=FLASH_TOTAL) return -1;
+#ifdef FLASH_END // supplied by stm32fXXX.h
+  if (FLASH_START+addr > FLASH_END) return -1;
+#else
+  // else use what's in BOARD.py - could be less than the
+  // chip might be capable of (but not specced for ;)
+  if (addr >= FLASH_TOTAL) return -1;
+#endif
   if (addr<16*1024) return FLASH_Sector_0;
   else if (addr<32*1024) return FLASH_Sector_1;
   else if (addr<48*1024) return FLASH_Sector_2;
@@ -2795,8 +2801,8 @@ int jshFlashGetSector(uint32_t addr) {
 }
 uint32_t jshFlashGetSectorAddr(int sector) {
   sector /= FLASH_Sector_1; // make an actual int
-  if (sector <= 4) return FLASH_START + 16*1024*sector;
-  return FLASH_START + 128*1024*(sector-4);
+  if (sector <= 4) return FLASH_START + 16*1024*(uint32_t)sector;
+  return FLASH_START + 128*1024*(uint32_t)(sector-4);
 }
 #endif
 
@@ -2826,7 +2832,7 @@ void jshFlashErasePage(uint32_t addr) {
   FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
                   FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR|FLASH_FLAG_PGSERR);
   // Erase
-  FLASH_EraseSector(sector, VoltageRange_3);
+  FLASH_EraseSector((uint32_t)sector, VoltageRange_3);
 
   FLASH_Lock();
 #else

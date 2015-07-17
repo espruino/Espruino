@@ -121,8 +121,8 @@ void jswrap_flash_write(JsVar *data, int addr) {
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Flash",
-  "name" : "write",
-  "generate" : "jswrap_flash_write",
+  "name" : "read",
+  "generate" : "jswrap_flash_read",
   "params" : [
     ["length","int","The amount of data to read (in bytes)"],
     ["addr","int","The address to start writing from"]
