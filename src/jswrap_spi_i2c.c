@@ -58,6 +58,8 @@ The third SPI port
   "generate" : "jswrap_spi_constructor"
 }
 Create a software SPI port. This has limited functionality (no baud rate), but it can work on any pins.
+
+Use `SPI.setup` to configure this port.
 */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
