@@ -22,6 +22,7 @@
             Disable flash prefetch on Pico (~1% slower, but less power and way more accurate ADC readings) (fix #545)
             Now throw errors when 'in' is used on an invalid datatype (fix #550)
             Updated (inaccurate) docs for Serial.write/print and removed duplicated code
+            Changed Pico's device class to 0x02 - now works on older Mac OS 10.6.8
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
