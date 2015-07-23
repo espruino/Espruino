@@ -56,16 +56,16 @@ const USBD_ClassTypeDef  USBD_CDC_HID =
 /* USB Standard Device Descriptor */
 __ALIGN_BEGIN static const uint8_t USBD_CDC_HID_DeviceQualifierDesc[USB_LEN_DEV_QUALIFIER_DESC] __ALIGN_END =
 {
-  USB_LEN_DEV_QUALIFIER_DESC,
-  USB_DESC_TYPE_DEVICE_QUALIFIER,
-  0x00,
-  0x02,
-  0x00,
-  0x00,
-  0x00,
-  0x40,
-  0x01,
-  0x00,
+  USB_LEN_DEV_QUALIFIER_DESC,    // bLength
+  USB_DESC_TYPE_DEVICE_QUALIFIER,// bDescriptorType
+  0x00,  // bcdUSB lo
+  0x02,  // bcdUSB hi
+  0x00,  // bDeviceClass
+  0x00,  // bDeviceSubClass
+  0x00,  // bDeviceProtocol
+  0x40,  // bMaxPacketSize0
+  0x01,  // bNumConfigurations
+  0x00,  // bReserved
 };
 
 
