@@ -77,13 +77,11 @@ typedef enum {
     JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
+    JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
     // 3 bits left over here on most systems
-
     JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
-/// The amount of bits we must shift to get the number of locks - forced to be a constant
-static const int JSV_LOCK_SHIFT = GET_BIT_NUMBER(JSV_LOCK_ONE);
 
 typedef enum {
   ARRAYBUFFERVIEW_UNDEFINED = 0,
@@ -119,13 +117,13 @@ typedef struct {
 /// Data for native functions
 typedef struct {
   void (*ptr)(void); ///< Function pointer - this may not be the real address - see jsvGetNativeFunctionPtr
-  unsigned short argTypes; ///< Actually a list of JsnArgumentType
+  uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
-  char pad[JSVAR_DATA_STRING_LEN];
+  int8_t pad[JSVAR_DATA_STRING_LEN];
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
@@ -157,13 +155,13 @@ typedef struct {
 
 #else // JSVARREF_PACKED_BITS
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
-  unsigned char nextSibling;
-  unsigned char prevSibling;
-  unsigned char refs;
-  unsigned char firstChild;
-  unsigned char lastChild;
+  uint8_t nextSibling;
+  uint8_t prevSibling;
+  uint8_t refs;
+  uint8_t firstChild;
+  uint8_t lastChild;
 
-  unsigned char pack; // extra packed bits if JSVARREF_PACKED_BITS
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
 #endif
 } PACKED_FLAGS JsVarDataRef;
 

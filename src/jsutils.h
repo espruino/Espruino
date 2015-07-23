@@ -16,6 +16,7 @@
 
 #include "platform_config.h"
 
+#include <stddef.h>
 #ifndef FAKE_STDLIB
 #include <string.h>
 #include <stdio.h>
@@ -49,7 +50,6 @@ extern int isfinite ( double );
 */
 
 #if defined(ARM) || defined(AVR)
-typedef unsigned int size_t;
 #define alloca(x) __builtin_alloca(x)
 #endif
 
@@ -72,9 +72,9 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 /* Number of Js Variables allowed and Js Reference format. 
 
-   JsVarRef = char -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
-   JsVarRef = short -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
-   JsVarRef = int -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
+   JsVarRef = uint8_t -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
+   JsVarRef = uint16_t -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
+   JsVarRef = uint32_t -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
 
    NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
          See jshardware.c FLASH constants - all this must be able to fit in flash
@@ -84,8 +84,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 #ifdef RESIZABLE_JSVARS
  //  probably linux - allow us to allocate more blocks of variables
-  typedef unsigned int JsVarRef;
-  typedef int JsVarRefSigned;
+  typedef uint32_t JsVarRef;
+  typedef int32_t JsVarRefSigned;
   #define JSVARREF_MIN (-2147483648)
   #define JSVARREF_MAX 2147483647
   #define JSVARREF_SIZE 4
@@ -95,8 +95,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
    *
    */
   #if JSVAR_CACHE_SIZE <= 254
-    typedef unsigned char JsVarRef;
-    typedef char JsVarRefSigned;
+    typedef uint8_t JsVarRef;
+    typedef int8_t JsVarRefSigned;
     #define JSVARREF_MIN (-128)
     #define JSVARREF_MAX 127
     #define JSVARREF_SIZE 1
@@ -110,14 +110,14 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
      * passing them around.
      */
     #define JSVARREF_PACKED_BITS 2
-    typedef unsigned short JsVarRef;
-    typedef short JsVarRefSigned;
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
     #define JSVARREF_MIN (-512)
     #define JSVARREF_MAX 511
     #define JSVARREF_SIZE 1
   #else
-    typedef unsigned short JsVarRef;
-    typedef short JsVarRefSigned;
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
     #define JSVARREF_MIN (-32768)
     #define JSVARREF_MAX 32767
     #define JSVARREF_SIZE 2
@@ -141,7 +141,7 @@ typedef double JsVarFloat;
 #endif
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
-typedef long long JsSysTime;
+typedef int64_t JsSysTime;
 #define JSSYSTIME_INVALID ((JsSysTime)-1)
 
 #define JSLEX_MAX_TOKEN_LENGTH  64
@@ -232,9 +232,9 @@ typedef long long JsSysTime;
    ((X)==32768)?15:10000/*error*/)
 
 // To handle variable size bit fields
-#define BITFIELD_DECL(BITFIELD, N) unsigned int BITFIELD[(N+31)/32]
+#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[(N+31)/32]
 #define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
-#define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (unsigned int)~(1 << ((N)&31))) | (unsigned int)((VALUE)?(1 << ((N)&31)):0)  )
+#define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (uint32_t)~(1 << ((N)&31))) | (uint32_t)((VALUE)?(1 << ((N)&31)):0)  )
 
 
 static inline bool isWhitespace(char ch) {
