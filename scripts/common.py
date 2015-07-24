@@ -322,8 +322,9 @@ def get_version():
             match = version.search(line);
             if (match != None):
                 v = match.group(1);
-                if commits_since_release==0: return v
+                if commits_since_release=="0": return v
                 else: return v+"."+commits_since_release
+        return "UNKNOWN"
                
 
 def get_name_or_space(jsondata):
