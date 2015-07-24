@@ -41,6 +41,12 @@ chip = {
   'i2c' : 2,
   'adc' : 3,
   'dac' : 2,
+  'saved_code' : {
+    'address' : 0x08000000 + ((256-30)*1024),
+    'page_size' : 2048, # size of pages
+    'pages' : 15, # number of pages we're using
+    'flash_available' : 256-30 # 30 used for code
+  },
 };
 # left-right, or top-bottom order
 board = {
