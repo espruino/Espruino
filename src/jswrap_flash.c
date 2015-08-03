@@ -297,17 +297,18 @@ void jsfSaveToFlash() {
   cbData[2] = 0; // word data (can only save a word ata a time)
   jsiConsolePrint("\nWriting...");
   rle_encode((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
+  uint32_t endOfData = cbData[1];
+  uint32_t writtenBytes = endOfData - FLASH_SAVED_CODE_START;
   // make sure we write everything in buffer
   jsfSaveToFlash_writecb(0,cbData);
   jsfSaveToFlash_writecb(0,cbData);
   jsfSaveToFlash_writecb(0,cbData);
-  uint32_t writtenBytes = cbData[1]-rleStart;
 
   if (cbData[1]>=cbData[0]) {
     jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
   } else {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
-    jshFlashWrite(&cbData[1], FLASH_SAVED_CODE_START, 4); // write position of end of data
+    jshFlashWrite(&endOfData, FLASH_SAVED_CODE_START, 4); // write position of end of data, at start of address space
 
     uint32_t magic = FLASH_MAGIC;
     jshFlashWrite(&magic, FLASH_MAGIC_LOCATION, 4);
