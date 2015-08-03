@@ -127,7 +127,8 @@ void jsvClearEmptyVarList() {
   for (i=1;i<=jsVarsSize;i++) {
     JsVar *var = jsvGetAddressOf(i);
     if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
-      jsvSetNextSibling(var, 0);
+      // completely zero it (JSV_UNUSED==0, so it still stays the same)
+      memset((void*)var,0,sizeof(JsVar));
     } else if (jsvIsFlatString(var)) {
       // skip over used blocks for flat strings
       i = (JsVarRef)(i+jsvGetFlatStringBlocks(var));

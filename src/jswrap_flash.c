@@ -219,8 +219,14 @@ int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
   return data;
 }
 #else
+int jsfLoadFromFlash_readcb(uint32_t *cbdata) {
+  unsigned char ch;
+  if (fread(&ch,1,1,(FILE*)cbdata)==1) return ch;
+  return -1;
+}
+
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
-  fwrite(&ch,1,1,cbdata);
+  fwrite(&ch,1,1,(FILE*)cbdata);
 }
 #endif
 
@@ -237,15 +243,33 @@ void jsfSaveToFlash() {
   if (f) {
     unsigned int jsVarCount = jsvGetMemoryTotal();
     jsiConsolePrintf("\nSaving %d bytes...", jsVarCount*sizeof(JsVar));
+    fwrite(&jsVarCount, sizeof(unsigned int), 1, f);
     JsVarRef i;
 
     /*for (i=1;i<=jsVarCount;i++) {
       fwrite(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
     rle_encode(_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, f);
-
     fclose(f);
-    jsiConsolePrint("\nDone!\n>");
+    jsiConsolePrint("\nDone!\n");
+
+#ifdef DEBUG
+    jsiConsolePrint("Checking...\n");
+    FILE *f = fopen("espruino.state","rb");
+    fread(&jsVarCount, sizeof(unsigned int), 1, f);
+    if (jsVarCount != jsvGetMemoryTotal())
+      jsiConsolePrint("Error: memory sizes different\n");
+    unsigned char *decomp = (unsigned char*)malloc(jsVarCount*sizeof(JsVar));
+    rle_decode(jsfLoadFromFlash_readcb, f, decomp);
+    fclose(f);
+    unsigned char *comp = _jsvGetAddressOf(1);
+    int j;
+    for (j=0;j<jsVarCount*sizeof(JsVar);j++)
+      if (decomp[j]!=comp[j])
+        jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);  
+    free(decomp);
+    jsiConsolePrint("Done!\n>");
+#endif
   } else {
     jsiConsolePrint("\nFile Open Failed... \n>");
   }
@@ -311,21 +335,19 @@ void jsfLoadFromFlash() {
 #ifdef LINUX
   FILE *f = fopen("espruino.state","rb");
   if (f) {
-    fseek(f, 0L, SEEK_END);
-    unsigned int fileSize = (unsigned int)ftell(f);
-    fseek(f, 0L, SEEK_SET);
+    unsigned int jsVarCount;
+    fread(&jsVarCount, sizeof(unsigned int), 1, f);
 
-    jsiConsolePrintf("\nLoading %d bytes...\n>", fileSize);
-
-    unsigned int jsVarCount = fileSize / sizeof(JsVar);
+    jsiConsolePrintf("\nDecompressing to %d bytes...", jsVarCount*sizeof(JsVar));
     jsvSetMemoryTotal(jsVarCount);
     JsVarRef i;
-    for (i=1;i<=jsVarCount;i++) {
+    /*for (i=1;i<=jsVarCount;i++) {
       fread(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
-    }
+    }*/
+    rle_decode(jsfLoadFromFlash_readcb, f, (unsigned char*)_jsvGetAddressOf(i));
     fclose(f);
   } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
+    jsiConsolePrint("\nFile Open Failed... \n");
   }
 #else // !LINUX
   if (!jsfFlashContainsCode()) {
