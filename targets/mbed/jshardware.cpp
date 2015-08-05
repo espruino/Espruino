@@ -170,7 +170,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
-  return 0;
+  return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {

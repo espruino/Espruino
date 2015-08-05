@@ -544,7 +544,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
   jshPinSetState(pin, JSHPINSTATE_AF_OUT);
   pwmWrite(pin, (int)(value*1024));
 #endif
-  return 0;
+  return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {

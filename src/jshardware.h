@@ -172,7 +172,7 @@ typedef enum {
 } PACKED_FLAGS JshSPIFlags;
 
 typedef enum {
-  SPIB_DEFAULT,
+  SPIB_DEFAULT = 0,
   SPIB_MAXIMUM, // baudRate is the maximum we'll choose
   SPIB_MINIMUM,// baudRate is the minimum we'll choose
 } PACKED_FLAGS JshBaudFlags;
@@ -188,7 +188,7 @@ typedef struct {
 } PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 100000;
-  inf->baudRateSpec = 0;
+  inf->baudRateSpec = SPIB_DEFAULT;
   inf->pinSCK = PIN_UNDEFINED;
   inf->pinMISO = PIN_UNDEFINED;
   inf->pinMOSI = PIN_UNDEFINED;
