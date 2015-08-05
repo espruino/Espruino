@@ -321,7 +321,7 @@ JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
 
 void itostr_extra(JsVarInt vals,char *str,bool signedVal,unsigned int base); // like itoa, but uses JsVarInt (good on non-32 bit systems)
-static inline void itostr(JsVarInt val,char *str,unsigned int base) {
+static ALWAYS_INLINE void itostr(JsVarInt val,char *str,unsigned int base) {
     itostr_extra(val, str, true, base);
 }
 
