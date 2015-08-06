@@ -51,7 +51,7 @@ JsVar *jswrap_pin_constructor(JsVar *val) {
   "generate" : "jswrap_pin_read",
   "return" : ["bool","Whether pin is a logical 1 or 0"]
 }
-Returns the input state of the pin as a boolean
+Returns the input state of the pin as a boolean. Note that if you didn't call `pinMode` beforehand then this function will also reset pin's state
 */
 bool jswrap_pin_read(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
