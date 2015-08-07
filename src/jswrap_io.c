@@ -387,20 +387,22 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"]
 }
-Call the function specified when the pin changes
+Call the function specified when the pin changes. Watches set with `setWatch` can be removed using `clearWatch`.
 
-The function may also take an argument, which is an object of type `{time:float, lastTime:float, state:bool}`.
+The function may also take an argument, which is an object of type `{state:bool, time:float, lastTime:float}`.
 
-`time` is the time in seconds at which the pin changed state, `lastTime` is the time in seconds at which the pin last changed state, and `state` is the current state of the pin.
+* `state` is whether the pin is currently a `1` or a `0`
+* `time` is the time in seconds at which the pin changed state
+* `lastTime` is the time in seconds at which the **pin last changed state**. When using `edge:'rising'` or `edge:'falling'`, this is not the same as when the function was last called. 
 
-For instance, if you want to measure the length of a positive pulse you could use: ```setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });```
+For instance, if you want to measure the length of a positive pulse you could use `setWatch(function(e) { console.log(e.time-e.lastTime); }, BTN, { repeat:true, edge:'falling' });`. 
+This will only be called on the falling edge of the pulse, but will be able to measure the width of the pulse because `e.lastTime` is the time of the rising edge.
 
-If the callback is a native function `void (bool state)`
-then you can also add `irq:true` to options, which will cause the function to be
-called from within the IRQ. When doing this, interruptions will happen on both
-edges and there will be no debouncing.
-
-Watches set with `setWatch` can be removed using `clearWatch`
+Internally, an interrupt writes the time of the pin's state change into a queue, and the function
+supplied to `setWatch` is executed only from the main message loop. However, if the callback is a 
+native function `void (bool state)` then you can add `irq:true` to options, which will cause the 
+function to be called from within the IRQ. When doing this, interrupts will happen on both edges 
+and there will be no debouncing.
 */
 JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
 

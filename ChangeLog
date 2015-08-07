@@ -26,6 +26,7 @@
             Change reported USB HID type to 0, from 2 (mouse)
             Improve digitalWrite/etc documentation
             Add `pin.mode` and `pin.getMode` functions (mirroring `pinMode`)
+            `Serial.setup` now remembers options if none specified (fix #557)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)
