@@ -56,6 +56,26 @@ def htmlify(d):
   d = re.sub(r'`([^`]+)`', r'<code>\1</code>', d) # code tags
   d = re.sub(r'\[([^\]]*)\]\(([^\)]*)\)', r'<a href="\2">\1</a>', d) # links tags
   d = re.sub(r'([^">])(http://[^ ]+)', r'\1<a href="\2">\2</a>', d) # links tags
+
+  lines = d.split("\n");
+  lines.append("");
+  starStart = False
+  for idx in range(0, len(lines)):
+    line = lines[idx]
+    if line[0:2]=="* " and starStart==False: 
+      starStart=idx
+    if line[0:2]!="* ":
+      if starStart!=False and starStart+2<idx:
+        l = lines[starStart:idx]
+        for i in range(0,len(l)):
+          print(i,l[i])
+          l[i] = "<li>"+l[i][1:]+"</li>"
+        lines = lines[0:starStart-1]+["<ul>"]+l+["</ul>"]+lines[idx:]
+        print(lines)
+        idx += 2+len(l)
+      starStart = False
+  d = "\n".join(lines);
+  
   d = re.sub(r'\*\*([^*]*)\*\*', r'<b>\1</b>', d) # bold
   d = re.sub(r'\*([^*]*)\*', r'<i>\1</i>', d) # italic
   return d
@@ -160,6 +180,7 @@ html("  <style>")
 html("   body { font: 71%/1.5em  Verdana, 'Trebuchet MS', Arial, Sans-serif; color: #666666; }")
 html("   h1, h2, h3, h4 { color: #000000; margin-left: 0px; }")
 html("   h4 { padding-left: 20px; }")
+html("   ul { list-style-position: inside; }")
 html("   .class { page-break-before: always; width:95%; border-top: 1px solid black; border-bottom: 1px solid black; padding-top: 20px; padding-bottom: 20px; margin-top: 50px; }")
 html("   .instance { font-weight: bold; }");
 html("   .detail { width:90%; border-bottom: 1px solid black; margin-top: 50px; }")
