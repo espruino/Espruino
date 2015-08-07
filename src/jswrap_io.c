@@ -258,7 +258,7 @@ void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
   ],
   "return" : ["int","The digital Value of the Pin"]
 }
-Get the digital value of the given pin
+Get the digital value of the given pin. Note that if you didn't call `pinMode` beforehand then this function will also reset pin's state
 
 If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
 */
