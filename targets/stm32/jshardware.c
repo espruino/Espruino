@@ -368,22 +368,22 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
-#ifdef USART3
+#if defined(USART3) && USARTS>=3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#ifdef UART4
+#if defined(UART4) && USARTS>=4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#ifdef UART5
+#if defined(UART5) && USARTS>=5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#ifdef USART6
+#if defined(USART6) && USARTS>=6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
@@ -2043,19 +2043,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#ifdef USART3
+#if defined(USART3) && USARTS>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#ifdef UART4
+#if defined(UART4) && USARTS>=4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#ifdef UART5
+#if defined(UART5) && USARTS>=5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#ifdef USART6
+#if defined(USART6) && USARTS>=6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif
