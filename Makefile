@@ -31,6 +31,7 @@
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
+# NRF52832DK=1            # Ultra low power BLE enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # BEAGLEBONE=1
@@ -353,6 +354,13 @@ BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef NRF52832DK
+BOARD=NRF52832DK
+NRF52_SDK_PATH=$(ROOT)/targetlibs/nrf52/nRF52_SDK_0.9.1_3639cc9
+NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+EMBEDDED=1
+PRECOMPILED_OBJS+=$(NRF52_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
 else ifdef TINYCHIP
 EMBEDDED=1
 BOARD=TINYCHIP
@@ -982,6 +990,53 @@ targetlibs/stm32legacyusb/usb_utils.c            \
 targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
+ifeq ($(FAMILY), NRF52)
+
+	ARM=1
+
+	INCLUDE += -I$(ROOT)/targetlibs/nrf52 -I$(NRF52_SDK_PATH)
+
+	# ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+	ARCHFLAGS = -mthumb -mabi=aapcs -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+	DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
+
+	# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
+	# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
+	INCLUDE  = -I$(NRF52_SDK_PATH)/examples/peripheral/config/uart_pca10036
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/bsp
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/device
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
+
+	# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
+	SOURCES += \
+	$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
+	$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/app_util_platform.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
+	$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
+	$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+
+	#assembly files common to all targets
+	ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
+
+endif #NRF52
+
 ifdef MBED
 ARCHFLAGS += -mcpu=cortex-m3 -mthumb
 ARM=1
@@ -1035,7 +1090,9 @@ endif
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
-INCLUDE += -I$(ROOT)/targetlibs/arm
+ifndef NRF52 # Nordic uses its own CMSIS files in its SDK. These are the most recent CMSIS files.
+	INCLUDE += -I$(ROOT)/targetlibs/arm
+endif
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
 # I've no idea why this breaks the bootloader, but it does.
@@ -1087,6 +1144,13 @@ targets/stm32/stm32_it.c
 endif
 endif
 
+ifdef NRF52
+INCLUDE += -I$(ROOT)/targets/nrf52
+SOURCES +=                              \
+targets/nrf52/main.c                    \
+targets/nrf52/jshardware.c              
+endif # NRF52
+
 ifdef LINUX
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
@@ -1125,6 +1189,10 @@ endif
 ifdef LINKER_FILE
 LDFLAGS += -T$(LINKER_FILE)
 endif
+
+ifdef NRF52
+LDFLAGS += --specs=nano.specs -lc -lnosys
+endif # NRF52
 
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
