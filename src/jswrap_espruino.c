@@ -636,7 +636,7 @@ void (_jswrap_espruino_toString_char)(int ch,  JsvStringIterator *it) {
 }
 
 JsVar *jswrap_espruino_toString(JsVar *args) {
-  JsVar *str = jsvNewFlatStringOfLength(jsvIterateCallbackCount(args));
+  JsVar *str = jsvNewFlatStringOfLength((unsigned int)jsvIterateCallbackCount(args));
   if (!str) return 0;
   JsvStringIterator it;
   jsvStringIteratorNew(&it, str, 0);
@@ -830,6 +830,57 @@ rotating to try and make a relatively random value from the noise in the
 signal.
 */
 
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "HSBtoRGB",
+  "generate" : "jswrap_espruino_HSBtoRGB",
+  "params" : [
+    ["hue","float","The hue, as a value between 0 and 1"],
+    ["sat","float","The saturation, as a value between 0 and 1"],
+    ["bri","float","The brightness, as a value between 0 and 1"]
+  ],
+  "return" : ["int","A 24 bit number containing bytes representing red, green, and blue: 0xBBGGRR"]
+}
+Convert hue, saturation and brightness to red, green and blue (packed into an integer)
+
+This replaces `Graphics.setColorHSB` and `Graphics.setBgColorHSB`. On devices with 24 bit colour it can
+be used as: `Graphics.setColorHSB(E.HSBtoRGB(h, s, b))`
+*/
+JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri) {
+    int   r, g, b, hi, bi, x, y, z;
+    JsVarFloat hfrac;
+
+    if ( bri == 0.0 ) return 0;
+    else if ( sat == 0.0 ) {
+        r = (int)(bri * 255);
+        return (r<<16) | (r<<8) | r;
+    }
+    else {
+        hue *= 6;
+        hi = (int)hue;
+        hfrac = hue - hi;
+        hi = hi % 6;
+
+        bri *= 255;
+        bi = (int)bri;
+
+        x = (int) ((1 - sat) * bri);
+        y = (int) ((1 - sat*hfrac) * bri);
+        z = (int) ((1 - sat*(1 - hfrac)) * bri);
+
+        if  ( hi == 0 ) { r = bi;   g = z;    b = x; } else
+        if  ( hi == 1 ) { r = y;    g = bi;   b = x; } else
+        if  ( hi == 2 ) { r = x;    g = bi;   b = z; } else
+        if  ( hi == 3 ) { r = x;    g = y;    b = bi; } else
+        if  ( hi == 4 ) { r = z;    g = x;    b = bi; } else
+        if  ( hi == 5 ) { r = bi;   g = x;    b = y; } else
+        {  r = 0;    g = 0;    b = 0; }
+
+        return (b<<16) | (g<<8) | r;
+    }
+}
 
 // ----------------------------------------- USB Specific Stuff
 

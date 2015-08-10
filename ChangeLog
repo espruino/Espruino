@@ -1,5 +1,6 @@
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
+            Remove Graphics.setColorHSV, add E.HSBtoRGB (fix #554)
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
