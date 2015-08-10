@@ -2047,11 +2047,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#ifdef USART4
+#ifdef UART4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#ifdef USART5
+#ifdef UART5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
