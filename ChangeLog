@@ -1,3 +1,5 @@
+     1v81 : Fix regression on UART4/5 (bug #559)
+
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
             Make debounced setWatch output state+time information (regression fix #537)

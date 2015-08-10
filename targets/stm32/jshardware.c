@@ -106,12 +106,6 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_SPI2 GPIO_AF_5
 #endif
 
-#if defined(STM32F401xx)
-#define NO_USART3
-#endif
-
-
-
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
@@ -379,12 +373,12 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#ifdef USART4
+#ifdef UART4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#ifdef USART5
+#ifdef UART5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
@@ -2053,11 +2047,11 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#if defined(UART4) && defined(UART4_IRQn)
+#ifdef USART4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if defined(UART5) && defined(UART5_IRQn)
+#ifdef USART5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
