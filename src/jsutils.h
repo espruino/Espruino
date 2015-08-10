@@ -24,6 +24,7 @@
 #endif
 #include <stdarg.h> // for va_args
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
@@ -56,16 +57,19 @@ extern int isfinite ( double );
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+//typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#define FALSE 0
+#define TRUE 1
 //typedef unsigned char bool;
 //#define TRUE (1)
 //#define FALSE (0)
 #endif
 
-#ifndef Arduino_h
+// Not needed because including stdbool.h instead.
+/*#ifndef Arduino_h
 #define true (1)
 #define false (0)
-#endif
+#endif*/
 
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308

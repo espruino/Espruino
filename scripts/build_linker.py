@@ -187,7 +187,7 @@ if board.chip["family"] != "NRF52":
   }
   """);
 
-elif: board.chip["family"] == "NRF52": # NRF52 requires its own Linker Script. # This is very similar to Linkerscipt provdied with the uart example in NRF52 SDK. Just add some variables that Espruino defines in their linkerscript..
+elif board.chip["family"] == "NRF52": # NRF52 requires its own Linker Script. # This is very similar to Linkerscipt provdied with the uart example in NRF52 SDK. Just add some variables that Espruino defines in their linkerscript..
   
   codeOut("""
   /* Linker script to configure memory regions. */

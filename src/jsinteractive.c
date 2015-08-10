@@ -581,6 +581,7 @@ void jsiSemiInit(bool autoLoad) {
   jsiSoftInit();
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+#ifndef NRF52 // This crashes for NRF52 platform for some reason...
     if (!loadFlash) {
       jsiConsolePrint(
 #ifndef LINUX
@@ -598,6 +599,7 @@ void jsiSemiInit(bool autoLoad) {
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
+#endif
   }
 }
 

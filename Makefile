@@ -1002,9 +1002,9 @@ ifeq ($(FAMILY), NRF52)
 
 	# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
 	# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
-	INCLUDE  = -I$(NRF52_SDK_PATH)/examples/peripheral/config/uart_pca10036
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/config
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/bsp
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config/uart_pca10036
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
 	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
 	INCLUDE += -I$(NRF52_SDK_PATH)/components/device
 	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
@@ -1019,6 +1019,12 @@ ifeq ($(FAMILY), NRF52)
 	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
 	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
 
+	# Includes for adding timer peripheral. 
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config/timer_pca10036
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/timer
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer
+
 	# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
 	SOURCES += \
 	$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
@@ -1031,9 +1037,11 @@ ifeq ($(FAMILY), NRF52)
 	$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
 	$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
 	$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/timer/nrf_drv_timer.c # I want to add timer peripheral so add source here (as in timer example makefile from nordic sdk).
+
 
 	#assembly files common to all targets
-	ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
+	#ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
 
 endif #NRF52
 
@@ -1179,7 +1187,11 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ifndef NRF52
+	LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+else ifdef NRF52
+	LDFLAGS += $(ARCHFLAGS)
+endif
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1291,7 +1303,7 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
-proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 ifdef ARDUINO_AVR
 proj: $(PROJ_NAME).hex
 endif
@@ -1337,3 +1349,12 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
+
+foo: # For debugging purposes. Call BOARD=1 make foo to see this information.
+	@echo DEFINES $(DEFINES)
+	@echo SOURCES $(SOURCES)
+	@echo INCLUDE $(INCLUDE)
+	@echo CFLAGS $(CFLAGS)
+	@echo LDFLAGS $(LDFLAGS)
+	@echo ARCHFLAGS $(ARCHFLAGS)
+	@echo OPTIMIZEFLAGS $(OPTIMIZEFLAGS)
