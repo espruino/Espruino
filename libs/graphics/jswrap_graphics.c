@@ -371,60 +371,11 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   gfx.data.cursorY = (short)y;
 }
 
-// Convert HSV to RGB
-// From http://www.cs.rit.edu/~ncs/color/t_convert.html
-static void HSVtoRGB(JsVarFloat h, JsVarFloat s, JsVarFloat v, JsVarFloat *r, JsVarFloat *g, JsVarFloat *b) {
-  int i;
-  JsVarFloat f, p, q, t;
-  if (s == 0)
-    // achromatic (grey)
-    *r = *g = *b = v;
-
-  h = h / 60;			// sector 0 to 5
-  i = (int)h;
-  f = h - i;			// fractional part of h
-  p = v * (1 - s);
-  q = v * (1 - s * f);
-  t = v * (1 - s * (1 - f));
-  switch(i) {
-  case 0:
-    *r = v;
-    *g = t;
-    *b = p;
-    break;
-  case 1:
-    *r = q;
-    *g = v;
-    *b = p;
-    break;
-  case 2:
-    *r = p;
-    *g = v;
-    *b = t;
-    break;
-  case 3:
-    *r = p;
-    *g = q;
-    *b = v;
-    break;
-  case 4:
-    *r = t;
-    *g = p;
-    *b = v;
-    break;
-  default:
-    *r = v;
-    *g = p;
-    *b = q;
-    break;
-  }
-};
-
 /*JSON{
   "type" : "method",
   "class" : "Graphics",
   "name" : "setColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true, false)",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, true)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
     ["g","JsVar","Green (between 0 and 1)"],
@@ -437,7 +388,7 @@ Set the color to use for subsequent drawing operations
   "type" : "method",
   "class" : "Graphics",
   "name" : "setBgColor",
-  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false, false)",
+  "generate_full" : "jswrap_graphics_setColorX(parent, r,g,b, false)",
   "params" : [
     ["r","JsVar","Red (between 0 and 1) OR an integer representing the color in the current bit depth and color order"],
     ["g","JsVar","Green (between 0 and 1)"],
@@ -446,51 +397,13 @@ Set the color to use for subsequent drawing operations
 }
 Set the background color to use for subsequent drawing operations
 */
-
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "setColorHSV",
-  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, true, true)",
-  "params" : [
-    ["h","JsVar","Hue (between 0 and 1)"],
-    ["s","JsVar","Saturation (between 0 and 1)"],
-    ["v","JsVar","Value (between 0 and 1)"]
-  ]
-}
-Set the HSV color to use for subsequent drawing operations
-*/
-/*JSON{
-  "type" : "method",
-  "class" : "Graphics",
-  "name" : "setBgColorHSV",
-  "generate_full" : "jswrap_graphics_setColorX(parent, h,s,v, false, true)",
-  "params" : [
-    ["h","JsVar","Hue (between 0 and 1)"],
-    ["s","JsVar","Saturation (between 0 and 1)"],
-    ["v","JsVar","Value (between 0 and 1)"]
-  ]
-}
-Set the background HSV color to use for subsequent drawing operations
-*/
-void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground, bool isHSV) {
+void jswrap_graphics_setColorX(JsVar *parent, JsVar *r, JsVar *g, JsVar *b, bool isForeground) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   unsigned int color = 0;
   JsVarFloat rf, gf, bf;
-  if (isHSV) {
-    if (jsvIsUndefined(r) || jsvIsUndefined(g) || jsvIsUndefined(b)) {
-      jsExceptionHere(JSET_ERROR, "h, s and v must be defined");
-      return;
-    }
-    JsVarFloat hf = jsvGetFloat(r);
-    JsVarFloat sf = jsvGetFloat(g);
-    JsVarFloat vf = jsvGetFloat(b);
-    HSVtoRGB(hf, sf, vf, &rf, &gf, &bf);
-  } else {
-    rf = jsvGetFloat(r);
-    gf = jsvGetFloat(g);
-    bf = jsvGetFloat(b);
-  }
+  rf = jsvGetFloat(r);
+  gf = jsvGetFloat(g);
+  bf = jsvGetFloat(b);
   if (!jsvIsUndefined(g) && !jsvIsUndefined(b)) {
     int ri = (int)(rf*256);
     int gi = (int)(gf*256);

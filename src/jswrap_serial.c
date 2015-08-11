@@ -148,6 +148,10 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       inf.baudRate = b;
   }
 
+  if (jsvIsUndefined(options)) {
+    options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
+  } else
+    jsvLockAgain(options);
 
   if (jsvIsObject(options)) {
     inf.pinRX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "rx", 0));
@@ -173,6 +177,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     jsvUnLock(v);
     if (inf.parity>2) {
       jsExceptionHere(JSET_ERROR, "Invalid parity %d", inf.parity);
+      jsvUnLock(options);
       return;
     }
 
@@ -199,7 +204,7 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   jsvUnLock(jsvObjectSetChild(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate)));
   // Do the same for options
   if (options)
-    jsvObjectSetChild(parent, DEVICE_OPTIONS_NAME, options);
+    jsvUnLock(jsvObjectSetChild(parent, DEVICE_OPTIONS_NAME, options));
   else
     jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
 }
