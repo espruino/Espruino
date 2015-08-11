@@ -374,7 +374,7 @@ bool jsfFlashContainsCode() {
   return f!=0;
 #else // !LINUX
   int magic;
-  jshFlashRead(&magic ,FLASH_MAGIC_LOCATION, sizeof(magic));
-  return (*(int*)FLASH_MAGIC_LOCATION) == (int)FLASH_MAGIC;
+  jshFlashRead(&magic, FLASH_MAGIC_LOCATION, sizeof(magic));
+  return magic == (int)FLASH_MAGIC;
 #endif
 }
