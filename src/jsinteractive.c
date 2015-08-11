@@ -599,7 +599,7 @@ void jsiSemiInit(bool autoLoad) {
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
-#endif
+#endif // NRF52
   }
 }
 
