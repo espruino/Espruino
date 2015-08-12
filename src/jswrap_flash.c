@@ -244,12 +244,11 @@ void jsfSaveToFlash() {
     unsigned int jsVarCount = jsvGetMemoryTotal();
     jsiConsolePrintf("\nSaving %d bytes...", jsVarCount*sizeof(JsVar));
     fwrite(&jsVarCount, sizeof(unsigned int), 1, f);
-    JsVarRef i;
-
-    /*for (i=1;i<=jsVarCount;i++) {
+    /*JsVarRef i;
+    for (i=1;i<=jsVarCount;i++) {
       fwrite(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_encode(_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, f);
+    rle_encode((unsigned char*)_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, (uint32_t*)f);
     fclose(f);
     jsiConsolePrint("\nDone!\n");
 
@@ -341,11 +340,11 @@ void jsfLoadFromFlash() {
 
     jsiConsolePrintf("\nDecompressing to %d bytes...", jsVarCount*sizeof(JsVar));
     jsvSetMemoryTotal(jsVarCount);
-    JsVarRef i;
-    /*for (i=1;i<=jsVarCount;i++) {
+    /*JsVarRef i;
+    for (i=1;i<=jsVarCount;i++) {
       fread(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_decode(jsfLoadFromFlash_readcb, f, (unsigned char*)_jsvGetAddressOf(i));
+    rle_decode(jsfLoadFromFlash_readcb, (uint32_t*)f, (unsigned char*)_jsvGetAddressOf(1));
     fclose(f);
   } else {
     jsiConsolePrint("\nFile Open Failed... \n");
