@@ -40,6 +40,13 @@ The base class for type errors
 }
 The base class for internal errors
 */
+/*JSON{
+  "type" : "class",
+  "class" : "ReferenceError"
+}
+The base class for reference errors - where a variable
+which doesn't exist has been accessed.
+*/
 
 JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
   JsVar *d = jspNewObject(0,type);
@@ -116,6 +123,22 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg) {
 }
 
 /*JSON{
+  "type" : "constructor",
+  "class" : "ReferenceError",
+  "name" : "ReferenceError",
+  "generate" : "jswrap_referenceerror_constructor",
+  "params" : [
+    ["message","JsVar","An optional message string"]
+  ],
+  "return" : ["JsVar","A ReferenceError object"]
+}
+Creates a ReferenceError object
+*/
+JsVar *jswrap_referenceerror_constructor(JsVar *msg) {
+  return _jswrap_error_constructor(msg, "ReferenceError");
+}
+
+/*JSON{
   "type" : "method",
   "class" : "Error",
   "name" : "toString",
@@ -131,7 +154,21 @@ JsVar *jswrap_internalerror_constructor(JsVar *msg) {
 }*/
 /*JSON{
   "type" : "method",
+  "class" : "TypeError",
+  "name" : "toString",
+  "generate" : "jswrap_error_toString",
+  "return" : ["JsVar","A String"]
+}*/
+/*JSON{
+  "type" : "method",
   "class" : "InternalError",
+  "name" : "toString",
+  "generate" : "jswrap_error_toString",
+  "return" : ["JsVar","A String"]
+}*/
+/*JSON{
+  "type" : "method",
+  "class" : "ReferenceError",
   "name" : "toString",
   "generate" : "jswrap_error_toString",
   "return" : ["JsVar","A String"]
