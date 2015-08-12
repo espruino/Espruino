@@ -121,7 +121,7 @@ void jswrap_interface_trace(JsVar *root) {
 /*JSON{
   "type" : "function",
   "name" : "dump",
-  "generate" : "jsiDumpState"
+  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrint, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 

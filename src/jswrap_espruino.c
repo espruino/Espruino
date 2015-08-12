@@ -654,7 +654,7 @@ JsVar *jswrap_espruino_toString(JsVar *args) {
   "params" : [
     ["args","JsVarArray","The arguments to convert to a Uint8Array"]
   ],
-  "return" : ["JsVar","A String"],
+  "return" : ["JsVar","A Uint8Array"],
   "return_object" : "Uint8Array"
 }
 This creates a Uint8Array from the given arguments. If an argument is a String or an Array,
@@ -801,6 +801,27 @@ void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bit
   }
   jsvArrayBufferIteratorFree(&itFrom);
   jsvArrayBufferIteratorFree(&itTo);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "ifndef" : "SAVE_ON_FLASH",
+  "class" : "E",
+  "name" : "dumpStr",
+  "generate" : "jswrap_e_dumpStr",
+  "return" : ["JsVar","A String"],
+  "return_object" : "String"
+}
+Get the current interpreter state in a text form such that it can be copied to a new device
+*/
+JsVar *jswrap_e_dumpStr() {
+  JsVar *result = jsvNewFromEmptyString();
+  if (!result) return 0;
+  JsvStringIterator it;
+  jsvStringIteratorNew(&it, result, 0);
+  jsiDumpState((vcbprintf_callback)&jsvStringIteratorPrintfCallback, &it);
+  jsvStringIteratorFree(&it);
+  return result;
 }
 
 /*JSON{
