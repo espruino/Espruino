@@ -4,6 +4,7 @@
             Make jsiDumpState/jsiAppendHardwareInitialisation use callbacks (fix #398)
             Add `E.dumpStr()` to dump current state of interpreter as a string
             Add ReferenceError, and ensure that TypeError gets converted to a string properly
+            Actually create ReferenceError for undefined variables
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

@@ -87,13 +87,18 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   if (jsvIsNewChild(dst)) {
     // Get what it should have been a child of
     JsVar *parent = jsvLock(jsvGetNextSibling(dst));
-    // Remove the 'new child' flagging
-    jsvUnRef(parent);
-    jsvSetNextSibling(dst, 0);
-    jsvUnRef(parent);
-    jsvSetPrevSibling(dst, 0);
-    // Add to the parent
-    jsvAddName(parent, dst);
+    if (!jsvIsString(parent)) {
+      // if we can't find a char in a string we still return a NewChild,
+      // but we can't add character back in
+      assert(jsvHasChildren(parent));
+      // Remove the 'new child' flagging
+      jsvUnRef(parent);
+      jsvSetNextSibling(dst, 0);
+      jsvUnRef(parent);
+      jsvSetPrevSibling(dst, 0);
+      // Add to the parent
+      jsvAddName(parent, dst);
+    }
     jsvUnLock(parent);
   }
 }
@@ -888,10 +893,10 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
         JsVarInt idx = jsvGetInteger(nameVar);
         if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
-          child = jsvNewFromEmptyString();
-          if (child) jsvAppendCharacter(child, jsvGetCharInString(object, (size_t)idx));
+          child = jsvNewStringOfLength(1);
+          if (child) child->varData.str[0] = jsvGetCharInString(object, (size_t)idx);
         } else if (returnName)
-          child = jsvNewWithFlags(JSV_NAME_STRING_0); // just return *something* to show this is handled
+          child = jsvCreateNewChild(object, nameVar, 0); // just return *something* to show this is handled
     } else {
       // get the name as a string
       char name[JSLEX_MAX_TOKEN_LENGTH];
