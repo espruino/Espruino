@@ -791,12 +791,6 @@ JsVar *jspGetNamedVariable(const char *tokenName) {
   return a;
 }
 
-JsVar *jspeFactorSingleId() {
-  JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(execInfo.lex));
-  JSP_MATCH_WITH_RETURN(LEX_ID, a);
-  return a;
-}
-
 /// Used by jspGetNamedField / jspGetVarNamedField
 static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* name, bool returnName) {
   // Now look in prototypes
@@ -1073,10 +1067,6 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
   return a;
 }
 
-JsVar *jspeFactorId() {
-  return jspeFactorSingleId();
-}
-
 
 NO_INLINE JsVar *jspeFactorObject() {
   if (JSP_SHOULD_EXECUTE) {
@@ -1244,7 +1234,9 @@ NO_INLINE JsVar *jspeFactor() {
     JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
     return 0;
   } else if (execInfo.lex->tk==LEX_ID) {
-    return jspeFactorId();
+    JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(execInfo.lex));
+    JSP_ASSERT_MATCH(LEX_ID);
+    return a;
   } else if (execInfo.lex->tk==LEX_INT) {
     JsVar *v = 0;
     if (JSP_SHOULD_EXECUTE) {
