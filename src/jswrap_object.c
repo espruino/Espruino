@@ -46,6 +46,31 @@ This is the built-in class for Functions
 */
 
 /*JSON{
+  "type" : "constructor",
+  "class" : "Object",
+  "name" : "Object",
+  "generate" : "jswrap_object_constructor",
+  "params" : [
+    ["value","JsVar","A single value to be converted to an object"]
+  ],
+  "return" : ["JsVar","An Object"]
+}
+Creates an Object from the supplied argument
+*/
+JsVar *jswrap_object_constructor(JsVar *value) {
+  if (jsvIsObject(value) || jsvIsArray(value))
+    return jsvLockAgain(value);
+  char *objName = jswGetBasicObjectName(value);
+  JsVar *funcName = objName ? jspGetNamedVariable(objName) : 0;
+  if (!funcName) return jsvNewWithFlags(JSV_OBJECT);
+  JsVar *func = jsvSkipName(funcName);
+  JsVar *result = jspeFunctionCall(func, funcName, 0, false, 1, &value);
+  jsvUnLock(funcName);
+  jsvUnLock(func);
+  return result;
+}
+
+/*JSON{
   "type" : "property",
   "class" : "Object",
   "name" : "length",
