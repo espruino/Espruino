@@ -58,7 +58,7 @@ This is the built-in class for Functions
 Creates an Object from the supplied argument
 */
 JsVar *jswrap_object_constructor(JsVar *value) {
-  if (jsvIsObject(value) || jsvIsArray(value))
+  if (jsvIsObject(value) || jsvIsArray(value) || jsvIsFunction(value))
     return jsvLockAgain(value);
   char *objName = jswGetBasicObjectName(value);
   JsVar *funcName = objName ? jspGetNamedVariable(objName) : 0;
