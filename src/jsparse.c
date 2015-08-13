@@ -87,13 +87,18 @@ void jspReplaceWith(JsVar *dst, JsVar *src) {
   if (jsvIsNewChild(dst)) {
     // Get what it should have been a child of
     JsVar *parent = jsvLock(jsvGetNextSibling(dst));
-    // Remove the 'new child' flagging
-    jsvUnRef(parent);
-    jsvSetNextSibling(dst, 0);
-    jsvUnRef(parent);
-    jsvSetPrevSibling(dst, 0);
-    // Add to the parent
-    jsvAddName(parent, dst);
+    if (!jsvIsString(parent)) {
+      // if we can't find a char in a string we still return a NewChild,
+      // but we can't add character back in
+      assert(jsvHasChildren(parent));
+      // Remove the 'new child' flagging
+      jsvUnRef(parent);
+      jsvSetNextSibling(dst, 0);
+      jsvUnRef(parent);
+      jsvSetPrevSibling(dst, 0);
+      // Add to the parent
+      jsvAddName(parent, dst);
+    }
     jsvUnLock(parent);
   }
 }
@@ -888,10 +893,10 @@ JsVar *jspGetVarNamedField(JsVar *object, JsVar *nameVar, bool returnName) {
     } else if (jsvIsString(object) && jsvIsInt(nameVar)) {
         JsVarInt idx = jsvGetInteger(nameVar);
         if (idx>=0 && idx<(JsVarInt)jsvGetStringLength(object)) {
-          child = jsvNewFromEmptyString();
-          if (child) jsvAppendCharacter(child, jsvGetCharInString(object, (size_t)idx));
+          child = jsvNewStringOfLength(1);
+          if (child) child->varData.str[0] = jsvGetCharInString(object, (size_t)idx);
         } else if (returnName)
-          child = jsvNewWithFlags(JSV_NAME_STRING_0); // just return *something* to show this is handled
+          child = jsvCreateNewChild(object, nameVar, 0); // just return *something* to show this is handled
     } else {
       // get the name as a string
       char name[JSLEX_MAX_TOKEN_LENGTH];
@@ -1519,21 +1524,20 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
                                  execInfo.lex->tk==LEX_XOREQUAL || execInfo.lex->tk==LEX_RSHIFTEQUAL ||
                                  execInfo.lex->tk==LEX_LSHIFTEQUAL || execInfo.lex->tk==LEX_RSHIFTUNSIGNEDEQUAL) {
         JsVar *rhs;
-        /* If we're assigning to this and we don't have a parent,
-         * add it to the symbol table root as per JavaScript. */
-        if (JSP_SHOULD_EXECUTE && lhs && !jsvGetRefs(lhs)) {
-          if (jsvIsName(lhs)) {
-            if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
-              jsvAddName(execInfo.root, lhs);
-          } else // TODO: Why was this here? can it happen?
-            jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastStart);
-        }
 
         int op = execInfo.lex->tk;
         JSP_ASSERT_MATCH(op);
         rhs = jspeAssignmentExpression();
         rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
+
         if (JSP_SHOULD_EXECUTE && lhs) {
+            /* If we're assigning to this and we don't have a parent,
+             * add it to the symbol table root */
+            if (!jsvGetRefs(lhs) && jsvIsName(lhs)) {
+              if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
+                jsvAddName(execInfo.root, lhs);
+            }
+
             if (op=='=') {
                 jspReplaceWith(lhs, rhs);
             } else {

@@ -1570,7 +1570,12 @@ JsVar *jsvSkipName(JsVar *a) {
   while (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
     if (pa!=a) jsvUnLock(pa);
-    if (!n) return 0;
+    if (!n) {
+      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
+        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
+      }
+      return 0;
+    }
     pa = jsvLock(n);
   }
   if (pa==a) jsvLockAgain(pa);
@@ -1589,7 +1594,12 @@ JsVar *jsvSkipOneName(JsVar *a) {
   if (jsvIsName(pa)) {
     JsVarRef n = jsvGetFirstChild(pa);
     if (pa!=a) jsvUnLock(pa);
-    if (!n) return 0;
+    if (!n) {
+      if (pa==a && jsvGetRefs(a)==0 && !jsvIsNewChild(a)) {
+        jsExceptionHere(JSET_REFERENCEERROR, "%q is not defined", a);
+      }
+      return 0;
+    }
     pa = jsvLock(n);
   }
   if (pa==a) jsvLockAgain(pa);
