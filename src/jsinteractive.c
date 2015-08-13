@@ -29,17 +29,17 @@
 
 // ----------------------------------------------------------------------------
 typedef enum {
- IS_NONE,
- IS_HAD_R,
- IS_HAD_27,
- IS_HAD_27_79,
- IS_HAD_27_91,
- IS_HAD_27_91_49,
- IS_HAD_27_91_50,
- IS_HAD_27_91_51,
- IS_HAD_27_91_52,
- IS_HAD_27_91_53,
- IS_HAD_27_91_54,
+  IS_NONE,
+  IS_HAD_R,
+  IS_HAD_27,
+  IS_HAD_27_79,
+  IS_HAD_27_91,
+  IS_HAD_27_91_49,
+  IS_HAD_27_91_50,
+  IS_HAD_27_91_51,
+  IS_HAD_27_91_52,
+  IS_HAD_27_91_53,
+  IS_HAD_27_91_54,
 } PACKED_FLAGS InputState;
 
 TODOFlags todo = TODO_NOTHING;
@@ -599,17 +599,17 @@ void jsiSemiInit(bool autoLoad) {
     if (!loadFlash) {
       jsiConsolePrint(
 #ifndef LINUX
-              // set up terminal to avoid word wrap
-              "\e[?7l"
+          // set up terminal to avoid word wrap
+          "\e[?7l"
 #endif
-              // rectangles @ http://www.network-science.de/ascii/
-              "\n"
-              " _____                 _ \n"
-              "|   __|___ ___ ___ _ _|_|___ ___ \n"
-              "|   __|_ -| . |  _| | | |   | . |\n"
-              "|_____|___|  _|_| |___|_|_|_|___|\n"    
-              "          |_| http://espruino.com\n"
-              " "JS_VERSION" Copyright 2015 G.Williams\n");
+          // rectangles @ http://www.network-science.de/ascii/
+          "\n"
+          " _____                 _ \n"
+          "|   __|___ ___ ___ _ _|_|___ ___ \n"
+          "|   __|_ -| . |  _| | | |   | . |\n"
+          "|_____|___|  _|_| |___|_|_|_|___|\n"
+          "          |_| http://espruino.com\n"
+          " "JS_VERSION" Copyright 2015 G.Williams\n");
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
@@ -722,7 +722,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
       if (previous) historyLine = jsvSkipNameAndUnLock(jsvGetArrayItem(history, jsvGetArrayLength(history)-1));
       // if next, we weren't using history so couldn't go forwards
     }
-    
+
     jsvUnLock(history);
   }
   return historyLine;
@@ -790,7 +790,7 @@ void jsiHandleDelete(bool isBackspace) {
   if (!isBackspace && inputCursorPos>=l) return; // at end of line
   // work out if we are deleting a newline
   bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine,inputCursorPos-1)=='\n') ||
-                       (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
+      (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
   if (deleteNewline && jsiShowInputLine()) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
@@ -877,7 +877,7 @@ bool jsiAtEndOfInputLine() {
   size_t i = inputCursorPos, l = jsvGetStringLength(inputLine);
   while (i < l) {
     if (!isWhitespace(jsvGetCharInString(inputLine, i)))
-        return false;
+      return false;
     i++;
   }
   return true;
@@ -1055,15 +1055,15 @@ void jsiHandleChar(char ch) {
       jsiHandleEnd();
     }
   } else if (inputState==IS_HAD_27_91_53) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Up
-        jsiHandlePageUpDown(0);
-      }
+    inputState = IS_NONE;
+    if (ch==126) { // Page Up
+      jsiHandlePageUpDown(0);
+    }
   } else if (inputState==IS_HAD_27_91_54) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Down
-        jsiHandlePageUpDown(1);
-      }
+    inputState = IS_NONE;
+    if (ch==126) { // Page Down
+      jsiHandlePageUpDown(1);
+    }
   } else if (ch==16 && jsvGetStringLength(inputLine)==0) {
     /* DLE - Data Link Escape
     Espruino uses DLE on the start of a line to signal that just the line in
@@ -1198,7 +1198,7 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
       }
       jsvObjectIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
-       jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
+      jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
     } else if (jsvIsString(callbackNoNames)) {
       jsvUnLock(jspEvaluateVar(callbackNoNames, 0, false));
     } else
@@ -1224,8 +1224,8 @@ bool jsiHasTimers() {
 bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
   int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "edge", 0));
   return watchEdge==0 || // any edge
-         (pinIsHigh && watchEdge>0) || // rising edge
-         (!pinIsHigh && watchEdge<0); // falling edge
+      (pinIsHigh && watchEdge>0) || // rising edge
+      (!pinIsHigh && watchEdge<0); // falling edge
 }
 
 bool jsiIsWatchingPin(Pin pin) {
@@ -1441,7 +1441,7 @@ void jsiIdle() {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, timerArrayPtr);
-    while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
+  while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
     bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
@@ -1624,7 +1624,7 @@ bool jsiLoop() {
   jshIdle();
   // Do general idle stuff
   jsiIdle();
-  
+
   JsVar *exception = jspGetException();
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
@@ -1709,7 +1709,7 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
     } else if (child->varData.str[0]==JS_HIDDEN_CHAR ||
-               jshFromDeviceString(childName)!=EV_NONE) {
+        jshFromDeviceString(childName)!=EV_NONE) {
       // skip - don't care about this stuff
     } else if (!jsvIsNative(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
@@ -1777,9 +1777,9 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
     user_callback("setWatch(", user_data);
     jsiDumpJSON(user_callback, user_data, watchCallback, 0);
     cbprintf(user_callback, user_data, ", %j, { repeat:%s, edge:'%s'",
-                     watchPin,
-                     watchRecur?"true":"false",
-                     (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
+        watchPin,
+        watchRecur?"true":"false",
+            (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
     if (watchDebounce>0)
       cbprintf(user_callback, user_data, ", debounce : %f", jshGetMillisecondsFromTime(watchDebounce));
     user_callback(" });\n", user_data);

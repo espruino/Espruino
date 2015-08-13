@@ -36,7 +36,7 @@
   "class" : "Pipe"
 }
 This is the Pipe container for async related IO.
-*/
+ */
 
 static JsVar* pipeGetArray(bool create) {
   return jsvObjectGetChild(execInfo.hiddenRoot, "pipes", create ? JSV_ARRAY : 0);

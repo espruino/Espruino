@@ -59,9 +59,9 @@ int jsspiSoftwareFunc(int data, spi_sender_data *info) {
       if (inf->pinMOSI != PIN_UNDEFINED)
         jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
       if (inf->pinSCK != PIN_UNDEFINED)
-         jshPinSetValue(inf->pinSCK, CPOL );
+        jshPinSetValue(inf->pinSCK, CPOL );
       if (inf->pinMISO != PIN_UNDEFINED)
-         result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+        result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
     }
   }
   return result;

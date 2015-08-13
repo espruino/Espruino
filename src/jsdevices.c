@@ -16,7 +16,7 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
- #include <signal.h>
+#include <signal.h>
 #endif//LINUX
 #ifdef USE_TRIGGER
 #include "trigger.h"
@@ -237,8 +237,8 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
     return;
 #endif
- // Otherwise add this event
- jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
+  // Otherwise add this event
+  jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
 }
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
