@@ -1524,21 +1524,20 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
                                  execInfo.lex->tk==LEX_XOREQUAL || execInfo.lex->tk==LEX_RSHIFTEQUAL ||
                                  execInfo.lex->tk==LEX_LSHIFTEQUAL || execInfo.lex->tk==LEX_RSHIFTUNSIGNEDEQUAL) {
         JsVar *rhs;
-        /* If we're assigning to this and we don't have a parent,
-         * add it to the symbol table root as per JavaScript. */
-        if (JSP_SHOULD_EXECUTE && lhs && !jsvGetRefs(lhs)) {
-          if (jsvIsName(lhs)) {
-            if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
-              jsvAddName(execInfo.root, lhs);
-          } else // TODO: Why was this here? can it happen?
-            jsWarnAt("Trying to assign to an un-named type\n", execInfo.lex, execInfo.lex->tokenLastStart);
-        }
 
         int op = execInfo.lex->tk;
         JSP_ASSERT_MATCH(op);
         rhs = jspeAssignmentExpression();
         rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
+
         if (JSP_SHOULD_EXECUTE && lhs) {
+            /* If we're assigning to this and we don't have a parent,
+             * add it to the symbol table root */
+            if (!jsvGetRefs(lhs) && jsvIsName(lhs)) {
+              if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
+                jsvAddName(execInfo.root, lhs);
+            }
+
             if (op=='=') {
                 jspReplaceWith(lhs, rhs);
             } else {
