@@ -2349,7 +2349,6 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   assert(jsvIsString(str));
   jslInit(&lex, str);
 
-  JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
   execInfo.lex = &lex;
   execInfo.execute = EXEC_YES;
@@ -2381,7 +2380,6 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   jslKill(&lex);
 
   // restore state and execInfo
-  JSP_RESTORE_EXECUTE();
   oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
 
@@ -2405,7 +2403,6 @@ JsVar *jspEvaluate(const char *str, bool parseTwice) {
 }
 
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr) {
-  JSP_SAVE_EXECUTE();
   JsExecInfo oldExecInfo = execInfo;
 
   jspeiInit(0);
@@ -2413,7 +2410,6 @@ JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **arg
   // clean up
   jspeiKill();
   // restore state
-  JSP_RESTORE_EXECUTE();
   oldExecInfo.execute = execInfo.execute; // JSP_RESTORE_EXECUTE has made this ok.
   execInfo = oldExecInfo;
 

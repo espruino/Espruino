@@ -27,6 +27,8 @@
 #define CHAR_DELETE_SEND '\b'
 #endif
 
+#define CTRL_C_TIME_FOR_BREAK jshGetTimeFromMilliseconds(100)
+
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -52,6 +54,7 @@ Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 JsiStatus jsiStatus;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
+uint32_t jsiTimeSinceCtrlC;
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
 JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
@@ -396,6 +399,7 @@ void jsiSoftInit() {
   // Make sure we set up lastIdleTime, as this could be used
   // when adding an interval from onInit (called below)
   jsiLastIdleTime = jshGetSystemTime();
+  jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
@@ -1145,7 +1149,6 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
 
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
-  bool wasInterrupted = jspIsInterrupted();
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
   while (!jsvArrayIsEmpty(events)) {
     JsVar *event = jsvSkipNameAndUnLock(jsvArrayPopFirst(events));
@@ -1164,7 +1167,7 @@ void jsiExecuteEvents() {
   }
   if (hasEvents) {
     jsiSetBusy(BUSY_INTERACTIVE, false);
-    if (!wasInterrupted && jspIsInterrupted())
+    if (jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK)
       interruptedDuringEvent = true;
   }
 }
@@ -1183,16 +1186,16 @@ NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackV
 }
 
 NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
-  bool wasInterrupted = jspHasError();
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
+  bool ok = true;
   if (callbackNoNames) {
     if (jsvIsArray(callbackNoNames)) {
       JsvObjectIterator it;
       jsvObjectIteratorNew(&it, callbackNoNames);
-      while (jsvObjectIteratorHasValue(&it)) {
+      while (ok && jsvObjectIteratorHasValue(&it)) {
         JsVar *child = jsvObjectIteratorGetValue(&it);
-        jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
+        ok &= jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
         jsvUnLock(child);
         jsvObjectIteratorNext(&it);
       }
@@ -1205,7 +1208,7 @@ NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsig
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
   }
-  if (!wasInterrupted && jspHasError()) {
+  if (!ok || jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK) {
     interruptedDuringEvent = true;
     return false;
   }
@@ -1396,7 +1399,7 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
               if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
-                jsError("Error processing Watch - removing it.");
+                jsError("Ctrl-C while processing watch - removing it.");
                 jsErrorFlags |= JSERR_CALLBACK;
                 watchRecurring = false;
               }
@@ -1436,6 +1439,11 @@ void jsiIdle() {
   JsSysTime time = jshGetSystemTime();
   JsSysTime timePassed = (JsVarInt)(time - jsiLastIdleTime);
   jsiLastIdleTime = time;
+  // add time to Ctrl-C counter, checking for overflow
+  uint32_t oldTimeSinceCtrlC = jsiTimeSinceCtrlC;
+  jsiTimeSinceCtrlC += (uint32_t)timePassed;
+  if (oldTimeSinceCtrlC > jsiTimeSinceCtrlC)
+    jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   jsiStatus = jsiStatus & ~JSIS_TIMERS_CHANGED;
   JsVar *timerArrayPtr = jsvLock(timerArray);
@@ -1474,15 +1482,22 @@ void jsiIdle() {
       }
       JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (exec) {
-        JsVar *argsArray = jsvObjectGetChild(timerPtr, "args", 0);
-        bool execResult = data ?
-            jsiExecuteEventCallback(0, timerCallback, 1, &data) :
-            jsiExecuteEventCallbackArgsArray(0, timerCallback, argsArray);
-        if (!execResult && interval) {
-          jsError("Error processing interval - removing it.");
-          jsErrorFlags |= JSERR_CALLBACK;
+        bool execResult;
+        if (data) {
+          execResult = jsiExecuteEventCallback(0, timerCallback, 1, &data);
+        } else {
+          JsVar *argsArray = jsvObjectGetChild(timerPtr, "args", 0);
+          execResult = jsiExecuteEventCallbackArgsArray(0, timerCallback, argsArray);
+          jsvUnLock(argsArray);
         }
-        jsvUnLock(argsArray);
+        if (!execResult && interval) {
+          jsError("Ctrl-C while processing interval - removing it.");
+          jsErrorFlags |= JSERR_CALLBACK;
+          // by setting interval to 0, we now think we've for a Timeout,
+          // which will get removed.
+          jsvUnLock(interval);
+          interval = 0;
+        }
       }
       jsvUnLock(data);
       if (watchPtr) { // if we had a watch pointer, be sure to remove us from it
@@ -1633,7 +1648,7 @@ bool jsiLoop() {
 
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted.\n");
+    jsiConsolePrint("Execution Interrupted\n");
     jspSetInterrupted(false);
   }
   JsVar *stackTrace = jspGetStackTrace();
@@ -1645,9 +1660,15 @@ bool jsiLoop() {
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
+    if (jsvIsEmptyString(inputLine)) {
 #ifndef EMBEDDED
-    if (jsvIsEmptyString(inputLine)) exit(0); // exit if ctrl-c on empty input line
+      if (jsiTimeSinceCtrlC < jshGetTimeFromMilliseconds(5000))
+        exit(0); // exit if ctrl-c on empty input line
+      else
+        jsiConsolePrintf("Press Ctrl-C again to exit\n");
 #endif
+      jsiTimeSinceCtrlC = 0;
+    }
     jsiClearInputLine();
   }
 
