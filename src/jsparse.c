@@ -1219,7 +1219,25 @@ NO_INLINE JsVar *jspeFactorDelete() {
 }
 
 NO_INLINE JsVar *jspeFactor() {
-  if (execInfo.lex->tk=='(') {
+  if (execInfo.lex->tk==LEX_ID) {
+    JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(execInfo.lex));
+    JSP_ASSERT_MATCH(LEX_ID);
+    return a;
+  } else if (execInfo.lex->tk==LEX_INT) {
+    JsVar *v = 0;
+    if (JSP_SHOULD_EXECUTE) {
+      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
+    }
+    JSP_ASSERT_MATCH(LEX_INT);
+    return v;
+  } else if (execInfo.lex->tk==LEX_FLOAT) {
+    JsVar *v = 0;
+    if (JSP_SHOULD_EXECUTE) {
+      v = jsvNewFromFloat(stringToFloat(jslGetTokenValueAsString(execInfo.lex)));
+    }
+    JSP_ASSERT_MATCH(LEX_FLOAT);
+    return v;
+  } else if (execInfo.lex->tk=='(') {
     JsVar *a = 0;
     JSP_ASSERT_MATCH('(');
     if (!jspCheckStackPosition()) return 0;
@@ -1238,24 +1256,6 @@ NO_INLINE JsVar *jspeFactor() {
   } else if (execInfo.lex->tk==LEX_R_UNDEFINED) {
     JSP_ASSERT_MATCH(LEX_R_UNDEFINED);
     return 0;
-  } else if (execInfo.lex->tk==LEX_ID) {
-    JsVar *a = jspGetNamedVariable(jslGetTokenValueAsString(execInfo.lex));
-    JSP_ASSERT_MATCH(LEX_ID);
-    return a;
-  } else if (execInfo.lex->tk==LEX_INT) {
-    JsVar *v = 0;
-    if (JSP_SHOULD_EXECUTE) {
-      v = jsvNewFromLongInteger(stringToInt(jslGetTokenValueAsString(execInfo.lex)));
-    }
-    JSP_ASSERT_MATCH(LEX_INT);
-    return v;
-  } else if (execInfo.lex->tk==LEX_FLOAT) {
-    JsVar *v = 0;
-    if (JSP_SHOULD_EXECUTE) {
-      v = jsvNewFromFloat(stringToFloat(jslGetTokenValueAsString(execInfo.lex)));
-    }
-    JSP_ASSERT_MATCH(LEX_FLOAT);
-    return v;
   } else if (execInfo.lex->tk==LEX_STR) {
     if (JSP_SHOULD_EXECUTE) {
       JsVar *a = jslGetTokenValueAsVar(execInfo.lex);
