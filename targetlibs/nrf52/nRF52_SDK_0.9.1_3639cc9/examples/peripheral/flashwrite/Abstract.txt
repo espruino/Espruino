@@ -1,0 +1,2 @@
+Documentation can be found offline at: <keil_location>/ARM/Pack/NordicSemiconductor//999.0.0-dev/documentation
+Documentation can be found online at: http://developer.nordicsemi.com/nRF51_SDK/doc/
