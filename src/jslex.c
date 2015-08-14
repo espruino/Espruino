@@ -713,9 +713,14 @@ JsVar *jslGetTokenValueAsVar(JsLex *lex) {
   }
 }
 
+bool jslIsIDOrReservedWord(JsLex *lex) {
+  return lex->tk == LEX_ID ||
+         lex->tk >= LEX_R_LIST_START;
+}
+
 /// Match, and return true on success, false on failure
 bool jslMatch(JsLex *lex, int expected_tk) {
-  if (lex->tk!=expected_tk) {
+  if (lex->tk != expected_tk) {
     char gotStr[16];
     char expStr[16];
     jslGetTokenString(lex, gotStr, sizeof(gotStr));

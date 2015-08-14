@@ -9,6 +9,8 @@
             Now remove intervals/watches if they occur within 0.1s of a Ctrl-C on a blank line
             Fix parsing of trailing commas [,,1,,,]
             Treat vertical tab as whitespace
+            Make sure we ReferenceError on '+='/etc
+            Allow reserved words in record access and structure definitions
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

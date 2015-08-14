@@ -126,6 +126,7 @@ void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
 int jslGetTokenLength(JsLex *lex);
 JsVar *jslGetTokenValueAsVar(JsLex *lex);
+bool jslIsIDOrReservedWord(JsLex *lex);
 
 // Only for more 'internal' use
 void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters

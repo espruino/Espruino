@@ -934,7 +934,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
   while (execInfo.lex->tk=='.' || execInfo.lex->tk=='[') {
     if (execInfo.lex->tk == '.') { // ------------------------------------- Record Access
       JSP_ASSERT_MATCH('.');
-      if (JSP_SHOULD_EXECUTE) {
+      if (JSP_SHOULD_EXECUTE && jslIsIDOrReservedWord(execInfo.lex)) {
         // Note: name will go away when we parse something else!
         const char *name = jslGetTokenValueAsString(execInfo.lex);
 
@@ -954,7 +954,7 @@ NO_INLINE JsVar *jspeFactorMember(JsVar *a, JsVar **parentResult) {
             jsExceptionHere(JSET_ERROR, "Field or method \"%s\" does not already exist, and can't create it on %t", name, aVar);
           }
         }
-        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(parent);jsvUnLock(a);jsvUnLock(aVar);, child);
+        jslGetNextToken(execInfo.lex); // skip over current token (we checked above that it was an ID or reserved word)
 
         jsvUnLock(parent);
         parent = aVar;
@@ -1085,10 +1085,10 @@ NO_INLINE JsVar *jspeFactorObject() {
     while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != '}') {
       JsVar *varName = 0;
       // we only allow strings or IDs on the left hand side of an initialisation
-      if (execInfo.lex->tk==LEX_ID) {
+      if (jslIsIDOrReservedWord(execInfo.lex)) {
         if (JSP_SHOULD_EXECUTE)
           varName = jslGetTokenValueAsVar(execInfo.lex);
-        JSP_MATCH_WITH_CLEANUP_AND_RETURN(LEX_ID, jsvUnLock(varName), contents);
+        jslGetNextToken(execInfo.lex); // skip over current token
       } else if (
           execInfo.lex->tk==LEX_STR ||
           execInfo.lex->tk==LEX_FLOAT ||
@@ -1531,14 +1531,13 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
     rhs = jsvSkipNameAndUnLock(rhs); // ensure we get rid of any references on the RHS
 
     if (JSP_SHOULD_EXECUTE && lhs) {
-      /* If we're assigning to this and we don't have a parent,
-       * add it to the symbol table root */
-      if (!jsvGetRefs(lhs) && jsvIsName(lhs)) {
-        if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
-          jsvAddName(execInfo.root, lhs);
-      }
-
       if (op=='=') {
+        /* If we're assigning to this and we don't have a parent,
+         * add it to the symbol table root */
+        if (!jsvGetRefs(lhs) && jsvIsName(lhs)) {
+          if (!jsvIsArrayBufferName(lhs) && !jsvIsNewChild(lhs))
+            jsvAddName(execInfo.root, lhs);
+        }
         jspReplaceWith(lhs, rhs);
       } else {
         if (op==LEX_PLUSEQUAL) op='+';
