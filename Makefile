@@ -1103,6 +1103,9 @@ ifndef NRF52 # Nordic uses its own CMSIS files in its SDK. These are the most re
 endif
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
+ifdef NRF52
+	LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_espruino.ld
+endif #NRF52
 # I've no idea why this breaks the bootloader, but it does.
 # Given we've left 10k for it, there's no real reason to enable LTO anyway.
 ifndef BOOTLOADER
@@ -1241,9 +1244,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
+ifndef NRF52 # NRF52 platform uses its own linker file that isnt automatically generated.
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+endif
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
@@ -1349,12 +1354,3 @@ clean:
 	$(Q)rm -f $(PROJ_NAME).bin
 	$(Q)rm -f $(PROJ_NAME).srec
 	$(Q)rm -f $(PROJ_NAME).lst
-
-foo: # For debugging purposes. Call BOARD=1 make foo to see this information.
-	@echo DEFINES $(DEFINES)
-	@echo SOURCES $(SOURCES)
-	@echo INCLUDE $(INCLUDE)
-	@echo CFLAGS $(CFLAGS)
-	@echo LDFLAGS $(LDFLAGS)
-	@echo ARCHFLAGS $(ARCHFLAGS)
-	@echo OPTIMIZEFLAGS $(OPTIMIZEFLAGS)
