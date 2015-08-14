@@ -357,6 +357,89 @@ bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name) {
   jsvUnLock(propName);
   return contains;
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "defineProperty",
+  "generate" : "jswrap_object_defineProperty",
+  "params" : [
+    ["obj","JsVar","An object"],
+    ["name","JsVar","The name of the property"],
+    ["desc","JsVar","The property descriptor"]
+  ],
+  "return" : ["JsVar","The object, obj."]
+}
+Add a new property to the Object. 'Desc' is an object with the following fields:
+
+* `configurable` (bool = false) - can this property be changed/deleted
+* `enumerable` (bool = false) - can this property be enumerated
+* `value` (anything) - the value of this property
+* `writable` (bool = false) - can the value be changed with the assignment operator?
+* `get` (function) - the getter function, or undefined if no getter
+* `set` (function) - the setter function, or undefined if no setter
+*
+**Note:** `configurable`, `enumerable`, `writable`, `get`, and `set` are not implemented and will be ignored.
+ */
+JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc) {
+  if (!jsvIsObject(parent)) {
+    jsExceptionHere(JSET_ERROR, "First argument must be an object, got %t", parent);
+    return 0;
+  }
+  if (!jsvIsObject(desc)) {
+    jsExceptionHere(JSET_ERROR, "Property description must be an object, got %t", desc);
+    return 0;
+  }
+
+  JsVar *name = jsvAsArrayIndex(propName);
+  JsVar *value = jsvObjectGetChild(desc, "value", 0);
+  JsVar *property = jsvFindChildFromVar(parent, name, true);
+  jsvUnLock(name);
+  if (property && value)
+    jsvSetValueOfName(property, value);
+  jsvUnLock(property);
+  jsvUnLock(value);
+
+  return jsvLockAgain(parent);
+}
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Object",
+  "name" : "defineProperties",
+  "generate" : "jswrap_object_defineProperties",
+  "params" : [
+    ["obj","JsVar","An object"],
+    ["props","JsVar","An object whose fields represent property names, and whose values are property descriptors."]
+  ],
+  "return" : ["JsVar","The object, obj."]
+}
+Adds new properties to the Object. See `Object.defineProperty` for more information
+ */
+JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
+  if (!jsvIsObject(parent)) {
+    jsExceptionHere(JSET_ERROR, "First argument must be an object, got %t", parent);
+    return 0;
+  }
+  if (!jsvIsObject(props)) {
+    jsExceptionHere(JSET_ERROR, "Second argument must be an object, got %t", props);
+    return 0;
+  }
+
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, props);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *name = jsvObjectIteratorGetKey(&it);
+    JsVar *desc = jsvObjectIteratorGetValue(&it);
+    jsvUnLock(jswrap_object_defineProperty(parent, name, desc));
+    jsvUnLock(name);
+    jsvUnLock(desc);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+
+  return jsvLockAgain(parent);
+}
 // --------------------------------------------------------------------------
 //                                                         Misc constructors
 
