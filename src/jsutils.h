@@ -242,8 +242,8 @@ typedef int64_t JsSysTime;
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==0x09) || // \t - tabe
-           (ch==0x08) || // vertical tab
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
            (((unsigned char)ch)==0xA0) || // no break space

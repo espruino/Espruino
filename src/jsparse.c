@@ -1137,7 +1137,6 @@ NO_INLINE JsVar *jspeFactorArray() {
   JSP_MATCH_WITH_RETURN('[', contents);
   while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != ']') {
     if (JSP_SHOULD_EXECUTE) {
-      // OPT: Store array indices as actual ints
       JsVar *aVar = 0;
       JsVar *indexName = 0;
       if (execInfo.lex->tk != ',') { // #287 - [,] and [1,2,,4] are allowed
@@ -1156,6 +1155,7 @@ NO_INLINE JsVar *jspeFactorArray() {
     if (execInfo.lex->tk != ']') JSP_MATCH_WITH_RETURN(',', contents);
     idx++;
   }
+  if (contents) jsvSetArrayLength(contents, idx, false);
   JSP_MATCH_WITH_RETURN(']', contents);
   return contents;
 }

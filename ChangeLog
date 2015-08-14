@@ -7,6 +7,8 @@
             Actually create ReferenceError for undefined variables
             Fix Object constructor behaviour (fix #561)
             Now remove intervals/watches if they occur within 0.1s of a Ctrl-C on a blank line
+            Fix parsing of trailing commas [,,1,,,]
+            Treat vertical tab as whitespace
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
