@@ -26,7 +26,7 @@
   "return" : ["JsVar","An array containing all the arguments given to the function"]
 }
 A variable containing the arguments given to the function
-*/
+ */
 extern JsExecInfo execInfo;
 JsVar *jswrap_arguments() {
   JsVar *scope = 0;
@@ -53,7 +53,7 @@ JsVar *jswrap_arguments() {
   "return" : ["JsVar","A Number object"]
 }
 Creates a function
-*/
+ */
 JsVar *jswrap_function_constructor(JsVar *args) {
   JsVar *fn = jsvNewWithFlags(JSV_FUNCTION);
   if (!fn) return 0;
@@ -101,7 +101,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
   "return" : ["JsVar","The result of evaluating the string"]
 }
 Evaluate a string containing JavaScript code
-*/
+ */
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
@@ -121,7 +121,7 @@ JsVar *jswrap_eval(JsVar *v) {
   "return" : ["JsVar","The integer value of the string (or NaN)"]
 }
 Convert a string representing a number into an integer
-*/
+ */
 JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   int radix = 0/*don't force radix*/;
   if (jsvIsNumeric(radixVar))
@@ -151,7 +151,7 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
   "return" : ["float","The value of the string"]
 }
 Convert a string representing a number into an float
-*/
+ */
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
   jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
@@ -170,7 +170,7 @@ JsVarFloat jswrap_parseFloat(JsVar *v) {
   "return" : ["bool","True is the value is NaN, false if not."]
 }
 Whether the x is NaN (Not a Number) or not
-*/
+ */
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
@@ -225,7 +225,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
   "return" : ["JsVar","A base64 encoded string"]
 }
 Convert the supplied string (or array) into a base64 string
-*/
+ */
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string or array, got %t", binaryData);
@@ -282,7 +282,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   "return" : ["JsVar","A string containing the decoded data"]
 }
 Convert the supplied base64 string into a base64 string
-*/
+ */
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {
     jsExceptionHere(JSET_ERROR, "Expecting a string, got %t", base64Data);
@@ -296,7 +296,7 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   jsvStringIteratorNew(&itdst, binaryData, 0);
   // skip whitespace
   while (jsvStringIteratorHasChar(&itsrc) &&
-        isWhitespace(jsvStringIteratorGetChar(&itsrc)))
+      isWhitespace(jsvStringIteratorGetChar(&itsrc)))
     jsvStringIteratorNext(&itsrc);
 
   while (jsvStringIteratorHasChar(&itsrc) && !jspIsInterrupted()) {

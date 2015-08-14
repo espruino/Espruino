@@ -1,3 +1,13 @@
+     1v81 : Fix regression on UART4/5 (bug #559)
+            Fix Serial3 on C10/C11 for F103 boards (fix #409)
+            Remove Graphics.setColorHSV, add E.HSBtoRGB (fix #554)
+            Make jsiDumpState/jsiAppendHardwareInitialisation use callbacks (fix #398)
+            Add `E.dumpStr()` to dump current state of interpreter as a string
+            Add ReferenceError, and ensure that TypeError gets converted to a string properly
+            Actually create ReferenceError for undefined variables
+            Fix Object constructor behaviour (fix #561)
+            Now remove intervals/watches if they occur within 0.1s of a Ctrl-C on a blank line
+
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
             Make debounced setWatch output state+time information (regression fix #537)
@@ -26,6 +36,7 @@
             Change reported USB HID type to 0, from 2 (mouse)
             Improve digitalWrite/etc documentation
             Add `pin.mode` and `pin.getMode` functions (mirroring `pinMode`)
+            `Serial.setup` now remembers options if none specified (fix #557)
 
      1v79 : Fix Mac address parsing for top nibbles
             Make bind reference function internals not copy them. Fix scoped vars in bind (fix #533)

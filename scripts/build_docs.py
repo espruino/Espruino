@@ -68,10 +68,8 @@ def htmlify(d):
       if starStart!=False and starStart+2<idx:
         l = lines[starStart:idx]
         for i in range(0,len(l)):
-          print(i,l[i])
           l[i] = "<li>"+l[i][1:]+"</li>"
         lines = lines[0:starStart-1]+["<ul>"]+l+["</ul>"]+lines[idx:]
-        print(lines)
         idx += 2+len(l)
       starStart = False
   d = "\n".join(lines);

@@ -106,12 +106,6 @@ JsSysTime jshLastWokenByUSB = 0;
 #define GPIO_AF_SPI2 GPIO_AF_5
 #endif
 
-#if defined(STM32F401xx)
-#define NO_USART3
-#endif
-
-
-
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
   return (uint8_t)(EV_EXTI0+(pin-JSH_PIN0));
@@ -374,22 +368,22 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
-#ifdef USART3
+#if defined(USART3) && USARTS>=3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#ifdef USART4
+#if defined(UART4) && USARTS>=4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#ifdef USART5
+#if defined(UART5) && USARTS>=5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#ifdef USART6
+#if defined(USART6) && USARTS>=6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
@@ -1014,8 +1008,11 @@ static NO_INLINE void jshPinSetFunction(Pin pin, JshPinFunction func) {
   else if ((func&JSH_MASK_TYPE)==JSH_SPI3) GPIO_PinRemapConfig( GPIO_Remap_SPI3, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_USART1) GPIO_PinRemapConfig( GPIO_Remap_USART1, remap );
   else if ((func&JSH_MASK_TYPE)==JSH_USART2) GPIO_PinRemapConfig( GPIO_Remap_USART2, remap );
-  else if ((func&JSH_MASK_TYPE)==JSH_USART3) GPIO_PinRemapConfig( GPIO_FullRemap_USART3, remap );
-  else if (remap) jsError("(internal) Remap needed, but unknown device.");
+  else if ((func&JSH_MASK_TYPE)==JSH_USART3) {
+    // nasty hack because USART3 actuall has 2 different remap states
+    bool fullRemap = (JSH_PORTD_COUNT>9) && (pin==jshGetPinFromString("D8") || pin==jshGetPinFromString("D9"));
+    GPIO_PinRemapConfig( fullRemap ? GPIO_FullRemap_USART3 : GPIO_PartialRemap_USART3, remap );
+  } else if (remap) jsError("(internal) Remap needed, but unknown device %d", func&JSH_MASK_TYPE);
 
 #endif
 }
@@ -2049,19 +2046,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#ifdef USART3
+#if defined(USART3) && USARTS>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#if defined(UART4) && defined(UART4_IRQn)
+#if defined(UART4) && USARTS>=4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if defined(UART5) && defined(UART5_IRQn)
+#if defined(UART5) && USARTS>=5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#ifdef USART6
+#if defined(USART6) && USARTS>=6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif

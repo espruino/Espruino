@@ -17,5 +17,6 @@ JsVar *jswrap_error_constructor(JsVar *msg);
 JsVar *jswrap_syntaxerror_constructor(JsVar *msg);
 JsVar *jswrap_typeerror_constructor(JsVar *msg);
 JsVar *jswrap_internalerror_constructor(JsVar *msg);
+JsVar *jswrap_referenceerror_constructor(JsVar *msg);
 
 JsVar *jswrap_error_toString(JsVar *parent);

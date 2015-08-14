@@ -286,6 +286,7 @@ typedef enum {
   JSET_SYNTAXERROR,
   JSET_TYPEERROR,
   JSET_INTERNALERROR,
+  JSET_REFERENCEERROR
 } JsExceptionType;
 
 void jsError(const char *fmt, ...);

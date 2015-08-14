@@ -317,25 +317,25 @@ void USART2_IRQHandler(void) {
   USART_IRQHandler(USART2, EV_SERIAL2);
 }
 
-#ifdef USART3
+#if defined(USART3) && USARTS>=3
 void USART3_IRQHandler(void) {
   USART_IRQHandler(USART3, EV_SERIAL3);
 }
 #endif
 
-#ifdef UART4
+#if defined(UART4) && USARTS>=4
 void UART4_IRQHandler(void) {
   USART_IRQHandler(UART4, EV_SERIAL4);
 }
 #endif
 
-#ifdef UART5
+#if defined(UART5) && USARTS>=5
 void UART5_IRQHandler(void) {
   USART_IRQHandler(UART5, EV_SERIAL5);
 }
 #endif
 
-#ifdef USART6
+#if defined(USART6) && USARTS>=6
 void USART6_IRQHandler(void) {
   USART_IRQHandler(USART6, EV_SERIAL6);
 }

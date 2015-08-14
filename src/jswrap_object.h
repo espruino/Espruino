@@ -14,6 +14,7 @@
 #include "jsvar.h"
 #include "jswrapper.h"
 
+JsVar *jswrap_object_constructor(JsVar *value);
 JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);

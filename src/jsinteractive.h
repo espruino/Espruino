@@ -51,7 +51,7 @@ void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
-/// Execute the given function/string/array of functions and return true on success, false on failure (error)
+/// Execute the given function/string/array of functions and return true on success, false on failure (break during execution)
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
 bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
@@ -129,7 +129,7 @@ extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
 extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
 
-void jsiDumpState();
+void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 void jsiSetTodo(TODOFlags newTodo);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run

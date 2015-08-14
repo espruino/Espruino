@@ -150,12 +150,12 @@ void jsvStringIteratorNext(JsvStringIterator *it) {
 void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   assert(it->var);
   while (jsvGetLastChild(it->var)) {
-     JsVar *next = jsvLock(jsvGetLastChild(it->var));
-     jsvUnLock(it->var);
-     it->var = next;
-     it->varIndex += it->charsInVar;
-     it->charsInVar = jsvGetCharactersInVar(it->var);
-   }
+    JsVar *next = jsvLock(jsvGetLastChild(it->var));
+    jsvUnLock(it->var);
+    it->var = next;
+    it->varIndex += it->charsInVar;
+    it->charsInVar = jsvGetCharactersInVar(it->var);
+  }
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
 }
