@@ -600,7 +600,6 @@ void jsiSemiInit(bool autoLoad) {
   jsiSoftInit();
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
-#ifndef NRF52 // This crashes for NRF52 platform for some reason...
     if (!loadFlash) {
       jsiConsolePrint(
 #ifndef LINUX
@@ -618,13 +617,12 @@ void jsiSemiInit(bool autoLoad) {
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
-#endif // NRF52
   }
 }
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-#ifdef LINUX
+#if defined(LINUX) || !defined(USB)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
   consoleDevice = EV_LIMBO;
@@ -643,6 +641,7 @@ void jsiOneSecondAfterStartup() {
      that but if we start transmitting on Serial right away, the first
      char or two can get corrupted.
    */
+#ifdef USB
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = DEFAULT_CONSOLE_DEVICE;
     if (jshIsUSBSERIALConnected())
@@ -655,6 +654,7 @@ void jsiOneSecondAfterStartup() {
     // the console has already been moved
     jshTransmitClearDevice(EV_LIMBO);
   }
+#endif
 }
 #endif
 
