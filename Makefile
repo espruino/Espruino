@@ -998,47 +998,108 @@ ifeq ($(FAMILY), NRF52)
 
 	# ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
 	ARCHFLAGS = -mthumb -mabi=aapcs -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-	DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
+	
+	ifdef BLE_INTERFACE
+		DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DS132 -DBLE_STACK_SUPPORT_REQD -DBLE_INTERFACE -D__HEAP_SIZE=0
+	else
+		DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
+	endif # BLE_INTERFACE
 
-	# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
-	# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config/uart_pca10036
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/device
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
+	ifdef BLE_INTERFACE
 
-	# Includes for adding timer peripheral. 
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config/timer_pca10036
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/timer
-	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer
+		#includes common to all targets
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/s132/headers/nrf52
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/common
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/pstorage
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/device
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/button
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/timer
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/s132/headers
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/gpiote
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/ble_services/ble_nus
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/ble_advertising
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/trace
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/common/softdevice_handler
 
-	# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
-	SOURCES += \
-	$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
-	$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
-	$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
-	$(NRF52_SDK_PATH)/components/libraries/util/app_util_platform.c \
-	$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
-	$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
-	$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
-	$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-	$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
-	$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-	$(NRF52_SDK_PATH)/components/drivers_nrf/timer/nrf_drv_timer.c # I want to add timer peripheral so add source here (as in timer example makefile from nordic sdk).
+		#source common to all targets
+		SOURCES += \
+		$(NRF52_SDK_PATH)/components/libraries/button/app_button.c \
+		$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
+		$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+		$(NRF52_SDK_PATH)/components/libraries/timer/app_timer.c \
+		$(NRF52_SDK_PATH)/components/libraries/trace/app_trace.c \
+		$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
+		$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
+		$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
+		$(NRF52_SDK_PATH)/examples/bsp/bsp.c \
+		$(NRF52_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
+		$(NRF52_SDK_PATH)/components/ble/common/ble_advdata.c \
+		$(NRF52_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
+		$(NRF52_SDK_PATH)/components/ble/common/ble_conn_params.c \
+		$(NRF52_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
+		$(NRF52_SDK_PATH)/components/ble/common/ble_srv_common.c \
+		$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
+		$(NRF52_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
 
+	else
+
+		# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
+		# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config/uart_pca10036
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/device
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
+
+		# Includes for adding timer peripheral. 
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config/timer_pca10036
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/timer
+		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer
+
+		# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
+		SOURCES += \
+		$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
+		$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
+		$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+		$(NRF52_SDK_PATH)/components/libraries/util/app_util_platform.c \
+		$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
+		$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
+		$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+		$(NRF52_SDK_PATH)/components/drivers_nrf/timer/nrf_drv_timer.c # I want to add timer peripheral so add source here (as in timer example makefile from nordic sdk).
+
+	endif # BLE_INTERFACE
 
 	#assembly files common to all targets
 	#ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
