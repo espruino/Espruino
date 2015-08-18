@@ -1104,8 +1104,13 @@ endif
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
 ifdef NRF52
-	LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_espruino.ld
-endif #NRF52
+	ifdef BLE_INTERFACE
+		LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_ble_interface_espruino.ld
+	else
+		LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_espruino.ld
+	endif # BLE_INTERFACE
+endif # NRF52
+
 # I've no idea why this breaks the bootloader, but it does.
 # Given we've left 10k for it, there's no real reason to enable LTO anyway.
 ifndef BOOTLOADER
