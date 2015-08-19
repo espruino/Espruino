@@ -68,7 +68,10 @@ void app_trace_init(void)
 void app_trace_dump(uint8_t * p_buffer, uint32_t len)
 {
     app_trace_log("\r\n");
-    for (uint32_t index = 0; index <  len; index++)
+
+    uint32_t index;
+
+    for (index = 0; index <  len; index++)
     {
         app_trace_log("0x%02X ", p_buffer[index]);
     }

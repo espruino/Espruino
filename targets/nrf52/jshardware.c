@@ -134,7 +134,9 @@
   /**@snippet [Handling the data received over BLE] */
   static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
   {
-      for (uint32_t i = 0; i < length; i++)
+      uint32_t i;
+
+      for (i = 0; i < length; i++)
       {
           while(app_uart_put(p_data[i]) != NRF_SUCCESS);
       }
