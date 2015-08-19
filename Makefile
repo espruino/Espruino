@@ -14,10 +14,11 @@
 #
 # ESPRUINO_1V0=1          # Espruino board rev 1.0
 # ESPRUINO_1V1=1          # Espruino board rev 1.1 and 1.2
-# ESPRUINO_1V3=1          # Espruino board rev 1.3
+# ESPRUINO_1V3=1          # Espruino board rev 1.3 and rev 1v4
 # PICO_1V0=1              # Espruino Pico board rev 1.0
 # PICO_1V1=1              # Espruino Pico board rev 1.1
 # PICO_1V2=1              # Espruino Pico board rev 1.2
+# PICO_1V3=1              # Espruino Pico board rev 1.3
 # OLIMEXINO_STM32=1       # Olimexino STM32
 # MAPLERET6_STM32=1       # Limited production Leaflabs Maple r5 with a STM32F103RET6
 # MAPLEMINI=1             # Leaflabs Maple Mini
@@ -30,6 +31,7 @@
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
+# NRF52832DK=1            # Ultra low power BLE enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # BEAGLEBONE=1
@@ -40,6 +42,9 @@
 # ARMINARM=1
 # NUCLEOF401RE=1
 # NUCLEOF411RE=1
+# MINISTM32_STRIVE=1
+# MINISTM32_ANGLED_VE=1
+# MINISTM32_ANGLED_VG=1
 # Or nothing for standard linux compile
 #
 # Also:
@@ -83,8 +88,15 @@ endif
 
 ifdef RELEASE
 # force no asserts to be compiled in
-DEFINES += -DNO_ASSERT
+DEFINES += -DNO_ASSERT -DRELEASE
 endif
+
+LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
+COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | wc -l)
+ifneq ($(COMMITS_SINCE_RELEASE),0)
+DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
+endif
+
 
 CWD = $(shell pwd)
 ROOT = $(CWD)
@@ -135,7 +147,7 @@ USE_DFU=1
 DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
 USE_GRAPHICS=1
 BOARD=PICO_R1_0
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V1
@@ -146,7 +158,7 @@ USE_NET=1
 USE_GRAPHICS=1
 USE_TV=1
 BOARD=PICO_R1_1
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V2
@@ -158,24 +170,25 @@ USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
 BOARD=PICO_R1_2
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef PICO_1V3
 EMBEDDED=1
 #USE_DFU=1
 DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V3
+USE_USB_HID=1
 USE_NET=1
 USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
+USE_FILESYSTEM=1
 BOARD=PICO_R1_3
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
-USE_FILESYSTEM=1
 SAVE_ON_FLASH=1
 USE_FILESYSTEM=1
 BOARD=OLIMEXINO_STM32
@@ -202,6 +215,45 @@ BOARD=EMBEDDED_PI
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef MINISTM32_STRIVE
+EMBEDDED=1
+USE_GRAPHICS=1
+USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
+DEFINES+=-DUSE_RTC
+DEFINES+=-DSWD_ONLY_NO_JTAG
+USE_FILESYSTEM=1
+USE_FILESYSTEM_SDIO=1
+BOARD=MINISTM32_STRIVE
+STLIB=STM32F10X_HD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
+else ifdef MINISTM32_ANGLED_VE
+EMBEDDED=1
+USE_GRAPHICS=1
+USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
+DEFINES+=-DUSE_RTC
+DEFINES+=-DSWD_ONLY_NO_JTAG
+USE_FILESYSTEM=1
+USE_FILESYSTEM_SDIO=1
+BOARD=MINISTM32_ANGLED_VE
+STLIB=STM32F10X_HD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
+OPTIMIZEFLAGS+=-O3
+else ifdef MINISTM32_ANGLED_VG
+EMBEDDED=1
+USE_GRAPHICS=1
+USE_LCD_FSMC=1
+DEFINES+=-DFSMC_BITBANG # software implementation because FSMC HW causes strange crashes
+DEFINES+=-DUSE_RTC
+DEFINES+=-DSWD_ONLY_NO_JTAG
+USE_FILESYSTEM=1
+USE_FILESYSTEM_SDIO=1
+BOARD=MINISTM32_ANGLED_VG
+STLIB=STM32F10X_XL
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_xl.o
+OPTIMIZEFLAGS+=-O3
 else ifdef HYSTM32_24
 EMBEDDED=1
 USE_GRAPHICS=1
@@ -241,7 +293,7 @@ NUCLEO=1
 USE_GRAPHICS=1
 USE_NET=1
 BOARD=NUCLEOF401RE
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef NUCLEOF411RE
@@ -250,7 +302,7 @@ NUCLEO=1
 USE_GRAPHICS=1
 USE_NET=1
 BOARD=NUCLEOF411RE
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F4DISCOVERY
@@ -259,7 +311,7 @@ USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F4DISCOVERY
-STLIB=STM32F40_41xxx
+STLIB=STM32F407xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F401CDISCOVERY
@@ -268,7 +320,7 @@ USE_NET=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F401CDISCOVERY
-STLIB=STM32F401xx
+STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef STM32F429IDISCOVERY
@@ -301,6 +353,13 @@ BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef NRF52832DK
+BOARD=NRF52832DK
+NRF52_SDK_PATH=$(ROOT)/targetlibs/nrf52/nRF52_SDK_0.9.1_3639cc9
+NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+EMBEDDED=1
+PRECOMPILED_OBJS+=$(NRF52_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
 else ifdef TINYCHIP
 EMBEDDED=1
 BOARD=TINYCHIP
@@ -311,7 +370,7 @@ else ifdef LPC1768
 EMBEDDED=1
 MBED=1
 BOARD=LPC1768
-MBED_GCC_CS_DIR=$(ROOT)/targets/libmbed/LPC1768/GCC_CS
+MBED_GCC_CS_DIR=$(ROOT)/targetlibs/libmbed/LPC1768/GCC_CS
 PRECOMPILED_OBJS+=$(MBED_GCC_CS_DIR)/sys.o $(MBED_GCC_CS_DIR)/cmsis_nvic.o $(MBED_GCC_CS_DIR)/system_LPC17xx.o $(MBED_GCC_CS_DIR)/core_cm3.o $(MBED_GCC_CS_DIR)/startup_LPC17xx.o
 LIBS+=-L$(MBED_GCC_CS_DIR)  -lmbed
 OPTIMIZEFLAGS+=-O3
@@ -483,6 +542,7 @@ src/jswrap_arraybuffer.c \
 src/jswrap_date.c \
 src/jswrap_error.c \
 src/jswrap_espruino.c \
+src/jswrap_flash.c \
 src/jswrap_functions.c \
 src/jswrap_interactive.c \
 src/jswrap_io.c \
@@ -659,6 +719,10 @@ endif
 
 endif
 
+ifdef USE_USB_HID
+DEFINES += -DUSE_USB_HID
+endif
+
 ifdef USE_NET
 DEFINES += -DUSE_NET
 INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
@@ -768,14 +832,10 @@ targetlibs/stm32f1/lib/misc.c              \
 targetlibs/stm32f1/lib/stm32f10x_adc.c     \
 targetlibs/stm32f1/lib/stm32f10x_bkp.c     \
 targetlibs/stm32f1/lib/stm32f10x_can.c     \
-targetlibs/stm32f1/lib/stm32f10x_cec.c     \
-targetlibs/stm32f1/lib/stm32f10x_crc.c     \
 targetlibs/stm32f1/lib/stm32f10x_dac.c     \
-targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  \
 targetlibs/stm32f1/lib/stm32f10x_dma.c     \
 targetlibs/stm32f1/lib/stm32f10x_exti.c    \
 targetlibs/stm32f1/lib/stm32f10x_flash.c   \
-targetlibs/stm32f1/lib/stm32f10x_fsmc.c    \
 targetlibs/stm32f1/lib/stm32f10x_gpio.c    \
 targetlibs/stm32f1/lib/stm32f10x_i2c.c     \
 targetlibs/stm32f1/lib/stm32f10x_iwdg.c    \
@@ -788,93 +848,16 @@ targetlibs/stm32f1/lib/stm32f10x_tim.c     \
 targetlibs/stm32f1/lib/stm32f10x_usart.c   \
 targetlibs/stm32f1/lib/stm32f10x_wwdg.c    \
 targetlibs/stm32f1/lib/system_stm32f10x.c
+    
+#targetlibs/stm32f1/lib/stm32f10x_cec.c     
+#targetlibs/stm32f1/lib/stm32f10x_crc.c     
+#targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  
+#targetlibs/stm32f1/lib/stm32f10x_fsmc.c    
 
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f1/usblib -I$(ROOT)/targetlibs/stm32f1/usb
-SOURCES +=                              \
-targetlibs/stm32f1/usblib/otgd_fs_cal.c       \
-targetlibs/stm32f1/usblib/otgd_fs_dev.c       \
-targetlibs/stm32f1/usblib/otgd_fs_int.c       \
-targetlibs/stm32f1/usblib/otgd_fs_pcd.c       \
-targetlibs/stm32f1/usblib/usb_core.c          \
-targetlibs/stm32f1/usblib/usb_init.c          \
-targetlibs/stm32f1/usblib/usb_int.c           \
-targetlibs/stm32f1/usblib/usb_mem.c           \
-targetlibs/stm32f1/usblib/usb_regs.c          \
-targetlibs/stm32f1/usblib/usb_sil.c           \
-targetlibs/stm32f1/usb/usb_desc.c              \
-targetlibs/stm32f1/usb/usb_endp.c              \
-targetlibs/stm32f1/usb/usb_istr.c              \
-targetlibs/stm32f1/usb/usb_prop.c              \
-targetlibs/stm32f1/usb/usb_pwr.c               \
-targetlibs/stm32f1/usb/usb_utils.c
-endif #USB
-
+STM32_LEGACY_USB=1
+endif
 endif #STM32F1
-
-ifeq ($(FAMILY), STM32F2)
-ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
-ARM=1
-STM32=1
-INCLUDE += -I$(ROOT)/targetlibs/stm32f2 -I$(ROOT)/targetlibs/stm32f2/lib
-DEFINES += -DSTM32F2
-SOURCES +=                                 \
-targetlibs/stm32f2/lib/misc.c              \
-targetlibs/stm32f2/lib/stm32f2xx_adc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_can.c     \
-targetlibs/stm32f2/lib/stm32f2xx_crc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_cryp_aes.c\
-targetlibs/stm32f2/lib/stm32f2xx_cryp.c    \
-targetlibs/stm32f2/lib/stm32f2xx_cryp_des.c\
-targetlibs/stm32f2/lib/stm32f2xx_cryp_tdes.c\
-targetlibs/stm32f2/lib/stm32f2xx_dac.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dbgmcu.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dcmi.c     \
-targetlibs/stm32f2/lib/stm32f2xx_dma.c     \
-targetlibs/stm32f2/lib/stm32f2xx_exti.c     \
-targetlibs/stm32f2/lib/stm32f2xx_flash.c     \
-targetlibs/stm32f2/lib/stm32f2xx_fsmc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_gpio.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash_md5.c     \
-targetlibs/stm32f2/lib/stm32f2xx_hash_sha1.c     \
-targetlibs/stm32f2/lib/stm32f2xx_i2c.c     \
-targetlibs/stm32f2/lib/stm32f2xx_iwdg.c     \
-targetlibs/stm32f2/lib/stm32f2xx_pwr.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rcc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rng.c     \
-targetlibs/stm32f2/lib/stm32f2xx_rtc.c     \
-targetlibs/stm32f2/lib/stm32f2xx_sdio.c     \
-targetlibs/stm32f2/lib/stm32f2xx_spi.c     \
-targetlibs/stm32f2/lib/stm32f2xx_syscfg.c     \
-targetlibs/stm32f2/lib/stm32f2xx_tim.c     \
-targetlibs/stm32f2/lib/stm32f2xx_usart.c     \
-targetlibs/stm32f2/lib/stm32f2xx_wwdg.c    \
-targetlibs/stm32f2/lib/system_stm32f2xx.c
-
-
-ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f2/usblib -I$(ROOT)/targetlibs/stm32f2/usb
-SOURCES +=                                 \
-targetlibs/stm32f2/usb/usbd_cdc_vcp.c \
-targetlibs/stm32f2/usb/usb_irq_handlers.c \
-targetlibs/stm32f2/usb/usbd_desc.c \
-targetlibs/stm32f2/usb/usbd_usr.c \
-targetlibs/stm32f2/usb/usb_bsp.c \
-targetlibs/stm32f2/usblib/usbd_req.c \
-targetlibs/stm32f2/usblib/usb_dcd_int.c \
-targetlibs/stm32f2/usblib/usbd_core.c \
-targetlibs/stm32f2/usblib/usbd_cdc_core.c \
-targetlibs/stm32f2/usblib/usbd_ioreq.c \
-targetlibs/stm32f2/usblib/usb_core.c \
-targetlibs/stm32f2/usblib/usb_dcd.c
-#targetlibs/stm32f2/usblib/usb_otg.c \
-#targetlibs/stm32f2/usblib/usb_bsp_template.c \
-#targetlibs/stm32f2/usblib/usbd_cdc_if_template.c \
-#targetlibs/stm32f2/usblib/usb_hcd.c \
-#targetlibs/stm32f2/usblib/usb_hcd_int.c
-endif #USB
-endif #STM32F2
 
 ifeq ($(FAMILY), STM32F3)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
@@ -908,21 +891,8 @@ targetlibs/stm32f3/lib/stm32f30x_wwdg.c       \
 targetlibs/stm32f3/lib/system_stm32f30x.c
 
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f3/usblib -I$(ROOT)/targetlibs/stm32f3/usb
-SOURCES +=                                 \
-targetlibs/stm32f3/usblib/usb_core.c          \
-targetlibs/stm32f3/usblib/usb_init.c          \
-targetlibs/stm32f3/usblib/usb_int.c           \
-targetlibs/stm32f3/usblib/usb_mem.c           \
-targetlibs/stm32f3/usblib/usb_regs.c          \
-targetlibs/stm32f3/usblib/usb_sil.c           \
-targetlibs/stm32f3/usb/usb_desc.c              \
-targetlibs/stm32f3/usb/usb_endp.c              \
-targetlibs/stm32f3/usb/usb_istr.c              \
-targetlibs/stm32f3/usb/usb_prop.c              \
-targetlibs/stm32f3/usb/usb_pwr.c               \
-targetlibs/stm32f3/usb/usb_utils.c
-endif #USB
+STM32_LEGACY_USB=1
+endif
 endif #STM32F3
 
 ifeq ($(FAMILY), STM32F4)
@@ -934,31 +904,18 @@ DEFINES += -DSTM32F4
 SOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_can.c        \
 targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c   \
-targetlibs/stm32f4/lib/stm32f4xx_cryp.c       \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c   \
-targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  \
 targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
 targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
-targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       \
 targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
-targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      \
 targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
 targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
 targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
-targetlibs/stm32f4/lib/stm32f4xx_hash.c       \
-targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   \
-targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  \
 targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
 targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
-targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       \
 targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_rng.c        \
 targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
-targetlibs/stm32f4/lib/stm32f4xx_sai.c        \
 targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
 targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
 targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
@@ -966,28 +923,126 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
-#targetlibs/stm32f4/lib/stm324xx_fsmc.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       
+#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      
+#targetlibs/stm32f4/lib/stm32f4xx_can.c        
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
 
+#targetlibs/stm32f4/lib/stm32f4xx_hash.c       
+#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
+#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
+#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       
+#targetlibs/stm32f4/lib/stm32f4xx_rng.c        
+#targetlibs/stm32f4/lib/stm32f4xx_sai.c        
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c
 ifdef USB
-INCLUDE += -I$(ROOT)/targetlibs/stm32f4/usblib -I$(ROOT)/targetlibs/stm32f4/usb
-SOURCES +=                                 \
-targetlibs/stm32f4/usblib/usb_core.c          \
-targetlibs/stm32f4/usblib/usbd_cdc_core.c     \
-targetlibs/stm32f4/usblib/usb_dcd.c           \
-targetlibs/stm32f4/usblib/usb_dcd_int.c       \
-targetlibs/stm32f4/usblib/usbd_core.c         \
-targetlibs/stm32f4/usblib/usbd_ioreq.c        \
-targetlibs/stm32f4/usblib/usbd_req.c          \
-targetlibs/stm32f4/usb/usb_bsp.c              \
-targetlibs/stm32f4/usb/usbd_cdc_vcp.c         \
-targetlibs/stm32f4/usb/usbd_desc.c            \
-targetlibs/stm32f4/usb/usbd_usr.c
-#targetlibs/stm32f4/usblib/usb_hcd.c
-#targetlibs/stm32f4/usblib/usb_hcd_int.c
-#targetlibs/stm32f4/usblib/usb_otg.c
-endif #USB
+STM32_USB=1
+endif
 endif #STM32F4
 
+
+# New STM32 Cube based USB
+# This could be global for all STM32 once we figure out why it's so flaky on F1
+ifdef STM32_USB
+SOURCES +=                                 \
+targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c 
+
+INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
+SOURCES +=                                 \
+targetlibs/stm32usb/usbd_conf.c \
+targetlibs/stm32usb/usb_device.c \
+targetlibs/stm32usb/usbd_cdc_hid.c \
+targetlibs/stm32usb/Src/usbd_ctlreq.c \
+targetlibs/stm32usb/Src/usbd_core.c \
+targetlibs/stm32usb/Src/usbd_ioreq.c \
+targetlibs/stm32usb/usbd_desc.c \
+targetlibs/stm32usb/usb_irq.c
+endif #USB
+
+# Old Legacy STM32 USB
+# Used for F1 and F3
+ifdef STM32_LEGACY_USB
+DEFINES += -DLEGACY_USB
+INCLUDE += -I$(ROOT)/targetlibs/stm32legacyusb/lib -I$(ROOT)/targetlibs/stm32legacyusb
+SOURCES +=                              \
+targetlibs/stm32legacyusb/lib/otgd_fs_cal.c       \
+targetlibs/stm32legacyusb/lib/otgd_fs_dev.c       \
+targetlibs/stm32legacyusb/lib/otgd_fs_int.c       \
+targetlibs/stm32legacyusb/lib/otgd_fs_pcd.c       \
+targetlibs/stm32legacyusb/lib/usb_core.c          \
+targetlibs/stm32legacyusb/lib/usb_init.c          \
+targetlibs/stm32legacyusb/lib/usb_int.c           \
+targetlibs/stm32legacyusb/lib/usb_mem.c           \
+targetlibs/stm32legacyusb/lib/usb_regs.c          \
+targetlibs/stm32legacyusb/lib/usb_sil.c           \
+targetlibs/stm32legacyusb/usb_desc.c             \
+targetlibs/stm32legacyusb/usb_endp.c             \
+targetlibs/stm32legacyusb/usb_istr.c             \
+targetlibs/stm32legacyusb/usb_prop.c             \
+targetlibs/stm32legacyusb/usb_pwr.c              \
+targetlibs/stm32legacyusb/usb_utils.c            \
+targetlibs/stm32legacyusb/legacy_usb.c
+endif #USB
+
+ifeq ($(FAMILY), NRF52)
+
+	ARM=1
+
+	INCLUDE += -I$(ROOT)/targetlibs/nrf52 -I$(NRF52_SDK_PATH)
+
+	# ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+	ARCHFLAGS = -mthumb -mabi=aapcs -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
+	DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
+
+	# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
+	# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config/uart_pca10036
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/device
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
+
+	# Includes for adding timer peripheral. 
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config/timer_pca10036
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/timer
+	INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer
+
+	# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
+	SOURCES += \
+	$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
+	$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/app_util_platform.c \
+	$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
+	$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
+	$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+	$(NRF52_SDK_PATH)/components/drivers_nrf/timer/nrf_drv_timer.c # I want to add timer peripheral so add source here (as in timer example makefile from nordic sdk).
+
+
+	#assembly files common to all targets
+	#ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
+
+endif #NRF52
 
 ifdef MBED
 ARCHFLAGS += -mcpu=cortex-m3 -mthumb
@@ -1042,9 +1097,14 @@ endif
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
-INCLUDE += -I$(ROOT)/targetlibs/arm
+ifndef NRF52 # Nordic uses its own CMSIS files in its SDK. These are the most recent CMSIS files.
+	INCLUDE += -I$(ROOT)/targetlibs/arm
+endif
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
+ifdef NRF52
+	LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_espruino.ld
+endif #NRF52
 # I've no idea why this breaks the bootloader, but it does.
 # Given we've left 10k for it, there's no real reason to enable LTO anyway.
 ifndef BOOTLOADER
@@ -1094,6 +1154,13 @@ targets/stm32/stm32_it.c
 endif
 endif
 
+ifdef NRF52
+INCLUDE += -I$(ROOT)/targets/nrf52
+SOURCES +=                              \
+targets/nrf52/main.c                    \
+targets/nrf52/jshardware.c              
+endif # NRF52
+
 ifdef LINUX
 DEFINES += -DLINUX
 INCLUDE += -I$(ROOT)/targets/linux
@@ -1122,7 +1189,11 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ifndef NRF52
+	LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+else ifdef NRF52
+	LDFLAGS += $(ARCHFLAGS)
+endif
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1132,6 +1203,10 @@ endif
 ifdef LINKER_FILE
 LDFLAGS += -T$(LINKER_FILE)
 endif
+
+ifdef NRF52
+LDFLAGS += --specs=nano.specs -lc -lnosys
+endif # NRF52
 
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
@@ -1168,9 +1243,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
+ifndef NRF52 # NRF52 platform uses its own linker file that isnt automatically generated.
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+endif
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
@@ -1230,7 +1307,7 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
-proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 ifdef ARDUINO_AVR
 proj: $(PROJ_NAME).hex
 endif
@@ -1249,7 +1326,7 @@ else ifdef NUCLEO
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else
 	echo ST-LINK flash
-	st-flash write $(PROJ_NAME).bin $(BASEADDRESS)
+	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
 endif
 
 serialflash: all

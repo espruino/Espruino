@@ -59,9 +59,9 @@ int jsspiSoftwareFunc(int data, spi_sender_data *info) {
       if (inf->pinMOSI != PIN_UNDEFINED)
         jshPinSetValue(inf->pinMOSI, (data>>bit)&1 );
       if (inf->pinSCK != PIN_UNDEFINED)
-         jshPinSetValue(inf->pinSCK, CPOL );
+        jshPinSetValue(inf->pinSCK, CPOL );
       if (inf->pinMISO != PIN_UNDEFINED)
-         result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
+        result = (result<<1) | (jshPinGetValue(inf->pinMISO )?1:0);
     }
   }
   return result;
@@ -134,17 +134,25 @@ bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {
   spi_sender_data spiSendData;
   if (!jsspiGetSendFunction(spiDevice, &spiSend, &spiSendData))
     return false;
+  // TODO: we could go faster if JSSPI_NO_RECEIVE is set
 
   size_t txPtr = 0;
   size_t rxPtr = 0;
   // transmit the data
   while (txPtr<len && !jspIsInterrupted()) {
     int data = spiSend(buf[txPtr++], &spiSendData);
-    if (data>=0) buf[rxPtr++] = (char)data;
+    if (data>=0) {
+      if (!(flags&JSSPI_NO_RECEIVE))
+        buf[rxPtr] = (char)data;
+      rxPtr++;
+    }
   }
   // clear the rx buffer
   while (rxPtr<len && !jspIsInterrupted()) {
-    buf[rxPtr++] = (char)spiSend(-1, &spiSendData);
+    int data = spiSend(-1, &spiSendData);
+    if (!(flags&JSSPI_NO_RECEIVE))
+      buf[rxPtr] = (char)data;
+    rxPtr++;
   }
   // wait if we need to
   if (flags & JSSPI_WAIT) {

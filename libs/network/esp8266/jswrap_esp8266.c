@@ -15,6 +15,7 @@
  * DEPRECATED - YOU SHOULD NOW USE THE ESP8266.js MODULE
  * ----------------------------------------------------------------------------
  */
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py */
 
 #include "jswrap_esp8266.h"
 #include "jshardware.h"

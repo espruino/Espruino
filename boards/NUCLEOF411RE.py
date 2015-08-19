@@ -44,7 +44,6 @@ chip = {
     # we have enough flash space in this single flash page to save all of the ram
     'page_size' :  131072, # size of pages : on STM32F411, last 2 pages are 128 Kbytes
     # we use the last flash page only, furthermore it persists after a firmware flash of the board
-    'page_number' : 7, # number of the flash page we save at (0 based, must be coherent with address)
     'pages' : 1, # count of pages we're using to save RAM to Flash,
     'flash_available' : 512 # binary will have a hole in it, so we just want to test against full size
   },

@@ -16,7 +16,7 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
- #include <signal.h>
+#include <signal.h>
 #endif//LINUX
 #ifdef USE_TRIGGER
 #include "trigger.h"
@@ -90,7 +90,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
   }
 #endif
   if (device==EV_NONE) return;
-  unsigned char txHeadNext = (txHead+1)&TXBUFFERMASK;
+  unsigned char txHeadNext = (unsigned char)((txHead+1)&TXBUFFERMASK);
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
     while (txHeadNext==txTail) {
@@ -103,7 +103,7 @@ void jshTransmit(IOEventFlags device, unsigned char data) {
     jsiSetBusy(BUSY_TRANSMIT, false);
   }
   txBuffer[txHead].flags = device;
-  txBuffer[txHead].data = (char)data;
+  txBuffer[txHead].data = data;
   txHead = txHeadNext;
 
   jshUSARTKick(device); // set up interrupts if required
@@ -162,6 +162,19 @@ void jshTransmitClearDevice(IOEventFlags device) {
   while (jshGetCharToTransmit(device)>=0);
 }
 
+/// Move all output from one device to another
+void jshTransmitMove(IOEventFlags from, IOEventFlags to) {
+  jshInterruptOff();
+  unsigned char ptr = txTail;
+  while (ptr != txHead) {
+    if (IOEVENTFLAGS_GETTYPE(txBuffer[ptr].flags) == from) {
+      txBuffer[ptr].flags = (txBuffer[ptr].flags&~EV_TYPE_MASK) | to;
+    }
+    ptr = (unsigned char)((ptr+1)&TXBUFFERMASK);
+  }
+  jshInterruptOn();
+}
+
 bool jshHasTransmitData() {
   return txHead != txTail;
 }
@@ -182,8 +195,8 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF) 
     jshSetFlowControlXON(channel, false);
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
-  unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
 #ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
+  unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
   if (ioHead!=ioTail && ioHead!=nextTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
     unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
@@ -224,8 +237,8 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
     return;
 #endif
- // Otherwise add this event
- jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
+  // Otherwise add this event
+  jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
 }
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
@@ -297,6 +310,7 @@ const char *jshGetDeviceString(IOEventFlags device) {
   switch (device) {
   case EV_LOOPBACKA: return "LoopbackA";
   case EV_LOOPBACKB: return "LoopbackB";
+  case EV_LIMBO: return "Limbo";
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif

@@ -77,6 +77,13 @@ void jshKill() {
 }
 
 void jshIdle() {
+  // hack in order to get console device set correctly
+  static bool inited = false;
+  if (!inited) {
+    inited = true;
+    jsiOneSecondAfterStartup();
+  }
+
   /*static bool foo = false;
   foo = !foo;
   jshPinSetValue(LED1_PININDEX, foo);*/
@@ -163,7 +170,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
-  return 0;
+  return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
@@ -204,6 +211,20 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
 int jshSPISend(IOEventFlags device, int data) {
 }
 
+/** Send 16 bit data through the given SPI device. */
+void jshSPISend16(IOEventFlags device, int data) {
+  jshSPISend(device, data>>8);
+  jshSPISend(device, data&255);
+}
+
+/** Set whether to send 16 bits or 8 over SPI */
+void jshSPISet16(IOEventFlags device, bool is16) {
+}
+
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 }
 
@@ -211,19 +232,6 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-}
-
-
-void jshSaveToFlash() {
-  
-}
-
-void jshLoadFromFlash() {
-  
-}
-
-bool jshFlashContainsCode() {
-
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -243,6 +251,20 @@ void jshUtilTimerStart(JsSysTime period) {
 
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  return false;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+}
 
 // ----------------------------------------------------------------------------
 } // extern C

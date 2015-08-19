@@ -45,6 +45,22 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
+  } else if (jsvIsArrayBuffer(data)) {
+    JsvArrayBufferIterator it;
+    jsvArrayBufferIteratorNew(&it, data, 0);
+    if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
+      // faster for single byte arrays.
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)(unsigned char)jsvStringIteratorGetChar(&it.it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    } else {
+      while (jsvArrayBufferIteratorHasElement(&it)) {
+        callback((int)jsvArrayBufferIteratorGetIntegerValue(&it), callbackData);
+        jsvArrayBufferIteratorNext(&it);
+      }
+    }
+    jsvArrayBufferIteratorFree(&it);
   } else if (jsvIsIterable(data)) {
     JsvIterator it;
     jsvIteratorNew(&it, data);
@@ -62,16 +78,33 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
   return ok;
 }
 
-/** If jsvIterateCallback is called, how many times will it call the callback function? */
 static void jsvIterateCallbackCountCb(int n, void *data) {
   NOT_USED(n);
   int *count = (int*)data;
   (*count)++;
 }
+/** If jsvIterateCallback is called, how many times will it call the callback function? */
 int jsvIterateCallbackCount(JsVar *var) {
   int count = 0;
   jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
+}
+
+typedef struct { unsigned char *buf; unsigned int idx, length; } JsvIterateCallbackToBytesData;
+static void jsvIterateCallbackToBytesCb(int data, void *userData) {
+  JsvIterateCallbackToBytesData *cbData = (JsvIterateCallbackToBytesData*)userData;
+  if (cbData->idx < cbData->length)
+    cbData->buf[cbData->idx] = (unsigned char)data;
+  cbData->idx++;
+}
+/** Write all data in array to the data pointer (of size dataSize bytes) */
+unsigned int jsvIterateCallbackToBytes(JsVar *var, unsigned char *data, unsigned int dataSize) {
+  JsvIterateCallbackToBytesData cbData;
+  cbData.buf = (unsigned char *)data;
+  cbData.idx = 0;
+  cbData.length = dataSize;
+  jsvIterateCallback(var, jsvIterateCallbackToBytesCb, (void*)&cbData);
+  return cbData.idx;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -117,12 +150,12 @@ void jsvStringIteratorNext(JsvStringIterator *it) {
 void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   assert(it->var);
   while (jsvGetLastChild(it->var)) {
-     JsVar *next = jsvLock(jsvGetLastChild(it->var));
-     jsvUnLock(it->var);
-     it->var = next;
-     it->varIndex += it->charsInVar;
-     it->charsInVar = jsvGetCharactersInVar(it->var);
-   }
+    JsVar *next = jsvLock(jsvGetLastChild(it->var));
+    jsvUnLock(it->var);
+    it->var = next;
+    it->varIndex += it->charsInVar;
+    it->charsInVar = jsvGetCharactersInVar(it->var);
+  }
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
 }

@@ -91,7 +91,7 @@ Pin jshGetPinFromString(const char *s) {
       int i;
       for (i=0;i<JSH_PIN_COUNT;i++)
         if (pinInfo[i].port == port && pinInfo[i].pin==pin)
-          return i;
+          return (Pin)i;
 #else
       if (port == JSH_PORTA) {
         if (pin<JSH_PORTA_COUNT) return (Pin)(JSH_PORTA_OFFSET + pin);
@@ -130,97 +130,97 @@ void jshGetPinString(char *result, Pin pin) {
   result[0] = 0; // just in case
 #ifdef PIN_NAMES_DIRECT
   if (jshIsPinValid(pin)) {
-    result[0]='A'+pinInfo[pin].port-JSH_PORTA;
+    result[0] = (char)('A'+pinInfo[pin].port-JSH_PORTA);
     itostr(pinInfo[pin].pin-JSH_PIN0,&result[1],10);
 #else
-  if (
+    if (
 #if JSH_PORTA_OFFSET!=0
-      pin>=JSH_PORTA_OFFSET &&
+        pin>=JSH_PORTA_OFFSET &&
 #endif
-      pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
-    result[0]='A';
-    itostr(pin-JSH_PORTA_OFFSET,&result[1],10);
-  } else if (pin>=JSH_PORTB_OFFSET && pin<JSH_PORTB_OFFSET+JSH_PORTB_COUNT) {
-    result[0]='B';
-    itostr(pin-JSH_PORTB_OFFSET,&result[1],10);
-  } else if (pin>=JSH_PORTC_OFFSET && pin<JSH_PORTC_OFFSET+JSH_PORTC_COUNT) {
-    result[0]='C';
-    itostr(pin-JSH_PORTC_OFFSET,&result[1],10);
-  } else if (pin>=JSH_PORTD_OFFSET && pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
-    result[0]='D';
-    itostr(pin-JSH_PORTD_OFFSET,&result[1],10);
+        pin<JSH_PORTA_OFFSET+JSH_PORTA_COUNT) {
+      result[0]='A';
+      itostr(pin-JSH_PORTA_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTB_OFFSET && pin<JSH_PORTB_OFFSET+JSH_PORTB_COUNT) {
+      result[0]='B';
+      itostr(pin-JSH_PORTB_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTC_OFFSET && pin<JSH_PORTC_OFFSET+JSH_PORTC_COUNT) {
+      result[0]='C';
+      itostr(pin-JSH_PORTC_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTD_OFFSET && pin<JSH_PORTD_OFFSET+JSH_PORTD_COUNT) {
+      result[0]='D';
+      itostr(pin-JSH_PORTD_OFFSET,&result[1],10);
 #if JSH_PORTE_OFFSET!=-1
-  } else if (pin>=JSH_PORTE_OFFSET && pin<JSH_PORTE_OFFSET+JSH_PORTE_COUNT) {
-    result[0]='E';
-    itostr(pin-JSH_PORTE_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTE_OFFSET && pin<JSH_PORTE_OFFSET+JSH_PORTE_COUNT) {
+      result[0]='E';
+      itostr(pin-JSH_PORTE_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTF_OFFSET!=-1
-  } else if (pin>=JSH_PORTF_OFFSET && pin<JSH_PORTF_OFFSET+JSH_PORTF_COUNT) {
-    result[0]='F';
-    itostr(pin-JSH_PORTF_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTF_OFFSET && pin<JSH_PORTF_OFFSET+JSH_PORTF_COUNT) {
+      result[0]='F';
+      itostr(pin-JSH_PORTF_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTG_OFFSET!=-1
-  } else if (pin>=JSH_PORTG_OFFSET && pin<JSH_PORTG_OFFSET+JSH_PORTG_COUNT) {
-    result[0]='G';
-    itostr(pin-JSH_PORTG_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTG_OFFSET && pin<JSH_PORTG_OFFSET+JSH_PORTG_COUNT) {
+      result[0]='G';
+      itostr(pin-JSH_PORTG_OFFSET,&result[1],10);
 #endif
 #if JSH_PORTH_OFFSET!=-1
-  } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
-    result[0]='H';
-    itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
+    } else if (pin>=JSH_PORTH_OFFSET && pin<JSH_PORTH_OFFSET+JSH_PORTH_COUNT) {
+      result[0]='H';
+      itostr(pin-JSH_PORTH_OFFSET,&result[1],10);
 #endif
 #endif
-  } else {
-    strncpy(result, "UNKNOWN", 8);
+    } else {
+      strncpy(result, "UNKNOWN", 8);
+    }
   }
-}
 
-/// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
-Pin jshGetPinFromVar(JsVar *pinv) {
-  if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
-    return jshGetPinFromString(&pinv->varData.str[0]);
-  } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
-    return (Pin)jsvGetInteger(pinv);
-  } else return PIN_UNDEFINED;
-}
+  /// Given a var, convert it to a pin ID (or -1 if it doesn't exist). safe for undefined!
+  Pin jshGetPinFromVar(JsVar *pinv) {
+    if (jsvIsString(pinv) && pinv->varData.str[5]==0/*should never be more than 4 chars!*/) {
+      return jshGetPinFromString(&pinv->varData.str[0]);
+    } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
+      return (Pin)jsvGetInteger(pinv);
+    } else return PIN_UNDEFINED;
+  }
 
-Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
-  Pin pin = jshGetPinFromVar(pinv);
-  jsvUnLock(pinv);
-  return pin;
-}
+  Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
+    Pin pin = jshGetPinFromVar(pinv);
+    jsvUnLock(pinv);
+    return pin;
+  }
 
-// ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
 
-BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
+  BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
 
-bool jshGetPinStateIsManual(Pin pin) {
-  return BITFIELD_GET(jshPinStateIsManual, pin);
-}
+  bool jshGetPinStateIsManual(Pin pin) {
+    return BITFIELD_GET(jshPinStateIsManual, pin);
+  }
 
-void jshSetPinStateIsManual(Pin pin, bool manual) {
-  BITFIELD_SET(jshPinStateIsManual, pin, manual);
-}
+  void jshSetPinStateIsManual(Pin pin, bool manual) {
+    BITFIELD_SET(jshPinStateIsManual, pin, manual);
+  }
 
-// ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
 
-bool jshPinInput(Pin pin) {
-  bool value = false;
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+  bool jshPinInput(Pin pin) {
+    bool value = false;
+    if (jshIsPinValid(pin)) {
+      if (!jshGetPinStateIsManual(pin))
+        jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
 
-    value = jshPinGetValue(pin);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-  return value;
-}
+      value = jshPinGetValue(pin);
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return value;
+  }
 
 
-void jshPinOutput(Pin pin, bool value) {
-  if (jshIsPinValid(pin)) {
-    if (!jshGetPinStateIsManual(pin))
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-  } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-}
+  void jshPinOutput(Pin pin, bool value) {
+    if (jshIsPinValid(pin)) {
+      if (!jshGetPinStateIsManual(pin))
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      jshPinSetValue(pin, value);
+    } else jsExceptionHere(JSET_ERROR, "Invalid pin!");
+  }
 

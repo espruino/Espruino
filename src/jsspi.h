@@ -23,7 +23,7 @@ void jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options);
 bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data *spiSendData);
 
 typedef enum {
-  // JSSPI_NO_RECEIVE = 1, // currently we *always* receive
+  JSSPI_NO_RECEIVE = 1,
   JSSPI_WAIT = 2,
 } JsSpiSendFlags;
 

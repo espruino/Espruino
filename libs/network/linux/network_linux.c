@@ -40,11 +40,11 @@
 
 
 /// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void net_linux_gethostbyname(JsNetwork *net, char * hostName, unsigned long* out_ip_addr) {
+void net_linux_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   NOT_USED(net);
   struct hostent * host_addr_p = gethostbyname(hostName);
   if (host_addr_p)
-    *out_ip_addr = *(unsigned long*)*host_addr_p->h_addr_list;
+    *out_ip_addr = *(uint32_t*)*host_addr_p->h_addr_list;
 }
 
 /// Called on idle. Do any checks required for this device

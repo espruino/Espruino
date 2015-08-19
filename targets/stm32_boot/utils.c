@@ -13,25 +13,11 @@
  */
 #include "platform_config.h"
 #ifdef USB
- #ifdef STM32F1
-  #include "usb_utils.h"
-  #include "usb_lib.h"
-  #include "usb_conf.h"
-  #include "usb_pwr.h"
-  #include "usb_istr.h"
- #endif
- #ifdef STM32F4
-  #include "usb_regs.h"
-  #include "usb_defines.h"
-  #include "usbd_conf.h"
-  #include "usbd_cdc_core.h"
-  #include "usbd_usr.h"
-  #include "usb_conf.h"
-  #include "usbd_desc.h"
-  #include "usb_core.h"
-  #include "usbd_core.h"
-  #include "usbd_cdc_core.h"
-  #include "usb_dcd_int.h"
+ #ifdef LEGACY_USB
+  #include "legacy_usb.h"
+ #else
+  #include "usb_device.h"
+  #include "usbd_cdc_hid.h"
  #endif
 #endif
 
@@ -89,130 +75,16 @@ void WWDG_IRQHandler() {
   // why do we need this on the F401?
 }
 
-/******************************************************************************/
-/*                 STM32 Peripherals Interrupt Handlers                   */
-/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
-/*  available peripheral interrupt handler's name please refer to the startup */
-/*  file (startup_stm32xxx.s).                                            */
-/******************************************************************************/
-
-/*******************************************************************************
-* Function Name  : PPP_IRQHandler
-* Description    : This function handles PPP interrupt request.
-* Input          : None
-* Output         : None
-* Return         : None
-*******************************************************************************/
-/*void PPP_IRQHandler(void)
-{
-}*/
-
-/**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_FS
-void OTG_FS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-#endif
-
-/**
-  * @brief  This function handles EXTI15_10_IRQ Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_WKUP_IRQHandler(void)
-{
-  if(USB_OTG_dev.cfg.low_power)
-  {
-    *(uint32_t *)(0xE000ED10) &= 0xFFFFFFF9 ;
-    SystemInit();
-    USB_OTG_UngateClock(&USB_OTG_dev);
-  }
-  EXTI_ClearITPendingBit(EXTI_Line20);
-}
-#endif
-
-/**
-  * @brief  This function handles OTG_HS Handler.
-  * @param  None
-  * @retval None
-  */
-#ifdef USE_USB_OTG_HS
-void OTG_HS_IRQHandler(void)
-#else
-void OTG_FS_IRQHandler(void)
-#endif
-{
-  USBD_OTG_ISR_Handler (&USB_OTG_dev);
-}
-
-#ifdef USB_OTG_HS_DEDICATED_EP1_ENABLED
-
-extern uint32_t USBD_OTG_EP1IN_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-extern uint32_t USBD_OTG_EP1OUT_ISR_Handler (USB_OTG_CORE_HANDLE *pdev);
-
-/**
-  * @brief  This function handles EP1_IN Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_IN_IRQHandler(void)
-{
-  USBD_OTG_EP1IN_ISR_Handler (&USB_OTG_dev);
-}
-
-/**
-  * @brief  This function handles EP1_OUT Handler.
-  * @param  None
-  * @retval None
-  */
-void OTG_HS_EP1_OUT_IRQHandler(void)
-{
-  USBD_OTG_EP1OUT_ISR_Handler (&USB_OTG_dev);
-}
-#endif
-
-#else  // STM32F4
-
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-  USB_Istr();
-}
-
-void USBWakeUp_IRQHandler(void)
-{
-  EXTI_ClearITPendingBit(EXTI_Line18);
-}
-
-#endif // not STM32F4
+#endif 
 
 
 
-unsigned int SysTickUSBWatchdog = SYSTICKS_BEFORE_USB_DISCONNECT;
-
-void jshKickUSBWatchdog() {
-  SysTickUSBWatchdog = 0;
-}
 
 void SysTick_Handler(void) {
-  if (SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT) {
-    SysTickUSBWatchdog++;
-  }
 }
 
 bool jshIsUSBSERIALConnected() {
-  return SysTickUSBWatchdog < SYSTICKS_BEFORE_USB_DISCONNECT;
+  return USB_IsConnected();
 }
 
 int jshGetCharToTransmit(IOEventFlags device) {
@@ -232,20 +104,32 @@ bool jshHasEventSpaceForChars(int n) {
   return true;
 }
 
-int getc() {
+int jshGetEventsUsed() {
+  return 0;
+}
+
+
+void jshDelayMicroseconds(int c) {
+  while (c--) {
+    int i;
+    for (i=0;i<80;i++);
+  }
+}
+
+int _getc() {
   if (rxHead == rxTail) return -1;
   unsigned char d = (unsigned char)rxBuffer[rxTail];
   rxTail = (rxTail+1) & BUFFERMASK;
   return d;
 }
 
-unsigned char getc_blocking() {
-  int c = getc();
-  while (c<0) c=getc();
+unsigned char _getc_blocking() {
+  int c = _getc();
+  while (c<0) c=_getc();
   return c;
 }
 
-void putc(char charData) {
+void _putc(char charData) {
   txBuffer[txHead] = charData;
   txHead = (txHead+1) & BUFFERMASK;
 }
@@ -343,19 +227,5 @@ void initHardware() {
   SysTick_Config(SYSTICK_RANGE-1); // 24 bit
   NVIC_SetPriority(SysTick_IRQn, 0); // Super high priority
 
-
-#if defined(STM32F1) || defined(STM32F3)
-  USB_Init_Hardware();
-  USB_Init();
-#else
-  USBD_Init(&USB_OTG_dev,
-#ifdef USE_USB_OTG_HS
-            USB_OTG_HS_CORE_ID,
-#else
-            USB_OTG_FS_CORE_ID,
-#endif
-            &USR_desc,
-            &USBD_CDC_cb,
-            &USR_cb);
-#endif
+  MX_USB_DEVICE_Init();
 }

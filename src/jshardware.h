@@ -131,6 +131,7 @@ typedef struct {
   int baudRate; // FIXME uint32_t ???
   Pin pinRX;
   Pin pinTX;
+  Pin pinCK;
   unsigned char bytesize;
   unsigned char parity; // 0=none, 1=odd, 2=even
   unsigned char stopbits;
@@ -141,6 +142,7 @@ static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
   inf->baudRate = DEFAULT_BAUD_RATE;
   inf->pinRX    = PIN_UNDEFINED;
   inf->pinTX    = PIN_UNDEFINED;
+  inf->pinCK    = PIN_UNDEFINED;
   inf->bytesize = DEFAULT_BYTESIZE;
   inf->parity   = DEFAULT_PARITY; // PARITY_NONE = 0, PARITY_ODD = 1, PARITY_EVEN = 2 FIXME: enum?
   inf->stopbits = DEFAULT_STOPBITS;
@@ -170,7 +172,7 @@ typedef enum {
 } PACKED_FLAGS JshSPIFlags;
 
 typedef enum {
-  SPIB_DEFAULT,
+  SPIB_DEFAULT = 0,
   SPIB_MAXIMUM, // baudRate is the maximum we'll choose
   SPIB_MINIMUM,// baudRate is the minimum we'll choose
 } PACKED_FLAGS JshBaudFlags;
@@ -186,7 +188,7 @@ typedef struct {
 } PACKED_FLAGS JshSPIInfo;
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 100000;
-  inf->baudRateSpec = 0;
+  inf->baudRateSpec = SPIB_DEFAULT;
   inf->pinSCK = PIN_UNDEFINED;
   inf->pinMISO = PIN_UNDEFINED;
   inf->pinMOSI = PIN_UNDEFINED;
@@ -204,6 +206,8 @@ int jshSPISend(IOEventFlags device, int data);
 void jshSPISend16(IOEventFlags device, int data);
 /** Set whether to send 16 bits or 8 over SPI */
 void jshSPISet16(IOEventFlags device, bool is16);
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive);
 /** Wait until SPI send is finished, and flush all received data */
 void jshSPIWait(IOEventFlags device);
 
@@ -226,13 +230,14 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop);
 
-
-/// Save contents of JsVars into Flash
-void jshSaveToFlash();
-/// Load contents of JsVars from Flash
-void jshLoadFromFlash();
-/// Returns true if flash contains something useful
-bool jshFlashContainsCode();
+/// Return start address and size of the flash page the given address resides in. Returns false if no page
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize);
+/// Erase the flash page containing the address
+void jshFlashErasePage(uint32_t addr);
+/// Read data from flash memory into the buffer
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
+/// Write data to flash memory from the buffer
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake);
@@ -252,10 +257,6 @@ void jshUtilTimerDisable();
 //                                                                      SYSTICK
 // On SYSTick interrupt, call this
 void jshDoSysTick();
-#ifdef USB
-// Kick the USB SysTick watchdog - we need this to see if we have disconnected or not
-void jshKickUSBWatchdog();
-#endif
 
 #endif // ARM
 
@@ -268,14 +269,20 @@ void jshSPIPush(IOEventFlags device, uint16_t data);
 JsVarFloat jshReadTemperature();
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef();
+/* Get a random number - either using special purpose hardware or by
+ * reading noise from an analog input. If unimplemented, this should
+ * default to `rand()` */
+unsigned int jshGetRandomNumber();
 
 #ifdef STM32F3
 #define SPI_I2S_SendData SPI_I2S_SendData16
 #define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #endif
 
-#ifdef STM32F4
-#define WAIT_UNTIL_N_CYCLES 10000000
+#if defined(STM32F401xx)
+#define WAIT_UNTIL_N_CYCLES 2000000
+#elif defined(STM32F4)
+#define WAIT_UNTIL_N_CYCLES 5000000
 #else
 #define WAIT_UNTIL_N_CYCLES 2000000
 #endif

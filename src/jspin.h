@@ -155,6 +155,7 @@ typedef enum {
 
   JSH_USART_RX = 0x0000,
   JSH_USART_TX = 0x1000,
+  JSH_USART_CK = 0x2000,
 
   JSH_SPI_MISO = 0x0000,
   JSH_SPI_MOSI = 0x1000,

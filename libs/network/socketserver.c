@@ -364,8 +364,9 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
 
 void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **receiveData) {
-  if (*receiveData && jsvGetStringLength(*receiveData)) {
-    if (jswrap_stream_pushData(socket, *receiveData, false)) {
+  if (*receiveData) {
+    if (jsvGetStringLength(*receiveData)==0 ||
+        jswrap_stream_pushData(socket, *receiveData, false)) {
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
       jsvUnLock(*receiveData);
@@ -451,7 +452,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     bool closed = false;
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
-      if (!receiveData && jswrap_stream_available(socket)==0) {
+      if (!receiveData) {
         if (socketType != ST_HTTP)
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
         jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);

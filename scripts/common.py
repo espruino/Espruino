@@ -28,6 +28,23 @@ if silent:
   # now discard everything coming out of stdout
   sys.stdout = Discarder()
 
+# http://stackoverflow.com/questions/4814970/subprocess-check-output-doesnt-seem-to-exist-python-2-6-5
+if "check_output" not in dir( subprocess ): 
+    def f(*popenargs, **kwargs):
+        if 'stdout' in kwargs:
+            raise ValueError('stdout argument not allowed, it will be overridden.')
+        process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+        output, unused_err = process.communicate()
+        retcode = process.poll()
+        if retcode:
+            cmd = kwargs.get("args")
+            if cmd is None:
+                cmd = popenargs[0]
+            raise subprocess.CalledProcessError(retcode, cmd)
+        return output
+    subprocess.check_output = f
+
+
 # Scans files for comments of the form /*JSON......*/ 
 # 
 # Comments look like:
@@ -294,14 +311,20 @@ def get_ifdef_description(d):
 
 def get_script_dir():
         return os.path.dirname(os.path.realpath(__file__))
+
 def get_version():
         scriptdir = get_script_dir()
         jsutils = scriptdir+"/../src/jsutils.h"
         version = re.compile("^.*JS_VERSION.*\"(.*)\"");
+        latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
+        commits_since_release = subprocess.check_output('git log --oneline '+latest_release+'..HEAD | wc -l', shell=True).strip()
         for line in open(jsutils):
             match = version.search(line);
             if (match != None):
-                return match.group(1);
+                v = match.group(1);
+                if commits_since_release=="0": return v
+                else: return v+"."+commits_since_release
+        return "UNKNOWN"
                
 
 def get_name_or_space(jsondata):

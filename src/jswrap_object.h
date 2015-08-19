@@ -14,6 +14,7 @@
 #include "jsvar.h"
 #include "jswrapper.h"
 
+JsVar *jswrap_object_constructor(JsVar *value);
 JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
@@ -22,6 +23,8 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);
+JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc);
+JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props);
 
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener);
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray);

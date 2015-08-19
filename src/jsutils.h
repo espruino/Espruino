@@ -16,6 +16,7 @@
 
 #include "platform_config.h"
 
+#include <stddef.h>
 #ifndef FAKE_STDLIB
 #include <string.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #endif
 #include <stdarg.h> // for va_args
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
@@ -35,7 +37,12 @@ extern int isfinite ( double );
 #endif
 
 
-#define JS_VERSION "1v77"
+
+#ifndef BUILDNUMBER
+#define JS_VERSION "1v80"
+#else
+#define JS_VERSION "1v80." BUILDNUMBER
+#endif
 /*
   In code:
   TODO - should be fixed
@@ -44,32 +51,34 @@ extern int isfinite ( double );
 */
 
 #if defined(ARM) || defined(AVR)
-typedef unsigned int size_t;
 #define alloca(x) __builtin_alloca(x)
 #endif
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+//typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#define FALSE 0
+#define TRUE 1
 //typedef unsigned char bool;
 //#define TRUE (1)
 //#define FALSE (0)
 #endif
 
-#ifndef Arduino_h
+// Not needed because including stdbool.h instead.
+/*#ifndef Arduino_h
 #define true (1)
 #define false (0)
-#endif
+#endif*/
 
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
 
 /* Number of Js Variables allowed and Js Reference format. 
 
-   JsVarRef = char -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
-   JsVarRef = short -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
-   JsVarRef = int -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
+   JsVarRef = uint8_t -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
+   JsVarRef = uint16_t -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
+   JsVarRef = uint32_t -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
 
    NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
          See jshardware.c FLASH constants - all this must be able to fit in flash
@@ -79,8 +88,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
 
 #ifdef RESIZABLE_JSVARS
  //  probably linux - allow us to allocate more blocks of variables
-  typedef unsigned int JsVarRef;
-  typedef int JsVarRefSigned;
+  typedef uint32_t JsVarRef;
+  typedef int32_t JsVarRefSigned;
   #define JSVARREF_MIN (-2147483648)
   #define JSVARREF_MAX 2147483647
   #define JSVARREF_SIZE 4
@@ -90,8 +99,8 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
    *
    */
   #if JSVAR_CACHE_SIZE <= 254
-    typedef unsigned char JsVarRef;
-    typedef char JsVarRefSigned;
+    typedef uint8_t JsVarRef;
+    typedef int8_t JsVarRefSigned;
     #define JSVARREF_MIN (-128)
     #define JSVARREF_MAX 127
     #define JSVARREF_SIZE 1
@@ -105,14 +114,14 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
      * passing them around.
      */
     #define JSVARREF_PACKED_BITS 2
-    typedef unsigned short JsVarRef;
-    typedef short JsVarRefSigned;
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
     #define JSVARREF_MIN (-512)
     #define JSVARREF_MAX 511
     #define JSVARREF_SIZE 1
   #else
-    typedef unsigned short JsVarRef;
-    typedef short JsVarRefSigned;
+    typedef uint16_t JsVarRef;
+    typedef int16_t JsVarRefSigned;
     #define JSVARREF_MIN (-32768)
     #define JSVARREF_MAX 32767
     #define JSVARREF_SIZE 2
@@ -136,7 +145,7 @@ typedef double JsVarFloat;
 #endif
 
 #define JSSYSTIME_MAX 0x7FFFFFFFFFFFFFFFLL
-typedef long long JsSysTime;
+typedef int64_t JsSysTime;
 #define JSSYSTIME_INVALID ((JsSysTime)-1)
 
 #define JSLEX_MAX_TOKEN_LENGTH  64
@@ -159,8 +168,8 @@ typedef long long JsSysTime;
 #define JSPARSE_CONSTRUCTOR_VAR "constructor"
 #define JSPARSE_INHERITS_VAR "__proto__"
 // internal names that hopefully nobody will be able to access
-#define JS_HIDDEN_CHAR '>' // initial character of var name determines that we shouldn't see this stuff
-#define JS_HIDDEN_CHAR_STR ">"
+#define JS_HIDDEN_CHAR '\xFF' // initial character of var name determines that we shouldn't see this stuff
+#define JS_HIDDEN_CHAR_STR "\xFF"
 #define JSPARSE_FUNCTION_CODE_NAME JS_HIDDEN_CHAR_STR"cod" // the function's code!
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
@@ -226,140 +235,15 @@ typedef long long JsSysTime;
    ((X)==16384)?14: \
    ((X)==32768)?15:10000/*error*/)
 
-
-
-/** These flags are at the top of each JsVar and provide information about what it is, as
- * well as how many Locks it has. Everything is packed in as much as possible to allow us to
- * get down to within 2 bytes. */
-typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
-    JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
-    // UNDEFINED is now just stored using '0' as the variable Ref
-    JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type
-
-    JSV_ARRAY = JSV_NULL+1, ///< A JavaScript Array Buffer - Implemented just like a String at the moment
-    JSV_ARRAYBUFFER  = JSV_ARRAY+1,
-    JSV_OBJECT      = JSV_ARRAYBUFFER+1,
-    JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_INTEGER     = JSV_FUNCTION+1, ///< integer number (note JSV_NUMERICMASK)
-  _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
-    JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
-    JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
-    JSV_PIN         = JSV_BOOLEAN+1, ///< pin (note JSV_NUMERICMASK)
-
-    JSV_ARRAYBUFFERNAME = JSV_PIN+1, ///< used for indexing into an ArrayBuffer. varData is an INT in this case
-  _JSV_NAME_START = JSV_ARRAYBUFFERNAME, ///< ---------- Start of NAMEs (names of variables, object fields/etc)
-    JSV_NAME_INT    = JSV_ARRAYBUFFERNAME+1, ///< integer array/object index
-  _JSV_NAME_INT_START = JSV_NAME_INT,
-    JSV_NAME_INT_INT    = JSV_NAME_INT+1, ///< integer array/object index WITH integer value
-  _JSV_NAME_WITH_VALUE_START = JSV_NAME_INT_INT, ///< ---------- Start of names that have literal values, NOT references, in firstChild
-    JSV_NAME_INT_BOOL    = JSV_NAME_INT_INT+1, ///< integer array/object index WITH boolean value
-  _JSV_NAME_INT_END = JSV_NAME_INT_BOOL,
-  _JSV_NUMERIC_END  = JSV_NAME_INT_BOOL, ///< --------- End of numeric variable types
-    JSV_NAME_STRING_INT_0    = JSV_NAME_INT_BOOL+1, // array/object index as string of length 0 WITH integer value
-  _JSV_STRING_START =  JSV_NAME_STRING_INT_0,
-    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_LEN,
-  _JSV_NAME_WITH_VALUE_END = JSV_NAME_STRING_INT_MAX, ///< ---------- End of names that have literal values, NOT references, in firstChild
-    JSV_NAME_STRING_0    = JSV_NAME_STRING_INT_MAX+1, // array/object index as string of length 0
-    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
-  _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
-    JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
-    JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
-    JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
-  _JSV_STRING_END = JSV_FLAT_STRING,
-    JSV_STRING_EXT_0 = JSV_FLAT_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
-    JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
-  _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
-
-    JSV_VARTYPEMASK = NEXT_POWER_2(_JSV_VAR_END)-1,
-
-    JSV_NATIVE      = JSV_VARTYPEMASK+1, ///< to specify this is a native function, root, function parameter, OR that it should not be freed
-    JSV_GARBAGE_COLLECT = JSV_NATIVE<<1, ///< When garbage collecting, this flag is true IF we should GC!
-    JSV_IS_RECURSING = JSV_GARBAGE_COLLECT<<1, ///< used to stop recursive loops in jsvTrace
-    JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
-    JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
-
-    JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
-} PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
-
-/// The amount of bits we must shift to get the number of locks - forced to be a constant
-static const int JSV_LOCK_SHIFT = GET_BIT_NUMBER(JSV_LOCK_ONE);
-
-typedef enum LEX_TYPES {
-    LEX_EOF = 0,
-    LEX_ID = 256,
-    LEX_INT,
-    LEX_FLOAT,
-    LEX_STR,
-    LEX_UNFINISHED_COMMENT,
-
-    LEX_EQUAL,
-    LEX_TYPEEQUAL,
-    LEX_NEQUAL,
-    LEX_NTYPEEQUAL,
-    LEX_LEQUAL,
-    LEX_LSHIFT,
-    LEX_LSHIFTEQUAL,
-    LEX_GEQUAL,
-    LEX_RSHIFT,
-    LEX_RSHIFTUNSIGNED,
-    LEX_RSHIFTEQUAL,
-    LEX_RSHIFTUNSIGNEDEQUAL,
-    LEX_PLUSEQUAL,
-    LEX_MINUSEQUAL,
-    LEX_PLUSPLUS,
-    LEX_MINUSMINUS,
-    LEX_MULEQUAL,
-    LEX_DIVEQUAL,
-    LEX_MODEQUAL,
-    LEX_ANDEQUAL,
-    LEX_ANDAND,
-    LEX_OREQUAL,
-    LEX_OROR,
-    LEX_XOREQUAL,
-    // reserved words
-#define LEX_R_LIST_START LEX_R_IF
-    LEX_R_IF,
-    LEX_R_ELSE,
-    LEX_R_DO,
-    LEX_R_WHILE,
-    LEX_R_FOR,
-    LEX_R_BREAK,
-    LEX_R_CONTINUE,
-    LEX_R_FUNCTION,
-    LEX_R_RETURN,
-    LEX_R_VAR,
-    LEX_R_THIS,
-    LEX_R_THROW,
-    LEX_R_TRY,
-    LEX_R_CATCH,
-    LEX_R_FINALLY,
-    LEX_R_TRUE,
-    LEX_R_FALSE,
-    LEX_R_NULL,
-    LEX_R_UNDEFINED,
-    LEX_R_NEW,
-    LEX_R_IN,
-    LEX_R_INSTANCEOF,
-    LEX_R_SWITCH,
-    LEX_R_CASE,
-    LEX_R_DEFAULT,
-    LEX_R_DELETE,
-    LEX_R_TYPEOF,
-    LEX_R_VOID,
-
-    LEX_R_LIST_END /* always the last entry */
-} LEX_TYPES;
-
 // To handle variable size bit fields
-#define BITFIELD_DECL(BITFIELD, N) unsigned int BITFIELD[(N+31)/32]
+#define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[(N+31)/32]
 #define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
-#define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (unsigned int)~(1 << ((N)&31))) | (unsigned int)((VALUE)?(1 << ((N)&31)):0)  )
+#define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (uint32_t)~(1 << ((N)&31))) | (uint32_t)((VALUE)?(1 << ((N)&31)):0)  )
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==0x09) || // \t - tabe
-           (ch==0x08) || // vertical tab
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
            (((unsigned char)ch)==0xA0) || // no break space
@@ -402,6 +286,7 @@ typedef enum {
   JSET_SYNTAXERROR,
   JSET_TYPEERROR,
   JSET_INTERNALERROR,
+  JSET_REFERENCEERROR
 } JsExceptionType;
 
 void jsError(const char *fmt, ...);
@@ -433,14 +318,15 @@ int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
 void *memset(void *dst, int c, size_t size);
 #define RAND_MAX (0xFFFFFFFFU)
-unsigned int rand();
+int rand();
+void srand(unsigned int seed);
 #endif
 
 JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix);
 JsVarFloat stringToFloat(const char *str);
 
 void itostr_extra(JsVarInt vals,char *str,bool signedVal,unsigned int base); // like itoa, but uses JsVarInt (good on non-32 bit systems)
-static inline void itostr(JsVarInt val,char *str,unsigned int base) {
+static ALWAYS_INLINE void itostr(JsVarInt val,char *str,unsigned int base) {
     itostr_extra(val, str, true, base);
 }
 

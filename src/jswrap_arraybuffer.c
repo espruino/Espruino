@@ -24,14 +24,14 @@
   "not_real_object" : "Don't treat this as a real object - it's handled differently internally"
 }
 This is the built-in JavaScript class for array buffers.
-*/
+ */
 
 /*JSON{
   "type" : "class",
   "class" : "ArrayBufferView"
 }
 This is the built-in JavaScript class that is the prototype for Uint8Array / Float32Array / etc
-*/
+ */
 
 /*JSON{
   "type" : "class",
@@ -43,7 +43,7 @@ This is the built-in JavaScript class that is the prototype for Uint8Array / Flo
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Uint8ClampedArray",
@@ -54,7 +54,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays).
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Int8Array",
@@ -65,7 +65,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Uint16Array",
@@ -76,7 +76,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Int16Array",
@@ -87,7 +87,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Uint32Array",
@@ -98,7 +98,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Int32Array",
@@ -109,7 +109,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Float32Array",
@@ -120,7 +120,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 /*JSON{
   "type" : "class",
   "class" : "Float64Array",
@@ -131,7 +131,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
 This is the built-in JavaScript class for a typed array.
 
 Instantiate this in order to efficiently store arrays of data (Espruino's normal arrays store data in a map, which is inefficient for non-sparse arrays). 
-*/
+ */
 
 
 /*JSON{
@@ -145,7 +145,7 @@ Instantiate this in order to efficiently store arrays of data (Espruino's normal
   "return" : ["JsVar","An ArrayBuffer object"]
 }
 Create an Array Buffer object
-*/
+ */
 JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   if (byteLength < 0 || byteLength>65535) {
     jsExceptionHere(JSET_ERROR, "Invalid length for ArrayBuffer\n");
@@ -193,7 +193,7 @@ JsVar *jswrap_arraybuffer_constructor(JsVarInt byteLength) {
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Uint8ClampedArray",
@@ -210,7 +210,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
 
 Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. e.g. after `a[0]=12345;`, `a[0]==255`.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Int8Array",
@@ -225,7 +225,7 @@ Clamped arrays clamp their values to the allowed range, rather than 'wrapping'. 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Uint16Array",
@@ -240,7 +240,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Int16Array",
@@ -255,7 +255,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Uint32Array",
@@ -270,7 +270,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Int32Array",
@@ -285,7 +285,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Float32Array",
@@ -300,7 +300,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 /*JSON{
   "type" : "constructor",
   "class" : "Float64Array",
@@ -315,7 +315,7 @@ Create a typed array based on the given input. Either an existing Array Buffer, 
   "return_object" : "ArrayBufferView"
 }
 Create a typed array based on the given input. Either an existing Array Buffer, an Integer as a Length, or a simple array. If an ArrayBuffer view (eg. Uint8Array rather than ArrayBuffer) is given, it will be completely copied rather than referenced.
-*/
+ */
 
 JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *arr, JsVarInt byteOffset, JsVarInt length) {
   JsVar *arrayBuffer = 0;
@@ -376,7 +376,7 @@ JsVar *jswrap_typedarray_constructor(JsVarDataArrayBufferViewType type, JsVar *a
   "return" : ["JsVar","An ArrayBuffer object"]
 }
 The buffer this view references
-*/
+ */
 /*JSON{
   "type" : "property",
   "class" : "ArrayBufferView",
@@ -385,7 +385,7 @@ The buffer this view references
   "return" : ["int","The Length"]
 }
 The length, in bytes, of the view
-*/
+ */
 /*JSON{
   "type" : "property",
   "class" : "ArrayBufferView",
@@ -394,7 +394,7 @@ The length, in bytes, of the view
   "return" : ["int","The byte Offset"]
 }
 The offset, in bytes, to the first byte of the view within the ArrayBuffer
-*/
+ */
 
 /*JSON{
   "type" : "method",
@@ -407,7 +407,7 @@ The offset, in bytes, to the first byte of the view within the ArrayBuffer
   ]
 }
 Copy the contents of `array` into this one, mapping `this[x+offset]=array[x];`
-*/
+ */
 void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
   if (!(jsvIsString(arr) || jsvIsArray(arr) || jsvIsArrayBuffer(arr))) {
     jsExceptionHere(JSET_ERROR, "Expecting first argument to be an array, not %t", arr);
@@ -451,8 +451,8 @@ void jswrap_arraybufferview_set(JsVar *parent, JsVar *arr, int offset) {
 }
 Return an array which is made from the following: ```A.map(function) = [function(A[0]), function(A[1]), ...]```
 
-**Note:** This returns an ArrayBuffer of the same type it was called on. To get an Array, use `Array.prototype.map`
-*/
+ **Note:** This returns an ArrayBuffer of the same type it was called on. To get an Array, use `Array.prototype.map`
+ */
 JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar) {
   if (!jsvIsArrayBuffer(parent)) {
     jsExceptionHere(JSET_ERROR, "ArrayBufferView.map can only be called on an ArrayBufferView");
@@ -488,8 +488,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
       args[1] = jsvNewFromInteger(idxValue); // child is a variable name, create a new variable for the index
       args[2] = parent;
       mapped = jspeFunctionCall(funcVar, 0, thisVar, false, 3, args);
-      jsvUnLock(args[0]);
-      jsvUnLock(args[1]);
+      jsvUnLockMany(2,args);
       if (mapped) {
         jsvArrayBufferIteratorSetValue(&itdst, mapped);
         jsvUnLock(mapped);
@@ -521,7 +520,7 @@ JsVar *jswrap_arraybufferview_map(JsVar *parent, JsVar *funcVar, JsVar *thisVar)
   "return" : ["JsVar","the index of the value in the array, or -1"]
 }
 Return the index of the value in the array, or -1
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -533,7 +532,7 @@ Return the index of the value in the array, or -1
   "return" : ["JsVar","A String representing the Joined array"]
 }
 Join all elements of this array together into one string, using 'separator' between them. eg. ```[1,2,3].join(' ')=='1 2 3'```
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -547,7 +546,7 @@ Join all elements of this array together into one string, using 'separator' betw
   "return_object" : "ArrayBufferView"
 }
 Do an in-place quicksort of the array
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -559,7 +558,7 @@ Do an in-place quicksort of the array
   ]
 }
 Executes a provided function once per array element.
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -573,7 +572,7 @@ Executes a provided function once per array element.
   "return" : ["JsVar","The value returned by the last function called"]
 }
 Execute `previousValue=initialValue` and then `previousValue = callback(previousValue, currentValue, index, array)` for each element in the array, and finally return previousValue.
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -589,7 +588,7 @@ Execute `previousValue=initialValue` and then `previousValue = callback(previous
   "return_object" : "ArrayBufferView"
 }
 Fill this array with the given value, for every index `>= start` and `< end`
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -600,7 +599,7 @@ Fill this array with the given value, for every index `>= start` and `< end`
   "return_object" : "ArrayBufferView"
 }
 Reverse the contents of this arraybuffer in-place
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "ArrayBufferView",
@@ -616,5 +615,5 @@ Reverse the contents of this arraybuffer in-place
 }
 Return a copy of a portion of this array (in a new array).
 
-**Note:** This currently returns a normal Array, not an ArrayBuffer
-*/
+ **Note:** This currently returns a normal Array, not an ArrayBuffer
+ */

@@ -65,7 +65,7 @@ typedef struct JsNetwork {
   /// If the given server socket can accept a connection, return it (or return < 0)
   int (*accept)(struct JsNetwork *net, int sckt);
   /// Get an IP address from a name
-  void (*gethostbyname)(struct JsNetwork *net, char * hostName, unsigned long* out_ip_addr);
+  void (*gethostbyname)(struct JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
   /// Receive data if possible. returns nBytes on success, 0 on no data, or -1 on failure
   int (*recv)(struct JsNetwork *net, int sckt, void *buf, size_t len);
   /// Send data if possible. returns nBytes on success, 0 on no data, or -1 on failure
@@ -87,6 +87,9 @@ JsNetwork *networkGetCurrent(); ///< Get the currently active network structure.
 /// Use this for getting the hostname, as it parses the name to see if it is an IP address first
 void networkGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
 uint32_t networkParseIPAddress(const char *ip);
+/* given 6 pairs of 8 bit hex numbers separated by ':', parse them into a
+ * 6 byte array. returns false on failure */
+bool networkParseMACAddress(unsigned char *addr, const char *ip);
 /// if nBytes<0, addresses are printed out backwards
 JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator);
 /// Given an address (pointed to by ip) put it in a string named 'name', in the given object. if nBytes<0, addresses are printed out backwards

@@ -140,6 +140,8 @@
   * @{
   */ 
 
+#ifdef DAC
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 
@@ -710,5 +712,7 @@ void DAC_ClearITPendingBit(uint32_t DAC_Channel, uint32_t DAC_IT)
 /**
   * @}
   */
+
+#endif // DAC
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

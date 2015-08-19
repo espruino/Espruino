@@ -1,0 +1,29 @@
+Detailed documentation can be found offline at: <keil_location>/ARM/Pack/NordicSemiconductor/nRF_Examples/<version>/documentation
+Detailed documentation can be found online at: http://developer.nordicsemi.com/nRF51_SDK/doc/
+
+The Heart Rate Application is an example that implements the Heart Rate profile 
+using the hardware delivered in the nRF51 Development Kit.
+
+The application includes the three services in the Heart Rate profile:
+ - Heart Rate Service
+ - Battery Service
+ - Device Information Service
+ 
+Testing:
+Test the Heart Rate Application with the nRF Toolbox app, which is available on 
+both iOS (Apple Store) and Android (Google Play).
+
+You can also test the application with the Master Control Panel by performing 
+the following steps:
+ 1. Compile and program the application. Observe that the 
+    BSP_INDICATE_ADVERTISING state is indicated.
+ 2. Connect to the device from Master Control Panel (the device will be 
+    advertising as 'Nordic_HRM'), then perform service discovery. Observe that 
+    the BSP_INDICATE_CONNECTED state is indicated.
+ 3. Click the 'Enable services' button on the Master Control Panel. Observe that
+    Heart Rate notifications are received every second, and Battery Level 
+    notifications are received every two seconds.
+
+Note!
+ The application will stop advertising after 3 minutes and go to system-off 
+ mode. Push the button 0 to restart advertising.

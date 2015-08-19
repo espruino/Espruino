@@ -24,14 +24,14 @@
 JsErrorFlags jsErrorFlags;
 
 bool isIDString(const char *s) {
-    if (!isAlpha(*s))
-        return false;
-    while (*s) {
-        if (!(isAlpha(*s) || isNumeric(*s)))
-            return false;
-        s++;
-    }
-    return true;
+  if (!isAlpha(*s))
+    return false;
+  while (*s) {
+    if (!(isAlpha(*s) || isNumeric(*s)))
+      return false;
+    s++;
+  }
+  return true;
 }
 
 /** escape a character - if it is required. This may return a reference to a static array,
@@ -82,13 +82,13 @@ static NO_INLINE int getRadix(const char **s, int forceRadix, bool *hasError) {
       if (forceRadix && forceRadix!=8 && forceRadix<25) return 0;
       (*s)++;
 
-    // HexIntegerLiteral: 0x01, 0X01
+      // HexIntegerLiteral: 0x01, 0X01
     } else if (**s == 'x' || **s == 'X') {
       radix = 16;
       if (forceRadix && forceRadix!=16 && forceRadix<34) return 0;
       (*s)++;
 
-    // BinaryIntegerLiteral: 0b01, 0B01
+      // BinaryIntegerLiteral: 0b01, 0B01
     } else if (**s == 'b' || **s == 'B') {
       radix = 2;
       if (forceRadix && forceRadix!=2 && forceRadix<12)
@@ -157,7 +157,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 
 /* convert hex, binary, octal or decimal string into an int */
 long long stringToInt(const char *s) {
-    return stringToIntWithRadix(s,0,0);
+  return stringToIntWithRadix(s,0,0);
 }
 
 NO_INLINE void jsError(const char *fmt, ...) {
@@ -198,9 +198,10 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   if (type != JSET_STRING) {
     JsVar *obj = 0;
     if (type == JSET_ERROR) obj = jswrap_error_constructor(var);
-    if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
-    if (type == JSET_TYPEERROR) obj = jswrap_typeerror_constructor(var);
-    if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
+    else if (type == JSET_SYNTAXERROR) obj = jswrap_syntaxerror_constructor(var);
+    else if (type == JSET_TYPEERROR) obj = jswrap_typeerror_constructor(var);
+    else if (type == JSET_INTERNALERROR) obj = jswrap_internalerror_constructor(var);
+    else if (type == JSET_REFERENCEERROR) obj = jswrap_referenceerror_constructor(var);
     jsvUnLock(var);
     var = obj;
   }
@@ -262,42 +263,42 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 
 #ifdef FAKE_STDLIB
 char * strncat(char *dst, const char *src, size_t c) {
-        char *dstx = dst;
-        while (*(++dstx)) c--;
-        while (*src && c>1) {
-          *(dstx++) = *(src++);
-          c--;
-        }
-        if (c>0) *dstx = 0;
-        return dst;
+  char *dstx = dst;
+  while (*(++dstx)) c--;
+  while (*src && c>1) {
+    *(dstx++) = *(src++);
+    c--;
+  }
+  if (c>0) *dstx = 0;
+  return dst;
 }
 char *strncpy(char *dst, const char *src, size_t c) {
-        char *dstx = dst;
-        while (*src && c) {
-          *(dstx++) = *(src++);
-          c--;
-        }
-        if (c>0) *dstx = 0;
-        return dst;
+  char *dstx = dst;
+  while (*src && c) {
+    *(dstx++) = *(src++);
+    c--;
+  }
+  if (c>0) *dstx = 0;
+  return dst;
 }
 size_t strlen(const char *s) {
-        size_t l=0;
-        while (*(s++)) l++;
-        return l;
+  size_t l=0;
+  while (*(s++)) l++;
+  return l;
 }
 int strcmp(const char *a, const char *b) {
-        while (*a && *b) {
-                if (*a != *b)
-                        return *a - *b; // correct?
-                a++;b++;
-        }
-        return *a - *b;
+  while (*a && *b) {
+    if (*a != *b)
+      return *a - *b; // correct?
+          a++;b++;
+  }
+  return *a - *b;
 }
 void *memcpy(void *dst, const void *src, size_t size) {
-        size_t i;
-        for (i=0;i<size;i++)
-                ((char*)dst)[i] = ((char*)src)[i];
-        return dst;
+  size_t i;
+  for (i=0;i<size;i++)
+    ((char*)dst)[i] = ((char*)src)[i];
+  return dst;
 }
 
 void *memset(void *dst, int c, size_t size) {
@@ -306,13 +307,18 @@ void *memset(void *dst, int c, size_t size) {
   return dst;
 }
 
-unsigned int rand() {
-    static unsigned int m_w = 0xDEADBEEF;    /* must not be zero */
-    static unsigned int m_z = 0xCAFEBABE;    /* must not be zero */
+unsigned int rand_m_w = 0xDEADBEEF;    /* must not be zero */
+unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
 
-    m_z = 36969 * (m_z & 65535) + (m_z >> 16);
-    m_w = 18000 * (m_w & 65535) + (m_w >> 16);
-    return (m_z << 16) + m_w;  /* 32-bit result */
+int rand() {
+  rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
+  rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
+  return (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
+}
+
+void srand(unsigned int seed) {
+  rand_m_w = (seed&0xFFFF) | (seed<<16);
+  rand_m_z = (seed&0xFFFF0000) | (seed>>16);
 }
 #endif
 
@@ -455,7 +461,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       *(str++) = itoch(v);
       d /= radix;
     }
-  #ifndef USE_NO_FLOATS
+#ifndef USE_NO_FLOATS
     if (((fractionalDigits<0) && val>0) || fractionalDigits>0) {
       if (--len <= 0) { *str=0; return; } // bounds check
       *(str++)='.';
@@ -469,7 +475,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
         fractionalDigits--;
       }
     }
-  #endif
+#endif
 
     *(str++)=0;
   }

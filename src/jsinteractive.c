@@ -19,6 +19,7 @@
 #include "jswrap_json.h"
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
+#include "jswrap_flash.h" // load and save to flash
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -26,19 +27,21 @@
 #define CHAR_DELETE_SEND '\b'
 #endif
 
+#define CTRL_C_TIME_FOR_BREAK jshGetTimeFromMilliseconds(100)
+
 // ----------------------------------------------------------------------------
 typedef enum {
- IS_NONE,
- IS_HAD_R,
- IS_HAD_27,
- IS_HAD_27_79,
- IS_HAD_27_91,
- IS_HAD_27_91_49,
- IS_HAD_27_91_50,
- IS_HAD_27_91_51,
- IS_HAD_27_91_52,
- IS_HAD_27_91_53,
- IS_HAD_27_91_54,
+  IS_NONE,
+  IS_HAD_R,
+  IS_HAD_27,
+  IS_HAD_27_79,
+  IS_HAD_27_91,
+  IS_HAD_27_91_49,
+  IS_HAD_27_91_50,
+  IS_HAD_27_91_51,
+  IS_HAD_27_91_52,
+  IS_HAD_27_91_53,
+  IS_HAD_27_91_54,
 } PACKED_FLAGS InputState;
 
 TODOFlags todo = TODO_NOTHING;
@@ -51,6 +54,7 @@ Pin pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
 Pin pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 JsiStatus jsiStatus;
 JsSysTime jsiLastIdleTime;  ///< The last time we went around the idle loop - use this for timers
+uint32_t jsiTimeSinceCtrlC;
 // ----------------------------------------------------------------------------
 JsVar *inputLine = 0; ///< The current input line
 JsvStringIterator inputLineIterator; ///< Iterator that points to the end of the input line
@@ -160,14 +164,6 @@ void jsiConsolePrintf(const char *fmt, ...) {
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
-
-
-NO_INLINE void jsiConsolePrintInt(JsVarInt d) {
-    char buf[32];
-    itostr(d, buf, 10);
-    jsiConsolePrint(buf);
-}
-
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
@@ -321,19 +317,6 @@ void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos) {
   jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
-
-/// Print the contents of a string var to a device - directly
-void jsiTransmitStringVar(IOEventFlags device, JsVar *v) {
-  JsvStringIterator it;
-  jsvStringIteratorNew(&it, v, 0);
-  while (jsvStringIteratorHasChar(&it)) {
-    char ch = jsvStringIteratorGetChar(&it);
-    jshTransmit(device, (unsigned char)ch);
-    jsvStringIteratorNext(&it);
-  }
-  jsvStringIteratorFree(&it);
-}
-
 void jsiClearInputLine() {
   jsiConsoleRemoveInputLine();
   // clear input line
@@ -416,6 +399,7 @@ void jsiSoftInit() {
   // Make sure we set up lastIdleTime, as this could be used
   // when adding an interval from onInit (called below)
   jsiLastIdleTime = jshGetSystemTime();
+  jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
@@ -431,17 +415,31 @@ void jsiSoftInit() {
   }
 }
 
-/** Append the code required to initialise a serial port to this string */
-void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addCallbacks) {
+/** Output the given variable as JSON, or if it exists
+ * in the root scope (and it's not 'existing') then just
+ * the name is dumped.  */
+void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data, JsVar *existing) {
+  // Check if it exists in the root scope
+  JsVar *name = jsvGetArrayIndexOf(execInfo.root,  data, true);
+  if (name && jsvIsString(name) && name!=existing) {
+    // if it does, print the name
+    cbprintf(user_callback, user_data, "%v", name);
+  } else {
+    // if it doesn't, print JSON
+    jsfGetJSONWithCallback(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES, user_callback, user_data);
+  }
+}
+
+/** Dump the code required to initialise a serial port to this string */
+void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool addCallbacks) {
   JsVar *serialVar = jsvObjectGetChild(execInfo.root, serialName, 0);
   if (serialVar) {
     if (addCallbacks) {
       JsVar *onData = jsvObjectGetChild(serialVar, USART_CALLBACK_NAME, 0);
       if (onData) {
-        JsVar *onDataStr = jsvAsString(onData, true/*unlock*/);
-        jsvAppendPrintf(str, "%s.on('data', %v);\n", serialName, onDataStr);
-        // ideally we'd use jsiDumpJSON here but we can't because we're appending
-        jsvUnLock(onDataStr);
+        cbprintf(user_callback, user_data, "%s.on('data', ", serialName);
+        jsiDumpJSON(user_callback, user_data, onData, 0);
+        user_callback(");\n", user_data);
       }
     }
     JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
@@ -449,12 +447,12 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
     if (baud || options) {
       int baudrate = (int)jsvGetInteger(baud);
       if (baudrate <= 0) baudrate = DEFAULT_BAUD_RATE;
-      jsvAppendPrintf(str, "%s.setup(%d", serialName, baudrate);
+      cbprintf(user_callback, user_data, "%s.setup(%d", serialName, baudrate);
       if (jsvIsObject(options)) {
-        jsvAppendString(str, ", ");
-        jsfGetJSON(options, str, JSON_SHOW_DEVICES);
+        user_callback(", ", user_data);
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
       }
-      jsvAppendString(str, ");\n");
+      user_callback(");\n", user_data);
     }
     jsvUnLock(baud);
     jsvUnLock(options);
@@ -462,45 +460,43 @@ void jsiAppendSerialInitialisation(JsVar *str, const char *serialName, bool addC
   }
 }
 
-/** Append the code required to initialise a SPI port to this string */
-void jsiAppendDeviceInitialisation(JsVar *str, const char *deviceName) {
+/** Dump the code required to initialise a SPI port to this string */
+void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_data, const char *deviceName) {
   JsVar *deviceVar = jsvObjectGetChild(execInfo.root, deviceName, 0);
   if (deviceVar) {
     JsVar *options = jsvObjectGetChild(deviceVar, DEVICE_OPTIONS_NAME, 0);
     if (options) {
-      jsvAppendString(str, deviceName);
-      jsvAppendString(str, ".setup(");
-      if (jsvIsObject(options)) {
-        jsfGetJSON(options, str, JSON_SHOW_DEVICES);
-      }
-      jsvAppendString(str, ");\n");
+      cbprintf(user_callback, user_data, "%s.setup(", deviceName);
+      if (jsvIsObject(options))
+        jsfGetJSONWithCallback(options, JSON_SHOW_DEVICES, user_callback, user_data);
+      user_callback(");\n", user_data);
     }
     jsvUnLock(options);
     jsvUnLock(deviceVar);
   }
 }
 
-/** Append all the code required to initialise hardware to this string */
-void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
-  if (jsiStatus&JSIS_ECHO_OFF) jsvAppendString(str, "echo(0);");
+/** Dump all the code required to initialise hardware to this string */
+void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool addCallbacks) {
+  if (jsiStatus&JSIS_ECHO_OFF) user_callback("echo(0);", user_data);
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
-    jsvAppendPrintf(str, "setBusyIndicator(%p);\n", pinBusyIndicator);
+    cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
   }
   if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
-    jsvAppendPrintf(str, "setSleepIndicator(%p);\n", pinSleepIndicator);
+    cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
   if (jsiStatus&JSIS_ALLOW_DEEP_SLEEP) {
-    jsvAppendPrintf(str, "setDeepSleep(1);\n");
+    user_callback("setDeepSleep(1);\n", user_data);
   }
 
-  jsiAppendSerialInitialisation(str, "USB", addCallbacks);
+  jsiDumpSerialInitialisation(user_callback, user_data, "USB", addCallbacks);
   int i;
   for (i=0;i<USARTS;i++)
-    jsiAppendSerialInitialisation(str, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
+    jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
   for (i=0;i<SPIS;i++)
-    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_SPI1+i));
+    jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
   for (i=0;i<I2CS;i++)
-    jsiAppendDeviceInitialisation(str, jshGetDeviceString(EV_I2C1+i));
+    jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
   // pins
   Pin pin;
   for (pin=0;jshIsPinValid(pin) && pin<255;pin++) {
@@ -510,7 +506,7 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
     if (statem == JSHPINSTATE_GPIO_OUT || statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN) {
       bool isOn = (state&JSHPINSTATE_PIN_IS_ON)!=0;
       if (!isOn && IS_PIN_A_LED(pin)) continue;
-      jsvAppendPrintf(str, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
+      cbprintf(user_callback, user_data, "digitalWrite(%p,%d);\n",pin,isOn?1:0);
     } else if (/*statem == JSHPINSTATE_GPIO_IN ||*/statem == JSHPINSTATE_GPIO_IN_PULLUP || statem == JSHPINSTATE_GPIO_IN_PULLDOWN) {
 #ifdef DEFAULT_CONSOLE_RX_PIN
       // the console input pin is always a pullup now - which is expected
@@ -521,11 +517,11 @@ void jsiAppendHardwareInitialisation(JsVar *str, bool addCallbacks) {
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
       if (statem == JSHPINSTATE_GPIO_IN_PULLDOWN) s="_pulldown";
-      jsvAppendPrintf(str, "pinMode(%p,\"input%s\");\n",pin,s);
+      cbprintf(user_callback, user_data, "pinMode(%p,\"input%s\");\n",pin,s);
     }
 
     if (statem == JSHPINSTATE_GPIO_OUT_OPENDRAIN)
-      jsvAppendPrintf(str, "pinMode(%p,\"opendrain\");\n",pin);
+      cbprintf(user_callback, user_data, "pinMode(%p,\"opendrain\");\n",pin);
   }
 }
 
@@ -571,34 +567,31 @@ void jsiSoftKill() {
   // Save initialisation information
   JsVar *initCode = jsvNewFromEmptyString();
   if (initCode) { // out of memory
-    jsiAppendHardwareInitialisation(initCode, false);
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, initCode, 0);
+    jsiDumpHardwareInitialisation((vcbprintf_callback)&jsvStringIteratorPrintfCallback, &it, false);
+    jsvStringIteratorFree(&it);
     jsvObjectSetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, initCode);
     jsvUnLock(initCode);
   }
 }
 
-void jsiInit(bool autoLoad) {
+void jsiSemiInit(bool autoLoad) {
   jspInit();
-
-  /*for (i=0;i<IOPINS;i++)
-     ioPinState[i].callbacks = 0;*/
 
   // Set state
   interruptedDuringEvent = false;
   // Set defaults
   jsiStatus = JSIS_NONE;
-  consoleDevice = DEFAULT_CONSOLE_DEVICE;
   pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
-  if (jshIsUSBSERIALConnected())
-    consoleDevice = EV_USBSERIAL;
 
   /* If flash contains any code, then we should
      Try and load from it... */
-  bool loadFlash = autoLoad && jshFlashContainsCode();
+  bool loadFlash = autoLoad && jsfFlashContainsCode();
   if (loadFlash) {
     jspSoftKill();
     jsvSoftKill();
-    jshLoadFromFlash();
+    jsfLoadFromFlash();
     jsvSoftInit();
     jspSoftInit();
   }
@@ -610,24 +603,60 @@ void jsiInit(bool autoLoad) {
     if (!loadFlash) {
       jsiConsolePrint(
 #ifndef LINUX
-              // set up terminal to avoid word wrap
-              "\e[?7l"
+          // set up terminal to avoid word wrap
+          "\e[?7l"
 #endif
-              // rectangles @ http://www.network-science.de/ascii/
-              "\n"
-              " _____                 _ \n"
-              "|   __|___ ___ ___ _ _|_|___ ___ \n"
-              "|   __|_ -| . |  _| | | |   | . |\n"
-              "|_____|___|  _|_| |___|_|_|_|___|\n"    
-              "          |_| http://espruino.com\n"
-              " "JS_VERSION" Copyright 2015 G.Williams\n");
+          // rectangles @ http://www.network-science.de/ascii/
+          "\n"
+          " _____                 _ \n"
+          "|   __|___ ___ ___ _ _|_|___ ___ \n"
+          "|   __|_ -| . |  _| | | |   | . |\n"
+          "|_____|___|  _|_| |___|_|_|_|___|\n"
+          "          |_| http://espruino.com\n"
+          " "JS_VERSION" Copyright 2015 G.Williams\n");
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
 }
 
+// The 'proper' init function - this should be called only once at bootup
+void jsiInit(bool autoLoad) {
+#if defined(LINUX) || !defined(USB)
+  consoleDevice = DEFAULT_CONSOLE_DEVICE;
+#else
+  consoleDevice = EV_LIMBO;
+#endif
 
+  jsiSemiInit(autoLoad);
+}
+
+#ifndef LINUX
+// This should get jsiOneSecondAfterStartupcalled from jshardware.c one second after startup,
+// it does initialisation tasks like setting the right console device
+void jsiOneSecondAfterStartup() {
+  /* When we start up, we put all console output into 'Limbo' (EV_LIMBO),
+     because we want to get started immediately, but we don't know where
+     to send any console output (USB takes a while to initialise). Not only
+     that but if we start transmitting on Serial right away, the first
+     char or two can get corrupted.
+   */
+#ifdef USB
+  if (consoleDevice == EV_LIMBO) {
+    consoleDevice = DEFAULT_CONSOLE_DEVICE;
+    if (jshIsUSBSERIALConnected())
+      consoleDevice = EV_USBSERIAL;
+    // now move any output that was made to Limbo to the given device
+    jshTransmitMove(EV_LIMBO, consoleDevice);
+    // finally, kick output - just in case
+    jshUSARTKick(consoleDevice);
+  } else {
+    // the console has already been moved
+    jshTransmitClearDevice(EV_LIMBO);
+  }
+#endif
+}
+#endif
 
 void jsiKill() {
   jsiSoftKill();
@@ -699,7 +728,7 @@ JsVar *jsiGetHistoryLine(bool previous /* next if false */) {
       if (previous) historyLine = jsvSkipNameAndUnLock(jsvGetArrayItem(history, jsvGetArrayLength(history)-1));
       // if next, we weren't using history so couldn't go forwards
     }
-    
+
     jsvUnLock(history);
   }
   return historyLine;
@@ -767,7 +796,7 @@ void jsiHandleDelete(bool isBackspace) {
   if (!isBackspace && inputCursorPos>=l) return; // at end of line
   // work out if we are deleting a newline
   bool deleteNewline = (isBackspace && jsvGetCharInString(inputLine,inputCursorPos-1)=='\n') ||
-                       (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
+      (!isBackspace && jsvGetCharInString(inputLine,inputCursorPos)=='\n');
   // If we mod this to keep the string, use jsiIsAboutToEditInputLine
   if (deleteNewline && jsiShowInputLine()) {
     jsiConsoleEraseStringVarFrom(inputLine, inputCursorPos, true/*before newline*/); // erase all in front
@@ -854,7 +883,7 @@ bool jsiAtEndOfInputLine() {
   size_t i = inputCursorPos, l = jsvGetStringLength(inputLine);
   while (i < l) {
     if (!isWhitespace(jsvGetCharInString(inputLine, i)))
-        return false;
+      return false;
     i++;
   }
   return true;
@@ -1032,15 +1061,15 @@ void jsiHandleChar(char ch) {
       jsiHandleEnd();
     }
   } else if (inputState==IS_HAD_27_91_53) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Up
-        jsiHandlePageUpDown(0);
-      }
+    inputState = IS_NONE;
+    if (ch==126) { // Page Up
+      jsiHandlePageUpDown(0);
+    }
   } else if (inputState==IS_HAD_27_91_54) {
-      inputState = IS_NONE;
-      if (ch==126) { // Page Down
-        jsiHandlePageUpDown(1);
-      }
+    inputState = IS_NONE;
+    if (ch==126) { // Page Down
+      jsiHandlePageUpDown(1);
+    }
   } else if (ch==16 && jsvGetStringLength(inputLine)==0) {
     /* DLE - Data Link Escape
     Espruino uses DLE on the start of a line to signal that just the line in
@@ -1093,11 +1122,12 @@ void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount) 
   if (event) { // Could be out of memory error!
     jsvUnLock(jsvAddNamedChild(event, callback, "func"));
 
-    int i;
-    for (i=0;i<argCount;i++) {
-      char argName[5] = "arg#";
-      argName[3] = (char)('0'+i);
-      jsvUnLock(jsvAddNamedChild(event, args[i], argName));
+    if (argCount) {
+      JsVar *arr = jsvNewArray(args, argCount);
+      if (arr) {
+        jsvUnLock(jsvAddNamedChild(event, arr, "args"));
+        jsvUnLock(arr);
+      }
     }
     if (object) jsvUnLock(jsvAddNamedChild(event, object, "this"));
 
@@ -1121,59 +1151,66 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
 
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
-  bool wasInterrupted = jspIsInterrupted();
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
   while (!jsvArrayIsEmpty(events)) {
     JsVar *event = jsvSkipNameAndUnLock(jsvArrayPopFirst(events));
     // Get function to execute
     JsVar *func = jsvObjectGetChild(event, "func", 0);
     JsVar *thisVar = jsvObjectGetChild(event, "this", 0);
-    JsVar *args[2];
-    // TODO: make this faster by iterating over the children (and support varying numbers of args)
-    args[0] = jsvObjectGetChild(event, "arg0", 0);
-    args[1] = jsvObjectGetChild(event, "arg1", 0);
+    JsVar *argsArray = jsvObjectGetChild(event, "args", 0);
     // free actual event
     jsvUnLock(event);
     // now run..
-    jsiExecuteEventCallback(thisVar, func, args[0], args[1]);
+    jsiExecuteEventCallbackArgsArray(thisVar, func, argsArray);
+    jsvUnLock(argsArray);
     //jsPrint("Event Done\n");
     jsvUnLock(func);
     jsvUnLock(thisVar);
-    jsvUnLock(args[0]);
-    jsvUnLock(args[1]);
   }
   if (hasEvents) {
     jsiSetBusy(BUSY_INTERACTIVE, false);
-    if (!wasInterrupted && jspIsInterrupted())
+    if (jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK)
       interruptedDuringEvent = true;
   }
 }
 
-NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, JsVar *arg0, JsVar *arg1) { // array of functions or single function
-  bool wasInterrupted = jspHasError();
+NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray) { // array of functions or single function
+  unsigned int l = (unsigned int)jsvGetArrayLength(argsArray);
+  JsVar **args = 0;
+  if (l) {
+    args = alloca(sizeof(JsVar*) * l);
+    if (!args) return false;
+    jsvGetArrayItems(argsArray, l, args); // not very fast
+  }
+  bool r = jsiExecuteEventCallback(thisVar, callbackVar, l, args);
+  jsvUnLockMany(l, args);
+  return r;
+}
+
+NO_INLINE bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr) { // array of functions or single function
   JsVar *callbackNoNames = jsvSkipName(callbackVar);
 
+  bool ok = true;
   if (callbackNoNames) {
     if (jsvIsArray(callbackNoNames)) {
       JsvObjectIterator it;
       jsvObjectIteratorNew(&it, callbackNoNames);
-      while (jsvObjectIteratorHasValue(&it)) {
+      while (ok && jsvObjectIteratorHasValue(&it)) {
         JsVar *child = jsvObjectIteratorGetValue(&it);
-        jsiExecuteEventCallback(thisVar, child, arg0, arg1);
+        ok &= jsiExecuteEventCallback(thisVar, child, argCount, argPtr);
         jsvUnLock(child);
         jsvObjectIteratorNext(&it);
       }
       jsvObjectIteratorFree(&it);
     } else if (jsvIsFunction(callbackNoNames)) {
-       JsVar *args[2] = { arg0, arg1 };
-       jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, 2, args));
-    } else if (jsvIsString(callbackNoNames))
+      jsvUnLock(jspExecuteFunction(callbackNoNames, thisVar, (int)argCount, argPtr));
+    } else if (jsvIsString(callbackNoNames)) {
       jsvUnLock(jspEvaluateVar(callbackNoNames, 0, false));
-    else 
+    } else
       jsError("Unknown type of callback in Event Queue");
     jsvUnLock(callbackNoNames);
   }
-  if (!wasInterrupted && jspHasError()) {
+  if (!ok || jspIsInterrupted() || jsiTimeSinceCtrlC<CTRL_C_TIME_FOR_BREAK) {
     interruptedDuringEvent = true;
     return false;
   }
@@ -1192,8 +1229,8 @@ bool jsiHasTimers() {
 bool jsiShouldExecuteWatch(JsVar *watchPtr, bool pinIsHigh) {
   int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "edge", 0));
   return watchEdge==0 || // any edge
-         (pinIsHigh && watchEdge>0) || // rising edge
-         (!pinIsHigh && watchEdge<0); // falling edge
+      (pinIsHigh && watchEdge>0) || // rising edge
+      (!pinIsHigh && watchEdge<0); // falling edge
 }
 
 bool jsiIsWatchingPin(Pin pin) {
@@ -1363,8 +1400,8 @@ void jsiIdle() {
                 jsvUnLock(jsvObjectSetChild(data, "pin", jsvNewFromPin(pin)));
                 jsvUnLock(jsvObjectSetChild(data, "state", jsvNewFromBool(pinIsHigh)));
               }
-              if (!jsiExecuteEventCallback(0, watchCallback, data, 0) && watchRecurring) {
-                jsError("Error processing Watch - removing it.");
+              if (!jsiExecuteEventCallback(0, watchCallback, 1, &data) && watchRecurring) {
+                jsError("Ctrl-C while processing watch - removing it.");
                 jsErrorFlags |= JSERR_CALLBACK;
                 watchRecurring = false;
               }
@@ -1404,18 +1441,22 @@ void jsiIdle() {
   JsSysTime time = jshGetSystemTime();
   JsSysTime timePassed = (JsVarInt)(time - jsiLastIdleTime);
   jsiLastIdleTime = time;
+  // add time to Ctrl-C counter, checking for overflow
+  uint32_t oldTimeSinceCtrlC = jsiTimeSinceCtrlC;
+  jsiTimeSinceCtrlC += (uint32_t)timePassed;
+  if (oldTimeSinceCtrlC > jsiTimeSinceCtrlC)
+    jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
+  jsiStatus = jsiStatus & ~JSIS_TIMERS_CHANGED;
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, timerArrayPtr);
-  while (jsvObjectIteratorHasValue(&it)) {
+  while (jsvObjectIteratorHasValue(&it) && !(jsiStatus & JSIS_TIMERS_CHANGED)) {
     bool hasDeletedTimer = false;
     JsVar *timerPtr = jsvObjectIteratorGetValue(&it);
     JsSysTime timerTime = (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timerPtr, "time", 0));
     JsSysTime timeUntilNext = timerTime - timePassed;
 
-    if (timeUntilNext < minTimeUntilNext)
-      minTimeUntilNext = timeUntilNext;
     if (timeUntilNext<=0) {
       // we're now doing work
       jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1423,30 +1464,41 @@ void jsiIdle() {
       JsVar *timerCallback = jsvObjectGetChild(timerPtr, "callback", 0);
       JsVar *watchPtr = jsvObjectGetChild(timerPtr, "watch", 0); // for debounce - may be undefined
       bool exec = true;
-      JsVar *data = jsvNewWithFlags(JSV_OBJECT);
-      if (data) {
+      JsVar *data = 0;
+      if (watchPtr) {
+        data = jsvNewWithFlags(JSV_OBJECT);
         // if we were from a watch then we were delayed by the debounce time...
-        JsVarInt delay = 0;
-        if (watchPtr)
-          delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
-        // Create the 'time' variable that will be passed to the user
-        JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timeUntilNext-delay)/1000);
-        // if it was a watch, set the last state up
-        if (watchPtr) {
+        if (data) {
+          JsVarInt delay = jsvGetIntegerAndUnLock(jsvObjectGetChild(watchPtr, "debounce", 0));
+          // Create the 'time' variable that will be passed to the user
+          JsVar *timePtr = jsvNewFromFloat(jshGetMillisecondsFromTime(jsiLastIdleTime+timeUntilNext-delay)/1000);
+          // if it was a watch, set the last state up
           bool state = jsvGetBoolAndUnLock(jsvObjectSetChild(data, "state", jsvObjectGetChild(watchPtr, "state", 0)));
           exec = jsiShouldExecuteWatch(watchPtr, state);
           // set up the lastTime variable of data to what was in the watch
           jsvUnLock(jsvObjectSetChild(data, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0)));
           // set up the watches lastTime to this one
           jsvObjectSetChild(watchPtr, "lastTime", timePtr); // don't unlock
+          jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
         }
-        jsvUnLock(jsvObjectSetChild(data, "time", timePtr));
       }
       JsVar *interval = jsvObjectGetChild(timerPtr, "interval", 0);
       if (exec) {
-        if (!jsiExecuteEventCallback(0, timerCallback, data, 0) && interval) {
-          jsError("Error processing interval - removing it.");
+        bool execResult;
+        if (data) {
+          execResult = jsiExecuteEventCallback(0, timerCallback, 1, &data);
+        } else {
+          JsVar *argsArray = jsvObjectGetChild(timerPtr, "args", 0);
+          execResult = jsiExecuteEventCallbackArgsArray(0, timerCallback, argsArray);
+          jsvUnLock(argsArray);
+        }
+        if (!execResult && interval) {
+          jsError("Ctrl-C while processing interval - removing it.");
           jsErrorFlags |= JSERR_CALLBACK;
+          // by setting interval to 0, we now think we've for a Timeout,
+          // which will get removed.
+          jsvUnLock(interval);
+          interval = 0;
         }
       }
       jsvUnLock(data);
@@ -1478,12 +1530,14 @@ void jsiIdle() {
         // Beware... may have already been removed!
         jsvObjectIteratorRemoveAndGotoNext(&it, timerArrayPtr);
         hasDeletedTimer = true;
-        minTimeUntilNext = 0; // make sure we don't sleep
-        // We'll sort it out next time around idle loop
+        timeUntilNext = -1;
       }
       jsvUnLock(timerCallback);
 
     }
+    // update the time until the next timer
+    if (timeUntilNext>=0 && timeUntilNext < minTimeUntilNext)
+      minTimeUntilNext = timeUntilNext;
     // update the timer's time
     if (!hasDeletedTimer) {
       jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger(timeUntilNext)));
@@ -1493,6 +1547,11 @@ void jsiIdle() {
   }
   jsvObjectIteratorFree(&it);
   jsvUnLock(timerArrayPtr);
+  /* We might have left the timers loop with stuff to do because the contents of it
+   * changed. It's not a big deal because it could only have changed because a timer
+   * got executed - so `wasBusy` got set and we know we're going to go around the
+   * loop again before sleeping.
+   */ 
 
   // Check for events that might need to be processed from other libraries
   if (jswIdle()) wasBusy = true;
@@ -1525,7 +1584,7 @@ void jsiIdle() {
       jsvKill();
       jshReset();
       jsvInit();
-      jsiInit(false); // don't autoload
+      jsiSemiInit(false); // don't autoload
     }
     if (todo & TODO_FLASH_SAVE) {
       todo &= (TODOFlags)~TODO_FLASH_SAVE;
@@ -1534,7 +1593,7 @@ void jsiIdle() {
       jsiSoftKill();
       jspSoftKill();
       jsvSoftKill();
-      jshSaveToFlash();
+      jsfSaveToFlash();
       jshReset();
       jsvSoftInit();
       jspSoftInit();
@@ -1547,7 +1606,7 @@ void jsiIdle() {
       jspSoftKill();
       jsvSoftKill();
       jshReset();
-      jshLoadFromFlash();
+      jsfLoadFromFlash();
       jsvSoftInit();
       jspSoftInit();
       jsiSoftInit();
@@ -1564,6 +1623,7 @@ void jsiIdle() {
     jsvGarbageCollect();
     jsiSetBusy(BUSY_INTERACTIVE, false);
   }
+
   // Go to sleep!
   if (loopsIdling>1 && // once around the idle loop without having done any work already (just in case)
 #ifdef USB
@@ -1581,7 +1641,7 @@ bool jsiLoop() {
   jshIdle();
   // Do general idle stuff
   jsiIdle();
-  
+
   JsVar *exception = jspGetException();
   if (exception) {
     jsiConsolePrintf("Uncaught %v\n", exception);
@@ -1590,7 +1650,7 @@ bool jsiLoop() {
 
   if (jspIsInterrupted()) {
     jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted.\n");
+    jsiConsolePrint("Execution Interrupted\n");
     jspSetInterrupted(false);
   }
   JsVar *stackTrace = jspGetStackTrace();
@@ -1602,9 +1662,15 @@ bool jsiLoop() {
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {
     execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_CTRL_C_MASK;
+    if (jsvIsEmptyString(inputLine)) {
 #ifndef EMBEDDED
-    if (jsvIsEmptyString(inputLine)) exit(0); // exit if ctrl-c on empty input line
+      if (jsiTimeSinceCtrlC < jshGetTimeFromMilliseconds(5000))
+        exit(0); // exit if ctrl-c on empty input line
+      else
+        jsiConsolePrintf("Press Ctrl-C again to exit\n");
 #endif
+      jsiTimeSinceCtrlC = 0;
+    }
     jsiClearInputLine();
   }
 
@@ -1614,23 +1680,8 @@ bool jsiLoop() {
   return loopsIdling==0;
 }
 
-/** Output the given variable as JSON, or if it exists
- * in the root scope (and it's not 'existing') then just
- * the name is dumped.  */
-void jsiDumpJSON(JsVar *data, JsVar *existing) {
-  // Check if it exists in the root scope
-  JsVar *name = jsvGetArrayIndexOf(execInfo.root,  data, true);
-  if (name && jsvIsString(name) && name!=existing) {
-    // if it does, print the name
-    jsiConsolePrintStringVar(name);
-  } else {
-    // if it doesn't, print JSON
-    jsfPrintJSON(data, JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-  }
-}
-
 /** Output extra functions defined in an object such that they can be copied to a new device */
-NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
+NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_data, JsVar *parentName, JsVar *parent) {
   JsvIsInternalChecker checker = jsvGetInternalFunctionCheckerFor(parent);
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, parent);
@@ -1644,14 +1695,15 @@ NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
         JsVar *name = jsvNewFromStringVar(parentName,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
         if (name) {
           jsvAppendString(name, ".prototype");
-          jsiDumpObjectState(name, data);
+          jsiDumpObjectState(user_callback, user_data, name, data);
           jsvUnLock(name);
         }
       } else {
         if (!jsvIsNative(data)) {
-          jsiConsolePrintf("%v.%v = ", parentName, child);
-          jsiDumpJSON(data, 0);
-          jsiConsolePrint(";\n");
+
+          cbprintf(user_callback, user_data, "%v.%v = ", parentName, child);
+          jsiDumpJSON(user_callback, user_data, data, 0);
+          user_callback(";\n", user_data);
         }
       }
     }
@@ -1663,7 +1715,7 @@ NO_INLINE void jsiDumpObjectState(JsVar *parentName, JsVar *parent) {
 }
 
 /** Output current interpreter state such that it can be copied to a new device */
-void jsiDumpState() {
+void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   JsvObjectIterator it;
 
   jsvObjectIteratorNew(&it, execInfo.root);
@@ -1674,40 +1726,40 @@ void jsiDumpState() {
     jsvGetString(child, childName, JSLEX_MAX_TOKEN_LENGTH);
 
     if (jswIsBuiltInObject(childName)) {
-      jsiDumpObjectState(child, data);
+      jsiDumpObjectState(user_callback, user_data, child, data);
     } else if (jsvIsStringEqual(child, JSI_TIMERS_NAME)) {
       // skip - done later
     } else if (jsvIsStringEqual(child, JSI_WATCHES_NAME)) {
       // skip - done later
     } else if (child->varData.str[0]==JS_HIDDEN_CHAR ||
-               jshFromDeviceString(childName)!=EV_NONE) {
+        jshFromDeviceString(childName)!=EV_NONE) {
       // skip - don't care about this stuff
     } else if (!jsvIsNative(data)) { // just a variable/function!
       if (jsvIsFunction(data)) {
         // function-specific output
-        jsiConsolePrintf("function %v", child);
-        jsfPrintJSONForFunction(data, JSON_SHOW_DEVICES);
-        jsiConsolePrint("\n");
+        cbprintf(user_callback, user_data, "function %v", child);
+        jsfGetJSONForFunctionWithCallback(data, JSON_SHOW_DEVICES, user_callback, user_data);
+        user_callback("\n", user_data);
         // print any prototypes we had
-        jsiDumpObjectState(child, data);
+        jsiDumpObjectState(user_callback, user_data, child, data);
       } else {
         // normal variable definition
-        jsiConsolePrintf("var %v = ", child);
+        cbprintf(user_callback, user_data, "var %v = ", child);
         bool hasProto = false;
         if (jsvIsObject(data)) {
           JsVar *proto = jsvObjectGetChild(data, JSPARSE_INHERITS_VAR, 0);
           if (proto) {
             JsVar *protoName = jsvGetPathTo(execInfo.root, proto, 4, data);
             if (protoName) {
-              jsiConsolePrintf("Object.create(%v);\n", protoName);
-              jsiDumpObjectState(child, data);
+              cbprintf(user_callback, user_data, "Object.create(%v);\n", protoName);
+              jsiDumpObjectState(user_callback, user_data, child, data);
               hasProto = true;
             }
           }
         }
         if (!hasProto) {
-          jsiDumpJSON(data, child);
-          jsiConsolePrint(";\n");
+          jsiDumpJSON(user_callback, user_data, data, child);
+          user_callback(";\n", user_data);
         }
       }
     }
@@ -1724,9 +1776,9 @@ void jsiDumpState() {
     JsVar *timer = jsvObjectIteratorGetValue(&it);
     JsVar *timerCallback = jsvSkipOneNameAndUnLock(jsvFindChildFromString(timer, "callback", false));
     JsVar *timerInterval = jsvObjectGetChild(timer, "interval", 0);
-    jsiConsolePrint(timerInterval ? "setInterval(" : "setTimeout(");
-    jsiDumpJSON(timerCallback, 0);
-    jsiConsolePrintf(", %f);\n", jshGetMillisecondsFromTime(timerInterval ? jsvGetLongInteger(timerInterval) : jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timer, "time", 0))));
+    user_callback(timerInterval ? "setInterval(" : "setTimeout(", user_data);
+    jsiDumpJSON(user_callback, user_data, timerCallback, 0);
+    cbprintf(user_callback, user_data, ", %f);\n", jshGetMillisecondsFromTime(timerInterval ? jsvGetLongInteger(timerInterval) : jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timer, "time", 0))));
     jsvUnLock(timerInterval);
     jsvUnLock(timerCallback);
     // next
@@ -1745,15 +1797,15 @@ void jsiDumpState() {
     int watchEdge = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "edge", 0));
     JsVar *watchPin = jsvObjectGetChild(watch, "pin", 0);
     JsVarInt watchDebounce = jsvGetIntegerAndUnLock(jsvObjectGetChild(watch, "debounce", 0));
-    jsiConsolePrint("setWatch(");
-    jsiDumpJSON(watchCallback, 0);
-    jsiConsolePrintf(", %j, { repeat:%s, edge:'%s'",
-                     watchPin,
-                     watchRecur?"true":"false",
-                     (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
+    user_callback("setWatch(", user_data);
+    jsiDumpJSON(user_callback, user_data, watchCallback, 0);
+    cbprintf(user_callback, user_data, ", %j, { repeat:%s, edge:'%s'",
+        watchPin,
+        watchRecur?"true":"false",
+            (watchEdge<0)?"falling":((watchEdge>0)?"rising":"both"));
     if (watchDebounce>0)
-      jsiConsolePrintf(", debounce : %f", jshGetMillisecondsFromTime(watchDebounce));
-    jsiConsolePrint(" });\n");
+      cbprintf(user_callback, user_data, ", debounce : %f", jshGetMillisecondsFromTime(watchDebounce));
+    user_callback(" });\n", user_data);
     jsvUnLock(watchPin);
     jsvUnLock(watchCallback);
     // next
@@ -1762,11 +1814,8 @@ void jsiDumpState() {
   }
   jsvObjectIteratorFree(&it);
 
-  // and now serial
-  JsVar *str = jsvNewFromEmptyString();
-  jsiAppendHardwareInitialisation(str, true);
-  jsiConsolePrintStringVar(str);
-  jsvUnLock(str);
+  // and now the actual hardware
+  jsiDumpHardwareInitialisation(user_callback, user_data, true);
 }
 
 void jsiSetTodo(TODOFlags newTodo) {
@@ -1778,4 +1827,8 @@ JsVarInt jsiTimerAdd(JsVar *timerPtr) {
   JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
   jsvUnLock(timerArrayPtr);
   return itemIndex;
+}
+
+void jsiTimersChanged() {
+  jsiStatus |= JSIS_TIMERS_CHANGED;
 }

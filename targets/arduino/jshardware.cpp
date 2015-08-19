@@ -43,9 +43,16 @@ void jshKill() {
 }
 
 void jshIdle() {
-   while (Serial.available() > 0) {
-      jshPushIOCharEvent(EV_SERIAL1, Serial.read());
-   } 
+  // hack in order to get console device set correctly
+  static bool inited = false;
+  if (!inited) {
+    inited = true;
+    jsiOneSecondAfterStartup();
+  }
+
+  while (Serial.available() > 0) {
+    jshPushIOCharEvent(EV_SERIAL1, Serial.read());
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -116,7 +123,7 @@ int jshPinAnalogFast(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
-  return 0;
+  return JSH_NOTHING;
 }
 
 void jshSetOutputValue(JshPinFunction func, int value) {
@@ -186,6 +193,10 @@ void jshSPISend16(IOEventFlags device, int data) {
 void jshSPISet16(IOEventFlags device, bool is16) {
 }
 
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 /** Wait until SPI send is finished, */
 void jshSPIWait(IOEventFlags device) {
 }
@@ -197,19 +208,6 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-}
-
-
-void jshSaveToFlash() {
-  jsError("Flash not implemented on Arduino");
-}
-
-void jshLoadFromFlash() {
-  jsError("Flash not implemented on Arduino");
-}
-
-bool jshFlashContainsCode() {
-  return false;
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -228,5 +226,19 @@ void jshUtilTimerStart(JsSysTime period) {
 
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
+  return false;
+}
+
+void jshFlashErasePage(uint32_t addr) {
+}
+
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+}
+
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+}
 
 }

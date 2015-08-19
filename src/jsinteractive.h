@@ -27,6 +27,12 @@
 void jsiInit(bool autoLoad);
 void jsiKill();
 
+#ifndef LINUX
+// This should get called from jshardware.c one second after startup,
+// it does initialisation tasks like setting the right console device
+void jsiOneSecondAfterStartup();
+#endif
+
 /// do main loop stuff, return true if it was busy this iteration
 bool jsiLoop();
 
@@ -45,8 +51,10 @@ void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
-/// Execute the given function/string/array of functions and return true on success, false on failure (error)
-bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, JsVar *arg0, JsVar *arg1);
+/// Execute the given function/string/array of functions and return true on success, false on failure (break during execution)
+bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
+/// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
+bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray);
 
 
 IOEventFlags jsiGetDeviceFromClass(JsVar *deviceClass);
@@ -64,14 +72,10 @@ void jsiConsolePrint(const char *str);
 void jsiConsolePrintf(const char *fmt, ...);
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
-/// Transmit an integer
-void jsiConsolePrintInt(JsVarInt d);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos);
 /// Transmit the current line, along with a marker of where the error was (for reporting errors)
 void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos);
-/// Print the contents of a string var to a device - directly
-void jsiTransmitStringVar(IOEventFlags device, JsVar *v);
 /// If the input line was shown in the console, remove it
 void jsiConsoleRemoveInputLine();
 /// Change what is in the inputline into something else (and update the console)
@@ -113,6 +117,7 @@ typedef enum {
   JSIS_ECHO_OFF = 1, ///< do we provide any user feedback? OFF=no
   JSIS_ECHO_OFF_FOR_LINE = 2,
   JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
+  JSIS_TIMERS_CHANGED = 8,
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
 } PACKED_FLAGS JsiStatus;
@@ -124,13 +129,14 @@ extern Pin pinBusyIndicator;
 extern Pin pinSleepIndicator;
 extern JsSysTime jsiLastIdleTime; ///< The last time we went around the idle loop - use this for timers
 
-void jsiDumpState();
+void jsiDumpState(vcbprintf_callback user_callback, void *user_data);
 void jsiSetTodo(TODOFlags newTodo);
 #define TIMER_MIN_INTERVAL 0.1 // in milliseconds
 extern JsVarRef timerArray; // Linked List of timers to check and run
 extern JsVarRef watchArray; // Linked List of input watches to check and run
 
 extern JsVarInt jsiTimerAdd(JsVar *timerPtr);
+extern void jsiTimersChanged(); // Flag timers changed so we can skip out of the loop if needed
 // end for jswrap_interactive/io.c ------------------------------------------------
 
 

@@ -24,7 +24,7 @@
   "class" : "process"
 }
 This class contains information about Espruino itself
-*/
+ */
 
 /*JSON{
   "type" : "staticproperty",
@@ -34,24 +34,24 @@ This class contains information about Espruino itself
   "return" : ["JsVar","The version of Espruino"]
 }
 Returns the version of Espruino as a String
-*/
+ */
 
 // TODO: the jspeiFindInScopes export won't be needed soon
 const void *exportPtrs[] = {
-  jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
-  jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
-  jsvGetFloat,jsvGetInteger,jsvGetBool,
-  jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,
-  jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,
-  jsvNewWithFlags,
+    jsvLock,jsvLockAgainSafe,jsvUnLock,jsvSkipName,jsvMathsOp,jsvMathsOpSkipNames,
+    jsvNewFromFloat,jsvNewFromInteger,jsvNewFromString,jsvNewFromBool,
+    jsvGetFloat,jsvGetInteger,jsvGetBool,
+    jspeiFindInScopes,jspReplaceWith,jspeFunctionCall,
+    jspGetNamedVariable,jspGetNamedField,jspGetVarNamedField,
+    jsvNewWithFlags,
 };
 const char *exportNames = 
-"jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
-"jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
-"jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
-"jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
-"jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
-"jsvNewWithFlags\0\0";
+    "jsvLock\0jsvLockAgainSafe\0jsvUnLock\0jsvSkipName\0jsvMathsOp\0jsvMathsOpSkipNames\0"
+    "jsvNewFromFloat\0jsvNewFromInteger\0jsvNewFromString\0jsvNewFromBool\0"
+    "jsvGetFloat\0jsvGetInteger\0jsvGetBool\0"
+    "jspeiFindInScopes\0jspReplaceWith\0jspeFunctionCall\0"
+    "jspGetNamedVariable\0jspGetNamedField\0jspGetVarNamedField\0"
+    "jsvNewWithFlags\0\0";
 
 /*JSON{
   "type" : "staticproperty",
@@ -61,7 +61,7 @@ const char *exportNames =
   "return" : ["JsVar","An object"]
 }
 Returns an Object containing various pre-defined variables. standard ones are BOARD, VERSION
-*/
+ */
 JsVar *jswrap_process_env() {
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   jsvUnLock(jsvObjectSetChild(obj, "VERSION", jsvNewFromString(JS_VERSION)));
@@ -80,9 +80,9 @@ JsVar *jswrap_process_env() {
   JsVar *arr = jsvNewWithFlags(JSV_OBJECT);
   if (arr) {
     const char *s = exportNames;
-    void **p = exportPtrs;
+    void **p = (void**)exportPtrs;
     while (*s) {
-      jsvUnLock(jsvObjectSetChild(arr, s, jsvNewFromInteger((JsVarInt)*p)));
+      jsvUnLock(jsvObjectSetChild(arr, s, jsvNewFromInteger((JsVarInt)(size_t)*p)));
       p++;
       while (*s) s++; // skip until 0
       s++; // skip over 0
@@ -114,7 +114,7 @@ history : Memory used for command history - that is freed if memory is low. Note
 stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
-*/
+ */
 #ifdef ARM
 extern int _end; // end of ram used (variables)
 extern int _etext; // end of flash text (binary) section

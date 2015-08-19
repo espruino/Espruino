@@ -613,14 +613,14 @@ FLASH_Status FLASH_EraseAllBank1Sectors(uint8_t VoltageRange)
     /* if the previous operation is completed, proceed to erase all sectors */
      FLASH->CR &= CR_PSIZE_MASK;
      FLASH->CR |= tmp_psize;
-     FLASH->CR |= FLASH_CR_MER1;
+     FLASH->CR |= FLASH_CR_MER;
      FLASH->CR |= FLASH_CR_STRT;
     
     /* Wait for last operation to be completed */
     status = FLASH_WaitForLastOperation();
 
     /* if the erase operation is completed, disable the MER Bit */
-    FLASH->CR &= (~FLASH_CR_MER1);
+    FLASH->CR &= (~FLASH_CR_MER);
 
   }   
   /* Return the Erase Status */
@@ -650,6 +650,7 @@ FLASH_Status FLASH_EraseAllBank1Sectors(uint8_t VoltageRange)
   * @retval FLASH Status: The returned value can be: FLASH_BUSY, FLASH_ERROR_PROGRAM,
   *                       FLASH_ERROR_WRP, FLASH_ERROR_OPERATION or FLASH_COMPLETE.
   */
+#ifdef FLASH_CR_MER2
 FLASH_Status FLASH_EraseAllBank2Sectors(uint8_t VoltageRange)
 {
   uint32_t tmp_psize = 0x0;
@@ -693,6 +694,7 @@ FLASH_Status FLASH_EraseAllBank2Sectors(uint8_t VoltageRange)
   /* Return the Erase Status */
   return status;
 }
+#endif
 
 /**
   * @brief  Programs a double word (64-bit) at a specified address.
@@ -1239,16 +1241,19 @@ void FLASH_OB_UserConfig(uint8_t OB_IWDG, uint8_t OB_STOP, uint8_t OB_STDBY)
   *            @arg OB_Dual_BootDisabled: Dual Bank Boot Disabled
   * @retval None
   */
+#if FLASH_OPTCR_BFB2
 void FLASH_OB_BootConfig(uint8_t OB_BOOT)
 {
   /* Check the parameters */
   assert_param(IS_OB_BOOT(OB_BOOT));
 
   /* Set Dual Bank Boot */
+
   *(__IO uint8_t *)OPTCR_BYTE0_ADDRESS &= (~FLASH_OPTCR_BFB2);
   *(__IO uint8_t *)OPTCR_BYTE0_ADDRESS |= OB_BOOT;
 
 }
+#endif
 
 /**
   * @brief  Sets the BOR Level. 

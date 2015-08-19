@@ -35,3 +35,8 @@ int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
 int jswrap_espruino_getSizeOf(JsVar *v);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
+JsVar *jswrap_e_dumpStr();
+JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri);
+
+void jswrap_espruino_setUSBHID(JsVar *arr);
+bool jswrap_espruino_sendUSBHID(JsVar *arr);

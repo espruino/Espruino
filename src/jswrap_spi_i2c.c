@@ -24,7 +24,7 @@
   "class" : "SPI"
 }
 This class allows use of the built-in SPI ports. Currently it is SPI master only.
-*/
+ */
 
 /*JSON{
   "type" : "object",
@@ -33,7 +33,7 @@ This class allows use of the built-in SPI ports. Currently it is SPI master only
   "#if" : "SPIS>=1"
 }
 The first SPI port
-*/
+ */
 /*JSON{
   "type" : "object",
   "name" : "SPI2",
@@ -41,7 +41,7 @@ The first SPI port
   "#if" : "SPIS>=2"
 }
 The second SPI port
-*/
+ */
 /*JSON{
   "type" : "object",
   "name" : "SPI3",
@@ -49,7 +49,7 @@ The second SPI port
   "#if" : "SPIS>=3"
 }
 The third SPI port
-*/
+ */
 
 /*JSON{
   "type" : "constructor",
@@ -58,7 +58,9 @@ The third SPI port
   "generate" : "jswrap_spi_constructor"
 }
 Create a software SPI port. This has limited functionality (no baud rate), but it can work on any pins.
-*/
+
+Use `SPI.setup` to configure this port.
+ */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
 }
@@ -73,7 +75,7 @@ JsVar *jswrap_spi_constructor() {
   ]
 }
 Set up this SPI port as an SPI Master.
-*/
+ */
 void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   JshSPIInfo inf;
@@ -109,59 +111,56 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
   "name" : "send",
   "generate" : "jswrap_spi_send",
   "params" : [
-    ["data","JsVar","The data to send - either an integer, array, or string (which is the most efficient)"],
+    ["data","JsVar","The data to send - either an Integer, Array, String, or Object of the form `{data: ..., count:#}`"],
     ["nss_pin","pin","An nSS pin - this will be lowered before SPI output and raised afterwards (optional). There will be a small delay between when this is lowered and when sending starts, and also between sending finishing and it being raised."]
   ],
   "return" : ["JsVar","The data that was returned"]
 }
-Send data down SPI, and return the result
+Send data down SPI, and return the result. Sending an integer will return an integer, a String will return a String, and anything else will return a Uint8Array.
 
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
 
-For maximum speeds, please pass either Strings or Typed Arrays as arguments.
-*/
-JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
-  NOT_USED(parent);
+For maximum speeds, please pass either Strings or Typed Arrays as arguments. Note that you can even pass arrays of arrays, like `[1,[2,3,4],5]`
+
+ */
+typedef struct {
   spi_sender spiSend;
   spi_sender_data spiSendData;
-  if (!jsspiGetSendFunction(parent, &spiSend, &spiSendData))
+  int rxAmt, txAmt;
+  JsvArrayBufferIterator it;
+} jswrap_spi_send_data;
+
+void jswrap_spi_send_cb(int c, jswrap_spi_send_data *data) {
+  int result = data->spiSend(c, &data->spiSendData);
+  if (c>=0) data->txAmt++;
+  if (result>=0) {
+    jsvArrayBufferIteratorSetByteValue(&data->it, (char)result);
+    jsvArrayBufferIteratorNext(&data->it);
+    data->rxAmt++;
+  }
+}
+
+JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
+  NOT_USED(parent);
+  IOEventFlags device = jsiGetDeviceFromClass(parent);
+
+  jswrap_spi_send_data data;
+  if (!jsspiGetSendFunction(parent, &data.spiSend, &data.spiSendData))
     return 0;
 
   JsVar *dst = 0;
+
+  // we're sending and receiving
+  if (DEVICE_IS_SPI(device)) jshSPISetReceive(device, true);
 
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
   // send data
   if (jsvIsNumeric(srcdata)) {
-    int r = spiSend((unsigned char)jsvGetInteger(srcdata), &spiSendData);
-    if (r<0) r = spiSend(-1, &spiSendData);
+    int r = data.spiSend((unsigned char)jsvGetInteger(srcdata), &data.spiSendData);
+    if (r<0) r = data.spiSend(-1, &data.spiSendData);
     dst = jsvNewFromInteger(r); // retrieve the byte (no send!)
-  } else if (jsvIsArray(srcdata)) {
-    dst = jsvNewWithFlags(JSV_ARRAY);
-    if (!dst) return 0;
-    JsvObjectIterator it;
-    jsvObjectIteratorNew(&it, srcdata);
-    int incount = 0, outcount = 0;
-    while (jsvObjectIteratorHasValue(&it) && !jspIsInterrupted()) {
-      unsigned char in = (unsigned char)jsvGetIntegerAndUnLock(jsvObjectIteratorGetValue(&it));
-      incount++;
-      int out = spiSend(in, &spiSendData); // this returns -1 only if no data (so if -1 gets in an array it is an error!)
-      if (out>=0) {
-        outcount++;
-        JsVar *outVar = jsvNewFromInteger(out);
-        jsvArrayPushAndUnLock(dst, outVar);
-      }
-      jsvObjectIteratorNext(&it);
-    }
-    jsvObjectIteratorFree(&it);
-    // finally add the remaining bytes  (no send!)
-    while (outcount < incount && !jspIsInterrupted()) {
-      outcount++;
-      int out = spiSend(-1, &spiSendData);
-      JsVar *outVar = jsvNewFromInteger(out);
-      jsvArrayPushAndUnLock(dst, outVar);
-    }
   } else if (jsvIsString(srcdata)) {
     dst = jsvNewFromEmptyString();
     JsvStringIterator it;
@@ -170,7 +169,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     while (jsvStringIteratorHasChar(&it) && !jspIsInterrupted()) {
       unsigned char in = (unsigned char)jsvStringIteratorGetChar(&it);
       incount++;
-      int out = spiSend(in, &spiSendData);
+      int out = data.spiSend(in, &data.spiSendData);
       if (out>=0) {
         outcount++;
         char outc = (char)out;
@@ -182,40 +181,22 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
     // finally add the remaining bytes  (no send!)
     while (outcount < incount && !jspIsInterrupted()) {
       outcount++;
-      unsigned char out = (unsigned char)spiSend(-1, &spiSendData);
+      unsigned char out = (unsigned char)data.spiSend(-1, &data.spiSendData);
       jsvAppendStringBuf(dst, (char*)&out, 1);
     }
-  } else if (jsvIsIterable(srcdata)) {
-    dst = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, jsvGetLength(srcdata));
-    if (!dst) return 0;
-    JsvIterator it;
-    JsvArrayBufferIterator dstit;
-    jsvIteratorNew(&it, srcdata);
-    jsvArrayBufferIteratorNew(&dstit, dst, 0);
-    int incount = 0, outcount = 0;
-    while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
-      unsigned char in = (unsigned char)jsvIteratorGetIntegerValue(&it);
-      incount++;
-      int out = spiSend(in, &spiSendData);
-      if (out>=0) {
-        outcount++;
-        jsvArrayBufferIteratorSetIntegerValue(&dstit, (char)out);
-        jsvArrayBufferIteratorNext(&dstit);
-      }
-      jsvIteratorNext(&it);
-
-    }
-    jsvIteratorFree(&it);
-    // finally add the remaining bytes  (no send!)
-    while (outcount < incount && !jspIsInterrupted()) {
-      outcount++;
-      jsvArrayBufferIteratorSetIntegerValue(&dstit, (unsigned char)spiSend(-1, &spiSendData));
-      jsvArrayBufferIteratorNext(&dstit);
-    }
-    jsvArrayBufferIteratorFree(&dstit);
   } else {
-    jsExceptionHere(JSET_ERROR, "Variable type %t not suited to transmit operation", srcdata);
-    dst = 0;
+    int nBytes = jsvIterateCallbackCount(srcdata);
+    dst = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, nBytes);
+    if (dst) {
+      data.rxAmt = data.txAmt = 0;
+      jsvArrayBufferIteratorNew(&data.it, dst, 0);
+      // Write data
+      jsvIterateCallback(srcdata, (void (*)(int,  void *))jswrap_spi_send_cb, &data);
+      // Wait until SPI send is finished, and flush data
+      while (data.rxAmt < data.txAmt && !jspIsInterrupted())
+        jswrap_spi_send_cb(-1, &data);
+      jsvArrayBufferIteratorFree(&data.it);
+    }
   }
 
   // de-assert NSS
@@ -235,7 +216,7 @@ JsVar *jswrap_spi_send(JsVar *parent, JsVar *srcdata, Pin nss_pin) {
 Write a character or array of characters to SPI - without reading the result back.
 
 For maximum speeds, please pass either Strings or Typed Arrays as arguments.
-*/
+ */
 void jswrap_spi_write(JsVar *parent, JsVar *args) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -257,6 +238,9 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
     }
     jsvUnLock(last);
   }
+
+  // we're only sending (no receive)
+  if (DEVICE_IS_SPI(device)) jshSPISetReceive(device, false);
 
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
@@ -284,7 +268,7 @@ void jswrap_spi_write(JsVar *parent, JsVar *args) {
 Send data down SPI, using 4 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols
 
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
-*/
+ */
 void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -308,6 +292,8 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jshSPISetup(device, &inf);
   }
 
+  // we're just sending (no receive)
+  jshSPISetReceive(device, false);
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
@@ -352,7 +338,7 @@ void jswrap_spi_send4bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 Send data down SPI, using 8 bits for each 'real' bit (MSB first). This can be useful for faking one-wire style protocols
 
 Sending multiple bytes in one call to send is preferable as they can then be transmitted end to end. Using multiple calls to send() will result in significantly slower transmission speeds.
-*/
+ */
 void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin nss_pin) {
   NOT_USED(parent);
   IOEventFlags device = jsiGetDeviceFromClass(parent);
@@ -375,6 +361,8 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
     jshSPISetup(device, &inf);
   }
 
+  // we're just sending (no receive)
+  jshSPISetReceive(device, false);
   // assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, false);
 
@@ -410,7 +398,7 @@ void jswrap_spi_send8bit(JsVar *parent, JsVar *srcdata, int bit0, int bit1, Pin 
 This class allows use of the built-in I2C ports. Currently it allows I2C Master mode only.
 
 All addresses are in 7 bit format. If you have an 8 bit address then you need to shift it one bit to the right.
-*/
+ */
 
 /*JSON{
   "type" : "object",
@@ -419,7 +407,7 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
   "#if" : "I2CS>=1"
 }
 The first I2C port
-*/
+ */
 /*JSON{
   "type" : "object",
   "name" : "I2C2",
@@ -427,7 +415,7 @@ The first I2C port
   "#if" : "I2CS>=2"
 }
 The second I2C port
-*/
+ */
 /*JSON{
   "type" : "object",
   "name" : "I2C3",
@@ -435,7 +423,7 @@ The second I2C port
   "#if" : "I2CS>=3"
 }
 The third I2C port
-*/
+ */
 
 
 
@@ -451,7 +439,7 @@ The third I2C port
 Set up this I2C port
 
 If not specified in options, the default pins are used (usually the lowest numbered pins on the lowest port that supports this peripheral)
-*/
+ */
 void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return;
@@ -495,12 +483,8 @@ static NO_INLINE int i2c_get_address(JsVar *address, bool *sendStop) {
   ]
 }
 Transmit to the slave device with the given address. This is like Arduino's beginTransmission, write, and endTransmission rolled up into one.
-*/
-typedef struct { unsigned char *buf; int idx; } JsI2CWriteCbData;
-static void jswrap_i2c_writeToCb(int data, void *userData) {
-  JsI2CWriteCbData *cbData = (JsI2CWriteCbData*)userData;
-  cbData->buf[cbData->idx++] = (unsigned char)data;
-}
+ */
+
 void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return;
@@ -514,12 +498,10 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
     return;
   }
 
-  JsI2CWriteCbData cbData;
-  cbData.buf = (unsigned char *)alloca(l);
-  cbData.idx = 0;
-  jsvIterateCallback(args, jswrap_i2c_writeToCb, (void*)&cbData);
+  unsigned char *data = (unsigned char *)alloca(l);
+  jsvIterateCallbackToBytes(args, data, l);
 
-  jshI2CWrite(device, (unsigned char)address, cbData.idx, cbData.buf, sendStop);
+  jshI2CWrite(device, (unsigned char)address, l, data, sendStop);
 }
 
 /*JSON{
@@ -535,7 +517,7 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   "return_object" : "Uint8Array"
 }
 Request bytes from the given slave device, and return them as a Uint8Array (packed array of bytes). This is like using Arduino Wire's requestFrom, available and read functions.  Sends a STOP
-*/
+ */
 JsVar *jswrap_i2c_readFrom(JsVar *parent, JsVar *addressVar, int nBytes) {
   IOEventFlags device = jsiGetDeviceFromClass(parent);
   if (!DEVICE_IS_I2C(device)) return 0;

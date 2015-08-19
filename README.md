@@ -70,7 +70,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * [Espruino Board](http://www.espruino.com/EspruinoBoard) - great support.
 * Linux - WORKING
 * STM32VLDISCOVERY - WORKING - limited memory so some features removed
-* STM32F3DISCOVERY - setWatch is broken (issue #183)
+* STM32F3DISCOVERY - USB BROKEN
 * STM32F4DISCOVERY - WORKING
 * STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
@@ -112,7 +112,7 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 * Knock out some functionality (like `USE_GRAPHICS=1`) that you don't need in the `Makefile`
 * Try different compilers. `codesourcery-2013.05-23-arm-none-eabi` provides low binary size for `-O3`
 
-**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
+**Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
 ### Building for Linux
 
@@ -163,7 +163,7 @@ This will create a file called ```functions.html```
 * In your terminal application, navigate to your cloned working copy.
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
 * When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
-* Execute `cd /vagrant && ESPRUINO_1V3=1 make` and wait.
+* Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.
 * Espruino is now built. See the documentation under **Building under Linux** for more examples.
 * To terminate the ssh session, simply execute `exit`.
 * `vagrant suspend` will pause the VM, `vagrant halt` will stop it, and `vagrant up` will bring it back up again.  See Vagrant's ["Getting Started"](http://docs.vagrantup.com/v2/getting-started/index.html) page for further information.
@@ -185,7 +185,7 @@ Building under Windows/MacOS with a VM
 * Type `sudo apt-get install gcc-arm-none-eabi git` and press 'Y' if prompted
 * Type `git clone https://github.com/espruino/Espruino.git`
 * Type `cd Espruino`
-* Type `ESPRUINO_1V3=1 make` and wait
+* Type `ESPRUINO_1V3=1 RELEASE=1 make` and wait
 * Espruino is now built. See the documentation under **Building under Linux** for more examples.
 * When you exit the VM, make sure you choose `Save State`. If you `Power Off` you will lose everything you've done so far.
 
@@ -199,7 +199,7 @@ There's some more information on how to do this on the forum at http://forum.esp
 * Click on `USB`, then click on the icon with the `+` sign (With the tooltip 'Adds a new USB filter ... selected USB device')
 * Click on the device labelled `STMicroelectronics STM32 ...`
 * Now unplug the Espruino board, wait a few seconds, and plug it back in (holding BTN1 again)
-* Go back into the VM, and type `sudo ESPRUINO_1V3=1 make serialflash` 
+* Go back into the VM, and type `sudo ESPRUINO_1V3=1 RELEASE=1 make serialflash` 
 * Your board will now be flashed
 
 **Note:** if you want to you can change permissions so you don't need `sudo` by typing `sudo cp misc/45-espruino.rules /etc/udev/rules.d;sudo udevadm control --reload-rules` and then re-inserting the board.

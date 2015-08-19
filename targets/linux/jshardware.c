@@ -235,7 +235,6 @@ bool isInitialised;
 
 void jshInputThread() {
   while (isInitialised) {
-
     bool shortSleep = false;
     /* Handle the delayed Ctrl-C -> interrupt behaviour (see description by EXEC_CTRL_C's definition)  */
     if (execInfo.execute & EXEC_CTRL_C_WAIT)
@@ -545,7 +544,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
   jshPinSetState(pin, JSHPINSTATE_AF_OUT);
   pwmWrite(pin, (int)(value*1024));
 #endif
-  return 0;
+  return JSH_NOTHING;
 }
 
 void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
@@ -737,6 +736,10 @@ void jshSPISend16(IOEventFlags device, int data) {
 void jshSPISet16(IOEventFlags device, bool is16) {
 }
 
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+}
+
 /** Wait until SPI send is finished, */
 void jshSPIWait(IOEventFlags device) {
 }
@@ -748,51 +751,6 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-}
-
-
-void jshSaveToFlash() {
-  FILE *f = fopen("espruino.state","wb");
-  if (f) {
-    unsigned int jsVarCount = jsvGetMemoryTotal();
-    jsiConsolePrintf("\nSaving %d bytes...", jsVarCount*sizeof(JsVar));
-    JsVarRef i;
-
-    for (i=1;i<=jsVarCount;i++) {
-      fwrite(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
-    }
-    fclose(f);
-    jsiConsolePrint("\nDone!\n>");
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-}
-
-void jshLoadFromFlash() {
-  FILE *f = fopen("espruino.state","rb");
-  if (f) {
-    fseek(f, 0L, SEEK_END);
-    unsigned int fileSize = ftell(f);
-    fseek(f, 0L, SEEK_SET);
-
-    jsiConsolePrintf("\nLoading %d bytes...\n>", fileSize);
-
-    unsigned int jsVarCount = fileSize / sizeof(JsVar);
-    jsvSetMemoryTotal(jsVarCount);
-    JsVarRef i;
-    for (i=1;i<=jsVarCount;i++) {
-      fread(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
-    }
-    fclose(f);
-  } else {
-    jsiConsolePrint("\nFile Open Failed... \n>");
-  }
-}
-
-bool jshFlashContainsCode() {
-  FILE *f = fopen("espruino.state","rb");
-  if (f) fclose(f);
-  return f!=0;
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -836,3 +794,9 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 JsVarFloat jshReadTemperature() { return NAN; };
 JsVarFloat jshReadVRef()  { return NAN; };
+unsigned int jshGetRandomNumber() { return rand(); }
+
+bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) { return false; }
+void jshFlashErasePage(uint32_t addr) { }
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len) { memset(buf, 0, len); }
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) { }
