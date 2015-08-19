@@ -25,6 +25,8 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
 
+static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
+
 #ifdef BLE_INTERFACE
 
   #include "nordic_common.h"
@@ -61,8 +63,6 @@
   #define FIRST_CONN_PARAMS_UPDATE_DELAY  APP_TIMER_TICKS(5000, APP_TIMER_PRESCALER)  /**< Time from initiating event (connect or start of notification) to first time sd_ble_gap_conn_param_update is called (5 seconds). */
   #define NEXT_CONN_PARAMS_UPDATE_DELAY   APP_TIMER_TICKS(30000, APP_TIMER_PRESCALER) /**< Time between each call to sd_ble_gap_conn_param_update after the first call (30 seconds). */
   #define MAX_CONN_PARAMS_UPDATE_COUNT    3                                           /**< Number of attempts before giving up the connection parameter negotiation. */
-
-  #define START_STRING                    "Start...\n"                                /**< The string that will be sent over the UART when the application starts. */
 
   #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
@@ -537,8 +537,6 @@
   #define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */
   #define UART_RX_BUF_SIZE 32                         /**< UART RX buffer size. */
 
-  static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
-
   // UART callback function. Registered in uart_init(). Allows to asychronously read characters from UART.
   void uart_event_handle(app_uart_evt_t * p_event)
   {
@@ -595,9 +593,33 @@
 // Now implement the Espruino HAL API...
 void jshInit() {
   jshInitDevices();
-  JshUSARTInfo inf;
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
-  init = 1;
+
+  #ifdef BLE_INTERFACE
+    uint32_t err_code;
+    bool erase_bonds;
+    
+    // Initialize.
+    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
+    //uart_init();
+    buttons_leds_init(&erase_bonds);
+    ble_stack_init();
+    gap_params_init();
+    services_init();
+    advertising_init();
+    conn_params_init();
+
+    // I replaced uart_init() with this...
+    JshUSARTInfo inf;
+    jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+
+    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
+    init = 1;
+  #else
+    JshUSARTInfo inf;
+    jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+    init = 1;
+  #endif // BLE_INTERFACE
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -664,7 +686,7 @@ void jshDelayMicroseconds(int microsec) {
   {
     return;
   }
-  nrf_delay_us((uint32_t)microsec);
+  //nrf_delay_us((uint32_t)microsec);
 }
 void jshPinSetValue(Pin pin, bool value) {
   if (value == 1)
