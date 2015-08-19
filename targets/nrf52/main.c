@@ -45,7 +45,7 @@ int main() {
   jshInit();
   jsvInit();
   jsiInit(false);
-  debug_all_leds_on();
+  //debug_all_leds_on();
 
   while (1) 
   {

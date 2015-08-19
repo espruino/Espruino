@@ -46,7 +46,7 @@ static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
   #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
-  #define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+  #define DEVICE_NAME                     "Nordic_Espruino"                               /**< Name of device. Will be included in the advertising data. */
   #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
   #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
@@ -138,9 +138,8 @@ static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
       for (i = 0; i < length; i++)
       {
-          while(app_uart_put(p_data[i]) != NRF_SUCCESS);
+        jshPushIOCharEvent(EV_SERIAL1, (char) p_data[i]);
       }
-      while(app_uart_put('\n') != NRF_SUCCESS);
   }
   /**@snippet [Handling the data received over BLE] */
 
@@ -774,7 +773,15 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
+
+#ifdef BLE_INTERFACE
+  static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
+  static uint8_t ble_send_index = 0;
+
+#endif // BLE_INTERFACE
+
 void jshUSARTKick(IOEventFlags device) {
+  
   if (device != EV_SERIAL1)
   {
 	  return;
@@ -784,7 +791,21 @@ void jshUSARTKick(IOEventFlags device) {
   if (check_valid_char >= 0)
   {
     uint8_t character = (uint8_t) check_valid_char;
-    while(app_uart_put(character) != NRF_SUCCESS);
+    #ifdef BLE_INTERFACE
+
+      data_array[ble_send_index] = character;
+      ble_send_index++;
+      if(data_array[ble_send_index - 1] == '\n' || ble_send_index >= BLE_NUS_MAX_DATA_LEN)
+      {
+        ble_nus_string_send(&m_nus, data_array, ble_send_index); // No error code here right now...
+        ble_send_index = 0;
+      }
+
+    #else
+
+      while(app_uart_put(character) != NRF_SUCCESS);
+
+    #endif // BLE_INTERFACE
   }
 }
 
