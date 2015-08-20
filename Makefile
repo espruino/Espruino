@@ -68,7 +68,7 @@ endif
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
-CFLAGS=#-Wall -Wextra -Wconversion -Werror=implicit-function-declaration
+CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration
 LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
