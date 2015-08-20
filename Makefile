@@ -1222,10 +1222,20 @@ endif
 endif
 
 ifdef NRF52
-INCLUDE += -I$(ROOT)/targets/nrf52
-SOURCES +=                              \
-targets/nrf52/main.c                    \
-targets/nrf52/jshardware.c              
+
+	INCLUDE += -I$(ROOT)/targets/nrf52
+	SOURCES +=                              \
+	targets/nrf52/main.c                    \
+	targets/nrf52/jshardware.c    
+
+	ifdef BLE_INTERFACE
+		SOURCES +=							\
+		targets/nrf52/ble_interface.c
+	else
+		SOURCES +=							\
+		targets/nrf52/uart_interface.c
+	endif # BLE_INTERFACE
+
 endif # NRF52
 
 ifdef LINUX
