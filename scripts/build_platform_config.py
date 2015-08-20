@@ -310,6 +310,7 @@ for device in simpleDevices:
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+  if "pin_vsense" in board.devices["USB"]: codeOutDevicePin("USB", "pin_vsense", "USB_VSENSE_PIN")
 
 if "LCD" in board.devices:
   for i in range(0,16):
