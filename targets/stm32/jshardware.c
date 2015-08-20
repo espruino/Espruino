@@ -2445,9 +2445,11 @@ void jshSetUSBPower(bool isOn) {
   }
 #else
   if (isOn) {
+    USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
     USBD_Start(&hUsbDeviceFS);
   } else {    
     USBD_Stop(&hUsbDeviceFS);
+    USB_OTG_FS->GCCFG &= ~(USB_OTG_GCCFG_VBUSBSEN);
   }
 #endif
 }
@@ -2505,6 +2507,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
 #endif
+#ifdef USB_VSENSE_PIN
+    // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
+    // ... so wake up if it goes high
+    Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
+    jshPinWatch(USB_VSENSE_PIN, true);
+#endif
 #endif // USB
 
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
@@ -2556,12 +2564,21 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     }
 #ifdef USB
+    bool wokenByUSB = false;
 #ifdef STM32F1
-    bool wokenByUSB = jshPinGetValue(usbPin)==0;
+    wokenByUSB = jshPinGetValue(usbPin)==0;
     // remove watches on pins
     jshPinWatch(usbPin, false);
     if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
+#endif
+#ifdef USB_VSENSE_PIN
+    // remove watch and restore old watch if there was one
+    // setting that we've woken lets the board stay awake
+    // until a USB connection can be established
+    if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
+    jshPinWatch(USB_VSENSE_PIN, false);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
 #endif
 #endif
     // recover oscillator
@@ -2575,10 +2592,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
     jshSetUSBPower(true);
-#ifdef STM32F1
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
-#endif
 #endif
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else

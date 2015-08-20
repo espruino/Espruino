@@ -12,6 +12,8 @@
             Make sure we ReferenceError on '+='/etc
             Allow reserved words in record access and structure definitions
             Add Object.defineProperty/defineProperties (even if they ignore most args)
+            Fix value returned when redefining an existing function
+            Ensure Pico powers down USB in deep sleep - now down to 20uA!
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

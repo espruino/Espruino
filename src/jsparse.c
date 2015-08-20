@@ -356,7 +356,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     // you can do `var a = function foo() { foo(); };` - so cope with this
     if (funcVar) functionInternalName = jslGetTokenValueAsVar(execInfo.lex);
     // note that we don't add it to the beginning, because it would mess up our function call code
-    JSP_MATCH(LEX_ID);
+    JSP_ASSERT_MATCH(LEX_ID);
   }
 
 
@@ -2139,13 +2139,11 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
       // 'proper' replace, that keeps the original function var and swaps the children
       funcVar = jsvSkipNameAndUnLock(funcVar);
       jswrap_function_replaceWith(existingFunc, funcVar);
-      jsvUnLock(funcVar);
-      funcVar = existingName;
     } else {
       jspReplaceWith(existingName, funcVar);
-      jsvUnLock(funcName);
-      funcName = existingName;
     }
+    jsvUnLock(funcName);
+    funcName = existingName;
     jsvUnLock(existingFunc);
     // existingName is used - don't UnLock
   }

@@ -197,8 +197,8 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef MAPLERET6_STM32
 EMBEDDED=1
-#USE_FILESYSTEM=0
-SAVE_ON_FLASH=0
+USE_NET=1
+USE_GRAPHICS=1
 BOARD=MAPLERET6_STM32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
