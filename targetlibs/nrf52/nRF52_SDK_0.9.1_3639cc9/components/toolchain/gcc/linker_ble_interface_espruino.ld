@@ -5,8 +5,8 @@ GROUP(-lgcc -lc -lnosys)
 
 MEMORY
 {
-FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 0x80000
-RAM (rwx) :  ORIGIN = 0x20000000, LENGTH = 0x08000
+  FLASH (rx) : ORIGIN = 0x1f000, LENGTH = 0x61000
+  RAM (rwx) :  ORIGIN = 0x20002800, LENGTH = 0x5800
 }
 
 /* Linker script for Nordic Semiconductor nRF5 devices
