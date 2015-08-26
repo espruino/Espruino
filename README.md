@@ -74,6 +74,7 @@ If you are a board manufacturer interested in getting your board officially supp
 * STM32F4DISCOVERY - WORKING
 * STM32F401CDISCOVERY - appears WORKING, but very little testing done
 * STM32F429IDISCOVERY - WORKING over serial (A9/A10). No USB and no LCD support
+* NRF52832 Preview Development Kit - WORKING with limited functionality. Able to interface with Espruino over BLE (send commands from smartphone or computer) or serial as normal (send commands from chrome IDE or terminal).
 * HY STM32 2.4" - WORKING
 * HY STM32 2.8" - WORKING - limited memory so some features removed
 * HY STM32 3.2" - WORKING
@@ -113,6 +114,18 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 * Try different compilers. `codesourcery-2013.05-23-arm-none-eabi` provides low binary size for `-O3`
 
 **Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
+
+### Building for Nordic Semiconductor's NRF52832 Preview Development Kit.
+
+The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
+
+Download the compiler, set up your path so you have access to it, and run:
+
+```NRF52832DK=1 BLE_INTERFACE=1 RELEASE=1 make```
+
+Note: If you want to communicate with espruino through wired USB connection remove 'BLE_INTERFACE=1'. This will run Espruino so that you can program it from the chrome IDE as you normally would instead of over BLE.
+
+Also note that you must program the soft device provided by Nordic before programming Espruino. I am working on getting rid of this step. Get the soft device 132 from Nordic's newest SDK for the NRF52 platform. Program both the softdevice and Espruino with nRFGo studio which can be found on nordicsemi.com.
 
 ### Building for Linux
 

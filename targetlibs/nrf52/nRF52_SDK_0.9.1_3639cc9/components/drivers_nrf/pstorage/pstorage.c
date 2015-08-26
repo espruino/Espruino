@@ -609,7 +609,9 @@ static void cmd_queue_init(void)
     m_cmd_queue.rp    = 0;
     m_cmd_queue.count = 0;
 
-    for (uint32_t cmd_index = 0; cmd_index < PSTORAGE_CMD_QUEUE_SIZE; ++cmd_index)
+    uint32_t cmd_index;
+
+    for (cmd_index = 0; cmd_index < PSTORAGE_CMD_QUEUE_SIZE; ++cmd_index)
     {
         cmd_queue_element_init(cmd_index);
     }
@@ -1289,8 +1291,10 @@ uint32_t pstorage_init(void)
     m_next_app_instance = 0;
     m_next_page_addr    = PSTORAGE_DATA_START_ADDR;
     m_current_page_id   = 0;
+
+    uint32_t index;
     
-    for (uint32_t index = 0; index < PSTORAGE_NUM_OF_PAGES; index++)
+    for (index = 0; index < PSTORAGE_NUM_OF_PAGES; index++)
     {
         m_app_table[index].cb           = NULL;
         m_app_table[index].block_size   = 0;

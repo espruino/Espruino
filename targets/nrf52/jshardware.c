@@ -25,86 +25,50 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
 
-// These files are needed for non blocking UART to occur.
-#include "app_uart.h"
-#include "app_error.h"
-#include "nrf_delay.h"
-#include "nrf.h"
-#include "bsp.h"
-
-// These files are needed for the timer.
-#include "nrf_drv_timer.h"
-
-// For debugging with LEDS.
-#include "nrf_gpio.h"
-#define LED_1 17
-#define LED_2 18
-#define LED_3 19
-#define LED_4 20
-
-#define MAX_TEST_DATA_BYTES (15U)
-#define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 32                         /**< UART RX buffer size. */
+#ifdef BLE_INTERFACE
+  #include "ble_interface.h"
+#else
+  #include "uart_interface.h"
+#endif // BLE_INTERFACE
 
 static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
-// UART callback function. Registered in uart_init(). Allows to asychronously read characters from UART.
-void uart_event_handle(app_uart_evt_t * p_event)
-{
-  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR)
-  {
-    APP_ERROR_HANDLER(p_event->data.error_communication);
-  }
-  else if (p_event->evt_type == APP_UART_FIFO_ERROR)
-  {
-    APP_ERROR_HANDLER(p_event->data.error_code);
-  }
-  else if (p_event->evt_type == APP_UART_DATA_READY) // There is one byte in the RX FIFO.
-  {
-    uint8_t character;
-    while(app_uart_get(&character) != NRF_SUCCESS); // Non blocking.
-    jshPushIOCharEvent(EV_SERIAL1, (char) character);
-  }
-}
-
-// Initialzes non blocking serial communication with terminal via uart. Returns 0 on success, -1 on an error.
-int uart_init()
-{
-  uint32_t err_code;
-
-  const app_uart_comm_params_t comm_params =
-  {
-      RX_PIN_NUMBER,
-      TX_PIN_NUMBER,
-      UART_PIN_DISCONNECTED,
-      UART_PIN_DISCONNECTED,
-      APP_UART_FLOW_CONTROL_DISABLED,
-      false,
-      UART_BAUDRATE_BAUDRATE_Baud38400
-  };
-
-  APP_UART_FIFO_INIT(&comm_params,
-                     UART_RX_BUF_SIZE,
-                     UART_TX_BUF_SIZE,
-                     uart_event_handle,
-                     APP_IRQ_PRIORITY_LOW,
-                     err_code);
-
-  APP_ERROR_CHECK(err_code);
-
-  if (err_code != NRF_SUCCESS)
-  {
-    return -1;
-  }
-  return 0;
-}
+#ifdef BLE_INTERFACE
+  uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
+  uint8_t ble_send_index = 0;
+#endif
 
 // Now implement the Espruino HAL API...
-void jshInit() {
+void jshInit() 
+{
+
   jshInitDevices();
-  JshUSARTInfo inf;
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
-  init = 1;
+
+  #ifdef BLE_INTERFACE
+    uint32_t err_code;
+    bool erase_bonds;
+    
+    // Initialize.
+    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
+    //uart_init();
+    //JshUSARTInfo inf;
+    //jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+    buttons_leds_init(&erase_bonds);
+    ble_stack_init();
+    gap_params_init();
+    services_init();
+    advertising_init();
+    conn_params_init();
+
+    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
+    init = 1;
+  #else
+    JshUSARTInfo inf;
+    jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+    init = 1;
+  #endif // BLE_INTERFACE
+
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -171,7 +135,7 @@ void jshDelayMicroseconds(int microsec) {
   {
     return;
   }
-  nrf_delay_us((uint32_t)microsec);
+  //nrf_delay_us((uint32_t)microsec);
 }
 void jshPinSetValue(Pin pin, bool value) {
   if (value == 1)
@@ -259,7 +223,9 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
+
 void jshUSARTKick(IOEventFlags device) {
+  
   if (device != EV_SERIAL1)
   {
 	  return;
@@ -269,8 +235,25 @@ void jshUSARTKick(IOEventFlags device) {
   if (check_valid_char >= 0)
   {
     uint8_t character = (uint8_t) check_valid_char;
-    while(app_uart_put(character) != NRF_SUCCESS);
+    #ifdef BLE_INTERFACE
+
+      //while(app_uart_put(character) != NRF_SUCCESS); // For debugging purposes.
+      data_array[ble_send_index] = character;
+      ble_send_index++;
+      if(data_array[ble_send_index - 1] == '\n' || ble_send_index >= BLE_NUS_MAX_DATA_LEN)
+      {
+        //ble_nus_string_send(&m_nus, data_array, ble_send_index); // No error code here right now...
+        ble_nus_string_send_wrapper(data_array, ble_send_index); // No error code here right now...
+        ble_send_index = 0;
+      }
+
+    #else
+
+      while(app_uart_put(character) != NRF_SUCCESS);
+
+    #endif // BLE_INTERFACE
   }
+
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */
