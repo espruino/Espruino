@@ -16,6 +16,7 @@
             Ensure Pico powers down USB in deep sleep - now down to 20uA!
             Fix Exception throw within catch block (fix #566)
             Fix issue where new Array(3.0) wouldn't produce a 3 element array
+            Keep track of modified area in Graphics (so modules with `.flip()` can be speeded up)
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

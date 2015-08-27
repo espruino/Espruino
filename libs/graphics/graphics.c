@@ -121,6 +121,10 @@ void graphicsToDeviceCoordinates(const JsGraphics *gfx, short *x, short *y) {
 
 static void graphicsSetPixelDevice(JsGraphics *gfx, short x, short y, unsigned int col) {
   if (x<0 || y<0 || x>=gfx->data.width || y>=gfx->data.height) return;
+  if (x < gfx->data.modMinX) gfx->data.modMinX=x;
+  if (x > gfx->data.modMaxX) gfx->data.modMaxX=x;
+  if (y < gfx->data.modMinY) gfx->data.modMinY=y;
+  if (y > gfx->data.modMaxY) gfx->data.modMaxY=y;
   gfx->setPixel(gfx,x,y,col & (unsigned int)((1L<<gfx->data.bpp)-1));
 }
 
@@ -145,6 +149,11 @@ static void graphicsFillRectDevice(JsGraphics *gfx, short x1, short y1, short x2
   if (x2>=gfx->data.width) x2 = (short)(gfx->data.width - 1);
   if (y2>=gfx->data.height) y2 = (short)(gfx->data.height - 1);
   if (x2<x1 || y2<y1) return; // nope
+
+  if (x1 < gfx->data.modMinX) gfx->data.modMinX=x1;
+  if (x2 > gfx->data.modMaxX) gfx->data.modMaxX=x2;
+  if (y1 < gfx->data.modMinY) gfx->data.modMinY=y1;
+  if (y2 > gfx->data.modMaxY) gfx->data.modMaxY=y2;
 
   if (x1==x2 && y1==y2) {
     graphicsSetPixelDevice(gfx,x1,y1,gfx->data.fgColor);
