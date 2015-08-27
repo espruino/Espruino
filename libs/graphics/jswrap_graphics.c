@@ -927,7 +927,7 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
 Return the area of the Graphics canvas that has been modified, and optionally clear
 the modified area to 0.
 
-For instance if `g.setPixel(10,20)` was called, this would return `{x1:10,y1:20,x2:10,y2:20}`
+For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
 */
 JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
