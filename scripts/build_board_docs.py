@@ -29,7 +29,7 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 embeddable = False
 boardname = ""
 if len(sys.argv)==3 and sys.argv[2]=="pinout":
@@ -38,16 +38,16 @@ if len(sys.argv)==3 and sys.argv[2]=="pinout":
 if len(sys.argv)==2:
   boardname = sys.argv[1]
 if boardname=="":
-  print "ERROR..."
-  print "USAGE: build_board_docs.py BOARD_NAME [pinout]"
-  print "          'pinout' will output embeddable HTML of just the pinout"
+  print("ERROR...")
+  print("USAGE: build_board_docs.py BOARD_NAME [pinout]")
+  print("          'pinout' will output embeddable HTML of just the pinout")
   exit(1)
 
-print "BOARD "+boardname
+print("BOARD "+boardname)
 
 #htmlFilename = sys.argv[2]
 htmlFilename = "boards/"+boardname+".html"
-print "HTML_FILENAME "+htmlFilename
+print("HTML_FILENAME "+htmlFilename)
 htmlFile = open(htmlFilename, 'w')
 def writeHTML(s): htmlFile.write(s+"\n");
 

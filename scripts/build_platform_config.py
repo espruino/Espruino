@@ -33,15 +33,15 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 
 if len(sys.argv)!=2:
-  print "ERROR, USAGE: build_platform_config.py BOARD_NAME"
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME")
   exit(1)
 boardname = sys.argv[1]
 headerFilename = "gen/platform_config.h"
-print "HEADER_FILENAME "+headerFilename
-print "BOARD "+boardname
+print("HEADER_FILENAME "+headerFilename)
+print("BOARD "+boardname)
 # import the board def
 board = importlib.import_module(boardname)
 pins = board.get_pins()
@@ -103,13 +103,13 @@ if not LINUX:
     flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
     if has_bootloader: flash_available_for_code -= common.get_bootloader_size(board)
 
-  print "Variables = "+str(variables)
-  print "JsVar size = "+str(var_size)
-  print "VarCache size = "+str(var_cache_size)
-  print "Flash page size = "+str(flash_page_size)
-  print "Flash pages = "+str(flash_saved_code_pages)
-  print "Total flash = "+str(total_flash)
-  print "Flash available for code = "+str(flash_available_for_code)
+  print("Variables = "+str(variables))
+  print("JsVar size = "+str(var_size))
+  print("VarCache size = "+str(var_cache_size))
+  print("Flash page size = "+str(flash_page_size))
+  print("Flash pages = "+str(flash_saved_code_pages))
+  print("Total flash = "+str(total_flash))
+  print("Flash available for code = "+str(flash_available_for_code))
 
 
 # -----------------------------------------------------------------------------------------
@@ -181,6 +181,8 @@ elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
 elif board.chip["family"]=="AVR":
   board.chip["class"]="AVR"
+elif board.chip["family"]=="ESP8266":
+  board.chip["class"]="ESP8266"
 else:
   die('Unknown chip family '+board.chip["family"])
 

@@ -31,7 +31,7 @@ ser.isOpen()
 endtime = time.time()+0.2 # wait 0.2 sec
 while True:
 	while ser.inWaiting() > 0:
-		print str(ord(ser.read(1)))
+		print(str(ord(ser.read(1))))
 ser.close()
 
 
