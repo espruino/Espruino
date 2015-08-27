@@ -46,13 +46,17 @@ JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
   if (jsvGetArrayLength(args)==1) {
     JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
-    if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
+    if (jsvIsNumeric(firstArg)) {
+      JsVarFloat f = jsvGetFloat(firstArg);
       JsVarInt count = jsvGetInteger(firstArg);
-      if (count>0) {
+      jsvUnLock(firstArg);
+      if (f!=count) {
+        jsExceptionHere(JSET_ERROR, "Invalid array length");
+        return 0;
+      } else if (count>0) {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
         jsvSetArrayLength(arr, count, false);
-        jsvUnLock(firstArg);
         return arr;
       }
     }
