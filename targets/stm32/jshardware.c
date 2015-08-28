@@ -65,6 +65,9 @@ static JsSysTime jshGetTimeForSecond();
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT); // TODO: This should be set to all 0
+
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
 volatile unsigned char jshSPIBufHead[SPIS];
@@ -894,6 +897,13 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -1761,8 +1771,14 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
 #endif*/
+    /* we set the bit field here so that if the user changes the pin state
+     * later on, we can get rid of the IRQs */
+    if (!jshGetPinStateIsManual(pin)) {
+      BITFIELD_SET(jshPinSoftPWM, pin, 0);
+      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    }
+    BITFIELD_SET(jshPinSoftPWM, pin, 1);
     if (freq<=0) freq=50;
-    jshPinOutput(pin, value>0.5);
     jstPinPWM(freq, value, pin);
     return 0;
   }
