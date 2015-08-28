@@ -24,24 +24,24 @@ import copy;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
-sys.path.append(basedir+"scripts");
-sys.path.append(basedir+"boards");
+sys.path.append(basedir + "scripts");
+sys.path.append(basedir + "boards");
 
 import pinutils;
 
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location " + scriptdir)
 if len(sys.argv)!=4:
-  print "ERROR, USAGE: build_pininfo.py BOARD_NAME jspininfo.c jspininfo.h"
+  print("ERROR, USAGE: build_pininfo.py BOARD_NAME jspininfo.c jspininfo.h")
   exit(1)
 boardname = sys.argv[1]
 pininfoSourceFilename = sys.argv[2]
 pininfoHeaderFilename = sys.argv[3]  
-print "PININFO_SOURCE_FILENAME"+pininfoSourceFilename
-print "PININFO_HEADER_FILENAME"+pininfoHeaderFilename
-print "BOARD "+boardname
+print("PININFO_SOURCE_FILENAME" + pininfoSourceFilename)
+print("PININFO_HEADER_FILENAME" + pininfoHeaderFilename)
+print("BOARD " + boardname)
 # import the board def
 
 board = importlib.import_module(boardname)

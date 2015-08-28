@@ -132,7 +132,7 @@ def findpin(pins, pinname, force):
     if pin["name"]==pinname: 
       return pin
   if force:
-    print "ERROR: pin "+pinname+" not found"
+    print("ERROR: pin "+pinname+" not found")
     exit(1);
   pin = {}
   pin["name"] = pinname
@@ -160,7 +160,7 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
       fnames = pindata[af+afoffset].split("/")
       for fname in fnames:
         fname = fname.strip()
-#        if  fname!="-": print fname
+#        if  fname!="-": print(fname)
         pin["functions"][fname] = af
       #print pinname+" --- "+fname+" : "+str(af)
   return pins
@@ -219,7 +219,7 @@ def fill_gaps_in_pin_list(pins):
           newpin["sortingname"] = pin["port"]+newpin["num"].rjust(2,'0')
           newpin["functions"] = {}
           newpins.append(newpin)
-          print "Added fake pin "+newpin["name"]
+          print("Added fake pin "+newpin["name"])
     newpins.append(pin)
     prevpin = pin
   return newpins

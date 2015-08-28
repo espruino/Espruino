@@ -29,7 +29,7 @@ for charNum in range(0,127):
   draw.text((0,0), char, font=font)
   width = font.getsize(char)[0]
   pixels = image.load() 
-  print width
+  print(width)
   bits = 0
   for x in range(0,width):
     bits = 0
@@ -50,15 +50,15 @@ for x in fontbitmap:
    else:
      s = s+" "
    bits = bits>>1
- print s+"|"
+ print(s+"|")
 
 
-print "unsigned char fontBitmap["+str(len(fontbitmap))+"] = {"
-print "\n".join(textwrap.wrap(",".join(fontbitmap)))
-print "};"
-print "unsigned short fontOffsets["+str(len(fontoffset))+"] = {"
-print "\n".join(textwrap.wrap(",".join(fontoffset)))
-print "};"
+print("unsigned char fontBitmap["+str(len(fontbitmap))+"] = {")
+print("\n".join(textwrap.wrap(",".join(fontbitmap))))
+print("};")
+print("unsigned short fontOffsets["+str(len(fontoffset))+"] = {")
+print("\n".join(textwrap.wrap(",".join(fontoffset))))
+print("};")
 
 exit(0)
 
