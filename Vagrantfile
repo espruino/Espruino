@@ -1,3 +1,5 @@
+require 'vagrant-auto_network'
+
 Vagrant.configure(2) do |config|
 
   # Ubuntu Server
