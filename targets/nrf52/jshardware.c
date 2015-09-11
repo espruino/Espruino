@@ -45,6 +45,7 @@ void jshInit()
   jshInitDevices();
 
   #ifdef BLE_INTERFACE
+    
     uint32_t err_code;
     bool erase_bonds;
     
@@ -63,6 +64,7 @@ void jshInit()
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
     init = 1;
+
   #else
     JshUSARTInfo inf;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
@@ -90,7 +92,7 @@ void jshIdle() {
   }
   jshUSARTKick(EV_SERIAL1);
 
-} 
+}
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars) {

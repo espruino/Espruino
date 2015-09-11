@@ -1159,8 +1159,8 @@ endif
 ifdef ARM
 LINKER_FILE = gen/linker.ld
 DEFINES += -DARM
-ifndef NRF52 # Nordic uses its own CMSIS files in its SDK. These are the most recent CMSIS files.
-	INCLUDE += -I$(ROOT)/targetlibs/arm
+ifndef NRF52 # Nordic uses its own CMSIS files in its SDK because they are the most recent ones. 
+	INCLUDE += -I$(ROOT)/targetlibs/arm 
 endif
 OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 

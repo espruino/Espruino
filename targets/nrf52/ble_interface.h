@@ -24,9 +24,6 @@
 #ifndef BLE_INTERFACE_H__
 #define BLE_INTERFACE_H__
 
-#include <stdint.h>
-#include <string.h>
-
 #include "nordic_common.h"
 #include "nrf.h"
 #include "ble_hci.h"
@@ -44,7 +41,7 @@
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
-#define DEVICE_NAME                     "Nordic_Espruino"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Nordic_Espruino"                           /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
@@ -64,8 +61,8 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                                  /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
-#define UART_TX_BUF_SIZE                128                                         /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE                128                                         /**< UART RX buffer size. */
+#define UART_TX_BUF_SIZE                8                                         /**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE                8                                         /**< UART RX buffer size. */
 
 /**@brief Function for sending a string to the peer.
  *
@@ -78,6 +75,7 @@
  * @retval NRF_SUCCESS If the string was sent successfully. Otherwise, an error code is returned.
  */
 uint32_t ble_nus_string_send_wrapper(uint8_t * p_string, uint16_t length);
+
 /**@brief Function for assert macro callback.
  *
  * @details This function will be called in case of an assert in the SoftDevice.
