@@ -1747,11 +1747,12 @@ unsigned int jshGetRandomNumber() {
 #endif
 }
 
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
   JshPinFunction func = 0;
-  if (jshIsPinValid(pin)) {
+  if (jshIsPinValid(pin) && !(flags&JSAOF_FORCE_SOFTWARE)) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
@@ -1765,21 +1766,28 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
   }
 
   if (!func) {
-    /*jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
-#if defined(DACS) && DACS>0
+    if (jshIsPinValid(pin) && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))) {
+      /* we set the bit field here so that if the user changes the pin state
+       * later on, we can get rid of the IRQs */
+      if (!jshGetPinStateIsManual(pin)) {
+        BITFIELD_SET(jshPinSoftPWM, pin, 0);
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      }
+      BITFIELD_SET(jshPinSoftPWM, pin, 1);
+      if (freq<=0) freq=50;
+      jstPinPWM(freq, value, pin);
+      return 0;
+    }
+
+    // Otherwise
+    jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
+  #if defined(DACS) && DACS>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
-#endif*/
-    /* we set the bit field here so that if the user changes the pin state
-     * later on, we can get rid of the IRQs */
-    if (!jshGetPinStateIsManual(pin)) {
-      BITFIELD_SET(jshPinSoftPWM, pin, 0);
-      jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    }
-    BITFIELD_SET(jshPinSoftPWM, pin, 1);
-    if (freq<=0) freq=50;
-    jstPinPWM(freq, value, pin);
+  #endif
+    if (jshIsPinValid(pin))
+      jsiConsolePrint("You can also use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
     return 0;
   }
 

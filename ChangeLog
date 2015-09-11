@@ -18,6 +18,7 @@
             Fix issue where new Array(3.0) wouldn't produce a 3 element array
             Keep track of modified area in Graphics (so modules with `.flip()` can be speeded up)
             Fix `new Date('December 17, 1995 03:24:00')` - check only first 3 chars of month
+            Allow Software PWM via `analogWrite(..., {soft:true})`
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

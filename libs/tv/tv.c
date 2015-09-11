@@ -337,7 +337,7 @@ JsVar *tv_setup_vga(tv_info_vga *inf) {
   tvPinSyncV = inf->pinSyncV;
   tvCurrentLine = 0;
 
-  //JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 1-0.12 /* */, 31468);
+  //JshPinFunction timer = jshPinAnalogOutput(tvPinSync, 1-0.12 /* */, 31468, JSAOF_NONE);
   //if (!timer) return 0; // couldn't set up the timer
 
   jshPinOutput(tvPinSync, 1); // setup output state

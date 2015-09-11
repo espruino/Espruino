@@ -348,7 +348,10 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   /// Remove any tasks using the given pin
   while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
   // if anything is wrong, exit now
-  if (dutyCycle<=0 || dutyCycle>=1 || freq<=0) return false;
+  if (dutyCycle<=0 || dutyCycle>=1 || freq<=0) {
+    jshPinSetValue(pin, dutyCycle >= 0.5);
+    return false;
+  }
   JsSysTime period = jshGetTimeFromMilliseconds(1000.0 / freq);
   if (period > 0xFFFFFFFF) {
     jsWarn("Frequency of %f Hz is too slow", freq);
