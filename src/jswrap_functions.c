@@ -270,7 +270,6 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   return base64Data;
 }
 
-
 /*JSON{
   "type" : "function",
   "name" : "atob",
@@ -324,3 +323,51 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   return binaryData;
 }
 
+/*JSON{
+  "type" : "function",
+  "name" : "encodeURIComponent",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_encodeURIComponent",
+  "params" : [
+    ["str","JsVar","A string to encode as a URI"]
+  ],
+  "return" : ["JsVar","A string containing the encoded data"]
+}
+Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )` converted to the form `%XY` where `XY` is its hexadecimal representation
+ */
+JsVar *jswrap_encodeURIComponent(JsVar *arg) {
+  JsVar *v = jsvAsString(arg, false);
+  if (!v) return 0;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, result, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (isAlpha(ch) || isNumeric(ch) ||
+          ch=='-' || // _ in isAlpha
+          ch=='.' ||
+          ch=='!' ||
+          ch=='~' ||
+          ch=='*' ||
+          ch=='\'' ||
+          ch=='(' ||
+          ch==')') {
+        jsvStringIteratorAppend(&dst, ch);
+      } else {
+        jsvStringIteratorAppend(&dst, '%');
+        unsigned int d = ((unsigned)ch)>>4;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+        d = ((unsigned)ch)&15;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&dst);
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(v);
+  return result;
+}
