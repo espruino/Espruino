@@ -61,6 +61,10 @@
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 # ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 
+NRF52832DK=1
+BLE_INTEFACE=1
+RELEASE=1
+
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -360,7 +364,7 @@ NRF52_SDK_PATH=$(ROOT)/targetlibs/nrf52/nRF52_SDK_0.9.1_3639cc9
 NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 EMBEDDED=1
 PRECOMPILED_OBJS+=$(NRF52_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
-OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
+OPTIMIZEFLAGS+=-O0 # Set this to -O0 to enable debugging.
 else ifdef TINYCHIP
 EMBEDDED=1
 BOARD=TINYCHIP
