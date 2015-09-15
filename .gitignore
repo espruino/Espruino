@@ -16,3 +16,8 @@ benchmark/*.result.json
 /espruino
 archives/*
 diffs/*
+.cproject
+.project
+.settings
+MDN_URLS.txt
+node_modules

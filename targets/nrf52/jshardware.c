@@ -174,7 +174,7 @@ int jshPinAnalogFast(Pin pin) {
   return 0;
 }
 
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) {
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 

@@ -354,7 +354,18 @@ JsVar *jswrap_interface_getSerial() {
   ],
   "return" : ["JsVar","An ID that can be passed to clearInterval"]
 }
-Call the function specified REPEATEDLY after the timeout in milliseconds.
+Call the function (or evaluate the string) specified REPEATEDLY after the timeout in milliseconds.
+
+For instance:
+
+```
+setInterval(function () {
+  console.log("Hello World");
+}, 1000);
+// or
+setInterval('console.log("Hello World");', 1000);
+// both print 'Hello World' every second
+```
 
 You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
@@ -362,7 +373,7 @@ You can also specify extra arguments that will be sent to the function when it i
 setInterval(function (a,b) {
   console.log(a+" "+b);
 }, 1000, "Hello", "World");
-// prints 'Hello World'
+// prints 'Hello World' every second
 ```
 
 If you want to stop your function from being called, pass the number that
@@ -381,7 +392,18 @@ was returned by `setInterval` into the `clearInterval` function.
   ],
   "return" : ["JsVar","An ID that can be passed to clearTimeout"]
 }
-Call the function specified ONCE after the timeout in milliseconds.
+Call the function (or evaluate the string) specified ONCE after the timeout in milliseconds.
+
+For instance:
+
+```
+setTimeout(function () {
+  console.log("Hello World");
+}, 1000);
+// or
+setTimeout('console.log("Hello World");', 1000);
+// both print 'Hello World' after a second
+```
 
 You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
@@ -389,7 +411,7 @@ You can also specify extra arguments that will be sent to the function when it i
 setTimeout(function (a,b) {
   console.log(a+" "+b);
 }, 1000, "Hello", "World");
-// prints 'Hello World'
+// prints 'Hello World' after 1 second
 ```
 
 If you want to stop the function from being called, pass the number that

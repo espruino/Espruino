@@ -50,6 +50,10 @@ function runTest(path, callback) {
     console.log("Not run because of Unicode");    
     return callback();
   }
+  if (test.indexOf("es6id:")>=0) {
+    console.log("Not run because for ES6");    
+    return callback();
+  }
 
   var negative;
   if (test.indexOf("/*---")>0) {
@@ -108,9 +112,9 @@ function recurse(dir, callback) {
 
 function test262(dir, callback) {
   recurse(dir+"/language", function() {
-    recurse(dir+"/built-ins", function() {
+//    recurse(dir+"/built-ins", function() {
        callback();
-    });
+//    });
   });
 }
 

@@ -120,7 +120,9 @@ int fromCalenderDate(CalendarDate *date) {
 static int getMonth(const char *s) {
   int i;
   for (i=0;i<12;i++)
-    if (strcmp(s, &MONTHNAMES[i*4])==0)
+    if (s[0]==MONTHNAMES[i*4] &&
+        s[1]==MONTHNAMES[i*4+1] &&
+        s[2]==MONTHNAMES[i*4+2])
       return i;
   return -1;
 }

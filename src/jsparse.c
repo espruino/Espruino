@@ -2062,15 +2062,20 @@ NO_INLINE JsVar *jspeStatementTry() {
         jsvUnLock(actualExceptionName);
         // remove any stack trace
         jsvRemoveNamedChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR);
-        // Now clear the exception flag (it's handled - we hope!)
-        execInfo.execute = execInfo.execute & (JsExecFlags)~EXEC_EXCEPTION;
       }
+      // Now clear the exception flag (it's handled - we hope!)
+      execInfo.execute = execInfo.execute & (JsExecFlags)~(EXEC_EXCEPTION|EXEC_ERROR_LINE_REPORTED);
       jsvUnLock(exceptionVar);
     }
-    JSP_SAVE_EXECUTE();
-    if (shouldExecuteBefore && !hadException) jspSetNoExecute();
-    jspeBlock();
-    JSP_RESTORE_EXECUTE();
+
+    if (shouldExecuteBefore && !hadException) {
+      JSP_SAVE_EXECUTE();
+      jspSetNoExecute();
+      jspeBlock();
+      JSP_RESTORE_EXECUTE();
+    } else {
+      jspeBlock();
+    }
   }
   if (execInfo.lex->tk == LEX_R_FINALLY || (!hadCatch && ((execInfo.execute&(EXEC_ERROR|EXEC_INTERRUPTED))==0))) {
     JSP_MATCH(LEX_R_FINALLY);

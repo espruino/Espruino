@@ -37,7 +37,7 @@ for jsondata in jsondatas:
 code_uses = []
 referenceFile = "../EspruinoDocs/references.json"
 if os.path.isfile(referenceFile):
-  print "Found references.json - using this to link to examples"
+  print("Found references.json - using this to link to examples")
   code_uses = json.loads(open(referenceFile, "r").read())
 
 # Load list of MDN URLs (to speed up processing)
@@ -159,7 +159,7 @@ def insert_mdn_link(jsondata):
     elif url in valid_mdn_urls['invalid']:
       code = 404
     else:
-      print "Checking URL "+url
+      print("Checking URL "+url)
       try:
         connection = urllib2.urlopen(url)
         code = connection.getcode()
@@ -343,9 +343,9 @@ for jsondata in jsondatas:
   elif jsondata["type"]=="function" or jsondata["type"]=="variable" or jsondata["type"]=="class":
       if not jsondata["name"] in builtins:
         builtins.append(jsondata["name"])
-print "------------------------------------------------------"    
+print("------------------------------------------------------")    
 print('Global classes and functions: '+' '.join(builtins));
-print "------------------------------------------------------"
+print("------------------------------------------------------")
 
 # Writing MDN URL file
 open(mdnURLFile, "w").write(json.dumps(valid_mdn_urls, sort_keys=True, indent=2))

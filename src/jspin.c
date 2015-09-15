@@ -192,7 +192,8 @@ void jshGetPinString(char *result, Pin pin) {
 
   // ----------------------------------------------------------------------------
 
-  BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT);
+  // Whether a pin's state has been set manually or not
+  BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT); // TODO: This should be set to all 0
 
   bool jshGetPinStateIsManual(Pin pin) {
     return BITFIELD_GET(jshPinStateIsManual, pin);

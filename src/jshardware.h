@@ -99,7 +99,13 @@ JsVarFloat jshPinAnalog(Pin pin);
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin);
 
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq); // if freq<=0, the default is used
+typedef enum {
+  JSAOF_NONE,
+  JSAOF_ALLOW_SOFTWARE = 1,  // Can use software PWM
+  JSAOF_FORCE_SOFTWARE = 2,  // MUST use software PWM
+} JshAnalogOutputFlags;
+
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags); // if freq<=0, the default is used
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 bool jshCanWatch(Pin pin); ///< Can the given pin be watched? it may not be possible because of conflicts
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch); // start watching pin - return the EXTI associated with it
