@@ -50,17 +50,18 @@ JsVar *jswrap_array_constructor(JsVar *args) {
       JsVarFloat f = jsvGetFloat(firstArg);
       JsVarInt count = jsvGetInteger(firstArg);
       jsvUnLock(firstArg);
-      if (f!=count) {
+      if (f!=count || count<0) {
         jsExceptionHere(JSET_ERROR, "Invalid array length");
         return 0;
-      } else if (count>0) {
+      } else {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
         jsvSetArrayLength(arr, count, false);
         return arr;
-      }
+      } 
+    } else {
+      jsvUnLock(firstArg); 
     }
-    jsvUnLock(firstArg);
   }
   // Otherwise, we just return the array!
   return jsvLockAgain(args);
