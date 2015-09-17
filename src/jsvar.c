@@ -867,7 +867,7 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     while (jsvStringIteratorHasChar(&it)) {
       if (l--<=1) {
         *str = 0;
-        jsWarn("jsvGetString overflowed\n");
+        assert(0); // We're not supposed to overflow!
         jsvStringIteratorFree(&it);
         return len;
       }
@@ -1409,8 +1409,10 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   }
   if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
     char buf[32];
-    jsvGetString(v, buf, sizeof(buf));
-    return (JsVarInt)stringToInt(buf);
+    if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf))
+      jsWarn("String too big to convert to integer\n");
+    else
+      return (JsVarInt)stringToInt(buf);
   }
   return 0;
 }
@@ -1454,12 +1456,15 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
   }
   if (jsvIsString(v)) {
-    char buf[32];
-    jsvGetString(v, buf, sizeof(buf));
-    if (buf[0]==0) return 0; // empty string -> 0
-    if (!strcmp(buf,"Infinity")) return INFINITY;
-    if (!strcmp(buf,"-Infinity")) return -INFINITY;
-    return stringToFloat(buf);
+    char buf[64];
+    if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf)) {
+      jsWarn("String too big to convert to float\n");
+    } else {
+      if (buf[0]==0) return 0; // empty string -> 0
+      if (!strcmp(buf,"Infinity")) return INFINITY;
+      if (!strcmp(buf,"-Infinity")) return -INFINITY;
+      return stringToFloat(buf);
+    }
   }
   return NAN;
 }
@@ -1477,7 +1482,7 @@ JsVar *jsvAsNumber(JsVar *var) {
     return jsvNewFromInteger(jsvGetInteger(var));
   if (jsvIsString(var) && (jsvIsEmptyString(var) || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))) {
     // handle strings like this, in case they're too big for an int
-    char buf[32];
+    char buf[64];
     jsvGetString(var, buf, sizeof(buf));
     return jsvNewFromLongInteger(stringToInt(buf));
   }
