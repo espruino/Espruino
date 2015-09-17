@@ -711,11 +711,15 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
            * we want to be careful here... */
           if (functionCode) {
 #ifdef USE_DEBUGGER
-            bool hadDebuggerNextLineOnly =
-                (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE) &&
-                !(execInfo.execute&EXEC_DEBUGGER_STEP_INTO);
-            if (hadDebuggerNextLineOnly)
-              execInfo.execute &= (JsExecFlags)~EXEC_DEBUGGER_NEXT_LINE;
+            bool hadDebuggerNextLineOnly = false;
+
+            if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
+              jsiConsolePrintf(functionName ? "Stepping into %v\n" : "Stepping into function\n", functionName);
+            } else {
+              hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
+              if (hadDebuggerNextLineOnly)
+                execInfo.execute &= (JsExecFlags)~EXEC_DEBUGGER_NEXT_LINE;
+            }
 #endif
 
             JsLex *oldLex;
