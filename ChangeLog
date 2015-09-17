@@ -20,6 +20,7 @@
             Fix `new Date('December 17, 1995 03:24:00')` - check only first 3 chars of month
             Allow Software PWM via `analogWrite(..., {soft:true})`
             Add `encodeURIComponent`
+            Make sure `typeof unknown` doesn't ReferenceError
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
