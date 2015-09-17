@@ -26,10 +26,14 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
 
 #ifdef BLE_INTERFACE
-  #include "ble_interface.h"
+  #include "ble_interface.h" // Send JavaScript commands to Espruino via Nordic's UART service over BLE.
 #else
-  #include "uart_interface.h"
+  #include "uart_interface.h" // Send JS commands to Espruino via USB as normal (nordic see's this communication through UART).
 #endif // BLE_INTERFACE
+
+#include "nrf_utils.h" // Functions like starting real time clocks etc...
+#include "nrf_delay.h"
+#include "nrf_gpio.h"
 
 static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
@@ -44,11 +48,14 @@ void jshInit()
 
   jshInitDevices();
 
+  lfclk_config_and_start();
+  rtc1_config_and_start();
+
   #ifdef BLE_INTERFACE
     
     uint32_t err_code;
     bool erase_bonds;
-    
+
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
     //uart_init();
@@ -65,10 +72,12 @@ void jshInit()
     APP_ERROR_CHECK(err_code);
     init = 1;
 
-  #else
+  #else // UART communcation between Espruino and terminal.
+
     JshUSARTInfo inf;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
     init = 1;
+
   #endif // BLE_INTERFACE
 
 }
@@ -107,7 +116,7 @@ bool jshIsUSBSERIALConnected() {
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  return 0;
+  return (JsSysTime) NRF_RTC1->COUNTER;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -117,12 +126,12 @@ void jshSetSystemTime(JsSysTime time) {
 /// Convert a time in Milliseconds to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
 {
-  return 0;
+  return (JsSysTime) ((ms * 32768) / 1000);
 }
 /// Convert ticks to a time in Milliseconds
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 {
-  return 0.0;
+  return (JsVarFloat) ((time * 1000) / 32768);
 }
 
 // software IO functions...
@@ -137,7 +146,7 @@ void jshDelayMicroseconds(int microsec) {
   {
     return;
   }
-  //nrf_delay_us((uint32_t)microsec);
+  nrf_delay_us((uint32_t)microsec);
 }
 void jshPinSetValue(Pin pin, bool value) {
   if (value == 1)
@@ -149,8 +158,11 @@ void jshPinSetValue(Pin pin, bool value) {
     nrf_gpio_pin_clear(pin);
   }
 }
+
 bool jshPinGetValue(Pin pin) {
+
   return nrf_gpio_pin_read(pin);
+  
 }
 // ------
 
@@ -329,42 +341,9 @@ bool jshFlashContainsCode() {
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  __WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
+  //__WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
   return true;
 }
-
-/// Utility timer handling functions ------------------------------
-
-//const nrf_drv_timer_t TIMER_JSH = NRF_DRV_TIMER_INSTANCE(0);
-
-/*void timer_event_handler(nrf_timer_event_t event_type, void * p_context)
-{
-  switch(event_type)
-  {
-    case NRF_TIMER_EVENT_COMPARE0:
-      // Throw an interrupt.
-      break;
-
-    default:
-      // Do nothing.
-      break;
-  }
-}
-
-void timer_init(JsSysTime period)
-{
-  uint32_t time_ticks;
-  uint32_t err_code = NRF_SUCCESS;
-
-  err_code = nrf_drv_timer_init(&TIMER_JSH, NULL, timer_event_handler);
-  APP_ERROR_CHECK(err_code);
-
-  time_ticks = nrf_drv_timer_ms_to_ticks(&TIMER_JSH, (uint32_t) period);
-
-  nrf_drv_timer_extended_compare(&TIMER_JSH, NRF_TIMER_CC_CHANNEL0, time_ticks, NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, true);
-
-  nrf_drv_timer_enable(&TIMER_JSH);
-}*/
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {

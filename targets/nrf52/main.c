@@ -15,32 +15,6 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 
-// For debugging with LEDS.
-#include "nrf_gpio.h"
-#define LED_1 17
-#define LED_2 18
-#define LED_3 19
-#define LED_4 20
-
-// Clearing an LED actually lights it for the NRF52 platform and setting the LED turns it off.
-void debug_all_leds_on(void) {
-  nrf_gpio_cfg_output(LED_1);
-  nrf_gpio_pin_clear(LED_1);
-  nrf_gpio_cfg_output(LED_2);
-  nrf_gpio_pin_clear(LED_2);
-  nrf_gpio_cfg_output(LED_3);
-  nrf_gpio_pin_clear(LED_3);
-  nrf_gpio_cfg_output(LED_4);
-  nrf_gpio_pin_clear(LED_4);
-}
-
-void debug_all_leds_off(void) {
-  nrf_gpio_pin_set(LED_1);
-  nrf_gpio_pin_set(LED_2);
-  nrf_gpio_pin_set(LED_3);
-  nrf_gpio_pin_set(LED_4);
-}
-
 int main() {
   jshInit();
   jsvInit();

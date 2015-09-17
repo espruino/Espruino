@@ -61,9 +61,9 @@
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 # ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 
-NRF52832DK=1
-BLE_INTEFACE=1
-RELEASE=1
+#NRF52832DK=1
+#BLE_INTEFACE=1
+#RELEASE=1
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -1009,8 +1009,21 @@ ifeq ($(FAMILY), NRF52)
 		DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
 	endif # BLE_INTERFACE
 
+	# For clock...
+	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc/config/rtc_pca10036
+	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc/config
+	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc
+	#INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/rtc
+	#INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/clock
+
+	#SOURCES += \
+	#	$(NRF52_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
+	#	$(NRF52_SDK_PATH)/components/drivers_nrf/rtc/nrf_drv_rtc.c
+
 	ifdef BLE_INTERFACE
 
+		#for clock
+		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
 		#includes common to all targets
 		INCLUDE += -I$(NRF52_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
 		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
@@ -1230,7 +1243,8 @@ ifdef NRF52
 	INCLUDE += -I$(ROOT)/targets/nrf52
 	SOURCES +=                              \
 	targets/nrf52/main.c                    \
-	targets/nrf52/jshardware.c    
+	targets/nrf52/jshardware.c              \
+	targets/nrf52/nrf_utils.c
 
 	ifdef BLE_INTERFACE
 		SOURCES +=							\
