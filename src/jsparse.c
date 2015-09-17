@@ -2197,6 +2197,10 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
 }
 
 NO_INLINE JsVar *jspeStatement() {
+  if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && execInfo.lex->tk!=';') {
+    execInfo.lex->tokenLastStart = jsvStringIteratorGetIndex(&execInfo.lex->tokenStart.it)-1;
+    jsiDebuggerLoop();
+  }
   if (execInfo.lex->tk==LEX_ID ||
       execInfo.lex->tk==LEX_INT ||
       execInfo.lex->tk==LEX_FLOAT ||

@@ -12,7 +12,6 @@
  * ----------------------------------------------------------------------------
  */
 #include "jslex.h"
-#include "jsinteractive.h" // jsiDebuggerLoop
 
 void jslCharPosFree(JslCharPos *pos) {
   jsvStringIteratorFree(&pos->it);
@@ -204,15 +203,8 @@ static ALWAYS_INLINE void jslSingleChar(JsLex *lex) {
 void jslGetNextToken(JsLex *lex) {
   jslGetNextToken_start:
   // Skip whitespace
-  while (isWhitespace(lex->currCh)) {
-    if (lex->currCh=='\n' && (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE)) {
-      while (isWhitespace(lex->currCh))
-        jslGetNextCh(lex);
-      lex->tokenLastStart = jsvStringIteratorGetIndex(&lex->it) - 1;
-      jsiDebuggerLoop();
-  } else
-      jslGetNextCh(lex);
-  }
+  while (isWhitespace(lex->currCh))
+    jslGetNextCh(lex);
   // Search for comments
   if (lex->currCh=='/') {
     // newline comments

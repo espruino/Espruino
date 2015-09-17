@@ -135,14 +135,14 @@ void jsiSetConsoleDevice(IOEventFlags device) {
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved to ");
     jsiConsolePrint(jshGetDeviceString(device));
-    jsiConsolePrintChar('\n');
+    jsiConsolePrint("\n");
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved from ");
     jsiConsolePrint(jshGetDeviceString(oldDevice));
-    jsiConsolePrintChar('\n');
+    jsiConsolePrint("\n");
   }
 }
 
@@ -624,7 +624,7 @@ void jsiSemiInit(bool autoLoad) {
           "          |_| http://espruino.com\n"
           " "JS_VERSION" Copyright 2015 G.Williams\n");
     }
-    jsiConsolePrintChar('\n'); // output new line
+    jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
 }
@@ -767,6 +767,7 @@ void jsiReplaceInputLine(JsVar *newLine) {
 }
 
 void jsiChangeToHistory(bool previous) {
+  if (jsiStatus & JSIS_IN_DEBUGGER) return;
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     jsiReplaceInputLine(nextHistory);
@@ -902,7 +903,7 @@ void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
       if (jsiShowInputLine()) {
-        jsiConsolePrintChar('\n');
+        jsiConsolePrint("\n");
       }
       if (!(jsiStatus & JSIS_ECHO_OFF_FOR_LINE))
         inputLineRemoved = true;
@@ -926,7 +927,7 @@ void jsiHandleNewLine(bool execute) {
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
           jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-          jsiConsolePrintChar('\n');
+          jsiConsolePrint("\n");
         }
         jsvUnLock(v);
       }
@@ -1861,7 +1862,7 @@ void jsiDebuggerLoop() {
       EXEC_DEBUGGER_FINISH_FUNCTION);
   jsiClearInputLine();
   jsiConsoleRemoveInputLine();
-  jsiStatus |= JSIS_IN_DEBUGGER;
+  jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
   if (execInfo.lex)
     jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart);
@@ -1890,6 +1891,45 @@ void jsiDebuggerLoop() {
   jsiStatus &= ~(JSIS_IN_DEBUGGER|JSIS_EXIT_DEBUGGER);
 }
 
+void jsiDebuggerPrintScope(JsVar *scope) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, scope);
+  bool found = false;
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *k = jsvObjectIteratorGetKey(&it);
+    JsVar *ks = jsvAsString(k, false);
+    JsVar *v = jsvObjectIteratorGetValue(&it);
+    size_t l = jsvGetStringLength(ks);
+
+    if (!jsvIsStringEqual(ks, JSPARSE_RETURN_VAR)) {
+      found = true;
+      jsiConsolePrintChar(' ');
+      if (jsvIsFunctionParameter(k)) {
+        jsiConsolePrint("param ");
+        l+=6;
+      }
+      jsiConsolePrintStringVar(ks);
+      while (l<20) {
+        jsiConsolePrintChar(' ');
+        l++;
+      }
+      jsiConsolePrint(" : ");
+      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsiConsolePrint("\n");
+    }
+
+    jsvUnLock(k);
+    jsvUnLock(ks);
+    jsvUnLock(v);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+
+  if (!found) {
+    jsiConsolePrint(" [No variables]\n");
+  }
+}
+
 /// Interpret a line of input in the debugger
 void jsiDebuggerLine(JsVar *line) {
   assert(jsvIsString(line));
@@ -1908,7 +1948,8 @@ void jsiDebuggerLine(JsVar *line) {
                       "next / n           - execute to next line\n"
                       "step / s           - execute to next line, or step into function call\n"
                       "finish / f         - finish execution of the function call\n"
-                      "print ... / p ...  - evaluate and print the next argument\n");
+                      "print ... / p ...  - evaluate and print the next argument\n"
+                      "info ... / i ...   - print information. Type 'info' for help \n");
     } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_INTERRUPTED;
@@ -1932,8 +1973,32 @@ void jsiDebuggerLine(JsVar *line) {
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
       jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-      jsiConsolePrintChar('\n');
+      jsiConsolePrint("\n");
       jsvUnLock(v);
+    } else if (!strcmp(id,"info") || !strcmp(id,"i")) {
+       jslGetNextToken(&lex);
+       id = jslGetTokenValueAsString(&lex);
+       if (!strcmp(id,"locals") || !strcmp(id,"l")) {
+         if (execInfo.scopeCount==0)
+           jsiConsolePrint("No locals found\n");
+         else {
+           jsiConsolePrintf("Locals:\n--------------------------------\n");
+           jsiDebuggerPrintScope(execInfo.scopes[execInfo.scopeCount-1]);
+           jsiConsolePrint("\n\n");
+         }
+       } else if (!strcmp(id,"scopechain") || !strcmp(id,"s")) {
+         if (execInfo.scopeCount==0) jsiConsolePrint("No scopes found\n");
+         int i;
+         for (i=0;i<execInfo.scopeCount;i++) {
+           jsiConsolePrintf("Scope %d:\n--------------------------------\n", i);
+           jsiDebuggerPrintScope(execInfo.scopes[i]);
+           jsiConsolePrint("\n\n");
+         }
+       } else {
+         jsiConsolePrint("Unknown command:\n"
+                         "info locals     (l) - output local variables\n"
+                         "info scopechain (s) - output all variables in all scopes\n");
+       }
     } else
       handled = false;
   }
