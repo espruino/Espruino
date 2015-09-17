@@ -22,6 +22,7 @@
             Add `encodeURIComponent`
             Make sure `typeof unknown` doesn't ReferenceError
             Fix isNaN behaviour for 2 element array
+            Fix jshPopIOEventOfType when element is at the top of queue anyway
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
