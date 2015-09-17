@@ -107,6 +107,8 @@ typedef enum  {
   EXEC_DEBUGGER_NEXT_LINE = 8192,
   /** Break when we execute a function */
   EXEC_DEBUGGER_STEP_INTO = 16384,
+  /** Break when a function finishes execution */
+  EXEC_DEBUGGER_FINISH_FUNCTION = 32768,
 
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing

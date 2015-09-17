@@ -135,14 +135,14 @@ void jsiSetConsoleDevice(IOEventFlags device) {
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved to ");
     jsiConsolePrint(jshGetDeviceString(device));
-    jsiConsolePrint("\n");
+    jsiConsolePrintChar('\n');
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved from ");
     jsiConsolePrint(jshGetDeviceString(oldDevice));
-    jsiConsolePrint("\n");
+    jsiConsolePrintChar('\n');
   }
 }
 
@@ -624,7 +624,7 @@ void jsiSemiInit(bool autoLoad) {
           "          |_| http://espruino.com\n"
           " "JS_VERSION" Copyright 2015 G.Williams\n");
     }
-    jsiConsolePrint("\n"); // output new line
+    jsiConsolePrintChar('\n'); // output new line
     inputLineRemoved = true; // we need to put the input line back...
   }
 }
@@ -902,7 +902,7 @@ void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
       if (jsiShowInputLine()) {
-        jsiConsolePrint("\n");
+        jsiConsolePrintChar('\n');
       }
       if (!(jsiStatus & JSIS_ECHO_OFF_FOR_LINE))
         inputLineRemoved = true;
@@ -926,7 +926,7 @@ void jsiHandleNewLine(bool execute) {
         if (jsiEcho() && !jspHasError()) {
           jsiConsolePrintChar('=');
           jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-          jsiConsolePrint("\n");
+          jsiConsolePrintChar('\n');
         }
         jsvUnLock(v);
       }
@@ -1854,12 +1854,17 @@ void jsiTimersChanged() {
 void jsiDebuggerLoop() {
   if ((jsiStatus & JSIS_IN_DEBUGGER) ||
       (execInfo.execute & EXEC_PARSE_FUNCTION_DECL)) return;
-  execInfo.execute &= (JsExecFlags)~(EXEC_CTRL_C_MASK|EXEC_DEBUGGER_NEXT_LINE|EXEC_DEBUGGER_STEP_INTO);
+  execInfo.execute &= (JsExecFlags)~(
+      EXEC_CTRL_C_MASK |
+      EXEC_DEBUGGER_NEXT_LINE |
+      EXEC_DEBUGGER_STEP_INTO |
+      EXEC_DEBUGGER_FINISH_FUNCTION);
   jsiClearInputLine();
   jsiConsoleRemoveInputLine();
   jsiStatus |= JSIS_IN_DEBUGGER;
 
-  jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, jsvStringIteratorGetIndex(&execInfo.lex->it)-1);
+  if (execInfo.lex)
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart);
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
          !(execInfo.execute & EXEC_CTRL_C_MASK)) {
@@ -1880,6 +1885,8 @@ void jsiDebuggerLoop() {
     // -----------------------------------------------------------------------
   }
   jsiConsoleRemoveInputLine();
+  if (execInfo.execute & EXEC_CTRL_C_MASK)
+    execInfo.execute |= EXEC_INTERRUPTED;
   jsiStatus &= ~(JSIS_IN_DEBUGGER|JSIS_EXIT_DEBUGGER);
 }
 
@@ -1893,25 +1900,29 @@ void jsiDebuggerLine(JsVar *line) {
     handled = true;
     char *id = jslGetTokenValueAsString(&lex);
 
-    if (!strcmp(id,"help") || !strcmp(id,"hp")) {
+    if (!strcmp(id,"help") || !strcmp(id,"h")) {
       jsiConsolePrint("Commands:\n"
                       "help / h           - this information\n"
                       "quit / q / Ctrl-C  - Quit debug mode, break execution\n"
                       "continue / c       - Continue execution\n"
                       "next / n           - execute to next line\n"
                       "step / s           - execute to next line, or step into function call\n"
+                      "finish / f         - finish execution of the function call\n"
                       "print ... / p ...  - evaluate and print the next argument\n");
     } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_INTERRUPTED;
+    } else if (!strcmp(id,"continue") || !strcmp(id,"c")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
     } else if (!strcmp(id,"next") || !strcmp(id,"n")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
     } else if (!strcmp(id,"step") || !strcmp(id,"s")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
       execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE|EXEC_DEBUGGER_STEP_INTO;
-    } else if (!strcmp(id,"continue") || !strcmp(id,"c")) {
+    } else if (!strcmp(id,"finish") || !strcmp(id,"f")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_DEBUGGER_FINISH_FUNCTION;
     } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
       jslGetNextToken(&lex);
       JsExecInfo oldExecInfo = execInfo;
@@ -1921,7 +1932,7 @@ void jsiDebuggerLine(JsVar *line) {
       execInfo = oldExecInfo;
       jsiConsolePrintChar('=');
       jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-      jsiConsolePrint("\n");
+      jsiConsolePrintChar('\n');
       jsvUnLock(v);
     } else
       handled = false;

@@ -17,6 +17,7 @@
 #include "jsnative.h"
 #include "jswrap_object.h" // for function_replacewith
 #include "jswrap_functions.h" // insane check for eval in jspeFunctionCall
+#include "jswrap_json.h" // for jsfPrintJSON
 
 /* Info about execution when Parsing - this saves passing it on the stack
  * for each call */
@@ -724,6 +725,16 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             jspeBlock();
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
+
+            if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
+              JsVar *v = jsvSkipName(returnVarName);
+              jsiConsolePrint("Value returned is =");
+              jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+              jsiConsolePrintChar('\n');
+              jsvUnLock(v);
+              jsiDebuggerLoop();
+            }
+
             jslKill(&newLex);
             execInfo.lex = oldLex;
 
@@ -2252,6 +2263,9 @@ NO_INLINE JsVar *jspeStatement() {
     }
   } else if (execInfo.lex->tk==LEX_R_SWITCH) {
     return jspeStatementSwitch();
+  } else if (execInfo.lex->tk==LEX_R_DEBUGGER) {
+    JSP_ASSERT_MATCH(LEX_R_DEBUGGER);
+    jsiDebuggerLoop();
   } else JSP_MATCH(LEX_EOF);
   return 0;
 }

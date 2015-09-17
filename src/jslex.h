@@ -80,6 +80,7 @@ typedef enum LEX_TYPES {
     LEX_R_DELETE,
     LEX_R_TYPEOF,
     LEX_R_VOID,
+    LEX_R_DEBUGGER,
 
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;
