@@ -41,6 +41,11 @@ void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #define JSP_HAS_ERROR (((execInfo.execute)&EXEC_ERROR_MASK)!=0)
 #define JSP_SHOULDNT_PARSE (((execInfo.execute)&EXEC_NO_PARSE_MASK)!=0)
 
+ALWAYS_INLINE void jspDebuggerLoopIfCtrlC() {
+  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+    jsiDebuggerLoop();
+}
+
 /// if interrupting execution, this is set
 bool jspIsInterrupted() {
   return (execInfo.execute & EXEC_INTERRUPTED)!=0;
@@ -699,9 +704,15 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
 
           /* we just want to execute the block, but something could
-           * have messed up and left us with the wrong ScriptLex, so
+           * have messed up and left us with the wrong Lexer, so
            * we want to be careful here... */
           if (functionCode) {
+            bool hadDebuggerNextLineOnly =
+                (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE) &&
+                !(execInfo.execute&EXEC_DEBUGGER_STEP_INTO);
+            if (hadDebuggerNextLineOnly)
+              execInfo.execute &= (JsExecFlags)~EXEC_DEBUGGER_NEXT_LINE;
+
             JsLex *oldLex;
             JsLex newLex;
             jslInit(&newLex, functionCode);
@@ -709,12 +720,16 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             oldLex = execInfo.lex;
             execInfo.lex = &newLex;
             JSP_SAVE_EXECUTE();
-            execInfo.execute = EXEC_YES; // force execute without any previous state
+            execInfo.execute = EXEC_YES | (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE); // force execute without any previous state
             jspeBlock();
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
             jslKill(&newLex);
             execInfo.lex = oldLex;
+
+            if (hadDebuggerNextLineOnly)
+              execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
+
             if (hasError) {
               execInfo.execute |= hasError; // propogate error
               JsVar *stackTrace = jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_STACKTRACE_VAR, JSV_STRING_0);
@@ -1635,6 +1650,17 @@ NO_INLINE JsVar *jspeBlockOrStatement() {
   }
 }
 
+/** Parse using current lexer until we hit the end of
+ * input or there was some problem. */
+NO_INLINE JsVar *jspParse() {
+  JsVar *v = 0;
+  while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != LEX_EOF) {
+    jsvUnLock(v);
+    v = jspeBlockOrStatement();
+  }
+  return v;
+}
+
 NO_INLINE JsVar *jspeStatementVar() {
   JsVar *lastDefined = 0;
   /* variable creation. TODO - we need a better way of parsing the left
@@ -1812,6 +1838,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
     if (loopCond) {
       jslSeekToP(execInfo.lex, &whileBodyStart);
       execInfo.execute |= EXEC_IN_LOOP;
+      jspDebuggerLoopIfCtrlC();
       jsvUnLock(jspeBlockOrStatement());
       execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
       if (execInfo.execute & EXEC_CONTINUE)
@@ -1905,6 +1932,7 @@ NO_INLINE JsVar *jspeStatementFor() {
 
               jslSeekToP(execInfo.lex, &forBodyStart);
               execInfo.execute |= EXEC_IN_LOOP;
+              jspDebuggerLoopIfCtrlC();
               jsvUnLock(jspeBlockOrStatement());
               if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
@@ -2003,6 +2031,7 @@ NO_INLINE JsVar *jspeStatementFor() {
       if (JSP_SHOULD_EXECUTE && loopCond) {
         jslSeekToP(execInfo.lex, &forBodyStart);
         execInfo.execute |= EXEC_IN_LOOP;
+        jspDebuggerLoopIfCtrlC();
         jsvUnLock(jspeBlockOrStatement());
         if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
         if (execInfo.execute & EXEC_CONTINUE)
@@ -2346,7 +2375,6 @@ void jspKill() {
  * and once to actually execute.  */
 JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   JsLex lex;
-  JsVar *v = 0;
 
   assert(jsvIsString(str));
   jslInit(&lex, str);
@@ -2361,21 +2389,16 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
     scopeAdded = jspeiAddScope(scope);
   }
 
+  JsVar *v = 0;
   if (parseTwice) {
     JsExecFlags oldFlags = execInfo.execute;
     execInfo.execute = EXEC_PARSE_FUNCTION_DECL;
-    while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != LEX_EOF) {
-      jsvUnLock(v);
-      v = jspeBlockOrStatement();
-    }
+    v = jspParse();
     jslReset(execInfo.lex); // back to beginning
     execInfo.execute = oldFlags; // old flags
   }
-
-  while (!JSP_SHOULDNT_PARSE && execInfo.lex->tk != LEX_EOF) {
-    jsvUnLock(v);
-    v = jspeBlockOrStatement();
-  }
+  // actually do the parsing
+  v = jspParse();
   // clean up
   if (scopeAdded)
     jspeiRemoveScope();

@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "jslex.h"
+#include "jsinteractive.h" // jsiDebuggerLoop
 
 void jslCharPosFree(JslCharPos *pos) {
   jsvStringIteratorFree(&pos->it);
@@ -203,7 +204,13 @@ static ALWAYS_INLINE void jslSingleChar(JsLex *lex) {
 void jslGetNextToken(JsLex *lex) {
   jslGetNextToken_start:
   // Skip whitespace
-  while (isWhitespace(lex->currCh)) jslGetNextCh(lex);
+  while (isWhitespace(lex->currCh)) {
+    if (lex->currCh=='\n' && (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE)) {
+      jslGetNextCh(lex);
+      jsiDebuggerLoop();
+  } else
+      jslGetNextCh(lex);
+  }
   // Search for comments
   if (lex->currCh=='/') {
     // newline comments
@@ -262,6 +269,10 @@ void jslGetNextToken(JsLex *lex) {
       case 'd': if (jslIsToken(lex,"default", 1)) lex->tk = LEX_R_DEFAULT;
       else if (jslIsToken(lex,"delete", 1)) lex->tk = LEX_R_DELETE;
       else if (jslIsToken(lex,"do", 1)) lex->tk = LEX_R_DO;
+      else if (jslIsToken(lex,"debugger", 1)) {
+        jsiDebuggerLoop(); // enter debug loop
+        goto jslGetNextToken_start;
+      }
       break;
       case 'e': if (jslIsToken(lex,"else", 1)) lex->tk = LEX_R_ELSE;
       break;
@@ -814,7 +825,7 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   if (lineLength > 60)
     user_callback("...", user_data);
   user_callback("\n", user_data);
-  while (col-- > 0) user_callback(" ", user_data);
+  while (col-- > 1) user_callback(" ", user_data);
   user_callback("^\n", user_data);
 }
 
