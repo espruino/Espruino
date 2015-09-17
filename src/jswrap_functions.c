@@ -174,7 +174,7 @@ Whether the x is NaN (Not a Number) or not
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
-      (jsvIsFloat(v) && isnan(jsvGetFloat(v)))) return true;
+      ((jsvIsFloat(v)||jsvIsArray(v)) && isnan(jsvGetFloat(v)))) return true;
   if (jsvIsString(v)) {
     // this is where is can get a bit crazy
     bool allWhiteSpace = true;
