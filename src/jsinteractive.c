@@ -67,6 +67,10 @@ unsigned char loopsIdling; ///< How many times around the loop have we been enti
 bool interruptedDuringEvent; ///< Were we interrupted while executing an event? If so may want to clear timers
 // ----------------------------------------------------------------------------
 
+void jsiDebuggerLine(JsVar *line);
+
+// ----------------------------------------------------------------------------
+
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
   // See jspNewObject
@@ -294,6 +298,13 @@ void jsiConsoleRemoveInputLine() {
       jsiMoveCursorChar(inputLine, inputCursorPos, 0);
       jsiConsoleEraseStringVarFrom(inputLine, 0, true);
       jsiConsolePrintChar(0x08); // go back to start of line
+      if (jsiStatus & JSIS_IN_DEBUGGER) {
+        jsiConsolePrintChar(0x08); // d
+        jsiConsolePrintChar(0x08); // e
+        jsiConsolePrintChar(0x08); // b
+        jsiConsolePrintChar(0x08); // u
+        jsiConsolePrintChar(0x08); // g
+      }
     }
   }
 }
@@ -303,6 +314,8 @@ void jsiReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+      if (jsiStatus & JSIS_IN_DEBUGGER)
+        jsiConsolePrint("debug");
       jsiConsolePrintChar('>'); // show the prompt
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
@@ -311,10 +324,6 @@ void jsiReturnInputLine() {
 }
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
   jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
-}
-
-void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos) {
-  jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
 void jsiClearInputLine() {
@@ -758,6 +767,7 @@ void jsiReplaceInputLine(JsVar *newLine) {
 }
 
 void jsiChangeToHistory(bool previous) {
+  if (jsiStatus & JSIS_IN_DEBUGGER) return;
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     jsiReplaceInputLine(nextHistory);
@@ -904,18 +914,23 @@ void jsiHandleNewLine(bool execute) {
       jsvUnLock(inputLine);
       inputLine = jsvNewFromEmptyString();
       inputCursorPos = 0;
-      // execute!
-      JsVar *v = jspEvaluateVar(lineToExecute, 0, false);
-      // add input line to history
-      jsiHistoryAddLine(lineToExecute);
-      jsvUnLock(lineToExecute);
-      // print result (but NOT if we had an error)
-      if (jsiEcho() && !jspHasError()) {
-        jsiConsolePrintChar('=');
-        jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
-        jsiConsolePrint("\n");
+      if (jsiStatus & JSIS_IN_DEBUGGER) {
+        jsiDebuggerLine(lineToExecute);
+        jsvUnLock(lineToExecute);
+      } else {
+        // execute!
+        JsVar *v = jspEvaluateVar(lineToExecute, 0, false);
+        // add input line to history
+        jsiHistoryAddLine(lineToExecute);
+        jsvUnLock(lineToExecute);
+        // print result (but NOT if we had an error)
+        if (jsiEcho() && !jspHasError()) {
+          jsiConsolePrintChar('=');
+          jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+          jsiConsolePrint("\n");
+        }
+        jsvUnLock(v);
       }
-      jsvUnLock(v);
       // console will be returned next time around the input loop
       // if we had echo off just for this line, reinstate it!
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE;
@@ -1290,6 +1305,13 @@ void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
   }
 }
 
+void jsiHandleIOEventForConsole(IOEvent *event) {
+  int i, c = IOEVENTFLAGS_GETCHARS(event->flags);
+  jsiSetBusy(BUSY_INTERACTIVE, true);
+  for (i=0;i<c;i++) jsiHandleChar(event->data.chars[i]);
+  jsiSetBusy(BUSY_INTERACTIVE, false);
+}
+
 void jsiIdle() {
   // This is how many times we have been here and not done anything.
   // It will be zeroed if we do stuff later
@@ -1307,10 +1329,7 @@ void jsiIdle() {
 
     loopsIdling = 0; // because we're not idling
     if (eventType == consoleDevice) {
-      int i, c = IOEVENTFLAGS_GETCHARS(event.flags);
-      jsiSetBusy(BUSY_INTERACTIVE, true);
-      for (i=0;i<c;i++) jsiHandleChar(event.data.chars[i]);
-      jsiSetBusy(BUSY_INTERACTIVE, false);
+      jsiHandleIOEventForConsole(&event);
       /** don't allow us to read data when the device is our
        console device. It slows us down and just causes pain. */
     } else if (DEVICE_IS_USART(eventType)) {
@@ -1831,4 +1850,163 @@ JsVarInt jsiTimerAdd(JsVar *timerPtr) {
 
 void jsiTimersChanged() {
   jsiStatus |= JSIS_TIMERS_CHANGED;
+}
+
+void jsiDebuggerLoop() {
+  if ((jsiStatus & JSIS_IN_DEBUGGER) ||
+      (execInfo.execute & EXEC_PARSE_FUNCTION_DECL)) return;
+  execInfo.execute &= (JsExecFlags)~(
+      EXEC_CTRL_C_MASK |
+      EXEC_DEBUGGER_NEXT_LINE |
+      EXEC_DEBUGGER_STEP_INTO |
+      EXEC_DEBUGGER_FINISH_FUNCTION);
+  jsiClearInputLine();
+  jsiConsoleRemoveInputLine();
+  jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
+
+  if (execInfo.lex)
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart);
+
+  while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
+         !(execInfo.execute & EXEC_CTRL_C_MASK)) {
+    jsiReturnInputLine();
+    // idle stuff for hardware
+    jshIdle();
+    // Idle just for debug (much stuff removed) -------------------------------
+    IOEvent event;
+    // If we have too many events (> half full) drain the queue
+    while (jshGetEventsUsed()>IOBUFFERMASK*1/2) {
+      if (jshPopIOEvent(&event) && IOEVENTFLAGS_GETTYPE(event.flags)==consoleDevice)
+        jsiHandleIOEventForConsole(&event);
+    }
+    // otherwise grab the remaining console events
+    while (jshPopIOEventOfType(consoleDevice, &event)) {
+      jsiHandleIOEventForConsole(&event);
+    }
+    // -----------------------------------------------------------------------
+  }
+  jsiConsoleRemoveInputLine();
+  if (execInfo.execute & EXEC_CTRL_C_MASK)
+    execInfo.execute |= EXEC_INTERRUPTED;
+  jsiStatus &= ~(JSIS_IN_DEBUGGER|JSIS_EXIT_DEBUGGER);
+}
+
+void jsiDebuggerPrintScope(JsVar *scope) {
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, scope);
+  bool found = false;
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *k = jsvObjectIteratorGetKey(&it);
+    JsVar *ks = jsvAsString(k, false);
+    JsVar *v = jsvObjectIteratorGetValue(&it);
+    size_t l = jsvGetStringLength(ks);
+
+    if (!jsvIsStringEqual(ks, JSPARSE_RETURN_VAR)) {
+      found = true;
+      jsiConsolePrintChar(' ');
+      if (jsvIsFunctionParameter(k)) {
+        jsiConsolePrint("param ");
+        l+=6;
+      }
+      jsiConsolePrintStringVar(ks);
+      while (l<20) {
+        jsiConsolePrintChar(' ');
+        l++;
+      }
+      jsiConsolePrint(" : ");
+      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsiConsolePrint("\n");
+    }
+
+    jsvUnLock(k);
+    jsvUnLock(ks);
+    jsvUnLock(v);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+
+  if (!found) {
+    jsiConsolePrint(" [No variables]\n");
+  }
+}
+
+/// Interpret a line of input in the debugger
+void jsiDebuggerLine(JsVar *line) {
+  assert(jsvIsString(line));
+  JsLex lex;
+  jslInit(&lex, line);
+  bool handled = false;
+  if (lex.tk == LEX_ID) {
+    handled = true;
+    char *id = jslGetTokenValueAsString(&lex);
+
+    if (!strcmp(id,"help") || !strcmp(id,"h")) {
+      jsiConsolePrint("Commands:\n"
+                      "help / h           - this information\n"
+                      "quit / q / Ctrl-C  - Quit debug mode, break execution\n"
+                      "continue / c       - Continue execution\n"
+                      "next / n           - execute to next line\n"
+                      "step / s           - execute to next line, or step into function call\n"
+                      "finish / f         - finish execution of the function call\n"
+                      "print ... / p ...  - evaluate and print the next argument\n"
+                      "info ... / i ...   - print information. Type 'info' for help \n");
+    } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_INTERRUPTED;
+    } else if (!strcmp(id,"continue") || !strcmp(id,"c")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
+    } else if (!strcmp(id,"next") || !strcmp(id,"n")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
+    } else if (!strcmp(id,"step") || !strcmp(id,"s")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE|EXEC_DEBUGGER_STEP_INTO;
+    } else if (!strcmp(id,"finish") || !strcmp(id,"f")) {
+      jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_DEBUGGER_FINISH_FUNCTION;
+    } else if (!strcmp(id,"print") || !strcmp(id,"p")) {
+      jslGetNextToken(&lex);
+      JsExecInfo oldExecInfo = execInfo;
+      execInfo.lex = &lex; // execute with the remainder of the line
+      execInfo.execute = EXEC_YES;
+      JsVar *v = jsvSkipNameAndUnLock(jspParse());
+      execInfo = oldExecInfo;
+      jsiConsolePrintChar('=');
+      jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+      jsiConsolePrint("\n");
+      jsvUnLock(v);
+    } else if (!strcmp(id,"info") || !strcmp(id,"i")) {
+       jslGetNextToken(&lex);
+       id = jslGetTokenValueAsString(&lex);
+       if (!strcmp(id,"locals") || !strcmp(id,"l")) {
+         if (execInfo.scopeCount==0)
+           jsiConsolePrint("No locals found\n");
+         else {
+           jsiConsolePrintf("Locals:\n--------------------------------\n");
+           jsiDebuggerPrintScope(execInfo.scopes[execInfo.scopeCount-1]);
+           jsiConsolePrint("\n\n");
+         }
+       } else if (!strcmp(id,"scopechain") || !strcmp(id,"s")) {
+         if (execInfo.scopeCount==0) jsiConsolePrint("No scopes found\n");
+         int i;
+         for (i=0;i<execInfo.scopeCount;i++) {
+           jsiConsolePrintf("Scope %d:\n--------------------------------\n", i);
+           jsiDebuggerPrintScope(execInfo.scopes[i]);
+           jsiConsolePrint("\n\n");
+         }
+       } else {
+         jsiConsolePrint("Unknown command:\n"
+                         "info locals     (l) - output local variables\n"
+                         "info scopechain (s) - output all variables in all scopes\n");
+       }
+    } else
+      handled = false;
+  }
+  if (!handled) {
+    jsiConsolePrint("In debug mode: Expected a simple ID, type 'help' for more info.\n");
+  }
+
+
+
+  jslKill(&lex);
 }

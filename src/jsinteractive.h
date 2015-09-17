@@ -74,8 +74,6 @@ void jsiConsolePrintf(const char *fmt, ...);
 void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit a position in the lexer (for reporting errors)
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos);
-/// Transmit the current line, along with a marker of where the error was (for reporting errors)
-void jsiConsolePrintTokenLineMarker(struct JsLex *lex, size_t tokenPos);
 /// If the input line was shown in the console, remove it
 void jsiConsoleRemoveInputLine();
 /// Change what is in the inputline into something else (and update the console)
@@ -118,6 +116,8 @@ typedef enum {
   JSIS_ECHO_OFF_FOR_LINE = 2,
   JSIS_ALLOW_DEEP_SLEEP = 4, // can we go into proper deep sleep?
   JSIS_TIMERS_CHANGED = 8,
+  JSIS_IN_DEBUGGER = 16, // We're inside the debug loop
+  JSIS_EXIT_DEBUGGER = 32, // we've been asked to exit the debug loop
 
   JSIS_ECHO_OFF_MASK = JSIS_ECHO_OFF|JSIS_ECHO_OFF_FOR_LINE
 } PACKED_FLAGS JsiStatus;
@@ -138,6 +138,8 @@ extern JsVarRef watchArray; // Linked List of input watches to check and run
 extern JsVarInt jsiTimerAdd(JsVar *timerPtr);
 extern void jsiTimersChanged(); // Flag timers changed so we can skip out of the loop if needed
 // end for jswrap_interactive/io.c ------------------------------------------------
+
+extern void jsiDebuggerLoop(); ///< Enter the debugger loop
 
 
 #endif /* JSINTERACTIVE_H_ */
