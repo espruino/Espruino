@@ -298,6 +298,7 @@ void jsiConsoleRemoveInputLine() {
       jsiMoveCursorChar(inputLine, inputCursorPos, 0);
       jsiConsoleEraseStringVarFrom(inputLine, 0, true);
       jsiConsolePrintChar(0x08); // go back to start of line
+#ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiConsolePrintChar(0x08); // d
         jsiConsolePrintChar(0x08); // e
@@ -305,6 +306,7 @@ void jsiConsoleRemoveInputLine() {
         jsiConsolePrintChar(0x08); // u
         jsiConsolePrintChar(0x08); // g
       }
+#endif
     }
   }
 }
@@ -314,8 +316,10 @@ void jsiReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (jsiEcho()) { // intentionally not using jsiShowInputLine()
+#ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER)
         jsiConsolePrint("debug");
+#endif
       jsiConsolePrintChar('>'); // show the prompt
       jsiConsolePrintStringVarWithNewLineChar(inputLine, 0, ':');
       jsiMoveCursorChar(inputLine, jsvGetStringLength(inputLine), inputCursorPos);
@@ -767,7 +771,9 @@ void jsiReplaceInputLine(JsVar *newLine) {
 }
 
 void jsiChangeToHistory(bool previous) {
+#ifdef USE_DEBUGGER
   if (jsiStatus & JSIS_IN_DEBUGGER) return;
+#endif
   JsVar *nextHistory = jsiGetHistoryLine(previous);
   if (nextHistory) {
     jsiReplaceInputLine(nextHistory);
@@ -914,10 +920,13 @@ void jsiHandleNewLine(bool execute) {
       jsvUnLock(inputLine);
       inputLine = jsvNewFromEmptyString();
       inputCursorPos = 0;
+#ifdef USE_DEBUGGER
       if (jsiStatus & JSIS_IN_DEBUGGER) {
         jsiDebuggerLine(lineToExecute);
         jsvUnLock(lineToExecute);
-      } else {
+      } else
+#endif
+      {
         // execute!
         JsVar *v = jspEvaluateVar(lineToExecute, 0, false);
         // add input line to history
@@ -1852,6 +1861,7 @@ void jsiTimersChanged() {
   jsiStatus |= JSIS_TIMERS_CHANGED;
 }
 
+#ifdef USE_DEBUGGER
 void jsiDebuggerLoop() {
   if ((jsiStatus & JSIS_IN_DEBUGGER) ||
       (execInfo.execute & EXEC_PARSE_FUNCTION_DECL)) return;
@@ -2006,7 +2016,6 @@ void jsiDebuggerLine(JsVar *line) {
     jsiConsolePrint("In debug mode: Expected a simple ID, type 'help' for more info.\n");
   }
 
-
-
   jslKill(&lex);
 }
+#endif // USE_DEBUGGER

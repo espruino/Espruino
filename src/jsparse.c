@@ -43,8 +43,10 @@ void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 #define JSP_SHOULDNT_PARSE (((execInfo.execute)&EXEC_NO_PARSE_MASK)!=0)
 
 ALWAYS_INLINE void jspDebuggerLoopIfCtrlC() {
+#ifdef USE_DEBUGGER
   if (execInfo.execute & EXEC_CTRL_C_WAIT)
     jsiDebuggerLoop();
+#endif
 }
 
 /// if interrupting execution, this is set
@@ -708,11 +710,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
            * have messed up and left us with the wrong Lexer, so
            * we want to be careful here... */
           if (functionCode) {
+#ifdef USE_DEBUGGER
             bool hadDebuggerNextLineOnly =
                 (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE) &&
                 !(execInfo.execute&EXEC_DEBUGGER_STEP_INTO);
             if (hadDebuggerNextLineOnly)
               execInfo.execute &= (JsExecFlags)~EXEC_DEBUGGER_NEXT_LINE;
+#endif
 
             JsLex *oldLex;
             JsLex newLex;
@@ -721,25 +725,32 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             oldLex = execInfo.lex;
             execInfo.lex = &newLex;
             JSP_SAVE_EXECUTE();
+#ifdef USE_DEBUGGER
             execInfo.execute = EXEC_YES | (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE); // force execute without any previous state
+#else
+            execInfo.execute = EXEC_YES; // force execute without any previous state
+#endif
             jspeBlock();
             JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
-            if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
+#ifdef USE_DEBUGGER
+            if (hadDebuggerNextLineOnly)
+              execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
+
+            if (execInfo.execute & EXEC_DEBUGGER_MASK) {
               JsVar *v = jsvSkipName(returnVarName);
               jsiConsolePrint("Value returned is =");
               jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
               jsiConsolePrintChar('\n');
               jsvUnLock(v);
-              jsiDebuggerLoop();
+              if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION)
+                jsiDebuggerLoop();
             }
+#endif
 
             jslKill(&newLex);
             execInfo.lex = oldLex;
-
-            if (hadDebuggerNextLineOnly)
-              execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
 
             if (hasError) {
               execInfo.execute |= hasError; // propogate error
@@ -2202,10 +2213,12 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
 }
 
 NO_INLINE JsVar *jspeStatement() {
+#ifdef USE_DEBUGGER
   if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && execInfo.lex->tk!=';') {
     execInfo.lex->tokenLastStart = jsvStringIteratorGetIndex(&execInfo.lex->tokenStart.it)-1;
     jsiDebuggerLoop();
   }
+#endif
   if (execInfo.lex->tk==LEX_ID ||
       execInfo.lex->tk==LEX_INT ||
       execInfo.lex->tk==LEX_FLOAT ||
@@ -2274,7 +2287,9 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeStatementSwitch();
   } else if (execInfo.lex->tk==LEX_R_DEBUGGER) {
     JSP_ASSERT_MATCH(LEX_R_DEBUGGER);
+#ifdef USE_DEBUGGER
     jsiDebuggerLoop();
+#endif
   } else JSP_MATCH(LEX_EOF);
   return 0;
 }
@@ -2412,16 +2427,15 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
     scopeAdded = jspeiAddScope(scope);
   }
 
-  JsVar *v = 0;
   if (parseTwice) {
     JsExecFlags oldFlags = execInfo.execute;
     execInfo.execute = EXEC_PARSE_FUNCTION_DECL;
-    v = jspParse();
+    jsvUnLock(jspParse());
     jslReset(execInfo.lex); // back to beginning
     execInfo.execute = oldFlags; // old flags
   }
   // actually do the parsing
-  v = jspParse();
+  JsVar *v = jspParse();
   // clean up
   if (scopeAdded)
     jspeiRemoveScope();

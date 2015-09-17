@@ -24,6 +24,7 @@
             Fix isNaN behaviour for 2 element array
             Fix jshPopIOEventOfType when element is at the top of queue anyway
             Produce more reasonable behaviour when converting very long strings to ints/floats
+            Added built-in JavaScript debugger! See espruino.com/Debugger for details (fix #37)
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
