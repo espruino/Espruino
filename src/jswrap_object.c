@@ -472,6 +472,16 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
   jsvUnLock(n);
 }
 
+#define EVENTNAME_SIZE 16
+bool jswrap_object_get_event_name(char *eventName, JsVar *event) {
+  strncpy(eventName,"#on",EVENTNAME_SIZE);
+  if (jsvGetString(event, &eventName[3], EVENTNAME_SIZE-4)==(EVENTNAME_SIZE-4)) {
+    jsExceptionHere(JSET_ERROR, "Event name too long\n");
+    return false;
+  }
+  return true;
+}
+
 /*JSON{
   "type" : "method",
   "class" : "Object",
@@ -497,8 +507,8 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
-  char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  char eventName[16];
+  if (!jswrap_object_get_event_name(eventName, event)) return;
 
   JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
   JsVar *eventListeners = jsvSkipName(eventList);
@@ -553,8 +563,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  char eventName[16];
+  if (!jswrap_object_get_event_name(eventName, event)) return;
 
   // extract data
   const unsigned int MAX_ARGS = 4;
@@ -596,8 +606,8 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    char eventName[16] = "#on";
-    jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+    char eventName[16];
+    if (!jswrap_object_get_event_name(eventName, event)) return;
     JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
     if (eventList) {
       jsvRemoveChild(parent, eventList);

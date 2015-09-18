@@ -459,7 +459,10 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 const char *jsvGetTypeOf(const JsVar *v); ///< Return the 'type' of the JS variable (eg. JS's typeof operator)
 JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and has a valueOf function, call that
-size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+
+/** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+If the buffer length is exceeded, the returned value will == len */
+size_t jsvGetString(const JsVar *v, char *str, size_t len);
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string

@@ -62,6 +62,7 @@ To use this, you must type ```var fs = require('fs')``` to get access to the lib
 #endif
 
 // from jswrap_file
+bool jsfsGetPathString(char *pathStr, JsVar *path);
 extern bool jsfsInit();
 extern void jsfsReportError(const char *msg, FRESULT res);
 
@@ -98,7 +99,7 @@ JsVar *jswrap_fs_readdir(JsVar *path) {
 
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 #ifdef LINUX
   if (!pathStr[0]) strcpy(pathStr, "."); // deal with empty readdir
 #endif
@@ -284,7 +285,7 @@ Delete the given file
 bool jswrap_fs_unlink(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
   FRESULT res = 0;
@@ -323,7 +324,7 @@ mtime: A Date structure specifying the time the file was last modified
 JsVar *jswrap_fs_stat(JsVar *path) {
   char pathStr[JS_DIR_BUF_SIZE] = "";
   if (!jsvIsUndefined(path))
-    jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+    if (!jsfsGetPathString(pathStr, path)) return 0;
 
 #ifndef LINUX
   FRESULT res = 0;
