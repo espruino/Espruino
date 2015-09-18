@@ -104,7 +104,7 @@ JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int bas
 }
 
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
-  jsvUnLock(jsvObjectSetChild(object, name, networkGetAddressAsString(ip, nBytes, base, separator)));
+  jsvObjectSetChildAndUnLock(object, name, networkGetAddressAsString(ip, nBytes, base, separator));
 }
 
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
@@ -136,7 +136,7 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->data.pinCS = PIN_UNDEFINED;
   net->data.pinIRQ = PIN_UNDEFINED;
   net->data.pinEN = PIN_UNDEFINED;
-  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar));
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, NETWORK_VAR_NAME, net->networkVar);
   networkSet(net);
   networkGetFromVar(net);
 }

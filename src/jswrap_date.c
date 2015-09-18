@@ -160,7 +160,7 @@ JsVarFloat jswrap_date_now() {
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   JsVar *d = jspNewObject(0,"Date");
   if (!d) return 0;
-  jsvUnLock(jsvObjectSetChild(d, "ms", jsvNewFromFloat(time)));
+  jsvObjectSetChildAndUnLock(d, "ms", jsvNewFromFloat(time));
   return d;
 }
 

@@ -483,6 +483,18 @@ ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
 }
 
+/// Unlock 2 variables in one go
+void jsvUnLock2(JsVar *var1, JsVar *var2) {
+  jsvUnLock(var1);
+  jsvUnLock(var2);
+}
+/// Unlock 3 variables in one go
+void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3) {
+  jsvUnLock(var1);
+  jsvUnLock(var2);
+  jsvUnLock(var3);
+}
+
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
   while (count) jsvUnLock(vars[--count]);
@@ -2134,6 +2146,10 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   return child;
 }
 
+void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
+  jsvUnLock(jsvObjectSetChild(obj, name, child));
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;
@@ -2428,8 +2444,11 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
 void jsvArrayAddString(JsVar *arr, const char *text) {
   JsVar *v = jsvNewFromString(text);
   JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
-  if (!idx) jsvArrayPush(arr, v);
-  else jsvUnLock(idx);
+  if (!idx) {
+    jsvArrayPush(arr, v);
+  } else {
+    jsvUnLock(idx);
+  }
   jsvUnLock(v);
 }
 
@@ -2515,11 +2534,9 @@ JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op) {
   JsVar *pb = jsvSkipName(b);
   JsVar *oa = jsvGetValueOf(pa);
   JsVar *ob = jsvGetValueOf(pb);
-  jsvUnLock(pa);
-  jsvUnLock(pb);
+  jsvUnLock2(pa, pb);
   JsVar *res = jsvMathsOp(oa,ob,op);
-  jsvUnLock(oa);
-  jsvUnLock(ob);
+  jsvUnLock2(oa, ob);
   return res;
 }
 
@@ -2653,8 +2670,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     JsVar *da = jsvAsString(a, false);
     JsVar *db = jsvAsString(b, false);
     if (!da || !db) { // out of memory
-      jsvUnLock(da);
-      jsvUnLock(db);
+      jsvUnLock2(da, db);
       return 0;
     }
     if (op=='+') {
@@ -2662,14 +2678,12 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
       if (v) // could be out of memory
         jsvAppendStringVarComplete(v, db);
-      jsvUnLock(da);
-      jsvUnLock(db);
+      jsvUnLock2(da, db);
       return v;
     }
 
     int cmp = jsvCompareString(da,db,0,0,false);
-    jsvUnLock(da);
-    jsvUnLock(db);
+    jsvUnLock2(da, db);
     // use strings
     switch (op) {
     case LEX_EQUAL:     return jsvNewFromBool(cmp==0);
@@ -2686,8 +2700,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 JsVar *jsvNegateAndUnLock(JsVar *v) {
   JsVar *zero = jsvNewFromInteger(0);
   JsVar *res = jsvMathsOpSkipNames(zero, v, '-');
-  jsvUnLock(zero);
-  jsvUnLock(v);
+  jsvUnLock2(zero, v);
   return res;
 }
 
@@ -2712,8 +2725,7 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
         JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
-        jsvUnLock(keyName);
-        jsvUnLock(n);
+        jsvUnLock2(keyName, n);
         jsvIteratorFree(&it);
         return name;
       }

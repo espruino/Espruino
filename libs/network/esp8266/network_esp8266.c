@@ -386,7 +386,7 @@ bool net_esp8266_connect(JsVar *vAP, JsVar *vKey, JsVar *callback) {
 void net_esp8266_gethostbyname(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
   // hacky - save the last checked name so we can put it straight into the request
   *out_ip_addr = 0xFFFFFFFF;
-  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, ESP8266_DNS_NAME, jsvNewFromString(hostName)));
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, ESP8266_DNS_NAME, jsvNewFromString(hostName));
 }
 
 /// Called on idle. Do any checks required for this device
@@ -507,7 +507,7 @@ int net_esp8266_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
 
     JsVar *newIpd = (chars>len) ? jsvNewFromStringVar(ipd, len, JSVAPPENDSTRINGVAR_MAXLENGTH) : 0;
     jsvUnLock(ipd);
-    jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, ipdName, newIpd));
+    jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, ipdName, newIpd);
   }
   return (int)((chars>len) ? len : chars);
 }

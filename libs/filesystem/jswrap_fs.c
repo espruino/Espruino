@@ -334,8 +334,8 @@ JsVar *jswrap_fs_stat(JsVar *path) {
     if (res==0 /*ok*/) {
       JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
       if (!obj) return 0;
-      jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize)));
-      jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR)));
+      jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.fsize));
+      jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(info.fattrib & AM_DIR));
 
       CalendarDate date;
       date.year = 1980+(int)((info.fdate>>9)&127);
@@ -348,7 +348,7 @@ JsVar *jswrap_fs_stat(JsVar *path) {
       td.sec = (int)((info.ftime)&63);
       td.ms = 0;
       td.zone = 0;
-      jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td))));
+      jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds(fromTimeInDay(&td)));
       return obj;
     }
   }
@@ -357,9 +357,9 @@ JsVar *jswrap_fs_stat(JsVar *path) {
   if (stat(pathStr, &info)==0 /*ok*/) {
     JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
     if (!obj) return 0;
-    jsvUnLock(jsvObjectSetChild(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size)));
-    jsvUnLock(jsvObjectSetChild(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode))));
-    jsvUnLock(jsvObjectSetChild(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0)));
+    jsvObjectSetChildAndUnLock(obj, "size", jsvNewFromInteger((JsVarInt)info.st_size));
+    jsvObjectSetChildAndUnLock(obj, "dir", jsvNewFromBool(S_ISDIR(info.st_mode)));
+    jsvObjectSetChildAndUnLock(obj, "mtime", jswrap_date_from_milliseconds((JsVarFloat)info.st_mtime*1000.0));
     return obj;
   }
 #endif

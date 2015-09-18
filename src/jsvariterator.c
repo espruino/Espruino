@@ -34,8 +34,7 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
     } else {
       jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
     }
-    jsvUnLock(countVar);
-    jsvUnLock(dataVar);
+    jsvUnLock2(countVar, dataVar);
   } else if (jsvIsString(data)) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, data, 0);

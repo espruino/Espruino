@@ -20,7 +20,7 @@
 bool isRunning = true;
 
 void addNativeFunction(const char *name, void (*callbackPtr)(void)) {
-  jsvUnLock(jsvObjectSetChild(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID)));
+  jsvObjectSetChildAndUnLock(execInfo.root, name, jsvNewNativeFunction(callbackPtr, JSWAT_VOID));
 }
 
 

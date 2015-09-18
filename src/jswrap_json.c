@@ -64,8 +64,7 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
     JsVar *v = jswrap_json_parse_internal(lex);
     JsVar *zero = jsvNewFromInteger(0);
     JsVar *r = jsvMathsOp(zero, v, '-');
-    jsvUnLock(v);
-    jsvUnLock(zero);
+    jsvUnLock2(v, zero);
     return r;
   }
   case LEX_INT: {
@@ -90,8 +89,7 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
       JsVar *value = jswrap_json_parse_internal(lex);
       if (!value ||
           (lex->tk!=']' && !jslMatch(lex, ','))) {
-        jsvUnLock(value);
-        jsvUnLock(arr);
+        jsvUnLock2(value, arr);
         return 0;
       }
       jsvArrayPush(arr, value);
@@ -113,14 +111,11 @@ JsVar *jswrap_json_parse_internal(JsLex *lex) {
       if (!jslMatch(lex, ':') ||
           !(value=jswrap_json_parse_internal(lex)) ||
           (lex->tk!='}' && !jslMatch(lex, ','))) {
-        jsvUnLock(key);
-        jsvUnLock(value);
-        jsvUnLock(obj);
+        jsvUnLock3(key, value, obj);
         return 0;
       }
       jsvAddName(obj, jsvMakeIntoVariableName(key, value));
-      jsvUnLock(value);
-      jsvUnLock(key);
+      jsvUnLock2(value, key);
     }
     if (!jslMatch(lex, '}')) {
       jsvUnLock(obj);
@@ -331,8 +326,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
             jsfGetJSONWithCallback(item, nflags, user_callback, user_data);
             needNewLine = newNeedsNewLine;
           }
-          jsvUnLock(index);
-          jsvUnLock(item);
+          jsvUnLock2(index, item);
           jsvObjectIteratorNext(&it);
         }
         jsvObjectIteratorFree(&it);
@@ -352,8 +346,7 @@ void jsfGetJSONWithCallback(JsVar *var, JSONFlags flags, vcbprintf_callback user
         JsVar *var1 = jsvNewFromStringVar(var, 0, JSON_LIMITED_STRING_AMOUNT);
         JsVar *var2 = jsvNewFromStringVar(var, jsvGetStringLength(var)-JSON_LIMITED_STRING_AMOUNT, JSON_LIMITED_STRING_AMOUNT);
         cbprintf(user_callback, user_data, "%q%s%q", var1, JSON_LIMIT_TEXT, var2);
-        jsvUnLock(var1);
-        jsvUnLock(var2);
+        jsvUnLock2(var1, var2);
       } else {
         cbprintf(user_callback, user_data, "%q", var);
       }

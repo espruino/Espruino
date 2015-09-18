@@ -87,8 +87,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     jsvUnLock(modulePath);
 #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-      jsvUnLock(moduleExportName);
-      jsvUnLock(fileContents);
+      jsvUnLock2(moduleExportName, fileContents);
       jsWarn("Module %q not found", moduleName);
       return 0;
     }

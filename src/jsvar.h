@@ -320,6 +320,11 @@ ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var);
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var);
 
+/// Unlock 2 variables in one go
+void jsvUnLock2(JsVar *var1, JsVar *var2);
+/// Unlock 3 variables in one go
+void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3);
+
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars);
 
@@ -601,6 +606,8 @@ void jsvRemoveNamedChild(JsVar *parent, const char *name);
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+/// Set the named child of an object, and unlock the child
+void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
 
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function

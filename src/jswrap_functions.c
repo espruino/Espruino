@@ -87,7 +87,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
 
   JsVar *codeStr = jsvVarPrintf("{\n%v\n}", v);
   jsvUnLock(v);
-  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr);
   return fn;
 }
 

@@ -235,8 +235,7 @@ void jswrap_interface_edit(JsVar *funcName) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
       JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
       bool normalDecl = scopeVar==0 && inRoot!=0;
-      jsvUnLock(inRoot);
-      jsvUnLock(scopeVar);
+      jsvUnLock2(inRoot, scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();
       if (newLine) { // could be out of memory
         /* normalDecl:
@@ -271,8 +270,7 @@ void jswrap_interface_edit(JsVar *funcName) {
   } else {
     jsExceptionHere(JSET_ERROR, "Edit should be called with edit(funcName) or edit('funcName')");
   }
-  jsvUnLock(func);
-  jsvUnLock(funcName);
+  jsvUnLock2(func, funcName);
 }
 
 
@@ -429,9 +427,9 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
     JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt)));
+    jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
     if (!isTimeout) {
-      jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromLongInteger(intervalInt)));
+      jsvObjectSetChildAndUnLock(timerPtr, "interval", jsvNewFromLongInteger(intervalInt));
     }
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
     if (jsvGetArrayLength(args))
@@ -492,8 +490,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
     if (child) {
       JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveChild(timerArrayPtr, child);
-      jsvUnLock(child);
-      jsvUnLock(timerArrayPtr);
+      jsvUnLock2(child, timerArrayPtr);
     } else {
       jsExceptionHere(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
@@ -534,12 +531,9 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
     JsVar *v;
     JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
     v = jsvNewFromInteger(intervalInt);
-    jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
-    jsvUnLock(v);
+    jsvUnLock2(jsvSetNamedChild(timer, v, "interval"), v);
     v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
-    jsvUnLock(jsvSetNamedChild(timer, v, "time"));
-    jsvUnLock(v);
-    jsvUnLock(timer);
+    jsvUnLock3(jsvSetNamedChild(timer, v, "time"), v, timer);
     // timerName already unlocked
     jsiTimersChanged(); // mark timers as changed
   } else {

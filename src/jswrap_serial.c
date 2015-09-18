@@ -195,16 +195,16 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
     jsvUnLock(v);
 
 #ifdef LINUX
-    jsvUnLock(jsvObjectSetChild(parent, "path", jsvObjectGetChild(options, "path", 0)));
+    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
 #endif
   }
 
   jshUSARTSetup(device, &inf);
   // Set baud rate in object, so we can initialise it on startup
-  jsvUnLock(jsvObjectSetChild(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate)));
+  jsvObjectSetChildAndUnLock(parent, USART_BAUDRATE_NAME, jsvNewFromInteger(inf.baudRate));
   // Do the same for options
   if (options)
-    jsvUnLock(jsvObjectSetChild(parent, DEVICE_OPTIONS_NAME, options));
+    jsvObjectSetChildAndUnLock(parent, DEVICE_OPTIONS_NAME, options);
   else
     jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
 }
