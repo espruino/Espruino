@@ -130,7 +130,7 @@ Note: 'Internal' functions are currently not handled correctly. You will need to
 /*JSON{
   "type" : "function",
   "name" : "load",
-  "generate_full" : "jsiSetTodo(TODO_FLASH_LOAD)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_LOAD;"
 }
 Load program memory out of flash
 
@@ -141,7 +141,7 @@ Espruino will resume from where it was when you last typed `save()`. If you want
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiSetTodo(TODO_FLASH_SAVE)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
 Save program memory into flash. It will then be loaded automatically every time Espruino powers on or is hard-reset.
 
@@ -154,7 +154,7 @@ In order to stop the program saved with this command being loaded automatically,
 /*JSON{
   "type" : "function",
   "name" : "reset",
-  "generate_full" : "jsiSetTodo(TODO_RESET)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_RESET;"
 }
 Reset the interpreter - clear program memory, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
 

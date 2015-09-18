@@ -44,7 +44,6 @@ typedef enum {
   IS_HAD_27_91_54,
 } PACKED_FLAGS InputState;
 
-TODOFlags todo = TODO_NOTHING;
 JsVar *events = 0; // Array of events to execute
 JsVarRef timerArray = 0; // Linked List of timers to check and run
 JsVarRef watchArray = 0; // Linked List of input watches to check and run
@@ -1592,10 +1591,10 @@ void jsiIdle() {
   }
 
   // check for TODOs
-  if (todo) {
+  if (jsiStatus&JSIS_TODO_MASK) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
-    if (todo & TODO_RESET) {
-      todo &= (TODOFlags)~TODO_RESET;
+    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_RESET) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
       // shut down everything and start up again
       jsiKill();
       jsvKill();
@@ -1603,8 +1602,8 @@ void jsiIdle() {
       jsvInit();
       jsiSemiInit(false); // don't autoload
     }
-    if (todo & TODO_FLASH_SAVE) {
-      todo &= (TODOFlags)~TODO_FLASH_SAVE;
+    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_SAVE) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
 
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
@@ -1616,8 +1615,8 @@ void jsiIdle() {
       jspSoftInit();
       jsiSoftInit();
     }
-    if (todo & TODO_FLASH_LOAD) {
-      todo &= (TODOFlags)~TODO_FLASH_LOAD;
+    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_LOAD) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
 
       jsiSoftKill();
       jspSoftKill();
@@ -1831,10 +1830,6 @@ void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {
   jsiDumpHardwareInitialisation(user_callback, user_data, true);
 }
 
-void jsiSetTodo(TODOFlags newTodo) {
-  todo = newTodo;
-}
-
 JsVarInt jsiTimerAdd(JsVar *timerPtr) {
   JsVar *timerArrayPtr = jsvLock(timerArray);
   JsVarInt itemIndex = jsvArrayAddToEnd(timerArrayPtr, timerPtr, 1) - 1;
@@ -1937,6 +1932,7 @@ void jsiDebuggerLine(JsVar *line) {
       jsiConsolePrint("Commands:\n"
                       "help / h           - this information\n"
                       "quit / q / Ctrl-C  - Quit debug mode, break execution\n"
+                      "reset              - Soft-reset Espruino\n"
                       "continue / c       - Continue execution\n"
                       "next / n           - execute to next line\n"
                       "step / s           - execute to next line, or step into function call\n"
@@ -1945,6 +1941,9 @@ void jsiDebuggerLine(JsVar *line) {
                       "info ... / i ...   - print information. Type 'info' for help \n");
     } else if (!strcmp(id,"quit") || !strcmp(id,"q")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
+      execInfo.execute |= EXEC_INTERRUPTED;
+    } else if (!strcmp(id,"reset")) {
+      jsiStatus = (JsiStatus)(jsiStatus & ~JSIS_TODO_MASK) | JSIS_EXIT_DEBUGGER | JSIS_TODO_RESET;
       execInfo.execute |= EXEC_INTERRUPTED;
     } else if (!strcmp(id,"continue") || !strcmp(id,"c")) {
       jsiStatus |= JSIS_EXIT_DEBUGGER;
