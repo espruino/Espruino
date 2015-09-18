@@ -44,7 +44,7 @@ void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
 
 ALWAYS_INLINE void jspDebuggerLoopIfCtrlC() {
 #ifdef USE_DEBUGGER
-  if (execInfo.execute & EXEC_CTRL_C_WAIT)
+  if (execInfo.execute & EXEC_CTRL_C_WAIT && JSP_SHOULD_EXECUTE)
     jsiDebuggerLoop();
 #endif
 }
@@ -739,18 +739,20 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
-            if (hadDebuggerNextLineOnly)
-              execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
-
+            bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
               JsVar *v = jsvSkipName(returnVarName);
               jsiConsolePrint("Value returned is =");
               jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
               jsiConsolePrintChar('\n');
               jsvUnLock(v);
-              if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION)
+              if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
+                calledDebugger = true;
                 jsiDebuggerLoop();
+              }
             }
+            if (hadDebuggerNextLineOnly && !calledDebugger)
+              execInfo.execute |= EXEC_DEBUGGER_NEXT_LINE;
 #endif
 
             jslKill(&newLex);
@@ -2218,7 +2220,9 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
 
 NO_INLINE JsVar *jspeStatement() {
 #ifdef USE_DEBUGGER
-  if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && execInfo.lex->tk!=';') {
+  if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE &&
+      execInfo.lex->tk!=';' &&
+      JSP_SHOULD_EXECUTE) {
     execInfo.lex->tokenLastStart = jsvStringIteratorGetIndex(&execInfo.lex->tokenStart.it)-1;
     jsiDebuggerLoop();
   }
@@ -2292,7 +2296,8 @@ NO_INLINE JsVar *jspeStatement() {
   } else if (execInfo.lex->tk==LEX_R_DEBUGGER) {
     JSP_ASSERT_MATCH(LEX_R_DEBUGGER);
 #ifdef USE_DEBUGGER
-    jsiDebuggerLoop();
+    if (JSP_SHOULD_EXECUTE)
+      jsiDebuggerLoop();
 #endif
   } else JSP_MATCH(LEX_EOF);
   return 0;
