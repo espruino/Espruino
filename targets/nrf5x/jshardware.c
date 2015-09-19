@@ -28,6 +28,8 @@
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
+#include "app_uart.h"
+
 static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() 
@@ -35,8 +37,8 @@ void jshInit()
 
   jshInitDevices();
   nrf_utils_cnfg_leds_as_outputs(); // Configure and turn off the four on board LEDS.
-  nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
-  nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
+  //nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
+  //nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
@@ -79,7 +81,7 @@ bool jshIsUSBSERIALConnected() {
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  return (JsSysTime) nrf_utils_get_system_time();
+  //return (JsSysTime) nrf_utils_get_system_time();
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!

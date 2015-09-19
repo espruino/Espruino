@@ -20,6 +20,7 @@
  * This file contains the source code for a sample application that uses the Nordic UART service.
  * This application uses the @ref srvlib_conn_params module.
  */
+#include "jswrap_bluetooth.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -39,7 +40,7 @@
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
-#define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Nordic_Espruino"                               /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
@@ -111,28 +112,6 @@ static void gap_params_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-/**@brief Function for handling the data from the Nordic UART Service.
- *
- * @details This function will process the data received from the Nordic UART BLE Service and send
- *          it to the UART module.
- *
- * @param[in] p_nus    Nordic UART Service structure.
- * @param[in] p_data   Data to be send to UART module.
- * @param[in] length   Length of the data.
- */
-/**@snippet [Handling the data received over BLE] */
-static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
-{
-    for (uint32_t i = 0; i < length; i++)
-    {
-        while(app_uart_put(p_data[i]) != NRF_SUCCESS);
-    }
-    while(app_uart_put('\n') != NRF_SUCCESS);
-}
-/**@snippet [Handling the data received over BLE] */
-
-
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void)
@@ -142,7 +121,7 @@ static void services_init(void)
     
     memset(&nus_init, 0, sizeof(nus_init));
 
-    nus_init.data_handler = nus_data_handler;
+    nus_init.data_handler = NULL; // Check this...
     
     err_code = ble_nus_init(&m_nus, &nus_init);
     APP_ERROR_CHECK(err_code);
@@ -455,10 +434,10 @@ void jswrap_nrf_bluetooth_init(void)
     APP_ERROR_CHECK(err_code);
     
     // Enter main loop.
-    for (;;)
-    {
+    //for (;;)
+    //{
         //power_manage();
-    }
+    //}
 }
 
 
