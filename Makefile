@@ -827,8 +827,13 @@ INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifdef USE_TEMPERATURE
-  INCLUDE += -I$(ROOT)/libs/USE_TEMPERATURE
+  INCLUDE += -I$(ROOT)/libs/temperature
   WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
+endif
+
+ifdef USE_BLUETOOTH
+  INCLUDE += -I$(ROOT)/libs/bluetooth
+  WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
