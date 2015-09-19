@@ -73,7 +73,8 @@ void jshInit()
     init = 1;
 
   #else // UART communcation between Espruino and terminal.
-
+    
+    cnfg_leds_outputs();
     JshUSARTInfo inf;
     jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
     init = 1;
@@ -141,14 +142,20 @@ void jshInterruptOff() {
 void jshInterruptOn() {
   //__enable_irq();
 }
-void jshDelayMicroseconds(int microsec) {
+void jshDelayMicroseconds(int microsec) 
+{
+  
   if (microsec <= 0)
   {
     return;
   }
   nrf_delay_us((uint32_t)microsec);
+
 }
-void jshPinSetValue(Pin pin, bool value) {
+
+void jshPinSetValue(Pin pin, bool value) 
+{
+
   if (value == 1)
   {
     nrf_gpio_pin_set(pin);
@@ -157,12 +164,13 @@ void jshPinSetValue(Pin pin, bool value) {
   {
     nrf_gpio_pin_clear(pin);
   }
+
 }
 
 bool jshPinGetValue(Pin pin) {
 
   return nrf_gpio_pin_read(pin);
-  
+
 }
 // ------
 
@@ -311,7 +319,9 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-  return false;
+  
+return false;
+
 }
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr) {
@@ -377,5 +387,5 @@ JsVarFloat jshReadVRef()
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
 unsigned int jshGetRandomNumber() {
-  return 0;
+  return (unsigned int) nrf_utils_get_random_number();
 }

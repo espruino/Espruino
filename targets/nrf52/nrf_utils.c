@@ -40,5 +40,35 @@ void lfclk_config_and_start()
 void rtc1_config_and_start()
 {
   NRF_RTC1->PRESCALER = (0UL);
+  //NRF_RTC1->EVTENSET = (0x02);
   NRF_RTC1->TASKS_START = (1UL);
+}
+
+void cnfg_leds_outputs()
+{
+  nrf_gpio_cfg_output(17);
+  nrf_gpio_cfg_output(18);
+  nrf_gpio_cfg_output(19);
+  nrf_gpio_cfg_output(20);
+}
+
+uint8_t nrf_utils_get_random_number()
+{
+  
+  NRF_RNG->CONFIG = 0x00000001; // Use the bias generator.
+  NRF_RNG->TASKS_START = 1;
+
+  while (NRF_RNG->EVENTS_VALRDY != 1)
+  {
+    // Do nothing.
+  }
+
+  NRF_RNG -> EVENTS_VALRDY = 0;
+
+  uint8_t rand_num = (uint8_t) NRF_RNG->VALUE;
+
+  NRF_RNG -> TASKS_STOP = 1;
+
+  return rand_num;
+
 }

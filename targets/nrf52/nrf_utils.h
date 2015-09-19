@@ -2,6 +2,7 @@
 #define NRF_UTILS_H__
 
 #include "nrf.h"
+#include "nrf_gpio.h"
 
 #define LFCLK_FREQ = 32768
 #define LFCLK_PRESCALER = 0
@@ -12,5 +13,10 @@ void lfclk_config_and_start(void);
 
 // Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
 void rtc1_config_and_start(void);
+
+// Configure LEDs as outputs.
+void cnfg_leds_outputs(void);
+
+uint8_t nrf_utils_get_random_number(void);
 
 #endif // NRF_UTILS_H__

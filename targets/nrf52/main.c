@@ -11,15 +11,16 @@
  * Platform Specific entry point
  * ----------------------------------------------------------------------------
  */
+ 
 #include "platform_config.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
 
 int main() {
+
   jshInit();
   jsvInit();
   jsiInit(false);
-  //debug_all_leds_on();
 
   while (1) 
   {

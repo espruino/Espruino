@@ -652,6 +652,11 @@ endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
 
+ifdef USE_TEMP
+INCLUDE += -I$(ROOT)/libs/temperature
+WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
+endif
+
 ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
@@ -1019,6 +1024,9 @@ ifeq ($(FAMILY), NRF52)
 	#SOURCES += \
 	#	$(NRF52_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
 	#	$(NRF52_SDK_PATH)/components/drivers_nrf/rtc/nrf_drv_rtc.c
+
+	# Temperature for temp library
+	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
 
 	ifdef BLE_INTERFACE
 
