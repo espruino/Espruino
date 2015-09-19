@@ -112,11 +112,11 @@ JsVar *jswrap_hashlib_sha2(JsHashType hash_type) {
 
   jsvSetString(jsCtx, hashFunctions[hash_type].data, hashFunctions[hash_type].ctx_size);
 
-  jsvUnLock(jsvObjectSetChild(hashobj, "block_size",  jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].block_size)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "context",     jsCtx));
-  jsvUnLock(jsvObjectSetChild(hashobj, "digest_size", jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].digest_size)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "hash_type",   jsvNewFromInteger(hash_type)));
-  jsvUnLock(jsvObjectSetChild(hashobj, "name",        jsvNewFromString(hashFunctions[hash_type].name)));
+  jsvObjectSetChildAndUnLock(hashobj, "block_size",  jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].block_size));
+  jsvObjectSetChildAndUnLock(hashobj, "context",     jsCtx);
+  jsvObjectSetChildAndUnLock(hashobj, "digest_size", jsvNewFromInteger((JsVarInt)hashFunctions[hash_type].digest_size));
+  jsvObjectSetChildAndUnLock(hashobj, "hash_type",   jsvNewFromInteger(hash_type));
+  jsvObjectSetChildAndUnLock(hashobj, "name",        jsvNewFromString(hashFunctions[hash_type].name));
 
   return hashobj;
 }

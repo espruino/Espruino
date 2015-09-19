@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name' : "STM32 2.8 inch LCD Board (RBT6)",
- 'variables' : 400, # FIXME we could get 700, but we don't have enough flash
+ 'variables' : 700,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_28_rb.bin',
 };
@@ -32,6 +32,12 @@ chip = {
   'i2c' : 2,
   'adc' : 3,
   'dac' : 0,
+  'saved_code' : {
+    'address' : 0x08000000 + ((128-4)*1024),
+    'page_size' : 1024, # size of pages
+    'pages' : 4, # number of pages we're using
+    'flash_available' : 128-4 # 6 used for code
+  },
 };
 # left-right, or top-bottom order
 board = {

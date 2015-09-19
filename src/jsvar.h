@@ -320,6 +320,11 @@ ALWAYS_INLINE JsVar *jsvLockAgainSafe(JsVar *var);
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var);
 
+/// Unlock 2 variables in one go
+void jsvUnLock2(JsVar *var1, JsVar *var2);
+/// Unlock 3 variables in one go
+void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3);
+
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars);
 
@@ -459,7 +464,10 @@ bool jsvIsEqual(JsVar *a, JsVar *b);
 const char *jsvGetConstString(const JsVar *v); ///< Get a const string representing this variable - if we can. Otherwise return 0
 const char *jsvGetTypeOf(const JsVar *v); ///< Return the 'type' of the JS variable (eg. JS's typeof operator)
 JsVar *jsvGetValueOf(JsVar *v); ///< Return the JsVar, or if it's an object and has a valueOf function, call that
-size_t jsvGetString(const JsVar *v, char *str, size_t len); ///< Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+
+/** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+If the buffer length is exceeded, the returned value will == len */
+size_t jsvGetString(const JsVar *v, char *str, size_t len);
 size_t jsvGetStringChars(const JsVar *v, size_t startChar, char *str, size_t len); ///< Get len bytes of string data from this string. Does not error if string len is not equal to len
 void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this string. This must JUST overwrite - not extend or shrink
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
@@ -598,6 +606,8 @@ void jsvRemoveNamedChild(JsVar *parent, const char *name);
 JsVar *jsvObjectGetChild(JsVar *obj, const char *name, JsVarFlags createChild);
 /// Set the named child of an object, and return the child (so you can choose to unlock it if you want)
 JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child);
+/// Set the named child of an object, and unlock the child
+void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child);
 
 int jsvGetChildren(JsVar *v); ///< number of children of a variable. also see jsvGetArrayLength and jsvGetLength
 JsVar *jsvGetFirstName(JsVar *v); ///< Get the first child's name from an object,array or function

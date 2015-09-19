@@ -34,6 +34,15 @@ void sdSPISetup(JsVar *spi, Pin csPin);
 bool isSdSPISetup();
 #endif
 
+// 'path' must be of JS_DIR_BUF_SIZE
+bool jsfsGetPathString(char *pathStr, JsVar *path) {
+  if (jsvGetString(path, pathStr, JS_DIR_BUF_SIZE)==JS_DIR_BUF_SIZE) {
+    jsExceptionHere(JSET_ERROR, "File path too long\n");
+    return false;
+  }
+  return true;
+}
+
 void jsfsReportError(const char *msg, FRESULT res) {
   const char *errStr = "UNKNOWN";
   if (res==FR_OK             ) errStr = "OK";
@@ -250,7 +259,11 @@ JsVar *jswrap_E_openFile(JsVar* path, JsVar* mode) {
     char pathStr[JS_DIR_BUF_SIZE] = "";
     char modeStr[3] = "r";
     if (!jsvIsUndefined(path)) {
-      jsvGetString(path, pathStr, JS_DIR_BUF_SIZE);
+      if (!jsfsGetPathString(pathStr, path)) {
+        jsvUnLock(arr);
+        return 0;
+      }
+
       if (!jsvIsUndefined(mode))
         jsvGetString(mode, modeStr, 3);
 

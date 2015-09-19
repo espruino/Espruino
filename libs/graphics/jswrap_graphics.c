@@ -67,8 +67,7 @@ void jswrap_graphics_init() {
     lcdSetCallbacks_FSMC(&gfx);
     graphicsSplash(&gfx);
     graphicsSetVar(&gfx);
-    jsvUnLock(parentObj);
-    jsvUnLock(parent);
+    jsvUnLock2(parentObj, parent);
   }
 #endif
 }
@@ -192,12 +191,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
 
@@ -213,7 +212,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   gfx.data.bpp = (unsigned char)bpp;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
-  jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+  jsvUnLock2(callbackSetPixel, callbackFillRect);
   return parent;
 }
 
@@ -564,8 +563,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height)));
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar)));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
@@ -653,10 +652,7 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customBitmap);
-  jsvUnLock(customWidth);
+  jsvUnLock3(str, customBitmap, customWidth);
   graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
@@ -704,9 +700,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customWidth);
+  jsvUnLock2(str, customWidth);
   return width;
 }
 
@@ -935,10 +929,10 @@ JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
   if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
     obj = jsvNewWithFlags(JSV_OBJECT);
     if (obj) {
-      jsvUnLock(jsvObjectSetChild(obj, "x1", jsvNewFromInteger(gfx.data.modMinX)));
-      jsvUnLock(jsvObjectSetChild(obj, "y1", jsvNewFromInteger(gfx.data.modMinY)));
-      jsvUnLock(jsvObjectSetChild(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX)));
-      jsvUnLock(jsvObjectSetChild(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY)));
+      jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
+      jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));
+      jsvObjectSetChildAndUnLock(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX));
+      jsvObjectSetChildAndUnLock(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY));
     }
   }
   if (reset) {

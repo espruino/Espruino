@@ -53,7 +53,7 @@ JsVar *jswrap_stream_read(JsVar *parent, JsVarInt chars) {
       // return just part of the buffer, and shorten it accordingly
       data = jsvNewFromStringVar(buf, 0, (size_t)chars);
       JsVar *newBuf = jsvNewFromStringVar(buf, (size_t)chars, JSVAPPENDSTRINGVAR_MAXLENGTH);
-      jsvUnLock(jsvObjectSetChild(parent, STREAM_BUFFER_NAME, newBuf));
+      jsvObjectSetChildAndUnLock(parent, STREAM_BUFFER_NAME, newBuf);
     }
   } else
     data = jsvNewFromEmptyString();

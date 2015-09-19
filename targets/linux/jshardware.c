@@ -165,8 +165,7 @@ bool jshGetDevicePath(IOEventFlags device, char *buf, size_t bufSize) {
     jsvGetString(str, buf, bufSize);
     success = true;
   }
-  jsvUnLock(str);
-  jsvUnLock(obj);
+  jsvUnLock2(str, obj);
   return success;
 }
 

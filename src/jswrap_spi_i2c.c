@@ -85,7 +85,7 @@ void jswrap_spi_setup(JsVar *parent, JsVar *options) {
     jshSPISetup(device, &inf);
 #ifdef LINUX
     if (jsvIsObject(options)) {
-      jsvUnLock(jsvObjectSetChild(parent, "path", jsvObjectGetChild(options, "path", 0)));
+      jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
     }
 #endif
   } else if (device == EV_NONE) {

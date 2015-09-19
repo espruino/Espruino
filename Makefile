@@ -623,6 +623,9 @@ endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
+else
+# If we have enough flash, include the debugger
+DEFINES+=-DUSE_DEBUGGER
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER

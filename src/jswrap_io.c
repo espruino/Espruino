@@ -451,10 +451,10 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
     // Create a new watch
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
-      jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
-      if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
-      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce))));
-      if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
+      jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
+      if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));
+      if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
+      if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
 
@@ -480,8 +480,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
 
     JsVar *watchArrayPtr = jsvLock(watchArray);
     itemIndex = jsvArrayAddToEnd(watchArrayPtr, watchPtr, 1) - 1;
-    jsvUnLock(watchArrayPtr);
-    jsvUnLock(watchPtr);
+    jsvUnLock2(watchArrayPtr, watchPtr);
 
 
   }
@@ -508,8 +507,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
-      jsvUnLock(watchPin);
-      jsvUnLock(watchPtr);
+      jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
@@ -527,8 +525,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
-      jsvUnLock(watchNamePtr);
-      jsvUnLock(watchArrayPtr);
+      jsvUnLock2(watchNamePtr, watchArrayPtr);
 
       // Now check if this pin is still being watched
       if (!jsiIsWatchingPin(pin))

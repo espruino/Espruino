@@ -381,8 +381,7 @@ static void cc3000_state_change(const char *data) {
   JsVar *dataVar = jsvNewFromString(data);
   if (wlanObj)
     jsiQueueObjectCallbacks(wlanObj, CC3000_ON_STATE_CHANGE, &dataVar, 1);
-  jsvUnLock(dataVar);
-  jsvUnLock(wlanObj);
+  jsvUnLock2(dataVar, wlanObj);
 }
 
 void cc3000_usynch_callback(long lEventType, char *pcData, unsigned char ucLength) {

@@ -208,11 +208,9 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
   if (!obj) return 0;
   JsVar *v;
   v = jsvNewFromFloat(position);
-  jsvUnLock(jsvAddNamedChild(obj, v, "pos"));
-  jsvUnLock(v);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pos"), v);
   v = jsvNewFromFloat(jshGetMillisecondsFromTime(tp->pulseLength));
-  jsvUnLock(jsvAddNamedChild(obj, v, "pulseLength"));
-  jsvUnLock(v);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pulseLength"), v);
   v = jsvNewWithFlags(JSV_ARRAY);
   int i;
   if (v) {
@@ -221,8 +219,7 @@ JsVar *jswrap_trig_getTrigger(JsVarInt num) {
         jsvArrayPushAndUnLock(v, jsvNewFromPin(tp->pins[i]));
       }
   }
-  jsvUnLock(jsvAddNamedChild(obj, v, "pins"));
-  jsvUnLock(v);
+  jsvUnLock2(jsvAddNamedChild(obj, v, "pins"), v);
   return obj;
 }
 

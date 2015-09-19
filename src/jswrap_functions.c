@@ -87,7 +87,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
 
   JsVar *codeStr = jsvVarPrintf("{\n%v\n}", v);
   jsvUnLock(v);
-  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr);
   return fn;
 }
 
@@ -132,7 +132,10 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    return jsvNewFromFloat(NAN);
+  }
   bool hasError = false;
   if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
     radix = 10; // DON'T assume a number is octal if it starts with 0
@@ -154,7 +157,10 @@ Convert a string representing a number into an float
  */
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+    return NAN;
+  }
   if (!strcmp(buffer, "Infinity")) return INFINITY;
   if (!strcmp(buffer, "-Infinity")) return -INFINITY;
   return stringToFloat(buffer);
@@ -174,7 +180,7 @@ Whether the x is NaN (Not a Number) or not
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
-      (jsvIsFloat(v) && isnan(jsvGetFloat(v)))) return true;
+      ((jsvIsFloat(v)||jsvIsArray(v)) && isnan(jsvGetFloat(v)))) return true;
   if (jsvIsString(v)) {
     // this is where is can get a bit crazy
     bool allWhiteSpace = true;

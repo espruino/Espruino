@@ -102,11 +102,23 @@ typedef enum  {
    * then you're fine anyway. */
   EXEC_PARSE_FUNCTION_DECL = 4096,
 
+#ifdef USE_DEBUGGER
+  /** When the lexer hits a newline character, it'll then drop right
+   * into the debugger */
+  EXEC_DEBUGGER_NEXT_LINE = 8192,
+  /** Break when we execute a function */
+  EXEC_DEBUGGER_STEP_INTO = 16384,
+  /** Break when a function finishes execution */
+  EXEC_DEBUGGER_FINISH_FUNCTION = 32768,
+  EXEC_DEBUGGER_MASK = EXEC_DEBUGGER_NEXT_LINE | EXEC_DEBUGGER_STEP_INTO | EXEC_DEBUGGER_FINISH_FUNCTION,
+#endif
+
   EXEC_RUN_MASK = EXEC_YES|EXEC_BREAK|EXEC_CONTINUE|EXEC_INTERRUPTED|EXEC_EXCEPTION,
   EXEC_ERROR_MASK = EXEC_INTERRUPTED|EXEC_ERROR|EXEC_EXCEPTION, // here, we have an error, but unless EXEC_NO_PARSE, we should continue parsing but not executing
   EXEC_NO_PARSE_MASK = EXEC_INTERRUPTED|EXEC_ERROR, // in these cases we should exit as fast as possible - skipping out of parsing
   EXEC_SAVE_RESTORE_MASK = EXEC_YES|EXEC_IN_LOOP|EXEC_IN_SWITCH|EXEC_CONTINUE|EXEC_BREAK|EXEC_ERROR_MASK, // the things JSP_SAVE/RESTORE_EXECUTE should keep track of
   EXEC_CTRL_C_MASK = EXEC_CTRL_C | EXEC_CTRL_C_WAIT, // Ctrl-C was pressed at some point
+
 } JsExecFlags;
 
 /** This structure is used when parsing the JavaScript. It contains
@@ -142,6 +154,10 @@ typedef enum {
 } JspSkipFlags;
 
 bool jspParseEmptyFunction();    ///< parse function with no arguments
+
+/** Parse using current lexer until we hit the end of
+ * input or there was some problem. */
+JsVar *jspParse();
 
 /** Handle a function call (assumes we've parsed the function name and we're
  * on the start bracket). 'thisArg' is the value of the 'this' variable when the
