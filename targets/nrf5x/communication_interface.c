@@ -10,7 +10,7 @@
  *
  */
 
-#include "uart_interface.h"
+#include "communication_interface.h"
 
 #include "jsdevices.h"
 

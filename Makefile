@@ -826,6 +826,11 @@ LIBS += -lwiringPi
 INCLUDE += -I/usr/local/include -L/usr/local/lib 
 endif
 
+ifdef USE_TEMPERATURE
+  INCLUDE += -I$(ROOT)/libs/USE_TEMPERATURE
+  WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
+endif
+
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
 ifdef USB
@@ -1046,7 +1051,8 @@ ifdef NRF5X
   SOURCES +=                              \
   targets/nrf5x/main.c                    \
   targets/nrf5x/jshardware.c              \
-  targets/nrf5x/communication_interface.c  
+  targets/nrf5x/communication_interface.c \
+  targets/nrf5x/nrf5x_utils.c
 
   # Includes required for ...
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous

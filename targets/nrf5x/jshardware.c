@@ -26,10 +26,7 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
 
 #include "communication_interface.h"
-
-// Remove these soon...
-#include "nrf_gpio.h"
-#include "nrf_delay.h"
+#include "nrf5x_utils.h"
 
 static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
@@ -37,6 +34,9 @@ void jshInit()
 {
 
   jshInitDevices();
+  nrf_utils_cnfg_leds_as_outputs(); // Configure and turn off the four on board LEDS.
+  nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
+  nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
@@ -79,7 +79,7 @@ bool jshIsUSBSERIALConnected() {
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  return (JsSysTime) NRF_RTC1->COUNTER;
+  return (JsSysTime) nrf_utils_get_system_time();
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -101,43 +101,37 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 
 // software IO functions...
 void jshInterruptOff() {
-  //__disable_irq(); // ???
+
 }
 
 void jshInterruptOn() {
-  //__enable_irq();
+
 }
 
 void jshDelayMicroseconds(int microsec) 
 {
-  
   if (microsec <= 0)
   {
     return;
   }
 
-  nrf_delay_us((uint32_t)microsec);
-
+  nrf_utils_delay_us((uint32_t) microsec);
 }
 
 void jshPinSetValue(Pin pin, bool value) 
 {
-
   if (value == 1)
   {
-    nrf_gpio_pin_set(pin);
+    nrf_utils_gpio_pin_set((uint32_t) pin);
   }
   else
   {
-    nrf_gpio_pin_clear(pin);
+    nrf_utils_gpio_pin_clear((uint32_t) pin);
   }
-
 }
 
 bool jshPinGetValue(Pin pin) {
-
-  return nrf_gpio_pin_read(pin);
-
+  return (bool) nrf_utils_gpio_pin_read((uint32_t) pin);
 }
 
 // Set the pin state
@@ -210,9 +204,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  
   uart_init(); // Initialzes UART and registers a callback function defined above to read characters into the static variable character.
-
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -228,7 +220,7 @@ void jshUSARTKick(IOEventFlags device) {
   {
     
     uint8_t character = (uint8_t) check_valid_char;
-    while (app_uart_put(character) != NRF_SUCCESS);
+    while (app_uart_put(character) != NRF_SUCCESS); // FIX THIS!!
 
   }
 
@@ -282,9 +274,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-  
-return false;
-
+  return false;
 }
 
 /// Erase the flash page containing the address
@@ -346,7 +336,7 @@ void jshDoSysTick() {
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature()
 {
-  return 0.0;
+  return (JsVarFloat) nrf_utils_read_temperature(); // This is returning an int right now..
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
@@ -359,5 +349,5 @@ JsVarFloat jshReadVRef()
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
 unsigned int jshGetRandomNumber() {
-  return 0;
+  return (unsigned int) nrf_utils_get_random_number();
 }
