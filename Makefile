@@ -32,6 +32,7 @@
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
 # MICROBIT=1
+# NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
 # RASPBERRYPI=1
@@ -361,6 +362,11 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
+NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
+else ifdef NRF51822DK
+EMBEDDED=1
+BOARD=NRF51822DK
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
 else ifdef NRF52832DK
@@ -1017,12 +1023,12 @@ ifeq ($(FAMILY), NRF51)
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
  
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf51
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   # Assume the softdevice (S110) is always enabled for now...
-  DEFINES += -DBOARD_PCA10028 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF51 -DS110 -DBLE_STACK_SUPPORT_REQD
+  DEFINES += -DBOARD_PCA10028 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF51 -DS110 -DBLE_STACK_SUPPORT_REQD #change to ds132??
   LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld 
 
 endif # FAMILY == NRF51
@@ -1035,6 +1041,7 @@ ifeq ($(FAMILY), NRF52)
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
  
   # nRF52 specific...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
@@ -1073,7 +1080,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
+  #INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
@@ -1248,9 +1255,9 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-ifndef NRF52
+ifndef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-else ifdef NRF52
+else ifdef NRF5X
  LDFLAGS += $(ARCHFLAGS)
 endif
 

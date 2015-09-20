@@ -23,7 +23,7 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jswrap_io.h"
-#include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion
+#include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
@@ -41,7 +41,7 @@ void jshInit()
   //nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialze UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
   init = 1;
 
 }

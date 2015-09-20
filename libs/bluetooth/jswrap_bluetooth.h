@@ -1,6 +1,7 @@
-#ifndef BLUETOOTH_H__
-#define BLUETOOTH_H__
+#include "jsutils.h"
+#include "jsvar.h"
+#include "jsparse.h"
+#include "jsinteractive.h"
 
 void jswrap_nrf_bluetooth_init(void);
-
-#endif // BLUETOOTH_H__
+void jswrap_nrf_bluetooth_send_string(Pin* string_to_send, int length);
