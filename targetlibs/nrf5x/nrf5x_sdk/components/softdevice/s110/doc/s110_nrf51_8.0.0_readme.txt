@@ -1,0 +1,9 @@
+s110_nrf51_8.0.0
+
+This release consists of the following:
+- This readme file
+- The s110_nrf51_8.0.0 license
+- The s110_nrf51_8.0.0 softdevice (binary hex file)
+- The s110_nrf51_8.0.0 API (softdevice header files)
+- The s110_nrf51_8.0.0 release notes
+- The s110_nrf51_8.0.0 migration document
