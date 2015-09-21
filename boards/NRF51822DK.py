@@ -19,7 +19,7 @@ info = {
  'name' : "nRF51 Development Kit",
  'link' :  [ "https://www.nordicsemi.com/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF51822" ],
  'default_console' : "EV_SERIAL1",
- 'variables' : 150, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 750, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51822.bin',
 };
 
@@ -27,7 +27,7 @@ chip = {
   'part' : "NRF51822",
   'family' : "NRF51",
   'package' : "QFN48",
-  'ram' : 16,
+  'ram' : 32,
   'flash' : 256,
   'speed' : 16,
   'usart' : 1, #TRHIS IS INCORRECT!!!
