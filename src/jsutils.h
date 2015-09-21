@@ -128,7 +128,7 @@ extern int isfinite ( double );
   #endif
 #endif
 
-#if __WORDSIZE == 64
+#if defined(__WORDSIZE) && __WORDSIZE == 64
 // 64 bit needs extra space to be able to store a function pointer
 #define JSVAR_DATA_STRING_LEN  8
 #else
