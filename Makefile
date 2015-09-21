@@ -59,7 +59,6 @@
 #
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
-# ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -517,11 +516,7 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-ifdef ESP8266
-USE_ESP8266=1
-else
 USE_CC3000=1
-endif
 endif
 endif
 endif
@@ -778,14 +773,6 @@ libs/network/js/network_js.c
  libs/network/wiznet/Ethernet/wizchip_conf.c \
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
- endif
-
- ifdef USE_ESP8266
- DEFINES += -DUSE_ESP8266
- WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
- INCLUDE += -I$(ROOT)/libs/network/esp8266
- SOURCES += \
- libs/network/esp8266/network_esp8266.c
  endif
 endif
 
