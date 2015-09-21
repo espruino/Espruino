@@ -46,17 +46,22 @@ JsVar *jswrap_array_constructor(JsVar *args) {
   assert(args);
   if (jsvGetArrayLength(args)==1) {
     JsVar *firstArg = jsvSkipNameAndUnLock(jsvGetArrayItem(args,0));
-    if (jsvIsInt(firstArg) && jsvGetInteger(firstArg)>=0) {
+    if (jsvIsNumeric(firstArg)) {
+      JsVarFloat f = jsvGetFloat(firstArg);
       JsVarInt count = jsvGetInteger(firstArg);
-      if (count>0) {
+      jsvUnLock(firstArg);
+      if (f!=count || count<0) {
+        jsExceptionHere(JSET_ERROR, "Invalid array length");
+        return 0;
+      } else {
         JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
         if (!arr) return 0; // out of memory
         jsvSetArrayLength(arr, count, false);
-        jsvUnLock(firstArg);
         return arr;
-      }
+      } 
+    } else {
+      jsvUnLock(firstArg); 
     }
-    jsvUnLock(firstArg);
   }
   // Otherwise, we just return the array!
   return jsvLockAgain(args);
@@ -492,8 +497,7 @@ JsVar *jswrap_array_shift(JsVar *parent) {
   JsVar *nRemove = jsvNewFromInteger(1);
   JsVar *elements = jsvNewWithFlags(JSV_ARRAY);
   JsVar *arr = jswrap_array_splice(parent, 0, nRemove, elements);
-  jsvUnLock(elements);
-  jsvUnLock(nRemove);
+  jsvUnLock2(elements, nRemove);
   // unpack element from the array
   JsVar *el = 0;
   if (jsvIsArray(arr))
@@ -518,8 +522,7 @@ Remove the first element of the array, and return it
 JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   // just use splice, as this does all the hard work for us
   JsVar *nRemove = jsvNewFromInteger(0);
-  jsvUnLock(jswrap_array_splice(parent, 0, nRemove, elements));
-  jsvUnLock(nRemove);
+  jsvUnLock2(jswrap_array_splice(parent, 0, nRemove, elements), nRemove);
   // return new length
   return jsvGetLength(parent);
 }
@@ -606,8 +609,7 @@ NO_INLINE static JsVarInt _jswrap_array_sort_compare(JsVar *a, JsVar *b, JsVar *
     JsVar *sa = jsvAsString(a, false);
     JsVar *sb = jsvAsString(b, false);
     JsVarInt r = jsvCompareString(sa,sb, 0, 0, false);
-    jsvUnLock(sa);
-    jsvUnLock(sb);
+    jsvUnLock2(sa, sb);
     return r;
   }
 }
@@ -858,8 +860,7 @@ void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
     JsVar *vb = jsvIteratorGetValue(&itb);
     jsvIteratorSetValue(&ita, vb);
     jsvIteratorSetValue(&itb, va);
-    jsvUnLock(va);
-    jsvUnLock(vb);
+    jsvUnLock2(va, vb);
     // if it's an array, we need to swap the key values too
     if (jsvIsArray(parent)) {
       JsVar *ka = jsvIteratorGetKey(&ita);
@@ -868,8 +869,7 @@ void _jswrap_array_reverse_block(JsVar *parent, JsvIterator *it, int items) {
       JsVarInt kvb = jsvGetInteger(kb);
       jsvSetInteger(ka, kvb);
       jsvSetInteger(kb, kva);
-      jsvUnLock(ka);
-      jsvUnLock(kb);
+      jsvUnLock2(ka, kb);
     }
 
     jsvIteratorNext(&ita);

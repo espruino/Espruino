@@ -133,23 +133,23 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   if (pathStart<0) pathStart = charIdx;
   int addrEnd = (portStart>=0) ? portStart : pathStart;
   // pull out details
-  jsvUnLock(jsvObjectSetChild(obj, "method", jsvNewFromString("GET")));
-  jsvUnLock(jsvObjectSetChild(obj, "host", jsvNewFromStringVar(url, (size_t)(addrStart+1), (size_t)(addrEnd-(addrStart+1)))));
+  jsvObjectSetChildAndUnLock(obj, "method", jsvNewFromString("GET"));
+  jsvObjectSetChildAndUnLock(obj, "host", jsvNewFromStringVar(url, (size_t)(addrStart+1), (size_t)(addrEnd-(addrStart+1))));
 
   JsVar *v;
 
   v = jsvNewFromStringVar(url, (size_t)pathStart, JSVAPPENDSTRINGVAR_MAXLENGTH);
   if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
-  jsvUnLock(jsvObjectSetChild(obj, "path", v));
+  jsvObjectSetChildAndUnLock(obj, "path", v);
 
   v = jsvNewFromStringVar(url, (size_t)pathStart, (size_t)((searchStart>=0)?(searchStart-pathStart):JSVAPPENDSTRINGVAR_MAXLENGTH));
   if (jsvGetStringLength(v)==0) jsvAppendString(v, "/");
-  jsvUnLock(jsvObjectSetChild(obj, "pathname", v));
+  jsvObjectSetChildAndUnLock(obj, "pathname", v);
 
-  jsvUnLock(jsvObjectSetChild(obj, "search", (searchStart>=0)?jsvNewFromStringVar(url, (size_t)searchStart, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull()));
+  jsvObjectSetChildAndUnLock(obj, "search", (searchStart>=0)?jsvNewFromStringVar(url, (size_t)searchStart, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull());
 
   if (portNumber<=0 || portNumber>65535) portNumber=80;
-  jsvUnLock(jsvObjectSetChild(obj, "port", jsvNewFromInteger(portNumber)));
+  jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromInteger(portNumber));
 
   JsVar *query = (searchStart>=0)?jsvNewFromStringVar(url, (size_t)(searchStart+1), JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull();
   if (parseQuery && !jsvIsNull(query)) {
@@ -168,8 +168,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
           key = jsvAsArrayIndexAndUnLock(key); // make sure "0" gets made into 0
           jsvMakeIntoVariableName(key, val);
           jsvAddName(query, key);
-          jsvUnLock(key);
-          jsvUnLock(val);
+          jsvUnLock2(key, val);
           key = jsvNewFromEmptyString();
           val = jsvNewFromEmptyString();
           hadEquals = false;
@@ -199,10 +198,9 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
       jsvMakeIntoVariableName(key, val);
       jsvAddName(query, key);
     }
-    jsvUnLock(key);
-    jsvUnLock(val);
+    jsvUnLock2(key, val);
   }
-  jsvUnLock(jsvObjectSetChild(obj, "query", query));
+  jsvObjectSetChildAndUnLock(obj, "query", query);
 
   return obj;
 }

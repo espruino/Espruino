@@ -162,20 +162,31 @@ However only pins connected to an ADC will work (see the datasheet)
   "params" : [
     ["pin","pin",["The pin to use","You can find out which pins to use by looking at [your board's reference page](#boards) and searching for pins with the `PWM` or `DAC` markers."]],
     ["value","float","A value between 0 and 1"],
-    ["options","JsVar",["An object containing options.","Currently only freq (pulse frequency in Hz) is available: ```analogWrite(A0,0.5,{ freq : 10 });``` ","Note that specifying a frequency will force PWM output, even if the pin has a DAC"]]
+    ["options","JsVar",["An object containing options for analog output - see below"]]
   ]
 }
 Set the analog Value of a pin. It will be output using PWM.
+
+Objects can contain:
+
+* `freq` - pulse frequency in Hz, eg. ```analogWrite(A0,0.5,{ freq : 10 });``` - specifying a frequency will force PWM output, even if the pin has a DAC
+* `soft` - boolean, If true software PWM is used if available.
+* `forceSoft` - boolean, If true software PWM is used even
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
  */
 void jswrap_io_analogWrite(Pin pin, JsVarFloat value, JsVar *options) {
   JsVarFloat freq = 0;
+  JshAnalogOutputFlags flags = JSAOF_NONE;
   if (jsvIsObject(options)) {
     freq = jsvGetFloatAndUnLock(jsvObjectGetChild(options, "freq", 0));
+    if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "forceSoft", 0)))
+          flags |= JSAOF_FORCE_SOFTWARE;
+    else if (jsvGetBoolAndUnLock(jsvObjectGetChild(options, "soft", 0)))
+      flags |= JSAOF_ALLOW_SOFTWARE;
   }
 
-  jshPinAnalogOutput(pin, value, freq);
+  jshPinAnalogOutput(pin, value, freq, flags);
 }
 
 /*JSON{
@@ -440,10 +451,10 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
     // Create a new watch
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
-      jsvUnLock(jsvObjectSetChild(watchPtr, "pin", jsvNewFromPin(pin)));
-      if (repeat) jsvUnLock(jsvObjectSetChild(watchPtr, "recur", jsvNewFromBool(repeat)));
-      if (debounce>0) jsvUnLock(jsvObjectSetChild(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce))));
-      if (edge) jsvUnLock(jsvObjectSetChild(watchPtr, "edge", jsvNewFromInteger(edge)));
+      jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));
+      if (repeat) jsvObjectSetChildAndUnLock(watchPtr, "recur", jsvNewFromBool(repeat));
+      if (debounce>0) jsvObjectSetChildAndUnLock(watchPtr, "debounce", jsvNewFromInteger((JsVarInt)jshGetTimeFromMilliseconds(debounce)));
+      if (edge) jsvObjectSetChildAndUnLock(watchPtr, "edge", jsvNewFromInteger(edge));
       jsvObjectSetChild(watchPtr, "callback", func); // no unlock intentionally
     }
 
@@ -469,8 +480,7 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
 
     JsVar *watchArrayPtr = jsvLock(watchArray);
     itemIndex = jsvArrayAddToEnd(watchArrayPtr, watchPtr, 1) - 1;
-    jsvUnLock(watchArrayPtr);
-    jsvUnLock(watchPtr);
+    jsvUnLock2(watchArrayPtr, watchPtr);
 
 
   }
@@ -497,8 +507,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
       JsVar *watchPtr = jsvObjectIteratorGetValue(&it);
       JsVar *watchPin = jsvObjectGetChild(watchPtr, "pin", 0);
       jshPinWatch(jshGetPinFromVar(watchPin), false);
-      jsvUnLock(watchPin);
-      jsvUnLock(watchPtr);
+      jsvUnLock2(watchPin, watchPtr);
       jsvObjectIteratorNext(&it);
     }
     jsvObjectIteratorFree(&it);
@@ -516,8 +525,7 @@ void jswrap_interface_clearWatch(JsVar *idVar) {
 
       JsVar *watchArrayPtr = jsvLock(watchArray);
       jsvRemoveChild(watchArrayPtr, watchNamePtr);
-      jsvUnLock(watchNamePtr);
-      jsvUnLock(watchArrayPtr);
+      jsvUnLock2(watchNamePtr, watchArrayPtr);
 
       // Now check if this pin is still being watched
       if (!jsiIsWatchingPin(pin))

@@ -54,9 +54,9 @@ JsVar *_jswrap_error_constructor(JsVar *msg, char *type) {
 
   if (msg) {
     msg = jsvAsString(msg, false);
-    jsvUnLock(jsvObjectSetChild(d, "msg", msg));
+    jsvObjectSetChildAndUnLock(d, "msg", msg);
   }
-  jsvUnLock(jsvObjectSetChild(d, "type", jsvNewFromString(type)));
+  jsvObjectSetChildAndUnLock(d, "type", jsvNewFromString(type));
 
   return d;
 }
@@ -181,8 +181,7 @@ JsVar *jswrap_error_toString(JsVar *parent) {
   JsVar *msg = jsvObjectGetChild(parent, "msg", 0);
   if (msg) {
     JsVar *newStr = jsvVarPrintf("%v: %v", str, msg);
-    jsvUnLock(msg);
-    jsvUnLock(str);
+    jsvUnLock2(msg, str);
     str = newStr;
   }
 

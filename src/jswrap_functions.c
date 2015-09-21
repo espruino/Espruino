@@ -87,7 +87,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
 
   JsVar *codeStr = jsvVarPrintf("{\n%v\n}", v);
   jsvUnLock(v);
-  jsvUnLock(jsvObjectSetChild(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr));
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr);
   return fn;
 }
 
@@ -132,7 +132,10 @@ JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar) {
 
   // otherwise convert to string
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    return jsvNewFromFloat(NAN);
+  }
   bool hasError = false;
   if (!radix && buffer[0]=='0' && isNumeric(buffer[1]))
     radix = 10; // DON'T assume a number is octal if it starts with 0
@@ -154,7 +157,10 @@ Convert a string representing a number into an float
  */
 JsVarFloat jswrap_parseFloat(JsVar *v) {
   char buffer[JS_NUMBER_BUFFER_SIZE];
-  jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE);
+  if (jsvGetString(v, buffer, JS_NUMBER_BUFFER_SIZE)==JS_NUMBER_BUFFER_SIZE) {
+    jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+    return NAN;
+  }
   if (!strcmp(buffer, "Infinity")) return INFINITY;
   if (!strcmp(buffer, "-Infinity")) return -INFINITY;
   return stringToFloat(buffer);
@@ -174,7 +180,7 @@ Whether the x is NaN (Not a Number) or not
 bool jswrap_isNaN(JsVar *v) {
   if (jsvIsUndefined(v) ||
       jsvIsObject(v) ||
-      (jsvIsFloat(v) && isnan(jsvGetFloat(v)))) return true;
+      ((jsvIsFloat(v)||jsvIsArray(v)) && isnan(jsvGetFloat(v)))) return true;
   if (jsvIsString(v)) {
     // this is where is can get a bit crazy
     bool allWhiteSpace = true;
@@ -270,7 +276,6 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   return base64Data;
 }
 
-
 /*JSON{
   "type" : "function",
   "name" : "atob",
@@ -324,3 +329,51 @@ JsVar *jswrap_atob(JsVar *base64Data) {
   return binaryData;
 }
 
+/*JSON{
+  "type" : "function",
+  "name" : "encodeURIComponent",
+  "ifndef" : "SAVE_ON_FLASH",
+  "generate" : "jswrap_encodeURIComponent",
+  "params" : [
+    ["str","JsVar","A string to encode as a URI"]
+  ],
+  "return" : ["JsVar","A string containing the encoded data"]
+}
+Convert a string with any character not alphanumeric or `- _ . ! ~ * ' ( )` converted to the form `%XY` where `XY` is its hexadecimal representation
+ */
+JsVar *jswrap_encodeURIComponent(JsVar *arg) {
+  JsVar *v = jsvAsString(arg, false);
+  if (!v) return 0;
+  JsVar *result = jsvNewFromEmptyString();
+  if (result) {
+    JsvStringIterator it;
+    jsvStringIteratorNew(&it, v, 0);
+    JsvStringIterator dst;
+    jsvStringIteratorNew(&dst, result, 0);
+    while (jsvStringIteratorHasChar(&it)) {
+      char ch = jsvStringIteratorGetChar(&it);
+      if (isAlpha(ch) || isNumeric(ch) ||
+          ch=='-' || // _ in isAlpha
+          ch=='.' ||
+          ch=='!' ||
+          ch=='~' ||
+          ch=='*' ||
+          ch=='\'' ||
+          ch=='(' ||
+          ch==')') {
+        jsvStringIteratorAppend(&dst, ch);
+      } else {
+        jsvStringIteratorAppend(&dst, '%');
+        unsigned int d = ((unsigned)ch)>>4;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+        d = ((unsigned)ch)&15;
+        jsvStringIteratorAppend(&dst, (char)((d>9)?('A'+d-10):('0'+d)));
+      }
+      jsvStringIteratorNext(&it);
+    }
+    jsvStringIteratorFree(&dst);
+    jsvStringIteratorFree(&it);
+  }
+  jsvUnLock(v);
+  return result;
+}

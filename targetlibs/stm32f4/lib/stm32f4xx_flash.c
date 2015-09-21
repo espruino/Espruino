@@ -1241,7 +1241,7 @@ void FLASH_OB_UserConfig(uint8_t OB_IWDG, uint8_t OB_STOP, uint8_t OB_STDBY)
   *            @arg OB_Dual_BootDisabled: Dual Bank Boot Disabled
   * @retval None
   */
-#if FLASH_OPTCR_BFB2
+#ifdef FLASH_OPTCR_BFB2
 void FLASH_OB_BootConfig(uint8_t OB_BOOT)
 {
   /* Check the parameters */

@@ -59,7 +59,7 @@
 #ifdef __cplusplus
  extern "C" {
 #endif /* __cplusplus */
-   
+
 /** @addtogroup Library_configuration_section
   * @{
   */
@@ -157,11 +157,13 @@
 #elif defined(STM32F437xx)
   #include "stm32f437xx.h"
 #elif defined(STM32F429xx)
+  #define STM32F429_439xx // legacy definition
   #include "stm32f429xx.h"
 #elif defined(STM32F439xx)
+  #define STM32F429_439xx // legacy definition
   #include "stm32f439xx.h"
 #elif defined(STM32F401xC)
-  #define STM32F401xx
+  #define STM32F401xx // legacy definition
   #include "stm32f401xc.h"
 #elif defined(STM32F401xE)
   #define STM32F401xx // legacy definition

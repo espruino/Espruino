@@ -226,8 +226,7 @@ JsVar *jswrap_string_replace(JsVar *parent, JsVar *subStr, JsVar *newSubStr) {
     str = newStr;
   }
 
-  jsvUnLock(subStr);
-  jsvUnLock(newSubStr);
+  jsvUnLock2(subStr, newSubStr);
   return str;
 }
 

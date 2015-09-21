@@ -42,7 +42,7 @@ def espruino_cmd(command):
 #print espruino_cmd("print([analogRead(A1),analogRead(A2),analogRead(A3)])").strip().split(',')
 
 if len(sys.argv)!=2:
- print "USAGE: espruino_command.py "+'"'+"print('hello')"+'"'
+ print("USAGE: espruino_command.py "+'"'+"print('hello')"+'"')
  exit(1)
 
-print espruino_cmd(sys.argv[1]).strip()
+print(espruino_cmd(sys.argv[1]).strip())

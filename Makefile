@@ -329,7 +329,7 @@ EMBEDDED=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F429IDISCOVERY
-STLIB=STM32F429_439xx
+STLIB=STM32F429xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
@@ -619,6 +619,9 @@ endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
+else
+# If we have enough flash, include the debugger
+DEFINES+=-DUSE_DEBUGGER
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER

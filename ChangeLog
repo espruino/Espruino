@@ -15,6 +15,18 @@
             Fix value returned when redefining an existing function
             Ensure Pico powers down USB in deep sleep - now down to 20uA!
             Fix Exception throw within catch block (fix #566)
+            Fix issue where new Array(3.0) wouldn't produce a 3 element array
+            Keep track of modified area in Graphics (so modules with `.flip()` can be speeded up)
+            Fix `new Date('December 17, 1995 03:24:00')` - check only first 3 chars of month
+            Allow Software PWM via `analogWrite(..., {soft:true})`
+            Add `encodeURIComponent`
+            Make sure `typeof unknown` doesn't ReferenceError
+            Fix isNaN behaviour for 2 element array
+            Fix jshPopIOEventOfType when element is at the top of queue anyway
+            Produce more reasonable behaviour when converting very long strings to ints/floats
+            Added built-in JavaScript debugger! See espruino.com/Debugger for details (fix #37)
+            Fix crash when using E.getSizeOf() in some cases
+            Make sure a TCPIP connection closes even if no data sent
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

@@ -71,7 +71,7 @@ bool jswrap_waveform_idle() {
           jsiQueueObjectCallbacks(waveform, "#onfinish", &arrayBuffer, 1);
           jsvUnLock(arrayBuffer);
           running = false;
-          jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(running)));
+          jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(running));
         } else {
           // If the timer task is still there...
           if (task.data.buffer.nextBuffer &&
@@ -81,7 +81,7 @@ bool jswrap_waveform_idle() {
             int oldBuffer = jsvGetIntegerAndUnLock(jsvObjectGetChild(waveform, "currentBuffer", JSV_INTEGER));
             if (oldBuffer != currentBuffer) {
               // buffers have changed - fire off a 'buffer' event with the buffer that needs to be filled
-              jsvUnLock(jsvObjectSetChild(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer)));
+              jsvObjectSetChildAndUnLock(waveform, "currentBuffer", jsvNewFromInteger(currentBuffer));
               JsVar *arrayBuffer = jsvObjectGetChild(waveform, (currentBuffer==0) ? "buffer" : "buffer2", 0);
               jsiQueueObjectCallbacks(waveform, "#onbuffer", &arrayBuffer, 1);
               jsvUnLock(arrayBuffer);
@@ -178,13 +178,11 @@ JsVar *jswrap_waveform_constructor(int samples, JsVar *options) {
 
 
   if (!waveform || !arrayBuffer || (doubleBuffer && !arrayBuffer2)) {
-    jsvUnLock(waveform);
-    jsvUnLock(arrayBuffer); // out of memory
-    jsvUnLock(arrayBuffer2);
+    jsvUnLock3(waveform,arrayBuffer,arrayBuffer2); // out of memory
     return 0;
   }
-  jsvUnLock(jsvObjectSetChild(waveform, "buffer", arrayBuffer));
-  if (arrayBuffer2) jsvUnLock(jsvObjectSetChild(waveform, "buffer2", arrayBuffer2));
+  jsvObjectSetChildAndUnLock(waveform, "buffer", arrayBuffer);
+  if (arrayBuffer2) jsvObjectSetChildAndUnLock(waveform, "buffer2", arrayBuffer2);
 
   return waveform;
 }
@@ -231,11 +229,10 @@ static void jswrap_waveform_start(JsVar *waveform, Pin pin, JsVarFloat freq, JsV
   // And finally set it up
   if (!jstStartSignal(startTime, jshGetTimeFromMilliseconds(1000.0 / freq), pin, buffer, repeat?(buffer2?buffer2:buffer):0, eventType))
     jsWarn("Unable to schedule a timer");
-  jsvUnLock(buffer);
-  jsvUnLock(buffer2);
+  jsvUnLock2(buffer,buffer2);
 
-  jsvUnLock(jsvObjectSetChild(waveform, "running", jsvNewFromBool(true)));
-  jsvUnLock(jsvObjectSetChild(waveform, "freq", jsvNewFromFloat(freq)));
+  jsvObjectSetChildAndUnLock(waveform, "running", jsvNewFromBool(true));
+  jsvObjectSetChildAndUnLock(waveform, "freq", jsvNewFromFloat(freq));
   // Add to our list of active waveforms
   JsVar *waveforms = jsvObjectGetChild(execInfo.hiddenRoot, JSI_WAVEFORM_NAME, JSV_ARRAY);
   if (waveforms) {

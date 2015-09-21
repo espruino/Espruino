@@ -130,7 +130,7 @@ Note: 'Internal' functions are currently not handled correctly. You will need to
 /*JSON{
   "type" : "function",
   "name" : "load",
-  "generate_full" : "jsiSetTodo(TODO_FLASH_LOAD)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_LOAD;"
 }
 Load program memory out of flash
 
@@ -141,7 +141,7 @@ Espruino will resume from where it was when you last typed `save()`. If you want
 /*JSON{
   "type" : "function",
   "name" : "save",
-  "generate_full" : "jsiSetTodo(TODO_FLASH_SAVE)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
 Save program memory into flash. It will then be loaded automatically every time Espruino powers on or is hard-reset.
 
@@ -154,7 +154,7 @@ In order to stop the program saved with this command being loaded automatically,
 /*JSON{
   "type" : "function",
   "name" : "reset",
-  "generate_full" : "jsiSetTodo(TODO_RESET)"
+  "generate_full" : "jsiStatus|=JSIS_TODO_RESET;"
 }
 Reset the interpreter - clear program memory, and do not load a saved program from flash. This does NOT reset the underlying hardware (which allows you to reset the device without it disconnecting from USB).
 
@@ -235,8 +235,7 @@ void jswrap_interface_edit(JsVar *funcName) {
       JsVar *scopeVar = jsvFindChildFromString(func, JSPARSE_FUNCTION_SCOPE_NAME, false);
       JsVar *inRoot = jsvGetArrayIndexOf(execInfo.root, func, true);
       bool normalDecl = scopeVar==0 && inRoot!=0;
-      jsvUnLock(inRoot);
-      jsvUnLock(scopeVar);
+      jsvUnLock2(inRoot, scopeVar);
       JsVar *newLine = jsvNewFromEmptyString();
       if (newLine) { // could be out of memory
         /* normalDecl:
@@ -271,8 +270,7 @@ void jswrap_interface_edit(JsVar *funcName) {
   } else {
     jsExceptionHere(JSET_ERROR, "Edit should be called with edit(funcName) or edit('funcName')");
   }
-  jsvUnLock(func);
-  jsvUnLock(funcName);
+  jsvUnLock2(func, funcName);
 }
 
 
@@ -354,7 +352,18 @@ JsVar *jswrap_interface_getSerial() {
   ],
   "return" : ["JsVar","An ID that can be passed to clearInterval"]
 }
-Call the function specified REPEATEDLY after the timeout in milliseconds.
+Call the function (or evaluate the string) specified REPEATEDLY after the timeout in milliseconds.
+
+For instance:
+
+```
+setInterval(function () {
+  console.log("Hello World");
+}, 1000);
+// or
+setInterval('console.log("Hello World");', 1000);
+// both print 'Hello World' every second
+```
 
 You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
@@ -362,7 +371,7 @@ You can also specify extra arguments that will be sent to the function when it i
 setInterval(function (a,b) {
   console.log(a+" "+b);
 }, 1000, "Hello", "World");
-// prints 'Hello World'
+// prints 'Hello World' every second
 ```
 
 If you want to stop your function from being called, pass the number that
@@ -381,7 +390,18 @@ was returned by `setInterval` into the `clearInterval` function.
   ],
   "return" : ["JsVar","An ID that can be passed to clearTimeout"]
 }
-Call the function specified ONCE after the timeout in milliseconds.
+Call the function (or evaluate the string) specified ONCE after the timeout in milliseconds.
+
+For instance:
+
+```
+setTimeout(function () {
+  console.log("Hello World");
+}, 1000);
+// or
+setTimeout('console.log("Hello World");', 1000);
+// both print 'Hello World' after a second
+```
 
 You can also specify extra arguments that will be sent to the function when it is executed. For example:
 
@@ -389,7 +409,7 @@ You can also specify extra arguments that will be sent to the function when it i
 setTimeout(function (a,b) {
   console.log(a+" "+b);
 }, 1000, "Hello", "World");
-// prints 'Hello World'
+// prints 'Hello World' after 1 second
 ```
 
 If you want to stop the function from being called, pass the number that
@@ -407,9 +427,9 @@ JsVar *_jswrap_interface_setTimeoutOrInterval(JsVar *func, JsVarFloat interval, 
     JsVar *timerPtr = jsvNewWithFlags(JSV_OBJECT);
     if (interval<TIMER_MIN_INTERVAL) interval=TIMER_MIN_INTERVAL;
     JsSysTime intervalInt = jshGetTimeFromMilliseconds(interval);
-    jsvUnLock(jsvObjectSetChild(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt)));
+    jsvObjectSetChildAndUnLock(timerPtr, "time", jsvNewFromLongInteger((jshGetSystemTime() - jsiLastIdleTime) + intervalInt));
     if (!isTimeout) {
-      jsvUnLock(jsvObjectSetChild(timerPtr, "interval", jsvNewFromLongInteger(intervalInt)));
+      jsvObjectSetChildAndUnLock(timerPtr, "interval", jsvNewFromLongInteger(intervalInt));
     }
     jsvObjectSetChild(timerPtr, "callback", func); // intentionally no unlock
     if (jsvGetArrayLength(args))
@@ -470,8 +490,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
     if (child) {
       JsVar *timerArrayPtr = jsvLock(timerArray);
       jsvRemoveChild(timerArrayPtr, child);
-      jsvUnLock(child);
-      jsvUnLock(timerArrayPtr);
+      jsvUnLock2(child, timerArrayPtr);
     } else {
       jsExceptionHere(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
@@ -512,12 +531,9 @@ void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
     JsVar *v;
     JsVarInt intervalInt = (JsVarInt)jshGetTimeFromMilliseconds(interval);
     v = jsvNewFromInteger(intervalInt);
-    jsvUnLock(jsvSetNamedChild(timer, v, "interval"));
-    jsvUnLock(v);
+    jsvUnLock2(jsvSetNamedChild(timer, v, "interval"), v);
     v = jsvNewFromInteger((JsVarInt)(jshGetSystemTime()-jsiLastIdleTime) + intervalInt);
-    jsvUnLock(jsvSetNamedChild(timer, v, "time"));
-    jsvUnLock(v);
-    jsvUnLock(timer);
+    jsvUnLock3(jsvSetNamedChild(timer, v, "time"), v, timer);
     // timerName already unlocked
     jsiTimersChanged(); // mark timers as changed
   } else {

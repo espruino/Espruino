@@ -483,6 +483,18 @@ ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   if ((var->flags & JSV_LOCK_MASK) == 0) jsvUnLockFreeIfNeeded(var);
 }
 
+/// Unlock 2 variables in one go
+void jsvUnLock2(JsVar *var1, JsVar *var2) {
+  jsvUnLock(var1);
+  jsvUnLock(var2);
+}
+/// Unlock 3 variables in one go
+void jsvUnLock3(JsVar *var1, JsVar *var2, JsVar *var3) {
+  jsvUnLock(var1);
+  jsvUnLock(var2);
+  jsvUnLock(var3);
+}
+
 /// Unlock an array of variables
 NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
   while (count) jsvUnLock(vars[--count]);
@@ -847,7 +859,8 @@ JsVar *jsvGetValueOf(JsVar *v) {
   return v;
 }
 
-/// Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+/** Save this var as a string to the given buffer, and return how long it was (return val doesn't include terminating 0)
+If the buffer length is exceeded, the returned value will == len */
 size_t jsvGetString(const JsVar *v, char *str, size_t len) {
   const char *s = jsvGetConstString(v);
   if (s) {
@@ -867,7 +880,6 @@ size_t jsvGetString(const JsVar *v, char *str, size_t len) {
     while (jsvStringIteratorHasChar(&it)) {
       if (l--<=1) {
         *str = 0;
-        jsWarn("jsvGetString overflowed\n");
         jsvStringIteratorFree(&it);
         return len;
       }
@@ -1409,8 +1421,10 @@ JsVarInt jsvGetInteger(const JsVar *v) {
   }
   if (jsvIsString(v) && jsvIsStringNumericInt(v, true/* allow decimal point*/)) {
     char buf[32];
-    jsvGetString(v, buf, sizeof(buf));
-    return (JsVarInt)stringToInt(buf);
+    if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf))
+      jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+    else
+      return (JsVarInt)stringToInt(buf);
   }
   return 0;
 }
@@ -1454,12 +1468,15 @@ JsVarFloat jsvGetFloat(const JsVar *v) {
     if (l==1) return jsvGetFloatAndUnLock(jsvSkipNameAndUnLock(jsvGetArrayItem(v,0)));
   }
   if (jsvIsString(v)) {
-    char buf[32];
-    jsvGetString(v, buf, sizeof(buf));
-    if (buf[0]==0) return 0; // empty string -> 0
-    if (!strcmp(buf,"Infinity")) return INFINITY;
-    if (!strcmp(buf,"-Infinity")) return -INFINITY;
-    return stringToFloat(buf);
+    char buf[64];
+    if (jsvGetString(v, buf, sizeof(buf))==sizeof(buf)) {
+      jsExceptionHere(JSET_ERROR, "String too big to convert to float\n");
+    } else {
+      if (buf[0]==0) return 0; // empty string -> 0
+      if (!strcmp(buf,"Infinity")) return INFINITY;
+      if (!strcmp(buf,"-Infinity")) return -INFINITY;
+      return stringToFloat(buf);
+    }
   }
   return NAN;
 }
@@ -1477,9 +1494,12 @@ JsVar *jsvAsNumber(JsVar *var) {
     return jsvNewFromInteger(jsvGetInteger(var));
   if (jsvIsString(var) && (jsvIsEmptyString(var) || jsvIsStringNumericInt(var, false/* no decimal pt - handle that with GetFloat */))) {
     // handle strings like this, in case they're too big for an int
-    char buf[32];
-    jsvGetString(var, buf, sizeof(buf));
-    return jsvNewFromLongInteger(stringToInt(buf));
+    char buf[64];
+    if (jsvGetString(var, buf, sizeof(buf))==sizeof(buf)) {
+      jsExceptionHere(JSET_ERROR, "String too big to convert to integer\n");
+      return jsvNewFromFloat(NAN);
+    } else
+      return jsvNewFromLongInteger(stringToInt(buf));
   }
   // Else just try and get a float
   return jsvNewFromFloat(jsvGetFloat(var));
@@ -2126,6 +2146,10 @@ JsVar *jsvObjectSetChild(JsVar *obj, const char *name, JsVar *child) {
   return child;
 }
 
+void jsvObjectSetChildAndUnLock(JsVar *obj, const char *name, JsVar *child) {
+  jsvUnLock(jsvObjectSetChild(obj, name, child));
+}
+
 int jsvGetChildren(JsVar *v) {
   //OPT: could length be stored as the value of the array?
   int children = 0;
@@ -2187,16 +2211,13 @@ static size_t _jsvCountJsVarsUsedRecursive(JsVar *v, bool resetRecursionFlag) {
   }
 
   size_t count = 1;
-  if (jsvHasSingleChild(v)) {
-    JsVar *child = jsvLock(jsvGetFirstChild(v));
-    count += _jsvCountJsVarsUsedRecursive(child, resetRecursionFlag);
-    jsvUnLock(child);
-  } else if (jsvHasChildren(v)) {
+  if (jsvHasSingleChild(v) || jsvHasChildren(v)) {
     JsVarRef childref = jsvGetFirstChild(v);
     while (childref) {
       JsVar *child = jsvLock(childref);
       count += _jsvCountJsVarsUsedRecursive(child, resetRecursionFlag);
-      childref = jsvGetNextSibling(child);
+      if (jsvHasChildren(v)) childref = jsvGetNextSibling(child);
+      else childref = 0;
       jsvUnLock(child);
     }
   } else if (jsvIsFlatString(v))
@@ -2423,8 +2444,11 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
 void jsvArrayAddString(JsVar *arr, const char *text) {
   JsVar *v = jsvNewFromString(text);
   JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
-  if (!idx) jsvArrayPush(arr, v);
-  else jsvUnLock(idx);
+  if (!idx) {
+    jsvArrayPush(arr, v);
+  } else {
+    jsvUnLock(idx);
+  }
   jsvUnLock(v);
 }
 
@@ -2510,11 +2534,9 @@ JsVar *jsvMathsOpSkipNames(JsVar *a, JsVar *b, int op) {
   JsVar *pb = jsvSkipName(b);
   JsVar *oa = jsvGetValueOf(pa);
   JsVar *ob = jsvGetValueOf(pb);
-  jsvUnLock(pa);
-  jsvUnLock(pb);
+  jsvUnLock2(pa, pb);
   JsVar *res = jsvMathsOp(oa,ob,op);
-  jsvUnLock(oa);
-  jsvUnLock(ob);
+  jsvUnLock2(oa, ob);
   return res;
 }
 
@@ -2648,8 +2670,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
     JsVar *da = jsvAsString(a, false);
     JsVar *db = jsvAsString(b, false);
     if (!da || !db) { // out of memory
-      jsvUnLock(da);
-      jsvUnLock(db);
+      jsvUnLock2(da, db);
       return 0;
     }
     if (op=='+') {
@@ -2657,14 +2678,12 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
       // TODO: can we be fancy and not copy da if we know it isn't reffed? what about locks?
       if (v) // could be out of memory
         jsvAppendStringVarComplete(v, db);
-      jsvUnLock(da);
-      jsvUnLock(db);
+      jsvUnLock2(da, db);
       return v;
     }
 
     int cmp = jsvCompareString(da,db,0,0,false);
-    jsvUnLock(da);
-    jsvUnLock(db);
+    jsvUnLock2(da, db);
     // use strings
     switch (op) {
     case LEX_EQUAL:     return jsvNewFromBool(cmp==0);
@@ -2681,8 +2700,7 @@ JsVar *jsvMathsOp(JsVar *a, JsVar *b, int op) {
 JsVar *jsvNegateAndUnLock(JsVar *v) {
   JsVar *zero = jsvNewFromInteger(0);
   JsVar *res = jsvMathsOpSkipNames(zero, v, '-');
-  jsvUnLock(zero);
-  jsvUnLock(v);
+  jsvUnLock2(zero, v);
   return res;
 }
 
@@ -2707,8 +2725,7 @@ JsVar *jsvGetPathTo(JsVar *root, JsVar *element, int maxDepth, JsVar *ignorePare
         // we found it! Append our name onto it as well
         JsVar *keyName = jsvIteratorGetKey(&it);
         JsVar *name = jsvVarPrintf(jsvIsObject(el) ? "%v.%v" : "%v[%q]",keyName,n);
-        jsvUnLock(keyName);
-        jsvUnLock(n);
+        jsvUnLock2(keyName, n);
         jsvIteratorFree(&it);
         return name;
       }

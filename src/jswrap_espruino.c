@@ -139,8 +139,7 @@ JsVar *jswrap_espruino_nativeCall(JsVarInt addr, JsVar *signature, JsVar *data) 
   JsVar *fn = jsvNewNativeFunction((void *)(size_t)addr, (unsigned short)argTypes);
   if (data) {
     JsVar *flat = jsvAsFlatString(data);
-    jsvUnLock(jsvAddNamedChild(fn, flat, JSPARSE_FUNCTION_CODE_NAME));
-    jsvUnLock(flat);
+    jsvUnLock2(jsvAddNamedChild(fn, flat, JSPARSE_FUNCTION_CODE_NAME), flat);
   }
   return fn;
 }
@@ -942,7 +941,7 @@ void jswrap_espruino_setUSBHID(JsVar *arr) {
   JsVar *s = jswrap_espruino_toString(report);
   jsvUnLock(report);
   // Enable HID
-  jsvUnLock(jsvObjectSetChild(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, s));
+  jsvObjectSetChildAndUnLock(execInfo.hiddenRoot, JS_USB_HID_VAR_NAME, s);
 }
 
 /*JSON{

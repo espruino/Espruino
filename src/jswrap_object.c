@@ -65,8 +65,7 @@ JsVar *jswrap_object_constructor(JsVar *value) {
   if (!funcName) return jsvNewWithFlags(JSV_OBJECT);
   JsVar *func = jsvSkipName(funcName);
   JsVar *result = jspeFunctionCall(func, funcName, 0, false, 1, &value);
-  jsvUnLock(funcName);
-  jsvUnLock(func);
+  jsvUnLock2(funcName, func);
   return result;
 }
 
@@ -304,12 +303,11 @@ JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name) {
   JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(parent);
 
   jsvObjectSetChild(obj, "value", var);
-  jsvUnLock(jsvObjectSetChild(obj, "writable", jsvNewFromBool(true)));
-  jsvUnLock(jsvObjectSetChild(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName))));
-  jsvUnLock(jsvObjectSetChild(obj, "configurable", jsvNewFromBool(!isBuiltIn)));
+  jsvObjectSetChildAndUnLock(obj, "writable", jsvNewFromBool(true));
+  jsvObjectSetChildAndUnLock(obj, "enumerable", jsvNewFromBool(!checkerFunction || !checkerFunction(varName)));
+  jsvObjectSetChildAndUnLock(obj, "configurable", jsvNewFromBool(!isBuiltIn));
 
-  jsvUnLock(var);
-  jsvUnLock(varName);
+  jsvUnLock2(var, varName);
   return obj;
 }
 
@@ -397,8 +395,7 @@ JsVar *jswrap_object_defineProperty(JsVar *parent, JsVar *propName, JsVar *desc)
   jsvUnLock(name);
   if (property && value)
     jsvSetValueOfName(property, value);
-  jsvUnLock(property);
-  jsvUnLock(value);
+  jsvUnLock2(property, value);
 
   return jsvLockAgain(parent);
 }
@@ -431,9 +428,7 @@ JsVar *jswrap_object_defineProperties(JsVar *parent, JsVar *props) {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *name = jsvObjectIteratorGetKey(&it);
     JsVar *desc = jsvObjectIteratorGetValue(&it);
-    jsvUnLock(jswrap_object_defineProperty(parent, name, desc));
-    jsvUnLock(name);
-    jsvUnLock(desc);
+    jsvUnLock3(jswrap_object_defineProperty(parent, name, desc), name, desc);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
@@ -468,8 +463,17 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
   JsVar *n = jsvNewFromString(eventName);
   JsVar *cb = jsvNewNativeFunction(callback, argTypes);
   jswrap_object_on(parent, n, cb);
-  jsvUnLock(cb);
-  jsvUnLock(n);
+  jsvUnLock2(cb, n);
+}
+
+#define EVENTNAME_SIZE 16
+bool jswrap_object_get_event_name(char *eventName, JsVar *event) {
+  strncpy(eventName,"#on",EVENTNAME_SIZE);
+  if (jsvGetString(event, &eventName[3], EVENTNAME_SIZE-4)==(EVENTNAME_SIZE-4)) {
+    jsExceptionHere(JSET_ERROR, "Event name too long\n");
+    return false;
+  }
+  return true;
 }
 
 /*JSON{
@@ -497,8 +501,8 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
-  char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  char eventName[16];
+  if (!jswrap_object_get_event_name(eventName, event)) return;
 
   JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
   JsVar *eventListeners = jsvSkipName(eventList);
@@ -518,8 +522,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
       jsvUnLock(arr);
     }
   }
-  jsvUnLock(eventListeners);
-  jsvUnLock(eventList);
+  jsvUnLock2(eventListeners, eventList);
   /* Special case if we're a data listener and data has already arrived then
    * we queue an event immediately. */
   if (jsvIsStringEqual(event, "data")) {
@@ -553,8 +556,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  char eventName[16] = "#on";
-  jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+  char eventName[16];
+  if (!jswrap_object_get_event_name(eventName, event)) return;
 
   // extract data
   const unsigned int MAX_ARGS = 4;
@@ -596,8 +599,8 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    char eventName[16] = "#on";
-    jsvGetString(event, &eventName[3], sizeof(eventName)-4);
+    char eventName[16];
+    if (!jswrap_object_get_event_name(eventName, event)) return;
     JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
     if (eventList) {
       jsvRemoveChild(parent, eventList);
@@ -783,8 +786,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
         jsvUnLock(newParam);
       }
     }
-    jsvUnLock(param);
-    jsvUnLock(defaultValue);
+    jsvUnLock2(param, defaultValue);
     if (!wasBound) break;
     jsvObjectIteratorNext(&fnIt);
   }
@@ -805,8 +807,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
       jsvSetValueOfName(newParam, defaultValue);
       jsvAddName(fn, newParam);
       addedParam = true;
-      jsvUnLock(param);
-      jsvUnLock(newParam);
+      jsvUnLock2(param, newParam);
       jsvObjectIteratorNext(&fnIt);
     }
 

@@ -66,8 +66,10 @@ JsVar *jswrap_require(JsVar *moduleName) {
 
   // Now check if it is built-in
   char moduleNameBuf[32];
-  jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf));
-  void *builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
+  void *builtInLib = 0;
+  if (jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf))<sizeof(moduleNameBuf))
+    builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
+
   if (builtInLib) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
@@ -85,8 +87,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
     jsvUnLock(modulePath);
 #endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-      jsvUnLock(moduleExportName);
-      jsvUnLock(fileContents);
+      jsvUnLock2(moduleExportName, fileContents);
       jsWarn("Module %q not found", moduleName);
       return 0;
     }

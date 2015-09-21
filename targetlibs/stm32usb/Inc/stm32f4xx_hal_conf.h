@@ -399,6 +399,7 @@
 #endif /* HAL_SPDIFRX_MODULE_ENABLED */
    
 /* Exported macro ------------------------------------------------------------*/
+#ifndef assert_param
 #ifdef  USE_FULL_ASSERT
 /**
   * @brief  The assert_param macro is used for function's parameters check.
@@ -414,6 +415,7 @@
 #else
   #define assert_param(expr) ((void)0)
 #endif /* USE_FULL_ASSERT */    
+#endif 
 
 #ifdef __cplusplus
 }

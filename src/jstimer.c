@@ -194,52 +194,6 @@ void jstUtilTimerWaitEmpty() {
   WAIT_UNTIL(!jstUtilTimerIsRunning(), "Utility Timer");
 }
 
-/// Return the latest task for a pin (false if not found)
-bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
-  unsigned char ptr = utilTimerTasksHead;
-  if (ptr == utilTimerTasksTail) return false; // nothing in here
-  ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-  // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
-  while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-    if (utilTimerTasks[ptr].type == UET_SET) {
-      int i;
-      for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
-        if (utilTimerTasks[ptr].data.set.pins[i] == pin) {
-          *task = utilTimerTasks[ptr];
-          return true;
-        } else if (utilTimerTasks[ptr].data.set.pins[i]==PIN_UNDEFINED)
-          break;
-    }
-    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-  }
-  return false;
-}
-
-#ifndef SAVE_ON_FLASH
-/// Return true if a timer task for the given variable exists (and set 'task' to it)
-bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
-  JsVarRef ref = jsvGetRef(var);
-  jshInterruptOff();
-  unsigned char ptr = utilTimerTasksHead;
-  if (ptr != utilTimerTasksTail) {
-    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
-    while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
-      if (UET_IS_BUFFER_EVENT(utilTimerTasks[ptr].type)) {
-        if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
-          *task = utilTimerTasks[ptr];
-          jshInterruptOn();
-          return true;
-        }
-      }
-      ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    }
-  }
-  jshInterruptOn();
-  return false;
-}
-#endif
-
 /// Is the timer full - can it accept any other signals?
 static bool utilTimerIsFull() {
   unsigned char nextHead = (utilTimerTasksHead+1) & (UTILTIMERTASK_TASKS-1);
@@ -284,6 +238,96 @@ bool utilTimerInsertTask(UtilTimerTask *task) {
   return true;
 }
 
+/// Remove the task that that 'checkCallback' returns true for. Returns false if none found
+bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData) {
+  jshInterruptOff();
+  unsigned char ptr = utilTimerTasksHead;
+  if (ptr != utilTimerTasksTail) {
+    unsigned char endPtr = ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1));
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+    while (ptr != endPtr) {
+      if (checkCallback(&utilTimerTasks[ptr], checkCallbackData)) {
+        // shift tail back along
+        unsigned char next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+        while (next!=endPtr) {
+          utilTimerTasks[ptr] = utilTimerTasks[next];
+          ptr = next;
+          next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+        }
+        // move 'end' pointer back
+        utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
+        jshInterruptOn();
+        return true;
+      }
+      ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    }
+  }
+  jshInterruptOn();
+  return false;
+}
+
+/// If 'checkCallback' returns true for a task, set 'task' to it and return true. Returns false if none found
+bool utilTimerGetLastTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData, UtilTimerTask *task) {
+  jshInterruptOff();
+  unsigned char ptr = utilTimerTasksHead;
+  if (ptr != utilTimerTasksTail) {
+    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
+    while (ptr != ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1))) {
+      if (checkCallback(&utilTimerTasks[ptr], checkCallbackData)) {
+        *task = utilTimerTasks[ptr];
+        jshInterruptOn();
+        return true;
+      }
+      ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
+    }
+  }
+  jshInterruptOn();
+  return false;
+}
+
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
+
+#ifndef SAVE_ON_FLASH
+// data = *JsVarRef
+static bool jstBufferTaskChecker(UtilTimerTask *task, void *data) {
+  if (!UET_IS_BUFFER_EVENT(task->type)) return false;
+  JsVarRef ref = *(JsVarRef*)data;
+  return task->data.buffer.currentBuffer==ref || task->data.buffer.nextBuffer==ref;
+}
+#endif
+
+// data = *Pin
+static bool jstPinTaskChecker(UtilTimerTask *task, void *data) {
+  if (task->type != UET_SET) return false;
+  Pin pin = *(Pin*)data;
+  int i;
+  for (i=0;i<UTILTIMERTASK_PIN_COUNT;i++)
+    if (task->data.set.pins[i] == pin) {
+      return true;
+    } else if (task->data.set.pins[i]==PIN_UNDEFINED)
+      return false;
+  return false;
+}
+
+// --------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------
+
+/// Return the latest task for a pin (false if not found)
+bool jstGetLastPinTimerTask(Pin pin, UtilTimerTask *task) {
+  return utilTimerGetLastTask(jstPinTaskChecker, (void*)&pin, task);
+}
+
+#ifndef SAVE_ON_FLASH
+/// Return true if a timer task for the given variable exists (and set 'task' to it)
+bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task) {
+  JsVarRef ref = jsvGetRef(var);
+  return utilTimerGetLastTask(jstBufferTaskChecker, (void*)&ref, task);
+}
+#endif
+
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) {
   assert(pinCount<=UTILTIMERTASK_PIN_COUNT);
   UtilTimerTask task;
@@ -297,6 +341,45 @@ bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value) 
 
   WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&task);
+}
+
+// Do software PWM on the given pin, using the timer IRQs
+bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
+  /// Remove any tasks using the given pin
+  while (utilTimerRemoveTask(jstPinTaskChecker, (void*)&pin));
+  // if anything is wrong, exit now
+  if (dutyCycle<=0 || dutyCycle>=1 || freq<=0) {
+    jshPinSetValue(pin, dutyCycle >= 0.5);
+    return false;
+  }
+  JsSysTime period = jshGetTimeFromMilliseconds(1000.0 / freq);
+  if (period > 0xFFFFFFFF) {
+    jsWarn("Frequency of %f Hz is too slow", freq);
+    period = 0xFFFFFFFF;
+  }
+  JsSysTime time = jshGetSystemTime();
+
+  UtilTimerTask taskon, taskoff;
+  taskon.data.set.value = 1;
+  taskoff.data.set.value = 0;
+  taskon.time = time;
+  taskoff.time = time + jshGetTimeFromMilliseconds(dutyCycle * 1000.0 / freq);
+  taskon.repeatInterval = (unsigned int)period;
+  taskoff.repeatInterval = (unsigned int)period;
+  taskon.type = UET_SET;
+  taskoff.type = UET_SET;
+  taskon.data.set.pins[0] = pin;
+  taskoff.data.set.pins[0] = pin;
+  int i;
+  for (i=1;i<UTILTIMERTASK_PIN_COUNT;i++) {
+    taskon.data.set.pins[i] = PIN_UNDEFINED;
+    taskoff.data.set.pins[i] = PIN_UNDEFINED;
+  }
+
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
+  if (!utilTimerInsertTask(&taskon)) return false;
+  WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
+  return utilTimerInsertTask(&taskoff);
 }
 
 /// Set the utility timer so we're woken up in whatever time period
@@ -348,6 +431,7 @@ void jstClearWakeUp() {
 }
 
 #ifndef SAVE_ON_FLASH
+
 bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *currentData, JsVar *nextData, UtilTimerEventType type) {
   assert(jsvIsString(currentData));
   assert(jsvIsUndefined(nextData) || jsvIsString(nextData));
@@ -381,37 +465,14 @@ bool jstStartSignal(JsSysTime startTime, JsSysTime period, Pin pin, JsVar *curre
   return utilTimerInsertTask(&task);
 }
 
-/// Return true if a timer task for the given variable exists (and set 'task' to it)
+
+
+/// Remove the task that uses the buffer 'var'
 bool jstStopBufferTimerTask(JsVar *var) {
   JsVarRef ref = jsvGetRef(var);
-  jshInterruptOff();
-  unsigned char ptr = utilTimerTasksHead;
-  if (ptr != utilTimerTasksTail) {
-    unsigned char endPtr = ((utilTimerTasksTail+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1));
-    ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    // now we're at the last timer task - work back until we've just gone back past utilTimerTasksTail
-    while (ptr != endPtr) {
-      if (UET_IS_BUFFER_EVENT(utilTimerTasks[ptr].type)) {
-        if (utilTimerTasks[ptr].data.buffer.currentBuffer==ref || utilTimerTasks[ptr].data.buffer.nextBuffer==ref) {
-          // shift tail back along
-          unsigned char next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-          while (next!=endPtr) {
-            utilTimerTasks[ptr] = utilTimerTasks[next];
-            ptr = next;
-            next = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-          }
-          // move 'end' pointer back
-          utilTimerTasksTail = (utilTimerTasksTail+1) & (UTILTIMERTASK_TASKS-1);
-          jshInterruptOn();
-          return true;
-        }
-      }
-      ptr = (ptr+UTILTIMERTASK_TASKS-1) & (UTILTIMERTASK_TASKS-1);
-    }
-  }
-  jshInterruptOn();
-  return false;
+  return utilTimerRemoveTask(jstBufferTaskChecker, (void*)&ref);
 }
+
 #endif
 
 void jstReset() {
@@ -430,9 +491,14 @@ void jstDumpUtilityTimers() {
   jshInterruptOn();
 
   unsigned char t = uTimerTasksTail;
+  bool hadTimers = false;
   while (t!=uTimerTasksHead) {
+    hadTimers = true;
+
     UtilTimerTask task = uTimerTasks[t];
-    jsiConsolePrintf("%08d us : ", (int)(1000*jshGetMillisecondsFromTime(task.time-jsiLastIdleTime)));
+    jsiConsolePrintf("%08d us", (int)(1000*jshGetMillisecondsFromTime(task.time-jsiLastIdleTime)));
+    jsiConsolePrintf(", repeat %08d us", (int)(1000*jshGetMillisecondsFromTime(task.repeatInterval)));
+    jsiConsolePrintf(" : ");
 
     switch (task.type) {
     case UET_WAKEUP : jsiConsolePrintf("WAKEUP\n"); break;
@@ -453,5 +519,6 @@ void jstDumpUtilityTimers() {
 
     t = (t+1) & (UTILTIMERTASK_TASKS-1);
   }
-
+  if (!hadTimers)
+      jsiConsolePrintf("No Timers found.\n");
 }

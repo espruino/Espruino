@@ -34,12 +34,12 @@ def die(err):
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 
 if len(sys.argv)<3:
-  print "ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE [--bootloader_leave_space] [--bootloader]"
-  print "                              --using_bootloader       -> step forwards in flash to leave room for bootloader"
-  print "                              --bootloader             -> is a bootloader - place it in the correct position"
+  print("ERROR, USAGE: build_linker.py BOARD_NAME LINKER_FILE [--bootloader_leave_space] [--bootloader]")
+  print("                              --using_bootloader       -> step forwards in flash to leave room for bootloader")
+  print("                              --bootloader             -> is a bootloader - place it in the correct position")
   exit(1)
 boardname = sys.argv[1]
 linkerFilename = sys.argv[2]
@@ -53,10 +53,10 @@ for i in range(3,len(sys.argv)):
   else: die("Unknown option '"+arg+"'");
 
 
-print "LINKER_FILENAME "+linkerFilename
-print "BOARD "+boardname
-print "IS_BOOTLOADER "+str(IS_BOOTLOADER)
-print "IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER)
+print("LINKER_FILENAME "+linkerFilename)
+print("BOARD "+boardname)
+print("IS_BOOTLOADER "+str(IS_BOOTLOADER))
+print("IS_USING_BOOTLOADER "+str(IS_USING_BOOTLOADER))
 # import the board def
 board = importlib.import_module(boardname)
 

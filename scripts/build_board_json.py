@@ -32,14 +32,14 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 if len(sys.argv)!=2:
-  print "ERROR, USAGE: build_board_json.py BOARD_NAME"
+  print("ERROR, USAGE: build_board_json.py BOARD_NAME")
   exit(1)
 boardname = sys.argv[1]
 jsonFilename = "boards/"+boardname+".json"
-print "JSON_FILENAME "+jsonFilename
-print "BOARD "+boardname
+print("JSON_FILENAME "+jsonFilename)
+print("BOARD "+boardname)
 # import the board def
 board = importlib.import_module(boardname)
 # Call the included board_specific file - it sets up 'pins' and 'fill_gaps'

@@ -103,7 +103,7 @@ Create a software OneWire implementation on the given pin
 JsVar *jswrap_onewire_constructor(Pin pin) {
   JsVar *ow = jspNewObject(0, "OneWire");
   if (!ow) return 0;
-  jsvUnLock(jsvObjectSetChild(ow, "pin", jsvNewFromPin(pin)));
+  jsvObjectSetChildAndUnLock(ow, "pin", jsvNewFromPin(pin));
   return ow;
 }
 
