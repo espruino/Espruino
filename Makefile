@@ -1032,9 +1032,12 @@ ifeq ($(FAMILY), NRF52)
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \ # only nrf_delay.h in nrf52 sdk
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \ # differnt structed uart in nrf51 sdk
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
+  # only nrf_delay.h in nrf52 sdk
+  # different structed uart in nrf51 sdk
+
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   # Assume that softdevice (S132) is always enabled for now...
