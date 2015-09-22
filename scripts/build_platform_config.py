@@ -87,6 +87,8 @@ if not LINUX:
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="NRF51":
+    flash_page_size = 1024;
   if board.chip["family"]=="NRF52": 
     flash_page_size = 4*1024
   # F4 has different page sizes in different places
@@ -174,9 +176,12 @@ elif board.chip["family"]=="STM32F4":
   codeOut('#include "stm32f4xx.h"')
   codeOut('#include "stm32f4xx_conf.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
+elif board.chip["family"]=="NRF51":
+  board.chip["class"]="NRF51"
+  codeOut('#include "nrf.h"')
 elif board.chip["family"]=="NRF52":
   board.chip["class"]="NRF52"
-  codeOut('#include "nrf52.h"')
+  codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
 elif board.chip["family"]=="AVR":

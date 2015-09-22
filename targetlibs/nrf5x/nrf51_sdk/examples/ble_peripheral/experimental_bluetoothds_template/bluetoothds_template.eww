@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10028\s130\iar\bluetoothds_template_s130_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s110\iar\bluetoothds_template_s110_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

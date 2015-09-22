@@ -125,7 +125,21 @@ Download the compiler, set up your path so you have access to it, and run:
 
 Note: If you want to communicate with espruino through wired USB connection remove 'BLE_INTERFACE=1'. This will run Espruino so that you can program it from the chrome IDE as you normally would instead of over BLE.
 
-Also note that you must program the soft device provided by Nordic before programming Espruino. I am working on getting rid of this step. Get the soft device 132 from Nordic's newest SDK for the NRF52 platform. Program both the softdevice and Espruino with nRFGo studio which can be found on nordicsemi.com.
+To program the nRF52 Development Kit with Espruino:
+
+1.) You will need nRFgo Studio to program the nRF52 with .hex files. Download this here: https://www.nordicsemi.com/chi/node_176/2.4GHz-RF/nRFgo-Studio. This will also install all necessary software to program your nRF52 device, as well as nRF5x tools (which is a more advanced way to program the nRF52 with more functionality if you would like).
+
+2.) If you want to use BLE, first you need to download the SoftDevice provided by Nordic to enable BLE. The softdevice can be downloaded here: https://www.nordicsemi.com/eng/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF52-Preview-DK and is in the Downloads tab as S132-SD "S132 nRF52 SoftDevice."
+
+3.) Now open nRFgo Studio. Connect the nRF52 DK to your computer. A device should pop up in nRFgo studio under nRF52 development boards as "Segger XXXXXXX." Select this device. Click erase all (this will erase the device). After this succesfully completes click the Program SoftDevice tab in the upper right part of the screen. Browse for the SoftDevice you downloaded in the File to program field. Once this is selected hit the Program button.
+
+4.) Now that the SoftDevice is programmed, you can program Espruino! (The order, SoftDevice then Espruino is very important!). Click the Program Application tab now and Browse for espruino_1vxx.xx_nrf52832.hex. Select this file and click program.
+
+5.) Now that Espruino is running on the board LED1 should be blinking. This means that Espruino is advertising. Download the nRF toolbox app here: https://www.nordicsemi.com/eng/Products/nRFready-Demo-Apps/nRF-Toolbox-App. Open this on your smart phone, open the UART module, and then click connect. Select Nordic_Espruino. Now you are connected!
+
+6.) Now you can send javascript commands from your smartphone to Espruino! Go to the log in the nRF UART app and try typing 25*4 "ENTER". Note that you need to hit the new line button for espruino to work! Espruino should return >100. Now try digitalWrite(18, 0);"ENTER" This will turn LED2 (pin18 on the nRF52 DK) on! (Note 0 turns led on, 1 turns led off). You can program the device the same way you do in the Espruino IDE, just make sure you send an enter after each command. Experiment with the app and how you can assign a custom script to each button!
+
+-- Note that limited functionality is implemented on the nRF52. Feel free to help! Currently working on NFC touch to pair so you can tap the device with your smartphone to connect without opening the app and then scanning. Also thinking of ways to edit scripts (typing long programs on smartphone is tedious).
 
 ### Building for Linux
 

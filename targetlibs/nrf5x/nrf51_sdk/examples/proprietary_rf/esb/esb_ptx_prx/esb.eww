@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\prx_ack_payload\pca10028\iar\esb_prx_ack_payload_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\ptx_ack_payload\pca10028\iar\esb_ptx_ack_payload_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

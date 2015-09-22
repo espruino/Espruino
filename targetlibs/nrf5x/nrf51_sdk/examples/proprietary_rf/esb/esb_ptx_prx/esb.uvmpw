@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<ProjectWorkspace xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_mpw.xsd">
+
+  <SchemaVersion>1.0</SchemaVersion>
+
+  <Header>### uVision Project, (C) Keil Software</Header>
+
+  <WorkspaceName>WorkSpace</WorkspaceName>
+ 
+   <project>
+    <PathAndName>prx_ack_payload\pca10028\arm4\esb_prx_ack_payload_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>ptx_ack_payload\pca10028\arm4\esb_ptx_ack_payload_pca10028.uvproj</PathAndName>
+  </project>
+
+</ProjectWorkspace>

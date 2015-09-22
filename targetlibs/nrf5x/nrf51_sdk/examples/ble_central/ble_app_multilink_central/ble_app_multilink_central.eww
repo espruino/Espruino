@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10031\s130\iar\ble_app_multilink_central_s130_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s130\iar\ble_app_multilink_central_s130_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s120\iar\ble_app_multilink_central_s120_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10031\s120\iar\ble_app_multilink_central_s120_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s120_hci\iar\ble_app_multilink_central_s120_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_hci\iar\ble_app_multilink_central_s130_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_spi\iar\ble_app_multilink_central_s130_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s120_spi\iar\ble_app_multilink_central_s120_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s120_uart\iar\ble_app_multilink_central_s120_uart_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_uart\iar\ble_app_multilink_central_s130_uart_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

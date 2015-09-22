@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10028\host_ack_payload\iar\gzll_host_ack_payload_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\device_ack_payload\iar\gzll_device_ack_payload_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>
