@@ -20,9 +20,6 @@
 #if defined(USE_WIZNET)
   #include "network_wiznet.h"
 #endif
-#if defined(USE_ESP8266)
-  #include "network_esp8266.h"
-#endif
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
@@ -169,9 +166,6 @@ bool networkGetFromVar(JsNetwork *net) {
 #endif
 #if defined(USE_WIZNET)
   case JSNETWORKTYPE_W5500 : netSetCallbacks_wiznet(net); break;
-#endif
-#if defined(USE_ESP8266)
-  case JSNETWORKTYPE_ESP8266 : netSetCallbacks_esp8266(net); break;
 #endif
 #if defined(LINUX)
   case JSNETWORKTYPE_SOCKET : netSetCallbacks_linux(net); break;

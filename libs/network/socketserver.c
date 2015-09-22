@@ -363,7 +363,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
 void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **receiveData) {
   if (*receiveData) {
-    if (jsvGetStringLength(*receiveData)==0 ||
+    if (jsvIsEmptyString(*receiveData) ||
         jswrap_stream_pushData(socket, *receiveData, false)) {
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -717,6 +717,11 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
   } else {
     // on normal sockets, we actually request close after all data sent
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
+    // if we never sent any data, make sure we close 'now'
+    JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
+    if (!sendData || jsvIsEmptyString(sendData))
+      jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
+    jsvUnLock(sendData);
   }
 }
 
