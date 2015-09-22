@@ -116,8 +116,8 @@ stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
  */
 #ifdef ARM
-extern int _end; // end of ram used (variables)
-extern int _etext; // end of flash text (binary) section
+extern int LINKER_END_VAR; // end of ram used (variables)
+extern int LINKER_ETEXT_VAR; // end of flash text (binary) section
 #endif
 JsVar *jswrap_process_memory() {
   jsvGarbageCollect();
@@ -137,9 +137,9 @@ JsVar *jswrap_process_memory() {
     jsvObjectSetChildAndUnLock(obj, "history", jsvNewFromInteger((JsVarInt)history));
 
 #ifdef ARM
-    jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&_end));
+    jsvObjectSetChildAndUnLock(obj, "stackEndAddress", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_END_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_start", jsvNewFromInteger((JsVarInt)FLASH_START));
-    jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&_etext));
+    jsvObjectSetChildAndUnLock(obj, "flash_binary_end", jsvNewFromInteger((JsVarInt)(unsigned int)&LINKER_ETEXT_VAR));
     jsvObjectSetChildAndUnLock(obj, "flash_code_start", jsvNewFromInteger((JsVarInt)FLASH_SAVED_CODE_START));
     jsvObjectSetChildAndUnLock(obj, "flash_length", jsvNewFromInteger((JsVarInt)FLASH_TOTAL));
 #endif

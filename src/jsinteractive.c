@@ -498,11 +498,11 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
 
   jsiDumpSerialInitialisation(user_callback, user_data, "USB", addCallbacks);
   int i;
-  for (i=0;i<USARTS;i++)
+  for (i=0;i<USART_COUNT;i++)
     jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
-  for (i=0;i<SPIS;i++)
+  for (i=0;i<SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
-  for (i=0;i<I2CS;i++)
+  for (i=0;i<I2C_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_I2C1+i));
   // pins
   Pin pin;
@@ -1448,7 +1448,7 @@ void jsiIdle() {
   if (jshGetEventsUsed() < IOBUFFER_XON) { 
     jshSetFlowControlXON(EV_USBSERIAL, true);
     int i;
-    for (i=0;i<USARTS;i++)
+    for (i=0;i<USART_COUNT;i++)
       jshSetFlowControlXON(EV_SERIAL1+i, true);
   }
 
