@@ -41,7 +41,7 @@ def getConstructorTestFor(className, variableName):
           return "constructorPtr==(void*)"+jsondata["generate"];
         else:
           return "jsvIsNativeFunction("+variableName+") && (void*)"+variableName+"->varData.native.ptr==(void*)"+jsondata["generate"];
-    print "No constructor found for "+className
+    print("No constructor found for "+className)
     exit(1)
 
 def getTestFor(className, static):
@@ -270,14 +270,14 @@ codeOut('// --------------------------------------------------------------------
 codeOut('');
 codeOut('');
 
-print "Finding Libraries"
+print("Finding Libraries")
 libraries = []
 for jsondata in jsondatas:
   if jsondata["type"]=="library":
-    print "Found library "+jsondata["class"]
+    print("Found library "+jsondata["class"])
     libraries.append(jsondata["class"])
 
-print "Classifying Functions"
+print("Classifying Functions")
 builtins = {}
 for jsondata in jsondatas:
   if "name" in jsondata:
@@ -297,12 +297,12 @@ for jsondata in jsondatas:
           builtinName = builtinName+"_proto";
 
     if not testCode in builtins: 
-      print "Adding "+testCode+" to builtins"
+      print("Adding "+testCode+" to builtins")
       builtins[testCode] = { "name" : builtinName, "className" : className, "isProto" : isProto, "functions" : [] }
     builtins[testCode]["functions"].append(jsondata);
 
 
-print "Outputting Symbol Tables"
+print("Outputting Symbol Tables")
 idx = 0
 for b in builtins:
   builtin = builtins[b]

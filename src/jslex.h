@@ -80,6 +80,7 @@ typedef enum LEX_TYPES {
     LEX_R_DELETE,
     LEX_R_TYPEOF,
     LEX_R_VOID,
+    LEX_R_DEBUGGER,
 
     LEX_R_LIST_END /* always the last entry */
 } LEX_TYPES;
@@ -126,6 +127,7 @@ void jslGetTokenString(JsLex *lex, char *str, size_t len);
 char *jslGetTokenValueAsString(JsLex *lex);
 int jslGetTokenLength(JsLex *lex);
 JsVar *jslGetTokenValueAsVar(JsLex *lex);
+bool jslIsIDOrReservedWord(JsLex *lex);
 
 // Only for more 'internal' use
 void jslSeek(JsLex *lex, JslCharPos seekToChar); // like jslSeekTo, but doesn't pre-fill characters

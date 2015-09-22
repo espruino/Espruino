@@ -24,6 +24,7 @@
 #endif
 #include <stdarg.h> // for va_args
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(LINUX) || defined(ARDUINO_AVR)
 #include <math.h>
@@ -56,16 +57,19 @@ extern int isfinite ( double );
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE
-typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+//typedef enum {FALSE = 0, TRUE = !FALSE} bool;
+#define FALSE 0
+#define TRUE 1
 //typedef unsigned char bool;
 //#define TRUE (1)
 //#define FALSE (0)
 #endif
 
-#ifndef Arduino_h
+// Not needed because including stdbool.h instead.
+/*#ifndef Arduino_h
 #define true (1)
 #define false (0)
-#endif
+#endif*/
 
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
@@ -124,7 +128,7 @@ typedef enum {FALSE = 0, TRUE = !FALSE} bool;
   #endif
 #endif
 
-#if __WORDSIZE == 64
+#if defined(__WORDSIZE) && __WORDSIZE == 64
 // 64 bit needs extra space to be able to store a function pointer
 #define JSVAR_DATA_STRING_LEN  8
 #else
@@ -238,8 +242,8 @@ typedef int64_t JsSysTime;
 
 
 static inline bool isWhitespace(char ch) {
-    return (ch==0x09) || // \t - tabe
-           (ch==0x08) || // vertical tab
+    return (ch==0x09) || // \t - tab
+           (ch==0x0B) || // vertical tab
            (ch==0x0C) || // form feed
            (ch==0x20) || // space
            (((unsigned char)ch)==0xA0) || // no break space
@@ -282,6 +286,7 @@ typedef enum {
   JSET_SYNTAXERROR,
   JSET_TYPEERROR,
   JSET_INTERNALERROR,
+  JSET_REFERENCEERROR
 } JsExceptionType;
 
 void jsError(const char *fmt, ...);

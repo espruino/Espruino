@@ -19,10 +19,10 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
- // file IO for load/save
- #include <stdlib.h>
- #include <string.h>
- #include <stdio.h>
+// file IO for load/save
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #endif
 
 /*JSON{
@@ -41,7 +41,7 @@ board's reference pages.
 
 To see which areas of memory you can and can't overwrite, look at the values
 reported by `process.memory()`.
-*/
+ */
 
 /*JSON{
   "type" : "staticmethod",
@@ -55,15 +55,15 @@ reported by `process.memory()`.
   "return" : ["JsVar","An object of the form `{ addr : #, length : #}`, where `addr` is the start address of the page, and `length` is the length of it (in bytes). Returns undefined if no page at address"]
 }
 Returns the start and length of the flash page containing the given address.
-*/
+ */
 JsVar *jswrap_flash_getPage(int addr) {
   uint32_t pageStart, pageLength;
   if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength))
     return 0;
   JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
   if (!obj) return 0;
-  jsvUnLock(jsvObjectSetChild(obj, "addr", jsvNewFromInteger((JsVarInt)pageStart)));
-  jsvUnLock(jsvObjectSetChild(obj, "length", jsvNewFromInteger((JsVarInt)pageLength)));
+  jsvObjectSetChildAndUnLock(obj, "addr", jsvNewFromInteger((JsVarInt)pageStart));
+  jsvObjectSetChildAndUnLock(obj, "length", jsvNewFromInteger((JsVarInt)pageLength));
   return obj;
 }
 
@@ -78,7 +78,7 @@ JsVar *jswrap_flash_getPage(int addr) {
   ]
 }
 Erase a page of flash memory
-*/
+ */
 void jswrap_flash_erasePage(int addr) {
   jshFlashErasePage((uint32_t)addr);
 }
@@ -100,7 +100,7 @@ In flash memory you may only turn bits that are 1 into bits that are 0. If
 you're writing data into an area that you have already written (so `read`
 doesn't return all `0xFF`) you'll need to call `erasePage` to clear the
 entire page.
-*/
+ */
 void jswrap_flash_write(JsVar *data, int addr) {
   size_t l = (size_t)jsvIterateCallbackCount(data);
   if ((addr&3) || (l&3)) {
@@ -130,7 +130,7 @@ void jswrap_flash_write(JsVar *data, int addr) {
   "return" : ["JsVar","A Uint8Array of data"]
 }
 Read flash memory from the given address
-*/
+ */
 JsVar *jswrap_flash_read(int length, int addr) {
   if (length<=0) return 0;
   JsVar *arr = jsvNewTypedArray(ARRAYBUFFERVIEW_UINT8, length);
@@ -244,12 +244,11 @@ void jsfSaveToFlash() {
     unsigned int jsVarCount = jsvGetMemoryTotal();
     jsiConsolePrintf("\nSaving %d bytes...", jsVarCount*sizeof(JsVar));
     fwrite(&jsVarCount, sizeof(unsigned int), 1, f);
-    JsVarRef i;
-
-    /*for (i=1;i<=jsVarCount;i++) {
+    /*JsVarRef i;
+    for (i=1;i<=jsVarCount;i++) {
       fwrite(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_encode(_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, f);
+    rle_encode((unsigned char*)_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, (uint32_t*)f);
     fclose(f);
     jsiConsolePrint("\nDone!\n");
 
@@ -341,11 +340,11 @@ void jsfLoadFromFlash() {
 
     jsiConsolePrintf("\nDecompressing to %d bytes...", jsVarCount*sizeof(JsVar));
     jsvSetMemoryTotal(jsVarCount);
-    JsVarRef i;
-    /*for (i=1;i<=jsVarCount;i++) {
+    /*JsVarRef i;
+    for (i=1;i<=jsVarCount;i++) {
       fread(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_decode(jsfLoadFromFlash_readcb, f, (unsigned char*)_jsvGetAddressOf(i));
+    rle_decode(jsfLoadFromFlash_readcb, (uint32_t*)f, (unsigned char*)_jsvGetAddressOf(1));
     fclose(f);
   } else {
     jsiConsolePrint("\nFile Open Failed... \n");
@@ -356,7 +355,7 @@ void jsfLoadFromFlash() {
     return;
   }
 
-//  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
+  //  unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
   uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
 
   uint32_t cbData[2];

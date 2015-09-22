@@ -24,24 +24,24 @@ import copy;
 
 scriptdir = os.path.dirname(os.path.realpath(__file__))
 basedir = scriptdir+"/../"
-sys.path.append(basedir+"scripts");
-sys.path.append(basedir+"boards");
+sys.path.append(basedir + "scripts");
+sys.path.append(basedir + "boards");
 
 import pinutils;
 
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location " + scriptdir)
 if len(sys.argv)!=4:
-  print "ERROR, USAGE: build_pininfo.py BOARD_NAME jspininfo.c jspininfo.h"
+  print("ERROR, USAGE: build_pininfo.py BOARD_NAME jspininfo.c jspininfo.h")
   exit(1)
 boardname = sys.argv[1]
 pininfoSourceFilename = sys.argv[2]
 pininfoHeaderFilename = sys.argv[3]  
-print "PININFO_SOURCE_FILENAME"+pininfoSourceFilename
-print "PININFO_HEADER_FILENAME"+pininfoHeaderFilename
-print "BOARD "+boardname
+print("PININFO_SOURCE_FILENAME" + pininfoSourceFilename)
+print("PININFO_HEADER_FILENAME" + pininfoHeaderFilename)
+print("BOARD " + boardname)
 # import the board def
 
 board = importlib.import_module(boardname)
@@ -125,7 +125,7 @@ for port in pinutils.ALLOWED_PORTS:
       if o<0: o=pins.index(pin)
   portinfo[port] = { 'count' : c, 'offset' : o };
 # Olimexino hack as things have been renamed
-if boardname=="OLIMEXINO_STM32":
+if boardname in ["OLIMEXINO_STM32", "MAPLERET6_STM32"]:
   for port in pinutils.ALLOWED_PORTS:
     if port=="A": portinfo[port] = { 'count' : 16, 'offset' : 15 }
     elif port=="D": portinfo[port] = { 'count' : 39, 'offset' : 0 }

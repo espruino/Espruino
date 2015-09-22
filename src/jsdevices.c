@@ -16,7 +16,7 @@
 #include "jsinteractive.h"
 
 #ifdef LINUX
- #include <signal.h>
+#include <signal.h>
 #endif//LINUX
 #ifdef USE_TRIGGER
 #include "trigger.h"
@@ -192,24 +192,25 @@ void jshPushIOCharEvent(IOEventFlags channel, char charData) {
     execInfo.execute |= EXEC_CTRL_C;
     return;
   }
-  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF) 
-    jshSetFlowControlXON(channel, false);
   // Check for existing buffer (we must have at least 2 in the queue to avoid dropping chars though!)
 #ifndef LINUX // no need for this on linux, and also potentially dodgy when multi-threading
-  unsigned char nextTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
-  if (ioHead!=ioTail && ioHead!=nextTail) {
+  unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
+  if (ioHead!=ioTail && lastHead!=ioTail) {
     // we can do this because we only read in main loop, and we're in an interrupt here
-    unsigned char lastHead = (unsigned char)((ioHead+IOBUFFERMASK) & IOBUFFERMASK); // one behind head
-    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel &&
-        IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags) < IOEVENT_MAXCHARS) {
-      // last event was for this event type, and it has chars left
+    if (IOEVENTFLAGS_GETTYPE(ioBuffer[lastHead].flags) == channel) {
       unsigned char c = (unsigned char)IOEVENTFLAGS_GETCHARS(ioBuffer[lastHead].flags);
-      ioBuffer[lastHead].data.chars[c] = charData;
-      IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
-      return;
+      if (c < IOEVENT_MAXCHARS) {
+        // last event was for this event type, and it has chars left
+        ioBuffer[lastHead].data.chars[c] = charData;
+        IOEVENTFLAGS_SETCHARS(ioBuffer[lastHead].flags, c+1);
+        return; // char added, job done
+      }
     }
   }
 #endif
+  // Set flow control (as we're going to use more data)
+  if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
+    jshSetFlowControlXON(channel, false);
   // Make new buffer
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
@@ -237,8 +238,8 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
   if (trigHandleEXTI(channel | (state?EV_EXTI_IS_HIGH:0), time))
     return;
 #endif
- // Otherwise add this event
- jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
+  // Otherwise add this event
+  jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
 }
 
 void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
@@ -262,9 +263,17 @@ bool jshPopIOEvent(IOEvent *result) {
 
 // returns true on success
 bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
+  // Special case for top - it's easier!
+  if (IOEVENTFLAGS_GETTYPE(ioBuffer[ioTail].flags) == eventType)
+    return jshPopIOEvent(result);
+  // Now check non-top
   unsigned char i = ioTail;
   while (ioHead!=i) {
     if (IOEVENTFLAGS_GETTYPE(ioBuffer[i].flags) == eventType) {
+      /* We need IRQ off for this, because if we get data it's possible
+      that the IRQ will push data and will try and add characters to this
+      exact position in the buffer */
+      jshInterruptOff();
       *result = ioBuffer[i];
       // work back and shift all items in out queue
       unsigned char n = (unsigned char)((i+IOBUFFERMASK) & IOBUFFERMASK);
@@ -275,6 +284,7 @@ bool jshPopIOEventOfType(IOEventFlags eventType, IOEvent *result) {
       }
       // finally update the tail pointer, and return
       ioTail = (unsigned char)((ioTail+1) & IOBUFFERMASK);
+      jshInterruptOn();
       return true;
     }
     i = (unsigned char)((i+1) & IOBUFFERMASK);

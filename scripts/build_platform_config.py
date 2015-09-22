@@ -33,15 +33,15 @@ import pinutils;
 # -----------------------------------------------------------------------------------------
 
 # Now scan AF file
-print "Script location "+scriptdir
+print("Script location "+scriptdir)
 
 if len(sys.argv)!=2:
-  print "ERROR, USAGE: build_platform_config.py BOARD_NAME"
+  print("ERROR, USAGE: build_platform_config.py BOARD_NAME")
   exit(1)
 boardname = sys.argv[1]
 headerFilename = "gen/platform_config.h"
-print "HEADER_FILENAME "+headerFilename
-print "BOARD "+boardname
+print("HEADER_FILENAME "+headerFilename)
+print("BOARD "+boardname)
 # import the board def
 board = importlib.import_module(boardname)
 pins = board.get_pins()
@@ -87,6 +87,10 @@ if not LINUX:
   if board.chip["family"]=="STM32F3": flash_page_size = 2*1024
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
+  if board.chip["family"]=="NRF51":
+    flash_page_size = 1024;
+  if board.chip["family"]=="NRF52": 
+    flash_page_size = 4*1024
   # F4 has different page sizes in different places
   flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
   total_flash = board.chip["flash"]*1024
@@ -101,13 +105,13 @@ if not LINUX:
     flash_available_for_code = total_flash - (flash_saved_code_pages*flash_page_size)
     if has_bootloader: flash_available_for_code -= common.get_bootloader_size(board)
 
-  print "Variables = "+str(variables)
-  print "JsVar size = "+str(var_size)
-  print "VarCache size = "+str(var_cache_size)
-  print "Flash page size = "+str(flash_page_size)
-  print "Flash pages = "+str(flash_saved_code_pages)
-  print "Total flash = "+str(total_flash)
-  print "Flash available for code = "+str(flash_available_for_code)
+  print("Variables = "+str(variables))
+  print("JsVar size = "+str(var_size))
+  print("VarCache size = "+str(var_cache_size))
+  print("Flash page size = "+str(flash_page_size))
+  print("Flash pages = "+str(flash_saved_code_pages))
+  print("Total flash = "+str(total_flash))
+  print("Flash available for code = "+str(flash_available_for_code))
 
 
 # -----------------------------------------------------------------------------------------
@@ -172,10 +176,18 @@ elif board.chip["family"]=="STM32F4":
   codeOut('#include "stm32f4xx.h"')
   codeOut('#include "stm32f4xx_conf.h"')
   codeOut("#define STM32API2 // hint to jshardware that the API is a lot different")
+elif board.chip["family"]=="NRF51":
+  board.chip["class"]="NRF51"
+  codeOut('#include "nrf.h"')
+elif board.chip["family"]=="NRF52":
+  board.chip["class"]="NRF52"
+  codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
 elif board.chip["family"]=="AVR":
   board.chip["class"]="AVR"
+elif board.chip["family"]=="ESP8266":
+  board.chip["class"]="ESP8266"
 else:
   die('Unknown chip family '+board.chip["family"])
 
@@ -305,6 +317,7 @@ for device in simpleDevices:
 
 if "USB" in board.devices:
   if "pin_disc" in board.devices["USB"]: codeOutDevicePin("USB", "pin_disc", "USB_DISCONNECT_PIN")
+  if "pin_vsense" in board.devices["USB"]: codeOutDevicePin("USB", "pin_vsense", "USB_VSENSE_PIN")
 
 if "LCD" in board.devices:
   for i in range(0,16):

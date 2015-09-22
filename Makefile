@@ -31,6 +31,9 @@
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
+# MICROBIT=1
+# NRF51822DK=1
+# NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # BEAGLEBONE=1
@@ -58,7 +61,6 @@
 #
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
-# ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -196,8 +198,8 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef MAPLERET6_STM32
 EMBEDDED=1
-#USE_FILESYSTEM=0
-SAVE_ON_FLASH=0
+USE_NET=1
+USE_GRAPHICS=1
 BOARD=MAPLERET6_STM32
 STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
@@ -328,7 +330,7 @@ EMBEDDED=1
 USE_GRAPHICS=1
 DEFINES += -DUSE_USB_OTG_FS=1
 BOARD=STM32F429IDISCOVERY
-STLIB=STM32F429_439xx
+STLIB=STM32F429xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 else ifdef SMARTWATCH
@@ -353,6 +355,20 @@ BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
+else ifdef MICROBIT
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=MICROBIT
+OPTIMIZEFLAGS+=-Os # Set this to -O0 to enable debugging.
+else ifdef NRF51822DK
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=NRF51822DK
+OPTIMIZEFLAGS+=-Os
+else ifdef NRF52832DK
+EMBEDDED=1
+BOARD=NRF52832DK
+OPTIMIZEFLAGS+=-O3
 else ifdef TINYCHIP
 EMBEDDED=1
 BOARD=TINYCHIP
@@ -509,11 +525,7 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-ifdef ESP8266
-USE_ESP8266=1
-else
 USE_CC3000=1
-endif
 endif
 endif
 endif
@@ -611,6 +623,9 @@ endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
+else
+# If we have enough flash, include the debugger
+DEFINES+=-DUSE_DEBUGGER
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
@@ -768,14 +783,6 @@ libs/network/js/network_js.c
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
  endif
-
- ifdef USE_ESP8266
- DEFINES += -DUSE_ESP8266
- WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
- INCLUDE += -I$(ROOT)/libs/network/esp8266
- SOURCES += \
- libs/network/esp8266/network_esp8266.c
- endif
 endif
 
 ifdef USE_TV
@@ -806,6 +813,16 @@ ifdef USE_WIRINGPI
 DEFINES += -DUSE_WIRINGPI
 LIBS += -lwiringPi
 INCLUDE += -I/usr/local/include -L/usr/local/lib 
+endif
+
+ifdef USE_TEMPERATURE
+  INCLUDE += -I$(ROOT)/libs/temperature
+  WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
+endif
+
+ifdef USE_BLUETOOTH
+  INCLUDE += -I$(ROOT)/libs/bluetooth
+  WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
@@ -982,6 +999,112 @@ targetlibs/stm32legacyusb/usb_utils.c            \
 targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
+ifeq ($(FAMILY), NRF51)
+  NRF5X=1 
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+  # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
+  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+  ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
+ 
+  # nRF51 specific...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
+  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c # UART is structured different for nRF51 & nRF52. may be an inconsistency in nordics SDK that needs fixing.
+  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
+
+  DEFINES += -DBOARD_PCA10028  -DNRF51
+  ifdef SOFTDEVICE
+  	DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
+  endif
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld # The memory map here needs to be changed if using softdevice (currently assumes no sd) look at example linkers in sdk
+
+endif # FAMILY == NRF51
+
+ifeq ($(FAMILY), NRF52)
+  NRF5X=1
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
+
+  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+ 
+  # nRF52 specific...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk
+  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
+  # only nrf_delay.h in nrf52 sdk
+  # different structed uart in nrf51 sdk
+
+  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+
+  # Assume that softdevice (S132) is always enabled for now...
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_espruino.ld
+
+endif #FAMILY == NRF52
+
+ifdef NRF5X
+  ARM = 1
+  ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
+  INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
+
+  # These files are the Espruino HAL implementation.
+  INCLUDE += -I$(ROOT)/targets/nrf5x
+  SOURCES +=                              \
+  targets/nrf5x/main.c                    \
+  targets/nrf5x/jshardware.c              \
+  targets/nrf5x/communication_interface.c \
+  targets/nrf5x/nrf5x_utils.c
+
+  # Includes required for ...
+  # careful here.. all these includes and sources assume a softdevice. not efficeint/clean if softdevice (ble) is not enabled... fix
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # not nrf51?
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
+
+  SOURCES += \
+  $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
+  $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
+  $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
+  $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
+  $(NRF5X_SDK_PATH)/examples/bsp/bsp.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
+  $(NRF5X_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
+  $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+
+endif #NRF5X
+
 ifdef MBED
 ARCHFLAGS += -mcpu=cortex-m3 -mthumb
 ARM=1
@@ -1033,23 +1156,29 @@ export CCPREFIX=avr-
 endif
 
 ifdef ARM
-LINKER_FILE = gen/linker.ld
-DEFINES += -DARM
-INCLUDE += -I$(ROOT)/targetlibs/arm
-OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
-# I've no idea why this breaks the bootloader, but it does.
-# Given we've left 10k for it, there's no real reason to enable LTO anyway.
-ifndef BOOTLOADER
-# Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-DEFINES += -DLINK_TIME_OPTIMISATION
-endif
+  ifndef LINKER_FILE # nRF5x targets define their own linker file.
+    LINKER_FILE = gen/linker.ld
+  endif
+  DEFINES += -DARM
+  ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the CMSIS files.
+    INCLUDE += -I$(ROOT)/targetlibs/arm
+  endif
+  OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
-# Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-OPTIMIZEFLAGS += --param inline-unit-growth=6
+  # I've no idea why this breaks the bootloader, but it does.
+  # Given we've left 10k for it, there's no real reason to enable LTO anyway.
+  ifndef BOOTLOADER
+    # Enable link-time optimisations (inlining across files)
+    OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+    DEFINES += -DLINK_TIME_OPTIMISATION
+  endif
 
-export CCPREFIX?=arm-none-eabi-
+  # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
+  OPTIMIZEFLAGS += --param inline-unit-growth=6
+
+  export CCPREFIX?=arm-none-eabi-
+
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
@@ -1064,13 +1193,13 @@ export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
 endif
 
 ifdef RASPBERRYPI
-	ifneq ($(shell uname -m),armv6l)
-		# eep. let's cross compile
-		export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
-	else
-		# compiling in-place, so give it a normal name
-		PROJ_NAME=espruino
-	endif
+ ifneq ($(shell uname -m),armv6l)
+  # eep. let's cross compile
+  export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
+ else
+  # compiling in-place, so give it a normal name
+  PROJ_NAME=espruino
+ endif
 endif
 
 
@@ -1115,7 +1244,11 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ifndef NRF5X
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+else ifdef NRF5X
+ LDFLAGS += $(ARCHFLAGS)
+endif # NRF5X
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1125,6 +1258,10 @@ endif
 ifdef LINKER_FILE
 LDFLAGS += -T$(LINKER_FILE)
 endif
+
+ifdef NRF5X
+LDFLAGS += --specs=nano.specs -lc -lnosys
+endif # NRF5X
 
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
@@ -1161,9 +1298,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
+ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
@@ -1223,7 +1362,7 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
-proj: $(PROJ_NAME).lst $(PROJ_NAME).bin
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 ifdef ARDUINO_AVR
 proj: $(PROJ_NAME).hex
 endif

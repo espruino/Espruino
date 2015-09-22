@@ -51,8 +51,7 @@ static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
     jsvAppendString(string, ": ");
     jsvAppendStringVarComplete(string, v);
     jsvAppendString(string, "\r\n");
-    jsvUnLock(k);
-    jsvUnLock(v);
+    jsvUnLock2(k, v);
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
@@ -135,12 +134,12 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
   jsvUnLock(vHeaders);
   // try and pull out methods/etc
   if (isServer) {
-    jsvUnLock(jsvObjectSetChild(objectForData, "method", jsvNewFromStringVar(*receiveData, 0, (size_t)firstSpace)));
-    jsvUnLock(jsvObjectSetChild(objectForData, "url", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)))));
+    jsvObjectSetChildAndUnLock(objectForData, "method", jsvNewFromStringVar(*receiveData, 0, (size_t)firstSpace));
+    jsvObjectSetChildAndUnLock(objectForData, "url", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1))));
   } else {
-    jsvUnLock(jsvObjectSetChild(objectForData, "httpVersion", jsvNewFromStringVar(*receiveData, 5, (size_t)firstSpace-5)));
-    jsvUnLock(jsvObjectSetChild(objectForData, "statusCode", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1)))));
-    jsvUnLock(jsvObjectSetChild(objectForData, "statusMessage", jsvNewFromStringVar(*receiveData, (size_t)(secondSpace+1), (size_t)(firstEOL-(secondSpace+1)))));
+    jsvObjectSetChildAndUnLock(objectForData, "httpVersion", jsvNewFromStringVar(*receiveData, 5, (size_t)firstSpace-5));
+    jsvObjectSetChildAndUnLock(objectForData, "statusCode", jsvNewFromStringVar(*receiveData, (size_t)(firstSpace+1), (size_t)(secondSpace-(firstSpace+1))));
+    jsvObjectSetChildAndUnLock(objectForData, "statusMessage", jsvNewFromStringVar(*receiveData, (size_t)(secondSpace+1), (size_t)(firstEOL-(secondSpace+1))));
   }
   // strip out the header
   JsVar *afterHeaders = jsvNewFromStringVar(*receiveData, (size_t)headerEnd, JSVAPPENDSTRINGVAR_MAXLENGTH);
@@ -176,7 +175,7 @@ static NO_INLINE SocketType socketGetType(JsVar *var) {
 }
 
 static NO_INLINE void socketSetType(JsVar *var, SocketType socketType) {
-  jsvUnLock(jsvObjectSetChild(var, HTTP_NAME_SOCKETTYPE, jsvNewFromInteger((JsVarInt)socketType)));
+  jsvObjectSetChildAndUnLock(var, HTTP_NAME_SOCKETTYPE, jsvNewFromInteger((JsVarInt)socketType));
 }
 
 void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
@@ -299,7 +298,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
             bool hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
             if (!hadHeaders && httpParseHeaders(&receiveData, connection, true)) {
               hadHeaders = true;
-              jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
+              jsvObjectSetChildAndUnLock(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
               JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
               JsVar *args[2] = { connection, socket };
               jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, (socketType==ST_HTTP) ? 2 : 1);
@@ -353,8 +352,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       jsvUnLock(connectionName);
     } else
       jsvObjectIteratorNext(&it);
-    jsvUnLock(connection);
-    jsvUnLock(socket);
+    jsvUnLock2(connection, socket);
   }
   jsvObjectIteratorFree(&it);
   jsvUnLock(arr);
@@ -365,7 +363,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
 void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **receiveData) {
   if (*receiveData) {
-    if (jsvGetStringLength(*receiveData)==0 ||
+    if (jsvIsEmptyString(*receiveData) ||
         jswrap_stream_pushData(socket, *receiveData, false)) {
       // clear - because we have issued a callback
       jsvObjectSetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
@@ -436,7 +434,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                 JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
                 if (httpParseHeaders(&receiveData, resVar, false)) {
                   hadHeaders = true;
-                  jsvUnLock(jsvObjectSetChild(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders)));
+                  jsvObjectSetChildAndUnLock(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
                   jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
                 }
                 jsvUnLock(resVar);
@@ -470,9 +468,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       jsvObjectIteratorNext(&it);
     }
 
-    jsvUnLock(receiveData);
-    jsvUnLock(connection);
-    jsvUnLock(socket);
+    jsvUnLock3(receiveData, connection, socket);
   }
   jsvUnLock(arr);
 
@@ -512,13 +508,12 @@ bool socketIdle(JsNetwork *net) {
             }
             jsvObjectSetChild(req, HTTP_NAME_RESPONSE_VAR, res);
             jsvObjectSetChild(req, HTTP_NAME_SERVER_VAR, server);
-            jsvUnLock(jsvObjectSetChild(req, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1)));
+            jsvObjectSetChildAndUnLock(req, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1));
             // on response
-            jsvUnLock(jsvObjectSetChild(res, HTTP_NAME_CODE, jsvNewFromInteger(200)));
-            jsvUnLock(jsvObjectSetChild(res, HTTP_NAME_HEADERS, jsvNewWithFlags(JSV_OBJECT)));
+            jsvObjectSetChildAndUnLock(res, HTTP_NAME_CODE, jsvNewFromInteger(200));
+            jsvObjectSetChildAndUnLock(res, HTTP_NAME_HEADERS, jsvNewWithFlags(JSV_OBJECT));
           }
-          jsvUnLock(req);
-          jsvUnLock(res);
+          jsvUnLock2(req, res);
         } else {
           // Normal sockets
           JsVar *sock = jspNewObject(0, "Socket");
@@ -529,7 +524,7 @@ bool socketIdle(JsNetwork *net) {
               jsvArrayPush(arr, sock);
               jsvUnLock(arr);
             }
-            jsvUnLock(jsvObjectSetChild(sock, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1)));
+            jsvObjectSetChildAndUnLock(sock, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1));
             jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, &sock, 1);
             jsvUnLock(sock);
           }
@@ -563,14 +558,14 @@ void serverListen(JsNetwork *net, JsVar *server, int port) {
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVERS, true);
   if (!arr) return; // out of memory
 
-  jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_PORT, jsvNewFromInteger(port)));
+  jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
 
   int sckt = net->createsocket(net, 0/*server*/, (unsigned short)port);
   if (sckt<0) {
     jsError("Unable to create socket\n");
-    jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+    jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
-    jsvUnLock(jsvObjectSetChild(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
+    jsvObjectSetChildAndUnLock(server, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
     // add to list of servers
     jsvArrayPush(arr, server);
   }
@@ -614,8 +609,7 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
      jsvObjectSetChild(req, HTTP_NAME_RESPONSE_VAR, res);
    jsvObjectSetChild(req, HTTP_NAME_OPTIONS_VAR, options);
   }
-  jsvUnLock(res);
-  jsvUnLock(arr);
+  jsvUnLock2(res, arr);
   return req;
 }
 
@@ -632,8 +626,7 @@ void clientRequestWrite(JsVar *httpClientReqVar, JsVar *data) {
       JsVar *method = jsvObjectGetChild(options, "method", 0);
       JsVar *path = jsvObjectGetChild(options, "path", 0);
       sendData = jsvVarPrintf("%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
-      jsvUnLock(method);
-      jsvUnLock(path);
+      jsvUnLock2(method, path);
       JsVar *headers = jsvObjectGetChild(options, "headers", 0);
       bool hasHostHeader = false;
       if (jsvIsObject(headers)) {
@@ -690,7 +683,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   if(!host_addr) {
     jsError("Unable to locate host");
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
     net->checkError(net);
     return;
@@ -699,9 +692,9 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   int sckt =  net->createsocket(net, host_addr, port);
   if (sckt<0) {
     jsError("Unable to create socket\n");
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true)));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1)));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
 
     // For HTTP we get the connection callback when we've got a header back
     // Otherwise we just call back on success
@@ -723,7 +716,12 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     clientRequestConnect(net, httpClientReqVar);
   } else {
     // on normal sockets, we actually request close after all data sent
-    jsvUnLock(jsvObjectSetChild(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true)));
+    jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
+    // if we never sent any data, make sure we close 'now'
+    JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
+    if (!sendData || jsvIsEmptyString(sendData))
+      jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
+    jsvUnLock(sendData);
   }
 }
 
@@ -734,7 +732,7 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
     return;
   }
 
-  jsvUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CODE, jsvNewFromInteger(statusCode)));
+  jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CODE, jsvNewFromInteger(statusCode));
   JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
   if (sendHeaders) {
     if (!jsvIsUndefined(headers)) {
@@ -777,6 +775,6 @@ void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
 
 void serverResponseEnd(JsVar *httpServerResponseVar) {
   serverResponseWrite(httpServerResponseVar, 0); // force connection->sendData to be created even if data not called
-  jsvUnLock(jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_CLOSE, jsvNewFromBool(true)));
+  jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
 }
 

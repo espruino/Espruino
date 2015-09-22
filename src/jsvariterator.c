@@ -34,8 +34,7 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
     } else {
       jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
     }
-    jsvUnLock(countVar);
-    jsvUnLock(dataVar);
+    jsvUnLock2(countVar, dataVar);
   } else if (jsvIsString(data)) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, data, 0);
@@ -150,12 +149,12 @@ void jsvStringIteratorNext(JsvStringIterator *it) {
 void jsvStringIteratorGotoEnd(JsvStringIterator *it) {
   assert(it->var);
   while (jsvGetLastChild(it->var)) {
-     JsVar *next = jsvLock(jsvGetLastChild(it->var));
-     jsvUnLock(it->var);
-     it->var = next;
-     it->varIndex += it->charsInVar;
-     it->charsInVar = jsvGetCharactersInVar(it->var);
-   }
+    JsVar *next = jsvLock(jsvGetLastChild(it->var));
+    jsvUnLock(it->var);
+    it->var = next;
+    it->varIndex += it->charsInVar;
+    it->charsInVar = jsvGetCharactersInVar(it->var);
+  }
   if (it->charsInVar) it->charIdx = it->charsInVar-1;
   else it->charIdx = 0;
 }

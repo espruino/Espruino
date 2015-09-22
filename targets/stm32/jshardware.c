@@ -65,6 +65,9 @@ static JsSysTime jshGetTimeForSecond();
 // see jshPinWatch/jshGetWatchedPinState
 Pin watchedPins[16];
 
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT); // TODO: This should be set to all 0
+
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
 volatile unsigned char jshSPIBufHead[SPIS];
@@ -894,6 +897,13 @@ void jshDelayMicroseconds(int microsec) {
 }
 
 ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
   bool af = state==JSHPINSTATE_AF_OUT ||
@@ -1737,11 +1747,12 @@ unsigned int jshGetRandomNumber() {
 #endif
 }
 
-JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { // if freq<=0, the default is used
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   if (value<0) value=0;
   if (value>1) value=1;
+  if (!isfinite(freq)) freq=0;
   JshPinFunction func = 0;
-  if (jshIsPinValid(pin)) {
+  if (jshIsPinValid(pin) && !(flags&JSAOF_FORCE_SOFTWARE)) {
     int i;
     for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
       if (freq<=0 && JSH_PINFUNCTION_IS_DAC(pinInfo[pin].functions[i])) {
@@ -1755,12 +1766,28 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq) { 
   }
 
   if (!func) {
+    if (jshIsPinValid(pin) && (flags&(JSAOF_ALLOW_SOFTWARE|JSAOF_FORCE_SOFTWARE))) {
+      /* we set the bit field here so that if the user changes the pin state
+       * later on, we can get rid of the IRQs */
+      if (!jshGetPinStateIsManual(pin)) {
+        BITFIELD_SET(jshPinSoftPWM, pin, 0);
+        jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+      }
+      BITFIELD_SET(jshPinSoftPWM, pin, 1);
+      if (freq<=0) freq=50;
+      jstPinPWM(freq, value, pin);
+      return 0;
+    }
+
+    // Otherwise
     jshPrintCapablePins(pin, "PWM Output", JSH_TIMER1, JSH_TIMERMAX, 0,0, false);
-#if defined(DACS) && DACS>0
+  #if defined(DACS) && DACS>0
     jsiConsolePrint("\nOr pins with DAC output are:\n");
     jshPrintCapablePins(pin, 0, JSH_DAC, JSH_DAC, 0,0, false);
     jsiConsolePrint("\n");
-#endif
+  #endif
+    if (jshIsPinValid(pin))
+      jsiConsolePrint("You can also use analogWrite(pin, val, {soft:true}) for Software PWM on this pin\n");
     return 0;
   }
 
@@ -2445,9 +2472,11 @@ void jshSetUSBPower(bool isOn) {
   }
 #else
   if (isOn) {
+    USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
     USBD_Start(&hUsbDeviceFS);
   } else {    
     USBD_Stop(&hUsbDeviceFS);
+    USB_OTG_FS->GCCFG &= ~(USB_OTG_GCCFG_VBUSBSEN);
   }
 #endif
 }
@@ -2505,6 +2534,12 @@ bool jshSleep(JsSysTime timeUntilWake) {
     Pin oldWatch = watchedPins[pinInfo[usbPin].pin];
     jshPinWatch(usbPin, true);
 #endif
+#ifdef USB_VSENSE_PIN
+    // USB_VSENSE_PIN is connected to USB 5v (and pulled down by a 100k resistor)
+    // ... so wake up if it goes high
+    Pin oldWatch = watchedPins[pinInfo[USB_VSENSE_PIN].pin];
+    jshPinWatch(USB_VSENSE_PIN, true);
+#endif
 #endif // USB
 
     if (timeUntilWake!=JSSYSTIME_MAX) { // set alarm
@@ -2556,12 +2591,21 @@ bool jshSleep(JsSysTime timeUntilWake) {
 #endif
     }
 #ifdef USB
+    bool wokenByUSB = false;
 #ifdef STM32F1
-    bool wokenByUSB = jshPinGetValue(usbPin)==0;
+    wokenByUSB = jshPinGetValue(usbPin)==0;
     // remove watches on pins
     jshPinWatch(usbPin, false);
     if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
     jshPinSetState(usbPin, JSHPINSTATE_GPIO_IN);
+#endif
+#ifdef USB_VSENSE_PIN
+    // remove watch and restore old watch if there was one
+    // setting that we've woken lets the board stay awake
+    // until a USB connection can be established
+    if (jshPinGetValue(USB_VSENSE_PIN)) wokenByUSB=true;
+    jshPinWatch(USB_VSENSE_PIN, false);
+    if (oldWatch!=PIN_UNDEFINED) jshPinWatch(oldWatch, true);
 #endif
 #endif
     // recover oscillator
@@ -2575,10 +2619,8 @@ bool jshSleep(JsSysTime timeUntilWake) {
     RTC_WaitForSynchro(); // make sure any RTC reads will be done
 #ifdef USB
     jshSetUSBPower(true);
-#ifdef STM32F1
     if (wokenByUSB)
       jshLastWokenByUSB = jshGetRTCSystemTime();
-#endif
 #endif
     jsiSetSleep(JSI_SLEEP_AWAKE);
   } else

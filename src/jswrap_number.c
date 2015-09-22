@@ -21,7 +21,7 @@
   "check" : "jsvIsNumeric(var)"
 }
 This is the built-in JavaScript class for numbers.
-*/
+ */
 
 /*JSON{
   "type" : "constructor",
@@ -34,7 +34,7 @@ This is the built-in JavaScript class for numbers.
   "return" : ["JsVar","A Number object"]
 }
 Creates a number
-*/
+ */
 JsVar *jswrap_number_constructor(JsVar *args) {
   if (jsvGetArrayLength(args)==0) return jsvNewFromInteger(0);
   JsVar *val = jsvGetArrayItem(args, 0);
@@ -128,7 +128,7 @@ JsVar *jswrap_number_constructor(JsVar *args) {
   "return" : ["JsVar","A string"]
 }
 Format the number as a fixed point number
-*/
+ */
 JsVar *jswrap_number_toFixed(JsVar *parent, int decimals) {
   if (decimals<0) decimals=0;
   if (decimals>20) decimals=20;

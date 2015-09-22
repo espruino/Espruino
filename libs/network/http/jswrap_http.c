@@ -239,7 +239,28 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
   "return" : ["JsVar","Returns a new httpCRq object"],
   "return_object" : "httpCRq"
 }
-Create an HTTP Request - end() must be called on it to complete the operation
+Create an HTTP Request - `end()` must be called on it to complete the operation. `options` is of the form:
+
+```
+var options = {
+    host: 'example.com', // host name
+    port: 80,            // (optional) port, defaults to 80
+    path: '/',           // path sent to server
+    method: 'GET',       // HTTP command sent to server (must be uppercase 'GET', 'POST', etc)
+    headers: { key : value, key : value } // (optional) HTTP headers
+  };
+require("http").request(options, function(res) {
+  res.on('data', function(data) {
+    console.log("HTTP> "+data);
+  });
+  res.on('close', function(data) {
+    console.log("Connection closed");
+  });
+});
+```
+
+You can easily pre-populate `options` from a URL using `var options = url.parse("http://www.example.com/foo.html")`
+
 */
 
 /*JSON{
@@ -248,13 +269,26 @@ Create an HTTP Request - end() must be called on it to complete the operation
   "name" : "get",
   "generate" : "jswrap_http_get",
   "params" : [
-    ["options","JsVar","An object containing host,port,path,method fields"],
+    ["options","JsVar","A simple URL, or an object containing host,port,path,method fields"],
     ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new httpCRq object"],
   "return_object" : "httpCRq"
 }
-Create an HTTP Request - convenience function for ```http.request()```. `options.method` is set to 'get', and end is called automatically. See [the Internet page](/Internet) for more usage examples.
+Request a webpage over HTTP - a convenience function for `http.request()` that makes sure the HTTP command is 'GET', and that calls `end` automatically.
+
+```
+require("http").get("http://pur3.co.uk/hello.txt", function(res) {
+  res.on('data', function(data) {
+    console.log("HTTP> "+data);
+  });
+  res.on('close', function(data) {
+    console.log("Connection closed");
+  });
+});
+```
+
+See `http.request()` and [the Internet page](/Internet) and ` for more usage examples.
 */
 JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   JsNetwork net;
@@ -263,8 +297,7 @@ JsVar *jswrap_http_get(JsVar *options, JsVar *callback) {
   if (jsvIsObject(options)) {
     // if options is a string - it will be parsed, and GET will be set automatically
     JsVar *method = jsvNewFromString("GET");
-    jsvUnLock(jsvAddNamedChild(options, method, "method"));
-    jsvUnLock(method);
+    jsvUnLock2(jsvAddNamedChild(options, method, "method"), method);
   }
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback) && !jsvIsFunction(skippedCallback)) {

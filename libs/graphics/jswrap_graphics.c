@@ -67,8 +67,7 @@ void jswrap_graphics_init() {
     lcdSetCallbacks_FSMC(&gfx);
     graphicsSplash(&gfx);
     graphicsSetVar(&gfx);
-    jsvUnLock(parentObj);
-    jsvUnLock(parent);
+    jsvUnLock2(parentObj, parent);
   }
 #endif
 }
@@ -192,12 +191,12 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
     callbackSetPixel = jsvLockAgain(callback);
   if (!jsvIsFunction(callbackSetPixel)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackSetPixel);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
   if (!jsvIsUndefined(callbackFillRect) && !jsvIsFunction(callbackFillRect)) {
     jsExceptionHere(JSET_ERROR, "Expecting Callback Function or an Object but got %t", callbackFillRect);
-    jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+    jsvUnLock2(callbackSetPixel, callbackFillRect);
     return 0;
   }
 
@@ -213,7 +212,7 @@ JsVar *jswrap_graphics_createCallback(int width, int height, int bpp, JsVar *cal
   gfx.data.bpp = (unsigned char)bpp;
   lcdInit_JS(&gfx, callbackSetPixel, callbackFillRect);
   graphicsSetVar(&gfx);
-  jsvUnLock(callbackSetPixel);jsvUnLock(callbackFillRect);
+  jsvUnLock2(callbackSetPixel, callbackFillRect);
   return parent;
 }
 
@@ -290,6 +289,7 @@ Clear the LCD with the Background Color
 void jswrap_graphics_clear(JsVar *parent) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsClear(&gfx);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -309,6 +309,7 @@ Fill a rectangular area in the Foreground Color
 void jswrap_graphics_fillRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsFillRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -328,6 +329,7 @@ Draw an unfilled rectangle 1px wide in the Foreground Color
 void jswrap_graphics_drawRect(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawRect(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -369,6 +371,7 @@ void jswrap_graphics_setPixel(JsVar *parent, int x, int y, JsVar *color) {
   graphicsSetPixel(&gfx, (short)x, (short)y, col);
   gfx.data.cursorX = (short)x;
   gfx.data.cursorY = (short)y;
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -560,8 +563,8 @@ void jswrap_graphics_setFontCustom(JsVar *parent, JsVar *bitmap, int firstChar, 
  }
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_BMP, bitmap);
   jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_WIDTH, width);
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height)));
-  jsvUnLock(jsvObjectSetChild(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar)));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_HEIGHT, jsvNewFromInteger(height));
+  jsvObjectSetChildAndUnLock(parent, JSGRAPHICS_CUSTOMFONT_FIRSTCHAR, jsvNewFromInteger(firstChar));
   gfx.data.fontSize = JSGRAPHICS_FONTSIZE_CUSTOM;
   graphicsSetVar(&gfx);
 }
@@ -649,10 +652,8 @@ void jswrap_graphics_drawString(JsVar *parent, JsVar *var, int x, int y) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customBitmap);
-  jsvUnLock(customWidth);
+  jsvUnLock3(str, customBitmap, customWidth);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -699,9 +700,7 @@ JsVarInt jswrap_graphics_stringWidth(JsVar *parent, JsVar *var) {
     jsvStringIteratorNext(&it);
   }
   jsvStringIteratorFree(&it);
-  jsvUnLock(str);
-
-  jsvUnLock(customWidth);
+  jsvUnLock2(str, customWidth);
   return width;
 }
 
@@ -722,6 +721,7 @@ Draw a line between x1,y1 and x2,y2 in the current foreground color
 void jswrap_graphics_drawLine(JsVar *parent, int x1, int y1, int x2, int y2) {
   JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return;
   graphicsDrawLine(&gfx, (short)x1,(short)y1,(short)x2,(short)y2);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -791,6 +791,7 @@ void jswrap_graphics_fillPoly(JsVar *parent, JsVar *poly) {
     jsWarn("Maximum number of points (%d) exceeded for fillPoly", maxVerts/2);
   }
   graphicsFillPoly(&gfx, idx/2, verts);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
 }
 
 /*JSON{
@@ -904,4 +905,42 @@ void jswrap_graphics_drawImage(JsVar *parent, JsVar *image, int xPos, int yPos) 
   }
   jsvStringIteratorFree(&it);
   jsvUnLock(imageBufferString);
+  graphicsSetVar(&gfx); // gfx data changed because modified area
+}
+
+/*JSON{
+  "type" : "method",
+  "class" : "Graphics",
+  "name" : "getModified",
+  "generate" : "jswrap_graphics_getModified",
+  "params" : [
+    ["reset","bool","Whether to reset the modified area or not"]
+  ],
+  "return" : ["JsVar","An object {x1,y1,x2,y2} containing the modified area, or undefined if not modified"]
+}
+Return the area of the Graphics canvas that has been modified, and optionally clear
+the modified area to 0.
+
+For instance if `g.setPixel(10,20)` was called, this would return `{x1:10, y1:20, x2:10, y2:20}`
+*/
+JsVar *jswrap_graphics_getModified(JsVar *parent, bool reset) {
+  JsGraphics gfx; if (!graphicsGetFromVar(&gfx, parent)) return 0;
+  JsVar *obj = 0;
+  if (gfx.data.modMinX <= gfx.data.modMaxX) { // do we have a rect?
+    obj = jsvNewWithFlags(JSV_OBJECT);
+    if (obj) {
+      jsvObjectSetChildAndUnLock(obj, "x1", jsvNewFromInteger(gfx.data.modMinX));
+      jsvObjectSetChildAndUnLock(obj, "y1", jsvNewFromInteger(gfx.data.modMinY));
+      jsvObjectSetChildAndUnLock(obj, "x2", jsvNewFromInteger(gfx.data.modMaxX));
+      jsvObjectSetChildAndUnLock(obj, "y2", jsvNewFromInteger(gfx.data.modMaxY));
+    }
+  }
+  if (reset) {
+    gfx.data.modMaxX = -32768;
+    gfx.data.modMaxY = -32768;
+    gfx.data.modMinX = 32767;
+    gfx.data.modMinY = 32767;
+    graphicsSetVar(&gfx);
+  }
+  return obj;
 }

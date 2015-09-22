@@ -105,6 +105,9 @@ bool jstGetLastBufferTimerTask(JsVar *var, UtilTimerTask *task);
 /// returns false if timer queue was full... Changes the state of one or more pins at a certain time (using a timer)
 bool jstPinOutputAtTime(JsSysTime time, Pin *pins, int pinCount, uint8_t value);
 
+// Do software PWM on the given pin, using the timer IRQs
+bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin);
+
 /// Set the utility timer so we're woken up in whatever time period
 bool jstSetWakeUp(JsSysTime period);
 
@@ -127,6 +130,12 @@ void jstDumpUtilityTimers();
 
 // Queue a task up to be executed when a timer fires... return false on failure
 bool utilTimerInsertTask(UtilTimerTask *task);
+
+/// Remove the task that that 'checkCallback' returns true for. Returns false if none found
+bool utilTimerRemoveTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData);
+
+/// If 'checkCallback' returns true for a task, set 'task' to it and return true. Returns false if none found
+bool utilTimerGetLastTask(bool (checkCallback)(UtilTimerTask *task, void* data), void *checkCallbackData, UtilTimerTask *task);
 
 #endif /* JSTIMER_H_ */
 

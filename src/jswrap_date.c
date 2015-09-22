@@ -120,7 +120,9 @@ int fromCalenderDate(CalendarDate *date) {
 static int getMonth(const char *s) {
   int i;
   for (i=0;i<12;i++)
-    if (strcmp(s, &MONTHNAMES[i*4])==0)
+    if (s[0]==MONTHNAMES[i*4] &&
+        s[1]==MONTHNAMES[i*4+1] &&
+        s[2]==MONTHNAMES[i*4+2])
       return i;
   return -1;
 }
@@ -138,7 +140,7 @@ static int getDay(const char *s) {
   "class" : "Date"
 }
 The built-in class for handling Dates
-*/
+ */
 
 /*JSON{
   "type" : "staticmethod",
@@ -148,7 +150,7 @@ The built-in class for handling Dates
   "return" : ["float",""]
 }
 Get the number of milliseconds elapsed since 1970 (or on embedded platforms, since startup)
-*/
+ */
 JsVarFloat jswrap_date_now() {
   // Not quite sure why we need this, but (JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1) in inaccurate on STM32
   return ((JsVarFloat)jshGetSystemTime() / (JsVarFloat)jshGetTimeFromMilliseconds(1000)) * 1000;
@@ -158,7 +160,7 @@ JsVarFloat jswrap_date_now() {
 JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   JsVar *d = jspNewObject(0,"Date");
   if (!d) return 0;
-  jsvUnLock(jsvObjectSetChild(d, "ms", jsvNewFromFloat(time)));
+  jsvObjectSetChildAndUnLock(d, "ms", jsvNewFromFloat(time));
   return d;
 }
 
@@ -175,7 +177,7 @@ JsVar *jswrap_date_from_milliseconds(JsVarFloat time) {
   "return_object" : "Date"
 }
 Creates a date object
-*/
+ */
 JsVar *jswrap_date_constructor(JsVar *args) {
   JsVarFloat time = 0;
 
@@ -216,7 +218,7 @@ JsVar *jswrap_date_constructor(JsVar *args) {
   "return" : ["float","The difference, in minutes, between UTC and local time"]
 }
 The getTimezoneOffset() method returns the time-zone offset from UTC, in minutes, for the current locale.
-*/
+ */
 JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent) {
   NOT_USED(parent);
   return 0;
@@ -231,7 +233,7 @@ JsVarFloat jswrap_date_getTimezoneOffset(JsVar *parent) {
   "return" : ["float",""]
 }
 Return the number of milliseconds since 1970
-*/
+ */
 /*JSON{
   "type" : "method",
   "class" : "Date",
@@ -240,7 +242,7 @@ Return the number of milliseconds since 1970
   "return" : ["float",""]
 }
 Return the number of milliseconds since 1970
-*/
+ */
 JsVarFloat jswrap_date_getTime(JsVar *date) {
   return jsvGetFloatAndUnLock(jsvObjectGetChild(date, "ms", 0));
 }
@@ -262,7 +264,7 @@ static CalendarDate getCalendarDateFromDateVar(JsVar *date) {
   "return" : ["int32",""]
 }
 0..23
-*/
+ */
 int jswrap_date_getHours(JsVar *parent) {
   return getTimeFromDateVar(parent).hour;
 }
@@ -275,7 +277,7 @@ int jswrap_date_getHours(JsVar *parent) {
   "return" : ["int32",""]
 }
 0..59
-*/
+ */
 int jswrap_date_getMinutes(JsVar *parent) {
   return getTimeFromDateVar(parent).min;
 }
@@ -288,7 +290,7 @@ int jswrap_date_getMinutes(JsVar *parent) {
   "return" : ["int32",""]
 }
 0..59
-*/
+ */
 int jswrap_date_getSeconds(JsVar *parent) {
   return getTimeFromDateVar(parent).sec;
 }
@@ -301,7 +303,7 @@ int jswrap_date_getSeconds(JsVar *parent) {
   "return" : ["int32",""]
 }
 0..999
-*/
+ */
 int jswrap_date_getMilliseconds(JsVar *parent) {
   return getTimeFromDateVar(parent).ms;
 }
@@ -314,7 +316,7 @@ int jswrap_date_getMilliseconds(JsVar *parent) {
   "return" : ["int32",""]
 }
 Day of the week (0=sunday, 1=monday, etc)
-*/
+ */
 int jswrap_date_getDay(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).dow;
 }
@@ -327,7 +329,7 @@ int jswrap_date_getDay(JsVar *parent) {
   "return" : ["int32",""]
 }
 Day of the month 1..31
-*/
+ */
 int jswrap_date_getDate(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).day;
 }
@@ -341,7 +343,7 @@ int jswrap_date_getDate(JsVar *parent) {
   "return" : ["int32",""]
 }
 Month of the year 0..11
-*/
+ */
 int jswrap_date_getMonth(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).month;
 }
@@ -354,7 +356,7 @@ int jswrap_date_getMonth(JsVar *parent) {
   "return" : ["int32",""]
 }
 The year, eg. 2014
-*/
+ */
 int jswrap_date_getFullYear(JsVar *parent) {
   return getCalendarDateFromDateVar(parent).year;
 }
@@ -368,8 +370,8 @@ int jswrap_date_getFullYear(JsVar *parent) {
 }
 Converts to a String, eg: `Fri Jun 20 2014 14:52:20 GMT+0000`
 
-**Note:** This always assumes a timezone of GMT+0000
-*/
+ **Note:** This always assumes a timezone of GMT+0000
+ */
 JsVar *jswrap_date_toString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
@@ -386,8 +388,8 @@ JsVar *jswrap_date_toString(JsVar *parent) {
 }
 Converts to a String, eg: `Fri, 20 Jun 2014 14:52:20 GMT`
 
-**Note:** This always assumes a timezone of GMT
-*/
+ **Note:** This always assumes a timezone of GMT
+ */
 JsVar *jswrap_date_toUTCString(JsVar *parent) {
   TimeInDay time = getTimeFromDateVar(parent);
   CalendarDate date = getCalendarDate(time.daysSinceEpoch);
@@ -448,7 +450,7 @@ static bool _parse_time(JsLex *lex, TimeInDay *time, int initialChars) {
   "return" : ["float","The number of milliseconds since 1970"]
 }
 Parse a date string and return milliseconds since 1970. Data can be either '2011-10-20T14:48:00', '2011-10-20' or 'Mon, 25 Dec 1995 13:30:00 +0430' 
-*/
+ */
 JsVarFloat jswrap_date_parse(JsVar *str) {
   if (!jsvIsString(str)) return 0;
   TimeInDay time;
@@ -495,11 +497,11 @@ JsVarFloat jswrap_date_parse(JsVar *str) {
             date.month = getMonth(jslGetTokenValueAsString(&lex));
             jslGetNextToken(&lex);
             if (lex.tk == LEX_INT) {
-               date.year = _parse_int(&lex);
-               jslGetNextToken(&lex);
-               if (lex.tk == LEX_INT) {
-                 _parse_time(&lex, &time, 0);
-               }
+              date.year = _parse_int(&lex);
+              jslGetNextToken(&lex);
+              if (lex.tk == LEX_INT) {
+                _parse_time(&lex, &time, 0);
+              }
             }
           }
         }

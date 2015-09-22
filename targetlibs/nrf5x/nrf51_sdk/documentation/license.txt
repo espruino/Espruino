@@ -1,0 +1,85 @@
+This text contains two licenses (License #1, License #2). 
+License #1 applies to the whole SDK, except i) files including Dynastream copyright notices and ii) source files including BSD 3-clause license texts.
+License #2 applies only to files including Dynastream copyright notices. 
+All must be read and accepted before proceeding.
+
+
+License #1
+
+License Agreement
+Nordic Semiconductor ASA ("Nordic") 
+Software Development Kit 
+
+
+You ("You" or "Licensee") must carefully and thoroughly read this License Agreement ("Agreement"), and accept to adhere to this Agreement before downloading, installing and/or using any software or content in the Software Development Kit ("SDK") provided herewith. 
+
+YOU ACCEPT THIS LICENSE AGREEMENT BY (A) CLICKING ACCEPT OR AGREE TO THIS LICENSE AGREEMENT, WHERE THIS OPTION IS MADE AVAILABLE TO YOU; OR (B) BY ACTUALLY USING THE SDK, IN THIS CASE YOU AGREE THAT THE USE OF THE SDK CONSTITUTES ACCEPTANCE OF THE LICENSING AGREEMENT FROM THAT POINT ONWARDS.
+
+IF YOU DO NOT AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT, THEN DO NOT DOWNLOAD, INSTALL/COMPLETE INSTALLATION OF, OR IN ANY OTHER WAY MAKE USE OF THE SDK OR RELATED CONTENT.
+
+
+1.	Grant of License 
+Subject to the terms in this Agreement Nordic grants Licensee a limited, non-exclusive, non-transferable, non-sub licensable, revocable license ("License"): (a) to use the SDK as a development platform solely in connection with a Nordic Integrated Circuit ("nRF IC"), (b) to modify any source code contained in the SDK solely as necessary to implement products developed by Licensee that incorporate an nRF IC ("Licensee Product"), and (c) to distribute the SDK solely as implemented in Licensee Product. Licensee shall not use the SDK for any purpose other than specifically authorized herein.
+
+2.	Title 
+As between the parties, Nordic retains full rights, title, and ownership of the SDK and any and all patents, copyrights, trade secrets, trade names, trademarks, and other intellectual property rights in and to the SDK. 
+
+3.	No Modifications or Reverse Engineering
+Licensee shall not, modify, reverse engineer, disassemble, decompile or otherwise attempt to discover the source code of any non-source code parts of the SDK including, but not limited to pre-compiled binaries and object code.
+
+4.	Distribution Restrictions
+Except as set forward in Section 1 above, the Licensee may not disclose or distribute any or all parts of the SDK to any third party. Licensee agrees to provide reasonable security precautions to prevent unauthorized access to or use of the SDK as proscribed herein. Licensee also agrees that use of and access to the SDK will be strictly limited to the employees and subcontractors of the Licensee necessary for the performance of development, verification and production tasks under this Agreement. The Licensee is responsible for making such employees and subcontractors agree on complying with the obligations concerning use and non-disclosure of the SDK.
+
+5.	No Other Rights 
+Licensee shall use the SDK only in compliance with this Agreement and shall refrain from using the SDK in any way that may be contrary to this Agreement.
+
+
+6.	Fees 
+Nordic grants the License to the Licensee free of charge provided that the Licensee undertakes the obligations in the Agreement and warrants to comply with the Agreement. 
+
+
+7.	DISCLAIMER OF WARRANTY 
+THE SDK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND EXPRESS OR IMPLIED AND NEITHER NORDIC, ITS LICENSORS OR AFFILIATES NOR THE COPYRIGHT HOLDERS MAKE ANY REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE OR THAT THE SDK WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS. THERE IS NO WARRANTY BY NORDIC OR BY ANY OTHER PARTY THAT THE FUNCTIONS CONTAINED IN THE SDK WILL MEET THE REQUIREMENTS OF LICENSEE OR THAT THE OPERATION OF THE SDK WILL BE UNINTERRUPTED OR ERROR-FREE. LICENSEE ASSUMES ALL RESPONSIBILITY AND RISK FOR THE SELECTION OF THE SDK TO ACHIEVE LICENSEE'S INTENDED RESULTS AND FOR THE INSTALLATION, USE AND RESULTS OBTAINED FROM IT. 
+
+8.	No Support
+Nordic is not obligated to furnish or make available to Licensee any further information, software, technical information, know-how, show-how, bug-fixes or support. Nordic reserves the right to make changes to the SDK without further notice.
+
+9.	Limitation of Liability
+In no event shall Nordic, its employees or suppliers or affiliates be liable for any lost profits, revenue, sales, data or costs of procurement of substitute goods or services, property damage, personal injury, interruption of business, loss of business information or for any special, direct, indirect, incidental, economic,  punitive, special or consequential damages, however caused and whether arising under contract, tort, negligence, or other theory of liability arising out of the use of or inability to use the SDK, even if Nordic or its employees or suppliers or affiliates are advised of the possibility of such damages. Because some countries/states/ jurisdictions do not allow the exclusion or limitation of liability, but may allow liability to be limited, in such cases, Nordic, its employees or licensors or affiliates' liability shall be limited to USD 50. 
+
+10.	Breach of Contract
+Upon a breach of contract by the Licensee, Nordic is entitled to damages in respect of any direct loss which can be reasonably attributed to the breach by the Licensee. If the Licensee has acted with gross negligence or willful misconduct, the Licensee shall cover both direct and indirect costs for Nordic.
+
+11.	Indemnity
+
+Licensee undertakes to indemnify, hold harmless and defend Nordic and its directors, officers, affiliates, shareholders, employees and agents from and against any claims or lawsuits, including attorney's fees, that arise or result of the Licensee's execution of the License and which is not due to causes for which Nordic is responsible.
+
+12.	Governing Law
+This Agreement shall be construed according to the laws of Norway, and hereby submits to the exclusive jurisdiction of the Oslo tingrett.
+
+13.	Assignment
+Licensee shall not assign this Agreement or any rights or obligations hereunder without the prior written consent of Nordic.
+
+14.	Termination
+Without prejudice to any other rights, Nordic may cancel this Agreement if Licensee does not abide by the terms and conditions of this Agreement. Upon termination Licensee must promptly cease the use of the License and destroy all copies of the Licensed Technology and any other material provided by Nordic or its affiliate, or produced by the Licensee in connection with the Agreement or the Licensed Technology.
+
+
+License #2
+
+This software is subject to the ANT+ Shared Source License www.thisisant.com/swlicenses
+Copyright (c) Dynastream Innovations Inc. 2012
+All rights reserved.
+
+Internal use of this software, in source or binary form, without redistribution, is permitted.
+
+Redistribution of this software in binary form, with or without modification, is permitted provided:
+
+(1) the software is used in combination with ANT or ANT+ products only; and
+(2) the above copyright notice and this license is included within the documentation and/or other materials provided with the redistributed software.
+
+The following actions are prohibited:
+
+(1) redistribution of this software in source form;
+(2) use of the software in combination with wireless formats other than ANT or ANT+;
+(3) reverse engineering, decompilation, and/or disassembly of software provided in binary form under this license. 
+THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL DYNASTREAM INNOVATIONS INC. AND/OR THE COPYRIGHT OWNER(S) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

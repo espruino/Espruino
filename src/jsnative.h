@@ -21,7 +21,7 @@
 
 #include <stdint.h> // uint32_t
 
-#if __WORDSIZE == 64
+#if defined(__WORDSIZE) && __WORDSIZE == 64
  #define JSWAT_IS_64BIT(N) (\
   (N)==JSWAT_JSVAR || \
   (N)==JSWAT_ARGUMENT_ARRAY || \

@@ -25,7 +25,7 @@
 This is the built-in class for Pins, such as D0,D1,LED1, or BTN
 
 You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite
-*/
+ */
 
 /*JSON{
   "type" : "constructor",
@@ -38,7 +38,7 @@ You can call the methods on Pin, or you can use Wiring-style functions such as d
   "return" : ["JsVar","A Pin object"]
 }
 Creates a pin from the given argument (or returns undefined if no argument)
-*/
+ */
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
@@ -54,8 +54,8 @@ JsVar *jswrap_pin_constructor(JsVar *val) {
 }
 Returns the input state of the pin as a boolean.
 
-**Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
-*/
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
+ */
 bool jswrap_pin_read(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
   return jshPinInput(pin);
@@ -69,8 +69,8 @@ bool jswrap_pin_read(JsVar *parent) {
 }
 Sets the output state of the pin to a 1
 
-**Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
-*/
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ */
 void jswrap_pin_set(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
   jshPinOutput(pin, 1);
@@ -84,8 +84,8 @@ void jswrap_pin_set(JsVar *parent) {
 }
 Sets the output state of the pin to a 0
 
-**Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
-*/
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ */
 void jswrap_pin_reset(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
   jshPinOutput(pin, 0);
@@ -102,8 +102,8 @@ void jswrap_pin_reset(JsVar *parent) {
 }
 Sets the output state of the pin to the parameter given
 
-**Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
-*/
+ **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
+ */
 void jswrap_pin_write(JsVar *parent, bool value) {
   Pin pin = jshGetPinFromVar(parent);
   jshPinOutput(pin, value);
@@ -122,8 +122,8 @@ void jswrap_pin_write(JsVar *parent, bool value) {
 }
 Sets the output state of the pin to the parameter given at the specified time.
 
-**Note:** this **doesn't** change the mode of the pin to an output. To do that, you need to use `pin.write(0)` or `pinMode(pin, 'output')` first.
-*/
+ **Note:** this **doesn't** change the mode of the pin to an output. To do that, you need to use `pin.write(0)` or `pinMode(pin, 'output')` first.
+ */
 void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
   Pin pin = jshGetPinFromVar(parent);
   JsSysTime sTime = jshGetTimeFromMilliseconds(time*1000);
@@ -139,7 +139,7 @@ void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
   "return" : ["JsVar","The pin mode, as a string"]
 }
 Return the current mode of the given pin. See `pinMode` for more information.
-*/
+ */
 JsVar *jswrap_pin_getMode(JsVar *parent) {
   return jswrap_io_getPinMode(jshGetPinFromVar(parent));  
 }
@@ -154,7 +154,7 @@ JsVar *jswrap_pin_getMode(JsVar *parent) {
   ]
 }
 Set the mode of the given pin. See [`pinMode`](#l__global_pinMode) for more information on pin modes.
-*/
+ */
 void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   jswrap_io_pinMode(jshGetPinFromVar(parent), mode);  
 }

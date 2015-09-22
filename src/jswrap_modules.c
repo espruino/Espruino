@@ -28,7 +28,7 @@
   "class" : "Modules"
 }
 Built-in class that caches the modules used by the `require` command
-*/
+ */
 
 static JsVar *jswrap_modules_getModuleList() {
   return jsvObjectGetChild(execInfo.hiddenRoot, JSPARSE_MODULE_CACHE_NAME, JSV_OBJECT);
@@ -44,7 +44,7 @@ static JsVar *jswrap_modules_getModuleList() {
   "return" : ["JsVar","The result of evaluating the string"]
 }
 Load the given module, and return the exported functions
-*/
+ */
 JsVar *jswrap_require(JsVar *moduleName) {
   if (!jsvIsString(moduleName)) {
     jsWarn("Expecting a module name as a string, but got %t", moduleName);
@@ -66,8 +66,10 @@ JsVar *jswrap_require(JsVar *moduleName) {
 
   // Now check if it is built-in
   char moduleNameBuf[32];
-  jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf));
-  void *builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
+  void *builtInLib = 0;
+  if (jsvGetString(moduleName, moduleNameBuf, sizeof(moduleNameBuf))<sizeof(moduleNameBuf))
+    builtInLib = jswGetBuiltInLibrary(moduleNameBuf);
+
   if (builtInLib) {
     // create a 'fake' module that Espruino can use to map its built-in functions against
     moduleExport = jsvNewNativeFunction(builtInLib, 0);
@@ -76,17 +78,16 @@ JsVar *jswrap_require(JsVar *moduleName) {
     JsVar *fileContents = 0;
     //if (jsvIsStringEqual(moduleName,"http")) {}
     //if (jsvIsStringEqual(moduleName,"fs")) {}
-  #ifdef USE_FILESYSTEM
+#ifdef USE_FILESYSTEM
     JsVar *modulePath = jsvNewFromString("node_modules/");
     if (!modulePath) { jsvUnLock(moduleExportName); return 0; } // out of memory
     jsvAppendStringVarComplete(modulePath, moduleName);
     jsvAppendString(modulePath,".js");
     fileContents = jswrap_fs_readFile(modulePath);
     jsvUnLock(modulePath);
-  #endif
+#endif
     if (!fileContents || jsvIsStringEqual(fileContents,"")) {
-      jsvUnLock(moduleExportName);
-      jsvUnLock(fileContents);
+      jsvUnLock2(moduleExportName, fileContents);
       jsWarn("Module %q not found", moduleName);
       return 0;
     }
@@ -108,7 +109,7 @@ JsVar *jswrap_require(JsVar *moduleName) {
   "return" : ["JsVar","An array of module names"]
 }
 Return an array of module names that have been cached
-*/
+ */
 JsVar *jswrap_modules_getCached() {
   JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
   if (!arr) return 0; // out of memory
@@ -140,7 +141,7 @@ JsVar *jswrap_modules_getCached() {
   ]
 }
 Remove the given module from the list of cached modules
-*/
+ */
 void jswrap_modules_removeCached(JsVar *id) {
   if (!jsvIsString(id)) {
     jsExceptionHere(JSET_ERROR, "The argument to removeCached must be a string");
@@ -167,7 +168,7 @@ void jswrap_modules_removeCached(JsVar *id) {
   "generate" : "jswrap_modules_removeAllCached"
 }
 Remove all cached modules
-*/
+ */
 void jswrap_modules_removeAllCached() {
   JsVar *moduleList = jswrap_modules_getModuleList();
   if (!moduleList) return; // out of memory
@@ -186,7 +187,7 @@ void jswrap_modules_removeAllCached() {
   ]
 }
 Add the given module to the cache
-*/
+ */
 void jswrap_modules_addCached(JsVar *id, JsVar *sourceCode) {
   if (!jsvIsString(id) || !jsvIsString(sourceCode)) {
     jsExceptionHere(JSET_ERROR, "Both arguments to addCached must be strings");
