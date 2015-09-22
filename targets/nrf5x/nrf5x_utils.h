@@ -40,7 +40,9 @@ uint8_t nrf_utils_get_random_number(void);
 uint32_t nrf_utils_get_system_time(void);
 uint32_t nrf_utils_read_temperature(void);
 
-void nrf_utils_erase_flash_page(uint32_t addr);
+void nrf_utils_app_uart_put(uint8_t character);
+
+//void nrf_utils_erase_flash_page(uint32_t addr);
 
 #endif // NRF5X_UTILS_H__
 

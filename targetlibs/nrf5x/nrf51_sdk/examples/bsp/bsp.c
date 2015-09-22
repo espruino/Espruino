@@ -650,7 +650,8 @@ uint32_t bsp_buttons_disable()
 uint32_t bsp_wakeup_buttons_set(uint32_t wakeup_buttons)
 {
 #if (BUTTONS_NUMBER > 0) && !defined(BSP_SIMPLE)
-    for (uint32_t i = 0; i < BUTTONS_NUMBER; i++)
+	uint32_t i;
+    for (i = 0; i < BUTTONS_NUMBER; i++)
     {
         uint32_t new_cnf = NRF_GPIO->PIN_CNF[m_buttons_list[i]];
         uint32_t new_sense = ((1 << i) & wakeup_buttons) ? GPIO_PIN_CNF_SENSE_Low : GPIO_PIN_CNF_SENSE_Disabled;

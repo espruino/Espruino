@@ -81,7 +81,7 @@ bool jshIsUSBSERIALConnected() {
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  //return (JsSysTime) nrf_utils_get_system_time();
+  return (JsSysTime) nrf_utils_get_system_time();
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -222,8 +222,7 @@ void jshUSARTKick(IOEventFlags device) {
   {
     
     uint8_t character = (uint8_t) check_valid_char;
-    while (app_uart_put(character) != NRF_SUCCESS); // FIX THIS!!
-
+    nrf_utils_app_uart_put(character);
   }
 
 }
@@ -277,19 +276,20 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
 
-  if (addr < 0 || addr > (FLASH_PAGE_SIZE * NUMBER_OF_PAGES))
+  /*if (addr < 0 || addr > (FLASH_PAGE_SIZE * NUMBER_OF_PAGES))
   {
 	  return false; // Exception?
   }
   &startAddr = (floor(addr / FLASH_PAGE_SIZE) * FLASH_PAGE_SIZE);
   &pageSize = FLASH_PAGE_SIZE;
-  return true;
+  return true;*/
+	return false;
 
 }
 
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr) {
-	nrf_utils_erase_flash_page(addr);
+	//nrf_utils_erase_flash_page(addr);
 }
 
 /// Read data from flash memory into the buffer

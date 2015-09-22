@@ -19,6 +19,8 @@
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
 #include "nrf_temp.h"
+#include "app_uart.h"
+#include "nrf_error.h"
 
 #define LED1 17
 #define LED2 18
@@ -140,7 +142,11 @@ uint32_t nrf_utils_read_temperature(void) {
 
 }
 
-void nrf_utils_erase_flash_page(uint32_t addr) {
+void nrf_utils_app_uart_put(uint8_t character) {
+	while (app_uart_put(character) != NRF_SUCCESS);
+}
+
+/*void nrf_utils_erase_flash_page(uint32_t addr) {
 
 	NRF_NVMC->CONFIG = (2UL); // Configure the NVMC for erasing.
 	while (NRF_NVMC->READY != (1UL)); // Wait for the NVMC to be ready.
@@ -148,4 +154,4 @@ void nrf_utils_erase_flash_page(uint32_t addr) {
 	while (NRF_NVMC->READY != (1UL)); // Wait for the erase operation to complete.
 	NRF_NVMC->CONFIG = (0x0); // Set NVMC back to read only.
 
-}
+}*/
