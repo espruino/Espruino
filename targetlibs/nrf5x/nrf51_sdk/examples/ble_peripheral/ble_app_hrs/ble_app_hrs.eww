@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10031\s130\iar\ble_app_hrs_s130_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s130\iar\ble_app_hrs_s130_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s110\iar\ble_app_hrs_s110_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s310\iar\ble_app_hrs_s310_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10031\s110\iar\ble_app_hrs_s110_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_spi\iar\ble_app_hrs_s110_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_hci\iar\ble_app_hrs_s130_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_hci\iar\ble_app_hrs_s110_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_spi\iar\ble_app_hrs_s130_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_uart\iar\ble_app_hrs_s110_uart_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_uart\iar\ble_app_hrs_s130_uart_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s130_with_dfu\iar\ble_app_hrs_s130_with_dfu_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_spi_5W\iar\ble_app_hrs_s130_spi_5W_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s310_with_dfu\iar\ble_app_hrs_s310_with_dfu_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_spi_5W\iar\ble_app_hrs_s110_spi_5W_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\s110_with_dfu\iar\ble_app_hrs_s110_with_dfu_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

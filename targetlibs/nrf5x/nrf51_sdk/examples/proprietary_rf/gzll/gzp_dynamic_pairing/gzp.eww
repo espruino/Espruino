@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10031\host\iar\gzp_host_dynamic_pairing_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\host\iar\gzp_host_dynamic_pairing_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\device\iar\gzp_device_dynamic_pairing_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

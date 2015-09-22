@@ -1,0 +1,14 @@
+s210_nrf51422_5.0.0
+
+This release consists of the following:
+- This readme file
+- The s210_nrf51422_5.0.0 softdevice (binary hex file)
+- The s210_nrf51422_5.0.0 API (softdevice header files)
+- The s210 and s310 licence agreement
+- The s210_nrf51422_5.0.0_release-notes.pdf
+- The s210_nrf51422_5.0.0_migration-document.pdf
+
+
+IMPORTANT NOTE: If you intend to use the softdevice with the nRF51
+SDK only, you do _not_ need the API files. The API header files are
+already installed as part of the nRF51 SDK version 7.1.0 or newer.
