@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_spi\iar\ble_connectivity_s110_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_hci\iar\ble_connectivity_s130_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_hci\iar\ble_connectivity_s110_hci_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_spi\iar\ble_connectivity_s130_spi_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_uart\iar\ble_connectivity_s110_uart_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_uart\iar\ble_connectivity_s130_uart_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s130_spi_5W\iar\ble_connectivity_s130_spi_5W_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\ser_s110_spi_5W\iar\ble_connectivity_s110_spi_5W_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>

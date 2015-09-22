@@ -1,0 +1,15 @@
+Detailed documentation can be found offline at: <keil_location>/ARM/Pack/NordicSemiconductor/nRF_Examples/<version>/documentation
+Detailed documentation can be found online at: http://developer.nordicsemi.com/nRF51_SDK/doc/
+
+The Blinky Example shows how to configure the GPIO pins as outputs. These 
+outputs can then be used to drive LEDs, as in this example.
+
+When the application starts, some GPIO pins are configured as outputs to drive 
+the LEDs. The application then loops while toggling the state of one of the LEDs
+every 500 milliseconds.
+
+Testing:
+Test the Blinky Example application by performing the following steps:
+
+1. Compile and program the application.
+2. Observe that the LEDs are blinking.
