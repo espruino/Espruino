@@ -359,17 +359,20 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
+NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
+NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-O3
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
+NRF5X=1
 NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-O3
 else ifdef TINYCHIP
@@ -1004,8 +1007,7 @@ endif #USB
 
 ifeq ($(FAMILY), NRF51)
  
-  NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
@@ -1013,18 +1015,19 @@ ifeq ($(FAMILY), NRF51)
   # nRF51 specific...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c # UART is structured different for nRF51 & nRF52. may be an inconsistency in nordics SDK that needs fixing.
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DBOARD_PCA10028  -DNRF51 
-  #DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld
+  DEFINES += -DBOARD_PCA10028  -DNRF51
+  ifdef SOFTDEVICE
+  	DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
+  endif
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld # The memory map here needs to be changed if using softdevice (currently assumes no sd) look at example linkers in sdk
 
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
  
-  NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
@@ -1033,10 +1036,10 @@ ifeq ($(FAMILY), NRF52)
   # nRF52 specific...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \ # only nrf_delay.h in nrf52 sdk
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \ # differnt structed uart in nrf51 sdk
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1061,6 +1064,7 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Includes required for ...
+  # careful here.. all these includes and sources assume a softdevice. not efficeint/clean if softdevice (ble) is not enabled... fix
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
