@@ -30,7 +30,7 @@ chip = {
   'ram' : 32,
   'flash' : 256,
   'speed' : 16,
-  'usart' : 1, #TRHIS IS INCORRECT!!!
+  'usart' : 1, #THIS IS INCORRECT!!!
   'spi' : 3,
   'i2c' : 2,
   'adc' : 1,

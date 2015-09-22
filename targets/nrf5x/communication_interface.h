@@ -24,10 +24,6 @@
 #include <stdio.h>
 
 #include "app_uart.h"
-#include "app_error.h"
-#include "nrf_delay.h"
-#include "nrf.h"
-#include "bsp.h"
  
 #define MAX_TEST_DATA_BYTES (15U)
 #define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */

@@ -13,6 +13,10 @@
 #include "communication_interface.h"
 
 #include "jsdevices.h"
+#include "app_error.h"
+#include "nrf_delay.h"
+#include "nrf.h"
+#include "bsp.h"
 
 // UART callback function. Registered in uart_init(). Allows to asychronously read characters from UART.
 void uart_event_handle(app_uart_evt_t * p_event)

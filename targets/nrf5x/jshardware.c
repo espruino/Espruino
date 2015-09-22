@@ -37,8 +37,8 @@ void jshInit()
 
   jshInitDevices();
   nrf_utils_cnfg_leds_as_outputs(); // Configure and turn off the four on board LEDS.
-  //nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
-  //nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
+  nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
+  nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
@@ -276,12 +276,20 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-  return false;
+
+  if (addr < 0 || addr > (FLASH_PAGE_SIZE * NUMBER_OF_PAGES))
+  {
+	  return false; // Exception?
+  }
+  &startAddr = (floor(addr / FLASH_PAGE_SIZE) * FLASH_PAGE_SIZE);
+  &pageSize = FLASH_PAGE_SIZE;
+  return true;
+
 }
 
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr) {
-
+	nrf_utils_erase_flash_page(addr);
 }
 
 /// Read data from flash memory into the buffer

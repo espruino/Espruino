@@ -89,10 +89,8 @@ void nrf_utils_lfclk_config_and_start()
 // Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
 void nrf_utils_rtc1_config_and_start()
 {
-
   NRF_RTC1->PRESCALER = (0UL);
   NRF_RTC1->TASKS_START = (1UL);
-
 }
 
 uint32_t nrf_utils_get_system_time(void) 
@@ -139,5 +137,15 @@ uint32_t nrf_utils_read_temperature(void) {
   NRF_TEMP->TASKS_STOP = 1;
 
   return (uint32_t) nrf_temp;
+
+}
+
+void nrf_utils_erase_flash_page(uint32_t addr) {
+
+	NRF_NVMC->CONFIG = (2UL); // Configure the NVMC for erasing.
+	while (NRF_NVMC->READY != (1UL)); // Wait for the NVMC to be ready.
+	NRF_NVMC->ERASEPAGE = addr; // Erase the page specified by given address.
+	while (NRF_NVMC->READY != (1UL)); // Wait for the erase operation to complete.
+	NRF_NVMC->CONFIG = (0x0); // Set NVMC back to read only.
 
 }
