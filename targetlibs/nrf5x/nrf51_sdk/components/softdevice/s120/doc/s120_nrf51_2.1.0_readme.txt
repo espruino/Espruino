@@ -1,0 +1,14 @@
+s120_nrf51_2.1.0
+
+This release consists of the following:
+- This readme file
+- The s120_nrf51_2.1.0 SoftDevice (binary hex file)
+- The s120_nrf51_2.1.0 API (SoftDevice header files)
+- The s120_nrf51_2.1.0 release notes
+- The s120_nrf51_2.1.0 licence agreement
+
+See the release notes for more information on what has changed with this release.
+
+
+
+

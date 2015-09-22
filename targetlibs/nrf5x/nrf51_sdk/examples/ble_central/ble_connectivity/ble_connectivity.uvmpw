@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<ProjectWorkspace xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_mpw.xsd">
+
+  <SchemaVersion>1.0</SchemaVersion>
+
+  <Header>### uVision Project, (C) Keil Software</Header>
+
+  <WorkspaceName>WorkSpace</WorkspaceName>
+ 
+   <project>
+    <PathAndName>pca10028\ser_s120_hci\arm4\ble_connectivity_s120_hci_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>pca10028\ser_s130_hci\arm4\ble_connectivity_s130_hci_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>pca10028\ser_s130_spi\arm4\ble_connectivity_s130_spi_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>pca10028\ser_s120_spi\arm4\ble_connectivity_s120_spi_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>pca10028\ser_s120_uart\arm4\ble_connectivity_s120_uart_pca10028.uvproj</PathAndName>
+  </project>
+   <project>
+    <PathAndName>pca10028\ser_s130_uart\arm4\ble_connectivity_s130_uart_pca10028.uvproj</PathAndName>
+  </project>
+
+</ProjectWorkspace>

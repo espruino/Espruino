@@ -31,7 +31,9 @@
 # STM32F4DISCOVERY=1
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
-# NRF52832DK=1            # Ultra low power BLE enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
+# MICROBIT=1
+# NRF51822DK=1
+# NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
 # RASPBERRYPI=1
 # BEAGLEBONE=1
@@ -60,10 +62,6 @@
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 # ESP8266=1               # If compiling for a non-linux target that has internet support, use ESP8266 support, not TI CC3000
-
-#NRF52832DK=1
-#BLE_INTEFACE=1
-#RELEASE=1
 
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -358,13 +356,23 @@ BOARD=STM32VLDISCOVERY
 STLIB=STM32F10X_MD_VL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md_vl.o
 OPTIMIZEFLAGS+=-Os # short on program memory
-else ifdef NRF52832DK
-BOARD=NRF52832DK
-NRF52_SDK_PATH=$(ROOT)/targetlibs/nrf52/nRF52_SDK_0.9.1_3639cc9
-NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+else ifdef MICROBIT
 EMBEDDED=1
-PRECOMPILED_OBJS+=$(NRF52_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
-OPTIMIZEFLAGS+=-O0 # Set this to -O0 to enable debugging.
+SAVE_ON_FLASH=1
+BOARD=MICROBIT
+NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
+else ifdef NRF51822DK
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=NRF51822DK
+NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+OPTIMIZEFLAGS+=-O3
+else ifdef NRF52832DK
+EMBEDDED=1
+BOARD=NRF52832DK
+NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
+OPTIMIZEFLAGS+=-O3
 else ifdef TINYCHIP
 EMBEDDED=1
 BOARD=TINYCHIP
@@ -655,11 +663,6 @@ endif #USE_FILESYSTEM_SDIO
 endif #!LINUX
 endif #USE_FILESYSTEM
 
-ifdef USE_TEMP
-INCLUDE += -I$(ROOT)/libs/temperature
-WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
-endif
-
 ifdef USE_MATH
 DEFINES += -DUSE_MATH
 INCLUDE += -I$(ROOT)/libs/math
@@ -826,6 +829,16 @@ ifdef USE_WIRINGPI
 DEFINES += -DUSE_WIRINGPI
 LIBS += -lwiringPi
 INCLUDE += -I/usr/local/include -L/usr/local/lib 
+endif
+
+ifdef USE_TEMPERATURE
+  INCLUDE += -I$(ROOT)/libs/temperature
+  WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
+endif
+
+ifdef USE_BLUETOOTH
+  INCLUDE += -I$(ROOT)/libs/bluetooth
+  WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
@@ -1002,137 +1015,108 @@ targetlibs/stm32legacyusb/usb_utils.c            \
 targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
+ifeq ($(FAMILY), NRF51)
+ 
+  NRF5X=1
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+
+  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+  ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
+ 
+  # nRF51 specific...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
+  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
+  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
+
+  DEFINES += -DBOARD_PCA10028  -DNRF51 
+  #DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld
+
+endif # FAMILY == NRF51
+
 ifeq ($(FAMILY), NRF52)
+ 
+  NRF5X=1
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
-	ARM=1
+  # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+ 
+  # nRF52 specific...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
+  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
+  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
+  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-	INCLUDE += -I$(ROOT)/targetlibs/nrf52 -I$(NRF52_SDK_PATH)
+  # Assume that softdevice (S132) is always enabled for now...
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_espruino.ld
 
-	# ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-	ARCHFLAGS = -mthumb -mabi=aapcs -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
-	
-	ifdef BLE_INTERFACE
-		DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DS132 -DBLE_STACK_SUPPORT_REQD -DBLE_INTERFACE
-	else
-		DEFINES += -DCONFIG_GPIO_AS_PINRESET -DBOARD_PCA10036 -DNRF52 -DBSP_DEFINES_ONLY
-	endif # BLE_INTERFACE
+endif #FAMILY == NRF52
 
-	# For clock...
-	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc/config/rtc_pca10036
-	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc/config
-	#INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/rtc
-	#INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/rtc
-	#INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/clock
+ifdef NRF5X
+ 
+  ARM = 1
+  ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
+  INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
 
-	#SOURCES += \
-	#	$(NRF52_SDK_PATH)/components/drivers_nrf/clock/nrf_drv_clock.c \
-	#	$(NRF52_SDK_PATH)/components/drivers_nrf/rtc/nrf_drv_rtc.c
+  # These files are the Espruino HAL implementation.
+  INCLUDE += -I$(ROOT)/targets/nrf5x
+  SOURCES +=                              \
+  targets/nrf5x/main.c                    \
+  targets/nrf5x/jshardware.c              \
+  targets/nrf5x/communication_interface.c \
+  targets/nrf5x/nrf5x_utils.c
 
-	# Temperature for temp library
-	INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
+  # Includes required for ...
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # not nrf51?
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/hal
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain/gcc
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/toolchain
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/common
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
 
-	ifdef BLE_INTERFACE
+  SOURCES += \
+  $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
+  $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+  $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
+  $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
+  $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
+  $(NRF5X_SDK_PATH)/examples/bsp/bsp.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
+  $(NRF5X_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
+  $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
+  $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
 
-		#for clock
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
-		#includes common to all targets
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/s132/headers/nrf52
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/common
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/pstorage
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/device
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/button
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/timer
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/s132/headers
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/gpiote
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/ble_services/ble_nus
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/ble/ble_advertising
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/trace
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/softdevice/common/softdevice_handler
-
-		#source common to all targets
-		SOURCES += \
-		$(NRF52_SDK_PATH)/components/libraries/button/app_button.c \
-		$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
-		$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
-		$(NRF52_SDK_PATH)/components/libraries/timer/app_timer.c \
-		$(NRF52_SDK_PATH)/components/libraries/trace/app_trace.c \
-		$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
-		$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
-		$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
-		$(NRF52_SDK_PATH)/examples/bsp/bsp.c \
-		$(NRF52_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
-		$(NRF52_SDK_PATH)/components/ble/common/ble_advdata.c \
-		$(NRF52_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
-		$(NRF52_SDK_PATH)/components/ble/common/ble_conn_params.c \
-		$(NRF52_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
-		$(NRF52_SDK_PATH)/components/ble/common/ble_srv_common.c \
-		$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
-		$(NRF52_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
-
-	else
-
-		# Includes. See NRF52 examples as you add functionality. For example if you are added SPI interface then see Nordic's SPI example. 
-		# In this example you can view the makefile and take INCLUDES and SOURCES directly from it. Just make sure you set path correctly as seen below.
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config/uart_pca10036
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart/config
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/bsp
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/nrf_soc_nosd
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/device
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/uart
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/hal
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/delay
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/uart
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/util
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/uart
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/common
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/config
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/libraries/fifo
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/toolchain/gcc
-
-		# Includes for adding timer peripheral. 
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config/timer_pca10036
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer/config
-		INCLUDE += -I$(NRF52_SDK_PATH)/components/drivers_nrf/timer
-		INCLUDE += -I$(NRF52_SDK_PATH)/examples/peripheral/timer
-
-		# Source files used. Add them here as necessary. See makefile examples for guidance in Nordic's SDK for specific projects (i.e uart example project).
-		SOURCES += \
-		$(NRF52_SDK_PATH)/components/toolchain/system_nrf52.c \
-		$(NRF52_SDK_PATH)/components/libraries/util/app_error.c \
-		$(NRF52_SDK_PATH)/components/libraries/fifo/app_fifo.c \
-		$(NRF52_SDK_PATH)/components/libraries/util/app_util_platform.c \
-		$(NRF52_SDK_PATH)/components/libraries/util/nrf_assert.c \
-		$(NRF52_SDK_PATH)/components/libraries/uart/retarget.c \
-		$(NRF52_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-		$(NRF52_SDK_PATH)/components/drivers_nrf/timer/nrf_drv_timer.c # I want to add timer peripheral so add source here (as in timer example makefile from nordic sdk).
-
-	endif # BLE_INTERFACE
-
-	#assembly files common to all targets
-	#ASM_SOURCE_FILES  = ../../../../../components/toolchain/gcc/gcc_startup_nrf52.s
-
-endif #NRF52
+endif #NRF5X
 
 ifdef MBED
 ARCHFLAGS += -mcpu=cortex-m3 -mthumb
@@ -1185,33 +1169,29 @@ export CCPREFIX=avr-
 endif
 
 ifdef ARM
-LINKER_FILE = gen/linker.ld
-DEFINES += -DARM
-ifndef NRF52 # Nordic uses its own CMSIS files in its SDK because they are the most recent ones. 
-	INCLUDE += -I$(ROOT)/targetlibs/arm 
-endif
-OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
-ifdef NRF52
-	ifdef BLE_INTERFACE
-		LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_ble_interface_espruino.ld
-	else
-		LINKER_FILE = $(NRF52_SDK_PATH)/components/toolchain/gcc/linker_espruino.ld
-	endif # BLE_INTERFACE
-endif # NRF52
+  ifndef LINKER_FILE # nRF5x targets define their own linker file.
+    LINKER_FILE = gen/linker.ld
+  endif
+  DEFINES += -DARM
+  ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the CMSIS files.
+    INCLUDE += -I$(ROOT)/targetlibs/arm
+  endif
+  OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
 
-# I've no idea why this breaks the bootloader, but it does.
-# Given we've left 10k for it, there's no real reason to enable LTO anyway.
-ifndef BOOTLOADER
-# Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-DEFINES += -DLINK_TIME_OPTIMISATION
-endif
+  # I've no idea why this breaks the bootloader, but it does.
+  # Given we've left 10k for it, there's no real reason to enable LTO anyway.
+  ifndef BOOTLOADER
+    # Enable link-time optimisations (inlining across files)
+    OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+    DEFINES += -DLINK_TIME_OPTIMISATION
+  endif
 
-# Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
-OPTIMIZEFLAGS += --param inline-unit-growth=6
+  # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
+  OPTIMIZEFLAGS += --param inline-unit-growth=6
 
-export CCPREFIX?=arm-none-eabi-
+  export CCPREFIX?=arm-none-eabi-
+
 endif # ARM
 
 PININFOFILE=$(ROOT)/gen/jspininfo
@@ -1226,13 +1206,13 @@ export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
 endif
 
 ifdef RASPBERRYPI
-	ifneq ($(shell uname -m),armv6l)
-		# eep. let's cross compile
-		export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
-	else
-		# compiling in-place, so give it a normal name
-		PROJ_NAME=espruino
-	endif
+ ifneq ($(shell uname -m),armv6l)
+  # eep. let's cross compile
+  export CCPREFIX=targetlibs/raspberrypi/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-
+ else
+  # compiling in-place, so give it a normal name
+  PROJ_NAME=espruino
+ endif
 endif
 
 
@@ -1248,24 +1228,6 @@ targets/stm32/jshardware.c              \
 targets/stm32/stm32_it.c
 endif
 endif
-
-ifdef NRF52
-
-	INCLUDE += -I$(ROOT)/targets/nrf52
-	SOURCES +=                              \
-	targets/nrf52/main.c                    \
-	targets/nrf52/jshardware.c              \
-	targets/nrf52/nrf_utils.c
-
-	ifdef BLE_INTERFACE
-		SOURCES +=							\
-		targets/nrf52/ble_interface.c
-	else
-		SOURCES +=							\
-		targets/nrf52/uart_interface.c
-	endif # BLE_INTERFACE
-
-endif # NRF52
 
 ifdef LINUX
 DEFINES += -DLINUX
@@ -1295,11 +1257,11 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-ifndef NRF52
-	LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-else ifdef NRF52
-	LDFLAGS += $(ARCHFLAGS)
-endif
+ifndef NRF5X
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+else ifdef NRF5X
+ LDFLAGS += $(ARCHFLAGS)
+endif # NRF5X
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1310,9 +1272,9 @@ ifdef LINKER_FILE
 LDFLAGS += -T$(LINKER_FILE)
 endif
 
-ifdef NRF52
+ifdef NRF5X
 LDFLAGS += --specs=nano.specs -lc -lnosys
-endif # NRF52
+endif # NRF5X
 
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
@@ -1349,11 +1311,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 	$(Q)python scripts/build_pininfo.py $(BOARD) $(PININFOFILE).c $(PININFOFILE).h
 endif
 
-ifndef NRF52 # NRF52 platform uses its own linker file that isnt automatically generated.
+ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
-endif
+endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
