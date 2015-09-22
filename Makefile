@@ -359,21 +359,15 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
-NRF5X=1
-NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
+OPTIMIZEFLAGS+=-Os # Set this to -O0 to enable debugging.
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
-NRF5X=1
-NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
-NRF5X=1
-NRF52=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-O3
 else ifdef TINYCHIP
 EMBEDDED=1
@@ -1006,9 +1000,9 @@ targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
 ifeq ($(FAMILY), NRF51)
- 
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
-
+  NRF5X=1 
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+  # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
  
@@ -1027,7 +1021,7 @@ ifeq ($(FAMILY), NRF51)
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
- 
+  NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
@@ -1050,7 +1044,6 @@ ifeq ($(FAMILY), NRF52)
 endif #FAMILY == NRF52
 
 ifdef NRF5X
- 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
   INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
