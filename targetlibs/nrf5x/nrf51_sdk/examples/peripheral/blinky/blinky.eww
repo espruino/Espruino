@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\pca10028\s110\iar\blinky_s110_pca10028.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10031\s110\iar\blinky_s110_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10031\blank\iar\blinky_blank_pca10031.ewp</path>
+  </project>
+  <project>
+    <path>$WS_DIR$\pca10028\blank\iar\blinky_blank_pca10028.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>
