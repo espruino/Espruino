@@ -83,10 +83,11 @@ If you are a board manufacturer interested in getting your board officially supp
 * Raspberry Pi - WORKING - GPIO via filesystem (no SPI or I2C)
 * Sony SmartWatch - NOT WORKING - USB VCP support for F2 still needed
 * MBed platforms - have not worked for a while - full hardware wrapper still required
-* ARDUINOMEGA2560 - compiles, but has never worked. Almost certainly due to ints being 16 bits.
 * LC-TECH STM32F103RBT6 - WORKING, but with some issues (LED inverted logic, BTN needs pullup to work)
-* ST NUCLEO-F401RE - beta status
-* ST NUCLEO-F411RE - early alpha status
+* ST NUCLEO-F401RE - WORKING
+* ST NUCLEO-F411RE - WORKING
+* Arduino (AVR) - realistically this will be a nightmare due to the Hardward architecture of AVRs, even though it would fit into an ATMEGA2560. If `avr-gcc` ever gains an easy way to put constants in flash memory it might be doable, but for now it isn't.
+* Arduino (ARM) - very doable, but no work has been done on this.
 
 Building under Linux
 ------------------
@@ -144,15 +145,6 @@ To program the nRF52 Development Kit with Espruino:
 ### Building for Linux
 
 Simple: Just run `make`
-
-## Building for Arduino
-
-This does not work right now - these steps are only to get you started!
-
-* `sudo apt-get install gcc-avr avr-libc avrdude`
-* `sudo cp -r /usr/share/arduino/hardware/arduino targetlibs/arduino_avr`
-* `ARDUINOMEGA2560=1 make`
-* You'll then need to flash the binary yourself
 
 ### Building for Raspberry Pi
 
