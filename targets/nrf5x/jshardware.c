@@ -274,32 +274,28 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
-bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-
-  /*if (addr < 0 || addr > (FLASH_PAGE_SIZE * NUMBER_OF_PAGES))
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
+{
+  if (!nrf_utils_get_page(addr, startAddr, pageSize))
   {
-	  return false; // Exception?
+	  return false;
   }
-  &startAddr = (floor(addr / FLASH_PAGE_SIZE) * FLASH_PAGE_SIZE);
-  &pageSize = FLASH_PAGE_SIZE;
-  return true;*/
-	return false;
-
+  return true;
 }
 
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr) {
-	//nrf_utils_erase_flash_page(addr);
+	nrf_utils_erase_flash_page(addr);
 }
 
 /// Read data from flash memory into the buffer
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-
+  nrf_utils_read_flash_addresses(buf, addr, len);
 }
 
 /// Write data to flash memory from the buffer
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-
+  nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, len);
 }
 
 /// Save contents of JsVars into Flash
@@ -314,7 +310,13 @@ void jshLoadFromFlash() {
 
 /// Returns true if flash contains something useful
 bool jshFlashContainsCode() {
-  return false;
+  /*void * val;
+  nrf_utils_read_flash_addresses(val, 0, 1);
+  if (*((uint32_t *) val) != 0xFFFFFFFF) {
+	  return true;
+  }
+  return false;*/
+  return true;
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success

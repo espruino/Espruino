@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "nrf5x_utils.h"
 
@@ -21,11 +22,56 @@
 #include "nrf_temp.h"
 #include "app_uart.h"
 #include "nrf_error.h"
+#include "nrf_nvmc.h"
 
 #define LED1 17
 #define LED2 18
 #define LED3 19
 #define LED4 20
+
+#define FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
+#define NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
+
+void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
+{
+  nrf_nvmc_write_word(addr, val);
+}
+
+void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len)
+{
+	nrf_nvmc_write_words(addr, src, len); // Is there a bug here??? see nvmc.h header file it says len is bytes?
+}
+
+bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
+{
+  if (addr < (uint32_t) 0 || addr > (uint32_t) (FLASH_PAGE_SIZE * NUMBER_OF_FLASH_PAGES))
+  {
+	  return false;
+  }
+  *page_address = (uint32_t) floor(addr / FLASH_PAGE_SIZE);
+  *page_size = (uint32_t) FLASH_PAGE_SIZE;
+  return true;
+}
+
+void nrf_utils_erase_flash_page(uint32_t addr)
+{
+	uint32_t * page_address;
+	uint32_t * page_size;
+	nrf_utils_get_page(addr, page_address, page_size);
+	nrf_nvmc_page_erase((uint32_t) page_address);
+}
+
+void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
+{
+  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+
+  uint32_t i;
+  for(i = 0; i < len; i++)
+  {
+	((uint32_t *) buf)[i] = *((uint32_t *) (addr + i));
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+  }
+}
 
 void nrf_utils_cnfg_leds_as_outputs() 
 {
@@ -145,13 +191,3 @@ uint32_t nrf_utils_read_temperature(void) {
 void nrf_utils_app_uart_put(uint8_t character) {
 	while (app_uart_put(character) != NRF_SUCCESS);
 }
-
-/*void nrf_utils_erase_flash_page(uint32_t addr) {
-
-	NRF_NVMC->CONFIG = (2UL); // Configure the NVMC for erasing.
-	while (NRF_NVMC->READY != (1UL)); // Wait for the NVMC to be ready.
-	NRF_NVMC->ERASEPAGE = addr; // Erase the page specified by given address.
-	while (NRF_NVMC->READY != (1UL)); // Wait for the erase operation to complete.
-	NRF_NVMC->CONFIG = (0x0); // Set NVMC back to read only.
-
-}*/

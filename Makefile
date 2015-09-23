@@ -361,14 +361,14 @@ SAVE_ON_FLASH=1
 BOARD=MICROBIT
 NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-OPTIMIZEFLAGS+=-O3 # Set this to -O0 to enable debugging.
+OPTIMIZEFLAGS+=-Os # Set this to -O0 to enable debugging.
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
 NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
@@ -1005,7 +1005,7 @@ targetlibs/stm32legacyusb/usb_utils.c            \
 targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
-ifeq ($(FAMILY), NRF51)
+ifdef NRF51
  
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
 
@@ -1026,7 +1026,7 @@ ifeq ($(FAMILY), NRF51)
 
 endif # FAMILY == NRF51
 
-ifeq ($(FAMILY), NRF52)
+ifdef NRF52
  
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
@@ -1036,10 +1036,10 @@ ifeq ($(FAMILY), NRF52)
   # nRF52 specific...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk # only nrf_delay.h in nrf52 sdk # differnt structed uart in nrf51 sdk
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \ # only nrf_delay.h in nrf52 sdk
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \ # differnt structed uart in nrf51 sdk
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1105,7 +1105,8 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
-  $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c
+  $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
 
 endif #NRF5X
 

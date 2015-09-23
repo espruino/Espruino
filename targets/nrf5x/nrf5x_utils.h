@@ -18,11 +18,13 @@
 #ifndef NRF5X_UTILS_H__
 #define NRF5X_UTILS_H__
 
-#define LFCLK_FREQ = 32768
-#define LFCLK_PRESCALER = 0
+// Functions for reading and writing flash.
+void nrf_utils_write_flash_address(uint32_t addr, uint32_t val);
+void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len);
+void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len);
+bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size);
+void nrf_utils_erase_flash_page(uint32_t addr);
 
-#define FLASH_PAGE_SIZE = 4096 // Get these from definition in SDK
-#define NUMBER_OF_PAGES = 128
 
 void nrf_utils_cnfg_leds_as_outputs(void);
 void nrf_utils_delay_us(uint32_t microsec);
@@ -42,7 +44,7 @@ uint32_t nrf_utils_read_temperature(void);
 
 void nrf_utils_app_uart_put(uint8_t character);
 
-//void nrf_utils_erase_flash_page(uint32_t addr);
+
 
 #endif // NRF5X_UTILS_H__
 
