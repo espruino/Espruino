@@ -157,6 +157,9 @@ codeOut("#define PC_BOARD_CHIP_FAMILY \""+board.chip["family"]+"\"")
 
 codeOut("")
 
+linker_end_var = "_end";
+linker_etext_var = "_etext";
+
 if board.chip["family"]=="LINUX":
   board.chip["class"]="LINUX"
 elif board.chip["family"]=="STM32F1":
@@ -190,6 +193,9 @@ elif board.chip["family"]=="ESP8266":
   board.chip["class"]="ESP8266"
 else:
   die('Unknown chip family '+board.chip["family"])
+
+codeOut("#define LINKER_END_VAR "+linker_end_var);
+codeOut("#define LINKER_ETEXT_VAR "+linker_etext_var);
 
 if board.chip["class"]=="MBED":
   codeOut("""
@@ -266,11 +272,11 @@ else:
   codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")
   codeOut("#define FLASH_MAGIC 0xDEADBEEF")
 codeOut("");
-codeOut("#define USARTS                          "+str(board.chip["usart"]))
-codeOut("#define SPIS                            "+str(board.chip["spi"]))
-codeOut("#define I2CS                            "+str(board.chip["i2c"]))
-codeOut("#define ADCS                            "+str(board.chip["adc"]))
-codeOut("#define DACS                            "+str(board.chip["dac"]))
+codeOut("#define USART_COUNT                          "+str(board.chip["usart"]))
+codeOut("#define SPI_COUNT                            "+str(board.chip["spi"]))
+codeOut("#define I2C_COUNT                            "+str(board.chip["i2c"]))
+codeOut("#define ADC_COUNT                            "+str(board.chip["adc"]))
+codeOut("#define DAC_COUNT                            "+str(board.chip["dac"]))
 codeOut("");
 codeOut("#define DEFAULT_CONSOLE_DEVICE              "+board.info["default_console"]);
 if "default_console_tx" in board.info:

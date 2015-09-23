@@ -349,19 +349,19 @@ static void SPI_IRQHandler(SPI_TypeDef *SPIx, IOEventFlags device) {
     }
 }
 
-#if SPIS>=1
+#if SPI_COUNT>=1
 void SPI1_IRQHandler(void) {
   SPI_IRQHandler(SPI1, EV_SPI1);
 }
 #endif
 
-#if SPIS>=2
+#if SPI_COUNT>=2
 void SPI2_IRQHandler(void) {
   SPI_IRQHandler(SPI2, EV_SPI2);
 }
 #endif
 
-#if SPIS>=3
+#if SPI_COUNT>=3
 void SPI3_IRQHandler(void) {
   SPI_IRQHandler(SPI3, EV_SPI3);
 }

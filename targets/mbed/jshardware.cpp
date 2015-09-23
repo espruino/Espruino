@@ -32,7 +32,7 @@ Timer systemTime;
 unsigned int systemTimeHigh;
 bool systemTimeWasHigh;
 
-serial_t mbedSerial[USARTS];
+serial_t mbedSerial[USART_COUNT];
 gpio_t mbedPins[MBED_PINS];
 extern "C" {
 
