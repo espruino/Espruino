@@ -359,21 +359,15 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
-<<<<<<< HEAD
 NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-=======
->>>>>>> 735803d2fd738a2a83a562f1a61c03aa6085d781
 OPTIMIZEFLAGS+=-Os # Set this to -O0 to enable debugging.
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
-<<<<<<< HEAD
 NRF5X=1
 NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-=======
->>>>>>> 735803d2fd738a2a83a562f1a61c03aa6085d781
 OPTIMIZEFLAGS+=-Os
 else ifdef NRF52832DK
 EMBEDDED=1
@@ -1009,17 +1003,10 @@ targetlibs/stm32legacyusb/usb_utils.c            \
 targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
-<<<<<<< HEAD
-ifdef NRF51
- 
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
-
-=======
 ifeq ($(FAMILY), NRF51)
   NRF5X=1 
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
   # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
->>>>>>> 735803d2fd738a2a83a562f1a61c03aa6085d781
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
  
@@ -1037,13 +1024,8 @@ ifeq ($(FAMILY), NRF51)
 
 endif # FAMILY == NRF51
 
-<<<<<<< HEAD
-ifdef NRF52
- 
-=======
 ifeq ($(FAMILY), NRF52)
   NRF5X=1
->>>>>>> 735803d2fd738a2a83a562f1a61c03aa6085d781
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
