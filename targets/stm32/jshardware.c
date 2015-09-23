@@ -70,9 +70,9 @@ BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT); // TODO: This should be set to all 
 
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
-volatile unsigned char jshSPIBufHead[SPIS];
-volatile unsigned char jshSPIBufTail[SPIS];
-volatile unsigned char jshSPIBuf[SPIS][4]; // 4 bytes packed into an int
+volatile unsigned char jshSPIBufHead[SPI_COUNT];
+volatile unsigned char jshSPIBufTail[SPI_COUNT];
+volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
 
 #ifdef USB
 JsSysTime jshLastWokenByUSB = 0;
@@ -391,22 +391,22 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
 #endif
-#if SPIS>= 1
+#if SPI_COUNT >= 1
   } else if (device==JSH_SPI1) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, cmd);
     ptr = SPI1;
 #endif
-#if SPIS>= 2
+#if SPI_COUNT >= 2
   } else if (device==JSH_SPI2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, cmd);
     ptr = SPI2;
 #endif
-#if SPIS>= 3
+#if SPI_COUNT >= 3
   } else if (device==JSH_SPI3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, cmd);
     ptr = SPI3;
 #endif
-#if I2CS>= 1
+#if I2C_COUNT >= 1
   } else if (device==JSH_I2C1) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -414,7 +414,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C1, DISABLE);
       ptr = I2C1;
 #endif
-#if I2CS>= 2
+#if I2C_COUNT >= 2
   } else if (device==JSH_I2C2) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -422,7 +422,7 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
       RCC_APB1PeriphResetCmd(RCC_APB1Periph_I2C2, DISABLE);
       ptr = I2C2;
 #endif
-#if I2CS>= 3
+#if I2C_COUNT >= 3
   } else if (device==JSH_I2C3) {
       RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C3, cmd);
       /* Seems some F103 parts require this reset step - some hardware problem */
@@ -1304,7 +1304,7 @@ void jshInit() {
   NVIC_Init(&NVIC_InitStructure);
 
   // reset SPI buffers
-  for (i=0;i<SPIS;i++) {
+  for (i=0;i<SPI_COUNT;i++) {
     jshSPIBufHead[i] = 0;
     jshSPIBufTail[i] = 0;
   }
@@ -2231,7 +2231,7 @@ void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
   switch (device) {
     case EV_SPI1: spiIRQ = SPI1_IRQn; break;
     case EV_SPI2: spiIRQ = SPI2_IRQn; break;
-#if SPIS>=3
+#if SPI_COUNT>=3
     case EV_SPI3: spiIRQ = SPI3_IRQn; break;
 #endif
     default: assert(0); break;

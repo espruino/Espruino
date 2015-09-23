@@ -45,7 +45,7 @@ typedef enum {
   SDS_XOFF_SENT = 4, // sending XON clears this
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
 } PACKED_FLAGS JshSerialDeviceState;
-JshSerialDeviceState jshSerialDeviceStates[USARTS+1];
+JshSerialDeviceState jshSerialDeviceStates[USART_COUNT+1];
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
@@ -60,7 +60,7 @@ void jshInitDevices() { // called from jshInit
   int i;
   // setup flow control
   jshSerialDeviceStates[0] = SDS_FLOW_CONTROL_XON_XOFF; // USB
-  for (i=1;i<=USARTS;i++)
+  for (i=1;i<=USART_COUNT;i++)
     jshSerialDeviceStates[i] = SDS_NONE;
   // set up callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
@@ -327,31 +327,31 @@ const char *jshGetDeviceString(IOEventFlags device) {
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
   case EV_SERIAL3: return "Serial3";
-#if USARTS>=4
+#if USART_COUNT>=4
   case EV_SERIAL4: return "Serial4";
 #endif
-#if USARTS>=5
+#if USART_COUNT>=5
   case EV_SERIAL5: return "Serial5";
 #endif
-#if USARTS>=6
+#if USART_COUNT>=6
   case EV_SERIAL6: return "Serial6";
 #endif
-#if SPIS>=1
+#if SPI_COUNT>=1
   case EV_SPI1: return "SPI1";
 #endif
-#if SPIS>=2
+#if SPI_COUNT>=2
   case EV_SPI2: return "SPI2";
 #endif
-#if SPIS>=3
+#if SPI_COUNT>=3
   case EV_SPI3: return "SPI3";
 #endif
-#if I2CS>=1
+#if I2C_COUNT>=1
   case EV_I2C1: return "I2C1";
 #endif
-#if I2CS>=2
+#if I2C_COUNT>=2
   case EV_I2C2: return "I2C2";
 #endif
-#if I2CS>=3
+#if I2C_COUNT>=3
   case EV_I2C3: return "I2C3";
 #endif
   default: return "";
@@ -373,36 +373,36 @@ IOEventFlags jshFromDeviceString(const char *device) {
       if (device[6]=='1') return EV_SERIAL1;
       if (device[6]=='2') return EV_SERIAL2;
       if (device[6]=='3') return EV_SERIAL3;
-#if USARTS>=4
+#if USART_COUNT>=4
       if (device[6]=='4') return EV_SERIAL4;
 #endif
-#if USARTS>=5
+#if USART_COUNT>=5
       if (device[6]=='5') return EV_SERIAL5;
 #endif
-#if USARTS>=6
+#if USART_COUNT>=6
       if (device[6]=='6') return EV_SERIAL6;
 #endif
     }
     if (device[1]=='P' && device[2]=='I' && device[3]!=0 && device[4]==0) {
-#if SPIS>=1
+#if SPI_COUNT>=1
       if (device[3]=='1') return EV_SPI1;
 #endif
-#if SPIS>=2
+#if SPI_COUNT>=2
       if (device[3]=='2') return EV_SPI2;
 #endif
-#if SPIS>=3
+#if SPI_COUNT>=3
       if (device[3]=='3') return EV_SPI3;
 #endif
     }
   }
   else if (device[0]=='I' && device[1]=='2' && device[2]=='C' && device[3]!=0 && device[4]==0) {
-#if I2CS>=1
+#if I2C_COUNT>=1
     if (device[3]=='1') return EV_I2C1;
 #endif
-#if I2CS>=2
+#if I2C_COUNT>=2
     if (device[3]=='2') return EV_I2C2;
 #endif
-#if I2CS>=3
+#if I2C_COUNT>=3
     if (device[3]=='3') return EV_I2C3;
 #endif
   }
