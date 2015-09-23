@@ -18,6 +18,8 @@
 #ifndef NRF5X_UTILS_H__
 #define NRF5X_UTILS_H__
 
+#include <stdint.h>
+
 // Functions for reading and writing flash.
 void nrf_utils_write_flash_address(uint32_t addr, uint32_t val);
 void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len);

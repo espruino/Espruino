@@ -75,7 +75,6 @@ void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
 
 void nrf_utils_cnfg_leds_as_outputs() 
 {
-
   nrf_gpio_cfg_output(LED1);
   nrf_gpio_cfg_output(LED2);
   nrf_gpio_cfg_output(LED3);
@@ -86,7 +85,6 @@ void nrf_utils_cnfg_leds_as_outputs()
   nrf_gpio_pin_set(LED2);
   nrf_gpio_pin_set(LED3);
   nrf_gpio_pin_set(LED4);
-
 }
 
 void nrf_utils_delay_us(uint32_t microsec) 

@@ -34,7 +34,6 @@ static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() 
 {
-
   jshInitDevices();
   nrf_utils_cnfg_leds_as_outputs(); // Configure and turn off the four on board LEDS.
   nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
@@ -43,7 +42,6 @@ void jshInit()
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
   init = 1;
-
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -56,8 +54,8 @@ void jshKill() {
 }
 
 // stuff to do on idle
-void jshIdle() {
-
+void jshIdle()
+{
   if (init == 1)
   {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
@@ -65,7 +63,6 @@ void jshIdle() {
   }
 
   jshUSARTKick(EV_SERIAL1);
-
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
@@ -284,17 +281,20 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 }
 
 /// Erase the flash page containing the address
-void jshFlashErasePage(uint32_t addr) {
+void jshFlashErasePage(uint32_t addr)
+{
 	nrf_utils_erase_flash_page(addr);
 }
 
 /// Read data from flash memory into the buffer
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len)
+{
   nrf_utils_read_flash_addresses(buf, addr, len);
 }
 
 /// Write data to flash memory from the buffer
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
+{
   nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, len);
 }
 
@@ -309,14 +309,14 @@ void jshLoadFromFlash() {
 }
 
 /// Returns true if flash contains something useful
-bool jshFlashContainsCode() {
-  /*void * val;
+bool jshFlashContainsCode()
+{
+  void * val;
   nrf_utils_read_flash_addresses(val, 0, 1);
   if (*((uint32_t *) val) != 0xFFFFFFFF) {
 	  return true;
   }
-  return false;*/
-  return true;
+  return false;
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -360,6 +360,7 @@ JsVarFloat jshReadVRef()
 /* Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
-unsigned int jshGetRandomNumber() {
+unsigned int jshGetRandomNumber()
+{
   return (unsigned int) nrf_utils_get_random_number();
 }
