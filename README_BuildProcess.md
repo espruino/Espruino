@@ -45,7 +45,7 @@ Build Process
 * An `ifdef BOARDNAME` in the Makefile sets up some specific build options, as well as what gets included (eg. `USE_NET=1`). The `BOARD` variable references a [Board Definition File](#boarddefinition) in `boards/`.
 * `boards/$BOARD.py` is read, and various information (chip family, part number, binary name, whether it has a bootloader) is read out into variables in the Makefile. **Note:** in the future more of the build options should be inferred from the `BOARD.py` file,
 * The `Makefile` adds source files to `$SOURCES`, and 'wrapper' source files to `$WRAPPERSOURCES`. [Wrapper files](#wrapperfiles) are files that contain functions that are exposed to JS.
-* The script `scripts/build_playform_config.py` is run which generates `gen/platform_config.h` from `boards/$BOARD.py` - this contains information like the amount of RAM, as well as buffer sizes and the amount of variables that will be stored.
+* The script [`scripts/build_platform_config.py`](scripts/build_platform_config.py) is run which generates `gen/platform_config.h` from `boards/$BOARD.py` - this contains information like the amount of RAM, as well as buffer sizes and the amount of variables that will be stored.
 * The script [`scripts/build_pininfo.py`](scripts/build_pininfo.py) creates [the pin definitions](#pindefinitions) and puts them in `gen/jspininfo.c`
 * The script [`scripts/build_jswrapper.py`](scripts/build_jswrapper.py) is then run on `$WRAPPERSOURCES` - it generates `gen/jswrapper.c` - a hard-coded symbol table of built-in functions - from the [Wrapper files](#wrapperfiles).
 * Source files are built
@@ -132,7 +132,7 @@ Stuff you can use is `LED1`-`LED8`, `BTN1`-`BTN4`, `USB`, `LCD` (for boards with
 Pin Definitions <a name="pindefinitions">
 ---------------
 
-The pin definitions are created by `scripts/build_pininfo.py` and are stored in `gen/jspininfo.c`. The script calls 
+The pin definitions are created by [`scripts/build_pininfo.py`](`scripts/build_pininfo.py`) and are stored in `gen/jspininfo.c`. The script calls 
  `get_pins` in `boards/$BOARD.py` and a structure of the following form is returned:
 
 ```
