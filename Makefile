@@ -40,7 +40,6 @@
 # ARIETTA=1
 # LPC1768=1 # beta
 # LCTECH_STM32F103RBT6=1 # LC Technology STM32F103RBT6 Ebay boards
-# ARDUINOMEGA2560=1
 # ARMINARM=1
 # NUCLEOF401RE=1
 # NUCLEOF411RE=1
@@ -397,11 +396,6 @@ BOARD=ECU
 STLIB=STM32F4XX
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f4xx.o
 OPTIMIZEFLAGS+=-O3
-else ifdef ARDUINOMEGA2560
-EMBEDDED=1
-BOARD=ARDUINOMEGA2560
-ARDUINO_AVR=1
-OPTIMIZEFLAGS+=-Os
 else ifdef ARMINARM
 EMBEDDED=1
 USE_NET=1
@@ -1120,46 +1114,6 @@ SOURCES += targets/mbed/main.c
 CPPSOURCES += targets/mbed/jshardware.cpp
 endif
 
-ifdef ARDUINO_AVR
-MCU = atmega2560
-F_CPU = 16000000
-FORMAT = ihex
-
-ARDUINO_LIB=$(ROOT)/targetlibs/arduino_avr/cores/arduino
-ARCHFLAGS += -DF_CPU=$(F_CPU) -mmcu=$(MCU) -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
-LDFLAGS += -mrelax
-AVR=1
-INCLUDE+=-I$(ARDUINO_LIB) -I$(ARDUINO_LIB)/../../variants/mega
-DEFINES += -DARDUINO_AVR -D$(CHIP) -D$(BOARD)
-SOURCES += \
-$(ARDUINO_LIB)/wiring.c \
-$(ARDUINO_LIB)/wiring_digital.c
-
-CPPSOURCES += \
-$(ARDUINO_LIB)/main.cpp \
-$(ARDUINO_LIB)/new.cpp \
-$(ARDUINO_LIB)/WString.cpp \
-$(ARDUINO_LIB)/Print.cpp \
-$(ARDUINO_LIB)/HardwareSerial.cpp \
-targets/arduino/jshardware.cpp \
-targets/arduino/espruino.cpp
-
-# Arduino 1.5.1 and up has one extra file
-ifneq ($(wildcard $(ARDUINO_LIB)/hooks.c),)
-CPPSOURCES += $(ARDUINO_LIB)/hooks.c
-endif
-# Arduino 1.5.6 and up splits HardwareSerial into multiple files
-ifneq ($(wildcard $(ARDUINO_LIB)/HardwareSerial0.cpp),)
-CPPSOURCES += \
-$(ARDUINO_LIB)/HardwareSerial0.cpp \
-$(ARDUINO_LIB)/HardwareSerial1.cpp \
-$(ARDUINO_LIB)/HardwareSerial2.cpp \
-$(ARDUINO_LIB)/HardwareSerial3.cpp
-endif
-
-export CCPREFIX=avr-
-endif
-
 ifdef ARM
 
   ifndef LINKER_FILE # nRF5x targets define their own linker file.
@@ -1368,9 +1322,6 @@ ifndef TRAVIS
 endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
-ifdef ARDUINO_AVR
-proj: $(PROJ_NAME).hex
-endif
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
