@@ -27,12 +27,14 @@ void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len);
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size);
 void nrf_utils_erase_flash_page(uint32_t addr);
 
-
-void nrf_utils_cnfg_leds_as_outputs(void);
-void nrf_utils_delay_us(uint32_t microsec);
+// Functions for configuring and setting GPIOS.
 void nrf_utils_gpio_pin_set(uint32_t pin);
 void nrf_utils_gpio_pin_clear(uint32_t pin);
 uint32_t nrf_utils_gpio_pin_read(uint32_t pin);
+void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state);
+uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin);
+
+void nrf_utils_delay_us(uint32_t microsec);
 
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source & start.
 void nrf_utils_lfclk_config_and_start(void);

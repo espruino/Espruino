@@ -73,38 +73,77 @@ void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
   }
 }
 
-void nrf_utils_cnfg_leds_as_outputs() 
+void nrf_utils_gpio_pin_set(uint32_t pin)
 {
-  nrf_gpio_cfg_output(LED1);
-  nrf_gpio_cfg_output(LED2);
-  nrf_gpio_cfg_output(LED3);
-  nrf_gpio_cfg_output(LED4);
+  nrf_gpio_pin_set(pin);
+}
 
-  // Turn all the LEDS off. 1 means off on the nRF52DK...
-  nrf_gpio_pin_set(LED1);
-  nrf_gpio_pin_set(LED2);
-  nrf_gpio_pin_set(LED3);
-  nrf_gpio_pin_set(LED4);
+void nrf_utils_gpio_pin_clear(uint32_t pin)
+{
+  nrf_gpio_pin_clear(pin);
+}
+
+uint32_t nrf_utils_gpio_pin_read(uint32_t pin)
+{
+  return nrf_gpio_pin_read(pin);
+}
+
+void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
+{
+	switch (state)
+	{
+	  case 0 :
+	    nrf_gpio_cfg_default(pin);
+		break;
+	  case 1 :
+	    nrf_gpio_cfg_output(pin);
+	  	break;
+	  case 2 :
+        nrf_gpio_cfg_output(pin);
+		break;
+	  case 3 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_NOPULL);
+	  	break;
+	  case 4 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLUP);
+		break;
+	  case 5 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLDOWN);
+		break;
+	  case 6 :
+	    break;
+	  case 7 :
+	  	break;
+	  case 8 :
+		break;
+	  case 9 :
+	  	break;
+	  case 10 :
+	    break;
+	  case 11 :
+	  	break;
+	  case 12 :
+		break;
+	  case 13 ://wrong...
+	  	break;
+	  case 14 : //wrong...
+	    break;
+	  default :
+		break;
+	}
+}
+
+// TODO implement this.
+uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
+{
+	/*uint32_t pin_register;
+	pin_register = NRF_GPIO->PIN_CNF[pin];*/
+    return (uint32_t) 0;
 }
 
 void nrf_utils_delay_us(uint32_t microsec) 
 {
   nrf_delay_us(microsec);
-}
-
-void nrf_utils_gpio_pin_set(uint32_t pin) 
-{
-  nrf_gpio_pin_set(pin);
-}
-
-void nrf_utils_gpio_pin_clear(uint32_t pin) 
-{
-  nrf_gpio_pin_clear(pin);
-}
-
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin) 
-{
-  nrf_gpio_pin_read(pin);
 }
 
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.

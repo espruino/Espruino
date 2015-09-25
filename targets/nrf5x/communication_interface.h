@@ -12,7 +12,7 @@
 
 /**@file
  *
- * @brief Interact with Espruino through simulated USB port over UART. Serial communcitaiton with terminal as with other Espruino devices.
+ * @brief Interact with Espruino through simulated USB port over UART. Serial communication with terminal as with other Espruino devices.
  *
  */
 
@@ -29,10 +29,10 @@
 #define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 32                         /**< UART RX buffer size. */
 
-// UART callback function. Registered in uart_init(). Allows to asychronously read characters from UART.
+// UART callback function. Registered in uart_init(). Allows to asynchronously read characters from UART.
 void uart_event_handle(app_uart_evt_t * p_event);
 
-// Initialzes non blocking serial communication with terminal via uart. Returns 0 on success, -1 on an error.
+// Initializes non blocking serial communication with terminal via UART. Returns 0 on success, -1 on an error.
 int uart_init();
 
 #endif // COMMUNICATION_INTERFACE_H__
