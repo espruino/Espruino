@@ -24,13 +24,8 @@
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
-#define LED1 17
-#define LED2 18
-#define LED3 19
-#define LED4 20
-
-#define FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
-#define NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
+#define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
+#define NRF_UTILS_NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
 
 void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
 {
@@ -44,12 +39,12 @@ void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32
 
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
 {
-  if (addr < (uint32_t) 0 || addr > (uint32_t) (FLASH_PAGE_SIZE * NUMBER_OF_FLASH_PAGES))
+  if (addr < (uint32_t) 0 || addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
   {
 	  return false;
   }
-  *page_address = (uint32_t) floor(addr / FLASH_PAGE_SIZE);
-  *page_size = (uint32_t) FLASH_PAGE_SIZE;
+  *page_address = (uint32_t) floor(addr / NRF_UTILS_FLASH_PAGE_SIZE);
+  *page_size = (uint32_t) NRF_UTILS_FLASH_PAGE_SIZE;
   return true;
 }
 
@@ -169,6 +164,25 @@ void nrf_utils_lfclk_config_and_start()
     // Do nothing...
   }
 
+}
+
+int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
+{
+	uint32_t deviceID[2];
+	deviceID[0] = NRF_FICR->DEVICEID[0];
+	deviceID[1] = NRF_FICR->DEVICEID[1];
+
+	uint8_t * temp = (uint8_t *) &deviceID[0];
+
+	uint32_t i;
+	for (i = 0; i < maxChars || i < 8; i++)
+	{
+	  *device_id = *temp;
+	  device_id++;
+	  temp++;
+	}
+
+	return i;
 }
 
 // Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.

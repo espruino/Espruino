@@ -42,6 +42,7 @@ void nrf_utils_lfclk_config_and_start(void);
 // Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
 void nrf_utils_rtc1_config_and_start(void);
 
+int nrf_utils_get_device_id(uint8_t * device_id, int maxChars);
 uint8_t nrf_utils_get_random_number(void);
 uint32_t nrf_utils_get_system_time(void);
 uint32_t nrf_utils_read_temperature(void);

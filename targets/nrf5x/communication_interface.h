@@ -24,7 +24,7 @@
 #include <stdio.h>
 
 #include "app_uart.h"
- 
+
 #define MAX_TEST_DATA_BYTES (15U)
 #define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE 32                         /**< UART RX buffer size. */

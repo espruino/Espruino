@@ -28,9 +28,7 @@
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
-#include "app_uart.h"
-
-static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
+static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() 
 {
@@ -69,13 +67,17 @@ void jshIdle()
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
 int jshGetSerialNumber(unsigned char *data, int maxChars)
 {
-  return 0;
+    if (maxChars <= 0)
+    {
+    	return 0;
+    }
+	return nrf_utils_get_device_id(data, maxChars);
 }
 
 // is the serial device connected?
 bool jshIsUSBSERIALConnected()
 {
-  return false;
+  return true;
 }
 
 /// Get the system time (in ticks)
@@ -105,12 +107,12 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 // software IO functions...
 void jshInterruptOff()
 {
-
+  __disable_irq(); // Disabling interrupts is not reasonable when using one of the softdevices.
 }
 
 void jshInterruptOn()
 {
-
+  __enable_irq();
 }
 
 void jshDelayMicroseconds(int microsec) 
@@ -211,8 +213,9 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 }
 
 /** Set up a UART, if pins are -1 they will be guessed */
-void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  uart_init(); // Initialzes UART and registers a callback function defined above to read characters into the static variable character.
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
+{
+  uart_init(); // Initializes UART and registers a callback function defined above to read characters into the static variable character.
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
