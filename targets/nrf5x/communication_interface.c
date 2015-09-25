@@ -20,7 +20,7 @@
 
 void uart_event_handle(app_uart_evt_t * p_event)
 {
-  
+
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR)
   {
     APP_ERROR_HANDLER(p_event->data.error_communication);
