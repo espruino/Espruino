@@ -55,8 +55,8 @@ board = {
   'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ],
         
   '_notes' : {
-    'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outouts we'd recommend that you don't use B4 and B5 with analogWrite.",
-    'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outouts we'd recommend that you don't use B4 and B5 with analogWrite.",
+    'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
+    'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
   }
 };
 devices = {
