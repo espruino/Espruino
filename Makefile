@@ -1273,7 +1273,7 @@ libs/network/esp8266/network_esp8266.c
 
 # The tool used for building the firmware and flashing
 ESPTOOL_CK ?= esptool-ck
-ESPTOOL    ?= esptool
+ESPTOOL    ?= $(ESP8266_SDK_ROOT)/esptool/esptool.py
 
 # Extra include directories specific to the ESP8266
 INCLUDE += -I$(ESP8266_SDK_ROOT)/include \
@@ -1422,10 +1422,10 @@ ifndef COMPORT
 	$(error, "In order to flash, we need to have the COMPORT variable defined")
 endif
 # Handle ESP8266 flashing
-	@echo Disass: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
+	@echo Disassembly: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
 	-$(Q)$(ESPTOOL_CK) -eo $(PROJ_NAME).elf -bo ESP8266_0x00000.bin -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec
 	-$(Q)$(ESPTOOL_CK) -eo $(PROJ_NAME).elf -es .irom0.text ESP8266_0x10000.bin -ec
-	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash  --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 ESP8266_0x00000.bin 0x10000 ESP8266_0x10000.bin
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 ESP8266_0x00000.bin 0x10000 ESP8266_0x10000.bin
 # End of handle ESP8266 flashing
 else
 	echo ST-LINK flash
