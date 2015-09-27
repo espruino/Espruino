@@ -1,5 +1,7 @@
 Espruino JavaScript for Microcontrollers
 ========================================
+
+[![Join the chat at https://gitter.im/espruino/Espruino](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/espruino/Espruino?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 <pre>
  _____                 _
 |   __|___ ___ ___ _ _|_|___ ___
