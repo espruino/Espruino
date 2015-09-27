@@ -46,6 +46,7 @@
 # MINISTM32_STRIVE=1
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
+# ESP8266_BOARD=1                  # ESP8266 from Espressif
 # Or nothing for standard linux compile
 #
 # Also:
@@ -60,7 +61,6 @@
 #
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
-
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -417,6 +417,20 @@ BOARD=LCTECH_STM32F103RBT6
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
+else ifdef ESP8266_BOARD
+USE_NET=1
+EMBEDDED=1
+BOARD=ESP8266_BOARD
+OPTIMIZEFLAGS+=-Os
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
+CFLAGS+=-std=gnu99 \
+-Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
+-Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
+-Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
+-fno-builtin -fno-strict-aliasing -fno-inline-functions \
+-Wl,EL -nostdlib \
+-mlongcalls -mtext-section-literals \
+-D__ETS__ -DICACHE_FLASH
 else
 ifeq ($(shell uname -m),armv6l)
 RASPBERRYPI=1 # just a guess
@@ -519,7 +533,11 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
+ifdef ESP8266_BOARD
+USE_ESP8266_BOARD=1
+else
 USE_CC3000=1
+endif
 endif
 endif
 endif
@@ -776,6 +794,14 @@ libs/network/js/network_js.c
  libs/network/wiznet/Ethernet/wizchip_conf.c \
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
+ endif
+
+ ifdef USE_ESP8266
+ DEFINES += -DUSE_ESP8266
+ WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+ INCLUDE += -I$(ROOT)/libs/network/esp8266
+ SOURCES += \
+ libs/network/esp8266/network_esp8266.c
  endif
 endif
 
@@ -1217,6 +1243,51 @@ ifdef NRF5X
 LDFLAGS += --specs=nano.specs -lc -lnosys
 endif # NRF5X
 
+#
+# Definitions for the build of the ESP8266
+#
+ifdef ESP8266_BOARD
+# The Root of the ESP8266_SDK distributed by Espressif
+# This must be supplied as a Make environment variable.
+ifndef ESP8266_SDK_ROOT
+$(error, "The ESP8266_SDK_ROOT variable must be set")
+endif
+
+# The pefix for the xtensa toolchain
+CCPREFIX=xtensa-lx106-elf-
+
+# Extra flags passed to the linker
+LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
+-Ttargets/esp8266/eagle.app.v6.0x10000.ld \
+-nostdlib \
+-Wl,--no-check-sections \
+-u call_user_start \
+-Wl,-static 
+
+# Extra source files specific to the ESP8266 board
+SOURCES += targets/esp8266/uart.c \
+targets/esp8266/user_main.c \
+targets/esp8266/jshardware.c \
+targets/esp8266/esp8266_board_utils.c \
+libs/network/esp8266/network_esp8266.c
+
+# The tool used for building the firmware and flashing
+ESPTOOL_CK ?= esptool-ck
+ESPTOOL    ?= esptool
+
+# Extra include directories specific to the ESP8266
+INCLUDE += -I$(ESP8266_SDK_ROOT)/include \
+-I$(ROOT)/targets/esp8266 \
+-I$(ROOT)/libs/network/esp8266 
+
+WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+
+# Specify the defines
+DEFINES += -DXTENSA -DUSE_ESP8266_BOARD
+
+# End of ESP8266 definitions
+endif # ESP8266_BOARD
+
 export CC=$(CCPREFIX)gcc
 export LD=$(CCPREFIX)gcc
 export AR=$(CCPREFIX)ar
@@ -1263,7 +1334,11 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	$(Q)python scripts/build_platform_config.py $(BOARD)
 
 compile=$(CC) $(CFLAGS) $(DEFINES) $< -o $@
+ifndef ESP8266_BOARD
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+else
+link=$(LD) $(LDFLAGS) -o $@ -Wl,--start-group $(OBJS) $(LIBS) -Wl,--end-group
+endif
 obj_dump=$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 obj_to_bin=$(OBJCOPY) -O $1 $(PROJ_NAME).elf $(PROJ_NAME).$2
 
@@ -1275,6 +1350,9 @@ quiet_obj_to_bin= GEN $(PROJ_NAME).$2
 %.o: %.c $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
 	@$(call compile)
+ifdef ESP8266_BOARD
+	$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
+endif
 
 .cpp.o: $(PLATFORM_CONFIG_FILE) $(PININFOFILE).h
 	@echo $($(quiet_)compile)
@@ -1316,7 +1394,16 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
+ifndef ESP8266_BOARD
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
+else
+proj: $(PROJ_NAME).elf
+endif
+
+ifdef ARDUINO_AVR
+proj: $(PROJ_NAME).hex
+endif
+
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
@@ -1330,6 +1417,16 @@ else ifdef OLIMEXINO_STM32_BOOTLOADER
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
+else ifdef ESP8266_BOARD
+ifndef COMPORT
+	$(error, "In order to flash, we need to have the COMPORT variable defined")
+endif
+# Handle ESP8266 flashing
+	@echo Disass: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
+	-$(Q)$(ESPTOOL_CK) -eo $(PROJ_NAME).elf -bo ESP8266_0x00000.bin -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec
+	-$(Q)$(ESPTOOL_CK) -eo $(PROJ_NAME).elf -es .irom0.text ESP8266_0x10000.bin -ec
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash  --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 ESP8266_0x00000.bin 0x10000 ESP8266_0x10000.bin
+# End of handle ESP8266 flashing
 else
 	echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)
