@@ -55,6 +55,28 @@ To program the nRF52 Development Kit with Espruino:
 
 -- Note that limited functionality is implemented on the nRF52. Feel free to help! Currently working on NFC touch to pair so you can tap the device with your smartphone to connect without opening the app and then scanning. Also thinking of ways to edit scripts (typing long programs on smartphone is tedious).
 
+### for esp8266
+
+In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
+- the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
+- the Espressif SDK (version 1.4.0 as of this writing) from http://bbs.espressif.com/viewforum.php?f=46
+- Esptool-ck from https://github.com/tommie/esptool-ck
+
+Note: esptool-ck should be eliminated and replaced with esptool (.py), this will happen naturally
+when an OTA update is developed.
+
+To run make you need to pass a number of environment variables to make, the easiest is to place
+the following lines into a script, adapt it to your needs and then run it.
+```
+#! /bin/bash
+export ESP8266_BOARD=1
+export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.4.0
+export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
+export ESPTOOL_CK=/esp8266/esptool-ck/esptool
+export COMPORT=/dev/ttyUSB0
+make $*
+```
+
 ### for Linux
 
 Simple: Just run `make`
