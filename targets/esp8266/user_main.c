@@ -217,6 +217,7 @@ void user_rf_pre_init() {
 void user_init() {
 	// Initialize the UART devices
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
+	os_delay_us(10000); // give the uart a break
 	UART_SetPrintPort(1);
 
 	// Dump the restart exception information.
