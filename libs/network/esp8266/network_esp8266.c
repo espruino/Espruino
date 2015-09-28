@@ -343,7 +343,8 @@ static void dumpEspConn(
  * socket can be found, return -1.
  */
 static int getNextFreeSocket() {
-	for (int i=0; i<MAX_SOCKETS; i++) {
+	int i;
+	for (i=0; i<MAX_SOCKETS; i++) {
 		if (socketArray[i].state == SOCKET_STATE_UNUSED) {
 			return i;
 		}
@@ -455,7 +456,8 @@ static void releaseSocket(
  * Walk through each of the sockets and initialize each one.
  */
 void netInit_esp8266_board() {
-	for (int socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
+	int socketArrayIndex;
+	for (socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
 		resetSocket(socketArrayIndex);
 	} // End of for each socket
 } // netInit_esp8266_board

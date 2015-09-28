@@ -108,7 +108,8 @@ void jshDelayMicroseconds(int microsec) {
 	// for the given number of microseconds PLUS multiple calls back to the
 	// WiFi environment.
 	int count = microsec / MAX_SLEEP_TIME_US;
-	for (int i=0; i<count; i++) {
+	int i;
+	for (i=0; i<count; i++) {
 		os_delay_us(MAX_SLEEP_TIME_US);
 		// We may have a problem here.  It was my understanding that system_soft_wdt_feed() fed
 		// the underlying OS but this appears not to be the case and all it does is prevent a
