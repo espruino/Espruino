@@ -469,7 +469,7 @@ USE_NET=1
 BOARD=ESP8266_BOARD
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
 # We have to disable inlining to keep code size in check
-OPTIMIZEFLAGS+=-Os -fno-inline-functions
+OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline
 ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
