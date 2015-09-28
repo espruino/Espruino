@@ -312,7 +312,7 @@ JsSysTime jshGetSystemTime() { // in us
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime time) {
-	os_printf("ESP8266: jshSetSystemTime: %d\n", time);
+	os_printf("ESP8266: jshSetSystemTime: %d\n", (int)time);
 } // End of jshSetSystemTime
 
 // ----------------------------------------------------------------------------
@@ -476,12 +476,12 @@ void jshUtilTimerDisable() {
 
 
 void jshUtilTimerReschedule(JsSysTime period) {
-	os_printf("ESP8266: jshUtilTimerReschedule %d\n", period);
+	os_printf("ESP8266: jshUtilTimerReschedule %d\n", (int)period);
 } // End of jshUtilTimerReschedule
 
 
 void jshUtilTimerStart(JsSysTime period) {
-	os_printf("ESP8266: jshUtilTimerStart %d\n", period);
+	os_printf("ESP8266: jshUtilTimerStart %d\n",(int) period);
 } // End of jshUtilTimerStart
 
 
@@ -509,7 +509,7 @@ void jshFlashRead(
 		uint32_t addr, //!< Flash address to read from
 		uint32_t len   //!< Length of data to read
 	) {
-	os_printf("ESP8266: jshFlashRead: buf=0x%x for len=%d from flash addr=0x%x\n", buf, len, addr);
+	os_printf("ESP8266: jshFlashRead: buf=0x%x for len=%d from flash addr=0x%x\n", (int)buf, (int)len, (int)addr);
 } // End of jshFlashRead
 
 
@@ -521,7 +521,7 @@ void jshFlashWrite(
 		uint32_t addr, //!< Flash address to write into
 		uint32_t len   //!< Length of data to write
 	) {
-	os_printf("ESP8266: jshFlashWrite: buf=0x%x for len=%d into flash addr=0x%x\n", buf, len, addr);
+	os_printf("ESP8266: jshFlashWrite: buf=0x%x for len=%d into flash addr=0x%x\n", (int)buf, (int)len, (int)addr);
 } // End of jshFlashWrite
 
 
@@ -533,7 +533,7 @@ bool jshFlashGetPage(
 		uint32_t *startAddr, //!<
 		uint32_t *pageSize   //!<
 	) {
-	os_printf("ESP8266: jshFlashGetPage: addr=0x%x, startAddr=0x%x, pageSize=%d\n", addr, startAddr, pageSize);
+	os_printf("ESP8266: jshFlashGetPage: addr=0x%x, startAddr=0x%x, pageSize=%d\n", (int)addr, (int)startAddr, (int)pageSize);
 	return false;
 } // End of jshFlashGetPage
 
@@ -544,7 +544,7 @@ bool jshFlashGetPage(
 void jshFlashErasePage(
 		uint32_t addr //!<
 	) {
-	os_printf("ESP8266: jshFlashErasePage: addr=0x%x\n", addr);
+	os_printf("ESP8266: jshFlashErasePage: addr=0x%x\n", (int)addr);
 } // End of jshFlashErasePage
 
 
