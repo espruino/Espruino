@@ -6,7 +6,7 @@ before_install:
 before_script:
  - arm-none-eabi-gcc --version
 after_script:
-  - ls *.bin *.hex | xargs -I {} curl -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_JOB_ID"
+  - ls *.bin *.hex | xargs -I {} curl -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
 compiler:
   - gcc
 env:
