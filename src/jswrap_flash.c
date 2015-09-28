@@ -74,13 +74,15 @@ JsVar *jswrap_flash_getPage(int addr) {
   "name" : "erasePage",
   "generate" : "jswrap_flash_erasePage",
   "params" : [
-    ["addr","int","An address in the page that is to be erased"]
+    ["addr","JsVar","An address in the page that is to be erased"]
   ]
 }
 Erase a page of flash memory
  */
-void jswrap_flash_erasePage(int addr) {
-  jshFlashErasePage((uint32_t)addr);
+void jswrap_flash_erasePage(JsVar *addr) {
+  if (!jsvIsInt(addr))
+    return jsExceptionHere(JSET_ERROR, "Address should be an integer, got %t", addr);
+  jshFlashErasePage((uint32_t)jsvGetInteger(addr));
 }
 
 /*JSON{
@@ -102,6 +104,8 @@ doesn't return all `0xFF`) you'll need to call `erasePage` to clear the
 entire page.
  */
 void jswrap_flash_write(JsVar *data, int addr) {
+  if (jsvIsUndefined(data))
+    return jsExceptionHere(JSET_ERROR, "Data is not defined");
   size_t l = (size_t)jsvIterateCallbackCount(data);
   if ((addr&3) || (l&3)) {
     jsExceptionHere(JSET_ERROR, "Data and address must be multiples of 4");

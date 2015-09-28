@@ -14,7 +14,7 @@
 #include "jsvar.h"
 
 JsVar *jswrap_flash_getPage(int addr);
-void jswrap_flash_erasePage(int addr);
+void jswrap_flash_erasePage(JsVar *addr);
 void jswrap_flash_write(JsVar *data, int addr);
 JsVar *jswrap_flash_read(int length, int addr);
 
