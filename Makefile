@@ -46,7 +46,11 @@
 # MINISTM32_STRIVE=1
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
-# ESP8266_BOARD=1         # ESP8266 from Espressif
+# ESP8266_BOARD=1         # Same as ESP8266_512KB
+# ESP8266_4MB=1           # ESP8266 with 4MB flash: 512KB+512KB firmware + 3MB SPIFFS
+# ESP8266_2MB=1           # ESP8266 with 2MB flash: 512KB+512KB firmware + 3MB SPIFFS
+# ESP8266_1MB=1           # ESP8266 with 1MB flash: 512KB+512KB firmware + 32KB SPIFFS
+# ESP8266_512KB=1         # ESP8266 with 512KB flash: 512KB firmware + 32KB SPIFFS
 # Or nothing for standard linux compile
 #
 # Also:
@@ -63,6 +67,11 @@
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
+endif
+
+# backwards compatibility
+ifdef ESP8266_BOARD
+ESP8266_512KB=1
 endif
 
 INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
@@ -451,11 +460,77 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os
 
-else ifdef ESP8266_BOARD
+else ifdef ESP8266_512KB
+# esp8266 with 512KB flash chip, we're using the "none boot" layout, which doesn't support
+# OTA update and allows for a firmware that almost fills the 512KB. The first 64KB are loaded
+# into ram (dram+iram) and the last 16KB are reserved for the SDK. That leaves 432KB (0x6C000).
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+# We have to disable inlining to keep code size in check
+OPTIMIZEFLAGS+=-Os -fno-inline-functions
+ESP_FLASH_SIZE      ?= 0       # 0->512KB
+ESP_FLASH_MODE      ?= 0       # 0->QIO
+ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
+ESP_FLASH_MAX       ?= 442368  # max irom0 size for 512KB flash: 432KB
+ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
+ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
+
+else ifdef ESP8266_4M
+# esp8266 with 4MB flash chip with OTA support: we get 492KB in the first 512, 492 KB in the
+# second 512KB for firmware; and then we have 3MB-16KB for SPIFFS of which we're gonna use the
+# late 2MB-16KB to leave 1MB unused for future plans
+EMBEDDED=1
+USE_NET=1
+BOARD=ESP8266_BOARD
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+OPTIMIZEFLAGS+=-O3
+DEFINES += -DLINK_TIME_OPTIMISATION
+ESP_SPI_SIZE        ?= 4       # 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
+ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
+
+else ifdef ESP8266_2M
+# *** WARNING: THIS FLASH SIZE HAS NOT BEEN TESTED ***
+# esp8266 with 2MB flash chip with OTA support: same as 4MB except we have 1MB-16KB for SPIFFS
+EMBEDDED=1
+USE_NET=1
+BOARD=ESP8266_BOARD
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+OPTIMIZEFLAGS+=-O3
+DEFINES += -DLINK_TIME_OPTIMISATION
+ESP_SPI_SIZE        ?= 3       # 3->2MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 16m     # 32Mbit flash size in esptool flash command
+ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
+
+else ifdef ESP8266_1M
+# *** WARNING: THIS FLASH SIZE HAS NOT BEEN TESTED ***
+# esp8266 with 1MB flash chip with OTA support: this is a mix between the 512KB and 2MB versions:
+# we get two partitions for firmware but we need to turn optimization off to leave some space
+# for SPIFFS
+EMBEDDED=1
+USE_NET=1
+BOARD=ESP8266_BOARD
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+# We have to disable inlining to keep code size in check
+OPTIMIZEFLAGS+=-O2 -fno-inline-functions
+ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
+ET_FS               ?=  8m     # 32Mbit flash size in esptool flash command
+ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 
 else
 ifeq ($(shell uname -m),armv6l)
@@ -1218,8 +1293,7 @@ endif
 ifeq ($(FAMILY), ESP8266)
 ESP8266=1
 # Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS += -O3 -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-DEFINES += -DLINK_TIME_OPTIMISATION
+OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
 CFLAGS+= -fno-builtin -fno-strict-aliasing \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
