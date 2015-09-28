@@ -5,8 +5,8 @@ Directories and Files
 -------------------
 
 * `ChangeLog`:          What's new
-* `TODO`:               List of things to do
 * `boards/`:            Information on boards, used to auto-generate a lot of the code
+* `doxygen/`:           Directory for auto-generated code documentation - see [doxygen/README.md](doxygen/README.md) for more info
 * `gen/`:               Auto-Generated Source Files
 * `libs/`:              Optional libraries to include in Espruino (Math, Filesystem, Graphics, etc)
 * `misc/`:              Other useful things

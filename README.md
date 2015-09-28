@@ -110,6 +110,8 @@ clear up a lot of potential questions about the Espruino architecture.
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for some hints about code style/etc.
 
+You can auto-build documentation for all source files - see [doxygen/README.md](doxygen/README.md)
+
 Any more questions? [ask on the forum.](http://www.espruino.com/Forum)
 
 ### Porting to new devices
