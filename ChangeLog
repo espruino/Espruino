@@ -27,6 +27,7 @@
             Added built-in JavaScript debugger! See espruino.com/Debugger for details (fix #37)
             Fix crash when using E.getSizeOf() in some cases
             Make sure a TCPIP connection closes even if no data sent
+            Make `flash.erasePage` safe if called without arguments (fix #586)
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
