@@ -486,7 +486,8 @@ EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
-OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline
+# Enable link-time optimisations (inlining across files)
+OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
 ESP_SPI_SIZE        ?= 4       # 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
@@ -503,7 +504,8 @@ EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
-OPTIMIZEFLAGS+=-O3
+# Enable link-time optimisations (inlining across files)
+OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
 ESP_SPI_SIZE        ?= 3       # 3->2MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
@@ -641,7 +643,7 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-ifeq $(BOARD,ESP8266)
+ifeq ($(BOARD),ESP8266_BOARD)
 USE_ESP8266_BOARD=1
 else
 USE_CC3000=1
@@ -1292,8 +1294,6 @@ endif
 
 ifeq ($(FAMILY), ESP8266)
 ESP8266=1
-# Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
 CFLAGS+= -fno-builtin -fno-strict-aliasing \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
@@ -1477,8 +1477,44 @@ $(PROJ_NAME): $(OBJS)
 	@echo $($(quiet_)link)
 	@$(call link)
 
-else ifdef ESP8266
+else ifdef ESP8266_512KB
+# for the 512KB flash we generate non-OTA binaries
 proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
+
+# linking is complicated. The Espruino source files get compiled into the .text section. The
+# Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
+# .iram0 (32KB on chip instruction ram) and we need to put the Esprunio .text and the libraries'
+# .irom0 into .irom0 (demand-cached from flash). We do this dance by pre-linking the Espruino
+# objects, then renaming .text to .irom0, and then finally linking with the SDK libraries.
+# Note that a previous method of renaming .text to .irom0 in each object file doesn't work when
+# we enable the link-time optimizer for inlining because it generates fresh code that all ends
+# up in .iram0.
+$(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
+	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o partial.o $(OBJS)
+	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal partial.o
+	$(Q)$(LD) $(LDFLAGS) -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(Q)rm partial.o
+	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $(PROJ_NAME).elf | tail -n +4
+	@echo To disassemble: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
+
+# binary image for idata0&iram0
+$(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
+	-$(Q)$(ESPTOOL_CK) -eo $< -bo $@ -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec
+
+# binary image for irom0
+$(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
+	-$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec
+
+flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
+ifndef COMPORT
+	$(error, "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 $(PROJ_NAME)_0x00000.bin.bin 0x10000 $(PROJ_NAME)_0x10000.bin
+
+else ifdef ESP8266
+# for the non-512KB flash we generate a single OTA binary, but we generate two of them, one per
+# OTA partition (Espressif calls these user1.bin and user2.bin)
+proj: $(PROJ_NAME).elf $(PROJ_NAME)_user1.bin $(PROJ_NAME)_user2.bin
 
 # linking is complicated. The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
