@@ -101,7 +101,8 @@ DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
 LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
-COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | wc -l)
+# extra echo here stops build errors caused by whitespace on Mac
+COMMITS_SINCE_RELEASE=$(shell echo `git log --oneline $(LATEST_RELEASE)..HEAD | wc -l`)
 ifneq ($(COMMITS_SINCE_RELEASE),0)
 DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
 endif
