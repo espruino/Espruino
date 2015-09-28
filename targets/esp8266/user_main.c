@@ -118,7 +118,7 @@ static void eventHandler(
 	// Handle the unknown event type.
 	default:
 		os_printf("user_main: eventHandler: Unknown task type: %d",
-				pEvent->sig);
+				(int)pEvent->sig);
 		break;
 	}
 } // End of eventHandler
