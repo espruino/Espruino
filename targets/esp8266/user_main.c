@@ -218,7 +218,7 @@ void user_init() {
 	// Initialize the UART devices
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 	os_delay_us(10000); // give the uart a break
-	UART_SetPrintPort(1);
+	UART_SetPrintPort(0);
 
 	// Dump the restart exception information.
 	dumpRestart();

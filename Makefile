@@ -1582,7 +1582,7 @@ flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error, "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
 else # embedded, so generate bin, etc ---------------------------
 
