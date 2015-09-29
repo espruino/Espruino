@@ -1500,11 +1500,11 @@ $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 
 # binary image for idata0&iram0
 $(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
-	-$(Q)$(ESPTOOL_CK) -eo $< -bo $@ -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec
+	$(Q)$(ESPTOOL_CK) -eo $< -bo $@ -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec || true
 
 # binary image for irom0
 $(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
-	-$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec
+	$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec || true
 
 flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
 ifndef COMPORT
@@ -1535,10 +1535,12 @@ $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 
 # binary image for idata0&iram0
 $(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
+# Note that ESPTOOL_CK always returns non zero, ignore errors
 	-$(Q)$(ESPTOOL_CK) -eo $< -bo $@ -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec
 
 # binary image for irom0
 $(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
+# Note that ESPTOOL_CK always returns non zero, ignore errors
 	-$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec
 
 flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin

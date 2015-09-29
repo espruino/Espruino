@@ -29,6 +29,8 @@ It may complain that there isn't enough space on the chip. This isn't an issue u
 
 **Note:** Espruino boards contain a special bootloader at `0x08000000` (the default address), with the Espruino binary moved on 10240 bytes to `0x08002800`. To load the Espruino binary onto a board at the correct address, use `ESPRUINO_1V3=1 RELEASE=1 make serialflash`. If you want to make a binary that contains the bootloader as well as Espruino (like the ones that the Espruino Web IDE expects to use) use the script `scripts/create_espruino_image_1v3.sh` which will compile the bootloader *and* Espruino, and then join them together.
 
+----
+
 ### for Nordic Semiconductor's NRF52832 Preview Development Kit.
 
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
@@ -55,6 +57,8 @@ To program the nRF52 Development Kit with Espruino:
 
 -- Note that limited functionality is implemented on the nRF52. Feel free to help! Currently working on NFC touch to pair so you can tap the device with your smartphone to connect without opening the app and then scanning. Also thinking of ways to edit scripts (typing long programs on smartphone is tedious).
 
+----
+
 ### for esp8266
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
@@ -65,7 +69,19 @@ In order to compile for the esp8266 on Linux several pre-requisites have to be i
 Note: esptool-ck should be eliminated and replaced with esptool (.py), this will happen naturally
 when an OTA update is developed.
 
-To run make you need to pass a number of environment variables to make, the easiest is to place
+To run make you need to pass a number of environment variables to `make`.  These include:
+
+* `ESP8266_BOARD = 1`
+* `ESP8266_SDK_ROOT = <Path to the 1.4 SDK>`
+* `COMPORT = <COMPORT or Serial>`
+
+Ensure that your program Path includes the folders/directories for:
+
+* Xtensa GCC compiler
+* esptool
+* Python 3.4
+
+The easiest is to place
 the following lines into a script, adapt it to your needs and then run it.
 ```
 #! /bin/bash
@@ -77,9 +93,17 @@ export COMPORT=/dev/ttyUSB0
 make $*
 ```
 
+####Building on Eclipse
+When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
+that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
+
+----
+
 ### for Linux
 
 Simple: Just run `make`
+
+----
 
 ### for Raspberry Pi
 
@@ -95,6 +119,8 @@ git clone git://github.com/raspberrypi/tools.git
 sudo apt-get install ia32-libs
 ```
 
+----
+
 ### for Carambola (OpenWRT)
 
 To cross compile,
@@ -102,12 +128,16 @@ To cross compile,
 * Follow instructions at <https://github.com/8devices/carambola> to set toolchain up in ```~/workspace/carambola```
 * Run ```CARAMBOLA=1 make```
 
+----
+
 ### Documentation
 
 ```python scripts/build_docs.py ```
 
 This will create a file called ```functions.html``` that is a version of [the reference pages](http://www.espruino.com/Reference),
 but based on your source code.
+
+----
 
 Building under Windows/MacOS with a VM (Vagrant)
 ------------------------------------------------
@@ -123,6 +153,8 @@ Building under Windows/MacOS with a VM (Vagrant)
 * Espruino is now built. See the documentation under **Building under Linux** for more examples.
 * To terminate the ssh session, simply execute `exit`.
 * `vagrant suspend` will pause the VM, `vagrant halt` will stop it, and `vagrant up` will bring it back up again.  See Vagrant's ["Getting Started"](http://docs.vagrantup.com/v2/getting-started/index.html) page for further information.
+
+----
 
 Building under Windows/MacOS with a VM
 --------------------------------------
@@ -147,6 +179,7 @@ Building under Windows/MacOS with a VM
 
 There's some more information on how to do this on the forum at http://forum.espruino.com/conversations/151 including links to a pre-made [Amazon EC2 instance](http://forum.espruino.com/conversations/151/?offset=25#comment20326).
 
+----
 
 ### To flash Espruino from the VM
 
