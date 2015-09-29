@@ -155,10 +155,13 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
   return v;
 }
 
-/* convert hex, binary, octal or decimal string into an int */
+/**
+ * \brief Convert hex, binary, octal or decimal string into an int.
+ */
 long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
-}
+} // End of stringToInt
+
 
 NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
@@ -322,7 +325,15 @@ void srand(unsigned int seed) {
 }
 #endif
 
-JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
+
+/**
+ * \brief Convert a string to a JS float variable where the string is of a specific radix.
+ * \return A JS float variable.
+ */
+JsVarFloat stringToFloatWithRadix(
+    const char *s, //!< The string to be converted to a float.
+	int forceRadix //!< The radix of the string data.
+  ) {
   // skip whitespace (strange parseFloat behaviour)
   while (isWhitespace(*s)) s++;
 
@@ -398,9 +409,16 @@ JsVarFloat stringToFloatWithRadix(const char *s, int forceRadix) {
 
   if (isNegated) return -v;
   return v;
-}
+} // End of stringToFloatWithRadix
 
-JsVarFloat stringToFloat(const char *s) {
+
+/**
+ * \brief convert a string to a floating point JS variable.
+ * \return a JS float variable.
+ */
+JsVarFloat stringToFloat(
+    const char *s //!< The string to convert to a float.
+  ) {
   return stringToFloatWithRadix(s,10);
 }
 
@@ -493,25 +511,32 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
   return val * size;
 }
 
-/** Espruino-special printf with a callback
- * Supported are:
- *   %d = int
- *   %0#d = int padded to length # with 0s
- *   %x = int as hex
- *   %L = JsVarInt
- *   %Lx = JsVarInt as hex
- *   %f = JsVarFloat
- *   %s = string (char *)
- *   %c = char
- *   %v = JsVar * (doesn't have to be a string - it'll be converted)
- *   %q = JsVar * (in quotes, and escaped)
- *   %j = Variable printed as JSON
- *   %t = Type of variable
- *   %p = Pin
+/**
+ * \brief Espruino-special printf with a callback.
+ *
+ * The supported format specifiers are:
+ * * `%d` = int
+ * * `%0#d` = int padded to length # with 0s
+ * * `%x` = int as hex
+ * * `%L` = JsVarInt
+ * * `%Lx` = JsVarInt as hex
+ * * `%f` = JsVarFloat
+ * * `%s` = string (char *)
+ * * `%c` = char
+ * * `%v` = JsVar * (doesn't have to be a string - it'll be converted)
+ * * `%q` = JsVar * (in quotes, and escaped)
+ * * `%j` = Variable printed as JSON
+ * * `%t` = Type of variable
+ * * `%p` = Pin
  *
  * Anything else will assert
  */
-void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, va_list argp) {
+void vcbprintf(
+    vcbprintf_callback user_callback, //!< Unknown
+    void *user_data,                  //!< Unknown
+    const char *fmt,                  //!< The format specified
+    va_list argp                      //!< List of parameter values
+  ) {
   char buf[32];
   while (*fmt) {
     if (*fmt == '%') {
@@ -587,7 +612,8 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
       user_callback(&buf[0], user_data);
     }
   }
-}
+} // End of vcbprintf
+
 
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...) {
   va_list argp;

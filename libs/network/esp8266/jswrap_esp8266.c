@@ -1,3 +1,5 @@
+// Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
+// can assume that inclusion of ESP8266 headers will be acceptable.
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
@@ -60,7 +62,13 @@ static struct ping_option pingOpt;
     ["gotIpCallback", "JsVar", "An optional callback invoked when we have an IP"]
   ]
 }*/
-void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *gotIpCallback) {
+void jswrap_ESP8266WiFi_connect(
+		JsVar *jsv_ssid,     //!< The SSID of the access point to connect.
+		JsVar *jsv_password, //!< The password for the access point.
+		JsVar *gotIpCallback //!< The Callback function to be called when we are connected.
+	) {
+    os_printf("> jswrap_ESP8266WiFi_connect\n");
+
 	// Check that the ssid and password values aren't obviously in error.
 	if (jsv_ssid == NULL || !jsvIsString(jsv_ssid)) {
 	    jsExceptionHere(JSET_ERROR, "No SSID.");
@@ -86,6 +94,8 @@ void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *got
 		jsvUnLock(jsGotIpCallback);
 		jsGotIpCallback = NULL;
 	}
+
+	// What does this do?
 	if (gotIpCallback != NULL) {
 		jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
 	}
@@ -98,8 +108,7 @@ void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *got
 	len = jsvGetString(jsv_password, password, sizeof(password)-1);
 	password[len]='\0';
 
-    jsiConsolePrintf("jswrap_ESP8266WiFi_connect: %s - %s\r\n", ssid, password);
-
+    os_printf(">  - ssid=%s, password=%s\n", ssid, password);
     // Set the WiFi mode of the ESP8266
 	wifi_set_opmode_current(STATION_MODE);
 
@@ -115,10 +124,11 @@ void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *got
 	// Set the WiFi configuration
 	wifi_station_set_config(&stationConfig);
 
-	// Register the event handler
+	// Register the event handler for callbacks from ESP8266
 	wifi_set_event_handler_cb(wifiEventHandler);
 
 	wifi_station_connect();
+	os_printf("< jswrap_ESP8266WiFi_connect\n");
 } // End of jswrap_ESP8266WiFi_connect
 
 
@@ -209,24 +219,26 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 void jswrap_ESP8266WiFi_getAccessPoints(
 		JsVar *callback //!< Function to call back when access points retrieved.
 	) {
-	jsiConsolePrint("> ESP8266WiFi_getAccessPoints\n");
+	os_printf("> ESP8266WiFi_getAccessPoints\n");
 	if (callback == NULL || !jsvIsFunction(callback)) {
 	    jsExceptionHere(JSET_ERROR, "No callback.");
 		return;
 	}
 
-	// Save the callback for the scan
+	// Save the callback for the scan in the global variable called jsScanCallback.
 	jsScanCallback = jsvLockAgainSafe(callback);
 
 	// Ask the ESP8266 to perform a network scan after first entering
-	// station mode.  This will result in an eventual callback which is where
+	// station mode.  The network scan will eventually result in a callback
+	// being executed (scanCB) which will contain the results.
+
 	// Ensure we are in station mode
 	wifi_set_opmode_current(STATION_MODE);
 
 	// Request a scan of the network calling "scanCB" on completion
 	wifi_station_scan(NULL, scanCB);
 
-	jsiConsolePrint("< ESP8266WiFi_getAccessPoints\n");
+	os_printf("< ESP8266WiFi_getAccessPoints\n");
 } // End of jswrap_ESP8266WiFi_getAccessPoints
 
 
@@ -812,6 +824,7 @@ static void scanCB(void *arg, STATUS status) {
 	 * of records.
 	 */
 
+	os_printf(">> scanCB\n");
 	// Create the Empty JS array that will be passed as a parameter to the callback.
 	JsVar *accessPointArray = jsvNewArray(NULL, 0);
 	struct bss_info *bssInfo;
@@ -851,7 +864,7 @@ static void scanCB(void *arg, STATUS status) {
 		// Add the new record to the array
 		jsvArrayPush(accessPointArray, currentAccessPoint);
 
-		os_printf("ssid: %s\n", bssInfo->ssid);
+		os_printf(" - ssid: %s\n", bssInfo->ssid);
 		bssInfo = STAILQ_NEXT(bssInfo, next);
 	} // End of loop over the records.
 
@@ -860,6 +873,7 @@ static void scanCB(void *arg, STATUS status) {
 	params[0] = accessPointArray;
 	jsiQueueEvents(NULL, jsScanCallback, params, 1);
 	jsvUnLock(jsScanCallback);
+	os_printf("<< scanCB\n");
 } // End of scanCB
 
 
@@ -894,16 +908,19 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
 /**
  * \brief ESP8266 WiFi Event handler.
  * This function is called by the ESP8266
- * environment when significant events happend related to the WiFi environment.
+ * environment when significant events happen related to the WiFi environment.
  * The event handler is registered with a call to wifi_set_event_handler_cb()
  * that is provided by the ESP8266 SDK.
  */
 static void wifiEventHandler(System_Event_t *event) {
 	switch(event->event) {
+	// We have connected to an access point.
 	case EVENT_STAMODE_CONNECTED:
 		os_printf("Event: EVENT_STAMODE_CONNECTED\n");
 		sendWifiEvent(event->event, jsvNewNull());
 		break;
+
+	// We have disconnected or been disconnected from an access point.
 	case EVENT_STAMODE_DISCONNECTED:
 		os_printf("Event: EVENT_STAMODE_DISCONNECTED\n");
 		JsVar *details = jspNewObject(NULL, "EventDetails");
@@ -913,10 +930,14 @@ static void wifiEventHandler(System_Event_t *event) {
 		ssid[ event->event_info.disconnected.ssid_len] = '\0';
 		sendWifiEvent(event->event, details);
 		break;
+
+	// The authentication information at the access point has changed.
 	case EVENT_STAMODE_AUTHMODE_CHANGE:
 		os_printf("Event: EVENT_STAMODE_AUTHMODE_CHANGE\n");
 		sendWifiEvent(event->event, jsvNewNull());
 		break;
+
+	// We have been allocated an IP address.
 	case EVENT_STAMODE_GOT_IP:
 		os_printf("Event: EVENT_STAMODE_GOT_IP\n");
 		sendWifiEvent(event->event, jsvNewNull());

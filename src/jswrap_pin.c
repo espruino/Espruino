@@ -18,53 +18,57 @@
 #include "jstimer.h"
 
 /*JSON{
-  "type" : "class",
+  "type"  : "class",
   "class" : "Pin",
   "check" : "jsvIsPin(var)"
 }
 This is the built-in class for Pins, such as D0,D1,LED1, or BTN
 
 You can call the methods on Pin, or you can use Wiring-style functions such as digitalWrite
- */
+*/
 
 /*JSON{
-  "type" : "constructor",
-  "class" : "Pin",
-  "name" : "Pin",
+  "type"     : "constructor",
+  "class"    : "Pin",
+  "name"     : "Pin",
   "generate" : "jswrap_pin_constructor",
-  "params" : [
-    ["value","JsVar","A value to be converted to a pin. Can be a number, pin, or String."]
+  "params"   : [
+    ["value", "JsVar", "A value to be converted to a pin. Can be a number, pin, or String."]
   ],
-  "return" : ["JsVar","A Pin object"]
+  "return"   : ["JsVar","A Pin object"]
 }
 Creates a pin from the given argument (or returns undefined if no argument)
+*/
+/**
+ * \brief Create an instance of a Pin class.
  */
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
   return jsvNewFromPin(pin);
-}
+} // End of jswrap_pin_constructor
+
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "read",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "read",
   "generate" : "jswrap_pin_read",
-  "return" : ["bool","Whether pin is a logical 1 or 0"]
+  "return"   : ["bool","Whether pin is a logical 1 or 0"]
 }
 Returns the input state of the pin as a boolean.
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
- */
+*/
 bool jswrap_pin_read(JsVar *parent) {
   Pin pin = jshGetPinFromVar(parent);
   return jshPinInput(pin);
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "set",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "set",
   "generate" : "jswrap_pin_set"
 }
 Sets the output state of the pin to a 1
@@ -77,9 +81,9 @@ void jswrap_pin_set(JsVar *parent) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "reset",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "reset",
   "generate" : "jswrap_pin_reset"
 }
 Sets the output state of the pin to a 0
@@ -92,32 +96,35 @@ void jswrap_pin_reset(JsVar *parent) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "write",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "write",
   "generate" : "jswrap_pin_write",
-  "params" : [
-    ["value","bool","Whether to set output high (true/1) or low (false/0)"]
+  "params"   : [
+    ["value", "bool", "Whether to set output high (true/1) or low (false/0)"]
   ]
 }
 Sets the output state of the pin to the parameter given
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
  */
-void jswrap_pin_write(JsVar *parent, bool value) {
+void jswrap_pin_write(
+    JsVar *parent, //!< The class instance representing the Pin.
+    bool value     //!< The value to set the pin.
+  ) {
   Pin pin = jshGetPinFromVar(parent);
   jshPinOutput(pin, value);
-}
+} // End of jswrap_pin_write
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "writeAtTime",
-  "ifndef" : "SAVE_ON_FLASH",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "writeAtTime",
+  "ifndef"   : "SAVE_ON_FLASH",
   "generate" : "jswrap_pin_writeAtTime",
   "params" : [
-    ["value","bool","Whether to set output high (true/1) or low (false/0)"],
-    ["time","float","Time at which to write"]
+    ["value", "bool", "Whether to set output high (true/1) or low (false/0)"],
+    ["time", "float", "Time at which to write"]
   ]
 }
 Sets the output state of the pin to the parameter given at the specified time.
@@ -132,11 +139,11 @@ void jswrap_pin_writeAtTime(JsVar *parent, bool value, JsVarFloat time) {
 
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "getMode",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "getMode",
   "generate" : "jswrap_pin_getMode",
-  "return" : ["JsVar","The pin mode, as a string"]
+  "return"   : ["JsVar", "The pin mode, as a string"]
 }
 Return the current mode of the given pin. See `pinMode` for more information.
  */
@@ -145,12 +152,12 @@ JsVar *jswrap_pin_getMode(JsVar *parent) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "mode",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "mode",
   "generate" : "jswrap_pin_mode",
   "params" : [
-    ["mode","JsVar","The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
   ]
 }
 Set the mode of the given pin. See [`pinMode`](#l__global_pinMode) for more information on pin modes.
@@ -160,11 +167,11 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
 }
 
 /*JSON{
-  "type" : "method",
-  "class" : "Pin",
-  "name" : "getInfo",
+  "type"     : "method",
+  "class"    : "Pin",
+  "name"     : "getInfo",
   "generate" : "jswrap_pin_getInfo",
-  "return" : ["JsVar","An object containing information about this pins"]
+  "return"   : ["JsVar","An object containing information about this pins"]
 }
 Get information about this pin and its capabilities. Of the form:
 
@@ -178,11 +185,15 @@ Get information about this pin and its capabilities. Of the form:
     "I2C3":{type:"SCL", af:1}
   }
 }
-
-Will return undefined if pin is not valid.
 ```
+Will return undefined if pin is not valid.
+*/
+/**
+ * \brief
  */
-JsVar *jswrap_pin_getInfo(JsVar *parent) {
+JsVar *jswrap_pin_getInfo(
+    JsVar *parent //!< The class instance representing the pin.
+  ) {
   Pin pin = jshGetPinFromVar(parent);
   if (!jshIsPinValid(pin)) return 0;
   const JshPinInfo *inf = &pinInfo[pin];
@@ -231,5 +242,3 @@ JsVar *jswrap_pin_getInfo(JsVar *parent) {
 
   return obj;
 }
-
-

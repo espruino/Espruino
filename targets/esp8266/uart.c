@@ -779,13 +779,13 @@ UART_SetPrintPort(uint8 uart_no)
 {
     if(uart_no==1){
         os_install_putc1(uart1_write_char);
-    }else{
+    } else {
         /*option 1: do not wait if uart fifo is full,drop current character*/
         os_install_putc1(uart0_write_char_no_wait);
-	/*option 2: wait for a while if uart fifo is full*/
-	os_install_putc1(uart0_write_char);
+        /*option 2: wait for a while if uart fifo is full*/
+        os_install_putc1(uart0_write_char);
     }
-}
+} // End of UART_SetPrintPort
 
 
 //========================================================

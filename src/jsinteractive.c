@@ -70,6 +70,9 @@ void jsiDebuggerLine(JsVar *line);
 
 // ----------------------------------------------------------------------------
 
+/**
+ * \brief Get the device from the class variable.
+ */
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
   // See jspNewObject
@@ -79,7 +82,8 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
     return (IOEventFlags)class->varData.str[3];
 
   return EV_NONE;
-}
+} // End of jsiGetDeviceFromClass
+
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
   const char *deviceName = jshGetDeviceString(device);
@@ -161,12 +165,16 @@ NO_INLINE void jsiConsolePrint(const char *str) {
   }
 }
 
+/**
+ * \brief Perform a printf to the console.
+ * Execute a printf command to the current JS console.
+ */
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
-}
+} // End of jsiConsolePrintf
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {

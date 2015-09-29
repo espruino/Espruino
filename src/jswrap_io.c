@@ -18,20 +18,20 @@
 #include "jswrap_arraybuffer.h" // for jswrap_io_peek
 
 /*JSON{
-  "type" : "function",
-  "name" : "peek8",
+  "type"          : "function",
+  "name"          : "peek8",
   "generate_full" : "jswrap_io_peek(addr,count,1)",
-  "params" : [
-    ["addr","int","The address in memory to read"],
-    ["count","int","(optional) the number of items to read. If >1 a Uint8Array will be returned."]
+  "params"        : [
+    ["addr", "int", "The address in memory to read"],
+    ["count", "int", "(optional) the number of items to read. If >1 a Uint8Array will be returned."]
   ],
-  "return" : ["JsVar","The value of memory at the given location"]
+  "return"        : ["JsVar","The value of memory at the given location"]
 }
 Read 8 bits of memory at the given location - DANGEROUS!
  */
 /*JSON{
-  "type" : "function",
-  "name" : "poke8",
+  "type"          : "function",
+  "name"          : "poke8",
   "generate_full" : "jswrap_io_poke(addr,value,1)",
   "params" : [
     ["addr","int","The address in memory to write"],
@@ -233,23 +233,34 @@ void jswrap_io_digitalPulse(Pin pin, bool value, JsVar *times) {
 }
 
 /*JSON{
-  "type" : "function",
-  "name" : "digitalWrite",
+  "type"     : "function",
+  "name"     : "digitalWrite",
   "generate" : "jswrap_io_digitalWrite",
-  "params" : [
-    ["pin","JsVar","The pin to use"],
-    ["value","int","Whether to pulse high (true) or low (false)"]
+  "params"   : [
+    ["pin",   "JsVar","The pin to use"],
+    ["value", "int","Whether to pulse high (true) or low (false)"]
   ]
 }
 Set the digital value of the given pin.
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"output"`
 
-If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated as an array of bits where the last array element is the least significant bit. 
+If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated
+as an array of bits where the last array element is the least significant bit.
 
-In this case, pin values are set last significant bit first (from the right-hand side of the array of pins). This means you can use the same pin multiple times, for example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
+In this case, pin values are set last significant bit first (from the right-hand side
+of the array of pins). This means you can use the same pin multiple times, for
+example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
+*/
+
+/**
+ * \brief Set the output of a GPIO.
  */
-void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
+void jswrap_io_digitalWrite(
+    JsVar *pinVar, //!< A pin or pins.
+    JsVarInt value //!< The value of the output.
+  ) {
+  // Handle the case where it is an array of pins.
   if (jsvIsArray(pinVar)) {
     JsVarRef pinName = jsvGetLastChild(pinVar); // NOTE: start at end and work back!
     while (pinName) {
@@ -261,29 +272,37 @@ void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value) {
       jsvUnLock(pinNamePtr);
       value = value>>1; // next bit down
     }
-  } else {
-    Pin pin = jshGetPinFromVar(pinVar);
-    jshPinOutput(pin, value!=0);
   }
-}
+  // Handle the case where it is a single pin.
+  else {
+    Pin pin = jshGetPinFromVar(pinVar);
+    jshPinOutput(pin, value != 0);
+  }
+} // End of jswrap_io_digitalWrite
 
 
 /*JSON{
-  "type" : "function",
-  "name" : "digitalRead",
+  "type"     : "function",
+  "name"     : "digitalRead",
   "generate" : "jswrap_io_digitalRead",
-  "params" : [
+  "params"   : [
     ["pin","JsVar","The pin to use"]
   ],
-  "return" : ["int","The digital Value of the Pin"]
+  "return"   : ["int","The digital Value of the Pin"]
 }
 Get the digital value of the given pin. 
 
  **Note:** if you didn't call `pinMode` beforehand then this function will also reset pin's state to `"input"`
 
-If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
+If the pin argument is an array of pins (eg. `[A2,A1,A0]`) the value returned will be an number where
+the last array element is the least significant bit, for example if `A0=A1=1` and `A2=0`, `digitalRead([A2,A1,A0]) == 0b011`
+*/
+
+/**
+ * \brief Read the value of a GPIO pin.
  */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
+  // Hadnle the case where it is an array of pins.
   if (jsvIsArray(pinVar)) {
     int pins = 0;
     JsVarInt value = 0;
@@ -299,17 +318,19 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     jsvObjectIteratorFree(&it);
     if (pins==0) return 0; // return undefined if array empty
     return value;
-  } else {
+  }
+  // Handle the case where it is a single pin.
+  else {
     Pin pin = jshGetPinFromVar(pinVar);
     return jshPinInput(pin);
   }
-}
+} // End of jswrap_io_digitalRead
 
 /*JSON{
-  "type" : "function",
-  "name" : "pinMode",
+  "type"     : "function",
+  "name"     : "pinMode",
   "generate" : "jswrap_io_pinMode",
-  "params" : [
+  "params"   : [
     ["pin","pin","The pin to set pin mode for"],
     ["mode","JsVar","The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
   ]
@@ -323,25 +344,33 @@ Set the mode of the given pin.
  * `output` - Digital output
  * `opendrain` - Digital output that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
  * `af_output` - Digital output from built-in peripheral
- * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v. Sending a logical `1` leaves the pin open circuit
+ * `af_opendrain` - Digital output from built-in peripheral that only ever pulls down to 0v.
+ * Sending a logical `1` leaves the pin open circuit
 
- **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first. If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
+ **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
+*/
+
+/**
+ * \brief Set the mode of a pin.
  */
-void jswrap_io_pinMode(Pin pin, JsVar *mode) {
+void jswrap_io_pinMode(
+    Pin pin,    //!< The pin to set.
+    JsVar *mode //!< The new mode of the pin.
+  ) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Invalid pin");
     return;
   }
   JshPinState m = JSHPINSTATE_UNDEFINED;
   if (jsvIsString(mode)) {
-    if (jsvIsStringEqual(mode, "analog")) m = JSHPINSTATE_ADC_IN;
-    else if (jsvIsStringEqual(mode, "input")) m = JSHPINSTATE_GPIO_IN;
-    else if (jsvIsStringEqual(mode, "input_pullup")) m = JSHPINSTATE_GPIO_IN_PULLUP;
+    if (jsvIsStringEqual(mode, "analog"))              m = JSHPINSTATE_ADC_IN;
+    else if (jsvIsStringEqual(mode, "input"))          m = JSHPINSTATE_GPIO_IN;
+    else if (jsvIsStringEqual(mode, "input_pullup"))   m = JSHPINSTATE_GPIO_IN_PULLUP;
     else if (jsvIsStringEqual(mode, "input_pulldown")) m = JSHPINSTATE_GPIO_IN_PULLDOWN;
-    else if (jsvIsStringEqual(mode, "output")) m = JSHPINSTATE_GPIO_OUT;
-    else if (jsvIsStringEqual(mode, "opendrain")) m = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
-    else if (jsvIsStringEqual(mode, "af_output")) m = JSHPINSTATE_AF_OUT;
-    else if (jsvIsStringEqual(mode, "af_opendrain")) m = JSHPINSTATE_AF_OUT_OPENDRAIN;
+    else if (jsvIsStringEqual(mode, "output"))         m = JSHPINSTATE_GPIO_OUT;
+    else if (jsvIsStringEqual(mode, "opendrain"))      m = JSHPINSTATE_GPIO_OUT_OPENDRAIN;
+    else if (jsvIsStringEqual(mode, "af_output"))      m = JSHPINSTATE_AF_OUT;
+    else if (jsvIsStringEqual(mode, "af_opendrain"))   m = JSHPINSTATE_AF_OUT_OPENDRAIN;
   }
   if (m != JSHPINSTATE_UNDEFINED) {
     jshSetPinStateIsManual(pin, true);
@@ -373,14 +402,14 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   JshPinState m = jshPinGetState(pin)&JSHPINSTATE_MASK;
   const char *text = 0;
   switch (m) {
-  case JSHPINSTATE_ADC_IN : text = "analog"; break;
-  case JSHPINSTATE_GPIO_IN : text = "input"; break;
-  case JSHPINSTATE_GPIO_IN_PULLUP : text = "input_pullup"; break;
-  case JSHPINSTATE_GPIO_IN_PULLDOWN : text = "input_pulldown"; break;
-  case JSHPINSTATE_GPIO_OUT : text = "output"; break;
+  case JSHPINSTATE_ADC_IN :             text = "analog"; break;
+  case JSHPINSTATE_GPIO_IN :            text = "input"; break;
+  case JSHPINSTATE_GPIO_IN_PULLUP :     text = "input_pullup"; break;
+  case JSHPINSTATE_GPIO_IN_PULLDOWN :   text = "input_pulldown"; break;
+  case JSHPINSTATE_GPIO_OUT :           text = "output"; break;
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN : text = "opendrain"; break;
-  case JSHPINSTATE_AF_OUT : text = "af_output"; break;
-  case JSHPINSTATE_AF_OUT_OPENDRAIN : text = "af_opendrain"; break;
+  case JSHPINSTATE_AF_OUT :             text = "af_output"; break;
+  case JSHPINSTATE_AF_OUT_OPENDRAIN :   text = "af_opendrain"; break;
   default: break;
   }
   if (text) return jsvNewFromString(text);

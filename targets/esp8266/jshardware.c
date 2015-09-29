@@ -176,6 +176,43 @@ static uint8_t pinFunction(JshPinState state) {
 	}
 } // End of pinFunction
 
+
+/**
+ * \brief Convert a pin state to a string representation.
+ */
+static char *pinStateToString(JshPinState state) {
+  switch(state) {
+  case JSHPINSTATE_ADC_IN:
+    return("JSHPINSTATE_ADC_IN");
+  case JSHPINSTATE_AF_OUT:
+    return("JSHPINSTATE_AF_OUT");
+  case JSHPINSTATE_AF_OUT_OPENDRAIN:
+    return("JSHPINSTATE_AF_OUT_OPENDRAIN");
+  case JSHPINSTATE_DAC_OUT:
+    return("JSHPINSTATE_DAC_OUT");
+  case JSHPINSTATE_GPIO_IN:
+    return("JSHPINSTATE_GPIO_IN");
+  case JSHPINSTATE_GPIO_IN_PULLDOWN:
+    return("JSHPINSTATE_GPIO_IN_PULLDOWN");
+  case JSHPINSTATE_GPIO_IN_PULLUP:
+    return("JSHPINSTATE_GPIO_IN_PULLUP");
+  case JSHPINSTATE_GPIO_OUT:
+    return("JSHPINSTATE_GPIO_OUT");
+  case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
+    return("JSHPINSTATE_GPIO_OUT_OPENDRAIN");
+  case JSHPINSTATE_I2C:
+    return("JSHPINSTATE_I2C");
+  case JSHPINSTATE_UNDEFINED:
+    return("JSHPINSTATE_UNDEFINED");
+  case JSHPINSTATE_USART_IN:
+    return("JSHPINSTATE_USART_IN");
+  case JSHPINSTATE_USART_OUT:
+    return("JSHPINSTATE_USART_OUT");
+  default:
+    return("** unknown **");
+  }
+} // End of pinStateToString
+
 /**
  * \brief Set the state of the specific pin.
  *
@@ -198,7 +235,8 @@ static uint8_t pinFunction(JshPinState state) {
 void jshPinSetState(Pin pin, //!< The pin to have its state changed.
 		JshPinState state    //!< The new desired state of the pin.
 	) {
-	jsiConsolePrintf("ESP8266: jshPinSetState %d, %d\n", pin, state);
+  // Debug
+	// os_printf("> ESP8266: jshPinSetState %d, %s\n", pin, pinStateToString(state));
 
 	assert(pin < 16);
 	int periph = PERIPHS_IO_MUX + PERIPHS[pin];
@@ -250,7 +288,7 @@ void jshPinSetState(Pin pin, //!< The pin to have its state changed.
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-	jsiConsolePrintf("ESP8266: jshPinGetState %d\n", pin);
+  os_printf("> ESP8266: jshPinGetState %d\n", pin);
 	return JSHPINSTATE_UNDEFINED;
 } // End of jshPinGetState
 
@@ -261,7 +299,8 @@ JshPinState jshPinGetState(Pin pin) {
 void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
 		bool value           //!< The new value of the pin.
 	) {
-	jsiConsolePrintf("ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  // Debug
+  // os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
 	GPIO_OUTPUT_SET(pin, value);
 } // End of jshPinSetValue
 
@@ -272,18 +311,19 @@ void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
  */
 bool jshPinGetValue(Pin pin //!< The pin to have its value read.
 	) {
-	jsiConsolePrintf("ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  // Debug
+  // os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
 	return GPIO_INPUT_GET(pin);
 } // End of jshPinGetValue
 
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-	jsiConsolePrintf("ESP8266: jshIsDeviceInitialised %d\n", device);
+  os_printf("> ESP8266: jshIsDeviceInitialised %d\n", device);
 	return true;
 } // End of jshIsDeviceInitialised
 
 bool jshIsUSBSERIALConnected() {
-	jsiConsolePrintf("ESP8266: jshIsUSBSERIALConnected\n");
+  os_printf("> ESP8266: jshIsUSBSERIALConnected\n");
 	return true;
 } // End of jshIsUSBSERIALConnected
 
@@ -312,23 +352,32 @@ JsSysTime jshGetSystemTime() { // in us
  * Set the current time in microseconds.
  */
 void jshSetSystemTime(JsSysTime time) {
-	os_printf("ESP8266: jshSetSystemTime: %d\n", (int)time);
+	os_printf("> ESP8266: jshSetSystemTime: %d\n", (int)time);
 } // End of jshSetSystemTime
 
 // ----------------------------------------------------------------------------
 
+/**
+ * \brief
+ */
 JsVarFloat jshPinAnalog(Pin pin) {
-	jsiConsolePrintf("ESP8266: jshPinAnalog: %d\n", pin);
+  os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
 	return (JsVarFloat) system_adc_read();
 } // End of jshPinAnalog
 
 
+/**
+ * \brief
+ */
 int jshPinAnalogFast(Pin pin) {
-	jsiConsolePrintf("ESP8266: jshPinAnalogFast: %d\n", pin);
+  os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
 	return NAN;
 } // End of jshPinAnalogFast
 
 
+/**
+ * \brief
+ */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
 	jsiConsolePrintf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
 //pwm_set(pin, value < 0.0f ? 0 : 255.0f < value ? 255 : (uint8_t)value);
@@ -336,16 +385,25 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 } // End of jshPinAnalogOutput
 
 
+/**
+ * \brief
+ */
 void jshSetOutputValue(JshPinFunction func, int value) {
 	jsiConsolePrintf("ESP8266: jshSetOutputValue %d %d\n", func, value);
 } // End of jshSetOutputValue
 
 
+/**
+ * \brief
+ */
 void jshEnableWatchDog(JsVarFloat timeout) {
 	jsiConsolePrintf("ESP8266: jshEnableWatchDog %0.3f\n", timeout);
 } // End of jshEnableWatchDog
 
 
+/**
+ * \brief
+ */
 bool jshGetWatchedPinState(IOEventFlags device) {
 	jsiConsolePrintf("ESP8266: jshGetWatchedPinState %d", device);
 	return false;
@@ -370,12 +428,21 @@ void jshPinPulse(Pin pin, //!< The pin to be pulsed.
 } // End of jshPinPulse
 
 
+/**
+ * \brief
+ */
 bool jshCanWatch(Pin pin) {
 	return false;
 } // End of jshCanWatch
 
 
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+/**
+ * \brief
+ */
+IOEventFlags jshPinWatch(
+		Pin pin,         //!< Unknown
+		bool shouldWatch //!< Unknown
+	) {
 	if (jshIsPinValid(pin)) {
 	} else
 		jsError("Invalid pin!");
@@ -383,17 +450,25 @@ IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
 } // End of jshPinWatch
 
 
+/**
+ * \brief
+ */
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 	//os_printf("jshGetCurrentPinFunction %d\n", pin);
 	return JSH_NOTHING;
 } // End of jshGetCurrentPinFunction
 
-
+/**
+ * \brief
+ */
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
 	return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
 } // End of jshIsEventForPin
 
 
+/**
+ * \brief
+ */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 } // End of jshUSARTSetup
 
@@ -407,39 +482,76 @@ void jshUSARTKick(IOEventFlags device) {
 	esp8266_uartTransmitAll(device);
 } // End of jshUSARTKick
 
-void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+
+/**
+ * \brief Unknown
+ *
+ */
+void jshSPISetup(
+		IOEventFlags device, //!< Unknown
+		JshSPIInfo *inf      //!< Unknown
+	) {
+	os_printf("ESP8266: jshSPISetup: device=%d, inf=0x%x\n", device, (int)inf);
 } // End of jshSPISetup
+
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
-int jshSPISend(IOEventFlags device, int data) {
+int jshSPISend(
+		IOEventFlags device, //!< Unknown
+		int data             //!< Unknown
+	) {
+	os_printf("ESP8266: jshSPISend\n");
 	return NAN;
 } // End of jshSPISend
 
-/** Send 16 bit data through the given SPI device. */
-void jshSPISend16(IOEventFlags device, int data) {
+
+/**
+ \brief * Send 16 bit data through the given SPI device.
+ */
+void jshSPISend16(
+		IOEventFlags device, //!< Unknown
+		int data             //!< Unknown
+	) {
+	os_printf("ESP8266: jshSPISend16\n");
 	jshSPISend(device, data >> 8);
 	jshSPISend(device, data & 255);
 } // End of jshSPISend16
 
-/** Set whether to send 16 bits or 8 over SPI */
-void jshSPISet16(IOEventFlags device, bool is16) {
+
+/**
+ * \brief Set whether to send 16 bits or 8 over SPI.
+ */
+void jshSPISet16(
+		IOEventFlags device, //!< Unknown
+		bool is16            //!< Unknown
+	) {
+	os_printf("ESP8266: jshSPISet16\n");
 } // End of jshSPISet16
 
-/** Wait until SPI send is finished, */
-void jshSPIWait(IOEventFlags device) {
+
+/**
+ * \brief  Wait until SPI send is finished.
+ */
+void jshSPIWait(
+		IOEventFlags device //!< Unknown
+	) {
+	os_printf("ESP8266: jshSPIWait\n");
 } // End of jshSPIWait
 
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
+	os_printf("ESP8266: jshI2CSetup\n");
 } // End of jshI2CSetup
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
 		const unsigned char *data, bool sendStop) {
+	os_printf("ESP8266: jshI2CWrite\n");
 } // End of jshI2CWrite
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
 		unsigned char *data, bool sendStop) {
+	os_printf("ESP8266: jshI2CRead\n");
 } // End of jshI2CRead
 
 /**

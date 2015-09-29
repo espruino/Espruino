@@ -13,17 +13,26 @@
  */
 #include "jsvariterator.h"
 
-/** Iterate over the contents of var, calling callback for each. Contents may be:
- *   * numeric -> output
- *   * a string -> output each character
- *   * array/arraybuffer -> call itself on each element
- *   * object -> call itself object.count times, on object.data
+/**
+ * \brief Iterate over the contents of the content of a variable, calling callback for each.
+ * Contents may be:
+ * * numeric -> output
+ * * a string -> output each character
+ * * array/arraybuffer -> call itself on each element
+ * object -> call itself object.count times, on object.data
  */
-bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackData), void *callbackData) {
+bool jsvIterateCallback(
+    JsVar *data,                                    // The data to iterate over.
+	void (*callback)(int item, void *callbackData), // The callback function invoke.
+	void *callbackData                              // Data to be passed to the callback function
+  ) {
   bool ok = true;
+  // Handle the data being a single numeric.
   if (jsvIsNumeric(data)) {
     callback((int)jsvGetInteger(data), callbackData);
-  } else if (jsvIsObject(data)) {
+  }
+  // Handle the data being an object.
+  else if (jsvIsObject(data)) {
     JsVar *countVar = jsvObjectGetChild(data, "count", 0);
     JsVar *dataVar = jsvObjectGetChild(data, "data", 0);
     if (countVar && dataVar && jsvIsNumeric(countVar)) {
@@ -35,7 +44,9 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       jsWarn("If specifying an object, it must be of the form {data : ..., count : N}");
     }
     jsvUnLock2(countVar, dataVar);
-  } else if (jsvIsString(data)) {
+  }
+  // Handle the data being a string
+  else if (jsvIsString(data)) {
     JsvStringIterator it;
     jsvStringIteratorNew(&it, data, 0);
     while (jsvStringIteratorHasChar(&it) && ok) {
@@ -44,7 +55,9 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       jsvStringIteratorNext(&it);
     }
     jsvStringIteratorFree(&it);
-  } else if (jsvIsArrayBuffer(data)) {
+  }
+  // Handle the data being an array buffer
+  else if (jsvIsArrayBuffer(data)) {
     JsvArrayBufferIterator it;
     jsvArrayBufferIteratorNew(&it, data, 0);
     if (JSV_ARRAYBUFFER_GET_SIZE(it.type) == 1 && !JSV_ARRAYBUFFER_IS_SIGNED(it.type)) {
@@ -60,7 +73,9 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
       }
     }
     jsvArrayBufferIteratorFree(&it);
-  } else if (jsvIsIterable(data)) {
+  }
+  // Handle the data being iterable
+  else if (jsvIsIterable(data)) {
     JsvIterator it;
     jsvIteratorNew(&it, data);
     while (jsvIteratorHasElement(&it) && ok) {
@@ -75,19 +90,36 @@ bool jsvIterateCallback(JsVar *data, void (*callback)(int item, void *callbackDa
     ok = false;
   }
   return ok;
-}
+} // End of jsvIterateCallback
 
-static void jsvIterateCallbackCountCb(int n, void *data) {
+
+/**
+ * \brief An iterable callback that counts how many times it was called.
+ * This is a function that can be supplied to `jsvIterateCallback`.
+ */
+static void jsvIterateCallbackCountCb(
+    int n,     //!< The current item being iterated.  Not used.
+	void *data //!< A pointer to an int that counts how many times we were called.
+  ) {
   NOT_USED(n);
   int *count = (int*)data;
   (*count)++;
-}
-/** If jsvIterateCallback is called, how many times will it call the callback function? */
+} // End of jsvIterateCallbackCountCb
+
+
+/**
+ * \brief Determine how many items are in this variable that will be iterated over.
+ * \return The number of iterations we will call for this variable.
+ */
 int jsvIterateCallbackCount(JsVar *var) {
+  // Actually iterate over the variable where the callback function merely increments a counter
+  // that is initially zero.  The result will be the number of times the callback for iteration
+  // was invoked and hence the iteration count of the variable.
   int count = 0;
   jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
-}
+} // End of jsvIterateCallbackCount
+
 
 typedef struct { unsigned char *buf; unsigned int idx, length; } JsvIterateCallbackToBytesData;
 static void jsvIterateCallbackToBytesCb(int data, void *userData) {
