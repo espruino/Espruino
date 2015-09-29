@@ -96,12 +96,13 @@ static int    memoryBuffer_getSize(struct memoryBuffer *pMemoryBuffer);
  * See the socket state diagram.
  */
 enum SOCKET_STATE {
-	SOCKET_STATE_UNUSED,        //!< The socket is unused
-	SOCKET_STATE_IDLE,          //!< The socket is idle
-	SOCKET_STATE_CONNECTING,    //!< The socket is connecting
-	SOCKET_STATE_TRANSMITTING,  //!< The socket is transmitting
-	SOCKET_STATE_CLOSING,       //!< The socket is closing
-	SOCKET_STATE_ERROR          //!< The socket is in error
+	SOCKET_STATE_UNUSED,         //!< The socket is unused
+	SOCKET_STATE_IDLE,           //!< The socket is idle
+	SOCKET_STATE_CONNECTING,     //!< The socket is connecting
+	SOCKET_STATE_TRANSMITTING,   //!< The socket is transmitting
+	SOCKET_STATE_CLOSING,        //!< The socket is closing
+	SOCKET_STATE_HOST_RESOLVING, //!< Resolving a a hostname
+	SOCKET_STATE_ERROR           //!< The socket is in error
 };
 
 /**
@@ -240,6 +241,9 @@ void esp8266_dumpSocket(
 		break;
 	case SOCKET_STATE_TRANSMITTING:
 		stateMsg = "SOCKET_STATE_TRANSMITTING";
+		break;
+	case SOCKET_STATE_HOST_RESOLVING:
+		stateMsg = "SOCKET_STATE_HOST_RESOLVING";
 		break;
 	case SOCKET_STATE_UNUSED:
 		stateMsg = "SOCKET_STATE_UNUSED";
@@ -1043,16 +1047,43 @@ void net_ESP8266_BOARD_closeSocket(
 
 
 /**
+ * \brief Callback handler for espconn_gethostbyname.
+ * This is a function that will be called back by the ESP8266 when the resolution of
+ * a hostname has been completed.
+ */
+static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg) {
+	assert(arg != NULL);
+
+	uint32_t *returnIp = (uint32_t *)arg;
+
+	// ipAddr will be NULL if the IP address can not be resolved.
+	if (ipAddr == NULL) {
+		* returnIp = 0;
+	} else {
+		*returnIp = ipAddr->addr;
+	}
+} // End of dnsFoundCallback
+
+
+/**
  * \brief Get an IP address from a name.
- * Sets 'outIp' to 0 on failure.
+ * Sets 'outIp' to 0 on failure and 0xFFFFFFFF on unknown.  At some time later, the
+ * IP address will be properly updated.
  */
 void net_ESP8266_BOARD_gethostbyname(
 		JsNetwork *net, //!< The Network we are going to use to create the socket.
 		char *hostName, //!< The string representing the hostname we wish to lookup.
 		uint32_t *outIp //!< The address into which the resolved IP address will be stored.
 	) {
-	os_printf("> net_ESP8266_BOARD_gethostbyname\n");
-	*outIp = 0x00000000;
+	assert(hostName != NULL);
+	assert(outIp    != NULL);
+	os_printf("> net_ESP8266_BOARD_gethostbyname: Resolving: %s\n", hostName);
+	int rc = espconn_gethostbyname((struct espconn *)outIp, hostName, (ip_addr_t *)outIp, dnsFoundCallback);
+	// A rc of ESPCONN_OK means that we have an IP and it was stored in outIp.
+	// A rc of ESPCONN_INPROGRESS means that we will get the IP on a callback.
+	if (rc == ESPCONN_INPROGRESS) {
+		*outIp = 0xFFFFFFFF;
+	}
 } // End of net_ESP8266_BOARD_gethostbyname
 
 
