@@ -512,7 +512,7 @@ JsSysTime jshGetSystemTime() {
 #else
   struct timeval tm;
   gettimeofday(&tm, 0);
-  return tm.tv_sec*1000000L + tm.tv_usec;
+  return (JsSysTime)(tm.tv_sec)*1000000L + tm.tv_usec;
 #endif
 }
 
