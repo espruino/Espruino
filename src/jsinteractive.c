@@ -1376,8 +1376,8 @@ void jsiIdle() {
 
             JsVar *timeout = jsvObjectGetChild(watchPtr, "timeout", 0);
             if (timeout) { // if we had a timeout, update the callback time
-              JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetIntegerAndUnLock(jsvObjectGetChild(timeout, "time", 0));
-              jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce));
+              JsSysTime timeoutTime = jsiLastIdleTime + (JsSysTime)jsvGetLongIntegerAndUnLock(jsvObjectGetChild(timeout, "time", 0));
+              jsvUnLock(jsvObjectSetChild(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce)));
               if (eventTime > timeoutTime) {
                 // timeout should have fired, but we didn't get around to executing it!
                 // Do it now (with the old timeout time)
@@ -1389,7 +1389,7 @@ void jsiIdle() {
               timeout = jsvNewWithFlags(JSV_OBJECT);
               if (timeout) {
                 jsvObjectSetChild(timeout, "watch", watchPtr); // no unlock
-                jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromInteger((JsVarInt)(eventTime - jsiLastIdleTime) + debounce));
+                jsvObjectSetChildAndUnLock(timeout, "time", jsvNewFromLongInteger((JsSysTime)(eventTime - jsiLastIdleTime) + debounce));
                 jsvObjectSetChildAndUnLock(timeout, "callback", jsvObjectGetChild(watchPtr, "callback", 0));
                 jsvObjectSetChildAndUnLock(timeout, "lastTime", jsvObjectGetChild(watchPtr, "lastTime", 0));
                 jsvObjectSetChildAndUnLock(timeout, "pin", jsvNewFromPin(pin));
@@ -1455,7 +1455,7 @@ void jsiIdle() {
   // Check timers
   JsSysTime minTimeUntilNext = JSSYSTIME_MAX;
   JsSysTime time = jshGetSystemTime();
-  JsSysTime timePassed = (JsVarInt)(time - jsiLastIdleTime);
+  JsSysTime timePassed = time - jsiLastIdleTime;
   jsiLastIdleTime = time;
   // add time to Ctrl-C counter, checking for overflow
   uint32_t oldTimeSinceCtrlC = jsiTimeSinceCtrlC;
