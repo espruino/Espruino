@@ -15,20 +15,20 @@
 
 import pinutils;
 info = {
- 'name' : "Normal Linux Compile",
+ 'name' : "DPT-Board",
  'default_console' : "EV_USBSERIAL",
- 'binary_name' : 'espruino_%v_linux',
+ 'binary_name' : 'espruino_%v_dpt_board',
 };
 chip = {
-  'part' : "LINUX",
+  'part' : "DPTBOARD",
   'family' : "LINUX",
   'package' : "",
   'ram' : -1,
   'flash' : -1,
   'speed' : -1,
-  'usart' : 6,
-  'spi' : 3,
-  'i2c' : 3,
+  'usart' : 1,
+  'spi' : 1,
+  'i2c' : 1,
   'adc' : 0,
   'dac' : 0,
 };
@@ -36,13 +36,12 @@ chip = {
 board = {
 };
 devices = {
-  'USB' : {} # to convince code that we have a USB port (it's used for the console ion Linux)
 };
 
 board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,32)
-  # just fake pins D0 .. D32
+  pins = pinutils.generate_pins(0,27)  
+
   return pins
