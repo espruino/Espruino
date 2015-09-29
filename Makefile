@@ -1512,7 +1512,7 @@ flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
 ifndef COMPORT
 	$(error, "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 $(PROJ_NAME)_0x00000.bin.bin 0x10000 $(PROJ_NAME)_0x10000.bin
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 $(PROJ_NAME)_0x00000.bin 0x10000 $(PROJ_NAME)_0x10000.bin
 
 else ifdef ESP8266
 # for the non-512KB flash we generate a single OTA binary, but we generate two of them, one per
