@@ -464,7 +464,6 @@ FIXED_OBJ_NAME=1	# when defined the linker will always produce 'espruino' as exe
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
-endif
 
 else ifdef LCTECH_STM32F103RBT6
 EMBEDDED=1
