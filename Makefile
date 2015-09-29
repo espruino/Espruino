@@ -35,6 +35,7 @@
 # NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
+# DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.	
 # RASPBERRYPI=1
 # BEAGLEBONE=1
 # ARIETTA=1
@@ -449,6 +450,17 @@ EMBEDDED=1
 BOARD=CARAMBOLA
 DEFINES += -DCARAMBOLA -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
 LINUX=1
+USE_FILESYSTEM=1
+USE_GRAPHICS=1
+USE_NET=1
+
+else ifdef DPTBOARD
+EMBEDDED=1
+BOARD=DPTBOARD
+DEFINES += -DDPTBOARD -DSYSFS_GPIO_DIR="\"/sys/class/gpio\""
+LINUX=1
+OPENWRT_UCLIBC=1	# link with toolchain libc (uClibc or musl)
+FIXED_OBJ_NAME=1	# when defined the linker will always produce 'espruino' as executable name, for packaging in .ipk, .deb,
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
@@ -1283,6 +1295,11 @@ export STAGING_DIR=$(TOOLCHAIN_DIR)
 export CCPREFIX=$(TOOLCHAIN_DIR)/mipsel-openwrt-linux-
 endif
 
+ifdef DPTBOARD
+export STAGING_DIR=$(shell cd ~/breakoutopenwrt/staging_dir/toolchain-*/bin;pwd)
+export CCPREFIX=$(STAGING_DIR)/mips-openwrt-linux-
+endif
+
 ifdef RASPBERRYPI
  ifneq ($(shell uname -m),armv6l)
   # eep. let's cross compile
@@ -1324,7 +1341,11 @@ targets/linux/main.c                    \
 targets/linux/jshardware.c
 LIBS += -lm # maths lib
 LIBS += -lpthread # thread lib for input processing
+ifdef OPENWRT_UCLIBC
+LIBS += -lc
+else
 LIBS += -lstdc++
+endif
 endif
 
 ifdef NUCLEO
@@ -1449,7 +1470,11 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	$(Q)python scripts/build_platform_config.py $(BOARD)
 
 compile=$(CC) $(CFLAGS) $< -o $@
+ifdef FIXED_OBJ_NAME
+link=$(LD) $(LDFLAGS) -o espruino $(OBJS) $(LIBS)
+else
 link=$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+endif
 # note: link is ignored for the ESP8266
 obj_dump=$(OBJDUMP) -x -S $(PROJ_NAME).elf > $(PROJ_NAME).lst
 obj_to_bin=$(OBJCOPY) -O $1 $(PROJ_NAME).elf $(PROJ_NAME).$2
