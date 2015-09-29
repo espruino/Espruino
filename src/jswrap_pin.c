@@ -159,3 +159,77 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   jswrap_io_pinMode(jshGetPinFromVar(parent), mode);  
 }
 
+/*JSON{
+  "type" : "method",
+  "class" : "Pin",
+  "name" : "getInfo",
+  "generate" : "jswrap_pin_getInfo",
+  "return" : ["JsVar","An object containing information about this pins"]
+}
+Get information about this pin and its capabilities. Of the form:
+
+```
+{
+  "port" : "A", // the Pin's port on the chip
+  "num" : 12, // the Pin's number
+  "analog" : { ADCs : [1], channel : 12 }, // If analog input is available
+  "functions" : {
+    "TIM1":{type:"CH1, af:0},
+    "I2C3":{type:"SCL", af:1}
+  }
+}
+
+Will return undefined if pin is not valid.
+```
+ */
+JsVar *jswrap_pin_getInfo(JsVar *parent) {
+  Pin pin = jshGetPinFromVar(parent);
+  if (!jshIsPinValid(pin)) return 0;
+  const JshPinInfo *inf = &pinInfo[pin];
+  JsVar *obj = jsvNewWithFlags(JSV_OBJECT);
+  if (!obj) return 0;
+
+  char buf[2];
+  buf[0] = (char)('A'+(inf->port-JSH_PORTA));
+  buf[1] = 0;
+  jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromString(buf));
+  jsvObjectSetChildAndUnLock(obj, "num", jsvNewFromInteger(inf->pin-JSH_PIN0));
+  // ADC
+  if (inf->analog) {
+    JsVar *an = jsvNewWithFlags(JSV_OBJECT);
+    if (an) {
+      JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+      if (arr) {
+        int i;
+        for (i=0;i<ADC_COUNT;i++)
+          if (inf->analog&(JSH_ANALOG1<<i))
+            jsvArrayPushAndUnLock(arr, jsvNewFromInteger(1+i));
+        jsvObjectSetChildAndUnLock(an, "ADCs", arr);
+      }
+      jsvObjectSetChildAndUnLock(obj, "channel", jsvNewFromInteger(inf->analog & JSH_MASK_ANALOG_CH));
+    }
+  }
+  JsVar *funcs = jsvNewWithFlags(JSV_OBJECT);
+  if (funcs) {
+    int i;
+    for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+      if (inf->functions[i]) {
+        JsVar *func = jsvNewWithFlags(JSV_OBJECT);
+        if (func) {
+          char buf[16];
+          jshPinFunctionToString(inf->functions[i], JSPFTS_TYPE, buf, sizeof(buf));
+          jsvObjectSetChildAndUnLock(func, "type", jsvNewFromString(buf));
+          jsvObjectSetChildAndUnLock(func, "af", jsvNewFromInteger(inf->functions[i] & JSH_MASK_AF));
+
+          jshPinFunctionToString(inf->functions[i], JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, buf, sizeof(buf));
+          jsvObjectSetChildAndUnLock(funcs, buf, func);
+        }
+      }
+    }
+    jsvObjectSetChildAndUnLock(obj, "functions", funcs);
+  }
+
+  return obj;
+}
+
+

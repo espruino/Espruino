@@ -17,6 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
+#include "jsdevices.h"
 
 typedef unsigned char Pin; ///< for specifying pins for hardware
 #define PIN_UNDEFINED ((Pin)0xFF)
@@ -171,6 +172,8 @@ typedef enum {
   JSH_MASK_AF = 0x000F,
   JSH_MASK_TYPE = 0x0FF0,
   JSH_MASK_INFO = 0xF000,
+  JSH_SHIFT_TYPE = 4, // amount type is shifted left
+  JSH_SHIFT_INFO = 12, // amount info is shifted left
 } PACKED_FLAGS JshPinFunction;
 
 #define JSH_PINFUNCTION_IS_TIMER(F) ( \
@@ -209,5 +212,30 @@ void jshSetPinStateIsManual(Pin pin, bool manual);
 bool jshPinInput(Pin pin);
 void jshPinOutput(Pin pin, bool value);
 
+
+// Convert an event type flag into a jshPinFunction for an actual hardware device
+JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device);
+
+/** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
+JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType);
+
+/** Try and find the best pin suitable for the given function. Can return -1. */
+Pin NO_INLINE jshFindPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo);
+/// Flags for jshPinFunctionToString
+typedef enum {
+  JSPFTS_DEVICE        = 1, ///< The device itself
+  JSPFTS_DEVICE_NUMBER = 2, ///< The device's number
+  JSPFTS_SPACE         = 4, ///< A space between device and pin type
+  JSPFTS_TYPE          = 8  ///< The pin type (RX/TX/etc)
+} JshPinFunctionToStringFlags;
+
+/// Given a full pin function, return a string describing it depending of what's in the flags enum
+void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags flags, char *buf, size_t bufSize);
+
+/** Prints a list of capable pins, eg:
+ jshPrintCapablePins(..., "PWM", JSH_TIMER1, JSH_TIMERMAX, 0,0, false)
+ jshPrintCapablePins(..., "SPI", JSH_SPI1, JSH_SPIMAX, JSH_MASK_INFO,JSH_SPI_SCK, false)
+ jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs */
+void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs);
 
 #endif //JSPIN_H
