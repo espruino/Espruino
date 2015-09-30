@@ -90,7 +90,7 @@ bool jsvIterateCallback(
     ok = false;
   }
   return ok;
-} // End of jsvIterateCallback
+}
 
 
 /**
@@ -104,7 +104,7 @@ static void jsvIterateCallbackCountCb(
   NOT_USED(n);
   int *count = (int*)data;
   (*count)++;
-} // End of jsvIterateCallbackCountCb
+}
 
 
 /**
@@ -118,7 +118,7 @@ int jsvIterateCallbackCount(JsVar *var) {
   int count = 0;
   jsvIterateCallback(var, jsvIterateCallbackCountCb, (void *)&count);
   return count;
-} // End of jsvIterateCallbackCount
+}
 
 
 typedef struct { unsigned char *buf; unsigned int idx, length; } JsvIterateCallbackToBytesData;

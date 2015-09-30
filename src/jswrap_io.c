@@ -278,7 +278,7 @@ void jswrap_io_digitalWrite(
     Pin pin = jshGetPinFromVar(pinVar);
     jshPinOutput(pin, value != 0);
   }
-} // End of jswrap_io_digitalWrite
+}
 
 
 /*JSON{
@@ -324,7 +324,7 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
     Pin pin = jshGetPinFromVar(pinVar);
     return jshPinInput(pin);
   }
-} // End of jswrap_io_digitalRead
+}
 
 /*JSON{
   "type"     : "function",

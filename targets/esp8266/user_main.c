@@ -60,7 +60,7 @@ static void dumpRestart() {
 	os_printf("  epc3:     %x\n", rstInfo->epc3);
 	os_printf("  excvaddr: %x\n", rstInfo->excvaddr);
 	os_printf("  depc:     %x\n", rstInfo->depc);
-} // End of dump_restart
+}
 
 
 /**
@@ -68,7 +68,7 @@ static void dumpRestart() {
  */
 static void queueTaskMainLoop() {
 	system_os_post(TASK_APP_QUEUE, TASK_APP_MAINLOOP, 0);
-} // End of queueMainLoop
+}
 
 
 /**
@@ -79,7 +79,7 @@ void suspendMainLoop(
 	) {
 	suspendMainLoopFlag = true;
 	os_timer_arm(&mainLoopSuspendTimer, interval, 0 /* No repeat */);
-} // End of suspendMainLoop
+}
 
 
 /**
@@ -88,7 +88,7 @@ void suspendMainLoop(
 static void enableMainLoop() {
 	suspendMainLoopFlag = false;
 	queueTaskMainLoop();
-} // End of enableMainLoop
+}
 
 
 /**
@@ -121,7 +121,7 @@ static void eventHandler(
 				(int)pEvent->sig);
 		break;
 	}
-} // End of eventHandler
+}
 
 
 /**
@@ -136,7 +136,7 @@ static void telnetLineCB(char *line) {
 	//jspEvaluate(line, true);
 	//jsiDumpState();
 	telnet_send("JS> ");
-} // End of lineCB
+}
 
 
 /**
@@ -145,7 +145,7 @@ static void telnetLineCB(char *line) {
  */
 static void gotIpCallback() {
 	telnet_startListening(telnetLineCB);
-} // End of gotIpCallback
+}
 
 
 /**
@@ -168,7 +168,7 @@ static void mainLoop() {
 
 	// Setup for another callback
 	queueTaskMainLoop();
-} // End of mainLoop
+}
 
 
 /**
@@ -198,7 +198,7 @@ static void initDone() {
 	queueTaskMainLoop();
 
 	return;
-} // End of initDone
+}
 
 
 /**
@@ -207,7 +207,7 @@ static void initDone() {
  * provide an architected callback during initializations.  However, its purpose is unknown.
  */
 void user_rf_pre_init() {
-} // End of user_rf_pre_init
+}
 
 
 /**
@@ -229,5 +229,4 @@ void user_init() {
 	// Do NOT attempt to auto connect to an access point.
 	//wifi_station_set_auto_connect(0);
 	os_timer_setfn(&mainLoopSuspendTimer, enableMainLoop, NULL);
-} // End of user_init
-// End of file
+}

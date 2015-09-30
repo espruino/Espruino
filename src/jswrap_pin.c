@@ -46,7 +46,7 @@ JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
   return jsvNewFromPin(pin);
-} // End of jswrap_pin_constructor
+}
 
 
 /*JSON{
@@ -114,7 +114,7 @@ void jswrap_pin_write(
   ) {
   Pin pin = jshGetPinFromVar(parent);
   jshPinOutput(pin, value);
-} // End of jswrap_pin_write
+}
 
 /*JSON{
   "type"     : "method",

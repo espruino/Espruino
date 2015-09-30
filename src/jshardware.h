@@ -210,7 +210,7 @@ static inline void jshSPIInitInfo(
   inf->pinMOSI      = PIN_UNDEFINED;
   inf->spiMode      = SPIF_SPI_MODE_0;
   inf->spiMSB       = true; // MSB first is default
-} // End of jshSPIInitInfo.
+}
 
 
 /** Set up SPI, if pins are -1 they will be guessed */

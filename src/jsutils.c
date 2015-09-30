@@ -160,7 +160,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
  */
 long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
-} // End of stringToInt
+}
 
 
 NO_INLINE void jsError(const char *fmt, ...) {
@@ -409,7 +409,7 @@ JsVarFloat stringToFloatWithRadix(
 
   if (isNegated) return -v;
   return v;
-} // End of stringToFloatWithRadix
+}
 
 
 /**
@@ -612,7 +612,7 @@ void vcbprintf(
       user_callback(&buf[0], user_data);
     }
   }
-} // End of vcbprintf
+}
 
 
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...) {

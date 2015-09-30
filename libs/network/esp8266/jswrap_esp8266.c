@@ -129,7 +129,7 @@ void jswrap_ESP8266WiFi_connect(
 
 	wifi_station_connect();
 	os_printf("< jswrap_ESP8266WiFi_connect\n");
-} // End of jswrap_ESP8266WiFi_connect
+}
 
 
 /**
@@ -201,7 +201,7 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 	if (rc != 1) {
 	    jsExceptionHere(JSET_ERROR, "Error setting ESP8266 softap config.");
 	}
-} // End of jswrap_ESP8266WiFi_beAccessPoint
+}
 
 
 /**
@@ -239,7 +239,7 @@ void jswrap_ESP8266WiFi_getAccessPoints(
 	wifi_station_scan(NULL, scanCB);
 
 	os_printf("< ESP8266WiFi_getAccessPoints\n");
-} // End of jswrap_ESP8266WiFi_getAccessPoints
+}
 
 
 /**
@@ -253,7 +253,7 @@ void jswrap_ESP8266WiFi_getAccessPoints(
 }*/
 void jswrap_ESP8266WiFi_disconnect() {
 	wifi_station_disconnect();
-} // End of jswrap_ESP8266WiFi_disconnect
+}
 
 
 /*JSON{
@@ -264,7 +264,7 @@ void jswrap_ESP8266WiFi_disconnect() {
 }*/
 void jswrap_ESP8266WiFi_restart() {
 	system_restart();
-} // End of jswrap_ESP8266WiFi_restart
+}
 
 
 /**
@@ -307,7 +307,7 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
 
 	// Register
 	wifi_set_event_handler_cb(wifiEventHandler);
-} // End of jswrap_ESP8266WiFi_onWiFiEvent
+}
 
 
 /**
@@ -340,7 +340,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 	wifi_station_set_auto_connect(newValue);
 	uart_rx_intr_disable(1);
 	os_printf("Autoconnect changed\n");
-} // End of jswrap_ESP8266WiFi_setAutoconnect
+}
 
 
 /**
@@ -357,7 +357,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 JsVar *jswrap_ESP8266WiFi_getAutoConnect() {
 	uint8 result = wifi_station_get_auto_connect();
 	return jsvNewFromBool(result);
-} // End of jswrap_ESP8266WiFi_getAutoconnect
+}
 
 
 /**
@@ -383,7 +383,7 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
 	jsvUnLock(jsvObjectSetChild(restartInfo, "excvaddr", jsvNewFromInteger(info->excvaddr)));
 	jsvUnLock(jsvObjectSetChild(restartInfo, "depc",     jsvNewFromInteger(info->depc)));
 	return restartInfo;
-} // End of jswrap_ESP8266WiFi_getRstInfo
+}
 
 
 /**
@@ -411,7 +411,7 @@ JsVar *jswrap_ESP8266WiFi_getState() {
 	jsvUnLock(jsvObjectSetChild(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size())));
 	jsvUnLock(jsvObjectSetChild(esp8266State, "maxCon",       jsvNewFromInteger(espconn_tcp_get_max_con())));
 	return esp8266State;
-} // End of jswrap_ESP8266WiFi_getState
+}
 
 /**
  * \brief Return the value of an integer representation (4 bytes) of IP address
@@ -436,7 +436,7 @@ JsVar *jswrap_ESP8266WiFi_getAddressAsString(
 	}
 	uint32 iAddress = (uint32)jsvGetInteger(address);
 	return networkGetAddressAsString((uint8 *)&iAddress, 4, 10, '.');
-} // End of jswrap_ESP8266WiFi_getAddressAsString
+}
 
 
 /**
@@ -464,7 +464,7 @@ JsVar *jswrap_ESP8266WiFi_getIPInfo() {
 	jsvUnLock(jsvObjectSetChild(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr)));
 	jsvUnLock(jsvObjectSetChild(ipInfo, "gw", jsvNewFromInteger(info.gw.addr)));
 	return ipInfo;
-} // End of jswrap_ESP8266WiFi_getIPInfo
+}
 
 
 /**
@@ -495,7 +495,7 @@ JsVar *jswrap_ESP8266WiFi_getStationConfig() {
 	//nullTerminateString(password, (char *)config.password, 64);
 	jsvUnLock(jsvObjectSetChild(jsConfig, "password", jsvNewFromString((char *)config.password)));
 	return jsConfig;
-} // End of jswrap_ESP8266WiFi_getStationConfig
+}
 
 
 /**
@@ -523,7 +523,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
 		wifi_softap_free_station_info();
 	}
 	return jsArray;
-} // End of jswrap_ESP8266WiFi_getConnectedStations
+}
 
 
 /**
@@ -539,7 +539,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
 JsVar *jswrap_ESP8266WiFi_getRSSI() {
 	int rssi = wifi_station_get_rssi();
 	return jsvNewFromInteger(rssi);
-} // End of jswrap_ESP8266WiFi_getRSSI
+}
 
 
 
@@ -558,7 +558,7 @@ void jswrap_ESP8266WiFi_init() {
 	setupJsNetwork();
 	networkState = NETWORKSTATE_ONLINE;
 	os_printf("< jswrap_ESP8266WiFi_init\n");
-} // End of jswrap_ESP8266WiFi_init
+}
 
 
 /**
@@ -626,7 +626,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectStatus() {
 	jsvUnLock(jsvObjectSetChild(var, "statusMsg", jsStatusMsg));
 	//jsvUnLock(var);
 	return var;
-} // End of jswrap_ESP8266WiFi_getConnectStatus
+}
 
 
 /**
@@ -650,7 +650,7 @@ JsVar *jswrap_ESP8266WiFi_socketConnect(
 	os_printf("Network state = %d\n", networkState);
 	JsVar *ret = jswrap_net_connect(options, callback, ST_NORMAL);
 	return ret;
-} // End of jswrap_ESP8266WiFi_socketConnect
+}
 
 
 /*JSON{
@@ -668,7 +668,7 @@ void jswrap_ESP8266WiFi_socketEnd(
 		JsVar *data    //!< Optional data to be sent before close.
 	) {
 	jswrap_net_socket_end(socket, data);
-} // End of jswrap_ESP8266WiFi_socketEnd
+}
 
 
 /**
@@ -734,7 +734,7 @@ void jswrap_ESP8266WiFi_ping(
 	pingOpt.count = 5;
 	pingOpt.recv_function = pingRecvCB;
 	ping_start(&pingOpt);
-} // End of jswrap_ESP8266WiFi_ping
+}
 
 
 /**
@@ -754,7 +754,7 @@ void jswrap_ESP8266WiFi_dumpSocket(
 		JsVar *socketId //!< The socket to be dumped.
 	) {
 	esp8266_dumpSocket(jsvGetInteger(socketId)-1);
-} // End of jswrap_ESP8266WiFi_dumpSocket
+}
 
 /**
  * \brief Null terminate a string.
@@ -772,7 +772,7 @@ static void setupJsNetwork() {
 	JsNetwork net;
 	networkCreate(&net, JSNETWORKTYPE_ESP8266_BOARD);
 	networkSet(&net);
-} // End of setupJsNetwork
+}
 
 
 /**
@@ -804,8 +804,8 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
 		JsVar *params[1];
 		params[0] = jsPingResponse;
 		jsiQueueEvents(NULL, jsPingCallback, params, 1);
-	} // End of we have a callback function
-} // End of pingRecvCB
+	}
+}
 
 
 /**
@@ -866,7 +866,7 @@ static void scanCB(void *arg, STATUS status) {
 
 		os_printf(" - ssid: %s\n", bssInfo->ssid);
 		bssInfo = STAILQ_NEXT(bssInfo, next);
-	} // End of loop over the records.
+	}
 
 	// We have now completed the scan callback, so now we can invoke the JS callback.
 	JsVar *params[1];
@@ -874,7 +874,7 @@ static void scanCB(void *arg, STATUS status) {
 	jsiQueueEvents(NULL, jsScanCallback, params, 1);
 	jsvUnLock(jsScanCallback);
 	os_printf("<< scanCB\n");
-} // End of scanCB
+}
 
 
 /**
@@ -902,7 +902,7 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
 		//jsvUnLock(jsGotIpCallback);
 		//jsGotIpCallback = NULL;
 	}
-} // End of sendWifiEvent
+}
 
 
 /**
@@ -955,7 +955,7 @@ static void wifiEventHandler(System_Event_t *event) {
 		sendWifiEvent(event->event, jsvNewNull());
 		break;
 	}
-} // End of wifiEventHandler
+}
 
 /**
  * \brief Write an IP address as a dotted decimal string.
@@ -965,6 +965,4 @@ static void wifiEventHandler(System_Event_t *event) {
 //
 static void ipAddrToString(struct ip_addr addr, char *string) {
 	os_sprintf(string, "%d.%d.%d.%d", ((char *)&addr)[0], ((char *)&addr)[1], ((char *)&addr)[2], ((char *)&addr)[3]);
-} // End of ipAddrToString
-
-// End of file
+}

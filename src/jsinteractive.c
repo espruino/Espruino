@@ -82,7 +82,7 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
     return (IOEventFlags)class->varData.str[3];
 
   return EV_NONE;
-} // End of jsiGetDeviceFromClass
+}
 
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
@@ -174,7 +174,7 @@ void jsiConsolePrintf(const char *fmt, ...) {
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
-} // End of jsiConsolePrintf
+}
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {

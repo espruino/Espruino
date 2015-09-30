@@ -21,7 +21,7 @@
 void jsspiDumpSPIInfo(JshSPIInfo *inf) {
 	jsiConsolePrintf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
 		inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
-} // End of jsspiDumpSPIInfo
+}
 
 
 int jsspiHardwareFunc(int data, spi_sender_data *info) {
@@ -52,7 +52,7 @@ int jsspiFastSoftwareFunc(
     jshPinSetValue(inf->pinSCK, 0 );
   }
   return 0xFF;
-} // End of jsspiFastSoftwareFunc
+}
 
 
 /**
@@ -101,7 +101,7 @@ int jsspiSoftwareFunc(
     }
   }
   return result;
-} // End of jsspiSoftwareFunc
+}
 
 
 /**
@@ -146,7 +146,7 @@ void jsspiPopulateSPIInfo(
       jsWarn("SPI order should be 'msb' or 'lsb'");
     jsvUnLock(v);
   }
-} // End of jsspiPopulateSPIInfo
+}
 
 /**
  * \brief Select the SPI send function.
@@ -199,7 +199,7 @@ bool jsspiGetSendFunction(
     return true;
   }
   return false;
-} // End of jsspiGetSendFunction
+}
 
 
 // Send data over SPI. If andReceive is true, write it back into the same buffer

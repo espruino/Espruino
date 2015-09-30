@@ -68,7 +68,7 @@ Use `SPI.setup` to configure this port.
  */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
-} // End of jswrap_spi_constructor
+}
 
 /*JSON{
   "type" : "method",
@@ -126,7 +126,7 @@ void jswrap_spi_setup(
     jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
   else
     jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
-} // End of jswrap_spi_setup
+}
 
 
 /*JSON{
@@ -165,16 +165,13 @@ void jswrap_spi_send_cb(
   ) {
   // Invoke the SPI send function to transmit the single byte.
   int result = data->spiSend(c, &data->spiSendData);
-  if (c >= 0) {
-    data->txAmt++;
-  }
-  // If we got a result byte, save it.
-  if (result >= 0) {
+  if (c>=0) data->txAmt++;
+  if (result>=0) {
     jsvArrayBufferIteratorSetByteValue(&data->it, (char)result);
     jsvArrayBufferIteratorNext(&data->it);
     data->rxAmt++;
   }
-} // End of jswrap_spi_send_cb
+}
 
 
 /**
@@ -196,9 +193,8 @@ JsVar *jswrap_spi_send(
   IOEventFlags device = jsiGetDeviceFromClass(parent);
 
   jswrap_spi_send_data data;
-  if (!jsspiGetSendFunction(parent, &data.spiSend, &data.spiSendData)) {
+  if (!jsspiGetSendFunction(parent, &data.spiSend, &data.spiSendData))
     return 0;
-  }
 
   JsVar *dst = 0;
 
@@ -251,9 +247,8 @@ JsVar *jswrap_spi_send(
       // Write data
       jsvIterateCallback(srcdata, (void (*)(int,  void *))jswrap_spi_send_cb, &data);
       // Wait until SPI send is finished, and flush data
-      while (data.rxAmt < data.txAmt && !jspIsInterrupted()) {
+      while (data.rxAmt < data.txAmt && !jspIsInterrupted())
         jswrap_spi_send_cb(-1, &data);
-      }
       jsvArrayBufferIteratorFree(&data.it);
     }
   }
@@ -261,7 +256,7 @@ JsVar *jswrap_spi_send(
   // de-assert NSS
   if (nss_pin!=PIN_UNDEFINED) jshPinOutput(nss_pin, true);
   return dst;
-} // End of jswrap_spi_send
+}
 
 
 /*JSON{
@@ -286,9 +281,8 @@ void jswrap_spi_write(
 
   spi_sender spiSend;
   spi_sender_data spiSendData;
-  if (!jsspiGetSendFunction(parent, &spiSend, &spiSendData)) {
+  if (!jsspiGetSendFunction(parent, &spiSend, &spiSendData))
     return;
-  }
 
   Pin nss_pin = PIN_UNDEFINED;
   // If the last value is a pin, use it as the NSS pin

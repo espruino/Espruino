@@ -28,7 +28,7 @@
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
   return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
-} // End of jshIsPinValid
+}
 
 /**
  * \brief Get a pin value from an encoded strin.
@@ -196,7 +196,7 @@ Pin jshGetPinFromVar(
   } else if (jsvIsInt(pinv) /* This also tests for the Pin datatype */) {
     return (Pin)jsvGetInteger(pinv);
   } else return PIN_UNDEFINED;
-} // End of jshGetPinFromVar
+}
 
 Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
   Pin pin = jshGetPinFromVar(pinv);
@@ -236,7 +236,7 @@ bool jshPinInput(
   // Handle pin being invalid.
   else jsExceptionHere(JSET_ERROR, "Invalid pin!");
   return value;
-} // End of jshPinInput
+}
 
 
 /**
@@ -253,7 +253,7 @@ void jshPinOutput(
   }
   // Handle pin being invalid.
   else jsExceptionHere(JSET_ERROR, "Invalid pin!");
-} // End of jshPinOutput.
+}
 
 
 // ----------------------------------------------------------------------------
@@ -277,7 +277,7 @@ JshPinFunction jshGetPinFunctionFromDevice(IOEventFlags device) {
    case EV_I2C3    : return JSH_I2C3;
    default: return 0;
  }
-} // End of jshGetPinFunctionFromDevice
+}
 
 /** Try and find a specific type of function for the given pin. Can be given an invalid pin and will return 0. */
 JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functionType) {
@@ -288,7 +288,7 @@ JshPinFunction NO_INLINE jshGetPinFunctionForPin(Pin pin, JshPinFunction functio
       return pinInfo[pin].functions[i];
   }
   return 0;
-} // End of jshGetPinFunctionForPin
+}
 
 /** Try and find the best pin suitable for the given function. Can return -1. */
 Pin NO_INLINE jshFindPinForFunction(JshPinFunction functionType, JshPinFunction functionInfo) {
@@ -325,7 +325,7 @@ Pin NO_INLINE jshFindPinForFunction(JshPinFunction functionType, JshPinFunction 
           (pinInfo[i].functions[j]&JSH_MASK_INFO) == functionInfo)
         return i;
   return PIN_UNDEFINED;
-} // End of jshFindPinForFunction
+}
 
 /// Given a full pin function, return a string describing it depending of what's in the flags enum
 void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags flags, char *buf, size_t bufSize) {
