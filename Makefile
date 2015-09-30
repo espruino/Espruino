@@ -1321,7 +1321,7 @@ ifndef TRAVIS
 	bash scripts/check_size.sh $(PROJ_NAME).bin
 endif
 
-proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex nordic_flash # TODO: change this
+proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex #nordic_flash # TODO: change this
 
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 

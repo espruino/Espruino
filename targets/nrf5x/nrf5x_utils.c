@@ -39,7 +39,7 @@ void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32
 
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
 {
-  if (addr < (uint32_t) 0 || addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
+  if (addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
   {
 	  return false;
   }
