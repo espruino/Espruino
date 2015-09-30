@@ -602,6 +602,7 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
+USE_CRYPTO=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -958,6 +959,7 @@ LIBS += -lwiringPi
 INCLUDE += -I/usr/local/include -L/usr/local/lib 
 endif
 
+# Nordic-specific (probably temporary)
 ifdef USE_TEMPERATURE
   INCLUDE += -I$(ROOT)/libs/temperature
   WRAPPERSOURCES += libs/temperature/jswrap_temperature.c
@@ -967,6 +969,18 @@ ifdef USE_BLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
+
+ifdef USE_CRYPTO
+  INCLUDE += -I$(ROOT)/libs/crypto
+  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
+  WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+  SOURCES += \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/oid.c \
+libs/crypto/mbedtls/library/pkcs5.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 

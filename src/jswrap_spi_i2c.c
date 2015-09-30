@@ -492,16 +492,10 @@ void jswrap_i2c_writeTo(JsVar *parent, JsVar *addressVar, JsVar *args) {
   bool sendStop = true;
   int address = i2c_get_address(addressVar, &sendStop);
 
-  size_t l = (size_t)jsvIterateCallbackCount(args);
-  if (l+256 > jsuGetFreeStack()) {
-    jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
-    return;
-  }
+  JSV_GET_AS_CHAR_ARRAY( dataPtr, dataLen, args);
 
-  unsigned char *data = (unsigned char *)alloca(l);
-  jsvIterateCallbackToBytes(args, data, l);
-
-  jshI2CWrite(device, (unsigned char)address, l, data, sendStop);
+  if (dataPtr && dataLen)
+    jshI2CWrite(device, (unsigned char)address, dataLen, dataPtr, sendStop);
 }
 
 /*JSON{

@@ -663,7 +663,28 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
-// Create a new typed array of the given type and length
+/// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
+/** Get the given JsVar as a character array. If it's a flat string, return a
+ * pointer to it, or if it isn't allocate data on the stack and copy the data.
+ *
+ * This has to be a macro - if alloca is called from within another function
+ * the data will be lost when we return. */
+#define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
+  size_t TARGET_LENGTH = 0;                                                   \
+  unsigned char *TARGET_PTR = 0;                                              \
+  if (jsvIsFlatString(DATA)) {                                                \
+    TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
+    TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
+  } else {                                                                    \
+   TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
+    if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
+    } else {                                                                  \
+      unsigned char *TARGET_PTR = (unsigned char *)alloca(TARGET_LENGTH);     \
+      jsvIterateCallbackToBytes(DATA, TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+    }                                                                         \
+  }
 
 #endif /* JSVAR_H_ */
