@@ -301,13 +301,15 @@ void jshFlashErasePage(uint32_t addr)
 /// Read data from flash memory into the buffer
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_read_flash_addresses(buf, addr, len);
+  nrf_utils_read_flash_bytes((uint8_t *) buf, addr, len);
+  //nrf_utils_read_flash_addresses(buf, addr, len);
 }
 
-/// Write data to flash memory from the buffer -- buf is a uint8_t *
+/// Write data to flash memory from the buffer
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, len);
+  nrf_utils_write_flash_bytes(addr, (uint8_t *) buf, len);
+  //nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, (len / 4));
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success

@@ -32,6 +32,11 @@ void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
   nrf_nvmc_write_word(addr, val);
 }
 
+void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
+{
+  nrf_nvmc_write_bytes(addr, buf, len);
+}
+
 void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len)
 {
 	nrf_nvmc_write_words(addr, src, len); // Is there a bug here??? see nvmc.h header file it says len is bytes?
@@ -53,7 +58,24 @@ void nrf_utils_erase_flash_page(uint32_t addr)
 	uint32_t * page_address;
 	uint32_t * page_size;
 	nrf_utils_get_page(addr, page_address, page_size);
-	nrf_nvmc_page_erase((uint32_t) page_address);
+	nrf_nvmc_page_erase(*page_address);
+}
+
+void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
+{
+  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+
+  uint32_t i;
+  uint32_t word;
+  for(i = 0; i < len; i += 4)
+  {
+	word = *((uint32_t *) (addr + i));
+	((uint8_t *) buf)[i] = (uint8_t) (word & 0xFF);
+	((uint8_t *) buf)[i+1] = (uint8_t) ((word & 0xFF00) >> 8);
+	((uint8_t *) buf)[i+2] = (uint8_t) ((word & 0xFF0000) >> 16);
+	((uint8_t *) buf)[i+3] = (uint8_t) ((word & 0xFF000000) >> 24);
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+  }
 }
 
 void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
