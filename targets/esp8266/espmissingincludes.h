@@ -36,21 +36,8 @@ void ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg);
 
 void ets_update_cpu_frequency(int freqmhz);
 
-#ifdef SDK_DBG
-#define DEBUG_SDK true
-#else
-#define DEBUG_SDK false
-#endif
-
 int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__((format(printf, 3, 4)));
 int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
-
-#undef os_printf
-#define os_printf(format, ...) do {\
-  system_set_os_print(true); \
-  os_printf_plus(format, ## __VA_ARGS__); \
-  system_set_os_print(DEBUG_SDK); \
-} while(0)
 
 // memory allocation functions are "different" due to memory debugging functionality
 // added in SDK 1.4.0

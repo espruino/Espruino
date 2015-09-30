@@ -654,7 +654,11 @@ endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
+ifeq ($(FAMILY),ESP8266)
+OPTIMIZEFLAGS=-g -Os
+else
 OPTIMIZEFLAGS=-g
+endif
 DEFINES+=-DDEBUG
 endif
 
@@ -1236,6 +1240,8 @@ ifdef NRF5X
 endif #NRF5X
 
 ifeq ($(FAMILY),ESP8266)
+# move os_printf strings into flash to save RAM space
+DEFINES += -DUSE_OPTIMIZE_PRINTF
 ESP8266=1
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
 CFLAGS+= -fno-builtin -fno-strict-aliasing \
@@ -1565,10 +1571,12 @@ $(USER1_BIN): $(USER1_ELF)
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
-	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+	@if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
 # generate binary image for user2, i.e. second OTA partition
-$(USER2_BIN): $(USER2_ELF)
+# we make this rule dependent on user1.bin in order to serialize the two rules because they use
+# stupid static filenames (go blame the Espressif tool)
+$(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER2_ELF) eagle.app.v6.text.bin
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin

@@ -89,6 +89,7 @@ void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *got
 	if (gotIpCallback != NULL) {
 		jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
 	}
+	os_printf("jsGotIpCallback=%p\n", jsGotIpCallback);
 
 	// Create strings from the JsVars for the ESP8266 API calls.
 	char ssid[33];
@@ -119,6 +120,7 @@ void jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *got
 	wifi_set_event_handler_cb(wifiEventHandler);
 
 	wifi_station_connect();
+	wifi_set_event_handler_cb(wifiEventHandler);
 } // End of jswrap_ESP8266WiFi_connect
 
 
@@ -542,9 +544,17 @@ JsVar *jswrap_ESP8266WiFi_getRSSI() {
 }*/
 void jswrap_ESP8266WiFi_init() {
 	os_printf("> jswrap_ESP8266WiFi_init\n");
+	os_printf("Heap: %d\n", system_get_free_heap_size());
+	// register the state change handler so we get debug printout for sure
+	wifi_set_phy_mode(2);
+	wifi_set_event_handler_cb(wifiEventHandler);
+	os_printf("Wifi init, mode=%d\n", wifi_get_opmode());
+	wifi_station_set_hostname("espruino");
+
 	netInit_esp8266_board();
 	setupJsNetwork();
 	networkState = NETWORKSTATE_ONLINE;
+	os_printf("Heap: %d\n", system_get_free_heap_size());
 	os_printf("< jswrap_ESP8266WiFi_init\n");
 } // End of jswrap_ESP8266WiFi_init
 
@@ -818,7 +828,7 @@ static void scanCB(void *arg, STATUS status) {
 
 	bssInfo = (struct bss_info *)arg;
 	// skip the first in the chain … it is invalid
-	bssInfo = STAILQ_NEXT(bssInfo, next);
+	//bssInfo = STAILQ_NEXT(bssInfo, next); // this got fixed in SDK 1.4
 	while(bssInfo != NULL) {
 		// Add a new object to the JS array that will be passed as a parameter to
 		// the callback.  The ESP8266 bssInfo structure contains the following:

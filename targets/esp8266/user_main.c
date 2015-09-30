@@ -27,7 +27,7 @@ typedef long long int64_t;
 #define TASK_QUEUE_LENGTH 10
 
 // Should we introduce a ticker to say we are still alive?
-//#define EPS8266_BOARD_HEARTBEAT
+#define EPS8266_BOARD_HEARTBEAT
 
 // --- Forward definitions
 static void mainLoop();
@@ -124,6 +124,7 @@ static void eventHandler(
 } // End of eventHandler
 
 
+#if 0
 /**
  * \brief A callback function to be invoked when a line has been entered on the telnet client.
  * Here we want to pass that line to the JS parser for processing.
@@ -146,7 +147,9 @@ static void telnetLineCB(char *line) {
 static void gotIpCallback() {
 	telnet_startListening(telnetLineCB);
 } // End of gotIpCallback
+#endif
 
+static uint32 lastTime = 0;
 
 /**
  * \brief Perform the main loop processing.
@@ -162,7 +165,8 @@ static void mainLoop() {
 #ifdef EPS8266_BOARD_HEARTBEAT
 	if (system_get_time() - lastTime > 1000 * 1000 * 5) {
 		lastTime = system_get_time();
-		os_printf("tick: %d\n", jshGetSystemTime());
+		os_printf("tick: %ld, heap: %ld\n",
+			(uint32)(jshGetSystemTime()), system_get_free_heap_size());
 	}
 #endif
 
@@ -178,6 +182,7 @@ static void mainLoop() {
  */
 static void initDone() {
 	os_printf("initDone invoked\n");
+	os_printf("Heap: %d\n", system_get_free_heap_size());
 
 	// Discard any junk data in the input as this is a boot.
 	//uart_rx_discard();
@@ -197,6 +202,7 @@ static void initDone() {
 	// Post the first event to get us going.
 	queueTaskMainLoop();
 
+	os_printf("Heap: %d\n", system_get_free_heap_size());
 	return;
 } // End of initDone
 
@@ -218,7 +224,9 @@ void user_init() {
 	// Initialize the UART devices
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 	os_delay_us(10000); // give the uart a break
-	UART_SetPrintPort(0);
+	UART_SetPrintPort(1);
+	system_set_os_print(1);
+	os_printf("Heap: %d\n", system_get_free_heap_size());
 
 	// Dump the restart exception information.
 	dumpRestart();
