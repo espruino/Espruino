@@ -44,6 +44,32 @@ static bool suspendMainLoopFlag = false;
 static os_timer_t mainLoopSuspendTimer;
 
 // --- Functions
+
+#if 0
+/**
+ * \brief A callback function to be invoked when a line has been entered on the telnet client.
+ * Here we want to pass that line to the JS parser for processing.
+ */
+static void telnetLineCB(char *line) {
+	jsiConsolePrintf("LineCB: %s", line);
+	// Pass the line to the interactive module ...
+
+	jshPushIOCharEvents(jsiGetConsoleDevice(), line, strlen(line));
+	//jspEvaluate(line, true);
+	//jsiDumpState();
+	telnet_send("JS> ");
+} // End of lineCB
+
+
+/**
+ * When we have been allocated a TCP/IP address, this function is called back.  Obviously
+ * there is little we can do at the network level until we have an IP.
+ */
+static void gotIpCallback() {
+	telnet_startListening(telnetLineCB);
+} // End of gotIpCallback
+#endif
+
 /**
  * \brief Dump the ESP8266 restart information.
  * This is purely for debugging.
@@ -75,7 +101,7 @@ static void queueTaskMainLoop() {
  * \brief Suspend processing the main loop for a period of time.
  */
 void suspendMainLoop(
-		uint32 interval //!<
+		uint32 interval //!< suspension interval in milliseconds
 	) {
 	suspendMainLoopFlag = true;
 	os_timer_arm(&mainLoopSuspendTimer, interval, 0 /* No repeat */);
@@ -124,31 +150,6 @@ static void eventHandler(
 } // End of eventHandler
 
 
-#if 0
-/**
- * \brief A callback function to be invoked when a line has been entered on the telnet client.
- * Here we want to pass that line to the JS parser for processing.
- */
-static void telnetLineCB(char *line) {
-	jsiConsolePrintf("LineCB: %s", line);
-	// Pass the line to the interactive module ...
-
-	jshPushIOCharEvents(jsiGetConsoleDevice(), line, strlen(line));
-	//jspEvaluate(line, true);
-	//jsiDumpState();
-	telnet_send("JS> ");
-} // End of lineCB
-
-
-/**
- * When we have been allocated a TCP/IP address, this function is called back.  Obviously
- * there is little we can do at the network level until we have an IP.
- */
-static void gotIpCallback() {
-	telnet_startListening(telnetLineCB);
-} // End of gotIpCallback
-#endif
-
 static uint32 lastTime = 0;
 
 /**
@@ -171,7 +172,8 @@ static void mainLoop() {
 #endif
 
 	// Setup for another callback
-	queueTaskMainLoop();
+	//queueTaskMainLoop();
+	suspendMainLoop(0); // HACK to get around SDK 1.4 bug
 } // End of mainLoop
 
 
@@ -182,7 +184,6 @@ static void mainLoop() {
  */
 static void initDone() {
 	os_printf("initDone invoked\n");
-	os_printf("Heap: %d\n", system_get_free_heap_size());
 
 	// Discard any junk data in the input as this is a boot.
 	//uart_rx_discard();
@@ -202,15 +203,14 @@ static void initDone() {
 	// Post the first event to get us going.
 	queueTaskMainLoop();
 
-	os_printf("Heap: %d\n", system_get_free_heap_size());
 	return;
 } // End of initDone
 
 
 /**
- * This is a required function needed for ESP8266 SDK.  In 99.999% of the instances, this function
- * needs to be present but have no body.  It isn't 100% known what this function does other than
- * provide an architected callback during initializations.  However, its purpose is unknown.
+ * This is a required function needed for ESP8266 SDK.  It allows RF parameters, in particular
+ * whether to calibrate the RF, to be set before the SDK does the calibration, which happens
+ * before user_init() is called.
  */
 void user_rf_pre_init() {
 } // End of user_rf_pre_init
@@ -226,10 +226,12 @@ void user_init() {
 	os_delay_us(10000); // give the uart a break
 	UART_SetPrintPort(1);
 	system_set_os_print(1);
-	os_printf("Heap: %d\n", system_get_free_heap_size());
 
 	// Dump the restart exception information.
 	dumpRestart();
+	os_printf("Heap: %d\n", system_get_free_heap_size());
+	os_printf("Variables: %d @%dea = %ldbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
+			JSVAR_CACHE_SIZE * sizeof(JsVar));
 
 	// Register the ESP8266 initialization callback.
 	system_init_done_cb(initDone);
