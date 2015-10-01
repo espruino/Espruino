@@ -262,7 +262,10 @@ else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-  codeOut("#define FLASH_START                     "+hex(0x08000000))
+  if board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+    codeOut("#define FLASH_START                     "+hex(0x0))
+  else: 
+    codeOut("#define FLASH_START                     "+hex(0x08000000))
   if has_bootloader: 
     codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
     codeOut("#define ESPRUINO_BINARY_ADDRESS         "+hex(common.get_espruino_binary_address(board)))

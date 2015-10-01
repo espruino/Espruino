@@ -57,8 +57,10 @@ void nrf_utils_erase_flash_page(uint32_t addr)
 {
 	uint32_t * page_address;
 	uint32_t * page_size;
-	nrf_utils_get_page(addr, page_address, page_size);
-	nrf_nvmc_page_erase(*page_address);
+	if (nrf_utils_get_page(addr, page_address, page_size))
+	{
+		nrf_nvmc_page_erase(*page_address);
+	}
 }
 
 void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
