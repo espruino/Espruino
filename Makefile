@@ -995,26 +995,21 @@ endif #USB
 
 ifeq ($(FAMILY), NRF51)
   
-  NRF5X=1 
+  NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
   
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
  
-  # nRF51 specific... Main differences in SDK structure are softdevice, uart, delay...
+  # nRF51 specific. Main differences in SDK structure are softdevice, uart, delay...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
-  
+
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DBOARD_PCA10028  -DNRF51
-  ifdef SOFTDEVICE
-  	DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
-  	LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
-  else
-  	LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld
-  endif # SOFTDEVICE
+  DEFINES += -DBOARD_PCA10028  -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
   
 endif # FAMILY == NRF51
 
@@ -1037,9 +1032,8 @@ ifeq ($(FAMILY), NRF52)
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  # Assume that softdevice (S132) is always enabled for now...
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_espruino.ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_ble_espruino.ld
 
 endif #FAMILY == NRF52
 

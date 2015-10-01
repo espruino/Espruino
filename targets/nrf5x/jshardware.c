@@ -107,7 +107,7 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 // software IO functions...
 void jshInterruptOff()
 {
-  __disable_irq(); // Disabling interrupts is not reasonable when using one of the softdevices.
+  __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
 }
 
 void jshInterruptOn()

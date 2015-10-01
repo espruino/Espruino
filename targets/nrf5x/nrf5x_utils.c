@@ -24,8 +24,6 @@
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
-//#include "jsinteractive.h"
-
 #define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
 #define NRF_UTILS_NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
 
