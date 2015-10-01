@@ -37,6 +37,25 @@ static JsVar *jsPingCallback;
 // Global data structure for ping request
 static struct ping_option pingOpt;
 
+// Reasons for which a connection failed
+uint8_t wifiReason = 0;
+static char *wifiReasons[] = {
+  "", "unspecified", "auth_expire", "auth_leave", "assoc_expire", "assoc_toomany", "not_authed",
+  "not_assoced", "assoc_leave", "assoc_not_authed", "disassoc_pwrcap_bad", "disassoc_supchan_bad",
+  "ie_invalid", "mic_failure", "4way_handshake_timeout", "group_key_update_timeout",
+  "ie_in_4way_differs", "group_cipher_invalid", "pairwise_cipher_invalid", "akmp_invalid",
+  "unsupp_rsn_ie_version", "invalid_rsn_ie_cap", "802_1x_auth_failed", "cipher_suite_rejected",
+  "beacon_timeout", "no_ap_found" };
+
+static char *wifiGetReason(void) {
+  if (wifiReason <= 24) return wifiReasons[wifiReason];
+  if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+24];
+  return wifiReasons[1];
+}
+
+static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
+static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
+
 // Let's define the JavaScript class that will contain our `world()` method. We'll call it `Hello`
 /*JSON{
   "type"  : "class",
@@ -175,6 +194,7 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 	password[len]='\0';
 
 	// Define that we are in Soft AP mode.
+	os_print("Wifi: switching to soft-AP\n");
 	wifi_set_opmode_current(SOFTAP_MODE);
 
 	// Build our SoftAP configuration details
@@ -544,7 +564,6 @@ JsVar *jswrap_ESP8266WiFi_getRSSI() {
 }*/
 void jswrap_ESP8266WiFi_init() {
 	os_printf("> jswrap_ESP8266WiFi_init\n");
-	os_printf("Heap: %d\n", system_get_free_heap_size());
 	// register the state change handler so we get debug printout for sure
 	wifi_set_phy_mode(2);
 	wifi_set_event_handler_cb(wifiEventHandler);
@@ -554,7 +573,6 @@ void jswrap_ESP8266WiFi_init() {
 	netInit_esp8266_board();
 	setupJsNetwork();
 	networkState = NETWORKSTATE_ONLINE;
-	os_printf("Heap: %d\n", system_get_free_heap_size());
 	os_printf("< jswrap_ESP8266WiFi_init\n");
 } // End of jswrap_ESP8266WiFi_init
 
@@ -908,40 +926,56 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
  * The event handler is registered with a call to wifi_set_event_handler_cb()
  * that is provided by the ESP8266 SDK.
  */
-static void wifiEventHandler(System_Event_t *event) {
-	switch(event->event) {
+static void wifiEventHandler(System_Event_t *evt) {
+	switch(evt->event) {
 	case EVENT_STAMODE_CONNECTED:
-		os_printf("Event: EVENT_STAMODE_CONNECTED\n");
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi connected to ssid %s, ch %d\n", evt->event_info.connected.ssid,
+			evt->event_info.connected.channel);
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	case EVENT_STAMODE_DISCONNECTED:
-		os_printf("Event: EVENT_STAMODE_DISCONNECTED\n");
+		os_printf("Wifi disconnected from ssid %s, reason %s (%d)\n",
+			evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
 		JsVar *details = jspNewObject(NULL, "EventDetails");
-		jsvObjectSetChild(details, "reason", jsvNewFromInteger(event->event_info.disconnected.reason));
+		jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason));
 		char ssid[33];
-		memcpy(ssid, event->event_info.disconnected.ssid, event->event_info.disconnected.ssid_len);
-		ssid[ event->event_info.disconnected.ssid_len] = '\0';
-		sendWifiEvent(event->event, details);
+		memcpy(ssid, evt->event_info.disconnected.ssid, evt->event_info.disconnected.ssid_len);
+		ssid[ evt->event_info.disconnected.ssid_len] = '\0';
+		sendWifiEvent(evt->event, details);
 		break;
 	case EVENT_STAMODE_AUTHMODE_CHANGE:
-		os_printf("Event: EVENT_STAMODE_AUTHMODE_CHANGE\n");
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi auth mode: %d -> %d\n",
+			evt->event_info.auth_change.old_mode, evt->event_info.auth_change.new_mode);
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	case EVENT_STAMODE_GOT_IP:
-		os_printf("Event: EVENT_STAMODE_GOT_IP\n");
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi got ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR "\n",
+			IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
+			IP2STR(&evt->event_info.got_ip.gw));
+		sendWifiEvent(evt->event, jsvNewNull());
+		break;
+	case EVENT_STAMODE_DHCP_TIMEOUT:
+		os_printf("Wifi DHCP timeout");
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	case EVENT_SOFTAPMODE_STACONNECTED:
-		os_printf("Event: EVENT_SOFTAPMODE_STACONNECTED\n");
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi AP: station " MACSTR " joined, AID = %d\n",
+			MAC2STR(evt->event_info.sta_connected.mac), evt->event_info.sta_connected.aid);
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	case EVENT_SOFTAPMODE_STADISCONNECTED:
-		os_printf("Event: EVENT_SOFTAPMODE_STADISCONNECTED\n");
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi AP: station " MACSTR " left, AID = %d\n",
+			MAC2STR(evt->event_info.sta_disconnected.mac), evt->event_info.sta_disconnected.aid);
+		sendWifiEvent(evt->event, jsvNewNull());
+		break;
+	case EVENT_SOFTAPMODE_PROBEREQRECVED:
+		os_printf("Wifi AP: probe request from station " MACSTR ", rssi = %d\n",
+			MAC2STR(evt->event_info.ap_probereqrecved.mac), evt->event_info.ap_probereqrecved.rssi);
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	default:
-		os_printf("Unexpected event: %d\n", event->event);
-		sendWifiEvent(event->event, jsvNewNull());
+		os_printf("Wifi: unexpected event %d\n", evt->event);
+		sendWifiEvent(evt->event, jsvNewNull());
 		break;
 	}
 } // End of wifiEventHandler

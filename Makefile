@@ -1544,6 +1544,7 @@ proj: $(USER1_BIN) $(USER2_BIN)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PROJ_NAME)_partial.o: $(OBJS) $(LINKER_FILE)
+	@echo Pre-linking
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
