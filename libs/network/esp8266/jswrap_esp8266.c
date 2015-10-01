@@ -194,7 +194,7 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 	password[len]='\0';
 
 	// Define that we are in Soft AP mode.
-	os_print("Wifi: switching to soft-AP\n");
+	os_printf("Wifi: switching to soft-AP\n");
 	wifi_set_opmode_current(SOFTAP_MODE);
 
 	// Build our SoftAP configuration details
