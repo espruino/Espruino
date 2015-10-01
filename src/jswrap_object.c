@@ -468,7 +468,7 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
 
 #define EVENTNAME_SIZE 16
 bool jswrap_object_get_event_name(char *eventName, JsVar *event) {
-  strncpy(eventName,"#on",EVENTNAME_SIZE);
+  strncpy(eventName, JS_EVENT_PREFIX, EVENTNAME_SIZE);
   if (jsvGetString(event, &eventName[3], EVENTNAME_SIZE-4)==(EVENTNAME_SIZE-4)) {
     jsExceptionHere(JSET_ERROR, "Event name too long\n");
     return false;
@@ -528,7 +528,7 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
   if (jsvIsStringEqual(event, "data")) {
     JsVar *buf = jsvObjectGetChild(parent, STREAM_BUFFER_NAME, 0);
     if (jsvIsString(buf)) {
-      jsiQueueObjectCallbacks(parent, "#ondata", &buf, 1);
+      jsiQueueObjectCallbacks(parent, STREAM_CALLBACK_NAME, &buf, 1);
       jsvRemoveNamedChild(parent, STREAM_BUFFER_NAME);
     }
     jsvUnLock(buf);
@@ -548,8 +548,8 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
 Call the event listeners for this object, for instance ```http.emit('data', 'Foo')```. See Node.js's EventEmitter.
  */
 void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
-  if (!jsvIsObject(parent)) {
-    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+  if (!jsvHasChildren(parent)) {
+    jsWarn("Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (!jsvIsString(event)) {
@@ -593,8 +593,8 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
 Removes all listeners, or those of the specified event.
  */
 void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
-  if (!jsvIsObject(parent)) {
-    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+  if (!jsvHasChildren(parent)) {
+    jsWarn("Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (jsvIsString(event)) {
@@ -607,22 +607,23 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
       jsvUnLock(eventList);
     }
   } else if (jsvIsUndefined(event)) {
-    // Eep. We must remove everything beginning with '#on'
+    // Eep. We must remove everything beginning with '#on' (JS_EVENT_PREFIX)
+    JsVar *eventStartStr = jsvNewFromString(JS_EVENT_PREFIX);
+
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, parent);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
       if (jsvIsString(key) &&
-          key->varData.str[0]=='#' &&
-          key->varData.str[1]=='o' &&
-          key->varData.str[2]=='n') {
+          jsvCompareString(key, eventStartStr, 0,0,true)==0) {
         // begins with #on - we must kill it
         jsvRemoveChild(parent, key);
       }
       jsvUnLock(key);
     }
     jsvObjectIteratorFree(&it);
+    jsvUnLock(eventStartStr);
   } else {
     jsWarn("First argument to EventEmitter.removeAllListeners(..) must be a string, or undefined");
     return;

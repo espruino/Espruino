@@ -31,6 +31,7 @@
             Add `Pin.getInfo` to see what a Pin can do (for #93)
             Move Pin function code out of jshardware
             Add `E.on('init', ...)` - like `onInit` but allows multiple handlers
+            Make sure `dump()` and `E.dumpStr()` dump the contents of Serial as well as events for other objects
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

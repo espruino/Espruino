@@ -44,7 +44,7 @@ static JsVar* pipeGetArray(bool create) {
 
 
 static void handlePipeClose(JsVar *arr, JsvObjectIterator *it, JsVar* pipe) {
-  jsiQueueObjectCallbacks(pipe, "#oncomplete", &pipe, 1);
+  jsiQueueObjectCallbacks(pipe, JS_EVENT_PREFIX"complete", &pipe, 1);
   // Check the source to see if there was more data... It may not be a stream,
   // but if it is and it has data it should have a a STREAM_BUFFER_NAME field
   JsVar *source = jsvObjectGetChild(pipe,"source",0);
@@ -270,7 +270,7 @@ void jswrap_pipe(JsVar* source, JsVar* dest, JsVar* options) {
           JsVar *c;
           c = jsvObjectGetChild(options, "complete", false);
           if (c) {
-            jsvObjectSetChild(pipe, "#oncomplete", c);
+            jsvObjectSetChild(pipe, JS_EVENT_PREFIX"complete", c);
             jsvUnLock(c);
           }
           c = jsvObjectGetChild(options, "end", false);
