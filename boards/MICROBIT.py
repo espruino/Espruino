@@ -18,7 +18,7 @@ import pinutils;
 info = {
  'name' : "BBC micro:bit",
  'link' : [ "" ],
- 'variables' : 191, 
+ 'variables' : 145, 
  'binary_name' : 'espruino_%v_microbit.bin',
 };
 chip = {

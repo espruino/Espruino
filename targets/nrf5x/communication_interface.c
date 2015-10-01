@@ -18,10 +18,9 @@
 #include "nrf.h"
 #include "bsp.h"
 
-// UART callback function. Registered in uart_init(). Allows to asychronously read characters from UART.
 void uart_event_handle(app_uart_evt_t * p_event)
 {
-  
+
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR)
   {
     APP_ERROR_HANDLER(p_event->data.error_communication);
@@ -39,7 +38,6 @@ void uart_event_handle(app_uart_evt_t * p_event)
 
 }
 
-// Initialzes non blocking serial communication with terminal via uart. Returns 0 on success, -1 on an error.
 int uart_init()
 {
   uint32_t err_code;
