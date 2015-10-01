@@ -24,11 +24,14 @@
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
+//#include "jsinteractive.h"
+
 #define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
 #define NRF_UTILS_NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
 
 void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
 {
+  print_string_to_terminal("nrf_utils_write_flash_address\n", 31);
   nrf_nvmc_write_word(addr, val);
 }
 
@@ -44,6 +47,7 @@ void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32
 
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
 {
+  print_string_to_terminal("nrf_utils_get_page\n", 19);
   if (addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
   {
 	  return false;
@@ -55,16 +59,18 @@ bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_
 
 void nrf_utils_erase_flash_page(uint32_t addr)
 {
-	uint32_t * page_address;
-	uint32_t * page_size;
-	if (nrf_utils_get_page(addr, page_address, page_size))
+	print_string_to_terminal("nrf_utils_erase_flash_page\n", 27);
+	uint32_t page_address;
+	uint32_t page_size;
+	if (nrf_utils_get_page(addr, &page_address, &page_size))
 	{
-		nrf_nvmc_page_erase(*page_address);
+		nrf_nvmc_page_erase(page_address);
 	}
 }
 
 void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
 {
+  print_string_to_terminal("nrf_utils_read_flash_bytes\n", 27);
   while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
 
   uint32_t i;
@@ -265,4 +271,13 @@ uint32_t nrf_utils_read_temperature(void) {
 
 void nrf_utils_app_uart_put(uint8_t character) {
 	while (app_uart_put(character) != NRF_SUCCESS);
+}
+
+void print_string_to_terminal(uint8_t * debug_string, uint32_t len)
+{
+  int i;
+  for (i = 0; i < len; i++)
+  {
+	  nrf_utils_app_uart_put((char) debug_string[i]);
+  }
 }

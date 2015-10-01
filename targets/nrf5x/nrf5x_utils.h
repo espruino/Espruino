@@ -51,6 +51,8 @@ uint32_t nrf_utils_read_temperature(void);
 
 void nrf_utils_app_uart_put(uint8_t character);
 
+void print_string_to_terminal(uint8_t * debug_string, uint32_t len);
+
 
 
 #endif // NRF5X_UTILS_H__

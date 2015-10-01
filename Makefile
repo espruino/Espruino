@@ -358,15 +358,11 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
-NRF5X=1
-NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
-OPTIMIZEFLAGS+=-Os # Set this to -O0 to enable debugging.
+OPTIMIZEFLAGS+=-Os
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
-NRF5X=1
-NRF51=1 # Define the family to set CFLAGS and LDFLAGS later in the makefile.
 OPTIMIZEFLAGS+=-Os
 else ifdef NRF52832DK
 EMBEDDED=1
@@ -998,43 +994,46 @@ targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
 ifeq ($(FAMILY), NRF51)
+  
   NRF5X=1 
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
-  # Hopefully nRF51 & nRF52 SDKs can combined into one soon...
+  
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefile provided in SDK as reference.
+  ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
  
-  # nRF51 specific...
+  # nRF51 specific... Main differences in SDK structure are softdevice, uart, delay...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c # UART is structured different for nRF51 & nRF52. may be an inconsistency in nordics SDK that needs fixing.
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
+  
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DBOARD_PCA10028  -DNRF51
   ifdef SOFTDEVICE
   	DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD
-  endif
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld # The memory map here needs to be changed if using softdevice (currently assumes no sd) look at example linkers in sdk
-
+  	LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
+  else
+  	LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_espruino.ld
+  endif # SOFTDEVICE
+  
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
+  
   NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
-  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16
+  ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
  
-  # nRF52 specific...
+  # nRF52 specific... Different structure from nRF51 SDK for both delay and uart.
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 sdk # only nrf_delay.h in nrf52 sdk # differnt structed uart in nrf51 sdk
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 SDK.
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
-  # only nrf_delay.h in nrf52 sdk
-  # different structed uart in nrf51 sdk
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1045,9 +1044,13 @@ ifeq ($(FAMILY), NRF52)
 endif #FAMILY == NRF52
 
 ifdef NRF5X
+  
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
   INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
+  
+  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x # This is where common linker for both nRF51 & nRF52 is stored.
+  LDFLAGS += -L$(TEMPLATE_PATH)
 
   # These files are the Espruino HAL implementation.
   INCLUDE += -I$(ROOT)/targets/nrf5x
@@ -1057,8 +1060,7 @@ ifdef NRF5X
   targets/nrf5x/communication_interface.c \
   targets/nrf5x/nrf5x_utils.c
 
-  # Includes required for ...
-  # careful here.. all these includes and sources assume a softdevice. not efficeint/clean if softdevice (ble) is not enabled... fix
+  # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
@@ -1067,7 +1069,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # not nrf51?
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # Not nRF51?
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
@@ -1120,7 +1122,7 @@ ifdef ARM
     LINKER_FILE = gen/linker.ld
   endif
   DEFINES += -DARM
-  ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the CMSIS files.
+  ifndef ARM_HAS_OWN_CMSIS # nRF5x targets do not use the shared CMSIS files.
     INCLUDE += -I$(ROOT)/targetlibs/arm
   endif
   OPTIMIZEFLAGS += -fno-common -fno-exceptions -fdata-sections -ffunction-sections
@@ -1128,9 +1130,9 @@ ifdef ARM
   # I've no idea why this breaks the bootloader, but it does.
   # Given we've left 10k for it, there's no real reason to enable LTO anyway.
   ifndef BOOTLOADER
-    # Enable link-time optimisations (inlining across files)
-    OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-    DEFINES += -DLINK_TIME_OPTIMISATION
+	# Enable link-time optimisations (inlining across files)
+	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+	DEFINES += -DLINK_TIME_OPTIMISATION
   endif
 
   # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
@@ -1215,11 +1217,11 @@ LDFLAGS += -Wl,--gc-sections
 endif
 
 ifdef LINKER_FILE
-LDFLAGS += -T$(LINKER_FILE)
+  LDFLAGS += -T$(LINKER_FILE)
 endif
 
 ifdef NRF5X
-LDFLAGS += --specs=nano.specs -lc -lnosys
+  LDFLAGS += --specs=nano.specs -lc -lnosys
 endif # NRF5X
 
 export CC=$(CCPREFIX)gcc
@@ -1350,7 +1352,7 @@ ifdef NRF5X # This requires nrfjprog to be working and in your system PATH.
 nordic_flash:
 	@echo Flashing: s132_nrf52_1.0.0-3.alpha_softdevice.hex
 	nrfjprog -f NRF52 --program $(ROOT)/targetlibs/nrf5x/s132_nrf52_1.0.0-3.alpha_softdevice.hex --chiperase --verify
-	@echo Flashing: $(ROOT)/nrf52832_xxaa_s132.hex
+	@echo Flashing: $(ROOT)/$(PROJ_NAME).hex
 	nrfjprog -f NRF52 --program $(ROOT)/$(PROJ_NAME).hex --verify
 	nrfjprog -f NRF52 --reset
 endif
