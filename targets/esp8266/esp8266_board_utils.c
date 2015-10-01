@@ -47,7 +47,7 @@ const char *esp8266_errorToString(
 	default:
 		return "Unknown error";
 	}
-} // End of errorToString
+}
 
 
 /**
@@ -66,5 +66,4 @@ void esp8266_board_writeString(
 	for (i=0; i<length; i++) {
 		os_printf("%c", buffer[i]);
 	}
-} // End of esp8266_board_writeString
-// End of file
+}

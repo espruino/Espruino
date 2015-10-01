@@ -43,6 +43,6 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,7)  
-  # just fake pins D0 .. D7
+  pins = pinutils.generate_pins(0,15)  
+  # just fake pins D0 .. D15
   return pins

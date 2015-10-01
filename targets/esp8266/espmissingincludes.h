@@ -54,12 +54,23 @@ int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)
 
 // memory allocation functions are "different" due to memory debugging functionality
 // added in SDK 1.4.0
-void vPortFree(void *ptr, char * file, int line);
+#ifndef ESPSDK_1_3_0
+void  vPortFree(void *ptr, char * file, int line);
 void *pvPortMalloc(size_t xWantedSize, char * file, int line);
 void *pvPortZalloc(size_t, char * file, int line);
 void *vPortMalloc(size_t xWantedSize);
-void pvPortFree(void *ptr);
+void  pvPortFree(void *ptr);
 void *pvPortRealloc(void *pv, size_t size, char * file, int line);
+#else
+void  vPortFree(void *ptr);
+void *pvPortMalloc(size_t xWantedSize);
+void *pvPortZalloc(size_t);
+void *vPortMalloc(size_t xWantedSize);
+void  pvPortFree(void *ptr);
+void *pvPortRealloc(void *pv, size_t size);
+#define os_realloc pvPortRealloc
+void *pvPortRealloc(void* ptr, size_t size);
+#endif
 
 void uart_div_modify(int no, unsigned int freq);
 uint32 system_get_time();

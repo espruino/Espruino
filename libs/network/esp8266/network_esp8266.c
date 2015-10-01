@@ -28,6 +28,7 @@
  *
  */
 // ESP8266 specific includes
+#define ESPSDK_1_3_0
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
@@ -261,7 +262,7 @@ void esp8266_dumpSocket(
 	}
 
 	LOG("\n");
-} // End of dumpSocket
+}
 
 
 /**
@@ -337,7 +338,7 @@ static void dumpEspConn(
 	}
 	LOG(", link_cnt=%d", pEspConn->link_cnt);
 	LOG(", reverse=0x%x\n", (unsigned int)pEspConn->reverse);
-} // End of dumpEspConn
+}
 
 
 /**
@@ -354,7 +355,7 @@ static int getNextFreeSocket() {
 		}
 	} // End of for each socket.
 	return(-1);
-} // End of getNextFreeSocket
+}
 
 
 /**
@@ -363,7 +364,7 @@ static int getNextFreeSocket() {
 static struct socketData *getSocketData(int s) {
 	assert(s >=0 && s<MAX_SOCKETS);
 	return &socketArray[s];
-} // End of getSocketData
+}
 
 
 /**
@@ -388,7 +389,7 @@ static int getServerSocketByLocalPort(
 		pSocketData++;
 	} // End of for each socket
 	return -1;
-} // End of getServerSocketByLocalPort
+}
 
 
 /**
@@ -428,7 +429,7 @@ static void resetSocket(
 	espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
 	espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
 	espconn_regist_write_finish(pEspconn, esp8266_callback_writeFinishedCB);
-} // End of resetSocket
+}
 
 
 /**
@@ -452,7 +453,7 @@ static void releaseSocket(
 	}
 	resetSocket(socketId);
 	os_printf("< releaseSocket\n");
-} // End of releaseSocket
+}
 
 
 /**
@@ -464,7 +465,7 @@ void netInit_esp8266_board() {
 	for (socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
 		resetSocket(socketArrayIndex);
 	} // End of for each socket
-} // netInit_esp8266_board
+}
 
 
 /**
@@ -488,7 +489,7 @@ static void doClose(
 	} else {
 		releaseSocket(socketId);
 	}
-} // End of doClose
+}
 
 
 /**
@@ -504,7 +505,7 @@ static void setSocketInError(
 	pSocketData->state     = SOCKET_STATE_ERROR;
 	pSocketData->errorMsg  = msg;
 	pSocketData->errorCode = code;
-} // End of setSocketInError
+}
 
 /**
  * \brief Callback function registered to the ESP8266 environment that is
@@ -557,7 +558,7 @@ static void esp8266_callback_connectCB_inbound(
 	pSocketData->acceptedSocketsHead = (pSocketData->acceptedSocketsHead + 1) % MAX_ACCEPTED_SOCKETS;
 
 	os_printf("<< connectCB_inbound\n");
-} // End of esp8266_callback_connectCB_inbound
+}
 
 /**
  * \brief Callback function registered to the ESP8266 environment that is
@@ -587,7 +588,7 @@ static void esp8266_callback_connectCB_outbound(
 		pSocketData->state = SOCKET_STATE_IDLE;
 	}
 	os_printf("<< connectCB_outbound\n");
-} // End of esp8266_callback_connectCB_outbound
+}
 
 
 /**
@@ -615,7 +616,7 @@ static void esp8266_callback_disconnectCB(
 		pSocketData->isConnected = false;
 	}
 	os_printf("<< disconnectCB\n");
-} // End of disconnectCB
+}
 
 
 /**
@@ -632,7 +633,7 @@ static void esp8266_callback_writeFinishedCB(
 		pSocketData->currentTx = NULL;
 	}
 	os_printf("<< writeFinishedCB\n");
-} // End of writeFinishedCB
+}
 
 
 /**
@@ -646,7 +647,7 @@ static void esp8266_callback_reconnectCB(
 	) {
 	os_printf(">> reconnectCB:  Error code is: %d - %s\n", err, esp8266_errorToString(err));
 	os_printf("<< reconnectCB");
-} // End of reconnectCB
+}
 
 
 /**
@@ -676,7 +677,7 @@ static void esp8266_callback_sentCB(
 		pSocketData->state = SOCKET_STATE_IDLE;
 	}
 	os_printf("<< sendCB\n");
-} // End of sentCB
+}
 
 
 /**
@@ -719,7 +720,7 @@ static void esp8266_callback_recvCB(
 	dumpEspConn(pEspconn);
 	os_printf("<< recvCB\n");
 
-} // End of recvCB
+}
 
 
 // -------------------------------------------------
@@ -738,7 +739,7 @@ void netSetCallbacks_esp8266_board(
 	  net->gethostbyname = net_ESP8266_BOARD_gethostbyname;
 	  net->recv          = net_ESP8266_BOARD_recv;
 	  net->send          = net_ESP8266_BOARD_send;
-} // End of netSetCallbacks_esp8266_board
+}
 
 
 /**
@@ -769,7 +770,7 @@ int net_ESP8266_BOARD_accept(
 
 	os_printf("> net_ESP8266_BOARD_accept: Accepted a new socket, socketId=%d\n", acceptedSocketId);
 	return acceptedSocketId;
-} // End of net_ESP8266_BOARD_accept
+}
 
 
 /**
@@ -827,7 +828,7 @@ int net_ESP8266_BOARD_recv(
 	os_free(pTemp);
 
 	return len;
-} // End of net_ESP8266_BOARD_recv.
+}
 
 
 /**
@@ -889,7 +890,7 @@ int net_ESP8266_BOARD_send(
 	esp8266_dumpSocket(sckt);
 	os_printf("< net_ESP8266_BOARD_send\n");
 	return len;
-} // End of net_ESP8266_BOARD_send
+}
 
 
 /**
@@ -902,7 +903,7 @@ void net_ESP8266_BOARD_idle(
 	) {
 	// Don't echo here because it is called continuously
 	//os_printf("> net_ESP8266_BOARD_idle\n");
-} // End of net_ESP8266_BOARD_idle
+}
 
 
 /**
@@ -914,7 +915,7 @@ bool net_ESP8266_BOARD_checkError(
 	) {
 	//os_printf("> net_ESP8266_BOARD_checkError\n");
 	return true;
-} // End of net_ESP8266_BOARD_checkError
+}
 
 
 /**
@@ -1001,12 +1002,12 @@ int net_ESP8266_BOARD_createSocket(
 			os_printf("Err: net_ESP8266_BOARD_createSocket -> espconn_accept returned: %d.  Using local port: %d\n", rc, pEspconn->proto.tcp->local_port);
 			setSocketInError(sckt, "espconn_accept", rc);
 		}
-	} // End of
+	}
 
 	dumpEspConn(pEspconn);
 	os_printf("< net_ESP8266_BOARD_createSocket, socket=%d\n", sckt);
 	return sckt;
-} // End of net_ESP8266_BOARD_createSocket
+}
 
 
 /**
@@ -1043,7 +1044,7 @@ void net_ESP8266_BOARD_closeSocket(
 			pSocketData->shouldClose = true;
 		}
 	} // End this is a client socket
-} // End of net_ESP8266_BOARD_closeSocket
+}
 
 
 /**
@@ -1062,7 +1063,7 @@ static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg)
 	} else {
 		*returnIp = ipAddr->addr;
 	}
-} // End of dnsFoundCallback
+}
 
 
 /**
@@ -1084,7 +1085,7 @@ void net_ESP8266_BOARD_gethostbyname(
 	if (rc == ESPCONN_INPROGRESS) {
 		*outIp = 0xFFFFFFFF;
 	}
-} // End of net_ESP8266_BOARD_gethostbyname
+}
 
 
 // ----------------------------------------------------------------
@@ -1112,7 +1113,7 @@ static void memoryBuffer_delete(
 		pMemoryBuffer->buf = NULL;
 		pMemoryBuffer->length = 0;
 	}
-} // End of memoryBuffer_delete
+}
 
 
 /**
@@ -1151,7 +1152,7 @@ static uint8 *memoryBuffer_append(
 		}
 	}
 	return pMemoryBuffer->buf;
-} // End of memoryBuffer_append
+}
 
 
 /**
@@ -1162,7 +1163,7 @@ static int memoryBuffer_getSize(
 	) {
 	assert(pMemoryBuffer != NULL);
 	return pMemoryBuffer->length;
-} // End of memoryBuffer_getSize
+}
 
 
 /**
@@ -1216,5 +1217,4 @@ static uint8 *memoryBuffer_read(
 	pMemoryBuffer->buf = pTemp2;
 	pMemoryBuffer->length = newSize;
 	return pTemp;
-} // End of memoryBuffer_read
-// End of file
+}
