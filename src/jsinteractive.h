@@ -103,6 +103,7 @@ void jsiSetSleep(JsiSleepType isSleep);
 #define USART_CALLBACK_NAME "#ondata"
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
+#define INIT_CALLBACK_NAME "#oninit" ///< Callback for `E.on('init'`
 
 typedef enum {
   JSIS_NONE,

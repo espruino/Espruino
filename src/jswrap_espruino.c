@@ -28,6 +28,27 @@ This is the built-in JavaScript class for Espruino utility functions.
  */
 
 /*JSON{
+  "type" : "event",
+  "class" : "E",
+  "name" : "init"
+}
+This event is called right after the board starts up, and has a similar effect
+to creating a function called `onInit`.
+
+For example to write `"Hello World"` every time Espruino starts, use:
+
+```
+E.on('init', function() {
+  console.log("Hello World!");
+});
+```
+
+**Note:** that subsequent calls to `E.on('init', ` will **add** a new handler,
+rather than replacing the last one. This allows you to write modular code -
+something that was not possible with `onInit`.
+ */
+
+/*JSON{
   "type" : "staticmethod",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",

@@ -489,8 +489,8 @@ bool jswrap_object_get_event_name(char *eventName, JsVar *event) {
 Register an event listener for this object, for instance ```http.on('data', function(d) {...})```. See Node.js's EventEmitter.
  */
 void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
-  if (!jsvIsObject(parent)) {
-    jsWarn("Parent must be a proper object - not a String, Integer, etc.");
+  if (!jsvHasChildren(parent)) {
+    jsWarn("Parent must be an object - not a String, Integer, etc.");
     return;
   }
   if (!jsvIsString(event)) {

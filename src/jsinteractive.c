@@ -423,13 +423,18 @@ void jsiSoftInit() {
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
   if (onInit) {
     if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
-    if (jsvIsFunction(onInit))
-      jsvUnLock(jspExecuteFunction(onInit, 0, 0, (JsVar**)0));
-    else if (jsvIsString(onInit))
-      jsvUnLock(jspEvaluateVar(onInit, 0, false));
-    else
-      jsError("onInit is not a Function or a String");
+    jsiExecuteEventCallback(0, onInit, 0, 0);
     jsvUnLock(onInit);
+  }
+  // Now look for `init` events on `E`
+  JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
+  if (E) {
+    JsVar *callback = jsvObjectGetChild(E, INIT_CALLBACK_NAME, 0);
+    if (callback) {
+      jsiExecuteEventCallback(0, callback, 0, 0);
+      jsvUnLock(callback);
+    }
+    jsvUnLock(E);
   }
 }
 
