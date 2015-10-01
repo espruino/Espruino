@@ -608,22 +608,18 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
     }
   } else if (jsvIsUndefined(event)) {
     // Eep. We must remove everything beginning with '#on' (JS_EVENT_PREFIX)
-    JsVar *eventStartStr = jsvNewFromString(JS_EVENT_PREFIX);
-
     JsvObjectIterator it;
     jsvObjectIteratorNew(&it, parent);
     while (jsvObjectIteratorHasValue(&it)) {
       JsVar *key = jsvObjectIteratorGetKey(&it);
       jsvObjectIteratorNext(&it);
-      if (jsvIsString(key) &&
-          jsvCompareString(key, eventStartStr, 0,0,true)==0) {
+      if (jsvIsStringEqualOrStartsWith(key, JS_EVENT_PREFIX, true)) {
         // begins with #on - we must kill it
         jsvRemoveChild(parent, key);
       }
       jsvUnLock(key);
     }
     jsvObjectIteratorFree(&it);
-    jsvUnLock(eventStartStr);
   } else {
     jsWarn("First argument to EventEmitter.removeAllListeners(..) must be a string, or undefined");
     return;

@@ -743,16 +743,67 @@ void jswrap_espruino_dumpTimers() {
   "name" : "getSizeOf",
   "generate" : "jswrap_espruino_getSizeOf",
   "params" : [
-    ["v","JsVar","A variable to get the size of"]
+    ["v","JsVar","A variable to get the size of"],
+    ["depth","int","The depth that detail should be provided for. If depth<=0 or undefined, a single integer will be returned"]
   ],
-  "return" : ["int32","The number of variable 'blocks' as an integer"]
+  "return" : ["JsVar","Information about the variable size - see below"]
 }
-Return the number of Variable Blocks used by the supplied variable. This is useful if you're running out of memory and you want to be able to see what is taking up most of the available space.
+Return the number of variable blocks used by the supplied variable. This is
+useful if you're running out of memory and you want to be able to see what
+is taking up most of the available space.
+
+If `depth>0` and the variable can be recursed into, an array listing all property
+names (including internal Espruino names) and their sizes is returned. If
+`depth>1` there is also a `more` field that inspects the objects's children's
+children.
+
+For instance `E.getSizeOf(function(a,b) { })` returns `5`.
+
+But `E.getSizeOf(E.getSizeOf(function(a,b) { }), 1)` returns:
+
+```
+ [
+  {
+    "name": "a",
+    "size": 1 },
+  {
+    "name": "b",
+    "size": 1 },
+  {
+    "name": "ÿcod",
+    "size": 2 }
+ ]
+```
+
+In this case setting depth to `2` will make no difference as there are
+no more children to traverse.
 
 See http://www.espruino.com/Internals for more information
  */
-int jswrap_espruino_getSizeOf(JsVar *v) {
-  return (int)jsvCountJsVarsUsed(v);
+JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth) {
+  if (depth>0 && jsvHasChildren(v)) {
+    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+    if (!arr) return 0;
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, v);
+    while (jsvObjectIteratorHasValue(&it)) {
+      JsVar *key = jsvObjectIteratorGetKey(&it);
+      JsVar *val = jsvSkipName(key);
+      JsVar *item = jsvNewWithFlags(JSV_OBJECT);
+      if (item) {
+        jsvObjectSetChildAndUnLock(item, "name", jsvAsString(key, false));
+        jsvObjectSetChildAndUnLock(item, "size", jswrap_espruino_getSizeOf(key, 0));
+        if (depth>1 && jsvHasChildren(val))
+          jsvObjectSetChildAndUnLock(item, "more", jswrap_espruino_getSizeOf(val, depth-1));
+        jsvArrayPushAndUnLock(arr, item);
+      }
+      jsvUnLock2(val, key);
+      jsvObjectIteratorNext(&it);
+    }
+    jsvObjectIteratorFree(&it);
+    return arr;
+  }
+  return jsvNewFromInteger((JsVarInt)jsvCountJsVarsUsed(v));
 }
 
 /*JSON{

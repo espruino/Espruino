@@ -465,8 +465,6 @@ NO_INLINE static void jsiDumpEvent(vcbprintf_callback user_callback, void *user_
 NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_data, JsVar *parentName, JsVar *parent) {
   JsvIsInternalChecker checker = jsvGetInternalFunctionCheckerFor(parent);
 
-  JsVar *eventStartStr = jsvNewFromString(JS_EVENT_PREFIX);
-
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, parent);
   while (jsvObjectIteratorHasValue(&it)) {
@@ -482,7 +480,7 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
           jsiDumpObjectState(user_callback, user_data, name, data);
           jsvUnLock(name);
         }
-      } else if (jsvIsString(child) && jsvCompareString(child, eventStartStr, 0,0,true)==0) {
+      } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
         // Handle the case that this is an event
         if (jsvIsArray(data)) {
           JsvObjectIterator ait;
@@ -510,8 +508,6 @@ NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_d
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
-
-  jsvUnLock(eventStartStr);
 }
 
 /** Dump the code required to initialise a serial port to this string */
