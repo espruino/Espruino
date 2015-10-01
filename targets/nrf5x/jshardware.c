@@ -112,7 +112,7 @@ void jshInterruptOff()
 
 void jshInterruptOn()
 {
-  __enable_irq();
+  __enable_irq(); // ***This wont be good with softdevice!!
 }
 
 void jshDelayMicroseconds(int microsec) 
