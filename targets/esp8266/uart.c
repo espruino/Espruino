@@ -44,7 +44,7 @@ int getRXBuffer(char *pBuffer, int bufferLen) {
 	memcpy(pBuffer, rxBuffer, rxBufferLen);
 	rxBufferLen = 0;
 	return sizeReturned;
-} // End of getRXBuffer
+}
 
 /*uart demo with a system task, to output what uart receives*/
 /*this is a example to process uart data from task,please change the priority to fit your application task if exists*/
@@ -779,11 +779,11 @@ UART_SetPrintPort(uint8 uart_no)
 {
     if(uart_no==1){
         os_install_putc1(uart1_write_char);
-    }else{
+    } else {
         /*option 1: do not wait if uart fifo is full,drop current character*/
         os_install_putc1(uart0_write_char_no_wait);
-	/*option 2: wait for a while if uart fifo is full*/
-	os_install_putc1(uart0_write_char);
+        /*option 2: wait for a while if uart fifo is full*/
+        os_install_putc1(uart0_write_char);
     }
 }
 
@@ -818,4 +818,4 @@ int uart_rx_discard() {
 	int oldRxBufferLen = rxBufferLen;
 	rxBufferLen = 0;
 	return oldRxBufferLen;
-} // End of uart_rx_discard
+}

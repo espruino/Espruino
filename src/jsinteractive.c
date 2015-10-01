@@ -70,6 +70,9 @@ void jsiDebuggerLine(JsVar *line);
 
 // ----------------------------------------------------------------------------
 
+/**
+ * \brief Get the device from the class variable.
+ */
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
   // See jspNewObject
@@ -80,6 +83,7 @@ IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
 
   return EV_NONE;
 }
+
 
 JsVar *jsiGetClassNameFromDevice(IOEventFlags device) {
   const char *deviceName = jshGetDeviceString(device);
@@ -161,6 +165,10 @@ NO_INLINE void jsiConsolePrint(const char *str) {
   }
 }
 
+/**
+ * \brief Perform a printf to the console.
+ * Execute a printf command to the current JS console.
+ */
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
@@ -415,13 +423,18 @@ void jsiSoftInit() {
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
   if (onInit) {
     if (jsiEcho()) jsiConsolePrint("Running onInit()...\n");
-    if (jsvIsFunction(onInit))
-      jsvUnLock(jspExecuteFunction(onInit, 0, 0, (JsVar**)0));
-    else if (jsvIsString(onInit))
-      jsvUnLock(jspEvaluateVar(onInit, 0, false));
-    else
-      jsError("onInit is not a Function or a String");
+    jsiExecuteEventCallback(0, onInit, 0, 0);
     jsvUnLock(onInit);
+  }
+  // Now look for `init` events on `E`
+  JsVar *E = jsvObjectGetChild(execInfo.root, "E", 0);
+  if (E) {
+    JsVar *callback = jsvObjectGetChild(E, INIT_CALLBACK_NAME, 0);
+    if (callback) {
+      jsiExecuteEventCallback(0, callback, 0, 0);
+      jsvUnLock(callback);
+    }
+    jsvUnLock(E);
   }
 }
 
@@ -440,18 +453,72 @@ void jsiDumpJSON(vcbprintf_callback user_callback, void *user_data, JsVar *data,
   }
 }
 
-/** Dump the code required to initialise a serial port to this string */
-void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool addCallbacks) {
-  JsVar *serialVar = jsvObjectGetChild(execInfo.root, serialName, 0);
-  if (serialVar) {
-    if (addCallbacks) {
-      JsVar *onData = jsvObjectGetChild(serialVar, USART_CALLBACK_NAME, 0);
-      if (onData) {
-        cbprintf(user_callback, user_data, "%s.on('data', ", serialName);
-        jsiDumpJSON(user_callback, user_data, onData, 0);
-        user_callback(");\n", user_data);
+NO_INLINE static void jsiDumpEvent(vcbprintf_callback user_callback, void *user_data, JsVar *parentName, JsVar *eventKeyName, JsVar *eventFn) {
+  JsVar *eventName = jsvNewFromStringVar(eventKeyName, strlen(JS_EVENT_PREFIX), JSVAPPENDSTRINGVAR_MAXLENGTH);
+  cbprintf(user_callback, user_data, "%v.on(%q, ", parentName, eventName);
+  jsvUnLock(eventName);
+  jsiDumpJSON(user_callback, user_data, eventFn, 0);
+  user_callback(");\n", user_data);
+}
+
+/** Output extra functions defined in an object such that they can be copied to a new device */
+NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_data, JsVar *parentName, JsVar *parent) {
+  JsvIsInternalChecker checker = jsvGetInternalFunctionCheckerFor(parent);
+
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, parent);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *child = jsvObjectIteratorGetKey(&it);
+    JsVar *data = jsvObjectIteratorGetValue(&it);
+
+    if (!checker || !checker(child)) {
+      if (jsvIsStringEqual(child, JSPARSE_PROTOTYPE_VAR)) {
+        // recurse to print prototypes
+        JsVar *name = jsvNewFromStringVar(parentName,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
+        if (name) {
+          jsvAppendString(name, ".prototype");
+          jsiDumpObjectState(user_callback, user_data, name, data);
+          jsvUnLock(name);
+        }
+      } else if (jsvIsStringEqualOrStartsWith(child, JS_EVENT_PREFIX, true)) {
+        // Handle the case that this is an event
+        if (jsvIsArray(data)) {
+          JsvObjectIterator ait;
+          jsvObjectIteratorNew(&ait, data);
+          while (jsvObjectIteratorHasValue(&ait)) {
+            JsVar *v = jsvObjectIteratorGetValue(&ait);
+            jsiDumpEvent(user_callback, user_data, parentName, child, v);
+            jsvUnLock(v);
+            jsvObjectIteratorNext(&ait);
+          }
+          jsvObjectIteratorFree(&ait);
+        } else {
+          jsiDumpEvent(user_callback, user_data, parentName, child, data);
+        }
+      } else {
+        // It's a normal function
+        if (!jsvIsNative(data)) {
+          cbprintf(user_callback, user_data, "%v.%v = ", parentName, child);
+          jsiDumpJSON(user_callback, user_data, data, 0);
+          user_callback(";\n", user_data);
+        }
       }
     }
+    jsvUnLock2(data, child);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+}
+
+/** Dump the code required to initialise a serial port to this string */
+void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_data, const char *serialName, bool addObjectProperties) {
+  JsVar *serialVarName = jsvFindChildFromString(execInfo.root, serialName, false);
+  JsVar *serialVar = jsvSkipName(serialVarName);
+
+  if (serialVar) {
+    if (addObjectProperties)
+      jsiDumpObjectState(user_callback, user_data, serialVarName, serialVar);
+
     JsVar *baud = jsvObjectGetChild(serialVar, USART_BAUDRATE_NAME, 0);
     JsVar *options = jsvObjectGetChild(serialVar, DEVICE_OPTIONS_NAME, 0);
     if (baud || options) {
@@ -466,6 +533,7 @@ void jsiDumpSerialInitialisation(vcbprintf_callback user_callback, void *user_da
     }
     jsvUnLock3(baud, options, serialVar);
   }
+  jsvUnLock(serialVarName);
 }
 
 /** Dump the code required to initialise a SPI port to this string */
@@ -484,7 +552,7 @@ void jsiDumpDeviceInitialisation(vcbprintf_callback user_callback, void *user_da
 }
 
 /** Dump all the code required to initialise hardware to this string */
-void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool addCallbacks) {
+void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_data, bool addObjectProperties) {
   if (jsiStatus&JSIS_ECHO_OFF) user_callback("echo(0);", user_data);
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
@@ -496,10 +564,10 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
     user_callback("setDeepSleep(1);\n", user_data);
   }
 
-  jsiDumpSerialInitialisation(user_callback, user_data, "USB", addCallbacks);
+  jsiDumpSerialInitialisation(user_callback, user_data, "USB", addObjectProperties);
   int i;
   for (i=0;i<USART_COUNT;i++)
-    jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), addCallbacks);
+    jsiDumpSerialInitialisation(user_callback, user_data, jshGetDeviceString(EV_SERIAL1+i), addObjectProperties);
   for (i=0;i<SPI_COUNT;i++)
     jsiDumpDeviceInitialisation(user_callback, user_data, jshGetDeviceString(EV_SPI1+i));
   for (i=0;i<I2C_COUNT;i++)
@@ -1696,38 +1764,7 @@ bool jsiLoop() {
   return loopsIdling==0;
 }
 
-/** Output extra functions defined in an object such that they can be copied to a new device */
-NO_INLINE void jsiDumpObjectState(vcbprintf_callback user_callback, void *user_data, JsVar *parentName, JsVar *parent) {
-  JsvIsInternalChecker checker = jsvGetInternalFunctionCheckerFor(parent);
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, parent);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *child = jsvObjectIteratorGetKey(&it);
-    JsVar *data = jsvObjectIteratorGetValue(&it);
 
-    if (!checker || !checker(child)) {
-      if (jsvIsStringEqual(child, JSPARSE_PROTOTYPE_VAR)) {
-        // recurse to print prototypes
-        JsVar *name = jsvNewFromStringVar(parentName,0,JSVAPPENDSTRINGVAR_MAXLENGTH);
-        if (name) {
-          jsvAppendString(name, ".prototype");
-          jsiDumpObjectState(user_callback, user_data, name, data);
-          jsvUnLock(name);
-        }
-      } else {
-        if (!jsvIsNative(data)) {
-
-          cbprintf(user_callback, user_data, "%v.%v = ", parentName, child);
-          jsiDumpJSON(user_callback, user_data, data, 0);
-          user_callback(";\n", user_data);
-        }
-      }
-    }
-    jsvUnLock2(data, child);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
-}
 
 /** Output current interpreter state such that it can be copied to a new device */
 void jsiDumpState(vcbprintf_callback user_callback, void *user_data) {

@@ -145,7 +145,7 @@ void networkGetHostByName(
   if (!*out_ip_addr) {
     net->gethostbyname(net, hostName, out_ip_addr);
   }
-} // End of networkGetHostByName
+}
 
 
 
