@@ -669,6 +669,11 @@ bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 /// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
 
+/** Create a new arraybuffer of the given type and length, also return a pointer
+ * to the contiguous memory area containing it. Returns 0 if it was unable to
+ * allocate it. */
+JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
 /** Get the given JsVar as a character array. If it's a flat string, return a
  * pointer to it, or if it isn't allocate data on the stack and copy the data.
  *
@@ -676,7 +681,7 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
  * the data will be lost when we return. */
 #define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
   size_t TARGET_LENGTH = 0;                                                   \
-  unsigned char *TARGET_PTR = 0;                                              \
+  char *TARGET_PTR = 0;                                                       \
   if (jsvIsFlatString(DATA)) {                                                \
     TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
     TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
@@ -685,8 +690,8 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
     if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
       jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
     } else {                                                                  \
-      unsigned char *TARGET_PTR = (unsigned char *)alloca(TARGET_LENGTH);     \
-      jsvIterateCallbackToBytes(DATA, TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);     \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR, (unsigned int)TARGET_LENGTH); \
     }                                                                         \
   }
 

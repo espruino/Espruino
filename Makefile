@@ -975,10 +975,15 @@ ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
   SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/asn1parse.c \
 libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c \
 libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
-libs/crypto/mbedtls/library/pkcs5.c
+libs/crypto/mbedtls/library/pkcs5.c \
+libs/crypto/mbedtls/library/sha1.c
 endif
 
 
