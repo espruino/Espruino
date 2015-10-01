@@ -100,9 +100,10 @@ void jsiSetSleep(JsiSleepType isSleep);
 
 
 // for jswrap_interactive/io.c ----------------------------------------------------
-#define USART_CALLBACK_NAME "#ondata"
+#define USART_CALLBACK_NAME JS_EVENT_PREFIX"data"
 #define USART_BAUDRATE_NAME "_baudrate"
 #define DEVICE_OPTIONS_NAME "_options"
+#define INIT_CALLBACK_NAME JS_EVENT_PREFIX"init" ///< Callback for `E.on('init'`
 
 typedef enum {
   JSIS_NONE,

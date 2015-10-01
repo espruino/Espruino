@@ -33,7 +33,7 @@ JsVar *jswrap_espruino_toString(JsVar *args);
 
 int jswrap_espruino_reverseByte(int v);
 void jswrap_espruino_dumpTimers();
-int jswrap_espruino_getSizeOf(JsVar *v);
+JsVar *jswrap_espruino_getSizeOf(JsVar *v, int depth);
 void jswrap_espruino_mapInPlace(JsVar *from, JsVar *to, JsVar *map, JsVarInt bits);
 JsVar *jswrap_e_dumpStr();
 JsVarInt jswrap_espruino_HSBtoRGB(JsVarFloat hue, JsVarFloat sat, JsVarFloat bri);

@@ -14,13 +14,35 @@
 #include "jsspi.h"
 #include "jsinteractive.h"
 
+/**
+ * \brief Dump the internal SPI Info data structure to the console.
+ * This is an internal debugging function.
+ */
+void jsspiDumpSPIInfo(JshSPIInfo *inf) {
+	jsiConsolePrintf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
+		inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
+}
+
+
 int jsspiHardwareFunc(int data, spi_sender_data *info) {
   IOEventFlags device = *(IOEventFlags*)info;
   return jshSPISend(device, data);
 }
 
-int jsspiFastSoftwareFunc(int data, spi_sender_data *info) {
-  if (data<0) return -1;
+
+/**
+ * \brief Send a single byte through SPI.
+ * \return The received byte.
+ */
+int jsspiFastSoftwareFunc(
+    int data,             //!< The byte to send through SPI.
+	spi_sender_data *info //!< The configuration of how to send through SPI.
+  ) {
+  // Debug
+  // jsiConsolePrintf("jsspiFastSoftwareFunc: data=%x\n", data);
+  if (data<0) {
+    return -1;
+  }
   JshSPIInfo *inf = (JshSPIInfo*)info;
   // fast path for common case
   int bit;
@@ -32,9 +54,23 @@ int jsspiFastSoftwareFunc(int data, spi_sender_data *info) {
   return 0xFF;
 }
 
-int jsspiSoftwareFunc(int data, spi_sender_data *info) {
-  if (data<0) return -1;
+
+/**
+ * \brief Send a single byte through SPI.
+ * \return The received byte.
+ */
+int jsspiSoftwareFunc(
+    int data,             //!< The byte to send through SPI.
+	spi_sender_data *info //!< The configuration of how to send through SPI.
+  ) {
+  // Debug
+  // jsiConsolePrintf("jsspiSoftwareFunc: data=%x\n", data);
+  if (data < 0) {
+    return -1;
+  }
   JshSPIInfo *inf = (JshSPIInfo*)info;
+  // Debug
+  // jsspiDumpSPIInfo(inf);
 
   bool CPHA = (inf->spiMode & SPIF_CPHA)!=0;
   bool CPOL = (inf->spiMode & SPIF_CPOL)!=0;
@@ -67,10 +103,26 @@ int jsspiSoftwareFunc(int data, spi_sender_data *info) {
   return result;
 }
 
-void jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options) {
+
+/**
+ * \brief Populate a JshSPIInfo structure from a JS Object.
+ * The object properties that are examined are:
+ * * `sck` - The pin to use for the clock.
+ * * `miso` - The pin to use for Master In/Slave Out.
+ * * `mosi` - The pin to use for Master Out/Slave In.
+ * * `baud` - The baud rate value.
+ * * `mode` - The SPI mode.
+ * * `order` - The bit order (one of "msb" or "lsb")
+ */
+void jsspiPopulateSPIInfo(
+    JshSPIInfo *inf,    //!< The JshSPIInfo structure to populate.
+    JsVar      *options //!< The JS object var to parse.
+  ) {
   jshSPIInitInfo(inf);
+
+  // Validate that the options variable is indeed an object.
   if (jsvIsObject(options)) {
-    inf->pinSCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
+    inf->pinSCK  = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
     inf->pinMISO = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "miso", 0));
     inf->pinMOSI = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "mosi", 0));
 
@@ -96,10 +148,28 @@ void jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options) {
   }
 }
 
-// Get the correct SPI send function (and the data to send to it)
-bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data *spiSendData) {
+/**
+ * \brief Select the SPI send function.
+ * Get the correct SPI send function (and the data to send to it).  We do this
+ * by examining the device and determining if it is hardware, software fast
+ * or software regular.
+ * \return True on success, false otherwise.
+ */
+bool jsspiGetSendFunction(
+    JsVar           *spiDevice,  //!< The device that we want to get the SPI drivers for.
+    spi_sender      *spiSend,    //!< Return the function to called to send SPI data.
+    spi_sender_data *spiSendData //!< Return configuration data needed to drive SPI.
+  ) {
+  // The spiSendData is a little ugly.  The value set here is either an
+  // JshSPIInfo which is a structure describing the configuration of SPI or else
+  // it is a device id.
+
   IOEventFlags device = jsiGetDeviceFromClass(spiDevice);
+
+  // See if the device is hardware or software.
   if (DEVICE_IS_SPI(device)) {
+    //
+    // jsiConsolePrintf("SPI is hardware\n");
     if (!jshIsDeviceInitialised(device)) {
       JshSPIInfo inf;
       jshSPIInitInfo(&inf);
@@ -109,6 +179,8 @@ bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data
     *(IOEventFlags*)spiSendData = device;
     return true;
   } else if (device == EV_NONE) {
+    // Debug
+    // jsiConsolePrintf("SPI is software\n");
     JsVar *options = jsvObjectGetChild(spiDevice, DEVICE_OPTIONS_NAME, 0);
     static JshSPIInfo inf;
     jsspiPopulateSPIInfo(&inf, options);
@@ -116,17 +188,19 @@ bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data
 
     if (inf.pinMISO == PIN_UNDEFINED &&
         inf.pinMOSI != PIN_UNDEFINED &&
-        inf.pinSCK != PIN_UNDEFINED &&
+        inf.pinSCK  != PIN_UNDEFINED &&
         inf.spiMode == SPIF_SPI_MODE_0 &&
-        inf.spiMSB)
+        inf.spiMSB) {
       *spiSend = jsspiFastSoftwareFunc;
-    else
+    } else {
       *spiSend = jsspiSoftwareFunc;
+    }
     *spiSendData = inf;
     return true;
   }
   return false;
 }
+
 
 // Send data over SPI. If andReceive is true, write it back into the same buffer
 bool jsspiSend(JsVar *spiDevice, JsSpiSendFlags flags, char *buf, size_t len) {

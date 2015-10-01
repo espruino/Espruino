@@ -183,24 +183,35 @@ typedef enum {
   SPIB_MINIMUM,// baudRate is the minimum we'll choose
 } PACKED_FLAGS JshBaudFlags;
 
+/**
+ * \brief Definition of an SPI interface.
+ */
 typedef struct {
-  int baudRate;
-  JshBaudFlags baudRateSpec;
-  Pin pinSCK;
-  Pin pinMISO;
-  Pin pinMOSI;
-  unsigned char spiMode;
-  bool spiMSB; // MSB first?
+  int baudRate;              //!< Baud rate.
+  JshBaudFlags baudRateSpec; //!<
+  Pin pinSCK;                //!< Pin to use for clock.
+  Pin pinMISO;               //!< Pin to use for Master In/Slave Out.
+  Pin pinMOSI;               //!< Pin to use for Master Out/Slave In.
+  unsigned char spiMode;     //!<
+  bool spiMSB;               //!< MSB first?
 } PACKED_FLAGS JshSPIInfo;
-static inline void jshSPIInitInfo(JshSPIInfo *inf) {
-  inf->baudRate = 100000;
+
+
+/**
+ * \brief Initialize a JshSPIInfo structure to defaults.
+ */
+static inline void jshSPIInitInfo(
+    JshSPIInfo *inf //!< The JshSPIInfo structure to initialize to defaults.
+  ) {
+  inf->baudRate     = 100000;
   inf->baudRateSpec = SPIB_DEFAULT;
-  inf->pinSCK = PIN_UNDEFINED;
-  inf->pinMISO = PIN_UNDEFINED;
-  inf->pinMOSI = PIN_UNDEFINED;
-  inf->spiMode = SPIF_SPI_MODE_0;
-  inf->spiMSB = true; // MSB first is default
+  inf->pinSCK       = PIN_UNDEFINED;
+  inf->pinMISO      = PIN_UNDEFINED;
+  inf->pinMOSI      = PIN_UNDEFINED;
+  inf->spiMode      = SPIF_SPI_MODE_0;
+  inf->spiMSB       = true; // MSB first is default
 }
+
 
 /** Set up SPI, if pins are -1 they will be guessed */
 void jshSPISetup(IOEventFlags device, JshSPIInfo *inf);
