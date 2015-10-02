@@ -476,6 +476,7 @@ bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - fast
 size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
 size_t jsvGetFlatStringBlocks(JsVar *v); ///< return the number of blocks used by the given flat string
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
+JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null

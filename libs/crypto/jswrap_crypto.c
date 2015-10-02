@@ -102,7 +102,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
         (unsigned char*)saltPtr, saltLen,
         (unsigned)iterations,
         (unsigned)keySize*4, (unsigned char*)keyPtr );
-
+  mbedtls_md_free( &ctx );
   if (!err) {
     return keyArr;
   } else {
@@ -162,7 +162,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
                      messageLen,
                      iv,
                      messagePtr,
-                     outPtr );
+                     (unsigned char*)outPtr );
 
   mbedtls_aes_free( &aes );
   if (!err) {

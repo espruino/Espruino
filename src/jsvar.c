@@ -1083,6 +1083,13 @@ char *jsvGetFlatStringPointer(JsVar *v) {
   return (char*)(v+1); // pointer to the next JsVar
 }
 
+JsVar *jsvGetFlatStringFromPointer(char *v) {
+  JsVar *secondVar = (JsVar*)v;
+  JsVar *flatStr = secondVar-1;
+  assert(jsvIsFlatString(flatStr));
+  return flatStr;
+}
+
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {
   size_t lines = 1;
