@@ -70,6 +70,14 @@ static void gotIpCallback() {
 } // End of gotIpCallback
 #endif
 
+static char *rst_codes[] = {
+  "normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
+};
+static char *flash_maps[] = {
+  "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
+  "2MB:1024/1024", "4MB:1024/1024"
+};
+
 /**
  * \brief Dump the ESP8266 restart information.
  * This is purely for debugging.
@@ -79,13 +87,17 @@ static void gotIpCallback() {
 static void dumpRestart() {
 	struct rst_info *rstInfo = system_get_rst_info();
 	os_printf("Restart info:\n");
-	os_printf("  reason:   %d\n", rstInfo->reason);
+	os_printf("  reason:   %d=%s\n", rstInfo->reason, rst_codes[rstInfo->reason]);
 	os_printf("  exccause: %x\n", rstInfo->exccause);
 	os_printf("  epc1:     %x\n", rstInfo->epc1);
 	os_printf("  epc2:     %x\n", rstInfo->epc2);
 	os_printf("  epc3:     %x\n", rstInfo->epc3);
 	os_printf("  excvaddr: %x\n", rstInfo->excvaddr);
 	os_printf("  depc:     %x\n", rstInfo->depc);
+
+	uint32_t fid = spi_flash_get_id();
+	os_printf("Flash map %s, manuf 0x%02lX chip 0x%04lX\n", flash_maps[system_get_flash_size_map()],
+		fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
 } // End of dump_restart
 
 
@@ -115,6 +127,19 @@ static void enableMainLoop() {
 	suspendMainLoopFlag = false;
 	queueTaskMainLoop();
 } // End of enableMainLoop
+
+/**
+ * \brief Idle callback from the SDK, triggers an idle loop iteration
+ */
+static void idle(void) {
+	// The idle callback comes form the SDK's ets_run function just before it puts the
+	// processor to sleep waiting for an interrupt to occur. I.e. it's really a
+	// "I am about to idle the processor" interrupt not a persistent "I am idle"
+	// callback that comes over and over.
+	// We thus have to use this callback to trigger something so it doesn't in fact go
+	// idle.
+	system_os_post(TASK_APP_QUEUE, TASK_APP_MAINLOOP, 0);
+}
 
 
 /**
@@ -200,8 +225,9 @@ static void initDone() {
 	// Initialize the networking subsystem.
 	jswrap_ESP8266WiFi_init();
 
-	// Post the first event to get us going.
-	queueTaskMainLoop();
+	// Register the idle callback handler to run the main loop
+	//ets_set_idle_cb(idle_cb, NULL); //
+	queueTaskMainLoop(); // get things going without idle callback
 
 	return;
 } // End of initDone

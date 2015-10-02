@@ -23,6 +23,16 @@ typedef long long int64_t;
 // microseconds.
 #define MAX_SLEEP_TIME_US	10000
 
+// Save-to-flash uses the 16KB of "user params" locates right after the first firmware
+// block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
+// map details. The jshFlash functions use memory-mapped reads to access the first 1MB
+// of flash and refuse to go beyond that. Writing uses the SDK functions and is also
+// limited to the first MB.
+#define FLASH_MAX (1024*1024)
+#define FLASH_MMAP 0x40200000
+#define FLASH_PAGE_SHIFT 12 // 4KB
+#define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)
+
 /**
  * Transmit all the characters in the transmit buffer.
  *
@@ -442,25 +452,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
 		unsigned char *data, bool sendStop) {
 } // End of jshI2CRead
 
-/**
- * \brief Save what is in RAM to flash.
- * See also `jshLoadFromFlash`.
- */
-void jshSaveToFlash() {
-	os_printf("ESP8266: jshSaveToFlash\n");
-} // End of jshSaveToFlash
-
-void jshLoadFromFlash() {
-	os_printf("ESP8266: jshLoadFromFlash\n");
-} // End of jshLoadFromFlash
-
-
-bool jshFlashContainsCode() {
-	os_printf("ESP8266: jshFlashContainsCode\n");
-	return false;
-} // End of jshFlashContainsCode
-
-
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 	int time = (int) timeUntilWake;
@@ -503,38 +494,75 @@ unsigned int jshGetRandomNumber() {
 /**
  * \brief Read data from flash memory into the buffer.
  *
+ * This reads from flash using memory-mapped reads. Only works for the first 1MB and
+ * requires 4-byte aligned reads.
+ *
  */
 void jshFlashRead(
 		void *buf,     //!< buffer to read into
 		uint32_t addr, //!< Flash address to read from
 		uint32_t len   //!< Length of data to read
 	) {
-	os_printf("ESP8266: jshFlashRead: buf=0x%x for len=%d from flash addr=0x%x\n", buf, len, addr);
+	//os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
+	//		buf, len, addr, FLASH_MAX);
+
+	// make sure we stay with the flash address space
+	if (addr >= FLASH_MAX) return;
+	if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
+	addr += FLASH_MMAP;
+
+	// copy the bytes reading a word from flash at a time
+	uint8_t *dest = buf;
+	uint32_t bytes = *(uint32_t*)(addr & ~3);
+	while (len-- > 0) {
+		if (addr & 3 == 0) bytes = *(uint32_t*)addr;
+		*dest++ = ((uint8_t*)&bytes)[(uint32)addr++ & 3];
+	}
 } // End of jshFlashRead
 
 
 /**
  * \brief Write data to flash memory from the buffer.
+ *
+ * This is called from jswrap_flash_write and ... which guarantee that addr is 4-byte aligned
+ * and len is a multiple of 4.
  */
 void jshFlashWrite(
 		void *buf,     //!< Buffer to write from
 		uint32_t addr, //!< Flash address to write into
 		uint32_t len   //!< Length of data to write
 	) {
-	os_printf("ESP8266: jshFlashWrite: buf=0x%x for len=%d into flash addr=0x%x\n", buf, len, addr);
+	//os_printf("ESP8266: jshFlashWrite: src=%p for len=%ld into flash addr=0x%lx\n",
+	//    buf, len, addr);
+
+	// make sure we stay with the flash address space
+	if (addr >= FLASH_MAX) return;
+	if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
+
+	// since things are guaranteed to be aligned we can just call the SDK :-)
+	SpiFlashOpResult res;
+	res = spi_flash_write(addr, buf, len);
+	if (res != SPI_FLASH_RESULT_OK)
+		os_printf("ESP8266: jshFlashWrite %s\n",
+			res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
 } // End of jshFlashWrite
 
 
 /**
- * \brief Return start address and size of the flash page the given address resides in. Returns false if no page.
+ * \brief Return start address and size of the flash page the given address resides in.
+ * Returns false if no page.
  */
 bool jshFlashGetPage(
 		uint32_t addr,       //!<
 		uint32_t *startAddr, //!<
 		uint32_t *pageSize   //!<
 	) {
-	os_printf("ESP8266: jshFlashGetPage: addr=0x%x, startAddr=0x%x, pageSize=%d\n", addr, startAddr, pageSize);
-	return false;
+	//os_printf("ESP8266: jshFlashGetPage: addr=0x%lx, startAddr=%p, pageSize=%p\n", addr, startAddr, pageSize);
+
+	if (addr >= FLASH_MAX) return false;
+	*startAddr = addr & ~(FLASH_PAGE-1);
+	*pageSize = FLASH_PAGE;
+	return true;
 } // End of jshFlashGetPage
 
 
@@ -544,7 +572,13 @@ bool jshFlashGetPage(
 void jshFlashErasePage(
 		uint32_t addr //!<
 	) {
-	os_printf("ESP8266: jshFlashErasePage: addr=0x%x\n", addr);
+	//os_printf("ESP8266: jshFlashErasePage: addr=0x%lx\n", addr);
+
+	SpiFlashOpResult res;
+	res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);
+	if (res != SPI_FLASH_RESULT_OK)
+		os_printf("ESP8266: jshFlashErase%s\n",
+				res == SPI_FLASH_RESULT_ERR ? "error" : "timeout");
 } // End of jshFlashErasePage
 
 

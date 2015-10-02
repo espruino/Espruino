@@ -467,7 +467,7 @@ else ifdef ESP8266_512KB
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline
 ESP_FLASH_SIZE      ?= 0       # 0->512KB
@@ -484,8 +484,8 @@ else ifdef ESP8266_4MB
 # late 2MB-16KB to leave 1MB unused for future plans
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+BOARD=ESP8266_OTA
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
 OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
@@ -502,8 +502,8 @@ else ifdef ESP8266_2MB
 # esp8266 with 2MB flash chip with OTA support: same as 4MB except we have 1MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+BOARD=ESP8266_OTA
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
@@ -522,8 +522,8 @@ else ifdef ESP8266_1MB
 # for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+BOARD=ESP8266_OTA
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-O2 -fno-inline-functions
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
@@ -643,8 +643,8 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-ifeq ($(BOARD),ESP8266_BOARD)
-USE_ESP8266_BOARD=1
+ifeq ($(FAMILY),ESP8266)
+USE_ESP8266=1
 else
 USE_CC3000=1
 endif
