@@ -30,26 +30,22 @@ static uint32_t nrf_utils_flash_size = 4096 * 128;
 
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
 {
-  print_string_to_terminal("nrf_utils_get_page:\n", 20);
   if (addr > nrf_utils_flash_size)
   {
 	  return false;
   }
-  *page_address = (uint32_t) floor(addr / nrf_utils_flash_page_size);
+  *page_address = (uint32_t) (floor(addr / nrf_utils_flash_page_size) * nrf_utils_flash_page_size);
   *page_size = (uint32_t) nrf_utils_flash_page_size;
   return true;
 }
 
 void nrf_utils_erase_flash_page(uint32_t addr)
 {
-  print_string_to_terminal("nrf_utils_erase_flash_page:\n", 28);
   nrf_nvmc_page_erase(addr);
 }
 
 void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
 {
-  print_string_to_terminal("nrf_utils_read_flash_bytes:\n", 28);
-
   if (addr > nrf_utils_flash_size)
   {
   	return;
@@ -75,7 +71,6 @@ void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
 
 void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
 {
-  print_string_to_terminal("nrf_utils_write_flash_bytes:\n", 29);
   nrf_nvmc_write_bytes(addr, buf, len);
 }
 

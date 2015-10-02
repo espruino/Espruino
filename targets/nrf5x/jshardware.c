@@ -320,13 +320,16 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 
 /**
  * buf is an array of uint8_t characters.
- * address is checked that it is word aligned and len is chceked that it is a multiple of 4.
+ * address is checked that it is word aligned and len is checked that it is a multiple of 4.
  * len is the number of bytes to write
- *
  */
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
+void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 {
   uint8_t * write_buf = buf;
+  if ((addr & (3UL)) != 0 || (len % 4) != 0)
+  {
+	  return;
+  }
   nrf_utils_write_flash_bytes(addr, write_buf, len);
 }
 
