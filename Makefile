@@ -1198,7 +1198,7 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
@@ -1364,6 +1364,7 @@ ifndef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 else ifdef NRF5X
  LDFLAGS += $(ARCHFLAGS)
+ LDFLAGS += --specs=nano.specs -lc -lnosys
 endif # NRF5X
 
 ifdef EMBEDDED
@@ -1374,10 +1375,6 @@ endif
 ifdef LINKER_FILE
   LDFLAGS += -T$(LINKER_FILE)
 endif
-
-ifdef NRF5X
-  LDFLAGS += --specs=nano.specs -lc -lnosys
-endif # NRF5X
 
 #
 # Definitions for the build of the ESP8266

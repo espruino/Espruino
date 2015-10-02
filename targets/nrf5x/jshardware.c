@@ -282,7 +282,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 }
 
-/// Return start address and size of the flash page the given address resides in. Returns false if no page
+/// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 {
   if (!nrf_utils_get_page(addr, startAddr, pageSize))
@@ -292,24 +292,42 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
   return true;
 }
 
-/// Erase the flash page containing the address
+/// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
-  nrf_utils_erase_flash_page(addr);
+  uint32_t * startAddr;
+  uint32_t * pageSize;
+  if (!jshFlashGetPage(addr, startAddr, pageSize))
+  {
+    return;
+  }
+  nrf_utils_erase_flash_page(*startAddr);
 }
 
-/// Read data from flash memory into the buffer
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len)
+/**
+ * This function is called from jswrap_flash.c.
+ * It is misleading, void * buf is really just a pointer to a single character.
+ * This function is actually called in a loop with len = 1 each time.
+ * Addr is incremented by 1 (byte by byte)
+ * But be careful, it might be called from somewhere else...
+ * TODO: fix the way this is called in jswrap_flash.c
+ */
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_read_flash_bytes((uint8_t *) buf, addr, len);
-  //nrf_utils_read_flash_addresses(buf, addr, len);
+  uint8_t * read_buf = buf;
+  nrf_utils_read_flash_bytes(read_buf, addr, len);
 }
 
-/// Write data to flash memory from the buffer
+/**
+ * buf is an array of uint8_t characters.
+ * address is checked that it is word aligned and len is chceked that it is a multiple of 4.
+ * len is the number of bytes to write
+ *
+ */
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_write_flash_bytes(addr, (uint8_t *) buf, len);
-  //nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, (len / 4));
+  uint8_t * write_buf = buf;
+  nrf_utils_write_flash_bytes(addr, write_buf, len);
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success

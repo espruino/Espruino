@@ -21,13 +21,10 @@
 #include <stdint.h>
 
 // Functions for reading and writing flash.
-void nrf_utils_write_flash_address(uint32_t addr, uint32_t val);
-void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len);
-void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len);
-void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len);
-void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len);
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size);
 void nrf_utils_erase_flash_page(uint32_t addr);
+void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len);
+void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len);
 
 // Functions for configuring and setting GPIOS.
 void nrf_utils_gpio_pin_set(uint32_t pin);
