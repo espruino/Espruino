@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 #include "nrf5x_utils.h"
 
@@ -21,46 +22,151 @@
 #include "nrf_temp.h"
 #include "app_uart.h"
 #include "nrf_error.h"
+#include "nrf_nvmc.h"
 
-#define LED1 17
-#define LED2 18
-#define LED3 19
-#define LED4 20
+#define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
+#define NRF_UTILS_NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
 
-void nrf_utils_cnfg_leds_as_outputs() 
+void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
 {
+  print_string_to_terminal("nrf_utils_write_flash_address\n", 31);
+  nrf_nvmc_write_word(addr, val);
+}
 
-  nrf_gpio_cfg_output(LED1);
-  nrf_gpio_cfg_output(LED2);
-  nrf_gpio_cfg_output(LED3);
-  nrf_gpio_cfg_output(LED4);
+void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
+{
+  nrf_nvmc_write_bytes(addr, buf, len);
+}
 
-  // Turn all the LEDS off. 1 means off on the nRF52DK...
-  nrf_gpio_pin_set(LED1);
-  nrf_gpio_pin_set(LED2);
-  nrf_gpio_pin_set(LED3);
-  nrf_gpio_pin_set(LED4);
+void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len)
+{
+	nrf_nvmc_write_words(addr, src, len); // Is there a bug here??? see nvmc.h header file it says len is bytes?
+}
 
+bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
+{
+  print_string_to_terminal("nrf_utils_get_page\n", 19);
+  if (addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
+  {
+	  return false;
+  }
+  *page_address = (uint32_t) floor(addr / NRF_UTILS_FLASH_PAGE_SIZE);
+  *page_size = (uint32_t) NRF_UTILS_FLASH_PAGE_SIZE;
+  return true;
+}
+
+void nrf_utils_erase_flash_page(uint32_t addr)
+{
+	print_string_to_terminal("nrf_utils_erase_flash_page\n", 27);
+	uint32_t page_address;
+	uint32_t page_size;
+	if (nrf_utils_get_page(addr, &page_address, &page_size))
+	{
+		nrf_nvmc_page_erase(page_address);
+	}
+}
+
+void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
+{
+  print_string_to_terminal("nrf_utils_read_flash_bytes\n", 27);
+  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+
+  uint32_t i;
+  uint32_t word;
+  for(i = 0; i < len; i += 4)
+  {
+	word = *((uint32_t *) (addr + i));
+	((uint8_t *) buf)[i] = (uint8_t) (word & 0xFF);
+	((uint8_t *) buf)[i+1] = (uint8_t) ((word & 0xFF00) >> 8);
+	((uint8_t *) buf)[i+2] = (uint8_t) ((word & 0xFF0000) >> 16);
+	((uint8_t *) buf)[i+3] = (uint8_t) ((word & 0xFF000000) >> 24);
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+  }
+}
+
+void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
+{
+  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+
+  uint32_t i;
+  for(i = 0; i < len; i++)
+  {
+	((uint32_t *) buf)[i] = *((uint32_t *) (addr + i));
+	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+  }
+}
+
+void nrf_utils_gpio_pin_set(uint32_t pin)
+{
+  nrf_gpio_pin_set(pin);
+}
+
+void nrf_utils_gpio_pin_clear(uint32_t pin)
+{
+  nrf_gpio_pin_clear(pin);
+}
+
+uint32_t nrf_utils_gpio_pin_read(uint32_t pin)
+{
+  return nrf_gpio_pin_read(pin);
+}
+
+void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
+{
+	switch (state)
+	{
+	  case 0 :
+	    nrf_gpio_cfg_default(pin);
+		break;
+	  case 1 :
+	    nrf_gpio_cfg_output(pin);
+	  	break;
+	  case 2 :
+        nrf_gpio_cfg_output(pin);
+		break;
+	  case 3 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_NOPULL);
+	  	break;
+	  case 4 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLUP);
+		break;
+	  case 5 :
+		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLDOWN);
+		break;
+	  case 6 :
+	    break;
+	  case 7 :
+	  	break;
+	  case 8 :
+		break;
+	  case 9 :
+	  	break;
+	  case 10 :
+	    break;
+	  case 11 :
+	  	break;
+	  case 12 :
+		break;
+	  case 13 ://wrong...
+	  	break;
+	  case 14 : //wrong...
+	    break;
+	  default :
+		break;
+	}
+}
+
+// TODO implement this.
+uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
+{
+	/*uint32_t pin_register;
+	pin_register = NRF_GPIO->PIN_CNF[pin];*/
+    return (uint32_t) 0;
 }
 
 void nrf_utils_delay_us(uint32_t microsec) 
 {
   nrf_delay_us(microsec);
-}
-
-void nrf_utils_gpio_pin_set(uint32_t pin) 
-{
-  nrf_gpio_pin_set(pin);
-}
-
-void nrf_utils_gpio_pin_clear(uint32_t pin) 
-{
-  nrf_gpio_pin_clear(pin);
-}
-
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin) 
-{
-  nrf_gpio_pin_read(pin);
 }
 
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
@@ -86,6 +192,25 @@ void nrf_utils_lfclk_config_and_start()
     // Do nothing...
   }
 
+}
+
+int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
+{
+	uint32_t deviceID[2];
+	deviceID[0] = NRF_FICR->DEVICEID[0];
+	deviceID[1] = NRF_FICR->DEVICEID[1];
+
+	uint8_t * temp = (uint8_t *) &deviceID[0];
+
+	uint32_t i;
+	for (i = 0; i < maxChars || i < 8; i++)
+	{
+	  *device_id = *temp;
+	  device_id++;
+	  temp++;
+	}
+
+	return i;
 }
 
 // Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
@@ -146,12 +271,11 @@ void nrf_utils_app_uart_put(uint8_t character) {
 	while (app_uart_put(character) != NRF_SUCCESS);
 }
 
-/*void nrf_utils_erase_flash_page(uint32_t addr) {
-
-	NRF_NVMC->CONFIG = (2UL); // Configure the NVMC for erasing.
-	while (NRF_NVMC->READY != (1UL)); // Wait for the NVMC to be ready.
-	NRF_NVMC->ERASEPAGE = addr; // Erase the page specified by given address.
-	while (NRF_NVMC->READY != (1UL)); // Wait for the erase operation to complete.
-	NRF_NVMC->CONFIG = (0x0); // Set NVMC back to read only.
-
-}*/
+void print_string_to_terminal(uint8_t * debug_string, uint32_t len)
+{
+  int i;
+  for (i = 0; i < len; i++)
+  {
+	  nrf_utils_app_uart_put((char) debug_string[i]);
+  }
+}
