@@ -113,8 +113,22 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 }
 
 
-static NO_INLINE JsVar *jswrap_crypto_AES_crypt(JsVar *message, JsVar *key, bool encrypt) {
+static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar *options, bool encrypt) {
   int err;
+
+  unsigned char iv[16]; // initialisation vector
+  if (jsvIsObject(options)) {
+    JsVar *ivVar = jsvObjectGetChild(options, "iv", 0);
+    if (ivVar) {
+      jsvIterateCallbackToBytes(ivVar, iv, sizeof(iv));
+      jsvUnLock(ivVar);
+    }
+  } else if (jsvIsUndefined(options)) {
+    memset(iv, 0, 16);
+  } else {
+    jsError("'options' must be undefined, or an Object");
+    return 0;
+  }
 
   mbedtls_aes_context aes;
   mbedtls_aes_init( &aes );
@@ -141,8 +155,7 @@ static NO_INLINE JsVar *jswrap_crypto_AES_crypt(JsVar *message, JsVar *key, bool
     return 0;
   }
 
-  unsigned char iv[16]; // initialisation vector
-  memset(iv, 0, 16);
+
 
   err = mbedtls_aes_crypt_cbc( &aes,
                      encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT,
@@ -164,33 +177,35 @@ static NO_INLINE JsVar *jswrap_crypto_AES_crypt(JsVar *message, JsVar *key, bool
 /*JSON{
   "type" : "staticmethod",
   "class" : "crypto",
-  "name" : "AES_encrypt",
-  "generate" : "jswrap_crypto_AES_encrypt",
+  "name" : "AESencrypt",
+  "generate" : "jswrap_crypto_AESencrypt",
   "params" : [
     ["passphrase","JsVar","Message to encrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"]
+    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16) }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer"
 }
 */
-JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key) {
-  return jswrap_crypto_AES_crypt(message, key, true);
+JsVar *jswrap_crypto_AESencrypt(JsVar *message, JsVar *key, JsVar *options) {
+  return jswrap_crypto_AEScrypt(message, key, options, true);
 }
 
 /*JSON{
   "type" : "staticmethod",
   "class" : "crypto",
-  "name" : "AES_decrypt",
-  "generate" : "jswrap_crypto_AES_decrypt",
+  "name" : "AESdecrypt",
+  "generate" : "jswrap_crypto_AESdecrypt",
   "params" : [
     ["passphrase","JsVar","Message to decrypt"],
-    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"]
+    ["key","JsVar","Key to encrypt message - must be an ArrayBuffer of 128, 192, or 256 BITS"],
+    ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16) }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer"
 }
 */
-JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key) {
-  return jswrap_crypto_AES_crypt(message, key, false);
+JsVar *jswrap_crypto_AESdecrypt(JsVar *message, JsVar *key, JsVar *options) {
+  return jswrap_crypto_AEScrypt(message, key, options, false);
 }
