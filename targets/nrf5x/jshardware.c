@@ -1,4 +1,4 @@
-/*
+/**
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
@@ -37,7 +37,7 @@ void jshInit()
   nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
 }
 
@@ -305,12 +305,7 @@ void jshFlashErasePage(uint32_t addr)
 }
 
 /**
- * This function is called from jswrap_flash.c.
- * It is misleading, void * buf is really just a pointer to a single character.
- * This function is actually called in a loop with len = 1 each time.
- * Addr is incremented by 1 (byte by byte)
- * But be careful, it might be called from somewhere else...
- * TODO: fix the way this is called in jswrap_flash.c
+ * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 {
@@ -319,9 +314,7 @@ void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 }
 
 /**
- * buf is an array of uint8_t characters.
- * address is checked that it is word aligned and len is checked that it is a multiple of 4.
- * len is the number of bytes to write
+ * Writes an array of bytes to memory. Addr must be word aligned and len must be a multiple of 4.
  */
 void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 {
