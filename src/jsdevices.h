@@ -74,8 +74,10 @@ typedef enum {
 } PACKED_FLAGS IOEventFlags;
 
 
-
+// Return true if the device is a USART
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+
+// Return true if the device is an SPI.
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
 #define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
@@ -92,7 +94,7 @@ typedef union {
 
 // IO Events - these happen when a pin changes
 typedef struct IOEvent {
-  IOEventFlags flags; // where this came from, and # of chars in it
+  IOEventFlags flags; //!< Where this came from, and # of chars in it
   IOEventData data;
 } PACKED_FLAGS IOEvent;
 

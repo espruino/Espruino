@@ -22,9 +22,9 @@
  * Associated with the array are accessor functions:
  *
  * o getNextFreeSocket - Return the next free socket or -1 if there are no free sockets.
- * o getSocketData - Get the socketData structure corresponding to the socket integer.
- * o resetSocket - Reset the state of the socket and clean it up if needed.
- * o releaseSocket - Release the socket and return it to the pool of unused sockets.
+ * o getSocketData     - Get the socketData structure corresponding to the socket integer.
+ * o resetSocket       - Reset the state of the socket and clean it up if needed.
+ * o releaseSocket     - Release the socket and return it to the pool of unused sockets.
  *
  */
 // ESP8266 specific includes
@@ -148,11 +148,11 @@ enum SOCKET_STATE {
  * The structure is initialized by resetSocket.
  */
 struct socketData {
-	int		socketId;			//!< The id of THIS socket.
-	enum SOCKET_STATE state;	//!< What is the socket state?
-	bool    isConnected;		//!< Is this socket connected?
-	bool    isServer;			//!< Are we a server?
-	bool	shouldClose;		//!< Should this socket close when it can?
+	int		socketId;          //!< The id of THIS socket.
+	enum SOCKET_STATE state; //!< What is the socket state?
+	bool isConnected;        //!< Is this socket connected?
+	bool isServer;           //!< Are we a server?
+	bool shouldClose;        //!< Should this socket close when it can?
 
 	struct  espconn *pEspconn;	//!< The ESPConn structure.
 
@@ -170,20 +170,19 @@ struct socketData {
 	 * server socket but have not yet been delivered to Espruino.  A `head` and `tail`
 	 * pair of indices are also associated.
 	 */
-	int     acceptedSockets[MAX_ACCEPTED_SOCKETS];
+	int acceptedSockets[MAX_ACCEPTED_SOCKETS];
 
 	/**
 	 * \brief The head of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be placed.
 	 */
-	uint8   acceptedSocketsHead;
+	uint8 acceptedSocketsHead;
 
 	/**
 	 * \brief The tail of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be retrieved.
 	 */
-	uint8   acceptedSocketsTail;
-
+	uint8 acceptedSocketsTail;
 };
 
 
@@ -402,26 +401,25 @@ static void resetSocket(
 
 	memoryBuffer_delete(&pSocketData->txMemoryBuffer);
 
-	pSocketData->pEspconn       = &espconnArray[sckt];
-	pSocketData->state			= SOCKET_STATE_UNUSED;
-	pSocketData->rxBuf          = NULL;
-	pSocketData->rxBufLen       = 0;
-	pSocketData->isServer       = false;
-	pSocketData->isConnected    = false;
-	pSocketData->shouldClose    = false;
-	pSocketData->socketId       = sckt;
-	pSocketData->errorMsg       = "";
-	pSocketData->errorCode      = 0;
+	pSocketData->pEspconn    = &espconnArray[sckt];
+	pSocketData->state			 = SOCKET_STATE_UNUSED;
+	pSocketData->rxBuf       = NULL;
+	pSocketData->rxBufLen    = 0;
+	pSocketData->isServer    = false;
+	pSocketData->isConnected = false;
+	pSocketData->shouldClose = false;
+	pSocketData->socketId    = sckt;
+	pSocketData->errorMsg    = "";
+	pSocketData->errorCode   = 0;
 
 	pSocketData->acceptedSocketsHead = 0; // Set the head to 0
 	pSocketData->acceptedSocketsTail = 0; // Set the tail to 9.
 
-	struct espconn *pEspconn    = pSocketData->pEspconn;
-	pEspconn->type              = ESPCONN_TCP;
-	pEspconn->state             = ESPCONN_NONE;
-	pEspconn->proto.tcp         = &tcpArray[sckt];
-	pEspconn->reverse           = NULL;
-
+	struct espconn *pEspconn = pSocketData->pEspconn;
+	pEspconn->type           = ESPCONN_TCP;
+	pEspconn->state          = ESPCONN_NONE;
+	pEspconn->proto.tcp      = &tcpArray[sckt];
+	pEspconn->reverse        = NULL;
 
 	espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_outbound);
 	espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
