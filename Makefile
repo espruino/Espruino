@@ -467,9 +467,8 @@ else ifdef ESP8266_512KB
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # We have to disable inlining to keep code size in check
-OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline
+OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
@@ -480,12 +479,10 @@ ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless sett
 
 else ifdef ESP8266_4MB
 # esp8266 with 4MB flash chip with OTA support: we get 492KB in the first 512, 492 KB in the
-# second 512KB for firmware; and then we have 3MB-16KB for SPIFFS of which we're gonna use the
-# late 2MB-16KB to leave 1MB unused for future plans
+# second 512KB for firmware; and then we have 3MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_OTA
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
 OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
@@ -503,7 +500,6 @@ else ifdef ESP8266_2MB
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_OTA
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
@@ -523,7 +519,6 @@ else ifdef ESP8266_1MB
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_OTA
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-O2 -fno-inline-functions
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
@@ -1242,6 +1237,7 @@ endif #NRF5X
 ifeq ($(FAMILY),ESP8266)
 # move os_printf strings into flash to save RAM space
 DEFINES += -DUSE_OPTIMIZE_PRINTF
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA
 ESP8266=1
 LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
 CFLAGS+= -fno-builtin -fno-strict-aliasing \

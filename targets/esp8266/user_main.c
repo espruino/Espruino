@@ -215,7 +215,7 @@ static void initDone() {
 
 	jshInit(); // Initialize the hardware
 	jsvInit(); // Initialize the variables
-	jsiInit(false); // Initialize the interactive subsystem
+	jsiInit(true); // Initialize the interactive subsystem
 
 	// Register the event handlers.
 	system_os_task(eventHandler, TASK_APP_QUEUE, taskAppQueue, TASK_QUEUE_LENGTH);
