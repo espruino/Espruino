@@ -483,11 +483,14 @@ size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A 
 
 
 /**
-  jsvIsStringEqualOrStartsWith(A, B, false) is a proper A==B
-  jsvIsStringEqualOrStartsWith(A, B, true) is A.startsWith(B)
+  Compare a string with a C string. Returns 0 if A is not a string.
+
+  `jsvIsStringEqualOrStartsWith(A, B, false)` is a proper `A==B`
+  `jsvIsStringEqualOrStartsWith(A, B, true)` is `A.startsWith(B)`
 */
 bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith);
-bool jsvIsStringEqual(JsVar *var, const char *str);
+bool jsvIsStringEqual(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
+bool jsvIsStringEqualAndUnLock(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one

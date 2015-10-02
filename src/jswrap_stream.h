@@ -15,7 +15,7 @@
 
 
 #define STREAM_BUFFER_NAME JS_HIDDEN_CHAR_STR"buf" // the buffer to store data in when no listener is defined
-#define STREAM_CALLBACK_NAME "#ondata"
+#define STREAM_CALLBACK_NAME JS_EVENT_PREFIX"data"
 #define STREAM_MAX_BUFFER_SIZE 512
 
 JsVarInt jswrap_stream_available(JsVar *parent);

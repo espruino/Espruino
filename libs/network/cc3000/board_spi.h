@@ -50,7 +50,7 @@ void cc3000_check_irq_pin();
 #include "jsvar.h"
 
 #define CC3000_OBJ_NAME "cc3000"
-#define CC3000_ON_STATE_CHANGE "#onstate"
+#define CC3000_ON_STATE_CHANGE JS_EVENT_PREFIX"state"
 
 void cc3000_initialise(JsVar *wlanObj);
 

@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains built-in functions for SD card access
+ * Contains built-in functions for SHA hashes
  * ----------------------------------------------------------------------------
  */
 #include <string.h>

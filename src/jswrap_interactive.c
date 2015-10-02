@@ -125,7 +125,7 @@ void jswrap_interface_trace(JsVar *root) {
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
-Note: 'Internal' functions are currently not handled correctly. You will need to recreate these in the onInit function.
+Note: 'Internal' functions are currently not handled correctly. You will need to recreate these in the `onInit` function.
  */
 /*JSON{
   "type" : "function",
@@ -134,22 +134,37 @@ Note: 'Internal' functions are currently not handled correctly. You will need to
 }
 Load program memory out of flash
 
-This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;load();a=2;``` will still leave 'a' as undefined (or what it was set to in the saved program).
+This command only executes when the Interpreter returns to the Idle state - for
+instance ```a=1;load();a=2;``` will still leave 'a' as undefined (or what it was
+set to in the saved program).
 
-Espruino will resume from where it was when you last typed `save()`. If you want code to be executed right after loading (for instance to initialise devices connected to Espruino), create a function called `onInit` (which will be automatically executed by Espruino).
+Espruino will resume from where it was when you last typed `save()`.
+If you want code to be executed right after loading (for instance to initialise
+devices connected to Espruino), add an `init` event handler to `E` with
+`E.on('init', function() { ... your_code ... });`. This will then be automatically
+executed by Espruino every time it starts.
  */
 /*JSON{
   "type" : "function",
   "name" : "save",
   "generate_full" : "jsiStatus|=JSIS_TODO_FLASH_SAVE;"
 }
-Save program memory into flash. It will then be loaded automatically every time Espruino powers on or is hard-reset.
+Save program memory into flash. It will then be loaded automatically every time
+Espruino powers on or is hard-reset.
 
-This command only executes when the Interpreter returns to the Idle state - for instance ```a=1;save();a=2;``` will save 'a' as 2.
+This command only executes when the Interpreter returns to the Idle state - for
+instance ```a=1;save();a=2;``` will save 'a' as 2.
 
-When Espruino powers on, it will resume from where it was when you typed `save()`. If you want code to be executed right after loading (for instance to initialise devices connected to Espruino), create a function called `onInit` (which will be automatically executed by Espruino).
+When Espruino powers on, it will resume from where it was when you typed `save()`.
+If you want code to be executed right after loading (for instance to initialise
+devices connected to Espruino), add an `init` event handler to `E` with
+`E.on('init', function() { ... your_code ... });`. This will then be automatically
+executed by Espruino every time it starts.
 
-In order to stop the program saved with this command being loaded automatically, hold down Button 1 while also pressing reset. On some boards, Button 1 enters bootloader mode, so you will need to press Reset with Button 1 raised, and then hold Button 1 down a fraction of a second later.
+In order to stop the program saved with this command being loaded automatically,
+hold down Button 1 while also pressing reset. On some boards, Button 1 enters
+bootloader mode, so you will need to press Reset with Button 1 raised, and then
+hold Button 1 down a fraction of a second later.
  */
 /*JSON{
   "type" : "function",
