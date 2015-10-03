@@ -474,11 +474,15 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
 
 /**
- * Kick a device into action (if required). For instance we may need
+ * \brief
+ * Kick a device into action (if required).
+ * For instance we may need
  * to set up interrupts.  In this ESP8266 implementation, we transmit all the
  * data that can be found associated with the device.
  */
-void jshUSARTKick(IOEventFlags device) {
+void jshUSARTKick(
+    IOEventFlags device //!< The device to be kicked.
+  ) {
 	esp8266_uartTransmitAll(device);
 }
 
