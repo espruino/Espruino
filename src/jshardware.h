@@ -27,50 +27,65 @@
 #include <inttypes.h>
 #endif
 
+
+/// jshInit is called at start-up, put hardware dependent init stuff in this function
 void jshInit();
-void jshReset(); // When 'reset' is called - we try and put peripherals back to their power-on state
-void jshKill();
-void jshIdle(); // stuff to do on idle
+/// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
+void jshReset();
+/// Stuff to do on idle [what does idle mean here???]
+void jshIdle();
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake);
+
+void jshKill();  // unused - remove?
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
+// (Is a MAC address a good surrogate for this? What is it used for?)
 int jshGetSerialNumber(unsigned char *data, int maxChars);
 
 bool jshIsUSBSERIALConnected(); // is the serial device connected?
 
-/// Get the system time (in ticks)
+// System time is used to support the JS Date object (milliseconds since 1970) as well as time
+// short sections of code in microseconds.
+
+/// Get the system time (in ticks since the epoch)
 JsSysTime jshGetSystemTime();
-/// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
+/// Set the system time (in ticks since the epoch) - this should only be called rarely as it
+//  could mess up things like jsinteractive's timers!
 void jshSetSystemTime(JsSysTime time);
-/// Convert a time in Milliseconds to one in ticks
+/// Convert a time in Milliseconds since the epoch to one in ticks
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms);
-/// Convert ticks to a time in Milliseconds
+/// Convert ticks to a time in Milliseconds since the epoch
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time);
 
 // software IO functions...
-void jshInterruptOff();
-void jshInterruptOn();
-void jshDelayMicroseconds(int microsec);
+void jshInterruptOff(); // disable interrupts to allow short delays to be accurate
+void jshInterruptOn();  // re-enable interrupts
+void jshDelayMicroseconds(int microsec);  // delay a few microseconds, [OK to state "MAX 1ms" ???]
 void jshPinSetValue(Pin pin, bool value);
 bool jshPinGetValue(Pin pin);
 // ------
 
+// Control of the pin mux, i.e. assign functions to pins
 typedef enum {
   JSHPINSTATE_UNDEFINED,
-  JSHPINSTATE_GPIO_OUT,
-  JSHPINSTATE_GPIO_OUT_OPENDRAIN,
-  JSHPINSTATE_GPIO_IN,
-  JSHPINSTATE_GPIO_IN_PULLUP,
-  JSHPINSTATE_GPIO_IN_PULLDOWN,
-  JSHPINSTATE_ADC_IN,
-  JSHPINSTATE_AF_OUT,
-  JSHPINSTATE_AF_OUT_OPENDRAIN,
-  JSHPINSTATE_USART_IN,
-  JSHPINSTATE_USART_OUT,
-  JSHPINSTATE_DAC_OUT,
-  JSHPINSTATE_I2C,
-  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C)-1,
+  JSHPINSTATE_GPIO_OUT,             // GPIO pin as totem pole output
+  JSHPINSTATE_GPIO_OUT_OPENDRAIN,   // GPIO pin as open-collector/open-drain output
+  JSHPINSTATE_GPIO_IN,              // GPIO pin as input (also tri-stated output)
+  JSHPINSTATE_GPIO_IN_PULLUP,       // GPIO pin input with internal pull-up
+  JSHPINSTATE_GPIO_IN_PULLDOWN,     // GPIO pin input with internal pull-down
+  // how about open-collector output with internal pull-up? maybe not common enough to matter?
+  JSHPINSTATE_ADC_IN,               // Analog input
+  JSHPINSTATE_AF_OUT,               // ???
+  JSHPINSTATE_AF_OUT_OPENDRAIN,     // ???
+  JSHPINSTATE_USART_IN,             // Uart RX input (???)
+  JSHPINSTATE_USART_OUT,            // Uart TX output (???)
+  JSHPINSTATE_DAC_OUT,              // Analog output
+  JSHPINSTATE_I2C,                  // I2C interface pin (which, given that there are 2?)
 
-  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,
+  JSHPINSTATE_MASK = NEXT_POWER_2(JSHPINSTATE_I2C)-1,  // bitmask to cover the enum
+
+  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,          // ???
 } PACKED_FLAGS JshPinState;
 
 #define JSHPINSTATE_IS_OUTPUT(state) ( \
@@ -116,7 +131,7 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin);
 /// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value);
 
-/// Enable watchdog with a timeout in seconds
+/// Enable watchdog with a timeout in seconds [how is the watchdog reset periodically???]
 void jshEnableWatchDog(JsVarFloat timeout);
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
@@ -124,7 +139,7 @@ bool jshGetWatchedPinState(IOEventFlags device);
 
 bool jshIsEventForPin(IOEvent *event, Pin pin);
 
-/** Is the given device initialised? */
+/** Is the given device initialised? [what does this mean? what does it cover?] */
 bool jshIsDeviceInitialised(IOEventFlags device);
 
 
@@ -157,8 +172,9 @@ static inline void jshUSARTInitInfo(JshUSARTInfo *inf) {
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
+
 /** Kick a device into action (if required). For instance we may need
- * to set up interrupts */
+ * to set up interrupts (example or when is this called???) */
 void jshUSARTKick(IOEventFlags device);
 
 typedef enum {
@@ -192,6 +208,7 @@ typedef struct {
   unsigned char spiMode;
   bool spiMSB; // MSB first?
 } PACKED_FLAGS JshSPIInfo;
+
 static inline void jshSPIInitInfo(JshSPIInfo *inf) {
   inf->baudRate = 100000;
   inf->baudRateSpec = SPIB_DEFAULT;
@@ -232,21 +249,25 @@ static inline void jshI2CInitInfo(JshI2CInfo *inf) {
 }
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf);
-/** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
+
+/** Write a number of btes to the I2C device. Addresses are 7 bit - that is, between 0 and 0x7F.
+ *  sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop);
+/** Read a number of bytes from the I2C device. */
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop);
 
-/// Return start address and size of the flash page the given address resides in. Returns false if no page
+/// Return start address and size of the flash page the given address resides in. Returns false if
+//  the page is outside of the flash address range
 bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize);
 /// Erase the flash page containing the address
 void jshFlashErasePage(uint32_t addr);
-/// Read data from flash memory into the buffer
+/// Read data from flash memory into the buffer, the flash address has no alignment restrictions
+//  and the len may be (and often is) 1 byte
 void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
-/// Write data to flash memory from the buffer
+/// Write data to flash memory from the buffer, the buffer address and the flash address are
+//  guaranteed to be 4-byte aligned. [Is the length guaranteed to be a multiple of 4???]
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
-/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
-bool jshSleep(JsSysTime timeUntilWake);
 
 /// Utility timer handling functions ------------------------------
 
@@ -258,12 +279,10 @@ void jshUtilTimerReschedule(JsSysTime period);
 void jshUtilTimerDisable();
 
 // ---------------------------------------------- LOW LEVEL
+
 #ifdef ARM
-// ----------------------------------------------------------------------------
-//                                                                      SYSTICK
 // On SYSTick interrupt, call this
 void jshDoSysTick();
-
 #endif // ARM
 
 #ifdef STM32
