@@ -33,6 +33,9 @@ typedef long long int64_t;
 #define FLASH_PAGE_SHIFT 12 // 4KB
 #define FLASH_PAGE (1<<FLASH_PAGE_SHIFT)
 
+// Address in RTC RAM where we save the time
+#define RTC_TIME_ADDR (256/4) // start of "user data" in RTC RAM
+
 /**
  * Transmit all the characters in the transmit buffer.
  *
@@ -54,24 +57,40 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 	return (IOEventFlags) 0;
 }
 
+// forward declaration
+static void systemTimeInit(void);
+
 /**
  * Initialize the ESP8266 hardware environment.
+ *
+ * TODO: we should move stuff from user_main.c here
  */
 void jshInit() {
 	// A call to jshInitDevices is architected as something we have to do.
+	systemTimeInit();
 	jshInitDevices();
 } // End of jshInit
 
+/**
+ * \brief Reset the hardware to a power-on state
+ *
+ * TODO: this should reset the serial port and probably also all pins
+ */
 void jshReset() {
-	// TODO
+	system_restart();
 } // End of jshReset
 
+/**
+ * \brief Dunno...
+ */
 void jshKill() {
 	// TODO
 } // End of jshKill
 
 /**
- * Hardware idle processing.
+ * \brief Handle whatever needs to be done in the idle loop when there's nothing to do
+ *
+ * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
 void jshIdle() {
 } // End of jshIdle
@@ -100,6 +119,9 @@ void jshInterruptOn() {
  * 10 milliseconds or else we may starve the WiFi subsystem.
  */
 void jshDelayMicroseconds(int microsec) {
+	// Keep things simple and make the user responsible if they sleep for too long...
+	if (microsec > 0) os_delay_us(microsec);
+#if 0
 	// Get the current time
 	/*
 	uint32 endTime = system_get_time() + microsec;
@@ -133,12 +155,7 @@ void jshDelayMicroseconds(int microsec) {
 	if (microsec > 0) {
 		os_delay_us(microsec);
 	}
-
-	/*
-	if (0 < microsec) {
-		os_delay_us(microsec);
-	}
-	*/
+#endif
 } // End of jshDelayMicroseconds
 
 
@@ -297,6 +314,29 @@ bool jshIsUSBSERIALConnected() {
 	return true;
 } // End of jshIsUSBSERIALConnected
 
+//===== System time stuff =====
+
+/* The esp8266 has two notions of system time implemented in the SDK by system_get_time()
+ * and system_get_rtc_time(). The former has 1us granularity and comes off the CPU cycle
+ * counter, the latter has approx 57us granularity (need to check) and comes off the RTC
+ * clock. Both are 32-bit counters and thus need some form of roll-over handling in software
+ * to produce a JsSysTime.
+ *
+ * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
+ * internal RC oscillator or something similar and the SDK provides functions to calibrate
+ * it WRT the crystal oscillator, i.e., to get the current clock ratio.
+ *
+ * The RTC timer is preserved when the chip goes into sleep mode, including deep sleep, as
+ * well when it is reset (but not if reset using the ch_pd pin).
+ *
+ * It seems that the best course of action is to use the system timer for jshGetSystemTime()
+ * and related functions and to use the rtc timer only at start-up to initialize the system
+ * timer to the best guess available for the current date-time.
+ */
+
+/**
+ * Given a time in milliseconds as float, get us the value in microsecond
+ */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
 //	jsiConsolePrintf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
 	return (JsSysTime) (ms * 1000.0 + 0.5);
@@ -310,20 +350,124 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
 	return (JsVarFloat) time / 1000.0;
 } // End of jshGetMillisecondsFromTime
 
+// Structure to hold a timestamp in us since the epoch, plus the system timer value at that time
+// stamp. The crc field is used when saving this to RTC RAM
+typedef struct {
+	JsSysTime timeStamp;  // UTC time at time stamp
+	uint32_t hwTimeStamp; // time in hw register at time stamp
+	uint32_t cksum;       // checksum to check validity when loading from RTC RAM
+} espTimeStamp;
+static espTimeStamp sysTimeStamp; // last time stamp off system_get_time()
+static espTimeStamp rtcTimeStamp; // last time stamp off system_get_rtc_time()
+
+// Given a time stamp and a new value for the HW clock calculate the new time and update accordingly
+static void updateTime(espTimeStamp *stamp, uint32_t clock) {
+	uint32_t delta = clock - stamp->hwTimeStamp;
+	stamp->timeStamp += (JsSysTime)delta;
+	stamp->hwTimeStamp = clock;
+}
+
+// Save the current RTC timestamp to RTC RAM so we don't loose track of time during a reset
+// or sleep
+static void saveTime() {
+	// calculate checksum
+	rtcTimeStamp.cksum = 0xdeadbeef ^ rtcTimeStamp.hwTimeStamp ^
+		(uint32_t)(rtcTimeStamp.timeStamp & 0xffffffff) ^
+		(uint32_t)(rtcTimeStamp.timeStamp >> 32);
+	system_rtc_mem_write(RTC_TIME_ADDR, &rtcTimeStamp, sizeof(rtcTimeStamp));
+	os_printf("RTC write: %lu %lu 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
+		rtcTimeStamp.hwTimeStamp, rtcTimeStamp.cksum);
+}
+
 /**
  * Return the current time in microseconds.
  */
 JsSysTime jshGetSystemTime() { // in us
-	return system_get_time();
+	return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
 } // End of jshGetSystemTime
-
 
 /**
  * Set the current time in microseconds.
  */
-void jshSetSystemTime(JsSysTime time) {
-	os_printf("ESP8266: jshSetSystemTime: %d\n", time);
+void jshSetSystemTime(JsSysTime newTime) {
+	//os_printf("ESP8266: jshSetSystemTime: %d\n", time);
+	uint32_t sysTime = system_get_time();
+	uint32_t rtcTime = system_get_rtc_time();
+
+	sysTimeStamp.timeStamp = newTime;
+	sysTimeStamp.hwTimeStamp = sysTime;
+	rtcTimeStamp.timeStamp = newTime;
+	rtcTimeStamp.hwTimeStamp = rtcTime;
+	saveTime(&rtcTimeStamp);
 } // End of jshSetSystemTime
+
+/**
+ * Periodic system timer to update the time structure and save it to RTC RAM so we don't loose
+ * track of it and it doesn't roll-over unnoticed
+ */
+#define SYSTEM_TIME_QUANTUM 0x1000000 // time period in us for system timer callback
+static ETSTimer systemTimeTimer;
+
+// callback for periodic system timer update and saving
+static void systemTimeCb(void *arg) {
+	uint32_t sysTime = system_get_time();
+	uint32_t rtc = system_get_rtc_time();
+	__asm__ __volatile__("memw" : : : "memory"); // memory barrier to enforce above happen
+	updateTime(&sysTimeStamp, sysTime);
+	rtcTimeStamp.timeStamp = sysTimeStamp.timeStamp;
+	rtcTimeStamp.hwTimeStamp = rtc;
+	os_printf("RTC sys=%lu rtc=%lu\n", sysTime, rtc);
+
+	saveTime(&rtcTimeStamp);
+}
+
+// Initialize the system time, trying to rescue what we know from RTC RAM. We can continue
+// running the RTC clock if two conditions are met: we can read the old time from RTC RAM and
+// the RTC clock hasn't been reset. The latter is the case for reset reasons 1 thru 4 (wdt reset,
+// exception, soft wdt, and restart), the RTC clock is reset on power-on, on reset pin input, and
+// on deep sleep (which is left using a reset pin input).
+static void systemTimeInit(void) {
+	// kick off the system timer
+	os_timer_disarm(&systemTimeTimer);
+	os_timer_setfn(&systemTimeTimer, systemTimeCb, NULL);
+	//os_timer_arm(&systemTimeTimer, 0x1000000, 1);
+	os_timer_arm(&systemTimeTimer, 0x10000, 1);
+
+	// load the reset cause
+	uint32 reason = system_get_rst_info()->reason;
+
+	// load time from RTC RAM
+	system_rtc_mem_read(RTC_TIME_ADDR, &rtcTimeStamp, sizeof(rtcTimeStamp));
+	uint32_t cksum = rtcTimeStamp.cksum ^ rtcTimeStamp.hwTimeStamp ^
+		(uint32_t)(rtcTimeStamp.timeStamp & 0xffffffff) ^
+		(uint32_t)(rtcTimeStamp.timeStamp >> 32);
+	os_printf("RTC read: %lu %lu 0x%08x (0x%08x)\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
+		rtcTimeStamp.hwTimeStamp, rtcTimeStamp.cksum, cksum);
+	if (reason < 1 || reason > 4 || cksum != 0xdeadbeef) {
+		// we lost track of time, start at zero
+		os_printf("RTC: cannot restore time\n");
+		memset(&rtcTimeStamp, 0, sizeof(rtcTimeStamp));
+		memset(&sysTimeStamp, 0, sizeof(sysTimeStamp));
+		return;
+	}
+	// calculate current time based on RTC clock delta; the system_rtc_clock_cali_proc() tells
+	// us how many us there are per RTC tick, the value is fixed-point decimal with 12
+	// decimal bits, hence the shift by 12 below
+	uint32_t sysTime = system_get_time();
+	uint32_t rtcTime = system_get_rtc_time();
+	uint32_t cal = system_rtc_clock_cali_proc(); // us per rtc tick as fixed point
+	__asm__ __volatile__("memw" : : : "memory"); // memory barrier to enforce above happen
+	uint64_t delta = (uint64_t)(rtcTime - rtcTimeStamp.hwTimeStamp);
+	rtcTimeStamp.timeStamp += (delta * (uint64_t)cal) >> 12;
+	rtcTimeStamp.hwTimeStamp = rtcTime;
+	sysTimeStamp.timeStamp = rtcTimeStamp.timeStamp;
+	sysTimeStamp.hwTimeStamp = sysTime;
+	os_printf("RTC: restore sys=%lu rtc=%lu\n", sysTime, rtcTime);
+	os_printf("RTC: restored time: %lu (delta=%lu cal=%luus)\n",
+			(uint32_t)(rtcTimeStamp.timeStamp/1000000),
+			(uint32_t)delta, (cal*1000)>>12);
+	saveTime(&rtcTimeStamp);
+}
 
 // ----------------------------------------------------------------------------
 
@@ -456,23 +600,24 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
 bool jshSleep(JsSysTime timeUntilWake) {
 	int time = (int) timeUntilWake;
 //	os_printf("jshSleep %d\n", time);
+	// **** TODO: fix this, this is garbage, we need to tell the idle loop to suspend
 	jshDelayMicroseconds(time);
 	return true;
 } // End of jshSleep
 
 
 void jshUtilTimerDisable() {
-	os_printf("ESP8266: jshUtilTimerDisable\n");
+	//os_printf("ESP8266: jshUtilTimerDisable\n");
 } // End of jshUtilTimerDisable
 
 
 void jshUtilTimerReschedule(JsSysTime period) {
-	os_printf("ESP8266: jshUtilTimerReschedule %d\n", period);
+	//os_printf("ESP8266: jshUtilTimerReschedule %d\n", period);
 } // End of jshUtilTimerReschedule
 
 
 void jshUtilTimerStart(JsSysTime period) {
-	os_printf("ESP8266: jshUtilTimerStart %d\n", period);
+	//os_printf("ESP8266: jshUtilTimerStart %d\n", period);
 } // End of jshUtilTimerStart
 
 

@@ -1540,20 +1540,20 @@ proj: $(USER1_BIN) $(USER2_BIN)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PROJ_NAME)_partial.o: $(OBJS) $(LINKER_FILE)
-	@echo Pre-linking
+	@echo LD $@
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
 # generate fully linked 'user1' .elf using linker script for first OTA partition
 $(USER1_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
-	@echo Linking user1
+	@echo LD $@
 	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $@ | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 
 # generate fully linked 'user2' .elf using linker script for second OTA partition
 $(USER2_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
-	@echo Linking user2
+	@echo LD $@
 	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT2) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 
@@ -1563,8 +1563,8 @@ $(USER1_BIN): $(USER1_ELF)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER1_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin
-	ls -ls eagle*bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE)
+	@ls -ls eagle*bin
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
@@ -1578,8 +1578,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	ls -ls eagle*bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE)
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 

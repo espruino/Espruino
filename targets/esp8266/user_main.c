@@ -71,7 +71,7 @@ static void gotIpCallback() {
 #endif
 
 static char *rst_codes[] = {
-  "normal", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "external",
+  "power on", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "reset pin",
 };
 static char *flash_maps[] = {
   "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
@@ -209,6 +209,7 @@ static void mainLoop() {
  */
 static void initDone() {
 	os_printf("initDone invoked\n");
+	os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
 
 	// Discard any junk data in the input as this is a boot.
 	//uart_rx_discard();
@@ -239,6 +240,7 @@ static void initDone() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
+	os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
 } // End of user_rf_pre_init
 
 
@@ -248,7 +250,7 @@ void user_rf_pre_init() {
  */
 void user_init() {
 	// Initialize the UART devices
-	uart_init(BIT_RATE_115200, BIT_RATE_115200);
+	uart_init(BIT_RATE_115200, 115200);
 	os_delay_us(10000); // give the uart a break
 	UART_SetPrintPort(1);
 	system_set_os_print(1);
@@ -258,6 +260,7 @@ void user_init() {
 	os_printf("Heap: %d\n", system_get_free_heap_size());
 	os_printf("Variables: %d @%dea = %ldbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
 			JSVAR_CACHE_SIZE * sizeof(JsVar));
+	os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
 
 	// Register the ESP8266 initialization callback.
 	system_init_done_cb(initDone);
