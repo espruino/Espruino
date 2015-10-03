@@ -40,7 +40,8 @@ bool jshSleep(JsSysTime timeUntilWake);
 void jshKill();  // unused - remove?
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
-// (Is a MAC address a good surrogate for this? What is it used for?)
+// [Is a MAC address a good surrogate for this??? What is it used for? Is the result expected to be
+// null terminated?]
 int jshGetSerialNumber(unsigned char *data, int maxChars);
 
 bool jshIsUSBSERIALConnected(); // is the serial device connected?

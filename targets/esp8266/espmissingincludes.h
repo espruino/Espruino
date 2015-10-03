@@ -17,6 +17,8 @@ void ets_install_putc1(void *routine); // necessary for #define os_xxx -> ets_xx
 void ets_isr_attach(int intr, void *handler, void *arg);
 void ets_isr_mask(unsigned intr);
 void ets_isr_unmask(unsigned intr);
+void ets_intr_lock(void);
+void ets_intr_unlock(void);
 
 int ets_memcmp(const void *s1, const void *s2, size_t n);
 void *ets_memcpy(void *dest, const void *src, size_t n);
