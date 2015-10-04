@@ -7,7 +7,8 @@
 #include <gpio.h>
 #include <mem.h>
 #include <espmissingincludes.h>
-#include <driver/uart.h>
+#include <uart.h>
+#include <hw_timer.h>
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -15,6 +16,7 @@ typedef long long int64_t;
 
 #include "jshardware.h"
 #include "jsutils.h"
+#include "jstimer.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 
@@ -59,6 +61,7 @@ IOEventFlags pinToEVEXTI(Pin pin) {
 
 // forward declaration
 static void systemTimeInit(void);
+static void utilTimerInit(void);
 
 /**
  * Initialize the ESP8266 hardware environment.
@@ -68,6 +71,7 @@ static void systemTimeInit(void);
 void jshInit() {
 	// A call to jshInitDevices is architected as something we have to do.
 	systemTimeInit();
+	utilTimerInit();
 	jshInitDevices();
 } // End of jshInit
 
@@ -109,9 +113,9 @@ void jshInterruptOn() {
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
 	int time = (int) timeUntilWake;
-//	os_printf("jshSleep %d\n", time);
+	//os_printf("jshSleep %lld\n", timeUntilWake);
 	// **** TODO: fix this, this is garbage, we need to tell the idle loop to suspend
-	jshDelayMicroseconds(time);
+	//jshDelayMicroseconds(time);
 	return true;
 } // End of jshSleep
 
@@ -122,7 +126,10 @@ bool jshSleep(JsSysTime timeUntilWake) {
  */
 void jshDelayMicroseconds(int microsec) {
 	// Keep things simple and make the user responsible if they sleep for too long...
-	if (microsec > 0) os_delay_us(microsec);
+	if (microsec > 0) {
+		os_printf("Delay %ldus\n", microsec);
+		os_delay_us(microsec);
+	}
 #if 0
 	// Get the current time
 	/*
@@ -604,19 +611,74 @@ static void systemTimeInit(void) {
 
 //===== Utility timer =====
 
+// There are two versions here. One uses the SDK timer in microsecond mode and the other uses the
+// hw_timer using the driver provided by Espressif. The hw_timer is not working and causes the
+// system to crash for unknown reasons. Thus using the SDK timer for now...
+// If we're happy with the SDK timer then the other code can be deleted as well as the ht_timer.[hc]
+// files...
+
+#ifndef USE_HW_TIMER
+os_timer_t utilTimer;
+
+static void utilTimerInit(void) {
+	os_printf("UStimer init\n");
+	os_timer_disarm(&utilTimer);
+	os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
+}
+
 void jshUtilTimerDisable() {
-	//os_printf("ESP8266: jshUtilTimerDisable\n");
-} // End of jshUtilTimerDisable
-
-
-void jshUtilTimerReschedule(JsSysTime period) {
-	//os_printf("ESP8266: jshUtilTimerReschedule %d\n", period);
-} // End of jshUtilTimerReschedule
-
+	os_printf("UStimer disarm\n");
+	os_timer_disarm(&utilTimer);
+}
 
 void jshUtilTimerStart(JsSysTime period) {
-	//os_printf("ESP8266: jshUtilTimerStart %d\n", period);
-} // End of jshUtilTimerStart
+	os_printf("UStimer arm %lluus\n");
+	os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
+}
+
+#else
+os_event_t utilTimerQ[2];
+
+static void utilTimerTask(os_event_t *e) {
+	os_printf("HW timer task\n");
+	jstUtilTimerInterruptHandler();
+}
+
+static void ICACHE_RAM_ATTR utilTimerCb(void) {
+	os_printf_plus("HW timer CB\n");
+	system_os_post(2, NULL, 0);
+}
+
+static void utilTimerInit(void) {
+	system_os_task(utilTimerTask, 2, utilTimerQ, 2);
+	hw_timer_init(FRC1_SOURCE, 0); // 0->one-time
+	hw_timer_set_func(utilTimerCb);
+}
+
+void jshUtilTimerDisable() {
+	hw_timer_set_func(NULL);
+}
+
+void jshUtilTimerStart(JsSysTime period) {
+	os_printf("HW Timer: %ldus\n", (uint32_t)period);
+	if (period < 50) {
+		// the hardware timer can't do a delay of less than 100us
+		os_delay_us((uint32_t)period);
+		system_os_post(2, NULL, NULL);
+		return;
+	}
+	if (period > 0x7fffffLL) {
+		// the hardware timer can't do a delay of more than 0x7fffffus
+		period = 0x7fffffLL; // FIXME !!!
+	}
+	hw_timer_arm((uint32_t)period);
+}
+#endif
+
+void jshUtilTimerReschedule(JsSysTime period) {
+	jshUtilTimerDisable();
+	jshUtilTimerStart(period);
+}
 
 //===== Miscellaneous =====
 

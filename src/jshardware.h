@@ -272,9 +272,14 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
 /// Utility timer handling functions ------------------------------
 
-/// Start the timer and get it to interrupt after 'period'
+// The utility timer is intended to generate an interrupt and then call jstUtilTimerInterruptHandler
+// as interrupt handler so Espruino can process tasks that are queued up on the timer. Typical
+// functions used in the interrupt handler include reading/write GPIO pins, reading analog, and
+// ... [???].
+
+/// Start the timer and get it to interrupt once after 'period' (i.e. it should no auto-reload)
 void jshUtilTimerStart(JsSysTime period);
-/// Reschedult the timer (it should already be running) to interrupt after 'period'
+/// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period);
 /// Stop the timer
 void jshUtilTimerDisable();

@@ -9,7 +9,7 @@
 
 #include <user_interface.h>
 #include <osapi.h>
-#include <driver/uart.h>
+#include <uart.h>
 #include <telnet.h>
 #include <espmissingincludes.h>
 
@@ -249,6 +249,7 @@ void user_rf_pre_init() {
  * It is where the logic of ESP8266 starts.
  */
 void user_init() {
+	system_timer_reinit();
 	// Initialize the UART devices
 	uart_init(BIT_RATE_115200, 115200);
 	os_delay_us(10000); // give the uart a break

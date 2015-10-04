@@ -5,7 +5,7 @@
 #include <ping.h>
 #include <espconn.h>
 #include <espmissingincludes.h>
-#include <driver/uart.h>
+#include <uart.h>
 
 #define ESP8266_ON_ACCESS_POINTS "#accessPoints"
 
