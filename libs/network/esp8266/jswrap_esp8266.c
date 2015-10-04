@@ -144,11 +144,7 @@ void jswrap_ESP8266WiFi_connect(
 	// Set the WiFi configuration
 	wifi_station_set_config(&stationConfig);
 
-	// Register the event handler for callbacks from ESP8266
-	wifi_set_event_handler_cb(wifiEventHandler);
-
 	wifi_station_connect();
-	wifi_set_event_handler_cb(wifiEventHandler);
 	os_printf("< jswrap_ESP8266WiFi_connect\n");
 }
 
@@ -326,9 +322,6 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
 
 	// Save the global WiFi event callback handler.
 	jsWiFiEventCallback = jsvLockAgainSafe(callback);
-
-	// Register
-	wifi_set_event_handler_cb(wifiEventHandler);
 }
 
 
