@@ -264,6 +264,8 @@ else:
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   if board.chip["family"]=="ESP8266":
     codeOut("#define FLASH_START                     "+hex(0x0))
+  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+    codeOut("#define FLASH_START                     "+hex(0x0))
   else:
     codeOut("#define FLASH_START                     "+hex(0x08000000))
   if has_bootloader:

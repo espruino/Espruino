@@ -14,20 +14,28 @@
  * ------------
  * We maintain an array of socketData structures.  The number of such structures is defined in the
  * MAX_SOCKETS define.  The private variable that contains the array is called "socketArray".
- * Each one of these array instances represents a possible socket that we can use.
+ * Each one of these array instances represents a possible socket structure that we can use.
  *
- * Within the code, this allows us to reference a socket instance by an integer.  For example,
- * socket 0 is the 1st instance in the array.
+ * Each socket maintains state and the transitions are shown in a separate state diagram.  In
+ * summary, the possible states are:
  *
- * Associated with the array are accessor functions:
+ * * SOCKET_STATE_UNUSED
+ * * SOCKET_STATE_IDLE
+ * * SOCKET_STATE_CONNECTING
+ * * SOCKET_STATE_TRANSMITTING
+ * * SOCKET_STATE_CLOSING
+ * * SOCKET_STATE_HOST_RESOLVING
+ * * SOCKET_STATE_ERROR
  *
- * o getNextFreeSocket - Return the next free socket or -1 if there are no free sockets.
- * o getSocketData - Get the socketData structure corresponding to the socket integer.
- * o resetSocket - Reset the state of the socket and clean it up if needed.
- * o releaseSocket - Release the socket and return it to the pool of unused sockets.
+ * Each socket also maintains its creation purpose.  There are three ways a socket
+ * can have been created:
  *
+ * SOCKET_CREATED_SERVER - The socket was created as a server.
+ * SOCKET_CREATED_OUTBOUND - The socket was created by an out-bound.
+ * SOCKET_CREATED_INBOUND - The socket was created by an in-bound.
  */
 // ESP8266 specific includes
+#define ESPSDK_1_3_0
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
@@ -52,13 +60,19 @@ typedef long long int64_t;
 
 static struct socketData *getSocketData(int s);
 
+/**
+ * \brief The next socketId to be used.
+ */
+static int g_nextSocketId = 0;
+
 static int  getServerSocketByLocalPort(unsigned short port);
 static void setSocketInError(int socketId, char *msg, int code);
 static void dumpEspConn(struct espconn *pEspConn);
-static int  getNextFreeSocket();
+static struct socketData *allocateNewSocket();
 static void doClose(int socketId);
 static void releaseSocket(int socketId);
-static void resetSocket(int sckt);
+static void resetSocketByData(struct socketData *pSocketData);
+static void resetSocketById(int sckt);
 
 static void esp8266_callback_connectCB_inbound(void *arg);
 static void esp8266_callback_connectCB_outbound(void *arg);
@@ -96,22 +110,24 @@ static int    memoryBuffer_getSize(struct memoryBuffer *pMemoryBuffer);
  * See the socket state diagram.
  */
 enum SOCKET_STATE {
-	SOCKET_STATE_UNUSED,        //!< The socket is unused
-	SOCKET_STATE_IDLE,          //!< The socket is idle
-	SOCKET_STATE_CONNECTING,    //!< The socket is connecting
-	SOCKET_STATE_TRANSMITTING,  //!< The socket is transmitting
-	SOCKET_STATE_CLOSING,       //!< The socket is closing
-	SOCKET_STATE_ERROR          //!< The socket is in error
+	SOCKET_STATE_UNUSED,         //!< The socket is unused
+	SOCKET_STATE_IDLE,           //!< The socket is idle
+	SOCKET_STATE_CONNECTING,     //!< The socket is connecting
+	SOCKET_STATE_TRANSMITTING,   //!< The socket is transmitting
+	SOCKET_STATE_CLOSING,        //!< The socket is closing
+	SOCKET_STATE_HOST_RESOLVING, //!< Resolving a a hostname
+	SOCKET_STATE_ERROR           //!< The socket is in error
 };
 
 /**
- * void initSocketData()
- * int getNextFreeSocket()
- * void releaseSocket(int s)
- * struct socketData *getSocketData(int s)
+ * \brief How was the socket created.
  */
-
-
+enum SOCKET_CREATION_TYPE {
+  SOCKET_CREATED_NONE,      //!< The socket has not yet been created.
+  SOCKET_CREATED_SERVER,   //!< The socket was created as a server.
+  SOCKET_CREATED_OUTBOUND, //!< The socket was created outbound.
+  SOCKET_CREATED_INBOUND   //!< The socket was created inbound.
+};
 
 /**
  * Here are some notes on the accepted list algorithms.
@@ -146,21 +162,21 @@ enum SOCKET_STATE {
  * The structure is initialized by resetSocket.
  */
 struct socketData {
-	int		socketId;			//!< The id of THIS socket.
-	enum SOCKET_STATE state;	//!< What is the socket state?
-	bool    isConnected;		//!< Is this socket connected?
-	bool    isServer;			//!< Are we a server?
-	bool	shouldClose;		//!< Should this socket close when it can?
+	int		socketId;          //!< The id of THIS socket.
+	enum SOCKET_STATE state; //!< What is the socket state?
+	enum SOCKET_CREATION_TYPE creationType; //!< How was the socket created?
+	bool isConnected;        //!< Is this socket connected?
+	bool shouldClose;        //!< Should this socket close when it can?
 
 	struct  espconn *pEspconn;	//!< The ESPConn structure.
 
 	struct  memoryBuffer txMemoryBuffer; //!< Data to be transmitted.
-	uint8  *currentTx;			//!< Data currently being transmitted.
-	uint8  *rxBuf;				//!< Data received (inbound).
-	size_t  rxBufLen;			//!< The length of data in the buffer ready for consumption.
+	uint8  *currentTx; //!< Data currently being transmitted.
+	uint8  *rxBuf;     //!< Data received (inbound).
+	size_t  rxBufLen;  //!< The length of data in the buffer ready for consumption.
 
-	char   *errorMsg;           //!< Error message.
-	int     errorCode;          //!< Error code.
+	char   *errorMsg;  //!< Error message.
+	int     errorCode; //!< Error code.
 
 	/**
 	 * \brief A list of accepted sockets.
@@ -168,20 +184,19 @@ struct socketData {
 	 * server socket but have not yet been delivered to Espruino.  A `head` and `tail`
 	 * pair of indices are also associated.
 	 */
-	int     acceptedSockets[MAX_ACCEPTED_SOCKETS];
+	int acceptedSockets[MAX_ACCEPTED_SOCKETS];
 
 	/**
 	 * \brief The head of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be placed.
 	 */
-	uint8   acceptedSocketsHead;
+	uint8 acceptedSocketsHead;
 
 	/**
 	 * \brief The tail of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be retrieved.
 	 */
-	uint8   acceptedSocketsTail;
-
+	uint8 acceptedSocketsTail;
 };
 
 
@@ -189,18 +204,6 @@ struct socketData {
  * \brief An array of socket data structures.
  */
 static struct socketData socketArray[MAX_SOCKETS];
-
-
-/**
- * \brief An array of `esp_tcp` data structures.
- */
-static esp_tcp tcpArray[MAX_SOCKETS];
-
-
-/**
- * \brief An array of `struct espconn` data structures.
- */
-static struct espconn espconnArray[MAX_SOCKETS];
 
 
 /**
@@ -213,7 +216,22 @@ void esp8266_dumpSocket(
 	struct socketData *pSocketData = getSocketData(socketId);
 	LOG("Dump of socket=%d\n", socketId);
 	LOG(" - isConnected=%d", pSocketData->isConnected);
-	LOG(", isServer=%d", pSocketData->isServer);
+	char *creationTypeMsg;
+	switch(pSocketData->creationType) {
+	case SOCKET_CREATED_NONE:
+	  creationTypeMsg = "SOCKET_CREATED_NONE";
+    break;
+	case SOCKET_CREATED_INBOUND:
+    creationTypeMsg = "SOCKET_CREATED_INBOUND";
+    break;
+	case SOCKET_CREATED_OUTBOUND:
+    creationTypeMsg = "SOCKET_CREATED_OUTBOUND";
+    break;
+	case SOCKET_CREATED_SERVER:
+    creationTypeMsg = "SOCKET_CREATED_SERVER";
+    break;
+	}
+	LOG(", creationType=%s", creationTypeMsg);
 	LOG(", acceptedSockets=[");
 	int s=pSocketData->acceptedSocketsTail;
 	while(s != pSocketData->acceptedSocketsHead) {
@@ -241,6 +259,9 @@ void esp8266_dumpSocket(
 	case SOCKET_STATE_TRANSMITTING:
 		stateMsg = "SOCKET_STATE_TRANSMITTING";
 		break;
+	case SOCKET_STATE_HOST_RESOLVING:
+		stateMsg = "SOCKET_STATE_HOST_RESOLVING";
+		break;
 	case SOCKET_STATE_UNUSED:
 		stateMsg = "SOCKET_STATE_UNUSED";
 		break;
@@ -257,7 +278,7 @@ void esp8266_dumpSocket(
 	}
 
 	LOG("\n");
-} // End of dumpSocket
+}
 
 
 /**
@@ -333,33 +354,57 @@ static void dumpEspConn(
 	}
 	LOG(", link_cnt=%d", pEspConn->link_cnt);
 	LOG(", reverse=0x%x\n", (unsigned int)pEspConn->reverse);
-} // End of dumpEspConn
+}
 
 
 /**
- * \brief Get the next free socket.
- * Look for the first free socket in the array of sockets and return the first one
- * that is available after first flagging it as now in use.  If no available
- * socket can be found, return -1.
+ * \brief Get the next new global socket id.
+ * \return A new socketId that is assured to be unique.
  */
-static int getNextFreeSocket() {
+static int getNextGlobalSocketId() {
+  int ret = g_nextSocketId;
+  g_nextSocketId++;
+  return ret;
+}
+
+
+/**
+ * \brief Allocate a new socket
+ * Look for the first free socket in the array of sockets and return the first one
+ * that is available.  The socketId property is set to a unique and new socketId value
+ * that will not previously have been seen.
+ * \return The socketData structure for the returned socket.
+ */
+static struct socketData *allocateNewSocket() {
+  // Walk through each of the sockets in the array of possible sockets and stop
+  // at the first one that is flagged as not in use.  For that socket, set its
+  // socketId to the next global socketId value.
 	int i;
 	for (i=0; i<MAX_SOCKETS; i++) {
 		if (socketArray[i].state == SOCKET_STATE_UNUSED) {
-			return i;
+		  socketArray[i].socketId = getNextGlobalSocketId();
+			return &socketArray[i];
 		}
 	} // End of for each socket.
-	return(-1);
-} // End of getNextFreeSocket
+	return(NULL);
+}
 
 
 /**
  * \brief Retrieve the socketData for the given socket index.
+ * \return The socket data for the given socket or NULL if there is no matching socket.
  */
-static struct socketData *getSocketData(int s) {
-	assert(s >=0 && s<MAX_SOCKETS);
-	return &socketArray[s];
-} // End of getSocketData
+static struct socketData *getSocketData(int socketId) {
+  int socketArrayIndex;
+  struct socketData *pSocketData = socketArray;
+  for (int socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
+    if (pSocketData->socketId == socketId) {
+      return pSocketData;
+    }
+    pSocketData++;
+  }
+  return NULL;
+}
 
 
 /**
@@ -373,58 +418,57 @@ static int getServerSocketByLocalPort(
 	// Loop through each of the sockets in the socket array looking for a socket
 	// that is inuse, a server and has a local_port of the passed in port number.
 	int socketArrayIndex;
+  struct socketData *pSocketData = socketArray;
 	for (socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
-		struct socketData *pSocketData = socketArray;
-		if (pSocketData->state != SOCKET_STATE_UNUSED &&
-			pSocketData->isServer == true &&
+		if (pSocketData->state  != SOCKET_STATE_UNUSED &&
+			pSocketData->creationType == SOCKET_CREATED_SERVER &&
 			pSocketData->pEspconn->proto.tcp->local_port == port)
 		{
-			return socketArrayIndex;
+			return pSocketData->socketId;
 		}
 		pSocketData++;
 	} // End of for each socket
 	return -1;
-} // End of getServerSocketByLocalPort
+}
 
 
 /**
  * \brief Reset the socket to its clean and unused state.
+ * The socket is found by its socket id.
  */
-static void resetSocket(
-		int sckt //!<
+static void resetSocketById(
+		int sckt //!< The socket id to be reset.
 	) {
 	struct socketData *pSocketData = getSocketData(sckt);
+	resetSocketByData(pSocketData);
+}
 
-	memoryBuffer_delete(&pSocketData->txMemoryBuffer);
+/**
+ * \brief Reset the socket to its clean and unused state.
+ * The socket is specified by its socket data pointer.
+ */
+static void resetSocketByData(
+      struct socketData *pSocketData //!< The data pointer to the socket.
+    ) {
+    assert(pSocketData != NULL);
 
-	pSocketData->pEspconn       = &espconnArray[sckt];
-	pSocketData->state			= SOCKET_STATE_UNUSED;
-	pSocketData->rxBuf          = NULL;
-	pSocketData->rxBufLen       = 0;
-	pSocketData->isServer       = false;
-	pSocketData->isConnected    = false;
-	pSocketData->shouldClose    = false;
-	pSocketData->socketId       = sckt;
-	pSocketData->errorMsg       = "";
-	pSocketData->errorCode      = 0;
+    memoryBuffer_delete(&pSocketData->txMemoryBuffer);
 
-	pSocketData->acceptedSocketsHead = 0; // Set the head to 0
-	pSocketData->acceptedSocketsTail = 0; // Set the tail to 9.
+    pSocketData->pEspconn    = NULL;
+    pSocketData->state       = SOCKET_STATE_UNUSED;
+    pSocketData->rxBuf       = NULL;
+    pSocketData->rxBufLen    = 0;
+    pSocketData->creationType = SOCKET_CREATED_NONE;
+    pSocketData->isConnected = false;
+    pSocketData->shouldClose = false;
+    pSocketData->errorMsg    = "";
+    pSocketData->errorCode   = 0;
+    pSocketData->socketId    = -1;
 
-	struct espconn *pEspconn    = pSocketData->pEspconn;
-	pEspconn->type              = ESPCONN_TCP;
-	pEspconn->state             = ESPCONN_NONE;
-	pEspconn->proto.tcp         = &tcpArray[sckt];
-	pEspconn->reverse           = NULL;
-
-
-	espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_outbound);
-	espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
-	espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
-	espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
-	espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
-	espconn_regist_write_finish(pEspconn, esp8266_callback_writeFinishedCB);
-} // End of resetSocket
+    pSocketData->acceptedSocketsHead = 0; // Set the head to 0
+    pSocketData->acceptedSocketsTail = 0; // Set the tail to 9.
+    pSocketData->pEspconn    = NULL;
+}
 
 
 /**
@@ -434,7 +478,6 @@ static void releaseSocket(
 		int socketId //!< The socket id of the socket to be released.
 	) {
 	os_printf("> releaseSocket: %d\n", socketId);
-	assert(socketId >=0 && socketId<MAX_SOCKETS);
 	esp8266_dumpSocket(socketId);
 
 	struct socketData *pSocketData = getSocketData(socketId);
@@ -446,9 +489,18 @@ static void releaseSocket(
 	if (pSocketData->rxBuf != NULL || pSocketData->rxBufLen != 0) {
 		os_printf(" - Oh oh ... attempt to close socket while the rxBuffer is not empty!\n");
 	}
-	resetSocket(socketId);
+
+	// If this socket is not an incoming socket that means that the espconn structure was created
+	// by us and we should release the storage we allocated.
+	if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
+	  os_free(pSocketData->pEspconn->proto.tcp);
+	  pSocketData->pEspconn->proto.tcp = NULL;
+	  os_free(pSocketData->pEspconn);
+	  pSocketData->pEspconn = NULL;
+	}
+	resetSocketByData(pSocketData);
 	os_printf("< releaseSocket\n");
-} // End of releaseSocket
+}
 
 
 /**
@@ -457,10 +509,12 @@ static void releaseSocket(
  */
 void netInit_esp8266_board() {
 	int socketArrayIndex;
+  struct socketData *pSocketData = socketArray;
 	for (socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {
-		resetSocket(socketArrayIndex);
+		resetSocketByData(pSocketData);
+		pSocketData++;
 	} // End of for each socket
-} // netInit_esp8266_board
+}
 
 
 /**
@@ -471,6 +525,11 @@ void netInit_esp8266_board() {
 static void doClose(
 		int socketId //!< The socket id to be closed.
 	) {
+
+  // If the socket is NOT in state closing then ask espconn_disconnect to close
+  // the socket and set the state to be closing.
+  // If the socket IS in state closing, then we are ready to release.
+
 	struct socketData *pSocketData = getSocketData(socketId);
 
 	if (pSocketData->state != SOCKET_STATE_CLOSING) {
@@ -481,10 +540,13 @@ static void doClose(
 			os_printf("espconn_disconnect: rc=%d\n", rc);
 			setSocketInError(socketId, "espconn_disconnect", rc);
 		}
-	} else {
+	}
+	// Our existing state on entry was SOCKET_STATE_CLOSING which means that we got here
+	// because we were previously flagged as closing.
+	else {
 		releaseSocket(socketId);
 	}
-} // End of doClose
+}
 
 
 /**
@@ -500,7 +562,7 @@ static void setSocketInError(
 	pSocketData->state     = SOCKET_STATE_ERROR;
 	pSocketData->errorMsg  = msg;
 	pSocketData->errorCode = code;
-} // End of setSocketInError
+}
 
 /**
  * \brief Callback function registered to the ESP8266 environment that is
@@ -518,11 +580,17 @@ static void esp8266_callback_connectCB_inbound(
 	struct espconn *pEspconn = (struct espconn *)arg;
 	assert(pEspconn != NULL);
 
+  espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
+  espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+  espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
+  espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
+  espconn_regist_write_finish(pEspconn, esp8266_callback_writeFinishedCB);
+
 	dumpEspConn(pEspconn);
 
-	int s = getServerSocketByLocalPort(pEspconn->proto.tcp->local_port);
-	assert(s != -1);
-	struct socketData *pSocketData = getSocketData(s);
+	int inboundSocket = getServerSocketByLocalPort(pEspconn->proto.tcp->local_port);
+	assert(inboundSocket != -1);
+	struct socketData *pSocketData = getSocketData(inboundSocket);
 	assert(pSocketData != NULL);
 
 	esp8266_dumpSocket(pSocketData->socketId);
@@ -535,25 +603,23 @@ static void esp8266_callback_connectCB_inbound(
 		return;
 	}
 
-	int clientSocket = getNextFreeSocket();
-	if (clientSocket < 0) {
+	struct socketData *pClientSocketData = allocateNewSocket();
+	if (pClientSocketData == NULL) {
 		os_printf("!!! Ran out of sockets !!!\n");
 		return;
 	}
-	struct socketData *pClientSocketData = getSocketData(clientSocket);
 	assert(pClientSocketData != NULL);
 	pClientSocketData->pEspconn          = pEspconn;
 	pClientSocketData->pEspconn->reverse = pClientSocketData;
-	pClientSocketData->isServer          = false;
+	pClientSocketData->creationType      = SOCKET_CREATED_INBOUND;
 	pClientSocketData->isConnected       = true;
-	pClientSocketData->socketId          = clientSocket;
 	pClientSocketData->state             = SOCKET_STATE_IDLE;
 
-	pSocketData->acceptedSockets[pSocketData->acceptedSocketsHead] = clientSocket;
+	pSocketData->acceptedSockets[pSocketData->acceptedSocketsHead] = pClientSocketData->socketId;
 	pSocketData->acceptedSocketsHead = (pSocketData->acceptedSocketsHead + 1) % MAX_ACCEPTED_SOCKETS;
 
 	os_printf("<< connectCB_inbound\n");
-} // End of esp8266_callback_connectCB_inbound
+}
 
 /**
  * \brief Callback function registered to the ESP8266 environment that is
@@ -583,7 +649,7 @@ static void esp8266_callback_connectCB_outbound(
 		pSocketData->state = SOCKET_STATE_IDLE;
 	}
 	os_printf("<< connectCB_outbound\n");
-} // End of esp8266_callback_connectCB_outbound
+}
 
 
 /**
@@ -611,7 +677,7 @@ static void esp8266_callback_disconnectCB(
 		pSocketData->isConnected = false;
 	}
 	os_printf("<< disconnectCB\n");
-} // End of disconnectCB
+}
 
 
 /**
@@ -628,7 +694,7 @@ static void esp8266_callback_writeFinishedCB(
 		pSocketData->currentTx = NULL;
 	}
 	os_printf("<< writeFinishedCB\n");
-} // End of writeFinishedCB
+}
 
 
 /**
@@ -642,7 +708,7 @@ static void esp8266_callback_reconnectCB(
 	) {
 	os_printf(">> reconnectCB:  Error code is: %d - %s\n", err, esp8266_errorToString(err));
 	os_printf("<< reconnectCB");
-} // End of reconnectCB
+}
 
 
 /**
@@ -672,7 +738,7 @@ static void esp8266_callback_sentCB(
 		pSocketData->state = SOCKET_STATE_IDLE;
 	}
 	os_printf("<< sendCB\n");
-} // End of sentCB
+}
 
 
 /**
@@ -715,7 +781,7 @@ static void esp8266_callback_recvCB(
 	dumpEspConn(pEspconn);
 	os_printf("<< recvCB\n");
 
-} // End of recvCB
+}
 
 
 // -------------------------------------------------
@@ -734,7 +800,7 @@ void netSetCallbacks_esp8266_board(
 	  net->gethostbyname = net_ESP8266_BOARD_gethostbyname;
 	  net->recv          = net_ESP8266_BOARD_recv;
 	  net->send          = net_ESP8266_BOARD_send;
-} // End of netSetCallbacks_esp8266_board
+}
 
 
 /**
@@ -749,8 +815,8 @@ int net_ESP8266_BOARD_accept(
 	) {
 	//os_printf("> net_ESP8266_BOARD_accept\n");
 	struct socketData *pSocketData = getSocketData(serverSckt);
-	assert(pSocketData->state != SOCKET_STATE_UNUSED);
-	assert(pSocketData->isServer == true);
+	assert(pSocketData->state    != SOCKET_STATE_UNUSED);
+	assert(pSocketData->creationType == SOCKET_CREATED_SERVER);
 
 	// If the list is empty, return.
 	if (pSocketData->acceptedSocketsHead == pSocketData->acceptedSocketsTail) {
@@ -765,7 +831,7 @@ int net_ESP8266_BOARD_accept(
 
 	os_printf("> net_ESP8266_BOARD_accept: Accepted a new socket, socketId=%d\n", acceptedSocketId);
 	return acceptedSocketId;
-} // End of net_ESP8266_BOARD_accept
+}
 
 
 /**
@@ -778,7 +844,6 @@ int net_ESP8266_BOARD_recv(
 		void *buf,      //!< The storage buffer into which we will receive data.
 		size_t len      //!< The length of the buffer.
 	) {
-	assert(sckt >=0 && sckt<MAX_SOCKETS);
 	struct socketData *pSocketData = getSocketData(sckt);
 	assert(pSocketData->state != SOCKET_STATE_UNUSED);
 
@@ -823,7 +888,7 @@ int net_ESP8266_BOARD_recv(
 	os_free(pTemp);
 
 	return len;
-} // End of net_ESP8266_BOARD_recv.
+}
 
 
 /**
@@ -839,7 +904,6 @@ int net_ESP8266_BOARD_send(
 		const void *buf, //!< The buffer containing the data to be sent.
 		size_t len       //!< The length of data in the buffer to send.
 	) {
-	assert(sckt >=0 && sckt<MAX_SOCKETS);
 	os_printf("> net_ESP8266_BOARD_send: Request to send data to socket %d of size %d: ", sckt, len);
 
 	struct socketData *pSocketData = getSocketData(sckt);
@@ -885,7 +949,7 @@ int net_ESP8266_BOARD_send(
 	esp8266_dumpSocket(sckt);
 	os_printf("< net_ESP8266_BOARD_send\n");
 	return len;
-} // End of net_ESP8266_BOARD_send
+}
 
 
 /**
@@ -898,7 +962,7 @@ void net_ESP8266_BOARD_idle(
 	) {
 	// Don't echo here because it is called continuously
 	//os_printf("> net_ESP8266_BOARD_idle\n");
-} // End of net_ESP8266_BOARD_idle
+}
 
 
 /**
@@ -910,7 +974,7 @@ bool net_ESP8266_BOARD_checkError(
 	) {
 	//os_printf("> net_ESP8266_BOARD_checkError\n");
 	return true;
-} // End of net_ESP8266_BOARD_checkError
+}
 
 
 /**
@@ -926,33 +990,41 @@ int net_ESP8266_BOARD_createSocket(
 
 	bool isServer = (ipAddress == 0);
 
-	int sckt = getNextFreeSocket();
-	if (sckt < 0) { // No free socket
+	struct socketData *pSocketData = allocateNewSocket();
+	if (pSocketData == NULL) { // No free socket
 		os_printf("< net_ESP8266_BOARD_createSocket: No free sockets\n");
 		return -1;
 	}
 
-	struct socketData *pSocketData = getSocketData(sckt);
+	int newSocket = pSocketData->socketId;
+	pSocketData->pEspconn = (struct espconn *)os_malloc(sizeof(struct espconn));
+	assert(pSocketData->pEspconn);
+
 	struct espconn *pEspconn = pSocketData->pEspconn;
 
-	espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
-	espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
-	espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
-	espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
-	espconn_regist_write_finish(pEspconn, esp8266_callback_writeFinishedCB);
+	pEspconn->type      = ESPCONN_TCP;
+	pEspconn->state     = ESPCONN_NONE;
+	pEspconn->proto.tcp = (esp_tcp *)os_malloc(sizeof(esp_tcp));
+	pEspconn->reverse   = pSocketData;
+	assert(pEspconn->proto.tcp != NULL);
+	os_memset(pEspconn->proto.tcp, 0, sizeof(esp_tcp));
+
+	// NOTE: We must not call these functions until AFTER we have allocated storage
+	// for the 'esp_tcp' structure.
+  espconn_regist_disconcb(pEspconn, esp8266_callback_disconnectCB);
+  espconn_regist_reconcb(pEspconn, esp8266_callback_reconnectCB);
+  espconn_regist_sentcb(pEspconn, esp8266_callback_sentCB);
+  espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
+  espconn_regist_write_finish(pEspconn, esp8266_callback_writeFinishedCB);
 
 	struct ip_info ipconfig;
 	wifi_get_ip_info(STATION_IF, &ipconfig); // Get the local IP address
 	os_memcpy(pEspconn->proto.tcp->local_ip, &ipconfig.ip, 4);
-	pEspconn->type      = ESPCONN_TCP;
-	pEspconn->state     = ESPCONN_NONE;
-	pEspconn->proto.tcp = &tcpArray[sckt];
-	pEspconn->reverse   = pSocketData;
 
-	// If ipAddress != 0 then make a client connection
+	// If we are not a server ...
 	if (isServer == false) {
 		pSocketData->state = SOCKET_STATE_CONNECTING;
-		pSocketData->isServer = false;
+		pSocketData->creationType = SOCKET_CREATED_OUTBOUND;
 		pEspconn->proto.tcp->remote_port = port;
 		pEspconn->proto.tcp->local_port  = espconn_port();
 
@@ -967,26 +1039,15 @@ int net_ESP8266_BOARD_createSocket(
 		int rc = espconn_connect(pEspconn);
 		if (rc != 0) {
 			os_printf("Err: net_ESP8266_BOARD_createSocket -> espconn_connect returned: %d.  Using local port: %d\n", rc, pEspconn->proto.tcp->local_port);
-			setSocketInError(sckt, "espconn_connect", rc);
+			setSocketInError(newSocket, "espconn_connect", rc);
 		}
-		/*
-		os_printf("Checking to see if we are connected ...\n");
-		uint32 clock= system_get_time();
-		while(pSocketData->isConnected == false) {
-			system_soft_wdt_feed();
-			if ((system_get_time() - clock) > 10000000) {
-				os_printf("clock %d\n", (unit32)clock);
-				clock = system_get_time();
-			}
-		}
-		*/
 	}
 	// If the ipAddress IS 0 ... then we are a server.
 	else
 	{
-		pSocketData->state = SOCKET_STATE_IDLE;
-		pSocketData->isServer = true;
-		// We are going to set ourselves up as a server
+    // We are going to set ourselves up as a server
+		pSocketData->state        = SOCKET_STATE_IDLE;
+		pSocketData->creationType = SOCKET_CREATED_SERVER;
 		pEspconn->proto.tcp->local_port = port;
 
 		espconn_regist_connectcb(pEspconn, esp8266_callback_connectCB_inbound);
@@ -995,14 +1056,14 @@ int net_ESP8266_BOARD_createSocket(
 		int rc = espconn_accept(pEspconn);
 		if (rc != 0) {
 			os_printf("Err: net_ESP8266_BOARD_createSocket -> espconn_accept returned: %d.  Using local port: %d\n", rc, pEspconn->proto.tcp->local_port);
-			setSocketInError(sckt, "espconn_accept", rc);
+			setSocketInError(newSocket, "espconn_accept", rc);
 		}
-	} // End of
+	}
 
 	dumpEspConn(pEspconn);
-	os_printf("< net_ESP8266_BOARD_createSocket, socket=%d\n", sckt);
-	return sckt;
-} // End of net_ESP8266_BOARD_createSocket
+	os_printf("< net_ESP8266_BOARD_createSocket, socket=%d\n", newSocket);
+	return newSocket;
+}
 
 
 /**
@@ -1014,8 +1075,6 @@ void net_ESP8266_BOARD_closeSocket(
 	) {
 	os_printf("> net_ESP8266_BOARD_closeSocket, socket=%d\n", socketId);
 
-	assert(socketId >=0 && socketId<MAX_SOCKETS);
-
 	struct socketData *pSocketData = getSocketData(socketId);
 
 	assert(pSocketData != NULL);
@@ -1025,7 +1084,7 @@ void net_ESP8266_BOARD_closeSocket(
 	esp8266_dumpSocket(socketId);
 
 	// How we close the socket is a function of what kind of socket it is.
-	if (pSocketData->isServer == true) {
+	if (pSocketData->creationType == SOCKET_CREATED_SERVER) {
 		int rc = espconn_delete(pSocketData->pEspconn);
 		if (rc != 0) {
 			os_printf("espconn_delete: rc=%d\n", rc);
@@ -1039,21 +1098,48 @@ void net_ESP8266_BOARD_closeSocket(
 			pSocketData->shouldClose = true;
 		}
 	} // End this is a client socket
-} // End of net_ESP8266_BOARD_closeSocket
+}
+
+
+/**
+ * \brief Callback handler for espconn_gethostbyname.
+ * This is a function that will be called back by the ESP8266 when the resolution of
+ * a hostname has been completed.
+ */
+static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg) {
+	assert(arg != NULL);
+
+	uint32_t *returnIp = (uint32_t *)arg;
+
+	// ipAddr will be NULL if the IP address can not be resolved.
+	if (ipAddr == NULL) {
+		* returnIp = 0;
+	} else {
+		*returnIp = ipAddr->addr;
+	}
+}
 
 
 /**
  * \brief Get an IP address from a name.
- * Sets 'outIp' to 0 on failure.
+ * Sets 'outIp' to 0 on failure and 0xFFFFFFFF on unknown.  At some time later, the
+ * IP address will be properly updated.
  */
 void net_ESP8266_BOARD_gethostbyname(
 		JsNetwork *net, //!< The Network we are going to use to create the socket.
 		char *hostName, //!< The string representing the hostname we wish to lookup.
 		uint32_t *outIp //!< The address into which the resolved IP address will be stored.
 	) {
-	os_printf("> net_ESP8266_BOARD_gethostbyname\n");
-	*outIp = 0x00000000;
-} // End of net_ESP8266_BOARD_gethostbyname
+	assert(hostName != NULL);
+	assert(outIp    != NULL);
+	os_printf("> net_ESP8266_BOARD_gethostbyname: Resolving: %s\n", hostName);
+	int rc = espconn_gethostbyname((struct espconn *)outIp, hostName, (ip_addr_t *)outIp, dnsFoundCallback);
+	// A rc of ESPCONN_OK means that we have an IP and it was stored in outIp.
+	// A rc of ESPCONN_INPROGRESS means that we will get the IP on a callback.
+	if (rc == ESPCONN_INPROGRESS) {
+		*outIp = 0xFFFFFFFF;
+	}
+}
 
 
 // ----------------------------------------------------------------
@@ -1081,7 +1167,7 @@ static void memoryBuffer_delete(
 		pMemoryBuffer->buf = NULL;
 		pMemoryBuffer->length = 0;
 	}
-} // End of memoryBuffer_delete
+}
 
 
 /**
@@ -1120,7 +1206,7 @@ static uint8 *memoryBuffer_append(
 		}
 	}
 	return pMemoryBuffer->buf;
-} // End of memoryBuffer_append
+}
 
 
 /**
@@ -1131,7 +1217,7 @@ static int memoryBuffer_getSize(
 	) {
 	assert(pMemoryBuffer != NULL);
 	return pMemoryBuffer->length;
-} // End of memoryBuffer_getSize
+}
 
 
 /**
@@ -1185,5 +1271,4 @@ static uint8 *memoryBuffer_read(
 	pMemoryBuffer->buf = pTemp2;
 	pMemoryBuffer->length = newSize;
 	return pTemp;
-} // End of memoryBuffer_read
-// End of file
+}

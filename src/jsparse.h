@@ -124,8 +124,8 @@ typedef enum  {
 /** This structure is used when parsing the JavaScript. It contains
  * everything that should be needed. */
 typedef struct {
-  JsVar  *root;   ///< root of symbol table
-  JsVar  *hiddenRoot;   ///< root of the symbol table that's hidden
+  JsVar  *root;       //!< root of symbol table
+  JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
   JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed

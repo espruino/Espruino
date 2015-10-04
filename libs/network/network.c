@@ -116,14 +116,35 @@ unsigned long networkFlipIPAddress(unsigned long addr) {
       ((addr&0xFF000000)>>24);
 }
 
-/// Get an IP address from a name. Sets out_ip_addr to 0 on failure
-void networkGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
-  assert(out_ip_addr);
+/**
+ * \brief Get the IP address of a hostname.
+ * Retrieve the IP address of a hostname and return it in the address of the
+ * ip address passed in.  If the hostname is as dotted decimal string, we will
+ * decode that immediately otherwise we will use the network adapter's `gethostbyname`
+ * function to resolve the hostname.
+ *
+ * A value of 0 returned for an IP address means we could NOT resolve the hostname.
+ * A value of 0xFFFFFFFF for an IP address means that we haven't found it YET.
+ */
+void networkGetHostByName(
+    JsNetwork *net,        //!< The network we are using for resolution.
+    char      *hostName,   //!< The hostname to be resolved.
+    uint32_t  *out_ip_addr //!< The address where the returned IP address will be stored.
+  ) {
+  assert(hostName    != NULL);
+  assert(out_ip_addr != NULL);
+
+  // Set the default IP address returned to be 0 that indicates not found.
   *out_ip_addr = 0;
 
-  *out_ip_addr = networkParseIPAddress(hostName); // first try and simply parse the IP address
-  if (!*out_ip_addr)
+  // first try and simply parse the IP address as a string
+  *out_ip_addr = networkParseIPAddress(hostName);
+
+  // If we did not get an IP address from the string, then try and resolve it by
+  // calling the network gethostbyname.
+  if (!*out_ip_addr) {
     net->gethostbyname(net, hostName, out_ip_addr);
+  }
 }
 
 

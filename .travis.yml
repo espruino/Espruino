@@ -2,10 +2,11 @@ language: c
 before_install:
  - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
  - sudo apt-get update
- - sudo apt-get install libsdl1.2-dev
- - sudo apt-get install gcc-arm-none-eabi
+ - sudo apt-get install libsdl1.2-dev gcc-arm-none-eabi
 before_script:
  - arm-none-eabi-gcc --version
+after_script:
+  - ls *.bin *.hex | xargs -I {} curl -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
 compiler:
   - gcc
 env:
@@ -13,9 +14,8 @@ env:
     - RELEASE=1
     - TRAVIS=1
   matrix:
-    - ESPRUINO_1V0=1
-    - ESPRUINO_1V1=1
     - ESPRUINO_1V3=1
+    - PICO_1V3=1
     - OLIMEXINO_STM32=1
     - MAPLERET6_STM32=1
     - HYSTM32_24=1
@@ -24,6 +24,10 @@ env:
     - STM32VLDISCOVERY=1
     - STM32F3DISCOVERY=1
     - STM32F4DISCOVERY=1
+    - NUCLEOF401RE=1
+    - NUCLEOF411RE=1
     - LCTECH_STM32F103RBT6=1
     - LINUX_BUILD=1
 script: make
+
+

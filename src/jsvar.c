@@ -1674,13 +1674,13 @@ bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith
   while (jsvStringIteratorHasChar(&it) && *str) {
     if (jsvStringIteratorGetChar(&it) != *str) {
       jsvStringIteratorFree(&it);
-      if (!isStartsWith) return false;
-      return *str==0;
+      return false;
     }
     str++;
     jsvStringIteratorNext(&it);
   }
-  bool eq = jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
+  bool eq = (isStartsWith && !*str) ||
+            jsvStringIteratorGetChar(&it)==*str; // should both be 0 if equal
   jsvStringIteratorFree(&it);
   return eq;
 }
@@ -1688,6 +1688,13 @@ bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith
 // Also see jsvIsBasicVarEqual
 bool jsvIsStringEqual(JsVar *var, const char *str) {
   return jsvIsStringEqualOrStartsWith(var, str, false);
+}
+
+// Also see jsvIsBasicVarEqual
+bool jsvIsStringEqualAndUnLock(JsVar *var, const char *str) {
+  bool b = jsvIsStringEqual(var, str);
+  jsvUnLock(var);
+  return b;
 }
 
 

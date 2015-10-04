@@ -30,9 +30,10 @@
 #define HTTP_NAME_HEADERS "hdr"
 #define HTTP_NAME_CLOSENOW "closeNow"
 #define HTTP_NAME_CLOSE "close" // close after sending
-#define HTTP_NAME_ON_CONNECT "#onconnect"
-#define HTTP_NAME_ON_CLOSE "#onclose"
-#define HTTP_NAME_ON_END "#onend"
+#define HTTP_NAME_ON_CONNECT JS_EVENT_PREFIX"connect"
+#define HTTP_NAME_ON_CLOSE JS_EVENT_PREFIX"close"
+#define HTTP_NAME_ON_END JS_EVENT_PREFIX"end"
+#define HTTP_NAME_ON_DRAIN JS_EVENT_PREFIX"drain"
 
 #define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS "HttpCC"
 #define HTTP_ARRAY_HTTP_SERVERS "HttpS"
@@ -227,7 +228,7 @@ bool socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendDat
         newSendData = jsvNewFromStringVar(*sendData, (size_t)a, JSVAPPENDSTRINGVAR_MAXLENGTH);
       } else {
         // we sent all of it! Issue a drain event
-        jsiQueueObjectCallbacks(connection, "#ondrain", &connection, 1);
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
       }
       jsvUnLock(*sendData);
       *sendData = newSendData;

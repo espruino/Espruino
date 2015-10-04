@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * This file is part of Espruino/ESP8266, a JavaScript interpreter for ESP8266
  *
@@ -98,7 +99,7 @@ static void dumpRestart() {
 	uint32_t fid = spi_flash_get_id();
 	os_printf("Flash map %s, manuf 0x%02lX chip 0x%04lX\n", flash_maps[system_get_flash_size_map()],
 		fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
-} // End of dump_restart
+}
 
 
 /**
@@ -106,7 +107,7 @@ static void dumpRestart() {
  */
 static void queueTaskMainLoop() {
 	system_os_post(TASK_APP_QUEUE, TASK_APP_MAINLOOP, 0);
-} // End of queueMainLoop
+}
 
 
 /**
@@ -117,7 +118,7 @@ void suspendMainLoop(
 	) {
 	suspendMainLoopFlag = true;
 	os_timer_arm(&mainLoopSuspendTimer, interval, 0 /* No repeat */);
-} // End of suspendMainLoop
+}
 
 
 /**
@@ -126,7 +127,7 @@ void suspendMainLoop(
 static void enableMainLoop() {
 	suspendMainLoopFlag = false;
 	queueTaskMainLoop();
-} // End of enableMainLoop
+}
 
 /**
  * \brief Idle callback from the SDK, triggers an idle loop iteration
@@ -172,7 +173,7 @@ static void eventHandler(
 				pEvent->sig);
 		break;
 	}
-} // End of eventHandler
+}
 
 
 static uint32 lastTime = 0;
@@ -199,7 +200,7 @@ static void mainLoop() {
 	// Setup for another callback
 	//queueTaskMainLoop();
 	suspendMainLoop(0); // HACK to get around SDK 1.4 bug
-} // End of mainLoop
+}
 
 
 /**
@@ -209,7 +210,6 @@ static void mainLoop() {
  */
 static void initDone() {
 	os_printf("initDone invoked\n");
-	os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
 
 	// Discard any junk data in the input as this is a boot.
 	//uart_rx_discard();
@@ -231,7 +231,7 @@ static void initDone() {
 	queueTaskMainLoop(); // get things going without idle callback
 
 	return;
-} // End of initDone
+}
 
 
 /**
@@ -241,7 +241,7 @@ static void initDone() {
  */
 void user_rf_pre_init() {
 	os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
-} // End of user_rf_pre_init
+}
 
 
 /**
@@ -249,9 +249,9 @@ void user_rf_pre_init() {
  * It is where the logic of ESP8266 starts.
  */
 void user_init() {
-	system_timer_reinit();
+	system_timer_reinit(); // use microsecond os_timer_*
 	// Initialize the UART devices
-	uart_init(BIT_RATE_115200, 115200);
+	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 	os_delay_us(10000); // give the uart a break
 	UART_SetPrintPort(1);
 	system_set_os_print(1);
@@ -269,5 +269,4 @@ void user_init() {
 	// Do NOT attempt to auto connect to an access point.
 	//wifi_station_set_auto_connect(0);
 	os_timer_setfn(&mainLoopSuspendTimer, enableMainLoop, NULL);
-} // End of user_init
-// End of file
+}

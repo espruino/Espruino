@@ -28,36 +28,33 @@
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
-#include "app_uart.h"
-
-static int init = 0; // Temp hack to get jsiOneSecAfterStartup() going.
+static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() 
 {
-
   jshInitDevices();
-  nrf_utils_cnfg_leds_as_outputs(); // Configure and turn off the four on board LEDS.
   nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
   nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
   init = 1;
-
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
-void jshReset() {
+void jshReset()
+{
 
 }
 
-void jshKill() {
+void jshKill()
+{
 
 }
 
 // stuff to do on idle
-void jshIdle() {
-
+void jshIdle()
+{
   if (init == 1)
   {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
@@ -65,18 +62,23 @@ void jshIdle() {
   }
 
   jshUSARTKick(EV_SERIAL1);
-
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
-int jshGetSerialNumber(unsigned char *data, int maxChars) {
-  return 0;
+int jshGetSerialNumber(unsigned char *data, int maxChars)
+{
+    if (maxChars <= 0)
+    {
+    	return 0;
+    }
+	return nrf_utils_get_device_id(data, maxChars);
 }
 
 // is the serial device connected?
-bool jshIsUSBSERIALConnected() {
-  return false;
-} 
+bool jshIsUSBSERIALConnected()
+{
+  return true;
+}
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
@@ -85,7 +87,8 @@ JsSysTime jshGetSystemTime()
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
-void jshSetSystemTime(JsSysTime time) {
+void jshSetSystemTime(JsSysTime time)
+{
 
 }
 
@@ -102,12 +105,14 @@ JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 }
 
 // software IO functions...
-void jshInterruptOff() {
-
+void jshInterruptOff()
+{
+  __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
 }
 
-void jshInterruptOn() {
-
+void jshInterruptOn()
+{
+  __enable_irq(); // ***This wont be good with softdevice!!
 }
 
 void jshDelayMicroseconds(int microsec) 
@@ -132,19 +137,22 @@ void jshPinSetValue(Pin pin, bool value)
   }
 }
 
-bool jshPinGetValue(Pin pin) {
+bool jshPinGetValue(Pin pin)
+{
   return (bool) nrf_utils_gpio_pin_read((uint32_t) pin);
 }
 
 // Set the pin state
-void jshPinSetState(Pin pin, JshPinState state) {
-
+void jshPinSetState(Pin pin, JshPinState state)
+{
+  nrf_utils_gpio_pin_set_state((uint32_t) pin, (uint32_t) state);
 }
 
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
-JshPinState jshPinGetState(Pin pin) {
-  return JSHPINSTATE_UNDEFINED;
+JshPinState jshPinGetState(Pin pin)
+{
+  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t) pin);
 }
 
 // Returns an analog value between 0 and 1
@@ -205,8 +213,9 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 }
 
 /** Set up a UART, if pins are -1 they will be guessed */
-void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
-  uart_init(); // Initialzes UART and registers a callback function defined above to read characters into the static variable character.
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
+{
+  uart_init(); // Initializes UART and registers a callback function defined above to read characters into the static variable character.
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -274,47 +283,33 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page
-bool jshFlashGetPage(uint32_t addr, uint32_t *startAddr, uint32_t *pageSize) {
-
-  /*if (addr < 0 || addr > (FLASH_PAGE_SIZE * NUMBER_OF_PAGES))
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
+{
+  if (!nrf_utils_get_page(addr, startAddr, pageSize))
   {
-	  return false; // Exception?
+	  return false;
   }
-  &startAddr = (floor(addr / FLASH_PAGE_SIZE) * FLASH_PAGE_SIZE);
-  &pageSize = FLASH_PAGE_SIZE;
-  return true;*/
-	return false;
-
+  return true;
 }
 
 /// Erase the flash page containing the address
-void jshFlashErasePage(uint32_t addr) {
-	//nrf_utils_erase_flash_page(addr);
+void jshFlashErasePage(uint32_t addr)
+{
+  nrf_utils_erase_flash_page(addr);
 }
 
 /// Read data from flash memory into the buffer
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len) {
-
+void jshFlashRead(void *buf, uint32_t addr, uint32_t len)
+{
+  nrf_utils_read_flash_bytes((uint8_t *) buf, addr, len);
+  //nrf_utils_read_flash_addresses(buf, addr, len);
 }
 
 /// Write data to flash memory from the buffer
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
-
-}
-
-/// Save contents of JsVars into Flash
-void jshSaveToFlash() {
-
-}
-
-/// Load contents of JsVars from Flash
-void jshLoadFromFlash() {
-
-}
-
-/// Returns true if flash contains something useful
-bool jshFlashContainsCode() {
-  return false;
+void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
+{
+  nrf_utils_write_flash_bytes(addr, (uint8_t *) buf, len);
+  //nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, (len / 4));
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -358,6 +353,7 @@ JsVarFloat jshReadVRef()
 /* Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()` */
-unsigned int jshGetRandomNumber() {
+unsigned int jshGetRandomNumber()
+{
   return (unsigned int) nrf_utils_get_random_number();
 }

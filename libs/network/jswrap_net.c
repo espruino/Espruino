@@ -40,7 +40,7 @@ void jswrap_net_init() {
 }
 
 /*JSON{
-  "type" : "kill",
+  "type"     : "kill",
   "generate" : "jswrap_net_kill"
 }*/
 void jswrap_net_kill() {

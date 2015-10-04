@@ -42,7 +42,7 @@ chip = {
     'address' : 0x7C000,
     'page_size' : 4096,
     'pages' : 3, # there are really 4 pages reserved but we should only need 3
-    'flash_available' : 1024,
+    'flash_available' : 492, # firmware can be up to this size
   },
 };
 # left-right, or top-bottom order
@@ -55,6 +55,6 @@ board_css = """
 """;
 
 def get_pins():
-  pins = pinutils.generate_pins(0,7)
-  # just fake pins D0 .. D7
+  pins = pinutils.generate_pins(0,15)
+  # just fake pins D0 .. D15
   return pins

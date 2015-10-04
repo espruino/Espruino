@@ -39,11 +39,11 @@ static void connectCB(void *arg) {
 	strcpy(line, "");
 	discard = false;
 	pTelnetClientConn = pConn;
-} // End of connectCB
+}
 
 static void disconnectCB(void *arg) {
 	os_printf("Disconnect cb!!\n");
-} // End of disconnectCB
+}
 
 
 static void receiveCB(void *arg, char *pData, unsigned short len) {
@@ -65,7 +65,7 @@ static void receiveCB(void *arg, char *pData, unsigned short len) {
 	} else {
 		//os_printf("Not found, current='%s'\n", line);
 	}
-} // End of receiveCB
+}
 
 /**
  * Register a telnet serever listener on port 23 to handle incoming telnet client
@@ -83,12 +83,11 @@ void telnet_startListening(void (*plineCB)(char *)) {
 	espconn_regist_recvcb(&conn1, receiveCB);
 	espconn_accept(&conn1);
 	os_printf("Now listening for telnet client connection ...\n");
-} // End of telnet_startListening
+}
 
 /**
  * Send the string passed as a parameter to the telnet client.
  */
 void telnet_send(char *text) {
 	espconn_sent(pTelnetClientConn, (uint8_t *)text, strlen(text));
-} // End of telnet_send
-// End of file
+}

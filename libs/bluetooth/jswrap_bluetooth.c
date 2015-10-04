@@ -22,9 +22,11 @@
  */
 #include "jswrap_bluetooth.h"
 #include "jsinteractive.h"
+#include "jsdevices.h"
 
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include "nordic_common.h"
 #include "nrf.h"
 #include "ble_hci.h"
@@ -66,6 +68,7 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
+static volatile bool ble_com;
 
 /**@brief Function for assert macro callback.
  *
@@ -126,10 +129,21 @@ static void gap_params_init(void)
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
 	uint32_t i;
-    for (i = 0; i < length; i++)
-    {
-    	jsiConsolePrintChar((char) p_data[i]);
-    }
+
+	if (ble_com)
+	{
+		for (i = 0; i < length; i++)
+		{
+			jshPushIOCharEvent(EV_SERIAL1, (char) p_data[i]);
+		}
+	}
+	else
+	{
+		for (i = 0; i < length; i++)
+		{
+			jsiConsolePrintChar((char) p_data[i]);
+		}
+	}
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -454,6 +468,8 @@ void jswrap_nrf_bluetooth_init(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
     
+    ble_com = false;
+
     // Enter main loop.
     //for (;;)
     //{
@@ -499,6 +515,61 @@ void jswrap_nrf_bluetooth_send_string(Pin* string_to_send, int length)
 }
 /**@snippet [Send string to the BLE central node (smart phone).] */
 
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bluetooth",
+    "name" : "enable_com",
+    "generate" : "jswrap_nrf_bluetooth_enable_com"
+}*/
+void jswrap_nrf_bluetooth_enable_com(void)
+{
+	ble_com = true;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bluetooth",
+    "name" : "disable_com",
+    "generate" : "jswrap_nrf_bluetooth_disable_com"
+}*/
+void jswrap_nrf_bluetooth_disable_com(void)
+{
+	ble_com = false;
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bluetooth",
+    "name" : "sleep",
+    "generate" : "jswrap_nrf_bluetooth_sleep"
+}*/
+void jswrap_nrf_bluetooth_sleep(void)
+{
+    uint32_t err_code;
+
+    // If connected, disconnect.
+    if (m_conn_handle != BLE_CONN_HANDLE_INVALID)
+    {
+        err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+    }
+
+    // Stop advertising
+    err_code = sd_ble_gap_adv_stop();
+    NRF_RADIO->TASKS_DISABLE = (1UL);
+}
+
+/*JSON{
+    "type" : "staticmethod",
+    "class" : "Bluetooth",
+    "name" : "wake",
+    "generate" : "jswrap_nrf_bluetooth_wake"
+}*/
+void jswrap_nrf_bluetooth_wake(void)
+{
+    uint32_t err_code;
+    NRF_RADIO->TASKS_DISABLE = (0UL);
+    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+}
 
 /** 
  * @}
