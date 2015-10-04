@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  * This file is part of Espruino/ESP8266, a JavaScript interpreter for ESP8266
  *

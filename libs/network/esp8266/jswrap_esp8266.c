@@ -851,8 +851,6 @@ static void scanCB(void *arg, STATUS status) {
 	struct bss_info *bssInfo;
 
 	bssInfo = (struct bss_info *)arg;
-	// skip the first in the chain … it is invalid
-	//bssInfo = STAILQ_NEXT(bssInfo, next); // this got fixed in SDK 1.4
 	while(bssInfo != NULL) {
 		// Add a new object to the JS array that will be passed as a parameter to
 		// the callback.  The ESP8266 bssInfo structure contains the following:

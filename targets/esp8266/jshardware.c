@@ -490,6 +490,8 @@ void jshUSARTKick(
 }
 
 
+//===== SPI =====
+
 /**
  * \brief Unknown
  *
@@ -500,11 +502,6 @@ void jshSPISetup(
 	) {
 	os_printf("ESP8266: jshSPISetup: device=%d, inf=0x%x\n", device, (int)inf);
 }
-
-//===== SPI =====
-
-void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
-} // End of jshSPISetup
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function

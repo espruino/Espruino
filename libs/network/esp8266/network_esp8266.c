@@ -35,7 +35,7 @@
  * SOCKET_CREATED_INBOUND - The socket was created by an in-bound.
  */
 // ESP8266 specific includes
-#define ESPSDK_1_3_0
+#undef ESPSDK_1_3_0
 #include <c_types.h>
 #include <user_interface.h>
 #include <mem.h>
