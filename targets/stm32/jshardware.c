@@ -11,15 +11,14 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
-#ifdef USB
+
  #ifdef LEGACY_USB
   #include "legacy_usb.h"
  #else
   #include "usbd_cdc_hid.h"
  #endif
-#endif
-
 #include "jshardware.h"
+#include "stm32_compat.h"
 #include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
@@ -78,38 +77,9 @@ volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
 JsSysTime jshLastWokenByUSB = 0;
 #endif
 
-// Values from datasheets
-#if defined(STM32F1)
-#define V_REFINT 1.20
-#define V_TEMP_25 1.43
-#define V_TEMP_SLOPE 0.0043
-#else // defined(STM32F4)
-#define V_REFINT 1.21
-#define V_TEMP_25 0.76
-#define V_TEMP_SLOPE -0.0025
-#endif
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
-#if defined(STM32F3)
-// stupid renamed stuff
-#define SPI_I2S_SendData SPI_I2S_SendData16
-#define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
-#define EXTI2_IRQn EXTI2_TS_IRQn
-#define GPIO_Mode_AIN GPIO_Mode_AN
-#define FLASH_FLAG_WRPRTERR FLASH_FLAG_WRPERR
-#define FLASH_LockBank1 FLASH_Lock
-#define FLASH_UnlockBank1 FLASH_Unlock
-// see _gpio.h
-#define GPIO_AF_USART1 GPIO_AF_7
-#define GPIO_AF_USART2 GPIO_AF_7
-#define GPIO_AF_USART3 GPIO_AF_7
-#define GPIO_AF_UART4 GPIO_AF_5
-#define GPIO_AF_UART5 GPIO_AF_5
-#define GPIO_AF_USART6 GPIO_AF_0 // FIXME is this right?
-#define GPIO_AF_SPI1 GPIO_AF_5
-#define GPIO_AF_SPI2 GPIO_AF_5
-#endif
 
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
