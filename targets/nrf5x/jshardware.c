@@ -33,8 +33,8 @@ static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 void jshInit() 
 {
   jshInitDevices();
-  nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
-  nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
+  nrf_utils_lfclk_config_and_start();
+  nrf_utils_rtc1_config_and_start();
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
@@ -92,13 +92,13 @@ void jshSetSystemTime(JsSysTime time)
 
 }
 
-/// Convert a time in Milliseconds to one in ticks
+/// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
 {
   return (JsSysTime) ((ms * 32768) / 1000);
 }
 
-/// Convert ticks to a time in Milliseconds
+/// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 {
   return (JsVarFloat) ((time * 1000) / 32768);
@@ -112,7 +112,7 @@ void jshInterruptOff()
 
 void jshInterruptOn()
 {
-  __enable_irq(); // ***This wont be good with softdevice!!
+  __enable_irq(); // *** This wont be good with SoftDevice!
 }
 
 void jshDelayMicroseconds(int microsec) 
@@ -170,8 +170,15 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-  //return JSH_NOTHING;
+/**
+ * Set the value of the pin to be the value specified, wait for a given period of time, then toggle the pin.
+ */
+void jshPinPulse(Pin pin, bool value, JsVarFloat time)
+{
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, value);
+  jshDelayMicroseconds(time); // Not sure about time...
+  jshPinSetValue(pin, !value);
 }
 
 ///< Can the given pin be watched? it may not be possible because of conflicts
@@ -355,7 +362,7 @@ void jshDoSysTick() {
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature()
 {
-  return (JsVarFloat) nrf_utils_read_temperature(); // This is returning an int right now..
+  return (JsVarFloat) nrf_utils_read_temperature(); // *** This is returning an int right now..
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
@@ -364,9 +371,11 @@ JsVarFloat jshReadVRef()
   return 0.0;
 }
 
-/* Get a random number - either using special purpose hardware or by
+/**
+ * Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
- * default to `rand()` */
+ * default to `rand()`
+ */
 unsigned int jshGetRandomNumber()
 {
   return (unsigned int) nrf_utils_get_random_number();
