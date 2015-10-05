@@ -79,7 +79,7 @@ void jshInit() {
  * \brief Reset the hardware to a power-on state
  */
 void jshReset() {
-	system_restart();
+	//system_restart();
 } // End of jshReset
 
 /**
@@ -127,7 +127,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
 	// Keep things simple and make the user responsible if they sleep for too long...
 	if (microsec > 0) {
-		os_printf("Delay %ldus\n", microsec);
+		os_printf("Delay %d us\n", microsec);
 		os_delay_us(microsec);
 	}
 #if 0
@@ -400,7 +400,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 
 /**
- * \brief
+ *
  */
 bool jshGetWatchedPinState(IOEventFlags device) {
 	os_printf("ESP8266: jshGetWatchedPinState %d", device);
@@ -479,6 +479,7 @@ bool jshIsUSBSERIALConnected() {
 /**
  * \brief
  * Kick a device into action (if required).
+ *
  * For instance we may need
  * to set up interrupts.  In this ESP8266 implementation, we transmit all the
  * data that can be found associated with the device.
@@ -494,6 +495,7 @@ void jshUSARTKick(
 
 /**
  * \brief Unknown
+ *
  *
  */
 void jshSPISetup(
@@ -630,7 +632,7 @@ static void saveTime() {
 		(uint32_t)(rtcTimeStamp.timeStamp >> 32);
 	system_rtc_mem_write(RTC_TIME_ADDR, &rtcTimeStamp, sizeof(rtcTimeStamp));
 	os_printf("RTC write: %lu %lu 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-		rtcTimeStamp.hwTimeStamp, rtcTimeStamp.cksum);
+		rtcTimeStamp.hwTimeStamp, (int)rtcTimeStamp.cksum);
 }
 
 /**
@@ -703,8 +705,8 @@ static void systemTimeInit(void) {
 	uint32_t cksum = rtcTimeStamp.cksum ^ rtcTimeStamp.hwTimeStamp ^
 		(uint32_t)(rtcTimeStamp.timeStamp & 0xffffffff) ^
 		(uint32_t)(rtcTimeStamp.timeStamp >> 32);
-	os_printf("RTC read: %lu %lu 0x%08x (0x%08x)\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-		rtcTimeStamp.hwTimeStamp, rtcTimeStamp.cksum, cksum);
+	os_printf("RTC read: %d %d 0x%08x (0x%08x)\n", (int)(rtcTimeStamp.timeStamp/1000000),
+		(int)rtcTimeStamp.hwTimeStamp, (unsigned int)rtcTimeStamp.cksum, (unsigned int)cksum);
 	if (reason < 1 || reason > 4 || cksum != 0xdeadbeef) {
 		// we lost track of time, start at zero
 		os_printf("RTC: cannot restore time\n");
@@ -754,7 +756,7 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-	os_printf("UStimer arm %lluus\n");
+	os_printf("UStimer arm\n");
 	os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
