@@ -93,6 +93,8 @@ JsSysTime jshLastWokenByUSB = 0;
 //                                                                        PINS
 #if defined(STM32F3)
 // stupid renamed stuff
+#define SPI_I2S_SendData SPI_I2S_SendData16
+#define SPI_I2S_ReceiveData SPI_I2S_ReceiveData16
 #define EXTI2_IRQn EXTI2_TS_IRQn
 #define GPIO_Mode_AIN GPIO_Mode_AN
 #define FLASH_FLAG_WRPRTERR FLASH_FLAG_WRPERR
@@ -845,13 +847,9 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
 
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
-  bool af = state==JSHPINSTATE_AF_OUT ||
-            state==JSHPINSTATE_AF_OUT_OPENDRAIN ||
-            state==JSHPINSTATE_USART_IN ||
-            state==JSHPINSTATE_USART_OUT ||
-            state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
-  bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
+  bool af = JSHPINSTATE_IS_AF(state);
+  bool pullup = JSHPINSTATE_IS_PULLUP(state);
+  bool pulldown = JSHPINSTATE_IS_PULLDOWN(state);
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
   if (out) {
