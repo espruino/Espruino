@@ -52,6 +52,7 @@
 # ESP8266_2MB=1           # ESP8266 with 2MB flash: 512KB+512KB firmware + 3MB SPIFFS
 # ESP8266_1MB=1           # ESP8266 with 1MB flash: 512KB+512KB firmware + 32KB SPIFFS
 # ESP8266_512KB=1         # ESP8266 with 512KB flash: 512KB firmware + 32KB SPIFFS
+# EWM3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
 # Also:
@@ -335,6 +336,15 @@ BOARD=NUCLEOF411RE
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
+
+else ifdef EMW3165
+EMBEDDED=1
+#USE_GRAPHICS=1
+#USE_NET=1
+BOARD=EMW3165
+STLIB=STM32F401xE
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-O2
 
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
@@ -649,12 +659,12 @@ ifdef USE_NET
 ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
-else
-ifeq ($(FAMILY),ESP8266)
+else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
+else ifdef EMW3165
+USE_WICED=1
 else
 USE_CC3000=1
-endif
 endif
 endif
 endif
@@ -915,6 +925,9 @@ libs/network/js/network_js.c
  libs/network/wiznet/Ethernet/wizchip_conf.c \
  libs/network/wiznet/Ethernet/socket.c \
  libs/network/wiznet/W5500/w5500.c
+ endif
+
+ ifdef USE_WICED
  endif
 
  ifdef USE_ESP8266
