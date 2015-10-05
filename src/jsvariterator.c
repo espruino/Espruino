@@ -198,6 +198,10 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     it->charIdx++;
   } else
     assert(it->charIdx == 0);
+  /* Note: jsvGetMaxCharactersInVar will return the wrong length when
+   * applied to flat strings, but we don't care because the length will
+   * be smaller than charIdx, which will force a new string to be
+   * appended onto the end  */
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
