@@ -12,8 +12,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#include "jshardware.h"
-#include "stm32_compat.h"
+
+
 #ifdef USB
  #ifdef LEGACY_USB
   #include "legacy_usb.h"
@@ -21,7 +21,8 @@
   #include "usbd_cdc_hid.h"
  #endif
 #endif
-
+#include "stm32_compat.h"
+#include "jshardware.h"
 #include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
