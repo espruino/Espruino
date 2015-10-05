@@ -443,11 +443,19 @@ supplied to `setWatch` is executed only from the main message loop. However, if 
 native function `void (bool state)` then you can add `irq:true` to options, which will cause the 
 function to be called from within the IRQ. When doing this, interrupts will happen on both edges 
 and there will be no debouncing.
+
+**Note:** The STM32 chip (used in the [Espruino Board](/EspruinoBoard) and [Pico](/Pico)) cannot
+watch two pins with the same number - eg `A0` and `B0`.
+
  */
 JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
+  if (!jshIsPinValid(pin)) {
+    jsError("Invalid pin");
+    return 0;
+  }
 
   if (!jsiIsWatchingPin(pin) && !jshCanWatch(pin)) {
-    jsWarn("Unable to set watch on pin. You may already have a watch on a pin with the same number.");
+    jsWarn("Unable to set watch. You may already have a watch on a pin with the same number (eg. A0 and B0)");
     return 0;
   }
 

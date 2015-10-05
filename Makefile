@@ -102,8 +102,8 @@ DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
 LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
-# extra echo here stops build errors caused by whitespace on Mac
-COMMITS_SINCE_RELEASE=$(shell echo `git log --oneline $(LATEST_RELEASE)..HEAD | wc -l`)
+# use egrep to count lines instead of wc to avoid whitespace error on Mac
+COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
 ifneq ($(COMMITS_SINCE_RELEASE),0)
 DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
 endif
@@ -479,9 +479,8 @@ else ifdef ESP8266_512KB
 EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
 # We have to disable inlining to keep code size in check
-OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline
+OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
@@ -490,18 +489,16 @@ ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 
-else ifdef ESP8266_4M
+else ifdef ESP8266_4MB
 # esp8266 with 4MB flash chip with OTA support: we get 492KB in the first 512, 492 KB in the
-# second 512KB for firmware; and then we have 3MB-16KB for SPIFFS of which we're gonna use the
-# late 2MB-16KB to leave 1MB unused for future plans
+# second 512KB for firmware; and then we have 3MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
-# Enable link-time optimisations (inlining across files)
-OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-DEFINES += -DLINK_TIME_OPTIMISATION
-ESP_SPI_SIZE        ?= 4       # 4->4MB (512KB+512KB)
+BOARD=ESP8266_OTA
+# Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
+# code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
+OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+ESP_FLASH_SIZE      ?= 4       # 4->4MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
@@ -509,17 +506,16 @@ ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
 
-else ifdef ESP8266_2M
+else ifdef ESP8266_2MB
 # *** WARNING: THIS FLASH SIZE HAS NOT BEEN TESTED ***
 # esp8266 with 2MB flash chip with OTA support: same as 4MB except we have 1MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+BOARD=ESP8266_OTA
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
-ESP_SPI_SIZE        ?= 3       # 3->2MB (512KB+512KB)
+ESP_FLASH_SIZE      ?= 3       # 3->2MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
@@ -527,18 +523,17 @@ ET_FS               ?= 16m     # 32Mbit flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
 
-else ifdef ESP8266_1M
+else ifdef ESP8266_1MB
 # *** WARNING: THIS FLASH SIZE HAS NOT BEEN TESTED ***
 # esp8266 with 1MB flash chip with OTA support: this is a mix between the 512KB and 2MB versions:
 # we get two partitions for firmware but we need to turn optimization off to leave some space
 # for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_BOARD
-DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_ESP8266_BOARD
+BOARD=ESP8266_OTA
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-O2 -fno-inline-functions
-ESP_SPI_SIZE        ?= 2       # 2->1MB (512KB+512KB)
+ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
@@ -655,8 +650,8 @@ ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
 else
-ifeq ($(BOARD),ESP8266_BOARD)
-USE_ESP8266_BOARD=1
+ifeq ($(FAMILY),ESP8266)
+USE_ESP8266=1
 else
 USE_CC3000=1
 endif
@@ -666,7 +661,11 @@ endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
+ifeq ($(FAMILY),ESP8266)
+OPTIMIZEFLAGS=-g -Os
+else
 OPTIMIZEFLAGS=-g
+endif
 DEFINES+=-DDEBUG
 endif
 
@@ -1243,6 +1242,20 @@ ifdef NRF5X
 
 endif #NRF5X
 
+ifeq ($(FAMILY),ESP8266)
+# move os_printf strings into flash to save RAM space
+DEFINES += -DUSE_OPTIMIZE_PRINTF
+DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
+ESP8266=1
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
+CFLAGS+= -fno-builtin -fno-strict-aliasing \
+-Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
+-Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
+-Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
+-Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
+endif
+
+
 ifdef MBED
 ARCHFLAGS += -mcpu=cortex-m3 -mthumb
 ARM=1
@@ -1303,16 +1316,6 @@ ifdef RASPBERRYPI
   # compiling in-place, so give it a normal name
   PROJ_NAME=espruino
  endif
-endif
-
-ifeq ($(FAMILY), ESP8266)
-ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
-CFLAGS+= -fno-builtin -fno-strict-aliasing \
--Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
--Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
--Wno-parentheses -Wno-type-limits -Wno-unused-function -Wno-unused-value \
--Wl,EL -Wl,--gc-sections -nostdlib -mlongcalls -mtext-section-literals
 endif
 
 ifdef STM32
@@ -1391,7 +1394,6 @@ CCPREFIX=xtensa-lx106-elf-
 
 # Extra flags passed to the linker
 LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
--Ttargets/esp8266/eagle.app.v6.0x10000.ld \
 -nostdlib \
 -Wl,--no-check-sections \
 -u call_user_start \
@@ -1399,10 +1401,11 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 
 # Extra source files specific to the ESP8266
 SOURCES += targets/esp8266/uart.c \
-targets/esp8266/user_main.c \
-targets/esp8266/jshardware.c \
-targets/esp8266/esp8266_board_utils.c \
-libs/network/esp8266/network_esp8266.c
+	   targets/esp8266/user_main.c \
+	   targets/esp8266/jshardware.c \
+	   targets/esp8266/esp8266_board_utils.c \
+	   libs/network/esp8266/network_esp8266.c
+# if using the hw_timer:   targets/esp8266/hw_timer.c \
 
 # The tool used for building the firmware and flashing
 ESPTOOL_CK ?= esptool-ck
@@ -1510,7 +1513,7 @@ proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o partial.o $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal partial.o
-	$(Q)$(LD) $(LDFLAGS) -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(Q)$(LD) $(LDFLAGS) -Ttargets/esp8266/eagle.app.v6.0x10000.ld -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)rm partial.o
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $(PROJ_NAME).elf | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
@@ -1534,7 +1537,18 @@ endif
 else ifdef ESP8266
 # for the non-512KB flash we generate a single OTA binary, but we generate two of them, one per
 # OTA partition (Espressif calls these user1.bin and user2.bin)
-proj: $(PROJ_NAME).elf $(PROJ_NAME)_user1.bin $(PROJ_NAME)_user2.bin
+USER1_BIN   = $(PROJ_NAME)_user1.bin
+USER2_BIN   = $(PROJ_NAME)_user2.bin
+USER1_ELF   = $(PROJ_NAME)_user1.elf
+USER2_ELF   = $(PROJ_NAME)_user2.elf
+LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
+LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
+APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
+BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin
+BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
+INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
+
+proj: $(USER1_BIN) $(USER2_BIN)
 
 # linking is complicated. The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
@@ -1544,29 +1558,56 @@ proj: $(PROJ_NAME).elf $(PROJ_NAME)_user1.bin $(PROJ_NAME)_user2.bin
 # Note that a previous method of renaming .text to .irom0 in each object file doesn't work when
 # we enable the link-time optimizer for inlining because it generates fresh code that all ends
 # up in .iram0.
-$(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
-	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o partial.o $(OBJS)
-	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal partial.o
-	$(Q)$(LD) $(LDFLAGS) -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
-	$(Q)rm partial.o
-	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $(PROJ_NAME).elf | tail -n +4
-	@echo To disassemble: $(OBJDUMP) -d -l -x $(PROJ_NAME).elf
 
-# binary image for idata0&iram0
-$(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
-# Note that ESPTOOL_CK always returns non zero, ignore errors
-	$(Q)$(ESPTOOL_CK) -eo $< -bo $@ -bs .text -bs .data -bs .rodata -bs .iram0.text -bc -ec || true
+# generate partially linked .o with all Esprunio source files linked
+$(PROJ_NAME)_partial.o: $(OBJS) $(LINKER_FILE)
+	@echo LD $@
+	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
+	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
-# binary image for irom0
-$(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
-# Note that ESPTOOL_CK always returns non zero, ignore errors
-	$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec || true
+# generate fully linked 'user1' .elf using linker script for first OTA partition
+$(USER1_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
+	@echo LD $@
+	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $@ | tail -n +4
+	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 
-flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
+# generate fully linked 'user2' .elf using linker script for second OTA partition
+$(USER2_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
+	@echo LD $@
+	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT2) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	@echo To disassemble: $(OBJDUMP) -d -l -x $@
+
+# generate binary image for user1, i.e. first OTA partition
+$(USER1_BIN): $(USER1_ELF)
+	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER1_ELF) eagle.app.v6.text.bin
+	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER1_ELF) eagle.app.v6.data.bin
+	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
+	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin
+	@ls -ls eagle*bin
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
+	$(Q) rm -f eagle.app.v6.*.bin
+	$(Q) mv eagle.app.flash.bin $@
+	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
+	@if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+
+# generate binary image for user2, i.e. second OTA partition
+# we make this rule dependent on user1.bin in order to serialize the two rules because they use
+# stupid static filenames (go blame the Espressif tool)
+$(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
+	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER2_ELF) eagle.app.v6.text.bin
+	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
+	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
+	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
+	$(Q) rm -f eagle.app.v6.*.bin
+	$(Q) mv eagle.app.flash.bin $@
+
+flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error, "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 115200 write_flash --flash_freq 40m --flash_mode qio --flash_size 4m 0x00000 $(PROJ_NAME)_0x00000.bin.bin 0x10000 $(PROJ_NAME)_0x10000.bin
+	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
 else # embedded, so generate bin, etc ---------------------------
 

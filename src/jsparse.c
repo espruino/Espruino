@@ -1583,7 +1583,7 @@ NO_INLINE JsVar *__jspeAssignmentExpression(JsVar *lhs) {
         else if (op==LEX_RSHIFTUNSIGNEDEQUAL) op=LEX_RSHIFTUNSIGNED;
         if (op=='+' && jsvIsName(lhs)) {
           JsVar *currentValue = jsvSkipName(lhs);
-          if (jsvIsString(currentValue) && jsvGetRefs(currentValue)==1) {
+          if (jsvIsString(currentValue) && !jsvIsFlatString(currentValue) && jsvGetRefs(currentValue)==1) {
             /* A special case for string += where this is the only use of the string,
              * as we may be able to do a simple append (rather than clone + append)*/
             JsVar *str = jsvAsString(rhs, false);

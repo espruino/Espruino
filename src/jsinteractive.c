@@ -123,9 +123,14 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
   }
 }
 
-
-/// Change the console to a new location
-void jsiSetConsoleDevice(IOEventFlags device) {
+/**
+ * \brief Change the console to a new location.
+ */
+void jsiSetConsoleDevice(
+    IOEventFlags device //!< The device to use as a console.
+  ) {
+  // The `consoleDevice` is the global used to indicate which device we are using as the
+  // the console.
   if (device == consoleDevice) return;
 
   if (!jshIsDeviceInitialised(device)) {
@@ -134,6 +139,8 @@ void jsiSetConsoleDevice(IOEventFlags device) {
     jshUSARTSetup(device, &inf);
   }
 
+  // Log to the old console that we are moving consoles and then, once we have moved
+  // the console, log to the new console that we have moved consoles.
   jsiConsoleRemoveInputLine();
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     jsiConsolePrint("Console Moved to ");
@@ -149,15 +156,25 @@ void jsiSetConsoleDevice(IOEventFlags device) {
   }
 }
 
-/// Get the device that the console is currently on
+/**
+ * \brief Retrieve the device being used as the console.
+ */
 IOEventFlags jsiGetConsoleDevice() {
+  // The `consoleDevice` is the global used to hold the current console.  This function
+  // encapsulates access.
   return consoleDevice;
 }
 
+/**
+ * \brief Send a character to the console.
+ */
 NO_INLINE void jsiConsolePrintChar(char data) {
   jshTransmit(consoleDevice, (unsigned char)data);
 }
 
+/**
+ * \breif Send a NULL terminated string to the console.
+ */
 NO_INLINE void jsiConsolePrint(const char *str) {
   while (*str) {
     if (*str == '\n') jsiConsolePrintChar('\r');
@@ -210,7 +227,9 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, size_t fromCharacter, cha
   jsvStringIteratorFree(&it);
 }
 
-/// Print the contents of a string var - directly
+/**
+ * \brief Print the contents of a string var - directly.
+ */
 void jsiConsolePrintStringVar(JsVar *v) {
   jsiConsolePrintStringVarWithNewLineChar(v,0,0);
 }
@@ -337,6 +356,9 @@ void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
   jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
 }
 
+/**
+ * \brief Clear the input line of data.
+ */
 void jsiClearInputLine() {
   jsiConsoleRemoveInputLine();
   // clear input line
@@ -345,7 +367,13 @@ void jsiClearInputLine() {
   inputLine = jsvNewFromEmptyString();
 }
 
-void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
+/**
+ * \brief ??? What does this do ???.
+ */
+void jsiSetBusy(
+    JsiBusyDevice device, //!< ???
+    bool isBusy           //!< ???
+  ) {
   static JsiBusyDevice business = 0;
 
   if (isBusy)
@@ -357,6 +385,11 @@ void jsiSetBusy(JsiBusyDevice device, bool isBusy) {
     jshPinOutput(pinBusyIndicator, business!=0);
 }
 
+/**
+ * \brief Set the status of a pin as a function of whether we are asleep.
+ * When called, if a pin is set for a sleep indicator, we set the pin to be true
+ * if the sleep type is awake and false otherwise.
+ */
 void jsiSetSleep(JsiSleepType isSleep) {
   if (pinSleepIndicator != PIN_UNDEFINED)
     jshPinOutput(pinSleepIndicator, isSleep == JSI_SLEEP_AWAKE);
