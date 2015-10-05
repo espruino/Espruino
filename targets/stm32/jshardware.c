@@ -12,13 +12,16 @@
  * ----------------------------------------------------------------------------
  */
 
+#include "jshardware.h"
+#include "stm32_compat.h"
+#ifdef USB
  #ifdef LEGACY_USB
   #include "legacy_usb.h"
  #else
   #include "usbd_cdc_hid.h"
  #endif
-#include "jshardware.h"
-#include "stm32_compat.h"
+#endif
+
 #include "jstimer.h"
 #include "jsutils.h"
 #include "jsparse.h"
