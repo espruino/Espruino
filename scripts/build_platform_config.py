@@ -75,7 +75,7 @@ if not LINUX:
   # But in some cases we may not have enough flash memory!
   variables=board.info["variables"]
 
-       
+
   var_size = 12 if variables<1023 else 16
   # the 'packed bits mean anything under 1023 vars gets into 12 byte JsVars
   var_cache_size = var_size*variables
@@ -89,7 +89,7 @@ if not LINUX:
     flash_page_size = 128*1024
   if board.chip["family"]=="NRF51":
     flash_page_size = 1024;
-  if board.chip["family"]=="NRF52": 
+  if board.chip["family"]=="NRF52":
     flash_page_size = 4*1024
   # F4 has different page sizes in different places
   flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
@@ -262,14 +262,16 @@ else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
   codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
-  if board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+  if board.chip["family"]=="ESP8266":
     codeOut("#define FLASH_START                     "+hex(0x0))
-  else: 
+  elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
+    codeOut("#define FLASH_START                     "+hex(0x0))
+  else:
     codeOut("#define FLASH_START                     "+hex(0x08000000))
-  if has_bootloader: 
+  if has_bootloader:
     codeOut("#define BOOTLOADER_SIZE                 "+str(common.get_bootloader_size(board)))
     codeOut("#define ESPRUINO_BINARY_ADDRESS         "+hex(common.get_espruino_binary_address(board)))
-  codeOut("")  
+  codeOut("")
   codeOut("#define FLASH_SAVED_CODE_START            "+str(flash_saved_code_start))
   codeOut("#define FLASH_SAVED_CODE_LENGTH           "+str(flash_page_size*flash_saved_code_pages))
   codeOut("#define FLASH_MAGIC_LOCATION              (FLASH_SAVED_CODE_START + FLASH_SAVED_CODE_LENGTH - 4)")

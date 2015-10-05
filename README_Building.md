@@ -64,14 +64,11 @@ To program the nRF52 Development Kit with Espruino:
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 - the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
 - the Espressif SDK (version 1.4.0 as of this writing) from http://bbs.espressif.com/viewforum.php?f=46
-- Esptool-ck from https://github.com/tommie/esptool-ck
-
-Note: esptool-ck should be eliminated and replaced with esptool (.py), this will happen naturally
-when an OTA update is developed.
+- For 512KB modules only: Esptool-ck from https://github.com/tommie/esptool-ck
 
 To run make you need to pass a number of environment variables to `make`.  These include:
 
-* `ESP8266_BOARD = 1`
+* `ESP8266_512KB = 1` or `ESP8266_4MB = 1` depending on your module size
 * `ESP8266_SDK_ROOT = <Path to the 1.4 SDK>`
 * `COMPORT = <COMPORT or Serial>`
 
@@ -85,7 +82,7 @@ The easiest is to place
 the following lines into a script, adapt it to your needs and then run it.
 ```
 #! /bin/bash
-export ESP8266_BOARD=1
+export ESP8266_512KB=1
 export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.4.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
 export ESPTOOL_CK=/esp8266/esptool-ck/esptool

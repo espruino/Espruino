@@ -4,6 +4,10 @@
 #include <user_interface.h>
 #include <eagle_soc.h>
 
+// The linking is arranged to put all functions into IROM, so we need a special define to put
+// a function into IRAM
+#define ICACHE_RAM_ATTR __attribute__((section(".iram1.text")))
+
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.
 //MOST OF THESE ARE GUESSED! but they seem to work and shut up the compiler.
 typedef struct espconn espconn;
@@ -17,6 +21,9 @@ void ets_install_putc1(void *routine); // necessary for #define os_xxx -> ets_xx
 void ets_isr_attach(int intr, void *handler, void *arg);
 void ets_isr_mask(unsigned intr);
 void ets_isr_unmask(unsigned intr);
+void ets_intr_lock(void);
+void ets_intr_unlock(void);
+void NmiTimSetFunc(void (*func)(void));
 
 int ets_memcmp(const void *s1, const void *s2, size_t n);
 void *ets_memcpy(void *dest, const void *src, size_t n);
@@ -36,21 +43,8 @@ void ets_timer_setfn(ETSTimer *t, ETSTimerFunc *fn, void *parg);
 
 void ets_update_cpu_frequency(int freqmhz);
 
-#ifdef SDK_DBG
-#define DEBUG_SDK true
-#else
-#define DEBUG_SDK false
-#endif
-
 int os_snprintf(char *str, size_t size, const char *format, ...) __attribute__((format(printf, 3, 4)));
 int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
-
-#undef os_printf
-#define os_printf(format, ...) do {\
-  system_set_os_print(true); \
-  os_printf_plus(format, ## __VA_ARGS__); \
-  system_set_os_print(DEBUG_SDK); \
-} while(0)
 
 // memory allocation functions are "different" due to memory debugging functionality
 // added in SDK 1.4.0
