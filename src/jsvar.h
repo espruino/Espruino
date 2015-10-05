@@ -404,7 +404,6 @@ static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v);
 static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   // see jsvCopy - we need to know about this in there too
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
-
   assert(jsvHasCharacterData(v));
   return JSVAR_DATA_STRING_LEN;
 }

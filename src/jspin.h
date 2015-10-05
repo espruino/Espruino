@@ -238,4 +238,12 @@ void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags 
  jshPrintCapablePins(..., "Analog Input", 0,0,0,0, true) - for analogs */
 void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, JshPinFunction typeMin, JshPinFunction typeMax, JshPinFunction pMask, JshPinFunction pData, bool printAnalogs);
 
+/** Find a device of the given type that works on the given pin. For instance:
+ * `jshGetDeviceFor(JSH_SPI1, JSH_SPIMAX, pin);
+ */
+JshPinFunction jshGetDeviceFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
+
+/** Like jshGetDeviceFor, but returns an actual Object (eg. SPI) if one can be found. */
+JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin);
+
 #endif //JSPIN_H

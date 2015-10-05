@@ -35,6 +35,21 @@ Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 an
 }
 The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
  */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Serial",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_USART1, JSH_USARTMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `Serial`, or `undefined` if one couldn't be found."]
+}
+Try and find a USART (Serial) hardware device that will work on this pin (eg. `Serial1`)
+
+May return undefined if no device can be found.
+*/
+
 
 /*JSON{
   "type" : "object",

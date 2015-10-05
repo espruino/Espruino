@@ -61,14 +61,24 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 
 Use `SPI.setup` to configure this port.
  */
-
-/**
- * \brief Create a software based SPI interface.
- * \return A JS object that will hold the state of the SPI.
- */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "SPI",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_SPI1, JSH_SPIMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `SPI`, or `undefined` if one couldn't be found."]
+}
+Try and find an SPI hardware device that will work on this pin (eg. `SPI1`)
+
+May return undefined if no device can be found.
+*/
 
 /*JSON{
   "type" : "method",
@@ -80,10 +90,6 @@ JsVar *jswrap_spi_constructor() {
   ]
 }
 Set up this SPI port as an SPI Master.
- */
-
-/**
- * \brief Configure/initialize the software SPI interface.
  */
 void jswrap_spi_setup(
     JsVar *parent, //!< The variable that is the class instance of this function.
@@ -157,7 +163,7 @@ typedef struct {
 
 
 /**
- * \brief Send a single byte to the SPI device.
+ * \brief Send a single byte to the SPI device, used ad callback.
  */
 void jswrap_spi_send_cb(
     int c,                     //!< The byte to send through SPI.
@@ -456,6 +462,21 @@ This class allows use of the built-in I2C ports. Currently it allows I2C Master 
 
 All addresses are in 7 bit format. If you have an 8 bit address then you need to shift it one bit to the right.
  */
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "I2C",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_I2C1, JSH_I2CMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `I2C`, or `undefined` if one couldn't be found."]
+}
+Try and find an I2C hardware device that will work on this pin (eg. `I2C1`)
+
+May return undefined if no device can be found.
+*/
 
 /*JSON{
   "type" : "object",
