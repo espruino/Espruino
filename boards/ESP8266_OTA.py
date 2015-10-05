@@ -13,19 +13,24 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
+# The ESP8266_OTA represents esp8266 modules with 1MB or more flash and using the OTA
+# (over the air update) flash layout with two 512KB partitions in the first MB and the
+# v1.4 or later bootloader at 0x0. Modules with >1MB flash will have a SPIFFS filesystem
+# in the flash beyond the first 1MB.
+
 import pinutils;
 info = {
- 'name'            : "ESP8266 512KB",
+ 'name'            : "ESP8266 OTA",
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
- 'binary_name'     : 'espruino_esp8266_board',
+ 'binary_name'     : 'espruino_esp8266_ota',
 };
 chip = {
   'part'    : "ESP8266",
   'family'  : "ESP8266",
   'package' : "",
   'ram'     : 80,
-  'flash'   : 512,
+  'flash'   : 1024,
   'speed'   : 80,
   'usart'   : 1,
   'spi'     : 0,
@@ -34,10 +39,10 @@ chip = {
   'dac'     : 0,
   'saved_code' : {
     # see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes#flash-map-and-access
-    'address' : 0x78000,
+    'address' : 0x7C000,
     'page_size' : 4096,
     'pages' : 3, # there are really 4 pages reserved but we should only need 3
-    'flash_available' : 480, # firmware can be up to this size
+    'flash_available' : 492, # firmware can be up to this size
   },
 };
 # left-right, or top-bottom order

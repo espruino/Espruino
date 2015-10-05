@@ -997,6 +997,24 @@ bool jsiAtEndOfInputLine() {
   return true;
 }
 
+void jsiCheckErrors() {
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+  }
+  if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted\n");
+    jspSetInterrupted(false);
+  }
+  JsVar *stackTrace = jspGetStackTrace();
+  if (stackTrace) {
+    jsiConsolePrintStringVar(stackTrace);
+    jsvUnLock(stackTrace);
+  }
+}
+
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
@@ -1032,6 +1050,7 @@ void jsiHandleNewLine(bool execute) {
         }
         jsvUnLock(v);
       }
+      jsiCheckErrors();
       // console will be returned next time around the input loop
       // if we had echo off just for this line, reinstate it!
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE;
@@ -1758,23 +1777,8 @@ bool jsiLoop() {
   jshIdle();
   // Do general idle stuff
   jsiIdle();
-
-  JsVar *exception = jspGetException();
-  if (exception) {
-    jsiConsolePrintf("Uncaught %v\n", exception);
-    jsvUnLock(exception);
-  }
-
-  if (jspIsInterrupted()) {
-    jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted\n");
-    jspSetInterrupted(false);
-  }
-  JsVar *stackTrace = jspGetStackTrace();
-  if (stackTrace) {
-    jsiConsolePrintStringVar(stackTrace);
-    jsvUnLock(stackTrace);
-  }
+  // check for and report errors
+  jsiCheckErrors();
 
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {

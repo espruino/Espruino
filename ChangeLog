@@ -33,6 +33,9 @@
             Add `E.on('init', ...)` - like `onInit` but allows multiple handlers
             Make sure `dump()` and `E.dumpStr()` dump the contents of Serial as well as events for other objects
             `E.getSizeOf(.., 1)` can now recurse into objects showing the sizes of all their children (fix #579)
+            Fix bug when appending to a flat string (fix #614)
+            Add `Serial/SPI/I2C.find(pin)` - so we can figure out what device to use based on the pin
+            Ensure that when uploading, each command gets checked for errors (rather than right at the end)
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib

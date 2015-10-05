@@ -11,6 +11,9 @@
  * Platform Specific part of Hardware interface Layer
  * ----------------------------------------------------------------------------
  */
+
+
+
 #ifdef USB
  #ifdef LEGACY_USB
   #include "legacy_usb.h"
@@ -18,7 +21,7 @@
   #include "usbd_cdc_hid.h"
  #endif
 #endif
-
+#include "stm32_compat.h"
 #include "jshardware.h"
 #include "jstimer.h"
 #include "jsutils.h"
@@ -78,36 +81,9 @@ volatile unsigned char jshSPIBuf[SPI_COUNT][4]; // 4 bytes packed into an int
 JsSysTime jshLastWokenByUSB = 0;
 #endif
 
-// Values from datasheets
-#if defined(STM32F1)
-#define V_REFINT 1.20
-#define V_TEMP_25 1.43
-#define V_TEMP_SLOPE 0.0043
-#else // defined(STM32F4)
-#define V_REFINT 1.21
-#define V_TEMP_25 0.76
-#define V_TEMP_SLOPE -0.0025
-#endif
 
 // ----------------------------------------------------------------------------
 //                                                                        PINS
-#if defined(STM32F3)
-// stupid renamed stuff
-#define EXTI2_IRQn EXTI2_TS_IRQn
-#define GPIO_Mode_AIN GPIO_Mode_AN
-#define FLASH_FLAG_WRPRTERR FLASH_FLAG_WRPERR
-#define FLASH_LockBank1 FLASH_Lock
-#define FLASH_UnlockBank1 FLASH_Unlock
-// see _gpio.h
-#define GPIO_AF_USART1 GPIO_AF_7
-#define GPIO_AF_USART2 GPIO_AF_7
-#define GPIO_AF_USART3 GPIO_AF_7
-#define GPIO_AF_UART4 GPIO_AF_5
-#define GPIO_AF_UART5 GPIO_AF_5
-#define GPIO_AF_USART6 GPIO_AF_0 // FIXME is this right?
-#define GPIO_AF_SPI1 GPIO_AF_5
-#define GPIO_AF_SPI2 GPIO_AF_5
-#endif
 
 static ALWAYS_INLINE uint8_t pinToEVEXTI(Pin ipin) {
   JsvPinInfoPin pin = pinInfo[ipin].pin;
@@ -371,22 +347,22 @@ void *setDeviceClockCmd(JshPinFunction device, FunctionalState cmd) {
   } else if (device == JSH_USART2) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, cmd);
     ptr = USART2;
-#if defined(USART3) && USARTS>=3
+#if defined(USART3) && USART_COUNT>=3
   } else if (device == JSH_USART3) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, cmd);
     ptr = USART3;
 #endif
-#if defined(UART4) && USARTS>=4
+#if defined(UART4) && USART_COUNT>=4
   } else if (device == JSH_USART4) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, cmd);
     ptr = UART4;
 #endif
-#if defined(UART5) && USARTS>=5
+#if defined(UART5) && USART_COUNT>=5
   } else if (device == JSH_USART5) {
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, cmd);
     ptr = UART5;
 #endif
-#if defined(USART6) && USARTS>=6
+#if defined(USART6) && USART_COUNT>=6
   } else if (device == JSH_USART6) {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART6, cmd);
     ptr = USART6;
@@ -845,13 +821,9 @@ ALWAYS_INLINE void jshPinSetState(Pin pin, JshPinState state) {
 
   GPIO_InitTypeDef GPIO_InitStructure;
   bool out = JSHPINSTATE_IS_OUTPUT(state);
-  bool af = state==JSHPINSTATE_AF_OUT ||
-            state==JSHPINSTATE_AF_OUT_OPENDRAIN ||
-            state==JSHPINSTATE_USART_IN ||
-            state==JSHPINSTATE_USART_OUT ||
-            state==JSHPINSTATE_I2C;
-  bool pullup = state==JSHPINSTATE_GPIO_OUT_OPENDRAIN || state==JSHPINSTATE_GPIO_IN_PULLUP || state==JSHPINSTATE_USART_IN;
-  bool pulldown = state==JSHPINSTATE_GPIO_IN_PULLDOWN;
+  bool af = JSHPINSTATE_IS_AF(state);
+  bool pullup = JSHPINSTATE_IS_PULLUP(state);
+  bool pulldown = JSHPINSTATE_IS_PULLDOWN(state);
   bool opendrain = JSHPINSTATE_IS_OPENDRAIN(state);
 
   if (out) {
@@ -1949,19 +1921,19 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
     usartIRQ = USART1_IRQn;
   } else if (device == EV_SERIAL2) {
     usartIRQ = USART2_IRQn;
-#if defined(USART3) && USARTS>=3
+#if defined(USART3) && USART_COUNT>=3
   } else if (device == EV_SERIAL3) {
     usartIRQ = USART3_IRQn;
 #endif
-#if defined(UART4) && USARTS>=4
+#if defined(UART4) && USART_COUNT>=4
   } else if (device == EV_SERIAL4) {
     usartIRQ = UART4_IRQn;
 #endif
-#if defined(UART5) && USARTS>=5
+#if defined(UART5) && USART_COUNT>=5
   } else if (device == EV_SERIAL5) {
     usartIRQ = UART5_IRQn;
 #endif
-#if defined(USART6) && USARTS>=6
+#if defined(USART6) && USART_COUNT>=6
   } else if (device == EV_SERIAL6) {
     usartIRQ = USART6_IRQn;
 #endif

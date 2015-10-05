@@ -17,6 +17,9 @@
 #include "jsinteractive.h"
 #include "jshardware.h"
 
+// jshGetDeviceObjectFor
+#include "jswrapper.h"
+
 #if defined(PICO) || defined(NUCLEOF401RE) || defined(NUCLEOF411RE)
 #define PIN_NAMES_DIRECT // work out pin names directly from port + pin in pinInfo
 #endif
@@ -422,4 +425,30 @@ void NO_INLINE jshPrintCapablePins(Pin existingPin, const char *functionName, Js
     }
   }
   jsiConsolePrint("\n");
+}
+
+/** Find a device of the given type that works on the given pin. For instance:
+ * `jshGetDeviceFor(JSH_SPI1, JSH_SPIMAX, pin);
+ */
+JshPinFunction jshGetDeviceFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin) {
+  if (!jshIsPinValid(pin)) return JSH_NOTHING;
+  int i;
+  for (i=0;i<JSH_PININFO_FUNCTIONS;i++) {
+    JshPinFunction f = pinInfo[pin].functions[i];
+    if ((f&JSH_MASK_TYPE) >= deviceMin &&
+        (f&JSH_MASK_TYPE) <= deviceMax)
+      return f;
+  }
+  return JSH_NOTHING;
+}
+
+/** Like jshGetDeviceFor, but returns an actual Object (eg. SPI) if one can be found. */
+JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax, Pin pin) {
+  JshPinFunction dev = jshGetDeviceFor(deviceMin, deviceMax, pin);
+  if (dev==JSH_NOTHING) return 0;
+  char devName[16];
+  jshPinFunctionToString(dev, JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, devName, sizeof(devName));
+  JsVar *devVar = jsvObjectGetChild(execInfo.root, devName, 0);
+  if (devVar) return devVar;
+  return jswFindBuiltInFunction(0, devName);
 }

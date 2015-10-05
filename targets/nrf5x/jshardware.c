@@ -1,4 +1,4 @@
-/*
+/**
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
  * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
@@ -33,11 +33,11 @@ static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 void jshInit() 
 {
   jshInitDevices();
-  nrf_utils_lfclk_config_and_start(); // Configure and start the external crystal used by RTC.
-  nrf_utils_rtc1_config_and_start(); // Configure and start RTC1 used for the system time.
+  nrf_utils_lfclk_config_and_start();
+  nrf_utils_rtc1_config_and_start();
     
   JshUSARTInfo inf; // Just for show, not actually used...
-  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART. jshUSARTSetup() gets called each time a UART needs initializing (and is passed baude rate etc...).
+  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
 }
 
@@ -92,13 +92,13 @@ void jshSetSystemTime(JsSysTime time)
 
 }
 
-/// Convert a time in Milliseconds to one in ticks
+/// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
 {
   return (JsSysTime) ((ms * 32768) / 1000);
 }
 
-/// Convert ticks to a time in Milliseconds
+/// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 {
   return (JsVarFloat) ((time * 1000) / 32768);
@@ -112,7 +112,7 @@ void jshInterruptOff()
 
 void jshInterruptOn()
 {
-  __enable_irq(); // ***This wont be good with softdevice!!
+  __enable_irq(); // *** This wont be good with SoftDevice!
 }
 
 void jshDelayMicroseconds(int microsec) 
@@ -170,8 +170,15 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
-void jshPinPulse(Pin pin, bool value, JsVarFloat time) {
-  //return JSH_NOTHING;
+/**
+ * Set the value of the pin to be the value specified, wait for a given period of time, then toggle the pin.
+ */
+void jshPinPulse(Pin pin, bool value, JsVarFloat time)
+{
+  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, value);
+  jshDelayMicroseconds(time); // Not sure about time...
+  jshPinSetValue(pin, !value);
 }
 
 ///< Can the given pin be watched? it may not be possible because of conflicts
@@ -282,7 +289,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 
 }
 
-/// Return start address and size of the flash page the given address resides in. Returns false if no page
+/// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 {
   if (!nrf_utils_get_page(addr, startAddr, pageSize))
@@ -292,24 +299,38 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
   return true;
 }
 
-/// Erase the flash page containing the address
+/// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
-  nrf_utils_erase_flash_page(addr);
+  uint32_t * startAddr;
+  uint32_t * pageSize;
+  if (!jshFlashGetPage(addr, startAddr, pageSize))
+  {
+    return;
+  }
+  nrf_utils_erase_flash_page(*startAddr);
 }
 
-/// Read data from flash memory into the buffer
-void jshFlashRead(void *buf, uint32_t addr, uint32_t len)
+/**
+ * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
+ */
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_read_flash_bytes((uint8_t *) buf, addr, len);
-  //nrf_utils_read_flash_addresses(buf, addr, len);
+  uint8_t * read_buf = buf;
+  nrf_utils_read_flash_bytes(read_buf, addr, len);
 }
 
-/// Write data to flash memory from the buffer
-void jshFlashWrite(void *buf, uint32_t addr, uint32_t len)
+/**
+ * Writes an array of bytes to memory. Addr must be word aligned and len must be a multiple of 4.
+ */
+void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 {
-  nrf_utils_write_flash_bytes(addr, (uint8_t *) buf, len);
-  //nrf_utils_write_flash_addresses(addr, (uint32_t *) buf, (len / 4));
+  uint8_t * write_buf = buf;
+  if ((addr & (3UL)) != 0 || (len % 4) != 0)
+  {
+	  return;
+  }
+  nrf_utils_write_flash_bytes(addr, write_buf, len);
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -341,7 +362,7 @@ void jshDoSysTick() {
 // the temperature from the internal temperature sensor
 JsVarFloat jshReadTemperature()
 {
-  return (JsVarFloat) nrf_utils_read_temperature(); // This is returning an int right now..
+  return (JsVarFloat) nrf_utils_read_temperature(); // *** This is returning an int right now..
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
@@ -350,9 +371,11 @@ JsVarFloat jshReadVRef()
   return 0.0;
 }
 
-/* Get a random number - either using special purpose hardware or by
+/**
+ * Get a random number - either using special purpose hardware or by
  * reading noise from an analog input. If unimplemented, this should
- * default to `rand()` */
+ * default to `rand()`
+ */
 unsigned int jshGetRandomNumber()
 {
   return (unsigned int) nrf_utils_get_random_number();
