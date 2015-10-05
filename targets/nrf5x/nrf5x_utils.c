@@ -24,76 +24,54 @@
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
 
-#define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR->CODEPAGESIZE
-#define NRF_UTILS_NUMBER_OF_FLASH_PAGES NRF_FICR->CODESIZE
-
-void nrf_utils_write_flash_address(uint32_t addr, uint32_t val)
-{
-  print_string_to_terminal("nrf_utils_write_flash_address\n", 31);
-  nrf_nvmc_write_word(addr, val);
-}
-
-void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
-{
-  nrf_nvmc_write_bytes(addr, buf, len);
-}
-
-void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len)
-{
-	nrf_nvmc_write_words(addr, src, len); // Is there a bug here??? see nvmc.h header file it says len is bytes?
-}
+#define NRF_UTILS_FLASH_PAGE_SIZE NRF_FICR -> CODEPAGESIZE
+#define NRF_UTILS_NUMBER_OF_PAGES NRF_FICR -> CODESIZE
+#define NRF_UTILS_FLASH_SIZE (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_PAGES)
 
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size)
 {
-  print_string_to_terminal("nrf_utils_get_page\n", 19);
-  if (addr > (uint32_t) (NRF_UTILS_FLASH_PAGE_SIZE * NRF_UTILS_NUMBER_OF_FLASH_PAGES))
+  if (addr > (NRF_UTILS_FLASH_SIZE))
   {
 	  return false;
   }
-  *page_address = (uint32_t) floor(addr / NRF_UTILS_FLASH_PAGE_SIZE);
-  *page_size = (uint32_t) NRF_UTILS_FLASH_PAGE_SIZE;
+  *page_address = (uint32_t) (floor(addr / NRF_UTILS_FLASH_PAGE_SIZE) * NRF_UTILS_FLASH_PAGE_SIZE);
+  *page_size = NRF_UTILS_FLASH_PAGE_SIZE;
   return true;
 }
 
 void nrf_utils_erase_flash_page(uint32_t addr)
 {
-	print_string_to_terminal("nrf_utils_erase_flash_page\n", 27);
-	uint32_t page_address;
-	uint32_t page_size;
-	if (nrf_utils_get_page(addr, &page_address, &page_size))
-	{
-		nrf_nvmc_page_erase(page_address);
-	}
+  nrf_nvmc_page_erase(addr);
 }
 
 void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
 {
-  print_string_to_terminal("nrf_utils_read_flash_bytes\n", 27);
-  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
-
-  uint32_t i;
-  uint32_t word;
-  for(i = 0; i < len; i += 4)
+  if (addr > (NRF_UTILS_FLASH_SIZE))
   {
-	word = *((uint32_t *) (addr + i));
-	((uint8_t *) buf)[i] = (uint8_t) (word & 0xFF);
-	((uint8_t *) buf)[i+1] = (uint8_t) ((word & 0xFF00) >> 8);
-	((uint8_t *) buf)[i+2] = (uint8_t) ((word & 0xFF0000) >> 16);
-	((uint8_t *) buf)[i+3] = (uint8_t) ((word & 0xFF000000) >> 24);
-	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
+  	return;
+  }
+
+  if (addr + len > (NRF_UTILS_FLASH_SIZE))
+  {
+	len = (NRF_UTILS_FLASH_SIZE) - addr;
+  }
+
+  while (NRF_NVMC -> READY == NVMC_READY_READY_Busy);
+
+  uint32_t data = *(uint32_t *) (addr & (~3UL));
+  while (len-- > 0)
+  {
+    if (addr & (3UL) == 0)
+    {
+      data = *(uint32_t *) addr;
+    }
+    *(buf++) = ((uint8_t *) &data)[(addr++ & (3UL))];
   }
 }
 
-void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len)
+void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
 {
-  while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
-
-  uint32_t i;
-  for(i = 0; i < len; i++)
-  {
-	((uint32_t *) buf)[i] = *((uint32_t *) (addr + i));
-	while (NRF_NVMC->READY == NVMC_READY_READY_Busy);
-  }
+  nrf_nvmc_write_bytes(addr, buf, len);
 }
 
 void nrf_utils_gpio_pin_set(uint32_t pin)
@@ -156,7 +134,6 @@ void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
 	}
 }
 
-// TODO implement this.
 uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
 {
 	/*uint32_t pin_register;
