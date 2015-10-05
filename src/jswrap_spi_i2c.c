@@ -30,7 +30,7 @@ This class allows use of the built-in SPI ports. Currently it is SPI master only
   "type" : "object",
   "name" : "SPI1",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=1"
+  "#if" : "SPI_COUNT>=1"
 }
 The first SPI port
  */
@@ -38,7 +38,7 @@ The first SPI port
   "type" : "object",
   "name" : "SPI2",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=2"
+  "#if" : "SPI_COUNT>=2"
 }
 The second SPI port
  */
@@ -46,7 +46,7 @@ The second SPI port
   "type" : "object",
   "name" : "SPI3",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=3"
+  "#if" : "SPI_COUNT>=3"
 }
 The third SPI port
  */
@@ -461,7 +461,7 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
   "type" : "object",
   "name" : "I2C1",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=1"
+  "#if" : "I2C_COUNT>=1"
 }
 The first I2C port
  */
@@ -469,7 +469,7 @@ The first I2C port
   "type" : "object",
   "name" : "I2C2",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=2"
+  "#if" : "I2C_COUNT>=2"
 }
 The second I2C port
  */
@@ -477,7 +477,7 @@ The second I2C port
   "type" : "object",
   "name" : "I2C3",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=3"
+  "#if" : "I2C_COUNT>=3"
 }
 The third I2C port
  */
