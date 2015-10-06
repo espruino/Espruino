@@ -164,8 +164,8 @@ void jswrap_ESP8266WiFi_connect(
 #elif ISSUE_618 == 2
     struct station_config existingConfig;
     wifi_station_get_config(&existingConfig);
-    if (os_strncpy((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) == 0 &&
-        os_strncpy((char *)existingConfig.password, (char *)stationConfig.password, 64) == 0) {
+    if (os_strncmp((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) == 0 &&
+        os_strncmp((char *)existingConfig.password, (char *)stationConfig.password, 64) == 0) {
       if (jsGotIpCallback != NULL) {
         JsVar *params[2];
         params[0] = jsvNewFromInteger(STATION_GOT_IP);
