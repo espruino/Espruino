@@ -163,7 +163,7 @@ typedef struct {
 
 
 /**
- * \brief Send a single byte to the SPI device, used ad callback.
+ * Send a single byte to the SPI device, used ad callback.
  */
 void jswrap_spi_send_cb(
     int c,                     //!< The byte to send through SPI.
@@ -181,7 +181,7 @@ void jswrap_spi_send_cb(
 
 
 /**
- * \brief Send data through SPI.
+ * Send data through SPI.
  * The data can be in a variety of formats including:
  * * `numeric` - A single byte is transmitted.
  * * `string` - Each character in the string is transmitted.

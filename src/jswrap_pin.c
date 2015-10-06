@@ -40,7 +40,7 @@ You can call the methods on Pin, or you can use Wiring-style functions such as d
 Creates a pin from the given argument (or returns undefined if no argument)
 */
 /**
- * \brief Create an instance of a Pin class.
+ * Create an instance of a Pin class.
  */
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
@@ -189,7 +189,7 @@ Get information about this pin and its capabilities. Of the form:
 Will return undefined if pin is not valid.
 */
 /**
- * \brief
+ *
  */
 JsVar *jswrap_pin_getInfo(
     JsVar *parent //!< The class instance representing the pin.

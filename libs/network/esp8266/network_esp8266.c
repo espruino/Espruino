@@ -50,7 +50,7 @@ typedef long long int64_t;
 #include "esp8266_board_utils.h"
 
 /**
- * \brief The maximum number of concurrently open sockets we support.
+ * The maximum number of concurrently open sockets we support.
  * We should probably pair this with the ESP8266 concept of the maximum number of sockets
  * that an ESP8266 instance can also support.
  */
@@ -61,7 +61,7 @@ typedef long long int64_t;
 static struct socketData *getSocketData(int s);
 
 /**
- * \brief The next socketId to be used.
+ * The next socketId to be used.
  */
 static int g_nextSocketId = 0;
 
@@ -83,18 +83,18 @@ static void esp8266_callback_recvCB(void *arg, char *pData, unsigned short len);
 static void esp8266_callback_reconnectCB(void *arg, sint8 err);
 
 /**
- * \brief A data structure that represents a memory buffer.
+ * A data structure that represents a memory buffer.
  * A memory buffer is an object that represents a sized piece of memory.  Given a
  * memory buffer object, we know how big it is and can set or get data from it.
  */
 struct memoryBuffer {
 	/**
-	 * \brief The size of data associated with this buffer.
+	 * The size of data associated with this buffer.
 	 */
 	size_t length;
 
 	/**
-	 * \brief A pointer to the memory associated with this buffer.  This should be
+	 * A pointer to the memory associated with this buffer.  This should be
 	 * NULL if `length` is 0.
 	 */
 	uint8 *buf;
@@ -106,7 +106,7 @@ static void   memoryBuffer_delete(struct memoryBuffer *pMemoryBuffer);
 static int    memoryBuffer_getSize(struct memoryBuffer *pMemoryBuffer);
 
 /**
- * \brief The potential states for a socket.
+ * The potential states for a socket.
  * See the socket state diagram.
  */
 enum SOCKET_STATE {
@@ -120,7 +120,7 @@ enum SOCKET_STATE {
 };
 
 /**
- * \brief How was the socket created.
+ * How was the socket created.
  */
 enum SOCKET_CREATION_TYPE {
   SOCKET_CREATED_NONE,      //!< The socket has not yet been created.
@@ -153,12 +153,12 @@ enum SOCKET_CREATION_TYPE {
  */
 
 /**
- * \brief The maximum number of accepted sockets that can be remembered.
+ * The maximum number of accepted sockets that can be remembered.
  */
 #define MAX_ACCEPTED_SOCKETS (10)
 
 /**
- * \brief The core socket structure.
+ * The core socket structure.
  * The structure is initialized by resetSocket.
  */
 struct socketData {
@@ -179,7 +179,7 @@ struct socketData {
 	int     errorCode; //!< Error code.
 
 	/**
-	 * \brief A list of accepted sockets.
+	 * A list of accepted sockets.
 	 * This array contains the storage of a list of sockets that have been accepted by this
 	 * server socket but have not yet been delivered to Espruino.  A `head` and `tail`
 	 * pair of indices are also associated.
@@ -187,13 +187,13 @@ struct socketData {
 	int acceptedSockets[MAX_ACCEPTED_SOCKETS];
 
 	/**
-	 * \brief The head of the list of accepted sockets.
+	 * The head of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be placed.
 	 */
 	uint8 acceptedSocketsHead;
 
 	/**
-	 * \brief The tail of the list of accepted sockets.
+	 * The tail of the list of accepted sockets.
 	 * The index into `acceptedSockets` where the next accepted socket will be retrieved.
 	 */
 	uint8 acceptedSocketsTail;
@@ -201,13 +201,13 @@ struct socketData {
 
 
 /**
- * \brief An array of socket data structures.
+ * An array of socket data structures.
  */
 static struct socketData socketArray[MAX_SOCKETS];
 
 
 /**
- * \brief Write the details of a socket to the debug log.
+ * Write the details of a socket to the debug log.
  * The data associated with the socket is dumped to the debug log.
  */
 void esp8266_dumpSocket(
@@ -282,7 +282,7 @@ void esp8266_dumpSocket(
 
 
 /**
- * \brief Dump a struct espconn (for debugging purposes).
+ * Dump a struct espconn (for debugging purposes).
  */
 static void dumpEspConn(
 		struct espconn *pEspConn //!<
@@ -358,7 +358,7 @@ static void dumpEspConn(
 
 
 /**
- * \brief Get the next new global socket id.
+ * Get the next new global socket id.
  * \return A new socketId that is assured to be unique.
  */
 static int getNextGlobalSocketId() {
@@ -369,7 +369,7 @@ static int getNextGlobalSocketId() {
 
 
 /**
- * \brief Allocate a new socket
+ * Allocate a new socket
  * Look for the first free socket in the array of sockets and return the first one
  * that is available.  The socketId property is set to a unique and new socketId value
  * that will not previously have been seen.
@@ -391,7 +391,7 @@ static struct socketData *allocateNewSocket() {
 
 
 /**
- * \brief Retrieve the socketData for the given socket index.
+ * Retrieve the socketData for the given socket index.
  * \return The socket data for the given socket or NULL if there is no matching socket.
  */
 static struct socketData *getSocketData(int socketId) {
@@ -408,7 +408,7 @@ static struct socketData *getSocketData(int socketId) {
 
 
 /**
- * \brief Find the server socket that is bound to the given local port.
+ * Find the server socket that is bound to the given local port.
  * \return The socket id of the socket listening on the given port or -1 if there is no
  * server socket that matches.
  */
@@ -433,7 +433,7 @@ static int getServerSocketByLocalPort(
 
 
 /**
- * \brief Reset the socket to its clean and unused state.
+ * Reset the socket to its clean and unused state.
  * The socket is found by its socket id.
  */
 static void resetSocketById(
@@ -444,7 +444,7 @@ static void resetSocketById(
 }
 
 /**
- * \brief Reset the socket to its clean and unused state.
+ * Reset the socket to its clean and unused state.
  * The socket is specified by its socket data pointer.
  */
 static void resetSocketByData(
@@ -472,7 +472,7 @@ static void resetSocketByData(
 
 
 /**
- * \brief Release the socket and return it to the free pool.
+ * Release the socket and return it to the free pool.
  */
 static void releaseSocket(
 		int socketId //!< The socket id of the socket to be released.
@@ -504,7 +504,7 @@ static void releaseSocket(
 
 
 /**
- * \brief Initialize the ESP8266_BOARD environment.
+ * Initialize the ESP8266_BOARD environment.
  * Walk through each of the sockets and initialize each one.
  */
 void netInit_esp8266_board() {
@@ -518,7 +518,7 @@ void netInit_esp8266_board() {
 
 
 /**
- * \brief Perform an actual closure of the socket by calling the ESP8266 disconnect API.
+ * Perform an actual closure of the socket by calling the ESP8266 disconnect API.
  * This is broken out into its own function because this can happen in
  * a number of possible places.
  */
@@ -550,7 +550,7 @@ static void doClose(
 
 
 /**
- * \brief Set the given socket as being in error supplying a message and a code.
+ * Set the given socket as being in error supplying a message and a code.
  * The socket state is placed in `SOCKET_STATE_ERROR`.
  */
 static void setSocketInError(
@@ -565,7 +565,7 @@ static void setSocketInError(
 }
 
 /**
- * \brief Callback function registered to the ESP8266 environment that is
+ * Callback function registered to the ESP8266 environment that is
  * invoked when a new inbound connection has been formed.
  * A new connection
  * can occur when the ESP8266 makes a call out to a partner (in that
@@ -622,7 +622,7 @@ static void esp8266_callback_connectCB_inbound(
 }
 
 /**
- * \brief Callback function registered to the ESP8266 environment that is
+ * Callback function registered to the ESP8266 environment that is
  * invoked when a new outbound connection has been formed.
  */
 static void esp8266_callback_connectCB_outbound(
@@ -653,7 +653,7 @@ static void esp8266_callback_connectCB_outbound(
 
 
 /**
- * \brief Callback function registered to the ESP8266 environment that is
+ * Callback function registered to the ESP8266 environment that is
  * Invoked when a previous connection has been disconnected.
  */
 static void esp8266_callback_disconnectCB(
@@ -698,7 +698,7 @@ static void esp8266_callback_writeFinishedCB(
 
 
 /**
- * \brief Error handler callback.
+ * Error handler callback.
  * Although this is called reconnect by Espressif, this is really an error handler
  * routine.  It will be called when an error is detected.
  */
@@ -712,7 +712,7 @@ static void esp8266_callback_reconnectCB(
 
 
 /**
- * \brief Callback function registered to the ESP8266 environment that is
+ * Callback function registered to the ESP8266 environment that is
  * invoked when a send operation has been completed.
  */
 static void esp8266_callback_sentCB(
@@ -742,7 +742,7 @@ static void esp8266_callback_sentCB(
 
 
 /**
- * \brief ESP8266 callback function that is invoked when new data has arrived over
+ * ESP8266 callback function that is invoked when new data has arrived over
  * the TCP/IP connection.
  */
 static void esp8266_callback_recvCB(
@@ -787,7 +787,7 @@ static void esp8266_callback_recvCB(
 // -------------------------------------------------
 
 /**
- * \brief Define the implementation functions for the logical network functions.
+ * Define the implementation functions for the logical network functions.
  */
 void netSetCallbacks_esp8266_board(
 		JsNetwork *net //!< The Network we are going to use.
@@ -804,7 +804,7 @@ void netSetCallbacks_esp8266_board(
 
 
 /**
- * \brief Determine if there is a new client connection on the server socket.
+ * Determine if there is a new client connection on the server socket.
  * This function is called to poll to see if the serverSckt has a new
  * accepted connection (socket) and, if it does, return it else return -1 to indicate
  * that there was no new accepted socket.
@@ -835,7 +835,7 @@ int net_ESP8266_BOARD_accept(
 
 
 /**
- * \brief Receive data from the network device.
+ * Receive data from the network device.
  * Returns the number of bytes received which may be 0 and -1 if there was an error.
  */
 int net_ESP8266_BOARD_recv(
@@ -892,7 +892,7 @@ int net_ESP8266_BOARD_recv(
 
 
 /**
- * \brief Send data to the partner.
+ * Send data to the partner.
  * The return is the number of bytes actually transmitted which may also be
  * 0 to indicate no bytes sent or -1 to indicate an error.  For the ESP8266 implementation we
  * will return 0 if the socket is not connected or we are in the `SOCKET_STATE_TRANSMITTING`
@@ -953,7 +953,7 @@ int net_ESP8266_BOARD_send(
 
 
 /**
- * \brief Perform idle processing.
+ * Perform idle processing.
  * There is the possibility that we may wish to perform logic when we are idle.  For the
  * ESP8266 there is no specific idle network processing needed.
  */
@@ -966,7 +966,7 @@ void net_ESP8266_BOARD_idle(
 
 
 /**
- * \brief Check for errors.
+ * Check for errors.
  * Returns true if there are NO errors.
  */
 bool net_ESP8266_BOARD_checkError(
@@ -978,7 +978,7 @@ bool net_ESP8266_BOARD_checkError(
 
 
 /**
- * \brief Create a new socket.
+ * Create a new socket.
  * if `ipAddress == 0`, creates a server otherwise creates a client (and automatically connects). Returns >=0 on success.
  */
 int net_ESP8266_BOARD_createSocket(
@@ -1067,7 +1067,7 @@ int net_ESP8266_BOARD_createSocket(
 
 
 /**
- * \brief Close a socket.
+ * Close a socket.
  */
 void net_ESP8266_BOARD_closeSocket(
 		JsNetwork *net, //!< The Network we are going to use to create the socket.
@@ -1102,7 +1102,7 @@ void net_ESP8266_BOARD_closeSocket(
 
 
 /**
- * \brief Callback handler for espconn_gethostbyname.
+ * Callback handler for espconn_gethostbyname.
  * This is a function that will be called back by the ESP8266 when the resolution of
  * a hostname has been completed.
  */
@@ -1121,7 +1121,7 @@ static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg)
 
 
 /**
- * \brief Get an IP address from a name.
+ * Get an IP address from a name.
  * Sets 'outIp' to 0 on failure and 0xFFFFFFFF on unknown.  At some time later, the
  * IP address will be properly updated.
  */
@@ -1157,7 +1157,7 @@ void net_ESP8266_BOARD_gethostbyname(
  */
 
 /**
- * \brief Delete all content of the memory buffer.
+ * Delete all content of the memory buffer.
  */
 static void memoryBuffer_delete(
 		struct memoryBuffer *pMemoryBuffer //!<
@@ -1171,7 +1171,7 @@ static void memoryBuffer_delete(
 
 
 /**
- * \brief Append new data to the end of the existing memory buffer.
+ * Append new data to the end of the existing memory buffer.
  */
 static uint8 *memoryBuffer_append(
 		struct memoryBuffer *pMemoryBuffer, //!<
@@ -1210,7 +1210,7 @@ static uint8 *memoryBuffer_append(
 
 
 /**
- * \brief Return how much data is stored in the memory buffer.
+ * Return how much data is stored in the memory buffer.
  */
 static int memoryBuffer_getSize(
 		struct memoryBuffer *pMemoryBuffer //!<
@@ -1221,7 +1221,7 @@ static int memoryBuffer_getSize(
 
 
 /**
- * \brief Read data from the memory buffer of an exact size.
+ * Read data from the memory buffer of an exact size.
  * The data that is returned
  * should be released with an os_free() call.
  */

@@ -76,14 +76,14 @@ void jshInit() {
 } // End of jshInit
 
 /**
- * \brief Reset the hardware to a power-on state
+ * Reset the hardware to a power-on state.
  */
 void jshReset() {
 	//system_restart();
 } // End of jshReset
 
 /**
- * \brief Handle whatever needs to be done in the idle loop when there's nothing to do
+ * Handle whatever needs to be done in the idle loop when there's nothing to do.
  *
  * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
@@ -215,7 +215,7 @@ static uint8_t pinFunction(JshPinState state) {
 
 
 /**
- * \brief Convert a pin state to a string representation.
+ * Convert a pin state to a string representation.
  */
 static char *pinStateToString(JshPinState state) {
   switch(state) {
@@ -251,7 +251,7 @@ static char *pinStateToString(JshPinState state) {
 }
 
 /**
- * \brief Set the state of the specific pin.
+ * Set the state of the specific pin.
  *
  * The possible states are:
  *
@@ -321,7 +321,7 @@ void jshPinSetState(Pin pin, //!< The pin to have its state changed.
 
 
 /**
- * \brief Return the current state of the selected pin.
+ * Return the current state of the selected pin.
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
@@ -332,7 +332,7 @@ JshPinState jshPinGetState(Pin pin) {
 //===== GPIO and PIN stuff =====
 
 /**
- * \brief Set the value of the corresponding pin.
+ * Set the value of the corresponding pin.
  */
 void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
 		bool value           //!< The new value of the pin.
@@ -344,7 +344,7 @@ void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
 
 
 /**
- * \brief Get the value of the corresponding pin.
+ * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
 bool jshPinGetValue(Pin pin //!< The pin to have its value read.
@@ -356,7 +356,7 @@ bool jshPinGetValue(Pin pin //!< The pin to have its value read.
 
 
 /**
- * \brief
+ *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
   os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
@@ -365,7 +365,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
 
 
 /**
- * \brief
+ *
  */
 int jshPinAnalogFast(Pin pin) {
   os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
@@ -374,7 +374,7 @@ int jshPinAnalogFast(Pin pin) {
 
 
 /**
- * \brief
+ *
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
 	os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
@@ -384,7 +384,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 
 
 /**
- * \brief
+ *
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
 	os_printf("ESP8266: jshSetOutputValue %d %d\n", func, value);
@@ -392,7 +392,7 @@ void jshSetOutputValue(JshPinFunction func, int value) {
 
 
 /**
- * \brief
+ *
  */
 void jshEnableWatchDog(JsVarFloat timeout) {
 	os_printf("ESP8266: jshEnableWatchDog %0.3f\n", timeout);
@@ -409,7 +409,7 @@ bool jshGetWatchedPinState(IOEventFlags device) {
 
 
 /**
- * \brief Set the value of the pin to be the value supplied and then wait for
+ * Set the value of the pin to be the value supplied and then wait for
  * a given period and set the pin value again to be the opposite.
  */
 void jshPinPulse(Pin pin, //!< The pin to be pulsed.
@@ -427,7 +427,7 @@ void jshPinPulse(Pin pin, //!< The pin to be pulsed.
 
 
 /**
- * \brief
+ *
  */
 bool jshCanWatch(Pin pin) {
 	return false;
@@ -435,7 +435,7 @@ bool jshCanWatch(Pin pin) {
 
 
 /**
- * \brief
+ *
  */
 IOEventFlags jshPinWatch(
 		Pin pin,         //!< Unknown
@@ -449,7 +449,7 @@ IOEventFlags jshPinWatch(
 
 
 /**
- * \brief
+ *
  */
 JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 	//os_printf("jshGetCurrentPinFunction %d\n", pin);
@@ -457,7 +457,7 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 }
 
 /**
- * \brief
+ *
  */
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
 	return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
@@ -466,7 +466,7 @@ bool jshIsEventForPin(IOEvent *event, Pin pin) {
 //===== USART and Serial =====
 
 /**
- * \brief
+ *
  */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
@@ -477,7 +477,6 @@ bool jshIsUSBSERIALConnected() {
 } // End of jshIsUSBSERIALConnected
 
 /**
- * \brief
  * Kick a device into action (if required).
  *
  * For instance we may need
@@ -494,7 +493,7 @@ void jshUSARTKick(
 //===== SPI =====
 
 /**
- * \brief Unknown
+ * Unknown
  *
  *
  */
@@ -518,7 +517,7 @@ int jshSPISend(
 
 
 /**
- \brief * Send 16 bit data through the given SPI device.
+ * Send 16 bit data through the given SPI device.
  */
 void jshSPISend16(
 		IOEventFlags device, //!< Unknown
@@ -531,7 +530,7 @@ void jshSPISend16(
 
 
 /**
- * \brief Set whether to send 16 bits or 8 over SPI.
+ * Set whether to send 16 bits or 8 over SPI.
  */
 void jshSPISet16(
 		IOEventFlags device, //!< Unknown
@@ -542,7 +541,7 @@ void jshSPISet16(
 
 
 /**
- * \brief  Wait until SPI send is finished.
+ * Wait until SPI send is finished.
  */
 void jshSPIWait(
 		IOEventFlags device //!< Unknown
@@ -821,7 +820,7 @@ unsigned int jshGetRandomNumber() {
 //===== Read-write flash =====
 
 /**
- * \brief Read data from flash memory into the buffer.
+ * Read data from flash memory into the buffer.
  *
  * This reads from flash using memory-mapped reads. Only works for the first 1MB and
  * requires 4-byte aligned reads.
@@ -851,7 +850,7 @@ void jshFlashRead(
 
 
 /**
- * \brief Write data to flash memory from the buffer.
+ * Write data to flash memory from the buffer.
  *
  * This is called from jswrap_flash_write and ... which guarantee that addr is 4-byte aligned
  * and len is a multiple of 4.
@@ -878,7 +877,7 @@ void jshFlashWrite(
 
 
 /**
- * \brief Return start address and size of the flash page the given address resides in.
+ * Return start address and size of the flash page the given address resides in.
  * Returns false if no page.
  */
 bool jshFlashGetPage(
@@ -896,7 +895,7 @@ bool jshFlashGetPage(
 
 
 /**
- * \brief Erase the flash page containing the address.
+ * Erase the flash page containing the address.
  */
 void jshFlashErasePage(
 		uint32_t addr //!<

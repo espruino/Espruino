@@ -188,7 +188,7 @@ void jswrap_ESP8266WiFi_connect(
 
 
 /**
- * \brief Become an access point.
+ * Become an access point.
  * When we call this function we are instructing the ESP8266 to set itself up as an
  * access point to allow other WiFi stations to connect to it.  In order to be an access
  * point, the ESP8266 needs to know the SSID it should use as well as the password used
@@ -261,7 +261,7 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 
 
 /**
- * \brief Determine the list of access points available to us.
+ * Determine the list of access points available to us.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -299,7 +299,7 @@ void jswrap_ESP8266WiFi_getAccessPoints(
 
 
 /**
- * \brief Disconnect the station from the access point.
+ * Disconnect the station from the access point.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -324,7 +324,7 @@ void jswrap_ESP8266WiFi_restart() {
 
 
 /**
- * \brief Register a callback function that will be invoked when a WiFi event is detected.
+ * Register a callback function that will be invoked when a WiFi event is detected.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -364,7 +364,7 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
 
 
 /**
- * \brief Set whether or not the ESP8266 will perform an auto connect on startup.
+ * Set whether or not the ESP8266 will perform an auto connect on startup.
  * A value of true means it will while a value of false means it won't.
  */
 /*JSON{
@@ -396,7 +396,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 
 
 /**
- * \brief Retrieve whether or not the ESP8266 will perform an auto connect on startup.
+ * Retrieve whether or not the ESP8266 will perform an auto connect on startup.
  * A value of 1 means it will while a value of zero means it won't.
  */
 /*JSON{
@@ -413,7 +413,7 @@ JsVar *jswrap_ESP8266WiFi_getAutoConnect() {
 
 
 /**
- * \brief Retrieve the reset information that is stored when event the ESP8266 resets.
+ * Retrieve the reset information that is stored when event the ESP8266 resets.
  * The result will be a JS object containing the details.
  */
 /*JSON{
@@ -439,7 +439,7 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
 
 
 /**
- * \brief Return an object that contains details about the state of the ESP8266.
+ * Return an object that contains details about the state of the ESP8266.
  *  - `sdkVersion`   - Version of the SDK.
  *  - `cpuFrequency` - CPU operating frequency.
  *  - `freeHeap`     - Amount of free heap.
@@ -466,7 +466,7 @@ JsVar *jswrap_ESP8266WiFi_getState() {
 }
 
 /**
- * \brief Return the value of an integer representation (4 bytes) of IP address
+ * Return the value of an integer representation (4 bytes) of IP address
  * as a string.
  */
 /*JSON{
@@ -492,7 +492,7 @@ JsVar *jswrap_ESP8266WiFi_getAddressAsString(
 
 
 /**
- * \brief Retrieve the IP information about this network interface and return a JS
+ * Retrieve the IP information about this network interface and return a JS
  * object that contains its details.
  * The object will have the following properties defined upon it:
  *  - `ip` - The IP address of the interface.
@@ -520,7 +520,7 @@ JsVar *jswrap_ESP8266WiFi_getIPInfo() {
 
 
 /**
- * \brief Query the station configuration and return a JS object that represents the
+ * Query the station configuration and return a JS object that represents the
  * current settings.
  * The object will have the following properties:
  *
@@ -551,7 +551,7 @@ JsVar *jswrap_ESP8266WiFi_getStationConfig() {
 
 
 /**
- * \brief Determine the list of connected stations and return them.
+ * Determine the list of connected stations and return them.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -579,7 +579,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
 
 
 /**
- * \brief Get the signal strength.
+ * Get the signal strength.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -596,7 +596,7 @@ JsVar *jswrap_ESP8266WiFi_getRSSI() {
 
 
 /**
- * \brief Initialize the ESP8266 environment.
+ * Initialize the ESP8266 environment.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -730,7 +730,7 @@ void jswrap_ESP8266WiFi_socketEnd(
 
 
 /**
- * \brief Perform a network ping request.
+ * Perform a network ping request.
  * The parameter can be either a String or a numeric IP address.
  */
 /*JSON{
@@ -796,7 +796,7 @@ void jswrap_ESP8266WiFi_ping(
 
 
 /**
- * \brief Dump the data in the socket.
+ * Dump the data in the socket.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -815,7 +815,7 @@ void jswrap_ESP8266WiFi_dumpSocket(
 }
 
 /**
- * \brief Null terminate a string.
+ * Null terminate a string.
  */
 static char *nullTerminateString(char *target, char *source, int sourceLength) {
 	os_strncpy(target, source, sourceLength);
@@ -834,7 +834,7 @@ static void setupJsNetwork() {
 
 
 /**
- * \brief Handle receiving a response from a ping reply.
+ * Handle receiving a response from a ping reply.
  * If a callback function has been supplied we invoked that callback by queuing it for future
  * execution.  A parameter is supplied to the callback which is a JavaScript object that contains:
  *  - totalCount
@@ -867,7 +867,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
 
 
 /**
- * \brief Callback function that is invoked at the culmination of a scan.
+ * Callback function that is invoked at the culmination of a scan.
  */
 static void scanCB(void *arg, STATUS status) {
 	/**
@@ -934,7 +934,7 @@ static void scanCB(void *arg, STATUS status) {
 
 
 /**
- * \brief Invoke the JavaScript callback to notify the program that an ESP8266
+ * Invoke the JavaScript callback to notify the program that an ESP8266
  * WiFi event has occurred.
  */
 static void sendWifiEvent(uint32 eventType, JsVar *details) {
@@ -962,7 +962,7 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
 
 
 /**
- * \brief ESP8266 WiFi Event handler.
+ * ESP8266 WiFi Event handler.
  * This function is called by the ESP8266
  * environment when significant events happen related to the WiFi environment.
  * The event handler is registered with a call to wifi_set_event_handler_cb()
@@ -1030,7 +1030,7 @@ static void wifiEventHandler(System_Event_t *evt) {
 }
 
 /**
- * \brief Write an IP address as a dotted decimal string.
+ * Write an IP address as a dotted decimal string.
  */
 // Note: This may be a duplicate ... it appears that we may have an existing function
 // in network.c which does exactly this and more!!

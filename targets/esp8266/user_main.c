@@ -47,7 +47,7 @@ static os_timer_t mainLoopSuspendTimer;
 
 #if 0
 /**
- * \brief A callback function to be invoked when a line has been entered on the telnet client.
+ * A callback function to be invoked when a line has been entered on the telnet client.
  * Here we want to pass that line to the JS parser for processing.
  */
 static void telnetLineCB(char *line) {
@@ -79,7 +79,7 @@ static char *flash_maps[] = {
 };
 
 /**
- * \brief Dump the ESP8266 restart information.
+ * Dump the ESP8266 restart information.
  * This is purely for debugging.
  * When an ESP8266 crashes, before it ends, it records its exception information.
  * This function retrieves that data and logs it.
@@ -102,7 +102,7 @@ static void dumpRestart() {
 
 
 /**
- * \brief Queue a task for the main loop.
+ * Queue a task for the main loop.
  */
 static void queueTaskMainLoop() {
 	system_os_post(TASK_APP_QUEUE, TASK_APP_MAINLOOP, 0);
@@ -110,7 +110,7 @@ static void queueTaskMainLoop() {
 
 
 /**
- * \brief Suspend processing the main loop for a period of time.
+ * Suspend processing the main loop for a period of time.
  */
 void suspendMainLoop(
 		uint32 interval //!< suspension interval in milliseconds
@@ -121,7 +121,7 @@ void suspendMainLoop(
 
 
 /**
- * \brief Enable main loop processing.
+ * Enable main loop processing.
  */
 static void enableMainLoop() {
 	suspendMainLoopFlag = false;
@@ -129,7 +129,7 @@ static void enableMainLoop() {
 }
 
 /**
- * \brief Idle callback from the SDK, triggers an idle loop iteration
+ * Idle callback from the SDK, triggers an idle loop iteration
  */
 static void idle(void) {
 	// The idle callback comes form the SDK's ets_run function just before it puts the
@@ -143,7 +143,7 @@ static void idle(void) {
 
 
 /**
- * \brief The event handler for ESP8266 tasks as created by system_os_post() on the TASK_APP_QUEUE.
+ * The event handler for ESP8266 tasks as created by system_os_post() on the TASK_APP_QUEUE.
  */
 static void eventHandler(
 		os_event_t *pEvent //!<
@@ -178,7 +178,7 @@ static void eventHandler(
 static uint32 lastTime = 0;
 
 /**
- * \brief Perform the main loop processing.
+ * Perform the main loop processing.
  * This is where work is performed
  * as often as possible.
  */
@@ -244,7 +244,7 @@ void user_rf_pre_init() {
 
 
 /**
- * \brief The main entry point in an ESP8266 application.
+ * The main entry point in an ESP8266 application.
  * It is where the logic of ESP8266 starts.
  */
 void user_init() {

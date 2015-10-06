@@ -14,7 +14,7 @@
 #include "jsvariterator.h"
 
 /**
- * \brief Iterate over the contents of the content of a variable, calling callback for each.
+ * Iterate over the contents of the content of a variable, calling callback for each.
  * Contents may be:
  * * numeric -> output
  * * a string -> output each character
@@ -94,7 +94,7 @@ bool jsvIterateCallback(
 
 
 /**
- * \brief An iterable callback that counts how many times it was called.
+ * An iterable callback that counts how many times it was called.
  * This is a function that can be supplied to `jsvIterateCallback`.
  */
 static void jsvIterateCallbackCountCb(
@@ -108,7 +108,7 @@ static void jsvIterateCallbackCountCb(
 
 
 /**
- * \brief Determine how many items are in this variable that will be iterated over.
+ * Determine how many items are in this variable that will be iterated over.
  * \return The number of iterations we will call for this variable.
  */
 int jsvIterateCallbackCount(JsVar *var) {
