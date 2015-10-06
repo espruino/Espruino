@@ -155,7 +155,7 @@ void jswrap_ESP8266WiFi_connect(
 	  //
 	  // Option #1 - Always perform a disconnect.
 	  // Option #2 - Perform a disconnect if the SSID or PASSWORD are different from current
-	  // Option #3 - Fail the connect and invoke the callback telling the user that we are already connected.
+	  // Option #3 - Fail the connect if we are already connected.
 	  //
 #define ISSUE_618 1
 
@@ -164,17 +164,21 @@ void jswrap_ESP8266WiFi_connect(
 #elif ISSUE_618 == 2
 	  struct station_config existingConfig;
 	  wifi_station_get_config(&existingConfig);
-	  if (os_strncpy((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) != 0 ||
-	      os_strncpy((char *)existingConfig.password, (char *)stationConfig.password, 64) != 0) {
-	    wifi_station_disconnect();
+	  if (os_strncpy((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) == 0 &&
+	      os_strncpy((char *)existingConfig.password, (char *)stationConfig.password, 64) == 0) {
+	    if (jsGotIpCallback != NULL) {
+	      JsVar *params[2];
+	      params[0] = jsvNewFromInteger(STATION_GOT_IP);
+	       params[1] = jsvNewNull();
+	      jsiQueueEvents(NULL, jsGotIpCallback, params, 2);
+	    }
+	    return;
+
+	  } else {
+      wifi_station_disconnect();
 	  }
 #elif ISSUE_618 == 3
-	  if (jsGotIpCallback != NULL) {
-	    JsVar *params[2];
-	    params[0] = jsvNewFromInteger(STATION_GOT_IP);
-	    params[1] = jsvNewNull();
-	    jsiQueueEvents(NULL, jsGotIpCallback, params, 2);
-	  }
+	  // Add a return code to the function and return an already connected error.
 #endif
 	}
 	// Perform the network level connection
