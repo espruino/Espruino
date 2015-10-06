@@ -27,6 +27,7 @@ static void ipAddrToString(struct ip_addr addr, char *string);
 static char *nullTerminateString(char *target, char *source, int sourceLength);
 static void setupJsNetwork();
 static void pingRecvCB();
+static char *wifiConnectStatusToString(uint8 status);
 
 static JsVar *jsScanCallback;
 static JsVar *jsWiFiEventCallback;
@@ -65,22 +66,20 @@ static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 }*/
 
 
-/**
- * \brief Connect the station to an access point.
- *  - `ssid` - The network id of the access point.
- *  - `password` - The password to use to connect to the access point.
- */
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266WiFi",
   "name"     : "connect",
   "generate" : "jswrap_ESP8266WiFi_connect",
   "params"   : [
-    ["ssid","JsVar","The network SSID"],
+    ["ssid","JsVar","The network id of the access point."],
     ["password","JsVar","The password to the access point"],
     ["gotIpCallback", "JsVar", "An optional callback invoked when we have an IP"]
   ]
-}*/
+}
+ *
+ * Connect the station to an access point.
+ */
 void jswrap_ESP8266WiFi_connect(
 		JsVar *jsv_ssid,     //!< The SSID of the access point to connect.
 		JsVar *jsv_password, //!< The password for the access point.
@@ -118,7 +117,9 @@ void jswrap_ESP8266WiFi_connect(
 	if (gotIpCallback != NULL) {
 		jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
 	}
-	os_printf("jsGotIpCallback=%p\n", jsGotIpCallback);
+
+	// Debug
+	// os_printf("jsGotIpCallback=%p\n", jsGotIpCallback);
 
 	// Create strings from the JsVars for the ESP8266 API calls.
 	char ssid[33];
@@ -128,8 +129,9 @@ void jswrap_ESP8266WiFi_connect(
 	len = jsvGetString(jsv_password, password, sizeof(password)-1);
 	password[len]='\0';
 
-    os_printf(">  - ssid=%s, password=%s\n", ssid, password);
-    // Set the WiFi mode of the ESP8266
+  os_printf(">  - ssid=%s, password=%s\n", ssid, password);
+
+  // Set the WiFi mode of the ESP8266
 	wifi_set_opmode_current(STATION_MODE);
 
 	struct station_config stationConfig;
@@ -144,6 +146,38 @@ void jswrap_ESP8266WiFi_connect(
 	// Set the WiFi configuration
 	wifi_station_set_config(&stationConfig);
 
+	uint8 wifiConnectStatus = wifi_station_get_connect_status();
+	os_printf(" - Current connect status: %s\n", wifiConnectStatusToString(wifiConnectStatus));
+
+	if (wifiConnectStatus == STATION_GOT_IP) {
+	  // See issue #618.  There are currently three schools of thought on what should happen
+	  // when a connect is issued and we are already connected.
+	  //
+	  // Option #1 - Always perform a disconnect.
+	  // Option #2 - Perform a disconnect if the SSID or PASSWORD are different from current
+	  // Option #3 - Fail the connect and invoke the callback telling the user that we are already connected.
+	  //
+#define ISSUE_618 1
+
+#if ISSUE_618 == 1
+    wifi_station_disconnect();
+#elif ISSUE_618 == 2
+	  struct station_config existingConfig;
+	  wifi_station_get_config(&existingConfig);
+	  if (os_strncpy((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) != 0 ||
+	      os_strncpy((char *)existingConfig.password, (char *)stationConfig.password, 64) != 0) {
+	    wifi_station_disconnect();
+	  }
+#elif ISSUE_618 == 3
+	  if (jsGotIpCallback != NULL) {
+	    JsVar *params[2];
+	    params[0] = jsvNewFromInteger(STATION_GOT_IP);
+	    params[1] = jsvNewNull();
+	    jsiQueueEvents(NULL, jsGotIpCallback, params, 2);
+	  }
+#endif
+	}
+	// Perform the network level connection
 	wifi_station_connect();
 	os_printf("< jswrap_ESP8266WiFi_connect\n");
 }
@@ -349,7 +383,6 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 
 	uint8 newValue = jsvGetBool(autoconnect);
 	os_printf("New value: %d\n", newValue);
-	os_printf("jswrap_ESP8266WiFi_setAutoConnect -> Something breaks here :-(\n");
 
 	uart_rx_intr_disable(0);
 	wifi_station_set_auto_connect(newValue);
@@ -1000,4 +1033,30 @@ static void wifiEventHandler(System_Event_t *evt) {
 //
 static void ipAddrToString(struct ip_addr addr, char *string) {
 	os_sprintf(string, "%d.%d.%d.%d", ((char *)&addr)[0], ((char *)&addr)[1], ((char *)&addr)[2], ((char *)&addr)[3]);
+}
+
+/**
+ * Convert an ESP8266 WiFi connect status to a string.
+ *
+ * Convert the status (as returned by `wifi_station_get_connect_status()`) to a string
+ * representation.
+ * \return A string representation of a WiFi connect status.
+ */
+static char *wifiConnectStatusToString(uint8 status) {
+  switch(status) {
+  case STATION_IDLE:
+    return "STATION_IDLE";
+  case STATION_CONNECTING:
+    return "STATION_CONNECTING";
+  case STATION_WRONG_PASSWORD:
+    return "STATION_WRONG_PASSWORD";
+  case STATION_NO_AP_FOUND:
+    return "STATION_NO_AP_FOUND";
+  case STATION_CONNECT_FAIL:
+    return "STATION_CONNECT_FAIL";
+  case STATION_GOT_IP:
+    return "STATION_GOT_IP";
+  default:
+    return "Unknown connect status!!";
+  }
 }
