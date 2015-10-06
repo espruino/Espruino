@@ -13,7 +13,7 @@ typedef long long int64_t;
 #include "jsutils.h"
 
 /**
- * \brief Convert an ESP8266 error code to a string.
+ * Convert an ESP8266 error code to a string.
  * Given an ESP8266 network error code, return a string representation
  * of the meaning of that code.
  * \return A string representation of an error code.
@@ -51,7 +51,7 @@ const char *esp8266_errorToString(
 
 
 /**
- * \brief Write a buffer of data to the console.
+ * Write a buffer of data to the console.
  * The buffer is pointed to by the buffer
  * parameter and will be written for the length parameter.  This is useful because
  * unlike a string, the data does not have to be NULL terminated.

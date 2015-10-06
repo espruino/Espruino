@@ -27,6 +27,7 @@ static void ipAddrToString(struct ip_addr addr, char *string);
 static char *nullTerminateString(char *target, char *source, int sourceLength);
 static void setupJsNetwork();
 static void pingRecvCB();
+static char *wifiConnectStatusToString(uint8 status);
 
 static JsVar *jsScanCallback;
 static JsVar *jsWiFiEventCallback;
@@ -65,22 +66,20 @@ static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 }*/
 
 
-/**
- * \brief Connect the station to an access point.
- *  - `ssid` - The network id of the access point.
- *  - `password` - The password to use to connect to the access point.
- */
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266WiFi",
   "name"     : "connect",
   "generate" : "jswrap_ESP8266WiFi_connect",
   "params"   : [
-    ["ssid","JsVar","The network SSID"],
+    ["ssid","JsVar","The network id of the access point."],
     ["password","JsVar","The password to the access point"],
     ["gotIpCallback", "JsVar", "An optional callback invoked when we have an IP"]
   ]
-}*/
+}
+ *
+ * Connect the station to an access point.
+ */
 void jswrap_ESP8266WiFi_connect(
 		JsVar *jsv_ssid,     //!< The SSID of the access point to connect.
 		JsVar *jsv_password, //!< The password for the access point.
@@ -118,7 +117,9 @@ void jswrap_ESP8266WiFi_connect(
 	if (gotIpCallback != NULL) {
 		jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
 	}
-	os_printf("jsGotIpCallback=%p\n", jsGotIpCallback);
+
+	// Debug
+	// os_printf("jsGotIpCallback=%p\n", jsGotIpCallback);
 
 	// Create strings from the JsVars for the ESP8266 API calls.
 	char ssid[33];
@@ -128,8 +129,9 @@ void jswrap_ESP8266WiFi_connect(
 	len = jsvGetString(jsv_password, password, sizeof(password)-1);
 	password[len]='\0';
 
-    os_printf(">  - ssid=%s, password=%s\n", ssid, password);
-    // Set the WiFi mode of the ESP8266
+  os_printf(">  - ssid=%s, password=%s\n", ssid, password);
+
+  // Set the WiFi mode of the ESP8266
 	wifi_set_opmode_current(STATION_MODE);
 
 	struct station_config stationConfig;
@@ -144,13 +146,49 @@ void jswrap_ESP8266WiFi_connect(
 	// Set the WiFi configuration
 	wifi_station_set_config(&stationConfig);
 
+	uint8 wifiConnectStatus = wifi_station_get_connect_status();
+	os_printf(" - Current connect status: %s\n", wifiConnectStatusToString(wifiConnectStatus));
+
+	if (wifiConnectStatus == STATION_GOT_IP) {
+	  // See issue #618.  There are currently three schools of thought on what should happen
+	  // when a connect is issued and we are already connected.
+	  //
+	  // Option #1 - Always perform a disconnect.
+	  // Option #2 - Perform a disconnect if the SSID or PASSWORD are different from current
+	  // Option #3 - Fail the connect if we are already connected.
+	  //
+#define ISSUE_618 1
+
+#if ISSUE_618 == 1
+    wifi_station_disconnect();
+#elif ISSUE_618 == 2
+	  struct station_config existingConfig;
+	  wifi_station_get_config(&existingConfig);
+	  if (os_strncpy((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) == 0 &&
+	      os_strncpy((char *)existingConfig.password, (char *)stationConfig.password, 64) == 0) {
+	    if (jsGotIpCallback != NULL) {
+	      JsVar *params[2];
+	      params[0] = jsvNewFromInteger(STATION_GOT_IP);
+	       params[1] = jsvNewNull();
+	      jsiQueueEvents(NULL, jsGotIpCallback, params, 2);
+	    }
+	    return;
+
+	  } else {
+      wifi_station_disconnect();
+	  }
+#elif ISSUE_618 == 3
+	  // Add a return code to the function and return an already connected error.
+#endif
+	}
+	// Perform the network level connection.
 	wifi_station_connect();
 	os_printf("< jswrap_ESP8266WiFi_connect\n");
 }
 
 
 /**
- * \brief Become an access point.
+ * Become an access point.
  * When we call this function we are instructing the ESP8266 to set itself up as an
  * access point to allow other WiFi stations to connect to it.  In order to be an access
  * point, the ESP8266 needs to know the SSID it should use as well as the password used
@@ -223,7 +261,7 @@ void jswrap_ESP8266WiFi_beAccessPoint(
 
 
 /**
- * \brief Determine the list of access points available to us.
+ * Determine the list of access points available to us.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -261,7 +299,7 @@ void jswrap_ESP8266WiFi_getAccessPoints(
 
 
 /**
- * \brief Disconnect the station from the access point.
+ * Disconnect the station from the access point.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -286,7 +324,7 @@ void jswrap_ESP8266WiFi_restart() {
 
 
 /**
- * \brief Register a callback function that will be invoked when a WiFi event is detected.
+ * Register a callback function that will be invoked when a WiFi event is detected.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -326,7 +364,7 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
 
 
 /**
- * \brief Set whether or not the ESP8266 will perform an auto connect on startup.
+ * Set whether or not the ESP8266 will perform an auto connect on startup.
  * A value of true means it will while a value of false means it won't.
  */
 /*JSON{
@@ -349,7 +387,6 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 
 	uint8 newValue = jsvGetBool(autoconnect);
 	os_printf("New value: %d\n", newValue);
-	os_printf("jswrap_ESP8266WiFi_setAutoConnect -> Something breaks here :-(\n");
 
 	uart_rx_intr_disable(0);
 	wifi_station_set_auto_connect(newValue);
@@ -359,7 +396,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
 
 
 /**
- * \brief Retrieve whether or not the ESP8266 will perform an auto connect on startup.
+ * Retrieve whether or not the ESP8266 will perform an auto connect on startup.
  * A value of 1 means it will while a value of zero means it won't.
  */
 /*JSON{
@@ -376,7 +413,7 @@ JsVar *jswrap_ESP8266WiFi_getAutoConnect() {
 
 
 /**
- * \brief Retrieve the reset information that is stored when event the ESP8266 resets.
+ * Retrieve the reset information that is stored when event the ESP8266 resets.
  * The result will be a JS object containing the details.
  */
 /*JSON{
@@ -402,7 +439,7 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
 
 
 /**
- * \brief Return an object that contains details about the state of the ESP8266.
+ * Return an object that contains details about the state of the ESP8266.
  *  - `sdkVersion`   - Version of the SDK.
  *  - `cpuFrequency` - CPU operating frequency.
  *  - `freeHeap`     - Amount of free heap.
@@ -429,7 +466,7 @@ JsVar *jswrap_ESP8266WiFi_getState() {
 }
 
 /**
- * \brief Return the value of an integer representation (4 bytes) of IP address
+ * Return the value of an integer representation (4 bytes) of IP address
  * as a string.
  */
 /*JSON{
@@ -455,7 +492,7 @@ JsVar *jswrap_ESP8266WiFi_getAddressAsString(
 
 
 /**
- * \brief Retrieve the IP information about this network interface and return a JS
+ * Retrieve the IP information about this network interface and return a JS
  * object that contains its details.
  * The object will have the following properties defined upon it:
  *  - `ip` - The IP address of the interface.
@@ -483,7 +520,7 @@ JsVar *jswrap_ESP8266WiFi_getIPInfo() {
 
 
 /**
- * \brief Query the station configuration and return a JS object that represents the
+ * Query the station configuration and return a JS object that represents the
  * current settings.
  * The object will have the following properties:
  *
@@ -514,7 +551,7 @@ JsVar *jswrap_ESP8266WiFi_getStationConfig() {
 
 
 /**
- * \brief Determine the list of connected stations and return them.
+ * Determine the list of connected stations and return them.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -542,7 +579,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
 
 
 /**
- * \brief Get the signal strength.
+ * Get the signal strength.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -559,7 +596,7 @@ JsVar *jswrap_ESP8266WiFi_getRSSI() {
 
 
 /**
- * \brief Initialize the ESP8266 environment.
+ * Initialize the ESP8266 environment.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -693,7 +730,7 @@ void jswrap_ESP8266WiFi_socketEnd(
 
 
 /**
- * \brief Perform a network ping request.
+ * Perform a network ping request.
  * The parameter can be either a String or a numeric IP address.
  */
 /*JSON{
@@ -759,7 +796,7 @@ void jswrap_ESP8266WiFi_ping(
 
 
 /**
- * \brief Dump the data in the socket.
+ * Dump the data in the socket.
  */
 /*JSON{
   "type"     : "staticmethod",
@@ -778,7 +815,7 @@ void jswrap_ESP8266WiFi_dumpSocket(
 }
 
 /**
- * \brief Null terminate a string.
+ * Null terminate a string.
  */
 static char *nullTerminateString(char *target, char *source, int sourceLength) {
 	os_strncpy(target, source, sourceLength);
@@ -797,7 +834,7 @@ static void setupJsNetwork() {
 
 
 /**
- * \brief Handle receiving a response from a ping reply.
+ * Handle receiving a response from a ping reply.
  * If a callback function has been supplied we invoked that callback by queuing it for future
  * execution.  A parameter is supplied to the callback which is a JavaScript object that contains:
  *  - totalCount
@@ -830,7 +867,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
 
 
 /**
- * \brief Callback function that is invoked at the culmination of a scan.
+ * Callback function that is invoked at the culmination of a scan.
  */
 static void scanCB(void *arg, STATUS status) {
 	/**
@@ -897,7 +934,7 @@ static void scanCB(void *arg, STATUS status) {
 
 
 /**
- * \brief Invoke the JavaScript callback to notify the program that an ESP8266
+ * Invoke the JavaScript callback to notify the program that an ESP8266
  * WiFi event has occurred.
  */
 static void sendWifiEvent(uint32 eventType, JsVar *details) {
@@ -925,7 +962,7 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
 
 
 /**
- * \brief ESP8266 WiFi Event handler.
+ * ESP8266 WiFi Event handler.
  * This function is called by the ESP8266
  * environment when significant events happen related to the WiFi environment.
  * The event handler is registered with a call to wifi_set_event_handler_cb()
@@ -993,11 +1030,37 @@ static void wifiEventHandler(System_Event_t *evt) {
 }
 
 /**
- * \brief Write an IP address as a dotted decimal string.
+ * Write an IP address as a dotted decimal string.
  */
 // Note: This may be a duplicate ... it appears that we may have an existing function
 // in network.c which does exactly this and more!!
 //
 static void ipAddrToString(struct ip_addr addr, char *string) {
 	os_sprintf(string, "%d.%d.%d.%d", ((char *)&addr)[0], ((char *)&addr)[1], ((char *)&addr)[2], ((char *)&addr)[3]);
+}
+
+/**
+ * Convert an ESP8266 WiFi connect status to a string.
+ *
+ * Convert the status (as returned by `wifi_station_get_connect_status()`) to a string
+ * representation.
+ * \return A string representation of a WiFi connect status.
+ */
+static char *wifiConnectStatusToString(uint8 status) {
+  switch(status) {
+  case STATION_IDLE:
+    return "STATION_IDLE";
+  case STATION_CONNECTING:
+    return "STATION_CONNECTING";
+  case STATION_WRONG_PASSWORD:
+    return "STATION_WRONG_PASSWORD";
+  case STATION_NO_AP_FOUND:
+    return "STATION_NO_AP_FOUND";
+  case STATION_CONNECT_FAIL:
+    return "STATION_CONNECT_FAIL";
+  case STATION_GOT_IP:
+    return "STATION_GOT_IP";
+  default:
+    return "Unknown connect status!!";
+  }
 }

@@ -254,7 +254,7 @@ example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
 */
 
 /**
- * \brief Set the output of a GPIO.
+ * Set the output of a GPIO.
  */
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
@@ -299,7 +299,7 @@ the last array element is the least significant bit, for example if `A0=A1=1` an
 */
 
 /**
- * \brief Read the value of a GPIO pin.
+ * Read the value of a GPIO pin.
  */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
@@ -351,7 +351,7 @@ Set the mode of the given pin.
 */
 
 /**
- * \brief Set the mode of a pin.
+ * Set the mode of a pin.
  */
 void jswrap_io_pinMode(
     Pin pin,    //!< The pin to set.
