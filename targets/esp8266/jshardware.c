@@ -643,13 +643,6 @@ JsSysTime jshGetSystemTime() { // in us
 } // End of jshGetSystemTime
 
 
-
-bool jshFlashContainsCode() {
-	os_printf("ESP8266: jshFlashContainsCode\n");
-	return false;
-}
-
-
 /**
  * Set the current time in microseconds.
  */
