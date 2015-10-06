@@ -27,7 +27,7 @@ typedef long long int64_t;
 #define TASK_QUEUE_LENGTH 10
 
 // Should we introduce a ticker to say we are still alive?
-#define EPS8266_BOARD_HEARTBEAT
+//#define EPS8266_BOARD_HEARTBEAT
 
 // --- Forward definitions
 static void mainLoop();

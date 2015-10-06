@@ -630,8 +630,9 @@ static void saveTime() {
 		(uint32_t)(rtcTimeStamp.timeStamp & 0xffffffff) ^
 		(uint32_t)(rtcTimeStamp.timeStamp >> 32);
 	system_rtc_mem_write(RTC_TIME_ADDR, &rtcTimeStamp, sizeof(rtcTimeStamp));
-	os_printf("RTC write: %lu %lu 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
-		rtcTimeStamp.hwTimeStamp, (int)rtcTimeStamp.cksum);
+	// Debug
+	//os_printf("RTC write: %lu %lu 0x%08x\n", (uint32_t)(rtcTimeStamp.timeStamp/1000000),
+	//	rtcTimeStamp.hwTimeStamp, (int)rtcTimeStamp.cksum);
 }
 
 /**
@@ -672,7 +673,8 @@ static void systemTimeCb(void *arg) {
 	updateTime(&sysTimeStamp, sysTime);
 	rtcTimeStamp.timeStamp = sysTimeStamp.timeStamp;
 	rtcTimeStamp.hwTimeStamp = rtc;
-	os_printf("RTC sys=%lu rtc=%lu\n", sysTime, rtc);
+	// Debug
+	// os_printf("RTC sys=%lu rtc=%lu\n", sysTime, rtc);
 
 	saveTime(&rtcTimeStamp);
 }
