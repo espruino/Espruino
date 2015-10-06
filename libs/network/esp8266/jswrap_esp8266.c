@@ -181,7 +181,7 @@ void jswrap_ESP8266WiFi_connect(
 	  // Add a return code to the function and return an already connected error.
 #endif
 	}
-	// Perform the network level connection
+	// Perform the network level connection.
 	wifi_station_connect();
 	os_printf("< jswrap_ESP8266WiFi_connect\n");
 }
