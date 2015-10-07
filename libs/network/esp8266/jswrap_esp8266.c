@@ -437,6 +437,32 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
   return restartInfo;
 }
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "updateCPUFreq",
+  "generate" : "jswrap_ESP8266WiFi_updateCPUFreq",
+  "params"   : [
+    ["freq","JsVar","Desired frequency - either 80 or 160."]
+  ]
+}
+ * Update the operating frequency of the ESP8266 processor.
+ */
+void jswrap_ESP8266WiFi_updateCPUFreq(
+    JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
+  ) {
+  if (!jsvIsInt(jsFreq)) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
+    return;
+  }
+  int newFreq = jsvGetInteger(jsFreq);
+  if (newFreq != 80 && newFreq != 160) {
+    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
+    return;
+  }
+  system_update_cpu_freq(newFreq);
+}
+
 
 /**
  * Return an object that contains details about the state of the ESP8266.
