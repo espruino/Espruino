@@ -2661,6 +2661,21 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     IWDG_Enable();
 }
 
+uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
+  if (!jshIsPinValid(pin)) return 0;
+  GPIO_TypeDef *port = stmPort(pin);
+  uint32_t *regAddr;
+  if (flags == JSGPAF_INPUT)
+    regAddr = &port->IDR;
+  else
+    regAddr = &port->ODR;
+
+  uint32_t addr =  0x42000000 + ((((uint32_t)regAddr)-PERIPH_BASE)<<5) + (((uint32_t)(pinInfo[pin].pin - JSH_PIN0)<<2));
+
+  return (uint32_t*)addr;
+}
+
+
 #if defined(STM32F2) || defined(STM32F4)
 int jshFlashGetSector(uint32_t addr) {
   addr -= FLASH_START;
@@ -2781,3 +2796,5 @@ void jshFlashWrite(void *buf, uint32_t addr, uint32_t len) {
 #endif
 #endif
 }
+
+
