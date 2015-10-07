@@ -669,7 +669,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
           jsvGetBoolAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_CHUNKED, 0))) {
         // If we asked to send 'chunked' data, we need to wrap it up,
         // prefixed with the length
-        jsvAppendPrintf(sendData, "%d\r\n%v\r\n", jsvGetStringLength(s), s);
+        jsvAppendPrintf(sendData, "%x\r\n%v\r\n", jsvGetStringLength(s), s);
       } else {
         jsvAppendStringVarComplete(sendData,s);
       }
