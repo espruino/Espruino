@@ -15,7 +15,7 @@
 #include "jsinteractive.h"
 
 /**
- * \brief Dump the internal SPI Info data structure to the console.
+ * Dump the internal SPI Info data structure to the console.
  * This is an internal debugging function.
  */
 void jsspiDumpSPIInfo(JshSPIInfo *inf) {
@@ -31,7 +31,7 @@ int jsspiHardwareFunc(int data, spi_sender_data *info) {
 
 
 /**
- * \brief Send a single byte through SPI.
+ * Send a single byte through SPI.
  * \return The received byte.
  */
 int jsspiFastSoftwareFunc(
@@ -56,7 +56,7 @@ int jsspiFastSoftwareFunc(
 
 
 /**
- * \brief Send a single byte through SPI.
+ * Send a single byte through SPI.
  * \return The received byte.
  */
 int jsspiSoftwareFunc(
@@ -105,7 +105,7 @@ int jsspiSoftwareFunc(
 
 
 /**
- * \brief Populate a JshSPIInfo structure from a JS Object.
+ * Populate a JshSPIInfo structure from a JS Object.
  * The object properties that are examined are:
  * * `sck` - The pin to use for the clock.
  * * `miso` - The pin to use for Master In/Slave Out.
@@ -149,7 +149,7 @@ void jsspiPopulateSPIInfo(
 }
 
 /**
- * \brief Select the SPI send function.
+ * Select the SPI send function.
  * Get the correct SPI send function (and the data to send to it).  We do this
  * by examining the device and determining if it is hardware, software fast
  * or software regular.

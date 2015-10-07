@@ -344,3 +344,13 @@ The returned object contains the following fields:
 * `sdkVersion` - The version of the ESP8266 SDK used to build this release.
 * `cpuFrequency` - The CPU operating frequency in MHz.
 * `freeHeap` - The amount of free heap in bytes.
+
+----
+
+##ESP8266WiFi.updateCPUFreq
+
+Set the operating frequency of the ESP8266 processor.
+
+`ESP8266WiFi.updateCPUFreq(newFreq)`
+
+* `newFreq` - The new operating frequency of the CPU.  Either 80 (80MHz) or 160 (160MHz).

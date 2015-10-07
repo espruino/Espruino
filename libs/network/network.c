@@ -117,7 +117,7 @@ unsigned long networkFlipIPAddress(unsigned long addr) {
 }
 
 /**
- * \brief Get the IP address of a hostname.
+ * Get the IP address of a hostname.
  * Retrieve the IP address of a hostname and return it in the address of the
  * ip address passed in.  If the hostname is as dotted decimal string, we will
  * decode that immediately otherwise we will use the network adapter's `gethostbyname`

@@ -485,7 +485,7 @@ ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
 ESP_FLASH_MAX       ?= 442368  # max irom0 size for 512KB flash: 432KB
-ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
+ET_FS               ?= 4m      # 4Mbit (512KB) flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 
@@ -498,12 +498,12 @@ BOARD=ESP8266_OTA
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
 OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-ESP_FLASH_SIZE      ?= 4       # 4->4MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
-ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808   # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 32m      # 32Mbit (4MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
 
 else ifdef ESP8266_2MB
@@ -515,12 +515,12 @@ BOARD=ESP8266_OTA
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
-ESP_FLASH_SIZE      ?= 3       # 3->2MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?= 16m     # 32Mbit flash size in esptool flash command
-ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808   # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 16m      # 16Mbit (2MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
 
 else ifdef ESP8266_1MB
@@ -532,12 +532,12 @@ EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_OTA
 # We have to disable inlining to keep code size in check
-OPTIMIZEFLAGS+=-O2 -fno-inline-functions
+OPTIMIZEFLAGS+=-O2 -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?=  8m     # 32Mbit flash size in esptool flash command
+ET_FS               ?=  8m     # 8Mbit (1MB) flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 

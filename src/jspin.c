@@ -25,7 +25,7 @@
 #endif
 
 /**
- * \brief Validate that the pin is a good pin.
+ * Validate that the pin is a good pin.
  * \return True if the pin is valid.
  */
 bool jshIsPinValid(Pin pin) {
@@ -34,7 +34,7 @@ bool jshIsPinValid(Pin pin) {
 }
 
 /**
- * \brief Get a pin value from an encoded strin.
+ * Get a pin value from an encoded strin.
  * \return A pin value.
  */
 Pin jshGetPinFromString(const char *s) {
@@ -223,7 +223,7 @@ void jshSetPinStateIsManual(Pin pin, bool manual) {
   // ----------------------------------------------------------------------------
 
 /**
- * \brief Get the value of a pin.
+ * Get the value of a pin.
  * \return The value of the pin.
  */
 bool jshPinInput(
@@ -243,7 +243,7 @@ bool jshPinInput(
 
 
 /**
- * \brief Set the value of a pin.
+ * Set the value of a pin.
  */
 void jshPinOutput(
     Pin pin,   //!< The pin to set.
