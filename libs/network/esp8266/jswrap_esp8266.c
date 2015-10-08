@@ -33,7 +33,7 @@ static JsVar *jsScanCallback;
 static JsVar *jsWiFiEventCallback;
 
 // A callback function to be invoked when we have an IP address.
-static JsVar *jsGotIpCallback;
+static JsVar *g_jsGotIpCallback;
 
 static JsVar *jsPingCallback;
 
@@ -65,6 +65,17 @@ static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
   "class" : "ESP8266WiFi"
 }*/
 
+/*JSON{
+    "type":     "kill",
+    "generate": "jswrap_ESP8266WiFi_kill"
+}
+*
+* Register a handler to be called when the ESP8266 is reset.
+*/
+void jswrap_ESP8266WiFi_kill() {
+  os_printf("> jswrap_esp8266_kill\n");
+  os_printf("< jswrap_esp8266_kill\n");
+}
 
 /*JSON{
   "type"     : "staticmethod",
@@ -107,15 +118,15 @@ void jswrap_ESP8266WiFi_connect(
     gotIpCallback = NULL;
   }
 
-  // Set the global which is the gotIP callback
-  if (jsGotIpCallback != NULL) {
-    jsvUnLock(jsGotIpCallback);
-    jsGotIpCallback = NULL;
+  // Set the global which is the gotIP callback to null
+  if (g_jsGotIpCallback != NULL) {
+    //jsvUnLock(g_jsGotIpCallback);
+    g_jsGotIpCallback = NULL;
   }
 
-  // What does this do?
+  // If we have a callback, save it for later invocation.
   if (gotIpCallback != NULL) {
-    jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
+    g_jsGotIpCallback = jsvLockAgainSafe(gotIpCallback);
   }
 
   // Debug
@@ -317,8 +328,11 @@ void jswrap_ESP8266WiFi_disconnect() {
   "class"    : "ESP8266WiFi",
   "name"     : "restart",
   "generate" : "jswrap_ESP8266WiFi_restart"
-}*/
+}
+ * Ask the physical ESP8266 device to restart itself.
+ */
 void jswrap_ESP8266WiFi_restart() {
+  os_printf("> jswrap_ESP8266WiFi_restart\n");
   system_restart();
 }
 
@@ -601,6 +615,44 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
     wifi_softap_free_station_info();
   }
   return jsArray;
+}
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "getDHCPHostname",
+  "generate" : "jswrap_ESP8266WiFi_getDHCPHostname",
+  "return"   : ["JsVar", "The current DHCP hostname."]
+}
+ * Get the current DHCP hostname.
+*/
+JsVar *jswrap_ESP8266WiFi_getDHCPHostname() {
+  char *hostname = wifi_station_get_hostname();
+  if (hostname == NULL) {
+    hostname = "";
+  }
+  return jsvNewFromString(hostname);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "setDHCPHostname",
+  "generate" : "jswrap_ESP8266WiFi_setDHCPHostname",
+  "params"   : [
+    ["hostname", "JsVar", "The new DHCP hostname."]
+  ]
+}
+ * Set the DHCP hostname.
+*/
+void jswrap_ESP8266WiFi_setDHCPHostname(
+    JsVar *jsHostname //!< The hostname to set for device.
+  ) {
+  char hostname[256];
+  jsvGetString(jsHostname, hostname, sizeof(hostname));
+  os_printf("> jswrap_ESP8266WiFi_setDHCPHostname: %s\n", hostname);
+  wifi_station_set_hostname(hostname);
 }
 
 
@@ -974,11 +1026,11 @@ static void sendWifiEvent(uint32 eventType, JsVar *details) {
     jsiQueueEvents(NULL, jsWiFiEventCallback, params, 2);
   }
 
-  if (jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {
+  if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
     params[1] = details;
-    jsiQueueEvents(NULL, jsGotIpCallback, params, 2);
+    jsiQueueEvents(NULL, g_jsGotIpCallback, params, 2);
     // Once we have registered the callback, we can unlock and release
     // the variable as we are only calling it once.
     //jsvUnLock(jsGotIpCallback);

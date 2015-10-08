@@ -1500,7 +1500,7 @@ $(PROJ_NAME): $(OBJS)
 
 else ifdef ESP8266_512KB
 # for the 512KB flash we generate non-OTA binaries
-proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
+proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin $(PROJ_NAME).lst
 
 # linking is complicated. The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
@@ -1527,6 +1527,11 @@ $(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
 $(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
 # Note that ESPTOOL_CK always returns non zero, ignore errors
 	$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec || true
+	
+# Generate a symbol table file for subsequent debugging where we know an exception address.
+$(PROJ_NAME).lst : $(PROJ_NAME).elf
+	$(Q)@echo "Building Symbol table (.lst) file"
+	$(Q)$(call obj_dump)
 
 flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
 ifndef COMPORT
