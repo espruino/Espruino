@@ -248,7 +248,7 @@ Set the digital value of the given pin.
 If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated
 as an array of bits where the last array element is the least significant bit.
 
-In this case, pin values are set last significant bit first (from the right-hand side
+In this case, pin values are set least significant bit first (from the right-hand side
 of the array of pins). This means you can use the same pin multiple times, for
 example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
 */

@@ -36,6 +36,8 @@
             Fix bug when appending to a flat string (fix #614)
             Add `Serial/SPI/I2C.find(pin)` - so we can figure out what device to use based on the pin
             Ensure that when uploading, each command gets checked for errors (rather than right at the end)
+            Fix writes on HTTP requests after a timeout, and add chunked encoding if the header is set.
+            Added pin info for bit-banded pin addresses (and jshGetPinAddress).
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
