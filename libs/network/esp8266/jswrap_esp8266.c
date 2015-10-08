@@ -1,3 +1,7 @@
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+so we don't put this into espruino.com/Reference until this is out
+of beta.  */
+
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
 // can assume that inclusion of ESP8266 headers will be acceptable.
 #include <c_types.h>
@@ -921,7 +925,7 @@ static void scanCB(void *arg, STATUS status) {
     // uint8 bssid[6]
     // uint8 ssid[32]
     // uint8 channel
-    // sint8 rssi – The received signal strength indication
+    // sint8 rssi \96 The received signal strength indication
     // AUTH_MODE authmode
     //  Open = 0
     //  WEP = 1

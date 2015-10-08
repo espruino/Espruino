@@ -306,6 +306,7 @@ def get_ifdef_description(d):
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 

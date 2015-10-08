@@ -770,7 +770,7 @@ But `E.getSizeOf(E.getSizeOf(function(a,b) { }), 1)` returns:
     "name": "b",
     "size": 1 },
   {
-    "name": "ÿcod",
+    "name": "\xFFcod",
     "size": 2 }
  ]
 ```
