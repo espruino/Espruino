@@ -39,9 +39,9 @@ extern int isfinite ( double );
 
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v80"
+#define JS_VERSION "1v81"
 #else
-#define JS_VERSION "1v80." BUILDNUMBER
+#define JS_VERSION "1v81." BUILDNUMBER
 #endif
 /*
   In code:
