@@ -110,7 +110,7 @@ void jswrap_ESP8266WiFi_kill() {
 
   // Handle g_jsPingCallback release.
   if (g_jsPingCallback != NULL) {
-    jsvUnlock(g_jsPingCallback);
+    jsvUnLock(g_jsPingCallback);
     g_jsPingCallback = NULL;
   }
 
@@ -122,7 +122,7 @@ void jswrap_ESP8266WiFi_kill() {
 
   // Handle g_jsWiFiEventCallback
   if (g_jsScanCallback != NULL) {
-    jsvUnlock(g_jsScanCallback);
+    jsvUnLock(g_jsScanCallback);
     g_jsScanCallback = NULL;
   }
 
