@@ -19,6 +19,8 @@
  *
  */
 
+// This file is distributed with the ESP8266 SDK but has been modified for Espruino.
+
 #ifndef UART_REGISTER_H_
 #define UART_REGISTER_H_
 
