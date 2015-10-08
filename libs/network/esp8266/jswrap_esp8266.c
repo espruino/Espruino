@@ -618,6 +618,44 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
 }
 
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "getDHCPHostname",
+  "generate" : "jswrap_ESP8266WiFi_getDHCPHostname",
+  "return"   : ["JsVar", "The current DHCP hostname."]
+}
+ * Get the current DHCP hostname.
+*/
+JsVar *jswrap_ESP8266WiFi_getDHCPHostname() {
+  char *hostname = wifi_station_get_hostname();
+  if (hostname == NULL) {
+    hostname = "";
+  }
+  return jsvNewFromString(hostname);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "setDHCPHostname",
+  "generate" : "jswrap_ESP8266WiFi_setDHCPHostname",
+  "params"   : [
+    ["hostname", "JsVar", "The new DHCP hostname."]
+  ]
+}
+ * Set the DHCP hostname.
+*/
+void jswrap_ESP8266WiFi_setDHCPHostname(
+    JsVar *jsHostname //!< The hostname to set for device.
+  ) {
+  char hostname[256];
+  jsvGetString(jsHostname, hostname, sizeof(hostname));
+  os_printf("> jswrap_ESP8266WiFi_setDHCPHostname: %s\n", hostname);
+  wifi_station_set_hostname(hostname);
+}
+
+
 /**
  * Get the signal strength.
  */
