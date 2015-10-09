@@ -39,9 +39,6 @@ You can call the methods on Pin, or you can use Wiring-style functions such as d
 }
 Creates a pin from the given argument (or returns undefined if no argument)
 */
-/**
- * Create an instance of a Pin class.
- */
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
@@ -170,6 +167,7 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   "type"     : "method",
   "class"    : "Pin",
   "name"     : "getInfo",
+  "ifndef"   : "SAVE_ON_FLASH",
   "generate" : "jswrap_pin_getInfo",
   "return"   : ["JsVar","An object containing information about this pins"]
 }
@@ -190,9 +188,6 @@ Get information about this pin and its capabilities. Of the form:
 ```
 Will return undefined if pin is not valid.
 */
-/**
- *
- */
 JsVar *jswrap_pin_getInfo(
     JsVar *parent //!< The class instance representing the pin.
   ) {

@@ -306,6 +306,7 @@ def get_ifdef_description(d):
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
@@ -317,7 +318,7 @@ def get_version():
         jsutils = scriptdir+"/../src/jsutils.h"
         version = re.compile("^.*JS_VERSION.*\"(.*)\"");
         latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
-        commits_since_release = subprocess.check_output('git log --oneline '+latest_release+'..HEAD | wc -l', shell=True).strip()
+        commits_since_release = subprocess.check_output('git log --oneline '+latest_release+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
         for line in open(jsutils):
             match = version.search(line);
             if (match != None):
