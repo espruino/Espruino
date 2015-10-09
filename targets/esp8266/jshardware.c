@@ -76,10 +76,12 @@ void jshInit() {
 } // End of jshInit
 
 /**
- * Reset the hardware to a power-on state.
+ * Reset the Espruino environment.
  */
 void jshReset() {
   //system_restart();
+  os_printf("> jshReset\n");
+  os_printf("< jshReset\n");
 } // End of jshReset
 
 /**

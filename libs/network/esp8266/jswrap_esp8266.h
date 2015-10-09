@@ -31,5 +31,8 @@ JsVar *jswrap_ESP8266WiFi_getRSSI();
 JsVar *jswrap_ESP8266WiFi_getState();
 void   jswrap_ESP8266WiFi_dumpSocket(JsVar *socketId);
 void   jswrap_ESP8266WiFi_updateCPUFreq(JsVar *jsFreq);
+void   jswrap_ESP8266WiFi_kill();
+void   jswrap_ESP8266WiFi_setDHCPHostname(JsVar *jsHostname);
+JsVar *jswrap_ESP8266WiFi_getDHCPHostname();
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_ */
