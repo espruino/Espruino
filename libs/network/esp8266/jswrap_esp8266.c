@@ -1,3 +1,18 @@
+/*
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * This file is designed to be parsed during the build process
+ *
+ * Contains ESP8266 board specific functions.
+ * ----------------------------------------------------------------------------
+ */
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
 // can assume that inclusion of ESP8266 headers will be acceptable.
 #include <c_types.h>
@@ -29,13 +44,20 @@ static void setupJsNetwork();
 static void pingRecvCB();
 static char *wifiConnectStatusToString(uint8 status);
 
-static JsVar *jsScanCallback;
-static JsVar *jsWiFiEventCallback;
+
+// #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
+
+// A callback function to be invoked when we find a new access point.
+static JsVar *g_jsScanCallback;
+
+// A callback function to be invoked when we receive a WiFi event.
+static JsVar *g_jsWiFiEventCallback;
 
 // A callback function to be invoked when we have an IP address.
 static JsVar *g_jsGotIpCallback;
 
-static JsVar *jsPingCallback;
+// A callback function to be invoked on ping responses.
+static JsVar *g_jsPingCallback;
 
 // Global data structure for ping request
 static struct ping_option pingOpt;
@@ -73,7 +95,37 @@ static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 * Register a handler to be called when the ESP8266 is reset.
 */
 void jswrap_ESP8266WiFi_kill() {
+  // When the Espruino environment is reset, this callback function will be invoked.
+  // The purpose is to reset the environment by cleaning up whatever might be needed
+  // to be cleaned up.
   os_printf("> jswrap_esp8266_kill\n");
+
+  // Handle the g_jsGotIpCallback - If it is not null, then it contains a reference
+  // to a locked JS variable that is a function pointer for the "got ip" callback.
+  // We want to unlock this and delete the reference.
+  if (g_jsGotIpCallback != NULL) {
+    jsvUnLock(g_jsGotIpCallback);
+    g_jsGotIpCallback = NULL;
+  }
+
+  // Handle g_jsPingCallback release.
+  if (g_jsPingCallback != NULL) {
+    jsvUnLock(g_jsPingCallback);
+    g_jsPingCallback = NULL;
+  }
+
+  // Handle g_jsWiFiEventCallback
+  if (g_jsWiFiEventCallback != NULL) {
+    jsvUnLock(g_jsWiFiEventCallback);
+    g_jsWiFiEventCallback = NULL;
+  }
+
+  // Handle g_jsWiFiEventCallback
+  if (g_jsScanCallback != NULL) {
+    jsvUnLock(g_jsScanCallback);
+    g_jsScanCallback = NULL;
+  }
+
   os_printf("< jswrap_esp8266_kill\n");
 }
 
@@ -118,9 +170,9 @@ void jswrap_ESP8266WiFi_connect(
     gotIpCallback = NULL;
   }
 
-  // Set the global which is the gotIP callback to null
+  // Set the global which is the gotIP callback to null but first unlock it.
   if (g_jsGotIpCallback != NULL) {
-    //jsvUnLock(g_jsGotIpCallback);
+    jsvUnLock(g_jsGotIpCallback);
     g_jsGotIpCallback = NULL;
   }
 
@@ -292,8 +344,13 @@ void jswrap_ESP8266WiFi_getAccessPoints(
     return;
   }
 
+  // If we had saved a previous scan callback function, release it.
+  if (g_jsScanCallback != NULL) {
+    jsvUnLock(g_jsScanCallback);
+  }
+
   // Save the callback for the scan in the global variable called jsScanCallback.
-  jsScanCallback = jsvLockAgainSafe(callback);
+  g_jsScanCallback = jsvLockAgainSafe(callback);
 
   // Ask the ESP8266 to perform a network scan after first entering
   // station mode.  The network scan will eventually result in a callback
@@ -354,10 +411,10 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
   ) {
   // If the callback is null
   if (callback == NULL || jsvIsNull(callback)) {
-    if (jsWiFiEventCallback != NULL) {
-      jsvUnLock(jsWiFiEventCallback);
+    if (g_jsWiFiEventCallback != NULL) {
+      jsvUnLock(g_jsWiFiEventCallback);
     }
-    jsWiFiEventCallback = NULL;
+    g_jsWiFiEventCallback = NULL;
     return;
   }
 
@@ -368,12 +425,12 @@ void jswrap_ESP8266WiFi_onWiFiEvent(
 
   // We are about to save a new global WiFi even callback handler.  If we have previously
   // had one, we need to unlock it so that we don't leak memory.
-  if (jsWiFiEventCallback != NULL) {
-    jsvUnLock(jsWiFiEventCallback);
+  if (g_jsWiFiEventCallback != NULL) {
+    jsvUnLock(g_jsWiFiEventCallback);
   }
 
   // Save the global WiFi event callback handler.
-  jsWiFiEventCallback = jsvLockAgainSafe(callback);
+  g_jsWiFiEventCallback = jsvLockAgainSafe(callback);
 }
 
 
@@ -850,19 +907,19 @@ void jswrap_ESP8266WiFi_ping(
   }
 
   if (jsvIsUndefined(pingCallback) || jsvIsNull(pingCallback)) {
-    if (jsPingCallback != NULL) {
-      jsvUnLock(jsPingCallback);
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
     }
-    jsPingCallback = NULL;
+    g_jsPingCallback = NULL;
   } else if (!jsvIsFunction(pingCallback)) {
       jsExceptionHere(JSET_ERROR, "Callback is not a function.");
     return;
   } else {
-    if (jsPingCallback != NULL) {
-      jsvUnLock(jsPingCallback);
+    if (g_jsPingCallback != NULL) {
+      jsvUnLock(g_jsPingCallback);
     }
-    jsPingCallback = pingCallback;
-    jsvLockAgainSafe(jsPingCallback);
+    g_jsPingCallback = pingCallback;
+    jsvLockAgainSafe(g_jsPingCallback);
   }
 
   // We now have an IP address to ping ... so ping.
@@ -927,7 +984,7 @@ static void setupJsNetwork() {
 static void pingRecvCB(void *pingOpt, void *pingResponse) {
   struct ping_resp *pingResp = (struct ping_resp *)pingResponse;
   os_printf("Received a ping response!\n");
-  if (jsPingCallback != NULL) {
+  if (g_jsPingCallback != NULL) {
     JsVar *jsPingResponse = jspNewObject(NULL, "PingResponse");
     jsvUnLock(jsvObjectSetChild(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count)));
     jsvUnLock(jsvObjectSetChild(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes)));
@@ -939,7 +996,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
     jsvUnLock(jsvObjectSetChild(jsPingResponse, "error",        jsvNewFromInteger(pingResp->ping_err)));
     JsVar *params[1];
     params[0] = jsPingResponse;
-    jsiQueueEvents(NULL, jsPingCallback, params, 1);
+    jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
   }
 }
 
@@ -1005,8 +1062,8 @@ static void scanCB(void *arg, STATUS status) {
   // We have now completed the scan callback, so now we can invoke the JS callback.
   JsVar *params[1];
   params[0] = accessPointArray;
-  jsiQueueEvents(NULL, jsScanCallback, params, 1);
-  jsvUnLock(jsScanCallback);
+  jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
+  jsvUnLock(g_jsScanCallback);
   os_printf("<< scanCB\n");
 }
 
@@ -1018,12 +1075,12 @@ static void scanCB(void *arg, STATUS status) {
 static void sendWifiEvent(uint32 eventType, JsVar *details) {
   // We need to check that we actually have an event callback handler because
   // it might have been disabled/removed.
-  if (jsWiFiEventCallback != NULL) {
+  if (g_jsWiFiEventCallback != NULL) {
     // Build a callback event.
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
     params[1] = details;
-    jsiQueueEvents(NULL, jsWiFiEventCallback, params, 2);
+    jsiQueueEvents(NULL, g_jsWiFiEventCallback, params, 2);
   }
 
   if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {

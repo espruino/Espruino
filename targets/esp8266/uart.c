@@ -14,6 +14,9 @@
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+// This file is distributed with the ESP8266 SDK but has been modified for Espruino.
+
 #include "ets_sys.h"
 #include "osapi.h"
 #include "uart.h"
