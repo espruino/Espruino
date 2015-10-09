@@ -273,9 +273,22 @@ The status is a JS integer that describes the current connection status which wi
 
 Become an access point.
 
-`ESP8266WiFi.beAccessPoint(ssid, password)`
+`ESP8266WiFi.beAccessPoint(ssid [,password])`
 
-Become an access point for the network supplied by `ssid` with a password of `password`.
+Become an access point for the network supplied by `ssid` with a password of `password`.  If no
+password is supplied, then the access point is considered open and be connected to by a station that
+need not supply a password.  If a password is supplied, it must be at least eight characters in size.
+
+----
+
+##ESP8266WiFi.stopAP
+
+Don't be an access point any longer.
+
+`ESP8266WiFi.stopAP()`
+
+If we are playing the role of an access point, stop performing that function.  Connected stations will be
+disconnected and we will no longer be visible as a WiFi network.
 
 ----
 
