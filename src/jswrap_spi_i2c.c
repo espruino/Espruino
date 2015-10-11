@@ -30,7 +30,7 @@ This class allows use of the built-in SPI ports. Currently it is SPI master only
   "type" : "object",
   "name" : "SPI1",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=1"
+  "#if" : "SPI_COUNT>=1"
 }
 The first SPI port
  */
@@ -38,7 +38,7 @@ The first SPI port
   "type" : "object",
   "name" : "SPI2",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=2"
+  "#if" : "SPI_COUNT>=2"
 }
 The second SPI port
  */
@@ -46,7 +46,7 @@ The second SPI port
   "type" : "object",
   "name" : "SPI3",
   "instanceof" : "SPI",
-  "#if" : "SPIS>=3"
+  "#if" : "SPI_COUNT>=3"
 }
 The third SPI port
  */
@@ -61,14 +61,24 @@ Create a software SPI port. This has limited functionality (no baud rate), but i
 
 Use `SPI.setup` to configure this port.
  */
-
-/**
- * \brief Create a software based SPI interface.
- * \return A JS object that will hold the state of the SPI.
- */
 JsVar *jswrap_spi_constructor() {
   return jsvNewWithFlags(JSV_OBJECT);
 }
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "SPI",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_SPI1, JSH_SPIMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `SPI`, or `undefined` if one couldn't be found."]
+}
+Try and find an SPI hardware device that will work on this pin (eg. `SPI1`)
+
+May return undefined if no device can be found.
+*/
 
 /*JSON{
   "type" : "method",
@@ -80,10 +90,6 @@ JsVar *jswrap_spi_constructor() {
   ]
 }
 Set up this SPI port as an SPI Master.
- */
-
-/**
- * \brief Configure/initialize the software SPI interface.
  */
 void jswrap_spi_setup(
     JsVar *parent, //!< The variable that is the class instance of this function.
@@ -157,7 +163,7 @@ typedef struct {
 
 
 /**
- * \brief Send a single byte to the SPI device.
+ * Send a single byte to the SPI device, used ad callback.
  */
 void jswrap_spi_send_cb(
     int c,                     //!< The byte to send through SPI.
@@ -175,7 +181,7 @@ void jswrap_spi_send_cb(
 
 
 /**
- * \brief Send data through SPI.
+ * Send data through SPI.
  * The data can be in a variety of formats including:
  * * `numeric` - A single byte is transmitted.
  * * `string` - Each character in the string is transmitted.
@@ -458,10 +464,25 @@ All addresses are in 7 bit format. If you have an 8 bit address then you need to
  */
 
 /*JSON{
+  "type" : "staticmethod",
+  "class" : "I2C",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_I2C1, JSH_I2CMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `I2C`, or `undefined` if one couldn't be found."]
+}
+Try and find an I2C hardware device that will work on this pin (eg. `I2C1`)
+
+May return undefined if no device can be found.
+*/
+
+/*JSON{
   "type" : "object",
   "name" : "I2C1",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=1"
+  "#if" : "I2C_COUNT>=1"
 }
 The first I2C port
  */
@@ -469,7 +490,7 @@ The first I2C port
   "type" : "object",
   "name" : "I2C2",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=2"
+  "#if" : "I2C_COUNT>=2"
 }
 The second I2C port
  */
@@ -477,7 +498,7 @@ The second I2C port
   "type" : "object",
   "name" : "I2C3",
   "instanceof" : "I2C",
-  "#if" : "I2CS>=3"
+  "#if" : "I2C_COUNT>=3"
 }
 The third I2C port
  */

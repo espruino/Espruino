@@ -485,7 +485,7 @@ ESP_FLASH_SIZE      ?= 0       # 0->512KB
 ESP_FLASH_MODE      ?= 0       # 0->QIO
 ESP_FLASH_FREQ_DIV  ?= 0       # 0->40Mhz
 ESP_FLASH_MAX       ?= 442368  # max irom0 size for 512KB flash: 432KB
-ET_FS               ?= 4m      # 4Mbit flash size in esptool flash command
+ET_FS               ?= 4m      # 4Mbit (512KB) flash size in esptool flash command
 ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 
@@ -498,12 +498,12 @@ BOARD=ESP8266_OTA
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
 OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-ESP_FLASH_SIZE      ?= 4       # 4->4MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?= 32m     # 32Mbit flash size in esptool flash command
-ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ESP_FLASH_SIZE      ?= 4        # 4->4MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808   # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 32m      # 32Mbit (4MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x3FE000 # where to flash blank.bin to erase wireless settings
 
 else ifdef ESP8266_2MB
@@ -515,12 +515,12 @@ BOARD=ESP8266_OTA
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
-ESP_FLASH_SIZE      ?= 3       # 3->2MB (512KB+512KB)
-ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
-ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
-ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?= 16m     # 32Mbit flash size in esptool flash command
-ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
+ESP_FLASH_SIZE      ?= 3        # 3->2MB (512KB+512KB)
+ESP_FLASH_MODE      ?= 0        # 0->QIO, 2->DIO
+ESP_FLASH_FREQ_DIV  ?= 15       # 15->80Mhz
+ESP_FLASH_MAX       ?= 503808   # max bin file for 512KB flash partition: 492KB
+ET_FS               ?= 16m      # 16Mbit (2MB) flash size in esptool flash command
+ET_FF               ?= 80m      # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x1FE000 # where to flash blank.bin to erase wireless settings
 
 else ifdef ESP8266_1MB
@@ -532,12 +532,12 @@ EMBEDDED=1
 USE_NET=1
 BOARD=ESP8266_OTA
 # We have to disable inlining to keep code size in check
-OPTIMIZEFLAGS+=-O2 -fno-inline-functions
+OPTIMIZEFLAGS+=-O2 -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)
 ESP_FLASH_MODE      ?= 0       # 0->QIO, 2->DIO
 ESP_FLASH_FREQ_DIV  ?= 15      # 15->80Mhz
 ESP_FLASH_MAX       ?= 503808  # max bin file for 512KB flash partition: 492KB
-ET_FS               ?=  8m     # 32Mbit flash size in esptool flash command
+ET_FS               ?=  8m     # 8Mbit (1MB) flash size in esptool flash command
 ET_FF               ?= 80m     # 80Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0xFE000 # where to flash blank.bin to erase wireless settings
 
@@ -1198,7 +1198,7 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config # Dangerous
+  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
@@ -1368,6 +1368,7 @@ ifndef NRF5X
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
 else ifdef NRF5X
  LDFLAGS += $(ARCHFLAGS)
+ LDFLAGS += --specs=nano.specs -lc -lnosys
 endif # NRF5X
 
 ifdef EMBEDDED
@@ -1378,10 +1379,6 @@ endif
 ifdef LINKER_FILE
   LDFLAGS += -T$(LINKER_FILE)
 endif
-
-ifdef NRF5X
-  LDFLAGS += --specs=nano.specs -lc -lnosys
-endif # NRF5X
 
 #
 # Definitions for the build of the ESP8266
@@ -1504,7 +1501,7 @@ $(PROJ_NAME): $(OBJS)
 
 else ifdef ESP8266_512KB
 # for the 512KB flash we generate non-OTA binaries
-proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
+proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin $(PROJ_NAME).lst
 
 # linking is complicated. The Espruino source files get compiled into the .text section. The
 # Espressif SDK libraries have .text and .irom0 sections. We need to put the libraries' .text into
@@ -1531,6 +1528,11 @@ $(PROJ_NAME)_0x00000.bin: $(PROJ_NAME).elf
 $(PROJ_NAME)_0x10000.bin: $(PROJ_NAME).elf
 # Note that ESPTOOL_CK always returns non zero, ignore errors
 	$(Q)$(ESPTOOL_CK) -eo $< -es .irom0.text $@ -ec || true
+	
+# Generate a symbol table file for subsequent debugging where we know an exception address.
+$(PROJ_NAME).lst : $(PROJ_NAME).elf
+	$(Q)@echo "Building Symbol table (.lst) file"
+	$(Q)$(call obj_dump)
 
 flash: all $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin
 ifndef COMPORT

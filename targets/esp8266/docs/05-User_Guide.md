@@ -273,9 +273,22 @@ The status is a JS integer that describes the current connection status which wi
 
 Become an access point.
 
-`ESP8266WiFi.beAccessPoint(ssid, password)`
+`ESP8266WiFi.beAccessPoint(ssid [,password])`
 
-Become an access point for the network supplied by `ssid` with a password of `password`.
+Become an access point for the network supplied by `ssid` with a password of `password`.  If no
+password is supplied, then the access point is considered open and be connected to by a station that
+need not supply a password.  If a password is supplied, it must be at least eight characters in size.
+
+----
+
+##ESP8266WiFi.stopAP
+
+Don't be an access point any longer.
+
+`ESP8266WiFi.stopAP()`
+
+If we are playing the role of an access point, stop performing that function.  Connected stations will be
+disconnected and we will no longer be visible as a WiFi network.
 
 ----
 
@@ -344,3 +357,13 @@ The returned object contains the following fields:
 * `sdkVersion` - The version of the ESP8266 SDK used to build this release.
 * `cpuFrequency` - The CPU operating frequency in MHz.
 * `freeHeap` - The amount of free heap in bytes.
+
+----
+
+##ESP8266WiFi.updateCPUFreq
+
+Set the operating frequency of the ESP8266 processor.
+
+`ESP8266WiFi.updateCPUFreq(newFreq)`
+
+* `newFreq` - The new operating frequency of the CPU.  Either 80 (80MHz) or 160 (160MHz).

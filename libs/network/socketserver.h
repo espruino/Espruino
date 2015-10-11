@@ -37,7 +37,7 @@ void serverListen(JsNetwork *net, JsVar *httpServerVar, int port);
 void serverClose(JsNetwork *net, JsVar *server);
 
 JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback);
-void clientRequestWrite(JsVar *httpClientReqVar, JsVar *data);
+void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data);
 void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar);
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar);
 

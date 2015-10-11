@@ -10,6 +10,10 @@
  *
  */
 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+so we don't put this into espruino.com/Reference until this is out
+of beta.  */
+
 /** @file
  *
  * @defgroup ble_sdk_uart_over_ble_main main.c
@@ -571,6 +575,3 @@ void jswrap_nrf_bluetooth_wake(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
 }
 
-/** 
- * @}
- */

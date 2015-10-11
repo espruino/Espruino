@@ -71,7 +71,7 @@ void jsiDebuggerLine(JsVar *line);
 // ----------------------------------------------------------------------------
 
 /**
- * \brief Get the device from the class variable.
+ * Get the device from the class variable.
  */
 IOEventFlags jsiGetDeviceFromClass(JsVar *class) {
   // Devices have their Object data set up to something special
@@ -124,7 +124,7 @@ static NO_INLINE void jsiAppendToInputLine(const char *str) {
 }
 
 /**
- * \brief Change the console to a new location.
+ * Change the console to a new location.
  */
 void jsiSetConsoleDevice(
     IOEventFlags device //!< The device to use as a console.
@@ -157,7 +157,7 @@ void jsiSetConsoleDevice(
 }
 
 /**
- * \brief Retrieve the device being used as the console.
+ * Retrieve the device being used as the console.
  */
 IOEventFlags jsiGetConsoleDevice() {
   // The `consoleDevice` is the global used to hold the current console.  This function
@@ -166,7 +166,7 @@ IOEventFlags jsiGetConsoleDevice() {
 }
 
 /**
- * \brief Send a character to the console.
+ * Send a character to the console.
  */
 NO_INLINE void jsiConsolePrintChar(char data) {
   jshTransmit(consoleDevice, (unsigned char)data);
@@ -183,7 +183,7 @@ NO_INLINE void jsiConsolePrint(const char *str) {
 }
 
 /**
- * \brief Perform a printf to the console.
+ * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
 void jsiConsolePrintf(const char *fmt, ...) {
@@ -228,7 +228,7 @@ void jsiConsolePrintStringVarWithNewLineChar(JsVar *v, size_t fromCharacter, cha
 }
 
 /**
- * \brief Print the contents of a string var - directly.
+ * Print the contents of a string var - directly.
  */
 void jsiConsolePrintStringVar(JsVar *v) {
   jsiConsolePrintStringVarWithNewLineChar(v,0,0);
@@ -357,7 +357,7 @@ void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
 }
 
 /**
- * \brief Clear the input line of data.
+ * Clear the input line of data.
  */
 void jsiClearInputLine() {
   jsiConsoleRemoveInputLine();
@@ -368,7 +368,7 @@ void jsiClearInputLine() {
 }
 
 /**
- * \brief ??? What does this do ???.
+ * ??? What does this do ???.
  */
 void jsiSetBusy(
     JsiBusyDevice device, //!< ???
@@ -386,7 +386,7 @@ void jsiSetBusy(
 }
 
 /**
- * \brief Set the status of a pin as a function of whether we are asleep.
+ * Set the status of a pin as a function of whether we are asleep.
  * When called, if a pin is set for a sleep indicator, we set the pin to be true
  * if the sleep type is awake and false otherwise.
  */
@@ -997,6 +997,24 @@ bool jsiAtEndOfInputLine() {
   return true;
 }
 
+void jsiCheckErrors() {
+  JsVar *exception = jspGetException();
+  if (exception) {
+    jsiConsolePrintf("Uncaught %v\n", exception);
+    jsvUnLock(exception);
+  }
+  if (jspIsInterrupted()) {
+    jsiConsoleRemoveInputLine();
+    jsiConsolePrint("Execution Interrupted\n");
+    jspSetInterrupted(false);
+  }
+  JsVar *stackTrace = jspGetStackTrace();
+  if (stackTrace) {
+    jsiConsolePrintStringVar(stackTrace);
+    jsvUnLock(stackTrace);
+  }
+}
+
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
@@ -1032,6 +1050,7 @@ void jsiHandleNewLine(bool execute) {
         }
         jsvUnLock(v);
       }
+      jsiCheckErrors();
       // console will be returned next time around the input loop
       // if we had echo off just for this line, reinstate it!
       jsiStatus &= ~JSIS_ECHO_OFF_FOR_LINE;
@@ -1758,23 +1777,8 @@ bool jsiLoop() {
   jshIdle();
   // Do general idle stuff
   jsiIdle();
-
-  JsVar *exception = jspGetException();
-  if (exception) {
-    jsiConsolePrintf("Uncaught %v\n", exception);
-    jsvUnLock(exception);
-  }
-
-  if (jspIsInterrupted()) {
-    jsiConsoleRemoveInputLine();
-    jsiConsolePrint("Execution Interrupted\n");
-    jspSetInterrupted(false);
-  }
-  JsVar *stackTrace = jspGetStackTrace();
-  if (stackTrace) {
-    jsiConsolePrintStringVar(stackTrace);
-    jsvUnLock(stackTrace);
-  }
+  // check for and report errors
+  jsiCheckErrors();
 
   // If Ctrl-C was pressed, clear the line
   if (execInfo.execute & EXEC_CTRL_C_MASK) {

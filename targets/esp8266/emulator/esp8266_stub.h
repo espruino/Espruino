@@ -10,18 +10,21 @@
  * ----------------------------------------------------------------------------
  * This file is designed to be parsed during the build process
  *
- * Contains ESP8266 board specific function definitions.
+ * Contains ESP8266 board specific functions.
  * ----------------------------------------------------------------------------
  */
-#ifndef TARGETS_ESP8266_ESP8266_BOARD_H_
-#define TARGETS_ESP8266_ESP8266_BOARD_H_
-#include <user_interface.h>
 
-// Define the task ids for the APP event handler
-#define TASK_APP_MAINLOOP ((os_signal_t)1)
-#define TASK_APP_RX_DATA ((os_signal_t)2)
+#ifndef ESP8266_STUB_H_
+#define ESP8266_STUB_H_
 
-// Task priority for main loop
-#define TASK_APP_QUEUE USER_TASK_PRIO_0
+#include <c_types.h>
+#include <ip_addr.h>
+#include <espconn.h>
+struct stub_ESP8266Socket {
+  struct espconn *pEspconn;
+  int socketId;
+};
 
-#endif /* TARGETS_ESP8266_ESP8266_BOARD_H_ */
+
+
+#endif /* ESP8266_STUB_H_ */

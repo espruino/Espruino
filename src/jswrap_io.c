@@ -248,13 +248,13 @@ Set the digital value of the given pin.
 If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated
 as an array of bits where the last array element is the least significant bit.
 
-In this case, pin values are set last significant bit first (from the right-hand side
+In this case, pin values are set least significant bit first (from the right-hand side
 of the array of pins). This means you can use the same pin multiple times, for
 example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
 */
 
 /**
- * \brief Set the output of a GPIO.
+ * Set the output of a GPIO.
  */
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
@@ -299,7 +299,7 @@ the last array element is the least significant bit, for example if `A0=A1=1` an
 */
 
 /**
- * \brief Read the value of a GPIO pin.
+ * Read the value of a GPIO pin.
  */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
@@ -351,7 +351,7 @@ Set the mode of the given pin.
 */
 
 /**
- * \brief Set the mode of a pin.
+ * Set the mode of a pin.
  */
 void jswrap_io_pinMode(
     Pin pin,    //!< The pin to set.
