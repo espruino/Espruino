@@ -73,14 +73,13 @@ static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
 
   // print the response and send it
   len = os_sprintf(buf, responseFmt, code, status, os_strlen(text), text);
-  os_printf("OTA: %d %s <<%s>>\n", code, status, buf);
+  if (code < 400) os_printf("OTA: %d %s\n", code, status);
+  else os_printf("OTA: %d %s <<%s>>\n", code, status, text);
   int8_t err;
-  os_printf("pre: heap: %lu\n", system_get_free_heap_size());
   if ((err=espconn_send(oc->conn, (uint8_t*)buf, os_strlen(buf))) != 0) {
     os_printf("OTA: send failed err=%d\n", err);
     abortConn(oc);
   }
-  os_printf("post: heap: %lu\n", system_get_free_heap_size());
 }
 
 /**
@@ -259,7 +258,7 @@ static int16_t processHeader(OtaConn *oc) {
   }
   if (i == oc->rxBufFill-3) return 0; // nope
   oc->rxBuffer[i+3] = 0; // make this null-terminated
-  os_printf("OTA recv: <<%s>>\n", oc->rxBuffer);
+  //os_printf("OTA recv: <<%s>>\n", oc->rxBuffer);
 
   // find the end of the header line
   char *hdrEnd = os_strstr(oc->rxBuffer, "\r\n"); // guaranteed to be found
@@ -328,7 +327,6 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
     int16_t num;
     if (oc->rxBufOff < 0 && oc->rxBufFill > 0) {
       // process the request header
-      os_printf("OTA: process header\n");
       num = processHeader(oc);
       // if we processed the header, shift it out of the buffer
       if (num > 0) {
@@ -345,7 +343,6 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
 
     } else if (oc->rxBufOff >= 0 && oc->rxBufFill > 0 && oc->handler) {
       // process request body
-      os_printf("OTA: process body\n");
       num = (*oc->handler)(oc);
       if (num > 0) {
         oc->rxBufOff += num;
@@ -355,7 +352,6 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
     } else {
       continue;
     }
-    os_printf("OTA: num=%d\n", num);
     // shift the data we've consumed out
     if (num > 0) {
       os_memmove(oc->rxBuffer, oc->rxBuffer + num, oc->rxBufFill-num);
@@ -374,7 +370,7 @@ error:
 
 static void otaDisconCb(void *arg) {
   struct espconn *conn = arg;
-  os_printf("OTA: disconnect\n");
+  //os_printf("OTA: disconnect\n");
   OtaConn *oc = conn->reverse;
   if (oc) releaseConn(oc);
 }
