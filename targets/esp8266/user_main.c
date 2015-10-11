@@ -20,6 +20,7 @@ typedef long long int64_t;
 #include <jsdevices.h>
 #include <jsinteractive.h>
 #include <jswrap_esp8266.h>
+#include <ota.h>
 #include "ESP8266_board.h"
 
 // --- Constants
@@ -209,6 +210,7 @@ static void mainLoop() {
  */
 static void initDone() {
 	os_printf("initDone invoked\n");
+	otaInit(88);
 
 	// Discard any junk data in the input as this is a boot.
 	//uart_rx_discard();
@@ -250,7 +252,9 @@ void user_rf_pre_init() {
 void user_init() {
 	system_timer_reinit(); // use microsecond os_timer_*
 	// Initialize the UART devices
+	os_delay_us(10000); // give the uart a break
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
+	//uart_init(74400, 74400);
 	os_delay_us(10000); // give the uart a break
 	UART_SetPrintPort(1);
 	system_set_os_print(1);

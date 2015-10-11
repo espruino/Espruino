@@ -922,7 +922,8 @@ libs/network/js/network_js.c
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
- libs/network/esp8266/network_esp8266.c
+ libs/network/esp8266/network_esp8266.c\
+ libs/network/esp8266/ota.c
  endif
 endif
 
