@@ -90,6 +90,15 @@ export COMPORT=/dev/ttyUSB0
 make $*
 ```
 
+####Over-the-Air firmware update
+The firmware on the esp8266 can be upgraded over wifi as long as the esp8266 has 1MB or more flash
+and that Espruino was built with BOARD=ESP8266_1MB thru BOARD=ESP8266_4MB. To upgrade determine
+the hostname or IP address of your Espruino on the network and run:
+```
+./scripts/wiflash espruino:88 espruino_esp8266_ota_user1.bin espruino_esp8266_ota_user2.bin
+```
+where 'espruino:88' is the hostname or IP address and the OTA port 88.
+
 ####Building on Eclipse
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
