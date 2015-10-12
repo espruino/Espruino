@@ -38,7 +38,7 @@ typedef long long int64_t;
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
 // microseconds.
-#define MAX_SLEEP_TIME_US  10000
+#define MAX_SLEEP_TIME_US  3000
 
 // Save-to-flash uses the 16KB of "user params" locates right after the first firmware
 // block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
@@ -147,41 +147,6 @@ void jshDelayMicroseconds(int microsec) {
     os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
-#if 0
-  // Get the current time
-  /*
-  uint32 endTime = system_get_time() + microsec;
-  while ((endTime - system_get_time()) > 10000) {
-    os_delay_us(10000);
-    system_soft_wdt_feed();
-  }
-  int lastDelta = endTime - system_get_time();
-  if (lastDelta > 0) {
-    os_delay_us(lastDelta);
-  }
-  */
-
-  // This is a place holder implementation.  We can and must do better
-  // than this.  This fails because we will sleep too long.  We will sleep
-  // for the given number of microseconds PLUS multiple calls back to the
-  // WiFi environment.
-  int count = microsec / MAX_SLEEP_TIME_US;
-  int i;
-  for (i=0; i<count; i++) {
-    os_delay_us(MAX_SLEEP_TIME_US);
-    // We may have a problem here.  It was my understanding that system_soft_wdt_feed() fed
-    // the underlying OS but this appears not to be the case and all it does is prevent a
-    // watchdog timer from firing.  What that means is that we may very well loose network
-    // connectivity because we are not servicing the housekeeping.   This might be one of those
-    // locations where we need to look at a callback or some kind of yield technology.
-    system_soft_wdt_feed();
-    microsec -= MAX_SLEEP_TIME_US;
-  }
-  assert(microsec < MAX_SLEEP_TIME_US);
-  if (microsec > 0) {
-    os_delay_us(microsec);
-  }
-#endif
 } // End of jshDelayMicroseconds
 
 //===== PIN mux =====
