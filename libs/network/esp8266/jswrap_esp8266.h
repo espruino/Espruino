@@ -42,6 +42,7 @@ void   jswrap_ESP8266WiFi_setAutoConnect(JsVar *autoconnect);
 void   jswrap_ESP8266WiFi_setDHCPHostname(JsVar *jsHostname);
 JsVar *jswrap_ESP8266WiFi_socketConnect(JsVar *options, JsVar *callback);
 void   jswrap_ESP8266WiFi_socketEnd(JsVar *socket, JsVar *data);
+void   jswrap_ESP8266WiFi_stopAP();
 void   jswrap_ESP8266WiFi_updateCPUFreq(JsVar *jsFreq);
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_ */

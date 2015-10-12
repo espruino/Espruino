@@ -22,7 +22,7 @@ import pinutils;
 info = {
  'name'            : "ESP8266 OTA",
  'default_console' : "EV_SERIAL1",
- 'variables'       : 1023,
+ 'variables'       : 800,
  'binary_name'     : 'espruino_esp8266_ota',
 };
 chip = {

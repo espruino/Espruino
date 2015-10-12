@@ -254,6 +254,19 @@ void jswrap_ESP8266WiFi_connect(
   os_printf("< jswrap_ESP8266WiFi_connect\n");
 }
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "stopAP",
+  "generate" : "jswrap_ESP8266WiFi_stopAP"
+}
+ * Stop being an access point.
+*/
+void jswrap_ESP8266WiFi_stopAP() {
+  os_printf("Wifi: switching to Station mode.");
+  wifi_set_opmode_current(STATION_MODE);
+}
+
 
 /**
  * Become an access point.
@@ -279,52 +292,62 @@ void jswrap_ESP8266WiFi_connect(
   "name"     : "beAccessPoint",
   "generate" : "jswrap_ESP8266WiFi_beAccessPoint",
   "params"   : [
-    ["jsv_ssid","JsVar","The network SSID"],
-    ["jsv_password","JsVar","The password to allow stations to connect to the access point"]
+    ["jsv_ssid", "JsVar", "The network SSID"],
+    ["jsv_password", "JsVar", "The password to allow stations to connect to the access point"]
   ]
 }*/
 void jswrap_ESP8266WiFi_beAccessPoint(
     JsVar *jsv_ssid,    //!< The network identity that the access point will advertize itself as.
     JsVar *jsv_password //!< The password a station will need to connect to the access point.
   ) {
+  os_printf("> jswrap_ESP8266WiFi_beAccessPoint\n");
   // Validate that the SSID and password are somewhat useful.
   if (jsv_ssid == NULL || !jsvIsString(jsv_ssid)) {
       jsExceptionHere(JSET_ERROR, "No SSID.");
     return;
   }
-  if (jsv_password == NULL || !jsvIsString(jsv_password)) {
-      jsExceptionHere(JSET_ERROR, "No password.");
-    return;
-  }
-
-  // Create strings from the JsVars for the ESP8266 API calls.
-  char ssid[33];
-  int len = jsvGetString(jsv_ssid, ssid, sizeof(ssid)-1);
-  ssid[len]='\0';
-  char password[65];
-  len = jsvGetString(jsv_password, password, sizeof(password)-1);
-  password[len]='\0';
-
-  // Define that we are in Soft AP mode.
-  os_printf("Wifi: switching to soft-AP\n");
-  wifi_set_opmode_current(SOFTAP_MODE);
 
   // Build our SoftAP configuration details
   struct softap_config softApConfig;
   memset(&softApConfig, 0, sizeof(softApConfig));
 
-  os_strcpy((char *)softApConfig.ssid, ssid);
-  os_strcpy((char *)softApConfig.password, password);
-  softApConfig.ssid_len = 0; // Null terminated SSID
-  softApConfig.authmode = AUTH_WPA2_PSK;
-  softApConfig.ssid_hidden = 0; // Not hidden.
+  // If no password has been supplied, then be open.  Otherwise, use WPA2 and the
+  // password supplied.  Also check that the password is at least 8 characters long.
+  if (jsv_password == NULL || !jsvIsString(jsv_password)) {
+    softApConfig.authmode = AUTH_OPEN;
+  } else {
+    if (jsvGetStringLength(jsv_password) < 8) {
+      jsExceptionHere(JSET_ERROR, "Password must be 8 characters or more in length.");
+      return;
+    }
+    softApConfig.authmode = AUTH_WPA2_PSK;
+    int len = jsvGetString(jsv_password, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
+    softApConfig.password[len]='\0';
+  }
+
+  int len = jsvGetString(jsv_ssid, (char *)softApConfig.ssid, sizeof(softApConfig.ssid)-1);
+  softApConfig.ssid[len]='\0';
+
+  // Define that we are in Soft AP mode.
+  os_printf("Wifi: switching to soft-AP mode, authmode=%d\n", softApConfig.authmode);
+  wifi_set_opmode_current(SOFTAP_MODE);
+
+  softApConfig.ssid_len       = 0; // Null terminated SSID
+  softApConfig.ssid_hidden    = 0; // Not hidden.
   softApConfig.max_connection = 4; // Maximum number of connections.
 
   // Set the WiFi configuration.
   int rc = wifi_softap_set_config_current(&softApConfig);
+  // We should really check that becoming an access point works, however as of SDK 1.4, we
+  // are finding that if we are currently connected to an access point and we switch to being
+  // an access point, it works ... but returns 1 indicating an error.
+  /*
   if (rc != 1) {
+      os_printf(" - Error returned from wifi_softap_set_config_current=%d\n", rc);
       jsExceptionHere(JSET_ERROR, "Error setting ESP8266 softap config.");
   }
+  */
+  os_printf("< jswrap_ESP8266WiFi_beAccessPoint\n");
 }
 
 
