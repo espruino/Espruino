@@ -385,6 +385,7 @@ void jswrap_io_pinMode(
 
 /*JSON{
   "type" : "function",
+  "ifndef" : "SAVE_ON_FLASH",
   "name" : "getPinMode",
   "generate" : "jswrap_io_getPinMode",
   "params" : [
@@ -414,6 +415,133 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   }
   if (text) return jsvNewFromString(text);
   return 0;
+}
+
+
+#define jswrap_io_shiftOutDataMax 8
+typedef struct {
+  Pin pins[jswrap_io_shiftOutDataMax];
+  Pin clk;
+#ifdef STM32
+  uint32_t *addrs[jswrap_io_shiftOutDataMax];
+  uint32_t *clkAddr;
+#endif
+  bool clkPol; // clock polarity
+
+  int cnt; // number of pins
+} jswrap_io_shiftOutData;
+
+void jswrap_io_shiftOutCallback(int val, void *data) {
+  jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
+  int n;
+  for (n=d->cnt-1; n>=0; n--) {
+#ifdef STM32
+    if (d->addrs[n])
+      *d->addrs[n] = val&1;
+#else
+    if (jshIsPinValid(d->pins[n]))
+        jshPinSetValue(d->pins[n], val&1);
+#endif
+    val>>=1;
+  }
+#ifdef STM32
+  if (d->clkAddr) {
+      *d->clkAddr = d->clkPol;
+      *d->clkAddr = !d->clkPol;
+  }
+#else
+  if (jshIsPinValid(d->clk)) {
+    jshPinSetValue(d->clk, d->clkPol);
+    jshPinSetValue(d->clk, !d->clkPol);
+  }
+#endif
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "shiftOut",
+  "generate" : "jswrap_io_shiftOut",
+  "params" : [
+    ["pins","JsVar","A pin, or an array of pins to use"],
+    ["options","JsVar","Options, for instance the clock (see below)"],
+    ["data","JsVar","The data to shift out"]
+  ]
+}
+Shift an array of data out using the pins supplied, for example:
+
+```
+// shift out to single clk+data (like software SPI)
+shiftOut(A0, { clk : A1 }, [1,2,3,4]);
+
+// shift out to multiple data pins
+shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
+```
+
+`options` is an object of the form:
+
+```
+{
+  clk : pin, // a pin to use as the clock (undefined = no pin)
+  clkPol : bool, // clock polarity - default is 0 (so 1 normally, pulsing to 0 to clock data in)
+}
+```
+
+Each item in the `data` array will be output to the pins, with the first
+pin in the array being the MSB and the last the LSB, then the clock will be
+pulsed in the polarity given.
+ */
+void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
+  jswrap_io_shiftOutData d;
+  d.cnt = 0;
+  d.clk = PIN_UNDEFINED;
+  d.clkPol = 0;
+
+  if (jsvIsArray(pins)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, pins);
+    while (jsvObjectIteratorHasValue(&it)) {
+      if (d.cnt>=jswrap_io_shiftOutDataMax) {
+        jsExceptionHere(JSET_ERROR, "Too many pins! %d Maximum.", jswrap_io_shiftOutDataMax);
+        return;
+      }
+      d.pins[d.cnt] = jshGetPinFromVarAndUnLock(jsvObjectIteratorGetValue(&it));
+      d.cnt++;
+      jsvObjectIteratorNext(&it);
+
+    }
+    jsvObjectIteratorFree(&it);
+  } else {
+    d.pins[d.cnt++] = jshGetPinFromVar(pins);
+  }
+
+  if (jsvIsObject(options)) {
+    d.clk = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "clk", 0));
+    d.clkPol = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "clkPol", 0));
+  } else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_ERROR, "Expecting options to be a object or undefined, got %t", options);
+    return;
+  }
+
+  // Set pins as outputs
+  int i;
+  for (i=0;i<d.cnt;i++) {
+    if (jshIsPinValid(d.pins[i])) {
+      if (!jshGetPinStateIsManual(d.pins[i]))
+        jshPinSetState(d.pins[i], JSHPINSTATE_GPIO_OUT);
+    }
+    // on STM32, try and get the pin's output address
+#ifdef STM32
+    d.addrs[i] = jshGetPinAddress(d.pins[i], JSGPAF_OUTPUT);
+#endif
+  }
+#ifdef STM32
+  d.clkAddr = jshGetPinAddress(d.clk, JSGPAF_OUTPUT);
+#endif
+  if (jshIsPinValid(d.clk))
+    jshPinSetState(d.clk, JSHPINSTATE_GPIO_OUT);
+
+  // Now run through the data, pushing it out
+  jsvIterateCallback(data, jswrap_io_shiftOutCallback, &d);
 }
 
 /*JSON{
