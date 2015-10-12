@@ -1,4 +1,5 @@
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
+            Fix wakeup when setDeepSleep used at startup (fix #645)
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
