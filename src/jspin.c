@@ -30,6 +30,10 @@
  */
 bool jshIsPinValid(Pin pin) {
   // Note, PIN_UNDEFINED is always > JSH_PIN_COUNT
+  if ((pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE) == 0) {
+    jsiConsolePrintf("Pin error: pin %d is >= %d ... and port = %d\n",
+        pin, JSH_PIN_COUNT, pinInfo[pin].port);
+  }
   return pin < JSH_PIN_COUNT && pinInfo[pin].port != JSH_PORT_NONE;
 }
 

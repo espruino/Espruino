@@ -270,9 +270,18 @@ void jshPushIOCharEvent(
   ioHead = nextHead;
 }
 
-void jshPushIOWatchEvent(IOEventFlags channel) {
+/**
+ * Signal an IO watch event as having happened.
+ */
+void jshPushIOWatchEvent(
+    IOEventFlags channel //!< The channel on which the IO watch event has happened.
+  ) {
+  assert(channel >= EV_EXTI0 && channel <= EV_EXTI_MAX);
+
   bool state = jshGetWatchedPinState(channel);
 
+  // If there is a callback associated with this GPIO event then invoke
+  // it and we are done.
   if (jshEventCallbacks[channel-EV_EXTI0]) {
     jshEventCallbacks[channel-EV_EXTI0](state);
     return;
@@ -289,7 +298,13 @@ void jshPushIOWatchEvent(IOEventFlags channel) {
   jshPushIOEvent(channel | (state?EV_EXTI_IS_HIGH:0), time);
 }
 
-void jshPushIOEvent(IOEventFlags channel, JsSysTime time) {
+/**
+ * Add this IO event to the IO event queue.
+ */
+void jshPushIOEvent(
+    IOEventFlags channel, //!< The event to add to the queue.
+    JsSysTime time        //!< The time that the event is thought to have happened.
+  ) {
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
     jshIOEventOverflowed();
@@ -515,7 +530,11 @@ void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff) {
 }
 
 /// Set a callback function to be called when an event occurs
-void jshSetEventCallback(IOEventFlags channel, JshEventCallbackCallback callback) {
+void jshSetEventCallback(
+    IOEventFlags channel,             //!< The event that fires the callback.
+    JshEventCallbackCallback callback //!< The callback to be invoked.
+  ) {
+  // Save the callback function for this event channel.
   assert(channel>=EV_EXTI0 && channel<=EV_EXTI_MAX);
   jshEventCallbacks[channel-EV_EXTI0] = callback;
 }
