@@ -393,6 +393,30 @@ void jswrap_ESP8266WiFi_getAccessPoints(
   os_printf("< ESP8266WiFi_getAccessPoints\n");
 }
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "mdnsInit",
+  "generate" : "jswrap_ESP8266WiFi_mdnsInit"
+}
+ * Initial testing for mDNS support
+ */
+void jswrap_ESP8266WiFi_mdnsInit() {
+  os_printf("> jswrap_ESP8266WiFi_mdnsInit\n");
+  struct mdns_info mdnsInfo;
+  os_memset(&mdnsInfo, 0, sizeof(struct mdns_info));
+  // Populate the mdns structure
+
+  struct ip_info ipInfo;
+  wifi_get_ip_info(0, &ipInfo);
+
+  mdnsInfo.host_name   = "myhostname";
+  mdnsInfo.ipAddr      = ipInfo.ip.addr;
+  mdnsInfo.server_name = "myservername";
+  mdnsInfo.server_port = 80;
+  espconn_mdns_init(&mdnsInfo);
+  os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
+}
 
 /**
  * Disconnect the station from the access point.

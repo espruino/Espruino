@@ -175,11 +175,11 @@ Get information about this pin and its capabilities. Of the form:
 
 ```
 {
-  "port" : "A", // the Pin's port on the chip
-  "num" : 12, // the Pin's number
-  "in_addr" : 0x..., // (if available) the address of the pin's input address in bit-banded memory (can be used with peek)
-  "out_addr" : 0x..., // (if available) the address of the pin's output address in bit-banded memory (can be used with poke)
-  "analog" : { ADCs : [1], channel : 12 }, // If analog input is available
+  "port"      : "A", // the Pin's port on the chip
+  "num"       : 12, // the Pin's number
+  "in_addr"   : 0x..., // (if available) the address of the pin's input address in bit-banded memory (can be used with peek)
+  "out_addr"  : 0x..., // (if available) the address of the pin's output address in bit-banded memory (can be used with poke)
+  "analog"    : { ADCs : [1], channel : 12 }, // If analog input is available
   "functions" : {
     "TIM1":{type:"CH1, af:0},
     "I2C3":{type:"SCL", af:1}

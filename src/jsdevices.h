@@ -23,22 +23,22 @@ void jshInitDevices(); // called from jshInit
 typedef enum {
   // device type
   EV_NONE,
-  EV_EXTI0,
-  EV_EXTI1,
-  EV_EXTI2,
-  EV_EXTI3,
-  EV_EXTI4,
-  EV_EXTI5,
-  EV_EXTI6,
-  EV_EXTI7,
-  EV_EXTI8,
-  EV_EXTI9,
-  EV_EXTI10,
-  EV_EXTI11,
-  EV_EXTI12,
-  EV_EXTI13,
-  EV_EXTI14,
-  EV_EXTI15,
+  EV_EXTI0,  // External Interrupt 0
+  EV_EXTI1,  // External Interrupt 1
+  EV_EXTI2,  // External Interrupt 2
+  EV_EXTI3,  // External Interrupt 3
+  EV_EXTI4,  // External Interrupt 4
+  EV_EXTI5,  // External Interrupt 5
+  EV_EXTI6,  // External Interrupt 6
+  EV_EXTI7,  // External Interrupt 7
+  EV_EXTI8,  // External Interrupt 8
+  EV_EXTI9,  // External Interrupt 9
+  EV_EXTI10, // External Interrupt 10
+  EV_EXTI11, // External Interrupt 11
+  EV_EXTI12, // External Interrupt 12
+  EV_EXTI13, // External Interrupt 13
+  EV_EXTI14, // External Interrupt 14
+  EV_EXTI15, // External Interrupt 15
   EV_EXTI_MAX = EV_EXTI15,
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,

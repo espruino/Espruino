@@ -331,8 +331,8 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   "name"     : "pinMode",
   "generate" : "jswrap_io_pinMode",
   "params"   : [
-    ["pin","pin","The pin to set pin mode for"],
-    ["mode","JsVar","The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["pin", "pin", "The pin to set pin mode for"],
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
   ]
 }
 Set the mode of the given pin.
@@ -349,10 +349,6 @@ Set the mode of the given pin.
 
  **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
 */
-
-/**
- * Set the mode of a pin.
- */
 void jswrap_io_pinMode(
     Pin pin,    //!< The pin to set.
     JsVar *mode //!< The new mode of the pin.
@@ -549,9 +545,9 @@ void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
   "name" : "setWatch",
   "generate" : "jswrap_interface_setWatch",
   "params" : [
-    ["function","JsVar","A Function or String to be executed"],
-    ["pin","pin","The pin to watch"],
-    ["options","JsVar",["If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0."]]
+    ["function", "JsVar", "A Function or String to be executed"],
+    ["pin", "pin", "The pin to watch"],
+    ["options", "JsVar",[ "If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0."]]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"]
 }
@@ -576,7 +572,11 @@ and there will be no debouncing.
 watch two pins with the same number - eg `A0` and `B0`.
 
  */
-JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
+JsVar *jswrap_interface_setWatch(
+    JsVar *func,           //!< A callback function to be invoked when the pin state changes.
+    Pin    pin,            //!< The pin to be watched.
+    JsVar *repeatOrObject  //!<
+  ) {
   if (!jshIsPinValid(pin)) {
     jsError("Invalid pin");
     return 0;
@@ -613,7 +613,13 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
-    // Create a new watch
+    // Create a new watch object which may contain:
+    //
+    // o pin      - The pin being watched
+    // o recur    - ?
+    // o debounce - ?
+    // o edge     - ?
+    // o callback - The function to be invoked when the IO changes
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));

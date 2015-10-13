@@ -70,13 +70,23 @@ void esp8266_uartTransmitAll(IOEventFlags device) {
 
 // ----------------------------------------------------------------------------
 
-IOEventFlags pinToEVEXTI(Pin pin) {
-  return (IOEventFlags) 0;
+/**
+ * Convert a pin id to the corresponding Pin Event id.
+ */
+static IOEventFlags pinToEV_EXTI(
+    Pin pin // !< The pin to map to the event id.
+  ) {
+  // Map pin 0 to EV_EXTI0
+  // Map pin 1 to EV_EXTI1
+  // ...
+  // Map pin x to ECEXTIx
+  return (IOEventFlags)(EV_EXTI0 + pin);
 }
 
 // forward declaration
 static void systemTimeInit(void);
 static void utilTimerInit(void);
+static void intrHandlerCB(uint32 interruptMask, void *arg);
 
 /**
  * Initialize the ESP8266 hardware environment.
@@ -85,10 +95,51 @@ static void utilTimerInit(void);
  */
 void jshInit() {
   // A call to jshInitDevices is architected as something we have to do.
+  os_printf("> jshInit\n");
+
+  // Initialize the ESP8266 GPIO subsystem.
+  gpio_init();
+
   systemTimeInit();
   utilTimerInit();
   jshInitDevices();
+
+  // Register a callback function to be called for a GPIO interrupt
+  gpio_intr_handler_register(intrHandlerCB, NULL);
+
+  ETS_GPIO_INTR_ENABLE();
+  os_printf("< jshInit\n");
 } // End of jshInit
+
+/**
+ * Handle a GPIO interrupt.
+ * We have arrived in this callback function because the state of a GPIO pin has changed
+ * and it is time to record that change.
+ */
+static void intrHandlerCB(
+    uint32 interruptMask, //!< A mask indicating which GPIOs have changed.
+    void *arg             //!< Optional argument.
+  ) {
+  // Given the interrupt mask, we as if bit "x" is on.  If it is, then that is defined as meaning
+  // that the state of GPIO "x" has changed so we want to raised an event that indicates that this
+  // has happened...
+  // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
+  // that the ESP8266 will once again cause future interrupts to be processed.
+
+  os_printf(">> intrHandlerCB\n");
+  gpio_intr_ack(interruptMask);
+  // We have a mask of interrupts that have happened.  Go through each bit in the mask
+  // and, if it is on, then an interrupt has occurred on the corresponding pin.
+  int pin;
+  for (pin=0; pin<16; pin++) {
+    if ((interruptMask & (1<<pin)) != 0) {
+      // Pin has changed so push the event that says pin has changed.
+      jshPushIOWatchEvent(pinToEV_EXTI(pin));
+      gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
+    }
+  }
+  os_printf("<< intrHandlerCB\n");
+}
 
 /**
  * Reset the Espruino environment.
@@ -96,6 +147,13 @@ void jshInit() {
 void jshReset() {
   //system_restart();
   os_printf("> jshReset\n");
+  // Set all GPIO pins to be input.
+  /*
+  int i;
+  for (int i=0; i<16; i++) {
+    jshPinSetState(i, JSHPINSTATE_GPIO_IN);
+  }
+  */
   os_printf("< jshReset\n");
 } // End of jshReset
 
@@ -120,11 +178,15 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 //===== Interrupts and sleeping
 
 void jshInterruptOff() {
+  //os_printf("> jshInterruptOff\n");
   ets_intr_lock();
+  //os_printf("< jshInterruptOff\n");
 } // End of jshInterruptOff
 
 void jshInterruptOn() {
+  //os_printf("> jshInterruptOn\n");
   ets_intr_unlock();
+  //os_printf("< jshInterruptOn\n");
 } // End of jshInterruptOn
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
@@ -204,10 +266,14 @@ PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
 
-#define FUNC_SPI 1
+#define FUNC_SPI  1
 #define FUNC_GPIO 3
 #define FUNC_UART 4
 
+
+/**
+ * Convert an Espruino pin state to an ESP8266 GPIO function.
+ */
 static uint8_t pinFunction(JshPinState state) {
   switch (state) {
   case JSHPINSTATE_GPIO_OUT:
@@ -233,6 +299,8 @@ static uint8_t pinFunction(JshPinState state) {
 
 /**
  * Convert a pin state to a string representation.
+ * This is used during debugging to log a meaningful value instead of a
+ * numeric that would then just have to be decoded.
  */
 static char *pinStateToString(JshPinState state) {
   switch(state) {
@@ -263,7 +331,7 @@ static char *pinStateToString(JshPinState state) {
   case JSHPINSTATE_USART_OUT:
     return("JSHPINSTATE_USART_OUT");
   default:
-    return("** unknown **");
+    return("** unknown pin state **");
   }
 }
 
@@ -272,25 +340,29 @@ static char *pinStateToString(JshPinState state) {
  *
  * The possible states are:
  *
- * JSHPINSTATE_UNDEFINED
- * JSHPINSTATE_GPIO_OUT
- * JSHPINSTATE_GPIO_OUT_OPENDRAIN
- * JSHPINSTATE_GPIO_IN
- * JSHPINSTATE_GPIO_IN_PULLUP
- * JSHPINSTATE_GPIO_IN_PULLDOWN
- * JSHPINSTATE_ADC_IN
- * JSHPINSTATE_AF_OUT
- * JSHPINSTATE_AF_OUT_OPENDRAIN
- * JSHPINSTATE_USART_IN
- * JSHPINSTATE_USART_OUT
- * JSHPINSTATE_DAC_OUT
- * JSHPINSTATE_I2C
+ * * JSHPINSTATE_UNDEFINED
+ * * JSHPINSTATE_GPIO_OUT
+ * * JSHPINSTATE_GPIO_OUT_OPENDRAIN
+ * * JSHPINSTATE_GPIO_IN
+ * * JSHPINSTATE_GPIO_IN_PULLUP
+ * * JSHPINSTATE_GPIO_IN_PULLDOWN
+ * * JSHPINSTATE_ADC_IN
+ * * JSHPINSTATE_AF_OUT
+ * * JSHPINSTATE_AF_OUT_OPENDRAIN
+ * * JSHPINSTATE_USART_IN
+ * * JSHPINSTATE_USART_OUT
+ * * JSHPINSTATE_DAC_OUT
+ * * JSHPINSTATE_I2C
+ *
+ * This function is exposed indirectly through the exposed global function called
+ * `pinMode()`.  For example, `pinMode(pin, "input")` will set the given pin to input.
  */
-void jshPinSetState(Pin pin, //!< The pin to have its state changed.
-    JshPinState state    //!< The new desired state of the pin.
+void jshPinSetState(
+    Pin pin,          //!< The pin to have its state changed.
+    JshPinState state //!< The new desired state of the pin.
   ) {
   // Debug
-  // os_printf("> ESP8266: jshPinSetState %d, %s\n", pin, pinStateToString(state));
+  os_printf("> jshPinSetState %d, %s\n", pin, pinStateToString(state));
 
   assert(pin < 16);
   int periph = PERIPHS_IO_MUX + PERIPHS[pin];
@@ -351,8 +423,9 @@ JshPinState jshPinGetState(Pin pin) {
 /**
  * Set the value of the corresponding pin.
  */
-void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
-    bool value           //!< The new value of the pin.
+void jshPinSetValue(
+    Pin pin,   //!< The pin to have its value changed.
+    bool value //!< The new value of the pin.
   ) {
   // Debug
   // os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
@@ -364,7 +437,8 @@ void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
  * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
-bool jshPinGetValue(Pin pin //!< The pin to have its value read.
+bool jshPinGetValue(
+    Pin pin //!< The pin to have its value read.
   ) {
   // Debug
   // os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
@@ -417,11 +491,20 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 
 
 /**
- *
+ * Get the state of the pin associated with the event flag.
  */
-bool jshGetWatchedPinState(IOEventFlags device) {
-  os_printf("ESP8266: jshGetWatchedPinState %d", device);
-  return false;
+bool jshGetWatchedPinState(IOEventFlags eventFlag) {
+  os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
+
+  if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
+    os_printf(" - Error ... eventFlag out of range\n");
+    os_printf("< jshGetWatchedPinState\n");
+    return false;
+  }
+
+  bool currentPinValue = jshPinGetValue((Pin)(eventFlag-EV_EXTI0));
+  os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
+  return currentPinValue;
 }
 
 
@@ -429,9 +512,10 @@ bool jshGetWatchedPinState(IOEventFlags device) {
  * Set the value of the pin to be the value supplied and then wait for
  * a given period and set the pin value again to be the opposite.
  */
-void jshPinPulse(Pin pin, //!< The pin to be pulsed.
-    bool value,       //!< The value to be pulsed into the pin.
-    JsVarFloat time   //!< The period in milliseconds to hold the pin.
+void jshPinPulse(
+    Pin pin,        //!< The pin to be pulsed.
+    bool value,     //!< The value to be pulsed into the pin.
+    JsVarFloat time //!< The period in milliseconds to hold the pin.
   ) {
   if (jshIsPinValid(pin)) {
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
@@ -444,24 +528,46 @@ void jshPinPulse(Pin pin, //!< The pin to be pulsed.
 
 
 /**
- *
+ * Determine whether the pin can be watchable.
+ * \return Returns true if the pin is wathchable.
  */
-bool jshCanWatch(Pin pin) {
-  return false;
+bool jshCanWatch(
+    Pin pin //!< The pin that we are asking whether or not we can watch it.
+  ) {
+  // As of right now, let us assume that all pins on an ESP8266 are watchable.
+  os_printf("> jshCanWatch: %d\n", pin);
+  os_printf("< jshCanWatch = true\n");
+  return true;
 }
 
 
 /**
- *
+ * Do what ever is necessary to watch a pin.
+ * \return The event flag for this pin.
  */
 IOEventFlags jshPinWatch(
-    Pin pin,         //!< Unknown
-    bool shouldWatch //!< Unknown
+    Pin pin,         //!< The pin to be watched.
+    bool shouldWatch //!< True for watching and false for unwatching.
   ) {
+  os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {
-  } else
-    jsError("Invalid pin!");
-  return EV_NONE;
+    ETS_GPIO_INTR_DISABLE();
+    if (shouldWatch) {
+      // Start watching the given pin ...
+      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+      gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
+    } else {
+      // Stop watching the given pin
+      gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_DISABLE);
+    }
+    ETS_GPIO_INTR_ENABLE();
+  } else {
+    jsError("Invalid pin (ESP8266)");
+    os_printf("< jshPinWatch: Invalid pin\n");
+    return EV_NONE;
+  }
+  os_printf("< jshPinWatch\n");
+  return pinToEV_EXTI(pin);
 }
 
 
@@ -474,10 +580,14 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 }
 
 /**
- *
+ * Determine if a given event is associated with a given pin.
+ * \return True if the event is associated with the pin and false otherwise.
  */
-bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEVEXTI(pin);
+bool jshIsEventForPin(
+    IOEvent *event, //!< The event that has been detected.
+    Pin pin         //!< The identity of a pin.
+  ) {
+  return IOEVENTFLAGS_GETTYPE(event->flags) == pinToEV_EXTI(pin);
 }
 
 //===== USART and Serial =====
