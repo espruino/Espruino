@@ -27,6 +27,7 @@ typedef long long int64_t;
 #include <jsdevices.h>
 #include <jsinteractive.h>
 #include <jswrap_esp8266.h>
+#include <ota.h>
 #include "ESP8266_board.h"
 
 // --- Constants
@@ -216,6 +217,7 @@ static void mainLoop() {
  */
 static void initDone() {
   os_printf("initDone invoked\n");
+  otaInit(88);
 
   // Discard any junk data in the input as this is a boot.
   //uart_rx_discard();

@@ -1003,7 +1003,11 @@ void jsiCheckErrors() {
     jsiConsolePrintf("Uncaught %v\n", exception);
     jsvUnLock(exception);
   }
-  if (jspIsInterrupted()) {
+  if (jspIsInterrupted()
+#ifdef USE_DEBUGGER
+      && !(jsiStatus & JSIS_EXIT_DEBUGGER)
+#endif
+      ) {
     jsiConsoleRemoveInputLine();
     jsiConsolePrint("Execution Interrupted\n");
     jspSetInterrupted(false);

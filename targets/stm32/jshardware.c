@@ -2352,6 +2352,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
       !jshIsUSBSERIALConnected() &&
       jshLastWokenByUSB+jshGetTimeForSecond()<jshGetRTCSystemTime() && // if woken by USB, stay awake long enough for the PC to make a connection
 #endif
+      ticksSinceStart>RTC_INITIALISE_TICKS && // Don't sleep until RTC has initialised
       true
       ) {
     jsiSetSleep(JSI_SLEEP_DEEP);

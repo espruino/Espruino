@@ -1804,6 +1804,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   // We do repetition by pulling out the string representing our statement
   // there's definitely some opportunity for optimisation here
   JSP_ASSERT_MATCH(isWhile ? LEX_R_WHILE : LEX_R_DO);
+  bool wasInLoop = (execInfo.execute&EXEC_IN_LOOP)!=0;
   if (isWhile) { // while loop
     JSP_MATCH('(');
     whileCondStart = jslCharPosClone(&execInfo.lex->tokenStart);
@@ -1818,8 +1819,8 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
   if (!loopCond) jspSetNoExecute();
   execInfo.execute |= EXEC_IN_LOOP;
   jsvUnLock(jspeBlockOrStatement());
+  if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
 
-  execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
   if (execInfo.execute & EXEC_CONTINUE)
     execInfo.execute = EXEC_YES;
   else if (execInfo.execute & EXEC_BREAK) {
@@ -1855,7 +1856,7 @@ NO_INLINE JsVar *jspeStatementDoOrWhile(bool isWhile) {
       execInfo.execute |= EXEC_IN_LOOP;
       jspDebuggerLoopIfCtrlC();
       jsvUnLock(jspeBlockOrStatement());
-      execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
+      if (!wasInLoop) execInfo.execute &= (JsExecFlags)~EXEC_IN_LOOP;
       if (execInfo.execute & EXEC_CONTINUE)
         execInfo.execute = EXEC_YES;
       else if (execInfo.execute & EXEC_BREAK) {
