@@ -563,10 +563,32 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266WiFi",
+  "name"     : "logDebug",
+  "generate" : "jswrap_ESP8266WiFi_logDebug",
+  "params"   : [
+    ["enable", "JsVar", "Enable or disable the debug logging."]
+  ]
+}
+ * Enable or disable the logging of debug information.  A value of `true` enables
+ * debug logging while a value of `false` disables debug logging.  Debug output is sent
+ * to UART1.
+ */
+void jswrap_ESP8266WiFi_logDebug(
+    JsVar *jsDebug
+  ) {
+  uint8 enable = (uint8)jsvGetBool(jsDebug);
+  os_printf("> jswrap_ESP8266WiFi_logDebug, enable=%d\n", enable);
+  system_set_os_print((uint8)jsvGetBool(jsDebug));
+  os_printf("< jswrap_ESP8266WiFi_logDebug\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
   "name"     : "updateCPUFreq",
   "generate" : "jswrap_ESP8266WiFi_updateCPUFreq",
   "params"   : [
-    ["freq","JsVar","Desired frequency - either 80 or 160."]
+    ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
  * Update the operating frequency of the ESP8266 processor.
