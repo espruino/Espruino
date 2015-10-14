@@ -367,3 +367,13 @@ Set the operating frequency of the ESP8266 processor.
 `ESP8266WiFi.updateCPUFreq(newFreq)`
 
 * `newFreq` - The new operating frequency of the CPU.  Either 80 (80MHz) or 160 (160MHz).
+
+----
+
+##ESP8266WiFi.logDebug
+
+Enable or disable the logging of debug messages to the UART1 debug log.
+
+`ESP8266WiFi.logDebug(onOff)`
+
+* `onOff` - A boolean.  A value of `true` enables debugging while `false` disables.

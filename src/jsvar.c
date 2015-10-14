@@ -1386,6 +1386,16 @@ void jsvSetInteger(JsVar *v, JsVarInt value) {
   v->varData.integer  = value;
 }
 
+/**
+ * Get the boolean value of a variable.
+ * From a JavaScript variable, we determine its boolean value.  The rules
+ * are:
+ *
+ * * If integer, true if value is not 0.
+ * * If float, true if value is not 0.0.
+ * * If function, array or object, always true.
+ * * If string, true if length of string is greater than 0.
+ */
 bool jsvGetBool(const JsVar *v) {
   if (jsvIsString(v))
     return jsvGetStringLength((JsVar*)v)!=0;
