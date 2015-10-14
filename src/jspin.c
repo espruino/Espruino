@@ -212,10 +212,16 @@ Pin jshGetPinFromVarAndUnLock(JsVar *pinv) {
   // Whether a pin's state has been set manually or not
 BITFIELD_DECL(jshPinStateIsManual, JSH_PIN_COUNT); // TODO: This should be set to all 0
 
+/**
+ * Determine if the state of a given pin has been defined as being manually set.
+ */
 bool jshGetPinStateIsManual(Pin pin) {
   return BITFIELD_GET(jshPinStateIsManual, pin);
 }
 
+/**
+ * Set the state of a given pin as being manual or automatic.
+ */
 void jshSetPinStateIsManual(Pin pin, bool manual) {
   BITFIELD_SET(jshPinStateIsManual, pin, manual);
 }

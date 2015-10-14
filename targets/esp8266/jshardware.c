@@ -553,8 +553,12 @@ IOEventFlags jshPinWatch(
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
-      // Start watching the given pin ...
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+      // Start watching the given pin ...  First we ask ourselves if the
+      // pin state has been set manually. If it has not been set manually,
+      // then set the pin state to input.
+      if (jshGetPinStateIsManual(pin) == false) {
+        jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+      }
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     } else {
       // Stop watching the given pin
