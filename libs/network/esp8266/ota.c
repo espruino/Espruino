@@ -10,7 +10,8 @@
 #include <espmissingincludes.h>
 #include "ota.h"
 
-#define OTA_BUFF_SZ 1460
+#define OTA_BUFF_SZ 512
+#define OTA_CHUNK_SZ 512
 
 // Request handler
 struct OtaConn;
@@ -143,14 +144,14 @@ static int16_t otaHandleUpload(OtaConn *oc) {
   if (oc->reqLen > flashMaxSize[flashSizeMap]) {
     os_printf("OTA: FW too large: %ld > %ld\n", oc->reqLen, flashMaxSize[flashSizeMap]);
     err = "Firmware image too large";
-  } else if (oc->reqLen < 1024) {
+  } else if (oc->reqLen < OTA_CHUNK_SZ) {
     os_printf("OTA: FW too small: %ld\n", oc->reqLen);
     err = "Firmware too small";
   }
 
-  // check that we have at least 1024 bytes buffered or it's the last chunk, else we can't write
-  if (oc->rxBufFill < 1024 && offset+1024 <= oc->reqLen) return 0;
-  uint16_t toFlash = 1024;
+  // check that we have at least OTA_CHUNK_SZ bytes buffered or it's the last chunk, else we can't write
+  if (oc->rxBufFill < OTA_CHUNK_SZ && offset+OTA_CHUNK_SZ <= oc->reqLen) return 0;
+  uint16_t toFlash = OTA_CHUNK_SZ;
   if (oc->rxBufFill < toFlash) toFlash = oc->rxBufFill;
 
   // check that data starts with an appropriate header
