@@ -34,19 +34,19 @@ void jshInit();
 /// jshReset is called from JS 'reset()' - try to put peripherals back to their power-on state
 void jshReset();
 
-/** Code that is executed each time around the idle loop. Prod watchdog timers here, 
+/** Code that is executed each time around the idle loop. Prod watchdog timers here,
  * and on platforms without GPIO interrupts you can check watched Pins for changes. */
 void jshIdle();
-/** Enter sleep mode for the given period of time. Can be woken up by interrupts. 
+/** Enter sleep mode for the given period of time. Can be woken up by interrupts.
  * If time is 0xFFFFFFFFFFFFFFFF then go to sleep without setting a timer to wake
  * up.
- * 
+ *
  * This function can also check `jsiStatus & JSIS_ALLOW_DEEP_SLEEP`, and if there
  * is no pending serial data and nothing working on Timers, it will put the device
  * into deep sleep mode where the high speed oscillator turns off.
- * 
+ *
  * Returns true on success
- */ 
+ */
 bool jshSleep(JsSysTime timeUntilWake);
 
 /** Clean up ready to stop Espruino. Unused on embedded targets, but used on Linux,
@@ -55,7 +55,7 @@ void jshKill();
 
 /** Get this IC's serial number. Passed max # of chars and a pointer to write to.
  * Returns # of chars of non-null-terminated string.
- * 
+ *
  * This is reported back to `process.env` and is sometimes used in USB enumeration.
  * It doesn't have to be unique, but some users do use this in their code to distinguish
  * between boards.
@@ -64,15 +64,15 @@ int jshGetSerialNumber(unsigned char *data, int maxChars);
 
 /** Is the USB port connected such that we could move the console over to it
  * (and that we should store characters sent to USB). On non-USB boards this just returns false. */
-bool jshIsUSBSERIALConnected(); 
+bool jshIsUSBSERIALConnected();
 
 /** The system time is used all over Espruino - for:
  *  * setInterval/setTimeout
  *  * new Date()
  *  * getTime
- *  * scheduling the utility timer (digitalPulse/Waveform/etc) 
+ *  * scheduling the utility timer (digitalPulse/Waveform/etc)
  *  * timestamping watches (so measuring pulse widths)
- * 
+ *
  * It is time since 1970 - in whatever units make sense for the platform. For real-time
  * platforms units should really be at the uS level. Often this timer directly counts
  * clock cycles with the SysTick timer.
@@ -115,7 +115,7 @@ typedef enum {
 
   /** Used by jshPinGetState to append information about whether the pin's output
    * is set to 1 or not. */
-  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,         
+  JSHPINSTATE_PIN_IS_ON = JSHPINSTATE_MASK+1,
 } PACKED_FLAGS JshPinState;
 
 /// Should a pin of this state be an output (inc open drain)
@@ -157,9 +157,9 @@ typedef enum {
 /// Set the pin state (Output, Input, etc)
 void jshPinSetState(Pin pin, JshPinState state);
 
-/** Get the pin state (only accurate for simple IO - won't return 
- * JSHPINSTATE_USART_OUT for instance). Note that you should use 
- * JSHPINSTATE_MASK as other flags may have been added 
+/** Get the pin state (only accurate for simple IO - won't return
+ * JSHPINSTATE_USART_OUT for instance). Note that you should use
+ * JSHPINSTATE_MASK as other flags may have been added
  * (like JSHPINSTATE_PIN_IS_ON if pin was set to output) */
 JshPinState jshPinGetState(Pin pin);
 
@@ -183,27 +183,27 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
 /// Pulse a pin for a certain time, but via IRQs, not JS: `digitalWrite(pin,value);setTimeout("digitalWrite(pin,!value)", time*1000);`
 void jshPinPulse(Pin pin, bool value, JsVarFloat time);
 /// Can the given pin be watched? it may not be possible because of conflicts
-bool jshCanWatch(Pin pin); 
+bool jshCanWatch(Pin pin);
 /// start watching pin - return the EXTI (IRQ number flag) associated with it
-IOEventFlags jshPinWatch(Pin pin, bool shouldWatch); 
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch);
 
 /// Given a Pin, return the current pin function associated with it
 JshPinFunction jshGetCurrentPinFunction(Pin pin);
 
-/** Given a pin function, set that pin to the 16 bit value 
+/** Given a pin function, set that pin to the 16 bit value
  * (used mainly for fast DAC and PWM handling from Utility Timer) */
 void jshSetOutputValue(JshPinFunction func, int value);
 
 /// Enable watchdog with a timeout in seconds, it should be reset from `jshIdle`
 void jshEnableWatchDog(JsVarFloat timeout);
 
-/// Check the pin associated with this EXTI - return true if the pin's input is a logic 1 
+/// Check the pin associated with this EXTI - return true if the pin's input is a logic 1
 bool jshGetWatchedPinState(IOEventFlags device);
 
 /// Given an event, check the EXTI flags and see if it was for the given pin
 bool jshIsEventForPin(IOEvent *event, Pin pin);
 
-/** Is the given device initialised? 
+/** Is the given device initialised?
  * eg. has jshUSARTSetup/jshI2CSetup/jshSPISetup been called previously? */
 bool jshIsDeviceInitialised(IOEventFlags device);
 
@@ -216,7 +216,7 @@ bool jshIsDeviceInitialised(IOEventFlags device);
 /// Settings passed to jshUSARTSetup to set it the USART up
 typedef struct {
   int baudRate; // FIXME uint32_t ???
-  Pin pinRX; 
+  Pin pinRX;
   Pin pinTX;
   Pin pinCK;
   unsigned char bytesize; ///< size of byte, 7 or 8
@@ -243,7 +243,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf);
 /** Kick a device into action (if required). For instance we may have data ready
  * to sent to a USART, but we need to enable the IRQ such that it can automatically
  * fetch the characters to send.
- * 
+ *
  * Later down the line this could potentially even set up something like DMA.*/
 void jshUSARTKick(IOEventFlags device);
 
@@ -348,14 +348,14 @@ void jshFlashRead(void *buf, uint32_t addr, uint32_t len);
 void jshFlashWrite(void *buf, uint32_t addr, uint32_t len);
 
 
-/** Utility timer handling functions 
+/** Utility timer handling functions
  *  ------------------------------------------
  * The utility timer is intended to generate an interrupt and then call jstUtilTimerInterruptHandler
  * as interrupt handler so Espruino can process tasks that are queued up on the timer. Typical
  * functions used in the interrupt handler include reading/write GPIO pins, reading analog and
  * writing analog. See jstimer.c for the implementation.
- * 
- * These are exposed through functions like `jsDigitalPulse`, `analogWrite(..., {soft:true})` 
+ *
+ * These are exposed through functions like `jsDigitalPulse`, `analogWrite(..., {soft:true})`
  * and the `Waveform` class.
  */
 

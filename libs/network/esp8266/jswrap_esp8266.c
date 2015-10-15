@@ -393,6 +393,30 @@ void jswrap_ESP8266WiFi_getAccessPoints(
   os_printf("< ESP8266WiFi_getAccessPoints\n");
 }
 
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "mdnsInit",
+  "generate" : "jswrap_ESP8266WiFi_mdnsInit"
+}
+ * Initial testing for mDNS support
+ */
+void jswrap_ESP8266WiFi_mdnsInit() {
+  os_printf("> jswrap_ESP8266WiFi_mdnsInit\n");
+  struct mdns_info mdnsInfo;
+  os_memset(&mdnsInfo, 0, sizeof(struct mdns_info));
+  // Populate the mdns structure
+
+  struct ip_info ipInfo;
+  wifi_get_ip_info(0, &ipInfo);
+
+  mdnsInfo.host_name   = "myhostname";
+  mdnsInfo.ipAddr      = ipInfo.ip.addr;
+  mdnsInfo.server_name = "myservername";
+  mdnsInfo.server_port = 80;
+  espconn_mdns_init(&mdnsInfo);
+  os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
+}
 
 /**
  * Disconnect the station from the access point.
@@ -539,10 +563,32 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266WiFi",
+  "name"     : "logDebug",
+  "generate" : "jswrap_ESP8266WiFi_logDebug",
+  "params"   : [
+    ["enable", "JsVar", "Enable or disable the debug logging."]
+  ]
+}
+ * Enable or disable the logging of debug information.  A value of `true` enables
+ * debug logging while a value of `false` disables debug logging.  Debug output is sent
+ * to UART1.
+ */
+void jswrap_ESP8266WiFi_logDebug(
+    JsVar *jsDebug
+  ) {
+  uint8 enable = (uint8)jsvGetBool(jsDebug);
+  os_printf("> jswrap_ESP8266WiFi_logDebug, enable=%d\n", enable);
+  system_set_os_print((uint8)jsvGetBool(jsDebug));
+  os_printf("< jswrap_ESP8266WiFi_logDebug\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
   "name"     : "updateCPUFreq",
   "generate" : "jswrap_ESP8266WiFi_updateCPUFreq",
   "params"   : [
-    ["freq","JsVar","Desired frequency - either 80 or 160."]
+    ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
  * Update the operating frequency of the ESP8266 processor.

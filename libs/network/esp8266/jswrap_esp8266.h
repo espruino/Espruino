@@ -35,6 +35,8 @@ JsVar *jswrap_ESP8266WiFi_getState();
 JsVar *jswrap_ESP8266WiFi_getStationConfig();
 void   jswrap_ESP8266WiFi_init();
 void   jswrap_ESP8266WiFi_kill();
+void   jswrap_ESP8266WiFi_logDebug(JsVar *jsDebug);
+void   jswrap_ESP8266WiFi_mdnsInit();
 void   jswrap_ESP8266WiFi_onWiFiEvent(JsVar *callback);
 void   jswrap_ESP8266WiFi_ping(JsVar *ipAddr, JsVar *pingCallback);
 void   jswrap_ESP8266WiFi_restart();
