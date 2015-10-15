@@ -671,7 +671,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
     const unsigned char *data, bool sendStop) {
-  os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  //os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
   uint8 ack;
@@ -679,7 +679,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
   i2c_master_start();                   // start the transaction
   i2c_master_writeByte((address<<1)|0); // send address and r/w
   ack = i2c_master_getAck();            // get ack bit from slave
-  os_printf("I2C: ack=%d\n", ack);
+  //os_printf("I2C: ack=%d\n", ack);
   if (!ack) goto error;
   while (nBytes--) {
     i2c_master_writeByte(*data++);      // send data byte
@@ -695,7 +695,7 @@ error:
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
     unsigned char *data, bool sendStop) {
-  os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  //os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
   uint8 ack;
