@@ -88,6 +88,11 @@ void jshInit() {
   systemTimeInit();
   utilTimerInit();
   jshInitDevices();
+
+  // sanity check for pin function enum to catch ordering changes
+  if (JSHPINSTATE_I2C != 12 || JSHPINSTATE_GPIO_IN_PULLDOWN != 5 || JSHPINSTATE_MASK != 15) {
+    jsError("JshPinState #defines have changed, please update pinStateToString()");
+  }
 } // End of jshInit
 
 /**
@@ -169,41 +174,13 @@ PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
 
-#if 0
-#define FUNC_SPI 1
-#define FUNC_GPIO 3
-#define FUNC_UART 4
-
-static uint8_t pinFunction(JshPinState state) {
-  switch (state) {
-  case JSHPINSTATE_GPIO_OUT:
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-  case JSHPINSTATE_GPIO_IN:
-  case JSHPINSTATE_GPIO_IN_PULLUP:
-  case JSHPINSTATE_GPIO_IN_PULLDOWN:
-    return FUNC_GPIO;
-  case JSHPINSTATE_USART_OUT:
-  case JSHPINSTATE_USART_IN:
-    return FUNC_UART;
-  case JSHPINSTATE_I2C:
-    return FUNC_SPI;
-  case JSHPINSTATE_AF_OUT:
-  case JSHPINSTATE_AF_OUT_OPENDRAIN:
-  case JSHPINSTATE_DAC_OUT:
-  case JSHPINSTATE_ADC_IN:
-  default:
-    return 0;
-  }
-}
-#endif
-
 /**
  * Return the function value to select GPIO for a pin
  */
 static uint8 pinGPIOFunc[] = {
   FUNC_GPIO0, FUNC_GPIO1, FUNC_GPIO2, FUNC_GPIO3,
-  FUNC_GPIO4, FUNC_GPIO5, FUNC_GPIO6, FUNC_GPIO7,
-  FUNC_GPIO8, FUNC_GPIO9, FUNC_GPIO10, FUNC_GPIO11,
+  FUNC_GPIO4, FUNC_GPIO5, 3, 3,
+  3, FUNC_GPIO9, FUNC_GPIO10, 3,
   FUNC_GPIO12, FUNC_GPIO13, FUNC_GPIO14, FUNC_GPIO15,
 };
 
@@ -214,14 +191,14 @@ static uint8 pinAFFunc[] = {
   4 /*CLK_OUT*/, FUNC_U0TXD, FUNC_U1TXD_BK, 0 /*U0RXD*/,
   0 /*NOOP*/, 0 /*NOOP*/, 0, 0,
   0, 0, 0, 0, // protected pins
-  2 /*SPI_Q*/, 2, /*SPI_D*/, 2 /*SPI_CLK*/, 2 /*SPI_CS*/,
+  2 /*SPI_Q*/, 2 /*SPI_D*/, 2 /*SPI_CLK*/, 2 /*SPI_CS*/,
 };
 
 /**
  * Convert a pin state to a string representation.
  */
 static char *pinStateToString(JshPinState state) {
-  static char *tail[] = {
+  static char *states[] = {
     "UNDEFINED", "GPIO_OUT", "GPIO_OUT_OPENDRAIN",
     "GPIO_IN", "GPIO_IN_PULLUP", "GPIO_IN_PULLDOWN",
     "ADC_IN", "AF_OUT", "AF_OUT_OPENDRAIN",
@@ -230,7 +207,22 @@ static char *pinStateToString(JshPinState state) {
   return states[state];
 }
 
-static uint8 pinState[16];
+static uint8 pinState[16] = {
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // all JSHPINSTATE_UNDEFINED until we set them
+};
+
+static void jshDebugPin(Pin pin) {
+  os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
+      pin, (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
+      (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
+
+  uint32_t gpio_pin = GPIO_REG_READ(GPIO_PIN_ADDR(pin));
+  uint32_t mux = READ_PERI_REG(PERIPHS_IO_MUX + 4*pin);
+  os_printf("     dr=%s src=%s func=%ld pull-up=%ld oe=%ld\n",
+      gpio_pin & 4 ? "open-drain" : "totem-pole",
+      gpio_pin & 1 ? "sigma-delta" : "gpio",
+      (mux>>2)&1 | (mux&3), (mux>>7)&1, mux&1);
+}
 
 /**
  * Set the state of the specific pin.
@@ -251,13 +243,18 @@ static uint8 pinState[16];
  * JSHPINSTATE_DAC_OUT
  * JSHPINSTATE_I2C
  */
-void jshPinSetState(Pin pin, //!< The pin to have its state changed.
-    JshPinState state    //!< The new desired state of the pin.
+void jshPinSetState(
+    Pin pin,                 //!< The pin to have its state changed.
+    JshPinState state        //!< The new desired state of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetState %d, %s\n", pin, pinStateToString(state));
+  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
   assert(pin < 16);
-  if (pin >= 6 && pin <= 11) return; // these pins are used for the flash chip
+  if (pin >= 6 && pin <= 11) {
+    jsError("Cannot change pins used for flash chip");
+    return; // these pins are used for the flash chip
+  }
 
   int periph = PERIPHS_IO_MUX + PERIPHS[pin];
 
@@ -267,7 +264,6 @@ void jshPinSetState(Pin pin, //!< The pin to have its state changed.
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
   case JSHPINSTATE_GPIO_IN:
   case JSHPINSTATE_GPIO_IN_PULLUP:
-  case JSHPINSTATE_GPIO_IN_PULLDOWN:
   case JSHPINSTATE_I2C:
     PIN_FUNC_SELECT(periph, pinGPIOFunc[pin]); // set the pin mux to GPIO
     break;
@@ -281,20 +277,32 @@ void jshPinSetState(Pin pin, //!< The pin to have its state changed.
     else PIN_FUNC_SELECT(periph, 4); // works for many pins...
     break;
   default:
-    // do nothing, sigh
+    jsError("Pin state not supported");
+    return;
   }
 
   // enable/disable pull-up
-  if (JSHPINSTATE_IS_PULLUP(state)) PIN_PULLUP_EN(periph);
-  else PIN_PULLUP_DIS(periph);
-
-  // enable/disable gpio output driver
-  if (state == JSHPINSTATE_GPIO_OUT) {
-    gpio_output_set(0, 0, 1 << pin, 0); // enable output
+  if (JSHPINSTATE_IS_PULLUP(state)) {
+    PIN_PULLUP_EN(periph);
   } else {
-    gpio_output_set(0, 0, 0, 1 << pin); // disable output
+    PIN_PULLUP_DIS(periph);
   }
 
+  // enable/disable output and choose open-drain/totem-pole
+  if (!JSHPINSTATE_IS_OUTPUT(state)) {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TC_ADDRESS, 1<<pin); // disable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) & ~4); // totem-pole
+  } else if (JSHPINSTATE_IS_OPENDRAIN(state)) {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1<<pin); // enable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) | 4); // open-drain
+  } else {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1<<pin); // enable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) & ~4); // totem-pole
+  }
+
+  //jshDebugPin(pin);
+
+  pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -304,7 +312,7 @@ void jshPinSetState(Pin pin, //!< The pin to have its state changed.
  */
 JshPinState jshPinGetState(Pin pin) {
   os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return JSHPINSTATE_UNDEFINED;
+  return pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -315,9 +323,10 @@ JshPinState jshPinGetState(Pin pin) {
 void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
     bool value           //!< The new value of the pin.
   ) {
-  // Debug
-  // os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
-  GPIO_OUTPUT_SET(pin, value); // TODO: handle open collector correctly
+  os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
+  GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
+  //jshDebugPin(pin);
 }
 
 
@@ -327,8 +336,7 @@ void jshPinSetValue(Pin pin, //!< The pin to have its value changed.
  */
 bool jshPinGetValue(Pin pin //!< The pin to have its value read.
   ) {
-  // Debug
-  // os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -347,7 +355,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
  */
 int jshPinAnalogFast(Pin pin) {
   os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
-  return NAN;
+  return (JsVarFloat) system_adc_read();
 }
 
 
@@ -356,7 +364,7 @@ int jshPinAnalogFast(Pin pin) {
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
-//pwm_set(pin, value < 0.0f ? 0 : 255.0f < value ? 255 : (uint8_t)value);
+  jsError("No DAC");
   return 0;
 }
 
@@ -366,6 +374,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
   os_printf("ESP8266: jshSetOutputValue %d %d\n", func, value);
+  jsError("No DAC");
 }
 
 
@@ -450,9 +459,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
 
 bool jshIsUSBSERIALConnected() {
-  os_printf("ESP8266: jshIsUSBSERIALConnected\n");
-  return true;
-} // End of jshIsUSBSERIALConnected
+  return false; // "On non-USB boards this just returns false"
+}
 
 /**
  * Kick a device into action (if required).
