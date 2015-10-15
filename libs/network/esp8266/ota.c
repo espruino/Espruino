@@ -313,7 +313,8 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
     oc->rxBufFill = 0;
   }
 
-  while (len > 0) {
+  int16_t num = 0;
+  do {
     if (oc->rxBufFill == OTA_BUFF_SZ) goto error; // buffer full, disconnect
 
     // copy as much as we can into the rx buffer
@@ -324,15 +325,19 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
     len -= cpy;
     oc->rxBufFill += cpy;
 
-    int16_t num;
+    //os_printf("OTA recv: len=%d fill=%d off=%ld\n", len, oc->rxBufFill, oc->rxBufOff);
+
     if (oc->rxBufOff < 0 && oc->rxBufFill > 0) {
       // process the request header
       num = processHeader(oc);
       // if we processed the header, shift it out of the buffer
       if (num > 0) {
+        os_memmove(oc->rxBuffer, oc->rxBuffer + num, oc->rxBufFill-num);
         oc->rxBufOff = 0;
+        oc->rxBufFill -= num;
+
+        // if request has no body, invoke handler here and bail out
         if (oc->reqLen == 0) {
-          // request has no body, invoke handler here and bail out
           oc->rxBufFill = 0;
           if (oc->rxBuffer) os_free(oc->rxBuffer);
           oc->rxBuffer = NULL;
@@ -345,22 +350,23 @@ static void otaRecvCb(void *arg, char *data, unsigned short len) {
       // process request body
       num = (*oc->handler)(oc);
       if (num > 0) {
+        os_memmove(oc->rxBuffer, oc->rxBuffer + num, oc->rxBufFill-num);
         oc->rxBufOff += num;
+        oc->rxBufFill -= num;
       }
-    } else if (len > 0) {
-      goto error;
+
     } else {
-      continue;
+      num = 0;
     }
-    // shift the data we've consumed out
-    if (num > 0) {
-      os_memmove(oc->rxBuffer, oc->rxBuffer + num, oc->rxBufFill-num);
-      oc->rxBufFill -= num;
-    } else if (num < 0) {
+
+    //os_printf("num=%d\n", num);
+
+    // if we've responded we're ready for the close
+    if (num < 0) {
       oc->closing = true;
-      return; // disregard anything else we have have here...
+      return;
     }
-  }
+  } while (len > 0 || num > 0);
 
   return;
 
