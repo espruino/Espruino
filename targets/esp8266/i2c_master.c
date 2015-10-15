@@ -241,7 +241,7 @@ i2c_master_getAck(void)
     i2c_master_setDC(1, 0);
     i2c_master_wait(2);
 
-    return retVal;
+    return !retVal; // 0->true->ACK, 1->false->NACK
 }
 
 /******************************************************************************
