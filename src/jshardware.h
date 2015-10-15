@@ -314,7 +314,7 @@ void jshSPIWait(IOEventFlags device);
 typedef struct {
   Pin pinSCL;
   Pin pinSDA;
-  char slaveAddr; // or -1 if it is master!
+  int8_t slaveAddr; // or -1 if it is master!
   int bitrate;
   // timeout?
 } PACKED_FLAGS JshI2CInfo;

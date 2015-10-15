@@ -34,7 +34,7 @@ chip = {
   'speed'   : 80,
   'usart'   : 1,
   'spi'     : 0,
-  'i2c'     : 0,
+  'i2c'     : 1,
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {

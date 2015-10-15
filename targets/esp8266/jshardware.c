@@ -23,7 +23,7 @@
 #include <mem.h>
 #include <espmissingincludes.h>
 #include <uart.h>
-#include <hw_timer.h>
+#include <i2c_master.h>
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -538,11 +538,20 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   os_printf("ESP8266: jshI2CSetup SCL=%d SDA=%d bitrate=%d\n",
       info->pinSCL, info->pinSDA, info->bitrate);
-  if (info->slaveAddr != -1) return; // we can only do master
-  if (device != EV_I2C1) return;     // we only support one i2c device
+  if (info->slaveAddr != -1) {
+    jsError("I2C slave mode not supported");
+    return;
+  }
+  if (device != EV_I2C1) {
+    jsError("Only I2C1 supported");
+    return;
+  }
 
   Pin scl = info->pinSCL >= 0 ? info->pinSCL : 14;
   Pin sda = info->pinSDA >= 0 ? info->pinSDA : 2;
+
+  jshPinSetState(info->pinSCL, JSHPINSTATE_I2C);
+  jshPinSetState(info->pinSDA, JSHPINSTATE_I2C);
 
   i2c_master_gpio_init(scl, sda, info->bitrate);
 }
@@ -552,10 +561,23 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
   os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
-  i2c_master_start();
-  while (nBytes--)
-    i2c_master_writeByte(*data++);
+  uint8 ack;
+
+  i2c_master_start();                   // start the transaction
+  i2c_master_writeByte((address<<1)|0); // send address and r/w
+  ack = i2c_master_getAck();            // get ack bit from slave
+  os_printf("I2C: ack=%d\n", ack);
+  if (!ack) goto error;
+  while (nBytes--) {
+    i2c_master_writeByte(*data++);      // send data byte
+    ack = i2c_master_getAck();          // get ack bit from slave
+    if (!ack) goto error;
+  }
   if (sendStop) i2c_master_stop();
+  return;
+error:
+  i2c_master_stop();
+  jsError("No ACK");
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
@@ -563,10 +585,21 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
   os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
   if (device != EV_I2C1) return;     // we only support one i2c device
 
-  i2c_master_start();
-  while (nBytes--)
-    *data++ = i2c_master_readByte();
+  uint8 ack;
+
+  i2c_master_start();                   // start the transaction
+  i2c_master_writeByte((address<<1)|1); // send address and r/w
+  ack = i2c_master_getAck();            // get ack bit from slave
+  if (!ack) goto error;
+  while (nBytes--) {
+    *data++ = i2c_master_readByte();    // recv data byte
+    i2c_master_setAck(nBytes == 0);     // send ack or no-ack for last byte
+  }
   if (sendStop) i2c_master_stop();
+  return;
+error:
+  i2c_master_stop();
+  jsError("No ACK");
 }
 
 //===== System time stuff =====

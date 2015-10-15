@@ -1,8 +1,8 @@
 #ifndef __I2C_MASTER_H__
 #define __I2C_MASTER_H__
 
-void i2c_master_gpio_init(uint8 sclPin, uint8 sdaPin);
-void i2c_master_init(uint32 bitrate);
+void i2c_master_gpio_init(uint8 sclPin, uint8 sdaPin, uint32 bitrate);
+void i2c_master_init(void);
 
 void i2c_master_stop(void);
 void i2c_master_start(void);
