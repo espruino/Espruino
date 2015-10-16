@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 
-/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py,
 so we don't put this into espruino.com/Reference until this is out
 of beta.  */
 
@@ -511,9 +511,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
   uint8 newValue = jsvGetBool(autoconnect);
   os_printf("New value: %d\n", newValue);
 
-  uart_rx_intr_disable(0);
   wifi_station_set_auto_connect(newValue);
-  uart_rx_intr_disable(1);
   os_printf("Autoconnect changed\n");
 }
 

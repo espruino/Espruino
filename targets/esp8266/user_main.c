@@ -35,7 +35,7 @@ typedef long long int64_t;
 #define TASK_QUEUE_LENGTH 10
 
 // Should we introduce a ticker to say we are still alive?
-//#define EPS8266_BOARD_HEARTBEAT
+#define EPS8266_BOARD_HEARTBEAT
 
 // --- Forward definitions
 static void mainLoop();
@@ -246,7 +246,7 @@ static void initDone() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
-  os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+  //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 
 
@@ -256,11 +256,14 @@ void user_rf_pre_init() {
  */
 void user_init() {
   system_timer_reinit(); // use microsecond os_timer_*
+
   // Initialize the UART devices
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
-  os_delay_us(10000); // give the uart a break
+  os_delay_us(1000); // make sure there's a gap on uart output
   UART_SetPrintPort(1);
   system_set_os_print(1);
+  os_printf("\n\n\n\n");
+  os_delay_us(1000);
 
   // Dump the restart exception information.
   dumpRestart();
