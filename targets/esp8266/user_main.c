@@ -176,8 +176,7 @@ static void eventHandler(
     break;
   // Handle the unknown event type.
   default:
-    os_printf("user_main: eventHandler: Unknown task type: %d",
-        pEvent->sig);
+    os_printf("user_main: eventHandler: Unknown task type: %ld", pEvent->sig);
     break;
   }
 }
@@ -199,7 +198,7 @@ static void mainLoop() {
 #ifdef EPS8266_BOARD_HEARTBEAT
   if (system_get_time() - lastTime > 1000 * 1000 * 5) {
     lastTime = system_get_time();
-    os_printf("tick: %ld, heap: %ld\n",
+    os_printf("tick: %u, heap: %u\n",
       (uint32)(jshGetSystemTime()), system_get_free_heap_size());
   }
 #endif
@@ -216,7 +215,7 @@ static void mainLoop() {
  * we can assume that the ESP8266 is fully ready to do work for us.
  */
 static void initDone() {
-  os_printf("initDone invoked\n");
+  os_printf("> initDone\n");
   otaInit(88);
 
   // Discard any junk data in the input as this is a boot.
@@ -225,19 +224,18 @@ static void initDone() {
   jshInit(); // Initialize the hardware
   jsvInit(); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
+  jswrap_ESP8266WiFi_init(); // Initialize the networking subsystem
 
   // Register the event handlers.
   system_os_task(eventHandler, TASK_APP_QUEUE, taskAppQueue, TASK_QUEUE_LENGTH);
 
   // At this point, our JavaScript environment should be up and running.
 
-  // Initialize the networking subsystem.
-  jswrap_ESP8266WiFi_init();
-
   // Register the idle callback handler to run the main loop
   //ets_set_idle_cb(idle_cb, NULL); //
   queueTaskMainLoop(); // get things going without idle callback
 
+  os_printf("< initDone\n");
   return;
 }
 
@@ -248,7 +246,7 @@ static void initDone() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
-  os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
+  os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 
 
@@ -267,14 +265,12 @@ void user_init() {
   // Dump the restart exception information.
   dumpRestart();
   os_printf("Heap: %d\n", system_get_free_heap_size());
-  os_printf("Variables: %d @%dea = %ldbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
+  os_printf("Variables: %d @%dea = %dbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
       JSVAR_CACHE_SIZE * sizeof(JsVar));
-  os_printf("Time sys=%lu rtc=%lu\n", system_get_time(), system_get_rtc_time());
+  os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 
   // Register the ESP8266 initialization callback.
   system_init_done_cb(initDone);
 
-  // Do NOT attempt to auto connect to an access point.
-  //wifi_station_set_auto_connect(0);
   os_timer_setfn(&mainLoopSuspendTimer, enableMainLoop, NULL);
 }

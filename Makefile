@@ -1263,7 +1263,7 @@ ifeq ($(FAMILY),ESP8266)
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain
 CFLAGS+= -fno-builtin -fno-strict-aliasing \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
@@ -1419,6 +1419,7 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 SOURCES += targets/esp8266/uart.c \
 	   targets/esp8266/user_main.c \
 	   targets/esp8266/jshardware.c \
+	   targets/esp8266/i2c_master.c \
 	   targets/esp8266/esp8266_board_utils.c \
 	   libs/network/esp8266/network_esp8266.c
 # if using the hw_timer:   targets/esp8266/hw_timer.c \

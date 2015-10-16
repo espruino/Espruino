@@ -23,7 +23,7 @@
 #include <mem.h>
 #include <espmissingincludes.h>
 #include <uart.h>
-#include <hw_timer.h>
+#include <i2c_master.h>
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -38,7 +38,7 @@ typedef long long int64_t;
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
 // microseconds.
-#define MAX_SLEEP_TIME_US  10000
+#define MAX_SLEEP_TIME_US  3000
 
 // Save-to-flash uses the 16KB of "user params" locates right after the first firmware
 // block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
@@ -104,6 +104,11 @@ void jshInit() {
   utilTimerInit();
   jshInitDevices();
 
+  // sanity check for pin function enum to catch ordering changes
+  if (JSHPINSTATE_I2C != 12 || JSHPINSTATE_GPIO_IN_PULLDOWN != 5 || JSHPINSTATE_MASK != 15) {
+    jsError("JshPinState #defines have changed, please update pinStateToString()");
+  }
+
   // Register a callback function to be called for a GPIO interrupt
   gpio_intr_handler_register(intrHandlerCB, NULL);
 
@@ -126,7 +131,7 @@ static void intrHandlerCB(
   // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
   // that the ESP8266 will once again cause future interrupts to be processed.
 
-  os_printf(">> intrHandlerCB\n");
+  os_printf_plus(">> intrHandlerCB\n");
   gpio_intr_ack(interruptMask);
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
@@ -138,7 +143,7 @@ static void intrHandlerCB(
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     }
   }
-  os_printf("<< intrHandlerCB\n");
+  os_printf_plus("<< intrHandlerCB\n");
 }
 
 /**
@@ -209,41 +214,6 @@ void jshDelayMicroseconds(int microsec) {
     os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
-#if 0
-  // Get the current time
-  /*
-  uint32 endTime = system_get_time() + microsec;
-  while ((endTime - system_get_time()) > 10000) {
-    os_delay_us(10000);
-    system_soft_wdt_feed();
-  }
-  int lastDelta = endTime - system_get_time();
-  if (lastDelta > 0) {
-    os_delay_us(lastDelta);
-  }
-  */
-
-  // This is a place holder implementation.  We can and must do better
-  // than this.  This fails because we will sleep too long.  We will sleep
-  // for the given number of microseconds PLUS multiple calls back to the
-  // WiFi environment.
-  int count = microsec / MAX_SLEEP_TIME_US;
-  int i;
-  for (i=0; i<count; i++) {
-    os_delay_us(MAX_SLEEP_TIME_US);
-    // We may have a problem here.  It was my understanding that system_soft_wdt_feed() fed
-    // the underlying OS but this appears not to be the case and all it does is prevent a
-    // watchdog timer from firing.  What that means is that we may very well loose network
-    // connectivity because we are not servicing the housekeeping.   This might be one of those
-    // locations where we need to look at a callback or some kind of yield technology.
-    system_soft_wdt_feed();
-    microsec -= MAX_SLEEP_TIME_US;
-  }
-  assert(microsec < MAX_SLEEP_TIME_US);
-  if (microsec > 0) {
-    os_delay_us(microsec);
-  }
-#endif
 } // End of jshDelayMicroseconds
 
 //===== PIN mux =====
@@ -266,36 +236,25 @@ PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
 PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
 
-#define FUNC_SPI  1
-#define FUNC_GPIO 3
-#define FUNC_UART 4
-
+/**
+ * Return the function value to select GPIO for a pin
+ */
+static uint8 pinGPIOFunc[] = {
+  FUNC_GPIO0, FUNC_GPIO1, FUNC_GPIO2, FUNC_GPIO3,
+  FUNC_GPIO4, FUNC_GPIO5, 3, 3,
+  3, FUNC_GPIO9, FUNC_GPIO10, 3,
+  FUNC_GPIO12, FUNC_GPIO13, FUNC_GPIO14, FUNC_GPIO15,
+};
 
 /**
- * Convert an Espruino pin state to an ESP8266 GPIO function.
+ * Return the function value to select Alternate Function for a pin
  */
-static uint8_t pinFunction(JshPinState state) {
-  switch (state) {
-  case JSHPINSTATE_GPIO_OUT:
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-  case JSHPINSTATE_GPIO_IN:
-  case JSHPINSTATE_GPIO_IN_PULLUP:
-  case JSHPINSTATE_GPIO_IN_PULLDOWN:
-    return FUNC_GPIO;
-  case JSHPINSTATE_USART_OUT:
-  case JSHPINSTATE_USART_IN:
-    return FUNC_UART;
-  case JSHPINSTATE_I2C:
-    return FUNC_SPI;
-  case JSHPINSTATE_AF_OUT:
-  case JSHPINSTATE_AF_OUT_OPENDRAIN:
-  case JSHPINSTATE_DAC_OUT:
-  case JSHPINSTATE_ADC_IN:
-  default:
-    return 0;
-  }
-}
-
+static uint8 pinAFFunc[] = {
+  4 /*CLK_OUT*/, FUNC_U0TXD, FUNC_U1TXD_BK, 0 /*U0RXD*/,
+  0 /*NOOP*/, 0 /*NOOP*/, 0, 0,
+  0, 0, 0, 0, // protected pins
+  2 /*SPI_Q*/, 2 /*SPI_D*/, 2 /*SPI_CLK*/, 2 /*SPI_CS*/,
+};
 
 /**
  * Convert a pin state to a string representation.
@@ -303,36 +262,30 @@ static uint8_t pinFunction(JshPinState state) {
  * numeric that would then just have to be decoded.
  */
 static char *pinStateToString(JshPinState state) {
-  switch(state) {
-  case JSHPINSTATE_ADC_IN:
-    return("JSHPINSTATE_ADC_IN");
-  case JSHPINSTATE_AF_OUT:
-    return("JSHPINSTATE_AF_OUT");
-  case JSHPINSTATE_AF_OUT_OPENDRAIN:
-    return("JSHPINSTATE_AF_OUT_OPENDRAIN");
-  case JSHPINSTATE_DAC_OUT:
-    return("JSHPINSTATE_DAC_OUT");
-  case JSHPINSTATE_GPIO_IN:
-    return("JSHPINSTATE_GPIO_IN");
-  case JSHPINSTATE_GPIO_IN_PULLDOWN:
-    return("JSHPINSTATE_GPIO_IN_PULLDOWN");
-  case JSHPINSTATE_GPIO_IN_PULLUP:
-    return("JSHPINSTATE_GPIO_IN_PULLUP");
-  case JSHPINSTATE_GPIO_OUT:
-    return("JSHPINSTATE_GPIO_OUT");
-  case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    return("JSHPINSTATE_GPIO_OUT_OPENDRAIN");
-  case JSHPINSTATE_I2C:
-    return("JSHPINSTATE_I2C");
-  case JSHPINSTATE_UNDEFINED:
-    return("JSHPINSTATE_UNDEFINED");
-  case JSHPINSTATE_USART_IN:
-    return("JSHPINSTATE_USART_IN");
-  case JSHPINSTATE_USART_OUT:
-    return("JSHPINSTATE_USART_OUT");
-  default:
-    return("** unknown pin state **");
-  }
+  static char *states[] = {
+    "UNDEFINED", "GPIO_OUT", "GPIO_OUT_OPENDRAIN",
+    "GPIO_IN", "GPIO_IN_PULLUP", "GPIO_IN_PULLDOWN",
+    "ADC_IN", "AF_OUT", "AF_OUT_OPENDRAIN",
+    "USART_IN", "USART_OUT", "DAC_OUT", "I2C",
+  };
+  return states[state];
+}
+
+static uint8 pinState[16] = {
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // all JSHPINSTATE_UNDEFINED until we set them
+};
+
+static void jshDebugPin(Pin pin) {
+  os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
+      pin, (GPIO_REG_READ(GPIO_OUT_ADDRESS)>>pin)&1, (GPIO_REG_READ(GPIO_ENABLE_ADDRESS)>>pin)&1,
+      (GPIO_REG_READ(GPIO_IN_ADDRESS)>>pin)&1);
+
+  uint32_t gpio_pin = GPIO_REG_READ(GPIO_PIN_ADDR(pin));
+  uint32_t mux = READ_PERI_REG(PERIPHS_IO_MUX + 4*pin);
+  os_printf("     dr=%s src=%s func=%ld pull-up=%ld oe=%ld\n",
+      gpio_pin & 4 ? "open-drain" : "totem-pole",
+      gpio_pin & 1 ? "sigma-delta" : "gpio",
+      (mux>>2)&1 | (mux&3), (mux>>7)&1, mux&1);
 }
 
 /**
@@ -340,72 +293,83 @@ static char *pinStateToString(JshPinState state) {
  *
  * The possible states are:
  *
- * * JSHPINSTATE_UNDEFINED
- * * JSHPINSTATE_GPIO_OUT
- * * JSHPINSTATE_GPIO_OUT_OPENDRAIN
- * * JSHPINSTATE_GPIO_IN
- * * JSHPINSTATE_GPIO_IN_PULLUP
- * * JSHPINSTATE_GPIO_IN_PULLDOWN
- * * JSHPINSTATE_ADC_IN
- * * JSHPINSTATE_AF_OUT
- * * JSHPINSTATE_AF_OUT_OPENDRAIN
- * * JSHPINSTATE_USART_IN
- * * JSHPINSTATE_USART_OUT
- * * JSHPINSTATE_DAC_OUT
- * * JSHPINSTATE_I2C
+ * JSHPINSTATE_UNDEFINED
+ * JSHPINSTATE_GPIO_OUT
+ * JSHPINSTATE_GPIO_OUT_OPENDRAIN
+ * JSHPINSTATE_GPIO_IN
+ * JSHPINSTATE_GPIO_IN_PULLUP
+ * JSHPINSTATE_GPIO_IN_PULLDOWN
+ * JSHPINSTATE_ADC_IN
+ * JSHPINSTATE_AF_OUT
+ * JSHPINSTATE_AF_OUT_OPENDRAIN
+ * JSHPINSTATE_USART_IN
+ * JSHPINSTATE_USART_OUT
+ * JSHPINSTATE_DAC_OUT
+ * JSHPINSTATE_I2C
  *
  * This function is exposed indirectly through the exposed global function called
  * `pinMode()`.  For example, `pinMode(pin, "input")` will set the given pin to input.
  */
 void jshPinSetState(
-    Pin pin,          //!< The pin to have its state changed.
-    JshPinState state //!< The new desired state of the pin.
+    Pin pin,                 //!< The pin to have its state changed.
+    JshPinState state        //!< The new desired state of the pin.
   ) {
-  // Debug
-  os_printf("> jshPinSetState %d, %s\n", pin, pinStateToString(state));
+  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
   assert(pin < 16);
+  if (pin >= 6 && pin <= 11) {
+    jsError("Cannot change pins used for flash chip");
+    return; // these pins are used for the flash chip
+  }
+
   int periph = PERIPHS_IO_MUX + PERIPHS[pin];
 
-  // Disable the pin's pull-up.
-  PIN_PULLUP_DIS(periph);
-  //PIN_PULLDWN_DIS(periph);
-
-  uint8_t primary_func =
-      pin < 6 ?
-          (PERIPHS_IO_MUX_U0TXD_U == pin
-              || PERIPHS_IO_MUX_U0RXD_U == pin) ?
-              FUNC_UART : FUNC_GPIO
-          : 0;
-  uint8_t select_func = pinFunction(state);
-  PIN_FUNC_SELECT(periph, primary_func == select_func ? 0 : select_func);
-
+  // set the pin mux function
   switch (state) {
   case JSHPINSTATE_GPIO_OUT:
   case JSHPINSTATE_GPIO_OUT_OPENDRAIN:
-    //case JSHPINSTATE_AF_OUT:
-    //case JSHPINSTATE_AF_OUT_OPENDRAIN:
-    //case JSHPINSTATE_USART_OUT:
-    //case JSHPINSTATE_DAC_OUT:
-    gpio_output_set(0, 1 << pin, 1 << pin, 0);
-    break;
-
-  case JSHPINSTATE_GPIO_IN_PULLUP:
-    PIN_PULLUP_EN(periph);
-    //case JSHPINSTATE_GPIO_IN_PULLDOWN: if (JSHPINSTATE_GPIO_IN_PULLDOWN == pin) PIN_PULLDWN_EN(periph);
   case JSHPINSTATE_GPIO_IN:
-    gpio_output_set(0, 0, 0, 1 << pin);
-    break;
-
-  case JSHPINSTATE_ADC_IN:
-  case JSHPINSTATE_USART_IN:
+  case JSHPINSTATE_GPIO_IN_PULLUP:
   case JSHPINSTATE_I2C:
-    PIN_PULLUP_EN(periph);
+    PIN_FUNC_SELECT(periph, pinGPIOFunc[pin]); // set the pin mux to GPIO
     break;
-
+  case JSHPINSTATE_AF_OUT:
+  case JSHPINSTATE_AF_OUT_OPENDRAIN:
+    PIN_FUNC_SELECT(periph, pinAFFunc[pin]); // set the pin to the alternate function
+    break;
+  case JSHPINSTATE_USART_IN:
+  case JSHPINSTATE_USART_OUT:
+    if (pin == 1 || pin == 3) PIN_FUNC_SELECT(periph, 0);
+    else PIN_FUNC_SELECT(periph, 4); // works for many pins...
+    break;
   default:
-    break;
+    jsError("Pin state not supported");
+    return;
   }
+
+  // enable/disable pull-up
+  if (JSHPINSTATE_IS_PULLUP(state)) {
+    PIN_PULLUP_EN(periph);
+  } else {
+    PIN_PULLUP_DIS(periph);
+  }
+
+  // enable/disable output and choose open-drain/totem-pole
+  if (!JSHPINSTATE_IS_OUTPUT(state)) {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TC_ADDRESS, 1<<pin); // disable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) & ~4); // totem-pole
+  } else if (JSHPINSTATE_IS_OPENDRAIN(state)) {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1<<pin); // enable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) | 4); // open-drain
+  } else {
+    GPIO_REG_WRITE(GPIO_ENABLE_W1TS_ADDRESS, 1<<pin); // enable output
+    GPIO_REG_WRITE(GPIO_PIN_ADDR(pin), GPIO_REG_READ(GPIO_PIN_ADDR(pin)) & ~4); // totem-pole
+  }
+
+  //jshDebugPin(pin);
+
+  pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -415,7 +379,7 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
   os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return JSHPINSTATE_UNDEFINED;
+  return pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -427,9 +391,10 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  // Debug
-  // os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
-  GPIO_OUTPUT_SET(pin, value);
+  os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
+  GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
+  //jshDebugPin(pin);
 }
 
 
@@ -440,8 +405,7 @@ void jshPinSetValue(
 bool jshPinGetValue(
     Pin pin //!< The pin to have its value read.
   ) {
-  // Debug
-  // os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -460,7 +424,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
  */
 int jshPinAnalogFast(Pin pin) {
   os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
-  return NAN;
+  return (JsVarFloat) system_adc_read();
 }
 
 
@@ -469,7 +433,7 @@ int jshPinAnalogFast(Pin pin) {
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
   os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
-//pwm_set(pin, value < 0.0f ? 0 : 255.0f < value ? 255 : (uint8_t)value);
+  jsError("No DAC");
   return 0;
 }
 
@@ -479,6 +443,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  */
 void jshSetOutputValue(JshPinFunction func, int value) {
   os_printf("ESP8266: jshSetOutputValue %d %d\n", func, value);
+  jsError("No DAC");
 }
 
 
@@ -518,7 +483,7 @@ void jshPinPulse(
     JsVarFloat time //!< The period in milliseconds to hold the pin.
   ) {
   if (jshIsPinValid(pin)) {
-    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+    //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
     jshPinSetValue(pin, value);
     jshDelayMicroseconds(jshGetTimeFromMilliseconds(time));
     jshPinSetValue(pin, !value);
@@ -603,9 +568,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 }
 
 bool jshIsUSBSERIALConnected() {
-  os_printf("ESP8266: jshIsUSBSERIALConnected\n");
-  return true;
-} // End of jshIsUSBSERIALConnected
+  return false; // "On non-USB boards this just returns false"
+}
 
 /**
  * Kick a device into action (if required).
@@ -686,18 +650,73 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 
 //===== I2C =====
 
-void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
-  os_printf("ESP8266: jshI2CSetup\n");
+/** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
+ *  and only master mode. */
+void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
+  os_printf("ESP8266: jshI2CSetup SCL=%d SDA=%d bitrate=%d\n",
+      info->pinSCL, info->pinSDA, info->bitrate);
+  if (info->slaveAddr != -1) {
+    jsError("I2C slave mode not supported");
+    return;
+  }
+  if (device != EV_I2C1) {
+    jsError("Only I2C1 supported");
+    return;
+  }
+
+  Pin scl = info->pinSCL >= 0 ? info->pinSCL : 14;
+  Pin sda = info->pinSDA >= 0 ? info->pinSDA : 2;
+
+  jshPinSetState(info->pinSCL, JSHPINSTATE_I2C);
+  jshPinSetState(info->pinSDA, JSHPINSTATE_I2C);
+
+  i2c_master_gpio_init(scl, sda, info->bitrate);
 }
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
     const unsigned char *data, bool sendStop) {
-  os_printf("ESP8266: jshI2CWrite\n");
+  //os_printf("ESP8266: jshI2CWrite 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  if (device != EV_I2C1) return;     // we only support one i2c device
+
+  uint8 ack;
+
+  i2c_master_start();                   // start the transaction
+  i2c_master_writeByte((address<<1)|0); // send address and r/w
+  ack = i2c_master_getAck();            // get ack bit from slave
+  //os_printf("I2C: ack=%d\n", ack);
+  if (!ack) goto error;
+  while (nBytes--) {
+    i2c_master_writeByte(*data++);      // send data byte
+    ack = i2c_master_getAck();          // get ack bit from slave
+    if (!ack) goto error;
+  }
+  if (sendStop) i2c_master_stop();
+  return;
+error:
+  i2c_master_stop();
+  jsError("No ACK");
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes,
     unsigned char *data, bool sendStop) {
-  os_printf("ESP8266: jshI2CRead\n");
+  //os_printf("ESP8266: jshI2CRead 0x%x %dbytes %s\n", address, nBytes, sendStop?"stop":"");
+  if (device != EV_I2C1) return;     // we only support one i2c device
+
+  uint8 ack;
+
+  i2c_master_start();                   // start the transaction
+  i2c_master_writeByte((address<<1)|1); // send address and r/w
+  ack = i2c_master_getAck();            // get ack bit from slave
+  if (!ack) goto error;
+  while (nBytes--) {
+    *data++ = i2c_master_readByte();    // recv data byte
+    i2c_master_setAck(nBytes == 0);     // send ack or no-ack for last byte
+  }
+  if (sendStop) i2c_master_stop();
+  return;
+error:
+  i2c_master_stop();
+  jsError("No ACK");
 }
 
 //===== System time stuff =====

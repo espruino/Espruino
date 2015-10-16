@@ -414,7 +414,7 @@ void jswrap_ESP8266WiFi_mdnsInit() {
   mdnsInfo.ipAddr      = ipInfo.ip.addr;
   mdnsInfo.server_name = "myservername";
   mdnsInfo.server_port = 80;
-  espconn_mdns_init(&mdnsInfo);
+  //espconn_mdns_init(&mdnsInfo);
   os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
 }
 
