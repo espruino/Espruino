@@ -297,7 +297,7 @@ disconnected and we will no longer be visible as a WiFi network.
 List the WiFi stations connected to the ESP8266 assuming it is being
 an access point.
 
-`ESP8266WiFI.getConnectedStations()`
+`ESP8266WiFi.getConnectedStations()`
 
 The return is an array of objects where each object contains:
 
