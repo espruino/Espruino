@@ -1144,21 +1144,26 @@ static void scanCB(void *arg, STATUS status) {
  * Invoke the JavaScript callback to notify the program that an ESP8266
  * WiFi event has occurred.
  */
-static void sendWifiEvent(uint32 eventType, JsVar *details) {
+static void sendWifiEvent(
+    uint32 eventType, //!< The ESP8266 WiFi event type.
+    JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
+  ) {
+  jsvUnLock(jsDetails);
+
   // We need to check that we actually have an event callback handler because
   // it might have been disabled/removed.
   if (g_jsWiFiEventCallback != NULL) {
     // Build a callback event.
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
-    params[1] = details;
+    params[1] = jsDetails;
     jsiQueueEvents(NULL, g_jsWiFiEventCallback, params, 2);
   }
 
   if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
-    params[1] = details;
+    params[1] = jsDetails;
     jsiQueueEvents(NULL, g_jsGotIpCallback, params, 2);
     // Once we have registered the callback, we can unlock and release
     // the variable as we are only calling it once.
@@ -1189,7 +1194,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     os_printf("Wifi disconnected from ssid %s, reason %s (%d)\n",
       evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
     JsVar *details = jspNewObject(NULL, "EventDetails");
-    jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason));
+    jsvUnLock(jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason)));
     char ssid[33];
     memcpy(ssid, evt->event_info.disconnected.ssid, evt->event_info.disconnected.ssid_len);
     ssid[ evt->event_info.disconnected.ssid_len] = '\0';
