@@ -509,7 +509,7 @@ else ifdef ESP8266_4MB
 # second 512KB for firmware; and then we have 3MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_OTA
+BOARD=ESP8266_12
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
 OPTIMIZEFLAGS+=-O2 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
@@ -526,7 +526,7 @@ else ifdef ESP8266_2MB
 # esp8266 with 2MB flash chip with OTA support: same as 4MB except we have 1MB-16KB for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_OTA
+BOARD=ESP8266_12
 # Enable link-time optimisations (inlining across files)
 OPTIMIZEFLAGS+=-O3 -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
 DEFINES += -DLINK_TIME_OPTIMISATION
@@ -545,7 +545,7 @@ else ifdef ESP8266_1MB
 # for SPIFFS
 EMBEDDED=1
 USE_NET=1
-BOARD=ESP8266_OTA
+BOARD=ESP8266_12
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-O2 -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 ESP_FLASH_SIZE      ?= 2       # 2->1MB (512KB+512KB)

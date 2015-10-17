@@ -230,7 +230,7 @@ void at_port_print(const char *str) __attribute__((alias("uart0_sendStr")));
  * Parameters   : void *para - point to ETS_UART_INTR_ATTACH's arg
  * Returns      : NONE
 *******************************************************************************/
-LOCAL void
+LOCAL ICACHE_RAM_ATTR void
 uart0_rx_intr_handler(void *para)
 {
     /* uart0 and uart1 intr combine togther, when interrupt occur, see reg 0x3ff20020, bit2, bit0 represents
@@ -249,6 +249,10 @@ uart0_rx_intr_handler(void *para)
   /*IF NOT , POST AN EVENT AND PROCESS IN SYSTEM TASK */
     if(UART_FRM_ERR_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_FRM_ERR_INT_ST)){
         DBG1("FRM_ERR\r\n");
+        // clear rx fifo (apparently this is not optional at this point)
+        SET_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
+        CLEAR_PERI_REG_MASK(UART_CONF0(uart_no), UART_RXFIFO_RST);
+        // reset framing error
         WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_FRM_ERR_INT_CLR);
     }else if(UART_RXFIFO_FULL_INT_ST == (READ_PERI_REG(UART_INT_ST(uart_no)) & UART_RXFIFO_FULL_INT_ST)){
         DBG("f");
@@ -320,7 +324,7 @@ uart_recvTask(os_event_t *events)
             }
         }
         if (fifo_len > 0) {
-          system_os_post(0, 2, 0);
+          system_os_post(0, 2, 0); // Espruino: this signals TASK_APP_RX_DATA into eventHandler
         }
         WRITE_PERI_REG(UART_INT_CLR(UART0), UART_RXFIFO_FULL_INT_CLR|UART_RXFIFO_TOUT_INT_CLR);
         uart_rx_intr_enable(UART0);
@@ -632,7 +636,7 @@ void tx_start_uart_buffer(uint8 uart_no)
 #endif
 
 
-void uart_rx_intr_disable(uint8 uart_no)
+static ICACHE_RAM_ATTR void uart_rx_intr_disable(uint8 uart_no)
 {
 #if 1
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA|UART_RXFIFO_TOUT_INT_ENA);
@@ -641,7 +645,7 @@ void uart_rx_intr_disable(uint8 uart_no)
 #endif
 }
 
-void uart_rx_intr_enable(uint8 uart_no)
+static void uart_rx_intr_enable(uint8 uart_no)
 {
 #if 1
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA|UART_RXFIFO_TOUT_INT_ENA);
@@ -664,6 +668,7 @@ uart0_write_char(char c)
     }
 }
 
+#if 0
 void ICACHE_FLASH_ATTR
 UART_SetWordLength(uint8 uart_no, UartBitsNum4Char len)
 {
@@ -775,7 +780,7 @@ UART_SetIntrEna(uint8 uart_no,uint32 ena_mask)
 {
     SET_PERI_REG_MASK(UART_INT_ENA(uart_no), ena_mask);
 }
-
+#endif
 
 void ICACHE_FLASH_ATTR
 UART_SetPrintPort(uint8 uart_no)
@@ -794,6 +799,7 @@ UART_SetPrintPort(uint8 uart_no)
 //========================================================
 
 
+#if 0
 /*test code*/
 void ICACHE_FLASH_ATTR
 uart_init_2(UartBautRate uart0_br, UartBautRate uart1_br)
@@ -822,3 +828,4 @@ int uart_rx_discard() {
   rxBufferLen = 0;
   return oldRxBufferLen;
 }
+#endif
