@@ -27,6 +27,9 @@ extern void _VECTOR_TABLE;
 void main_loop(void) {
 
   jshInit();
+  printf("Espruino hardware initialized\n");
+  jsiConsolePrint("EHW Init\n");
+  printf("Espruino hardware initialized #2\n");
 #ifdef USB
   MX_USB_DEVICE_Init();
 #endif
@@ -40,7 +43,9 @@ void main_loop(void) {
   jsiInit(!buttonState); // pressing USER button skips autoload
 #else
   jsvInit();
+  printf("Espruino vars initialized\n");
   jsiInit(true);
+  printf("Espruino ready\n");
 #endif
 
   while (1) {

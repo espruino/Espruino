@@ -28,6 +28,10 @@
 
 uint32_t SystemCoreClock;
 
+// Use "putc"/"getc" for the console instead of tring to access the UART
+// This is for a quick integration with WICED, not a real solution
+#define STDIO_CONSOLE
+
 #define IRQ_PRIOR_SPI 1 // we want to be very sure of not losing SPI (this is handled quickly too)
 #define IRQ_PRIOR_SYSTICK 2
 #define IRQ_PRIOR_USART 6 // a little higher so we don't get lockups of something tries to print
@@ -983,6 +987,7 @@ static ALWAYS_INLINE unsigned int getSystemTimerFreq() {
 
 // ----------------------------------------------------------------------------
 static void jshResetSerial() {
+#ifndef STDIO_CONSOLE
   if (DEFAULT_CONSOLE_DEVICE != EV_USBSERIAL) {
     JshUSARTInfo inf;
     jshUSARTInitInfo(&inf);
@@ -997,6 +1002,7 @@ static void jshResetSerial() {
 #endif
     jshUSARTSetup(DEFAULT_CONSOLE_DEVICE, &inf);
   }
+#endif
 }
 
 void jshInit() {
@@ -1926,6 +1932,10 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 
   jshSetFlowControlEnabled(device, inf->xOnXOff);
 
+#ifdef STDIO_CONSOLE
+  return; // eep!
+#endif
+
   if (device == EV_USBSERIAL) {
     return; // eep!
   }
@@ -2042,6 +2052,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need
  * to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
+#ifndef STDIO_CONSOLE
   USART_TypeDef *uart = getUsartFromDevice(device);
   if (uart && !jshIsDeviceInitialised(device)) {
     JshUSARTInfo inf;
@@ -2050,6 +2061,7 @@ void jshUSARTKick(IOEventFlags device) {
   }
 
   if (uart) USART_ITConfig(uart, USART_IT_TXE, ENABLE);
+#endif
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */

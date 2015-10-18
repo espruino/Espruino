@@ -93,7 +93,7 @@ void jshTransmit(
     jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, (char)data);
     return;
   }
-#ifndef LINUX
+#if !defined(LINUX) && !defined(WICED)
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
     jshTransmitClearDevice(EV_USBSERIAL); // clear out stuff already waiting
