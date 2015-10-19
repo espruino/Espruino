@@ -37,12 +37,6 @@ typedef enum {
   IS_HAD_27_79,
   IS_HAD_27_91,
   IS_HAD_27_91_NUMBER, ///< Esc [ then 0-9
-  IS_HAD_27_91_49,
-  IS_HAD_27_91_50,
-  IS_HAD_27_91_51,
-  IS_HAD_27_91_52,
-  IS_HAD_27_91_53,
-  IS_HAD_27_91_54,
 } PACKED_FLAGS InputState;
 
 JsVar *events = 0; // Array of events to execute
@@ -1101,18 +1095,20 @@ void jsiHandleChar(char ch) {
   // 21 - Ctrl-u - delete line
   // 23 - Ctrl-w - delete word (currently just does the same as Ctrl-u)
   //
-  // 27 then 91 then 68 - left
-  // 27 then 91 then 67 - right
-  // 27 then 91 then 65 - up
-  // 27 then 91 then 66 - down
-  // 27 then 91 then 50 then 75 - Erases the entire current line.
-  // 27 then 91 then 51 then 126 - backwards delete
-  // 27 then 91 then 52 then 126 - numpad end
-  // 27 then 91 then 49 then 126 - numpad home
-  // 27 then 91 then 53 then 126 - pgup
-  // 27 then 91 then 54 then 126 - pgdn
-  // 27 then 91 then numeric digits then d - set line number, used for that
-  //                            inputLine and put into any declared functions
+  // 27 then 91 then 68 ('D') - left
+  // 27 then 91 then 67 ('C') - right
+  // 27 then 91 then 65 ('A') - up
+  // 27 then 91 then 66 ('B') - down
+  //
+  // 27 then 91 then 48-57 (numeric digits) then 'd' - set line number, used for that
+  //                              inputLine and put into any declared functions
+  // 27 then 91 then 49 ('1') then 126 - numpad home
+  // 27 then 91 then 50 ('2') then 75 - Erases the entire current line.
+  // 27 then 91 then 51 ('3') then 126 - backwards delete
+  // 27 then 91 then 52 ('4') then 126 - numpad end
+  // 27 then 91 then 53 ('5') then 126 - pgup
+  // 27 then 91 then 54 ('6') then 126 - pgdn
+
   // 27 then 79 then 70 - home
   // 27 then 79 then 72 - end
   // 27 then 10 - alt enter
@@ -1178,54 +1174,21 @@ void jsiHandleChar(char ch) {
         jsiChangeToHistory(false); // if at end of line
       else
         jsiHandleMoveUpDown(1);
-    } else if (ch==49) {
-      inputState=IS_HAD_27_91_49;
-    } else if (ch==50) {
-      inputState=IS_HAD_27_91_50;
-    } else if (ch==51) {
-      inputState=IS_HAD_27_91_51;
-    } else if (ch==52) {
-      inputState=IS_HAD_27_91_52;
-    } else if (ch==53) {
-      inputState=IS_HAD_27_91_53;
-    } else if (ch==54) {
-      inputState=IS_HAD_27_91_54;
-    }
-  } else if (inputState==IS_HAD_27_91_49) {
-    inputState = IS_NONE;
-    if (ch==126) { // Numpad Home
-      jsiHandleHome();
-    }
-  } else if (inputState==IS_HAD_27_91_50) {
-    inputState = IS_NONE;
-    if (ch==75) { // Erase current line
-      jsiClearInputLine();
-    }
-  } else if (inputState==IS_HAD_27_91_51) {
-    inputState = IS_NONE;
-    if (ch==126) { // Numpad (forwards) Delete
-      jsiHandleDelete(false/*not backspace*/);
-    }
-  } else if (inputState==IS_HAD_27_91_52) {
-    inputState = IS_NONE;
-    if (ch==126) { // Numpad End
-      jsiHandleEnd();
-    }
-  } else if (inputState==IS_HAD_27_91_53) {
-    inputState = IS_NONE;
-    if (ch==126) { // Page Up
-      jsiHandlePageUpDown(0);
-    }
-  } else if (inputState==IS_HAD_27_91_54) {
-    inputState = IS_NONE;
-    if (ch==126) { // Page Down
-      jsiHandlePageUpDown(1);
     }
   } else if (inputState==IS_HAD_27_91_NUMBER) {
     if (ch>='0' && ch<='9') {
       inputStateNumber = (uint16_t)(10*inputStateNumber + ch - '0');
     } else {
       if (ch=='d') jsiLineNumberOffset = inputStateNumber;
+      else if (ch=='H' /* 75 */) {
+        if (inputStateNumber==2) jsiClearInputLine(); // Erase current line
+      } else if (ch==126) {
+        if (inputStateNumber==1) jsiHandleHome(); // Numpad Home
+        else if (inputStateNumber==3) jsiHandleDelete(false/*not backspace*/); // Numpad (forwards) Delete
+        else if (inputStateNumber==4) jsiHandleEnd(); // Numpad End
+        else if (inputStateNumber==5) jsiHandlePageUpDown(0); // Page Up
+        else if (inputStateNumber==6) jsiHandlePageUpDown(1); // Page Down
+      }
       inputState = IS_NONE;
     }
   } else if (ch==16 && jsvGetStringLength(inputLine)==0) {
