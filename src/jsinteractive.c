@@ -1951,9 +1951,14 @@ void jsiDebuggerLoop() {
   jsiStatus = (jsiStatus & ~JSIS_ECHO_OFF_MASK) | JSIS_IN_DEBUGGER;
 
   if (execInfo.lex) {
-    // Get a string fo the form '1234    ' for the line number
     char lineStr[9];
-    itostr((JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset, lineStr, 10);
+    // Get a string fo the form '1234    ' for the line number
+    // ... but only if the line number was set, otherwise use spaces
+    if (execInfo.lex->lineNumberOffset) {
+      itostr((JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1, lineStr, 10);
+    } else {
+      lineStr[0]=0;
+    }
     size_t lineLen = strlen(lineStr);
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;

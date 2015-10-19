@@ -104,7 +104,10 @@ typedef struct JsLex
   char token[JSLEX_MAX_TOKEN_LENGTH]; ///< Data contained in the token we have here
   JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
   unsigned char tokenl; ///< the current length of token
-  uint16_t lineNumberOffset; ///< Amount we add to the line number when we're reporting to the user (where function was defined in the source file)
+
+  /** Amount we add to the line number when we're reporting to the user
+   * 1-based, so 0 means NO LINE NUMBER KNOWN */
+  uint16_t lineNumberOffset;
 
   /* Where we get our data from...
    *

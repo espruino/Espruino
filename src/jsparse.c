@@ -375,8 +375,9 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
-  if (actuallyCreateFunction) {
-    lineNumber = (JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset;
+  if (actuallyCreateFunction && execInfo.lex->lineNumberOffset) {
+    // jslGetLineNumber is slow, so we only do it if we have debug info
+    lineNumber = (JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1;
   }
   // Get the code - first parse it so we know where it stops
   JslCharPos funcBegin = jslCharPosClone(&execInfo.lex->tokenStart);

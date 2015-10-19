@@ -790,7 +790,9 @@ unsigned int jslGetLineNumber(struct JsLex *lex) {
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos) {
   size_t line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  cbprintf(user_callback, user_data, "line %d col %d\n", line+lex->lineNumberOffset, col);
+  if (lex->lineNumberOffset)
+    line += lex->lineNumberOffset - 1;
+  cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
 }
 
 void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos, char *prefix) {
