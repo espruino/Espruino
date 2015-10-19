@@ -276,7 +276,7 @@ void jspAppendStackTrace(JsVar *stackTrace) {
   jsvStringIteratorNew(&it, stackTrace, 0);
   jsvStringIteratorGotoEnd(&it);
   jslPrintPosition((vcbprintf_callback)jsvStringIteratorPrintfCallback, &it, execInfo.lex, execInfo.lex->tokenLastStart);
-  jslPrintTokenLineMarker((vcbprintf_callback)jsvStringIteratorPrintfCallback, &it, execInfo.lex, execInfo.lex->tokenLastStart);
+  jslPrintTokenLineMarker((vcbprintf_callback)jsvStringIteratorPrintfCallback, &it, execInfo.lex, execInfo.lex->tokenLastStart, 0);
   jsvStringIteratorFree(&it);
 }
 
@@ -355,7 +355,7 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
   // have already been parsed
   JsVar *funcVar = 0;
 
-  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE || ((execInfo.execute&EXEC_PARSE_FUNCTION_DECL)!=0);
+  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction)
     funcVar = jsvNewWithFlags(JSV_FUNCTION);
 
@@ -367,12 +367,16 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     JSP_ASSERT_MATCH(LEX_ID);
   }
 
-
   // Get arguments save them to the structure
   if (!jspeFunctionArguments(funcVar)) {
     jsvUnLock2(functionInternalName, funcVar);
     // parse failed
     return 0;
+  }
+  // Get the line number (if needed)
+  JsVarInt lineNumber = 0;
+  if (actuallyCreateFunction) {
+    lineNumber = (JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset;
   }
   // Get the code - first parse it so we know where it stops
   JslCharPos funcBegin = jslCharPosClone(&execInfo.lex->tokenStart);
@@ -389,6 +393,13 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
     if (funcScopeVar) {
       jsvUnLock2(jsvAddNamedChild(funcVar, funcScopeVar, JSPARSE_FUNCTION_SCOPE_NAME), funcScopeVar);
+    }
+    // If we've got a line number, add a var for it
+    if (lineNumber) {
+      JsVar *funcLineNumber = jsvNewFromInteger(lineNumber);
+      if (funcLineNumber) {
+        jsvUnLock2(jsvAddNamedChild(funcVar, funcLineNumber, JSPARSE_FUNCTION_LINENUMBER_NAME), funcLineNumber);
+      }
     }
     // if we had a function name, add it to the end
     if (functionInternalName)
@@ -562,6 +573,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       JsVar *functionScope = 0;
       JsVar *functionCode = 0;
       JsVar *functionInternalName = 0;
+      uint16_t functionLineNumber = 0;
 
       /** NOTE: We expect that the function object will have:
        *
@@ -646,6 +658,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_CODE_NAME)) functionCode = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_NAME_NAME)) functionInternalName = jsvSkipName(param);
           else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_THIS_NAME)) thisVar = jsvSkipName(param);
+          else if (jsvIsStringEqual(param, JSPARSE_FUNCTION_LINENUMBER_NAME)) functionLineNumber = (uint16_t)jsvGetIntegerAndUnLock(jsvSkipName(param));
           else if (jsvIsFunctionParameter(param)) {
             JsVar *paramName = jsvCopy(param);
             // paramName is already a name (it's a function parameter)
@@ -719,6 +732,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             JsLex *oldLex;
             JsLex newLex;
             jslInit(&newLex, functionCode);
+            newLex.lineNumberOffset = functionLineNumber;
 
             oldLex = execInfo.lex;
             execInfo.lex = &newLex;
@@ -2169,7 +2183,7 @@ NO_INLINE JsVar *jspeStatementFunctionDecl() {
   JsVar *funcVar;
   JSP_ASSERT_MATCH(LEX_R_FUNCTION);
 
-  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE || ((execInfo.execute&EXEC_PARSE_FUNCTION_DECL)!=0);
+  bool actuallyCreateFunction = JSP_SHOULD_EXECUTE;
   if (actuallyCreateFunction) {
     funcName = jsvMakeIntoVariableName(jslGetTokenValueAsVar(execInfo.lex), 0);
     if (!funcName) { // out of memory
@@ -2397,14 +2411,14 @@ void jspKill() {
 }
 
 
-/** Execute code form a variable and return the result. If parseTwice is set,
- * we run over the variable twice - once to pick out function declarations,
- * and once to actually execute.  */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
+/** Execute code form a variable and return the result. If lineNumberOffset
+ * is nonzero it's added to the line numbers that get reported for errors/debug */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset) {
   JsLex lex;
 
   assert(jsvIsString(str));
   jslInit(&lex, str);
+  lex.lineNumberOffset = lineNumberOffset;
 
   JsExecInfo oldExecInfo = execInfo;
   execInfo.lex = &lex;
@@ -2416,13 +2430,6 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
     scopeAdded = jspeiAddScope(scope);
   }
 
-  if (parseTwice) {
-    JsExecFlags oldFlags = execInfo.execute;
-    execInfo.execute = EXEC_PARSE_FUNCTION_DECL;
-    jsvUnLock(jspParse());
-    jslReset(execInfo.lex); // back to beginning
-    execInfo.execute = oldFlags; // old flags
-  }
   // actually do the parsing
   JsVar *v = jspParse();
   // clean up
@@ -2442,12 +2449,12 @@ JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice) {
   return 0;
 }
 
-JsVar *jspEvaluate(const char *str, bool parseTwice) {
+JsVar *jspEvaluate(const char *str) {
   JsVar *v = 0;
 
   JsVar *evCode = jsvNewFromString(str);
   if (!jsvIsMemoryFull())
-    v = jspEvaluateVar(evCode, 0, parseTwice);
+    v = jspEvaluateVar(evCode, 0, 0);
   jsvUnLock(evCode);
 
   return v;
@@ -2478,10 +2485,9 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
-  // TODO: maybe we do want to parse twice here, to get functions defined after their use?
   JsVar *oldThisVar = execInfo.thisVar;
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
-  jsvUnLock(jspEvaluateVar(moduleContents, scope, false));
+  jsvUnLock(jspEvaluateVar(moduleContents, scope, 0));
   execInfo.thisVar = oldThisVar;
 
   jsvUnLock(scope);
