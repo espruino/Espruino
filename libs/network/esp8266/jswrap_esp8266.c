@@ -14,7 +14,7 @@
  * ----------------------------------------------------------------------------
  */
 
-/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py,
 so we don't put this into espruino.com/Reference until this is out
 of beta.  */
 
@@ -414,7 +414,7 @@ void jswrap_ESP8266WiFi_mdnsInit() {
   mdnsInfo.ipAddr      = ipInfo.ip.addr;
   mdnsInfo.server_name = "myservername";
   mdnsInfo.server_port = 80;
-  espconn_mdns_init(&mdnsInfo);
+  //espconn_mdns_init(&mdnsInfo);
   os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
 }
 
@@ -511,9 +511,7 @@ void jswrap_ESP8266WiFi_setAutoConnect(
   uint8 newValue = jsvGetBool(autoconnect);
   os_printf("New value: %d\n", newValue);
 
-  uart_rx_intr_disable(0);
   wifi_station_set_auto_connect(newValue);
-  uart_rx_intr_disable(1);
   os_printf("Autoconnect changed\n");
 }
 
@@ -1146,21 +1144,26 @@ static void scanCB(void *arg, STATUS status) {
  * Invoke the JavaScript callback to notify the program that an ESP8266
  * WiFi event has occurred.
  */
-static void sendWifiEvent(uint32 eventType, JsVar *details) {
+static void sendWifiEvent(
+    uint32 eventType, //!< The ESP8266 WiFi event type.
+    JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
+  ) {
+  jsvUnLock(jsDetails);
+
   // We need to check that we actually have an event callback handler because
   // it might have been disabled/removed.
   if (g_jsWiFiEventCallback != NULL) {
     // Build a callback event.
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
-    params[1] = details;
+    params[1] = jsDetails;
     jsiQueueEvents(NULL, g_jsWiFiEventCallback, params, 2);
   }
 
   if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {
     JsVar *params[2];
     params[0] = jsvNewFromInteger(eventType);
-    params[1] = details;
+    params[1] = jsDetails;
     jsiQueueEvents(NULL, g_jsGotIpCallback, params, 2);
     // Once we have registered the callback, we can unlock and release
     // the variable as we are only calling it once.
@@ -1191,7 +1194,7 @@ static void wifiEventHandler(System_Event_t *evt) {
     os_printf("Wifi disconnected from ssid %s, reason %s (%d)\n",
       evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
     JsVar *details = jspNewObject(NULL, "EventDetails");
-    jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason));
+    jsvUnLock(jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason)));
     char ssid[33];
     memcpy(ssid, evt->event_info.disconnected.ssid, evt->event_info.disconnected.ssid_len);
     ssid[ evt->event_info.disconnected.ssid_len] = '\0';
