@@ -28,6 +28,7 @@ JsVar *jswrap_ESP8266WiFi_getAutoConnect();
 JsVar *jswrap_ESP8266WiFi_getConnectedStations();
 JsVar *jswrap_ESP8266WiFi_getConnectStatus();
 JsVar *jswrap_ESP8266WiFi_getDHCPHostname();
+void   jswrap_ESP8266WiFi_getHostByName(JsVar *jsHostname, JsVar *jsCallback);
 JsVar *jswrap_ESP8266WiFi_getIPInfo();
 JsVar *jswrap_ESP8266WiFi_getRSSI();
 JsVar *jswrap_ESP8266WiFi_getRstInfo();
