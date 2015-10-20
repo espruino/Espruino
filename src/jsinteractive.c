@@ -20,6 +20,7 @@
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
 #include "jswrap_flash.h" // load and save to flash
+#include "jswrap_object.h" // jswrap_object_keys_or_property_names
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -1019,6 +1020,104 @@ void jsiCheckErrors() {
   }
 }
 
+
+void jsiAppendStringToInputLine(const char *strToAppend) {
+  // Add the string to our input line
+  jsiIsAboutToEditInputLine();
+
+  size_t strSize = 1;
+  while (strToAppend[strSize]) strSize++;
+
+  if (inputLineLength < 0)
+    inputLineLength = (int)jsvGetStringLength(inputLine);
+
+  if ((int)inputCursorPos>=inputLineLength) { // append to the end
+    jsiAppendToInputLine(strToAppend);
+  } else { // add in halfway through
+    JsVar *v = jsvNewFromEmptyString();
+    if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+    jsvAppendString(v, strToAppend);
+    jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    jsiInputLineCursorMoved();
+    jsvUnLock(inputLine);
+    inputLine=v;
+    if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
+  }
+  inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
+  if (jsiShowInputLine()) {
+    jsiConsolePrint(strToAppend);
+  }
+}
+
+#ifndef SAVE_ON_FLASH
+void jsiAutoComplete() {
+  if (!jsvIsString(inputLine)) return;
+  JsVar *partial = 0;
+  size_t partialStart = 0;
+
+  JsLex lex;
+  jslInit(&lex, inputLine);
+  while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
+    if (lex.tk==LEX_ID) {
+      jsvUnLock(partial);
+      partial = jslGetTokenValueAsVar(&lex);
+      partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
+    } else {
+      jsvUnLock(partial);
+      partial = 0;
+    }
+    jslGetNextToken(&lex);
+  }
+  jslKill(&lex);
+  if (!partial) return;
+  size_t partialLen = jsvGetStringLength(partial);
+  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+  if (actualPartialLen > partialLen) {
+    // we had a token but were past the end of it when asked
+    // to autocomplete ---> no token
+    jsvUnLock(partial);
+    return;
+  } else if (actualPartialLen < partialLen) {
+    JsVar *v = jsvNewFromStringVar(partial, 0, actualPartialLen);
+    jsvUnLock(partial);
+    partial = v;
+    partialLen = actualPartialLen;
+  }
+
+  // Now try and autocomplete
+  JsVar *possible = 0;
+  JsVar *keys = jswrap_object_keys_or_property_names(execInfo.root, true);
+  if (!keys) return;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, keys);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *key = jsvObjectIteratorGetValue(&it);
+    if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
+      if (possible) {
+        JsVar *v = jsvGetCommonCharacters(possible, key);
+        jsvUnLock(possible);
+        possible = v;
+      } else {
+        possible = jsvLockAgain(key);
+      }
+    }
+    jsvUnLock(key);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  jsvUnLock(keys);
+  // apply the completion
+
+  if (possible) {
+    char buf[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(possible, buf, sizeof(buf));
+    if (partialLen < strlen(buf))
+      jsiAppendStringToInputLine(&buf[partialLen]);
+    jsvUnLock(possible);
+  }
+}
+#endif
+
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
@@ -1084,6 +1183,7 @@ void jsiHandleNewLine(bool execute) {
     inputCursorPos++;
   }
 }
+
 
 void jsiHandleChar(char ch) {
   // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
@@ -1205,32 +1305,14 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\r' || ch == '\n') { 
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
+#ifndef SAVE_ON_FLASH
+    } else if (ch=='\t' && jsiEcho()) {
+      jsiAutoComplete();
+#endif
     } else if (ch>=32 || ch=='\t') {
-      // Add the character to our input line
-      jsiIsAboutToEditInputLine();
       char buf[2] = {ch,0};
       const char *strToAppend = (ch=='\t') ? "    " : buf;
-      size_t strSize = (ch=='\t') ? 4 : 1;
-
-      if (inputLineLength < 0)
-        inputLineLength = (int)jsvGetStringLength(inputLine);
-
-      if ((int)inputCursorPos>=inputLineLength) { // append to the end
-        jsiAppendToInputLine(strToAppend);
-      } else { // add in halfway through
-        JsVar *v = jsvNewFromEmptyString();
-        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
-        jsvAppendString(v, strToAppend);
-        jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-        jsiInputLineCursorMoved();
-        jsvUnLock(inputLine);
-        inputLine=v;
-        if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
-      }
-      inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
-      if (jsiShowInputLine()) {
-        jsiConsolePrint(strToAppend);
-      }
+      jsiAppendStringToInputLine(strToAppend);
     }
   }
 }
