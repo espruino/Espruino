@@ -64,6 +64,9 @@ static JsVar *g_jsGotIpCallback;
 // A callback function to be invoked on ping responses.
 static JsVar *g_jsPingCallback;
 
+// A callback function to be invoked on gethostbyname responses.
+static JsVar *g_jsHostByNameCallback;
+
 // Global data structure for ping request
 static struct ping_option pingOpt;
 
@@ -119,16 +122,22 @@ void jswrap_ESP8266WiFi_kill() {
     g_jsPingCallback = NULL;
   }
 
-  // Handle g_jsWiFiEventCallback
+  // Handle g_jsWiFiEventCallback release.
   if (g_jsWiFiEventCallback != NULL) {
     jsvUnLock(g_jsWiFiEventCallback);
     g_jsWiFiEventCallback = NULL;
   }
 
-  // Handle g_jsWiFiEventCallback
+  // Handle g_jsScanCallback release.
   if (g_jsScanCallback != NULL) {
     jsvUnLock(g_jsScanCallback);
     g_jsScanCallback = NULL;
+  }
+
+  // Handle g_jsHostByNameCallback release.
+  if (g_jsHostByNameCallback != NULL) {
+    jsvUnLock(g_jsHostByNameCallback);
+    g_jsHostByNameCallback = NULL;
   }
 
   os_printf("< jswrap_esp8266_kill\n");
@@ -744,6 +753,73 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
     wifi_softap_free_station_info();
   }
   return jsArray;
+}
+
+/**
+ * Handle a response from espconn_gethostbyname.
+ * Invoke the callback function to inform the caller that a hostname has been converted to
+ * an IP address.  The callback function should take a parameter that is the IP address.
+ */
+static void dnsFoundCallback(
+    const char *hostname, //!< The hostname that was converted to an IP address.
+    ip_addr_t *ipAddr,    //!< The ip address retrieved.  This may be 0.
+    void *arg             //!< Parameter passed in from espconn_gethostbyname.
+  ) {
+  os_printf(">> dnsFoundCallback - %s %x\n", hostname, ipAddr->addr);
+  assert(g_jsHostByNameCallback != NULL);
+  JsVar *params[1];
+  params[0] = jsvNewFromInteger(ipAddr->addr);
+  jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
+  jsvUnLock(params[0]);
+  os_printf("<< dnsFoundCallback\n");
+}
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266WiFi",
+  "name"     : "getHostByName",
+  "generate" : "jswrap_ESP8266WiFi_getHostByName",
+    "params"   : [
+    ["hostname", "JsVar", "The hostname to lookup."],
+    ["callback", "JsVar", "The callback to invoke when the hostname is returned."]
+  ]
+}
+ * Lookup the hostname and invoke a callback when the IP address is known.
+*/
+
+void jswrap_ESP8266WiFi_getHostByName(
+    JsVar *jsHostname,
+    JsVar *jsCallback
+  ) {
+  ip_addr_t ipAddr;
+  char hostname[256];
+
+  if (jsvIsString(jsHostname) == false) {
+    jsExceptionHere(JSET_ERROR, "Not a valid hostname.");
+    return;
+  }
+  if (jsvIsFunction(jsCallback) == false) {
+    jsExceptionHere(JSET_ERROR, "Not a valid callback function.");
+    return;
+  }
+  os_printf("> jswrap_ESP8266WiFi_getHostByName\n");
+  // Save the callback unlocking an old callback if needed.
+  if (g_jsHostByNameCallback != NULL) {
+    jsvUnLock(g_jsHostByNameCallback);
+  }
+  g_jsHostByNameCallback = jsCallback;
+  jsvLockAgainSafe(g_jsHostByNameCallback);
+
+  jsvGetString(jsHostname, hostname, sizeof(hostname));
+  err_t err = espconn_gethostbyname(NULL, hostname, &ipAddr, dnsFoundCallback);
+  if (err == ESPCONN_OK) {
+    os_printf("Already got\n");
+    dnsFoundCallback(hostname, &ipAddr, NULL);
+  } else if (err != ESPCONN_INPROGRESS) {
+    os_printf("Error: %d from espconn_gethostbyname\n", err);
+  }
+  os_printf("< jswrap_ESP8266WiFi_getHostByName\n");
 }
 
 

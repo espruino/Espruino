@@ -499,6 +499,11 @@ static void releaseSocket(
     os_printf(" - Oh oh ... attempt to close socket while the rxBuffer is not empty!\n");
   }
 
+  if (pSocketData->currentTx != NULL) {
+    os_free(pSocketData->currentTx);
+    pSocketData->currentTx = NULL;
+  }
+
   // If this socket is not an incoming socket that means that the espconn structure was created
   // by us and we should release the storage we allocated.
   if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
@@ -771,7 +776,11 @@ static void esp8266_callback_recvCB(
   // copy the received data into that storage.
   if (pSocketData->rxBufLen == 0) {
     pSocketData->rxBuf = (void *)os_malloc(len);
-    memcpy(pSocketData->rxBuf, pData, len);
+    if (pSocketData->rxBuf == NULL) {
+      os_printf(" - Out of memory\n");
+      return;
+    }
+    os_memcpy(pSocketData->rxBuf, pData, len);
     pSocketData->rxBufLen = len;
   } else {
 // Allocate a new buffer big enough for the original data and the new data
@@ -781,15 +790,18 @@ static void esp8266_callback_recvCB(
 // Release the original data.
 // Update the socket data.
     uint8 *pNewBuf = (uint8 *)os_malloc(len + pSocketData->rxBufLen);
-    memcpy(pNewBuf, pSocketData->rxBuf, pSocketData->rxBufLen);
-    memcpy(pNewBuf + pSocketData->rxBufLen, pData, len);
+    if (pNewBuf == NULL) {
+      os_printf(" - Out of memory\n");
+      return;
+    }
+    os_memcpy(pNewBuf, pSocketData->rxBuf, pSocketData->rxBufLen);
+    os_memcpy(pNewBuf + pSocketData->rxBufLen, pData, len);
     os_free(pSocketData->rxBuf);
     pSocketData->rxBuf = pNewBuf;
     pSocketData->rxBufLen += len;
   } // End of new data allocated.
   dumpEspConn(pEspconn);
   os_printf("<< recvCB\n");
-
 }
 
 
@@ -865,14 +877,15 @@ int net_ESP8266_BOARD_recv(
     return 0;
   }
 
-  // If the receive buffer contains data and is it is able to fit in the buffer
+  // If the receive buffer contains data and is it is able to completely fit in the buffer
   // passed into us then we can copy all the data and the receive buffer will be clear.
   if (pSocketData->rxBufLen <= len) {
-    memcpy(buf, pSocketData->rxBuf, pSocketData->rxBufLen);
+    os_memcpy(buf, pSocketData->rxBuf, pSocketData->rxBufLen);
     int retLen = pSocketData->rxBufLen;
-    os_free(pSocketData->rxBuf);
     pSocketData->rxBufLen = 0;
+    os_free(pSocketData->rxBuf);
     pSocketData->rxBuf = NULL;
+    //os_printf("RX - A\n");
     return retLen;
   }
 
@@ -882,20 +895,24 @@ int net_ESP8266_BOARD_recv(
   // receive buffer.
 
   // First we copy the data we are going to return.
-  memcpy(buf, pSocketData->rxBuf, len);
+  os_memcpy(buf, pSocketData->rxBuf, len);
 
   // Next we allocate a new buffer and copy in the data we are not returning.
   uint8 *pNewBuf = (uint8 *)os_malloc(pSocketData->rxBufLen-len);
-  memcpy(pNewBuf, pSocketData->rxBuf + len, pSocketData->rxBufLen-len);
+  if (pNewBuf == NULL) {
+    os_printf(" - Out of memory\n");
+    return -1;
+  }
+  os_memcpy(pNewBuf, pSocketData->rxBuf + len, pSocketData->rxBufLen-len);
 
   // Now we juggle pointers and release the original RX buffer now that we have a new
   // one.  It is likely that this algorithm can be significantly improved since there
-  // is a period of time where we might actuall have TWO copies of the data.
+  // is a period of time where we might actually have TWO copies of the data.
   uint8 *pTemp = pSocketData->rxBuf;
   pSocketData->rxBuf = pNewBuf;
   pSocketData->rxBufLen = pSocketData->rxBufLen-len;
   os_free(pTemp);
-
+  //os_printf("RX - B\n");
   return len;
 }
 
@@ -937,8 +954,6 @@ int net_ESP8266_BOARD_send(
 
   assert(pSocketData->state == SOCKET_STATE_IDLE);
 
-  pSocketData->state = SOCKET_STATE_TRANSMITTING;
-
   // Copy the data that was passed to us to a private area.  We do this because we must not
   // assume that the data passed in will be available after this function returns.  It may have
   // been passed in on the stack.
@@ -954,6 +969,8 @@ int net_ESP8266_BOARD_send(
     pSocketData->currentTx = NULL;
     return -1;
   }
+
+  pSocketData->state = SOCKET_STATE_TRANSMITTING;
 
   esp8266_dumpSocket(sckt);
   os_printf("< net_ESP8266_BOARD_send\n");
@@ -1006,6 +1023,10 @@ int net_ESP8266_BOARD_createSocket(
   }
 
   int newSocket = pSocketData->socketId;
+  assert(pSocketData->rxBuf == NULL);
+  assert(pSocketData->rxBufLen == 0);
+  assert(pSocketData->currentTx == NULL);
+
   pSocketData->pEspconn = (struct espconn *)os_malloc(sizeof(struct espconn));
   assert(pSocketData->pEspconn);
 
