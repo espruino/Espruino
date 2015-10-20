@@ -125,7 +125,7 @@ typedef struct {
   /// Value of 'this' reserved word
   JsVar *thisVar;
 
-  JsExecFlags execute;
+  volatile JsExecFlags execute;
 } JsExecInfo;
 
 /* Info about execution when Parsing - this saves passing it on the stack

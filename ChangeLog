@@ -2,6 +2,7 @@
             Fix wakeup when setDeepSleep used at startup (fix #645)
             Add `shiftOut` function (fix #631)
             Store line numbers for functions (via `Esc [ 1234 d` escape code before decl) and use in debug + stack traces
+            Allow Ctrl-C to break out of tight loops with function calls in
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
