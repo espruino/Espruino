@@ -1053,13 +1053,15 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
 void jsiAutoComplete() {
   if (!jsvIsString(inputLine)) return;
   JsVar *partial = 0;
+  size_t partialStart = 0;
 
   JsLex lex;
   jslInit(&lex, inputLine);
-  while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.it)>inputCursorPos) {
+  while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
     if (lex.tk==LEX_ID) {
       jsvUnLock(partial);
       partial = jslGetTokenValueAsVar(&lex);
+      partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
       jsvUnLock(partial);
       partial = 0;
@@ -1069,6 +1071,19 @@ void jsiAutoComplete() {
   jslKill(&lex);
   if (!partial) return;
   size_t partialLen = jsvGetStringLength(partial);
+  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+  if (actualPartialLen > partialLen) {
+    // we had a token but were past the end of it when asked
+    // to autocomplete ---> no token
+    jsvUnLock(partial);
+    return;
+  } else if (actualPartialLen < partialLen) {
+    JsVar *v = jsvNewFromStringVar(partial, 0, actualPartialLen);
+    jsvUnLock(partial);
+    partial = v;
+    partialLen = actualPartialLen;
+  }
+
   // Now try and autocomplete
   JsVar *possible = 0;
   JsVar *keys = jswrap_object_keys_or_property_names(execInfo.root, true);
@@ -1090,6 +1105,7 @@ void jsiAutoComplete() {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
+  jsvUnLock(keys);
   // apply the completion
 
   if (possible) {
@@ -1290,7 +1306,7 @@ void jsiHandleChar(char ch) {
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
 #ifndef SAVE_ON_FLASH
-    } else if (ch=='\t') {
+    } else if (ch=='\t' && jsiEcho()) {
       jsiAutoComplete();
 #endif
     } else if (ch>=32 || ch=='\t') {
