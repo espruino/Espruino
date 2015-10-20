@@ -1937,12 +1937,16 @@ void jsiDebuggerLoop() {
     // Idle just for debug (much stuff removed) -------------------------------
     IOEvent event;
     // If we have too many events (> half full) drain the queue
-    while (jshGetEventsUsed()>IOBUFFERMASK*1/2) {
+    while (jshGetEventsUsed()>IOBUFFERMASK*1/2 &&
+           !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
+           !(execInfo.execute & EXEC_CTRL_C_MASK)) {
       if (jshPopIOEvent(&event) && IOEVENTFLAGS_GETTYPE(event.flags)==consoleDevice)
         jsiHandleIOEventForConsole(&event);
     }
     // otherwise grab the remaining console events
-    while (jshPopIOEventOfType(consoleDevice, &event)) {
+    while (jshPopIOEventOfType(consoleDevice, &event) &&
+           !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
+           !(execInfo.execute & EXEC_CTRL_C_MASK)) {
       jsiHandleIOEventForConsole(&event);
     }
     // -----------------------------------------------------------------------
@@ -1996,7 +2000,9 @@ void jsiDebuggerLine(JsVar *line) {
   JsLex lex;
   jslInit(&lex, line);
   bool handled = false;
-  if (lex.tk == LEX_ID) {
+  if (lex.tk == LEX_ID || lex.tk == LEX_R_CONTINUE) {
+    // continue is a reserved word!
+
     handled = true;
     char *id = jslGetTokenValueAsString(&lex);
 
