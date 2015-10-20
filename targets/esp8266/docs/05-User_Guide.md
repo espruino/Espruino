@@ -176,6 +176,18 @@ Returns an object that contains the details of the last ESP8266 restart.
 
 ----
 
+##ESP8266WiFi.getHostByName
+
+Lookup the IP address of a host by host name.
+
+`ESP8266WiFi.getHostByName(hostname, callback)`
+
+* `hostname` - The String representation of the hostname to lookup.
+* `callback` - A function which will be invoked when the IP address is resolved.  A parameter to the
+function is the integer value that is the IP address.
+
+----
+
 ##ESP8266WiFi.getIPInfo
 
 `ESP8266WiFi.getIPInfo()`

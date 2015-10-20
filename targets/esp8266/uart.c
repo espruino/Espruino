@@ -152,14 +152,19 @@ uart_config(uint8 uart_no)
 LOCAL void ICACHE_FLASH_ATTR
 uart1_write_char(char c)
 {
-    if (c == '\n'){
-        uart_tx_one_char(UART1, '\r');
-        uart_tx_one_char(UART1, '\n');
-    }else if (c == '\r'){
+  if (c == '\n'){
+      uart_tx_one_char(UART1, '\r');
+      uart_tx_one_char(UART1, '\n');
+  }else if (c == '\r'){
 
-    }else{
-        uart_tx_one_char(UART1, c);
+  }else{
+    // Ensure that the character is printable
+    if (c>=32 && c<=127) {
+      uart_tx_one_char(UART1, c);
+    } else {
+      uart_tx_one_char(UART1, '.');
     }
+  }
 }
 
 //os_printf output to fifo or to the tx buffer
