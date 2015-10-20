@@ -323,7 +323,7 @@ typedef struct {
 static inline void jshI2CInitInfo(JshI2CInfo *inf) {
   inf->pinSCL = PIN_UNDEFINED;
   inf->pinSDA = PIN_UNDEFINED;
-  inf->slaveAddr = (char)-1; // master
+  inf->slaveAddr = (int8_t)-1; // master
   inf->bitrate = 50000; // Is what we used - shouldn't it be 100k?
 }
 /** Set up I2C, if pins are -1 they will be guessed */
