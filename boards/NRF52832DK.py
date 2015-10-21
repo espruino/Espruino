@@ -18,7 +18,11 @@ import pinutils;
 info = {
  'name' : "nRF52 Preview Development Kit",
  'link' :  [ "https://www.nordicsemi.com/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF52832" ],
+  # This is the PCA10036
  'default_console' : "EV_SERIAL1",
+ 'default_console_tx' : "D6",
+ 'default_console_rx' : "D8",
+ 'default_console_baudrate' : "9600",
  'variables' : 750, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf52832.bin',
 };

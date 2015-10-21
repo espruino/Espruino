@@ -2,7 +2,7 @@
 
 // public static methods.
 void jswrap_nrf_bluetooth_init(void);
-void jswrap_nrf_bluetooth_send_string(Pin* string_to_send, int length);
+JsVarInt jswrap_nrf_bluetooth_send_string(JsVar* str);
 
 void jswrap_nrf_bluetooth_enable_com(void);
 void jswrap_nrf_bluetooth_disable_com(void);
