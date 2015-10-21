@@ -50,14 +50,14 @@ board = {
 };
 
 devices = {
-  'LED_1' : { 'pin' : 'D17' },
-  'LED_2' : { 'pin' : 'D18' },
-  'LED_3' : { 'pin' : 'D19' },
-  'LED_4' : { 'pin' : 'D20' },
-  'BUTTON_1' : { 'pin' : 'D13'},
-  'BUTTON_2' : { 'pin' : 'D14'},
-  'BUTTON_3' : { 'pin' : 'D15'},
-  'BUTTON_4' : { 'pin' : 'D16'},
+  'LED1' : { 'pin' : 'D17' },
+  'LED2' : { 'pin' : 'D18' },
+  'LED3' : { 'pin' : 'D19' },
+  'LED4' : { 'pin' : 'D20' },
+  'BTN1' : { 'pin' : 'D13'},
+  'BTN2' : { 'pin' : 'D14'},
+  'BTN3' : { 'pin' : 'D15'},
+  'BTN4' : { 'pin' : 'D16'},
   'RX_PIN_NUMBER' : { 'pin' : 'D8'},
   'TX_PIN_NUMBER' : { 'pin' : 'D6'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D7'},
