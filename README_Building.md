@@ -155,6 +155,7 @@ Building under Windows/MacOS with a VM (Vagrant)
 * Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
   > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
 * In your terminal application, navigate to your cloned working copy.
+* Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
 * When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
 * Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.
