@@ -410,16 +410,20 @@ EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
+
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
 
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
+USE_BLUETOOTH=1
 
 else ifdef TINYCHIP
 EMBEDDED=1
@@ -1169,6 +1173,8 @@ ifeq ($(FAMILY), NRF51)
   DEFINES += -DBOARD_PCA10028  -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
   LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
   
+  SOFTDEVICE = targetlibs/nrf5x/softdevice/s110_nrf51_8.0.0_softdevice.hex
+
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
@@ -1193,9 +1199,14 @@ ifeq ($(FAMILY), NRF52)
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
   LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_ble_espruino.ld
 
+  SOFTDEVICE = targetlibs/nrf5x/softdevice/s132_nrf52_1.0.0-3.alpha_softdevice.hex
+
 endif #FAMILY == NRF52
 
 ifdef NRF5X
+
+  # Just try and get rid of the compile warnings
+  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
   
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -1640,6 +1651,12 @@ $(PROJ_NAME).lst : $(PROJ_NAME).elf
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
+ifdef SOFTDEVICE
+	echo Merging SoftDevice
+	echo "    (use 'pip install IntelHex' if you don't have hexmerge.py)"
+	hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	mv tmp.hex $(PROJ_NAME).hex
+endif
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,srec,srec)
@@ -1654,10 +1671,6 @@ endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 
-ifdef ARDUINO_AVR
-proj: $(PROJ_NAME).hex
-endif
-
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
@@ -1666,11 +1679,13 @@ ifdef USE_DFU
 else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
-#else ifdef MBED
-	#cp $(PROJ_NAME).bin /media/MBED;sync
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
+else ifdef MICROBIT
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).bin /media/MICROBIT;sync; fi
+else ifdef NRF5X
+	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
 else
 	echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)

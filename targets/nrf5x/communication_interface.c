@@ -17,7 +17,6 @@
 #include "app_error.h"
 #include "nrf_delay.h"
 #include "nrf.h"
-#include "bsp.h"
 
 void uart_event_handle(app_uart_evt_t * p_event)
 {
