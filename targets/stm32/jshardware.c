@@ -2248,6 +2248,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
+
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);
@@ -2255,6 +2256,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
+
   if (sendStop) I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
 }
@@ -2277,7 +2279,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     jsWarn("I2C got NACK");
   }
 #else
-  WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
   I2C_GenerateSTART(I2C, ENABLE);
   if (!jshI2CWaitStartBit(I2C)) {
     for (i=0;i<nBytes;i++) data[i]=0;
@@ -2300,6 +2301,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
     I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
   }
+
 #endif
 }
 
