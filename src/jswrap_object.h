@@ -19,7 +19,10 @@ JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
-JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerable);
+JsVar *jswrap_object_keys_or_property_names(
+    JsVar *obj,
+    bool includeNonEnumerable,
+    bool includePrototype);
 JsVar *jswrap_object_create(JsVar *proto, JsVar *propertiesObject);
 JsVar *jswrap_object_getOwnPropertyDescriptor(JsVar *parent, JsVar *name);
 bool jswrap_object_hasOwnProperty(JsVar *parent, JsVar *name);

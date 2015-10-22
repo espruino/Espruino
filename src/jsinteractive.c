@@ -1052,17 +1052,24 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
 #ifndef SAVE_ON_FLASH
 void jsiAutoComplete() {
   if (!jsvIsString(inputLine)) return;
+  JsVar *object = 0;
   JsVar *partial = 0;
   size_t partialStart = 0;
 
   JsLex lex;
   jslInit(&lex, inputLine);
   while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
-    if (lex.tk==LEX_ID) {
+    if (lex.tk=='.') {
+      jsvUnLock(object);
+      object = partial;
+      partial = 0;
+    } else if (lex.tk==LEX_ID) {
       jsvUnLock(partial);
       partial = jslGetTokenValueAsVar(&lex);
       partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
+      jsvUnLock(object);
+      object = 0;
       jsvUnLock(partial);
       partial = 0;
     }
@@ -1084,9 +1091,23 @@ void jsiAutoComplete() {
     partialLen = actualPartialLen;
   }
 
+  // If we had the name of an object here, try and look it up
+  if (object) {
+    char s[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(object, s, sizeof(s));
+    JsVar *v = jsvSkipNameAndUnLock(jspGetNamedVariable(s));
+    jsvUnLock(object);
+    object = v;
+  }
+  if (!object) {
+    // default to root scope
+    object = jsvLockAgain(execInfo.root);
+  }
   // Now try and autocomplete
   JsVar *possible = 0;
-  JsVar *keys = jswrap_object_keys_or_property_names(execInfo.root, true);
+  JsVar *keys = jswrap_object_keys_or_property_names(object, true, true);
+  jsiConsolePrintf("\n%v\n", keys);
+  jsvUnLock(object);
   if (!keys) return;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, keys);

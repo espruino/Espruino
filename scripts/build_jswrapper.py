@@ -422,6 +422,10 @@ for className in builtins:
   if builtin["isProto"] and "constructorPtr" in className:
     codeOut("    if ("+className+") return &jswSymbolTables["+builtin["indexName"]+"];");
 codeOut('  }')
+nativeCheck = "jsvIsNativeFunction(parent) && "
+for className in builtins:
+  if className!="parent" and  className!="!parent" and not "constructorPtr" in className and not className.startswith(nativeCheck):
+    codeOut('    if ('+className+") return &jswSymbolTables["+builtins[className]["indexName"]+"];");
 codeOut("  return &jswSymbolTables["+builtins["parent"]["indexName"]+"];")
 codeOut('}')
 
