@@ -1229,7 +1229,7 @@ NO_INLINE JsVar *jspeFactorTypeOf() {
   JsVar *a = jspeUnaryExpression();
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
-    if (jsvIsName(a) && jsvGetFirstChild(a)==0) {
+    if (!jsvIsVariableDefined(a)) {
       // so we don't get a ReferenceError when accessing an undefined var
       result=jsvNewFromString("undefined");
     } else {

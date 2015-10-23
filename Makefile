@@ -692,6 +692,10 @@ ifdef PROFILE
 OPTIMIZEFLAGS+=-pg
 endif
 
+# Files that contains objects/functions/methods that will be
+# exported to JS. The order here actually determines the order
+# objects will be matched in. So for example Pins must come
+# above ints, since a Pin is also matched as an int.
 WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
 src/jswrap_array.c \
@@ -705,10 +709,10 @@ src/jswrap_interactive.c \
 src/jswrap_io.c \
 src/jswrap_json.c \
 src/jswrap_modules.c \
+src/jswrap_pin.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_onewire.c \
-src/jswrap_pin.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
 src/jswrap_serial.c \

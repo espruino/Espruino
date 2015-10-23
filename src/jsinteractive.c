@@ -1050,7 +1050,7 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
 }
 
 #ifndef SAVE_ON_FLASH
-void jsiAutoComplete() {
+void jsiTabComplete() {
   if (!jsvIsString(inputLine)) return;
   JsVar *object = 0;
   JsVar *partial = 0;
@@ -1095,9 +1095,20 @@ void jsiAutoComplete() {
   if (object) {
     char s[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(object, s, sizeof(s));
-    JsVar *v = jsvSkipNameAndUnLock(jspGetNamedVariable(s));
+    JsVar *v = jspGetNamedVariable(s);
+    if (jsvIsVariableDefined(v)) {
+      v = jsvSkipNameAndUnLock(v);
+    } else {
+      jsvUnLock(v);
+      v = 0;
+    }
     jsvUnLock(object);
     object = v;
+    // If we couldn't look it up, don't offer any suggestions
+    if (!v) {
+      jsvUnLock(partial);
+      return;
+    }
   }
   if (!object) {
     // default to root scope
@@ -1106,7 +1117,7 @@ void jsiAutoComplete() {
   // Now try and autocomplete
   JsVar *possible = 0;
   JsVar *keys = jswrap_object_keys_or_property_names(object, true, true);
-  jsiConsolePrintf("\n%v\n", keys);
+  //jsiConsolePrintf("\n%v\n", keys);
   jsvUnLock(object);
   if (!keys) return;
   JsvObjectIterator it;
@@ -1114,6 +1125,8 @@ void jsiAutoComplete() {
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *key = jsvObjectIteratorGetValue(&it);
     if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
+      /* TODO: could also print out suggestions here? Watch out for what
+       happens if we're not right at the end of the line! */
       if (possible) {
         JsVar *v = jsvGetCommonCharacters(possible, key);
         jsvUnLock(possible);
@@ -1328,7 +1341,7 @@ void jsiHandleChar(char ch) {
       jsiHandleNewLine(true);
 #ifndef SAVE_ON_FLASH
     } else if (ch=='\t' && jsiEcho()) {
-      jsiAutoComplete();
+      jsiTabComplete();
 #endif
     } else if (ch>=32 || ch=='\t') {
       char buf[2] = {ch,0};
