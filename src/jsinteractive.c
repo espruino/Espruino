@@ -338,7 +338,7 @@ void jsiConsoleRemoveInputLine() {
 }
 
 /// If the input line has been removed, return it
-void jsiReturnInputLine() {
+void jsiConsoleReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (jsiEcho()) { // intentionally not using jsiShowInputLine()
@@ -1120,13 +1120,13 @@ void jsiTabComplete() {
   //jsiConsolePrintf("\n%v\n", keys);
   jsvUnLock(object);
   if (!keys) return;
+  int matches = 0;
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, keys);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *key = jsvObjectIteratorGetValue(&it);
     if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
-      /* TODO: could also print out suggestions here? Watch out for what
-       happens if we're not right at the end of the line! */
+      matches++;
       if (possible) {
         JsVar *v = jsvGetCommonCharacters(possible, key);
         jsvUnLock(possible);
@@ -1139,9 +1139,44 @@ void jsiTabComplete() {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
+  // If we've got >1 match and are at the end of a line, print hints
+  if (matches>1) {
+    // Remove the current line and add a newline
+    jsiMoveCursorChar(inputLine, inputCursorPos, (size_t)inputLineLength);
+    inputLineRemoved = true;
+    jsiConsolePrint("\n\n");
+    size_t lineLength = 0;
+    // Output hints
+    JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, keys);
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *key = jsvObjectIteratorGetValue(&it);
+        if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
+          // Print, but do as 2 columns
+          if (lineLength==0 || lineLength>18) {
+            jsiConsolePrintf("%v",key);
+            lineLength = jsvGetStringLength(key);
+          } else {
+            while (lineLength<20) {
+              jsiConsolePrintChar(' ');
+              lineLength++;
+            }
+            jsiConsolePrintf("%v\n",key);
+            lineLength = 0;
+          }
+        }
+        jsvUnLock(key);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+      if (lineLength) jsiConsolePrint("\n");
+      jsiConsolePrint("\n");
+    // Return the input line
+    jsiConsoleReturnInputLine();
+  }
+
   jsvUnLock(keys);
   // apply the completion
-
   if (possible) {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
     jsvGetString(possible, buf, sizeof(buf));
@@ -1898,7 +1933,7 @@ bool jsiLoop() {
   }
 
   // return console (if it was gone!)
-  jsiReturnInputLine();
+  jsiConsoleReturnInputLine();
 
   return loopsIdling==0;
 }
@@ -2047,7 +2082,7 @@ void jsiDebuggerLoop() {
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
          !(execInfo.execute & EXEC_CTRL_C_MASK)) {
-    jsiReturnInputLine();
+    jsiConsoleReturnInputLine();
     // idle stuff for hardware
     jshIdle();
     // Idle just for debug (much stuff removed) -------------------------------
