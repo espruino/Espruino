@@ -738,13 +738,14 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             oldLex = execInfo.lex;
             execInfo.lex = &newLex;
             JSP_SAVE_EXECUTE();
+            // force execute without any previous state
 #ifdef USE_DEBUGGER
-            execInfo.execute = EXEC_YES | (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE); // force execute without any previous state
+            execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK|EXEC_DEBUGGER_NEXT_LINE));
 #else
-            execInfo.execute = EXEC_YES; // force execute without any previous state
+            execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
             jspeBlock();
-            JsExecFlags hasError = execInfo.execute&EXEC_ERROR_MASK;
+            JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
@@ -1228,7 +1229,7 @@ NO_INLINE JsVar *jspeFactorTypeOf() {
   JsVar *a = jspeUnaryExpression();
   JsVar *result = 0;
   if (JSP_SHOULD_EXECUTE) {
-    if (jsvIsName(a) && jsvGetFirstChild(a)==0) {
+    if (!jsvIsVariableDefined(a)) {
       // so we don't get a ReferenceError when accessing an undefined var
       result=jsvNewFromString("undefined");
     } else {

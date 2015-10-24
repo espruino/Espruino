@@ -319,7 +319,7 @@ size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
 void *memset(void *dst, int c, size_t size);
-#define RAND_MAX (0xFFFFFFFFU)
+#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
 int rand();
 void srand(unsigned int seed);
 #endif

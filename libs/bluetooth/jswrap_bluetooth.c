@@ -487,35 +487,15 @@ void jswrap_nrf_bluetooth_init(void)
     "name" : "send_string",
     "generate" : "jswrap_nrf_bluetooth_send_string",
     "params" : [
-    ["string_to_send","pin","The string to be sent to the BLE central via Nordic's UART service."],
-    ["length","int","The length of string."]
-  ]
+      ["string_to_send","JsVar","The string to be sent to the BLE central via Nordic's UART service."]
+    ],
+    "return" : [ "int", "The error code" ]
 }*/
-void jswrap_nrf_bluetooth_send_string(Pin* string_to_send, int length)
+JsVarInt jswrap_nrf_bluetooth_send_string(JsVar* str)
 {
     static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-    static uint8_t index = 0;
-    uint32_t       err_code;
-
-    uint32_t i;
-    for (i = 0; i < length; i++)
-    {
-    	data_array[index] = (uint8_t) string_to_send[i];
-
-    	index++;
-
-    	if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)) || (i == (length - 1)))
-    	{
-    		err_code = ble_nus_string_send(&m_nus, data_array, index);
-    		if (err_code != NRF_ERROR_INVALID_STATE)
-    		{
-    			APP_ERROR_CHECK(err_code);
-    		}
-
-    		index = 0;
-    	}
-
-    }
+    size_t l = jsvGetString(str, data_array, sizeof(data_array));
+    return ble_nus_string_send(&m_nus, data_array, l);
 }
 /**@snippet [Send string to the BLE central node (smart phone).] */
 

@@ -20,6 +20,7 @@
 #include "jswrap_io.h"
 #include "jswrap_stream.h"
 #include "jswrap_flash.h" // load and save to flash
+#include "jswrap_object.h" // jswrap_object_keys_or_property_names
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -337,7 +338,7 @@ void jsiConsoleRemoveInputLine() {
 }
 
 /// If the input line has been removed, return it
-void jsiReturnInputLine() {
+void jsiConsoleReturnInputLine() {
   if (inputLineRemoved) {
     inputLineRemoved = false;
     if (jsiEcho()) { // intentionally not using jsiShowInputLine()
@@ -1019,6 +1020,173 @@ void jsiCheckErrors() {
   }
 }
 
+
+void jsiAppendStringToInputLine(const char *strToAppend) {
+  // Add the string to our input line
+  jsiIsAboutToEditInputLine();
+
+  size_t strSize = 1;
+  while (strToAppend[strSize]) strSize++;
+
+  if (inputLineLength < 0)
+    inputLineLength = (int)jsvGetStringLength(inputLine);
+
+  if ((int)inputCursorPos>=inputLineLength) { // append to the end
+    jsiAppendToInputLine(strToAppend);
+  } else { // add in halfway through
+    JsVar *v = jsvNewFromEmptyString();
+    if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
+    jsvAppendString(v, strToAppend);
+    jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
+    jsiInputLineCursorMoved();
+    jsvUnLock(inputLine);
+    inputLine=v;
+    if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
+  }
+  inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
+  if (jsiShowInputLine()) {
+    jsiConsolePrint(strToAppend);
+  }
+}
+
+#ifndef SAVE_ON_FLASH
+void jsiTabComplete() {
+  if (!jsvIsString(inputLine)) return;
+  JsVar *object = 0;
+  JsVar *partial = 0;
+  size_t partialStart = 0;
+
+  JsLex lex;
+  jslInit(&lex, inputLine);
+  while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
+    if (lex.tk=='.') {
+      jsvUnLock(object);
+      object = partial;
+      partial = 0;
+    } else if (lex.tk==LEX_ID) {
+      jsvUnLock(partial);
+      partial = jslGetTokenValueAsVar(&lex);
+      partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
+    } else {
+      jsvUnLock(object);
+      object = 0;
+      jsvUnLock(partial);
+      partial = 0;
+    }
+    jslGetNextToken(&lex);
+  }
+  jslKill(&lex);
+  if (!partial) return;
+  size_t partialLen = jsvGetStringLength(partial);
+  size_t actualPartialLen = inputCursorPos + 1 - partialStart;
+  if (actualPartialLen > partialLen) {
+    // we had a token but were past the end of it when asked
+    // to autocomplete ---> no token
+    jsvUnLock(partial);
+    return;
+  } else if (actualPartialLen < partialLen) {
+    JsVar *v = jsvNewFromStringVar(partial, 0, actualPartialLen);
+    jsvUnLock(partial);
+    partial = v;
+    partialLen = actualPartialLen;
+  }
+
+  // If we had the name of an object here, try and look it up
+  if (object) {
+    char s[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(object, s, sizeof(s));
+    JsVar *v = jspGetNamedVariable(s);
+    if (jsvIsVariableDefined(v)) {
+      v = jsvSkipNameAndUnLock(v);
+    } else {
+      jsvUnLock(v);
+      v = 0;
+    }
+    jsvUnLock(object);
+    object = v;
+    // If we couldn't look it up, don't offer any suggestions
+    if (!v) {
+      jsvUnLock(partial);
+      return;
+    }
+  }
+  if (!object) {
+    // default to root scope
+    object = jsvLockAgain(execInfo.root);
+  }
+  // Now try and autocomplete
+  JsVar *possible = 0;
+  JsVar *keys = jswrap_object_keys_or_property_names(object, true, true);
+  //jsiConsolePrintf("\n%v\n", keys);
+  jsvUnLock(object);
+  if (!keys) return;
+  int matches = 0;
+  JsvObjectIterator it;
+  jsvObjectIteratorNew(&it, keys);
+  while (jsvObjectIteratorHasValue(&it)) {
+    JsVar *key = jsvObjectIteratorGetValue(&it);
+    if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
+      matches++;
+      if (possible) {
+        JsVar *v = jsvGetCommonCharacters(possible, key);
+        jsvUnLock(possible);
+        possible = v;
+      } else {
+        possible = jsvLockAgain(key);
+      }
+    }
+    jsvUnLock(key);
+    jsvObjectIteratorNext(&it);
+  }
+  jsvObjectIteratorFree(&it);
+  // If we've got >1 match and are at the end of a line, print hints
+  if (matches>1) {
+    // Remove the current line and add a newline
+    jsiMoveCursorChar(inputLine, inputCursorPos, (size_t)inputLineLength);
+    inputLineRemoved = true;
+    jsiConsolePrint("\n\n");
+    size_t lineLength = 0;
+    // Output hints
+    JsvObjectIterator it;
+      jsvObjectIteratorNew(&it, keys);
+      while (jsvObjectIteratorHasValue(&it)) {
+        JsVar *key = jsvObjectIteratorGetValue(&it);
+        if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
+          // Print, but do as 2 columns
+          if (lineLength==0 || lineLength>18) {
+            jsiConsolePrintf("%v",key);
+            lineLength = jsvGetStringLength(key);
+          } else {
+            while (lineLength<20) {
+              jsiConsolePrintChar(' ');
+              lineLength++;
+            }
+            jsiConsolePrintf("%v\n",key);
+            lineLength = 0;
+          }
+        }
+        jsvUnLock(key);
+        jsvObjectIteratorNext(&it);
+      }
+      jsvObjectIteratorFree(&it);
+      if (lineLength) jsiConsolePrint("\n");
+      jsiConsolePrint("\n");
+    // Return the input line
+    jsiConsoleReturnInputLine();
+  }
+
+  jsvUnLock(keys);
+  // apply the completion
+  if (possible) {
+    char buf[JSLEX_MAX_TOKEN_LENGTH];
+    jsvGetString(possible, buf, sizeof(buf));
+    if (partialLen < strlen(buf))
+      jsiAppendStringToInputLine(&buf[partialLen]);
+    jsvUnLock(possible);
+  }
+}
+#endif
+
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
     if (execute && jsiCountBracketsInInput()<=0) { // actually execute!
@@ -1084,6 +1252,7 @@ void jsiHandleNewLine(bool execute) {
     inputCursorPos++;
   }
 }
+
 
 void jsiHandleChar(char ch) {
   // jsiConsolePrintf("[%d:%d]\n", inputState, ch);
@@ -1205,32 +1374,14 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\r' || ch == '\n') { 
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
+#ifndef SAVE_ON_FLASH
+    } else if (ch=='\t' && jsiEcho()) {
+      jsiTabComplete();
+#endif
     } else if (ch>=32 || ch=='\t') {
-      // Add the character to our input line
-      jsiIsAboutToEditInputLine();
       char buf[2] = {ch,0};
       const char *strToAppend = (ch=='\t') ? "    " : buf;
-      size_t strSize = (ch=='\t') ? 4 : 1;
-
-      if (inputLineLength < 0)
-        inputLineLength = (int)jsvGetStringLength(inputLine);
-
-      if ((int)inputCursorPos>=inputLineLength) { // append to the end
-        jsiAppendToInputLine(strToAppend);
-      } else { // add in halfway through
-        JsVar *v = jsvNewFromEmptyString();
-        if (inputCursorPos>0) jsvAppendStringVar(v, inputLine, 0, inputCursorPos);
-        jsvAppendString(v, strToAppend);
-        jsvAppendStringVar(v, inputLine, inputCursorPos, JSVAPPENDSTRINGVAR_MAXLENGTH); // add the rest
-        jsiInputLineCursorMoved();
-        jsvUnLock(inputLine);
-        inputLine=v;
-        if (jsiShowInputLine()) jsiConsolePrintStringVarUntilEOL(inputLine, inputCursorPos, 0xFFFFFFFF, true/*and backup*/);
-      }
-      inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
-      if (jsiShowInputLine()) {
-        jsiConsolePrint(strToAppend);
-      }
+      jsiAppendStringToInputLine(strToAppend);
     }
   }
 }
@@ -1782,7 +1933,7 @@ bool jsiLoop() {
   }
 
   // return console (if it was gone!)
-  jsiReturnInputLine();
+  jsiConsoleReturnInputLine();
 
   return loopsIdling==0;
 }
@@ -1931,18 +2082,22 @@ void jsiDebuggerLoop() {
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
          !(execInfo.execute & EXEC_CTRL_C_MASK)) {
-    jsiReturnInputLine();
+    jsiConsoleReturnInputLine();
     // idle stuff for hardware
     jshIdle();
     // Idle just for debug (much stuff removed) -------------------------------
     IOEvent event;
     // If we have too many events (> half full) drain the queue
-    while (jshGetEventsUsed()>IOBUFFERMASK*1/2) {
+    while (jshGetEventsUsed()>IOBUFFERMASK*1/2 &&
+           !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
+           !(execInfo.execute & EXEC_CTRL_C_MASK)) {
       if (jshPopIOEvent(&event) && IOEVENTFLAGS_GETTYPE(event.flags)==consoleDevice)
         jsiHandleIOEventForConsole(&event);
     }
     // otherwise grab the remaining console events
-    while (jshPopIOEventOfType(consoleDevice, &event)) {
+    while (jshPopIOEventOfType(consoleDevice, &event) &&
+           !(jsiStatus & JSIS_EXIT_DEBUGGER) &&
+           !(execInfo.execute & EXEC_CTRL_C_MASK)) {
       jsiHandleIOEventForConsole(&event);
     }
     // -----------------------------------------------------------------------
@@ -1996,7 +2151,9 @@ void jsiDebuggerLine(JsVar *line) {
   JsLex lex;
   jslInit(&lex, line);
   bool handled = false;
-  if (lex.tk == LEX_ID) {
+  if (lex.tk == LEX_ID || lex.tk == LEX_R_CONTINUE) {
+    // continue is a reserved word!
+
     handled = true;
     char *id = jslGetTokenValueAsString(&lex);
 

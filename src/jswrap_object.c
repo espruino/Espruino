@@ -156,7 +156,7 @@ JsVar *jswrap_object_clone(JsVar *parent) {
   "type" : "staticmethod",
   "class" : "Object",
   "name" : "keys",
-  "generate_full" : "jswrap_object_keys_or_property_names(object, false)",
+  "generate_full" : "jswrap_object_keys_or_property_names(object, false, false)",
   "params" : [
     ["object","JsVar","The object to return keys for"]
   ],
@@ -168,7 +168,7 @@ Return all enumerable keys of the given object
   "type" : "staticmethod",
   "class" : "Object",
   "name" : "getOwnPropertyNames",
-  "generate_full" : "jswrap_object_keys_or_property_names(object, true)",
+  "generate_full" : "jswrap_object_keys_or_property_names(object, true, false)",
   "params" : [
     ["object","JsVar","The Object to return a list of property names for"]
   ],
@@ -179,14 +179,19 @@ Returns an array of all properties (enumerable or not) found directly on a given
  **Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380
  */
 
-// This is for Object.keys and Object.
-JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerable) {
+/** This is for Object.keys and Object. */
+JsVar *jswrap_object_keys_or_property_names(
+    JsVar *obj,
+    bool includeNonEnumerable,  ///< include 'hidden' items
+    bool includePrototype) { ///< include items for the prototype too (for autocomplete)
+
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0;
+
   // strings are iterable, but we shouldn't try and show keys for them
-  if (jsvIsIterable(obj) && !jsvIsString(obj)) {
+  if (jsvIsIterable(obj)) {
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
 
-    JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-    if (!arr) return 0;
     JsvIterator it;
     jsvIteratorNew(&it, obj);
     while (jsvIteratorHasElement(&it)) {
@@ -204,38 +209,45 @@ JsVar *jswrap_object_keys_or_property_names(JsVar *obj, bool includeNonEnumerabl
       jsvIteratorNext(&it);
     }
     jsvIteratorFree(&it);
+  }
 
-    /* Search our built-in symbol table
-       Assume that ALL builtins are non-enumerable. This isn't great but
-       seems to work quite well right now! */
-    if (includeNonEnumerable) {
-      const JswSymList *symbols = 0;
+  /* Search our built-in symbol table
+     Assume that ALL builtins are non-enumerable. This isn't great but
+     seems to work quite well right now! */
+  if (includeNonEnumerable) {
+    const JswSymList *symbols = 0;
 
-      JsVar *protoOwner = jspGetPrototypeOwner(obj);
-      if (protoOwner) {
-        symbols = jswGetSymbolListForObjectProto(protoOwner);
-        jsvUnLock(protoOwner);
-      } else if (!jsvIsObject(obj) || jsvIsRoot(obj)) {
-        // get symbols, but only if we're not doing it on a basic object
-        symbols = jswGetSymbolListForObject(obj);
-      }
+    JsVar *protoOwner = jspGetPrototypeOwner(obj);
+    if (protoOwner) {
+      // If protoOwner then this is the prototype (protoOwner is the object)
+      symbols = jswGetSymbolListForObjectProto(protoOwner);
+      jsvUnLock(protoOwner);
+    } else if (!jsvIsObject(obj) || jsvIsRoot(obj)) {
+      // get symbols, but only if we're not doing it on a basic object
+      symbols = jswGetSymbolListForObject(obj);
+    }
 
+    if (symbols) {
+      unsigned int i;
+      for (i=0;i<symbols->symbolCount;i++)
+        jsvArrayAddString(arr, &symbols->symbolChars[symbols->symbols[i].strOffset]);
+    }
+
+    if (includePrototype) {
+      symbols = jswGetSymbolListForObjectProto(obj);
       if (symbols) {
         unsigned int i;
         for (i=0;i<symbols->symbolCount;i++)
           jsvArrayAddString(arr, &symbols->symbolChars[symbols->symbols[i].strOffset]);
       }
-
-      if (jsvIsArray(obj) || jsvIsString(obj)) {
-        jsvArrayAddString(arr, "length");
-      }
     }
 
-    return arr;
-  } else {
-    jsWarn("Object.keys called on non-object");
-    return 0;
+    if (jsvIsArray(obj) || jsvIsString(obj)) {
+      jsvArrayAddString(arr, "length");
+    }
   }
+
+  return arr;
 }
 
 /*JSON{

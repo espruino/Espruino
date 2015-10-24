@@ -18,7 +18,11 @@ import pinutils;
 info = {
  'name' : "nRF51 Development Kit",
  'link' :  [ "https://www.nordicsemi.com/Products/Bluetooth-Smart-Bluetooth-low-energy/nRF51822" ],
+  # This is the PCA10028
  'default_console' : "EV_SERIAL1",
+ 'default_console_tx' : "D9",
+ 'default_console_rx' : "D11",
+ 'default_console_baudrate' : "9600",
  'variables' : 200, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51822.bin',
 };
@@ -44,14 +48,14 @@ board = {
 };
 
 devices = {
-  'LED_1' : { 'pin' : 'D21' },
-  'LED_2' : { 'pin' : 'D22' },
-  'LED_3' : { 'pin' : 'D23' },
-  'LED_4' : { 'pin' : 'D24' },
-  'BUTTON_1' : { 'pin' : 'D17'},
-  'BUTTON_2' : { 'pin' : 'D18'},
-  'BUTTON_3' : { 'pin' : 'D19'},
-  'BUTTON_4' : { 'pin' : 'D20'},
+  'LED1' : { 'pin' : 'D21' },
+  'LED2' : { 'pin' : 'D22' },
+  'LED3' : { 'pin' : 'D23' },
+  'LED4' : { 'pin' : 'D24' },
+  'BTN1' : { 'pin' : 'D17'},
+  'BTN2' : { 'pin' : 'D18'},
+  'BTN3' : { 'pin' : 'D19'},
+  'BTN4' : { 'pin' : 'D20'},
   'RX_PIN_NUMBER' : { 'pin' : 'D11'},
   'TX_PIN_NUMBER' : { 'pin' : 'D9'},
   'CTS_PIN_NUMBER' : { 'pin' : 'D10'},
