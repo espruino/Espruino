@@ -38,6 +38,9 @@ JsNetworkState networkState =
 
 JsNetwork *networkCurrentStruct = 0;
 
+/**
+ * Parse a dotted decimal IP address into a 4 byte IP value.
+ */
 uint32_t networkParseIPAddress(const char *ip) {
   int n = 0;
   uint32_t addr = 0;
@@ -78,7 +81,15 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
   return i==5;
 }
 
-JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
+/**
+ * Create a JsVar of type string representing an IP address.
+ */
+JsVar *networkGetAddressAsString(
+    unsigned char *ip, //!< A pointer to the start of the IP address buffer.
+    int nBytes,        //!< The number of bytes that the IP buffer uses (usually 4)
+    unsigned int base, //!< The base numbering system to use (usually 10)
+    char separator     //!< The separator character between bytes of the IP address (usually '.')
+  ) {
   char data[64] = "";
   int i = 0, dir = 1, l = 0;
   if (nBytes<0) {
@@ -103,7 +114,17 @@ JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int bas
   return jsvNewFromString(data);
 }
 
-void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
+/**
+ * Put an IP address as a child property of a JsVar.
+ */
+void networkPutAddressAsString(
+    JsVar *object,
+    const char *name,
+    unsigned char *ip,
+    int nBytes,
+    unsigned int base,
+    char separator
+  ) {
   jsvObjectSetChildAndUnLock(object, name, networkGetAddressAsString(ip, nBytes, base, separator));
 }
 
@@ -148,7 +169,9 @@ void networkGetHostByName(
 }
 
 
-
+/**
+ * Create a network.
+ */
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
   if (!net->networkVar) return;
@@ -162,6 +185,9 @@ void networkCreate(JsNetwork *net, JsNetworkType type) {
   networkGetFromVar(net);
 }
 
+/**
+ * Determine if a network was created.
+ */
 bool networkWasCreated() {
   JsVar *v = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
   if (v) {
@@ -172,8 +198,15 @@ bool networkWasCreated() {
   }
 }
 
+/**
+ * Initialize the network from the network variable.
+ */
 bool networkGetFromVar(JsNetwork *net) {
+  // Retrieve a reference to the JsVar that represents the network and save in the
+  // JsNetwork C structure.
   net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
+
+  // Validate that we have a network variable.
   if (!net->networkVar) {
 #ifdef LINUX
     networkCreate(net, JSNETWORKTYPE_SOCKET);
@@ -182,8 +215,13 @@ bool networkGetFromVar(JsNetwork *net) {
     return false;
 #endif
   }
+
+  // Retrieve the data for the network var and save in the data property of the JsNetwork
+  // structure.
   jsvGetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData)+1/*trailing zero*/);
 
+  // Now we know which kind of network we are working with, invoke the corresponding initialization
+  // function to set the callbacks for this network tyoe.
   switch (net->data.type) {
 #if defined(USE_CC3000)
   case JSNETWORKTYPE_CC3000 : netSetCallbacks_cc3000(net); break;
@@ -203,6 +241,8 @@ bool networkGetFromVar(JsNetwork *net) {
     networkFree(net);
     return false;
   }
+
+  // Save the current network as a global.
   networkCurrentStruct = net;
   return true;
 }
@@ -217,15 +257,25 @@ bool networkGetFromVarIfOnline(JsNetwork *net) {
   return true;
 }
 
+/**
+ * Save the current settings for the network to the network variable.
+ */
 void networkSet(JsNetwork *net) {
   jsvSetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData));
 }
 
+/**
+ * Release the current network in effect.
+ */
 void networkFree(JsNetwork *net) {
   networkCurrentStruct = 0;
   jsvUnLock(net->networkVar);
 }
 
+/**
+ * Retrieve the current network in effect.
+ */
 JsNetwork *networkGetCurrent() {
+  // The value of this global is set in networkGetFromVar.
   return networkCurrentStruct;
 }
