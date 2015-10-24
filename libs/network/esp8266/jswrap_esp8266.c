@@ -399,6 +399,8 @@ void jswrap_ESP8266_wifi_scan(
   ]
 }
 * Create a logical access point allowing WiFi stations to connect.
+* The `options` object can contain the following properties.
+* * authMode - The authentication mode to use.  Can be one of "open", "wpa2", "wpa", "wpa_wpa2".
 */
 void jswrap_ESP8266_wifi_createAP(
     JsVar *jsSsid,     //!< The network SSID that we will use to listen as.
@@ -425,16 +427,60 @@ void jswrap_ESP8266_wifi_createAP(
   struct softap_config softApConfig;
   memset(&softApConfig, 0, sizeof(softApConfig));
 
+  softApConfig.authmode = (AUTH_MODE)-1;
+
+  // Handle any options that may have been supplied.
+  if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+
+    // Handle "authMode" processing.  Here we check that "authMode", if supplied, is
+    // one of the allowed values and set the softApConfig object property appropriately.
+    JsVar *jsAuth = jsvObjectGetChild(jsOptions, "authMode", 0);
+    if (jsAuth != NULL) {
+      if (jsvIsString(jsAuth)) {
+        if (jsvIsStringEqual(jsAuth, "open")) {
+          softApConfig.authmode = AUTH_OPEN;
+        } else if (jsvIsStringEqual(jsAuth, "wpa2")) {
+          softApConfig.authmode = AUTH_WPA2_PSK;
+        } else if (jsvIsStringEqual(jsAuth, "wpa")) {
+          softApConfig.authmode = AUTH_WPA_PSK;
+        } else if (jsvIsStringEqual(jsAuth, "wpa_wpa2")) {
+          softApConfig.authmode = AUTH_WPA_WPA2_PSK;
+        } else {
+          jsvUnLock(jsAuth);
+          jsExceptionHere(JSET_ERROR, "Unknown authMode value.");
+          return;
+        }
+      } else {
+        jsvUnLock(jsAuth);
+        jsExceptionHere(JSET_ERROR, "The authMode must be a string.");
+        return;
+      }
+      jsvUnLock(jsAuth);
+      assert(softApConfig.authmode != (AUTH_MODE)-1);
+    } // End of jsAuth is present.
+  } // End of jsOptions is present
+
   // If no password has been supplied, then be open.  Otherwise, use WPA2 and the
   // password supplied.  Also check that the password is at least 8 characters long.
   if (jsPassword == NULL || !jsvIsString(jsPassword)) {
-    softApConfig.authmode = AUTH_OPEN;
+    if (softApConfig.authmode == (AUTH_MODE)-1) {
+      softApConfig.authmode = AUTH_OPEN;
+    }
+    if (softApConfig.authmode != AUTH_OPEN) {
+      jsExceptionHere(JSET_ERROR, "Password not set but authMode not 'open'.");
+      return;
+    }
   } else {
     if (jsvGetStringLength(jsPassword) < 8) {
       jsExceptionHere(JSET_ERROR, "Password must be 8 characters or more in length.");
       return;
     }
-    softApConfig.authmode = AUTH_WPA2_PSK;
+    if (softApConfig.authmode == (AUTH_MODE)-1) {
+      softApConfig.authmode = AUTH_WPA2_PSK;
+    }
+    if (softApConfig.authmode == AUTH_OPEN) {
+      jsWarn("wifi.connection: Auth mode set to open but password supplied!");
+    }
     int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
     softApConfig.password[len]='\0';
   }

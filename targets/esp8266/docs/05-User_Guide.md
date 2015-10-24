@@ -359,14 +359,16 @@ The status is a JS integer that describes the current connection status which wi
 
 Become an access point.
 
-`ESP8266WiFi.beAccessPoint(ssid [,password] [,options] [,callback])`
+`wifi.createAP(ssid [,password] [,options] [,callback])`
 
 Become an access point for the network supplied by `ssid` with a password of `password`.  If no
 password is supplied or is null, then the access point is considered open and be connected to by
 a station that need not supply a password.  If a password is supplied, it must be at least
 eight characters in size.
 
-The `options` allows us to supply options.  None are currently defined.
+The `options` allows us to supply options.
+
+* `authMode` - The authentication mode to use.  Can be one of `open`, `wpa2`, `wpa` or `wpa_wpa2`.  If not supplied then the value will be `wpa2` if a password is supplied and `open` if no password is supplied.
 
 The `callback` is a a function with the following signature:
 
