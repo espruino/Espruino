@@ -48,4 +48,11 @@ void   jswrap_ESP8266WiFi_socketEnd(JsVar *socket, JsVar *data);
 void   jswrap_ESP8266WiFi_stopAP();
 void   jswrap_ESP8266WiFi_updateCPUFreq(JsVar *jsFreq);
 
+
+void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_createAP(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_disconnect();
+JsVar *jswrap_ESP8266_wifi_getIP();
+void   jswrap_ESP8266_wifi_scan(JsVar *jsCallback);
+
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_ */
