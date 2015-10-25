@@ -214,6 +214,11 @@ struct socketData {
  */
 static struct socketData socketArray[MAX_SOCKETS];
 
+/**
+ * Flag the sockets as initially NOT initialized.
+ */
+static bool g_socketsInitialized = false;
+
 
 /**
  * Write the details of a socket to the debug log.
@@ -522,6 +527,11 @@ static void releaseSocket(
  * Walk through each of the sockets and initialize each one.
  */
 void netInit_esp8266_board() {
+  if (g_socketsInitialized == true) {
+    return;
+  }
+  g_socketsInitialized = true;
+
   int socketArrayIndex;
   struct socketData *pSocketData = socketArray;
   for (socketArrayIndex=0; socketArrayIndex<MAX_SOCKETS; socketArrayIndex++) {

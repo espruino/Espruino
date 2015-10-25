@@ -3,7 +3,7 @@ This is the page where the User Guide for using the Espruino ESP8266 will be doc
 By completion, this documentation will be polished and placed in the code itself so that automated
 documentation generation will work.
 
-A module called `wifi` encapsulates the WiFi functions.  An instance of `WiFi` is returned using:
+A module called `wifi` encapsulates the WiFi functions.  An instance of `wifi` is returned using:
 
     var wifi = require("wifi");
 
@@ -378,14 +378,21 @@ The `err` parameter is an object with properties of `errorCode` and `errorMessag
 
 ----
 
-##ESP8266WiFi.stopAP
+##wifi.stopAP
 
 Don't be an access point any longer.
 
-`ESP8266WiFi.stopAP()`
+`wifi.stopAP([callback])`
 
 If we are playing the role of an access point, stop performing that function.  Connected stations will be
 disconnected and we will no longer be visible as a WiFi network.
+
+The optional `callback` is a callback function to be invoked when the device is no longer an
+access point.  The signature for the callback is:
+
+    callback(err)
+
+where `err` is an object indicating an error or `null` if there is no error.
 
 ----
 
