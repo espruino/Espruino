@@ -41,13 +41,14 @@ typedef long long int64_t;
 #include "jswrap_net.h"
 
 // Forward declaration of functions.
-static void scanCB(void *arg, STATUS status);
-static void wifiEventHandler(System_Event_t *event);
-static void ipAddrToString(struct ip_addr addr, char *string);
-static char *nullTerminateString(char *target, char *source, int sourceLength);
-static void setupJsNetwork();
-static void pingRecvCB();
-static char *wifiConnectStatusToString(uint8 status);
+static void   scanCB(void *arg, STATUS status);
+static void   wifiEventHandler(System_Event_t *event);
+static void   ipAddrToString(struct ip_addr addr, char *string);
+static char  *nullTerminateString(char *target, char *source, int sourceLength);
+static void   setupJsNetwork();
+static void   pingRecvCB();
+static char  *wifiConnectStatusToString(uint8 status);
+static JsVar *createErrorVar(int errorCode, char *errorMessage);
 
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
@@ -67,20 +68,53 @@ static JsVar *g_jsPingCallback;
 // A callback function to be invoked on gethostbyname responses.
 static JsVar *g_jsHostByNameCallback;
 
+// A callback function to be invoked on a disconnect response.
+static JsVar *g_jsDisconnectCallback;
+
+// A callback function to be invoked on a createAP response.
+static JsVar *g_jsCreateAPCallback;
+
+// A callback function to be invoked on a stopAP response.
+static JsVar *g_jsStopAPCallback;
+
 // Global data structure for ping request
 static struct ping_option pingOpt;
 
-// Reasons for which a connection failed
-uint8_t wifiReason = 0;
-static char *wifiReasons[] = {
-  "", "unspecified", "auth_expire", "auth_leave", "assoc_expire", "assoc_toomany", "not_authed",
-  "not_assoced", "assoc_leave", "assoc_not_authed", "disassoc_pwrcap_bad", "disassoc_supchan_bad",
-  "ie_invalid", "mic_failure", "4way_handshake_timeout", "group_key_update_timeout",
-  "ie_in_4way_differs", "group_cipher_invalid", "pairwise_cipher_invalid", "akmp_invalid",
-  "unsupp_rsn_ie_version", "invalid_rsn_ie_cap", "802_1x_auth_failed", "cipher_suite_rejected",
-  "beacon_timeout", "no_ap_found" };
+// Value of WiFi mode pre-scan so that it can be restored.
+static uint8 g_preWiFiScanMode;
 
-static char *wifiGetReason(void) {
+// Reasons for which a connection failed
+static char *wifiReasons[] = {
+  "0 - <Not Used>",           // 0
+  "unspecified",              // 1 - REASON_UNSPECIFIED
+  "auth_expire",              // 2 - REASON_AUTH_EXPIRE
+  "auth_leave",               // 3 - REASON_AUTH_LEAVE
+  "assoc_expire",             // 4 - REASON_ASSOC_EXPIRE
+  "assoc_toomany",            // 5 - REASON_ASSOC_TOOMANY
+  "not_authed",               // 6 - REASON_NOT_AUTHED
+  "not_assoced",              // 7 - REASON_NOT_ASSOCED
+  "assoc_leave",              // 8 - REASON_ASSOC_LEAVE
+  "assoc_not_authed",         // 9 - REASON_ASSOC_NOT_AUTHED
+  "disassoc_pwrcap_bad",      // 10 - REASON_DISASSOC_PWRCAP_BAD
+  "disassoc_supchan_bad",     // 11 - REASON_DISASSOC_SUPCHAN_BAD
+  "12 - <Not Used>",          // 12
+  "ie_invalid",               // 13 - REASON_IE_INVALID
+  "mic_failure",              // 14 - REASON_MIC_FAILURE
+  "4way_handshake_timeout",   // 15 - REASON_4WAY_HANDSHAKE_TIMEOUT
+  "group_key_update_timeout", // 16 - REASON_GROUP_KEY_UPDATE_TIMEOUT
+  "ie_in_4way_differs",       // 17 - REASON_IE_IN_4WAY_DIFFERS
+  "group_cipher_invalid",     // 18 - REASON_GROUP_CIPHER_INVALID
+  "pairwise_cipher_invalid",  // 19 - REASON_PAIRWISE_CIPHER_INVALID
+  "akmp_invalid",             // 20 - REASON_AKMP_INVALID
+  "unsupp_rsn_ie_version",    // 21 - REASON_UNSUPP_RSN_IE_VERSION
+  "invalid_rsn_ie_cap",       // 22 - REASON_UNSUPP_RSN_IE_VERSION
+  "802_1x_auth_failed",       // 23 - REASON_802_1X_AUTH_FAILED
+  "cipher_suite_rejected",    // 24 - REASON_CIPHER_SUITE_REJECTED
+  "beacon_timeout",           // 200 - REASON_BEACON_TIMEOUT
+  "no_ap_found"               // 201 - REASON_NO_AP_FOUND
+};
+
+static char *wifiGetReason(uint8 wifiReason) {
   if (wifiReason <= 24) return wifiReasons[wifiReason];
   if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+24];
   return wifiReasons[1];
@@ -89,11 +123,530 @@ static char *wifiGetReason(void) {
 static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
 static char *wifiPhy[]  = { 0, "11b", "11g", "11n" };
 
+
+/*JSON{
+   "type": "library",
+   "class": "ESP8266"
+}*/
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "getAddressAsString",
+  "generate" : "jswrap_ESP8266_getAddressAsString",
+  "params"   : [
+    ["address", "JsVar", "An integer value representing an IP address."]
+  ],
+  "return"   : ["JsVar", "A String"]
+}*/
+
+JsVar *jswrap_ESP8266_getAddressAsString(
+    JsVar *address //!< An integer value representing an IP address.
+  ) {
+  if (!jsvIsInt(address)) {
+    jsExceptionHere(JSET_ERROR, "No address.");
+    return NULL;
+  }
+  uint32 iAddress = (uint32)jsvGetInteger(address);
+  return networkGetAddressAsString((uint8 *)&iAddress, 4, 10, '.');
+}
+
+/*JSON{
+   "type": "library",
+   "class": "wifi"
+}*/
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "disconnect",
+  "generate" : "jswrap_ESP8266_wifi_disconnect",
+  "params"   : [
+    ["callback", "JsVar", "A function to be called back on completion (optional)."]
+  ]
+}*/
+void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
+  os_printf("> jswrap_ESP8266_wifi_disconnect\n");
+  if (g_jsDisconnectCallback != NULL) {
+    jsvUnLock(g_jsDisconnectCallback);
+    g_jsDisconnectCallback = NULL;
+  }
+  g_jsDisconnectCallback = jsvLockAgainSafe(jsCallback);
+
+  bool rc = wifi_station_disconnect();
+  JsVar *params[1];
+
+  if (g_jsDisconnectCallback != NULL) {
+    // Set the return error as a function of the return code returned from the call to
+    // the ESP8266 API to disconnect from the access point.
+    if (rc == true) {
+      params[0] = jsvNewNull();
+    } else {
+      params[0] = createErrorVar(-1, "Error");
+    }
+
+    jsiQueueEvents(NULL, g_jsDisconnectCallback, params, 1);
+  }
+
+  os_printf("< jswrap_ESP8266_wifi_disconnect\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "stopAP",
+  "generate" : "jswrap_ESP8266_wifi_stopAP",
+  "params"   : [
+    ["callback", "JsVar", "A function to be called back on completion (optional)."]
+  ]
+}
+* Stop being an access point.
+*/
+void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
+  os_printf("> jswrap_ESP8266_wifi_stopAP\n");
+
+  if (g_jsStopAPCallback != NULL) {
+    jsvUnLock(g_jsStopAPCallback);
+  }
+  g_jsStopAPCallback = jsvLockAgainSafe(jsCallback);
+
+  uint8 currentMode = wifi_get_opmode();
+
+  // Current         Resulting
+  // --------------  --------------
+  // NULL_MODE       NULL_MODE
+  // STATION_MODE    STATION_MODE
+  // SOFTAP_MODE     NULL_MODE
+  // STATIONAP_MODE  STATION_MODE
+
+  if (currentMode == STATION_MODE || currentMode == STATIONAP_MODE) {
+    wifi_set_opmode_current(STATION_MODE);
+  } else {
+    wifi_set_opmode_current(NULL_MODE);
+  }
+
+  // No real return code to check, so hard code to be true.
+  bool rc = true;
+
+  if (g_jsStopAPCallback != NULL) {
+    JsVar *params[1];
+    // Set the return error as a function of the return code returned from the call to
+    // the ESP8266 API to disconnect from the access point.
+    if (rc == true) {
+      params[0] = jsvNewNull();
+    } else {
+      params[0] = createErrorVar(-1, "Error");
+    }
+    jsiQueueEvents(NULL, g_jsStopAPCallback, params, 1);
+  }
+
+  os_printf("< jswrap_ESP8266_wifi_stopAP\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "connect",
+  "generate" : "jswrap_ESP8266_wifi_connect",
+  "params"   : [
+    ["ssid", "JsVar", "The access point network id."],
+    ["password", "JsVar", "The password to be used to access the network (optional)."],
+    ["options", "JsVar", "Connection options (optional)."],
+    ["callback", "JsVar", "A function to be called back on completion (optional)."]
+  ]
+}
+* Connect to an access point as a station.
+* When the outcome is known, the callback function is invoked.  The options object contains
+* properties that control the connection.  Included in this object are:
+* * autoConnect (Boolean) - When true, these settings will be used to autoConnect on next boot.
+*/
+void jswrap_ESP8266_wifi_connect(
+    JsVar *jsSsid,
+    JsVar *jsPassword,
+    JsVar *jsOptions,
+    JsVar *jsCallback
+  ) {
+
+  // Notes:
+  // The callback function is saved in the file local variable called g_jsGotIpCallback.  The
+  // callback will be made when the WiFi callback found in the function called wifiEventHandler.
+
+  os_printf("> jswrap_ESP8266_wifi_connect() Called!\n");
+
+ // Check that the ssid and password values aren't obviously in error.
+ if (jsSsid == NULL || !jsvIsString(jsSsid)) {
+   jsExceptionHere(JSET_ERROR, "No SSID.");
+   return;
+ }
+
+ if (jsPassword != NULL && !jsvIsString(jsPassword)) {
+   jsExceptionHere(JSET_ERROR, "Invalid password");
+   return;
+ }
+
+ // Check that if a callback function was supplied that we actually have a callback function.
+ if (jsCallback != NULL && !jsvIsUndefined(jsCallback) && !jsvIsFunction(jsCallback)) {
+   jsCallback = NULL;
+   jsExceptionHere(JSET_ERROR, "A callback function was supplied that is not a function.");
+   return;
+ }
+ if (jsvIsUndefined(jsCallback) || jsvIsNull(jsCallback)) {
+   jsCallback = NULL;
+ }
+
+ // Set the global which is the gotIP callback to null but first unlock it.
+ if (g_jsGotIpCallback != NULL) {
+   jsvUnLock(g_jsGotIpCallback);
+   g_jsGotIpCallback = NULL;
+ }
+
+ // If we have a callback, save it for later invocation.
+ if (jsCallback != NULL) {
+   g_jsGotIpCallback = jsvLockAgainSafe(jsCallback);
+ }
+
+ // Debug
+ // os_printf("jsCallback=%p\n", jsCallback);
+
+ // Create strings from the JsVars for the ESP8266 API calls.
+ char ssid[33];
+ int len = jsvGetString(jsSsid, ssid, sizeof(ssid)-1);
+ ssid[len]='\0';
+
+ char password[65];
+ if (jsPassword != NULL) {
+   len = jsvGetString(jsPassword, password, sizeof(password)-1);
+   password[len]='\0';
+ } else {
+   password[0] = '\0';
+ }
+
+ os_printf(">  - ssid=%s, password=\"%s\"\n", ssid, password);
+
+ // Set the WiFi mode of the ESP8266
+
+ // Current         Resulting
+ // --------------  --------------
+ // NULL_MODE       STATION_MODE
+ // STATION_MODE    STATION_MODE
+ // SOFTAP_MODE     STATIONAP_MODE
+ // STATIONAP_MODE  STATIONAP_MODE
+
+ uint8 currentMode = wifi_get_opmode();
+ if (currentMode == SOFTAP_MODE || currentMode == STATIONAP_MODE) {
+   wifi_set_opmode_current(STATIONAP_MODE);
+ } else {
+   wifi_set_opmode_current(STATION_MODE);
+ }
+
+ struct station_config stationConfig;
+ memset(&stationConfig, 0, sizeof(stationConfig));
+ os_strncpy((char *)stationConfig.ssid, ssid, 32);
+ os_strncpy((char *)stationConfig.password, password, 64);
+
+ // Set the WiFi configuration
+ wifi_station_set_config_current(&stationConfig);
+
+ uint8 wifiConnectStatus = wifi_station_get_connect_status();
+ os_printf(" - Current connect status: %s\n", wifiConnectStatusToString(wifiConnectStatus));
+
+ if (wifiConnectStatus == STATION_GOT_IP) {
+   // See issue #618.  There are currently three schools of thought on what should happen
+   // when a connect is issued and we are already connected.
+   //
+   // Option #1 - Always perform a disconnect.
+   // Option #2 - Perform a disconnect if the SSID or PASSWORD are different from current
+   // Option #3 - Fail the connect if we are already connected.
+   //
+#define ISSUE_618 1
+
+#if ISSUE_618 == 1
+   wifi_station_disconnect();
+#elif ISSUE_618 == 2
+   struct station_config existingConfig;
+   wifi_station_get_config(&existingConfig);
+   if (os_strncmp((char *)existingConfig.ssid, (char *)stationConfig.ssid, 32) == 0 &&
+       os_strncmp((char *)existingConfig.password, (char *)stationConfig.password, 64) == 0) {
+     if (jsGotIpCallback != NULL) {
+       JsVar *params[2];
+       params[0] = jsvNewFromInteger(STATION_GOT_IP);
+       params[1] = jsvNewNull();
+       jsiQueueEvents(NULL, jsCallback, params, 2);
+     }
+     return;
+
+   } else {
+     wifi_station_disconnect();
+   }
+#elif ISSUE_618 == 3
+   // Add a return code to the function and return an already connected error.
+#endif
+ }
+
+
+ if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+   // Do we have a child property called autoConnect?
+   JsVar *jsAutoConnect = jsvObjectGetChild(jsOptions, "autoConnect", 0);
+   if (jsvIsBoolean(jsAutoConnect)) {
+     if (jsvGetBool(jsAutoConnect) != false) {
+       // autoConnect == true
+       os_printf(" - Setting auto connect to true\n");
+       wifi_station_set_auto_connect(true);
+       // Set the WiFi configuration (includes setting default)
+       wifi_station_set_config(&stationConfig);
+     } else {
+       // autoConnect == false
+       os_printf(" - Setting auto connect to false\n");
+       wifi_station_set_auto_connect(false);
+     }
+   }
+   jsvUnLock(jsAutoConnect);
+ }
+
+ // Perform the network level connection.
+ wifi_station_connect();
+ os_printf("< jswrap_ESP8266_wifi_connect\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "scan",
+  "generate" : "jswrap_ESP8266_wifi_scan",
+  "params"   : [
+    ["callback", "JsVar", "A function to be called back on completion (optional)."]
+  ]
+}*/
+void jswrap_ESP8266_wifi_scan(
+    JsVar *jsCallback
+  ) {
+  os_printf("> jswrap_ESP8266_wifi_scan\n");
+   if (jsCallback == NULL || !jsvIsFunction(jsCallback)) {
+       jsExceptionHere(JSET_ERROR, "No callback.");
+     return;
+   }
+
+   // If we had saved a previous scan callback function, release it.
+   if (g_jsScanCallback != NULL) {
+     jsvUnLock(g_jsScanCallback);
+   }
+
+   // Save the callback for the scan in the global variable called jsScanCallback.
+   g_jsScanCallback = jsvLockAgainSafe(jsCallback);
+
+   // Ask the ESP8266 to perform a network scan after first entering
+   // station mode.  The network scan will eventually result in a callback
+   // being executed (scanCB) which will contain the results.
+
+   // Ensure we are in station mode
+   if (g_preWiFiScanMode == -1) {
+     g_preWiFiScanMode = wifi_get_opmode();
+   }
+
+   // Current         Resulting
+   // --------------  --------------
+   // NULL_MODE       STATION_MODE
+   // STATION_MODE    STATION_MODE
+   // SOFTAP_MODE     STATIONAP_MODE
+   // STATIONAP_MODE  STATIONAP_MODE
+
+   if (g_preWiFiScanMode == SOFTAP_MODE || g_preWiFiScanMode == STATIONAP_MODE) {
+     wifi_set_opmode_current(STATIONAP_MODE);
+   } else {
+     wifi_set_opmode_current(STATION_MODE);
+   }
+
+   // Request a scan of the network calling "scanCB" on completion
+   wifi_station_scan(NULL, scanCB);
+
+   os_printf("< jswrap_ESP8266_wifi_scan\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "createAP",
+  "generate" : "jswrap_ESP8266_wifi_createAP",
+  "params"   : [
+    ["ssid", "JsVar", "The network id."],
+    ["password", "JsVar", "A password for connecting stations (optional)."],
+    ["options", "JsVar", "Configuration options (optional)."],
+    ["callback", "JsVar", "A function to be called back on completion (optional)."]
+  ]
+}
+* Create a logical access point allowing WiFi stations to connect.
+* The `options` object can contain the following properties.
+* * authMode - The authentication mode to use.  Can be one of "open", "wpa2", "wpa", "wpa_wpa2".
+*/
+void jswrap_ESP8266_wifi_createAP(
+    JsVar *jsSsid,     //!< The network SSID that we will use to listen as.
+    JsVar *jsPassword, //!< The password that stations will use to connect.
+    JsVar *jsOptions,  //!< Configuration options.
+    JsVar *jsCallback  //!< A callback to be invoked when completed.
+  ) {
+  os_printf("> jswrap_ESP8266_wifi_createAP\n");
+
+  // If we had a previous createAP callback then release it.
+  if (g_jsCreateAPCallback != NULL) {
+    jsvUnLock(g_jsCreateAPCallback);
+  }
+  g_jsCreateAPCallback = jsCallback;
+
+
+  // Validate that the SSID is provided and is a string.
+  if (jsSsid == NULL || !jsvIsString(jsSsid)) {
+      jsExceptionHere(JSET_ERROR, "No SSID.");
+    return;
+  }
+
+  // Build our SoftAP configuration details
+  struct softap_config softApConfig;
+  memset(&softApConfig, 0, sizeof(softApConfig));
+
+  softApConfig.authmode = (AUTH_MODE)-1;
+
+  // Handle any options that may have been supplied.
+  if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+
+    // Handle "authMode" processing.  Here we check that "authMode", if supplied, is
+    // one of the allowed values and set the softApConfig object property appropriately.
+    JsVar *jsAuth = jsvObjectGetChild(jsOptions, "authMode", 0);
+    if (jsAuth != NULL) {
+      if (jsvIsString(jsAuth)) {
+        if (jsvIsStringEqual(jsAuth, "open")) {
+          softApConfig.authmode = AUTH_OPEN;
+        } else if (jsvIsStringEqual(jsAuth, "wpa2")) {
+          softApConfig.authmode = AUTH_WPA2_PSK;
+        } else if (jsvIsStringEqual(jsAuth, "wpa")) {
+          softApConfig.authmode = AUTH_WPA_PSK;
+        } else if (jsvIsStringEqual(jsAuth, "wpa_wpa2")) {
+          softApConfig.authmode = AUTH_WPA_WPA2_PSK;
+        } else {
+          jsvUnLock(jsAuth);
+          jsExceptionHere(JSET_ERROR, "Unknown authMode value.");
+          return;
+        }
+      } else {
+        jsvUnLock(jsAuth);
+        jsExceptionHere(JSET_ERROR, "The authMode must be a string.");
+        return;
+      }
+      jsvUnLock(jsAuth);
+      assert(softApConfig.authmode != (AUTH_MODE)-1);
+    } // End of jsAuth is present.
+  } // End of jsOptions is present
+
+  // If no password has been supplied, then be open.  Otherwise, use WPA2 and the
+  // password supplied.  Also check that the password is at least 8 characters long.
+  if (jsPassword == NULL || !jsvIsString(jsPassword)) {
+    if (softApConfig.authmode == (AUTH_MODE)-1) {
+      softApConfig.authmode = AUTH_OPEN;
+    }
+    if (softApConfig.authmode != AUTH_OPEN) {
+      jsExceptionHere(JSET_ERROR, "Password not set but authMode not 'open'.");
+      return;
+    }
+  } else {
+    if (jsvGetStringLength(jsPassword) < 8) {
+      jsExceptionHere(JSET_ERROR, "Password must be 8 characters or more in length.");
+      return;
+    }
+    if (softApConfig.authmode == (AUTH_MODE)-1) {
+      softApConfig.authmode = AUTH_WPA2_PSK;
+    }
+    if (softApConfig.authmode == AUTH_OPEN) {
+      jsWarn("wifi.connection: Auth mode set to open but password supplied!");
+    }
+    int len = jsvGetString(jsPassword, (char *)softApConfig.password, sizeof(softApConfig.password)-1);
+    softApConfig.password[len]='\0';
+  }
+
+  int len = jsvGetString(jsSsid, (char *)softApConfig.ssid, sizeof(softApConfig.ssid)-1);
+  softApConfig.ssid[len]='\0';
+
+  // Define that we are in Soft AP mode including station mode if required.
+  os_printf("Wifi: switching to soft-AP mode, authmode=%d\n", softApConfig.authmode);
+  uint8 currentMode = wifi_get_opmode();
+
+  // Current         Resulting
+  // --------------  --------------
+  // NULL_MODE       SOFTAP_MODE
+  // STATION_MODE    STATIONAP_MODE
+  // SOFTAP_MODE     SOFTAP_MODE
+  // STATIONAP_MODE  STATIONAP_MODE
+
+  if (currentMode == STATION_MODE || currentMode == STATIONAP_MODE) {
+    wifi_set_opmode_current(STATIONAP_MODE);
+  } else {
+    wifi_set_opmode_current(SOFTAP_MODE);
+  }
+
+  softApConfig.ssid_len       = 0; // Null terminated SSID
+  softApConfig.ssid_hidden    = 0; // Not hidden.
+  softApConfig.max_connection = 4; // Maximum number of connections.
+
+  // Set the WiFi configuration.
+  int rc = wifi_softap_set_config_current(&softApConfig);
+  // We should really check that becoming an access point works, however as of SDK 1.4, we
+  // are finding that if we are currently connected to an access point and we switch to being
+  // an access point, it works ... but returns 1 indicating an error.
+  /*
+  if (rc != 1) {
+      os_printf(" - Error returned from wifi_softap_set_config_current=%d\n", rc);
+      jsExceptionHere(JSET_ERROR, "Error setting ESP8266 softap config.");
+  }
+  */
+  if (g_jsCreateAPCallback != NULL) {
+    // Set the return error as a function of the return code returned from the call to
+    // the ESP8266 API to disconnect from the access point.
+    JsVar *params[1];
+    params[0] = jsvNewNull();
+    jsiQueueEvents(NULL, g_jsCreateAPCallback, params, 1);
+  }
+  os_printf("< jswrap_ESP8266_wifi_createAP\n");
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "getIP",
+  "generate" : "jswrap_ESP8266_wifi_getIP",
+  "return"   : ["JsVar", "A boolean representing our auto connect status"]
+}
+* Return IP information in an object which contains:
+* * ip - IP address
+* * netmask - The interface netmask
+* * gw - The network gateway
+*/
+JsVar *jswrap_ESP8266_wifi_getIP() {
+  os_printf("> jswrap_ESP8266_wifi_getIP\n");
+  struct ip_info info;
+  wifi_get_ip_info(0, &info);
+
+  JsVar *ipInfo = jspNewObject(NULL, "Restart");
+  jsvObjectSetChildAndUnLock(ipInfo, "ip", jsvNewFromInteger(info.ip.addr));
+  jsvObjectSetChildAndUnLock(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
+  jsvObjectSetChildAndUnLock(ipInfo, "gw", jsvNewFromInteger(info.gw.addr));
+  os_printf("< jswrap_ESP8266_wifi_getIP\n");
+  return ipInfo;
+}
+
+
 // Let's define the JavaScript class that will contain our `world()` method. We'll call it `Hello`
 /*JSON{
   "type"  : "class",
   "class" : "ESP8266WiFi"
 }*/
+
+/*JSON{
+    "type": "init",
+    "generate": "jswrap_ESP8266_init"
+}*/
+void jswrap_ESP8266_init() {
+  os_printf("> jswrap_ESP8266_init\n");
+  jswrap_ESP8266WiFi_init();
+  os_printf("< jswrap_ESP8266_init\n");
+}
 
 /*JSON{
     "type":     "kill",
@@ -140,6 +693,24 @@ void jswrap_ESP8266WiFi_kill() {
     g_jsHostByNameCallback = NULL;
   }
 
+  // Handle g_jsDisconnectCallback release.
+  if (g_jsDisconnectCallback != NULL) {
+    jsvUnLock(g_jsDisconnectCallback);
+    g_jsDisconnectCallback = NULL;
+  }
+
+  // Handle g_jsStopAPCallback release.
+  if (g_jsStopAPCallback != NULL) {
+    jsvUnLock(g_jsStopAPCallback);
+    g_jsStopAPCallback = NULL;
+  }
+
+  // Handle g_jsCreateAPCallback release.
+  if (g_jsCreateAPCallback != NULL) {
+    jsvUnLock(g_jsCreateAPCallback);
+    g_jsCreateAPCallback = NULL;
+  }
+
   os_printf("< jswrap_esp8266_kill\n");
 }
 
@@ -154,7 +725,7 @@ void jswrap_ESP8266WiFi_kill() {
     ["gotIpCallback", "JsVar", "An optional callback invoked when we have an IP"]
   ]
 }
- *
+ * Deprecated by jswrap_ESP8266_wifi_connect
  * Connect the station to an access point.
  */
 void jswrap_ESP8266WiFi_connect(
@@ -271,6 +842,7 @@ void jswrap_ESP8266WiFi_connect(
 }
  * Stop being an access point.
 */
+// DEPRECATED by wifi.stopAP()
 void jswrap_ESP8266WiFi_stopAP() {
   os_printf("Wifi: switching to Station mode.");
   wifi_set_opmode_current(STATION_MODE);
@@ -304,7 +876,9 @@ void jswrap_ESP8266WiFi_stopAP() {
     ["jsv_ssid", "JsVar", "The network SSID"],
     ["jsv_password", "JsVar", "The password to allow stations to connect to the access point"]
   ]
-}*/
+}
+* Deprecated by jswrap_ESP8266_wifi_createAP
+*/
 void jswrap_ESP8266WiFi_beAccessPoint(
     JsVar *jsv_ssid,    //!< The network identity that the access point will advertize itself as.
     JsVar *jsv_password //!< The password a station will need to connect to the access point.
@@ -371,7 +945,9 @@ void jswrap_ESP8266WiFi_beAccessPoint(
   "params"   : [
     ["callback","JsVar","Function to call back when access points retrieved."]
   ]
-}*/
+}
+* Deprecated by jswrap_ESP8266_wifi_scan
+*/
 void jswrap_ESP8266WiFi_getAccessPoints(
     JsVar *callback //!< Function to call back when access points retrieved.
   ) {
@@ -435,7 +1011,9 @@ void jswrap_ESP8266WiFi_mdnsInit() {
   "class"    : "ESP8266WiFi",
   "name"     : "disconnect",
   "generate" : "jswrap_ESP8266WiFi_disconnect"
-}*/
+}
+* Deprecated by jswrap_ESP8266_wifi_disconnect
+*/
 void jswrap_ESP8266WiFi_disconnect() {
   wifi_station_disconnect();
 }
@@ -443,14 +1021,14 @@ void jswrap_ESP8266WiFi_disconnect() {
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "restart",
-  "generate" : "jswrap_ESP8266WiFi_restart"
+  "generate" : "jswrap_ESP8266_restart"
 }
  * Ask the physical ESP8266 device to restart itself.
  */
-void jswrap_ESP8266WiFi_restart() {
-  os_printf("> jswrap_ESP8266WiFi_restart\n");
+void jswrap_ESP8266_restart() {
+  os_printf("> jswrap_ESP8266_restart\n");
   system_restart();
 }
 
@@ -548,30 +1126,30 @@ JsVar *jswrap_ESP8266WiFi_getAutoConnect() {
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "getRstInfo",
-  "generate" : "jswrap_ESP8266WiFi_getRstInfo",
+  "generate" : "jswrap_ESP8266_getRstInfo",
   "return"   : ["JsVar","A Restart Object"],
   "return_object" : "Restart"
 }*/
-JsVar *jswrap_ESP8266WiFi_getRstInfo() {
+JsVar *jswrap_ESP8266_getRstInfo() {
   struct rst_info* info = system_get_rst_info();
   JsVar *restartInfo = jspNewObject(NULL, "Restart");
-  jsvUnLock(jsvObjectSetChild(restartInfo, "reason",   jsvNewFromInteger(info->reason)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "exccause", jsvNewFromInteger(info->exccause)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "epc1",     jsvNewFromInteger(info->epc1)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "epc2",     jsvNewFromInteger(info->epc2)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "epc3",     jsvNewFromInteger(info->epc3)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "excvaddr", jsvNewFromInteger(info->excvaddr)));
-  jsvUnLock(jsvObjectSetChild(restartInfo, "depc",     jsvNewFromInteger(info->depc)));
+  jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromInteger(info->reason));
+  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromInteger(info->exccause));
+  jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
+  jsvObjectSetChildAndUnLock(restartInfo, "epc2",     jsvNewFromInteger(info->epc2));
+  jsvObjectSetChildAndUnLock(restartInfo, "epc3",     jsvNewFromInteger(info->epc3));
+  jsvObjectSetChildAndUnLock(restartInfo, "excvaddr", jsvNewFromInteger(info->excvaddr));
+  jsvObjectSetChildAndUnLock(restartInfo, "depc",     jsvNewFromInteger(info->depc));
   return restartInfo;
 }
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "logDebug",
-  "generate" : "jswrap_ESP8266WiFi_logDebug",
+  "generate" : "jswrap_ESP8266_logDebug",
   "params"   : [
     ["enable", "JsVar", "Enable or disable the debug logging."]
   ]
@@ -580,27 +1158,27 @@ JsVar *jswrap_ESP8266WiFi_getRstInfo() {
  * debug logging while a value of `false` disables debug logging.  Debug output is sent
  * to UART1.
  */
-void jswrap_ESP8266WiFi_logDebug(
+void jswrap_ESP8266_logDebug(
     JsVar *jsDebug
   ) {
   uint8 enable = (uint8)jsvGetBool(jsDebug);
-  os_printf("> jswrap_ESP8266WiFi_logDebug, enable=%d\n", enable);
+  os_printf("> jswrap_ESP8266_logDebug, enable=%d\n", enable);
   system_set_os_print((uint8)jsvGetBool(jsDebug));
-  os_printf("< jswrap_ESP8266WiFi_logDebug\n");
+  os_printf("< jswrap_ESP8266_logDebug\n");
 }
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "updateCPUFreq",
-  "generate" : "jswrap_ESP8266WiFi_updateCPUFreq",
+  "generate" : "jswrap_ESP8266_updateCPUFreq",
   "params"   : [
     ["freq", "JsVar", "Desired frequency - either 80 or 160."]
   ]
 }
  * Update the operating frequency of the ESP8266 processor.
  */
-void jswrap_ESP8266WiFi_updateCPUFreq(
+void jswrap_ESP8266_updateCPUFreq(
     JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
   ) {
   if (!jsvIsInt(jsFreq)) {
@@ -636,10 +1214,10 @@ JsVar *jswrap_ESP8266WiFi_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
   JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
-  jsvUnLock(jsvObjectSetChild(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version())));
-  jsvUnLock(jsvObjectSetChild(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq())));
-  jsvUnLock(jsvObjectSetChild(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size())));
-  jsvUnLock(jsvObjectSetChild(esp8266State, "maxCon",       jsvNewFromInteger(espconn_tcp_get_max_con())));
+  jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
+  jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
+  jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
+  jsvObjectSetChildAndUnLock(esp8266State, "maxCon",       jsvNewFromInteger(espconn_tcp_get_max_con()));
   return esp8266State;
 }
 
@@ -656,7 +1234,9 @@ JsVar *jswrap_ESP8266WiFi_getState() {
     ["address","JsVar","An integer value representing an IP address."]
   ],
   "return"   : ["JsVar","A String"]
-}*/
+}
+* Deprecated by jswrap_ESP8266_getAddressAsString
+*/
 JsVar *jswrap_ESP8266WiFi_getAddressAsString(
     JsVar *address //!< An integer value representing an IP address.
   ) {
@@ -684,15 +1264,17 @@ JsVar *jswrap_ESP8266WiFi_getAddressAsString(
   "generate" : "jswrap_ESP8266WiFi_getIPInfo",
   "return"   : ["JsVar","A IPInfo Object"],
   "return_object" : "IPInfo"
-}*/
+}
+* Deprecated by jswrap_ESP8266_wifi_getIP
+*/
 JsVar *jswrap_ESP8266WiFi_getIPInfo() {
   struct ip_info info;
   wifi_get_ip_info(0, &info);
 
   JsVar *ipInfo = jspNewObject(NULL, "Restart");
-  jsvUnLock(jsvObjectSetChild(ipInfo, "ip", jsvNewFromInteger(info.ip.addr)));
-  jsvUnLock(jsvObjectSetChild(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr)));
-  jsvUnLock(jsvObjectSetChild(ipInfo, "gw", jsvNewFromInteger(info.gw.addr)));
+  jsvObjectSetChildAndUnLock(ipInfo, "ip", jsvNewFromInteger(info.ip.addr));
+  jsvObjectSetChildAndUnLock(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
+  jsvObjectSetChildAndUnLock(ipInfo, "gw", jsvNewFromInteger(info.gw.addr));
   return ipInfo;
 }
 
@@ -720,10 +1302,10 @@ JsVar *jswrap_ESP8266WiFi_getStationConfig() {
   JsVar *jsConfig = jspNewObject(NULL, "StationConfig");
   //char ssid[33];
   //nullTerminateString(ssid, (char *)config.ssid, 32);
-  jsvUnLock(jsvObjectSetChild(jsConfig, "ssid", jsvNewFromString((char *)config.ssid)));
+  jsvObjectSetChildAndUnLock(jsConfig, "ssid", jsvNewFromString((char *)config.ssid));
   //char password[65];
   //nullTerminateString(password, (char *)config.password, 64);
-  jsvUnLock(jsvObjectSetChild(jsConfig, "password", jsvNewFromString((char *)config.password)));
+  jsvObjectSetChildAndUnLock(jsConfig, "password", jsvNewFromString((char *)config.password));
   return jsConfig;
 }
 
@@ -746,7 +1328,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectedStations() {
     while (stationInfo != NULL) {
       os_printf("Station IP: %d.%d.%d.%d\n", IP2STR(&(stationInfo->ip)));
       JsVar *jsStation = jsvNewWithFlags(JSV_OBJECT);
-      jsvUnLock(jsvObjectSetChild(jsStation, "ip", jsvNewFromInteger(stationInfo->ip.addr)));
+      jsvObjectSetChildAndUnLock(jsStation, "ip", jsvNewFromInteger(stationInfo->ip.addr));
       jsvArrayPush(jsArray, jsStation);
       stationInfo = STAILQ_NEXT(stationInfo, next);
     }
@@ -777,9 +1359,9 @@ static void dnsFoundCallback(
 
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "getHostByName",
-  "generate" : "jswrap_ESP8266WiFi_getHostByName",
+  "generate" : "jswrap_ESP8266_getHostByName",
     "params"   : [
     ["hostname", "JsVar", "The hostname to lookup."],
     ["callback", "JsVar", "The callback to invoke when the hostname is returned."]
@@ -788,7 +1370,7 @@ static void dnsFoundCallback(
  * Lookup the hostname and invoke a callback when the IP address is known.
 */
 
-void jswrap_ESP8266WiFi_getHostByName(
+void jswrap_ESP8266_getHostByName(
     JsVar *jsHostname,
     JsVar *jsCallback
   ) {
@@ -803,7 +1385,7 @@ void jswrap_ESP8266WiFi_getHostByName(
     jsExceptionHere(JSET_ERROR, "Not a valid callback function.");
     return;
   }
-  os_printf("> jswrap_ESP8266WiFi_getHostByName\n");
+  os_printf("> jswrap_ESP8266_getHostByName\n");
   // Save the callback unlocking an old callback if needed.
   if (g_jsHostByNameCallback != NULL) {
     jsvUnLock(g_jsHostByNameCallback);
@@ -819,7 +1401,7 @@ void jswrap_ESP8266WiFi_getHostByName(
   } else if (err != ESPCONN_INPROGRESS) {
     os_printf("Error: %d from espconn_gethostbyname\n", err);
   }
-  os_printf("< jswrap_ESP8266WiFi_getHostByName\n");
+  os_printf("< jswrap_ESP8266_getHostByName\n");
 }
 
 
@@ -889,6 +1471,10 @@ JsVar *jswrap_ESP8266WiFi_getRSSI() {
 }*/
 void jswrap_ESP8266WiFi_init() {
   os_printf("> jswrap_ESP8266WiFi_init\n");
+
+  // Record that we don't know the current preWiFiScan mode.
+  g_preWiFiScanMode = -1;
+
   // register the state change handler so we get debug printout for sure
   wifi_set_phy_mode(2);
   wifi_set_event_handler_cb(wifiEventHandler);
@@ -936,7 +1522,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectStatus() {
   // Populate the return JS variable with a property called "status"
   JsVar *jsStatus = jsvNewFromInteger(status);
   //jsvUnLock(jsStatus);
-  jsvUnLock(jsvObjectSetChild(var, "status", jsStatus));
+  jsvObjectSetChildAndUnLock(var, "status", jsStatus);
 
   // Populate the return JS variable with a property called "statusMsg"
   char *statusMsg;
@@ -964,7 +1550,7 @@ JsVar *jswrap_ESP8266WiFi_getConnectStatus() {
   }
   JsVar *jsStatusMsg = jsvNewFromString(statusMsg);
   //jsvUnLock(jsStatusMsg);
-  jsvUnLock(jsvObjectSetChild(var, "statusMsg", jsStatusMsg));
+  jsvObjectSetChildAndUnLock(var, "statusMsg", jsStatusMsg);
   //jsvUnLock(var);
   return var;
 }
@@ -1018,15 +1604,15 @@ void jswrap_ESP8266WiFi_socketEnd(
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "ping",
-  "generate" : "jswrap_ESP8266WiFi_ping",
+  "generate" : "jswrap_ESP8266_ping",
   "params"   : [
-    ["ipAddr","JsVar","A string or integer representation of an IP address."],
+    ["ipAddr", "JsVar", "A string or integer representation of an IP address."],
     ["pingCallback", "JsVar", "Optional callback function."]
   ]
 }*/
-void jswrap_ESP8266WiFi_ping(
+void jswrap_ESP8266_ping(
     JsVar *ipAddr,      //!< A string or integer representation of an IP address.
     JsVar *pingCallback //!< Optional callback function.
   ) {
@@ -1083,15 +1669,15 @@ void jswrap_ESP8266WiFi_ping(
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "dumpSocket",
-  "generate" : "jswrap_ESP8266WiFi_dumpSocket",
+  "generate" : "jswrap_ESP8266_dumpSocket",
   "params"   : [
     ["socketId","JsVar","The socket to be dumped."]
   ]
 }*/
 
-void jswrap_ESP8266WiFi_dumpSocket(
+void jswrap_ESP8266_dumpSocket(
     JsVar *socketId //!< The socket to be dumped.
   ) {
   esp8266_dumpSocket(jsvGetInteger(socketId)-1);
@@ -1134,14 +1720,14 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
   os_printf("Received a ping response!\n");
   if (g_jsPingCallback != NULL) {
     JsVar *jsPingResponse = jspNewObject(NULL, "PingResponse");
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "seqNo",        jsvNewFromInteger(pingResp->seqno)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "timeoutCount", jsvNewFromInteger(pingResp->timeout_count)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "bytes",        jsvNewFromInteger(pingResp->bytes)));
-    jsvUnLock(jsvObjectSetChild(jsPingResponse, "error",        jsvNewFromInteger(pingResp->ping_err)));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "respTime",     jsvNewFromInteger(pingResp->resp_time));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "seqNo",        jsvNewFromInteger(pingResp->seqno));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "timeoutCount", jsvNewFromInteger(pingResp->timeout_count));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "bytes",        jsvNewFromInteger(pingResp->bytes));
+    jsvObjectSetChildAndUnLock(jsPingResponse, "error",        jsvNewFromInteger(pingResp->ping_err));
     JsVar *params[1];
     params[0] = jsPingResponse;
     jsiQueueEvents(NULL, g_jsPingCallback, params, 1);
@@ -1166,6 +1752,12 @@ static void scanCB(void *arg, STATUS status) {
    */
 
   os_printf(">> scanCB\n");
+
+  // Set the opmode back to the value it was prior to the request for a scan.
+  assert(g_preWiFiScanMode != -1);
+  wifi_set_opmode_current(g_preWiFiScanMode);
+  g_preWiFiScanMode = -1;
+
   // Create the Empty JS array that will be passed as a parameter to the callback.
   JsVar *accessPointArray = jsvNewArray(NULL, 0);
   struct bss_info *bssInfo;
@@ -1190,15 +1782,15 @@ static void scanCB(void *arg, STATUS status) {
     // ---
     // Create, populate and add a child ...
     JsVar *currentAccessPoint = jspNewObject(NULL, "AccessPoint");
-    jsvUnLock(jsvObjectSetChild(currentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi)));
-    jsvUnLock(jsvObjectSetChild(currentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel)));
-    jsvUnLock(jsvObjectSetChild(currentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode)));
-    jsvUnLock(jsvObjectSetChild(currentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden)));
+    jsvObjectSetChildAndUnLock(currentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
+    jsvObjectSetChildAndUnLock(currentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
+    jsvObjectSetChildAndUnLock(currentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
+    jsvObjectSetChildAndUnLock(currentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
     // The SSID may **NOT** be NULL terminated ... so handle that.
     char ssid[sizeof(bssInfo->ssid) + 1];
     os_strncpy((char *)ssid, (char *)bssInfo->ssid, sizeof(bssInfo->ssid));
     ssid[sizeof(ssid)-1] = '\0';
-    jsvUnLock(jsvObjectSetChild(currentAccessPoint, "ssid", jsvNewFromString(ssid)));
+    jsvObjectSetChildAndUnLock(currentAccessPoint, "ssid", jsvNewFromString(ssid));
 
     // Add the new record to the array
     jsvArrayPush(accessPointArray, currentAccessPoint);
@@ -1238,13 +1830,49 @@ static void sendWifiEvent(
 
   if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_GOT_IP) {
     JsVar *params[2];
-    params[0] = jsvNewFromInteger(eventType);
-    params[1] = jsDetails;
+    params[0] = jsvNewNull();
+    params[1] = jswrap_ESP8266_wifi_getIP();
     jsiQueueEvents(NULL, g_jsGotIpCallback, params, 2);
-    // Once we have registered the callback, we can unlock and release
+    // Once we have invoked the callback, we can unlock and release
     // the variable as we are only calling it once.
-    //jsvUnLock(jsGotIpCallback);
-    //jsGotIpCallback = NULL;
+    jsvUnLock(g_jsGotIpCallback);
+    g_jsGotIpCallback = NULL;
+  }
+
+  if (g_jsGotIpCallback != NULL && eventType == EVENT_STAMODE_DISCONNECTED) {
+    uint8 stationCurrentStatus = wifi_station_get_connect_status();
+    if (stationCurrentStatus == STATION_WRONG_PASSWORD || stationCurrentStatus == STATION_NO_AP_FOUND) {
+      JsVar *params[2];
+      switch(stationCurrentStatus) {
+      case STATION_WRONG_PASSWORD:
+        params[0] = createErrorVar(STATION_WRONG_PASSWORD, "Wrong password");
+        break;
+      case STATION_NO_AP_FOUND:
+        params[0] = createErrorVar(STATION_NO_AP_FOUND, "No access point found");
+        break;
+      default:
+        params[0] = createErrorVar(stationCurrentStatus, "Unknown error!!");
+      }
+      params[1] = jswrap_ESP8266_wifi_getIP();
+      jsiQueueEvents(NULL, g_jsGotIpCallback, params, 2);
+      // Once we have invoked the callback, we can unlock and release
+      // the variable as we are only calling it once.
+      jsvUnLock(g_jsGotIpCallback);
+      g_jsGotIpCallback = NULL;
+
+      // Current         Resulting
+      // --------------  --------------
+      // NULL_MODE       NULL_MODE
+      // STATION_MODE    NULL_MODE
+      // SOFTAP_MODE     SOFTAP_MODE
+      // STATIONAP_MODE  SOFTAP_MODE
+      uint8 currentMode = wifi_get_opmode();
+      if (currentMode == SOFTAP_MODE || currentMode == STATIONAP_MODE) {
+        wifi_set_opmode(SOFTAP_MODE);
+      } else {
+        wifi_set_opmode(NULL_MODE);
+      }
+    }
   }
 }
 
@@ -1268,9 +1896,16 @@ static void wifiEventHandler(System_Event_t *evt) {
   // We have disconnected or been disconnected from an access point.
   case EVENT_STAMODE_DISCONNECTED:
     os_printf("Wifi disconnected from ssid %s, reason %s (%d)\n",
-      evt->event_info.disconnected.ssid, wifiGetReason(), evt->event_info.disconnected.reason);
+      evt->event_info.disconnected.ssid,
+      wifiGetReason(evt->event_info.disconnected.reason),
+      evt->event_info.disconnected.reason);
+
+    // Get the current connect status
+    uint8 stationCurrentStatus = wifi_station_get_connect_status();
+    os_printf("Current status: %s\n", wifiConnectStatusToString(stationCurrentStatus));
+
     JsVar *details = jspNewObject(NULL, "EventDetails");
-    jsvUnLock(jsvObjectSetChild(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason)));
+    jsvObjectSetChildAndUnLock(details, "reason", jsvNewFromInteger(evt->event_info.disconnected.reason));
     char ssid[33];
     memcpy(ssid, evt->event_info.disconnected.ssid, evt->event_info.disconnected.ssid_len);
     ssid[ evt->event_info.disconnected.ssid_len] = '\0';
@@ -1291,25 +1926,30 @@ static void wifiEventHandler(System_Event_t *evt) {
       IP2STR(&evt->event_info.got_ip.gw));
     sendWifiEvent(evt->event, jsvNewNull());
     break;
+
   case EVENT_STAMODE_DHCP_TIMEOUT:
     os_printf("Wifi DHCP timeout");
     sendWifiEvent(evt->event, jsvNewNull());
     break;
+
   case EVENT_SOFTAPMODE_STACONNECTED:
     os_printf("Wifi AP: station " MACSTR " joined, AID = %d\n",
       MAC2STR(evt->event_info.sta_connected.mac), evt->event_info.sta_connected.aid);
     sendWifiEvent(evt->event, jsvNewNull());
     break;
+
   case EVENT_SOFTAPMODE_STADISCONNECTED:
     os_printf("Wifi AP: station " MACSTR " left, AID = %d\n",
       MAC2STR(evt->event_info.sta_disconnected.mac), evt->event_info.sta_disconnected.aid);
     sendWifiEvent(evt->event, jsvNewNull());
     break;
+
   case EVENT_SOFTAPMODE_PROBEREQRECVED:
     os_printf("Wifi AP: probe request from station " MACSTR ", rssi = %d\n",
       MAC2STR(evt->event_info.ap_probereqrecved.mac), evt->event_info.ap_probereqrecved.rssi);
     sendWifiEvent(evt->event, jsvNewNull());
     break;
+
   default:
     os_printf("Wifi: unexpected event %d\n", evt->event);
     sendWifiEvent(evt->event, jsvNewNull());
@@ -1351,4 +1991,18 @@ static char *wifiConnectStatusToString(uint8 status) {
   default:
     return "Unknown connect status!!";
   }
+}
+
+/**
+ * Create a JsVar from an error code and and error message.
+ * The returned JsVar contains the following fields:
+ * * `errorCode` - The code representing the error.
+ * * `errorMessage` - A string describing the error.
+ * \return A populated instance of a JsVar object.
+ */
+static JsVar *createErrorVar(int errorCode, char *errorMessage) {
+  JsVar *jsErrorVar = jsvNewWithFlags(JSV_OBJECT);
+  jsvObjectSetChildAndUnLock(jsErrorVar, "errorCode", jsvNewFromInteger(errorCode));
+  jsvObjectSetChildAndUnLock(jsErrorVar, "errorMessage", jsvNewFromString(errorMessage));
+  return jsErrorVar;
 }
