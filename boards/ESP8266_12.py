@@ -22,6 +22,7 @@
 import pinutils;
 info = {
  'name'            : "ESP8266-12",
+ 'espruino_page_link' : 'ESP8266_12',
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_12',
@@ -64,7 +65,7 @@ board_css = """
   height: 384px;
   left: 50px;
   top: 200px;
-  background-image: url(img/esp8266-esp-12e.jpg);
+  background-image: url(img/ESP8266_12.jpg);
 }
 #boardcontainer {
   height: 800px;
