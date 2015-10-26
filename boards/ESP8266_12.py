@@ -64,7 +64,7 @@ board_css = """
   height: 384px;
   left: 50px;
   top: 200px;
-  background-image: url(img/esp8266-esp-12e.jpg);
+  background-image: url(img/ESP8266_12.jpg);
 }
 #boardcontainer {
   height: 800px;
