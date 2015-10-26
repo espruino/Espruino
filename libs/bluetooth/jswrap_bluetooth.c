@@ -54,7 +54,7 @@ of beta.  */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            (2 /*+ BSP_APP_TIMERS_NUMBER*/)                 /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_MAX_TIMERS            (2 + 2/*+ BSP_APP_TIMERS_NUMBER*/)                 /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
@@ -134,6 +134,7 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
     for (i = 0; i < length; i++) {
         jshPushIOCharEvent(EV_USBSERIAL, (char) p_data[i]);
     }
+    if (length>0) jshPushIOCharEvent(EV_USBSERIAL,'\n');
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -449,7 +450,7 @@ void jswrap_nrf_bluetooth_init(void)
     
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
-    buttons_leds_init(&erase_bonds);
+    //buttons_leds_init(&erase_bonds);
     ble_stack_init();
     gap_params_init();
     services_init();
@@ -513,6 +514,6 @@ bool jswrap_nrf_idle() {
     buf[idx++] = ch;
     ch = jshGetCharToTransmit(EV_USBSERIAL);
   }
-  ble_nus_string_send(&m_nus, buf, idx);
+  if (idx>0) ble_nus_string_send(&m_nus, buf, idx);
   return idx>0;
 }

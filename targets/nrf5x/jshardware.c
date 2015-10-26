@@ -41,6 +41,8 @@ void jshInit()
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
 
+  //
+
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -54,9 +56,20 @@ void jshKill()
 
 }
 
+static int cnt = 0;
+
 // stuff to do on idle
 void jshIdle()
 {
+  cnt++;
+  if (cnt==1000) {
+    jswrap_nrf_bluetooth_init();
+    jsiSetConsoleDevice( EV_USBSERIAL);
+  }
+#ifdef LED1_PININDEX
+  // turn led on (status)
+  jshPinOutput(LED1_PININDEX, (cnt>>5)&1);
+#endif
   if (init == 1)
   {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.

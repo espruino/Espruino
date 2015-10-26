@@ -19,10 +19,10 @@ info = {
  'name' : "nRF51 Tag",
  'link' :  [ "" ],
  'default_console' : "EV_SERIAL1",
- 'default_console_tx' : "D17",
- 'default_console_rx' : "D15",
+ 'default_console_tx' : "D15",
+ 'default_console_rx' : "D17",
  'default_console_baudrate' : "9600",
- 'variables' : 200, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
+ 'variables' : 95, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51tag.bin',
 };
 
@@ -30,7 +30,7 @@ chip = {
   'part' : "NRF51822",
   'family' : "NRF51",
   'package' : "QFN48",
-  'ram' : 32,
+  'ram' : 16,
   'flash' : 256,
   'speed' : 16,
   'usart' : 1, #THIS IS INCORRECT!!!
@@ -40,13 +40,13 @@ chip = {
   'dac' : 0,
 };
 
-# left-right, or top-bottom order THIS IS INCORRECT!!!!!
 board = {
-  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','PD3','PD4','PD28','PD29','PD30','PD31'],
-  'right' : [ 'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
 };
 
 devices = {
+  'LED1' : { 'pin' : 'D22' },
+  'LED2' : { 'pin' : 'D21' },
+  'LED3' : { 'pin' : 'D23' }
 };
 
 board_css = """
