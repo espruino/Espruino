@@ -22,6 +22,7 @@
 import pinutils;
 info = {
  'name'            : "ESP8266-12",
+ 'espruino_page_link' : 'ESP8266_12',
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_12',
