@@ -32,6 +32,7 @@
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
 # MICROBIT=1
+# NRF51TAG=1
 # NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
@@ -409,6 +410,13 @@ else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
+OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
+
+else ifdef NRF51TAG
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=NRF51TAG
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
 
@@ -1174,7 +1182,7 @@ ifeq ($(FAMILY), NRF51)
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DBOARD_PCA10028  -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
   LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
   
   SOFTDEVICE = targetlibs/nrf5x/softdevice/s110_nrf51_8.0.0_softdevice.hex
@@ -1260,9 +1268,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
-  $(NRF5X_SDK_PATH)/examples/bsp/bsp.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
-  $(NRF5X_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -1472,7 +1478,6 @@ endif
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
-	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 
@@ -1657,13 +1662,12 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE
 	echo Merging SoftDevice
-	echo "    (use 'pip install IntelHex' if you don't have hexmerge.py)"
+	@echo "    (use 'pip install IntelHex' if you don't have hexmerge.py)"
 	hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
 endif
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
-	@echo $(call $(quiet_)obj_to_bin,srec,srec)
 	@$(call obj_to_bin,srec,srec)
 
 $(PROJ_NAME).bin : $(PROJ_NAME).elf

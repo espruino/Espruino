@@ -24,6 +24,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+#include "jswrap_bluetooth.h"
 
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
@@ -39,6 +40,7 @@ void jshInit()
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
+
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
