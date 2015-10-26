@@ -116,12 +116,12 @@ def isvalidpin(pinname):
     pinnum = pinname[2:]
     return pinnum.isdigit()
   return False
-    
+
 
 # Find/populate a pin
 def haspin(pins, pinname):
   for pin in pins:
-    if pin["name"]==pinname: 
+    if pin["name"]==pinname:
       return True
   return False
 
@@ -129,7 +129,7 @@ def haspin(pins, pinname):
 def findpin(pins, pinname, force):
   if pinname.find('-')!=-1: pinname = pinname[:pinname.find('-')]
   for pin in pins:
-    if pin["name"]==pinname: 
+    if pin["name"]==pinname:
       return pin
   if force:
     print("ERROR: pin "+pinname+" not found")
@@ -154,8 +154,8 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
     pinname = pindata[nameoffset].strip()
     if pinname.find('(')>0: pinname = pinname[:pinname.find('(')]
     if not isvalidpin(pinname): continue
-    pin = findpin(pins, pinname, False)    
-    #print(json.dumps(pin, sort_keys=True, indent=2))  
+    pin = findpin(pins, pinname, False)
+    #print(json.dumps(pin, sort_keys=True, indent=2))
     for af in range(0, len(pindata)-afoffset):
       fnames = pindata[af+afoffset].split("/")
       for fname in fnames:
@@ -166,29 +166,29 @@ def scan_pin_af_file(pins, filename, nameoffset, afoffset):
   return pins
 
 # Code for scanning normal file
-def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset): 
+def scan_pin_file(pins, filename, nameoffset, functionoffset, altfunctionoffset):
   f = open(os.path.dirname(os.path.realpath(__file__))+'/../boards/pins/'+filename)
-  lines = f.readlines()  
+  lines = f.readlines()
   f.close()
   headings = lines[0].split(",")
   for line in lines:
     pindata = line.split(",")
     pinname = pindata[nameoffset].strip()
 
-    extrafunction = "" 
-    if "BOOT1" in line: extrafunction="BOOT1"                            
+    extrafunction = ""
+    if "BOOT1" in line: extrafunction="BOOT1"
     if pinname.find('(')>0: pinname = pinname[:pinname.find('(')]
     if not isvalidpin(pinname): continue
     pin = findpin(pins, pinname, False)
     for i,head in enumerate(headings):
-      pin["csv"][head] = pindata[i].strip()      
+      pin["csv"][head] = pindata[i].strip()
     if extrafunction!="":
       pin["functions"][extrafunction] = 0
-    for fn in pindata[functionoffset].strip().split("/"): 
+    for fn in pindata[functionoffset].strip().split("/"):
       fname = fn.strip()
-      pin["functions"][fname] = 0      
+      pin["functions"][fname] = 0
     if altfunctionoffset>=0:
-      for fn in pindata[altfunctionoffset].strip().split("/"): 
+      for fn in pindata[altfunctionoffset].strip().split("/"):
         fname = fn.strip()
         pin["functions"][fname] = 1
 #    print pin["name"]+" : "+', '.join(pin["functions"])
@@ -247,10 +247,10 @@ def get_device_pins(board):
 # If devices are used by a board, fill in their details for each pin
 def append_devices_to_pin_list(pins, board):
   devicepins = get_device_pins(board)
-  
+
   for i,pin in enumerate(pins):
     if pin["name"] in devicepins:
       pins[i]["functions"][devicepins[pin["name"]]["device"]] = devicepins[pin["name"]]["function"]
-#      print pins[i]["functions"][devicepins[pin["name"]]["device"]] 
+#      print pins[i]["functions"][devicepins[pin["name"]]["device"]]
   return pins
 

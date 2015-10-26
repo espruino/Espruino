@@ -127,7 +127,6 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
 	// Keep things simple and make the user responsible if they sleep for too long...
 	if (microsec > 0) {
-		os_printf("Delay %ldus\n", microsec);
 		os_delay_us(microsec);
 	}
 #if 0

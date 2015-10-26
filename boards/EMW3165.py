@@ -19,7 +19,7 @@ import pinutils;
 info = {
   'name' : "EMW3165",
   'link' :  [ "http://www.mxchip.com/wireless/downloadcenter/wifi/32.html"],
-  'default_console' : "EV_SERIAL2", # USART2 by default, the Nucleo's USB is actually running on this too
+  'default_console' : "EV_SERIAL2", # USART2 by default, the WifiMCU has the USB on that
   'default_console_tx' : "A2", # USART2_TX on PA2,
   'default_console_rx' : "A3", # USART2_RX on PA3
   'variables' :  2048, # was 7423: (128-12)*1024/16-1
@@ -51,17 +51,12 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'top' :   [ 'NC', 'PB2', 'NC', 'PA7', 'PA15', 'PB3', 'PB4', 'PA2', 'PA1', 'VBAT', 'NC', 'PA3', 'NRST', 'PA0', 'NC', 'PC13', 'PB10', 'PB9', 'PB12', 'GND' ],
-  'bottom' :  [ 'GND', 'NC', 'NC', 'NC', 'PA14', 'PA13', 'PA12', 'NC', 'PA10', 'PB6', 'PB8', 'NC', 'PB13', 'PA5', 'PA11', 'PB1', 'PB0', 'PA4', 'VDD', 'VDD', 'ANT' ],
+  'top' :   [ 'GND', 'NC', 'NC', 'NC', 'PA14', 'PA13', 'PA12', 'NC', 'PA10', 'PB6', 'PB8', 'NC',
+      'PB13', 'PA5', 'PA11', 'PB1', 'PB0', 'PA4', 'VDD', 'VDD', 'ANT'],
+  'bottom' :  [ 'NC', 'PB2', 'NC', 'PA7', 'PA15', 'PB3', 'PB4', 'PA2', 'PA1', 'VBAT', 'NC', 'PA3',
+      'NRST', 'PA0', 'NC', 'PC13', 'PB10', 'PB9', 'PB12', 'GND'],
 };
-devices = {
-  #?? 'OSC' : { 'pin_1' : 'H0', # MCO from ST-LINK fixed at 8 Mhz, boards rev MB1136 C-02
-  #??           'pin_2' : 'H1' },
-  #?? 'OSC_RTC' : { 'pin_1' : 'C14', # MB1136 C-02 corresponds to a board configured with on-board 32kHz oscillator
-  #??               'pin_2' : 'C15' },
-  #?? 'NUCLEO_A' : [ 'A0','A1','A4','B0','C1','C0' ],
-  #?? 'NUCLEO_D' : [ 'A3','A2','A10','B3','B5','B4','B10','A8','A9','C7','B6','A7','A6','A5','B9','B8' ],
-};
+devices = { 'LED1' };
 
 
 board_css = """

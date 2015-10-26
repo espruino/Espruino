@@ -341,18 +341,14 @@ else ifdef EMW3165
 ifndef WICED_ROOT
 $(error WICED_ROOT must be defined)
 endif
-ifndef WICED_GCC
-$(error WICED_GCC must be defined)
-endif
 EMBEDDED=1
 #USE_GRAPHICS=1
 #USE_NET=1
 BOARD=EMW3165
-#STLIB=STM32F401xE
-#PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+STLIB=STM32F401xE
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O2
 WICED=1
-ARM_HAS_OWN_CMSIS=1
 
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
@@ -1066,62 +1062,57 @@ ifeq ($(FAMILY), STM32F4)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
 DEFINES += -DSTM32F4
-ifdef WICED
+ifdef WICED_XXX
   DEFINES += -DWICED
   # DEFINES included here in bulk from a WICED compilation
   DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
   DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
   DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
   DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
-  DEFINES += -DWWD_STARTUP_DELAY=10 -DBOOTLOADER_MAGIC_NUMBER=0x4d435242
-  DEFINES += -DWIFI_CONFIG_APPLICATION_DEFINED -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
+  DEFINES += -DWWD_STARTUP_DELAY=10
+  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
   DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
   DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
-  DEFINES += -DCRLF_STDIO_REPLACEMENT -DGPIO_LED_NOT_SUPPORTED -DCUSTOM_DEFAULT_DCT=1
-  INCLUDE += -I$(WICED_ROOT)/WICED/platform/MCU/STM32F4xx/peripherals/libraries \
-             -I$(WICED_ROOT)/WICED/platform/MCU/STM32F4xx/peripherals/libraries/inc \
-             -I$(WICED_ROOT)/tools/ARM_GNU/include \
-             -I$(WICED_ROOT)/WICED/platform/ARM_CM4/CMSIS
-else
-  STM32=1
-  INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
-  SOURCES +=                                 \
-  targetlibs/stm32f4/lib/misc.c                 \
-  targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
-  targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
-  targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
-  targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
-  targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
-  targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
-  targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
-  targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
-  targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
-  targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
-  targetlibs/stm32f4/lib/system_stm32f4xx.c
-  #targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c  
-  #targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       
-  #targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      
-  #targetlibs/stm32f4/lib/stm32f4xx_can.c        
-  #targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
-  #targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
-  #targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
-  #targetlibs/stm32f4/lib/stm32f4xx_hash.c       
-  #targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
-  #targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
-  #targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       
-  #targetlibs/stm32f4/lib/stm32f4xx_rng.c        
-  #targetlibs/stm32f4/lib/stm32f4xx_sai.c        
-  #targetlibs/stm32f4/lib/stm324xx_fsmc.c
-  endif
+  INCLUDE += 
+endif
+STM32=1
+INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
+SOURCES +=                                 \
+targetlibs/stm32f4/lib/misc.c                 \
+targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_crc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dac.c        \
+targetlibs/stm32f4/lib/stm32f4xx_dbgmcu.c     \
+targetlibs/stm32f4/lib/stm32f4xx_dma.c        \
+targetlibs/stm32f4/lib/stm32f4xx_exti.c       \
+targetlibs/stm32f4/lib/stm32f4xx_flash.c      \
+targetlibs/stm32f4/lib/stm32f4xx_gpio.c       \
+targetlibs/stm32f4/lib/stm32f4xx_i2c.c        \
+targetlibs/stm32f4/lib/stm32f4xx_iwdg.c       \
+targetlibs/stm32f4/lib/stm32f4xx_pwr.c        \
+targetlibs/stm32f4/lib/stm32f4xx_rcc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_rtc.c        \
+targetlibs/stm32f4/lib/stm32f4xx_sdio.c       \
+targetlibs/stm32f4/lib/stm32f4xx_spi.c        \
+targetlibs/stm32f4/lib/stm32f4xx_syscfg.c     \
+targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
+targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
+targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
+targetlibs/stm32f4/lib/system_stm32f4xx.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       
+#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      
+#targetlibs/stm32f4/lib/stm32f4xx_can.c        
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
+#targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
+#targetlibs/stm32f4/lib/stm32f4xx_hash.c       
+#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
+#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
+#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       
+#targetlibs/stm32f4/lib/stm32f4xx_rng.c        
+#targetlibs/stm32f4/lib/stm32f4xx_sai.c        
+#targetlibs/stm32f4/lib/stm324xx_fsmc.c
 ifdef USB
 STM32_USB=1
 endif
@@ -1357,13 +1348,7 @@ ifdef RASPBERRYPI
 endif
 
 ifdef WICED
-export CCPREFIX=$(WICED_GCC)/arm-none-eabi-
-DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD)
-INCLUDE += -I$(ROOT)/targets/wiced
-SOURCES +=                              \
-targets/wiced/main.c                    \
-targets/wiced/jshardware.c              \
-targets/wiced/stm32_it.c
+#WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
 endif
 
 ifdef STM32
@@ -1660,16 +1645,16 @@ ifndef COMPORT
 endif
 	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
-else ifdef WICED
-
-proj: $(WICED_ROOT)/apps/snip/espruino/espruino_lib.o
-
-$(PROJ_NAME).o: $(OBJS)
-	@echo LD $@
-	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
-
-$(WICED_ROOT)/apps/snip/espruino/espruino_lib.o: $(PROJ_NAME).o
-	cp $< $@
+#else ifdef WICED
+#
+#proj: $(WICED_ROOT)/apps/snip/espruino/espruino_lib.o
+#
+#$(PROJ_NAME).o: $(OBJS)
+#	@echo LD $@
+#	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
+#
+#$(WICED_ROOT)/apps/snip/espruino/espruino_lib.o: $(PROJ_NAME).o
+#	cp $< $@
 
 else # embedded, so generate bin, etc ---------------------------
 
