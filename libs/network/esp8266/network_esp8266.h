@@ -21,6 +21,7 @@
 void netInit_esp8266_board();
 void netSetCallbacks_esp8266_board(JsNetwork *net);
 void esp8266_dumpSocket(int socketId);
+void esp8266_dumpAllSocketData();
 int  net_ESP8266_BOARD_accept(JsNetwork *net, int serverSckt);
 int  net_ESP8266_BOARD_recv(JsNetwork *net, int sckt, void *buf, size_t len);
 int  net_ESP8266_BOARD_send(JsNetwork *net, int sckt, const void *buf, size_t len);

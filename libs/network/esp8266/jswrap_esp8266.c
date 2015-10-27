@@ -259,6 +259,7 @@ void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
 * When the outcome is known, the callback function is invoked.  The options object contains
 * properties that control the connection.  Included in this object are:
 * * autoConnect (Boolean) - When true, these settings will be used to autoConnect on next boot.
+* * dnsServers (array of String) - An array of up to two DNS servers in dotted decimal format string.
 */
 void jswrap_ESP8266_wifi_connect(
     JsVar *jsSsid,
@@ -401,7 +402,48 @@ void jswrap_ESP8266_wifi_connect(
      }
    }
    jsvUnLock(jsAutoConnect);
- }
+   // End of autoConnect processing
+
+   // Do we have a child property called dnsServers?
+   JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
+   if (jsvIsArray(jsDNSServers) != false) {
+     os_printf(" - We have DNS servers!!\n");
+     JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
+     ip_addr_t dnsAddresses[2];
+     int count;
+     if (numDNSServers == 0) {
+       os_printf("No servers!!");
+       count = 0;
+     }
+     if (numDNSServers > 0) {
+       // One server
+       count = 1;
+       JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
+       char buffer[50];
+       size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+       buffer[size] = '\0';
+       jsvUnLock(jsCurrentDNSServer);
+       dnsAddresses[0].addr = networkParseIPAddress(buffer);
+     }
+     if (numDNSServers > 1) {
+       // Two servers
+       count = 2;
+       JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
+       char buffer[50];
+       size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+       buffer[size] = '\0';
+       jsvUnLock(jsCurrentDNSServer);
+       dnsAddresses[1].addr = networkParseIPAddress(buffer);
+     }
+     if (numDNSServers > 2) {
+       os_printf("Ignoring DNS servers after first 2.");
+     }
+     if (count > 0) {
+       espconn_dns_setserver((char)count, dnsAddresses);
+     }
+   }
+   jsvUnLock(jsDNSServers);
+ } // End of dnsServers processing
 
  // Perform the network level connection.
  wifi_station_connect();
@@ -1204,13 +1246,12 @@ void jswrap_ESP8266_updateCPUFreq(
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "getState",
-  "generate" : "jswrap_ESP8266WiFi_getState",
-  "return"   : ["JsVar","The state of the ESP8266"],
-  "return_object" : "ESP8266State"
+  "generate" : "jswrap_ESP8266_getState",
+  "return"   : ["JsVar", "The state of the ESP8266"]
 }*/
-JsVar *jswrap_ESP8266WiFi_getState() {
+JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
   JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
@@ -1348,11 +1389,14 @@ static void dnsFoundCallback(
     void *arg             //!< Parameter passed in from espconn_gethostbyname.
   ) {
   os_printf(">> dnsFoundCallback - %s %x\n", hostname, ipAddr->addr);
-  assert(g_jsHostByNameCallback != NULL);
-  JsVar *params[1];
-  params[0] = jsvNewFromInteger(ipAddr->addr);
-  jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
-  jsvUnLock(params[0]);
+  if (g_jsHostByNameCallback != NULL) {
+    JsVar *params[1];
+    params[0] = jsvNewFromInteger(ipAddr->addr);
+    jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
+    jsvUnLock(params[0]);
+    jsvUnLock(g_jsHostByNameCallback);
+    g_jsHostByNameCallback = NULL;
+  }
   os_printf("<< dnsFoundCallback\n");
 }
 
@@ -1676,11 +1720,23 @@ void jswrap_ESP8266_ping(
     ["socketId","JsVar","The socket to be dumped."]
   ]
 }*/
-
 void jswrap_ESP8266_dumpSocket(
     JsVar *socketId //!< The socket to be dumped.
   ) {
   esp8266_dumpSocket(jsvGetInteger(socketId)-1);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "dumpAllSocketData",
+  "generate" : "jswrap_ESP8266_dumpAllSocketData"
+}
+* Write all the socket data structures to the debug log.
+* This is purely a diagnostic function.
+*/
+void jswrap_ESP8266_dumpAllSocketData() {
+  esp8266_dumpAllSocketData();
 }
 
 /**
