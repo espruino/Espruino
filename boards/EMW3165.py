@@ -15,6 +15,9 @@
 # as various source and header files for Espruino.
 # ----------------------------------------------------------------------------------------
 
+# ***** WARNING: The support for the EMW3165 is in development, WIFI in particular does
+# *****          *not* work yet.
+
 import pinutils;
 info = {
   'name' : "EMW3165",
@@ -51,15 +54,40 @@ chip = {
 };
 # left-right, or top-bottom order
 board = {
-  'top' :   [ 'GND', 'NC', 'NC', 'NC', 'PA14', 'PA13', 'PA12', 'NC', 'PA10', 'PB6', 'PB8', 'NC',
-      'PB13', 'PA5', 'PA11', 'PB1', 'PB0', 'PA4', 'VDD', 'VDD', 'ANT'],
-  'bottom' :  [ 'NC', 'PB2', 'NC', 'PA7', 'PA15', 'PB3', 'PB4', 'PA2', 'PA1', 'VBAT', 'NC', 'PA3',
-      'NRST', 'PA0', 'NC', 'PC13', 'PB10', 'PB9', 'PB12', 'GND'],
+  'bottom' :   [ 'ANT', 'GND', 'NC', 'NC', 'NC', 'A14', 'A13', 'A12', 'NC', 'A10', 'B6', 'B8', 'NC',
+      'B13', 'A5', 'A11', 'B1', 'B0', 'A4', 'VDD', 'VDD'],
+  'top' :  [ 'NC', 'B2', 'NC', 'A7', 'A15', 'B3', 'B4', 'A2', 'A1', 'VBAT', 'NC', 'A3',
+      'NRST', 'A0', 'NC', 'C13', 'B10', 'B9', 'B12', 'GND'],
 };
-devices = { 'LED1' };
+board["top"].reverse()
+devices = {
+  'LED1' : {'pin': 'A4'},
+};
 
 
 board_css = """
+#board {
+  width:  830px;
+  height: 850px;
+  left: 50px;
+  top: 300px;
+  background-image: url(img/emw3165.jpg);
+}
+#boardcontainer {
+  height: 1400px;
+}
+#top {
+  top: 0px;
+  left: 245px;
+}
+#bottom  {
+  top: 835px;
+  left: 230px;
+}
+.toppin, .bottompin {
+  margin: 0px;
+  padding: 0px;
+}
 """;
 
 def get_pins():

@@ -338,9 +338,9 @@ PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 
 else ifdef EMW3165
-ifndef WICED_ROOT
-$(error WICED_ROOT must be defined)
-endif
+#ifndef WICED_ROOT
+#$(error WICED_ROOT must be defined)
+#endif
 EMBEDDED=1
 #USE_GRAPHICS=1
 #USE_NET=1
@@ -348,7 +348,8 @@ BOARD=EMW3165
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O2
-WICED=1
+#WICED=1
+DEFINES += -DPIN_NAMES_DIRECT
 
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
@@ -932,6 +933,24 @@ libs/network/js/network_js.c
  endif
 
  ifdef USE_WICED
+ # For EMW3165 use SDIO to access BCN43362 rev A2
+ INCLUDE += -I$(ROOT)/targetlibs/wiced/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/network \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/RTOS \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/bus_protocols/SDIO \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/chips/43362A2
+
+ SOURCES += targetlibs/wiced/wwd/internal/wwd_thread.c \
+            targetlibs/wiced/wwd/internal/wwd_sdpcm.c \
+            targetlibs/wiced/wwd/internal/wwd_internal.c \
+            targetlibs/wiced/wwd/internal/wwd_management.c \
+            targetlibs/wiced/wwd/internal/wwd_wifi.c \
+            targetlibs/wiced/wwd/internal/wwd_crypto.c \
+            targetlibs/wiced/wwd/internal/wwd_logging.c \
+            targetlibs/wiced/wwd/internal/wwd_eapol.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/wwd_bus_common.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/SDIO/wwd_bus_protocol.c
  endif
 
  ifdef USE_ESP8266
