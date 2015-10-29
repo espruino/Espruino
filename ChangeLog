@@ -6,6 +6,7 @@
             Add tab -> autocomplete in Console (fix #677)
             Fix I2C repeated start (#390)
             Fix regression in Math.random() - now back between 0 and 1 (fix #656)
+            Fix `var a=0;typeof a -> "undefined"` (fix #683)
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
