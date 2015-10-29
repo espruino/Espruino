@@ -583,10 +583,11 @@ static void doClose(
 
 
   if (pSocketData->creationType == SOCKET_CREATED_SERVER) {
+    dumpEspConn(pSocketData->pEspconn);
     int rc = espconn_delete(pSocketData->pEspconn);
     if (rc != 0) {
       os_printf("espconn_delete: rc=%s (%d)\n",esp8266_errorToString(rc),  rc);
-      setSocketInError(socketId, "espconn_disconnect", rc);
+      setSocketInError(socketId, "espconn_delete", rc);
     }
     pSocketData->state = SOCKET_STATE_CLOSING;
   }
@@ -845,6 +846,13 @@ static void esp8266_callback_recvCB(
     pSocketData->rxBuf = pNewBuf;
     pSocketData->rxBufLen += len;
   } // End of new data allocated.
+  // Now that we have received some data, stop receiving any further data until this data is consumed.
+  /*
+  int rc = espconn_recv_hold(pEspconn);
+  if (rc != 0) {
+    os_printf(" - espconn_recv_hold: %d\n", rc);
+  }
+  */
   dumpEspConn(pEspconn);
   os_printf("<< recvCB\n");
 }
@@ -931,6 +939,13 @@ int net_ESP8266_BOARD_recv(
     os_free(pSocketData->rxBuf);
     pSocketData->rxBuf = NULL;
     //os_printf("RX - A\n");
+
+    /*
+    int rc = espconn_recv_unhold(pSocketData->pEspconn);
+    if (rc != 0) {
+      os_printf("espconn_recv_unhold: %d\n", rc);
+    }
+    */
     return retLen;
   }
 

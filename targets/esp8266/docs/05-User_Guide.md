@@ -134,7 +134,7 @@ and
 
 Connect to a named access point.
 
-`wifi.connect(ssid, password, options, callback)`
+`wifi.connect(ssid ,password [,options [,callback]])`
 
 When called, this function places the ESP8266 in station mode.  This means that we will not be an access point.
 Once done, we then connect to the named access point using the network and password parameters supplied by `ssid` and `password`.  The optional callback is a function that is invoked when an IP address has been assigned to us meaning that we are now ready for TCP/IP based work.
@@ -146,10 +146,8 @@ Once done, we then connect to the named access point using the network and passw
 
 The `options` object can contain the following optional properties:
 
-* `autoConnect` - A boolean value.  When `true`, a reconnect to the supplied access point
-will be performed each time the ESP8266 boots.  When `false`, reconnection to the access point will not
-be attempted when the device boots.  When not set, the current `autoConnect` settings will be
-maintained.
+* `default` - A boolean value.  When `true`, a reconnect to the supplied access point
+will be performed each time the ESP8266 boots.
 * `dnsServers` - An array of strings.  Specify an array of up to two IP addresses supplied as
 dotted decimal strings.  Each entry represents the server address of a DNS server to be used for
 DNS lookups.
@@ -176,7 +174,7 @@ For example:
 
 Become an access point.
 
-`wifi.createAP(ssid [,password] [,options] [,callback])`
+`wifi.createAP(ssid [,password [,options [,callback]]])`
 
 Become an access point for the network supplied by `ssid` with a password of `password`.  If no
 password is supplied or is null, then the access point is considered open and be connected to by
@@ -186,6 +184,7 @@ eight characters in size.
 The `options` allows us to supply options.
 
 * `authMode` - The authentication mode to use.  Can be one of `open`, `wpa2`, `wpa` or `wpa_wpa2`.  If not supplied then the value will be `wpa2` if a password is supplied and `open` if no password is supplied.
+* `default` - If true then we will automatically be an access point at boot time.  The default is false in which case the current boot settings will be maintained.
 
 The `callback` is a a function with the following signature:
 
@@ -198,13 +197,19 @@ The `err` parameter is an object with properties of `errorCode` and `errorMessag
 ##wifi.disconnect
 Disconnect the ESP8266 from the access point.
 
-`wifi.disconnect(callback)`
+`wifi.disconnect([options [,callback]])`
 
 For example:
 
     var wifi = require("wifi");
     // ... connect ...
     wifi.disconnect();
+
+The optional `options` is a JavaScript object that controls the operation of this function.  It
+may be `null` if not needed.  If supplied, it may contain the following properties:
+
+* `default` - A boolean which, if set to true, will result in the device not attempt to connect on 
+subsequent boots.
 
 The optional `callback` function will be invoked when the disconnect outcome is known.  The signature of
 the callback function is:
@@ -266,10 +271,15 @@ For example:
 
 Don't be an access point any longer.
 
-`wifi.stopAP([callback])`
+`wifi.stopAP([options[,callback]])`
 
 If we are playing the role of an access point, stop performing that function.  Connected stations will be
 disconnected and we will no longer be visible as a WiFi network.
+
+The `options` is a JavaScript object controlling the options for the function.  It may be `null`.  The
+following properties are honored:
+
+* `default` - A boolean.  If set to true, then the access point will not be started at boot time.
 
 The optional `callback` is a callback function to be invoked when the device is no longer an
 access point.  The signature for the callback is:
