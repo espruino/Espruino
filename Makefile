@@ -1481,6 +1481,7 @@ endif
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
+	$(Q)echo WRAPPERSOURCES = $(WRAPPERSOURCES)
 	$(Q)echo DEFINES =  $(DEFINES)
 	$(Q)python scripts/build_jswrapper.py $(WRAPPERSOURCES) $(DEFINES) -B$(BOARD)
 
@@ -1671,6 +1672,7 @@ ifdef SOFTDEVICE
 endif
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
+	@echo $(call $(quiet_)obj_to_bin,srec,srec)
 	@$(call obj_to_bin,srec,srec)
 
 $(PROJ_NAME).bin : $(PROJ_NAME).elf
