@@ -128,15 +128,116 @@ and
 
 #Reference
 
+----
+
+##wifi.connect
+
+Connect to a named access point.
+
+`wifi.connect(ssid ,password [,options [,callback]])`
+
+When called, this function places the ESP8266 in station mode.  This means that we will not be an access point.
+Once done, we then connect to the named access point using the network and password parameters supplied by `ssid` and `password`.  The optional callback is a function that is invoked when an IP address has been assigned to us meaning that we are now ready for TCP/IP based work.
+
+* `ssid` - The network id of the access point.
+* `password` - The password to use to connect to the access point.
+* `options` - Options for configuring the connection.
+* `callback` - An optional JavaScript function that is called when we are ready for TCP/IP based work.
+
+The `options` object can contain the following optional properties:
+
+* `default` - A boolean value.  When `true`, a reconnect to the supplied access point
+will be performed each time the ESP8266 boots.
+* `dnsServers` - An array of strings.  Specify an array of up to two IP addresses supplied as
+dotted decimal strings.  Each entry represents the server address of a DNS server to be used for
+DNS lookups.
+
+The `callback` function has the signature:
+
+    callback(err, ipInfo)
+
+Where `err` is an error information object containing `errorCode` and `errorMessage`.  On no error,
+the value of `err` will be `null`
+
+The `ipInfo` parameter is an IP info object as documented in `wifi.getIP()`.
+
+For example:
+
+    var wifi = require("wifi");
+    wifi.connect("mySsid", "myPassword", null, function(err, ipInfo) {
+      print("We are now connected!");
+    });
 
 ----
 
-##ESP8266WiFi.init
+##wifi.createAP
 
-`ESP8266WiFi.init()`
+Become an access point.
 
-Initialize the ESP8266 WiFi and TCP subsystems.  This is undoubtedly NOT going to be in the final releases
-however until we understand more about the architecture, this is needed as scafolding (if nothing else).
+`wifi.createAP(ssid [,password [,options [,callback]]])`
+
+Become an access point for the network supplied by `ssid` with a password of `password`.  If no
+password is supplied or is null, then the access point is considered open and be connected to by
+a station that need not supply a password.  If a password is supplied, it must be at least
+eight characters in size.
+
+The `options` allows us to supply options.
+
+* `authMode` - The authentication mode to use.  Can be one of `open`, `wpa2`, `wpa` or `wpa_wpa2`.  If not supplied then the value will be `wpa2` if a password is supplied and `open` if no password is supplied.
+* `default` - If true then we will automatically be an access point at boot time.  The default is false in which case the current boot settings will be maintained.
+
+The `callback` is a a function with the following signature:
+
+    callback(err)
+
+The `err` parameter is an object with properties of `errorCode` and `errorMessage`.
+
+----
+
+##wifi.disconnect
+Disconnect the ESP8266 from the access point.
+
+`wifi.disconnect([options [,callback]])`
+
+For example:
+
+    var wifi = require("wifi");
+    // ... connect ...
+    wifi.disconnect();
+
+The optional `options` is a JavaScript object that controls the operation of this function.  It
+may be `null` if not needed.  If supplied, it may contain the following properties:
+
+* `default` - A boolean which, if set to true, will result in the device not attempt to connect on 
+subsequent boots.
+
+The optional `callback` function will be invoked when the disconnect outcome is known.  The signature of
+the callback function is:
+
+    callback(err)
+
+where `err` is an object containing `errorCode` and `errorMessage`.
+
+----
+
+##wifi.getIP
+
+`wifi.getIP()`
+
+Returns an object that contains the details of the current IP address.  The object contains:
+
+* `ip` - The current IP address
+* `gw` - The current Gateway address
+* `netmask` - The current Netmask value
+
+Each of these properties are 32 bit integers (4 bytes corresponding to the IP address).  To convert these
+into string dotted decimal format one can use the `ESP8266WiFi.getAddressAsString` function.
+
+For example:
+
+    var wifi = require("wifi");
+    var ipInfo = wifi.getIP();
+    print("Wifi IP info: " + JSON.stringify(ipInfo));
 
 ----
 
@@ -166,81 +267,38 @@ For example:
 
 ----
 
-##wifi.connect
+##wifi.stopAP
 
-Connect to a named access point.
+Don't be an access point any longer.
 
-`wifi.connect(ssid, password, options, callback)`
+`wifi.stopAP([options[,callback]])`
 
-When called, this function places the ESP8266 in station mode.  This means that we will not be an access point.
-Once done, we then connect to the named access point using the network and password parameters supplied by `ssid` and `password`.  The optional callback is a function that is invoked when an IP address has been assigned to us meaning that we are now ready for TCP/IP based work.
+If we are playing the role of an access point, stop performing that function.  Connected stations will be
+disconnected and we will no longer be visible as a WiFi network.
 
-* `ssid` - The network id of the access point.
-* `password` - The password to use to connect to the access point.
-* `options` - Options for configuring the connection.
-* `callback` - An optional JavaScript function that is called when we are ready for TCP/IP based work.
+The `options` is a JavaScript object controlling the options for the function.  It may be `null`.  The
+following properties are honored:
 
-The `options` object can contain the following optional properties:
+* `default` - A boolean.  If set to true, then the access point will not be started at boot time.
 
-* `autoConnect` - A boolean value.  When `true`, a reconnect to the supplied access point
-will be performed each time the ESP8266 boots.  When `false`, reconnection to the access point will not
-be attempted when the device boots.  When not set, the current `autoConnect` settings will be
-maintained.
-
-The `callback` function has the signature:
-
-    callback(err, ipInfo)
-
-Where `err` is an error information object containing `errorCode` and `errorMessage`.  On no error,
-the value of `err` will be `null`
-
-The `ipInfo` parameter is an IP info object as documented in `wifi.getIP()`.
-
-For example:
-
-    var wifi = require("wifi");
-    wifi.connect("mySsid", "myPassword", null, function(err, ipInfo) {
-      print("We are now connected!");
-    });
-
-----
-
-##wifi.disconnect
-Disconnect the ESP8266 from the access point.
-
-`wifi.disconnect(callback)`
-
-For example:
-
-    var wifi = require("wifi");
-    // ... connect ...
-    wifi.disconnect();
-
-The optional `callback` function will be invoked when the disconnect outcome is known.  The signature of
-the callback function is:
+The optional `callback` is a callback function to be invoked when the device is no longer an
+access point.  The signature for the callback is:
 
     callback(err)
 
-where `err` is an object containing `errorCode` and `errorMessage`.
-
-
-----
-
-##ESP8266.restart
-
-Restart the ESP8266.  Purely for debug and will be removed.
-
-`ESP8266.restart()`
+where `err` is an object indicating an error or `null` if there is no error.
 
 ----
 
-##ESP8266.getRstInfo
+##ESP8266.getAddressAsString
 
-`ESP8266.getRstInfo()`
+Get a string representation of an IP address.
 
+`ESP8266.getAddressAsString(address)`
 
-Returns an object that contains the details of the last ESP8266 restart.
+* `address` - An integer representation of a string.
 
+The return is a JS string that represents our IP address.
 
 ----
 
@@ -254,26 +312,93 @@ Lookup the IP address of a host by host name.
 * `callback` - A function which will be invoked when the IP address is resolved.  A parameter to the
 function is the integer value that is the IP address.
 
+The callback function has the signature:
+
+    callback(ipAddress)
+
+Note that the ipAddress is an integer and not a string.  Use `ESP8266.getAddressAsString()` on
+this value if you need a dotted decimal string representation.  An ipAddress value of 0
+means that the address was not able to be retrieved. 
+
 ----
 
-##wifi.getIP
+##ESP8266.getRstInfo
 
-`wifi.getIP()`
+`ESP8266.getRstInfo()`
 
-Returns an object that contains the details of the current IP address.  The object contains:
 
-* `ip` - The current IP address
-* `gw` - The current Gateway address
-* `netmask` - The current Netmask value
+Returns an object that contains the details of the last ESP8266 restart.
 
-Each of these properties are 32 bit integers (4 bytes corresponding to the IP address).  To convert these
-into string dotted decimal format one can use the `ESP8266WiFi.getAddressAsString` function.
+----
 
-For example:
+##ESP8266.getState
 
-    var wifi = require("wifi");
-    var ipInfo = wifi.getIP();
-    print("Wifi IP info: " + JSON.stringify(ipInfo));
+Return an object that represents the state and details of the ESP8266 device.
+
+`ESP8266.getState()`
+
+The returned object contains the following fields:
+
+* `sdkVersion` - The version of the ESP8266 SDK used to build this release.
+* `cpuFrequency` - The CPU operating frequency in MHz.
+* `freeHeap` - The amount of free heap in bytes.
+* `maxCon` - Maximum number of concurrent connections.
+
+----
+
+##ESP8266.logDebug
+
+Enable or disable the logging of debug messages to the UART1 debug log.
+
+`ESP8266.logDebug(onOff)`
+
+* `onOff` - A boolean.  A value of `true` enables debugging while `false` disables.
+
+----
+
+##ESP8266.ping
+
+Ping an IP address.
+
+`ESP8266.ping(ipAddress, callback)`
+
+Ping the TCP/IP device given by the address.  The address can be either a dotted
+decimal string or a 32bit numeric.  A callback function can be supplied which is invoked for each ping response.  A parameter is supplied to the callback which is a JS object that contains the following fields:
+
+ * totalCount
+ * totalBytes
+ * totalTime
+ * respTime
+ * seqNo
+ * timeoutCount
+ * bytes
+ * error
+ 
+ 
+ An example of calling this function would be:
+ 
+ 
+    ESP8266.ping("192.168.1.31", function(resp) {
+        print("Ping response: " + JSON.stringify(resp));
+    });
+
+----
+
+##ESP8266.restart
+
+Restart the ESP8266.  Purely for debug and will be removed.
+
+`ESP8266.restart()`
+
+----
+
+##ESP8266.updateCPUFreq
+
+Set the operating frequency of the ESP8266 processor.
+
+`ESP8266.updateCPUFreq(newFreq)`
+
+* `newFreq` - The new operating frequency of the CPU.  Either 80 (80MHz) or 160 (160MHz).
 
 ----
 
@@ -320,18 +445,6 @@ Set the WiFi event handler.
 
 ----
 
-##ESP8266.getAddressAsString
-
-Get a string representation of an IP address.
-
-`ESP8266.getAddressAsString(address)`
-
-* `address` - An integer representation of a string.
-
-The return is a JS string that represents our IP address.
-
-----
-
 ##ESP8266WiFi.getConnectStatus
 
 Get the current connection status.
@@ -352,47 +465,6 @@ The status is a JS integer that describes the current connection status which wi
  * 4 - `STATION_CONNECT_FAIL`
  * 5 - `STATION_GOT_IP`
  * 255 - Not in station mode
-
-----
-
-##wifi.createAP
-
-Become an access point.
-
-`wifi.createAP(ssid [,password] [,options] [,callback])`
-
-Become an access point for the network supplied by `ssid` with a password of `password`.  If no
-password is supplied or is null, then the access point is considered open and be connected to by
-a station that need not supply a password.  If a password is supplied, it must be at least
-eight characters in size.
-
-The `options` allows us to supply options.
-
-* `authMode` - The authentication mode to use.  Can be one of `open`, `wpa2`, `wpa` or `wpa_wpa2`.  If not supplied then the value will be `wpa2` if a password is supplied and `open` if no password is supplied.
-
-The `callback` is a a function with the following signature:
-
-    callback(err)
-
-The `err` parameter is an object with properties of `errorCode` and `errorMessage`.
-
-----
-
-##wifi.stopAP
-
-Don't be an access point any longer.
-
-`wifi.stopAP([callback])`
-
-If we are playing the role of an access point, stop performing that function.  Connected stations will be
-disconnected and we will no longer be visible as a WiFi network.
-
-The optional `callback` is a callback function to be invoked when the device is no longer an
-access point.  The signature for the callback is:
-
-    callback(err)
-
-where `err` is an object indicating an error or `null` if there is no error.
 
 ----
 
@@ -422,62 +494,11 @@ network.
 
 ----
 
-##ESP8266.ping
+##ESP8266WiFi.init
 
-Ping an IP address.
+`ESP8266WiFi.init()`
 
-`ESP8266.ping(ipAddress, callback)`
-
-Ping the TCP/IP device given by the address.  The address can be either a dotted
-decimal string or a 32bit numeric.  A callback function can be supplied which is invoked for each ping response.  A parameter is supplied to the callback which is a JS object that contains the following fields:
-
- * totalCount
- * totalBytes
- * totalTime
- * respTime
- * seqNo
- * timeoutCount
- * bytes
- * error
- 
- 
- An example of calling this function would be:
- 
- 
-    ESP8266.ping("192.168.1.31", function(resp) {
-        print("Ping response: " + JSON.stringify(resp));
-    });
+Initialize the ESP8266 WiFi and TCP subsystems.  This is undoubtedly NOT going to be in the final releases
+however until we understand more about the architecture, this is needed as scafolding (if nothing else).
 
 ----
-
-##ESP8266WiFi.getState
-
-Return an object that represents the state and details of the ESP8266 device.
-
-`ESP8266WiFi.getState()`
-
-The returned object contains the following fields:
-
-* `sdkVersion` - The version of the ESP8266 SDK used to build this release.
-* `cpuFrequency` - The CPU operating frequency in MHz.
-* `freeHeap` - The amount of free heap in bytes.
-
-----
-
-##ESP8266.updateCPUFreq
-
-Set the operating frequency of the ESP8266 processor.
-
-`ESP8266.updateCPUFreq(newFreq)`
-
-* `newFreq` - The new operating frequency of the CPU.  Either 80 (80MHz) or 160 (160MHz).
-
-----
-
-##ESP8266.logDebug
-
-Enable or disable the logging of debug messages to the UART1 debug log.
-
-`ESP8266.logDebug(onOff)`
-
-* `onOff` - A boolean.  A value of `true` enables debugging while `false` disables.

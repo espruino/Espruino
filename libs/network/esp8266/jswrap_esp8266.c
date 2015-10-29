@@ -162,16 +162,32 @@ JsVar *jswrap_ESP8266_getAddressAsString(
   "name"     : "disconnect",
   "generate" : "jswrap_ESP8266_wifi_disconnect",
   "params"   : [
+    ["options", "JsVar", "Options controlling the function (optional)."],
     ["callback", "JsVar", "A function to be called back on completion (optional)."]
   ]
-}*/
-void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
+}
+* The options is a JavaScript object that contains the following properties:
+* * `default` - If set to true, then auto connect of this device as a station will be
+* disabled.  The default of `default` is false.
+*/
+void jswrap_ESP8266_wifi_disconnect(JsVar *jsOptions, JsVar *jsCallback) {
   os_printf("> jswrap_ESP8266_wifi_disconnect\n");
   if (g_jsDisconnectCallback != NULL) {
     jsvUnLock(g_jsDisconnectCallback);
     g_jsDisconnectCallback = NULL;
   }
   g_jsDisconnectCallback = jsvLockAgainSafe(jsCallback);
+
+  bool setDefault = false;
+  if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+    JsVar *jsDefault = jsvObjectGetChild(jsOptions, "default", 0);
+    if (jsvIsBoolean(jsDefault)) {
+      if(jsvGetBool(jsDefault)) {
+        wifi_station_set_auto_connect(0);
+      }
+    }
+    jsvUnLock(jsDefault);
+  }
 
   bool rc = wifi_station_disconnect();
   JsVar *params[1];
@@ -197,12 +213,17 @@ void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
   "name"     : "stopAP",
   "generate" : "jswrap_ESP8266_wifi_stopAP",
   "params"   : [
+    ["options", "JsVar", "Options controlling the stop of an access point."],
     ["callback", "JsVar", "A function to be called back on completion (optional)."]
   ]
 }
 * Stop being an access point.
+* The options contain:
+* * default - A boolean.  If set to true, then the access point will be stopped at boot time.
+* The default for `default` is false which means that the start/stop of an access point at boot time
+* will not be changed.
 */
-void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
+void jswrap_ESP8266_wifi_stopAP(JsVar *jsOptions, JsVar *jsCallback) {
   os_printf("> jswrap_ESP8266_wifi_stopAP\n");
 
   if (g_jsStopAPCallback != NULL) {
@@ -219,11 +240,29 @@ void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
   // SOFTAP_MODE     NULL_MODE
   // STATIONAP_MODE  STATION_MODE
 
-  if (currentMode == STATION_MODE || currentMode == STATIONAP_MODE) {
-    wifi_set_opmode_current(STATION_MODE);
-  } else {
-    wifi_set_opmode_current(NULL_MODE);
+  bool setDefault = false;
+  if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+    JsVar *jsDefault = jsvObjectGetChild(jsOptions, "default", 0);
+    if (jsvIsBoolean(jsDefault)) {
+      setDefault = jsvGetBool(jsDefault);
+    }
+    jsvUnLock(jsDefault);
   }
+
+  if (currentMode == STATION_MODE || currentMode == STATIONAP_MODE) {
+    if (setDefault == false) {
+      wifi_set_opmode_current(STATION_MODE);
+    } else {
+      wifi_set_opmode(STATION_MODE);
+    }
+  } else {
+    if (setDefault == false) {
+      wifi_set_opmode_current(NULL_MODE);
+    } else {
+      wifi_set_opmode(NULL_MODE);
+    }
+  }
+
 
   // No real return code to check, so hard code to be true.
   bool rc = true;
@@ -258,7 +297,8 @@ void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
 * Connect to an access point as a station.
 * When the outcome is known, the callback function is invoked.  The options object contains
 * properties that control the connection.  Included in this object are:
-* * autoConnect (Boolean) - When true, these settings will be used to autoConnect on next boot.
+* * default (Boolean) - When true, these settings will be used to connect on next boot.
+* * dnsServers (array of String) - An array of up to two DNS servers in dotted decimal format string.
 */
 void jswrap_ESP8266_wifi_connect(
     JsVar *jsSsid,
@@ -323,21 +363,7 @@ void jswrap_ESP8266_wifi_connect(
 
  os_printf(">  - ssid=%s, password=\"%s\"\n", ssid, password);
 
- // Set the WiFi mode of the ESP8266
 
- // Current         Resulting
- // --------------  --------------
- // NULL_MODE       STATION_MODE
- // STATION_MODE    STATION_MODE
- // SOFTAP_MODE     STATIONAP_MODE
- // STATIONAP_MODE  STATIONAP_MODE
-
- uint8 currentMode = wifi_get_opmode();
- if (currentMode == SOFTAP_MODE || currentMode == STATIONAP_MODE) {
-   wifi_set_opmode_current(STATIONAP_MODE);
- } else {
-   wifi_set_opmode_current(STATION_MODE);
- }
 
  struct station_config stationConfig;
  memset(&stationConfig, 0, sizeof(stationConfig));
@@ -381,27 +407,88 @@ void jswrap_ESP8266_wifi_connect(
 #elif ISSUE_618 == 3
    // Add a return code to the function and return an already connected error.
 #endif
- }
+  }
+  bool isDefault = false;
+  if (jsOptions != NULL && jsvIsObject(jsOptions)) {
+    // Do we have a child property called autoConnect?
+    JsVar *jsDefault = jsvObjectGetChild(jsOptions, "default", 0);
+    if (jsvIsBoolean(jsDefault)) {
+      isDefault = jsvGetBool(jsDefault);
+      if (isDefault) {
+        // autoConnect == true
+        os_printf(" - Setting auto connect to true\n");
+        wifi_station_set_auto_connect(true);
+        // Set the WiFi configuration (includes setting default)
+        wifi_station_set_config(&stationConfig);
+      }
+   }
+   jsvUnLock(jsDefault);
+   // End of default processing
 
-
- if (jsOptions != NULL && jsvIsObject(jsOptions)) {
-   // Do we have a child property called autoConnect?
-   JsVar *jsAutoConnect = jsvObjectGetChild(jsOptions, "autoConnect", 0);
-   if (jsvIsBoolean(jsAutoConnect)) {
-     if (jsvGetBool(jsAutoConnect) != false) {
-       // autoConnect == true
-       os_printf(" - Setting auto connect to true\n");
-       wifi_station_set_auto_connect(true);
-       // Set the WiFi configuration (includes setting default)
-       wifi_station_set_config(&stationConfig);
-     } else {
-       // autoConnect == false
-       os_printf(" - Setting auto connect to false\n");
-       wifi_station_set_auto_connect(false);
+   // Do we have a child property called dnsServers?
+   JsVar *jsDNSServers = jsvObjectGetChild(jsOptions, "dnsServers", 0);
+   if (jsvIsArray(jsDNSServers) != false) {
+     os_printf(" - We have DNS servers!!\n");
+     JsVarInt numDNSServers = jsvGetArrayLength(jsDNSServers);
+     ip_addr_t dnsAddresses[2];
+     int count;
+     if (numDNSServers == 0) {
+       os_printf("No servers!!");
+       count = 0;
+     }
+     if (numDNSServers > 0) {
+       // One server
+       count = 1;
+       JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 0);
+       char buffer[50];
+       size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+       buffer[size] = '\0';
+       jsvUnLock(jsCurrentDNSServer);
+       dnsAddresses[0].addr = networkParseIPAddress(buffer);
+     }
+     if (numDNSServers > 1) {
+       // Two servers
+       count = 2;
+       JsVar *jsCurrentDNSServer = jsvGetArrayItem(jsDNSServers, 1);
+       char buffer[50];
+       size_t size = jsvGetString(jsCurrentDNSServer, buffer, sizeof(buffer)-1);
+       buffer[size] = '\0';
+       jsvUnLock(jsCurrentDNSServer);
+       dnsAddresses[1].addr = networkParseIPAddress(buffer);
+     }
+     if (numDNSServers > 2) {
+       os_printf("Ignoring DNS servers after first 2.");
+     }
+     if (count > 0) {
+       espconn_dns_setserver((char)count, dnsAddresses);
      }
    }
-   jsvUnLock(jsAutoConnect);
- }
+   jsvUnLock(jsDNSServers);
+ } // End of options processing
+
+ // Set the WiFi mode of the ESP8266
+
+  // Current         Resulting
+  // --------------  --------------
+  // NULL_MODE       STATION_MODE
+  // STATION_MODE    STATION_MODE
+  // SOFTAP_MODE     STATIONAP_MODE
+  // STATIONAP_MODE  STATIONAP_MODE
+
+  uint8 currentMode = wifi_get_opmode();
+  if (currentMode == SOFTAP_MODE || currentMode == STATIONAP_MODE) {
+    if(isDefault) {
+      wifi_set_opmode(STATIONAP_MODE);
+    } else {
+      wifi_set_opmode_current(STATIONAP_MODE);
+    }
+  } else {
+    if (isDefault) {
+      wifi_set_opmode(STATION_MODE);
+    } else {
+      wifi_set_opmode_current(STATION_MODE);
+    }
+  }
 
  // Perform the network level connection.
  wifi_station_connect();
@@ -477,6 +564,7 @@ void jswrap_ESP8266_wifi_scan(
 * Create a logical access point allowing WiFi stations to connect.
 * The `options` object can contain the following properties.
 * * authMode - The authentication mode to use.  Can be one of "open", "wpa2", "wpa", "wpa_wpa2".
+* * `default` - When true, sets the creation of an access point as the default at boot.
 */
 void jswrap_ESP8266_wifi_createAP(
     JsVar *jsSsid,     //!< The network SSID that we will use to listen as.
@@ -505,6 +593,7 @@ void jswrap_ESP8266_wifi_createAP(
 
   softApConfig.authmode = (AUTH_MODE)-1;
 
+  bool isDefault = false;
   // Handle any options that may have been supplied.
   if (jsOptions != NULL && jsvIsObject(jsOptions)) {
 
@@ -534,6 +623,11 @@ void jswrap_ESP8266_wifi_createAP(
       jsvUnLock(jsAuth);
       assert(softApConfig.authmode != (AUTH_MODE)-1);
     } // End of jsAuth is present.
+
+    JsVar *jsDefault = jsvObjectGetChild(jsOptions, "default", 0);
+    if (jsvIsBoolean(jsDefault)) {
+      isDefault = jsvGetBool(jsDefault);
+    }
   } // End of jsOptions is present
 
   // If no password has been supplied, then be open.  Otherwise, use WPA2 and the
@@ -576,9 +670,17 @@ void jswrap_ESP8266_wifi_createAP(
   // STATIONAP_MODE  STATIONAP_MODE
 
   if (currentMode == STATION_MODE || currentMode == STATIONAP_MODE) {
-    wifi_set_opmode_current(STATIONAP_MODE);
+    if (isDefault) {
+      wifi_set_opmode(STATIONAP_MODE);
+    } else {
+      wifi_set_opmode_current(STATIONAP_MODE);
+    }
   } else {
-    wifi_set_opmode_current(SOFTAP_MODE);
+    if (isDefault) {
+      wifi_set_opmode(SOFTAP_MODE);
+    } else {
+      wifi_set_opmode_current(SOFTAP_MODE);
+    }
   }
 
   softApConfig.ssid_len       = 0; // Null terminated SSID
@@ -1204,13 +1306,12 @@ void jswrap_ESP8266_updateCPUFreq(
  */
 /*JSON{
   "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
+  "class"    : "ESP8266",
   "name"     : "getState",
-  "generate" : "jswrap_ESP8266WiFi_getState",
-  "return"   : ["JsVar","The state of the ESP8266"],
-  "return_object" : "ESP8266State"
+  "generate" : "jswrap_ESP8266_getState",
+  "return"   : ["JsVar", "The state of the ESP8266"]
 }*/
-JsVar *jswrap_ESP8266WiFi_getState() {
+JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
   JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
@@ -1348,11 +1449,14 @@ static void dnsFoundCallback(
     void *arg             //!< Parameter passed in from espconn_gethostbyname.
   ) {
   os_printf(">> dnsFoundCallback - %s %x\n", hostname, ipAddr->addr);
-  assert(g_jsHostByNameCallback != NULL);
-  JsVar *params[1];
-  params[0] = jsvNewFromInteger(ipAddr->addr);
-  jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
-  jsvUnLock(params[0]);
+  if (g_jsHostByNameCallback != NULL) {
+    JsVar *params[1];
+    params[0] = jsvNewFromInteger(ipAddr->addr);
+    jsiQueueEvents(NULL, g_jsHostByNameCallback, params, 1);
+    jsvUnLock(params[0]);
+    jsvUnLock(g_jsHostByNameCallback);
+    g_jsHostByNameCallback = NULL;
+  }
   os_printf("<< dnsFoundCallback\n");
 }
 
@@ -1676,11 +1780,23 @@ void jswrap_ESP8266_ping(
     ["socketId","JsVar","The socket to be dumped."]
   ]
 }*/
-
 void jswrap_ESP8266_dumpSocket(
     JsVar *socketId //!< The socket to be dumped.
   ) {
   esp8266_dumpSocket(jsvGetInteger(socketId)-1);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "dumpAllSocketData",
+  "generate" : "jswrap_ESP8266_dumpAllSocketData"
+}
+* Write all the socket data structures to the debug log.
+* This is purely a diagnostic function.
+*/
+void jswrap_ESP8266_dumpAllSocketData() {
+  esp8266_dumpAllSocketData();
 }
 
 /**

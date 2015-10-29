@@ -82,6 +82,7 @@ static void doClose(int socketId);
 static void releaseSocket(int socketId);
 static void resetSocketByData(struct socketData *pSocketData);
 static void resetSocketById(int sckt);
+static void esp8266_dumpSocketData(struct socketData *pSocketData);
 
 static void esp8266_callback_connectCB_inbound(void *arg);
 static void esp8266_callback_connectCB_outbound(void *arg);
@@ -219,6 +220,18 @@ static struct socketData socketArray[MAX_SOCKETS];
  */
 static bool g_socketsInitialized = false;
 
+/**
+ * Dump all the socket structures.
+ * This is used exclusively for debugging.  It walks through each of the
+ * socket structures and dumps their state to the debug log.
+ */
+void esp8266_dumpAllSocketData() {
+  int i;
+  for (i=0; i<MAX_SOCKETS; i++) {
+    esp8266_dumpSocketData(&socketArray[i]);
+  }
+}
+
 
 /**
  * Write the details of a socket to the debug log.
@@ -228,7 +241,18 @@ void esp8266_dumpSocket(
     int socketId //!< The ID of the socket data structure to be logged.
   ) {
   struct socketData *pSocketData = getSocketData(socketId);
-  LOG("Dump of socket=%d\n", socketId);
+  esp8266_dumpSocketData(pSocketData);
+}
+
+
+/**
+ * Write the details of a socketData to the debug log.
+ * The data associated with the socketData is dumped to the debug log.
+ */
+static void esp8266_dumpSocketData(
+    struct socketData *pSocketData //!< The socket data structure to be logged
+  ) {
+  LOG("Dump of socket=%d\n", pSocketData->socketId);
   LOG(" - isConnected=%d", pSocketData->isConnected);
   char *creationTypeMsg;
   switch(pSocketData->creationType) {
@@ -284,6 +308,7 @@ void esp8266_dumpSocket(
     break;
   }
   LOG(", state=%s", stateMsg);
+  LOG(", espconn=0x%x", (unsigned int)pSocketData->pEspconn);
   LOG(", errorCode=%d", pSocketData->errorCode);
 
   // Print the errorMsg if it has anything to say
@@ -481,7 +506,6 @@ static void resetSocketByData(
 
   pSocketData->acceptedSocketsHead = 0; // Set the head to 0
   pSocketData->acceptedSocketsTail = 0; // Set the tail to 9.
-  pSocketData->pEspconn    = NULL;
 }
 
 
@@ -511,9 +535,10 @@ static void releaseSocket(
 
   // If this socket is not an incoming socket that means that the espconn structure was created
   // by us and we should release the storage we allocated.
-  if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
+  if (pSocketData->creationType != SOCKET_CREATED_INBOUND && pSocketData->creationType != SOCKET_CREATED_SERVER) {
     os_free(pSocketData->pEspconn->proto.tcp);
     pSocketData->pEspconn->proto.tcp = NULL;
+    os_printf(" - freeing espconn: 0x%x\n", (unsigned int)pSocketData->pEspconn);
     os_free(pSocketData->pEspconn);
     pSocketData->pEspconn = NULL;
   }
@@ -556,14 +581,24 @@ static void doClose(
 
   struct socketData *pSocketData = getSocketData(socketId);
 
+
+  if (pSocketData->creationType == SOCKET_CREATED_SERVER) {
+    dumpEspConn(pSocketData->pEspconn);
+    int rc = espconn_delete(pSocketData->pEspconn);
+    if (rc != 0) {
+      os_printf("espconn_delete: rc=%s (%d)\n",esp8266_errorToString(rc),  rc);
+      setSocketInError(socketId, "espconn_delete", rc);
+    }
+    pSocketData->state = SOCKET_STATE_CLOSING;
+  }
+
   if (pSocketData->state != SOCKET_STATE_CLOSING) {
     int rc = espconn_disconnect(pSocketData->pEspconn);
-    pSocketData->state = SOCKET_STATE_CLOSING;
-
     if (rc != 0) {
-      os_printf("espconn_disconnect: rc=%d\n", rc);
+      os_printf("espconn_disconnect: rc=%s (%d)\n",esp8266_errorToString(rc),  rc);
       setSocketInError(socketId, "espconn_disconnect", rc);
     }
+    pSocketData->state = SOCKET_STATE_CLOSING;
   }
   // Our existing state on entry was SOCKET_STATE_CLOSING which means that we got here
   // because we were previously flagged as closing.
@@ -695,6 +730,7 @@ static void esp8266_callback_disconnectCB(
   // If the socket state is SOCKET_STATE_CLOSING then that means we can release the socket.  The reason
   // for this is that the last thing the user did was request an explicit socket close.
   if (pSocketData->state == SOCKET_STATE_CLOSING) {
+
     releaseSocket(pSocketData->socketId);
   } else {
     pSocketData->state       = SOCKET_STATE_CLOSING;
@@ -787,7 +823,7 @@ static void esp8266_callback_recvCB(
   if (pSocketData->rxBufLen == 0) {
     pSocketData->rxBuf = (void *)os_malloc(len);
     if (pSocketData->rxBuf == NULL) {
-      os_printf(" - Out of memory\n");
+      os_printf(" - #1 Out of memory allocating %d\n", len);
       return;
     }
     os_memcpy(pSocketData->rxBuf, pData, len);
@@ -801,7 +837,7 @@ static void esp8266_callback_recvCB(
 // Update the socket data.
     uint8 *pNewBuf = (uint8 *)os_malloc(len + pSocketData->rxBufLen);
     if (pNewBuf == NULL) {
-      os_printf(" - Out of memory\n");
+      os_printf(" - #2 Out of memory allocating %d\n", len + pSocketData->rxBufLen);
       return;
     }
     os_memcpy(pNewBuf, pSocketData->rxBuf, pSocketData->rxBufLen);
@@ -810,6 +846,13 @@ static void esp8266_callback_recvCB(
     pSocketData->rxBuf = pNewBuf;
     pSocketData->rxBufLen += len;
   } // End of new data allocated.
+  // Now that we have received some data, stop receiving any further data until this data is consumed.
+  /*
+  int rc = espconn_recv_hold(pEspconn);
+  if (rc != 0) {
+    os_printf(" - espconn_recv_hold: %d\n", rc);
+  }
+  */
   dumpEspConn(pEspconn);
   os_printf("<< recvCB\n");
 }
@@ -896,6 +939,13 @@ int net_ESP8266_BOARD_recv(
     os_free(pSocketData->rxBuf);
     pSocketData->rxBuf = NULL;
     //os_printf("RX - A\n");
+
+    /*
+    int rc = espconn_recv_unhold(pSocketData->pEspconn);
+    if (rc != 0) {
+      os_printf("espconn_recv_unhold: %d\n", rc);
+    }
+    */
     return retLen;
   }
 
@@ -1039,6 +1089,7 @@ int net_ESP8266_BOARD_createSocket(
 
   pSocketData->pEspconn = (struct espconn *)os_malloc(sizeof(struct espconn));
   assert(pSocketData->pEspconn);
+  os_printf(" - espconn: 0x%x\n", (unsigned int)pSocketData->pEspconn);
 
   struct espconn *pEspconn = pSocketData->pEspconn;
 
@@ -1124,7 +1175,7 @@ void net_ESP8266_BOARD_closeSocket(
   //dumpEspConn(pSocketData->pEspconn);
 
   // How we close the socket is a function of what kind of socket it is.
-
+/*
   // Close a server socket
   if (pSocketData->creationType == SOCKET_CREATED_SERVER) {
     int rc = espconn_delete(pSocketData->pEspconn);
@@ -1146,6 +1197,20 @@ void net_ESP8266_BOARD_closeSocket(
       pSocketData->shouldClose = true;
     }
   }
+ */
+
+  // If the state of the socket is idle, closing or error then we can actually close the socket.
+  // If it is not one of these states, then we are in the middle of something so let that
+  // something completed and then we can finish.
+  if (pSocketData->state == SOCKET_STATE_IDLE ||
+    pSocketData->state == SOCKET_STATE_CLOSING ||
+    pSocketData->state == SOCKET_STATE_ERROR) {
+    doClose(socketId);
+  } else {
+    pSocketData->shouldClose = true;
+  }
+
+  os_printf("< net_ESP8266_BOARD_closeSocket\n");
 }
 
 
