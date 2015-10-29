@@ -397,6 +397,9 @@ const char *jshGetDeviceString(
 #ifdef USB
   case EV_USBSERIAL: return "USB";
 #endif
+#ifdef BLUETOOTH
+  case EV_BLUETOOTH: return "Bluetooth";
+#endif
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
   case EV_SERIAL3: return "Serial3";
@@ -445,6 +448,11 @@ IOEventFlags jshFromDeviceString(
 #ifdef USB
   if (device[0]=='U' && device[1]=='S' && device[2]=='B' && device[3]==0) {
     return EV_USBSERIAL;
+  }
+#endif
+#ifdef BLUETOOTH
+  if (device[0]=='B') {
+     if (strcmp(&device[1], "luetooth")==0) return EV_BLUETOOTH;
   }
 #endif
   else if (device[0]=='S') {

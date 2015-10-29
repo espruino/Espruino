@@ -132,9 +132,9 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 {
 	uint32_t i;
     for (i = 0; i < length; i++) {
-        jshPushIOCharEvent(EV_USBSERIAL, (char) p_data[i]);
+        jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
     }
-    if (length>0) jshPushIOCharEvent(EV_USBSERIAL,'\n');
+    if (length>0) jshPushIOCharEvent(EV_BLUETOOTH,'\n');
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -274,6 +274,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_DISCONNECTED:
             //err_code = bsp_indication_set(BSP_INDICATE_IDLE); // GW
             //APP_ERROR_CHECK(err_code);
+
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
 
@@ -324,7 +325,8 @@ static void ble_stack_init(void)
     uint32_t err_code;
     
     // Initialize SoftDevice.
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    //SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
 
     // Enable BLE stack.
     ble_enable_params_t ble_enable_params;
@@ -434,12 +436,20 @@ static void power_manage(void)
 
 /*JSON{
     "type": "class",
-    "class" : "Bluetooth"
+    "class" : "NRF"
 }*/
+/*JSON{
+  "type" : "object",
+  "name" : "Bluetooth",
+  "instanceof" : "Serial",
+  "#if" : "defined(BLUETOOTH)"
+}
+The USB Serial port
+ */
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "init", 
     "generate" : "jswrap_nrf_bluetooth_init"
 }*/
@@ -469,7 +479,7 @@ void jswrap_nrf_bluetooth_init(void)
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "sleep",
     "generate" : "jswrap_nrf_bluetooth_sleep"
 }*/
@@ -490,7 +500,7 @@ void jswrap_nrf_bluetooth_sleep(void)
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "wake",
     "generate" : "jswrap_nrf_bluetooth_wake"
 }*/
@@ -507,13 +517,25 @@ void jswrap_nrf_bluetooth_wake(void)
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
+
+  if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
+    if (jsiGetConsoleDevice() == EV_BLUETOOTH)
+      jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+  } else {
+    if (jsiGetConsoleDevice() == DEFAULT_CONSOLE_DEVICE)
+      jsiSetConsoleDevice( EV_BLUETOOTH );
+  }
+
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
   int idx = 0;
-  int ch = jshGetCharToTransmit(EV_USBSERIAL);
+  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
   while (ch>=0 && idx<BLE_NUS_MAX_DATA_LEN) {
     buf[idx++] = ch;
-    ch = jshGetCharToTransmit(EV_USBSERIAL);
+    ch = jshGetCharToTransmit(EV_BLUETOOTH);
   }
   if (idx>0) ble_nus_string_send(&m_nus, buf, idx);
   return idx>0;
 }
+
+
+

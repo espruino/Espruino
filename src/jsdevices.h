@@ -45,6 +45,9 @@ typedef enum {
   EV_LOOPBACKB,
   EV_LIMBO,     // Where console output goes right after boot - one sec later we move it to USB/Serial
   EV_USBSERIAL,
+#ifdef BLUETOOTH
+  EV_BLUETOOTH,
+#endif
   EV_SERIAL1,
   EV_SERIAL2,
   EV_SERIAL3,

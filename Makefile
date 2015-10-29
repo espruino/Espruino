@@ -1183,7 +1183,9 @@ ifeq ($(FAMILY), NRF51)
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
+
+  LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
   SOFTDEVICE = targetlibs/nrf5x/softdevice/s110_nrf51_8.0.0_softdevice.hex
 
@@ -1219,6 +1221,7 @@ ifdef NRF5X
 
   # Just try and get rid of the compile warnings
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
+  DEFINES += -DBLUETOOTH
   
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.

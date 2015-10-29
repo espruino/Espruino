@@ -157,18 +157,18 @@ void nrf_utils_lfclk_config_and_start()
   // Trigger the LFCLKSTART task.
   NRF_CLOCK->TASKS_LFCLKSTART = (1UL);
 
-  while (NRF_CLOCK->EVENTS_LFCLKSTARTED != (1UL))
-  {
+  while (NRF_CLOCK->EVENTS_LFCLKSTARTED != (1UL)) {
     // Wait for the LFCLK to start...
   }
 
   // Clear the event.
   NRF_CLOCK->EVENTS_LFCLKSTARTED = (0UL);
-    
+  /* 
+  // wait until the clock is running - Xtal only? 
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
   {
     // Do nothing...
-  }
+  }*/
 
 }
 
