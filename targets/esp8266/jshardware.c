@@ -655,10 +655,6 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   os_printf("ESP8266: jshI2CSetup SCL=%d SDA=%d bitrate=%d\n",
       info->pinSCL, info->pinSDA, info->bitrate);
-  if (info->slaveAddr != -1) {
-    jsError("I2C slave mode not supported");
-    return;
-  }
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported");
     return;

@@ -1532,7 +1532,9 @@ JsVar *jsvGetFunctionArgumentLength(JsVar *functionScope) {
  * without getting a ReferenceError? This also returns false if the variable
  * if ok, but has the value `undefined`. */
 bool jsvIsVariableDefined(JsVar *a) {
-  return !jsvIsName(a) || jsvGetFirstChild(a)!=0;
+  return !jsvIsName(a) ||
+         jsvIsNameWithValue(a) ||
+         (jsvGetFirstChild(a)!=0);
 }
 
 /** If a is a name skip it and go to what it points to - and so on.
