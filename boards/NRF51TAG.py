@@ -44,9 +44,9 @@ board = {
 };
 
 devices = {
-  'LED1' : { 'pin' : 'D22' },
-  'LED2' : { 'pin' : 'D21' },
-  'LED3' : { 'pin' : 'D23' }
+#  'LED1' : { 'pin' : 'D22' },
+#  'LED2' : { 'pin' : 'D21' },
+#  'LED3' : { 'pin' : 'D23' }
 };
 
 board_css = """

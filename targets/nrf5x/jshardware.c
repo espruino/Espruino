@@ -42,7 +42,8 @@ void jshInit()
   init = 1;
 
   //
-
+   // jswrap_nrf_bluetooth_init();
+    //jsiSetConsoleDevice( EV_USBSERIAL);
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -62,10 +63,10 @@ static int cnt = 0;
 void jshIdle()
 {
   cnt++;
-  if (cnt==1000) {
+ /* if (cnt==1000) {
     jswrap_nrf_bluetooth_init();
     jsiSetConsoleDevice( EV_USBSERIAL);
-  }
+  }*/
 #ifdef LED1_PININDEX
   // turn led on (status)
   jshPinOutput(LED1_PININDEX, (cnt>>5)&1);

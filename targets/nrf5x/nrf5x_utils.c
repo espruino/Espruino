@@ -151,7 +151,8 @@ void nrf_utils_lfclk_config_and_start()
 {
 
   // Select the preferred clock source.
-  NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
+ // NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
+ NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
   
   // Trigger the LFCLKSTART task.
   NRF_CLOCK->TASKS_LFCLKSTART = (1UL);
