@@ -143,16 +143,12 @@ void jsiSetConsoleDevice(
   // the console, log to the new console that we have moved consoles.
   jsiConsoleRemoveInputLine();
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
-    jsiConsolePrint("Console Moved to ");
-    jsiConsolePrint(jshGetDeviceString(device));
-    jsiConsolePrint("\n");
+    jsiConsolePrintf("-> %s\n", jshGetDeviceString(device));
   }
   IOEventFlags oldDevice = consoleDevice;
   consoleDevice = device;
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
-    jsiConsolePrint("Console Moved from ");
-    jsiConsolePrint(jshGetDeviceString(oldDevice));
-    jsiConsolePrint("\n");
+    jsiConsolePrintf("<- %s\n", jshGetDeviceString(oldDevice));
   }
 }
 
