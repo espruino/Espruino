@@ -144,7 +144,7 @@ bool jshIsEventForPin(IOEvent *event, Pin pin);
 bool jshIsDeviceInitialised(IOEventFlags device);
 
 
-#define DEFAULT_BAUD_RATE               115200
+#define DEFAULT_BAUD_RATE               9600
 #define DEFAULT_BYTESIZE                8
 #define DEFAULT_PARITY                  0
 #define DEFAULT_STOPBITS                1

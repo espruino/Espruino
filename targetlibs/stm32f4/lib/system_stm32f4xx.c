@@ -558,7 +558,7 @@ static void SetSysClock(void)
     FLASH->ACR = /*FLASH_ACR_PRFTEN | */FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_2WS;
 #endif /* STM32F401xx */
 
-#if 0
+#if 1
     /* Select the main PLL as system clock source */
     RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
     RCC->CFGR |= RCC_CFGR_SW_PLL;

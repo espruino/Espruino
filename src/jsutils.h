@@ -16,14 +16,6 @@
 
 #include "platform_config.h"
 
-// Horrible hack, should be done in build_platform_config.py
-#ifdef WICED
-#undef LINKER_END_VAR
-#define LINKER_END_VAR _heap
-#undef LINKER_ETEXT_VAR
-#define LINKER_ETEXT_VAR _heap
-#endif
-
 #include <stddef.h>
 #ifndef FAKE_STDLIB
 #include <string.h>
@@ -58,10 +50,8 @@ extern int isfinite ( double );
   OPT - potential for speed optimisation
 */
 
-#ifndef WICED
 #if defined(ARM) || defined(AVR)
 #define alloca(x) __builtin_alloca(x)
-#endif
 #endif
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!

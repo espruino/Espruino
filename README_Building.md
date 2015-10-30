@@ -98,7 +98,8 @@ that task is to right-click your Espruino project and select `properties`.  From
 
 ### for EMW3165
 
-Note: the emw3165 port is very preliminary and not really working as of this writing.
+Note: the emw3165 port is very preliminary and does not include Wifi support at this time.
+_The text below is what is planned in order to support Wifi, but it doesn't exist yet._
 
 The EMW3165 port uses WICED, which is an application framework provided by Broadcom for its
 wifi chips, such as the BCM43362 used in the EMW3165 module. The module consists of an
@@ -107,14 +108,8 @@ sink plus a rather complex build process in order to support umpteen different p
 wifi chip combinations, plus various use-cases. WICED includes FreeRTOS and LwIP plus
 proprietary code to manage the Wifi chip.
 
-The strategy employed for now is to build a frankenstein executable by gluing together
-Espruino and WICED. Specifically, Espruino is compiled using the toolchain included with
-WICED 3.3.1 (GNU arm-none-eabi 4.9) and referencing the CMSIS header files included with WICED.
-The result of compiling Espruino is a pre-linked `.o` file (`espruino_1v00.000_emw3165.o`).
-After this WICED is compiled with a stub main program (in `apps/snip/espruino`) that simply calls
-`main_loop()` found in Espruino's `targets/emw3165/main.c` and the pre-linked Espruino `.o`
-file is linked with WICED. The WICED makefile is further used to download the WICED bootloader,
-DCT, and application to the target system.
+The strategy employed is to compile portions of WICED into a library using the WICED toolchain
+and then linking this into Espruino.
 
 Setting up WICED:
 - WICED does not officially support the EMW3165.
@@ -127,32 +122,16 @@ Setting up WICED:
 - An alternative program to test with is the "scan" snip as it will also print something on the
   console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
 
-Setting up the Espruino WICED stub application:
-- Untar the espruino app from the `targets/emw3165` directory into the WICED `app/snip`
-  structure. Something like:
-```
-  tar -C /home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1/apps/snip -xf targets/emw3165/wiced.tar
-```
+Compiling WICED into a library:
+- ... if only this worked ...
 
 Compiling Espruino:
-- To compile Espruino you will need to point to the WICED toolchain and include files. This is
-  done by specifying a WICED_ROOT and WICED_GCC environment variable.
-- Once The Espruino make completes, you will have the pre-linked `.o` file and you will need to
-  invoke WICED make to link the world together.
-- The following script accomplishes all this (obviously you need to adapt the pathnames):
+- To compile Espruino you will need to point to the WICED root and include files. This is
+  done by specifying a WICED_ROOT environment variable.
+- Adapt the pathnames from the following script:
 ```
-  export WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1
-  export WICED_GCC=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1/tools/ARM_GNU/bin/Linux64
-  make $* && (cd $WICED_ROOT; ./make EMW3165-FreeRTOS-LwIP-snip.espruino JTAG=stlink-v2-1 download run)
+  WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
 ```
-
-Looking ahead, it seems that the current division of labor is not right. When an application
-runs most of the hardware control is performed via Espruino and so the hardware initialization
-and associated header files and such should stay within Espruino. WICED should be compiled with
-the minimal number of hooks into hardware and ideally result in a library that can be linked
-into the Espruino build process. The WICED flash set-up with bootloader, DCT and multiple apps
-may or may not be desirable and should perhaps also be changed to something more straight-forward
-that supports a simpler model of over-the-air upgrades.
 
 ----
 

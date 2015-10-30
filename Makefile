@@ -52,7 +52,7 @@
 # ESP8266_2MB=1           # ESP8266 with 2MB flash: 512KB+512KB firmware + 3MB SPIFFS
 # ESP8266_1MB=1           # ESP8266 with 1MB flash: 512KB+512KB firmware + 32KB SPIFFS
 # ESP8266_512KB=1         # ESP8266 with 512KB flash: 512KB firmware + 32KB SPIFFS
-# EWM3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
+# EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
 # Also:
