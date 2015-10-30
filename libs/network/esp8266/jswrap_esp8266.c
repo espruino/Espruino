@@ -711,9 +711,47 @@ void jswrap_ESP8266_wifi_createAP(
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "wifi",
+  "name"     : "getStatus",
+  "generate" : "jswrap_ESP8266_wifi_getStatus",
+  "return"   : ["JsVar", "A boolean representing our WiFi status "]
+}
+* Retrieve the status of the current WiFi environment.
+* The object returned by this function will have some or all of the following properties:
+* * `isStation` - True if the ESP8266 is being a Station
+* * `isAP` - True if the ESP8266 is being an Access Point.
+* * `connectedStations` - An array of the stations connected to us if we are being an access point.  This
+* array may be empty.  Each entry in the array will itself be an object describing the station which,
+* at a minimum will contain `ip` being the IP address of the station.
+*/
+JsVar *jswrap_ESP8266_wifi_getStatus() {
+  os_printf("> jswrap_ESP8266_wifi_getStatus\n");
+  JsVar *jsWiFiStatus = jspNewObject(NULL, "WiFiStatus");
+  uint8 opMode = wifi_get_opmode();
+  jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "isStation",
+      jsvNewFromBool(opMode == STATION_MODE || opMode == STATIONAP_MODE));
+  jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "isAP",
+      jsvNewFromBool(opMode == SOFTAP_MODE || opMode == STATIONAP_MODE));
+  if (opMode == SOFTAP_MODE || opMode == STATIONAP_MODE) {
+    jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "connectedStations",
+      jswrap_ESP8266WiFi_getConnectedStations());
+  }
+  os_printf("< jswrap_ESP8266_wifi_getStatus\n");
+  return jsWiFiStatus;
+}
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
   "name"     : "getIP",
   "generate" : "jswrap_ESP8266_wifi_getIP",
-  "return"   : ["JsVar", "A boolean representing our auto connect status"]
+  "return"   : ["JsVar", "A boolean representing our IP information"]
 }
 * Return IP information in an object which contains:
 * * ip - IP address
@@ -725,12 +763,12 @@ JsVar *jswrap_ESP8266_wifi_getIP() {
   struct ip_info info;
   wifi_get_ip_info(0, &info);
 
-  JsVar *ipInfo = jspNewObject(NULL, "Restart");
-  jsvObjectSetChildAndUnLock(ipInfo, "ip", jsvNewFromInteger(info.ip.addr));
-  jsvObjectSetChildAndUnLock(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
-  jsvObjectSetChildAndUnLock(ipInfo, "gw", jsvNewFromInteger(info.gw.addr));
+  JsVar *jsIpInfo = jspNewObject(NULL, "Restart");
+  jsvObjectSetChildAndUnLock(jsIpInfo, "ip", jsvNewFromInteger(info.ip.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "gw", jsvNewFromInteger(info.gw.addr));
   os_printf("< jswrap_ESP8266_wifi_getIP\n");
-  return ipInfo;
+  return jsIpInfo;
 }
 
 

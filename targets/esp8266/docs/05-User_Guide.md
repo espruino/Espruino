@@ -267,6 +267,23 @@ For example:
 
 ----
 
+##wifi.getSatus
+
+Retrieve the status of the WiFi environment.
+
+`wifi.getStatus()`
+
+This function returns a JavaScript object that contains the current status of the WiFi environment.  Depending
+on the board being used, the results may include the following:
+
+* `isStation` - True if the device is being a Station
+* `isAP` - True if the device is being an Access Point.
+* `connectedStations` - An array of the stations connected to us if we are being an access point.  This
+array may be empty.  Each entry in the array will itself be an object describing the station which,
+at a minimum will contain `ip` being the IP address of the station.
+
+----
+
 ##wifi.stopAP
 
 Don't be an access point any longer.

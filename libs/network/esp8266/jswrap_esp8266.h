@@ -50,6 +50,7 @@ void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOp
 void   jswrap_ESP8266_wifi_createAP(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_disconnect(JsVar *jsOptions, JsVar *jsCallback);
 JsVar *jswrap_ESP8266_wifi_getIP();
+JsVar *jswrap_ESP8266_wifi_getStatus();
 void   jswrap_ESP8266_wifi_scan(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_stopAP(JsVar *jsOptions, JsVar *jsCallback);
 
