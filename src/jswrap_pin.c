@@ -39,9 +39,6 @@ You can call the methods on Pin, or you can use Wiring-style functions such as d
 }
 Creates a pin from the given argument (or returns undefined if no argument)
 */
-/**
- * \brief Create an instance of a Pin class.
- */
 JsVar *jswrap_pin_constructor(JsVar *val) {
   Pin pin = jshGetPinFromVar(val);
   if (!jshIsPinValid(pin)) return 0;
@@ -170,6 +167,7 @@ void jswrap_pin_mode(JsVar *parent, JsVar *mode) {
   "type"     : "method",
   "class"    : "Pin",
   "name"     : "getInfo",
+  "ifndef"   : "SAVE_ON_FLASH",
   "generate" : "jswrap_pin_getInfo",
   "return"   : ["JsVar","An object containing information about this pins"]
 }
@@ -177,9 +175,11 @@ Get information about this pin and its capabilities. Of the form:
 
 ```
 {
-  "port" : "A", // the Pin's port on the chip
-  "num" : 12, // the Pin's number
-  "analog" : { ADCs : [1], channel : 12 }, // If analog input is available
+  "port"      : "A", // the Pin's port on the chip
+  "num"       : 12, // the Pin's number
+  "in_addr"   : 0x..., // (if available) the address of the pin's input address in bit-banded memory (can be used with peek)
+  "out_addr"  : 0x..., // (if available) the address of the pin's output address in bit-banded memory (can be used with poke)
+  "analog"    : { ADCs : [1], channel : 12 }, // If analog input is available
   "functions" : {
     "TIM1":{type:"CH1, af:0},
     "I2C3":{type:"SCL", af:1}
@@ -188,9 +188,6 @@ Get information about this pin and its capabilities. Of the form:
 ```
 Will return undefined if pin is not valid.
 */
-/**
- * \brief
- */
 JsVar *jswrap_pin_getInfo(
     JsVar *parent //!< The class instance representing the pin.
   ) {
@@ -205,6 +202,13 @@ JsVar *jswrap_pin_getInfo(
   buf[1] = 0;
   jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromString(buf));
   jsvObjectSetChildAndUnLock(obj, "num", jsvNewFromInteger(inf->pin-JSH_PIN0));
+#ifdef STM32
+  uint32_t *addr;
+  addr = jshGetPinAddress(pin, JSGPAF_INPUT);
+  if (addr) jsvObjectSetChildAndUnLock(obj, "in_addr", jsvNewFromInteger((JsVarInt)addr));
+  addr = jshGetPinAddress(pin, JSGPAF_OUTPUT);
+  if (addr) jsvObjectSetChildAndUnLock(obj, "out_addr", jsvNewFromInteger((JsVarInt)addr));
+#endif
   // ADC
   if (inf->analog) {
     JsVar *an = jsvNewWithFlags(JSV_OBJECT);

@@ -10,6 +10,10 @@
  *
  */
 
+/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py, 
+so we don't put this into espruino.com/Reference until this is out
+of beta.  */
+
 /** @file
  *
  * @defgroup ble_sdk_uart_over_ble_main main.c
@@ -38,8 +42,8 @@
 #include "app_button.h"
 #include "ble_nus.h"
 #include "app_util_platform.h"
-#include "bsp.h"
-#include "bsp_btn_ble.h"
+//#include "bsp.h"
+
 
 #define IS_SRVC_CHANGED_CHARACT_PRESENT 0                                           /**< Include the service_changed characteristic. If not enabled, the server's database cannot be changed for the lifetime of the device. */
 
@@ -50,7 +54,7 @@
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            (2 + BSP_APP_TIMERS_NUMBER)                 /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_MAX_TIMERS            (2 + 2/*+ BSP_APP_TIMERS_NUMBER*/)                 /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
@@ -67,8 +71,6 @@ static ble_nus_t                        m_nus;                                  
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
-
-static volatile bool ble_com;
 
 /**@brief Function for assert macro callback.
  *
@@ -129,21 +131,10 @@ static void gap_params_init(void)
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
 	uint32_t i;
-
-	if (ble_com)
-	{
-		for (i = 0; i < length; i++)
-		{
-			jshPushIOCharEvent(EV_SERIAL1, (char) p_data[i]);
-		}
-	}
-	else
-	{
-		for (i = 0; i < length; i++)
-		{
-			jsiConsolePrintChar((char) p_data[i]);
-		}
-	}
+    for (i = 0; i < length; i++) {
+        jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
+    }
+    if (length>0) jshPushIOCharEvent(EV_BLUETOOTH,'\n');
 }
 /**@snippet [Handling the data received over BLE] */
 
@@ -225,12 +216,13 @@ static void conn_params_init(void)
  */
 static void sleep_mode_enter(void)
 {
-    uint32_t err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-    APP_ERROR_CHECK(err_code);
+    uint32_t err_code;
+    // err_code = bsp_indication_set(BSP_INDICATE_IDLE); // GW
+    //APP_ERROR_CHECK(err_code);
 
     // Prepare wakeup buttons.
-    err_code = bsp_btn_ble_sleep_mode_prepare();
-    APP_ERROR_CHECK(err_code);
+    // err_code = bsp_btn_ble_sleep_mode_prepare(); // GW
+    //APP_ERROR_CHECK(err_code);
 
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
@@ -251,8 +243,8 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
+            //err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING); // GW
+            //APP_ERROR_CHECK(err_code);
             break;
         case BLE_ADV_EVT_IDLE:
             sleep_mode_enter();
@@ -274,14 +266,15 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
-            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-            APP_ERROR_CHECK(err_code);
+            //err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);// GW
+            //APP_ERROR_CHECK(err_code);
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             break;
             
         case BLE_GAP_EVT_DISCONNECTED:
-            err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-            APP_ERROR_CHECK(err_code);
+            //err_code = bsp_indication_set(BSP_INDICATE_IDLE); // GW
+            //APP_ERROR_CHECK(err_code);
+
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
             break;
 
@@ -318,7 +311,7 @@ static void ble_evt_dispatch(ble_evt_t * p_ble_evt)
     ble_nus_on_ble_evt(&m_nus, p_ble_evt);
     on_ble_evt(p_ble_evt);
     ble_advertising_on_ble_evt(p_ble_evt);
-    bsp_btn_ble_on_ble_evt(p_ble_evt);
+    // bsp_btn_ble_on_ble_evt(p_ble_evt); // GW
     
 }
 
@@ -332,7 +325,8 @@ static void ble_stack_init(void)
     uint32_t err_code;
     
     // Initialize SoftDevice.
-    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    //SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_XTAL_20_PPM, NULL);
+    SOFTDEVICE_HANDLER_INIT(NRF_CLOCK_LFCLKSRC_RC_250_PPM_TEMP_8000MS_CALIBRATION, false);
 
     // Enable BLE stack.
     ble_enable_params_t ble_enable_params;
@@ -354,7 +348,7 @@ static void ble_stack_init(void)
  *
  * @param[in]   event   Event generated by button press.
  */
-void bsp_event_handler(bsp_event_t event)
+/*void bsp_event_handler(bsp_event_t event)
 {
     uint32_t err_code;
     switch (event)
@@ -382,7 +376,7 @@ void bsp_event_handler(bsp_event_t event)
         default:
             break;
     }
-}
+}*/
 
 /**@brief Function for initializing the Advertising functionality.
  */
@@ -418,17 +412,17 @@ static void advertising_init(void)
  */
 static void buttons_leds_init(bool * p_erase_bonds)
 {
-    bsp_event_t startup_event;
+  /*  bsp_event_t startup_event;
 
     uint32_t err_code = bsp_init(BSP_INIT_LED | BSP_INIT_BUTTONS,
                                  APP_TIMER_TICKS(100, APP_TIMER_PRESCALER), 
                                  bsp_event_handler);
-    APP_ERROR_CHECK(err_code);
+    APP_ERROR_CHECK(err_code);*/
 
-    err_code = bsp_btn_ble_init(NULL, &startup_event);
-    APP_ERROR_CHECK(err_code);
+   // err_code = bsp_btn_ble_init(NULL, &startup_event); // GW
+    //APP_ERROR_CHECK(err_code);
 
-    *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
+//  /  *p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 }
 
 
@@ -442,12 +436,20 @@ static void power_manage(void)
 
 /*JSON{
     "type": "class",
-    "class" : "Bluetooth"
+    "class" : "NRF"
 }*/
+/*JSON{
+  "type" : "object",
+  "name" : "Bluetooth",
+  "instanceof" : "Serial",
+  "#if" : "defined(BLUETOOTH)"
+}
+The USB Serial port
+ */
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "init", 
     "generate" : "jswrap_nrf_bluetooth_init"
 }*/
@@ -458,7 +460,7 @@ void jswrap_nrf_bluetooth_init(void)
     
     // Initialize.
     APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
-    buttons_leds_init(&erase_bonds);
+    //buttons_leds_init(&erase_bonds);
     ble_stack_init();
     gap_params_init();
     services_init();
@@ -468,8 +470,6 @@ void jswrap_nrf_bluetooth_init(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
     
-    ble_com = false;
-
     // Enter main loop.
     //for (;;)
     //{
@@ -479,67 +479,7 @@ void jswrap_nrf_bluetooth_init(void)
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
-    "name" : "send_string",
-    "generate" : "jswrap_nrf_bluetooth_send_string",
-    "params" : [
-    ["string_to_send","pin","The string to be sent to the BLE central via Nordic's UART service."],
-    ["length","int","The length of string."]
-  ]
-}*/
-void jswrap_nrf_bluetooth_send_string(Pin* string_to_send, int length)
-{
-    static uint8_t data_array[BLE_NUS_MAX_DATA_LEN];
-    static uint8_t index = 0;
-    uint32_t       err_code;
-
-    uint32_t i;
-    for (i = 0; i < length; i++)
-    {
-    	data_array[index] = (uint8_t) string_to_send[i];
-
-    	index++;
-
-    	if ((data_array[index - 1] == '\n') || (index >= (BLE_NUS_MAX_DATA_LEN)) || (i == (length - 1)))
-    	{
-    		err_code = ble_nus_string_send(&m_nus, data_array, index);
-    		if (err_code != NRF_ERROR_INVALID_STATE)
-    		{
-    			APP_ERROR_CHECK(err_code);
-    		}
-
-    		index = 0;
-    	}
-
-    }
-}
-/**@snippet [Send string to the BLE central node (smart phone).] */
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Bluetooth",
-    "name" : "enable_com",
-    "generate" : "jswrap_nrf_bluetooth_enable_com"
-}*/
-void jswrap_nrf_bluetooth_enable_com(void)
-{
-	ble_com = true;
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Bluetooth",
-    "name" : "disable_com",
-    "generate" : "jswrap_nrf_bluetooth_disable_com"
-}*/
-void jswrap_nrf_bluetooth_disable_com(void)
-{
-	ble_com = false;
-}
-
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "sleep",
     "generate" : "jswrap_nrf_bluetooth_sleep"
 }*/
@@ -560,7 +500,7 @@ void jswrap_nrf_bluetooth_sleep(void)
 
 /*JSON{
     "type" : "staticmethod",
-    "class" : "Bluetooth",
+    "class" : "NRF",
     "name" : "wake",
     "generate" : "jswrap_nrf_bluetooth_wake"
 }*/
@@ -571,6 +511,31 @@ void jswrap_nrf_bluetooth_wake(void)
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
 }
 
-/** 
- * @}
- */
+
+/*JSON{
+  "type" : "idle",
+  "generate" : "jswrap_nrf_idle"
+}*/
+bool jswrap_nrf_idle() {
+
+  if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
+    if (jsiGetConsoleDevice() == EV_BLUETOOTH)
+      jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+  } else {
+    if (jsiGetConsoleDevice() == DEFAULT_CONSOLE_DEVICE)
+      jsiSetConsoleDevice( EV_BLUETOOTH );
+  }
+
+  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
+  int idx = 0;
+  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  while (ch>=0 && idx<BLE_NUS_MAX_DATA_LEN) {
+    buf[idx++] = ch;
+    ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  }
+  if (idx>0) ble_nus_string_send(&m_nus, buf, idx);
+  return idx>0;
+}
+
+
+

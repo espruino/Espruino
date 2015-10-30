@@ -1,3 +1,13 @@
+     1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
+            Fix wakeup when setDeepSleep used at startup (fix #645)
+            Add `shiftOut` function (fix #631)
+            Store line numbers for functions (via `Esc [ 1234 d` escape code before decl) and use in debug + stack traces
+            Allow Ctrl-C to break out of tight loops with function calls in
+            Add tab -> autocomplete in Console (fix #677)
+            Fix I2C repeated start (#390)
+            Fix regression in Math.random() - now back between 0 and 1 (fix #656)
+            Fix `var a=0;typeof a -> "undefined"` (fix #683)
+
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
             Remove Graphics.setColorHSV, add E.HSBtoRGB (fix #554)
@@ -33,6 +43,11 @@
             Add `E.on('init', ...)` - like `onInit` but allows multiple handlers
             Make sure `dump()` and `E.dumpStr()` dump the contents of Serial as well as events for other objects
             `E.getSizeOf(.., 1)` can now recurse into objects showing the sizes of all their children (fix #579)
+            Fix bug when appending to a flat string (fix #614)
+            Add `Serial/SPI/I2C.find(pin)` - so we can figure out what device to use based on the pin
+            Ensure that when uploading, each command gets checked for errors (rather than right at the end)
+            Fix writes on HTTP requests after a timeout, and add chunked encoding if the header is set.
+            Added pin info for bit-banded pin addresses (and jshGetPinAddress).
 
      1v80 : Fix SD card IO that can corrupt SD card on file append since 1v73 (fix #536)
             Fix some potential pointer issues in hashlib
