@@ -58,8 +58,10 @@ espruino_#v##_stm32f4discovery.bin
    - STM32F4DISCOVERY board
 
 espruino_#v##_nucleof401re.bin
-   - NUCLEO-F401RE board
+   - ST NUCLEO-F401RE board
 
+espruino_#v##_nucleof411re.bin
+   - ST NUCLEO-F411RE board
 
 espruino_#v##_raspberrypi
    - Raspberry Pi executable (just copy it to the device and run it)

@@ -1,8 +1,17 @@
 /*
- * network_esp8266_board.h
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
- *  Created on: Aug 29, 2015
- *      Author: kolban
+ * Copyright (C) 2015 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * This file is designed to be parsed during the build process
+ *
+ * Contains ESP8266 board network specific function definitions.
+ * ----------------------------------------------------------------------------
  */
 
 #ifndef LIBS_NETWORK_ESP8266_NETWORK_ESP8266_H_
@@ -12,6 +21,7 @@
 void netInit_esp8266_board();
 void netSetCallbacks_esp8266_board(JsNetwork *net);
 void esp8266_dumpSocket(int socketId);
+void esp8266_dumpAllSocketData();
 int  net_ESP8266_BOARD_accept(JsNetwork *net, int serverSckt);
 int  net_ESP8266_BOARD_recv(JsNetwork *net, int sckt, void *buf, size_t len);
 int  net_ESP8266_BOARD_send(JsNetwork *net, int sckt, const void *buf, size_t len);

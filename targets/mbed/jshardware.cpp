@@ -66,7 +66,7 @@ void jshInit() {
   for (i=0;i<MBED_PINS;i++) {
      gpio_init(&mbedPins[i], (PinName)(P0_0+i), PIN_INPUT);
   }
-  for (i=0;i<USARTS;i++) {
+  for (i=0;i<USART_COUNT;i++) {
     serial_init(&mbedSerial[i], USBTX, USBRX); // FIXME Pin
     serial_irq_handler(&mbedSerial[i], &mbedSerialIRQ, i);
     // serial_irq_set(&mbedSerial[i], RxIrq, 1); // FIXME Rx IRQ just crashes when called

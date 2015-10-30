@@ -11,6 +11,8 @@ Espruino is easy to build under Linux, and it is possible to build under MacOS w
   
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
+**YOU'LL NEED GCC 4.8** - On the 4.9 releases from launchpad above, the Original Espruino board's binary will build but USB will not work (this is believed to be due to an out of order register write in ST's USB code caused by an optimisation pass in GCC).
+
 Download the compiler, set up your path so you have access to it, and run:
 
 ```YOUR_BOARD_NAME=1 RELEASE=1 make```
@@ -90,6 +92,15 @@ export COMPORT=/dev/ttyUSB0
 make $*
 ```
 
+####Over-the-Air firmware update
+The firmware on the esp8266 can be upgraded over wifi as long as the esp8266 has 1MB or more flash
+and that Espruino was built with BOARD=ESP8266_1MB thru BOARD=ESP8266_4MB. To upgrade determine
+the hostname or IP address of your Espruino on the network and run:
+```
+./scripts/wiflash espruino:88 espruino_esp8266_ota_user1.bin espruino_esp8266_ota_user2.bin
+```
+where 'espruino:88' is the hostname or IP address and the OTA port 88.
+
 ####Building on Eclipse
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
@@ -144,6 +155,7 @@ Building under Windows/MacOS with a VM (Vagrant)
 * Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
   > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
 * In your terminal application, navigate to your cloned working copy.
+* Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
 * When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
 * Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.

@@ -20,16 +20,13 @@
 
 #include <stdint.h>
 
-// Functions for reading and writing flash.
-void nrf_utils_write_flash_address(uint32_t addr, uint32_t val);
-void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len);
-void nrf_utils_write_flash_addresses(uint32_t addr, const uint32_t * src, uint32_t len);
-void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len);
-void nrf_utils_read_flash_addresses(void *buf, uint32_t addr, uint32_t len);
+/// Functions for reading and writing flash.
 bool nrf_utils_get_page(uint32_t addr, uint32_t * page_address, uint32_t * page_size);
 void nrf_utils_erase_flash_page(uint32_t addr);
+void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len);
+void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len);
 
-// Functions for configuring and setting GPIOS.
+/// Functions for configuring and setting GPIOS.
 void nrf_utils_gpio_pin_set(uint32_t pin);
 void nrf_utils_gpio_pin_clear(uint32_t pin);
 uint32_t nrf_utils_gpio_pin_read(uint32_t pin);
@@ -52,8 +49,6 @@ uint32_t nrf_utils_read_temperature(void);
 void nrf_utils_app_uart_put(uint8_t character);
 
 void print_string_to_terminal(uint8_t * debug_string, uint32_t len);
-
-
 
 #endif // NRF5X_UTILS_H__
 

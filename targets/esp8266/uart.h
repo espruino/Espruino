@@ -14,6 +14,9 @@
  * You should have received a copy of the GNU General Public License along
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+// This file is distributed with the ESP8266 SDK but has been modified for Espruino.
+
 #ifndef UART_APP_H
 #define UART_APP_H
 
@@ -23,7 +26,7 @@
 
 
 int getRXBuffer(char *pBuffer, int bufferLen);
-int uart_rx_discard();
+//int uart_rx_discard();
 
 
 #define UART_TX_BUFFER_SIZE 256  //Ring buffer length of tx buffer
@@ -139,7 +142,7 @@ typedef struct {
     UartBautRate 	     baut_rate;
     UartBitsNum4Char  data_bits;
     UartExistParity      exist_parity;
-    UartParityMode 	    parity;    
+    UartParityMode 	    parity;
     UartStopBitsNum   stop_bits;
     UartFlowCtrl         flow_ctrl;
     RcvMsgBuff          rcv_buff;
@@ -185,8 +188,8 @@ typedef enum {
 
 //void ICACHE_FLASH_ATTR uart_test_rx();
 STATUS uart_tx_one_char(uint8 uart, uint8 TxChar);
-STATUS uart_tx_one_char_no_wait(uint8 uart, uint8 TxChar);
-void  uart1_sendStr_no_wait(const char *str);
+static STATUS uart_tx_one_char_no_wait(uint8 uart, uint8 TxChar);
+static void  uart1_sendStr_no_wait(const char *str);
 struct UartBuffer*  Uart_Buf_Init();
 
 
@@ -199,11 +202,12 @@ void  tx_start_uart_buffer(uint8 uart_no);
 uint16  rx_buff_deq(char* pdata, uint16 data_len );
 void  Uart_rx_buff_enq();
 #endif
-void  uart_rx_intr_enable(uint8 uart_no);
-void  uart_rx_intr_disable(uint8 uart_no);
+static void  uart_rx_intr_enable(uint8 uart_no);
+static void  uart_rx_intr_disable(uint8 uart_no);
 void uart0_tx_buffer(uint8 *buf, uint16 len);
 
 //==============================================
+#if 0
 #define FUNC_UART0_CTS 4
 #define FUNC_U0CTS                      4
 #define FUNC_U1TXD_BK                   2
@@ -218,8 +222,9 @@ void UART_WaitTxFifoEmpty(uint8 uart_no , uint32 time_out_us); //do not use if t
 void UART_ResetFifo(uint8 uart_no);
 void UART_ClearIntrStatus(uint8 uart_no,uint32 clr_mask);
 void UART_SetIntrEna(uint8 uart_no,uint32 ena_mask);
-void UART_SetPrintPort(uint8 uart_no);
 bool UART_CheckOutputFinished(uint8 uart_no, uint32 time_out_us);
+#endif
+void UART_SetPrintPort(uint8 uart_no);
 //==============================================
 
 #endif

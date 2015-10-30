@@ -156,7 +156,7 @@ long long stringToIntWithRadix(const char *s, int forceRadix, bool *hasError) {
 }
 
 /**
- * \brief Convert hex, binary, octal or decimal string into an int.
+ * Convert hex, binary, octal or decimal string into an int.
  */
 long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
@@ -316,7 +316,7 @@ unsigned int rand_m_z = 0xCAFEBABE;    /* must not be zero */
 int rand() {
   rand_m_z = 36969 * (rand_m_z & 65535) + (rand_m_z >> 16);
   rand_m_w = 18000 * (rand_m_w & 65535) + (rand_m_w >> 16);
-  return (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
+  return RAND_MAX & (int)((rand_m_z << 16) + rand_m_w);  /* 32-bit result */
 }
 
 void srand(unsigned int seed) {
@@ -327,7 +327,7 @@ void srand(unsigned int seed) {
 
 
 /**
- * \brief Convert a string to a JS float variable where the string is of a specific radix.
+ * Convert a string to a JS float variable where the string is of a specific radix.
  * \return A JS float variable.
  */
 JsVarFloat stringToFloatWithRadix(
@@ -413,7 +413,7 @@ JsVarFloat stringToFloatWithRadix(
 
 
 /**
- * \brief convert a string to a floating point JS variable.
+ * convert a string to a floating point JS variable.
  * \return a JS float variable.
  */
 JsVarFloat stringToFloat(
@@ -512,7 +512,7 @@ JsVarFloat wrapAround(JsVarFloat val, JsVarFloat size) {
 }
 
 /**
- * \brief Espruino-special printf with a callback.
+ * Espruino-special printf with a callback.
  *
  * The supported format specifiers are:
  * * `%d` = int

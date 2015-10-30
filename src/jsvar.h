@@ -399,7 +399,8 @@ bool jsvHasSingleChild(const JsVar *v);
 /// Does this variable have a 'ref' argument? Stringexts use it for extra character data
 static ALWAYS_INLINE bool jsvHasRef(const JsVar *v) { return !jsvIsStringExt(v); }
 
-/// This is the number of characters a JsVar can contain, NOT string length
+/** Return the is the number of characters this one JsVar can contain, NOT string length (eg, a chain of JsVars)
+ * This will return an invalid length when applied to Flat Strings */
 static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   // see jsvCopy - we need to know about this in there too
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
@@ -431,6 +432,8 @@ static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
+  assert(!jsvIsFlatString(v));
+
   JsVarFlags m = (JsVarFlags)(v->flags&~JSV_VARTYPEMASK);
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
@@ -473,12 +476,12 @@ void jsvSetString(JsVar *v, char *str, size_t len); ///< Set the Data in this st
 JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock and return it, else create a new string
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
-size_t jsvGetStringLength(JsVar *v); ///< Get the length of this string, IF it is a string
-size_t jsvGetFlatStringBlocks(JsVar *v); ///< return the number of blocks used by the given flat string
+size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
+size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
-void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t* line, size_t *col); ///< IN A STRING, get the line and column of the given character. Both values must be non-null
+void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
 size_t jsvGetIndexFromLineAndCol(JsVar *v, size_t line, size_t col); ///<  IN A STRING, get a character index from a line and column
 
 
@@ -492,9 +495,11 @@ bool jsvIsStringEqualOrStartsWith(JsVar *var, const char *str, bool isStartsWith
 bool jsvIsStringEqual(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
 bool jsvIsStringEqualAndUnLock(JsVar *var, const char *str); ///< see jsvIsStringEqualOrStartsWith
 int jsvCompareString(JsVar *va, JsVar *vb, size_t starta, size_t startb, bool equalAtEndOfString); ///< Compare 2 strings, starting from the given character positions
+/// Return a new string containing just the characters that are shared between two strings.
+JsVar *jsvGetCommonCharacters(JsVar *va, JsVar *vb);
 int jsvCompareInteger(JsVar *va, JsVar *vb); ///< Compare 2 integers, >0 if va>vb,  <0 if va<vb. If compared with a non-integer, that gets put later
 void jsvAppendString(JsVar *var, const char *str); ///< Append the given string to this one
-bool jsvAppendStringBuf(JsVar *var, const char *str, size_t length); ///< Append the given string to this one - but does not use null-terminated strings. returns false on failure (from out of memory)
+void jsvAppendStringBuf(JsVar *var, const char *str, size_t length); ///< Append the given string to this one - but does not use null-terminated strings
 void jsvAppendPrintf(JsVar *var, const char *fmt, ...); ///< Append the formatted string to a variable (see vcbprintf)
 JsVar *jsvVarPrintf( const char *fmt, ...); ///< Create a var from the formatted string
 static ALWAYS_INLINE void jsvAppendCharacter(JsVar *var, char ch) { jsvAppendStringBuf(var, &ch, 1); }; ///< Append the given character to this string
@@ -543,14 +548,22 @@ JsVar *jsvArrayBufferGetFromName(JsVar *name);
 /** Return an array containing the arguments of the given function */
 JsVar *jsvGetFunctionArgumentLength(JsVar *function);
 
+
+/** Is this variable actually defined? eg, can we pass it into `jsvSkipName`
+ * without getting a ReferenceError? This also returns false if the variable
+ * if ok, but has the value `undefined`. */
+bool jsvIsVariableDefined(JsVar *a);
+
 /** If a is a name skip it and go to what it points to - and so on.
  * ALWAYS locks - so must unlock what it returns. It MAY
- * return 0.  */
+ * return 0. Throws a ReferenceError if variable is not defined,
+ * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipName(JsVar *a);
 
 /** If a is a name skip it and go to what it points to.
  * ALWAYS locks - so must unlock what it returns. It MAY
- * return 0.  */
+ * return 0. Throws a ReferenceError if variable is not defined,
+ * but you can check if it will with jsvIsReferenceError */
 JsVar *jsvSkipOneName(JsVar *a);
 
 /** If a is a's child is a name skip it and go to what it points to.
