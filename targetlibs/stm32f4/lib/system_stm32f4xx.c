@@ -273,6 +273,16 @@
 #define PLL_P      4
 #endif /* STM32F401xx */
 
+#if defined(EMW3165)
+// EMW3165 uses a 26Mhz crystal
+#undef PLL_M
+#undef PLL_Q
+#define PLL_M      26
+#define PLL_Q      4
+#define PLL_N      200
+#define PLL_P      2
+#endif
+
 /******************************************************************************/
 
 /**
@@ -302,6 +312,10 @@
 #if defined (STM32F401xx)
   uint32_t SystemCoreClock = 84000000;
 #endif /* STM32F401xx */
+
+#if defined(EMW3165)
+  uint32_t SystemCoreClock = 100000000;
+#endif
 
   __I uint8_t AHBPrescTable[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9};
 
@@ -340,6 +354,7 @@ void SystemInit(void)
   #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
   #endif
+
   /* Reset the RCC clock configuration to the default reset state ------------*/
   /* Set HSION bit */
   RCC->CR |= (uint32_t)0x00000001;
@@ -351,11 +366,7 @@ void SystemInit(void)
   RCC->CR &= (uint32_t)0xFEF6FFFF;
 
   /* Reset PLLCFGR register */
-#ifdef EMW3165
-  RCC->PLLCFGR = 0x0440321a; // EMW3165, which uses 26Mhz crystal
-#else
   RCC->PLLCFGR = 0x24003010; // Nucleo F411, which uses 8Mhz crystal
-#endif
 
   /* Reset HSEBYP bit */
   RCC->CR &= (uint32_t)0xFFFBFFFF;
@@ -514,7 +525,7 @@ static void SetSysClock(void)
     RCC->CFGR |= RCC_CFGR_PPRE1_DIV4;
 #endif /* STM32F40_41xxx || STM32F427_437x || STM32F429_439xx */
 
-#if defined (STM32F401xx)
+#if defined (STM32F401xx) || defined (STM32F411xx)
     /* PCLK2 = HCLK / 2*/
     RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
 
@@ -558,7 +569,11 @@ static void SetSysClock(void)
     FLASH->ACR = /*FLASH_ACR_PRFTEN | */FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_2WS;
 #endif /* STM32F401xx */
 
-#if 1
+#if defined (STM32F411xx)
+    /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+    FLASH->ACR = /*FLASH_ACR_PRFTEN | */FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_3WS;
+#endif /* STM32F411xx */
+
     /* Select the main PLL as system clock source */
     RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
     RCC->CFGR |= RCC_CFGR_SW_PLL;
@@ -567,7 +582,6 @@ static void SetSysClock(void)
     while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL);
     {
     }
-#endif
   }
   else
   { /* If HSE fails to start-up, the application will have wrong clock

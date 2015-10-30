@@ -293,7 +293,7 @@ static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 
 #ifdef STM32API2
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
-#if defined(STM32F401xx)
+#if defined(STM32F401xx) || defined(STM32F411xx)
   assert(JSH_AF0==0 && JSH_AF15==15); // check mapping is right
   return  func & JSH_MASK_AF;
 #elif defined(STM32F4) || defined(STM32F2)
@@ -719,10 +719,10 @@ void jshDoSysTick() {
     bool alreadySetup = jshIsRTCAlreadySetup(true);
     /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
      * changing */
-     
+
     if (!alreadySetup) {
       bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
-      
+
       if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
         // Uh-oh - RTC *was* set up for something, but it's not
         // the case any more. It needs totally resetting so we can change it
@@ -730,7 +730,7 @@ void jshDoSysTick() {
         RCC_BackupResetCmd(DISABLE);
 	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
       }
-      
+
       if (isUsingLSI) {
         // LSE is not working - turn it off and use LSI
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
@@ -2350,7 +2350,7 @@ void jshSetUSBPower(bool isOn) {
   if (isOn) {
     USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
     USBD_Start(&hUsbDeviceFS);
-  } else {    
+  } else {
     USBD_Stop(&hUsbDeviceFS);
     USB_OTG_FS->GCCFG &= ~(USB_OTG_GCCFG_VBUSBSEN);
   }
