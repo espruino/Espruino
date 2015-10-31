@@ -1906,6 +1906,10 @@ static void scanCB(void *arg, STATUS status) {
    */
 
   os_printf(">> scanCB\n");
+  if (g_jsScanCallback == NULL) {
+    os_printf("<< scanCB\n");
+    return;
+  }
 
   // Set the opmode back to the value it was prior to the request for a scan.
   assert(g_preWiFiScanMode != -1);
@@ -1935,29 +1939,34 @@ static void scanCB(void *arg, STATUS status) {
     // sint16 freq_offset
     // ---
     // Create, populate and add a child ...
-    JsVar *currentAccessPoint = jspNewObject(NULL, "AccessPoint");
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
+    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint");
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
     // The SSID may **NOT** be NULL terminated ... so handle that.
     char ssid[sizeof(bssInfo->ssid) + 1];
     os_strncpy((char *)ssid, (char *)bssInfo->ssid, sizeof(bssInfo->ssid));
     ssid[sizeof(ssid)-1] = '\0';
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "ssid", jsvNewFromString(ssid));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
 
     // Add the new record to the array
-    jsvArrayPush(accessPointArray, currentAccessPoint);
+    jsvArrayPush(accessPointArray, jsCurrentAccessPoint);
 
     os_printf(" - ssid: %s\n", bssInfo->ssid);
     bssInfo = STAILQ_NEXT(bssInfo, next);
   }
 
   // We have now completed the scan callback, so now we can invoke the JS callback.
-  JsVar *params[1];
-  params[0] = accessPointArray;
-  jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
+  // The parameters to the callback are:
+  // * err - An error indication - always null as we can't fail.
+  // * accessPointArray - An array of access point records.
+  JsVar *params[2];
+  params[0] = jsvNewNull();
+  params[1] = accessPointArray;
+  jsiQueueEvents(NULL, g_jsScanCallback, params, 2);
   jsvUnLock(g_jsScanCallback);
+  g_jsScanCallback = NULL;
   os_printf("<< scanCB\n");
 }
 

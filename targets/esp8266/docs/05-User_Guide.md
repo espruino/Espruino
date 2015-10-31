@@ -247,6 +247,10 @@ Scan for a list of the access points and pass them as an array into a callback f
 
 `wifi.scan(callback)`
 
+The signature for the callback function is:
+
+    callback(err, arrayOfAccessPoints)
+
 The callback function is passed an array of records where each record describes a potential access point.
 Each record contains:
 
@@ -259,7 +263,7 @@ Each record contains:
 For example:
 
     var wifi = require("wifi");
-    wifi.scan(function(arrayOfAcessPoints) {
+    wifi.scan(function(err, arrayOfAcessPoints) {
       for (var i=0; i<arrayOfAcessPoints.length; i++) {
         print("Access point: " + i + " = " + JSON.stringify(arrayOfAcessPoints[i]));
       }
