@@ -1917,7 +1917,7 @@ static void scanCB(void *arg, STATUS status) {
   g_preWiFiScanMode = -1;
 
   // Create the Empty JS array that will be passed as a parameter to the callback.
-  JsVar *accessPointArray = jsvNewArray(NULL, 0);
+  JsVar *jsAccessPointArray = jsvNewArray(NULL, 0);
   struct bss_info *bssInfo;
 
   bssInfo = (struct bss_info *)arg;
@@ -1951,7 +1951,8 @@ static void scanCB(void *arg, STATUS status) {
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
 
     // Add the new record to the array
-    jsvArrayPush(accessPointArray, jsCurrentAccessPoint);
+    jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
+    jsvUnLock(jsCurrentAccessPoint);
 
     os_printf(" - ssid: %s\n", bssInfo->ssid);
     bssInfo = STAILQ_NEXT(bssInfo, next);
@@ -1963,9 +1964,12 @@ static void scanCB(void *arg, STATUS status) {
   // * accessPointArray - An array of access point records.
   JsVar *params[2];
   params[0] = jsvNewNull();
-  params[1] = accessPointArray;
+  params[1] = jsAccessPointArray;
   jsiQueueEvents(NULL, g_jsScanCallback, params, 2);
+
+  jsvUnLock(jsAccessPointArray);
   jsvUnLock(g_jsScanCallback);
+  jsvUnLock(params[0]);
   g_jsScanCallback = NULL;
   os_printf("<< scanCB\n");
 }
