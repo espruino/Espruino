@@ -131,10 +131,8 @@ static void gap_params_init(void)
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length)
 {
 	uint32_t i;
-    for (i = 0; i < length; i++) {
+    for (i = 0; i < length; i++)
         jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
-    }
-    if (length>0) jshPushIOCharEvent(EV_BLUETOOTH,'\n');
 }
 /**@snippet [Handling the data received over BLE] */
 
