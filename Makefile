@@ -1519,7 +1519,7 @@ export GDB=$(CCPREFIX)gdb
 
 .PHONY:  proj
 
-all: 	 gen proj
+all: 	 proj
 
 ifeq ($(V),1)
         quiet_=
@@ -1530,8 +1530,6 @@ else
   export SILENT=1
 endif
 
-gen:
-	mkdir -p gen
 
 $(WRAPPERFILE): scripts/build_jswrapper.py $(WRAPPERSOURCES)
 	@echo Generating JS wrappers
