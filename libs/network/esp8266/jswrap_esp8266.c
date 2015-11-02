@@ -711,9 +711,47 @@ void jswrap_ESP8266_wifi_createAP(
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "wifi",
+  "name"     : "getStatus",
+  "generate" : "jswrap_ESP8266_wifi_getStatus",
+  "return"   : ["JsVar", "A boolean representing our WiFi status "]
+}
+* Retrieve the status of the current WiFi environment.
+* The object returned by this function will have some or all of the following properties:
+* * `isStation` - True if the ESP8266 is being a Station
+* * `isAP` - True if the ESP8266 is being an Access Point.
+* * `connectedStations` - An array of the stations connected to us if we are being an access point.  This
+* array may be empty.  Each entry in the array will itself be an object describing the station which,
+* at a minimum will contain `ip` being the IP address of the station.
+*/
+JsVar *jswrap_ESP8266_wifi_getStatus() {
+  os_printf("> jswrap_ESP8266_wifi_getStatus\n");
+  JsVar *jsWiFiStatus = jspNewObject(NULL, "WiFiStatus");
+  uint8 opMode = wifi_get_opmode();
+  jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "isStation",
+      jsvNewFromBool(opMode == STATION_MODE || opMode == STATIONAP_MODE));
+  jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "isAP",
+      jsvNewFromBool(opMode == SOFTAP_MODE || opMode == STATIONAP_MODE));
+  if (opMode == SOFTAP_MODE || opMode == STATIONAP_MODE) {
+    jsvObjectSetChildAndUnLock(
+      jsWiFiStatus,
+      "connectedStations",
+      jswrap_ESP8266WiFi_getConnectedStations());
+  }
+  os_printf("< jswrap_ESP8266_wifi_getStatus\n");
+  return jsWiFiStatus;
+}
+
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
   "name"     : "getIP",
   "generate" : "jswrap_ESP8266_wifi_getIP",
-  "return"   : ["JsVar", "A boolean representing our auto connect status"]
+  "return"   : ["JsVar", "A boolean representing our IP information"]
 }
 * Return IP information in an object which contains:
 * * ip - IP address
@@ -725,12 +763,12 @@ JsVar *jswrap_ESP8266_wifi_getIP() {
   struct ip_info info;
   wifi_get_ip_info(0, &info);
 
-  JsVar *ipInfo = jspNewObject(NULL, "Restart");
-  jsvObjectSetChildAndUnLock(ipInfo, "ip", jsvNewFromInteger(info.ip.addr));
-  jsvObjectSetChildAndUnLock(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
-  jsvObjectSetChildAndUnLock(ipInfo, "gw", jsvNewFromInteger(info.gw.addr));
+  JsVar *jsIpInfo = jspNewObject(NULL, "Restart");
+  jsvObjectSetChildAndUnLock(jsIpInfo, "ip", jsvNewFromInteger(info.ip.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "gw", jsvNewFromInteger(info.gw.addr));
   os_printf("< jswrap_ESP8266_wifi_getIP\n");
-  return ipInfo;
+  return jsIpInfo;
 }
 
 
@@ -1868,6 +1906,10 @@ static void scanCB(void *arg, STATUS status) {
    */
 
   os_printf(">> scanCB\n");
+  if (g_jsScanCallback == NULL) {
+    os_printf("<< scanCB\n");
+    return;
+  }
 
   // Set the opmode back to the value it was prior to the request for a scan.
   assert(g_preWiFiScanMode != -1);
@@ -1875,7 +1917,7 @@ static void scanCB(void *arg, STATUS status) {
   g_preWiFiScanMode = -1;
 
   // Create the Empty JS array that will be passed as a parameter to the callback.
-  JsVar *accessPointArray = jsvNewArray(NULL, 0);
+  JsVar *jsAccessPointArray = jsvNewArray(NULL, 0);
   struct bss_info *bssInfo;
 
   bssInfo = (struct bss_info *)arg;
@@ -1897,29 +1939,38 @@ static void scanCB(void *arg, STATUS status) {
     // sint16 freq_offset
     // ---
     // Create, populate and add a child ...
-    JsVar *currentAccessPoint = jspNewObject(NULL, "AccessPoint");
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
+    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint");
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "authMode", jsvNewFromInteger(bssInfo->authmode));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "isHidden", jsvNewFromBool(bssInfo->is_hidden));
     // The SSID may **NOT** be NULL terminated ... so handle that.
     char ssid[sizeof(bssInfo->ssid) + 1];
     os_strncpy((char *)ssid, (char *)bssInfo->ssid, sizeof(bssInfo->ssid));
     ssid[sizeof(ssid)-1] = '\0';
-    jsvObjectSetChildAndUnLock(currentAccessPoint, "ssid", jsvNewFromString(ssid));
+    jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "ssid", jsvNewFromString(ssid));
 
     // Add the new record to the array
-    jsvArrayPush(accessPointArray, currentAccessPoint);
+    jsvArrayPush(jsAccessPointArray, jsCurrentAccessPoint);
+    jsvUnLock(jsCurrentAccessPoint);
 
     os_printf(" - ssid: %s\n", bssInfo->ssid);
     bssInfo = STAILQ_NEXT(bssInfo, next);
   }
 
   // We have now completed the scan callback, so now we can invoke the JS callback.
-  JsVar *params[1];
-  params[0] = accessPointArray;
-  jsiQueueEvents(NULL, g_jsScanCallback, params, 1);
+  // The parameters to the callback are:
+  // * err - An error indication - always null as we can't fail.
+  // * accessPointArray - An array of access point records.
+  JsVar *params[2];
+  params[0] = jsvNewNull();
+  params[1] = jsAccessPointArray;
+  jsiQueueEvents(NULL, g_jsScanCallback, params, 2);
+
+  jsvUnLock(jsAccessPointArray);
   jsvUnLock(g_jsScanCallback);
+  jsvUnLock(params[0]);
+  g_jsScanCallback = NULL;
   os_printf("<< scanCB\n");
 }
 

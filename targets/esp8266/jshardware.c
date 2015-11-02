@@ -653,20 +653,21 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 /** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  os_printf("ESP8266: jshI2CSetup SCL=%d SDA=%d bitrate=%d\n",
+  os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
       info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported");
     return;
   }
 
-  Pin scl = info->pinSCL >= 0 ? info->pinSCL : 14;
-  Pin sda = info->pinSDA >= 0 ? info->pinSDA : 2;
+  Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
+  Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
-  jshPinSetState(info->pinSCL, JSHPINSTATE_I2C);
-  jshPinSetState(info->pinSDA, JSHPINSTATE_I2C);
+  jshPinSetState(scl, JSHPINSTATE_I2C);
+  jshPinSetState(sda, JSHPINSTATE_I2C);
 
   i2c_master_gpio_init(scl, sda, info->bitrate);
+  os_printf("< jshI2CSetup\n");
 }
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,

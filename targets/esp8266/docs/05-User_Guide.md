@@ -247,6 +247,10 @@ Scan for a list of the access points and pass them as an array into a callback f
 
 `wifi.scan(callback)`
 
+The signature for the callback function is:
+
+    callback(err, arrayOfAccessPoints)
+
 The callback function is passed an array of records where each record describes a potential access point.
 Each record contains:
 
@@ -259,11 +263,28 @@ Each record contains:
 For example:
 
     var wifi = require("wifi");
-    wifi.scan(function(arrayOfAcessPoints) {
+    wifi.scan(function(err, arrayOfAcessPoints) {
       for (var i=0; i<arrayOfAcessPoints.length; i++) {
         print("Access point: " + i + " = " + JSON.stringify(arrayOfAcessPoints[i]));
       }
     });
+
+----
+
+##wifi.getSatus
+
+Retrieve the status of the WiFi environment.
+
+`wifi.getStatus()`
+
+This function returns a JavaScript object that contains the current status of the WiFi environment.  Depending
+on the board being used, the results may include the following:
+
+* `isStation` - True if the device is being a Station
+* `isAP` - True if the device is being an Access Point.
+* `connectedStations` - An array of the stations connected to us if we are being an access point.  This
+array may be empty.  Each entry in the array will itself be an object describing the station which,
+at a minimum will contain `ip` being the IP address of the station.
 
 ----
 
