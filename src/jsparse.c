@@ -27,7 +27,8 @@ JsExecInfo execInfo;
 JsVar *jspeAssignmentExpression();
 JsVar *jspeExpression();
 JsVar *jspeUnaryExpression();
-JsVar *jspeBlock();
+void jspeBlock();
+void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
@@ -373,22 +374,27 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     // parse failed
     return 0;
   }
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
   if (actuallyCreateFunction && execInfo.lex->lineNumberOffset) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
     lineNumber = (JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1;
   }
-  // Get the code - first parse it so we know where it stops
+  // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin = jslCharPosClone(&execInfo.lex->tokenStart);
-  JSP_SAVE_EXECUTE();
-  jspSetNoExecute();
-  jsvUnLock(jspeBlock());
-  JSP_RESTORE_EXECUTE();
-  // Then create var and set
-  if (actuallyCreateFunction) {
+  int brackets = 0;
+  int lastTokenEnd = -1;
+  while (execInfo.lex->tk && (brackets || execInfo.lex->tk != '}')) {
+    if (execInfo.lex->tk == '{') brackets++;
+    if (execInfo.lex->tk == '}') brackets--;
+    lastTokenEnd = (int)jsvStringIteratorGetIndex(&execInfo.lex->it)-1;
+    JSP_ASSERT_MATCH(execInfo.lex->tk);
+  }
+  // Then create var and set (if there was any code!)
+  if (actuallyCreateFunction && lastTokenEnd>0) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)(execInfo.lex->tokenLastStart+1));
+    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
     jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
@@ -406,7 +412,9 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     if (functionInternalName)
       jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
   }
+
   jslCharPosFree(&funcBegin);
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('}',jsvUnLock(funcVar),0);
 
   return funcVar;
 }
@@ -744,7 +752,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #else
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
-            jspeBlock();
+            jspeBlockNoBrackets();
             JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
@@ -1166,7 +1174,8 @@ NO_INLINE JsVar *jspeFactorObject() {
     return contents;
   } else {
     // Not executing so do fast skip
-    return jspeBlock();
+    jspeBlock();
+    return 0;
   }
 }
 
@@ -1639,8 +1648,8 @@ NO_INLINE JsVar *jspeExpression() {
   return 0;
 }
 
-NO_INLINE JsVar *jspeBlock() {
-  JSP_MATCH('{');
+/** Parse a block `{ ... }` but assume brackets are already parsed */
+NO_INLINE void jspeBlockNoBrackets() {
   if (JSP_SHOULD_EXECUTE) {
     while (execInfo.lex->tk && execInfo.lex->tk!='}') {
       jsvUnLock(jspeStatement());
@@ -1656,25 +1665,33 @@ NO_INLINE JsVar *jspeBlock() {
         }
       }
       if (JSP_SHOULDNT_PARSE)
-        return 0;
+        return;
     }
-    JSP_MATCH('}');
   } else {
     // fast skip of blocks
-    int brackets = 1;
-    while (execInfo.lex->tk && brackets) {
+    int brackets = 0;
+    while (execInfo.lex->tk && (brackets || execInfo.lex->tk != '}')) {
       if (execInfo.lex->tk == '{') brackets++;
       if (execInfo.lex->tk == '}') brackets--;
       JSP_ASSERT_MATCH(execInfo.lex->tk);
     }
   }
-  return 0;
+  return;
+}
+
+/** Parse a block `{ ... }` */
+NO_INLINE void jspeBlock() {
+  JSP_MATCH_WITH_RETURN('{',);
+  jspeBlockNoBrackets();
+  if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN('}',);
+  return;
 }
 
 NO_INLINE JsVar *jspeBlockOrStatement() {
-  if (execInfo.lex->tk=='{')
-    return jspeBlock();
-  else {
+  if (execInfo.lex->tk=='{') {
+    jspeBlock();
+    return 0;
+  } else {
     JsVar *v = jspeStatement();
     if (execInfo.lex->tk==';') JSP_ASSERT_MATCH(';');
     return v;
@@ -2250,7 +2267,8 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeExpression();
   } else if (execInfo.lex->tk=='{') {
     /* A block of code */
-    return jspeBlock();
+    jspeBlock();
+    return 0;
   } else if (execInfo.lex->tk==';') {
     /* Empty statement - to allow things like ;;; */
     JSP_ASSERT_MATCH(';');

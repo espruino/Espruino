@@ -185,7 +185,8 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-        cbprintf(user_callback, user_data, "%v", codeVar);
+        bool hadNewLine = jsvGetStringIndexOf(codeVar,'\n')>0;
+        cbprintf(user_callback, user_data, hadNewLine?"{\n  %v\n}":"{%v}", codeVar);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
