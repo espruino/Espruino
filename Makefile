@@ -53,6 +53,7 @@
 # ESP8266_2MB=1           # ESP8266 with 2MB flash: 512KB+512KB firmware + 3MB SPIFFS
 # ESP8266_1MB=1           # ESP8266 with 1MB flash: 512KB+512KB firmware + 32KB SPIFFS
 # ESP8266_512KB=1         # ESP8266 with 512KB flash: 512KB firmware + 32KB SPIFFS
+# EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
 # Also:
@@ -351,6 +352,20 @@ BOARD=NUCLEOF411RE
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
+
+else ifdef EMW3165
+#ifndef WICED_ROOT
+#$(error WICED_ROOT must be defined)
+#endif
+EMBEDDED=1
+#USE_GRAPHICS=1
+#USE_NET=1
+BOARD=EMW3165
+STLIB=STM32F411xE
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
+OPTIMIZEFLAGS+=-O2
+#WICED=1
+DEFINES += -DPIN_NAMES_DIRECT -DHSE_VALUE=26000000UL
 
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
@@ -676,12 +691,12 @@ ifdef USE_NET
 ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
-else
-ifeq ($(FAMILY),ESP8266)
+else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
+else ifdef EMW3165
+USE_WICED=1
 else
 USE_CC3000=1
-endif
 endif
 endif
 endif
@@ -948,6 +963,27 @@ libs/network/js/network_js.c
  libs/network/wiznet/W5500/w5500.c
  endif
 
+ ifdef USE_WICED
+ # For EMW3165 use SDIO to access BCN43362 rev A2
+ INCLUDE += -I$(ROOT)/targetlibs/wiced/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/network \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/RTOS \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/bus_protocols/SDIO \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/chips/43362A2
+
+ SOURCES += targetlibs/wiced/wwd/internal/wwd_thread.c \
+            targetlibs/wiced/wwd/internal/wwd_sdpcm.c \
+            targetlibs/wiced/wwd/internal/wwd_internal.c \
+            targetlibs/wiced/wwd/internal/wwd_management.c \
+            targetlibs/wiced/wwd/internal/wwd_wifi.c \
+            targetlibs/wiced/wwd/internal/wwd_crypto.c \
+            targetlibs/wiced/wwd/internal/wwd_logging.c \
+            targetlibs/wiced/wwd/internal/wwd_eapol.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/wwd_bus_common.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/SDIO/wwd_bus_protocol.c
+ endif
+
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
  WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
@@ -1076,9 +1112,22 @@ endif #STM32F3
 ifeq ($(FAMILY), STM32F4)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
+DEFINES += -DSTM32F4
+ifdef WICED_XXX
+  DEFINES += -DWICED
+  # DEFINES included here in bulk from a WICED compilation
+  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
+  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
+  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
+  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
+  DEFINES += -DWWD_STARTUP_DELAY=10
+  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
+  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
+  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
+  INCLUDE += 
+endif
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
-DEFINES += -DSTM32F4
 SOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
@@ -1108,7 +1157,6 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
-
 #targetlibs/stm32f4/lib/stm32f4xx_hash.c       
 #targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
 #targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
@@ -1358,10 +1406,14 @@ ifdef RASPBERRYPI
  endif
 endif
 
+ifdef WICED
+#WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
+endif
+
 ifdef STM32
+DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 DEFINES += -DFAKE_STDLIB
 # FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
-DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
 SOURCES +=                              \
@@ -1650,6 +1702,17 @@ ifndef COMPORT
 	$(error, "In order to flash, we need to have the COMPORT variable defined")
 endif
 	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+
+#else ifdef WICED
+#
+#proj: $(WICED_ROOT)/apps/snip/espruino/espruino_lib.o
+#
+#$(PROJ_NAME).o: $(OBJS)
+#	@echo LD $@
+#	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
+#
+#$(WICED_ROOT)/apps/snip/espruino/espruino_lib.o: $(PROJ_NAME).o
+#	cp $< $@
 
 else # embedded, so generate bin, etc ---------------------------
 
