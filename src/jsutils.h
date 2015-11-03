@@ -136,6 +136,10 @@ extern int isfinite ( double );
 #endif
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
+/** This is the amount of characters at which it'd be more efficient to use
+ * a flat string than to use a normal string... */
+#define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
+
 typedef int32_t JsVarInt;
 typedef uint32_t JsVarIntUnsigned;
 #ifdef USE_FLOATS

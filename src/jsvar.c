@@ -543,9 +543,19 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   // Now try and find them
   unsigned int blockCount = 0;
   JsVarRef i;
+#ifdef RESIZABLE_JSVARS
+  JsVar *lastVar = 0;
+#endif
   for (i=1;i<=jsVarsSize;i++)  {
     JsVar *var = jsvGetAddressOf(i);
     if ((var->flags&JSV_VARTYPEMASK) == JSV_UNUSED) {
+#ifdef RESIZABLE_JSVARS
+      /** With RESIZABLE_JSVARS (Linux), we have chunks of variables that may
+       * not be contiguous - so we can't allocate a flat string across them!  */
+      if (var != lastVar+1)
+        blockCount = 0;
+      lastVar = var;
+#endif
       blockCount++;
       if (blockCount>=blocks) { // Wohoo! We found enough blocks
         var = jsvGetAddressOf((JsVarRef)(unsigned int)((unsigned)i+1-blocks)); // the first block
