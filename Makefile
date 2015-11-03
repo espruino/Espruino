@@ -769,6 +769,12 @@ ifdef CPPFILE
 CPPSOURCES += $(CPPFILE)
 endif
 
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/lz4
+SOURCES += \
+libs/compression/lz4/lz4.c \
+libs/compression/compress_lz4.c
+
+
 ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
