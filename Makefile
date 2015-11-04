@@ -1493,7 +1493,8 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 
 # Extra source files specific to the ESP8266
 SOURCES += targets/esp8266/uart.c \
-	   targets/esp8266/user_main.c \
+	targets/esp8266/spi.c \
+       targets/esp8266/user_main.c \
 	   targets/esp8266/jshardware.c \
 	   targets/esp8266/i2c_master.c \
 	   targets/esp8266/esp8266_board_utils.c \
