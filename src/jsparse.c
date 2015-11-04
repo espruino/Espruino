@@ -1781,7 +1781,7 @@ NO_INLINE JsVar *jspeStatementIf() {
 NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
-  JsVar *switchOn = jspeAssignmentExpression();
+  JsVar *switchOn = jspeExpression();
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
   JSP_SAVE_EXECUTE();
