@@ -1901,15 +1901,14 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  assert(DEVICE_IS_USART(device));
+
   jshSetDeviceInitialised(device, true);
 
   jshSetFlowControlEnabled(device, inf->xOnXOff);
 
-  if (device == EV_USBSERIAL) {
-    return; // eep!
-  }
-
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (funcType==0) return; // not a proper serial port, ignore it
 
   Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
   JshPinFunction functions[3] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };

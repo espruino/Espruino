@@ -11,6 +11,7 @@
             Store functions as 'flat strings' if long enough (fix #467)
             Move most functions out of jsvar.h header file - improves code size on devices where they're not inlined
             Fix parse error for switch statements which meant that `switch (a,b)` caused an error
+            Fix error message when `LoopbackA.setConsole()` called
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
