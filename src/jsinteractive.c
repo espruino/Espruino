@@ -587,7 +587,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
   }
-  if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
+  if (pinSleepIndicator != DEFAULT_SLEEP_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
   if (jsiStatus&JSIS_ALLOW_DEEP_SLEEP) {
