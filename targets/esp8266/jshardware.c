@@ -24,6 +24,7 @@
 #include <espmissingincludes.h>
 #include <uart.h>
 #include <i2c_master.h>
+#include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -52,6 +53,9 @@ typedef long long int64_t;
 
 // Address in RTC RAM where we save the time
 #define RTC_TIME_ADDR (256/4) // start of "user data" in RTC RAM
+
+
+static bool g_spiInitialized = false;
 
 /**
  * Transmit all the characters in the transmit buffer.
@@ -159,6 +163,7 @@ void jshReset() {
     jshPinSetState(i, JSHPINSTATE_GPIO_IN);
   }
   */
+  g_spiInitialized = false;
   os_printf("< jshReset\n");
 } // End of jshReset
 
@@ -589,6 +594,15 @@ void jshUSARTKick(
 
 /**
  * Initialize the hardware SPI device.
+ * On the ESP8266, hardware SPI is implemented via a set of pins defined
+ * as follows:
+ *
+ * | GPIO   | NodeMCU | Name  | Function |
+ * |--------|---------|-------|----------|
+ * | GPIO12 | D6      | HMISO | MISO     |
+ * | GPIO13 | D7      | HMOSI | MOSI     |
+ * | GPIO14 | D5      | HSCLK | CLK      |
+ * | GPIO15 | D8      | HCS   | CS       |
  *
  */
 void jshSPISetup(
@@ -600,6 +614,10 @@ void jshSPISetup(
   switch(device) {
   case EV_SPI1:
     os_printf(" - Device is SPI1\n");
+    // EV_SPI1 is the ESP8266 hardware SPI ...
+    spi_init(HSPI); // Initialize the hardware SPI components.
+    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
+    g_spiInitialized = true;
     break;
   case EV_SPI2:
     os_printf(" - Device is SPI2\n");
@@ -625,9 +643,10 @@ int jshSPISend(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
-  os_printf("< jshSPISend\n");
-  return NAN;
+  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  uint32_t retData = spi_tx8(HSPI, data);
+  //os_printf("< jshSPISend\n");
+  return retData;
 }
 
 
@@ -664,6 +683,7 @@ void jshSPIWait(
     IOEventFlags device //!< Unknown
   ) {
   os_printf("> jshSPIWait - device=%d\n", device);
+  while(spi_busy(HSPI)) ;
   os_printf("< jshSPIWait\n");
 }
 
@@ -974,8 +994,16 @@ void jshUtilTimerReschedule(JsSysTime period) {
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
   os_printf("> jshIsDeviceInitialised - %d\n", device);
-  os_printf("< jshIsDeviceInitialised\n");
-  return true;
+  bool retVal = true;
+  switch(device) {
+  case EV_SPI1:
+    retVal = g_spiInitialized;
+    break;
+  default:
+    break;
+  }
+  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  return retVal;
 } // End of jshIsDeviceInitialised
 
 // the esp8266 doesn't have any temperature sensor
