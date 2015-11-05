@@ -1072,7 +1072,10 @@ void jsiTabComplete() {
     jslGetNextToken(&lex);
   }
   jslKill(&lex);
-  if (!partial) return;
+  if (!partial) {
+    jsvUnLock(object);
+    return;
+  }
   size_t partialLen = jsvGetStringLength(partial);
   size_t actualPartialLen = inputCursorPos + 1 - partialStart;
   if (actualPartialLen > partialLen) {
