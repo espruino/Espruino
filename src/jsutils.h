@@ -39,9 +39,9 @@ extern int isfinite ( double );
 
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v80"
+#define JS_VERSION "1v81"
 #else
-#define JS_VERSION "1v80." BUILDNUMBER
+#define JS_VERSION "1v81." BUILDNUMBER
 #endif
 /*
   In code:
@@ -136,6 +136,10 @@ extern int isfinite ( double );
 #endif
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
+/** This is the amount of characters at which it'd be more efficient to use
+ * a flat string than to use a normal string... */
+#define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
+
 typedef int32_t JsVarInt;
 typedef uint32_t JsVarIntUnsigned;
 #ifdef USE_FLOATS
@@ -174,6 +178,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
+#define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
 
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
@@ -318,7 +323,7 @@ size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
 void *memset(void *dst, int c, size_t size);
-#define RAND_MAX (0xFFFFFFFFU)
+#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
 int rand();
 void srand(unsigned int seed);
 #endif

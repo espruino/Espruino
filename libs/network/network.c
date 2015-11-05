@@ -20,7 +20,7 @@
 #if defined(USE_WIZNET)
   #include "network_wiznet.h"
 #endif
-#if defined(USE_ESP8266_BOARD)
+#if defined(USE_ESP8266)
   #include "network_esp8266.h"
 #endif
 #if defined(LINUX)
@@ -117,7 +117,7 @@ unsigned long networkFlipIPAddress(unsigned long addr) {
 }
 
 /**
- * \brief Get the IP address of a hostname.
+ * Get the IP address of a hostname.
  * Retrieve the IP address of a hostname and return it in the address of the
  * ip address passed in.  If the hostname is as dotted decimal string, we will
  * decode that immediately otherwise we will use the network adapter's `gethostbyname`
@@ -173,7 +173,11 @@ bool networkWasCreated() {
 }
 
 bool networkGetFromVar(JsNetwork *net) {
+  // Retrieve a reference to the JsVar that represents the network and save in the
+  // JsNetwork C structure.
   net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
+
+  // Validate that we have a network variable.
   if (!net->networkVar) {
 #ifdef LINUX
     networkCreate(net, JSNETWORKTYPE_SOCKET);
@@ -182,8 +186,13 @@ bool networkGetFromVar(JsNetwork *net) {
     return false;
 #endif
   }
+
+  // Retrieve the data for the network var and save in the data property of the JsNetwork
+  // structure.
   jsvGetString(net->networkVar, (char *)&net->data, sizeof(JsNetworkData)+1/*trailing zero*/);
 
+  // Now we know which kind of network we are working with, invoke the corresponding initialization
+  // function to set the callbacks for this network tyoe.
   switch (net->data.type) {
 #if defined(USE_CC3000)
   case JSNETWORKTYPE_CC3000 : netSetCallbacks_cc3000(net); break;
@@ -191,7 +200,7 @@ bool networkGetFromVar(JsNetwork *net) {
 #if defined(USE_WIZNET)
   case JSNETWORKTYPE_W5500 : netSetCallbacks_wiznet(net); break;
 #endif
-#if defined(USE_ESP8266_BOARD)
+#if defined(USE_ESP8266)
   case JSNETWORKTYPE_ESP8266_BOARD : netSetCallbacks_esp8266_board(net); break;
 #endif
 #if defined(LINUX)
@@ -203,6 +212,8 @@ bool networkGetFromVar(JsNetwork *net) {
     networkFree(net);
     return false;
   }
+
+  // Save the current network as a global.
   networkCurrentStruct = net;
   return true;
 }
@@ -227,5 +238,6 @@ void networkFree(JsNetwork *net) {
 }
 
 JsNetwork *networkGetCurrent() {
+  // The value of this global is set in networkGetFromVar.
   return networkCurrentStruct;
 }

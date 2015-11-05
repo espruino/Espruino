@@ -105,6 +105,10 @@ typedef struct JsLex
   JsVar *tokenValue; ///< JsVar containing the current token - used only for strings
   unsigned char tokenl; ///< the current length of token
 
+  /** Amount we add to the line number when we're reporting to the user
+   * 1-based, so 0 means NO LINE NUMBER KNOWN */
+  uint16_t lineNumberOffset;
+
   /* Where we get our data from...
    *
    * This is a bit more tricky than normal because the data comes from JsVars,
@@ -135,7 +139,14 @@ void jslGetNextToken(JsLex *lex); ///< Get the text token from our text string
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo); // Create a new STRING from part of the lexer
 
+/// Return the line number at the current character position (this isn't fast as it searches the string)
+unsigned int jslGetLineNumber(struct JsLex *lex);
+
+/// Print position in the form 'line X col Y'
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos);
+
+/** Print the line of source code at `tokenPos`, prefixed with the string 'prefix' (0=no string).
+ * Then, underneath it, print a '^' marker at the column tokenPos was at  */
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos, char *prefix);
 
 #endif /* JSLEX_H_ */

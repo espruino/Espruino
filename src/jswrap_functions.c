@@ -84,10 +84,7 @@ JsVar *jswrap_function_constructor(JsVar *args) {
     jsvObjectIteratorNext(&it);
   }
   jsvObjectIteratorFree(&it);
-
-  JsVar *codeStr = jsvVarPrintf("{\n%v\n}", v);
-  jsvUnLock(v);
-  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, codeStr);
+  jsvObjectSetChildAndUnLock(fn, JSPARSE_FUNCTION_CODE_NAME, v);
   return fn;
 }
 
@@ -105,7 +102,7 @@ Evaluate a string containing JavaScript code
 JsVar *jswrap_eval(JsVar *v) {
   if (!v) return 0;
   JsVar *s = jsvAsString(v, false); // get as a string
-  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, false);
+  JsVar *result = jspEvaluateVar(s, execInfo.thisVar, 0);
   jsvUnLock(s);
   return result;
 }

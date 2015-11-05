@@ -14,7 +14,7 @@
 #include "jsvariterator.h"
 
 /**
- * \brief Iterate over the contents of the content of a variable, calling callback for each.
+ * Iterate over the contents of the content of a variable, calling callback for each.
  * Contents may be:
  * * numeric -> output
  * * a string -> output each character
@@ -94,7 +94,7 @@ bool jsvIterateCallback(
 
 
 /**
- * \brief An iterable callback that counts how many times it was called.
+ * An iterable callback that counts how many times it was called.
  * This is a function that can be supplied to `jsvIterateCallback`.
  */
 static void jsvIterateCallbackCountCb(
@@ -108,7 +108,7 @@ static void jsvIterateCallbackCountCb(
 
 
 /**
- * \brief Determine how many items are in this variable that will be iterated over.
+ * Determine how many items are in this variable that will be iterated over.
  * \return The number of iterations we will call for this variable.
  */
 int jsvIterateCallbackCount(JsVar *var) {
@@ -198,6 +198,10 @@ void jsvStringIteratorAppend(JsvStringIterator *it, char ch) {
     it->charIdx++;
   } else
     assert(it->charIdx == 0);
+  /* Note: jsvGetMaxCharactersInVar will return the wrong length when
+   * applied to flat strings, but we don't care because the length will
+   * be smaller than charIdx, which will force a new string to be
+   * appended onto the end  */
   if (it->charIdx >= jsvGetMaxCharactersInVar(it->var)) {
     assert(!jsvGetLastChild(it->var));
     JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);

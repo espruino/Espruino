@@ -40,7 +40,7 @@ void jswrap_net_init() {
 }
 
 /*JSON{
-  "type" : "kill",
+  "type"     : "kill",
   "generate" : "jswrap_net_kill"
 }*/
 void jswrap_net_kill() {
@@ -434,7 +434,10 @@ void jswrap_net_server_close(JsVar *parent) {
   "return" : ["bool","For note compatibility, the boolean false. When the send buffer is empty, a `drain` event will be sent"]
 }*/
 bool jswrap_net_socket_write(JsVar *parent, JsVar *data) {
-  clientRequestWrite(parent, data);
+  JsNetwork net;
+  if (!networkGetFromVarIfOnline(&net)) return false;
+  clientRequestWrite(&net, parent, data);
+  networkFree(&net);
   return false;
 }
 

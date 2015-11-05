@@ -11,6 +11,8 @@ Espruino is easy to build under Linux, and it is possible to build under MacOS w
   
 The (previously suggested) CodeSourcery GCC compiler is no longer available. We'd suggest you use [gcc-arm-none-eabi](https://launchpad.net/gcc-arm-embedded/+download).
 
+**YOU'LL NEED GCC 4.8** - On the 4.9 releases from launchpad above, the Original Espruino board's binary will build but USB will not work (this is believed to be due to an out of order register write in ST's USB code caused by an optimisation pass in GCC).
+
 Download the compiler, set up your path so you have access to it, and run:
 
 ```YOUR_BOARD_NAME=1 RELEASE=1 make```
@@ -64,14 +66,11 @@ To program the nRF52 Development Kit with Espruino:
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 - the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
 - the Espressif SDK (version 1.4.0 as of this writing) from http://bbs.espressif.com/viewforum.php?f=46
-- Esptool-ck from https://github.com/tommie/esptool-ck
-
-Note: esptool-ck should be eliminated and replaced with esptool (.py), this will happen naturally
-when an OTA update is developed.
+- For 512KB modules only: Esptool-ck from https://github.com/tommie/esptool-ck
 
 To run make you need to pass a number of environment variables to `make`.  These include:
 
-* `ESP8266_BOARD = 1`
+* `ESP8266_512KB = 1` or `ESP8266_4MB = 1` depending on your module size
 * `ESP8266_SDK_ROOT = <Path to the 1.4 SDK>`
 * `COMPORT = <COMPORT or Serial>`
 
@@ -85,7 +84,7 @@ The easiest is to place
 the following lines into a script, adapt it to your needs and then run it.
 ```
 #! /bin/bash
-export ESP8266_BOARD=1
+export ESP8266_512KB=1
 export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.4.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
 export ESPTOOL_CK=/esp8266/esptool-ck/esptool
@@ -93,9 +92,57 @@ export COMPORT=/dev/ttyUSB0
 make $*
 ```
 
+####Over-the-Air firmware update
+The firmware on the esp8266 can be upgraded over wifi as long as the esp8266 has 1MB or more flash
+and that Espruino was built with BOARD=ESP8266_1MB thru BOARD=ESP8266_4MB. To upgrade determine
+the hostname or IP address of your Espruino on the network and run:
+```
+./scripts/wiflash espruino:88 espruino_esp8266_ota_user1.bin espruino_esp8266_ota_user2.bin
+```
+where 'espruino:88' is the hostname or IP address and the OTA port 88.
+
 ####Building on Eclipse
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve
 that task is to right-click your Espruino project and select `properties`.  From there, navigate to `C/C++ Build > Environment`.
+
+----
+
+### for EMW3165
+
+Note: the emw3165 port is very preliminary and does not include Wifi support at this time.
+_The text below is what is planned in order to support Wifi, but it doesn't exist yet._
+
+The EMW3165 port uses WICED, which is an application framework provided by Broadcom for its
+wifi chips, such as the BCM43362 used in the EMW3165 module. The module consists of an
+STM32F411CE processor and the BCM43362. The WICED framework comes with everything and the kitchen
+sink plus a rather complex build process in order to support umpteen different processor and
+wifi chip combinations, plus various use-cases. WICED includes FreeRTOS and LwIP plus
+proprietary code to manage the Wifi chip.
+
+The strategy employed is to compile portions of WICED into a library using the WICED toolchain
+and then linking this into Espruino.
+
+Setting up WICED:
+- WICED does not officially support the EMW3165.
+- Clone https://github.com/MXCHIP-EMW/WICED-for-EMW and follow the instructions there to configure
+  WICED and build it. (You will need to sign up for a developer acct with Broadcom.)
+- Build the apsta sample program (snippet) using a command-line like
+  `./make EMW3165-FreeRTOS-LwIP-snip.apsta download run JTAG=stlink-v2`
+- Hook up your emw3165 to an ST-Link-v2 or your preferred STM32 programmer and flash using the
+  above command-line. You should see the EMW's access point.
+- An alternative program to test with is the "scan" snip as it will also print something on the
+  console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
+
+Compiling WICED into a library:
+- ... if only this worked ...
+
+Compiling Espruino:
+- To compile Espruino you will need to point to the WICED root and include files. This is
+  done by specifying a WICED_ROOT environment variable.
+- Adapt the pathnames from the following script:
+```
+  WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
+```
 
 ----
 
@@ -147,6 +194,7 @@ Building under Windows/MacOS with a VM (Vagrant)
 * Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
   > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
 * In your terminal application, navigate to your cloned working copy.
+* Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
 * When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
 * Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.

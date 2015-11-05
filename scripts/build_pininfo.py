@@ -125,7 +125,7 @@ for port in pinutils.ALLOWED_PORTS:
       if o<0: o=pins.index(pin)
   portinfo[port] = { 'count' : c, 'offset' : o };
 # Olimexino hack as things have been renamed
-if boardname in ["OLIMEXINO_STM32", "MAPLERET6_STM32"]:
+if boardname in ["OLIMEXINO_STM32", "OLIMEXINO_STM32_RE", "MAPLERET6_STM32"]:
   for port in pinutils.ALLOWED_PORTS:
     if port=="A": portinfo[port] = { 'count' : 16, 'offset' : 15 }
     elif port=="D": portinfo[port] = { 'count' : 39, 'offset' : 0 }

@@ -35,6 +35,21 @@ Methods may be called on the USB, Serial1, Serial2, Serial3, Serial4, Serial5 an
 }
 The 'data' event is called when data is received. If a handler is defined with `X.on('data', function(data) { ... })` then it will be called, otherwise data will be stored in an internal buffer, where it can be retrieved with `X.read()`
  */
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "Serial",
+  "name" : "find",
+  "generate_full" : "jshGetDeviceObjectFor(JSH_USART1, JSH_USARTMAX, pin)",
+  "params" : [
+    ["pin","pin","A pin to search with"]
+  ],
+  "return" : ["JsVar","An object of type `Serial`, or `undefined` if one couldn't be found."]
+}
+Try and find a USART (Serial) hardware device that will work on this pin (eg. `Serial1`)
+
+May return undefined if no device can be found.
+*/
+
 
 /*JSON{
   "type" : "object",
@@ -48,7 +63,7 @@ The USB Serial port
   "type" : "object",
   "name" : "Serial1",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=1"
+  "#if" : "USART_COUNT>=1"
 }
 The first Serial (USART) port
  */
@@ -56,7 +71,7 @@ The first Serial (USART) port
   "type" : "object",
   "name" : "Serial2",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=2"
+  "#if" : "USART_COUNT>=2"
 }
 The second Serial (USART) port
  */
@@ -64,7 +79,7 @@ The second Serial (USART) port
   "type" : "object",
   "name" : "Serial3",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=3"
+  "#if" : "USART_COUNT>=3"
 }
 The third Serial (USART) port
  */
@@ -72,7 +87,7 @@ The third Serial (USART) port
   "type" : "object",
   "name" : "Serial4",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=4"
+  "#if" : "USART_COUNT>=4"
 }
 The fourth Serial (USART) port
  */
@@ -80,7 +95,7 @@ The fourth Serial (USART) port
   "type" : "object",
   "name" : "Serial5",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=5"
+  "#if" : "USART_COUNT>=5"
 }
 The fifth Serial (USART) port
  */
@@ -88,7 +103,7 @@ The fifth Serial (USART) port
   "type" : "object",
   "name" : "Serial6",
   "instanceof" : "Serial",
-  "#if" : "USARTS>=6"
+  "#if" : "USART_COUNT>=6"
 }
 The sixth Serial (USART) port
  */
@@ -140,6 +155,25 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
 
+  if (jsvIsUndefined(options)) {
+    options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
+  } else
+    jsvLockAgain(options);
+
+  JsVar *parity = 0;
+  JsVar *flow = 0;
+  jsvConfigObject configs[] = {
+      {"rx", JSV_PIN, &inf.pinRX},
+      {"tx", JSV_PIN, &inf.pinTX},
+      {"ck", JSV_PIN, &inf.pinCK},
+      {"bytesize", JSV_INTEGER, &inf.bytesize},
+      {"stopbits", JSV_INTEGER, &inf.stopbits},
+      {"parity", JSV_OBJECT /* a variable */, &parity},
+      {"flow", JSV_OBJECT /* a variable */, &flow},
+  };
+
+
+
   if (!jsvIsUndefined(baud)) {
     int b = (int)jsvGetInteger(baud);
     if (b<=100 || b > 10000000)
@@ -148,55 +182,44 @@ void jswrap_serial_setup(JsVar *parent, JsVar *baud, JsVar *options) {
       inf.baudRate = b;
   }
 
-  if (jsvIsUndefined(options)) {
-    options = jsvObjectGetChild(parent, DEVICE_OPTIONS_NAME, 0);
-  } else
-    jsvLockAgain(options);
-
-  if (jsvIsObject(options)) {
-    inf.pinRX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "rx", 0));
-    inf.pinTX = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "tx", 0));    
-    inf.pinCK = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "ck", 0));
-
-    JsVar *v;
-    v = jsvObjectGetChild(options, "bytesize", 0);
-    if (jsvIsInt(v)) 
-      inf.bytesize = (unsigned char)jsvGetInteger(v);
-    jsvUnLock(v);
-
+  bool ok = true;
+  if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    // sort out parity
     inf.parity = 0;
-    v = jsvObjectGetChild(options, "parity", 0);
-    if(jsvIsString(v)) {
-      if(jsvIsStringEqual(v, "o") || jsvIsStringEqual(v, "odd"))
+    if(jsvIsString(parity)) {
+      if (jsvIsStringEqual(parity, "o") || jsvIsStringEqual(parity, "odd"))
         inf.parity = 1;
-      else if(jsvIsStringEqual(v, "e") || jsvIsStringEqual(v, "even"))
+      else if (jsvIsStringEqual(parity, "e") || jsvIsStringEqual(parity, "even"))
         inf.parity = 2;
-    } else if(jsvIsInt(v)) {
-      inf.parity = (unsigned char)jsvGetInteger(v);
+    } else if (jsvIsInt(parity)) {
+      inf.parity = (unsigned char)jsvGetInteger(parity);
     }
-    jsvUnLock(v);
     if (inf.parity>2) {
       jsExceptionHere(JSET_ERROR, "Invalid parity %d", inf.parity);
-      jsvUnLock(options);
-      return;
+      ok = false;
     }
 
-    v = jsvObjectGetChild(options, "stopbits", 0);
-    if (jsvIsInt(v)) 
-      inf.stopbits = (unsigned char)jsvGetInteger(v);
-    jsvUnLock(v);
-
-    v = jsvObjectGetChild(options, "flow", 0);
-    if(jsvIsUndefined(v) || jsvIsNull(v) || jsvIsStringEqual(v, "none"))
-      inf.xOnXOff = false;
-    else if(jsvIsStringEqual(v, "xon"))
-      inf.xOnXOff = true;
-    else jsExceptionHere(JSET_ERROR, "Invalid flow control: %q", v);
-    jsvUnLock(v);
+    if (ok) {
+      if (jsvIsUndefined(flow) || jsvIsNull(flow) || jsvIsStringEqual(flow, "none"))
+        inf.xOnXOff = false;
+      else if (jsvIsStringEqual(flow, "xon"))
+        inf.xOnXOff = true;
+      else {
+        jsExceptionHere(JSET_ERROR, "Invalid flow control: %q", flow);
+        ok = false;
+      }
+    }
 
 #ifdef LINUX
-    jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
+    if (ok && jsvIsObject(options))
+      jsvObjectSetChildAndUnLock(parent, "path", jsvObjectGetChild(options, "path", 0));
 #endif
+  }
+  jsvUnLock(parity);
+  jsvUnLock(flow);
+  if (!ok) {
+    jsvUnLock(options);
+    return;
   }
 
   jshUSARTSetup(device, &inf);

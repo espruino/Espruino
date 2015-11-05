@@ -53,12 +53,11 @@ JsVar *jspGetException();
 /** Return a stack trace string if there was one (and clear it) */
 JsVar *jspGetStackTrace();
 
-/** Execute code form a variable and return the result. If parseTwice is set,
- * we run over the variable twice - once to pick out function declarations,
- * and once to actually execute. */
-JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, bool parseTwice);
+/** Execute code form a variable and return the result. If lineNumberOffset
+ * is nonzero it's added to the line numbers that get reported for errors/debug */
+JsVar *jspEvaluateVar(JsVar *str, JsVar *scope, uint16_t lineNumberOffset);
 /** Execute code form a string and return the result. */
-JsVar *jspEvaluate(const char *str, bool parseTwice);
+JsVar *jspEvaluate(const char *str);
 JsVar *jspExecuteFunction(JsVar *func, JsVar *thisArg, int argCount, JsVar **argPtr);
 
 /// Evaluate a JavaScript module and return its exports
@@ -94,14 +93,6 @@ typedef enum  {
   EXEC_CTRL_C = 1024, // If Ctrl-C was pressed, set this
   EXEC_CTRL_C_WAIT = 2048, // If Ctrl-C was set and SysTick happens then this is set instead
 
-  /** Parse function declarations, even if we're not executing. This
-   * is used when we want to do two passes, to effectively 'hoist' function
-   * declarations to the top so they can be called before they're defined.
-   * NOTE: This is only needed to call a function before it is defined IF
-   * code is being executed as it is being parsed. If it's in a function
-   * then you're fine anyway. */
-  EXEC_PARSE_FUNCTION_DECL = 4096,
-
 #ifdef USE_DEBUGGER
   /** When the lexer hits a newline character, it'll then drop right
    * into the debugger */
@@ -124,8 +115,8 @@ typedef enum  {
 /** This structure is used when parsing the JavaScript. It contains
  * everything that should be needed. */
 typedef struct {
-  JsVar  *root;   ///< root of symbol table
-  JsVar  *hiddenRoot;   ///< root of the symbol table that's hidden
+  JsVar  *root;       //!< root of symbol table
+  JsVar  *hiddenRoot; //!< root of the symbol table that's hidden
   JsLex *lex;
 
   // TODO: could store scopes as JsVar array for speed
@@ -134,7 +125,7 @@ typedef struct {
   /// Value of 'this' reserved word
   JsVar *thisVar;
 
-  JsExecFlags execute;
+  volatile JsExecFlags execute;
 } JsExecInfo;
 
 /* Info about execution when Parsing - this saves passing it on the stack

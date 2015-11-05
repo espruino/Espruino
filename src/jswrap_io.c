@@ -248,13 +248,13 @@ Set the digital value of the given pin.
 If pin argument is an array of pins (eg. `[A2,A1,A0]`) the value argument will be treated
 as an array of bits where the last array element is the least significant bit.
 
-In this case, pin values are set last significant bit first (from the right-hand side
+In this case, pin values are set least significant bit first (from the right-hand side
 of the array of pins). This means you can use the same pin multiple times, for
 example `digitalWrite([A1,A1,A0,A0],0b0101)` would pulse A0 followed by A1.
 */
 
 /**
- * \brief Set the output of a GPIO.
+ * Set the output of a GPIO.
  */
 void jswrap_io_digitalWrite(
     JsVar *pinVar, //!< A pin or pins.
@@ -299,7 +299,7 @@ the last array element is the least significant bit, for example if `A0=A1=1` an
 */
 
 /**
- * \brief Read the value of a GPIO pin.
+ * Read the value of a GPIO pin.
  */
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   // Hadnle the case where it is an array of pins.
@@ -331,8 +331,8 @@ JsVarInt jswrap_io_digitalRead(JsVar *pinVar) {
   "name"     : "pinMode",
   "generate" : "jswrap_io_pinMode",
   "params"   : [
-    ["pin","pin","The pin to set pin mode for"],
-    ["mode","JsVar","The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
+    ["pin", "pin", "The pin to set pin mode for"],
+    ["mode", "JsVar", "The mode - a string that is either 'analog', 'input', 'input_pullup', 'input_pulldown', 'output', 'opendrain', 'af_output' or 'af_opendrain'. Do not include this argument if you want to revert to automatic pin mode setting."]
   ]
 }
 Set the mode of the given pin.
@@ -349,10 +349,6 @@ Set the mode of the given pin.
 
  **Note:** `digitalRead`/`digitalWrite`/etc set the pin mode automatically *unless* `pinMode` has been called first.  If you want `digitalRead`/etc to set the pin mode automatically after you have called `pinMode`, simply call it again with no mode argument: `pinMode(pin)`
 */
-
-/**
- * \brief Set the mode of a pin.
- */
 void jswrap_io_pinMode(
     Pin pin,    //!< The pin to set.
     JsVar *mode //!< The new mode of the pin.
@@ -385,6 +381,7 @@ void jswrap_io_pinMode(
 
 /*JSON{
   "type" : "function",
+  "ifndef" : "SAVE_ON_FLASH",
   "name" : "getPinMode",
   "generate" : "jswrap_io_getPinMode",
   "params" : [
@@ -416,14 +413,141 @@ JsVar *jswrap_io_getPinMode(Pin pin) {
   return 0;
 }
 
+
+#define jswrap_io_shiftOutDataMax 8
+typedef struct {
+  Pin pins[jswrap_io_shiftOutDataMax];
+  Pin clk;
+#ifdef STM32
+  uint32_t *addrs[jswrap_io_shiftOutDataMax];
+  uint32_t *clkAddr;
+#endif
+  bool clkPol; // clock polarity
+
+  int cnt; // number of pins
+} jswrap_io_shiftOutData;
+
+void jswrap_io_shiftOutCallback(int val, void *data) {
+  jswrap_io_shiftOutData *d = (jswrap_io_shiftOutData*)data;
+  int n;
+  for (n=d->cnt-1; n>=0; n--) {
+#ifdef STM32
+    if (d->addrs[n])
+      *d->addrs[n] = val&1;
+#else
+    if (jshIsPinValid(d->pins[n]))
+        jshPinSetValue(d->pins[n], val&1);
+#endif
+    val>>=1;
+  }
+#ifdef STM32
+  if (d->clkAddr) {
+      *d->clkAddr = d->clkPol;
+      *d->clkAddr = !d->clkPol;
+  }
+#else
+  if (jshIsPinValid(d->clk)) {
+    jshPinSetValue(d->clk, d->clkPol);
+    jshPinSetValue(d->clk, !d->clkPol);
+  }
+#endif
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "shiftOut",
+  "generate" : "jswrap_io_shiftOut",
+  "params" : [
+    ["pins","JsVar","A pin, or an array of pins to use"],
+    ["options","JsVar","Options, for instance the clock (see below)"],
+    ["data","JsVar","The data to shift out"]
+  ]
+}
+Shift an array of data out using the pins supplied, for example:
+
+```
+// shift out to single clk+data (like software SPI)
+shiftOut(A0, { clk : A1 }, [1,2,3,4]);
+
+// shift out to multiple data pins
+shiftOut([A3,A2,A1,A0], { clk : A4 }, [1,2,3,4]);
+```
+
+`options` is an object of the form:
+
+```
+{
+  clk : pin, // a pin to use as the clock (undefined = no pin)
+  clkPol : bool, // clock polarity - default is 0 (so 1 normally, pulsing to 0 to clock data in)
+}
+```
+
+Each item in the `data` array will be output to the pins, with the first
+pin in the array being the MSB and the last the LSB, then the clock will be
+pulsed in the polarity given.
+ */
+void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data) {
+  jswrap_io_shiftOutData d;
+  d.cnt = 0;
+  d.clk = PIN_UNDEFINED;
+  d.clkPol = 0;
+
+  if (jsvIsArray(pins)) {
+    JsvObjectIterator it;
+    jsvObjectIteratorNew(&it, pins);
+    while (jsvObjectIteratorHasValue(&it)) {
+      if (d.cnt>=jswrap_io_shiftOutDataMax) {
+        jsExceptionHere(JSET_ERROR, "Too many pins! %d Maximum.", jswrap_io_shiftOutDataMax);
+        return;
+      }
+      d.pins[d.cnt] = jshGetPinFromVarAndUnLock(jsvObjectIteratorGetValue(&it));
+      d.cnt++;
+      jsvObjectIteratorNext(&it);
+
+    }
+    jsvObjectIteratorFree(&it);
+  } else {
+    d.pins[d.cnt++] = jshGetPinFromVar(pins);
+  }
+
+  if (jsvIsObject(options)) {
+    d.clk = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "clk", 0));
+    d.clkPol = jsvGetBoolAndUnLock(jsvObjectGetChild(options, "clkPol", 0));
+  } else if (!jsvIsUndefined(options)) {
+    jsExceptionHere(JSET_ERROR, "Expecting options to be a object or undefined, got %t", options);
+    return;
+  }
+
+  // Set pins as outputs
+  int i;
+  for (i=0;i<d.cnt;i++) {
+    if (jshIsPinValid(d.pins[i])) {
+      if (!jshGetPinStateIsManual(d.pins[i]))
+        jshPinSetState(d.pins[i], JSHPINSTATE_GPIO_OUT);
+    }
+    // on STM32, try and get the pin's output address
+#ifdef STM32
+    d.addrs[i] = jshGetPinAddress(d.pins[i], JSGPAF_OUTPUT);
+#endif
+  }
+#ifdef STM32
+  d.clkAddr = jshGetPinAddress(d.clk, JSGPAF_OUTPUT);
+#endif
+  if (jshIsPinValid(d.clk))
+    jshPinSetState(d.clk, JSHPINSTATE_GPIO_OUT);
+
+  // Now run through the data, pushing it out
+  jsvIterateCallback(data, jswrap_io_shiftOutCallback, &d);
+}
+
 /*JSON{
   "type" : "function",
   "name" : "setWatch",
   "generate" : "jswrap_interface_setWatch",
   "params" : [
-    ["function","JsVar","A Function or String to be executed"],
-    ["pin","pin","The pin to watch"],
-    ["options","JsVar",["If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0."]]
+    ["function", "JsVar", "A Function or String to be executed"],
+    ["pin", "pin", "The pin to watch"],
+    ["options", "JsVar",[ "If this is a boolean or integer, it determines whether to call this once (false = default) or every time a change occurs (true)","If this is an object, it can contain the following information: ```{ repeat: true/false(default), edge:'rising'/'falling'/'both'(default), debounce:10}```. `debounce` is the time in ms to wait for bounces to subside, or 0."]]
   ],
   "return" : ["JsVar","An ID that can be passed to clearWatch"]
 }
@@ -448,7 +572,11 @@ and there will be no debouncing.
 watch two pins with the same number - eg `A0` and `B0`.
 
  */
-JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
+JsVar *jswrap_interface_setWatch(
+    JsVar *func,           //!< A callback function to be invoked when the pin state changes.
+    Pin    pin,            //!< The pin to be watched.
+    JsVar *repeatOrObject  //!<
+  ) {
   if (!jshIsPinValid(pin)) {
     jsError("Invalid pin");
     return 0;
@@ -485,7 +613,13 @@ JsVar *jswrap_interface_setWatch(JsVar *func, Pin pin, JsVar *repeatOrObject) {
   if (!jsvIsFunction(func) && !jsvIsString(func)) {
     jsExceptionHere(JSET_ERROR, "Function or String not supplied!");
   } else {
-    // Create a new watch
+    // Create a new watch object which may contain:
+    //
+    // o pin      - The pin being watched
+    // o recur    - ?
+    // o debounce - ?
+    // o edge     - ?
+    // o callback - The function to be invoked when the IO changes
     JsVar *watchPtr = jsvNewWithFlags(JSV_OBJECT);
     if (watchPtr) {
       jsvObjectSetChildAndUnLock(watchPtr, "pin", jsvNewFromPin(pin));

@@ -100,9 +100,9 @@ def get_jsondata(is_for_document, parseArgs = True):
                 defines.append(arg[2:])
               elif arg[1]=="B": 
                 board = importlib.import_module(arg[2:])
-                if "usart" in board.chip: defines.append("USARTS="+str(board.chip["usart"]));
-                if "spi" in board.chip: defines.append("SPIS="+str(board.chip["spi"]));
-                if "i2c" in board.chip: defines.append("I2CS="+str(board.chip["i2c"]));
+                if "usart" in board.chip: defines.append("USART_COUNT="+str(board.chip["usart"]));
+                if "spi" in board.chip: defines.append("SPI_COUNT="+str(board.chip["spi"]));
+                if "i2c" in board.chip: defines.append("I2C_COUNT="+str(board.chip["i2c"]));
                 if "USB" in board.devices: defines.append("defined(USB)=True"); 
                 else: defines.append("defined(USB)=False");
               else:
@@ -306,6 +306,7 @@ def get_ifdef_description(d):
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
@@ -317,7 +318,7 @@ def get_version():
         jsutils = scriptdir+"/../src/jsutils.h"
         version = re.compile("^.*JS_VERSION.*\"(.*)\"");
         latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
-        commits_since_release = subprocess.check_output('git log --oneline '+latest_release+'..HEAD | wc -l', shell=True).strip()
+        commits_since_release = subprocess.check_output('git log --oneline '+latest_release.decode("utf-8")+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
         for line in open(jsutils):
             match = version.search(line);
             if (match != None):

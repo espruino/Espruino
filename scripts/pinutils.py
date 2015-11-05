@@ -96,7 +96,7 @@ for D in DEVICES:
 URLS = {
  "PWM":"/PWM",
  "SPI":"/SPI",
- "I2C":"/I2S",
+ "I2C":"/I2C",
  "USART":"/USART",
  "DAC":"/DAC",
  "ADC":"/ADC",

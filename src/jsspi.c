@@ -15,7 +15,7 @@
 #include "jsinteractive.h"
 
 /**
- * \brief Dump the internal SPI Info data structure to the console.
+ * Dump the internal SPI Info data structure to the console.
  * This is an internal debugging function.
  */
 void jsspiDumpSPIInfo(JshSPIInfo *inf) {
@@ -31,7 +31,7 @@ int jsspiHardwareFunc(int data, spi_sender_data *info) {
 
 
 /**
- * \brief Send a single byte through SPI.
+ * Send a single byte through SPI.
  * \return The received byte.
  */
 int jsspiFastSoftwareFunc(
@@ -56,7 +56,7 @@ int jsspiFastSoftwareFunc(
 
 
 /**
- * \brief Send a single byte through SPI.
+ * Send a single byte through SPI.
  * \return The received byte.
  */
 int jsspiSoftwareFunc(
@@ -105,7 +105,7 @@ int jsspiSoftwareFunc(
 
 
 /**
- * \brief Populate a JshSPIInfo structure from a JS Object.
+ * Populate a JshSPIInfo structure from a JS Object.
  * The object properties that are examined are:
  * * `sck` - The pin to use for the clock.
  * * `miso` - The pin to use for Master In/Slave Out.
@@ -114,42 +114,40 @@ int jsspiSoftwareFunc(
  * * `mode` - The SPI mode.
  * * `order` - The bit order (one of "msb" or "lsb")
  */
-void jsspiPopulateSPIInfo(
+bool jsspiPopulateSPIInfo(
     JshSPIInfo *inf,    //!< The JshSPIInfo structure to populate.
     JsVar      *options //!< The JS object var to parse.
   ) {
   jshSPIInitInfo(inf);
 
-  // Validate that the options variable is indeed an object.
-  if (jsvIsObject(options)) {
-    inf->pinSCK  = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sck", 0));
-    inf->pinMISO = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "miso", 0));
-    inf->pinMOSI = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "mosi", 0));
+  JsVar *order = 0;
+  jsvConfigObject configs[] = {
+      {"sck", JSV_PIN, &inf->pinSCK},
+      {"miso", JSV_PIN, &inf->pinMISO},
+      {"mosi", JSV_PIN, &inf->pinMOSI},
+      {"baud", JSV_INTEGER, &inf->baudRate},
+      {"mode", JSV_INTEGER, &inf->spiMode},
+      {"order", JSV_OBJECT /* a variable */, &order},
+  };
+  bool ok = true;
+  if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    inf->spiMode = inf->spiMode&3;
 
-    JsVar *v;
-    v = jsvObjectGetChild(options, "baud", 0);
-    if (jsvIsNumeric(v))
-      inf->baudRate = (int)jsvGetInteger(v);
-    jsvUnLock(v);
-
-    v = jsvObjectGetChild(options, "mode", 0);
-    if (jsvIsNumeric(v))
-      inf->spiMode = ((int)jsvGetInteger(v))&3;
-    jsvUnLock(v);
-
-    v = jsvObjectGetChild(options, "order", 0);
-    if (jsvIsString(v) && jsvIsStringEqual(v, "msb")) {
+    if (jsvIsString(order) && jsvIsStringEqual(order, "msb")) {
       inf->spiMSB = true;
-    } else if (jsvIsString(v) && jsvIsStringEqual(v, "lsb")) {
+    } else if (jsvIsString(order) && jsvIsStringEqual(order, "lsb")) {
       inf->spiMSB = false;
-    } else if (!jsvIsUndefined(v))
-      jsWarn("SPI order should be 'msb' or 'lsb'");
-    jsvUnLock(v);
+    } else if (!jsvIsUndefined(order)) {
+      jsExceptionHere(JSET_ERROR, "SPI order should be 'msb' or 'lsb'");
+      ok = false;
+    }
   }
+  jsvUnLock(order);
+  return ok;
 }
 
 /**
- * \brief Select the SPI send function.
+ * Select the SPI send function.
  * Get the correct SPI send function (and the data to send to it).  We do this
  * by examining the device and determining if it is hardware, software fast
  * or software regular.

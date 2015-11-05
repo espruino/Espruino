@@ -23,6 +23,7 @@ void jswrap_io_digitalWrite(JsVar *pinVar, JsVarInt value);
 JsVarInt jswrap_io_digitalRead(JsVar *pinVar);
 void jswrap_io_pinMode(Pin pin, JsVar *mode);
 JsVar *jswrap_io_getPinMode(Pin pin);
+void jswrap_io_shiftOut(JsVar *pins, JsVar *options, JsVar *data);
 
 JsVar *jswrap_interface_setWatch(JsVar *funcVar, Pin pin, JsVar *repeatOrObject);
 void jswrap_interface_clearWatch(JsVar *idVar);

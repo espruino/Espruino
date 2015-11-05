@@ -23,28 +23,31 @@ void jshInitDevices(); // called from jshInit
 typedef enum {
   // device type
   EV_NONE,
-  EV_EXTI0,
-  EV_EXTI1,
-  EV_EXTI2,
-  EV_EXTI3,
-  EV_EXTI4,
-  EV_EXTI5,
-  EV_EXTI6,
-  EV_EXTI7,
-  EV_EXTI8,
-  EV_EXTI9,
-  EV_EXTI10,
-  EV_EXTI11,
-  EV_EXTI12,
-  EV_EXTI13,
-  EV_EXTI14,
-  EV_EXTI15,
+  EV_EXTI0,  // External Interrupt 0
+  EV_EXTI1,  // External Interrupt 1
+  EV_EXTI2,  // External Interrupt 2
+  EV_EXTI3,  // External Interrupt 3
+  EV_EXTI4,  // External Interrupt 4
+  EV_EXTI5,  // External Interrupt 5
+  EV_EXTI6,  // External Interrupt 6
+  EV_EXTI7,  // External Interrupt 7
+  EV_EXTI8,  // External Interrupt 8
+  EV_EXTI9,  // External Interrupt 9
+  EV_EXTI10, // External Interrupt 10
+  EV_EXTI11, // External Interrupt 11
+  EV_EXTI12, // External Interrupt 12
+  EV_EXTI13, // External Interrupt 13
+  EV_EXTI14, // External Interrupt 14
+  EV_EXTI15, // External Interrupt 15
   EV_EXTI_MAX = EV_EXTI15,
   EV_SERIAL_START,
   EV_LOOPBACKA = EV_SERIAL_START,
   EV_LOOPBACKB,
   EV_LIMBO,     // Where console output goes right after boot - one sec later we move it to USB/Serial
   EV_USBSERIAL,
+#ifdef BLUETOOTH
+  EV_BLUETOOTH,
+#endif
   EV_SERIAL1,
   EV_SERIAL2,
   EV_SERIAL3,
@@ -74,8 +77,10 @@ typedef enum {
 } PACKED_FLAGS IOEventFlags;
 
 
-
+// Return true if the device is a USART
 #define DEVICE_IS_USART(X) (((X)>=EV_SERIAL_START) && ((X)<=EV_SERIAL_MAX))
+
+// Return true if the device is an SPI.
 #define DEVICE_IS_SPI(X) (((X)>=EV_SPI1) && ((X)<=EV_SPI_MAX))
 #define DEVICE_IS_I2C(X) (((X)>=EV_I2C1) && ((X)<=EV_I2C_MAX))
 #define DEVICE_IS_EXTI(X) (((X)>=EV_EXTI0) && ((X)<=EV_EXTI_MAX))
@@ -92,7 +97,7 @@ typedef union {
 
 // IO Events - these happen when a pin changes
 typedef struct IOEvent {
-  IOEventFlags flags; // where this came from, and # of chars in it
+  IOEventFlags flags; //!< Where this came from, and # of chars in it
   IOEventData data;
 } PACKED_FLAGS IOEvent;
 
