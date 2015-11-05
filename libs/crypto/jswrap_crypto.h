@@ -15,7 +15,7 @@
  */
 #include "jsvar.h"
 
+JsVar *jswrap_crypto_SHA1(JsVar *message);
 JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options);
-
-JsVar *jswrap_crypto_AESencrypt(JsVar *message, JsVar *key, JsVar *options);
-JsVar *jswrap_crypto_AESdecrypt(JsVar *message, JsVar *key, JsVar *options);
+JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options);
+JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options);
