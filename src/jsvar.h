@@ -667,9 +667,9 @@ JsvIsInternalChecker jsvGetInternalFunctionCheckerFor(JsVar *v);
 
 /// See jsvReadConfigObject
 typedef struct {
-  char *name;
-  JsVarFlags type;
-  void *ptr;
+  char *name;      ///< The name of the option to search for
+  JsVarFlags type; ///< The type of ptr - JSV_PIN/BOOLEAN/INTEGER/FLOAT or JSV_OBJECT for a variable
+  void *ptr;       ///< A pointer to the variable to set
 } jsvConfigObject;
 
 /** Using 'configs', this reads 'object' into the given pointers, returns true on success.
