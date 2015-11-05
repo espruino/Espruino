@@ -109,7 +109,7 @@ void jswrap_spi_setup(
   // Debug
   // jsiConsolePrintf("jswrap_spi_setup called parent=%v, options=%v\n", parent, options);
 
-  jsspiPopulateSPIInfo(&inf, options);
+  if (!jsspiPopulateSPIInfo(&inf, options)) return;
 
   if (DEVICE_IS_SPI(device)) {
     jshSPISetup(device, &inf);
@@ -523,19 +523,20 @@ void jswrap_i2c_setup(JsVar *parent, JsVar *options) {
   if (!DEVICE_IS_I2C(device)) return;
   JshI2CInfo inf;
   jshI2CInitInfo(&inf);
-  if (jsvIsObject(options)) {
-    inf.pinSCL = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "scl", 0));
-    inf.pinSDA = jshGetPinFromVarAndUnLock(jsvObjectGetChild(options, "sda", 0));
-    JsVar *v = jsvObjectGetChild(options, "bitrate", 0);
-    if (v)
-      inf.bitrate = jsvGetIntegerAndUnLock(v);
+
+  jsvConfigObject configs[] = {
+      {"scl", JSV_PIN, &inf.pinSCL},
+      {"sda", JSV_PIN, &inf.pinSDA},
+      {"bitrate", JSV_INTEGER, &inf.bitrate}
+  };
+  if (jsvReadConfigObject(options, configs, sizeof(configs) / sizeof(jsvConfigObject))) {
+    jshI2CSetup(device, &inf);
+    // Set up options, so we can initialise it on startup
+    if (options)
+      jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
+    else
+      jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
   }
-  jshI2CSetup(device, &inf);
-  // Set up options, so we can initialise it on startup
-  if (options)
-    jsvUnLock(jsvSetNamedChild(parent, options, DEVICE_OPTIONS_NAME));
-  else
-    jsvRemoveNamedChild(parent, DEVICE_OPTIONS_NAME);
 }
 
 

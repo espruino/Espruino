@@ -184,7 +184,7 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
 #endif
     } else {
-      strncpy(result, "UNKNOWN", 8);
+      strncpy(result, "undefined", 8);
     }
   }
 
