@@ -40,13 +40,13 @@ chip = {
     'flash_available' : 480, # firmware can be up to this size
   },
 };
-# left-right, or top-bottom order
-board = {
-};
 devices = {
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+};
+board["_css"] = """
 """;
 
 def get_pins():

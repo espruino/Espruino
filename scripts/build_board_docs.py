@@ -243,7 +243,8 @@ for pinstrip in board.board:
   if pinstrip[0]!='_':
     writeHTML("   #"+pinstrip+" { position: absolute; }")
     writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
-writeHTML(board.board_css)
+if "_css" in board.board:
+  writeHTML(board.board["_css"])
 writeHTML("  </STYLE>"+'<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>')
 writeHTML("""
   <SCRIPT type="text/javascript"> 

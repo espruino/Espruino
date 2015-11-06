@@ -33,13 +33,8 @@ chip = {
   'dac' : 0,
 };
 # left-right, or top-bottom order
-board = {
-};
 devices = {
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,31)  

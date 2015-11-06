@@ -38,15 +38,16 @@ chip = {
   'adc' : 0,
   'dac' : 0
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
   'BTN1' : { 'pin' : 'D4' }, # 'P0_17'
   'BTN2' : { 'pin' : 'D11' }, # 'P0_26'
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+};
+board["_css"] = """
 """;
 
 def get_pins():

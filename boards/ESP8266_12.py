@@ -55,11 +55,7 @@ board = {
 };
 board["bottom"].reverse()
 board["right"].reverse()
-devices = {
-    'LED1' : { 'pin': 'D0' },
-};
-
-board_css = """
+board["_css"] = """
 #board {
   width:  600px;
   height: 384px;
@@ -89,6 +85,10 @@ board_css = """
   margin: 0px 12px;
 }
 """;
+
+devices = {
+    'LED1' : { 'pin': 'D0' },
+};
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)

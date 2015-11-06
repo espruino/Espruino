@@ -35,6 +35,20 @@ chip = {
  'dac': 2
 }
 
+devices = {
+ 'OSC_RTC': {'pin_1': 'D22',
+             'pin_2': 'D23'},
+ 'LED1': {'pin': 'D13'},
+ 'LED2': {'pin': 'D3'},
+ 'BTN1': {'pin': 'D38'},
+ 'USB': {'pin_disc': 'D39',
+         'pin_dm': 'D40',
+         'pin_dp': 'D41'},
+ 'SD': {'pin_cs': 'D25',
+        'pin_di': 'D34',
+        'pin_do': 'D33',
+        'pin_clk': 'D32'}}
+
 # left-right, or top-bottom order
 board = {
  'top': ['D14', 'GND', 'D13', 'D12', 'D11', 'D10', 'D9', 'D8', '', 'D7', 'D6', 'D5', 'D4', 'D3', 'D2', 'D1', 'D0'],
@@ -52,21 +66,7 @@ board['left2'].reverse()
 board['right'].reverse()
 board['right2'].reverse()
 
-devices = {
- 'OSC_RTC': {'pin_1': 'D22',
-             'pin_2': 'D23'},
- 'LED1': {'pin': 'D13'},
- 'LED2': {'pin': 'D3'},
- 'BTN1': {'pin': 'D38'},
- 'USB': {'pin_disc': 'D39',
-         'pin_dm': 'D40',
-         'pin_dp': 'D41'},
- 'SD': {'pin_cs': 'D25',
-        'pin_di': 'D34',
-        'pin_do': 'D33',
-        'pin_clk': 'D32'}}
-
-board_css = """
+board["_css"] = """
 #board {
   width: 540px;
   height: 418px;
