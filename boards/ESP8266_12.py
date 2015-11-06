@@ -47,6 +47,11 @@ chip = {
     'flash_available' : 492, # firmware can be up to this size
   },
 };
+
+devices = {
+    'LED1' : { 'pin': 'D0' },
+};
+
 # left-right, or top-bottom order
 board = {
     'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
@@ -85,10 +90,6 @@ board["_css"] = """
   margin: 0px 12px;
 }
 """;
-
-devices = {
-    'LED1' : { 'pin': 'D0' },
-};
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)
