@@ -187,6 +187,14 @@ for jsondata in jsondatas:
     if "check" in jsondata:
       objectChecks[jsondata["name"]] = jsondata["check"]
     classes[jsondata["name"]] = jsondata
+    # Also create a fake variable for the class prototype to make sure it'll exist
+    jsondatas.append({ 
+        "type":"variable", 
+        "static":True,
+        "name":"i_am_just_a_placeholder",         
+        "class":jsondata["name"]+".prototype",
+        "filename":"jswrapper.c"
+      })
 
   if not "class" in jsondata:
     print "No class for "+jsondata["name"]+" - adding to Global"
@@ -196,27 +204,25 @@ for jsondata in jsondatas:
     if not jsondata["name"] in constructors:
       constructors[jsondata["name"]] = jsondata
 
-  if jsondata["type"]=="class":
+  if jsondata["type"]=="class" or jsondata["type"]=="object":
     if "instanceof" in jsondata:
-      jsondata = { 
+      jsondatas.append({ 
         "type":"variable", 
         "static":True,
         "name":"__proto__", 
         "class":jsondata["name"],
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["instanceof"].replace(".","_")+"_prototype)",
         "filename" : jsondata["filename"]
-      }
-      jsondatas.append(jsondata);
+      })
     if "prototype" in jsondata:
-      jsondata = { 
+      jsondatas.append({ 
         "type":"variable", 
         "static":True,
         "name":"__proto__",         
         "class":jsondata["name"]+".prototype",
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["prototype"].replace(".","_")+"_prototype)",
         "filename" : jsondata["filename"]
-      }
-      jsondatas.append(jsondata);
+      })
 
 # Make sure we have any classes that are referenced
 for jsondata in jsondatas:
@@ -277,24 +283,22 @@ for libName in libraries:
 # Now populate with prototypes
 for className in classes:
   if className[-10:]==".prototype":
-    jsondata = { 
+    jsondatas.append({ 
         "type":"variable", 
         "static":True,
         "name":"prototype", 
         "class":className[:-10],
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
         "filename" : classes[className]["filename"]
-    }
-    jsondatas.append(jsondata);
-    jsondata = { 
+    })
+    jsondatas.append({ 
         "type":"variable", 
         "static":True,
         "name":"constructor", 
         "class":className,
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className[:-10].replace(".","_")+")",
         "filename" : classes[className]["filename"]
-    };
-    jsondatas.append(jsondata);
+    })
 
 
 try:
@@ -440,7 +444,8 @@ codeOut('    return var->varData.nativeObject;');
 codeOut('  }');
 codeOut('  // Instantiated objects, so we should point to the prototypes');
 for className in objectChecks.keys():
-  codeOut("  if ("+objectChecks[className]+") return &jswSymbolTables[jswSymbolIndex_"+className+"_prototype];")
+  if not className=="global": # we did 'global' above
+    codeOut("  if ("+objectChecks[className]+") return &jswSymbolTables[jswSymbolIndex_"+className+"_prototype];")
 codeOut("  return 0;")
 codeOut('}')
 
@@ -468,9 +473,9 @@ codeOut('')
 builtinChecks = []
 for jsondata in jsondatas:
   if "class" in jsondata:
-    check = 'strcmp(name, "'+jsondata["class"]+'")==0';
-    if not jsondata["class"] in libraries:
-      if not check in builtinChecks:
+    if not jsondata["class"] in libraries and jsondata['class'].find(".")<0:
+      check = 'strcmp(name, "'+jsondata["class"]+'")==0';
+      if not check in builtinChecks :
         builtinChecks.append(check)
 
 

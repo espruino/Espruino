@@ -31,7 +31,7 @@
 #include "jswrap_stream.h"
 
 /*JSON{
-  "type" : "library",
+  "type" : "class",
   "ifndef" : "SAVE_ON_FLASH",
   "class" : "Pipe"
 }
