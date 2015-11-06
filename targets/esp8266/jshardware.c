@@ -56,6 +56,7 @@ typedef long long int64_t;
 
 
 static bool g_spiInitialized = false;
+static int  g_lastSPIRead = -1;
 
 /**
  * Transmit all the characters in the transmit buffer.
@@ -163,7 +164,8 @@ void jshReset() {
     jshPinSetState(i, JSHPINSTATE_GPIO_IN);
   }
   */
-  g_spiInitialized = false;
+  g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
+  g_lastSPIRead = -1;
   os_printf("< jshReset\n");
 } // End of jshReset
 
@@ -618,6 +620,7 @@ void jshSPISetup(
     spi_init(HSPI); // Initialize the hardware SPI components.
     spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
     g_spiInitialized = true;
+    g_lastSPIRead = -1;
     break;
   case EV_SPI2:
     os_printf(" - Device is SPI2\n");
@@ -640,11 +643,19 @@ void jshSPISetup(
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(
-    IOEventFlags device, //!< Unknown
-    int data             //!< Unknown
+    IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
+    int data             //!< The data to be sent or an indication that no data is to be sent.
   ) {
+  if (device != EV_SPI1) {
+    return -1;
+  }
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
-  uint32_t retData = spi_tx8(HSPI, data);
+  int retData = g_lastSPIRead;
+  if (data >=0) {
+    g_lastSPIRead = spi_tx8(HSPI, data);
+  } else {
+    g_lastSPIRead = -1;
+  }
   //os_printf("< jshSPISend\n");
   return retData;
 }
@@ -657,10 +668,15 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
-  jshSPISend(device, data >> 8);
-  jshSPISend(device, data & 255);
-  os_printf("< jshSPISend16\n");
+  //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
+  //jshSPISend(device, data >> 8);
+  //jshSPISend(device, data & 255);
+  if (device != EV_SPI1) {
+    return;
+  }
+
+  spi_tx16(HSPI, data);
+  //os_printf("< jshSPISend16\n");
 }
 
 
@@ -671,7 +687,7 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
   ) {
-  os_printf("> jshSPISet16\n");
+  os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
   os_printf("< jshSPISet16\n");
 }
 
