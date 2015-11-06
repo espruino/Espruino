@@ -18,31 +18,36 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Error"
+  "class" : "Error",
+  "memberOf" : "global"
 }
 The base class for runtime errors
  */
 /*JSON{
   "type" : "class",
-  "class" : "SyntaxError"
+  "class" : "SyntaxError",
+  "memberOf" : "global"
 }
 The base class for syntax errors
  */
 /*JSON{
   "type" : "class",
-  "class" : "TypeError"
+  "class" : "TypeError",
+  "memberOf" : "global"
 }
 The base class for type errors
  */
 /*JSON{
   "type" : "class",
-  "class" : "InternalError"
+  "class" : "InternalError",
+  "memberOf" : "global"
 }
 The base class for internal errors
  */
 /*JSON{
   "type" : "class",
-  "class" : "ReferenceError"
+  "class" : "ReferenceError",
+  "memberOf" : "global"
 }
 The base class for reference errors - where a variable
 which doesn't exist has been accessed.

@@ -450,5 +450,5 @@ JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax,
   jshPinFunctionToString(dev, JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, devName, sizeof(devName));
   JsVar *devVar = jsvObjectGetChild(execInfo.root, devName, 0);
   if (devVar) return devVar;
-  return jswFindBuiltInFunction(0, devName);
+  return jswFindBuiltIn(0, devName);
 }

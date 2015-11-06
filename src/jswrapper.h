@@ -45,7 +45,7 @@ typedef enum {
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
 
 /** If 'name' is something that belongs to an internal function, execute it.  */
-JsVar *jswFindBuiltInFunction(JsVar *parent, const char *name);
+JsVar *jswFindBuiltIn(JsVar *parent, const char *name);
 
 /// Given an object, return the list of symbols for it
 const JswSymList *jswGetSymbolListForObject(JsVar *parent);

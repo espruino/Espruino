@@ -212,6 +212,7 @@ for jsondata in jsondatas:
         "name":"__proto__", 
         "class":jsondata["name"],
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["instanceof"].replace(".","_")+"_prototype)",
+        "return" : ["JsVar"],
         "filename" : jsondata["filename"]
       })
     if "prototype" in jsondata:
@@ -221,6 +222,7 @@ for jsondata in jsondatas:
         "name":"__proto__",         
         "class":jsondata["name"]+".prototype",
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["prototype"].replace(".","_")+"_prototype)",
+        "return" : ["JsVar"],
         "filename" : jsondata["filename"]
       })
 
@@ -252,6 +254,7 @@ for className in classes:
     jsondata = {
         "type":"constructor", "class": className,  "name": className,
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
+        "return" : ["JsVar"],
         "filename" : "jswrapper.c",
         "static" : "True",
         "return" : [ "JsVar", "" ]
@@ -289,6 +292,7 @@ for className in classes:
         "name":"prototype", 
         "class":className[:-10],
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
+        "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
     jsondatas.append({ 
@@ -297,6 +301,17 @@ for className in classes:
         "name":"constructor", 
         "class":className,
         "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className[:-10].replace(".","_")+")",
+        "return" : ["JsVar"],
+        "filename" : classes[className]["filename"]
+    })
+  if "memberOf" in classes[className]:
+    jsondatas.append({ 
+        "type":"variable", 
+        "static":True,
+        "name":className, 
+        "class":classes[className]["memberOf"],
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className+")",
+        "return" : ["JsVar"],
         "filename" : classes[className]["filename"]
     })
 
@@ -434,23 +449,30 @@ codeOut('};');
 codeOut('')
 codeOut('')
 
-codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *var) {') 
+codeOut('int jswGetSymbolIndexForObject(JsVar *var) {') 
 codeOut('  if (jsvIsRoot(var)) {');
-codeOut('    return &jswSymbolTables[jswSymbolIndex_global];');
+codeOut('    return jswSymbolIndex_global;');
 codeOut('  }');
 codeOut('  if (jsvIsNativeObject(var)) {');
 codeOut('    assert(var->varData.nativeObject);');
-codeOut('    return var->varData.nativeObject;');
+codeOut('    return (int)(var->varData.nativeObject-jswSymbolTables);'); # fixme - why not store int??
 codeOut('  }');
 codeOut('  // Instantiated objects, so we should point to the prototypes');
 for className in objectChecks.keys():
   if not className=="global": # we did 'global' above
-    codeOut("  if ("+objectChecks[className]+") return &jswSymbolTables[jswSymbolIndex_"+className+"_prototype];")
-codeOut("  return 0;")
+    codeOut("  if ("+objectChecks[className]+") return jswSymbolIndex_"+className+"_prototype;")
+codeOut("  return -1;")
 codeOut('}')
 
 codeOut('');
 codeOut('');
+codeOut('const JswSymList *jswGetSymbolListForObject(JsVar *var) {') 
+codeOut('  int symIdx = jswGetSymbolIndexForObject(var);');
+codeOut('  return (symIdx>=0) ? &jswSymbolTables[symIdx] : 0;');
+codeOut('}');
+codeOut('');
+codeOut('');
+
 
 
 codeOut('JsVar *jswFindBuiltIn(JsVar *parent, const char *name) {');
@@ -460,8 +482,8 @@ codeOut('    if (pin != PIN_UNDEFINED) {');
 codeOut('      return jsvNewFromPin(pin);');
 codeOut('    }');
 codeOut('  }');
-codeOut('  const JswSymList *symList = jswGetSymbolListForObject(parent);');
-codeOut('  if (symList) return jswBinarySearch(symList, parent, name);');
+codeOut('  int symIdx = jswGetSymbolIndexForObject(parent);');
+codeOut('  if (symIdx>=0) return jswBinarySearch(&jswSymbolTables[symIdx], parent, name);');
 codeOut('  return 0;')
 codeOut('}')
 

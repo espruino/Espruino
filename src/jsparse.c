@@ -832,26 +832,11 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 JsVar *jspGetNamedVariable(const char *tokenName) {
   JsVar *a = JSP_SHOULD_EXECUTE ? jspeiFindInScopes(tokenName) : 0;
   if (JSP_SHOULD_EXECUTE && !a) {
-    /* Special case! We haven't found the variable, so check out
-     * and see if it's one of our builtins...  */
-    if (jswIsBuiltInObject(tokenName)) {
-      // Check if we have a built-in function for it
-      // OPT: Could we instead have jswIsBuiltInObjectWithoutConstructor?
-      JsVar *obj = jswFindBuiltInFunction(0, tokenName);
-      // If not, make one
-      if (!obj)
-        obj = jspNewBuiltin(tokenName);
-      if (obj) { // not out of memory
-        a = jsvAddNamedChild(execInfo.root, obj, tokenName);
-        jsvUnLock(obj);
-      }
-    } else {
-      a = jswFindBuiltInFunction(0, tokenName);
-      if (!a) {
-        /* Variable doesn't exist! JavaScript says we should create it
-         * (we won't add it here. This is done in the assignment operator)*/
-        a = jsvMakeIntoVariableName(jsvNewFromString(tokenName), 0);
-      }
+    a = jswFindBuiltIn(execInfo.root, tokenName);
+    if (!a) {
+      /* Variable doesn't exist! JavaScript says we should create it
+       * (we won't add it here. This is done in the assignment operator)*/
+      a = jsvMakeIntoVariableName(jsvNewFromString(tokenName), 0);
     }
   }
   return a;
@@ -865,7 +850,7 @@ static NO_INLINE JsVar *jspGetNamedFieldInParents(JsVar *object, const char* nam
   /* Check for builtins via separate function
    * This way we save on RAM for built-ins because everything comes out of program code */
   if (!child) {
-    child = jswFindBuiltInFunction(object, name);
+    child = jswFindBuiltIn(object, name);
   }
 
   /* We didn't get here if we found a child in the object itself, so
@@ -2322,7 +2307,7 @@ NO_INLINE JsVar *jspeStatement() {
 // -----------------------------------------------------------------------------
 /// Create a new built-in object that jswrapper can use to check for built-in functions
 JsVar *jspNewBuiltin(const char *instanceOf) {
-  JsVar *objFunc = jswFindBuiltInFunction(0, instanceOf);
+  JsVar *objFunc = jswFindBuiltIn(0, instanceOf);
   if (!objFunc) return 0; // out of memory
   return objFunc;
 }

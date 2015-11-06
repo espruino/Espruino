@@ -220,7 +220,7 @@ JsVar *jswrap_object_keys_or_property_names(
     JsVar *protoOwner = jspGetPrototypeOwner(obj);
     if (protoOwner) {
       // If protoOwner then this is the prototype (protoOwner is the object)
-      symbols = jswGetSymbolListForObjectProto(protoOwner);
+      symbols = jswGetSymbolListForObject(protoOwner);
       jsvUnLock(protoOwner);
     } else if (!jsvIsObject(obj) || jsvIsRoot(obj)) {
       // get symbols, but only if we're not doing it on a basic object
@@ -234,7 +234,7 @@ JsVar *jswrap_object_keys_or_property_names(
     }
 
     if (includePrototype) {
-      symbols = jswGetSymbolListForObjectProto(obj);
+      symbols = jswGetSymbolListForObject(obj);
       if (symbols) {
         unsigned int i;
         for (i=0;i<symbols->symbolCount;i++)
