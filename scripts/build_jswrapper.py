@@ -183,7 +183,6 @@ for jsondata in jsondatas:
     jsondata["class"]=jsondata["class"]+".prototype"
 #    print(jsondata["class"]+"."+jsondata["name"]+" needs updating")
 
-
   if jsondata["type"]=="class":
     if "check" in jsondata:
       objectChecks[jsondata["name"]] = jsondata["check"]
@@ -196,6 +195,28 @@ for jsondata in jsondatas:
   if jsondata["type"]=="constructor":
     if not jsondata["name"] in constructors:
       constructors[jsondata["name"]] = jsondata
+
+  if jsondata["type"]=="class":
+    if "instanceof" in jsondata:
+      jsondata = { 
+        "type":"variable", 
+        "static":True,
+        "name":"__proto__", 
+        "class":jsondata["name"],
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["instanceof"].replace(".","_")+"_prototype)",
+        "filename" : jsondata["filename"]
+      }
+      jsondatas.append(jsondata);
+    if "prototype" in jsondata:
+      jsondata = { 
+        "type":"variable", 
+        "static":True,
+        "name":"__proto__",         
+        "class":jsondata["name"]+".prototype",
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+jsondata["prototype"].replace(".","_")+"_prototype)",
+        "filename" : jsondata["filename"]
+      }
+      jsondatas.append(jsondata);
 
 # Make sure we have any classes that are referenced
 for jsondata in jsondatas:
@@ -218,12 +239,13 @@ for className in classes:
       };
 
 # Add constructors if we need them
+# TODO: Do we need this???
 for className in classes:
   if not className in constructors:
     print("Added constructor for "+className);
     jsondata = {
         "type":"constructor", "class": className,  "name": className,
-        "generate_full" : "jswNewFromSymbolTable(&jswSymbolTables[jswSymbolIndex_"+className.replace(".","_")+"])",
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
         "filename" : "jswrapper.c",
         "static" : "True",
         "return" : [ "JsVar", "" ]
@@ -255,10 +277,25 @@ for libName in libraries:
 # Now populate with prototypes
 for className in classes:
   if className[-10:]==".prototype":
-    symbolTables[className[:-10]]["functions"].append({ "name":"prototype", "link":className });#] = constructors[className]
-    symbolTables[className]["functions"].append({ "name":"constructor", "link":className[:-10] });
-  if "instanceof" in classes[className]:
-    symbolTables[className]["functions"].append({ "name":"__proto__", "link":classes[className]["instanceof"] });
+    jsondata = { 
+        "type":"variable", 
+        "static":True,
+        "name":"prototype", 
+        "class":className[:-10],
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className.replace(".","_")+")",
+        "filename" : classes[className]["filename"]
+    }
+    jsondatas.append(jsondata);
+    jsondata = { 
+        "type":"variable", 
+        "static":True,
+        "name":"constructor", 
+        "class":className,
+        "generate_full" : "jswFindFromSymbolTable(jswSymbolIndex_"+className[:-10].replace(".","_")+")",
+        "filename" : classes[className]["filename"]
+    };
+    jsondatas.append(jsondata);
+
 
 try:
   for j in jsondatas:
@@ -288,12 +325,15 @@ for include in includes:
 codeOut('');
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut("""
+const JswSymList jswSymbolTables[]; // forward decl
 
-JsVar *jswNewFromSymbolTable(const JswSymList *list) {
+JsVar *jswFindFromSymbolTable(int tableIndex) {
+  // TODO: first see if one is actually defined
   JsVar *v = jsvNewWithFlags(JSV_OBJECT | JSV_NATIVE);
-  if (v) v->varData.nativeObject = list;
+  if (v) v->varData.nativeObject = &jswSymbolTables[tableIndex];
   return v;
 }
+
 
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name) {
   int searchMin = 0;
@@ -324,8 +364,6 @@ codeOut('// --------------------------------------------------------------------
 codeOut('// --------------------------------------------------------------- SYMBOL TABLE INDICES    ');
 codeOut('// -----------------------------------------------------------------------------------------');
 codeOut('');
-codeOut('const JswSymList jswSymbolTables[]; // forward decl');
-codeOut('');
 
 idx = 0
 for name in symbolTables:
@@ -348,7 +386,7 @@ for jsondata in jsondatas:
     jsondata["generate"] = gen_name
     s = [ ]
 
-    if jsondata["type"]=="object":
+    if jsondata["type"]=="object": # TODO: this isn't right now...
       jsondata["generate_full"] = "jspNewObject(\""+jsondata["name"]+"\", \""+jsondata["instanceof"]+"\") /* needs JSWAT_EXECUTE_IMMEDIATELY */";
       params = []
       result = ["JsVar"]
