@@ -72,13 +72,13 @@ for pin in pins:
       if not pinutils.CLASSES[func] in functionsOnBoard:
         functionsOnBoard.append(pinutils.CLASSES[func])
 
-pinmap = {};
-if '_pinmap' in board.board:
-  pinmap = board.board['_pinmap'];
-
 # -----------------------------------------------------------------------------------------
 
-def dump_pin(pin, pinstrip):
+def dump_pin(brd, pin, pinstrip):
+
+      pinmap = {};
+      if '_pinmap' in brd:
+        pinmap = brd['_pinmap'];
 
       if pin in pinmap:
         pin = pinmap[pin];      
@@ -97,8 +97,8 @@ def dump_pin(pin, pinstrip):
       if not_five_volt:
         pinHTML2 += '<SPAN class="pinfunction NOT_5V" title="Not 5v Tolerant">3.3v</SPAN>\n';
 
-      if ("_notes" in board.board) and (pin in board.board["_notes"]):
-        pinHTML2 += '<SPAN class="pinfunction NOTE" title="'+board.board["_notes"][pin]+'">!</SPAN>\n';
+      if ("_notes" in brd) and (pin in brd["_notes"]):
+        pinHTML2 += '<SPAN class="pinfunction NOTE" title="'+brd["_notes"][pin]+'">!</SPAN>\n';
 
       reverse = pinstrip=="left" or pinstrip=="right2";
       if not reverse: writeHTML(pinHTML+"\n"+pinHTML2)
@@ -239,12 +239,6 @@ writeHTML("""  <STYLE>
 }
 
 """);
-for pinstrip in board.board:
-  if pinstrip[0]!='_':
-    writeHTML("   #"+pinstrip+" { position: absolute; }")
-    writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
-if "_css" in board.board:
-  writeHTML(board.board["_css"])
 writeHTML("  </STYLE>"+'<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>')
 writeHTML("""
   <SCRIPT type="text/javascript"> 
@@ -324,35 +318,52 @@ if "CAN" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction CAN"
 
 writeHTML("  </ul>");
 
-writeHTML('  <DIV id="boardcontainer">')
-writeHTML('  <DIV id="board">')
-usedpins = []
-for pinstrip in board.board:
-  if pinstrip[0]!='_':
-    writeHTML('   <DIV id="'+pinstrip+'">')
-    for pin in board.board[pinstrip]:  
-      usedpins.append(pin)
-      dump_pin(pin, pinstrip)
-    writeHTML('   </DIV>')    
+def writeBoard(brd):
+  writeHTML('  <DIV id="boardcontainer">')
+  writeHTML('  <DIV id="board">')
 
-otherpins=0
-for pinstruct in pins:
-  pin = pinstruct["name"]
-  if not pin in usedpins: 
-    otherpins = otherpins + 1
+  writeHTML('  <STYLE>')
+  for pinstrip in brd:
+    if pinstrip[0]!='_':
+      writeHTML("   #"+pinstrip+" { position: absolute; }")
+      writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
+  if "_css" in brd:
+    writeHTML(brd["_css"])
+  writeHTML('  </STYLE>')
 
-writeHTML('  </DIV id="board">')
-writeHTML('  </DIV id="boardcontainer">')
-
-if otherpins>0:
-  writeHTML('  <DIV id="otherpins">')
-  writeHTML('   <H2>Pins not on connectors</H2>')
+  usedpins = []
+  for pinstrip in brd:
+    if pinstrip[0]!='_':
+      writeHTML('   <DIV id="'+pinstrip+'">')
+      for pin in brd[pinstrip]:  
+        usedpins.append(pin)
+        dump_pin(brd, pin, pinstrip)
+      writeHTML('   </DIV>')    
+    
+  otherpins=0
   for pinstruct in pins:
-    pin = pinstruct["name"]        
-    if not pin in usedpins:    
-      dump_pin(pin, "otherpins")
-  writeHTML('  </DIV>')
-writeHTML('  <P></P>')
+    pin = pinstruct["name"]
+    if not pin in usedpins: 
+      otherpins = otherpins + 1
+    
+  writeHTML('  </DIV id="board">')
+  writeHTML('  </DIV id="boardcontainer">')
+
+  if otherpins>0:
+    writeHTML('  <DIV id="otherpins">')
+    writeHTML('   <H2>Pins not on connectors</H2>')
+    for pinstruct in pins:
+      pin = pinstruct["name"]        
+      if not pin in usedpins:    
+        dump_pin(brd, pin, "otherpins")
+    writeHTML('  </DIV>')
+  writeHTML('  <P></P>')
+
+if hasattr(board, 'boards'):
+  for brd in board.boards:
+    writeBoard(brd)
+else:
+  writeBoard(board.board)
 
 #writeHTML('<SCRIPT type="text/javascript"> $(function() {');
 #writeHTML('var x = $("#board").offset().left+500;');

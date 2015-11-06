@@ -16,6 +16,7 @@
 import pinutils;
 info = {
  'name'            : "ESP8266 512KB",
+ 'espruino_page_link' : 'ESP8266_12',
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_board',
@@ -44,10 +45,86 @@ devices = {
 };
 
 # left-right, or top-bottom order
-board = {
+board_esp12 = {
+    'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
+    'bottom' : ['VCC', 'D13', 'D12', 'D14', 'B16', 'CH_EN', 'A0', 'RESET'],
+    'right' : ['D11', 'D8', 'D9', 'D10', 'D7', 'D6'],
 };
-board["_css"] = """
+board_esp12["bottom"].reverse()
+board_esp12["right"].reverse()
+board_esp12["_css"] = """
+#board {
+  width:  600px;
+  height: 384px;
+  left: 50px;
+  top: 200px;
+  background-image: url(img/ESP8266_12.jpg);
+}
+#boardcontainer {
+  height: 800px;
+}
+#right {
+  top: 30px;
+  left: 600px;
+}
+#top {
+  top: 10px;
+  left: 197px;
+}
+#bottom  {
+  top: 360px;
+  left: 197px;
+}
+.rightpin {
+  margin: 28px 0px;
+}
+.toppin, .bottompin {
+  margin: 0px 12px;
+}
 """;
+
+# left-right, or top-bottom order
+board_esp01 = {
+    'top' : ['GND', 'D2', 'D0', 'D3'],
+    'bottom' : ['D1', 'CH_PD', 'RESET', 'VCC'],
+  '_notes' : {
+    'D3' : "Default UART1 RX pin",
+    'D1' : "Default UART1 TX pin",
+  }
+};
+board_esp01["bottom"].reverse()
+board_esp01["_css"] = """
+#board {
+  width:  128px;
+  height: 201px;
+  left: 150px;
+  top: 100px;
+  background-image: url(img/ESP8266_01.jpg);
+}
+#boardcontainer {
+  height: 500px;
+}
+#right {
+  top: 30px;
+  left: 200px;
+}
+#top {
+  top: 10px;
+  left: 197px;
+}
+#bottom  {
+  top: 360px;
+  left: 197px;
+}
+.rightpin {
+  margin: 28px 0px;
+}
+.toppin, .bottompin {
+  margin: 0px 12px;
+}
+""";
+
+boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)
