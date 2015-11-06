@@ -23,6 +23,7 @@
  */
 typedef JsVarRef JsVarRefCounter;
 
+
 /** These flags are at the top of each JsVar and provide information about what it is, as
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
@@ -165,6 +166,19 @@ typedef struct {
 #endif
 } PACKED_FLAGS JsVarDataRef;
 
+/// Structure for each symbol in the list of built-in symbols
+typedef struct {
+  unsigned short strOffset;
+  void (*functionPtr)(void); // TODO: move to end to align to 4
+  unsigned short functionSpec; // JsnArgumentType
+} PACKED_FLAGS JswSymPtr;
+
+/// Information for each list of built-in symbols
+typedef struct {
+  const JswSymPtr *symbols;
+  unsigned char symbolCount;
+  const char *symbolChars;
+} PACKED_FLAGS JswSymList;
 
 /// Union that contains all the different types of data
 typedef union {
@@ -176,6 +190,7 @@ typedef union {
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
+    const JswSymList *nativeObject; ///< A native object
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
 
@@ -358,6 +373,7 @@ extern ALWAYS_INLINE bool jsvIsArrayBuffer(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsArrayBufferName(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNative(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNativeFunction(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsNativeObject(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsUndefined(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNull(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsBasic(const JsVar *v); ///< Is this *not* an array/object/etc

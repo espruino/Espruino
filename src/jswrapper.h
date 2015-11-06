@@ -41,20 +41,6 @@ typedef enum {
 // number of bits needed for each argument bit
 #define JSWAT_BITS GET_BIT_NUMBER(JSWAT_MASK+1)
 
-/// Structure for each symbol in the list of built-in symbols
-typedef struct {
-  unsigned short strOffset;
-  void (*functionPtr)(void);
-  unsigned short functionSpec; // JsnArgumentType
-} PACKED_FLAGS JswSymPtr;
-
-/// Information for each list of built-in symbols
-typedef struct {
-  const JswSymPtr *symbols;
-  unsigned char symbolCount;
-  const char *symbolChars;
-} PACKED_FLAGS JswSymList;
-
 /// Do a binary search of the symbol table list
 JsVar *jswBinarySearch(const JswSymList *symbolsPtr, JsVar *parent, const char *name);
 
