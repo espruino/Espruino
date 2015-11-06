@@ -43,15 +43,7 @@ chip = {
   },
   'place_text_section' : 0x00010000, # note flash_available above
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ 'GND', '5V', 'VDD', 'B3', 'B4', 'B5', 'B6', 'B7'],
-  'bottom' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A5' ], 
 
-
-  'right2' : ['B8','GND','A0','A1','A3','B2'],
-  'right' : ['B9','A10','A8','A2','A4','A6'],        
-};
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
             'pin_out' : 'H1' }, # checked
@@ -71,7 +63,16 @@ devices = {
           }
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'top' : [ 'GND', '5V', 'VDD', 'B3', 'B4', 'B5', 'B6', 'B7'],
+  'bottom' : [ 'BAT_IN','B15', 'B14', 'B13', 'B10', 'B1', 'A7', 'A5' ], 
+
+
+  'right2' : ['B8','GND','A0','A1','A3','B2'],
+  'right' : ['B9','A10','A8','A2','A4','A6'],        
+};
+board["_css"] = """
 #board {
   width: 507px;
   height: 256px;

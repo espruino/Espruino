@@ -34,13 +34,7 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'left' : [ ], # fixme
-  'left2' : [ ],
-  'right2' : [ ],
-  'right' : [ ],
-};
+
 devices = {
   'OSC' : { 'pin_1' : 'H0',
             'pin_2' : 'H1' },
@@ -150,8 +144,14 @@ devices = {
           },
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ ], # fixme
+  'left2' : [ ],
+  'right2' : [ ],
+  'right' : [ ],
+};
+board["_css"] = """
 #board {
   width: 680px;
   height: 1020px;

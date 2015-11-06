@@ -35,20 +35,6 @@ chip = {
   'adc' : 3,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ 'D15','D14', 'AREF','GND', 'D13', 'D12', 'D11','D10', 'D9', 'D8', '', 'D7', 'D6', 'D5', 'D4', 'D3', 'D2', 'D1', 'D0'],
-  'top2' : [ 'D39','D38','D37', 'D36', 'D35', 'D34', 'D33','D32', 'D31', 'D30', '', 'D29', 'D28', 'D27', 'D26', 'D25', 'D24', 'D23', 'D22'],
-  'bottom' : [ 'NC','DVCC','RST', '3.3', '5', 'GNDA', 'GND', 'VIN', '', 'D16', 'D17', 'D18', 'D19', 'D14', 'D15'],  
-  'bottom2' : [ 'BOOT0','BOOT1','RST', '3.3', 'NC', 'GND', 'D26', 'D28', '', 'D40', 'D41', 'D42', 'D43', 'D44', 'D45'],
-  
-  'right2' : [ 'NC','D13','D12' ],
-  'right' : [ 'GND','D11','NC' ],
-
-};
-
-board["right"].reverse()
-board["right2"].reverse()
 
 devices = {
 #  'OSC' : { 'pin_1' :  'D0',
@@ -68,7 +54,20 @@ devices = {
  #           'pin_clk' :  'D32'}, #'B13'
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'top' : [ 'D15','D14', 'AREF','GND', 'D13', 'D12', 'D11','D10', 'D9', 'D8', '', 'D7', 'D6', 'D5', 'D4', 'D3', 'D2', 'D1', 'D0'],
+  'top2' : [ 'D39','D38','D37', 'D36', 'D35', 'D34', 'D33','D32', 'D31', 'D30', '', 'D29', 'D28', 'D27', 'D26', 'D25', 'D24', 'D23', 'D22'],
+  'bottom' : [ 'NC','DVCC','RST', '3.3', '5', 'GNDA', 'GND', 'VIN', '', 'D16', 'D17', 'D18', 'D19', 'D14', 'D15'],  
+  'bottom2' : [ 'BOOT0','BOOT1','RST', '3.3', 'NC', 'GND', 'D26', 'D28', '', 'D40', 'D41', 'D42', 'D43', 'D44', 'D45'],
+  
+  'right2' : [ 'NC','D13','D12' ],
+  'right' : [ 'GND','D11','NC' ],
+
+};
+board["right"].reverse()
+board["right2"].reverse()
+board["_css"] = """
 #board {
   width: 1052px;
   height: 506px;
