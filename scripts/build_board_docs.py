@@ -352,7 +352,7 @@ def writeBoard(brd, brdnum):
   writeHTML('  </DIV>')
   writeHTML('  </DIV>')
 
-  if otherpins>0 and not '_hide_not_on_connectors' in brd and not brd._hide_not_on_connectors:
+  if otherpins>0 and not ('_hide_not_on_connectors' in brd and brd._hide_not_on_connectors):
     writeHTML('  <DIV id="otherpins">')
     writeHTML('   <H2>Pins not on connectors</H2>')
     for pinstruct in pins:
