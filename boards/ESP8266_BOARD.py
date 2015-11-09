@@ -85,8 +85,8 @@ board_esp12["_css"] = """
 
 # left-right, or top-bottom order
 board_esp01 = {
-    'left' : ['GND', 'D2', 'D0', 'D3'],
-    'right' : ['D1', 'CH_PD', 'RESET', 'VCC'],
+    'left' : ['D3', 'D0', 'D2', 'GND'],
+    'right' : ['VCC', 'RESET', 'CH_PD', 'D1'],
     '_hide_not_on_connectors' : True
 };
 board_esp01["_css"] = """
