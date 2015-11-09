@@ -16,7 +16,7 @@
 import pinutils;
 info = {
  'name'            : "ESP8266 512KB",
- 'espruino_page_link' : 'ESP8266_12',
+ 'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_board',
@@ -57,66 +57,66 @@ board_esp12["_css"] = """
   width:  600px;
   height: 384px;
   left: 50px;
-  top: 200px;
+  top: 100px;
   background-image: url(img/ESP8266_12.jpg);
 }
 #boardcontainer {
-  height: 800px;
+  height: 600px;
 }
 #board #right {
-  top: 30px;
+  top: 60px;
   left: 600px;
 }
 #board #top {
-  top: 10px;
-  left: 197px;
+  bottom: 360px;
+  left: 195px;
 }
 #board #bottom  {
-  top: 360px;
-  left: 197px;
+  top: 365px;
+  left: 195px;
 }
 #board .rightpin {
-  margin: 28px 0px;
+  height: 48px;
 }
 #board .toppin, #board .bottompin {
-  margin: 0px 12px;
+  width: 44px;
 }
 """;
 
 # left-right, or top-bottom order
 board_esp01 = {
-    'top' : ['GND', 'D2', 'D0', 'D3'],
-    'bottom' : ['D1', 'CH_PD', 'RESET', 'VCC'],
+    'left' : ['GND', 'D2', 'D0', 'D3'],
+    'right' : ['D1', 'CH_PD', 'RESET', 'VCC'],
     '_hide_not_on_connectors' : True
 };
 board_esp01["_css"] = """
 #board {
-  width:  128px;
-  height: 201px;
-  left: 150px;
-  top: 50px;
-  background-image: url(img/ESP8266_01.png);
+  width:  500px;
+  height: 299px;
+  left: 50px;
+  top: 0px;
+  background-image: url(img/ESP8266_01.jpg);
 }
 #boardcontainer {
-  height: 500px;
+  height: 300px;
 }
 #board #right {
   top: 30px;
   left: 200px;
 }
-#board #top {
-  bottom: 40px;
-  left: 30px;
+#board #left {
+  top: 65px;
+  right: 80px;
 }
-#board #bottom  {
-  top: 185px;
-  left: 28px;
+#board #right  {
+  top: 65px;
+  left: 460px;
 }
-#board .toppin {
-  width: 12px;
+#board .leftpin {
+  height: 48px;
 }
-#board .bottompin {
-  width: 12px;
+#board .rightpin {
+  height: 48px;
 }
 """;
 
