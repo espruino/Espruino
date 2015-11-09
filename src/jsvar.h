@@ -494,6 +494,7 @@ bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - fast
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
 size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
+JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
@@ -694,7 +695,33 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
-// Create a new typed array of the given type and length
+/// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
+/** Create a new arraybuffer of the given type and length, also return a pointer
+ * to the contiguous memory area containing it. Returns 0 if it was unable to
+ * allocate it. */
+JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
+/** Get the given JsVar as a character array. If it's a flat string, return a
+ * pointer to it, or if it isn't allocate data on the stack and copy the data.
+ *
+ * This has to be a macro - if alloca is called from within another function
+ * the data will be lost when we return. */
+#define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
+  size_t TARGET_LENGTH = 0;                                                   \
+  char *TARGET_PTR = 0;                                                       \
+  if (jsvIsFlatString(DATA)) {                                                \
+    TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
+    TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
+  } else {                                                                    \
+   TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
+    if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
+    } else {                                                                  \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);     \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+    }                                                                         \
+  }
 
 #endif /* JSVAR_H_ */

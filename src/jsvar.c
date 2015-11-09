@@ -1143,6 +1143,13 @@ char *jsvGetFlatStringPointer(JsVar *v) {
   return (char*)(v+1); // pointer to the next JsVar
 }
 
+JsVar *jsvGetFlatStringFromPointer(char *v) {
+  JsVar *secondVar = (JsVar*)v;
+  JsVar *flatStr = secondVar-1;
+  assert(jsvIsFlatString(flatStr));
+  return flatStr;
+}
+
 //  IN A STRING  get the number of lines in the string (min=1)
 size_t jsvGetLinesInString(JsVar *v) {
   size_t lines = 1;
@@ -3117,4 +3124,19 @@ JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length) {
   JsVar *array = jswrap_typedarray_constructor(type, lenVar,0,0);
   jsvUnLock(lenVar);
   return array;
+}
+
+JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr) {
+  assert(ptr);
+  *ptr=0;
+  JsVar *backingString = jsvNewFlatStringOfLength(length);
+  if (!backingString) return 0;
+  JsVar *arr = jsvNewArrayBufferFromString(backingString, length);
+  if (!arr) {
+    jsvUnLock(backingString);
+    return 0;
+  }
+  *ptr = jsvGetFlatStringPointer(backingString);
+  jsvUnLock(backingString);
+  return arr;
 }

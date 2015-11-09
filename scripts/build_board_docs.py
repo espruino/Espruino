@@ -143,8 +143,8 @@ if not embeddable:
  <HEAD>
 """);
 writeHTML("""  <STYLE>
-   #boardcontainer { position: relative; }
-   #board { 
+   .boardcontainer { position: relative; }
+   .board { 
      position: absolute; 
      background-size: 100% auto; # width and height, can be %, px or whatever.
    }
@@ -318,18 +318,21 @@ if "CAN" in functionsOnBoard: writeHTML("""    <li><span class="pinfunction CAN"
 
 writeHTML("  </ul>");
 
-def writeBoard(brd):
-  writeHTML('  <DIV id="boardcontainer">')
-  writeHTML('  <DIV id="board">')
+def writeBoard(brd, brdnum):
+  boardname = "board"
+  if brdnum!=0: boardname += str(brdnum+1)
 
   writeHTML('  <STYLE>')
   for pinstrip in brd:
     if pinstrip[0]!='_':
-      writeHTML("   #"+pinstrip+" { position: absolute; }")
-      writeHTML("   ."+pinstrip+"pin { white-space: nowrap; }")
+      writeHTML("  #"+boardname+" #"+pinstrip+" { position: absolute; }")
+      writeHTML("  #"+boardname+" ."+pinstrip+"pin { white-space: nowrap; }")
   if "_css" in brd:
-    writeHTML(brd["_css"])
+    writeHTML(brd["_css"].replace("#board", "#"+boardname));
   writeHTML('  </STYLE>')
+
+  writeHTML('  <DIV id="'+boardname+'container" class="boardcontainer">')
+  writeHTML('  <DIV id="'+boardname+'" class="board">')
 
   usedpins = []
   for pinstrip in brd:
@@ -346,10 +349,10 @@ def writeBoard(brd):
     if not pin in usedpins: 
       otherpins = otherpins + 1
     
-  writeHTML('  </DIV id="board">')
-  writeHTML('  </DIV id="boardcontainer">')
+  writeHTML('  </DIV>')
+  writeHTML('  </DIV>')
 
-  if otherpins>0:
+  if otherpins>0 and not ('_hide_not_on_connectors' in brd and brd["_hide_not_on_connectors"]):
     writeHTML('  <DIV id="otherpins">')
     writeHTML('   <H2>Pins not on connectors</H2>')
     for pinstruct in pins:
@@ -360,10 +363,10 @@ def writeBoard(brd):
   writeHTML('  <P></P>')
 
 if hasattr(board, 'boards'):
-  for brd in board.boards:
-    writeBoard(brd)
+  for brdnum in range(len(board.boards)):
+    writeBoard(board.boards[brdnum], brdnum)
 else:
-  writeBoard(board.board)
+  writeBoard(board.board, 0)
 
 #writeHTML('<SCRIPT type="text/javascript"> $(function() {');
 #writeHTML('var x = $("#board").offset().left+500;');
