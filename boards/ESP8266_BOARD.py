@@ -63,22 +63,22 @@ board_esp12["_css"] = """
 #boardcontainer {
   height: 800px;
 }
-#right {
+#board #right {
   top: 30px;
   left: 600px;
 }
-#top {
+#board #top {
   top: 10px;
   left: 197px;
 }
-#bottom  {
+#board #bottom  {
   top: 360px;
   left: 197px;
 }
-.rightpin {
+#board .rightpin {
   margin: 28px 0px;
 }
-.toppin, .bottompin {
+#board .toppin, #board .bottompin {
   margin: 0px 12px;
 }
 """;
@@ -87,40 +87,36 @@ board_esp12["_css"] = """
 board_esp01 = {
     'top' : ['GND', 'D2', 'D0', 'D3'],
     'bottom' : ['D1', 'CH_PD', 'RESET', 'VCC'],
-  '_notes' : {
-    'D3' : "Default UART1 RX pin",
-    'D1' : "Default UART1 TX pin",
-  }
+    '_hide_not_on_connectors' : True
 };
-board_esp01["bottom"].reverse()
 board_esp01["_css"] = """
 #board {
   width:  128px;
   height: 201px;
   left: 150px;
-  top: 100px;
-  background-image: url(img/ESP8266_01.jpg);
+  top: 50px;
+  background-image: url(img/ESP8266_01.png);
 }
 #boardcontainer {
   height: 500px;
 }
-#right {
+#board #right {
   top: 30px;
   left: 200px;
 }
-#top {
-  top: 10px;
-  left: 197px;
+#board #top {
+  bottom: 40px;
+  left: 30px;
 }
-#bottom  {
-  top: 360px;
-  left: 197px;
+#board #bottom  {
+  top: 185px;
+  left: 28px;
 }
-.rightpin {
-  margin: 28px 0px;
+#board .toppin {
+  width: 12px;
 }
-.toppin, .bottompin {
-  margin: 0px 12px;
+#board .bottompin {
+  width: 12px;
 }
 """;
 
@@ -128,5 +124,7 @@ boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)
+  pinutils.findpin(pins, "PD1", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["USART1_RX"]=0;
   # just fake pins D0 .. D15
   return pins
