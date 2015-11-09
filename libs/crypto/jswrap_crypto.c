@@ -28,8 +28,9 @@
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for the original Espruino boards.
-For other boards you will have to make build your own firmware.
+**Note:** This library is currently only included in builds for the Espruino Pico.
+For other boards you will have to make build your own firmware, and you may need
+to remove other features in order to make room.
 */
 
 
