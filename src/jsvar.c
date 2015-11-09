@@ -897,7 +897,8 @@ const char *jsvGetConstString(const JsVar *v) {
 /// Return the 'type' of the JS variable (eg. JS's typeof operator)
 const char *jsvGetTypeOf(const JsVar *v) {
   if (jsvIsUndefined(v)) return "undefined";
-  if (jsvIsNull(v) || jsvIsObject(v) || jsvIsArray(v)) return "object";
+  if (jsvIsNull(v) || jsvIsObject(v) || 
+      jsvIsArray(v) || jsvIsArrayBuffer(v)) return "object";
   if (jsvIsFunction(v)) return "function";
   if (jsvIsString(v)) return "string";
   if (jsvIsBoolean(v)) return "boolean";
