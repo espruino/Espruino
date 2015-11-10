@@ -777,7 +777,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   if (jsvIsNativeFunction(parent))
     fn = jsvNewNativeFunction(parent->varData.native.ptr, parent->varData.native.argTypes);
   else
-    fn = jsvNewWithFlags(JSV_FUNCTION);
+    fn = jsvNewWithFlags(jsvIsFunctionReturn(parent) ? JSV_FUNCTION_RETURN : JSV_FUNCTION);
   if (!fn) return 0;
 
   // Old function info

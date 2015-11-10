@@ -694,18 +694,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jsvUnLock2(name, functionInternalName);
       }
 
-      // setup a return variable
-      JsVar *returnVarName;
-      if (jsvIsFunctionReturn(function)) {
-        // it's an implicit return - we don't need a return variable
-        returnVarName = 0;
-      } else {
-        // setup a return variable
-        returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
-        if (!returnVarName) // out of memory
-          jspSetError(false);
-      }
-
       if (!JSP_HAS_ERROR) {
         // save old scopes
         JsVar *oldScopes[JSPARSE_MAX_SCOPES];
@@ -765,12 +753,20 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #else
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
-            if (returnVarName) {
+            if (jsvIsFunctionReturn(function)) {
+              // implicit return - we just need an expression
+              returnVar = jsvSkipNameAndUnLock(jspeExpression());
+            } else {
+              // setup a return variable
+              JsVar *returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
               // parse the whole block
               jspeBlockNoBrackets();
-            } else {
-              // implicit return - we just need an expression
-              returnVarName = jspeExpression();
+              /* get the real return var before we remove it from our function.
+               * We can unlock below because returnVarName is still part of
+               * functionRoot, so won't get freed. */
+              returnVar = jsvSkipNameAndUnLock(returnVarName);
+              if (returnVarName) // could have failed with out of memory
+                jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
             }
             JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
@@ -778,11 +774,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #ifdef USE_DEBUGGER
             bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
-              JsVar *v = jsvSkipName(returnVarName);
               jsiConsolePrint("Value returned is =");
-              jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+              jsfPrintJSON(returnVar, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
               jsiConsolePrintChar('\n');
-              jsvUnLock(v);
               if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
                 calledDebugger = true;
                 jsiDebuggerLoop();
@@ -826,11 +820,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         execInfo.scopeCount = oldScopeCount;
       }
       jsvUnLock(functionCode);
-
-      /* get the real return var before we remove it from our function */
-      returnVar = jsvSkipNameAndUnLock(returnVarName);
-      if (jsvIsName(returnVarName)) // could have failed with out of memory
-        jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
       jsvUnLock(functionRoot);
     }
 

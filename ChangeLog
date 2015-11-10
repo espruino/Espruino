@@ -17,6 +17,7 @@
             Fix memory leak in tab autocomplete on objects
             Added AES crypto library (Pico only)
             Fix `typeof (new Uint8Array([1, 2, 3, 4]))`
+            Store `function(){return ...}` without the return (fix #700)
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
