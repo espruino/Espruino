@@ -205,8 +205,8 @@ typedef struct {
  * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR | NATIVE_FUNC |
  * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|-------------|
  * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
- * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
- * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
+ * | 4 - 5 | next    | data   | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
+ * | 6 - 7 | prev    | data   | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
  * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
  * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
  * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |

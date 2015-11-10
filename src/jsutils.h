@@ -130,9 +130,9 @@ extern int isfinite ( double );
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
 // 64 bit needs extra space to be able to store a function pointer
-#define JSVAR_DATA_STRING_LEN  8
+#define JSVAR_DATA_STRING_LEN  (8+(2*JSVARREF_SIZE))
 #else
-#define JSVAR_DATA_STRING_LEN  4
+#define JSVAR_DATA_STRING_LEN  (4+(2*JSVARREF_SIZE))
 #endif
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
