@@ -36,7 +36,8 @@ typedef enum {
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
     JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_INTEGER     = JSV_FUNCTION+1, ///< integer number (note JSV_NUMERICMASK)
+    JSV_FUNCTION_RETURN    = JSV_FUNCTION+1, ///< A simple function that starts with `return` (which is implicit)
+    JSV_INTEGER     = JSV_FUNCTION_RETURN+1, ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
@@ -351,6 +352,7 @@ extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits du
 extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFunction(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
 extern ALWAYS_INLINE bool jsvIsFunctionParameter(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsObject(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsArray(const JsVar *v);

@@ -375,6 +375,13 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     return 0;
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
+  /* If the function starts with return, treat it specially -
+   * we don't want to store the 'return' part of it
+   */
+  if (funcVar && execInfo.lex->tk==LEX_R_RETURN) {
+    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+    JSP_ASSERT_MATCH(LEX_R_RETURN);
+  }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
   if (actuallyCreateFunction && execInfo.lex->lineNumberOffset) {
@@ -451,9 +458,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   if (JSP_SHOULD_EXECUTE) if (!jspCheckStackPosition()) return 0; // try and ensure that we won't overflow our stack
 
   if (JSP_SHOULD_EXECUTE && function) {
-    JsVar *functionRoot;
-    JsVar *returnVarName;
-    JsVar *returnVar;
+    JsVar *returnVar = 0;
+
     JsVar *thisVar = thisArg;
     if (!jsvIsFunction(function)) {
       jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
@@ -569,11 +575,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       execInfo.thisVar = oldThisVar;
 
     } else { // ----------------------------------------------------- NOT NATIVE
-
       // create a new symbol table entry for execution of this function
       // OPT: can we cache this function execution environment + param variables?
       // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
-      functionRoot = jsvNewWithFlags(JSV_FUNCTION);
+      JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
       if (!functionRoot) { // out of memory
         jspSetError(false);
         return 0;
@@ -688,10 +693,18 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jsvAddName(functionRoot, name);
         jsvUnLock2(name, functionInternalName);
       }
+
       // setup a return variable
-      returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
-      if (!returnVarName) // out of memory
-        jspSetError(false);
+      JsVar *returnVarName;
+      if (jsvIsFunctionReturn(function)) {
+        // it's an implicit return - we don't need a return variable
+        returnVarName = 0;
+      } else {
+        // setup a return variable
+        returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
+        if (!returnVarName) // out of memory
+          jspSetError(false);
+      }
 
       if (!JSP_HAS_ERROR) {
         // save old scopes
@@ -752,7 +765,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #else
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
-            jspeBlockNoBrackets();
+            if (returnVarName) {
+              // parse the whole block
+              jspeBlockNoBrackets();
+            } else {
+              // implicit return - we just need an expression
+              returnVarName = jspeExpression();
+            }
             JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
@@ -810,7 +829,7 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 
       /* get the real return var before we remove it from our function */
       returnVar = jsvSkipNameAndUnLock(returnVarName);
-      if (returnVarName) // could have failed with out of memory
+      if (jsvIsName(returnVarName)) // could have failed with out of memory
         jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
       jsvUnLock(functionRoot);
     }
