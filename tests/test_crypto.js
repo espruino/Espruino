@@ -38,13 +38,13 @@ test(function() {
 test(function () {
   var key = fromHex("dd469421e5f4089a1418ea24ba37c61b");
   var msg = 'Lots and lots of my lovely secret data          ';
-  return require('crypto').AESencrypt(msg, key).toHex();
+  return require('crypto').AES.encrypt(msg, key).toHex();
 }, "b7e812f9a05778e9fb2a09b9edf49e1f12e7543e609fa8bec3d9ab82b5b206f59ff23b5614175f59d66918a1f271e5eb");
 
 test(function () {
   var key = fromHex("dd469421e5f4089a1418ea24ba37c61b");
   var msg = fromHex("b7e812f9a05778e9fb2a09b9edf49e1f12e7543e609fa8bec3d9ab82b5b206f59ff23b5614175f59d66918a1f271e5eb");
-  return require('crypto').AESdecrypt(msg, key).toStr();
+  return require('crypto').AES.decrypt(msg, key).toStr();
 }, 'Lots and lots of my lovely secret data          ');
 
 var iv = "Hello World 1234"; // 16 bytes (can be an array too)
@@ -52,13 +52,13 @@ var iv = "Hello World 1234"; // 16 bytes (can be an array too)
 test(function () {
   var key = fromHex("dd469421e5f4089a1418ea24ba37c61b");
   var msg = 'Lots and lots of my lovely secret data          ';
-  return require('crypto').AESencrypt(msg, key, {iv:iv}).toHex();
+  return require('crypto').AES.encrypt(msg, key, {iv:iv}).toHex();
 }, "66a140b8d735597643d4dfeb1f5b8f23516363e9f7760d6a5bbc8659f0a9bccf7fdd55dfc1fc84945443fdfe877238ed");
 
 test(function () {
   var key = fromHex("dd469421e5f4089a1418ea24ba37c61b");
   var msg = fromHex("66a140b8d735597643d4dfeb1f5b8f23516363e9f7760d6a5bbc8659f0a9bccf7fdd55dfc1fc84945443fdfe877238ed");
-  return require('crypto').AESdecrypt(msg, key, {iv:iv}).toStr();
+  return require('crypto').AES.decrypt(msg, key, {iv:iv}).toStr();
 }, 'Lots and lots of my lovely secret data          ');
 
 
