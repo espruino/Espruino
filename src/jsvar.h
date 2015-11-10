@@ -135,8 +135,6 @@ typedef struct {
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
-  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
-
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
    * For NAMES and REF - this is a link to the variable it points to
@@ -145,6 +143,8 @@ typedef struct {
    * For CHILD_OF - a link to the variable pointed to
    */
   JsVarRef firstChild;
+
+  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
@@ -158,8 +158,8 @@ typedef struct {
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
-  uint8_t refs;
   uint8_t firstChild;
+  uint8_t refs;
   uint8_t lastChild;
 
   uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
@@ -207,8 +207,8 @@ typedef struct {
  * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
  * | 4 - 5 | next    | data   | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
  * | 6 - 7 | prev    | data   | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
- * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
- * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
+ * | 8 - 9 | first   | data   | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
+ * | 10-11 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
  * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |
  * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
  *
@@ -347,7 +347,8 @@ extern ALWAYS_INLINE bool jsvIsSimpleInt(const JsVar *v); ///< is just a very ba
 extern ALWAYS_INLINE bool jsvIsInt(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFloat(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsString(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsString(const JsVar *v); ///< String, or a NAME too
+extern ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);

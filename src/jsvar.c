@@ -49,7 +49,8 @@ ALWAYS_INLINE bool jsvIsSimpleInt(const JsVar *v) { return v && (v->flags&JSV_VA
 ALWAYS_INLINE bool jsvIsInt(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_INTEGER || (v->flags&JSV_VARTYPEMASK)==JSV_PIN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_INT || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
 ALWAYS_INLINE bool jsvIsFloat(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLOAT; }
 ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v) { return v && ((v->flags&JSV_VARTYPEMASK)==JSV_BOOLEAN || (v->flags&JSV_VARTYPEMASK)==JSV_NAME_INT_BOOL); }
-ALWAYS_INLINE bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_STRING_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_STRING_END; }
+ALWAYS_INLINE bool jsvIsString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_STRING_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_STRING_END; } ///< String, or a NAME too
+ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_MAX; } ///< Just a string (NOT a name)
 ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=JSV_STRING_EXT_0 && (v->flags&JSV_VARTYPEMASK)<=JSV_STRING_EXT_MAX; } ///< The extra bits dumped onto the end of a string to store more data
 ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)==JSV_FLAT_STRING; }
 ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v) { return v && (v->flags&JSV_VARTYPEMASK)>=_JSV_NUMERIC_START && (v->flags&JSV_VARTYPEMASK)<=_JSV_NUMERIC_END; }
@@ -426,7 +427,10 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
         p->flags = JSV_UNUSED; // just so the assert in jsvFreePtrInternal doesn't get fed up
         jsvFreePtrInternal(p);
       }
+    } else if (jsvIsBasicString(var)) {
+      jsvSetFirstChild(var, 0); // firstchild could have had string data in
     }
+
   }
   /* NO ELSE HERE - because jsvIsNewChild stuff can be for Names, which
     can be ints or strings */
@@ -449,7 +453,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     assert(jsvIsFloat(var) || !jsvGetFirstChild(var));
     assert(jsvIsFloat(var) || !jsvGetLastChild(var));
 #else
-    assert(!jsvGetFirstChild(var));
+    assert(!jsvGetFirstChild(var)); // strings use firstchild now as well
     assert(!jsvGetLastChild(var));
 #endif
     if (jsvIsName(var)) {
@@ -785,6 +789,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       jsvSetLastChild(var, jsvGetRef(startExt));
       jsvSetNextSibling(var, 0);
       jsvSetPrevSibling(var, 0);
+      jsvSetFirstChild(var, 0);
       jsvUnLock(startExt);
     }
 
@@ -1886,12 +1891,12 @@ JsVar *jsvCopy(JsVar *src) {
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
       memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_LEN);
-      if (jsvIsName(src) || !jsvIsString(src)) {
+      if (!jsvIsBasicString(src)) {
         jsvSetPrevSibling(dst, 0);
         jsvSetNextSibling(dst, 0);
+        jsvSetFirstChild(dst, 0);
       }
       jsvSetLastChild(dst, 0);
-      jsvSetFirstChild(dst, 0);
   } else {
     // stringexts use the extra pointers after varData to store characters
     // see jsvGetMaxCharactersInVar

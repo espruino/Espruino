@@ -133,14 +133,12 @@ extern int isfinite ( double );
 
 /// Max length of JSV_NAME_ strings
 #define JSVAR_DATA_STRING_NAME_LEN  8
-/// Max length for a JSV_STRING
-#define JSVAR_DATA_STRING_LEN  (8+(2*JSVARREF_SIZE))
 #else
 /// Max length of JSV_NAME_ strings
 #define JSVAR_DATA_STRING_NAME_LEN  4
-/// Max length for a JSV_STRING
-#define JSVAR_DATA_STRING_LEN  (4+(2*JSVARREF_SIZE))
 #endif
+/// Max length for a JSV_STRING
+#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE))
 /// Max length for a JSV_STRINGEXT
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
