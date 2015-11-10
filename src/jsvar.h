@@ -36,7 +36,8 @@ typedef enum {
     JSV_ARRAYBUFFER  = JSV_ARRAY+1,
     JSV_OBJECT      = JSV_ARRAYBUFFER+1,
     JSV_FUNCTION    = JSV_OBJECT+1,
-    JSV_INTEGER     = JSV_FUNCTION+1, ///< integer number (note JSV_NUMERICMASK)
+    JSV_FUNCTION_RETURN    = JSV_FUNCTION+1, ///< A simple function that starts with `return` (which is implicit)
+    JSV_INTEGER     = JSV_FUNCTION_RETURN+1, ///< integer number (note JSV_NUMERICMASK)
   _JSV_NUMERIC_START = JSV_INTEGER, ///< --------- Start of numeric variable types
     JSV_FLOAT       = JSV_INTEGER+1, ///< floating point double (note JSV_NUMERICMASK)
     JSV_BOOLEAN     = JSV_FLOAT+1, ///< boolean (note JSV_NUMERICMASK)
@@ -53,10 +54,10 @@ typedef enum {
   _JSV_NUMERIC_END  = JSV_NAME_INT_BOOL, ///< --------- End of numeric variable types
     JSV_NAME_STRING_INT_0    = JSV_NAME_INT_BOOL+1, // array/object index as string of length 0 WITH integer value
   _JSV_STRING_START =  JSV_NAME_STRING_INT_0,
-    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_WITH_VALUE_END = JSV_NAME_STRING_INT_MAX, ///< ---------- End of names that have literal values, NOT references, in firstChild
     JSV_NAME_STRING_0    = JSV_NAME_STRING_INT_MAX+1, // array/object index as string of length 0
-    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
     JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
@@ -123,7 +124,7 @@ typedef struct {
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
-  int8_t pad[JSVAR_DATA_STRING_LEN];
+  int8_t pad[JSVAR_DATA_STRING_NAME_LEN];
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
@@ -134,8 +135,6 @@ typedef struct {
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
-  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
-
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the first child
    * For NAMES and REF - this is a link to the variable it points to
@@ -144,6 +143,8 @@ typedef struct {
    * For CHILD_OF - a link to the variable pointed to
    */
   JsVarRef firstChild;
+
+  JsVarRefCounter refs; ///< The number of references held to this - used for automatic garbage collection. NOT USED for STRINGEXT though (it is just extra characters)
 
   /**
    * For OBJECT/ARRAY/FUNCTION - this is the last child
@@ -157,8 +158,8 @@ typedef struct {
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
-  uint8_t refs;
   uint8_t firstChild;
+  uint8_t refs;
   uint8_t lastChild;
 
   uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
@@ -201,15 +202,18 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR | NATIVE_FUNC |
- * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|-------------|
- * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
- * | 4 - 5 | next    | -      | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
- * | 6 - 7 | prev    | -      | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
- * | 8 - 9 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
- * | 10-11 | first   | -      | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |
- * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
+ * |16B offs|12B offs| Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ * |--------|--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ * | 0 - 3  | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ * | 4 - 5  | 4      | next    | data   | data     |  next    | next     | -    | data   | argTypes       | format      |
+ * | 6 - 7  | 5      | prev    | data   | data     |  prev    | prev     | -    | data   | argTypes       | format      |
+ * | 8 - 9  | 6      | first   | data   | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
+ * | 10-11  | 7      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ * | 12-13  | 8      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
+ * | 14-15  | 9-11   | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ *
+ * **16B offs** - 16 Byte variables (where > 1023 variables)
+ * **12B offs** - 12 Byte variables (where < 1024 variables). 10 bit addresses are used, with the extra bits being stored in a field called `pack` which sits just before `flags`
  *
  * For DOUBLE on 12 byte JsVar systems, the ref count it stored in 'lastChild' instead.
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
@@ -346,11 +350,13 @@ extern ALWAYS_INLINE bool jsvIsSimpleInt(const JsVar *v); ///< is just a very ba
 extern ALWAYS_INLINE bool jsvIsInt(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFloat(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsBoolean(const JsVar *v);
-extern ALWAYS_INLINE bool jsvIsString(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsString(const JsVar *v); ///< String, or a NAME too
+extern ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFunction(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
 extern ALWAYS_INLINE bool jsvIsFunctionParameter(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsObject(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsArray(const JsVar *v);
@@ -404,6 +410,7 @@ static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   // see jsvCopy - we need to know about this in there too
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
   assert(jsvHasCharacterData(v));
+  if (jsvIsName(v)) return JSVAR_DATA_STRING_NAME_LEN;
   return JSVAR_DATA_STRING_LEN;
 }
 
@@ -439,18 +446,21 @@ static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
          (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
   if (f<=JSV_NAME_STRING_MAX) {
-      if (f<=JSV_NAME_STRING_INT_MAX)
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
-      else
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+    assert(chars <= JSVAR_DATA_STRING_NAME_LEN);
+    if (f<=JSV_NAME_STRING_INT_MAX)
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
+    else
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+  } else {
+    if (f<=JSV_STRING_MAX) {
+      assert(chars <= JSVAR_DATA_STRING_LEN);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
     } else {
-      if (f<=JSV_STRING_MAX) {
-        v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
-      } else {
-        assert(f <= JSV_STRING_EXT_MAX);
-        v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
-      }
+      assert(chars <= JSVAR_DATA_STRING_MAX_LEN);
+      assert(f <= JSV_STRING_EXT_MAX);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
     }
+  }
 }
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
@@ -478,6 +488,7 @@ bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - fast
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
 size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
+JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
 size_t jsvGetCharsOnLine(JsVar *v, size_t line); ///<  IN A STRING Get the number of characters on a line - lines start at 1
 void jsvGetLineAndCol(JsVar *v, size_t charIdx, size_t *line, size_t *col); ///< IN A STRING, get the 1-based line and column of the given character. Both values must be non-null
@@ -678,7 +689,33 @@ typedef struct {
  */
 bool jsvReadConfigObject(JsVar *object, jsvConfigObject *configs, int nConfigs);
 
-// Create a new typed array of the given type and length
+/// Create a new typed array of the given type and length
 JsVar *jsvNewTypedArray(JsVarDataArrayBufferViewType type, JsVarInt length);
+
+/** Create a new arraybuffer of the given type and length, also return a pointer
+ * to the contiguous memory area containing it. Returns 0 if it was unable to
+ * allocate it. */
+JsVar *jsvNewArrayBufferWithPtr(unsigned int length, char **ptr);
+
+/** Get the given JsVar as a character array. If it's a flat string, return a
+ * pointer to it, or if it isn't allocate data on the stack and copy the data.
+ *
+ * This has to be a macro - if alloca is called from within another function
+ * the data will be lost when we return. */
+#define JSV_GET_AS_CHAR_ARRAY(TARGET_PTR, TARGET_LENGTH, DATA)                \
+  size_t TARGET_LENGTH = 0;                                                   \
+  char *TARGET_PTR = 0;                                                       \
+  if (jsvIsFlatString(DATA)) {                                                \
+    TARGET_LENGTH = jsvGetStringLength(DATA);                                 \
+    TARGET_PTR = jsvGetFlatStringPointer(DATA);                               \
+  } else {                                                                    \
+   TARGET_LENGTH = (size_t)jsvIterateCallbackCount(DATA);                     \
+    if (TARGET_LENGTH+256 > jsuGetFreeStack()) {                              \
+      jsExceptionHere(JSET_ERROR, "Not enough stack memory to decode data");  \
+    } else {                                                                  \
+      TARGET_PTR = (char *)alloca(TARGET_LENGTH);     \
+      jsvIterateCallbackToBytes(DATA, (unsigned char *)TARGET_PTR, (unsigned int)TARGET_LENGTH); \
+    }                                                                         \
+  }
 
 #endif /* JSVAR_H_ */

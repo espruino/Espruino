@@ -96,7 +96,7 @@ for pin in pins:
 boarddata = {
  "info" : board.info,
  "chip" : board.chip,
- "layout" : board.board,
+# "layout" : board.board,
  "devices" : board.devices,
  "pins" : pins,
  "peripherals" : pinperipherals,

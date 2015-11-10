@@ -22,7 +22,7 @@
 import pinutils;
 info = {
  'name'            : "ESP8266-12",
- 'espruino_page_link' : 'ESP8266_12',
+ 'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_12',
@@ -47,6 +47,11 @@ chip = {
     'flash_available' : 492, # firmware can be up to this size
   },
 };
+
+devices = {
+    'LED1' : { 'pin': 'D0' },
+};
+
 # left-right, or top-bottom order
 board = {
     'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
@@ -55,11 +60,7 @@ board = {
 };
 board["bottom"].reverse()
 board["right"].reverse()
-devices = {
-    'LED1' : { 'pin': 'D0' },
-};
-
-board_css = """
+board["_css"] = """
 #board {
   width:  600px;
   height: 384px;

@@ -43,16 +43,7 @@ chip = {
   },
   'place_text_section' : 0x00010000, # note flash_available above
 };
-# left-right, or top-bottom order
-board = {
-  'left' : [ 'NRST', 'BOOT0', '3V3', 'GND' ],
-  'bottom' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
-  'top' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
 
-
-  'right2' : ['A3','A1','A0','A9'],
-  'right' : ['A4','A2','A8','A10'],        
-};
 devices = {
   'OSC' : { 'pin_in' :  'H0', # checked
             'pin_out' : 'H1' }, # checked
@@ -72,7 +63,17 @@ devices = {
           }
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ 'NRST', 'BOOT0', '3V3', 'GND' ],
+  'bottom' : [ '5V', 'A13', 'A14', 'A15',  'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9'],
+  'top' : [ 'GND','BAT_IN','B15', 'B14', 'B13', 'B10', 'B2', 'B1', 'A7', 'A6', 'A5' ], 
+
+
+  'right2' : ['A3','A1','A0','A9'],
+  'right' : ['A4','A2','A8','A10'],        
+};
+board["_css"] = """
 #board {
   width: 835px;
   height: 365px;

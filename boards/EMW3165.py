@@ -52,6 +52,10 @@ chip = {
   },
   #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
 };
+devices = {
+  'LED1' : {'pin': 'A4'},
+};
+
 # left-right, or top-bottom order
 board = {
   'bottom' :   [ 'ANT', 'GND', 'NC', 'NC', 'NC', 'A14', 'A13', 'A12', 'NC', 'A10', 'B6', 'B8', 'NC',
@@ -60,12 +64,7 @@ board = {
       'NRST', 'A0', 'NC', 'C13', 'B10', 'B9', 'B12', 'GND'],
 };
 board["top"].reverse()
-devices = {
-  'LED1' : {'pin': 'A4'},
-};
-
-
-board_css = """
+board["_css"] = """
 #board {
   width:  830px;
   height: 850px;

@@ -202,6 +202,7 @@ USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
+USE_CRYPTO=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -396,14 +397,6 @@ STLIB=STM32F429xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 
-else ifdef SMARTWATCH
-EMBEDDED=1
-DEFINES+=-DHSE_VALUE=26000000UL
-BOARD=SMARTWATCH
-STLIB=STM32F2XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
-OPTIMIZEFLAGS+=-O3
-
 else ifdef STM32F3DISCOVERY
 EMBEDDED=1
 USE_NET=1
@@ -447,13 +440,6 @@ EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
-
-else ifdef TINYCHIP
-EMBEDDED=1
-BOARD=TINYCHIP
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -639,6 +625,7 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
+USE_CRYPTO=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -1030,6 +1017,23 @@ ifdef USE_BLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
+
+ifdef USE_CRYPTO
+  INCLUDE += -I$(ROOT)/libs/crypto
+  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
+  WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+  SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/asn1parse.c \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c \
+libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/md_wrap.c \
+libs/crypto/mbedtls/library/oid.c \
+libs/crypto/mbedtls/library/pkcs5.c \
+libs/crypto/mbedtls/library/sha1.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 

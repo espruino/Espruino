@@ -40,17 +40,11 @@ chip = {
   'dac' : 0,
 };
 
-board = {
-};
-
 devices = {
 #  'LED1' : { 'pin' : 'D22' },
 #  'LED2' : { 'pin' : 'D21' },
 #  'LED3' : { 'pin' : 'D23' }
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,31) # 32 General Purpose I/O Pins.

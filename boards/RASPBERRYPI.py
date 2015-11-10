@@ -32,15 +32,10 @@ chip = {
   'adc' : 0,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
   'LED1' : { 'pin' : 'D16' }
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,31)  

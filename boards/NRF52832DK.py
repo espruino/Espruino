@@ -47,12 +47,6 @@ chip = {
   },
 };
 
-# left-right, or top-bottom order
-board = {
-  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','PD3','PD4','PD28','PD29','PD30','PD31'],
-  'right' : [ 'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
-};
-
 devices = {
   'LED1' : { 'pin' : 'D17' },
   'LED2' : { 'pin' : 'D18' },
@@ -68,7 +62,12 @@ devices = {
   'RTS_PIN_NUMBER' : { 'pin' : 'D5'},
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ 'VDD', 'VDD', 'RESET', 'VDD','5V','GND','GND','PD3','PD4','PD28','PD29','PD30','PD31'],
+  'right' : [ 'PD27', 'PD26', 'PD2', 'GND', 'PD25','PD24','PD23', 'PD22','PD20','PD19','PD18','PD17','PD16','PD15','PD14','PD13','PD12','PD11','PD10','PD9','PD8','PD7','PD6','PD5','PD21','PD1','PD0'],
+};
+board["_css"] = """
 """;
 
 def get_pins():

@@ -130,11 +130,17 @@ extern int isfinite ( double );
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
 // 64 bit needs extra space to be able to store a function pointer
-#define JSVAR_DATA_STRING_LEN  8
+
+/// Max length of JSV_NAME_ strings
+#define JSVAR_DATA_STRING_NAME_LEN  8
 #else
-#define JSVAR_DATA_STRING_LEN  4
+/// Max length of JSV_NAME_ strings
+#define JSVAR_DATA_STRING_NAME_LEN  4
 #endif
-#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+/// Max length for a JSV_STRING
+#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE))
+/// Max length for a JSV_STRINGEXT
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
 
 /** This is the amount of characters at which it'd be more efficient to use
  * a flat string than to use a normal string... */

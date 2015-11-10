@@ -15,6 +15,10 @@
             Move SPI/I2C/Serial initialisers to jsvReadConfigObject, will now error on invalid args (fix #413)
             Fix issue where double-buffered waveforms would use the wrong buffer in the callback
             Fix memory leak in tab autocomplete on objects
+            Added AES crypto library (Pico only)
+            Fix `typeof (new Uint8Array([1, 2, 3, 4]))`
+            Store `function(){return ...}` without the return (fix #700)
+            Increased simple string usage from 4 chars up to 8
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
