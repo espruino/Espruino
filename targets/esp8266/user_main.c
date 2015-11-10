@@ -26,7 +26,7 @@ typedef long long int64_t;
 
 #include <jsdevices.h>
 #include <jsinteractive.h>
-#include <jswrap_esp8266.h>
+#include <jswrap_esp8266_network.h>
 #include <ota.h>
 #include "ESP8266_board.h"
 
@@ -259,6 +259,7 @@ void user_init() {
 
   // Initialize the UART devices
   uart_init(BIT_RATE_115200, BIT_RATE_115200);
+  //uart_init(BIT_RATE_9600, BIT_RATE_9600);
   os_delay_us(1000); // make sure there's a gap on uart output
   UART_SetPrintPort(1);
   system_set_os_print(1);
