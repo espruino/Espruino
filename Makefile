@@ -520,6 +520,7 @@ else ifdef ESP8266_512KB
 # into ram (dram+iram) and the last 16KB are reserved for the SDK. That leaves 432KB (0x6C000).
 EMBEDDED=1
 USE_NET=1
+#USE_FILESYSTEM=1
 BOARD=ESP8266_BOARD
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
@@ -986,7 +987,8 @@ libs/network/js/network_js.c
 
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
- WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+ WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
+   targets/esp8266/jswrap_esp8266.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
@@ -1493,12 +1495,12 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 
 # Extra source files specific to the ESP8266
 SOURCES += targets/esp8266/uart.c \
-       targets/esp8266/spi.c \
-       targets/esp8266/user_main.c \
-	   targets/esp8266/jshardware.c \
-	   targets/esp8266/i2c_master.c \
-	   targets/esp8266/esp8266_board_utils.c \
-	   libs/network/esp8266/network_esp8266.c
+	targets/esp8266/spi.c \
+	targets/esp8266/user_main.c \
+	targets/esp8266/jshardware.c \
+	targets/esp8266/i2c_master.c \
+	targets/esp8266/esp8266_board_utils.c \
+	libs/network/esp8266/network_esp8266.c
 # if using the hw_timer:   targets/esp8266/hw_timer.c \
 
 # The tool used for building the firmware and flashing
@@ -1603,6 +1605,7 @@ proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin $(PROJ_
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o partial.o $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal partial.o
+	$(Q)$(OBJCOPY) --rename-section .force.text=.text partial.o
 	$(Q)$(LD) $(LDFLAGS) -Ttargets/esp8266/eagle.app.v6.0x10000.ld -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)rm partial.o
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $(PROJ_NAME).elf | tail -n +4

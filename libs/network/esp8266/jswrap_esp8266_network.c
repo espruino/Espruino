@@ -34,7 +34,7 @@ of beta.  */
 #define _GCC_WRAP_STDINT_H
 typedef long long int64_t;
 
-#include "jswrap_esp8266.h"
+#include "jswrap_esp8266_network.h"
 #include "jsinteractive.h" // Pull inn the jsiConsolePrint function
 #include "network.h"
 #include "network_esp8266.h"
