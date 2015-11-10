@@ -54,10 +54,10 @@ typedef enum {
   _JSV_NUMERIC_END  = JSV_NAME_INT_BOOL, ///< --------- End of numeric variable types
     JSV_NAME_STRING_INT_0    = JSV_NAME_INT_BOOL+1, // array/object index as string of length 0 WITH integer value
   _JSV_STRING_START =  JSV_NAME_STRING_INT_0,
-    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_INT_MAX  = JSV_NAME_STRING_INT_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_WITH_VALUE_END = JSV_NAME_STRING_INT_MAX, ///< ---------- End of names that have literal values, NOT references, in firstChild
     JSV_NAME_STRING_0    = JSV_NAME_STRING_INT_MAX+1, // array/object index as string of length 0
-    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_LEN,
+    JSV_NAME_STRING_MAX  = JSV_NAME_STRING_0+JSVAR_DATA_STRING_NAME_LEN,
   _JSV_NAME_END    = JSV_NAME_STRING_MAX, ///< ---------- End of NAMEs (names of variables, object fields/etc)
     JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
@@ -124,7 +124,7 @@ typedef struct {
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
-  int8_t pad[JSVAR_DATA_STRING_LEN];
+  int8_t pad[JSVAR_DATA_STRING_NAME_LEN];
 
   /* For Variable NAMES (e.g. Object/Array keys) these store actual next/previous pointers for a linked list or 0.
    *   - if nextSibling==prevSibling==!0 then they point to the object that should contain this name if it ever gets set to anything that's not undefined
@@ -406,6 +406,7 @@ static ALWAYS_INLINE size_t jsvGetMaxCharactersInVar(const JsVar *v) {
   // see jsvCopy - we need to know about this in there too
   if (jsvIsStringExt(v)) return JSVAR_DATA_STRING_MAX_LEN;
   assert(jsvHasCharacterData(v));
+  if (jsvIsName(v)) return JSVAR_DATA_STRING_NAME_LEN;
   return JSVAR_DATA_STRING_LEN;
 }
 
@@ -441,18 +442,21 @@ static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
          (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
   if (f<=JSV_NAME_STRING_MAX) {
-      if (f<=JSV_NAME_STRING_INT_MAX)
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
-      else
-        v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+    assert(chars <= JSVAR_DATA_STRING_NAME_LEN);
+    if (f<=JSV_NAME_STRING_INT_MAX)
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_INT_0+chars));
+    else
+      v->flags = (JsVarFlags)(m | (JSV_NAME_STRING_0+chars));
+  } else {
+    if (f<=JSV_STRING_MAX) {
+      assert(chars <= JSVAR_DATA_STRING_LEN);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
     } else {
-      if (f<=JSV_STRING_MAX) {
-        v->flags = (JsVarFlags)(m | (JSV_STRING_0+chars));
-      } else {
-        assert(f <= JSV_STRING_EXT_MAX);
-        v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
-      }
+      assert(chars <= JSVAR_DATA_STRING_MAX_LEN);
+      assert(f <= JSV_STRING_EXT_MAX);
+      v->flags = (JsVarFlags)(m | (JSV_STRING_EXT_0+chars));
     }
+  }
 }
 
 /** Check if two Basic Variables are equal (this IGNORES the value that is pointed to,
