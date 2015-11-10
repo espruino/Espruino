@@ -202,15 +202,18 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * | Byte  | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER | FLAT_STR | NATIVE_FUNC |
- * |-------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|----------|-------------|
- * | 0 - 3 | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        | size     | nativePtr   |
- * | 4 - 5 | next    | data   | data     |  next    | next     | -    | data   |                | format      | -        | argTypes    |
- * | 6 - 7 | prev    | data   | data     |  prev    | prev     | -    | data   |                | format      | -        | -           |
- * | 8 - 9 | first   | data   | data     |  child   | child    |  -   |  -     | first          | stringPtr   | -        | -           |
- * | 10-11 | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        | refs     | refs        |
- * | 12-13 | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  r?    | last           | -           | nextPtr  | -           |
- * | 14-15 | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       | Flags    | Flags       |
+ * |16B offs|12B offs| Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ * |--------|--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ * | 0 - 3  | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ * | 4 - 5  | 4      | next    | data   | data     |  next    | next     | -    | data   | argTypes       | format      |
+ * | 6 - 7  | 5      | prev    | data   | data     |  prev    | prev     | -    | data   | argTypes       | format      |
+ * | 8 - 9  | 6      | first   | data   | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
+ * | 10-11  | 7      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ * | 12-13  | 8      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
+ * | 14-15  | 9-11   | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+ *
+ * **16B offs** - 16 Byte variables (where > 1023 variables)
+ * **12B offs** - 12 Byte variables (where < 1024 variables). 10 bit addresses are used, with the extra bits being stored in a field called `pack` which sits just before `flags`
  *
  * For DOUBLE on 12 byte JsVar systems, the ref count it stored in 'lastChild' instead.
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
