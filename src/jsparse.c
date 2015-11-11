@@ -754,8 +754,9 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
             if (jsvIsFunctionReturn(function)) {
-              // implicit return - we just need an expression
-              returnVar = jsvSkipNameAndUnLock(jspeExpression());
+              // implicit return - we just need an expression (optional)
+              if (execInfo.lex->tk != ';' && execInfo.lex->tk != '}')
+                returnVar = jsvSkipNameAndUnLock(jspeExpression());
             } else {
               // setup a return variable
               JsVar *returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
