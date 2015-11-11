@@ -71,7 +71,7 @@ volatile unsigned char ioHead=0, ioTail=0;
  * Initialize all the devices.
  */
 void jshInitDevices() { // called from jshInit
-  int i;
+  unsigned int i;
   // setup flow control
   for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
     jshSerialDeviceStates[i] = SDS_NONE;

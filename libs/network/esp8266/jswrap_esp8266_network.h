@@ -14,8 +14,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_
-#define LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_
+#ifndef LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
+#define LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
 #include "jsvar.h"
 
 // Deprecated
@@ -67,4 +67,4 @@ void   jswrap_ESP8266_updateCPUFreq(JsVar *jsFreq);
 
 void   jswrap_ESP8266_init();
 
-#endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_H_ */
+#endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_ */

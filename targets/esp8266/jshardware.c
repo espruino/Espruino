@@ -24,6 +24,7 @@
 #include <espmissingincludes.h>
 #include <uart.h>
 #include <i2c_master.h>
+#include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -52,6 +53,10 @@ typedef long long int64_t;
 
 // Address in RTC RAM where we save the time
 #define RTC_TIME_ADDR (256/4) // start of "user data" in RTC RAM
+
+
+static bool g_spiInitialized = false;
+static int  g_lastSPIRead = -1;
 
 /**
  * Transmit all the characters in the transmit buffer.
@@ -159,6 +164,8 @@ void jshReset() {
     jshPinSetState(i, JSHPINSTATE_GPIO_IN);
   }
   */
+  g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
+  g_lastSPIRead = -1;
   os_printf("< jshReset\n");
 } // End of jshReset
 
@@ -588,26 +595,69 @@ void jshUSARTKick(
 //===== SPI =====
 
 /**
- * Unknown
+ * Initialize the hardware SPI device.
+ * On the ESP8266, hardware SPI is implemented via a set of pins defined
+ * as follows:
  *
+ * | GPIO   | NodeMCU | Name  | Function |
+ * |--------|---------|-------|----------|
+ * | GPIO12 | D6      | HMISO | MISO     |
+ * | GPIO13 | D7      | HMOSI | MOSI     |
+ * | GPIO14 | D5      | HSCLK | CLK      |
+ * | GPIO15 | D8      | HCS   | CS       |
  *
  */
 void jshSPISetup(
-    IOEventFlags device, //!< Unknown
-    JshSPIInfo *inf      //!< Unknown
+    IOEventFlags device, //!< The identity of the SPI device being initialized.
+    JshSPIInfo *inf      //!< Flags for the SPI device.
   ) {
-  os_printf("ESP8266: jshSPISetup: device=%d, inf=0x%x\n", device, (int)inf);
+  // The device should be one of EV_SPI1, EV_SPI2 or EV_SPI3.
+  os_printf("> jshSPISetup - jshSPISetup: device=%d\n", device);
+  switch(device) {
+  case EV_SPI1:
+    os_printf(" - Device is SPI1\n");
+    // EV_SPI1 is the ESP8266 hardware SPI ...
+    spi_init(HSPI); // Initialize the hardware SPI components.
+    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
+    g_spiInitialized = true;
+    g_lastSPIRead = -1;
+    break;
+  case EV_SPI2:
+    os_printf(" - Device is SPI2\n");
+    break;
+  case EV_SPI3:
+    os_printf(" - Device is SPI3\n");
+    break;
+  default:
+    os_printf(" - Device is Unknown!!\n");
+    break;
+  }
+  if (inf != NULL) {
+    os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
+        inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
+  }
+  os_printf("< jshSPISetup\n");
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(
-    IOEventFlags device, //!< Unknown
-    int data             //!< Unknown
+    IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
+    int data             //!< The data to be sent or an indication that no data is to be sent.
   ) {
-  os_printf("ESP8266: jshSPISend\n");
-  return NAN;
+  if (device != EV_SPI1) {
+    return -1;
+  }
+  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  int retData = g_lastSPIRead;
+  if (data >=0) {
+    g_lastSPIRead = spi_tx8(HSPI, data);
+  } else {
+    g_lastSPIRead = -1;
+  }
+  //os_printf("< jshSPISend\n");
+  return retData;
 }
 
 
@@ -618,9 +668,15 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPISend16\n");
-  jshSPISend(device, data >> 8);
-  jshSPISend(device, data & 255);
+  //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
+  //jshSPISend(device, data >> 8);
+  //jshSPISend(device, data & 255);
+  if (device != EV_SPI1) {
+    return;
+  }
+
+  spi_tx16(HSPI, data);
+  //os_printf("< jshSPISend16\n");
 }
 
 
@@ -631,7 +687,8 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPISet16\n");
+  os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
+  os_printf("< jshSPISet16\n");
 }
 
 
@@ -641,11 +698,15 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPIWait\n");
+  os_printf("> jshSPIWait - device=%d\n", device);
+  while(spi_busy(HSPI)) ;
+  os_printf("< jshSPIWait\n");
 }
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -948,8 +1009,17 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("ESP8266: jshIsDeviceInitialised %d\n", device);
-  return true;
+  os_printf("> jshIsDeviceInitialised - %d\n", device);
+  bool retVal = true;
+  switch(device) {
+  case EV_SPI1:
+    retVal = g_spiInitialized;
+    break;
+  default:
+    break;
+  }
+  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  return retVal;
 } // End of jshIsDeviceInitialised
 
 // the esp8266 doesn't have any temperature sensor
