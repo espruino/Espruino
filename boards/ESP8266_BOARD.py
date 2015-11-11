@@ -18,6 +18,7 @@ info = {
  'name'            : "ESP8266 512KB",
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
+ 'default_console_baudrate' : "115200",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_board',
 };

@@ -16,7 +16,8 @@
 #ifndef TARGETS_ESP8266_JSWRAP_ESP8266_H_
 #define TARGETS_ESP8266_JSWRAP_ESP8266_H_
 #include "jsvar.h"
+#include "jspin.h"
 
-void   jswrap_ESP8266_neopixelWrite(JsVar *jsPin, JsVar *jsArrayOfData);
+void   jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData);
 
 #endif /* TARGETS_ESP8266_JSWRAP_ESP8266_H_ */
