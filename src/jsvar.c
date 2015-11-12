@@ -116,16 +116,11 @@ JsVarRefSigned jsvGetFirstChildSigned(const JsVar *v) {
     r -= 1<<(JSVARREF_PACKED_BITS+8);
   return r;
 }
-JsVarRef jsvGetLastChild(const JsVar *v) { return (JsVarRef)(v->varData.ref.lastChild | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*1))&JSVARREF_PACKED_BIT_MASK))<<8); }
 JsVarRef jsvGetNextSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.nextSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*2))&JSVARREF_PACKED_BIT_MASK))<<8); }
 JsVarRef jsvGetPrevSibling(const JsVar *v) { return (JsVarRef)(v->varData.ref.prevSibling | (((v->varData.ref.pack >> (JSVARREF_PACKED_BITS*3))&JSVARREF_PACKED_BIT_MASK))<<8); }
 void jsvSetFirstChild(JsVar *v, JsVarRef r) {
   v->varData.ref.firstChild = (unsigned char)(r & 0xFF);
   v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~JSVARREF_PACKED_BIT_MASK) | ((r >> 8) & JSVARREF_PACKED_BIT_MASK));
-}
-void jsvSetLastChild(JsVar *v, JsVarRef r) {
-  v->varData.ref.lastChild = (unsigned char)(r & 0xFF);
-  v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*1))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*1)));
 }
 void jsvSetNextSibling(JsVar *v, JsVarRef r) {
   v->varData.ref.nextSibling = (unsigned char)(r & 0xFF);
@@ -134,6 +129,14 @@ void jsvSetNextSibling(JsVar *v, JsVarRef r) {
 void jsvSetPrevSibling(JsVar *v, JsVarRef r) {
   v->varData.ref.prevSibling = (unsigned char)(r & 0xFF);
   v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*3))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*3)));
+}
+/* lastchild stores the upper 2 bits in JsVarFlags because then STRING_EXT can use one more character! */
+JsVarRef jsvGetLastChild(const JsVar *v) { 
+  return (JsVarRef)(v->varData.ref.lastChild | (((v->flags >> JSV_LASTCHILD_BIT_SHIFT)&JSVARREF_PACKED_BIT_MASK))<<8); 
+}
+void jsvSetLastChild(JsVar *v, JsVarRef r) {
+  v->varData.ref.lastChild = (unsigned char)(r & 0xFF);
+  v->flags = (v->flags & ~JSV_LASTCHILD_BIT_MASK) | ((r >> 8) << JSV_LASTCHILD_BIT_SHIFT);
 }
 #endif
 
@@ -337,6 +340,9 @@ void jsvResetVariable(JsVar *v, JsVarFlags flags) {
   jsvSetRefs(v, 0);
   jsvSetFirstChild(v, 0);
   jsvSetLastChild(v, 0);
+#ifdef JSVARREF_PACKED_BITS
+  v->varData.ref.pack = 0;
+#endif
   // set flags
   assert(!(flags & JSV_LOCK_MASK));
   v->flags = flags | JSV_LOCK_ONE;
@@ -764,7 +770,7 @@ JsVar *jsvMakeIntoVariableName(JsVar *var, JsVar *valueOrZero) {
       JsvStringIterator it;
       jsvStringIteratorNew(&it, var, JSVAR_DATA_STRING_NAME_LEN);
       JsVar *startExt = jsvNewWithFlags(JSV_STRING_EXT_0);
-      JsVar *ext = jsvLockAgain(startExt);
+      JsVar *ext = jsvLockAgainSafe(startExt);
       size_t nChars = 0;
       while (ext && jsvStringIteratorHasChar(&it)) {
         if (nChars >= JSVAR_DATA_STRING_MAX_LEN) {

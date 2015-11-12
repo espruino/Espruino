@@ -79,7 +79,17 @@ typedef enum {
     JSV_LOCK_ONE    = JSV_IS_RECURSING<<1,
     JSV_LOCK_MASK   = JSV_LOCK_MAX * JSV_LOCK_ONE,
     JSV_LOCK_SHIFT  = GET_BIT_NUMBER(JSV_LOCK_ONE), ///< The amount of bits we must shift to get the number of locks - forced to be a constant
-    // 3 bits left over here on most systems
+#ifdef JSVARREF_PACKED_BITS
+    /* When using packed bits, we put Lastchild's here, because
+     * then, when we're using STRINGEXT, we can get one more character
+     * in by overwriting 'pack'
+     */
+    JSV_LASTCHILD_BIT8 = NEXT_POWER_2(JSV_LOCK_MASK),
+    JSV_LASTCHILD_BIT9 = JSV_LASTCHILD_BIT8<<1,
+    JSV_LASTCHILD_BIT_MASK = JSV_LASTCHILD_BIT8|JSV_LASTCHILD_BIT9,
+    JSV_LASTCHILD_BIT_SHIFT = GET_BIT_NUMBER(JSV_LASTCHILD_BIT8),
+#endif
+    // 3 bits left over here on most systems, 1 on JSVARREF_PACKED_BITS
     JSV_VARIABLEINFOMASK = JSV_VARTYPEMASK | JSV_NATIVE, // if we're copying a variable, this is all the stuff we want to copy
 } PACKED_FLAGS JsVarFlags; // aiming to get this in 2 bytes!
 
@@ -159,10 +169,9 @@ typedef struct {
   uint8_t nextSibling;
   uint8_t prevSibling;
   uint8_t firstChild;
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
   uint8_t refs;
   uint8_t lastChild;
-
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
 #endif
 } PACKED_FLAGS JsVarDataRef;
 
@@ -202,20 +211,34 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * |16B offs|12B offs| Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- * |--------|--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- * | 0 - 3  | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
- * | 4 - 5  | 4      | next    | data   | data     |  next    | next     | -    | data   | argTypes       | format      |
- * | 6 - 7  | 5      | prev    | data   | data     |  prev    | prev     | -    | data   | argTypes       | format      |
- * | 8 - 9  | 6      | first   | data   | data     |  child   | child    |  -   |  -     | first          | stringPtr   |
- * | 10-11  | 7      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- * | 12-13  | 8      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -     | last           | -           |
- * | 14-15  | 9-11   | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
- *
- * **16B offs** - 16 Byte variables (where > 1023 variables)
- * **12B offs** - 12 Byte variables (where < 1024 variables). 10 bit addresses are used, with the extra bits being stored in a field called `pack` which sits just before `flags`
- *
- * For DOUBLE on 12 byte JsVar systems, the ref count it stored in 'lastChild' instead.
+ 16 byte JsVars (JsVars for 32 bit refs are similar)
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
+ | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
+ | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
+ | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
+ | 14-15  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+
+ 12 byte JsVars ( where < 1024 variables)
+
+ 10 bit addresses are used, with the extra bits being stored in a field called `pack` and the `flags` variable
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ | 4      | next    | data   | data     |  next    | next     |  -   | data   | argTypes       | format      |
+ | 5      | prev    | data   | data     |  prev    | prev     |  -   | data   | argTypes       | format      |
+ | 6      | first   | data   | data     |  child   | child    |  -   | data   | first          | stringPtr   |
+ | 7      | pack    | pack   | data     |  pack    | pack     | pack | data   | pack           | pack        |
+ | 8      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ | 9      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |   -    | last           | -           |
+ | 10-11  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+
+
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
@@ -248,21 +271,8 @@ void jsvSetNextSibling(JsVar *v, JsVarRef r);
 void jsvSetPrevSibling(JsVar *v, JsVarRef r);
 #endif
 
-#if JSVARREF_SIZE==1
-// For 12 byte JsVars we have a problem as doubles will overwrite the ref count - so in this case we must use 'lastChild' instead
-static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) {
-  return (JsVarRefCounter)(((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)?v->varData.ref.lastChild:v->varData.ref.refs);
-}
-static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) {
-  if ((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)
-    v->varData.ref.lastChild = refs;
-  else
-    v->varData.ref.refs = refs;
-}
-#else
 static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
 static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) { v->varData.ref.refs = refs; }
-#endif
 static ALWAYS_INLINE unsigned char jsvGetLocks(JsVar *v) { return (unsigned char)((v->flags>>JSV_LOCK_SHIFT) & JSV_LOCK_MAX); }
 
 // For debugging/testing ONLY - maximum # of vars we are allowed to use

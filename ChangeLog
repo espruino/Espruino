@@ -19,6 +19,12 @@
             Fix `typeof (new Uint8Array([1, 2, 3, 4]))`
             Store `function(){return ...}` without the return (fix #700)
             Increased simple string usage from 4 chars up to 8
+            Swap order of JsVar internals, string usage up to 10 chars
+            Add handling for uint32_t,uint64_t,uint32_t case for Raspberry Pi
+            Add startup sanity checks for jsnative.c (in non-release builds)
+            Added fix for returning floats on Raspberry Pi
+            When <1024 JsVars, `lastChild`'s top bits are stored in `flags`, and pack
+               is moved such that we get 1 extra character in StringExts
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)

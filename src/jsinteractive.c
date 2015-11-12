@@ -21,6 +21,7 @@
 #include "jswrap_stream.h"
 #include "jswrap_flash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
+#include "jsnative.h" // jsnSanityTest
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -730,6 +731,10 @@ void jsiInit(bool autoLoad) {
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
   consoleDevice = EV_LIMBO;
+#endif
+
+#ifndef RELEASE
+  jsnSanityTest();
 #endif
 
   jsiSemiInit(autoLoad);
@@ -1444,12 +1449,16 @@ void jsiExecuteEvents() {
 }
 
 NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray) { // array of functions or single function
-  unsigned int l = (unsigned int)jsvGetArrayLength(argsArray);
+  unsigned int l = 0;
   JsVar **args = 0;
-  if (l) {
-    args = alloca(sizeof(JsVar*) * l);
-    if (!args) return false;
-    jsvGetArrayItems(argsArray, l, args); // not very fast
+  if (argsArray) {
+    assert(jsvIsArray(argsArray));
+    l = (unsigned int)jsvGetArrayLength(argsArray);
+    if (l) {
+      args = alloca(sizeof(JsVar*) * l);
+      if (!args) return false;
+      jsvGetArrayItems(argsArray, l, args); // not very fast
+    }
   }
   bool r = jsiExecuteEventCallback(thisVar, callbackVar, l, args);
   jsvUnLockMany(l, args);
