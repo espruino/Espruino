@@ -37,6 +37,7 @@
  * 64 bits are aligned, but 32 bits fill in the gaps inbetween!
  */
     #define USE_ARG_REORDERING
+    #define USE_FLOAT_RETURN_FIX
   #endif
 #endif
 
@@ -170,9 +171,15 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     } else
 #endif
     {
-      if (JSWAT_IS_64BIT(returnType))
+      if (JSWAT_IS_64BIT(returnType)) {
+#ifdef USE_FLOAT_RETURN_FIX
+        assert(returnType==JSWAT_JSVARFLOAT);
+        JsVarFloat f = ((JsVarFloat (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
+        result = *(uint64_t*)&f;
+#else
         result = ((uint64_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
-      else
+#endif
+    } else
         result = ((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
     }
   } else { // else it gets tricky...
@@ -185,9 +192,15 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     } else
 #endif
     {
-      if (JSWAT_IS_64BIT(returnType))
+      if (JSWAT_IS_64BIT(returnType)) {
+#ifdef USE_FLOAT_RETURN_FIX
+        assert(returnType==JSWAT_JSVARFLOAT);
+        JsVarFloat f = ((JsVarFloat (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
+        result = *(uint64_t*)&f;
+#else
         result = ((uint64_t (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
-      else
+#endif
+      } else
         result = ((uint32_t (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
     }
   }

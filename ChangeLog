@@ -22,6 +22,7 @@
             Swap order of JsVar internals, string usage up to 10 chars
             Add handling for uint32_t,uint64_t,uint32_t case for Raspberry Pi
             Add startup sanity checks for jsnative.c (in non-release builds)
+            Added fix for returning floats on Raspberry Pi
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
