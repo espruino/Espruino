@@ -107,7 +107,10 @@ extern int isfinite ( double );
   #elif JSVAR_CACHE_SIZE <= 1023
     /* for this, we use 10 bit refs. GCC can't do that so store refs as
      * single bytes and then manually pack an extra 2 bits for each of
-     * the 4 refs into a byte called 'pack'
+     * the refs into a byte called 'pack'
+     *
+     * We also put the 2 bits from lastChild into 'flags', because then
+     * we can use 'pack' for character data in a stringext
      *
      * Note that JsVarRef/JsVarRefSigned are still 2 bytes, which means
      * we're only messing around when loading/storing refs - not when
@@ -140,7 +143,11 @@ extern int isfinite ( double );
 /// Max length for a JSV_STRING
 #define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE))
 /// Max length for a JSV_STRINGEXT
+#ifdef JSVARREF_PACKED_BITS
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE+1) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter) + sizeof(pack))
+#else
 #define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+#endif
 
 /** This is the amount of characters at which it'd be more efficient to use
  * a flat string than to use a normal string... */
