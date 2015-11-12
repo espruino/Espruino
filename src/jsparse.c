@@ -754,6 +754,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
             if (jsvIsFunctionReturn(function)) {
+              #ifdef USE_DEBUGGER
+                // we didn't parse a statement so wouldn't trigger the debugger otherwise
+                if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && JSP_SHOULD_EXECUTE) {
+                  execInfo.lex->tokenLastStart = jsvStringIteratorGetIndex(&execInfo.lex->tokenStart.it)-1;
+                  jsiDebuggerLoop();
+                }
+              #endif
               // implicit return - we just need an expression (optional)
               if (execInfo.lex->tk != ';' && execInfo.lex->tk != '}')
                 returnVar = jsvSkipNameAndUnLock(jspeExpression());

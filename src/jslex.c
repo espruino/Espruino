@@ -803,7 +803,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
 unsigned int jslGetLineNumber(struct JsLex *lex) {
   size_t line;
   size_t col;
-  jsvGetLineAndCol(lex->sourceVar, lex->tokenLastStart, &line, &col);
+  jsvGetLineAndCol(lex->sourceVar, jsvStringIteratorGetIndex(&lex->tokenStart.it)-1, &line, &col);
   return (unsigned int)line;
 }
 
