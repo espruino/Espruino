@@ -51,21 +51,11 @@ static inline uint32_t _getCycleCount(void) {
  "name"     : "neopixelWrite",
  "generate" : "jswrap_ESP8266_neopixelWrite",
  "params"   : [
-   ["pin", "JsVar", "Pin for output signal."],
+   ["pin", "pin", "Pin for output signal."],
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
-
-__attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar *jsPin, JsVar *jsArrayOfData) {
-  if (jsPin == NULL) {
-    jsExceptionHere(JSET_ERROR, "No output pin supplied.");
-    return;
-  }
-  if (!jsvIsPin(jsPin)) {
-    jsExceptionHere(JSET_ERROR, "Pin value is not a pin.");
-    return;
-  }
-  Pin pin = jshGetPinFromVar(jsPin);
+__attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return;
@@ -78,7 +68,12 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar 
     jsExceptionHere(JSET_ERROR, "Data must be an array.");
     return;
   }
-  int dataLength = jsvGetArrayLength(jsArrayOfData);
+
+  JSV_GET_AS_CHAR_ARRAY(pixels, dataLength, jsArrayOfData);
+  if (!pixels) {
+    return;
+  }
+
   if (dataLength == 0) {
     jsExceptionHere(JSET_ERROR, "Data must be a non empty array.");
     return;
@@ -87,13 +82,8 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar 
     jsExceptionHere(JSET_ERROR, "Data length must multiples of RGB bytes (3).");
     return;
   }
-  uint8_t *pixels = (uint8 *)os_malloc(dataLength);
-  if (pixels == NULL) {
-    jsExceptionHere(JSET_ERROR, "Out of memory.");
-    return;
-  }
-  int i;
-  for (int i=0; i<dataLength; i++) {
+
+  for (size_t i=0; i<dataLength; i++) {
     JsVar *jsItem = jsvGetArrayItem(jsArrayOfData, i);
     pixels[i] = jsvGetInteger(jsItem);
     jsvUnLock(jsItem);
@@ -104,7 +94,7 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar 
   uint8_t *p, *end, pix, mask;
   uint32_t t, time0, time1, period, c, startTime, pinMask;
   pinMask = _BV(pin);
-  p = pixels;
+  p = (uint8_t *)pixels;
   end = p + numBytes;
   pix = *p++;
   mask = 0x80;
@@ -121,22 +111,17 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar 
   //period = 136; // 136 cycles = 1.71us
   period = 100; // cycles = 1.25us
   //period = 104; // 1.3us
-  //GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);
-  //os_delay_us(100);
-  //GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);
-  //os_delay_us(100);
-  //GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);
   while(1) {
     if (pix & mask)
-      t = time1;                             // Bit high duration
+      t = time1; // Bit high duration
     else
       t = time0;
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);       // Set high
-    startTime = _getCycleCount();                                        // Save start time
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
+    startTime = _getCycleCount();                    // Save start time
     while (((c = _getCycleCount()) - startTime) < t)
       ;      // Wait high duration
-    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);       // Set low
-    if (!(mask >>= 1)) {                                  // Next bit/byte
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);  // Set low
+    if (!(mask >>= 1)) {                             // Next bit/byte
       if (p >= end)
         break;
       pix = *p++;
@@ -147,14 +132,4 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(JsVar 
   }
   while ((_getCycleCount() - startTime) < period)
     ; // Wait for last bit
-  os_free(pixels);
 }
-/*
-int d = jsvGetInteger(count);
-uint32_t cnt1 = _getCycleCount();
-os_delay_us ( d);
-uint32_t cnt2 = _getCycleCount();
-os_printf("Delaying for: %d\n", d);
-os_printf("Cycle count: %lu\n", cnt2-cnt1);
-}
-*/
