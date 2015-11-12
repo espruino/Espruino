@@ -1444,12 +1444,16 @@ void jsiExecuteEvents() {
 }
 
 NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray) { // array of functions or single function
-  unsigned int l = (unsigned int)jsvGetArrayLength(argsArray);
+  unsigned int l = 0;
   JsVar **args = 0;
-  if (l) {
-    args = alloca(sizeof(JsVar*) * l);
-    if (!args) return false;
-    jsvGetArrayItems(argsArray, l, args); // not very fast
+  if (argsArray) {
+    assert(jsvIsArray(argsArray));
+    l = (unsigned int)jsvGetArrayLength(argsArray);
+    if (l) {
+      args = alloca(sizeof(JsVar*) * l);
+      if (!args) return false;
+      jsvGetArrayItems(argsArray, l, args); // not very fast
+    }
   }
   bool r = jsiExecuteEventCallback(thisVar, callbackVar, l, args);
   jsvUnLockMany(l, args);
