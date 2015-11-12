@@ -21,6 +21,7 @@
 #include "jswrap_stream.h"
 #include "jswrap_flash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
+#include "jsnative.h" // jsnSanityTest
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -730,6 +731,10 @@ void jsiInit(bool autoLoad) {
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
   consoleDevice = EV_LIMBO;
+#endif
+
+#ifndef RELEASE
+  jsnSanityTest();
 #endif
 
   jsiSemiInit(autoLoad);

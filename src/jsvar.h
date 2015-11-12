@@ -255,9 +255,9 @@ static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) {
 }
 static ALWAYS_INLINE void jsvSetRefs(JsVar *v, JsVarRefCounter refs) {
   if ((v->flags&JSV_VARTYPEMASK)==JSV_FLOAT)
-    v->varData.ref.lastChild = refs;
+    v->varData.ref.lastChild = (uint8_t)refs;
   else
-    v->varData.ref.refs = refs;
+    v->varData.ref.refs = (uint8_t)refs;
 }
 #else
 static ALWAYS_INLINE JsVarRefCounter jsvGetRefs(JsVar *v) { return v->varData.ref.refs; }
