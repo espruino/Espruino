@@ -211,32 +211,34 @@ typedef struct {
  *
  * Both INT and STRING can also be names:
  *
- * 16 byte JsVars (24 byte for 32 bit refs are similar)
- *
- * | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- * |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
- * | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
- * | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
- * | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
- * | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
- * | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
- * | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
- * | 14-15  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
- *
- * 12 byte JsVars ( where < 1024 variables). 10 bit addresses are used, with the extra bits being stored in a field called `pack`
- *
- * | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
- * |--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
- * | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
- * | 4      | next    | data   | data     |  next    | next     |  -   | data   | argTypes       | format      |
- * | 5      | prev    | data   | data     |  prev    | prev     |  -   | data   | argTypes       | format      |
- * | 6      | first   | data   | data     |  child   | child    |  -   | data   | first          | stringPtr   |
- * | 7      | pack    | pack   | data     |  pack    | pack     | pack | data   | pack           | pack        |
- * | 8      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
- * | 9      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |   -    | last           | -           |
- * | 10-11  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
- *
- *
+ 16 byte JsVars (JsVars for 32 bit refs are similar)
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE  | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|---------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data    | nativePtr      | size        |
+ | 4 - 5  | next    | data   | data     |  next    | next     |  -   | data    | argTypes       | format      |
+ | 6 - 7  | prev    | data   | data     |  prev    | prev     |  -   | data    | argTypes       | format      |
+ | 8 - 9  | first   | data   | data     |  child   | child    |  -   |  -      | first          | stringPtr   |
+ | 10-11  | refs    | refs   | data     |  refs    | refs     | refs | refs    | refs           | refs        |
+ | 12-13  | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |  -      | last           | -           |
+ | 14-15  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags   | Flags          | Flags       |
+
+ 12 byte JsVars ( where < 1024 variables)
+
+ 10 bit addresses are used, with the extra bits being stored in a field called `pack` and the `flags` variable
+
+ | Offset | Name    | STRING | STR_EXT  | NAME_STR | NAME_INT | INT  | DOUBLE | OBJ/FUNC/ARRAY | ARRAYBUFFER |
+ |--------|---------|--------|----------|----------|----------|------|--------|----------------|-------------|
+ | 0 - 3  | varData | data   | data     |  data    | data     | data | data   | nativePtr      | size        |
+ | 4      | next    | data   | data     |  next    | next     |  -   | data   | argTypes       | format      |
+ | 5      | prev    | data   | data     |  prev    | prev     |  -   | data   | argTypes       | format      |
+ | 6      | first   | data   | data     |  child   | child    |  -   | data   | first          | stringPtr   |
+ | 7      | pack    | pack   | data     |  pack    | pack     | pack | data   | pack           | pack        |
+ | 8      | refs    | refs   | data     |  refs    | refs     | refs | refs   | refs           | refs        |
+ | 9      | last    | nextPtr| nextPtr  |  nextPtr |  -       |  -   |   -    | last           | -           |
+ | 10-11  | Flags   | Flags  | Flags    |  Flags   | Flags    | Flags| Flags  | Flags          | Flags       |
+
+
  * NAME_INT_INT/NAME_INT_BOOL are the same as NAME_INT, except 'child' contains the value rather than a pointer
  * NAME_STRING_INT is the same as NAME_STRING, except 'child' contains the value rather than a pointer
  * FLAT_STRING uses the variable blocks that follow it as flat storage for all the data
