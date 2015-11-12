@@ -24,6 +24,22 @@
     #define USE_X86_CDECL // cdecl on x86 puts FP args elsewhere!
 #endif
 
+#if defined(__WORDSIZE) && __WORDSIZE == 64
+  #define USE_64BIT
+#else // 32 bit
+  #if defined(__gnu_linux__) && !defined(USE_X86_CDECL)
+/* This is nuts. On rasbperry pi Linux:
+ *
+ * `uint32_t a, uint32_t b, uint64_t c` -> a,b,c - awesome
+ * `uint64_t a, uint32_t b, uint32_t c` -> a,b,c - awesome
+ * `uint32_t a, uint64_t b, uint32_t c` -> a,c,b - NOT awesome
+ *
+ * 64 bits are aligned, but 32 bits fill in the gaps inbetween!
+ */
+    #define USE_ARG_REORDERING
+  #endif
+#endif
+
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
@@ -41,6 +57,10 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     argData[argCount++] = (size_t)thisParam;
   argumentSpecifier = (argumentSpecifier & JSWAT_ARGUMENTS_MASK) >> JSWAT_BITS;
 
+#ifdef USE_ARG_REORDERING
+  size_t alignedLongsAfter = 0;
+#endif
+
 
   // run through all arguments
   while (argumentSpecifier & JSWAT_MASK) {
@@ -50,16 +70,17 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     // try and pack it:
     JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
 
-#ifndef USE_X86_CDECL
-    if (JSWAT_IS_64BIT(argType))
-      argCount = (argCount+1)&~1;
+#ifdef USE_ARG_REORDERING
+    if (!JSWAT_IS_64BIT(argType) && !(argCount&1)) {
+      argCount += alignedLongsAfter*2;
+      alignedLongsAfter = 0;
+    }
 #endif
 
     if (argCount > MAX_ARGS - (JSWAT_IS_64BIT(argType)?2:1)) {
+      // TODO: can we ever hit this because of JsnArgumentType's restrictions?
       jsError("INTERNAL: too many arguments for jsnCallFunction");
     }
-
-
 
     switch (argType) {
     case JSWAT_JSVAR: { // standard variable
@@ -95,11 +116,24 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
       doubleData[doubleCount++] = f;
 #else
       uint64_t i = *(uint64_t*)&f;
-#if defined(__WORDSIZE) &&__WORDSIZE == 64
+#if USE_64BIT
       argData[argCount++] = (size_t)i;
-#else
+#else // 32 bit...
+ #ifdef USE_ARG_REORDERING
+      if (argCount&1) {
+        size_t argC = argCount+1;
+        argData[argC++] = (size_t)((i) & 0xFFFFFFFF);
+        argData[argC++] = (size_t)((i>>32) & 0xFFFFFFFF);
+        alignedLongsAfter++;
+      } else {
+        argData[argCount++] = (size_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (size_t)((i>>32) & 0xFFFFFFFF);
+      }
+ #else // no reordering
+      if (argCount&1) argCount++;
       argData[argCount++] = (size_t)((i) & 0xFFFFFFFF);
       argData[argCount++] = (size_t)((i>>32) & 0xFFFFFFFF);
+ #endif
 #endif
 #endif
       break;
