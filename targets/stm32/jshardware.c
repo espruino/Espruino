@@ -2666,7 +2666,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
   if (!jshIsPinValid(pin)) return 0;
   GPIO_TypeDef *port = stmPort(pin);
-  uint32_t *regAddr;
+  volatile uint32_t *regAddr;
   if (flags == JSGPAF_INPUT)
     regAddr = &port->IDR;
   else

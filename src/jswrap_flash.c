@@ -108,14 +108,13 @@ void jswrap_flash_write(JsVar *data, int addr) {
     return jsExceptionHere(JSET_ERROR, "Data is not defined");
 
   JSV_GET_AS_CHAR_ARRAY(flashData, flashDataLen, data);
-  size_t l = (size_t)jsvIterateCallbackCount(data);
   if ((addr&3) || (flashDataLen&3)) {
     jsExceptionHere(JSET_ERROR, "Data and address must be multiples of 4");
     return;
   }
 
   if (flashData && flashDataLen)
-    jshFlashWrite(flashData, (unsigned int)flashDataLen, (unsigned int)l);
+    jshFlashWrite(flashData, (unsigned int)addr, (unsigned int)flashDataLen);
 }
 
 /*JSON{
