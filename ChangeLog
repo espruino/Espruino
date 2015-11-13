@@ -25,6 +25,8 @@
             Added fix for returning floats on Raspberry Pi
             When <1024 JsVars, `lastChild`'s top bits are stored in `flags`, and pack
                is moved such that we get 1 extra character in StringExts
+            Allow events of >12 characters length
+            Fix regression in flash memory write (introduced via AES merge)
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
