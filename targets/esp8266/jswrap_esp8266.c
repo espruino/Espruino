@@ -83,12 +83,6 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pi
     return;
   }
 
-  for (size_t i=0; i<dataLength; i++) {
-    JsVar *jsItem = jsvGetArrayItem(jsArrayOfData, i);
-    pixels[i] = jsvGetInteger(jsItem);
-    jsvUnLock(jsItem);
-  }
-
   uint32_t numBytes = dataLength;
 
   uint8_t *p, *end, pix, mask;
