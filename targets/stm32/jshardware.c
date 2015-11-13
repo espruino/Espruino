@@ -2663,7 +2663,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     IWDG_Enable();
 }
 
-uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
+volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
   if (!jshIsPinValid(pin)) return 0;
   GPIO_TypeDef *port = stmPort(pin);
   uint32_t *regAddr;
@@ -2680,14 +2680,16 @@ uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
 
 #if defined(STM32F2) || defined(STM32F4)
 int jshFlashGetSector(uint32_t addr) {
-  addr -= FLASH_START;
 #ifdef FLASH_END // supplied by stm32fXXX.h
-  if (FLASH_START+addr > FLASH_END) return -1;
+  if (addr > FLASH_END) return -1;
 #else
   // else use what's in BOARD.py - could be less than the
   // chip might be capable of (but not specced for ;)
-  if (addr >= FLASH_TOTAL) return -1;
+  if (addr >= FLASH_TOTAL+FLASH_START) return -1;
 #endif
+  if (addr < FLASH_START) return -1;
+  addr -= FLASH_START;
+
   if (addr<16*1024) return FLASH_Sector_0;
   else if (addr<32*1024) return FLASH_Sector_1;
   else if (addr<48*1024) return FLASH_Sector_2;
