@@ -759,7 +759,7 @@ static void esp8266_callback_writeFinishedCB(
 
 /**
  * Error handler callback.
- * Although this is called reconnect by Espressif, this is really an error handler
+ * Although this is called `reconnect` by Espressif, this is really an error handler
  * routine.  It will be called when an error is detected.
  */
 static void esp8266_callback_reconnectCB(
@@ -767,7 +767,19 @@ static void esp8266_callback_reconnectCB(
     sint8 err  //!< The error code.
   ) {
   os_printf(">> reconnectCB:  Error code is: %d - %s\n", err, esp8266_errorToString(err));
-  os_printf("<< reconnectCB");
+  // When an error is detected, we need to flag this connection as being in error.
+
+  assert(arg != NULL);
+  struct espconn *pEspconn = (struct espconn *)arg;
+  dumpEspConn(pEspconn);
+
+  struct socketData *pSocketData = (struct socketData *)pEspconn->reverse;
+  assert(pSocketData != NULL);
+
+  // Set the socket state as in error.
+  setSocketInError(pSocketData->socketId, "ESP8266 reported network error", err);
+
+  os_printf("<< reconnectCB\n");
 }
 
 
@@ -994,6 +1006,13 @@ int net_ESP8266_BOARD_send(
 
   struct socketData *pSocketData = getSocketData(sckt);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
+
+  // If the socket is in error ... return -1
+  if (pSocketData->state == SOCKET_STATE_ERROR) {
+    os_printf("< net_ESP8266_BOARD_send - Socket is flagged as being in error state\n");
+    return -1;
+  }
+
 
   // If we are not connected, then we can't currently send data.
   if (pSocketData->isConnected == false) {
