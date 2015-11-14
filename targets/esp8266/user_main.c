@@ -17,7 +17,6 @@
 #include <user_interface.h>
 #include <osapi.h>
 #include <uart.h>
-#include <telnet.h>
 #include <espmissingincludes.h>
 
 //#define FAKE_STDLIB
