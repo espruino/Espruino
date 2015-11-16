@@ -24,6 +24,7 @@
 #include <espmissingincludes.h>
 #include <uart.h>
 #include <i2c_master.h>
+#include <pwm.h>
 #include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
 //#define FAKE_STDLIB
@@ -35,6 +36,7 @@ typedef long long int64_t;
 #include "jstimer.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jspininfo.h"
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
@@ -57,6 +59,16 @@ typedef long long int64_t;
 
 static bool g_spiInitialized = false;
 static int  g_lastSPIRead = -1;
+
+struct PWMRecord {
+  bool enabled; //!< Has this PWM been enabled previously?
+};
+static uint32 g_pwmFreq;
+
+static struct PWMRecord g_PWMRecords[JSH_PIN_COUNT];
+
+static uint8 g_pinState[JSH_PIN_COUNT];
+
 
 /**
  * Transmit all the characters in the transmit buffer.
@@ -118,6 +130,14 @@ void jshInit() {
   gpio_intr_handler_register(intrHandlerCB, NULL);
 
   ETS_GPIO_INTR_ENABLE();
+
+  // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    // For each of the PWM records, flag the PWM as having been not initialized.
+    g_PWMRecords[i].enabled = false;
+
+    g_pinState[i] = 0;
+  }
   os_printf("< jshInit\n");
 } // End of jshInit
 
@@ -141,7 +161,7 @@ static void intrHandlerCB(
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
   int pin;
-  for (pin=0; pin<16; pin++) {
+  for (pin=0; pin<JSH_PIN_COUNT; pin++) {
     if ((interruptMask & (1<<pin)) != 0) {
       // Pin has changed so push the event that says pin has changed.
       jshPushIOWatchEvent(pinToEV_EXTI(pin));
@@ -160,7 +180,7 @@ void jshReset() {
   // Set all GPIO pins to be input.
   /*
   int i;
-  for (int i=0; i<16; i++) {
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
     jshPinSetState(i, JSHPINSTATE_GPIO_IN);
   }
   */
@@ -225,32 +245,45 @@ void jshDelayMicroseconds(int microsec) {
 
 //===== PIN mux =====
 
-static uint8_t PERIPHS[] = {
-PERIPHS_IO_MUX_GPIO0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0TXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0RXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO4_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO5_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CLK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA1_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA3_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CMD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDI_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
+static uint32 g_PERIPHS[] = {
+  PERIPHS_IO_MUX_GPIO0_U,    // 00
+  PERIPHS_IO_MUX_U0TXD_U,    // 01
+  PERIPHS_IO_MUX_GPIO2_U,    // 02
+  PERIPHS_IO_MUX_U0RXD_U,    // 03
+  PERIPHS_IO_MUX_GPIO4_U,    // 04
+  PERIPHS_IO_MUX_GPIO5_U,    // 05
+  PERIPHS_IO_MUX_SD_CLK_U,   // 06
+  PERIPHS_IO_MUX_SD_DATA0_U, // 07
+  PERIPHS_IO_MUX_SD_DATA1_U, // 08
+  PERIPHS_IO_MUX_SD_DATA2_U, // 09
+  PERIPHS_IO_MUX_SD_DATA3_U, // 10
+  PERIPHS_IO_MUX_SD_CMD_U,   // 11
+  PERIPHS_IO_MUX_MTDI_U,     // 12
+  PERIPHS_IO_MUX_MTCK_U,     // 13
+  PERIPHS_IO_MUX_MTMS_U,     // 14
+  PERIPHS_IO_MUX_MTDO_U      // 15
+};
 
 /**
  * Return the function value to select GPIO for a pin
  */
-static uint8 pinGPIOFunc[] = {
-  FUNC_GPIO0, FUNC_GPIO1, FUNC_GPIO2, FUNC_GPIO3,
-  FUNC_GPIO4, FUNC_GPIO5, 3, 3,
-  3, FUNC_GPIO9, FUNC_GPIO10, 3,
-  FUNC_GPIO12, FUNC_GPIO13, FUNC_GPIO14, FUNC_GPIO15,
+static uint32 g_pinGPIOFunc[] = {
+  FUNC_GPIO0,  // 00
+  FUNC_GPIO1,  // 01
+  FUNC_GPIO2,  // 02
+  FUNC_GPIO3,  // 03
+  FUNC_GPIO4,  // 04
+  FUNC_GPIO5,  // 05
+  3,           // 06
+  3,           // 07
+  3,           // 08
+  FUNC_GPIO9,  // 09
+  FUNC_GPIO10, // 10
+  3,           // 11
+  FUNC_GPIO12, // 12
+  FUNC_GPIO13, // 13
+  FUNC_GPIO14, // 14
+  FUNC_GPIO15  // 15
 };
 
 /**
@@ -278,9 +311,6 @@ static char *pinStateToString(JshPinState state) {
   return states[state];
 }
 
-static uint8 pinState[16] = {
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // all JSHPINSTATE_UNDEFINED until we set them
-};
 
 static void jshDebugPin(Pin pin) {
   os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
@@ -324,13 +354,13 @@ void jshPinSetState(
   os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
       pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
-  assert(pin < 16);
+  assert(pin < JSH_PIN_COUNT);
   if (pin >= 6 && pin <= 11) {
     jsError("Cannot change pins used for flash chip");
     return; // these pins are used for the flash chip
   }
 
-  int periph = PERIPHS_IO_MUX + PERIPHS[pin];
+  int periph = g_PERIPHS[pin];
 
   // set the pin mux function
   switch (state) {
@@ -339,7 +369,7 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_IN:
   case JSHPINSTATE_GPIO_IN_PULLUP:
   case JSHPINSTATE_I2C:
-    PIN_FUNC_SELECT(periph, pinGPIOFunc[pin]); // set the pin mux to GPIO
+    PIN_FUNC_SELECT(periph, g_pinGPIOFunc[pin]); // set the pin mux to GPIO
     break;
   case JSHPINSTATE_AF_OUT:
   case JSHPINSTATE_AF_OUT_OPENDRAIN:
@@ -376,7 +406,7 @@ void jshPinSetState(
 
   //jshDebugPin(pin);
 
-  pinState[pin] = state; // remember what we set this to...
+  g_pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -386,7 +416,7 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
   os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return pinState[pin];
+  return g_pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -398,7 +428,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
   GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
   GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
   //jshDebugPin(pin);
@@ -412,7 +442,7 @@ void jshPinSetValue(
 bool jshPinGetValue(
     Pin pin //!< The pin to have its value read.
   ) {
-  os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -421,7 +451,7 @@ bool jshPinGetValue(
  *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
+  os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -430,17 +460,50 @@ JsVarFloat jshPinAnalog(Pin pin) {
  *
  */
 int jshPinAnalogFast(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
+  os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
 
 /**
- *
+ * Set the output PWM value.
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
-  jsError("No DAC");
+  os_printf("> jshPinAnalogOutput - jshPinAnalogOutput: pin=%d, value(x100)=%d, freq=%d\n", pin, (int)(value*100), (int)freq);
+  // Check that the value is between 0.0 and 1.0
+  if (value < 0 || value > 1.0) {
+    return 0;
+  }
+
+  // If PWM for the pin has not previously been enabled, enable it now.
+  if (g_PWMRecords[pin].enabled == false) {
+    g_PWMRecords[pin].enabled = true;
+    g_pwmFreq = (uint32)freq;
+    // Set the default frequency to 1KHz if no supplied frequency.
+    if (g_pwmFreq == 0) {
+      g_pwmFreq = 1000;
+    }
+
+    // Initialize the PWM subsystem
+    uint32 duty = 0;
+    uint32 pinInfoList[3] = {g_PERIPHS[pin], g_pinGPIOFunc[pin], pin};
+    pwm_init(g_pwmFreq * 1000000, &duty, 1, &pinInfoList);
+
+    // Start the PWM subsystem
+    pwm_start();
+  }
+
+  // If the period/frequency has changed, update the period.
+  if ((uint32)freq != 0 && (uint32)freq != g_pwmFreq) {
+    g_pwmFreq = (uint32)freq;
+    pwm_set_period(g_pwmFreq * 1000000);
+  }
+
+  uint32 duty = value * 1000000 / 0.045 / g_pwmFreq;
+  os_printf(" - Duty: %d (units of 45 nsecs)\n", duty);
+  pwm_set_duty(duty, 0);
+
+  //jsError("No DAC");
   return 0;
 }
 
@@ -507,7 +570,7 @@ bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
-  os_printf("> jshCanWatch: %d\n", pin);
+  os_printf("> jshCanWatch: pin=%d\n", pin);
   os_printf("< jshCanWatch = true\n");
   return true;
 }
