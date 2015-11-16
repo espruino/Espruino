@@ -87,7 +87,9 @@ CryptoMode jswrap_crypto_getMode(JsVar *mode) {
 
 mbedtls_md_type_t jswrap_crypto_getHasher(JsVar *hasher) {
   if (jsvIsStringEqual(hasher, "SHA1")) return MBEDTLS_MD_SHA1;
+  if (jsvIsStringEqual(hasher, "SHA224")) return MBEDTLS_MD_SHA224;
   if (jsvIsStringEqual(hasher, "SHA256")) return MBEDTLS_MD_SHA256;
+  if (jsvIsStringEqual(hasher, "SHA384")) return MBEDTLS_MD_SHA384;
   if (jsvIsStringEqual(hasher, "SHA512")) return MBEDTLS_MD_SHA512;
   jsExceptionHere(JSET_ERROR, "Unknown Hasher %q", hasher);
   return MBEDTLS_MD_NONE;
@@ -195,7 +197,7 @@ Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
   "params" : [
     ["passphrase","JsVar","Passphrase"],
     ["salt","JsVar","Salt for turning passphrase into a key"],
-    ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10 }`"]
+    ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10, hasher: 'SHA1'/'SHA224'/'SHA256'/'SHA384'/'SHA512' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer"
@@ -265,6 +267,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
   int err;
 
   unsigned char iv[16]; // initialisation vector
+  memset(iv, 0, 16);
 
   CryptoMode mode = CM_CBC;
 
@@ -279,9 +282,7 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
       mode = jswrap_crypto_getMode(modeVar);
     jsvUnLock(modeVar);
     if (mode == CM_NONE) return 0;
-  } else if (jsvIsUndefined(options)) {
-    memset(iv, 0, 16);
-  } else {
+  } else if (!jsvIsUndefined(options)) {
     jsError("'options' must be undefined, or an Object");
     return 0;
   }
