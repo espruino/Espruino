@@ -184,7 +184,7 @@ void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
   if (!net || networkState != NETWORKSTATE_ONLINE) return;
   int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (sckt>=0) {
-    net->closesocket(net, sckt);
+    netCloseSocket(net, sckt);
     jsvObjectSetChild(connection,HTTP_NAME_SOCKET,0);
   }
 }
@@ -220,7 +220,7 @@ bool socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendDat
   int a=1;
   if (!jsvIsEmptyString(*sendData)) {
     size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
-    a = net->send(net, sckt, buf, bufLen);
+    a = netSend(net, sckt, buf, bufLen);
     // Now cut what we managed to send off the beginning of sendData
     if (a>0) {
       JsVar *newSendData = 0;
@@ -285,7 +285,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
 
     if (!closeConnectionNow) {
-      int num = net->recv(net, sckt, buf,sizeof(buf));
+      int num = netRecv(net, sckt, buf,sizeof(buf));
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
@@ -421,7 +421,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = net->recv(net, sckt, buf, sizeof(buf));
+          int num = netRecv(net, sckt, buf, sizeof(buf));
           if (num<0) {
             // we probably disconnected so just get rid of this
             closeConnectionNow = true;
@@ -497,7 +497,7 @@ bool socketIdle(JsNetwork *net) {
       JsVar *server = jsvObjectIteratorGetValue(&it);
       int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
-      int theClient = net->accept(net, sckt);
+      int theClient = netAccept(net, sckt);
       if (theClient >= 0) {
         SocketType socketType = socketGetType(server);
         if (socketType == ST_HTTP) {
@@ -544,7 +544,7 @@ bool socketIdle(JsNetwork *net) {
 
   if (socketServerConnectionsIdle(net)) hadSockets = true;
   if (socketClientConnectionsIdle(net)) hadSockets = true;
-  net->checkError(net);
+  netCheckError(net);
   return hadSockets;
 }
 
@@ -564,7 +564,7 @@ void serverListen(JsNetwork *net, JsVar *server, int port) {
 
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
 
-  int sckt = net->createsocket(net, 0/*server*/, (unsigned short)port);
+  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, NCF_NORMAL);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -710,11 +710,11 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     jsError("Unable to locate host");
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
-    net->checkError(net);
+    netCheckError(net);
     return;
   }
 
-  int sckt =  net->createsocket(net, host_addr, port);
+  int sckt =  netCreateSocket(net, host_addr, port, NCF_NORMAL);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -730,7 +730,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   jsvUnLock(options);
 
-  net->checkError(net);
+  netCheckError(net);
 }
 
 // 'end' this connection

@@ -97,4 +97,17 @@ void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *
 /** Some devices (CC3000) store the IP address with the first element last, so we must flip it */
 unsigned long networkFlipIPAddress(unsigned long addr);
 
+typedef enum {
+  NCF_NORMAL = 0,
+  NCF_TLS = 1
+} NetCreateFlags;
+
+bool netCheckError(JsNetwork *net);
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags);
+void netCloseSocket(JsNetwork *net, int sckt);
+int netAccept(JsNetwork *net, int sckt);
+void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr);
+int netRecv(JsNetwork *net, int sckt, void *buf, size_t len);
+int netSend(JsNetwork *net, int sckt, const void *buf, size_t len);
+
 #endif // _NETWORK_H

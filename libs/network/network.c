@@ -241,3 +241,33 @@ JsNetwork *networkGetCurrent() {
   // The value of this global is set in networkGetFromVar.
   return networkCurrentStruct;
 }
+
+// ------------------------------------------------------------------------------
+
+bool netCheckError(JsNetwork *net) {
+  return net->checkError(net);
+}
+
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags) {
+  return net->createsocket(net, host, port);
+}
+
+void netCloseSocket(JsNetwork *net, int sckt) {
+  net->closesocket(net, sckt);
+}
+
+int netAccept(JsNetwork *net, int sckt) {
+  return net->accept(net, sckt);
+}
+
+void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
+  net->gethostbyname(net, hostName, out_ip_addr);
+}
+
+int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
+  return net->recv(net, sckt, buf, len);
+}
+
+int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
+  return net->send(net, sckt, buf, len);
+}
