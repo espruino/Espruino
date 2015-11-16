@@ -121,7 +121,7 @@ JsVar *jswrap_crypto_SHA1(JsVar *message) {
   "params" : [
     ["passphrase","JsVar","Passphrase"],
     ["salt","JsVar","Salt for turning passphrase into a key"],
-    ["options","JsVar","Object of Options, `{ keySize: 8, iterations: 10 }`"]
+    ["options","JsVar","Object of Options, `{ keySize: 8 (in bytes), iterations: 10 }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
   "return_object" : "ArrayBuffer"
@@ -134,7 +134,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
   int keySize = 128/32;
   if (jsvIsObject(options)) {
     keySize = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "keySize", 0));
-    if (keySize<128/32) keySize=128/32;
+    if (keySize<=0) keySize=128/32;
     iterations = jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "iterations", 0));
     if (iterations<1) iterations = 1;
   } else if (!jsvIsUndefined(options))
