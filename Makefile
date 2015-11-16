@@ -217,6 +217,14 @@ STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
 
+else ifdef HYTINY_STM103T
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=HYTINY_STM103T
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os # short on program memory
+
 else ifdef MAPLERET6_STM32
 EMBEDDED=1
 USE_NET=1
