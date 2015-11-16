@@ -127,7 +127,7 @@ JsVar *jswrap_crypto_SHA1(JsVar *message) {
   "return_object" : "ArrayBuffer"
 }
 
-Password-Based Key Derivation Function 2 algorithm.
+Password-Based Key Derivation Function 2 algorithm, using SHA512
 */
 JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
   int iterations = 1;
@@ -149,7 +149,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
   mbedtls_md_context_t ctx;
 
   mbedtls_md_init( &ctx );
-  err = mbedtls_md_setup( &ctx, mbedtls_md_info_from_type( MBEDTLS_MD_SHA1 ), 1 );
+  err = mbedtls_md_setup( &ctx, mbedtls_md_info_from_type( MBEDTLS_MD_SHA512 ), 1 );
   assert(err==0)
 
   char *keyPtr = 0;

@@ -1031,7 +1031,9 @@ libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md_wrap.c \
 libs/crypto/mbedtls/library/oid.c \
 libs/crypto/mbedtls/library/pkcs5.c \
-libs/crypto/mbedtls/library/sha1.c
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c
 endif
 
 
