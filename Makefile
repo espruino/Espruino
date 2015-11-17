@@ -1018,10 +1018,16 @@ ifdef USE_BLUETOOTH
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
+ifdef USE_HTTPS
+  DEFINES += -DUSE_HTTPS
+endif
+
 ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+
+ifdef USE_HTTPS
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
@@ -1052,6 +1058,20 @@ libs/crypto/mbedtls/library/ssl_tls.c \
 libs/crypto/mbedtls/library/ssl_srv.c \
 libs/crypto/mbedtls/library/x509.c \
 libs/crypto/mbedtls/library/x509_crt.c
+else
+  SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/asn1parse.c \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c \
+libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/md_wrap.c \
+libs/crypto/mbedtls/library/oid.c \
+libs/crypto/mbedtls/library/pkcs5.c \
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c
+endif
 endif
 
 

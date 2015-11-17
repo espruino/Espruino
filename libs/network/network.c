@@ -15,8 +15,6 @@
 #include "jsparse.h"
 #include "jsinteractive.h"
 
-#define USE_HTTPS
-
 #if defined(USE_CC3000)
   #include "network_cc3000.h"
 #endif
@@ -298,6 +296,7 @@ bool netCheckError(JsNetwork *net) {
 }
 
 int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags) {
+#ifdef USE_HTTPS
   if (flags & NCF_TLS) {
     jsiConsolePrintf( "Connecting with TLS..." );
     int ret;
@@ -394,10 +393,14 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
     BITFIELD_SET(socketIsHTTPS, sckt, 0);
     return sckt;
   }
+#else
+  return net->createsocket(net, host, port);
+#endif
 }
 
 void netCloseSocket(JsNetwork *net, int sckt) {
   net->closesocket(net, sckt);
+#ifdef USE_HTTPS
   /*
   mbedtls_net_free( &server_fd );
   mbedtls_ssl_free( &ssl );
@@ -405,6 +408,7 @@ void netCloseSocket(JsNetwork *net, int sckt) {
   mbedtls_ctr_drbg_free( &ctr_drbg );
   mbedtls_entropy_free( &entropy );
    */
+#endif
 }
 
 int netAccept(JsNetwork *net, int sckt) {
@@ -416,6 +420,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 }
 
 int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
+#ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     sslNet = net;
     int ret = mbedtls_ssl_read( &ssl, buf, len );
@@ -423,12 +428,15 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
     return ret;
-  } else {
+  } else
+#endif
+  {
     return net->recv(net, sckt, buf, len);
   }
 }
 
 int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
+#ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     sslNet = net;
     int ret = mbedtls_ssl_write( &ssl, buf, len );
@@ -436,7 +444,9 @@ int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
     return ret;
-  } else {
+  } else
+#endif
+  {
     return net->send(net, sckt, buf, len);
   }
 }

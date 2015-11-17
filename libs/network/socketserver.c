@@ -714,11 +714,13 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   }
 
   NetCreateFlags flags = NCF_NORMAL;
+#ifdef USE_HTTPS
   if (socketType == ST_HTTP && options) {
     JsVar *protocol = jsvObjectGetChild(options, "protocol", 0);
     if (protocol && jsvIsStringEqual(protocol, "https:"))
       flags |= NCF_TLS;
   }
+#endif
 
   if (port==0)
     port = (flags & NCF_TLS) ? 443 : 80;
