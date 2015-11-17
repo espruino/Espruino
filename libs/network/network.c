@@ -30,7 +30,6 @@
   #include "network_linux.h"
 #endif
 #if defined(USE_HTTPS)
-  #include "mbedtls/net.h"
   #include "mbedtls/ssl.h"
   #include "mbedtls/entropy.h"
   #include "mbedtls/ctr_drbg.h"
@@ -255,7 +254,7 @@ JsNetwork *networkGetCurrent() {
 // ------------------------------------------------------------------------------
 #ifdef USE_HTTPS
 bool httpsInitialised = false;
-mbedtls_net_context server_fd;
+int sslSocket;
 mbedtls_entropy_context entropy;
 mbedtls_ctr_drbg_context ctr_drbg;
 mbedtls_ssl_context ssl;
@@ -277,7 +276,7 @@ static void my_debug( void *ctx, int level,
 int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
   assert(sslNet);
   if (!sslNet) return 0;
-  int sckt = ((mbedtls_net_context *) ctx)->fd;
+  int sckt = *(int *)ctx;
   int r = sslNet->send(sslNet, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
@@ -285,7 +284,7 @@ int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
 int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   assert(sslNet);
   if (!sslNet) return 0;
-  int sckt = ((mbedtls_net_context *) ctx)->fd;
+  int sckt = *(int *)ctx;
   int r = sslNet->recv(sslNet, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
@@ -324,7 +323,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
       jsiConsolePrintf("HTTPS Connect failed");
       return -1;
     }
-    server_fd.fd = sckt;
+    sslSocket = sckt;
 
     if( ( ret = mbedtls_ssl_config_defaults( &conf,
                     MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
@@ -352,7 +351,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
     }
 
     sslNet = net;
-    mbedtls_ssl_set_bio( &ssl, &server_fd, ssl_send, ssl_recv, NULL );
+    mbedtls_ssl_set_bio( &ssl, &sslSocket, ssl_send, ssl_recv, NULL );
 
     jsiConsolePrintf( "  . Performing the SSL/TLS handshake..." );
 

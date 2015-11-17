@@ -1034,7 +1034,6 @@ libs/crypto/mbedtls/library/ecp.c \
 libs/crypto/mbedtls/library/ecp_curves.c \
 libs/crypto/mbedtls/library/entropy.c \
 libs/crypto/mbedtls/library/entropy_poll.c \
-libs/crypto/mbedtls/library/net.c \
 libs/crypto/mbedtls/library/md.c \
 libs/crypto/mbedtls/library/md5.c \
 libs/crypto/mbedtls/library/md_wrap.c \
