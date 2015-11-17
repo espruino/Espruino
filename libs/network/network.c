@@ -13,6 +13,9 @@
  */
 #include "network.h"
 #include "jsparse.h"
+#include "jsinteractive.h"
+
+#define USE_HTTPS
 
 #if defined(USE_CC3000)
   #include "network_cc3000.h"
@@ -25,6 +28,13 @@
 #endif
 #if defined(LINUX)
   #include "network_linux.h"
+#endif
+#if defined(USE_HTTPS)
+  #include "mbedtls/net.h"
+  #include "mbedtls/ssl.h"
+  #include "mbedtls/entropy.h"
+  #include "mbedtls/ctr_drbg.h"
+  #include "mbedtls/debug.h"
 #endif
 #include "network_js.h"
 
@@ -243,17 +253,159 @@ JsNetwork *networkGetCurrent() {
 }
 
 // ------------------------------------------------------------------------------
+#ifdef USE_HTTPS
+bool httpsInitialised = false;
+mbedtls_net_context server_fd;
+mbedtls_entropy_context entropy;
+mbedtls_ctr_drbg_context ctr_drbg;
+mbedtls_ssl_context ssl;
+mbedtls_ssl_config conf;
+mbedtls_x509_crt cacert;
+
+JsNetwork *sslNet;
+BITFIELD_DECL(socketIsHTTPS, 32);
+
+static void my_debug( void *ctx, int level,
+                      const char *file, int line, const char *str )
+{
+    ((void) ctx);
+    ((void) level);
+    jsiConsolePrintf( "%s:%d: %s", file, line, str );
+    jshTransmitFlush();
+}
+
+int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
+  assert(sslNet);
+  if (!sslNet) return 0;
+  int sckt = ((mbedtls_net_context *) ctx)->fd;
+  int r = sslNet->send(sslNet, sckt, buf, len);
+  if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
+  return r;
+}
+int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
+  assert(sslNet);
+  if (!sslNet) return 0;
+  int sckt = ((mbedtls_net_context *) ctx)->fd;
+  int r = sslNet->recv(sslNet, sckt, buf, len);
+  if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
+  return r;
+}
+
+#endif
+// ------------------------------------------------------------------------------
 
 bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
 int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags) {
-  return net->createsocket(net, host, port);
+  if (flags & NCF_TLS) {
+    jsiConsolePrintf( "Connecting with TLS..." );
+    int ret;
+
+    if (!httpsInitialised) {
+      httpsInitialised = true;
+      const char *pers = "ssl_client1";
+      mbedtls_ssl_init( &ssl );
+      mbedtls_ssl_config_init( &conf );
+      mbedtls_x509_crt_init( &cacert );
+      mbedtls_ctr_drbg_init( &ctr_drbg );
+      mbedtls_entropy_init( &entropy );
+      if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
+                                 (const unsigned char *) pers,
+                                 strlen( pers ) ) ) != 0 ) {
+          jsiConsolePrintf("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );
+          return -1;
+      }
+    }
+
+    int sckt = net->createsocket(net, host, port);
+    if (sckt<0) {
+      jsiConsolePrintf("HTTPS Connect failed");
+      return -1;
+    }
+    server_fd.fd = sckt;
+
+    if( ( ret = mbedtls_ssl_config_defaults( &conf,
+                    MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
+                    MBEDTLS_SSL_TRANSPORT_STREAM,
+                    MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 ) {
+      jsiConsolePrintf( "HTTPS init failed! mbedtls_ssl_config_defaults returned %d\n\n", ret );
+      return -1;
+    }
+
+    // FIXME no cert checking!
+    mbedtls_ssl_conf_authmode( &conf, MBEDTLS_SSL_VERIFY_NONE );
+    mbedtls_ssl_conf_ca_chain( &conf, &cacert, NULL );
+    mbedtls_ssl_conf_rng( &conf, mbedtls_ctr_drbg_random, &ctr_drbg );
+    mbedtls_ssl_conf_dbg( &conf, my_debug, 0 );
+
+    if( ( ret = mbedtls_ssl_setup( &ssl, &conf ) ) != 0 )
+     {
+      jsiConsolePrintf( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
+      return -1;
+     }
+
+    if( ( ret = mbedtls_ssl_set_hostname( &ssl, "mbed TLS Server 1" ) ) != 0 ) {
+      jsiConsolePrintf( "HTTPS init failed! mbedtls_ssl_set_hostname returned %d\n\n", ret );
+      return -1;
+    }
+
+    sslNet = net;
+    mbedtls_ssl_set_bio( &ssl, &server_fd, ssl_send, ssl_recv, NULL );
+
+    jsiConsolePrintf( "  . Performing the SSL/TLS handshake..." );
+
+    while( ( ret = mbedtls_ssl_handshake( &ssl ) ) != 0 )
+    {
+        if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
+        {
+          jsiConsolePrintf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
+          sslNet = 0;
+          return -1;
+        }
+    }
+
+    jsiConsolePrintf( " ok\n" );
+
+    /*
+     * 5. Verify the server certificate
+     */
+    jsiConsolePrintf( "  . Verifying peer X.509 certificate..." );
+
+    /* In real life, we probably want to bail out when ret != 0 */
+    if( ( flags = mbedtls_ssl_get_verify_result( &ssl ) ) != 0 )
+    {
+        char vrfy_buf[512];
+
+        jsiConsolePrintf( " failed\n" );
+
+        mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
+
+        jsiConsolePrintf( "%s\n", vrfy_buf );
+    }
+    else
+      jsiConsolePrintf( " ok\n" );
+
+    BITFIELD_SET(socketIsHTTPS, sckt, 1);
+    sslNet = 0;
+    return sckt;
+  } else {
+    int sckt = net->createsocket(net, host, port);
+    BITFIELD_SET(socketIsHTTPS, sckt, 0);
+    return sckt;
+  }
 }
 
 void netCloseSocket(JsNetwork *net, int sckt) {
   net->closesocket(net, sckt);
+  /*
+  mbedtls_net_free( &server_fd );
+  mbedtls_ssl_free( &ssl );
+  mbedtls_ssl_config_free( &conf );
+  mbedtls_ctr_drbg_free( &ctr_drbg );
+  mbedtls_entropy_free( &entropy );
+   */
 }
 
 int netAccept(JsNetwork *net, int sckt) {
@@ -265,9 +417,27 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 }
 
 int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
-  return net->recv(net, sckt, buf, len);
+  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+    sslNet = net;
+    int ret = mbedtls_ssl_read( &ssl, buf, len );
+    sslNet = 0;
+    if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+      return 0;
+    return ret;
+  } else {
+    return net->recv(net, sckt, buf, len);
+  }
 }
 
 int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
-  return net->send(net, sckt, buf, len);
+  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+    sslNet = net;
+    int ret = mbedtls_ssl_write( &ssl, buf, len );
+    sslNet = 0;
+    if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
+      return 0;
+    return ret;
+  } else {
+    return net->send(net, sckt, buf, len);
+  }
 }

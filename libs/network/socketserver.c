@@ -693,7 +693,6 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
-  if (port==0) port=80;
 
   char hostName[128];
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
@@ -714,7 +713,17 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     return;
   }
 
-  int sckt =  netCreateSocket(net, host_addr, port, NCF_NORMAL);
+  NetCreateFlags flags = NCF_NORMAL;
+  if (socketType == ST_HTTP && options) {
+    JsVar *protocol = jsvObjectGetChild(options, "protocol", 0);
+    if (protocol && jsvIsStringEqual(protocol, "https:"))
+      flags |= NCF_TLS;
+  }
+
+  if (port==0)
+    port = (flags & NCF_TLS) ? 443 : 80;
+
+  int sckt =  netCreateSocket(net, host_addr, port, flags);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -746,7 +755,6 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     // force sendData to be made
     clientRequestWrite(net, httpClientReqVar, finalData);
     jsvUnLock(finalData);
-    clientRequestConnect(net, httpClientReqVar);
   } else {
     // on normal sockets, we actually request close after all data sent
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
