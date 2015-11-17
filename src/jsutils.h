@@ -384,6 +384,9 @@ void vcbprintf(vcbprintf_callback user_callback, void *user_data, const char *fm
 /// This one is directly usable..
 void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt, ...);
 
+/// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+int espruino_snprintf( char * s, size_t n, const char * fmt, ... );
+
 /** get the amount of free stack we have, in bytes */
 size_t jsuGetFreeStack();
 

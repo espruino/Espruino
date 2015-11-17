@@ -29,9 +29,7 @@
 #endif
 #if defined(USE_HTTPS)
   #include "mbedtls/ssl.h"
-  #include "mbedtls/entropy.h"
   #include "mbedtls/ctr_drbg.h"
-  #include "mbedtls/debug.h"
 #endif
 #include "network_js.h"
 
@@ -253,7 +251,6 @@ JsNetwork *networkGetCurrent() {
 #ifdef USE_HTTPS
 bool httpsInitialised = false;
 int sslSocket;
-mbedtls_entropy_context entropy;
 mbedtls_ctr_drbg_context ctr_drbg;
 mbedtls_ssl_context ssl;
 mbedtls_ssl_config conf;
@@ -288,6 +285,17 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   return r;
 }
 
+int ssl_entropy( void *data, unsigned char *output, size_t len ) {
+  size_t i;
+  unsigned int r;
+  for (i=0;i<len;i++) {
+    if (!(i&3)) r = jshGetRandomNumber();
+    output[i] = (unsigned char)r;
+    r>>=8;
+  }
+  return 0;
+}
+
 #endif
 // ------------------------------------------------------------------------------
 
@@ -308,8 +316,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
       mbedtls_ssl_config_init( &conf );
       mbedtls_x509_crt_init( &cacert );
       mbedtls_ctr_drbg_init( &ctr_drbg );
-      mbedtls_entropy_init( &entropy );
-      if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy,
+      if( ( ret = mbedtls_ctr_drbg_seed( &ctr_drbg, ssl_entropy, 0,
                                  (const unsigned char *) pers,
                                  strlen( pers ) ) ) != 0 ) {
           jsiConsolePrintf("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );

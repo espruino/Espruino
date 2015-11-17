@@ -66,8 +66,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-#
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+#
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -1024,6 +1024,7 @@ endif
 
 ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
+  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
 

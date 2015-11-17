@@ -30,6 +30,8 @@
 #ifndef MBEDTLS_CONFIG_H
 #define MBEDTLS_CONFIG_H
 
+#define MBEDTLS_PLATFORM_SNPRINTF_MACRO espruino_snprintf
+
 #ifdef USE_HTTPS
 
 /* mbed TLS feature support */
