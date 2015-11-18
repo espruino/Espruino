@@ -53,30 +53,35 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'left' : [ '3V3','A3','A4','A5','A6','A7','B0','B1','B2','A8','A9','A10','A11','A12','GND' ],
+  'left' : [ '3.3','A3','A4','A5','A6','A7','B0','B1','B2','A8','A9','A10','A11','A12','GND' ],
   'right' : [ 'GND','A1','A2','A0','RST','ISP','A14','A13','B7','B6','B5','B4','B3','A15','5V' ],
+  'bottom' : [ '3.3','A9','A10','A13/SWDIO','A14/SWCLK','GND' ],
 };
 board["_css"] = """
 #board {
-  width: 540px;
-  height: 418px;
-  top: 300px;
-  left: 200px;
+  width: 290px;
+  height: 533px;
+  left: 300px;
   background-image: url(img/HYTINY_STM103T.jpg);
 }
 #boardcontainer {
-  height: 850px;
+  height: 730px;
 }
-left {
-  top: 155px;
-  right: 520px;
-  
+#left {
+  top: 20px;
+  right: 290px;
 }
-right {
-  top: 155px;
-  left: 520px;
+#right {
+  top: 20px;
+  left: 290px;
 }
-
+#bottom {
+  top: 540px;
+  left: 45px;
+}
+.leftpin { height: 32px; }
+.rightpin { height: 32px; }
+.bottompin { width: 28.5px; }
 """;
 
 def get_pins():
