@@ -261,7 +261,6 @@ typedef struct {
 SSLSocketData _sd;
 SSLSocketData *sd = &_sd; // make it easier to use pointers later
 
-JsNetwork *sslNet;
 BITFIELD_DECL(socketIsHTTPS, 32);
 
 static void ssl_debug( void *ctx, int level,
@@ -273,18 +272,18 @@ static void ssl_debug( void *ctx, int level,
 }
 
 int ssl_send(void *ctx, const unsigned char *buf, size_t len) {
-  assert(sslNet);
-  if (!sslNet) return 0;
+  JsNetwork *net = networkGetCurrent();
+  assert(net);
   int sckt = *(int *)ctx;
-  int r = sslNet->send(sslNet, sckt, buf, len);
+  int r = net->send(net, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_WRITE;
   return r;
 }
 int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
-  assert(sslNet);
-  if (!sslNet) return 0;
+  JsNetwork *net = networkGetCurrent();
+  assert(net);
   int sckt = *(int *)ctx;
-  int r = sslNet->recv(sslNet, sckt, buf, len);
+  int r = net->recv(net, sckt, buf, len);
   if (r==0) return MBEDTLS_ERR_SSL_WANT_READ;
   return r;
 }
@@ -369,7 +368,6 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
       return -1;
     }
 
-    sslNet = net;
     mbedtls_ssl_set_bio( &sd->ssl, &sd->sckt, ssl_send, ssl_recv, NULL );
 
     jsiConsolePrintf( "  . Performing the SSL/TLS handshake..." );
@@ -379,7 +377,6 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
         if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
         {
           jsiConsolePrintf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
-          sslNet = 0;
           return -1;
         }
     }
@@ -407,7 +404,6 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
 
 
     BITFIELD_SET(socketIsHTTPS, sd->sckt, 1);
-    sslNet = 0;
     return sd->sckt;
   } else {
     int sckt = net->createsocket(net, host, port);
@@ -444,9 +440,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
 #ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
-    sslNet = net;
     int ret = mbedtls_ssl_read( &sd->ssl, buf, len );
-    sslNet = 0;
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
     return ret;
@@ -460,9 +454,7 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
 int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
 #ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
-    sslNet = net;
     int ret = mbedtls_ssl_write( &sd->ssl, buf, len );
-    sslNet = 0;
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
     return ret;
