@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * Contains functions for handling JsNetwork and doing common networking tasks
  * ----------------------------------------------------------------------------
- */#define USE_HTTPS
+ */
 #include "network.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -259,10 +259,6 @@ typedef struct {
   mbedtls_ssl_config conf;
 } SSLSocketData;
 
-SSLSocketData _sd;
-SSLSocketData *sd = &_sd; // make it easier to use pointers later
-
-
 BITFIELD_DECL(socketIsHTTPS, 32);
 
 static void ssl_debug( void *ctx, int level,
@@ -302,22 +298,59 @@ int ssl_entropy( void *data, unsigned char *output, size_t len ) {
   return 0;
 }
 
+void ssl_freeSocketData(int sckt) {
+  BITFIELD_SET(socketIsHTTPS, sckt, 0);
+
+  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
+  if (!ssl) return;
+  JsVar *scktVar = jsvNewFromInteger(sckt);
+  JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, false);
+  jsvUnLock(scktVar);
+  JsVar *sslData = jsvSkipName(sslDataVar);
+  jsvRemoveChild(ssl, sslDataVar);
+  jsvUnLock(sslDataVar);
+  jsvUnLock(ssl);
+  SSLSocketData *sd = 0;
+  if (jsvIsFlatString(sslData)) {
+    sd = (SSLSocketData *)jsvGetFlatStringPointer(sslData);
+    mbedtls_ssl_free( &sd->ssl );
+    mbedtls_ssl_config_free( &sd->conf );
+    mbedtls_ctr_drbg_free( &sd->ctr_drbg );
+  }
+  jsvUnLock(sslData);
+}
+
 bool ssl_newSocketData(int sckt) {
+  /* FIXME Warning:
+   *
+   * MBEDTLS_SSL_MAX_CONTENT_LEN = 16kB, so we need over double this = 32kB memory
+   * for just a single connection!!
+   *
+   * Also see https://tls.mbed.org/kb/how-to/reduce-mbedtls-memory-and-storage-footprint
+   * */
+
   assert(sckt>=0 && sckt<32);
   // Create a new socketData using the variable
-  /*JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", JSV_OBJECT);
+  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", JSV_OBJECT);
   if (!ssl) return false; // out of memory?
-  JsVar *sslData = jsvGetArrayItem(ssl, sckt);
-  assert(!sslData); // we should NOT already have socket data
-  sslData = jsvNewFlatStringOfLength(sizeof(SSLSocketData));
+  JsVar *scktVar = jsvNewFromInteger(sckt);
+  JsVar *sslDataVar = jsvFindChildFromVar(ssl, scktVar, true);
+  jsvUnLock(scktVar);
+  jsvUnLock(ssl);
+  if (!sslDataVar) {
+    return 0; // out of memory
+  }
+  JsVar *sslData = jsvNewFlatStringOfLength(sizeof(SSLSocketData));
   if (!sslData) {
     jsError("Not enough memory to allocate SSL socket\n");
-    jsvUnLock(ssl);
+    jsvUnLock(sslDataVar);
     return false;
   }
-  SSLSocketData *sd = jsvGetFlatStringPointer(sslData);
-  assert(sslData);*/
-  JsVar *sslData = 0;
+  jsvSetValueOfName(sslDataVar, sslData);
+  jsvUnLock(sslDataVar);
+  SSLSocketData *sd = (SSLSocketData *)jsvGetFlatStringPointer(sslData);
+  jsvUnLock(sslData);
+  assert(sd);
 
   // Now initialise this
   sd->sckt = sckt;
@@ -336,7 +369,7 @@ bool ssl_newSocketData(int sckt) {
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
     jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );
-    jsvUnLock(sslData);
+    ssl_freeSocketData(sckt);
     return false;
   }
 
@@ -345,7 +378,7 @@ bool ssl_newSocketData(int sckt) {
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
     jsError( "HTTPS init failed! mbedtls_ssl_config_defaults returned %d\n", ret );
-    jsvUnLock(sslData);
+    ssl_freeSocketData(sckt);
     return false;
   }
 
@@ -357,13 +390,13 @@ bool ssl_newSocketData(int sckt) {
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
     jsError( "Failed! mbedtls_ssl_setup returned %d\n", ret );
-    jsvUnLock(sslData);
+    ssl_freeSocketData(sckt);
     return false;
   }
 
   if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
     jsError( "HTTPS init failed! mbedtls_ssl_set_hostname returned %d\n", ret );
-    jsvUnLock(sslData);
+    ssl_freeSocketData(sckt);
     return false;
   }
 
@@ -371,29 +404,21 @@ bool ssl_newSocketData(int sckt) {
 
   jsiConsolePrintf( "Performing the SSL/TLS handshake...\n" );
 
-  // we're good. Add it to the array
-  jsiConsolePrintf( "  FIXME ADD TO ARRAY " );
-  jsvUnLock(sslData);
-
   return true;
 }
 
-void ssl_freeSocketData(int sckt) {
-  BITFIELD_SET(socketIsHTTPS, sckt, 0);
-  mbedtls_ssl_free( &sd->ssl );
-  mbedtls_ssl_config_free( &sd->conf );
-  mbedtls_ctr_drbg_free( &sd->ctr_drbg );
-}
+
 
 SSLSocketData *ssl_getSocketData(int sckt) {
   // try and find the socket data variable
-/*  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
+  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
   if (!ssl) return 0;
   JsVar *sslData = jsvGetArrayItem(ssl, sckt);
+  jsvUnLock(ssl);
   SSLSocketData *sd = 0;
   if (jsvIsFlatString(sslData))
-    sd = jsvGetFlatStringPointer(sslData);
-  jsvUnLock(sslData);*/
+    sd = (SSLSocketData *)jsvGetFlatStringPointer(sslData);
+  jsvUnLock(sslData);
 
   // now continue with connection
   if (sd->connecting) {

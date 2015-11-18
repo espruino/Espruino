@@ -2164,6 +2164,7 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 
 void jsvRemoveChild(JsVar *parent, JsVar *child) {
   assert(jsvHasChildren(parent));
+  assert(jsvIsName(child));
   JsVarRef childref = jsvGetRef(child);
   bool wasChild = false;
   // unlink from parent

@@ -32,6 +32,10 @@
 
 #define MBEDTLS_PLATFORM_SNPRINTF_MACRO espruino_snprintf
 
+// See aes.c. Do we want 10kB of data full of constants? no.
+#define MBEDTLS_AES_ROM_TABLES
+
+
 #ifdef USE_HTTPS
 
 /* mbed TLS feature support */
