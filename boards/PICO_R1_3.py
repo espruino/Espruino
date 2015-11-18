@@ -21,7 +21,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "B6",
  'default_console_rx' : "B7",
- 'variables' : 4000, # FIXME - RAM was lowered for AES test
+ 'variables' : 5100,
  'bootloader' : 1,
  'binary_name' : 'espruino_%v_pico_1r3.bin',
  'binaries' : [
