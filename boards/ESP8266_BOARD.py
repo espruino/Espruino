@@ -47,6 +47,34 @@ devices = {
 };
 
 board_css = """
+#board {
+  width:  600px;
+  height: 384px;
+  left: 50px;
+  top: 200px;
+  background-image: url(img/esp8266-esp01.jpg);
+}
+#boardcontainer {
+  height: 800px;
+}
+#right {
+  top: 30px;
+  left: 600px;
+}
+#top {
+  top: 10px;
+  left: 197px;
+}
+#bottom  {
+  top: 360px;
+  left: 197px;
+}
+.rightpin {
+  margin: 28px 0px;
+}
+.toppin, .bottompin {
+  margin: 0px 12px;
+}
 """;
 
 def get_pins():
