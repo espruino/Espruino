@@ -1,6 +1,33 @@
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
             Add `shiftOut` function (fix #631)
+            Store line numbers for functions (via `Esc [ 1234 d` escape code before decl) and use in debug + stack traces
+            Allow Ctrl-C to break out of tight loops with function calls in
+            Add tab -> autocomplete in Console (fix #677)
+            Fix I2C repeated start (#390)
+            Fix regression in Math.random() - now back between 0 and 1 (fix #656)
+            Fix `var a=0;typeof a -> "undefined"` (fix #683)
+            Don't store brackets in functions (fix #204)
+            Store functions as 'flat strings' if long enough (fix #467)
+            Move most functions out of jsvar.h header file - improves code size on devices where they're not inlined
+            Fix parse error for switch statements which meant that `switch (a,b)` caused an error
+            Fix error message when `LoopbackA.setConsole()` called
+            Move SPI/I2C/Serial initialisers to jsvReadConfigObject, will now error on invalid args (fix #413)
+            Fix issue where double-buffered waveforms would use the wrong buffer in the callback
+            Fix memory leak in tab autocomplete on objects
+            Added AES crypto library (Pico only)
+            Fix `typeof (new Uint8Array([1, 2, 3, 4]))`
+            Store `function(){return ...}` without the return (fix #700)
+            Increased simple string usage from 4 chars up to 8
+            Swap order of JsVar internals, string usage up to 10 chars
+            Add handling for uint32_t,uint64_t,uint32_t case for Raspberry Pi
+            Add startup sanity checks for jsnative.c (in non-release builds)
+            Added fix for returning floats on Raspberry Pi
+            When <1024 JsVars, `lastChild`'s top bits are stored in `flags`, and pack
+               is moved such that we get 1 extra character in StringExts
+            Allow events of >12 characters length
+            Fix regression in flash memory write (introduced via AES merge)
+            Fixed instability when resetting after using SD card on non-standard pins
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)

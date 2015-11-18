@@ -32,6 +32,7 @@
 # STM32F429IDISCOVERY=1
 # STM32F401CDISCOVERY=1
 # MICROBIT=1
+# NRF51TAG=1
 # NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
@@ -52,6 +53,7 @@
 # ESP8266_2MB=1           # ESP8266 with 2MB flash: 512KB+512KB firmware + 3MB SPIFFS
 # ESP8266_1MB=1           # ESP8266 with 1MB flash: 512KB+512KB firmware + 32KB SPIFFS
 # ESP8266_512KB=1         # ESP8266 with 512KB flash: 512KB firmware + 32KB SPIFFS
+# EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
 # Also:
@@ -200,6 +202,7 @@ USE_GRAPHICS=1
 USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
+USE_CRYPTO=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -210,6 +213,14 @@ EMBEDDED=1
 SAVE_ON_FLASH=1
 USE_FILESYSTEM=1
 BOARD=OLIMEXINO_STM32
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os # short on program memory
+
+else ifdef HYTINY_STM103T
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=HYTINY_STM103T
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
@@ -351,6 +362,20 @@ STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
 OPTIMIZEFLAGS+=-O3
 
+else ifdef EMW3165
+#ifndef WICED_ROOT
+#$(error WICED_ROOT must be defined)
+#endif
+EMBEDDED=1
+#USE_GRAPHICS=1
+#USE_NET=1
+BOARD=EMW3165
+STLIB=STM32F411xE
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f40_41xxx.o
+OPTIMIZEFLAGS+=-O2
+#WICED=1
+DEFINES += -DPIN_NAMES_DIRECT -DHSE_VALUE=26000000UL
+
 else ifdef STM32F4DISCOVERY
 EMBEDDED=1
 USE_NET=1
@@ -380,14 +405,6 @@ STLIB=STM32F429xx
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f429_439xx.o
 OPTIMIZEFLAGS+=-O3
 
-else ifdef SMARTWATCH
-EMBEDDED=1
-DEFINES+=-DHSE_VALUE=26000000UL
-BOARD=SMARTWATCH
-STLIB=STM32F2XX
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f2/lib/startup_stm32f2xx.o
-OPTIMIZEFLAGS+=-O3
-
 else ifdef STM32F3DISCOVERY
 EMBEDDED=1
 USE_NET=1
@@ -410,23 +427,27 @@ EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
+
+else ifdef NRF51TAG
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=NRF51TAG
+OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
+
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
+USE_BLUETOOTH=1
 
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
-
-else ifdef TINYCHIP
-EMBEDDED=1
-BOARD=TINYCHIP
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os # short on program memory
+USE_BLUETOOTH=1
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -493,6 +514,7 @@ else ifdef ESP8266_512KB
 # into ram (dram+iram) and the last 16KB are reserved for the SDK. That leaves 432KB (0x6C000).
 EMBEDDED=1
 USE_NET=1
+#USE_FILESYSTEM=1
 BOARD=ESP8266_BOARD
 # We have to disable inlining to keep code size in check
 OPTIMIZEFLAGS+=-Os -fno-inline-functions -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
@@ -611,6 +633,7 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
+USE_CRYPTO=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -664,12 +687,12 @@ ifdef USE_NET
 ifndef LINUX
 ifdef WIZNET
 USE_WIZNET=1
-else
-ifeq ($(FAMILY),ESP8266)
+else ifeq ($(FAMILY),ESP8266)
 USE_ESP8266=1
+else ifdef EMW3165
+USE_WICED=1
 else
 USE_CC3000=1
-endif
 endif
 endif
 endif
@@ -688,6 +711,10 @@ ifdef PROFILE
 OPTIMIZEFLAGS+=-pg
 endif
 
+# Files that contains objects/functions/methods that will be
+# exported to JS. The order here actually determines the order
+# objects will be matched in. So for example Pins must come
+# above ints, since a Pin is also matched as an int.
 WRAPPERFILE=gen/jswrapper.c
 WRAPPERSOURCES = \
 src/jswrap_array.c \
@@ -701,10 +728,10 @@ src/jswrap_interactive.c \
 src/jswrap_io.c \
 src/jswrap_json.c \
 src/jswrap_modules.c \
+src/jswrap_pin.c \
 src/jswrap_number.c \
 src/jswrap_object.c \
 src/jswrap_onewire.c \
-src/jswrap_pin.c \
 src/jswrap_pipe.c \
 src/jswrap_process.c \
 src/jswrap_serial.c \
@@ -932,9 +959,31 @@ libs/network/js/network_js.c
  libs/network/wiznet/W5500/w5500.c
  endif
 
+ ifdef USE_WICED
+ # For EMW3165 use SDIO to access BCN43362 rev A2
+ INCLUDE += -I$(ROOT)/targetlibs/wiced/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/network \
+            -I$(ROOT)/targetlibs/wiced/wwd/include/RTOS \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/bus_protocols/SDIO \
+            -I$(ROOT)/targetlibs/wiced/wwd/internal/chips/43362A2
+
+ SOURCES += targetlibs/wiced/wwd/internal/wwd_thread.c \
+            targetlibs/wiced/wwd/internal/wwd_sdpcm.c \
+            targetlibs/wiced/wwd/internal/wwd_internal.c \
+            targetlibs/wiced/wwd/internal/wwd_management.c \
+            targetlibs/wiced/wwd/internal/wwd_wifi.c \
+            targetlibs/wiced/wwd/internal/wwd_crypto.c \
+            targetlibs/wiced/wwd/internal/wwd_logging.c \
+            targetlibs/wiced/wwd/internal/wwd_eapol.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/wwd_bus_common.c \
+            targetlibs/wiced/wwd/internal/bus_protocols/SDIO/wwd_bus_protocol.c
+ endif
+
  ifdef USE_ESP8266
  DEFINES += -DUSE_ESP8266
- WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266.c
+ WRAPPERSOURCES += libs/network/esp8266/jswrap_esp8266_network.c \
+   targets/esp8266/jswrap_esp8266.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
@@ -976,6 +1025,25 @@ ifdef USE_BLUETOOTH
   INCLUDE += -I$(ROOT)/libs/bluetooth
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
+
+ifdef USE_CRYPTO
+  INCLUDE += -I$(ROOT)/libs/crypto
+  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
+  WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+  SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/asn1parse.c \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c \
+libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/md_wrap.c \
+libs/crypto/mbedtls/library/oid.c \
+libs/crypto/mbedtls/library/pkcs5.c \
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c
+endif
+
 
 endif # BOOTLOADER ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DON'T USE STUFF ABOVE IN BOOTLOADER
 
@@ -1060,9 +1128,22 @@ endif #STM32F3
 ifeq ($(FAMILY), STM32F4)
 ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=softfp
 ARM=1
+DEFINES += -DSTM32F4
+ifdef WICED_XXX
+  DEFINES += -DWICED
+  # DEFINES included here in bulk from a WICED compilation
+  DEFINES += -DWICED_VERSION=\"3.3.1\" -DBUS=\"SDIO\" -DPLATFORM=\"EMW3165\"
+  DEFINES += -DUSE_STDPERIPH_DRIVER -DOPENSSL -DSTDC_HEADERS
+  DEFINES += -DMAX_WATCHDOG_TIMEOUT_SECONDS=22 -DFIRMWARE_WITH_PMK_CALC_SUPPORT
+  DEFINES += -DADD_LWIP_EAPOL_SUPPORT -DNXD_EXTENDED_BSD_SOCKET_SUPPORT -DADD_NETX_EAPOL_SUPPORT
+  DEFINES += -DWWD_STARTUP_DELAY=10
+  DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
+  DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
+  DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
+  INCLUDE += 
+endif
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
-DEFINES += -DSTM32F4
 SOURCES +=                                 \
 targetlibs/stm32f4/lib/misc.c                 \
 targetlibs/stm32f4/lib/stm32f4xx_adc.c        \
@@ -1092,7 +1173,6 @@ targetlibs/stm32f4/lib/system_stm32f4xx.c
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
 #targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
-
 #targetlibs/stm32f4/lib/stm32f4xx_hash.c       
 #targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
 #targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
@@ -1166,9 +1246,13 @@ ifeq ($(FAMILY), NRF51)
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DBOARD_PCA10028  -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino.ld
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+
+  LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
+  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
+  SOFTDEVICE = targetlibs/nrf5x/softdevice/s110_nrf51_8.0.0_softdevice.hex
+
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
@@ -1193,9 +1277,15 @@ ifeq ($(FAMILY), NRF52)
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
   LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_ble_espruino.ld
 
+  SOFTDEVICE = targetlibs/nrf5x/softdevice/s132_nrf52_1.0.0-3.alpha_softdevice.hex
+
 endif #FAMILY == NRF52
 
 ifdef NRF5X
+
+  # Just try and get rid of the compile warnings
+  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
+  DEFINES += -DBLUETOOTH
   
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
@@ -1245,9 +1335,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
-  $(NRF5X_SDK_PATH)/examples/bsp/bsp.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
-  $(NRF5X_SDK_PATH)/examples/bsp/bsp_btn_ble.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
@@ -1334,10 +1422,14 @@ ifdef RASPBERRYPI
  endif
 endif
 
+ifdef WICED
+#WRAPPERSOURCES += targets/emw3165/jswrap_emw3165.c
+endif
+
 ifdef STM32
+DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 DEFINES += -DFAKE_STDLIB
 # FAKE_STDLIB is for Espruino - it uses its own standard library so we don't have to link in the normal one + get bloated
-DEFINES += -DSTM32 -DUSE_STDPERIPH_DRIVER=1 -D$(CHIP) -D$(BOARD) -D$(STLIB)
 INCLUDE += -I$(ROOT)/targets/stm32
 ifndef BOOTLOADER
 SOURCES +=                              \
@@ -1417,11 +1509,12 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 
 # Extra source files specific to the ESP8266
 SOURCES += targets/esp8266/uart.c \
-	   targets/esp8266/user_main.c \
-	   targets/esp8266/jshardware.c \
-	   targets/esp8266/i2c_master.c \
-	   targets/esp8266/esp8266_board_utils.c \
-	   libs/network/esp8266/network_esp8266.c
+	targets/esp8266/spi.c \
+	targets/esp8266/user_main.c \
+	targets/esp8266/jshardware.c \
+	targets/esp8266/i2c_master.c \
+	targets/esp8266/esp8266_board_utils.c \
+	libs/network/esp8266/network_esp8266.c
 # if using the hw_timer:   targets/esp8266/hw_timer.c \
 
 # The tool used for building the firmware and flashing
@@ -1526,6 +1619,7 @@ proj: $(PROJ_NAME).elf $(PROJ_NAME)_0x00000.bin $(PROJ_NAME)_0x10000.bin $(PROJ_
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o partial.o $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal partial.o
+	$(Q)$(OBJCOPY) --rename-section .force.text=.text partial.o
 	$(Q)$(LD) $(LDFLAGS) -Ttargets/esp8266/eagle.app.v6.0x10000.ld -o $@ partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)rm partial.o
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $(PROJ_NAME).elf | tail -n +4
@@ -1627,6 +1721,17 @@ ifndef COMPORT
 endif
 	-$(Q)$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
+#else ifdef WICED
+#
+#proj: $(WICED_ROOT)/apps/snip/espruino/espruino_lib.o
+#
+#$(PROJ_NAME).o: $(OBJS)
+#	@echo LD $@
+#	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
+#
+#$(WICED_ROOT)/apps/snip/espruino/espruino_lib.o: $(PROJ_NAME).o
+#	cp $< $@
+
 else # embedded, so generate bin, etc ---------------------------
 
 $(PROJ_NAME).elf: $(OBJS) $(LINKER_FILE)
@@ -1640,6 +1745,12 @@ $(PROJ_NAME).lst : $(PROJ_NAME).elf
 $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,ihex,hex)
 	@$(call obj_to_bin,ihex,hex)
+ifdef SOFTDEVICE
+	echo Merging SoftDevice
+	@echo "    (use 'pip install IntelHex' if you don't have hexmerge.py)"
+	hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	mv tmp.hex $(PROJ_NAME).hex
+endif
 
 $(PROJ_NAME).srec : $(PROJ_NAME).elf
 	@echo $(call $(quiet_)obj_to_bin,srec,srec)
@@ -1654,10 +1765,6 @@ endif
 
 proj: $(PROJ_NAME).lst $(PROJ_NAME).bin $(PROJ_NAME).hex
 
-ifdef ARDUINO_AVR
-proj: $(PROJ_NAME).hex
-endif
-
 #proj: $(PROJ_NAME).lst $(PROJ_NAME).hex $(PROJ_NAME).srec $(PROJ_NAME).bin
 
 flash: all
@@ -1666,11 +1773,13 @@ ifdef USE_DFU
 else ifdef OLIMEXINO_STM32_BOOTLOADER
 	echo Olimexino Serial bootloader
 	dfu-util -a1 -d 0x1EAF:0x0003 -D $(PROJ_NAME).bin
-#else ifdef MBED
-	#cp $(PROJ_NAME).bin /media/MBED;sync
 else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
+else ifdef MICROBIT
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).bin /media/MICROBIT;sync; fi
+else ifdef NRF5X
+	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
 else
 	echo ST-LINK flash
 	st-flash --reset write $(PROJ_NAME).bin $(BASEADDRESS)

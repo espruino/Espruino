@@ -124,9 +124,7 @@ These contain:
 
 Names of rows of pins - used solely by [`scripts/build_board_docs.py`](scripts/build_board_docs.py) to generate the nice HTML description.
 
-### board_css
-
-Carefully tweaked positions of the rows of pins defined in `board`, to align with the background image in [`boards/img`](boards/img)
+There can also be a `_css` element which contains raw Cascading Style Sheets, which contain carefully tweaked positions of the rows of pins defined in `board`, to align with the background image in [`boards/img`](boards/img)
 
 ### devices
 

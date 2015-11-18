@@ -269,7 +269,7 @@ static ALWAYS_INLINE uint8_t stmADCChannel(JsvPinInfoAnalog analog) {
 
 #ifdef STM32API2
 static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
-#if defined(STM32F401xx)
+#if defined(STM32F401xx) || defined(STM32F411xx)
   assert(JSH_AF0==0 && JSH_AF15==15); // check mapping is right
   return  func & JSH_MASK_AF;
 #elif defined(STM32F4) || defined(STM32F2)
@@ -695,10 +695,10 @@ void jshDoSysTick() {
     bool alreadySetup = jshIsRTCAlreadySetup(true);
     /* LSEON, LSEBYP, RTCSEL and RTCEN are in backup domain so may not need
      * changing */
-     
+
     if (!alreadySetup) {
       bool isUsingLSI = RCC_GetFlagStatus(RCC_FLAG_LSERDY)==RESET;
-      
+
       if (RCC->BDCR & (RCC_RTCCLKSource_LSE|RCC_RTCCLKSource_LSI)) {
         // Uh-oh - RTC *was* set up for something, but it's not
         // the case any more. It needs totally resetting so we can change it
@@ -706,7 +706,7 @@ void jshDoSysTick() {
         RCC_BackupResetCmd(DISABLE);
 	    RCC_LSEConfig(RCC_LSE_ON); // reset would have turned LSE off
       }
-      
+
       if (isUsingLSI) {
         // LSE is not working - turn it off and use LSI
         RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI); // set clock source to low speed internal
@@ -1901,15 +1901,14 @@ void *NO_INLINE checkPinsForDevice(JshPinFunction device, int count, Pin *pins, 
 }
 
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  assert(DEVICE_IS_USART(device));
+
   jshSetDeviceInitialised(device, true);
 
   jshSetFlowControlEnabled(device, inf->xOnXOff);
 
-  if (device == EV_USBSERIAL) {
-    return; // eep!
-  }
-
   JshPinFunction funcType = jshGetPinFunctionFromDevice(device);
+  if (funcType==0) return; // not a proper serial port, ignore it
 
   Pin pins[3] = { inf->pinRX, inf->pinTX, inf->pinCK };
   JshPinFunction functions[3] = { JSH_USART_RX, JSH_USART_TX, JSH_USART_CK };
@@ -2248,6 +2247,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
   //WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_MODE_SELECT), "I2C Write Transmit Mode 1");
   I2C_Send7bitAddress(I2C, (unsigned char)(address << 1), I2C_Direction_Transmitter);
   WAIT_UNTIL(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED), "I2C Write Transmit Mode 2");
+
   int i;
   for (i=0;i<nBytes;i++) {
     I2C_SendData(I2C, data[i]);
@@ -2255,6 +2255,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
     while (!(I2C_CheckEvent(I2C, I2C_EVENT_MASTER_BYTE_TRANSMITTED)) && !jspIsInterrupted() && (timeout--)>0);
     if (timeout<=0 || jspIsInterrupted()) { jsExceptionHere(JSET_ERROR, "I2C device not responding"); }
   }
+
   if (sendStop) I2C_GenerateSTOP(I2C, ENABLE); // Send STOP Condition
 #endif
 }
@@ -2277,7 +2278,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     jsWarn("I2C got NACK");
   }
 #else
-  WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_BUSY), "I2C Read BUSY");
   I2C_GenerateSTART(I2C, ENABLE);
   if (!jshI2CWaitStartBit(I2C)) {
     for (i=0;i<nBytes;i++) data[i]=0;
@@ -2300,6 +2300,7 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
     WAIT_UNTIL(!I2C_GetFlagStatus(I2C, I2C_FLAG_STOPF), "I2C Read STOP");
     I2C_AcknowledgeConfig(I2C, ENABLE); /* re-enable ACK */
   }
+
 #endif
 }
 
@@ -2322,7 +2323,7 @@ void jshSetUSBPower(bool isOn) {
   if (isOn) {
     USB_OTG_FS->GCCFG |= USB_OTG_GCCFG_VBUSBSEN;
     USBD_Start(&hUsbDeviceFS);
-  } else {    
+  } else {
     USBD_Stop(&hUsbDeviceFS);
     USB_OTG_FS->GCCFG &= ~(USB_OTG_GCCFG_VBUSBSEN);
   }
@@ -2662,10 +2663,10 @@ void jshEnableWatchDog(JsVarFloat timeout) {
     IWDG_Enable();
 }
 
-uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
+volatile uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
   if (!jshIsPinValid(pin)) return 0;
   GPIO_TypeDef *port = stmPort(pin);
-  uint32_t *regAddr;
+  volatile uint32_t *regAddr;
   if (flags == JSGPAF_INPUT)
     regAddr = &port->IDR;
   else
@@ -2679,14 +2680,16 @@ uint32_t *jshGetPinAddress(Pin pin, JshGetPinAddressFlags flags) {
 
 #if defined(STM32F2) || defined(STM32F4)
 int jshFlashGetSector(uint32_t addr) {
-  addr -= FLASH_START;
 #ifdef FLASH_END // supplied by stm32fXXX.h
-  if (FLASH_START+addr > FLASH_END) return -1;
+  if (addr > FLASH_END) return -1;
 #else
   // else use what's in BOARD.py - could be less than the
   // chip might be capable of (but not specced for ;)
-  if (addr >= FLASH_TOTAL) return -1;
+  if (addr >= FLASH_TOTAL+FLASH_START) return -1;
 #endif
+  if (addr < FLASH_START) return -1;
+  addr -= FLASH_START;
+
   if (addr<16*1024) return FLASH_Sector_0;
   else if (addr<32*1024) return FLASH_Sector_1;
   else if (addr<48*1024) return FLASH_Sector_2;

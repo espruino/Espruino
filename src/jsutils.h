@@ -107,7 +107,10 @@ extern int isfinite ( double );
   #elif JSVAR_CACHE_SIZE <= 1023
     /* for this, we use 10 bit refs. GCC can't do that so store refs as
      * single bytes and then manually pack an extra 2 bits for each of
-     * the 4 refs into a byte called 'pack'
+     * the refs into a byte called 'pack'
+     *
+     * We also put the 2 bits from lastChild into 'flags', because then
+     * we can use 'pack' for character data in a stringext
      *
      * Note that JsVarRef/JsVarRefSigned are still 2 bytes, which means
      * we're only messing around when loading/storing refs - not when
@@ -130,11 +133,25 @@ extern int isfinite ( double );
 
 #if defined(__WORDSIZE) && __WORDSIZE == 64
 // 64 bit needs extra space to be able to store a function pointer
-#define JSVAR_DATA_STRING_LEN  8
+
+/// Max length of JSV_NAME_ strings
+#define JSVAR_DATA_STRING_NAME_LEN  8
 #else
-#define JSVAR_DATA_STRING_LEN  4
+/// Max length of JSV_NAME_ strings
+#define JSVAR_DATA_STRING_NAME_LEN  4
 #endif
-#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+/// Max length for a JSV_STRING
+#define JSVAR_DATA_STRING_LEN  (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE))
+/// Max length for a JSV_STRINGEXT
+#ifdef JSVARREF_PACKED_BITS
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE+1) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter) + sizeof(pack))
+#else
+#define JSVAR_DATA_STRING_MAX_LEN (JSVAR_DATA_STRING_NAME_LEN+(3*JSVARREF_SIZE)+JSVARREF_SIZE) // (JSVAR_DATA_STRING_LEN + sizeof(JsVarRef)*3 + sizeof(JsVarRefCounter))
+#endif
+
+/** This is the amount of characters at which it'd be more efficient to use
+ * a flat string than to use a normal string... */
+#define JSV_FLAT_STRING_BREAK_EVEN (JSVAR_DATA_STRING_LEN + JSVAR_DATA_STRING_MAX_LEN)
 
 typedef int32_t JsVarInt;
 typedef uint32_t JsVarIntUnsigned;
@@ -174,6 +191,7 @@ typedef int64_t JsSysTime;
 #define JSPARSE_FUNCTION_SCOPE_NAME JS_HIDDEN_CHAR_STR"sco" // the scope of the function's definition
 #define JSPARSE_FUNCTION_THIS_NAME JS_HIDDEN_CHAR_STR"ths" // the 'this' variable - for bound functions
 #define JSPARSE_FUNCTION_NAME_NAME JS_HIDDEN_CHAR_STR"nam" // for named functions (a = function foo() { foo(); })
+#define JSPARSE_FUNCTION_LINENUMBER_NAME JS_HIDDEN_CHAR_STR"lin" // The line number offset of the function
 #define JS_EVENT_PREFIX "#on"
 
 #define JSPARSE_EXCEPTION_VAR "except" // when exceptions are thrown, they're stored in the root scope
@@ -318,7 +336,7 @@ size_t strlen(const char *s);
 int strcmp(const char *a, const char *b);
 void *memcpy(void *dst, const void *src, size_t size);
 void *memset(void *dst, int c, size_t size);
-#define RAND_MAX (0xFFFFFFFFU)
+#define RAND_MAX (0x7FFFFFFFU) // needs to be unsigned!
 int rand();
 void srand(unsigned int seed);
 #endif

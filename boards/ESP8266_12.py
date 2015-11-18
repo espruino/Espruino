@@ -22,7 +22,9 @@
 import pinutils;
 info = {
  'name'            : "ESP8266-12",
+ 'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
+ 'default_console_baudrate' : "115200",
  'variables'       : 1023,
  'binary_name'     : 'espruino_esp8266_12',
 };
@@ -34,7 +36,7 @@ chip = {
   'flash'   : 1024,
   'speed'   : 80,
   'usart'   : 1,
-  'spi'     : 0,
+  'spi'     : 1,
   'i2c'     : 1,
   'adc'     : 1,
   'dac'     : 0,
@@ -46,6 +48,11 @@ chip = {
     'flash_available' : 492, # firmware can be up to this size
   },
 };
+
+devices = {
+    'LED1' : { 'pin': 'D0' },
+};
+
 # left-right, or top-bottom order
 board = {
     'top' : ['D1', 'D3', 'D5', 'D4', 'D0', 'D2', 'D15', 'GND'],
@@ -54,17 +61,13 @@ board = {
 };
 board["bottom"].reverse()
 board["right"].reverse()
-devices = {
-    'LED1' : { 'pin': 'D0' },
-};
-
-board_css = """
+board["_css"] = """
 #board {
   width:  600px;
   height: 384px;
   left: 50px;
   top: 200px;
-  background-image: url(img/esp8266-esp-12e.jpg);
+  background-image: url(img/ESP8266_12.jpg);
 }
 #boardcontainer {
   height: 800px;

@@ -82,3 +82,15 @@ void esp8266_board_writeString(
     os_printf("%c", buffer[i]);
   }
 }
+
+/**
+ * A debug exposed function that is global.
+ * This function is exclusively for debugging.  It allows us to insert a quick
+ * debug log statement in code that will log to the ESP8266 console.  It is VITAL
+ * that if a call to this is inserted into non ESP8266 code that it be removed
+ * before checking in to Github.  A call to this function must NEVER be
+ * exposed to non-ESP8266 code and builds.
+ */
+void esp8266_log(char *message) {
+  os_printf("%s", message);
+}

@@ -26,8 +26,8 @@
 #include "app_uart.h"
 
 #define MAX_TEST_DATA_BYTES (15U)
-#define UART_TX_BUF_SIZE 64                         /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 32                         /**< UART RX buffer size. */
+#define UART_TX_BUF_SIZE 16                         /**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE 16                         /**< UART RX buffer size. */
 
 // UART callback function. Registered in uart_init(). Allows to asynchronously read characters from UART.
 void uart_event_handle(app_uart_evt_t * p_event);

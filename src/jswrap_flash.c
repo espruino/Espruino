@@ -106,19 +106,15 @@ entire page.
 void jswrap_flash_write(JsVar *data, int addr) {
   if (jsvIsUndefined(data))
     return jsExceptionHere(JSET_ERROR, "Data is not defined");
-  size_t l = (size_t)jsvIterateCallbackCount(data);
-  if ((addr&3) || (l&3)) {
+
+  JSV_GET_AS_CHAR_ARRAY(flashData, flashDataLen, data);
+  if ((addr&3) || (flashDataLen&3)) {
     jsExceptionHere(JSET_ERROR, "Data and address must be multiples of 4");
     return;
   }
-  if (l+256 > jsuGetFreeStack()) {
-    jsExceptionHere(JSET_ERROR, "Not enough free stack to send this amount of data");
-    return;
-  }
 
-  unsigned char *bytes = (unsigned char *)alloca(l);
-  jsvIterateCallbackToBytes(data, bytes, (unsigned int)l);
-  jshFlashWrite(bytes, (unsigned int)addr, (unsigned int)l);
+  if (flashData && flashDataLen)
+    jshFlashWrite(flashData, (unsigned int)addr, (unsigned int)flashDataLen);
 }
 
 /*JSON{

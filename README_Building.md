@@ -107,6 +107,45 @@ that task is to right-click your Espruino project and select `properties`.  From
 
 ----
 
+### for EMW3165
+
+Note: the emw3165 port is very preliminary and does not include Wifi support at this time.
+_The text below is what is planned in order to support Wifi, but it doesn't exist yet._
+
+The EMW3165 port uses WICED, which is an application framework provided by Broadcom for its
+wifi chips, such as the BCM43362 used in the EMW3165 module. The module consists of an
+STM32F411CE processor and the BCM43362. The WICED framework comes with everything and the kitchen
+sink plus a rather complex build process in order to support umpteen different processor and
+wifi chip combinations, plus various use-cases. WICED includes FreeRTOS and LwIP plus
+proprietary code to manage the Wifi chip.
+
+The strategy employed is to compile portions of WICED into a library using the WICED toolchain
+and then linking this into Espruino.
+
+Setting up WICED:
+- WICED does not officially support the EMW3165.
+- Clone https://github.com/MXCHIP-EMW/WICED-for-EMW and follow the instructions there to configure
+  WICED and build it. (You will need to sign up for a developer acct with Broadcom.)
+- Build the apsta sample program (snippet) using a command-line like
+  `./make EMW3165-FreeRTOS-LwIP-snip.apsta download run JTAG=stlink-v2`
+- Hook up your emw3165 to an ST-Link-v2 or your preferred STM32 programmer and flash using the
+  above command-line. You should see the EMW's access point.
+- An alternative program to test with is the "scan" snip as it will also print something on the
+  console (works well with the WifiMCU board): `./make EMW3165-FreeRTOS-LwIP-snip.scan ...`
+
+Compiling WICED into a library:
+- ... if only this worked ...
+
+Compiling Espruino:
+- To compile Espruino you will need to point to the WICED root and include files. This is
+  done by specifying a WICED_ROOT environment variable.
+- Adapt the pathnames from the following script:
+```
+  WICED_ROOT=/home/emw3165/WICED-for-EMW/WICED-SDK-3.3.1 make $*
+```
+
+----
+
 ### for Linux
 
 Simple: Just run `make`
@@ -155,6 +194,7 @@ Building under Windows/MacOS with a VM (Vagrant)
 * Download and install the correct [Vagrant](https://www.vagrantup.com/downloads.html) for your platform.
   > If running on MacOS, the two previous steps can be accomplished easily with [Homebrew Cask](http://caskroom.io):  `brew cask install virtualbox vagrant` will do it.
 * In your terminal application, navigate to your cloned working copy.
+* Install the auto-network plugin with `vagrant plugin install vagrant-auto_network`
 * Execute `vagrant up`.  This will take a little while while the box is downloaded, and your virtual machine is provisioned.
 * When it is complete, execute `vagrant ssh`, which will open an ssh session into your new VM. 
 * Execute `cd /vagrant && ESPRUINO_1V3=1 RELEASE=1 make` and wait.

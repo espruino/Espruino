@@ -34,14 +34,10 @@ chip = {
   'adc' : 6,
   'dac' : 0
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
 };
 
-board_css = """
-""";
 
 def get_pins():
   return []

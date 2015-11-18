@@ -24,6 +24,8 @@
 #include <espmissingincludes.h>
 #include <uart.h>
 #include <i2c_master.h>
+#include <pwm.h>
+#include <spi.h> // Include the MetalPhreak/ESP8266_SPI_Library headers.
 
 //#define FAKE_STDLIB
 #define _GCC_WRAP_STDINT_H
@@ -34,6 +36,7 @@ typedef long long int64_t;
 #include "jstimer.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#include "jspininfo.h"
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
@@ -52,6 +55,20 @@ typedef long long int64_t;
 
 // Address in RTC RAM where we save the time
 #define RTC_TIME_ADDR (256/4) // start of "user data" in RTC RAM
+
+
+static bool g_spiInitialized = false;
+static int  g_lastSPIRead = -1;
+
+struct PWMRecord {
+  bool enabled; //!< Has this PWM been enabled previously?
+};
+static uint32 g_pwmFreq;
+
+static struct PWMRecord g_PWMRecords[JSH_PIN_COUNT];
+
+static uint8 g_pinState[JSH_PIN_COUNT];
+
 
 /**
  * Transmit all the characters in the transmit buffer.
@@ -113,6 +130,14 @@ void jshInit() {
   gpio_intr_handler_register(intrHandlerCB, NULL);
 
   ETS_GPIO_INTR_ENABLE();
+
+  // Initialize something for each of the possible pins.
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
+    // For each of the PWM records, flag the PWM as having been not initialized.
+    g_PWMRecords[i].enabled = false;
+
+    g_pinState[i] = 0;
+  }
   os_printf("< jshInit\n");
 } // End of jshInit
 
@@ -136,7 +161,7 @@ static void intrHandlerCB(
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
   int pin;
-  for (pin=0; pin<16; pin++) {
+  for (pin=0; pin<JSH_PIN_COUNT; pin++) {
     if ((interruptMask & (1<<pin)) != 0) {
       // Pin has changed so push the event that says pin has changed.
       jshPushIOWatchEvent(pinToEV_EXTI(pin));
@@ -155,10 +180,12 @@ void jshReset() {
   // Set all GPIO pins to be input.
   /*
   int i;
-  for (int i=0; i<16; i++) {
+  for (int i=0; i<JSH_PIN_COUNT; i++) {
     jshPinSetState(i, JSHPINSTATE_GPIO_IN);
   }
   */
+  g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
+  g_lastSPIRead = -1;
   os_printf("< jshReset\n");
 } // End of jshReset
 
@@ -218,32 +245,45 @@ void jshDelayMicroseconds(int microsec) {
 
 //===== PIN mux =====
 
-static uint8_t PERIPHS[] = {
-PERIPHS_IO_MUX_GPIO0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0TXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_U0RXD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO4_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_GPIO5_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CLK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA0_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA1_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA2_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_DATA3_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_SD_CMD_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDI_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTCK_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTMS_U - PERIPHS_IO_MUX,
-PERIPHS_IO_MUX_MTDO_U - PERIPHS_IO_MUX };
+static uint32 g_PERIPHS[] = {
+  PERIPHS_IO_MUX_GPIO0_U,    // 00
+  PERIPHS_IO_MUX_U0TXD_U,    // 01
+  PERIPHS_IO_MUX_GPIO2_U,    // 02
+  PERIPHS_IO_MUX_U0RXD_U,    // 03
+  PERIPHS_IO_MUX_GPIO4_U,    // 04
+  PERIPHS_IO_MUX_GPIO5_U,    // 05
+  PERIPHS_IO_MUX_SD_CLK_U,   // 06
+  PERIPHS_IO_MUX_SD_DATA0_U, // 07
+  PERIPHS_IO_MUX_SD_DATA1_U, // 08
+  PERIPHS_IO_MUX_SD_DATA2_U, // 09
+  PERIPHS_IO_MUX_SD_DATA3_U, // 10
+  PERIPHS_IO_MUX_SD_CMD_U,   // 11
+  PERIPHS_IO_MUX_MTDI_U,     // 12
+  PERIPHS_IO_MUX_MTCK_U,     // 13
+  PERIPHS_IO_MUX_MTMS_U,     // 14
+  PERIPHS_IO_MUX_MTDO_U      // 15
+};
 
 /**
  * Return the function value to select GPIO for a pin
  */
-static uint8 pinGPIOFunc[] = {
-  FUNC_GPIO0, FUNC_GPIO1, FUNC_GPIO2, FUNC_GPIO3,
-  FUNC_GPIO4, FUNC_GPIO5, 3, 3,
-  3, FUNC_GPIO9, FUNC_GPIO10, 3,
-  FUNC_GPIO12, FUNC_GPIO13, FUNC_GPIO14, FUNC_GPIO15,
+static uint32 g_pinGPIOFunc[] = {
+  FUNC_GPIO0,  // 00
+  FUNC_GPIO1,  // 01
+  FUNC_GPIO2,  // 02
+  FUNC_GPIO3,  // 03
+  FUNC_GPIO4,  // 04
+  FUNC_GPIO5,  // 05
+  3,           // 06
+  3,           // 07
+  3,           // 08
+  FUNC_GPIO9,  // 09
+  FUNC_GPIO10, // 10
+  3,           // 11
+  FUNC_GPIO12, // 12
+  FUNC_GPIO13, // 13
+  FUNC_GPIO14, // 14
+  FUNC_GPIO15  // 15
 };
 
 /**
@@ -271,9 +311,6 @@ static char *pinStateToString(JshPinState state) {
   return states[state];
 }
 
-static uint8 pinState[16] = {
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // all JSHPINSTATE_UNDEFINED until we set them
-};
 
 static void jshDebugPin(Pin pin) {
   os_printf("PIN: %d out=%ld enable=%ld in=%ld\n",
@@ -317,13 +354,13 @@ void jshPinSetState(
   //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
   //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
-  assert(pin < 16);
+  assert(pin < JSH_PIN_COUNT);
   if (pin >= 6 && pin <= 11) {
     jsError("Cannot change pins used for flash chip");
     return; // these pins are used for the flash chip
   }
 
-  int periph = PERIPHS_IO_MUX + PERIPHS[pin];
+  int periph = g_PERIPHS[pin];
 
   // set the pin mux function
   switch (state) {
@@ -332,7 +369,7 @@ void jshPinSetState(
   case JSHPINSTATE_GPIO_IN:
   case JSHPINSTATE_GPIO_IN_PULLUP:
   case JSHPINSTATE_I2C:
-    PIN_FUNC_SELECT(periph, pinGPIOFunc[pin]); // set the pin mux to GPIO
+    PIN_FUNC_SELECT(periph, g_pinGPIOFunc[pin]); // set the pin mux to GPIO
     break;
   case JSHPINSTATE_AF_OUT:
   case JSHPINSTATE_AF_OUT_OPENDRAIN:
@@ -369,7 +406,7 @@ void jshPinSetState(
 
   //jshDebugPin(pin);
 
-  pinState[pin] = state; // remember what we set this to...
+  g_pinState[pin] = state; // remember what we set this to...
 }
 
 
@@ -379,7 +416,7 @@ void jshPinSetState(
  */
 JshPinState jshPinGetState(Pin pin) {
   //os_printf("> ESP8266: jshPinGetState %d\n", pin);
-  return pinState[pin];
+  return g_pinState[pin];
 }
 
 //===== GPIO and PIN stuff =====
@@ -391,7 +428,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  //os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
   GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
   GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
   //jshDebugPin(pin);
@@ -405,7 +442,7 @@ void jshPinSetValue(
 bool jshPinGetValue(
     Pin pin //!< The pin to have its value read.
   ) {
-  //os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -414,7 +451,7 @@ bool jshPinGetValue(
  *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
-  //os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -423,17 +460,50 @@ JsVarFloat jshPinAnalog(Pin pin) {
  *
  */
 int jshPinAnalogFast(Pin pin) {
-  //os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
 
 /**
- *
+ * Set the output PWM value.
  */
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) { // if freq<=0, the default is used
-  os_printf("ESP8266: jshPinAnalogOutput: %d, %d, %d\n", pin, (int)value, (int)freq);
-  jsError("No DAC");
+  os_printf("> jshPinAnalogOutput - jshPinAnalogOutput: pin=%d, value(x100)=%d, freq=%d\n", pin, (int)(value*100), (int)freq);
+  // Check that the value is between 0.0 and 1.0
+  if (value < 0 || value > 1.0) {
+    return 0;
+  }
+
+  // If PWM for the pin has not previously been enabled, enable it now.
+  if (g_PWMRecords[pin].enabled == false) {
+    g_PWMRecords[pin].enabled = true;
+    g_pwmFreq = (uint32)freq;
+    // Set the default frequency to 1KHz if no supplied frequency.
+    if (g_pwmFreq == 0) {
+      g_pwmFreq = 1000;
+    }
+
+    // Initialize the PWM subsystem
+    uint32 duty = 0;
+    uint32 pinInfoList[3] = {g_PERIPHS[pin], g_pinGPIOFunc[pin], pin};
+    pwm_init(g_pwmFreq * 1000000, &duty, 1, &pinInfoList);
+
+    // Start the PWM subsystem
+    pwm_start();
+  }
+
+  // If the period/frequency has changed, update the period.
+  if ((uint32)freq != 0 && (uint32)freq != g_pwmFreq) {
+    g_pwmFreq = (uint32)freq;
+    pwm_set_period(g_pwmFreq * 1000000);
+  }
+
+  uint32 duty = value * 1000000 / 0.045 / g_pwmFreq;
+  os_printf(" - Duty: %d (units of 45 nsecs)\n", duty);
+  pwm_set_duty(duty, 0);
+
+  //jsError("No DAC");
   return 0;
 }
 
@@ -463,7 +533,8 @@ bool jshGetWatchedPinState(IOEventFlags eventFlag) {
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
     os_printf(" - Error ... eventFlag out of range\n");
-    os_printf("< jshGetWatchedPinState\n");
+    jsError("eventFlag out of range");
+    //os_printf("< jshGetWatchedPinState\n");
     return false;
   }
 
@@ -500,7 +571,7 @@ bool jshCanWatch(
     Pin pin //!< The pin that we are asking whether or not we can watch it.
   ) {
   // As of right now, let us assume that all pins on an ESP8266 are watchable.
-  os_printf("> jshCanWatch: %d\n", pin);
+  os_printf("> jshCanWatch: pin=%d\n", pin);
   os_printf("< jshCanWatch = true\n");
   return true;
 }
@@ -518,8 +589,12 @@ IOEventFlags jshPinWatch(
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
-      // Start watching the given pin ...
-      jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+      // Start watching the given pin ...  First we ask ourselves if the
+      // pin state has been set manually. If it has not been set manually,
+      // then set the pin state to input.
+      if (jshGetPinStateIsManual(pin) == false) {
+        jshPinSetState(pin, JSHPINSTATE_GPIO_IN);
+      }
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     } else {
       // Stop watching the given pin
@@ -527,8 +602,8 @@ IOEventFlags jshPinWatch(
     }
     ETS_GPIO_INTR_ENABLE();
   } else {
-    jsError("Invalid pin (ESP8266)");
-    os_printf("< jshPinWatch: Invalid pin\n");
+    jsError("Invalid pin");
+    //os_printf("< jshPinWatch: Invalid pin\n");
     return EV_NONE;
   }
   //os_printf("< jshPinWatch\n");
@@ -584,26 +659,69 @@ void jshUSARTKick(
 //===== SPI =====
 
 /**
- * Unknown
+ * Initialize the hardware SPI device.
+ * On the ESP8266, hardware SPI is implemented via a set of pins defined
+ * as follows:
  *
+ * | GPIO   | NodeMCU | Name  | Function |
+ * |--------|---------|-------|----------|
+ * | GPIO12 | D6      | HMISO | MISO     |
+ * | GPIO13 | D7      | HMOSI | MOSI     |
+ * | GPIO14 | D5      | HSCLK | CLK      |
+ * | GPIO15 | D8      | HCS   | CS       |
  *
  */
 void jshSPISetup(
-    IOEventFlags device, //!< Unknown
-    JshSPIInfo *inf      //!< Unknown
+    IOEventFlags device, //!< The identity of the SPI device being initialized.
+    JshSPIInfo *inf      //!< Flags for the SPI device.
   ) {
-  os_printf("ESP8266: jshSPISetup: device=%d, inf=0x%x\n", device, (int)inf);
+  // The device should be one of EV_SPI1, EV_SPI2 or EV_SPI3.
+  os_printf("> jshSPISetup - jshSPISetup: device=%d\n", device);
+  switch(device) {
+  case EV_SPI1:
+    os_printf(" - Device is SPI1\n");
+    // EV_SPI1 is the ESP8266 hardware SPI ...
+    spi_init(HSPI); // Initialize the hardware SPI components.
+    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
+    g_spiInitialized = true;
+    g_lastSPIRead = -1;
+    break;
+  case EV_SPI2:
+    os_printf(" - Device is SPI2\n");
+    break;
+  case EV_SPI3:
+    os_printf(" - Device is SPI3\n");
+    break;
+  default:
+    os_printf(" - Device is Unknown!!\n");
+    break;
+  }
+  if (inf != NULL) {
+    os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
+        inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
+  }
+  os_printf("< jshSPISetup\n");
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
  * of the previous send (or -1). If data<0, no data is sent and the function
  * waits for data to be returned */
 int jshSPISend(
-    IOEventFlags device, //!< Unknown
-    int data             //!< Unknown
+    IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
+    int data             //!< The data to be sent or an indication that no data is to be sent.
   ) {
-  //os_printf("ESP8266: jshSPISend\n");
-  return NAN;
+  if (device != EV_SPI1) {
+    return -1;
+  }
+  //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
+  int retData = g_lastSPIRead;
+  if (data >=0) {
+    g_lastSPIRead = spi_tx8(HSPI, data);
+  } else {
+    g_lastSPIRead = -1;
+  }
+  //os_printf("< jshSPISend\n");
+  return retData;
 }
 
 
@@ -614,9 +732,15 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  //os_printf("ESP8266: jshSPISend16\n");
-  jshSPISend(device, data >> 8);
-  jshSPISend(device, data & 255);
+  //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
+  //jshSPISend(device, data >> 8);
+  //jshSPISend(device, data & 255);
+  if (device != EV_SPI1) {
+    return;
+  }
+
+  spi_tx16(HSPI, data);
+  //os_printf("< jshSPISend16\n");
 }
 
 
@@ -627,7 +751,8 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
   ) {
-  //os_printf("ESP8266: jshSPISet16\n");
+  //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
+  //os_printf("< jshSPISet16\n");
 }
 
 
@@ -637,11 +762,15 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
   ) {
-  //os_printf("ESP8266: jshSPIWait\n");
+  //os_printf("> jshSPIWait - device=%d\n", device);
+  while(spi_busy(HSPI)) ;
+  //os_printf("< jshSPIWait\n");
 }
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -649,24 +778,21 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 /** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  os_printf("ESP8266: jshI2CSetup SCL=%d SDA=%d bitrate=%d\n",
-      info->pinSCL, info->pinSDA, info->bitrate);
-  if (info->slaveAddr != -1) {
-    jsError("I2C slave mode not supported");
-    return;
-  }
+  //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
+  //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported");
     return;
   }
 
-  Pin scl = info->pinSCL >= 0 ? info->pinSCL : 14;
-  Pin sda = info->pinSDA >= 0 ? info->pinSDA : 2;
+  Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
+  Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
-  jshPinSetState(info->pinSCL, JSHPINSTATE_I2C);
-  jshPinSetState(info->pinSDA, JSHPINSTATE_I2C);
+  jshPinSetState(scl, JSHPINSTATE_I2C);
+  jshPinSetState(sda, JSHPINSTATE_I2C);
 
   i2c_master_gpio_init(scl, sda, info->bitrate);
+  //os_printf("< jshI2CSetup\n");
 }
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
@@ -875,32 +1001,8 @@ static void systemTimeInit(void) {
 
 //===== Utility timer =====
 
-// There are two versions here. One uses the SDK timer in microsecond mode and the other uses the
-// hw_timer using the driver provided by Espressif. The hw_timer is not working and causes the
-// system to crash for unknown reasons. Thus using the SDK timer for now...
-// If we're happy with the SDK timer then the other code can be deleted as well as the ht_timer.[hc]
-// files...
+// The utility timer uses the SDK timer in microsecond mode.
 
-#ifndef USE_HW_TIMER
-os_timer_t utilTimer;
-
-static void utilTimerInit(void) {
-  os_printf("UStimer init\n");
-  os_timer_disarm(&utilTimer);
-  os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
-}
-
-void jshUtilTimerDisable() {
-  os_printf("UStimer disarm\n");
-  os_timer_disarm(&utilTimer);
-}
-
-void jshUtilTimerStart(JsSysTime period) {
-  //os_printf("UStimer arm\n");
-  os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
-}
-
-#else
 os_event_t utilTimerQ[2];
 
 static void utilTimerTask(os_event_t *e) {
@@ -925,7 +1027,7 @@ void jshUtilTimerDisable() {
 
 void jshUtilTimerStart(JsSysTime period) {
   os_printf("HW Timer: %ldus\n", (uint32_t)period);
-  if (period < 50) {
+  if (period < 100) {
     // the hardware timer can't do a delay of less than 100us
     os_delay_us((uint32_t)period);
     system_os_post(2, NULL, NULL);
@@ -937,7 +1039,6 @@ void jshUtilTimerStart(JsSysTime period) {
   }
   hw_timer_arm((uint32_t)period);
 }
-#endif
 
 void jshUtilTimerReschedule(JsSysTime period) {
   jshUtilTimerDisable();
@@ -947,8 +1048,17 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("ESP8266: jshIsDeviceInitialised %d\n", device);
-  return true;
+  os_printf("> jshIsDeviceInitialised - %d\n", device);
+  bool retVal = true;
+  switch(device) {
+  case EV_SPI1:
+    retVal = g_spiInitialized;
+    break;
+  default:
+    break;
+  }
+  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  return retVal;
 } // End of jshIsDeviceInitialised
 
 // the esp8266 doesn't have any temperature sensor

@@ -35,13 +35,6 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
-  'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'C13', 'C14', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
-  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ]
-        
-};
 devices = {
   'OSC' : { 'pin_in' :  'D0',
             'pin_out' : 'D1' },
@@ -60,7 +53,13 @@ devices = {
                   'pin_rx' : 'A10' },
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
+  'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'C13', 'C14', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
+  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ]
+};
+board["_css"] = """
 #board {
   width: 431px;
   height: 585px;

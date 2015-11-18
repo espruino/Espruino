@@ -546,6 +546,7 @@ void jslInit(JsLex *lex, JsVar *var) {
   lex->tokenLastStart = 0;
   lex->tokenl = 0;
   lex->tokenValue = 0;
+  lex->lineNumberOffset = 0;
   // set up iterator
   jsvStringIteratorNew(&lex->it, lex->sourceVar, 0);
   jsvUnLock(lex->it.var); // see jslGetNextCh
@@ -742,21 +743,40 @@ bool jslMatch(JsLex *lex, int expected_tk) {
 }
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
-  // Create a var
-  JsVar *var = jsvNewFromEmptyString();
+  size_t maxLength = charTo + 1 - jsvStringIteratorGetIndex(&charFrom->it);
+  assert(maxLength>0); // will fail if 0
+  // Try and create a flat string first
+  JsVar *var = 0;
+  if (maxLength > JSV_FLAT_STRING_BREAK_EVEN) {
+    var = jsvNewFlatStringOfLength((unsigned int)maxLength);
+    if (var) {
+      // Flat string
+      char *flatPtr = jsvGetFlatStringPointer(var);
+      *(flatPtr++) = charFrom->currCh;
+      JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
+      while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
+        *(flatPtr++) = jsvStringIteratorGetChar(&it);
+        jsvStringIteratorNext(&it);
+      }
+      jsvStringIteratorFree(&it);
+      return var;
+    }
+  }
+  // Non-flat string...
+  var = jsvNewFromEmptyString();
   if (!var) { // out of memory
     return 0;
   }
 
   //jsvAppendStringVar(var, lex->sourceVar, charFrom->it->index, (int)(charTo-charFrom));
-  size_t maxLength = charTo - jsvStringIteratorGetIndex(&charFrom->it);
   JsVar *block = jsvLockAgain(var);
   block->varData.str[0] = charFrom->currCh;
   size_t blockChars = 1;
 
+  size_t l = maxLength;
   // now start appending
   JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
-  while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
+  while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
@@ -774,21 +794,38 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   jsvStringIteratorFree(&it);
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
+  assert(l == jsvGetStringLength(var));
 
   return var;
+}
+
+/// Return the line number at the current character position (this isn't fast as it searches the string)
+unsigned int jslGetLineNumber(struct JsLex *lex) {
+  size_t line;
+  size_t col;
+  jsvGetLineAndCol(lex->sourceVar, jsvStringIteratorGetIndex(&lex->tokenStart.it)-1, &line, &col);
+  return (unsigned int)line;
 }
 
 void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos) {
   size_t line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
-  cbprintf(user_callback, user_data, "line %d col %d\n",line,col);
+  if (lex->lineNumberOffset)
+    line += (size_t)lex->lineNumberOffset - 1;
+  cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
 }
 
-void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos) {
+void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, struct JsLex *lex, size_t tokenPos, char *prefix) {
   size_t line = 1,col = 1;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   size_t startOfLine = jsvGetIndexFromLineAndCol(lex->sourceVar, line, 1);
   size_t lineLength = jsvGetCharsOnLine(lex->sourceVar, line);
+  size_t prefixLength = 0;
+
+  if (prefix) {
+    user_callback(prefix, user_data);
+    prefixLength = strlen(prefix);
+  }
 
   if (lineLength>60 && tokenPos-startOfLine>30) {
     cbprintf(user_callback, user_data, "...");
@@ -817,6 +854,7 @@ void jslPrintTokenLineMarker(vcbprintf_callback user_callback, void *user_data, 
   if (lineLength > 60)
     user_callback("...", user_data);
   user_callback("\n", user_data);
+  col += prefixLength;
   while (col-- > 1) user_callback(" ", user_data);
   user_callback("^\n", user_data);
 }

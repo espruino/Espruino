@@ -17,7 +17,11 @@ import pinutils;
 # placeholder
 info = {
  'name' : "BBC micro:bit",
- 'link' : [ "" ],
+ 'link' : [ "https://en.wikipedia.org/wiki/Micro_Bit" ],
+ 'default_console' : "EV_SERIAL1",
+ 'default_console_tx' : "H0", # pin 24
+ 'default_console_rx' : "H1", # pin 25
+ 'default_console_baudrate' : "9600",
  'variables' : 145, 
  'binary_name' : 'espruino_%v_microbit.bin',
 };
@@ -34,15 +38,16 @@ chip = {
   'adc' : 0,
   'dac' : 0
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
   'BTN1' : { 'pin' : 'D4' }, # 'P0_17'
   'BTN2' : { 'pin' : 'D11' }, # 'P0_26'
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+};
+board["_css"] = """
 """;
 
 def get_pins():
@@ -65,6 +70,8 @@ def get_pins():
    { "name":"PD15", "sortingname":"D15", "port":"D", "num":"21", "functions":{ "SPI1_MOSI":0 }, "csv":{} },
    { "name":"PD16", "sortingname":"D16", "port":"D", "num":"16", "functions":{}, "csv":{} },
    { "name":"PD17", "sortingname":"D17", "port":"D", "num":"0", "functions":{ "I2C1_SCL":0 }, "csv":{} },
-   { "name":"PD18", "sortingname":"D18", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} }
+   { "name":"PD18", "sortingname":"D18", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} },
+   { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
+   { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];
   return pins
