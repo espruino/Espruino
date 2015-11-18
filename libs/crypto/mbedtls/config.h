@@ -55,6 +55,8 @@
 #define MBEDTLS_OID_C
 #define MBEDTLS_PKCS5_C
 #define MBEDTLS_SHA1_C
+#define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA512_C
 
 /*
 #define MBEDTLS_ASN1_WRITE_C
@@ -71,7 +73,7 @@
 #define MBEDTLS_PK_PARSE_C
 #define MBEDTLS_RSA_C
 
-#define MBEDTLS_SHA256_C
+
 #define MBEDTLS_SSL_CLI_C
 #define MBEDTLS_SSL_SRV_C
 #define MBEDTLS_SSL_TLS_C

@@ -27,6 +27,7 @@
                is moved such that we get 1 extra character in StringExts
             Allow events of >12 characters length
             Fix regression in flash memory write (introduced via AES merge)
+            Fixed instability when resetting after using SD card on non-standard pins
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)
