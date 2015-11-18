@@ -26,6 +26,7 @@
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
 # HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
+# HYTINY_STM103T=1				# HY-TinySTM103T by Haoyu (hotmcu.com)
 # STM32VLDISCOVERY=1
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
@@ -213,6 +214,15 @@ EMBEDDED=1
 SAVE_ON_FLASH=1
 USE_FILESYSTEM=1
 BOARD=OLIMEXINO_STM32
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os # short on program memory
+
+else ifdef HYTINY_STM103T
+EMBEDDED=1
+USE_GRAPHICS=1
+SAVE_ON_FLASH=1
+BOARD=HYTINY_STM103T
 STLIB=STM32F10X_MD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
 OPTIMIZEFLAGS+=-Os # short on program memory
