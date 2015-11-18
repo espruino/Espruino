@@ -133,6 +133,8 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
   if (pathStart<0) pathStart = charIdx;
   int addrEnd = (portStart>=0) ? portStart : pathStart;
   // pull out details
+  if (addrStart>0)
+    jsvObjectSetChildAndUnLock(obj, "protocol", jsvNewFromStringVar(url, 0, (size_t)addrStart-1));
   jsvObjectSetChildAndUnLock(obj, "method", jsvNewFromString("GET"));
   jsvObjectSetChildAndUnLock(obj, "host", jsvNewFromStringVar(url, (size_t)(addrStart+1), (size_t)(addrEnd-(addrStart+1))));
 
@@ -148,8 +150,7 @@ JsVar *jswrap_url_parse(JsVar *url, bool parseQuery) {
 
   jsvObjectSetChildAndUnLock(obj, "search", (searchStart>=0)?jsvNewFromStringVar(url, (size_t)searchStart, JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull());
 
-  if (portNumber<=0 || portNumber>65535) portNumber=80;
-  jsvObjectSetChildAndUnLock(obj, "port", jsvNewFromInteger(portNumber));
+  jsvObjectSetChildAndUnLock(obj, "port", (portNumber<=0 || portNumber>65535) ? jsvNewWithFlags(JSV_NULL) : jsvNewFromInteger(portNumber));
 
   JsVar *query = (searchStart>=0)?jsvNewFromStringVar(url, (size_t)(searchStart+1), JSVAPPENDSTRINGVAR_MAXLENGTH):jsvNewNull();
   if (parseQuery && !jsvIsNull(query)) {
