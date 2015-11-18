@@ -54,7 +54,7 @@ devices = {
 # left-right, or top-bottom order
 board = {
   'left' : [ '3.3','A3','A4','A5','A6','A7','B0','B1','B2','A8','A9','A10','A11','A12','GND' ],
-  'right' : [ 'GND','A1','A2','A0','RST','ISP','A14','A13','B7','B6','B5','B4','B3','A15','5V' ],
+  'right' : [ 'GND','A2','A1','A0','RST','ISP','A14','A13','B7','B6','B5','B4','B3','A15','5V' ],
   'bottom' : [ '3.3','A9','A10','A13/SWDIO','A14/SWCLK','GND' ],
 };
 board["_css"] = """
