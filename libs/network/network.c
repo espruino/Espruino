@@ -10,7 +10,7 @@
  * ----------------------------------------------------------------------------
  * Contains functions for handling JsNetwork and doing common networking tasks
  * ----------------------------------------------------------------------------
- */
+ */#define USE_HTTPS
 #include "network.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
@@ -252,6 +252,7 @@ JsNetwork *networkGetCurrent() {
 
 typedef struct {
   int sckt;
+  bool connecting; // are we in the process of connecting?
   mbedtls_ctr_drbg_context ctr_drbg;
   mbedtls_x509_crt cacert;
   mbedtls_ssl_context ssl;
@@ -260,6 +261,7 @@ typedef struct {
 
 SSLSocketData _sd;
 SSLSocketData *sd = &_sd; // make it easier to use pointers later
+
 
 BITFIELD_DECL(socketIsHTTPS, 32);
 
@@ -300,16 +302,128 @@ int ssl_entropy( void *data, unsigned char *output, size_t len ) {
   return 0;
 }
 
-/*SSLSocketData *ssl_getSocketData(int sckt) {
-  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
+bool ssl_newSocketData(int sckt) {
+  assert(sckt>=0 && sckt<32);
+  // Create a new socketData using the variable
+  /*JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", JSV_OBJECT);
+  if (!ssl) return false; // out of memory?
+  JsVar *sslData = jsvGetArrayItem(ssl, sckt);
+  assert(!sslData); // we should NOT already have socket data
+  sslData = jsvNewFlatStringOfLength(sizeof(SSLSocketData));
+  if (!sslData) {
+    jsError("Not enough memory to allocate SSL socket\n");
+    jsvUnLock(ssl);
+    return false;
+  }
+  SSLSocketData *sd = jsvGetFlatStringPointer(sslData);
+  assert(sslData);*/
+  JsVar *sslData = 0;
+
+  // Now initialise this
+  sd->sckt = sckt;
+  sd->connecting = true;
+
+  jsiConsolePrintf( "Connecting with TLS...\n" );
+
+  int ret;
+
+  const char *pers = "ssl_client1";
+  mbedtls_ssl_init( &sd->ssl );
+  mbedtls_ssl_config_init( &sd->conf );
+  mbedtls_x509_crt_init( &sd->cacert );
+  mbedtls_ctr_drbg_init( &sd->ctr_drbg );
+  if (( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
+                             (const unsigned char *) pers,
+                             strlen(pers))) != 0 ) {
+    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );
+    jsvUnLock(sslData);
+    return false;
+  }
+
+  if (( ret = mbedtls_ssl_config_defaults( &sd->conf,
+                  MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
+                  MBEDTLS_SSL_TRANSPORT_STREAM,
+                  MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
+    jsError( "HTTPS init failed! mbedtls_ssl_config_defaults returned %d\n", ret );
+    jsvUnLock(sslData);
+    return false;
+  }
+
+  // FIXME no cert checking!
+  mbedtls_ssl_conf_authmode( &sd->conf, MBEDTLS_SSL_VERIFY_NONE );
+  mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
+  mbedtls_ssl_conf_rng( &sd->conf, mbedtls_ctr_drbg_random, &sd->ctr_drbg );
+  mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
+
+  if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
+    jsError( "Failed! mbedtls_ssl_setup returned %d\n", ret );
+    jsvUnLock(sslData);
+    return false;
+  }
+
+  if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
+    jsError( "HTTPS init failed! mbedtls_ssl_set_hostname returned %d\n", ret );
+    jsvUnLock(sslData);
+    return false;
+  }
+
+  mbedtls_ssl_set_bio( &sd->ssl, &sd->sckt, ssl_send, ssl_recv, NULL );
+
+  jsiConsolePrintf( "Performing the SSL/TLS handshake...\n" );
+
+  // we're good. Add it to the array
+  jsiConsolePrintf( "  FIXME ADD TO ARRAY " );
+  jsvUnLock(sslData);
+
+  return true;
+}
+
+void ssl_freeSocketData(int sckt) {
+  BITFIELD_SET(socketIsHTTPS, sckt, 0);
+  mbedtls_ssl_free( &sd->ssl );
+  mbedtls_ssl_config_free( &sd->conf );
+  mbedtls_ctr_drbg_free( &sd->ctr_drbg );
+}
+
+SSLSocketData *ssl_getSocketData(int sckt) {
+  // try and find the socket data variable
+/*  JsVar *ssl = jsvObjectGetChild(execInfo.root, "ssl", 0);
   if (!ssl) return 0;
   JsVar *sslData = jsvGetArrayItem(ssl, sckt);
-  SSLSocketData *data = 0;
+  SSLSocketData *sd = 0;
   if (jsvIsFlatString(sslData))
-    data = jsvGetFlatStringPointer(sslData);
-  jsvUnLock(sslData);
-  return data;
-}*/
+    sd = jsvGetFlatStringPointer(sslData);
+  jsvUnLock(sslData);*/
+
+  // now continue with connection
+  if (sd->connecting) {
+    int ret;
+
+    if ( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 ) {
+      if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE ) {
+        jsError( "Failed! mbedtls_ssl_handshake returned -0x%x\n", -ret );
+        return 0; // this signals an error
+      }
+      // else we just continue - connecting=true so other things should wait
+    } else {
+      // Verify the server certificate
+      jsiConsolePrintf("Verifying peer X.509 certificate...\n");
+
+      /* In real life, we probably want to bail out when ret != 0 */
+      uint32_t flags;
+      if( ( flags = mbedtls_ssl_get_verify_result( &sd->ssl ) ) != 0 ) {
+        char vrfy_buf[512];
+        mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
+        jsError("Failed! %s\n", vrfy_buf );
+        return 0;
+      }
+      sd->connecting = false;
+    }
+  }
+
+
+  return sd;
+}
 
 #endif
 // ------------------------------------------------------------------------------
@@ -319,114 +433,30 @@ bool netCheckError(JsNetwork *net) {
 }
 
 int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags) {
+  int sckt = net->createsocket(net, host, port);
+  if (sckt<0) return sckt;
+
 #ifdef USE_HTTPS
+  assert(sckt>=0 && sckt<32);
+  BITFIELD_SET(socketIsHTTPS, sckt, 0);
   if (flags & NCF_TLS) {
-    jsiConsolePrintf( "Connecting with TLS..." );
-    int ret;
-
-    const char *pers = "ssl_client1";
-    mbedtls_ssl_init( &sd->ssl );
-    mbedtls_ssl_config_init( &sd->conf );
-    mbedtls_x509_crt_init( &sd->cacert );
-    mbedtls_ctr_drbg_init( &sd->ctr_drbg );
-    if( ( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
-                               (const unsigned char *) pers,
-                               strlen( pers ) ) ) != 0 ) {
-        jsiConsolePrintf("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );
-        return -1;
+    if (ssl_newSocketData(sckt)) {
+      BITFIELD_SET(socketIsHTTPS, sckt, 1);
+    } else {
+      return -1; // fail!
     }
-
-    sd->sckt = net->createsocket(net, host, port);
-    if (sd->sckt<0) {
-      jsiConsolePrintf("HTTPS Connect failed");
-      return -1;
-    }
-    assert(sd->sckt>=0 && sd->sckt<32);
-
-    if( ( ret = mbedtls_ssl_config_defaults( &sd->conf,
-                    MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
-                    MBEDTLS_SSL_TRANSPORT_STREAM,
-                    MBEDTLS_SSL_PRESET_DEFAULT ) ) != 0 ) {
-      jsiConsolePrintf( "HTTPS init failed! mbedtls_ssl_config_defaults returned %d\n\n", ret );
-      return -1;
-    }
-
-    // FIXME no cert checking!
-    mbedtls_ssl_conf_authmode( &sd->conf, MBEDTLS_SSL_VERIFY_NONE );
-    mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
-    mbedtls_ssl_conf_rng( &sd->conf, mbedtls_ctr_drbg_random, &sd->ctr_drbg );
-    mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
-
-    if( ( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf ) ) != 0 )
-     {
-      jsiConsolePrintf( " failed\n  ! mbedtls_ssl_setup returned %d\n\n", ret );
-      return -1;
-     }
-
-    if( ( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" ) ) != 0 ) {
-      jsiConsolePrintf( "HTTPS init failed! mbedtls_ssl_set_hostname returned %d\n\n", ret );
-      return -1;
-    }
-
-    mbedtls_ssl_set_bio( &sd->ssl, &sd->sckt, ssl_send, ssl_recv, NULL );
-
-    jsiConsolePrintf( "  . Performing the SSL/TLS handshake..." );
-
-    while( ( ret = mbedtls_ssl_handshake( &sd->ssl ) ) != 0 )
-    {
-        if( ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE )
-        {
-          jsiConsolePrintf( " failed\n  ! mbedtls_ssl_handshake returned -0x%x\n\n", -ret );
-          return -1;
-        }
-    }
-
-    jsiConsolePrintf( " ok\n" );
-
-    /*
-     * 5. Verify the server certificate
-     */
-    jsiConsolePrintf( "  . Verifying peer X.509 certificate..." );
-
-    /* In real life, we probably want to bail out when ret != 0 */
-    if( ( flags = mbedtls_ssl_get_verify_result( &sd->ssl ) ) != 0 )
-    {
-        char vrfy_buf[512];
-
-        jsiConsolePrintf( " failed\n" );
-
-        mbedtls_x509_crt_verify_info( vrfy_buf, sizeof( vrfy_buf ), "  ! ", flags );
-
-        jsiConsolePrintf( "%s\n", vrfy_buf );
-    }
-    else
-      jsiConsolePrintf( " ok\n" );
-
-
-    BITFIELD_SET(socketIsHTTPS, sd->sckt, 1);
-    return sd->sckt;
-  } else {
-    int sckt = net->createsocket(net, host, port);
-    assert(sckt>=0 && sckt<32);
-    BITFIELD_SET(socketIsHTTPS, sckt, 0);
-    return sckt;
   }
-#else
-  return net->createsocket(net, host, port);
 #endif
+  return sckt;
 }
 
 void netCloseSocket(JsNetwork *net, int sckt) {
-  net->closesocket(net, sckt);
 #ifdef USE_HTTPS
-  /*
-  mbedtls_net_free( &server_fd );
-  mbedtls_ssl_free( &ssl );
-  mbedtls_ssl_config_free( &conf );
-  mbedtls_ctr_drbg_free( &ctr_drbg );
-  mbedtls_entropy_free( &entropy );
-   */
+  if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+    ssl_freeSocketData(sckt);
+  }
 #endif
+  net->closesocket(net, sckt);
 }
 
 int netAccept(JsNetwork *net, int sckt) {
@@ -440,6 +470,10 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
 #ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+    SSLSocketData *sd = ssl_getSocketData(sckt);
+    if (!sd) return -1;
+    if (sd->connecting) return 0; // busy
+
     int ret = mbedtls_ssl_read( &sd->ssl, buf, len );
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
@@ -454,6 +488,10 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
 int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
 #ifdef USE_HTTPS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
+    SSLSocketData *sd = ssl_getSocketData(sckt);
+    if (!sd) return -1;
+    if (sd->connecting) return 0; // busy
+
     int ret = mbedtls_ssl_write( &sd->ssl, buf, len );
     if( ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE )
       return 0;
