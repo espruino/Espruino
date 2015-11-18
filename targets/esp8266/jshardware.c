@@ -131,7 +131,7 @@ static void intrHandlerCB(
   // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
   // that the ESP8266 will once again cause future interrupts to be processed.
 
-  os_printf_plus(">> intrHandlerCB\n");
+  //os_printf_plus(">> intrHandlerCB\n");
   gpio_intr_ack(interruptMask);
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
@@ -143,7 +143,7 @@ static void intrHandlerCB(
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     }
   }
-  os_printf_plus("<< intrHandlerCB\n");
+  //os_printf_plus("<< intrHandlerCB\n");
 }
 
 /**
@@ -211,7 +211,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
   // Keep things simple and make the user responsible if they sleep for too long...
   if (microsec > 0) {
-    os_printf("Delay %d us\n", microsec);
+    //os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
 } // End of jshDelayMicroseconds
@@ -314,8 +314,8 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
-      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
+  //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+  //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
   assert(pin < 16);
   if (pin >= 6 && pin <= 11) {
@@ -378,7 +378,7 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  os_printf("> ESP8266: jshPinGetState %d\n", pin);
+  //os_printf("> ESP8266: jshPinGetState %d\n", pin);
   return pinState[pin];
 }
 
@@ -391,7 +391,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
+  //os_printf("> ESP8266: jshPinSetValue %d, %d\n", pin, value);
   GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
   GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
   //jshDebugPin(pin);
@@ -405,7 +405,7 @@ void jshPinSetValue(
 bool jshPinGetValue(
     Pin pin //!< The pin to have its value read.
   ) {
-  os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
+  //os_printf("> ESP8266: jshPinGetValue %d, %d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -414,7 +414,7 @@ bool jshPinGetValue(
  *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalog: %d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -423,7 +423,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
  *
  */
 int jshPinAnalogFast(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalogFast: %d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -459,7 +459,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
  * Get the state of the pin associated with the event flag.
  */
 bool jshGetWatchedPinState(IOEventFlags eventFlag) {
-  os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
+  //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
     os_printf(" - Error ... eventFlag out of range\n");
@@ -468,7 +468,7 @@ bool jshGetWatchedPinState(IOEventFlags eventFlag) {
   }
 
   bool currentPinValue = jshPinGetValue((Pin)(eventFlag-EV_EXTI0));
-  os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
+  //os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
   return currentPinValue;
 }
 
@@ -514,7 +514,7 @@ IOEventFlags jshPinWatch(
     Pin pin,         //!< The pin to be watched.
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
-  os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
+  //os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
@@ -531,7 +531,7 @@ IOEventFlags jshPinWatch(
     os_printf("< jshPinWatch: Invalid pin\n");
     return EV_NONE;
   }
-  os_printf("< jshPinWatch\n");
+  //os_printf("< jshPinWatch\n");
   return pinToEV_EXTI(pin);
 }
 
@@ -602,7 +602,7 @@ int jshSPISend(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPISend\n");
+  //os_printf("ESP8266: jshSPISend\n");
   return NAN;
 }
 
@@ -614,7 +614,7 @@ void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPISend16\n");
+  //os_printf("ESP8266: jshSPISend16\n");
   jshSPISend(device, data >> 8);
   jshSPISend(device, data & 255);
 }
@@ -627,7 +627,7 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPISet16\n");
+  //os_printf("ESP8266: jshSPISet16\n");
 }
 
 
@@ -637,7 +637,7 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
   ) {
-  os_printf("ESP8266: jshSPIWait\n");
+  //os_printf("ESP8266: jshSPIWait\n");
 }
 
 /** Set whether to use the receive interrupt or not */
@@ -896,7 +896,7 @@ void jshUtilTimerDisable() {
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  os_printf("UStimer arm\n");
+  //os_printf("UStimer arm\n");
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
