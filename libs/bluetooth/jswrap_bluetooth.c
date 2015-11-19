@@ -54,7 +54,7 @@ of beta.  */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
-#define APP_TIMER_MAX_TIMERS            (2 + 2/*+ BSP_APP_TIMERS_NUMBER*/)                 /**< Maximum number of simultaneously created timers. */
+#define APP_TIMER_MAX_TIMERS            (2)                                         /**< Maximum number of simultaneously created timers. */
 #define APP_TIMER_OP_QUEUE_SIZE         4                                           /**< Size of timer operation queues. */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
@@ -445,12 +445,6 @@ static void power_manage(void)
 The USB Serial port
  */
 
-/*JSON{
-    "type" : "staticmethod",
-    "class" : "NRF",
-    "name" : "init", 
-    "generate" : "jswrap_nrf_bluetooth_init"
-}*/
 void jswrap_nrf_bluetooth_init(void)
 {
     uint32_t err_code;
@@ -465,14 +459,7 @@ void jswrap_nrf_bluetooth_init(void)
     advertising_init();
     conn_params_init();
     
-    err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-    APP_ERROR_CHECK(err_code);
-    
-    // Enter main loop.
-    //for (;;)
-    //{
-        //power_manage();
-    //}
+    jswrap_nrf_bluetooth_wake();
 }
 
 /*JSON{
@@ -507,6 +494,7 @@ void jswrap_nrf_bluetooth_wake(void)
     uint32_t err_code;
     NRF_RADIO->TASKS_DISABLE = (0UL);
     err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
+    APP_ERROR_CHECK(err_code);
 }
 
 

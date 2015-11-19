@@ -204,6 +204,7 @@ USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
+USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -600,6 +601,8 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 OPTIMIZEFLAGS+=-O3
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
@@ -619,6 +622,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else ifdef ARIETTA
 EMBEDDED=1
@@ -628,6 +633,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else
 BOARD=LINUX
@@ -636,6 +643,7 @@ USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
+USE_TLS=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -1028,8 +1036,8 @@ ifdef USE_BLUETOOTH
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
-ifdef USE_HTTPS
-  DEFINES += -DUSE_HTTPS
+ifdef USE_TLS
+  DEFINES += -DUSE_TLS
 endif
 
 ifdef USE_CRYPTO
@@ -1038,7 +1046,7 @@ ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
 
-ifdef USE_HTTPS
+ifdef USE_TLS
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
@@ -1426,8 +1434,8 @@ ifdef ARM
   # Given we've left 10k for it, there's no real reason to enable LTO anyway.
   ifndef BOOTLOADER
 	# Enable link-time optimisations (inlining across files)
-	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-	DEFINES += -DLINK_TIME_OPTIMISATION
+#	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+	#DEFINES += -DLINK_TIME_OPTIMISATION
   endif
 
   # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
@@ -1818,7 +1826,8 @@ else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else ifdef MICROBIT
-	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).bin /media/MICROBIT;sync; fi
+	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
 	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
 else

@@ -132,30 +132,30 @@ void jshPinSetValue(Pin pin, bool value)
 {
   if (value == 1)
   {
-    nrf_utils_gpio_pin_set((uint32_t) pin);
+    nrf_utils_gpio_pin_set((uint32_t)pinInfo[pin].pin);
   }
   else
   {
-    nrf_utils_gpio_pin_clear((uint32_t) pin);
+    nrf_utils_gpio_pin_clear((uint32_t)pinInfo[pin].pin);
   }
 }
 
 bool jshPinGetValue(Pin pin)
 {
-  return (bool) nrf_utils_gpio_pin_read((uint32_t) pin);
+  return (bool) nrf_utils_gpio_pin_read((uint32_t)pinInfo[pin].pin);
 }
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state)
 {
-  nrf_utils_gpio_pin_set_state((uint32_t) pin, (uint32_t) state);
+  nrf_utils_gpio_pin_set_state((uint32_t)pinInfo[pin].pin, (uint32_t) state);
 }
 
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin)
 {
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t) pin);
+  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
 }
 
 // Returns an analog value between 0 and 1
@@ -178,6 +178,7 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
  */
 void jshPinPulse(Pin pin, bool value, JsVarFloat time)
 {
+  // TODO: This should really use the built-in timer
   jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
   jshPinSetValue(pin, value);
   jshDelayMicroseconds(time); // Not sure about time...

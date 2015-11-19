@@ -149,20 +149,15 @@ void nrf_utils_delay_us(uint32_t microsec)
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
 void nrf_utils_lfclk_config_and_start()
 {
-
   // Select the preferred clock source.
- // NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
- NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
-  
-  // Trigger the LFCLKSTART task.
-  NRF_CLOCK->TASKS_LFCLKSTART = (1UL);
+  // NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+  NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
 
-  while (NRF_CLOCK->EVENTS_LFCLKSTARTED != (1UL)) {
-    // Wait for the LFCLK to start...
-  }
+  // Start the 32 kHz clock, and wait for the start up to complete
+  NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+  NRF_CLOCK->TASKS_LFCLKSTART = 1;
+  while(NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
 
-  // Clear the event.
-  NRF_CLOCK->EVENTS_LFCLKSTARTED = (0UL);
   /* 
   // wait until the clock is running - Xtal only? 
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
