@@ -381,11 +381,13 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
     #endif
 }
 
+#if 0
 void ICACHE_FLASH_ATTR
 uart_reattach()
 {
     uart_init(BIT_RATE_115200, BIT_RATE_115200);
 }
+#endif
 
 /******************************************************************************
  * FunctionName : uart_tx_one_char_no_wait

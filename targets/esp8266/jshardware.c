@@ -1003,41 +1003,22 @@ static void systemTimeInit(void) {
 
 // The utility timer uses the SDK timer in microsecond mode.
 
-os_event_t utilTimerQ[2];
-
-static void utilTimerTask(os_event_t *e) {
-  os_printf("HW timer task\n");
-  jstUtilTimerInterruptHandler();
-}
-
-static void ICACHE_RAM_ATTR utilTimerCb(void) {
-  os_printf_plus("HW timer CB\n");
-  system_os_post(2, NULL, 0);
-}
+os_timer_t utilTimer;
 
 static void utilTimerInit(void) {
-  system_os_task(utilTimerTask, 2, utilTimerQ, 2);
-  hw_timer_init(FRC1_SOURCE, 0); // 0->one-time
-  hw_timer_set_func(utilTimerCb);
+  os_printf("UStimer init\n");
+  os_timer_disarm(&utilTimer);
+  os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
 }
 
 void jshUtilTimerDisable() {
-  hw_timer_set_func(NULL);
+  os_printf("UStimer disarm\n");
+  os_timer_disarm(&utilTimer);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  os_printf("HW Timer: %ldus\n", (uint32_t)period);
-  if (period < 100) {
-    // the hardware timer can't do a delay of less than 100us
-    os_delay_us((uint32_t)period);
-    system_os_post(2, NULL, NULL);
-    return;
-  }
-  if (period > 0x7fffffLL) {
-    // the hardware timer can't do a delay of more than 0x7fffffus
-    period = 0x7fffffLL; // FIXME !!!
-  }
-  hw_timer_arm((uint32_t)period);
+  os_printf("UStimer arm\n");
+  os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
 void jshUtilTimerReschedule(JsSysTime period) {
