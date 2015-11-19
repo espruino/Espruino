@@ -204,6 +204,7 @@ USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
+USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -600,6 +601,8 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 OPTIMIZEFLAGS+=-O3
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
@@ -619,6 +622,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else ifdef ARIETTA
 EMBEDDED=1
@@ -628,6 +633,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else
 BOARD=LINUX
@@ -636,6 +643,7 @@ USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
+USE_TLS=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -1028,8 +1036,8 @@ ifdef USE_BLUETOOTH
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
-ifdef USE_HTTPS
-  DEFINES += -DUSE_HTTPS
+ifdef USE_TLS
+  DEFINES += -DUSE_TLS
 endif
 
 ifdef USE_CRYPTO
@@ -1038,7 +1046,7 @@ ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
 
-ifdef USE_HTTPS
+ifdef USE_TLS
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
