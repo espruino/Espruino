@@ -31,8 +31,8 @@
 #ifdef RESIZABLE_JSVARS
 JsVar **jsVarBlocks = 0;
 unsigned int jsVarsSize = 0;
-#define JSVAR_BLOCK_SIZE 1024
-#define JSVAR_BLOCK_SHIFT 10
+#define JSVAR_BLOCK_SIZE 4096
+#define JSVAR_BLOCK_SHIFT 12
 #else
 JsVar jsVars[JSVAR_CACHE_SIZE];
 unsigned int jsVarsSize = JSVAR_CACHE_SIZE;
@@ -2164,6 +2164,7 @@ JsVar *jsvFindChildFromVar(JsVar *parent, JsVar *childName, bool addIfNotFound) 
 
 void jsvRemoveChild(JsVar *parent, JsVar *child) {
   assert(jsvHasChildren(parent));
+  assert(jsvIsName(child));
   JsVarRef childref = jsvGetRef(child);
   bool wasChild = false;
   // unlink from parent
