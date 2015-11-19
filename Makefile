@@ -1426,8 +1426,8 @@ ifdef ARM
   # Given we've left 10k for it, there's no real reason to enable LTO anyway.
   ifndef BOOTLOADER
 	# Enable link-time optimisations (inlining across files)
-	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-	DEFINES += -DLINK_TIME_OPTIMISATION
+#	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+	#DEFINES += -DLINK_TIME_OPTIMISATION
   endif
 
   # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
@@ -1818,7 +1818,8 @@ else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else ifdef MICROBIT
-	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).bin /media/MICROBIT;sync; fi
+	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
 	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
 else
