@@ -204,7 +204,7 @@ USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
-#USE_TLS=1
+USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -1434,8 +1434,8 @@ ifdef ARM
   # Given we've left 10k for it, there's no real reason to enable LTO anyway.
   ifndef BOOTLOADER
 	# Enable link-time optimisations (inlining across files)
-#	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
-	#DEFINES += -DLINK_TIME_OPTIMISATION
+	OPTIMIZEFLAGS += -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+	DEFINES += -DLINK_TIME_OPTIMISATION
   endif
 
   # Limit code size growth via inlining to 8% Normally 30% it seems... This reduces code size while still being able to use -O3
