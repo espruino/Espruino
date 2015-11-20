@@ -27,9 +27,6 @@ void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len);
 void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len);
 
 /// Functions for configuring and setting GPIOS.
-void nrf_utils_gpio_pin_set(uint32_t pin);
-void nrf_utils_gpio_pin_clear(uint32_t pin);
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin);
 void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state);
 uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin);
 

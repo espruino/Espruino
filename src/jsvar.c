@@ -2285,10 +2285,12 @@ JsVar *jsvGetFirstName(JsVar *v) {
 
 JsVarInt jsvGetArrayLength(const JsVar *arr) {
   if (!arr) return 0;
+  assert(jsvIsArray(arr));
   return arr->varData.integer;
 }
 
 JsVarInt jsvSetArrayLength(JsVar *arr, JsVarInt length, bool truncate) {
+  assert(jsvIsArray(arr));
   if (truncate && length < arr->varData.integer) {
     // @TODO implement truncation here
   }

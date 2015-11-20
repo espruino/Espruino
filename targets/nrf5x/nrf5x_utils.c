@@ -74,21 +74,6 @@ void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
   nrf_nvmc_write_bytes(addr, buf, len);
 }
 
-void nrf_utils_gpio_pin_set(uint32_t pin)
-{
-  nrf_gpio_pin_set(pin);
-}
-
-void nrf_utils_gpio_pin_clear(uint32_t pin)
-{
-  nrf_gpio_pin_clear(pin);
-}
-
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin)
-{
-  return nrf_gpio_pin_read(pin);
-}
-
 void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
 {
 	switch (state)

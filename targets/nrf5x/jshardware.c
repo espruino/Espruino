@@ -26,6 +26,7 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jswrap_bluetooth.h"
 
+#include "nrf_gpio.h"
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
@@ -130,19 +131,12 @@ void jshDelayMicroseconds(int microsec)
 
 void jshPinSetValue(Pin pin, bool value) 
 {
-  if (value == 1)
-  {
-    nrf_utils_gpio_pin_set((uint32_t)pinInfo[pin].pin);
-  }
-  else
-  {
-    nrf_utils_gpio_pin_clear((uint32_t)pinInfo[pin].pin);
-  }
+  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin)
 {
-  return (bool) nrf_utils_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
 }
 
 // Set the pin state

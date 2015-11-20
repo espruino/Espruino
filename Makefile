@@ -431,6 +431,7 @@ SAVE_ON_FLASH=1
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
+USE_GRAPHICS=1
 
 else ifdef NRF51TAG
 EMBEDDED=1
@@ -1036,8 +1037,9 @@ ifdef USE_BLUETOOTH
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
-ifdef USE_TLS
-  DEFINES += -DUSE_TLS
+ifeq ($(BOARD),MICROBIT)
+  INCLUDE += -I$(ROOT)/libs/microbit
+  WRAPPERSOURCES += libs/microbit/jswrap_microbit.c
 endif
 
 ifdef USE_CRYPTO
@@ -1047,6 +1049,7 @@ ifdef USE_CRYPTO
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
 
 ifdef USE_TLS
+  DEFINES += -DUSE_TLS
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
