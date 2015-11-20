@@ -35,7 +35,6 @@ void jshInit()
 {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
-  nrf_utils_rtc1_config_and_start();
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
@@ -86,7 +85,8 @@ bool jshIsUSBSERIALConnected()
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  return (JsSysTime) nrf_utils_get_system_time();
+  // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
+  return (JsSysTime)NRF_RTC0->COUNTER;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!

@@ -186,18 +186,6 @@ int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
 	return i;
 }
 
-// Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
-void nrf_utils_rtc1_config_and_start()
-{
-  NRF_RTC1->PRESCALER = (0UL);
-  NRF_RTC1->TASKS_START = (1UL);
-}
-
-uint32_t nrf_utils_get_system_time(void) 
-{
-  return (uint32_t) NRF_RTC1->COUNTER;
-}
-
 uint8_t nrf_utils_get_random_number()
 {
   
