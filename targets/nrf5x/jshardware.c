@@ -31,6 +31,8 @@
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
+#define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
+
 /*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
 
   RTC0 not usable
@@ -125,13 +127,13 @@ void jshSetSystemTime(JsSysTime time)
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
 {
-  return (JsSysTime) ((ms * 32768) / 1000);
+  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
 }
 
 /// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 {
-  return (JsVarFloat) ((time * 1000) / 32768);
+  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
 }
 
 // software IO functions...
@@ -381,9 +383,11 @@ bool jshSleep(JsSysTime timeUntilWake) {
 
 /// Reschedule the timer (it should already be running) to interrupt after 'period'
 void jshUtilTimerReschedule(JsSysTime period) {
-  JsVarFloat f = jshGetMillisecondsFromTime(period)*1000;
-  if (f>0xFFFFFFFF) f=0xFFFFFFFF;
-  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)f);
+  period = period * 1000000 / SYSCLK_FREQ;
+  if (period < 2) period=2;
+  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
 }
 
 /// Start the timer and get it to interrupt after 'period'

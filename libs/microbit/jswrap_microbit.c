@@ -16,7 +16,7 @@
 
 #include "jswrap_microbit.h"
 #include "jswrapper.h"
-#include "jswrap_interactive.h"
+#include "jstimer.h"
 
 #include "nrf_gpio.h" // just go direct
 
@@ -29,7 +29,6 @@ show((new Uint32Array(g.buffer))[0])
 */
 
 uint32_t microbitLEDState = 0;
-uint8_t microbitInterval = 0;
 uint8_t microbitRow = 0;
 
 // real NRF pins 4,5,6,7,8,9,10,11,12 (column pull down)
@@ -79,11 +78,9 @@ void jswrap_microbit_display_callback() {
 }
 
 void jswrap_microbit_stopDisplay() {
-  if (microbitInterval) {
-    JsVar *v = jsvNewFromInteger(microbitInterval);
-    jswrap_interface_clearTimeout(v);
-    jsvUnLock(v);
-    microbitInterval = 0;
+  if (microbitLEDState) {
+    jstStopExecuteFn(jswrap_microbit_display_callback);
+    microbitLEDState = 0;
 
     nrf_gpio_cfg_default(MB_LED_COL1);
     nrf_gpio_cfg_default(MB_LED_COL2);
@@ -137,13 +134,11 @@ void jswrap_microbit_show(JsVar *image) {
     jsError("Expecting a number, got %t\n", image);
     return;
   }
-  microbitLEDState = jsvGetInteger(image);
+  uint32_t newState = jsvGetInteger(image);
 
-  if ((microbitLEDState!=0) && (microbitInterval==0)) {
+  if ((newState!=0) && (microbitLEDState==0)) {
     // we want to display something but we don't have an interval
-    JsVar *v = jsvNewNativeFunction(jswrap_microbit_display_callback, JSWAT_VOID);
-    microbitInterval = jsvGetLongIntegerAndUnLock(jswrap_interface_setInterval(v, 10, 0));
-    jsvUnLock(v);
+    jstExecuteFn(jswrap_microbit_display_callback, jshGetTimeFromMilliseconds(5));
     // and also set pins to outputs
     nrf_gpio_cfg_output(MB_LED_COL1);
     nrf_gpio_cfg_output(MB_LED_COL2);
@@ -157,7 +152,8 @@ void jswrap_microbit_show(JsVar *image) {
     nrf_gpio_cfg_output(MB_LED_ROW1);
     nrf_gpio_cfg_output(MB_LED_ROW2);
     nrf_gpio_cfg_output(MB_LED_ROW3);
-  } else  if ((microbitLEDState==0) && (microbitInterval==0)) {
+  } else  if ((newState==0) && (microbitLEDState!=0)) {
     jswrap_microbit_stopDisplay();
   }
+  microbitLEDState = newState;
 }
