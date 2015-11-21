@@ -1,8 +1,6 @@
 # Travis-CI file for Espruino
 
 language: c
-git:
-  depth: 1000
 
 # Maybe someday when travis-ci authorizes the ppa:
 # https://github.com/travis-ci/apt-source-whitelist/issues/132

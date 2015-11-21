@@ -94,19 +94,16 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
-$(info git describe --tags --debug)
 LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
-SINCE_RELEASE ?= $(shell git describe --tags | sed -e 's/^RELEASE_[0-9][vV][0-9]*-//')
-DEFINES += -DBUILDNUMBER=\"$(SINCE_RELEASE)\"
-
-#LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
-# use egrep to count lines instead of wc to avoid whitespace error on Mac
-#COMMITS_SINCE_RELEASE?=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
-#ifneq ($(COMMITS_SINCE_RELEASE),0)
-#DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
-#endif
-
-$(info %%%%% Latest release: $(LATEST_RELEASE), Commits since: $(SINCE_RELEASE))
+ifdef BRANCH_LABEL
+SUB_RELEASE ?= $(shell git name-rev --name-only HEAD)
+else
+SUB_RELEASE ?= $(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
+endif
+ifneq ($(SUB_RELEASE,0)
+DEFINES += -DBUILDNUMBER=\"$(SUB_RELEASE)\"
+endif
+$(info %%%%% Latest release: $(LATEST_RELEASE), Build number: $(SUB_RELEASE))
 
 
 CWD = $(CURDIR)
