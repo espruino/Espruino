@@ -98,9 +98,9 @@ LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep 
 ifdef BRANCH_LABEL
 SUB_RELEASE ?= $(shell git name-rev --name-only HEAD)
 else
-SUB_RELEASE ?= $(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
+SUB_RELEASE ?= $(shell git log --oneline RELEASE_$(subst v,V,$(LATEST_RELEASE))..HEAD | egrep -c .)
 endif
-ifneq ($(SUB_RELEASE,0)
+ifneq ($(SUB_RELEASE),0)
 DEFINES += -DBUILDNUMBER=\"$(SUB_RELEASE)\"
 endif
 $(info %%%%% Latest release: $(LATEST_RELEASE), Build number: $(SUB_RELEASE))
