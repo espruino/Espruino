@@ -1580,7 +1580,7 @@ else ifdef ESP8266
 # reality we're using one 512KB partition. This works out because the SDK doesn't use the
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
-ESP_ZIP     = $(PROJ_NAME)_$(LATEST_RELEASE)_$(COMMITS_SINCE_RELEASE).tgz
+ESP_ZIP     = $(PROJ_NAME)_$(subst RELEASE_,,$(LATEST_RELEASE))_$(COMMITS_SINCE_RELEASE).tgz
 USER1_BIN   = $(PROJ_NAME)_user1.bin
 USER2_BIN   = $(PROJ_NAME)_user2.bin
 USER1_ELF   = $(PROJ_NAME)_user1.elf
