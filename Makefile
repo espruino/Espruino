@@ -94,7 +94,7 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
-LATEST_RELEASE = $(shell egrep 'define JS_VERSION .*"$' src/jsutils.h' | egrep -o '[0-9]v[0-9]+')
+LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
 SINCE_RELEASE ?= $(shell git describe --tags | sed -e 's/^RELEASE_[0-9][vV][0-9]*-//')
 DEFINES += -DBUILDNUMBER=\"$(SINCE_RELEASE)\"
 
@@ -105,7 +105,7 @@ DEFINES += -DBUILDNUMBER=\"$(SINCE_RELEASE)\"
 #DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
 #endif
 
-$(info %%%%% Latest release: $(LATEST_RELEASE), Commits since: $(COMMITS_SINCE_RELEASE))
+$(info %%%%% Latest release: $(LATEST_RELEASE), Commits since: $(SINCE_RELEASE))
 
 
 CWD = $(CURDIR)
