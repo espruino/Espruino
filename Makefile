@@ -94,6 +94,7 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
+$(info git describe --tags --debug)
 LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
 SINCE_RELEASE ?= $(shell git describe --tags | sed -e 's/^RELEASE_[0-9][vV][0-9]*-//')
 DEFINES += -DBUILDNUMBER=\"$(SINCE_RELEASE)\"
