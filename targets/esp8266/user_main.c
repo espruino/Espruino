@@ -288,7 +288,7 @@ void user_init() {
   UART_SetPrintPort(1);
   system_set_os_print(1);
   os_printf("\n\n\n\n");
-  uart0_sendStr("\n\n\n\n*** ESP8266 ***\n");
+  //uart0_sendStr("\n\n\n\n*** ESP8266 ***\n");
   os_delay_us(1000);
 
   // Dump the restart exception information.

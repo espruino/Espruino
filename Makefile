@@ -1468,7 +1468,7 @@ CCPREFIX=xtensa-lx106-elf-
 DEFINES += -DESP8266
 
 # Extra flags passed to the linker
-LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib -L$(ESP8266_SDK_ROOT)/ld \
+LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 -nostdlib \
 -Wl,--no-check-sections \
 -u call_user_start \
