@@ -1648,26 +1648,9 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
 	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
 	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
-	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" \
+	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
-	$(Q)echo "To flash a 512KB esp8266 (e.g. esp-01) using the serial port use:" \
-	  >build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
-	  "--flash_freq 40m --flash_mode qio --flash_size 4m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir $(USER1_BIN)) 0x7E000 blank.bin" \
-	  >>build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) using the serial port use:" \
-	  >>build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
-	  "--flash_freq 80m --flash_mode qio --flash_size 32m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir $(USER1_BIN)) 0x37E000 blank.bin" \
-	  >>build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):" \
-	  >>build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "./wiflash espruino.local $(notdir $(USER1_BIN)) $(notdir $(USER2_BIN))" \
-	  >>build/$(basename $(ESP_ZIP))/README
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
-	$(Q)echo "Archive:" `tar ztf $(ESP_ZIP)`
 
 flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
