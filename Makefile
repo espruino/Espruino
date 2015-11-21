@@ -100,6 +100,7 @@ COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep 
 ifneq ($(COMMITS_SINCE_RELEASE),0)
 DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
 endif
+$(info %%%%% Latest release: $(LATEST_RELEASE), Commits since: $(COMMITS_SINCE_RELEASE))
 
 
 CWD = $(CURDIR)
@@ -1462,7 +1463,7 @@ CCPREFIX=xtensa-lx106-elf-
 DEFINES += -DESP8266
 
 # Extra flags passed to the linker
-LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
+LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib -L$(ESP8266_SDK_ROOT)/ld \
 -nostdlib \
 -Wl,--no-check-sections \
 -u call_user_start \
@@ -1579,6 +1580,7 @@ else ifdef ESP8266
 # reality we're using one 512KB partition. This works out because the SDK doesn't use the
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
+ESP_ZIP     = $(PROJ_NAME)_$(COMMITS_SINCE_RELEASE).tgz
 USER1_BIN   = $(PROJ_NAME)_user1.bin
 USER2_BIN   = $(PROJ_NAME)_user2.bin
 USER1_ELF   = $(PROJ_NAME)_user1.elf
@@ -1590,7 +1592,7 @@ BOOTLOADER  = $(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin
 BLANK       = $(ESP8266_SDK_ROOT)/bin/blank.bin
 INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 
-proj: $(USER1_BIN) $(USER2_BIN)
+proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
 
 # generate partially linked .o with all Esprunio source files linked
 $(PROJ_NAME)_partial.o: $(OBJS) $(LINKER_FILE)
@@ -1635,6 +1637,29 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
+
+$(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
+	$(Q)rm -rf build/$(basename $(ESP_ZIP))
+	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
+	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
+	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" \
+	  build/$(basename $(ESP_ZIP))
+	$(Q)echo "To flash a 512KB esp8266 (e.g. esp-01) using the serial port use:" \
+	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
+	  "--flash_freq 40m --flash_mode qio --flash_size 4m" \
+	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x7E000 blank.bin" \
+	  >build/$(basename $(ESP_ZIP))/README
+	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) using the serial port use:" \
+	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
+	  "--flash_freq 80m --flash_mode qio --flash_size 32m" \
+	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x37E000 blank.bin" \
+	  >>build/$(basename $(ESP_ZIP))/README
+	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):" \
+	  "./wiflash espruino.local $(notdir USER1_BIN) $(notdir USER2_BIN)" \
+	  >>build/$(basename $(ESP_ZIP))/README
+	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
+	$(Q)echo "Archive:" `tar ztf $(ESP_ZIP)`
 
 flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT

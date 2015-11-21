@@ -208,4 +208,4 @@ SECTIONS
 }
 
 /* get ROM code address */
-INCLUDE "../ld/eagle.rom.addr.v6.ld"
+INCLUDE "eagle.rom.addr.v6.ld"
