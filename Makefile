@@ -1580,7 +1580,7 @@ else ifdef ESP8266
 # reality we're using one 512KB partition. This works out because the SDK doesn't use the
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
-ESP_ZIP     = $(PROJ_NAME)_$(COMMITS_SINCE_RELEASE).tgz
+ESP_ZIP     = $(PROJ_NAME)_$(LATEST_RELEASE)_$(COMMITS_SINCE_RELEASE).tgz
 USER1_BIN   = $(PROJ_NAME)_user1.bin
 USER2_BIN   = $(PROJ_NAME)_user2.bin
 USER1_ELF   = $(PROJ_NAME)_user1.elf
@@ -1646,17 +1646,20 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" \
 	  build/$(basename $(ESP_ZIP))
 	$(Q)echo "To flash a 512KB esp8266 (e.g. esp-01) using the serial port use:" \
-	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
-	  "--flash_freq 40m --flash_mode qio --flash_size 4m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x7E000 blank.bin" \
 	  >build/$(basename $(ESP_ZIP))/README
+	$(Q)echo "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
+	  "--flash_freq 40m --flash_mode qio --flash_size 4m" \
+	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir $(USER1_BIN)) 0x7E000 blank.bin" \
+	  >>build/$(basename $(ESP_ZIP))/README
 	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) using the serial port use:" \
-	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
+	  >>build/$(basename $(ESP_ZIP))/README
+	$(Q)echo "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
 	  "--flash_freq 80m --flash_mode qio --flash_size 32m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x37E000 blank.bin" \
+	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir $(USER1_BIN)) 0x37E000 blank.bin" \
 	  >>build/$(basename $(ESP_ZIP))/README
 	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):" \
-	  "./wiflash espruino.local $(notdir USER1_BIN) $(notdir USER2_BIN)" \
+	  >>build/$(basename $(ESP_ZIP))/README
+	$(Q)echo "./wiflash espruino.local $(notdir $(USER1_BIN)) $(notdir $(USER2_BIN))" \
 	  >>build/$(basename $(ESP_ZIP))/README
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 	$(Q)echo "Archive:" `tar ztf $(ESP_ZIP)`
