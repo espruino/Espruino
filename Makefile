@@ -94,13 +94,18 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
-LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
-# use egrep to count lines instead of wc to avoid whitespace error on Mac
-COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
-ifneq ($(COMMITS_SINCE_RELEASE),0)
-DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
+LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
+ifdef RELEASE_LABEL
+# If RELEASE_LABEL is defined we add the release label followed by the branch name as build
+# number instead of commit info
+SUB_RELEASE ?= $(RELEASE_LABEL)_$(subst -,_,$(shell git name-rev --name-only HEAD))
+else
+SUB_RELEASE ?= $(shell git log --oneline RELEASE_$(subst v,V,$(LATEST_RELEASE))..HEAD | egrep -c .)
 endif
-$(info %%%%% Latest release: $(LATEST_RELEASE), Commits since: $(COMMITS_SINCE_RELEASE))
+ifneq ($(SUB_RELEASE),0)
+DEFINES += -DBUILDNUMBER=\"$(SUB_RELEASE)\"
+endif
+$(info %%%%% Latest release: $(LATEST_RELEASE), Build number: $(SUB_RELEASE))
 
 
 CWD = $(CURDIR)
@@ -1580,7 +1585,7 @@ else ifdef ESP8266
 # reality we're using one 512KB partition. This works out because the SDK doesn't use the
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
-ESP_ZIP     = $(PROJ_NAME)_$(COMMITS_SINCE_RELEASE).tgz
+ESP_ZIP     = $(PROJ_NAME)_$(LATEST_RELEASE)_$(SUB_RELEASE).tgz
 USER1_BIN   = $(PROJ_NAME)_user1.bin
 USER2_BIN   = $(PROJ_NAME)_user2.bin
 USER1_ELF   = $(PROJ_NAME)_user1.elf
@@ -1643,23 +1648,9 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
 	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
 	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
-	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" \
+	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
-	$(Q)echo "To flash a 512KB esp8266 (e.g. esp-01) using the serial port use:" \
-	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
-	  "--flash_freq 40m --flash_mode qio --flash_size 4m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x7E000 blank.bin" \
-	  >build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) using the serial port use:" \
-	  "esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash" \
-	  "--flash_freq 80m --flash_mode qio --flash_size 32m" \
-	  "0x0000 'boot_v1.4(b1).bin' 0x1000 $(notdir USER1_BIN) 0x37E000 blank.bin" \
-	  >>build/$(basename $(ESP_ZIP))/README
-	$(Q)echo "To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):" \
-	  "./wiflash espruino.local $(notdir USER1_BIN) $(notdir USER2_BIN)" \
-	  >>build/$(basename $(ESP_ZIP))/README
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
-	$(Q)echo "Archive:" `tar ztf $(ESP_ZIP)`
 
 flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
