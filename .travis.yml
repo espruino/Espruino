@@ -24,8 +24,8 @@ before_script:
 
 after_script:
   - ls *.bin *.hex *.tgz | xargs -I {} curl -v -F "binary=@{}" "http://www.espruino.com/travis_upload.php?commit=$TRAVIS_COMMIT"
-  # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set in
-  # in environment using repo settings
+  # upload to an S3 bucket, requires S3_BUCKET, AWS_ACCESS_KEY_ID and AWS_SECRET_KEY to be set
+  # in environment using travis' repository settings
   - "if [[ -n \"$S3_BUCKET\" && -n \"$AWS_ACCESS_KEY_ID\" ]]; then 
       echo Uploading *.tgz to $S3_BUCKET;
       curl -Ls https://github.com/rlmcpherson/s3gof3r/releases/download/v0.5.0/gof3r_0.5.0_linux_amd64.tar.gz | tar zxf - gof3r_0.5.0_linux_amd64/gof3r;
