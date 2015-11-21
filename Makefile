@@ -95,9 +95,10 @@ DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
 LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
-ifdef USE_BRANCH_LABEL
-# If USE_BRANCH_LABEL is defined we add the branch as build number instead of commit info
-SUB_RELEASE ?= $(shell git name-rev --name-only HEAD)
+ifdef RELEASE_LABEL
+# If RELEASE_LABEL is defined we add the release label followed by the branch name as build
+# number instead of commit info
+SUB_RELEASE ?= $(RELEASE_LABEL)_$(shell git name-rev --name-only HEAD)
 else
 SUB_RELEASE ?= $(shell git log --oneline RELEASE_$(subst v,V,$(LATEST_RELEASE))..HEAD | egrep -c .)
 endif
