@@ -20,7 +20,7 @@ info = {
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'       : 1023,
- 'binary_name'     : 'espruino_esp8266',
+ 'binary_name'     : 'espruino_%v_esp8266',
 };
 chip = {
   'part'    : "ESP8266",

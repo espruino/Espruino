@@ -111,15 +111,16 @@ else
 # name as build number instead of commit info. For example, you can set ALT_RELEASE=peter and
 # then your builds for branch "experiment" come out with a version like
 # v1.81_peter_experiment_83bd432, where the last letters are the short of the current commit SHA.
-LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
-SUB_RELEASE ?= $(RELEASE_LABEL)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
+# Warning: this same release label derivation is also in scripts/common.py in get_version()
+LATEST_RELEASE=$(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
+COMMITS_SINCE_RELEASE=$(ALT_RELEASE)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
 # Figure out whether we're building a tagged commit (true release) or not
 TAGGED:=$(shell if git describe --tags --exact-match >/dev/null 2>&1; then echo yes; fi)
 ifeq ($(TAGGED),yes)
 $(info %%%%% Release label: $(LATEST_RELEASE))
 else
-DEFINES += -DBUILDNUMBER=\"$(SUB_RELEASE)\"
-$(info %%%%% Build label: $(LATEST_RELEASE)_$(SUB_RELEASE))
+DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
+$(info %%%%% Build label: $(LATEST_RELEASE).$(COMMITS_SINCE_RELEASE))
 endif
 
 endif
@@ -1601,7 +1602,7 @@ else ifdef ESP8266
 # reality we're using one 512KB partition. This works out because the SDK doesn't use the
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
-ESP_ZIP     = $(PROJ_NAME)_$(LATEST_RELEASE)_$(SUB_RELEASE).tgz
+ESP_ZIP     = $(PROJ_NAME).tgz
 USER1_BIN   = $(PROJ_NAME)_user1.bin
 USER2_BIN   = $(PROJ_NAME)_user2.bin
 USER1_ELF   = $(PROJ_NAME)_user1.elf
@@ -1770,7 +1771,7 @@ endif	    # ---------------------------------------------------
 
 clean:
 	@echo Cleaning targets
-	$(Q)find . -name *.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
+	$(Q)find . -name \*.o | grep -v libmbed | grep -v arm-bcm2708 | xargs rm -f
 	$(Q)rm -f $(ROOT)/gen/*.c $(ROOT)/gen/*.h $(ROOT)/gen/*.ld
 	$(Q)rm -f $(PROJ_NAME).elf
 	$(Q)rm -f $(PROJ_NAME).hex
