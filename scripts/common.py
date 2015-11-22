@@ -314,11 +314,18 @@ def get_script_dir():
         return os.path.dirname(os.path.realpath(__file__))
 
 def get_version():
+        # Warning: the same release label derivation is also in the Makefile
         scriptdir = get_script_dir()
         jsutils = scriptdir+"/../src/jsutils.h"
         version = re.compile("^.*JS_VERSION.*\"(.*)\"");
-        latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
-        commits_since_release = subprocess.check_output('git log --oneline '+latest_release.decode("utf-8")+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
+        alt_release = os.getenv("ALT_RELEASE")
+        if alt_release == None:
+          latest_release = subprocess.check_output('git tag | grep RELEASE_ | sort | tail -1', shell=True).strip()
+          commits_since_release = subprocess.check_output('git log --oneline '+latest_release.decode("utf-8")+'..HEAD | wc -l', shell=True).decode("utf-8").strip()
+        else:
+          sha = subprocess.check_output('git rev-parse --short HEAD', shell=True).strip()
+          branch = subprocess.check_output('git name-rev --name-only HEAD', shell=True).strip()
+          commits_since_release = alt_release + '_' + branch + '_' + sha
         for line in open(jsutils):
             match = version.search(line);
             if (match != None):
