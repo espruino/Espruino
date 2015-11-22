@@ -110,7 +110,7 @@ else
 # The release label is constructed by appending the value of ALT_RELEASE followed by the branch
 # name as build number instead of commit info. For example, you can set ALT_RELEASE=peter and
 # then your builds for branch "experiment" come out with a version like
-# v1.81_peter_experiment_83bd432, where the last letters are the short of the current commit SHA.
+# v1.81.peter_experiment_83bd432, where the last letters are the short of the current commit SHA.
 # Warning: this same release label derivation is also in scripts/common.py in get_version()
 LATEST_RELEASE=$(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
 COMMITS_SINCE_RELEASE=$(ALT_RELEASE)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
@@ -1603,10 +1603,11 @@ else ifdef ESP8266
 # user setting area that sits between the two 256KB partitions, so we can merrily use it for
 # code.
 ESP_ZIP     = $(PROJ_NAME).tgz
-USER1_BIN   = $(PROJ_NAME)_user1.bin
-USER2_BIN   = $(PROJ_NAME)_user2.bin
-USER1_ELF   = $(PROJ_NAME)_user1.elf
-USER2_ELF   = $(PROJ_NAME)_user2.elf
+USER1_BIN   = espruino_esp8266_user1.bin
+USER2_BIN   = espruino_esp8266_user2.bin
+USER1_ELF   = espruino_esp8266_user1.elf
+USER2_ELF   = espruino_esp8266_user2.elf
+PARTIAL     = espruino_esp8266_partial.o
 LD_SCRIPT1  = ./targets/esp8266/eagle.app.v6.new.1024.app1.ld
 LD_SCRIPT2  = ./targets/esp8266/eagle.app.v6.new.1024.app2.ld
 APPGEN_TOOL = $(ESP8266_SDK_ROOT)/tools/gen_appbin.py
@@ -1617,22 +1618,22 @@ INIT_DATA   = $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin
 proj: $(USER1_BIN) $(USER2_BIN) $(ESP_ZIP)
 
 # generate partially linked .o with all Esprunio source files linked
-$(PROJ_NAME)_partial.o: $(OBJS) $(LINKER_FILE)
+$(PARTIAL): $(OBJS) $(LINKER_FILE)
 	@echo LD $@
 	$(Q)$(LD) $(OPTIMIZEFLAGS) -nostdlib -Wl,--no-check-sections -Wl,-static -r -o $@ $(OBJS)
 	$(Q)$(OBJCOPY) --rename-section .text=.irom0.text --rename-section .literal=.irom0.literal $@
 
 # generate fully linked 'user1' .elf using linker script for first OTA partition
-$(USER1_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
+$(USER1_ELF): $(PARTIAL) $(LINKER_FILE)
 	@echo LD $@
-	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT1) -o $@ $(PARTIAL) -Wl,--start-group $(LIBS) -Wl,--end-group
 	$(Q)$(OBJDUMP) --headers -j .irom0.text -j .text $@ | tail -n +4
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 
 # generate fully linked 'user2' .elf using linker script for second OTA partition
-$(USER2_ELF): $(PROJ_NAME)_partial.o $(LINKER_FILE)
+$(USER2_ELF): $(PARTIAL) $(LINKER_FILE)
 	@echo LD $@
-	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT2) -o $@ $(PROJ_NAME)_partial.o -Wl,--start-group $(LIBS) -Wl,--end-group
+	$(Q)$(LD) $(LDFLAGS) -T$(LD_SCRIPT2) -o $@ $(PARTIAL) -Wl,--start-group $(LIBS) -Wl,--end-group
 	@echo To disassemble: $(OBJDUMP) -d -l -x $@
 
 # generate binary image for user1, i.e. first OTA partition
