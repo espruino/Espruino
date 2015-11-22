@@ -94,21 +94,25 @@ ifdef RELEASE
 DEFINES += -DNO_ASSERT -DRELEASE
 endif
 
-LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
-ifdef RELEASE_LABEL
-# If RELEASE_LABEL is defined we add the release label followed by the branch name as build
-# number instead of commit info. For example, you can set RELEASE_LABEL=peter and then your
-# builds for branch "experiment" come out with a version like v1.81_peter_experiment_83bd432,
-# where the last letters are the short of the current commit SHA.
-SUB_RELEASE ?= $(RELEASE_LABEL)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
-else
-# If RELEASE_LABEL is not defined (the default) then we add the current date and the short of the
-# commit SHA to the version resulting in something like v1.81_20151121_83bd432
-SUB_RELEASE ?= $(shell date +%Y%m%d)_$(shell git rev-parse --short HEAD)
-# We used to add the number of commits since the release tag, but that fails when travis does
-# shallow clones, plus, how do you map this bac to a commit?
-#SUB_RELEASE ?= $(shell git log --oneline RELEASE_$(subst v,V,$(LATEST_RELEASE))..HEAD | egrep -c .)
+ifndef ALT_RELEASE
+# Default release labeling.  (This may fail and give inconsistent results due to the fact that
+# travis does a shallow clone.)
+LATEST_RELEASE=$(shell git tag | grep RELEASE_ | sort | tail -1)
+# use egrep to count lines instead of wc to avoid whitespace error on Mac
+COMMITS_SINCE_RELEASE=$(shell git log --oneline $(LATEST_RELEASE)..HEAD | egrep -c .)
+ifneq ($(COMMITS_SINCE_RELEASE),0)
+DEFINES += -DBUILDNUMBER=\"$(COMMITS_SINCE_RELEASE)\"
 endif
+
+else
+# Alternate release labeling, which works nicely in travis and allows other developers to put their
+# initials into the build number.
+# The release label is constructed by appending the value of ALT_RELEASE followed by the branch
+# name as build number instead of commit info. For example, you can set ALT_RELEASE=peter and
+# then your builds for branch "experiment" come out with a version like
+# v1.81_peter_experiment_83bd432, where the last letters are the short of the current commit SHA.
+LATEST_RELEASE = $(shell egrep "define JS_VERSION .*\"$$" src/jsutils.h | egrep -o '[0-9]v[0-9]+')
+SUB_RELEASE ?= $(RELEASE_LABEL)_$(subst -,_,$(shell git name-rev --name-only HEAD))_$(shell git rev-parse --short HEAD)
 # Figure out whether we're building a tagged commit (true release) or not
 TAGGED:=$(shell if git describe --tags --exact-match >/dev/null 2>&1; then echo yes; fi)
 ifeq ($(TAGGED),yes)
@@ -118,6 +122,7 @@ DEFINES += -DBUILDNUMBER=\"$(SUB_RELEASE)\"
 $(info %%%%% Build label: $(LATEST_RELEASE)_$(SUB_RELEASE))
 endif
 
+endif
 
 CWD = $(CURDIR)
 ROOT = $(CWD)
