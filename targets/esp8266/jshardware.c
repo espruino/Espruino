@@ -156,7 +156,7 @@ static void intrHandlerCB(
   // Once we have handled the interrupt flags, we need to acknowledge the interrupts so
   // that the ESP8266 will once again cause future interrupts to be processed.
 
-  os_printf_plus(">> intrHandlerCB\n");
+  //os_printf_plus(">> intrHandlerCB\n");
   gpio_intr_ack(interruptMask);
   // We have a mask of interrupts that have happened.  Go through each bit in the mask
   // and, if it is on, then an interrupt has occurred on the corresponding pin.
@@ -168,7 +168,7 @@ static void intrHandlerCB(
       gpio_pin_intr_state_set(GPIO_ID_PIN(pin), GPIO_PIN_INTR_ANYEDGE);
     }
   }
-  os_printf_plus("<< intrHandlerCB\n");
+  //os_printf_plus("<< intrHandlerCB\n");
 }
 
 /**
@@ -238,7 +238,7 @@ bool jshSleep(JsSysTime timeUntilWake) {
 void jshDelayMicroseconds(int microsec) {
   // Keep things simple and make the user responsible if they sleep for too long...
   if (microsec > 0) {
-    os_printf("Delay %d us\n", microsec);
+    //os_printf("Delay %d us\n", microsec);
     os_delay_us(microsec);
   }
 } // End of jshDelayMicroseconds
@@ -351,8 +351,8 @@ void jshPinSetState(
     Pin pin,                 //!< The pin to have its state changed.
     JshPinState state        //!< The new desired state of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
-      pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
+  //os_printf("> ESP8266: jshPinSetState %d, %s, pup=%d, od=%d\n",
+  //    pin, pinStateToString(state), JSHPINSTATE_IS_PULLUP(state), JSHPINSTATE_IS_OPENDRAIN(state));
 
   assert(pin < JSH_PIN_COUNT);
   if (pin >= 6 && pin <= 11) {
@@ -415,7 +415,7 @@ void jshPinSetState(
  * \return The current state of the selected pin.
  */
 JshPinState jshPinGetState(Pin pin) {
-  os_printf("> ESP8266: jshPinGetState %d\n", pin);
+  //os_printf("> ESP8266: jshPinGetState %d\n", pin);
   return g_pinState[pin];
 }
 
@@ -428,7 +428,7 @@ void jshPinSetValue(
     Pin pin,   //!< The pin to have its value changed.
     bool value //!< The new value of the pin.
   ) {
-  os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
+  //os_printf("> ESP8266: jshPinSetValue pin=%d, value=%d\n", pin, value);
   GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, (value&1)<<pin);
   GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, (!value)<<pin);
   //jshDebugPin(pin);
@@ -442,7 +442,7 @@ void jshPinSetValue(
 bool jshPinGetValue(
     Pin pin //!< The pin to have its value read.
   ) {
-  os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
+  //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
   return GPIO_INPUT_GET(pin);
 }
 
@@ -451,7 +451,7 @@ bool jshPinGetValue(
  *
  */
 JsVarFloat jshPinAnalog(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalog: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -460,7 +460,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
  *
  */
 int jshPinAnalogFast(Pin pin) {
-  os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
+  //os_printf("> ESP8266: jshPinAnalogFast: pin=%d\n", pin);
   return (JsVarFloat) system_adc_read();
 }
 
@@ -529,16 +529,17 @@ void jshEnableWatchDog(JsVarFloat timeout) {
  * Get the state of the pin associated with the event flag.
  */
 bool jshGetWatchedPinState(IOEventFlags eventFlag) {
-  os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
+  //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
     os_printf(" - Error ... eventFlag out of range\n");
-    os_printf("< jshGetWatchedPinState\n");
+    jsError("eventFlag out of range");
+    //os_printf("< jshGetWatchedPinState\n");
     return false;
   }
 
   bool currentPinValue = jshPinGetValue((Pin)(eventFlag-EV_EXTI0));
-  os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
+  //os_printf("< jshGetWatchedPinState = %d\n", currentPinValue);
   return currentPinValue;
 }
 
@@ -584,7 +585,7 @@ IOEventFlags jshPinWatch(
     Pin pin,         //!< The pin to be watched.
     bool shouldWatch //!< True for watching and false for unwatching.
   ) {
-  os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
+  //os_printf("> jshPinWatch: pin=%d, shouldWatch=%d\n", pin, shouldWatch);
   if (jshIsPinValid(pin)) {
     ETS_GPIO_INTR_DISABLE();
     if (shouldWatch) {
@@ -601,11 +602,11 @@ IOEventFlags jshPinWatch(
     }
     ETS_GPIO_INTR_ENABLE();
   } else {
-    jsError("Invalid pin (ESP8266)");
-    os_printf("< jshPinWatch: Invalid pin\n");
+    jsError("Invalid pin");
+    //os_printf("< jshPinWatch: Invalid pin\n");
     return EV_NONE;
   }
-  os_printf("< jshPinWatch\n");
+  //os_printf("< jshPinWatch\n");
   return pinToEV_EXTI(pin);
 }
 
@@ -750,8 +751,8 @@ void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
   ) {
-  os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
-  os_printf("< jshSPISet16\n");
+  //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
+  //os_printf("< jshSPISet16\n");
 }
 
 
@@ -761,9 +762,9 @@ void jshSPISet16(
 void jshSPIWait(
     IOEventFlags device //!< Unknown
   ) {
-  os_printf("> jshSPIWait - device=%d\n", device);
+  //os_printf("> jshSPIWait - device=%d\n", device);
   while(spi_busy(HSPI)) ;
-  os_printf("< jshSPIWait\n");
+  //os_printf("< jshSPIWait\n");
 }
 
 /** Set whether to use the receive interrupt or not */
@@ -777,8 +778,8 @@ void jshSPISetReceive(IOEventFlags device, bool isReceive) {
 /** Set-up I2C master for ESP8266, default pins are SCL:14, SDA:2. Only device I2C1 is supported
  *  and only master mode. */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
-  os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
-      info->pinSCL, info->pinSDA, info->bitrate);
+  //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
+  //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
     jsError("Only I2C1 supported");
     return;
@@ -791,7 +792,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   jshPinSetState(sda, JSHPINSTATE_I2C);
 
   i2c_master_gpio_init(scl, sda, info->bitrate);
-  os_printf("< jshI2CSetup\n");
+  //os_printf("< jshI2CSetup\n");
 }
 
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes,
@@ -1000,13 +1001,8 @@ static void systemTimeInit(void) {
 
 //===== Utility timer =====
 
-// There are two versions here. One uses the SDK timer in microsecond mode and the other uses the
-// hw_timer using the driver provided by Espressif. The hw_timer is not working and causes the
-// system to crash for unknown reasons. Thus using the SDK timer for now...
-// If we're happy with the SDK timer then the other code can be deleted as well as the ht_timer.[hc]
-// files...
+// The utility timer uses the SDK timer in microsecond mode.
 
-#ifndef USE_HW_TIMER
 os_timer_t utilTimer;
 
 static void utilTimerInit(void) {
@@ -1024,45 +1020,6 @@ void jshUtilTimerStart(JsSysTime period) {
   os_printf("UStimer arm\n");
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
-
-#else
-os_event_t utilTimerQ[2];
-
-static void utilTimerTask(os_event_t *e) {
-  os_printf("HW timer task\n");
-  jstUtilTimerInterruptHandler();
-}
-
-static void ICACHE_RAM_ATTR utilTimerCb(void) {
-  os_printf_plus("HW timer CB\n");
-  system_os_post(2, NULL, 0);
-}
-
-static void utilTimerInit(void) {
-  system_os_task(utilTimerTask, 2, utilTimerQ, 2);
-  hw_timer_init(FRC1_SOURCE, 0); // 0->one-time
-  hw_timer_set_func(utilTimerCb);
-}
-
-void jshUtilTimerDisable() {
-  hw_timer_set_func(NULL);
-}
-
-void jshUtilTimerStart(JsSysTime period) {
-  os_printf("HW Timer: %ldus\n", (uint32_t)period);
-  if (period < 50) {
-    // the hardware timer can't do a delay of less than 100us
-    os_delay_us((uint32_t)period);
-    system_os_post(2, NULL, NULL);
-    return;
-  }
-  if (period > 0x7fffffLL) {
-    // the hardware timer can't do a delay of more than 0x7fffffus
-    period = 0x7fffffLL; // FIXME !!!
-  }
-  hw_timer_arm((uint32_t)period);
-}
-#endif
 
 void jshUtilTimerReschedule(JsSysTime period) {
   jshUtilTimerDisable();

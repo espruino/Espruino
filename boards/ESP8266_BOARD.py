@@ -15,19 +15,19 @@
 
 import pinutils;
 info = {
- 'name'            : "ESP8266 512KB",
+ 'name'            : "ESP8266",
  'espruino_page_link' : 'EspruinoESP8266',
  'default_console' : "EV_SERIAL1",
  'default_console_baudrate' : "115200",
  'variables'       : 1023,
- 'binary_name'     : 'espruino_esp8266_board',
+ 'binary_name'     : 'espruino_%v_esp8266',
 };
 chip = {
   'part'    : "ESP8266",
   'family'  : "ESP8266",
   'package' : "",
   'ram'     : 80,
-  'flash'   : 512,
+  'flash'   : 0,
   'speed'   : 80,
   'usart'   : 1,
   'spi'     : 1,
@@ -125,7 +125,9 @@ boards = [ board_esp12, board_esp01 ];
 
 def get_pins():
   pins = pinutils.generate_pins(0,15)
-  pinutils.findpin(pins, "PD1", True)["functions"]["USART1_TX"]=0;
-  pinutils.findpin(pins, "PD3", True)["functions"]["USART1_RX"]=0;
+  pinutils.findpin(pins, "PD0", True)["functions"]["LED_1"]=0;
+  pinutils.findpin(pins, "PD1", True)["functions"]["USART0_TX"]=0;
+  pinutils.findpin(pins, "PD2", True)["functions"]["USART1_TX"]=0;
+  pinutils.findpin(pins, "PD3", True)["functions"]["USART0_RX"]=0;
   # just fake pins D0 .. D15
   return pins
