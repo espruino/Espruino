@@ -14,5 +14,5 @@ esptool.py --port [/dev/ttyUSB0|COM1] --baud 460800 write_flash \
 *** Get esptool.py from https://github.com/themadinventor/esptool
 
 *** To flash a 4MB esp8266 (e.g. esp-12) via wifi use (with appropriate hostname):
-./wiflash espruino.local:88 espruino_esp8266_user1.bin espruino_esp8266_user2.bin
+./scripts/wiflash espruino.local:88 espruino_esp8266_user1.bin espruino_esp8266_user2.bin
 
