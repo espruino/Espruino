@@ -10,4 +10,4 @@ then
   exit 1
 fi
 
-grep "^20...... [^<]" $1 |  sort --key=4 
+grep "^20...... [^<]" $1 |  sort --key=5 

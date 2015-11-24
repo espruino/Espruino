@@ -26,8 +26,27 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jswrap_bluetooth.h"
 
+#include "nrf_gpio.h"
+#include "nrf_timer.h"
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
+
+#define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
+
+/*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
+
+  RTC0 not usable
+  RTC1 free
+  TIMER1/2 free
+  SPI0/1 free
+
+ */
+
+void TIMER1_IRQHandler(void) {
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
+  jstUtilTimerInterruptHandler();
+}
 
 static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
@@ -35,11 +54,20 @@ void jshInit()
 {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
-  nrf_utils_rtc1_config_and_start();
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
+
+  // Enable and sort out the timer
+  nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
+  nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
+  nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+  // Irq setup
+  NVIC_SetPriority(TIMER1_IRQn, 15); // low - don't mess with BLE :)
+  NVIC_ClearPendingIRQ(TIMER1_IRQn);
+  NVIC_EnableIRQ(TIMER1_IRQn);
+  nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
 
   jswrap_nrf_bluetooth_init();
 }
@@ -86,7 +114,8 @@ bool jshIsUSBSERIALConnected()
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime()
 {
-  return (JsSysTime) nrf_utils_get_system_time();
+  // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
+  return (JsSysTime)NRF_RTC0->COUNTER;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -98,13 +127,13 @@ void jshSetSystemTime(JsSysTime time)
 /// Convert a time in Milliseconds to one in ticks.
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
 {
-  return (JsSysTime) ((ms * 32768) / 1000);
+  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
 }
 
 /// Convert ticks to a time in Milliseconds.
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
 {
-  return (JsVarFloat) ((time * 1000) / 32768);
+  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
 }
 
 // software IO functions...
@@ -130,32 +159,25 @@ void jshDelayMicroseconds(int microsec)
 
 void jshPinSetValue(Pin pin, bool value) 
 {
-  if (value == 1)
-  {
-    nrf_utils_gpio_pin_set((uint32_t) pin);
-  }
-  else
-  {
-    nrf_utils_gpio_pin_clear((uint32_t) pin);
-  }
+  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
 bool jshPinGetValue(Pin pin)
 {
-  return (bool) nrf_utils_gpio_pin_read((uint32_t) pin);
+  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
 }
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state)
 {
-  nrf_utils_gpio_pin_set_state((uint32_t) pin, (uint32_t) state);
+  nrf_utils_gpio_pin_set_state((uint32_t)pinInfo[pin].pin, (uint32_t) state);
 }
 
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
 JshPinState jshPinGetState(Pin pin)
 {
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t) pin);
+  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
 }
 
 // Returns an analog value between 0 and 1
@@ -173,15 +195,27 @@ JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, Js
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
-/**
- * Set the value of the pin to be the value specified, wait for a given period of time, then toggle the pin.
- */
-void jshPinPulse(Pin pin, bool value, JsVarFloat time)
-{
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(pin, value);
-  jshDelayMicroseconds(time); // Not sure about time...
-  jshPinSetValue(pin, !value);
+void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
 }
 
 ///< Can the given pin be watched? it may not be possible because of conflicts
@@ -338,28 +372,33 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  //__WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
+  jstSetWakeUp(timeUntilWake);
+  __WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
+  // TODO: wasn't I supposed to call into the SoftDevice for this?
+  // ... to be honest we should really use RTC1 for this so the high speed
+  // oscillator can be turned off, but app_timer uses it at the moment
+
   return true;
+}
+
+/// Reschedule the timer (it should already be running) to interrupt after 'period'
+void jshUtilTimerReschedule(JsSysTime period) {
+  period = period * 1000000 / SYSCLK_FREQ;
+  if (period < 2) period=2;
+  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
 }
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
-  //timer_init(period);
-}
-
-/// Reschedult the timer (it should already be running) to interrupt after 'period'
-void jshUtilTimerReschedule(JsSysTime period) {
-
+  jshUtilTimerReschedule(period);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
 }
 
 /// Stop the timer
 void jshUtilTimerDisable() {
-
-}
-
-// On SYSTick interrupt, call this
-void jshDoSysTick() {
-
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
 }
 
 // the temperature from the internal temperature sensor

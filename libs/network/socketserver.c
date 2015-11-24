@@ -184,7 +184,7 @@ void _socketConnectionKill(JsNetwork *net, JsVar *connection) {
   if (!net || networkState != NETWORKSTATE_ONLINE) return;
   int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
   if (sckt>=0) {
-    net->closesocket(net, sckt);
+    netCloseSocket(net, sckt);
     jsvObjectSetChild(connection,HTTP_NAME_SOCKET,0);
   }
 }
@@ -220,7 +220,7 @@ bool socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendDat
   int a=1;
   if (!jsvIsEmptyString(*sendData)) {
     size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
-    a = net->send(net, sckt, buf, bufLen);
+    a = netSend(net, sckt, buf, bufLen);
     // Now cut what we managed to send off the beginning of sendData
     if (a>0) {
       JsVar *newSendData = 0;
@@ -279,13 +279,13 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
     // For normal sockets, socket==connection, but for HTTP we split it into a request and a response
     JsVar *connection = jsvObjectIteratorGetValue(&it);
     SocketType socketType = socketGetType(connection);
-    JsVar *socket = (socketType==ST_HTTP) ? jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0) : jsvLockAgain(connection);
+    JsVar *socket = ((socketType&ST_TYPE_MASK)==ST_HTTP) ? jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0) : jsvLockAgain(connection);
 
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
 
     if (!closeConnectionNow) {
-      int num = net->recv(net, sckt, buf,sizeof(buf));
+      int num = netRecv(net, sckt, buf,sizeof(buf));
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
@@ -303,7 +303,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
               jsvObjectSetChildAndUnLock(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
               JsVar *server = jsvObjectGetChild(connection,HTTP_NAME_SERVER_VAR,0);
               JsVar *args[2] = { connection, socket };
-              jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, (socketType==ST_HTTP) ? 2 : 1);
+              jsiQueueObjectCallbacks(server, HTTP_NAME_ON_CONNECT, args, ((socketType&ST_TYPE_MASK)==ST_HTTP) ? 2 : 1);
               jsvUnLock(server);
             }
             if (hadHeaders && !jsvIsEmptyString(receiveData)) {
@@ -390,7 +390,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     // For normal sockets, socket==connection, but for HTTP we split it into a request and a response
     JsVar *connection = jsvObjectIteratorGetValue(&it);
     SocketType socketType = socketGetType(connection);
-    JsVar *socket = (socketType==ST_HTTP) ? jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0) : jsvLockAgain(connection);
+    JsVar *socket = ((socketType&ST_TYPE_MASK)==ST_HTTP) ? jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0) : jsvLockAgain(connection);
     bool socketClosed = false;
     JsVar *receiveData = 0;
 
@@ -398,7 +398,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     if (sckt>=0) {
       bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
       bool hadHeaders = true;
-      if (socketType==ST_HTTP)
+      if ((socketType&ST_TYPE_MASK)==ST_HTTP)
         hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
       receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
 
@@ -421,7 +421,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = net->recv(net, sckt, buf, sizeof(buf));
+          int num = netRecv(net, sckt, buf, sizeof(buf));
           if (num<0) {
             // we probably disconnected so just get rid of this
             closeConnectionNow = true;
@@ -434,7 +434,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
               }
               if (receiveData) { // could be out of memory
                 jsvAppendStringBuf(receiveData, buf, (size_t)num);
-                if (socketType==ST_HTTP && !hadHeaders) {
+                if ((socketType&ST_TYPE_MASK)==ST_HTTP && !hadHeaders) {
                   JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
                   if (httpParseHeaders(&receiveData, resVar, false)) {
                     hadHeaders = true;
@@ -454,7 +454,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       if (closeConnectionNow) {
         socketClientPushReceiveData(connection, socket, &receiveData);
         if (!receiveData) {
-          if (socketType != ST_HTTP)
+          if ((socketType&ST_TYPE_MASK) != ST_HTTP)
             jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
@@ -497,10 +497,10 @@ bool socketIdle(JsNetwork *net) {
       JsVar *server = jsvObjectIteratorGetValue(&it);
       int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(server,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
 
-      int theClient = net->accept(net, sckt);
+      int theClient = netAccept(net, sckt);
       if (theClient >= 0) {
         SocketType socketType = socketGetType(server);
-        if (socketType == ST_HTTP) {
+        if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
           JsVar *req = jspNewObject(0, "httpSRq");
           JsVar *res = jspNewObject(0, "httpSRs");
           if (res && req) { // out of memory?
@@ -544,14 +544,14 @@ bool socketIdle(JsNetwork *net) {
 
   if (socketServerConnectionsIdle(net)) hadSockets = true;
   if (socketClientConnectionsIdle(net)) hadSockets = true;
-  net->checkError(net);
+  netCheckError(net);
   return hadSockets;
 }
 
 // -----------------------------
 
 JsVar *serverNew(SocketType socketType, JsVar *callback) {
-  JsVar *server = jspNewObject(0, (socketType==ST_HTTP) ? "httpSrv" : "Server");
+  JsVar *server = jspNewObject(0, ((socketType&ST_TYPE_MASK)==ST_HTTP) ? "httpSrv" : "Server");
   if (!server) return 0; // out of memory
   socketSetType(server, socketType);
   jsvObjectSetChild(server, HTTP_NAME_ON_CONNECT, callback); // no unlock needed
@@ -564,7 +564,7 @@ void serverListen(JsNetwork *net, JsVar *server, int port) {
 
   jsvObjectSetChildAndUnLock(server, HTTP_NAME_PORT, jsvNewFromInteger(port));
 
-  int sckt = net->createsocket(net, 0/*server*/, (unsigned short)port);
+  int sckt = netCreateSocket(net, 0/*server*/, (unsigned short)port, NCF_NORMAL);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvObjectSetChildAndUnLock(server, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -597,7 +597,7 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,true);
   if (!arr) return 0;
   JsVar *req, *res = 0;
-  if (socketType==ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK)==ST_HTTP) {
     res = jspNewObject(0, "httpCRs");
     if (!res) { jsvUnLock(arr); return 0; } // out of memory?
     req = jspNewObject(0, "httpCRq");
@@ -624,7 +624,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
   if (!sendData) {
     JsVar *options = 0;
     // Only append a header if we're doing HTTP and we haven't already connected
-    if (socketType == ST_HTTP)
+    if ((socketType&ST_TYPE_MASK) == ST_HTTP)
       if (jsvGetIntegerAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SOCKET, 0))==0)
         options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
     if (options) {
@@ -665,7 +665,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
   if (data && sendData) {
     JsVar *s = jsvAsString(data, false);
     if (s) {
-      if (socketType == ST_HTTP &&
+      if ((socketType&ST_TYPE_MASK) == ST_HTTP &&
           jsvGetBoolAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_CHUNKED, 0))) {
         // If we asked to send 'chunked' data, we need to wrap it up,
         // prefixed with the length
@@ -677,7 +677,7 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
     }
   }
   jsvUnLock(sendData);
-  if (socketType == ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
     // on HTTP we connect after the first write
     clientRequestConnect(net, httpClientReqVar);
   }
@@ -693,7 +693,6 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
   JsVar *options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, false);
   unsigned short port = (unsigned short)jsvGetIntegerAndUnLock(jsvObjectGetChild(options, "port", 0));
-  if (port==0) port=80;
 
   char hostName[128];
   JsVar *hostNameVar = jsvObjectGetChild(options, "host", 0);
@@ -710,11 +709,21 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
     jsError("Unable to locate host");
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
-    net->checkError(net);
+    netCheckError(net);
     return;
   }
 
-  int sckt =  net->createsocket(net, host_addr, port);
+  NetCreateFlags flags = NCF_NORMAL;
+#ifdef USE_TLS
+  if (socketType & ST_TLS) {
+    flags |= NCF_TLS;
+    if (port==0) port = 443;
+  }
+#endif
+
+  if (port==0) port = 80;
+
+  int sckt =  netCreateSocket(net, host_addr, port, flags);
   if (sckt<0) {
     jsError("Unable to create socket\n");
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
@@ -723,20 +732,20 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
     // For HTTP we get the connection callback when we've got a header back
     // Otherwise we just call back on success
-    if (socketType != ST_HTTP) {
+    if ((socketType&ST_TYPE_MASK) != ST_HTTP) {
       jsiQueueObjectCallbacks(httpClientReqVar, HTTP_NAME_ON_CONNECT, &httpClientReqVar, 1);
     }
   }
 
   jsvUnLock(options);
 
-  net->checkError(net);
+  netCheckError(net);
 }
 
 // 'end' this connection
 void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
   SocketType socketType = socketGetType(httpClientReqVar);
-  if (socketType == ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
     JsVar *finalData = 0;
     if (jsvGetBoolAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_CHUNKED, 0))) {
       // If we were asked to send 'chunked' data, we need to finish up
@@ -746,7 +755,6 @@ void clientRequestEnd(JsNetwork *net, JsVar *httpClientReqVar) {
     // force sendData to be made
     clientRequestWrite(net, httpClientReqVar, finalData);
     jsvUnLock(finalData);
-    clientRequestConnect(net, httpClientReqVar);
   } else {
     // on normal sockets, we actually request close after all data sent
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));

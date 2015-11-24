@@ -103,7 +103,7 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
   if (shaNum>1) bufferSize = shaNum/8;
 
   char *outPtr = 0;
-  JsVar *outArr = jsvNewArrayBufferWithPtr(bufferSize, &outPtr);
+  JsVar *outArr = jsvNewArrayBufferWithPtr((unsigned int)bufferSize, &outPtr);
   if (!outPtr) {
     jsError("Not enough memory for result");
     return 0;

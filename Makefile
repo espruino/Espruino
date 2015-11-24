@@ -26,6 +26,7 @@
 # HYSTM32_24=1            # HY STM32 2.4 Ebay boards
 # HYSTM32_28=1            # HY STM32 2.8 Ebay boards
 # HYSTM32_32=1            # HY STM32 3.2 VCT6 Ebay boards
+# HYTINY_STM103T=1				# HY-TinySTM103T by Haoyu (hotmcu.com)
 # STM32VLDISCOVERY=1
 # STM32F3DISCOVERY=1
 # STM32F4DISCOVERY=1
@@ -62,8 +63,8 @@
 # CFILE=test.c            # Compile in the supplied C file
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
-#
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+#
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
 endif
@@ -217,6 +218,7 @@ USE_TV=1
 USE_HASHLIB=1
 USE_FILESYSTEM=1
 USE_CRYPTO=1
+USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
@@ -233,6 +235,7 @@ OPTIMIZEFLAGS+=-Os # short on program memory
 
 else ifdef HYTINY_STM103T
 EMBEDDED=1
+USE_GRAPHICS=1
 SAVE_ON_FLASH=1
 BOARD=HYTINY_STM103T
 STLIB=STM32F10X_MD
@@ -442,6 +445,7 @@ SAVE_ON_FLASH=1
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
+USE_GRAPHICS=1
 
 else ifdef NRF51TAG
 EMBEDDED=1
@@ -586,6 +590,8 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 #USE_LCD_SDL=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 OPTIMIZEFLAGS+=-O3
 ifneq ("$(wildcard /usr/local/include/wiringPi.h)","")
 USE_WIRINGPI=1
@@ -605,6 +611,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else ifdef ARIETTA
 EMBEDDED=1
@@ -614,6 +622,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else
 BOARD=LINUX
@@ -622,6 +632,7 @@ USE_FILESYSTEM=1
 USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
+USE_TLS=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -1014,10 +1025,50 @@ ifdef USE_BLUETOOTH
   WRAPPERSOURCES += libs/bluetooth/jswrap_bluetooth.c
 endif
 
+ifeq ($(BOARD),MICROBIT)
+  INCLUDE += -I$(ROOT)/libs/microbit
+  WRAPPERSOURCES += libs/microbit/jswrap_microbit.c
+endif
+
 ifdef USE_CRYPTO
   INCLUDE += -I$(ROOT)/libs/crypto
+  INCLUDE += -I$(ROOT)/libs/crypto/mbedtls
   INCLUDE += -I$(ROOT)/libs/crypto/mbedtls/include
   WRAPPERSOURCES += libs/crypto/jswrap_crypto.c
+
+ifdef USE_TLS
+  DEFINES += -DUSE_TLS
+  SOURCES += \
+libs/crypto/mbedtls/library/aes.c \
+libs/crypto/mbedtls/library/asn1parse.c \
+libs/crypto/mbedtls/library/bignum.c \
+libs/crypto/mbedtls/library/cipher.c \
+libs/crypto/mbedtls/library/cipher_wrap.c \
+libs/crypto/mbedtls/library/ctr_drbg.c \
+libs/crypto/mbedtls/library/debug.c \
+libs/crypto/mbedtls/library/ecp.c \
+libs/crypto/mbedtls/library/ecp_curves.c \
+libs/crypto/mbedtls/library/entropy.c \
+libs/crypto/mbedtls/library/entropy_poll.c \
+libs/crypto/mbedtls/library/md.c \
+libs/crypto/mbedtls/library/md5.c \
+libs/crypto/mbedtls/library/md_wrap.c \
+libs/crypto/mbedtls/library/oid.c \
+libs/crypto/mbedtls/library/pk.c \
+libs/crypto/mbedtls/library/pkcs5.c \
+libs/crypto/mbedtls/library/pkparse.c \
+libs/crypto/mbedtls/library/pk_wrap.c \
+libs/crypto/mbedtls/library/rsa.c \
+libs/crypto/mbedtls/library/sha1.c \
+libs/crypto/mbedtls/library/sha256.c \
+libs/crypto/mbedtls/library/sha512.c \
+libs/crypto/mbedtls/library/ssl_ciphersuites.c \
+libs/crypto/mbedtls/library/ssl_cli.c \
+libs/crypto/mbedtls/library/ssl_tls.c \
+libs/crypto/mbedtls/library/ssl_srv.c \
+libs/crypto/mbedtls/library/x509.c \
+libs/crypto/mbedtls/library/x509_crt.c
+else
   SOURCES += \
 libs/crypto/mbedtls/library/aes.c \
 libs/crypto/mbedtls/library/asn1parse.c \
@@ -1030,6 +1081,7 @@ libs/crypto/mbedtls/library/pkcs5.c \
 libs/crypto/mbedtls/library/sha1.c \
 libs/crypto/mbedtls/library/sha256.c \
 libs/crypto/mbedtls/library/sha512.c
+endif
 endif
 
 
@@ -1766,7 +1818,8 @@ else ifdef NUCLEO
 	if [ -d "/media/$(USER)/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/$(USER)/NUCLEO;sync; fi
 	if [ -d "/media/NUCLEO" ]; then cp $(PROJ_NAME).bin /media/NUCLEO;sync; fi
 else ifdef MICROBIT
-	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).bin /media/MICROBIT;sync; fi
+	if [ -d "/media/$(USER)/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/$(USER)/MICROBIT;sync; fi
+	if [ -d "/media/MICROBIT" ]; then cp $(PROJ_NAME).hex /media/MICROBIT;sync; fi
 else ifdef NRF5X
 	if [ -d "/media/JLINK" ]; then cp $(PROJ_NAME).bin /media/JLINK;sync; fi
 else

@@ -50,19 +50,23 @@ board = {
 board["_css"] = """
 """;
 
+# Display is on:
+# real NRF pins 4,5,6,7,8,9,10,11,12 (column pull down)
+# real NRF pins 13,14,15 (row pull up)
+
 def get_pins():
   pins = [
-   { "name":"PD0", "sortingname":"D00", "port":"D", "num":"3", "functions":{}, "csv":{} },
+   { "name":"PD0", "sortingname":"D00", "port":"D", "num":"3", "functions":{}, "csv":{} }, 
    { "name":"PD1", "sortingname":"D01", "port":"D", "num":"2", "functions":{}, "csv":{} },
    { "name":"PD2", "sortingname":"D02", "port":"D", "num":"1", "functions":{}, "csv":{} },
-   { "name":"PD3", "sortingname":"D03", "port":"D", "num":"4", "functions":{}, "csv":{} },
-   { "name":"PD4", "sortingname":"D04", "port":"D", "num":"17", "functions":{}, "csv":{} }, # BTNA
-   { "name":"PD5", "sortingname":"D05", "port":"D", "num":"5", "functions":{}, "csv":{} },
-   { "name":"PD6", "sortingname":"D06", "port":"D", "num":"14", "functions":{}, "csv":{} },
-   { "name":"PD7", "sortingname":"D07", "port":"D", "num":"13", "functions":{}, "csv":{} },
-   { "name":"PD8", "sortingname":"D08", "port":"D", "num":"18", "functions":{}, "csv":{} },
-   { "name":"PD9", "sortingname":"D09", "port":"D", "num":"15", "functions":{}, "csv":{} },
-   { "name":"PD10", "sortingname":"D10", "port":"D", "num":"6", "functions":{}, "csv":{} },
+   { "name":"PD3", "sortingname":"D03", "port":"D", "num":"4", "functions":{}, "csv":{} },   # LED col 1 
+   { "name":"PD4", "sortingname":"D04", "port":"D", "num":"17", "functions":{}, "csv":{} },  # BTNA
+   { "name":"PD5", "sortingname":"D05", "port":"D", "num":"5", "functions":{}, "csv":{} },   # LED col 2
+   { "name":"PD6", "sortingname":"D06", "port":"D", "num":"14", "functions":{}, "csv":{} },  # LED row 2
+   { "name":"PD7", "sortingname":"D07", "port":"D", "num":"13", "functions":{}, "csv":{} },  # LED row 1
+   { "name":"PD8", "sortingname":"D08", "port":"D", "num":"18", "functions":{}, "csv":{} }, 
+   { "name":"PD9", "sortingname":"D09", "port":"D", "num":"15", "functions":{}, "csv":{} },  # LED row 3
+   { "name":"PD10", "sortingname":"D10", "port":"D", "num":"6", "functions":{}, "csv":{} },  # LED col 3
    { "name":"PD11", "sortingname":"D11", "port":"D", "num":"26", "functions":{}, "csv":{} }, # BTNB
    { "name":"PD12", "sortingname":"D12", "port":"D", "num":"20", "functions":{}, "csv":{} },
    { "name":"PD13", "sortingname":"D13", "port":"D", "num":"23", "functions":{ "SPI1_SCK":0 }, "csv":{} },

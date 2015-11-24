@@ -729,6 +729,40 @@ void cbprintf(vcbprintf_callback user_callback, void *user_data, const char *fmt
   va_end(argp);
 }
 
+typedef struct {
+  char *outPtr;
+  size_t idx;
+  size_t len;
+} espruino_snprintf_data;
+
+void espruino_snprintf_cb(const char *str, void *userdata) {
+  espruino_snprintf_data *d = (espruino_snprintf_data*)userdata;
+
+  while (*str) {
+    if (d->idx < d->len) d->outPtr[d->idx] = *str;
+    d->idx++;
+    str++;
+  }
+}
+
+/// a snprintf replacement so mbedtls doesn't try and pull in the whole stdlib to cat two strings together
+int espruino_snprintf( char * s, size_t n, const char * fmt, ... ) {
+  espruino_snprintf_data d;
+  d.outPtr = s;
+  d.idx = 0;
+  d.len = n;
+
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf(espruino_snprintf_cb,&d, fmt, argp);
+  va_end(argp);
+
+  if (d.idx < d.len) d.outPtr[d.idx] = 0;
+  else d.outPtr[d.len-1] = 0;
+
+  return (int)d.idx;
+}
+
 #ifdef ARM
 extern int LINKER_END_VAR;
 #endif
