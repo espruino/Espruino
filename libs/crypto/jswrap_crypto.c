@@ -26,22 +26,24 @@
 
 /*JSON{
   "type" : "library",
-  "class" : "crypto"
+  "class" : "crypto",
+  "ifdef" : "USE_TLS"
 }
 Cryptographic functions
 
-**Note:** This library is currently only included in builds for the Espruino Pico.
-For other boards you will have to make build your own firmware, and you may need
-to remove other features in order to make room.
+**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 
 
 /*JSON{
   "type" : "class",
   "library" : "crypto",
-  "class" : "AES"
+  "class" : "AES",
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
+
+**Note:** This library is currently only included in builds for the Espruino Pico. For other boards you will have to make build your own firmware, and you may need to remove other features in order to make room.
 */
 /*JSON{
   "type" : "staticproperty",
@@ -49,7 +51,8 @@ Class containing AES encryption/decryption
   "name" : "AES",
   "generate_full" : "jspNewBuiltin(\"AES\");",
   "return" : ["JsVar"],
-  "return_object" : "AES"
+  "return_object" : "AES",
+  "ifdef" : "USE_TLS"
 }
 Class containing AES encryption/decryption
 */
@@ -126,7 +129,8 @@ JsVar *jswrap_crypto_SHAx(JsVar *message, int shaNum) {
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
@@ -140,7 +144,8 @@ Performs a SHA1 hash and returns the result as a 20 byte ArrayBuffer
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
@@ -154,7 +159,8 @@ Performs a SHA224 hash and returns the result as a 28 byte ArrayBuffer
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
@@ -168,7 +174,8 @@ Performs a SHA256 hash and returns the result as a 32 byte ArrayBuffer
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 20 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
@@ -182,7 +189,8 @@ Performs a SHA384 hash and returns the result as a 48 byte ArrayBuffer
     ["message","JsVar","The message to apply the hash to"]
   ],
   "return" : ["JsVar","Returns a 32 byte ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
@@ -200,7 +208,8 @@ Performs a SHA512 hash and returns the result as a 64 byte ArrayBuffer
     ["options","JsVar","Object of Options, `{ keySize: 8 (in 32 bit words), iterations: 10, hasher: 'SHA1'/'SHA224'/'SHA256'/'SHA384'/'SHA512' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 
 Password-Based Key Derivation Function 2 algorithm, using SHA512
@@ -385,7 +394,8 @@ static NO_INLINE JsVar *jswrap_crypto_AEScrypt(JsVar *message, JsVar *key, JsVar
     ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 */
 JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
@@ -403,7 +413,8 @@ JsVar *jswrap_crypto_AES_encrypt(JsVar *message, JsVar *key, JsVar *options) {
     ["options","JsVar","An optional object, may specify `{ iv : new Uint8Array(16), mode : 'CBC|CFB|CTR|OFB|ECB' }`"]
   ],
   "return" : ["JsVar","Returns an ArrayBuffer"],
-  "return_object" : "ArrayBuffer"
+  "return_object" : "ArrayBuffer",
+  "ifdef" : "USE_TLS"
 }
 */
 JsVar *jswrap_crypto_AES_decrypt(JsVar *message, JsVar *key, JsVar *options) {
