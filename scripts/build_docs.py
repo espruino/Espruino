@@ -256,7 +256,7 @@ for jsondata in jsondatas:
     detail.append(jsondata)
 for className in sorted(classes):
   html("  </ul>")
-  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"javascript:gopos('"+link+"');\">"+className+"</a></h3>")
+  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"javascript:gopos('"+className+"');\">"+className+"</a></h3>")
   html("  <ul>")
   for jsondata in jsondatas:
     if "name" in jsondata and "class" in jsondata and jsondata["class"]==className:
