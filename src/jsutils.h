@@ -55,15 +55,18 @@ extern int isfinite ( double );
 #endif
 
 #if defined(ESP8266)
-// Place constant strings into flash when we can in order to same RAM space. Strings in flash
+
+// Place constant strings into flash when we can in order to save RAM space. Strings in flash
 // must be accessed with word reads on aligned boundaries, so we'll have to copy them before
 // regular use.
-#define FLASH_STR(name, x) static const char name[] __attribute__((section(".irom.text"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static const char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
 
 // Get the length of a string in flash
 size_t flash_strlen(const char *str);
-// Copy a string from flash
+
+// Copy a string from flash to RAM
 char *flash_strncpy(char *dest, const char *source, size_t cap);
+
 #endif
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
@@ -212,13 +215,16 @@ typedef int64_t JsSysTime;
 
 #if !defined(NO_ASSERT)
  #ifdef FLASH_STR
+   // Place assert strings into flash to save RAM
    #define assert(X) do { \
      FLASH_STR(flash_X, __STRING(X)); \
      if (!(X)) jsAssertFail(__FILE__,__LINE__,flash_X); \
    } while(0)
  #elif defined(__STRING)
+   // Normal assert with string in RAM
    #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)) } while(0)
  #else
+   // Limited assert due to compiler not being able to stringify a parameter
    #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,"") } while(0)
  #endif
 #else
@@ -332,6 +338,7 @@ void jsAssertFail(const char *file, int line, const char *expr);
 void jsError(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
 #else
+// Special jsError and jsWarn functions that place the format string into flash to save RAM
 #define jsError(fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
     jsError_int(flash_str, ##__VA_ARGS__); \
