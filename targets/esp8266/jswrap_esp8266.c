@@ -55,7 +55,7 @@ static inline uint32_t _getCycleCount(void) {
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
-__attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return;
