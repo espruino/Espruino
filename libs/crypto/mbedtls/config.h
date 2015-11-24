@@ -36,7 +36,7 @@
 #define MBEDTLS_AES_ROM_TABLES
 
 
-#ifdef USE_HTTPS
+#ifdef USE_TLS
 
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CBC
@@ -88,7 +88,7 @@
 #define MBEDTLS_ECP_DP_BP512R1_ENABLED
 #define MBEDTLS_ECP_DP_CURVE25519_ENABLED
 
-#else // !USE_HTTPS
+#else // !USE_TLS
 
 /* mbed TLS feature support */
 #define MBEDTLS_CIPHER_MODE_CBC

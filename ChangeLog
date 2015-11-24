@@ -29,6 +29,8 @@
             Fix regression in flash memory write (introduced via AES merge)
             Fixed instability when resetting after using SD card on non-standard pins
             HTTPS support on Pico (when compiled in)
+            Rename USE_HTTPS to USE_TLS, and enable by default for Pico + Linux
+            Add 'tls' module with 'connect' - for TLS Socket connections
 
      1v81 : Fix regression on UART4/5 (bug #559)
             Fix Serial3 on C10/C11 for F103 boards (fix #409)

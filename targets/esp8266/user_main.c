@@ -50,6 +50,10 @@ static bool suspendMainLoopFlag = false;
 // Time structure for main loop time suspension.
 static os_timer_t mainLoopSuspendTimer;
 
+// --- Globals
+
+uint16_t espFlashKB; // KB of flash (512, 1024, 2048, 4096)
+
 // --- Functions
 
 #if 0
@@ -84,6 +88,9 @@ static char *flash_maps[] = {
   "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
   "2MB:1024/1024", "4MB:1024/1024"
 };
+static uint16_t flash_kb[] = {
+  512, 256, 1024, 2048, 4096, 2048, 4096,
+};
 
 /**
  * Dump the ESP8266 restart information.
@@ -101,12 +108,25 @@ static void dumpRestart() {
   os_printf("  epc3:     %x\n", rstInfo->epc3);
   os_printf("  excvaddr: %x\n", rstInfo->excvaddr);
   os_printf("  depc:     %x\n", rstInfo->depc);
-
-  uint32_t fid = spi_flash_get_id();
-  os_printf("Flash map %s, manuf 0x%02lX chip 0x%04lX\n", flash_maps[system_get_flash_size_map()],
-    fid & 0xff, (fid&0xff00)|((fid>>16)&0xff));
 }
 
+/**
+ * Banner printed at boot-up below the big Espruino banner
+ */
+void jshPrintBanner() {
+  uint32_t fid = spi_flash_get_id();
+  uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
+  uint32_t map = system_get_flash_size_map();
+  os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
+      flash_maps[map], fid & 0xff, chip);
+  jsiConsolePrintf(
+    "WARNING: the esp8266 port is in beta, don't expect everything to work\n"
+    "Flash map %s, manuf 0x%x chip 0x%x\n",
+    flash_maps[map], fid & 0xff, chip);
+  if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
+    jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
+  }
+}
 
 /**
  * Queue a task for the main loop.
@@ -197,8 +217,8 @@ static void mainLoop() {
 #ifdef EPS8266_BOARD_HEARTBEAT
   if (system_get_time() - lastTime > 1000 * 1000 * 5) {
     lastTime = system_get_time();
-    os_printf("tick: %u, heap: %u\n",
-      (uint32)(jshGetSystemTime()), system_get_free_heap_size());
+    os_printf("tick: %ums, heap: %u\n",
+      (uint32)(jshGetSystemTime())/1000, system_get_free_heap_size());
   }
 #endif
 
@@ -262,13 +282,14 @@ void user_init() {
   defaultBaudRate = DEFAULT_CONSOLE_BAUDRATE;
 #endif
 
-  uart_init(defaultBaudRate, defaultBaudRate);
+  uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
 
   //uart_init(BIT_RATE_9600, BIT_RATE_9600);
   os_delay_us(1000); // make sure there's a gap on uart output
   UART_SetPrintPort(1);
   system_set_os_print(1);
   os_printf("\n\n\n\n");
+  //uart0_sendStr("\n\n\n\n*** ESP8266 ***\n");
   os_delay_us(1000);
 
   // Dump the restart exception information.
@@ -277,6 +298,8 @@ void user_init() {
   os_printf("Variables: %d @%dea = %dbytes\n", JSVAR_CACHE_SIZE, sizeof(JsVar),
       JSVAR_CACHE_SIZE * sizeof(JsVar));
   os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+
+  espFlashKB = flash_kb[system_get_flash_size_map()];
 
   // Register the ESP8266 initialization callback.
   system_init_done_cb(initDone);

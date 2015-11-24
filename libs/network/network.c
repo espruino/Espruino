@@ -27,7 +27,7 @@
 #if defined(LINUX)
   #include "network_linux.h"
 #endif
-#if defined(USE_HTTPS)
+#if defined(USE_TLS)
   #include "mbedtls/ssl.h"
   #include "mbedtls/ctr_drbg.h"
 #endif
@@ -248,7 +248,7 @@ JsNetwork *networkGetCurrent() {
 }
 
 // ------------------------------------------------------------------------------
-#ifdef USE_HTTPS
+#ifdef USE_TLS
 
 typedef struct {
   int sckt;
@@ -461,7 +461,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
   int sckt = net->createsocket(net, host, port);
   if (sckt<0) return sckt;
 
-#ifdef USE_HTTPS
+#ifdef USE_TLS
   assert(sckt>=0 && sckt<32);
   BITFIELD_SET(socketIsHTTPS, sckt, 0);
   if (flags & NCF_TLS) {
@@ -476,7 +476,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
 }
 
 void netCloseSocket(JsNetwork *net, int sckt) {
-#ifdef USE_HTTPS
+#ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     ssl_freeSocketData(sckt);
   }
@@ -493,7 +493,7 @@ void netGetHostByName(JsNetwork *net, char * hostName, uint32_t* out_ip_addr) {
 }
 
 int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
-#ifdef USE_HTTPS
+#ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;
@@ -511,7 +511,7 @@ int netRecv(JsNetwork *net, int sckt, void *buf, size_t len) {
 }
 
 int netSend(JsNetwork *net, int sckt, const void *buf, size_t len) {
-#ifdef USE_HTTPS
+#ifdef USE_TLS
   if (BITFIELD_GET(socketIsHTTPS, sckt)) {
     SSLSocketData *sd = ssl_getSocketData(sckt);
     if (!sd) return -1;

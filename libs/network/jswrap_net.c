@@ -356,6 +356,16 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
     jsError("Expecting Options to be an Object but it was %t", options);
     return 0;
   }
+#ifdef USE_TLS
+  if ((socketType&ST_TYPE_MASK) == ST_HTTP) {
+    JsVar *protocol = jsvObjectGetChild(options, "protocol", 0);
+    if (protocol && jsvIsStringEqual(protocol, "https:")) {
+      socketType |= ST_TLS;
+    }
+    jsvUnLock(protocol);
+  }
+#endif
+
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsFunction(skippedCallback)) {
     jsError("Expecting Callback Function but got %t", skippedCallback);
@@ -366,7 +376,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   JsVar *rq = clientRequestNew(socketType, options, callback);
   if (unlockOptions) jsvUnLock(options);
 
-  if (socketType!=ST_HTTP) {
+  if ((socketType&ST_TYPE_MASK) != ST_HTTP) {
     JsNetwork net;
     if (networkGetFromVarIfOnline(&net)) {
       clientRequestConnect(&net, rq);
@@ -377,6 +387,39 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   return rq;
 }
 
+
+// ---------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------
+
+/*JSON{
+  "type" : "library",
+  "class" : "tls",
+  "ifdef" : "USE_TLS"
+}
+This library allows you to create TCPIP servers and clients using TLS encryption
+
+In order to use this, you will need an extra module to get network connectivity.
+
+This is designed to be a cut-down version of the [node.js library](http://nodejs.org/api/tls.html). Please see the [Internet](/Internet) page for more information on how to use it.
+*/
+
+/*JSON{
+  "type" : "staticmethod",
+  "class" : "tls",
+  "name" : "connect",
+  "generate_full" : "jswrap_net_connect(options, callback, ST_NORMAL | ST_TLS)",
+  "params" : [
+    ["options","JsVar","An object containing host,port fields"],
+    ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
+  ],
+  "return" : ["JsVar","Returns a new net.Socket object"],
+  "return_object" : "Socket",
+  "ifdef" : "USE_TLS"
+}
+Create a socket connection using TLS
+*/
 
 // ---------------------------------------------------------------------------------
 // ---------------------------------------------------------------------------------

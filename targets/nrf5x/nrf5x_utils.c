@@ -74,21 +74,6 @@ void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
   nrf_nvmc_write_bytes(addr, buf, len);
 }
 
-void nrf_utils_gpio_pin_set(uint32_t pin)
-{
-  nrf_gpio_pin_set(pin);
-}
-
-void nrf_utils_gpio_pin_clear(uint32_t pin)
-{
-  nrf_gpio_pin_clear(pin);
-}
-
-uint32_t nrf_utils_gpio_pin_read(uint32_t pin)
-{
-  return nrf_gpio_pin_read(pin);
-}
-
 void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
 {
 	switch (state)
@@ -149,20 +134,15 @@ void nrf_utils_delay_us(uint32_t microsec)
 // Configure the low frequency clock to use the external 32.768 kHz crystal as a source. Start this clock.
 void nrf_utils_lfclk_config_and_start()
 {
-
   // Select the preferred clock source.
- // NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
- NRF_CLOCK->LFCLKSRC = (uint32_t) ((CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos) & CLOCK_LFCLKSRC_SRC_Msk);
-  
-  // Trigger the LFCLKSTART task.
-  NRF_CLOCK->TASKS_LFCLKSTART = (1UL);
+  // NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_Xtal << CLOCK_LFCLKSRC_SRC_Pos;
+  NRF_CLOCK->LFCLKSRC = CLOCK_LFCLKSRC_SRC_RC << CLOCK_LFCLKSRC_SRC_Pos;
 
-  while (NRF_CLOCK->EVENTS_LFCLKSTARTED != (1UL)) {
-    // Wait for the LFCLK to start...
-  }
+  // Start the 32 kHz clock, and wait for the start up to complete
+  NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;
+  NRF_CLOCK->TASKS_LFCLKSTART = 1;
+  while(NRF_CLOCK->EVENTS_LFCLKSTARTED == 0);
 
-  // Clear the event.
-  NRF_CLOCK->EVENTS_LFCLKSTARTED = (0UL);
   /* 
   // wait until the clock is running - Xtal only? 
   while (((NRF_CLOCK->LFCLKSTAT & CLOCK_LFCLKSTAT_STATE_Msk) != ((CLOCK_LFCLKSTAT_STATE_Running << CLOCK_LFCLKSTAT_STATE_Pos) & CLOCK_LFCLKSTAT_STATE_Msk)))
@@ -189,18 +169,6 @@ int nrf_utils_get_device_id(uint8_t * device_id, int maxChars)
 	}
 
 	return i;
-}
-
-// Configure the RTC to default settings (ticks every 1/32768 seconds) and then start it.
-void nrf_utils_rtc1_config_and_start()
-{
-  NRF_RTC1->PRESCALER = (0UL);
-  NRF_RTC1->TASKS_START = (1UL);
-}
-
-uint32_t nrf_utils_get_system_time(void) 
-{
-  return (uint32_t) NRF_RTC1->COUNTER;
 }
 
 uint8_t nrf_utils_get_random_number()

@@ -39,9 +39,9 @@ extern int isfinite ( double );
 
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v81"
+#define JS_VERSION "1v82"
 #else
-#define JS_VERSION "1v81." BUILDNUMBER
+#define JS_VERSION "1v82." BUILDNUMBER
 #endif
 /*
   In code:
@@ -52,6 +52,21 @@ extern int isfinite ( double );
 
 #if defined(ARM) || defined(AVR)
 #define alloca(x) __builtin_alloca(x)
+#endif
+
+#if defined(ESP8266)
+
+// Place constant strings into flash when we can in order to save RAM space. Strings in flash
+// must be accessed with word reads on aligned boundaries, so we'll have to copy them before
+// regular use.
+#define FLASH_STR(name, x) static const char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+
+// Get the length of a string in flash
+size_t flash_strlen(const char *str);
+
+// Copy a string from flash to RAM
+char *flash_strncpy(char *dest, const char *source, size_t cap);
+
 #endif
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
@@ -74,13 +89,13 @@ extern int isfinite ( double );
 #define DBL_MIN 2.2250738585072014e-308
 #define DBL_MAX 1.7976931348623157e+308
 
-/* Number of Js Variables allowed and Js Reference format. 
+/* Number of Js Variables allowed and Js Reference format.
 
    JsVarRef = uint8_t -> 15 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 15
    JsVarRef = uint16_t -> 20 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 20
    JsVarRef = uint32_t -> 26 bytes/JsVar   so JSVAR_CACHE_SIZE = (RAM - 3000) / 26
 
-   NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef 
+   NOTE: JSVAR_CACHE_SIZE must be at least 2 less than the number we can fit in JsVarRef
          See jshardware.c FLASH constants - all this must be able to fit in flash
 
 
@@ -199,17 +214,25 @@ typedef int64_t JsSysTime;
 #define JSPARSE_MODULE_CACHE_NAME "modules"
 
 #if !defined(NO_ASSERT)
- #ifdef __STRING
-   #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X));
+ #ifdef FLASH_STR
+   // Place assert strings into flash to save RAM
+   #define assert(X) do { \
+     FLASH_STR(flash_X, __STRING(X)); \
+     if (!(X)) jsAssertFail(__FILE__,__LINE__,flash_X); \
+   } while(0)
+ #elif defined(__STRING)
+   // Normal assert with string in RAM
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)) } while(0)
  #else
-   #define assert(X) if (!(X)) jsAssertFail(__FILE__,__LINE__,"");
+   // Limited assert due to compiler not being able to stringify a parameter
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,"") } while(0)
  #endif
 #else
- #define assert(X) {}
+ #define assert(X) do { } while(0)
 #endif
 
 /// Used when we have enums we want to squash down
-#define PACKED_FLAGS  __attribute__ ((__packed__))  
+#define PACKED_FLAGS  __attribute__ ((__packed__))
 
 /// Used before functions that we want to ensure are not inlined (eg. "void NO_INLINE foo() {}")
 #define NO_INLINE __attribute__ ((noinline))
@@ -286,7 +309,7 @@ static inline bool isAlpha(char ch) {
 
 bool isIDString(const char *s);
 
-/** escape a character - if it is required. This may return a reference to a static array, 
+/** escape a character - if it is required. This may return a reference to a static array,
 so you can't store the value it returns in a variable and call it again. */
 const char *escapeCharacter(char ch);
 /// Convert a character to the hexadecimal equivalent (or -1)
@@ -308,11 +331,26 @@ typedef enum {
   JSET_REFERENCEERROR
 } JsExceptionType;
 
-void jsError(const char *fmt, ...);
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
-void jsWarn(const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
+#ifndef FLASH_STR
+void jsError(const char *fmt, ...);
+void jsWarn(const char *fmt, ...);
+#else
+// Special jsError and jsWarn functions that place the format string into flash to save RAM
+#define jsError(fmt, ...) do { \
+    FLASH_STR(flash_str, fmt); \
+    jsError_int(flash_str, ##__VA_ARGS__); \
+  } while(0)
+void jsError_int(const char *fmt, ...);
+
+#define jsWarn(fmt, ...) do { \
+    FLASH_STR(flash_str, fmt); \
+    jsWarn_int(flash_str, ##__VA_ARGS__); \
+  } while(0)
+void jsWarn_int(const char *fmt, ...);
+#endif
 
 // ------------
 typedef enum {

@@ -31,6 +31,10 @@
 
 #define CTRL_C_TIME_FOR_BREAK jshGetTimeFromMilliseconds(100)
 
+#ifdef ESP8266
+extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
+#endif
+
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -172,23 +176,46 @@ NO_INLINE void jsiConsolePrintChar(char data) {
 /**
  * \breif Send a NULL terminated string to the console.
  */
-NO_INLINE void jsiConsolePrint(const char *str) {
+NO_INLINE void jsiConsolePrintString(const char *str) {
   while (*str) {
     if (*str == '\n') jsiConsolePrintChar('\r');
     jsiConsolePrintChar(*(str++));
   }
 }
 
+#ifdef FLASH_STR
+// internal version that copies str from flash to an internal buffer
+NO_INLINE void jsiConsolePrintString_int(const char *str) {
+  size_t len = flash_strlen(str);
+  char buff[len+1];
+  flash_strncpy(buff, str, len+1);
+  jsiConsolePrintString(buff);
+}
+#endif
+
 /**
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
+#ifndef FLASH_STR
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
+#else
+void jsiConsolePrintf_int(const char *fmt, ...) {
+  // fmt is in flash and requires special aligned accesses
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
+  va_end(argp);
+}
+#endif
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
@@ -244,10 +271,10 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
     }
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) { 
+    if (line>1) {
       // clear the character before - this would have had a colon
       jsiConsolePrint("\x08 ");
-      // move cursor up      
+      // move cursor up
       jsiConsolePrint("\x1B[A"); // 27,91,65 - up
     }
   }
@@ -350,7 +377,7 @@ void jsiConsoleReturnInputLine() {
   }
 }
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
+  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, lex, tokenPos);
 }
 
 /**
@@ -719,6 +746,9 @@ void jsiSemiInit(bool autoLoad) {
           "|_____|___|  _|_| |___|_|_|_|___|\n"
           "          |_| http://espruino.com\n"
           " "JS_VERSION" Copyright 2015 G.Williams\n");
+#ifdef ESP8266
+	  jshPrintBanner();
+#endif
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
@@ -789,7 +819,7 @@ int jsiCountBracketsInInput() {
   jslKill(&lex);
 
   return brackets;
-} 
+}
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
@@ -1046,7 +1076,7 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   }
   inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
   if (jsiShowInputLine()) {
-    jsiConsolePrint(strToAppend);
+    jsiConsolePrintString(strToAppend);
   }
 }
 
@@ -1369,13 +1399,13 @@ void jsiHandleChar(char ch) {
     Espruino uses DLE on the start of a line to signal that just the line in
     question should be executed without echo */
     jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
-  } else {  
+  } else {
     inputState = IS_NONE;
     if (ch == 0x08 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
-    } else if (ch == '\r' || ch == '\n') { 
+    } else if (ch == '\r' || ch == '\n') {
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
 #ifndef SAVE_ON_FLASH
@@ -1710,7 +1740,7 @@ void jsiIdle() {
   }
 
   // Reset Flow control if it was set...
-  if (jshGetEventsUsed() < IOBUFFER_XON) { 
+  if (jshGetEventsUsed() < IOBUFFER_XON) {
     jshSetFlowControlXON(EV_USBSERIAL, true);
     int i;
     for (i=0;i<USART_COUNT;i++)
@@ -1832,7 +1862,7 @@ void jsiIdle() {
    * changed. It's not a big deal because it could only have changed because a timer
    * got executed - so `wasBusy` got set and we know we're going to go around the
    * loop again before sleeping.
-   */ 
+   */
 
   // Check for events that might need to be processed from other libraries
   if (jswIdle()) wasBusy = true;
@@ -2085,7 +2115,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&

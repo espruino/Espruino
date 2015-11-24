@@ -372,8 +372,8 @@ void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags) {
 }
 
 void jsfPrintJSON(JsVar *var, JSONFlags flags) {
-  jsfGetJSONWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrint, 0);
+  jsfGetJSONWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrintString, 0);
 }
 void jsfPrintJSONForFunction(JsVar *var, JSONFlags flags) {
-  jsfGetJSONForFunctionWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrint, 0);
+  jsfGetJSONForFunctionWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrintString, 0);
 }
