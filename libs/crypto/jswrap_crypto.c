@@ -238,7 +238,7 @@ JsVar *jswrap_crypto_PBKDF2(JsVar *passphrase, JsVar *salt, JsVar *options) {
 
   mbedtls_md_init( &ctx );
   err = mbedtls_md_setup( &ctx, mbedtls_md_info_from_type( hasher ), 1 );
-  assert(err==0)
+  assert(err==0);
 
   char *keyPtr = 0;
   JsVar *keyArr = jsvNewArrayBufferWithPtr((unsigned)keySize*4, &keyPtr);
