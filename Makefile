@@ -528,7 +528,12 @@ USE_NET=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
+ifndef DISABLE_LTO
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+else
+# DISABLE_LTO is necessary in order to analyze static string sizes (topstring makefile target)
+OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
+endif
 ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
 
 ifdef FLASH_4MB
@@ -1649,6 +1654,22 @@ $(USER1_BIN): $(USER1_ELF)
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
 	@if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
 
+# Analyze all the .o files and rank them by the amount of static string area used, useful to figure
+# out where to optimize and move strings to flash
+# IMPORTANT: this only works if DISABLE_LTO id defined, e.g. `DISABLE_LTO=1 make`
+topstrings: $(PARTIAL)
+	$(Q)for f in `find . -name \*.o`; do \
+	  str=$$($(OBJDUMP) -j .rodata.str1.4 -h $$f 2>/dev/null | \
+	    egrep -o 'rodata.str1.4 [0-9a-f]+' | \
+	    awk $$(expr match "$$(awk --version)" "GNU.*" >/dev/null && echo --non-decimal-data) \
+	      -e '{printf "%d\n", ("0x" $$2);}'); \
+	  [ "$$str" ] && echo "$$str $$f"; \
+	done | \
+	sort -rn >topstrings
+	$(Q)echo "Top 20 from ./topstrings:"
+	$(Q)head -20 topstrings
+	$(Q)echo "To get details: $(OBJDUMP) -j .rodata.str1.4 -s src/FILENAME.o"
+
 # generate binary image for user2, i.e. second OTA partition
 # we make this rule dependent on user1.bin in order to serialize the two rules because they use
 # stupid static filenames (go blame the Espressif tool)
@@ -1675,6 +1696,13 @@ ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
 	-$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+
+# just flash user1 and don't mess with bootloader or wifi settings
+quickflash: all $(USER1_BIN) $(USER2_BIN)
+ifndef COMPORT
+	$(error "In order to flash, we need to have the COMPORT variable defined")
+endif
+	-$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash 0x1000 $(USER1_BIN)
 
 wiflash: all $(USER1_BIN) $(USER2_BIN)
 ifndef ESPHOSTNAME

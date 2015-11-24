@@ -35,6 +35,13 @@
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
 #endif
 
+#ifdef FLASH_STR
+// debugging...
+#define os_printf os_printf_plus
+extern void os_printf_plus(char *fmt, ...);
+#endif
+
+
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -176,23 +183,50 @@ NO_INLINE void jsiConsolePrintChar(char data) {
 /**
  * \breif Send a NULL terminated string to the console.
  */
-NO_INLINE void jsiConsolePrint(const char *str) {
+NO_INLINE void jsiConsolePrintString(const char *str) {
   while (*str) {
     if (*str == '\n') jsiConsolePrintChar('\r');
     jsiConsolePrintChar(*(str++));
   }
 }
 
+#ifdef FLASH_STR
+// internal version that copies str from flash to an internal buffer
+NO_INLINE void jsiConsolePrintString_int(const char *str) {
+  os_printf("jsiConsolePrintString_int %p\n", str);
+  size_t len = flash_strlen(str);
+  os_printf("len = %ld\n", len);
+  char buff[len+1];
+  flash_strncpy(buff, str, len+1);
+  os_printf("buflen = %ld\n", strlen(buff));
+  jsiConsolePrintString(buff);
+}
+#endif
+
 /**
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
+#ifndef FLASH_STR
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
+#else
+void jsiConsolePrintf_int(const char *fmt, ...) {
+  os_printf("jsiConsolePrintf_int %p\n", fmt);
+  // fmt is in flash and requires special aligned accesses
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
+  va_end(argp);
+}
+#endif
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
@@ -354,7 +388,7 @@ void jsiConsoleReturnInputLine() {
   }
 }
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
+  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, lex, tokenPos);
 }
 
 /**
@@ -1053,7 +1087,7 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   }
   inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
   if (jsiShowInputLine()) {
-    jsiConsolePrint(strToAppend);
+    jsiConsolePrintString(strToAppend);
   }
 }
 
@@ -2092,7 +2126,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&
