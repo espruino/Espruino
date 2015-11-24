@@ -117,6 +117,8 @@ void jshPrintBanner() {
   uint32_t fid = spi_flash_get_id();
   uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
   uint32_t map = system_get_flash_size_map();
+  os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
+      flash_maps[map], fid & 0xff, chip);
   jsiConsolePrintf(
     "WARNING: the esp8266 port is in beta, don't expect everything to work\n"
     "Flash map %s, manuf 0x%x chip 0x%x\n",
@@ -125,7 +127,6 @@ void jshPrintBanner() {
     jsiConsolePrint("WARNING: *** Your flash chip does not match your flash map ***\n");
   }
 }
-
 
 /**
  * Queue a task for the main loop.
@@ -216,8 +217,8 @@ static void mainLoop() {
 #ifdef EPS8266_BOARD_HEARTBEAT
   if (system_get_time() - lastTime > 1000 * 1000 * 5) {
     lastTime = system_get_time();
-    os_printf("tick: %u, heap: %u\n",
-      (uint32)(jshGetSystemTime()), system_get_free_heap_size());
+    os_printf("tick: %ums, heap: %u\n",
+      (uint32)(jshGetSystemTime())/1000, system_get_free_heap_size());
   }
 #endif
 

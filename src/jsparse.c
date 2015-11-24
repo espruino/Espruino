@@ -545,13 +545,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         execInfo.thisVar = jsvRef(thisVar);
       else {
         if (nativePtr==jswrap_eval) { // eval gets to use the current scope
-          /* Note: proper JS has some utterly insane code that depends on whether 
+          /* Note: proper JS has some utterly insane code that depends on whether
            * eval is an lvalue or not:
-           * 
+           *
            * http://stackoverflow.com/questions/9107240/1-evalthis-vs-evalthis-in-javascript
-           * 
+           *
            * Doing this in Espruino is quite an upheaval for that one
-           * slightly insane case - so it's not implemented. */          
+           * slightly insane case - so it's not implemented. */
           if (execInfo.thisVar) execInfo.thisVar = jsvRef(execInfo.thisVar);
         } else {
           execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
@@ -731,7 +731,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             bool hadDebuggerNextLineOnly = false;
 
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
-              jsiConsolePrintf(functionName ? "Stepping into %v\n" : "Stepping into function\n", functionName);
+	      if (functionName)
+		jsiConsolePrintf("Stepping into %v\n", functionName);
+	      else
+		jsiConsolePrintf("Stepping into function\n", functionName);
             } else {
               hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
               if (hadDebuggerNextLineOnly)
@@ -1135,7 +1138,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
-    jsvUnLock3(funcName, func, parent); 
+    jsvUnLock3(funcName, func, parent);
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
@@ -1237,7 +1240,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
     if (!jsvIsUndefined(prototypeVar))
-      jsWarn("Prototype is not an Object, so setting it to {}");    
+      jsWarn("Prototype is not an Object, so setting it to {}");
     jsvUnLock(prototypeVar);
     prototypeVar = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
@@ -1934,7 +1937,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   // initialisation
   JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
-  if (execInfo.lex->tk != ';') 
+  if (execInfo.lex->tk != ';')
     forStatement = jspeStatement();
   if (jspIsInterrupted()) {
     jsvUnLock(forStatement);

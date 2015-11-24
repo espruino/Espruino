@@ -121,7 +121,7 @@ void jswrap_interface_trace(JsVar *root) {
 /*JSON{
   "type" : "function",
   "name" : "dump",
-  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrint, 0)"
+  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
@@ -210,7 +210,7 @@ void jswrap_interface_print(JsVar *v) {
   jsvObjectIteratorNew(&it, v);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *v = jsvObjectIteratorGetValue(&it);
-    if (jsvIsString(v)) 
+    if (jsvIsString(v))
       jsiConsolePrintStringVar(v);
     else
       jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);

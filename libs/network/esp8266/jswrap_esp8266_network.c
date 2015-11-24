@@ -84,40 +84,48 @@ static struct ping_option pingOpt;
 static uint8 g_preWiFiScanMode;
 
 // Reasons for which a connection failed
+FLASH_STR(__wr0,  "0 - <Not Used>");          // 0
+FLASH_STR(__wr1,  "unspecified");              // 1 - REASON_UNSPECIFIED
+FLASH_STR(__wr2,  "auth_expire");              // 2 - REASON_AUTH_EXPIRE
+FLASH_STR(__wr3,  "auth_leave");               // 3 - REASON_AUTH_LEAVE
+FLASH_STR(__wr4,  "assoc_expire");             // 4 - REASON_ASSOC_EXPIRE
+FLASH_STR(__wr5,  "assoc_toomany");            // 5 - REASON_ASSOC_TOOMANY
+FLASH_STR(__wr6,  "not_authed");               // 6 - REASON_NOT_AUTHED
+FLASH_STR(__wr7,  "not_assoced");              // 7 - REASON_NOT_ASSOCED
+FLASH_STR(__wr8,  "assoc_leave");              // 8 - REASON_ASSOC_LEAVE
+FLASH_STR(__wr9,  "assoc_not_authed");         // 9 - REASON_ASSOC_NOT_AUTHED
+FLASH_STR(__wr10, "disassoc_pwrcap_bad");      // 10 - REASON_DISASSOC_PWRCAP_BAD
+FLASH_STR(__wr11, "disassoc_supchan_bad");     // 11 - REASON_DISASSOC_SUPCHAN_BAD
+FLASH_STR(__wr12, "12 - <Not Used>");          // 12
+FLASH_STR(__wr13, "ie_invalid");               // 13 - REASON_IE_INVALID
+FLASH_STR(__wr14, "mic_failure");              // 14 - REASON_MIC_FAILURE
+FLASH_STR(__wr15, "4way_handshake_timeout");   // 15 - REASON_4WAY_HANDSHAKE_TIMEOUT
+FLASH_STR(__wr16, "group_key_update_timeout"); // 16 - REASON_GROUP_KEY_UPDATE_TIMEOUT
+FLASH_STR(__wr17, "ie_in_4way_differs");       // 17 - REASON_IE_IN_4WAY_DIFFERS
+FLASH_STR(__wr18, "group_cipher_invalid");     // 18 - REASON_GROUP_CIPHER_INVALID
+FLASH_STR(__wr19, "pairwise_cipher_invalid");  // 19 - REASON_PAIRWISE_CIPHER_INVALID
+FLASH_STR(__wr20, "akmp_invalid");             // 20 - REASON_AKMP_INVALID
+FLASH_STR(__wr21, "unsupp_rsn_ie_version");    // 21 - REASON_UNSUPP_RSN_IE_VERSION
+FLASH_STR(__wr22, "invalid_rsn_ie_cap");       // 22 - REASON_UNSUPP_RSN_IE_VERSION
+FLASH_STR(__wr23, "802_1x_auth_failed");       // 23 - REASON_802_1X_AUTH_FAILED
+FLASH_STR(__wr24, "cipher_suite_rejected");    // 24 - REASON_CIPHER_SUITE_REJECTED
+FLASH_STR(__wr200, "beacon_timeout");          // 200 - REASON_BEACON_TIMEOUT
+FLASH_STR(__wr201, "no_ap_found");             // 201 - REASON_NO_AP_FOUND
 static char *wifiReasons[] = {
-  "0 - <Not Used>",           // 0
-  "unspecified",              // 1 - REASON_UNSPECIFIED
-  "auth_expire",              // 2 - REASON_AUTH_EXPIRE
-  "auth_leave",               // 3 - REASON_AUTH_LEAVE
-  "assoc_expire",             // 4 - REASON_ASSOC_EXPIRE
-  "assoc_toomany",            // 5 - REASON_ASSOC_TOOMANY
-  "not_authed",               // 6 - REASON_NOT_AUTHED
-  "not_assoced",              // 7 - REASON_NOT_ASSOCED
-  "assoc_leave",              // 8 - REASON_ASSOC_LEAVE
-  "assoc_not_authed",         // 9 - REASON_ASSOC_NOT_AUTHED
-  "disassoc_pwrcap_bad",      // 10 - REASON_DISASSOC_PWRCAP_BAD
-  "disassoc_supchan_bad",     // 11 - REASON_DISASSOC_SUPCHAN_BAD
-  "12 - <Not Used>",          // 12
-  "ie_invalid",               // 13 - REASON_IE_INVALID
-  "mic_failure",              // 14 - REASON_MIC_FAILURE
-  "4way_handshake_timeout",   // 15 - REASON_4WAY_HANDSHAKE_TIMEOUT
-  "group_key_update_timeout", // 16 - REASON_GROUP_KEY_UPDATE_TIMEOUT
-  "ie_in_4way_differs",       // 17 - REASON_IE_IN_4WAY_DIFFERS
-  "group_cipher_invalid",     // 18 - REASON_GROUP_CIPHER_INVALID
-  "pairwise_cipher_invalid",  // 19 - REASON_PAIRWISE_CIPHER_INVALID
-  "akmp_invalid",             // 20 - REASON_AKMP_INVALID
-  "unsupp_rsn_ie_version",    // 21 - REASON_UNSUPP_RSN_IE_VERSION
-  "invalid_rsn_ie_cap",       // 22 - REASON_UNSUPP_RSN_IE_VERSION
-  "802_1x_auth_failed",       // 23 - REASON_802_1X_AUTH_FAILED
-  "cipher_suite_rejected",    // 24 - REASON_CIPHER_SUITE_REJECTED
-  "beacon_timeout",           // 200 - REASON_BEACON_TIMEOUT
-  "no_ap_found"               // 201 - REASON_NO_AP_FOUND
+  __wr0, __wr1, __wr2, __wr3, __wr4, __wr5, __wr6, __wr7, __wr8, __wr9, __wr10,
+  __wr11, __wr12, __wr13, __wr14, __wr15, __wr16, __wr17, __wr18, __wr19, __wr20,
+  __wr21, __wr22, __wr23, __wr24, __wr200, __wr201
 };
 
+static char wifiReasonBuff[sizeof("group_key_update_timeout")+1]; // length of longest string
 static char *wifiGetReason(uint8 wifiReason) {
-  if (wifiReason <= 24) return wifiReasons[wifiReason];
-  if (wifiReason >= 200 && wifiReason <= 201) return wifiReasons[wifiReason-200+24];
-  return wifiReasons[1];
+  char *reason;
+  if (wifiReason <= 24) reason = wifiReasons[wifiReason];
+  else if (wifiReason >= 200 && wifiReason <= 201) reason = wifiReasons[wifiReason-200+24];
+  else reason = wifiReasons[1];
+  flash_strncpy(wifiReasonBuff, reason, sizeof(wifiReasonBuff));
+  wifiReasonBuff[sizeof(wifiReasonBuff)-1] = 0; // force null termination
+  return wifiReasonBuff;
 }
 
 static char *wifiMode[] = { 0, "STA", "AP", "AP+STA" };
@@ -2144,17 +2152,17 @@ static void ipAddrToString(struct ip_addr addr, char *string) {
 static char *wifiConnectStatusToString(uint8 status) {
   switch(status) {
   case STATION_IDLE:
-    return "STATION_IDLE";
+    return "IDLE";
   case STATION_CONNECTING:
-    return "STATION_CONNECTING";
+    return "CONNECTING";
   case STATION_WRONG_PASSWORD:
-    return "STATION_WRONG_PASSWORD";
+    return "WRONG_PASSWORD";
   case STATION_NO_AP_FOUND:
-    return "STATION_NO_AP_FOUND";
+    return "NO_AP_FOUND";
   case STATION_CONNECT_FAIL:
-    return "STATION_CONNECT_FAIL";
+    return "CONNECT_FAIL";
   case STATION_GOT_IP:
-    return "STATION_GOT_IP";
+    return "GOT_IP";
   default:
     return "Unknown connect status!!";
   }

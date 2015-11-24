@@ -131,8 +131,8 @@ void jsvSetPrevSibling(JsVar *v, JsVarRef r) {
   v->varData.ref.pack = (unsigned char)((v->varData.ref.pack & ~(JSVARREF_PACKED_BIT_MASK<<(JSVARREF_PACKED_BITS*3))) | (((r >> 8) & JSVARREF_PACKED_BIT_MASK) << (JSVARREF_PACKED_BITS*3)));
 }
 /* lastchild stores the upper 2 bits in JsVarFlags because then STRING_EXT can use one more character! */
-JsVarRef jsvGetLastChild(const JsVar *v) { 
-  return (JsVarRef)(v->varData.ref.lastChild | (((v->flags >> JSV_LASTCHILD_BIT_SHIFT)&JSVARREF_PACKED_BIT_MASK))<<8); 
+JsVarRef jsvGetLastChild(const JsVar *v) {
+  return (JsVarRef)(v->varData.ref.lastChild | (((v->flags >> JSV_LASTCHILD_BIT_SHIFT)&JSVARREF_PACKED_BIT_MASK))<<8);
 }
 void jsvSetLastChild(JsVar *v, JsVarRef r) {
   v->varData.ref.lastChild = (unsigned char)(r & 0xFF);
@@ -945,7 +945,7 @@ const char *jsvGetConstString(const JsVar *v) {
 /// Return the 'type' of the JS variable (eg. JS's typeof operator)
 const char *jsvGetTypeOf(const JsVar *v) {
   if (jsvIsUndefined(v)) return "undefined";
-  if (jsvIsNull(v) || jsvIsObject(v) || 
+  if (jsvIsNull(v) || jsvIsObject(v) ||
       jsvIsArray(v) || jsvIsArrayBuffer(v)) return "object";
   if (jsvIsFunction(v)) return "function";
   if (jsvIsString(v)) return "string";
@@ -1109,10 +1109,10 @@ JsVar *jsvAsFlatString(JsVar *var) {
     jsvStringIteratorNew(&src, str, 0);
     jsvStringIteratorNew(&dst, flat, 0);
     while (len--) {
-      jsvStringIteratorSetChar(&dst, jsvStringIteratorGetChar(&src));    
+      jsvStringIteratorSetChar(&dst, jsvStringIteratorGetChar(&src));
       if (len>0) {
         jsvStringIteratorNext(&src);
-        jsvStringIteratorNext(&dst);  
+        jsvStringIteratorNext(&dst);
       }
     }
     jsvStringIteratorFree(&src);
@@ -2438,7 +2438,7 @@ JsVar *jsvGetArrayIndexOf(JsVar *arr, JsVar *value, bool matchExact) {
   indexref = jsvGetFirstChild(arr);
   while (indexref) {
     JsVar *childIndex = jsvLock(indexref);
-    assert(jsvIsName(childIndex))
+    assert(jsvIsName(childIndex));
     JsVar *childValue = jsvSkipName(childIndex);
     if (childValue==value ||
         (!matchExact && jsvMathsOpTypeEqual(childValue, value))) {
