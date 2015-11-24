@@ -36,10 +36,14 @@ htmldev = False
 jsondatas = common.get_jsondata(True)
 
 classes = []
+libraries = []
 for jsondata in jsondatas:
   if "class" in jsondata:
     if not jsondata["class"] in classes:
       classes.append(jsondata["class"])
+  if jsondata["type"]=="library":
+    if not jsondata["class"] in libraries:
+      libraries.append(jsondata["class"])
 
 # Load list of 'uses' in EspruinoDocs
 code_uses = []
@@ -242,7 +246,7 @@ if htmldev == True:
 
 detail = []
 links = {}
-jsondatas = sorted(jsondatas, key=common.get_name_or_space)
+jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 
 html("  <h2><a name=\"contents\">Contents</a></h2>")
 html("  <h3><a class=\"blush\" name=\"t__global\" href=\"javascript:gopos('_global');\">Globals</A></h3>")
@@ -254,7 +258,7 @@ for jsondata in jsondatas:
     if not "no_create_links" in jsondata:
       links[get_prefixed_name(jsondata)] = link
     detail.append(jsondata)
-for className in sorted(classes):
+for className in sorted(classes, key=lambda s: s.lower()):
   html("  </ul>")
   html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"javascript:gopos('"+className+"');\">"+className+"</a></h3>")
   html("  <ul>")
@@ -275,7 +279,10 @@ for jsondata in detail:
   linkName = ""
   if "class" in jsondata: 
     className=jsondata["class"]
-    niceName=className+" Class"
+    if className in libraries:
+      niceName=className+" Library"
+    else:
+      niceName=className+" Class"
     linkName=className
   else: 
     className=""                           

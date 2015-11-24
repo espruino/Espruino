@@ -304,9 +304,10 @@ def get_ifdef_description(d):
   if d=="SAVE_ON_FLASH": return "devices with low flash memory"
   if d=="STM32F1": return "STM32F1 devices (including Espruino Board)"
   if d=="USE_LCD_SDL": return "Linux with SDL support compiled in"
+  if d=="USE_TLS": return "devices with TLS and SSL support (Espruino Pico only)"
   if d=="RELEASE": return "release builds"
   if d=="LINUX": return "Linux-based builds"
-  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Pico)"
+  if d=="USE_USB_HID": return "devices that support USB HID (Espruino Espruino Pico)"
   print("WARNING: Unknown ifdef '"+d+"' in common.get_ifdef_description")
   return d
 
