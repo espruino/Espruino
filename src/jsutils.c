@@ -19,6 +19,12 @@
 #include "jswrap_error.h"
 #include "jswrap_json.h"
 
+#ifdef FLASH_STR
+// debugging...
+#define os_printf os_printf_plus
+extern void os_printf_plus(char *fmt, ...);
+#endif
+
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
 JsErrorFlags jsErrorFlags;
@@ -163,15 +169,32 @@ long long stringToInt(const char *s) {
 }
 
 
+#ifndef FLASH_STR
 NO_INLINE void jsError(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("ERROR: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
+#else
+NO_INLINE void jsError_int(const char *fmt, ...) {
+  os_printf("jsError_int %p\n", fmt);
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("ERROR: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+#endif
 
 NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   // If we already had an exception, forget this
@@ -215,20 +238,37 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
 
 
 
+#ifndef FLASH_STR
 NO_INLINE void jsWarn(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
   va_list argp;
   va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
   va_end(argp);
   jsiConsolePrint("\n");
 }
+#else
+NO_INLINE void jsWarn_int(const char *fmt, ...) {
+  os_printf("jsWarn_int %p\n", fmt);
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("WARNING: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+#endif
 
 NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
-  jsiConsolePrint(message);
+  jsiConsolePrintString(message);
   if (lex) {
     jsiConsolePrint(" at ");
     jsiConsolePrintPosition(lex, tokenPos);
@@ -242,10 +282,22 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   inAssertFail = true;
   jsiConsoleRemoveInputLine();
   if (expr) {
+#ifndef FLASH_STR
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
-  } else
+#else
+    os_printf("jsAssertFail %s:%ld\n", file, line);
+    jsiConsolePrintString("ASSERT(");
+    // string is in flash and requires word access, thus copy it onto the stack
+    size_t len = flash_strlen(expr);
+    char buff[len+1];
+    flash_strncpy(buff, expr, len+1);
+    jsiConsolePrintString(buff);
+    jsiConsolePrintString(") FAILED AT ");
+#endif
+  } else {
     jsiConsolePrint("ASSERT FAILED AT ");
-  jsiConsolePrintf("%s:%d\n",file,line);
+  }
+  jsiConsolePrintf_int("%s:%d\n",file,line);
   if (!wasInAssertFail) {
     jsvTrace(jsvFindOrCreateRoot(), 2);
   }
@@ -263,6 +315,61 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 #endif
   inAssertFail = false;
 }
+
+#ifdef FLASH_STR
+// Helpers to deal with constant strings stored in flash that have to be accessed using word-aligned
+// and word-sized reads
+
+// Get the length of a string in flash
+size_t flash_strlen(const char *str) {
+  //os_printf("flash_strlen %p", str);
+  size_t len = 0;
+  uint32_t *s = (uint32_t *)str;
+
+  while (1) {
+    uint32_t w = *s++;
+    //os_printf(" %08lx", w);
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    //os_printf(" %02lx-%02lx", w, w&0xff);
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    if ((w & 0xff) == 0) break;
+    len++; w >>= 8;
+    if ((w & 0xff) == 0) break;
+    len++;
+  }
+  //os_printf(" -> %ld\n", len);
+  return len;
+}
+
+// Copy a string from flash
+char *flash_strncpy(char *dst, const char *src, size_t c) {
+  char *d = dst;
+  uint32_t *s = (uint32_t *)src;
+  size_t slen = flash_strlen(src);
+  size_t len = slen > c ? c : slen;
+  // copy full words from source string
+  while (len >= 4) {
+    uint32_t w = *s++;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff; w >>= 8;
+    *d++ = w & 0xff;
+    len -= 4;
+  }
+  // copy any remaining bytes
+  if (len > 0) {
+    uint32_t w = *s++;
+    while (len-- > 0) {
+      *d++ = w & 0xff; w >>= 8;
+    }
+  }
+  // terminating null
+  if (slen < c) *d = 0;
+  return dst;
+}
+#endif
 
 #ifdef FAKE_STDLIB
 char * strncat(char *dst, const char *src, size_t c) {
@@ -466,7 +573,7 @@ void ftoa_bounded_extra(JsVarFloat val,char *str, size_t len, int radix, int fra
       val = -val;
     }
 
-    // what if we're really close to an integer? Just use that...      
+    // what if we're really close to an integer? Just use that...
     if (((JsVarInt)(val+stopAtError)) == (1+(JsVarInt)val))
       val = (JsVarFloat)(1+(JsVarInt)val);
 
