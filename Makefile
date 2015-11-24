@@ -570,6 +570,8 @@ ET_FF               ?= 40m     # 40Mhz flash speed in esptool flash command
 ET_BLANK            ?= 0x7E000 # where to flash blank.bin to erase wireless settings
 endif
 
+FLASH_BAUD ?= 115200 # The flash baud rate
+# End of ESP8266_BOARD
 else
 ifeq ($(shell uname -m),armv6l)
 RASPBERRYPI=1 # just a guess
@@ -1743,18 +1745,19 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	  build/$(basename $(ESP_ZIP))
 	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
+
 flash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash --flash_freq $(ET_FF) --flash_mode qio --flash_size $(ET_FS) 0x0000 "$(BOOTLOADER)" 0x1000 $(USER1_BIN) $(ET_BLANK) $(BLANK)
 
 # just flash user1 and don't mess with bootloader or wifi settings
 quickflash: all $(USER1_BIN) $(USER2_BIN)
 ifndef COMPORT
 	$(error "In order to flash, we need to have the COMPORT variable defined")
 endif
-	-$(ESPTOOL) --port $(COMPORT) --baud 460800 write_flash 0x1000 $(USER1_BIN)
+	-$(ESPTOOL) --port $(COMPORT) --baud $(FLASH_BAUD) write_flash 0x1000 $(USER1_BIN)
 
 wiflash: all $(USER1_BIN) $(USER2_BIN)
 ifndef ESPHOSTNAME
