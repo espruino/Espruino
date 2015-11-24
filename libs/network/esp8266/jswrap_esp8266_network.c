@@ -753,6 +753,28 @@ JsVar *jswrap_ESP8266_wifi_getStatus() {
   return jsWiFiStatus;
 }
 
+/**
+ * Get the ip info for the given interface.  The interfaces are:
+ * * 0 - Station
+ * * 1 - Access Point
+ */
+static JsVar *getIPInfo(int interface) {
+  struct ip_info info;
+  wifi_get_ip_info(interface, &info);
+
+  JsVar *jsIpInfo = jspNewObject(NULL, "IPInfo");
+  jsvObjectSetChildAndUnLock(jsIpInfo, "ip",      jsvNewFromInteger(info.ip.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
+  jsvObjectSetChildAndUnLock(jsIpInfo, "gw",      jsvNewFromInteger(info.gw.addr));
+
+  uint8 macAddr[6];
+  wifi_get_macaddr(interface, macAddr);
+  char macAddrString[6*2 + 1];
+  os_sprintf(macAddrString, "%2x%2x%2x%2x%2x%2x",
+    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
+  jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
+  return jsIpInfo;
+}
 
 /*JSON{
   "type"     : "staticmethod",
@@ -765,18 +787,31 @@ JsVar *jswrap_ESP8266_wifi_getStatus() {
 * * ip - IP address
 * * netmask - The interface netmask
 * * gw - The network gateway
+* * mac - The MAC address
 */
 JsVar *jswrap_ESP8266_wifi_getIP() {
   os_printf("> jswrap_ESP8266_wifi_getIP\n");
-  struct ip_info info;
-  wifi_get_ip_info(0, &info);
-
-  JsVar *jsIpInfo = jspNewObject(NULL, "Restart");
-  jsvObjectSetChildAndUnLock(jsIpInfo, "ip", jsvNewFromInteger(info.ip.addr));
-  jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
-  jsvObjectSetChildAndUnLock(jsIpInfo, "gw", jsvNewFromInteger(info.gw.addr));
   os_printf("< jswrap_ESP8266_wifi_getIP\n");
-  return jsIpInfo;
+  return getIPInfo(0);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "wifi",
+  "name"     : "getAPIP",
+  "generate" : "jswrap_ESP8266_wifi_getAPIP",
+  "return"   : ["JsVar", "A boolean representing our Access Point IP information"]
+}
+* Return IP information in an object which contains:
+* * ip - IP address
+* * netmask - The interface netmask
+* * gw - The network gateway
+* * mac - The MAC address
+*/
+JsVar *jswrap_ESP8266_wifi_getAPIP() {
+  os_printf("> jswrap_ESP8266_wifi_getAPIP\n");
+  os_printf("< jswrap_ESP8266_wifi_getAPIP\n");
+  return getIPInfo(1);
 }
 
 
