@@ -35,13 +35,6 @@
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
 #endif
 
-#ifdef FLASH_STR
-// debugging...
-#define os_printf os_printf_plus
-extern void os_printf_plus(char *fmt, ...);
-#endif
-
-
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
@@ -193,12 +186,9 @@ NO_INLINE void jsiConsolePrintString(const char *str) {
 #ifdef FLASH_STR
 // internal version that copies str from flash to an internal buffer
 NO_INLINE void jsiConsolePrintString_int(const char *str) {
-  os_printf("jsiConsolePrintString_int %p\n", str);
   size_t len = flash_strlen(str);
-  os_printf("len = %ld\n", len);
   char buff[len+1];
   flash_strncpy(buff, str, len+1);
-  os_printf("buflen = %ld\n", strlen(buff));
   jsiConsolePrintString(buff);
 }
 #endif
@@ -216,7 +206,6 @@ void jsiConsolePrintf(const char *fmt, ...) {
 }
 #else
 void jsiConsolePrintf_int(const char *fmt, ...) {
-  os_printf("jsiConsolePrintf_int %p\n", fmt);
   // fmt is in flash and requires special aligned accesses
   size_t len = flash_strlen(fmt);
   char buff[len+1];

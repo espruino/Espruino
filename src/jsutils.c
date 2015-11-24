@@ -19,12 +19,6 @@
 #include "jswrap_error.h"
 #include "jswrap_json.h"
 
-#ifdef FLASH_STR
-// debugging...
-#define os_printf os_printf_plus
-extern void os_printf_plus(char *fmt, ...);
-#endif
-
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
 JsErrorFlags jsErrorFlags;
@@ -181,7 +175,6 @@ NO_INLINE void jsError(const char *fmt, ...) {
 }
 #else
 NO_INLINE void jsError_int(const char *fmt, ...) {
-  os_printf("jsError_int %p\n", fmt);
   size_t len = flash_strlen(fmt);
   char buff[len+1];
   flash_strncpy(buff, fmt, len+1);
@@ -250,7 +243,6 @@ NO_INLINE void jsWarn(const char *fmt, ...) {
 }
 #else
 NO_INLINE void jsWarn_int(const char *fmt, ...) {
-  os_printf("jsWarn_int %p\n", fmt);
   size_t len = flash_strlen(fmt);
   char buff[len+1];
   flash_strncpy(buff, fmt, len+1);
@@ -285,7 +277,6 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 #ifndef FLASH_STR
     jsiConsolePrintf("ASSERT(%s) FAILED AT ", expr);
 #else
-    os_printf("jsAssertFail %s:%ld\n", file, line);
     jsiConsolePrintString("ASSERT(");
     // string is in flash and requires word access, thus copy it onto the stack
     size_t len = flash_strlen(expr);
@@ -322,16 +313,13 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
 
 // Get the length of a string in flash
 size_t flash_strlen(const char *str) {
-  //os_printf("flash_strlen %p", str);
   size_t len = 0;
   uint32_t *s = (uint32_t *)str;
 
   while (1) {
     uint32_t w = *s++;
-    //os_printf(" %08lx", w);
     if ((w & 0xff) == 0) break;
     len++; w >>= 8;
-    //os_printf(" %02lx-%02lx", w, w&0xff);
     if ((w & 0xff) == 0) break;
     len++; w >>= 8;
     if ((w & 0xff) == 0) break;
@@ -339,7 +327,6 @@ size_t flash_strlen(const char *str) {
     if ((w & 0xff) == 0) break;
     len++;
   }
-  //os_printf(" -> %ld\n", len);
   return len;
 }
 
