@@ -64,7 +64,7 @@ ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData)
     jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
     return;
   }
-  if (!jsvIsArray(jsArrayOfData)) {
+  if (!jsvIsArray(jsArrayOfData) && !jsvIsArrayBuffer(jsArrayOfData)) {
     jsExceptionHere(JSET_ERROR, "Data must be an array.");
     return;
   }
