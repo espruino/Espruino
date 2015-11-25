@@ -55,7 +55,7 @@ static inline uint32_t _getCycleCount(void) {
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
-__attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return;
@@ -64,7 +64,7 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pi
     jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
     return;
   }
-  if (!jsvIsArray(jsArrayOfData)) {
+  if (!jsvIsArray(jsArrayOfData) && !jsvIsArrayBuffer(jsArrayOfData)) {
     jsExceptionHere(JSET_ERROR, "Data must be an array.");
     return;
   }

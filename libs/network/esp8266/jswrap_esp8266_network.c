@@ -733,7 +733,7 @@ void jswrap_ESP8266_wifi_createAP(
 */
 JsVar *jswrap_ESP8266_wifi_getStatus() {
   os_printf("> jswrap_ESP8266_wifi_getStatus\n");
-  JsVar *jsWiFiStatus = jspNewObject(NULL, "WiFiStatus");
+  JsVar *jsWiFiStatus = jsvNewWithFlags(JSV_OBJECT);
   uint8 opMode = wifi_get_opmode();
   jsvObjectSetChildAndUnLock(
       jsWiFiStatus,
@@ -762,7 +762,7 @@ static JsVar *getIPInfo(int interface) {
   struct ip_info info;
   wifi_get_ip_info(interface, &info);
 
-  JsVar *jsIpInfo = jspNewObject(NULL, "IPInfo");
+  JsVar *jsIpInfo = jsvNewWithFlags(JSV_OBJECT);
   jsvObjectSetChildAndUnLock(jsIpInfo, "ip",      jsvNewFromInteger(info.ip.addr));
   jsvObjectSetChildAndUnLock(jsIpInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
   jsvObjectSetChildAndUnLock(jsIpInfo, "gw",      jsvNewFromInteger(info.gw.addr));
@@ -1317,7 +1317,7 @@ JsVar *jswrap_ESP8266WiFi_getAutoConnect() {
 }*/
 JsVar *jswrap_ESP8266_getRstInfo() {
   struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "Restart");
+  JsVar *restartInfo = jsvNewWithFlags(JSV_OBJECT);
   jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromInteger(info->reason));
   jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromInteger(info->exccause));
   jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
@@ -1395,7 +1395,7 @@ void jswrap_ESP8266_updateCPUFreq(
 JsVar *jswrap_ESP8266_getState() {
   // Create a new variable and populate it with the properties of the ESP8266 that we
   // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
+  JsVar *esp8266State = jsvNewWithFlags(JSV_OBJECT);
   jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
   jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
   jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
@@ -1453,7 +1453,7 @@ JsVar *jswrap_ESP8266WiFi_getIPInfo() {
   struct ip_info info;
   wifi_get_ip_info(0, &info);
 
-  JsVar *ipInfo = jspNewObject(NULL, "Restart");
+  JsVar *ipInfo = jsvNewWithFlags(JSV_OBJECT);
   jsvObjectSetChildAndUnLock(ipInfo, "ip", jsvNewFromInteger(info.ip.addr));
   jsvObjectSetChildAndUnLock(ipInfo, "netmask", jsvNewFromInteger(info.netmask.addr));
   jsvObjectSetChildAndUnLock(ipInfo, "gw", jsvNewFromInteger(info.gw.addr));
@@ -1481,7 +1481,7 @@ JsVar *jswrap_ESP8266WiFi_getIPInfo() {
 JsVar *jswrap_ESP8266WiFi_getStationConfig() {
   struct station_config config;
   wifi_station_get_config(&config);
-  JsVar *jsConfig = jspNewObject(NULL, "StationConfig");
+  JsVar *jsConfig = jsvNewWithFlags(JSV_OBJECT);
   //char ssid[33];
   //nullTerminateString(ssid, (char *)config.ssid, 32);
   jsvObjectSetChildAndUnLock(jsConfig, "ssid", jsvNewFromString((char *)config.ssid));
