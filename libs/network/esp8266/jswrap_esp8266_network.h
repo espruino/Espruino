@@ -46,6 +46,7 @@ void   jswrap_ESP8266WiFi_socketEnd(JsVar *socket, JsVar *data);
 // Deprecated
 void   jswrap_ESP8266WiFi_stopAP();
 
+JsVar *jswrap_ESP8266_wifi_getAPIP();
 void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_createAP(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_disconnect(JsVar *jsOptions, JsVar *jsCallback);
