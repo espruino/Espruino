@@ -59,7 +59,7 @@ extern int isfinite ( double );
 // Place constant strings into flash when we can in order to save RAM space. Strings in flash
 // must be accessed with word reads on aligned boundaries, so we'll have to copy them before
 // regular use.
-#define FLASH_STR(name, x) static const char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
 
 // Get the length of a string in flash
 size_t flash_strlen(const char *str);

@@ -81,14 +81,14 @@ static void gotIpCallback() {
 } // End of gotIpCallback
 #endif
 
-static char *rst_codes[] = {
+char *rst_codes[] = { // used in jswrap_ESP8266_network.c
   "power on", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", "reset pin",
 };
-static char *flash_maps[] = {
+char *flash_maps[] = { // used in jswrap_ESP8266_network.c
   "512KB:256/256", "256KB", "1MB:512/512", "2MB:512/512", "4MB:512/512",
   "2MB:1024/1024", "4MB:1024/1024"
 };
-static uint16_t flash_kb[] = {
+uint16_t flash_kb[] = { // used in jswrap_ESP8266_network.c
   512, 256, 1024, 2048, 4096, 2048, 4096,
 };
 
@@ -243,7 +243,7 @@ static void initDone() {
   jshInit(); // Initialize the hardware
   jsvInit(); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
-  jswrap_ESP8266WiFi_init(); // Initialize the networking subsystem
+  jswrap_ESP8266_wifi_init(); // Initialize the networking subsystem
 
   // Register the event handlers.
   system_os_task(eventHandler, TASK_APP_QUEUE, taskAppQueue, TASK_QUEUE_LENGTH);
@@ -258,6 +258,21 @@ static void initDone() {
   return;
 }
 
+/**
+ * Initialize the UART
+ */
+void user_uart_init() {
+  int defaultBaudRate = 9600;
+#ifdef DEFAULT_CONSOLE_BAUDRATE
+  defaultBaudRate = DEFAULT_CONSOLE_BAUDRATE;
+#endif
+
+  uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
+
+  os_delay_us(1000); // make sure there's a gap on uart output
+  UART_SetPrintPort(1);
+  system_set_os_print(1);
+}
 
 /**
  * This is a required function needed for ESP8266 SDK.  It allows RF parameters, in particular
@@ -266,8 +281,8 @@ static void initDone() {
  */
 void user_rf_pre_init() {
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
+  jswrap_ESP8266_wifi_pre_init(); // ensures that the wifi comes up as desired
 }
-
 
 /**
  * The main entry point in an ESP8266 application.
@@ -276,19 +291,8 @@ void user_rf_pre_init() {
 void user_init() {
   system_timer_reinit(); // use microsecond os_timer_*
 
-  // Initialize the UART devices
-  int defaultBaudRate = 9600;
-#ifdef DEFAULT_CONSOLE_BAUDRATE
-  defaultBaudRate = DEFAULT_CONSOLE_BAUDRATE;
-#endif
-
-  uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
-
-  //uart_init(BIT_RATE_9600, BIT_RATE_9600);
-  os_delay_us(1000); // make sure there's a gap on uart output
-  UART_SetPrintPort(1);
-  system_set_os_print(1);
-  os_printf("\n\n\n\n");
+  user_uart_init();
+  os_printf("\n\n\n*** Espruino esp8266 booting\n\n");
   //uart0_sendStr("\n\n\n\n*** ESP8266 ***\n");
   os_delay_us(1000);
 

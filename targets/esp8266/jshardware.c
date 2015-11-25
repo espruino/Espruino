@@ -37,6 +37,7 @@ typedef long long int64_t;
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jspininfo.h"
+#include "jswrap_esp8266_network.h"
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
@@ -175,19 +176,27 @@ static void intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
-  //system_restart();
   os_printf("> jshReset\n");
-  // Set all GPIO pins to be input.
-  /*
-  int i;
-  for (int i=0; i<JSH_PIN_COUNT; i++) {
-    jshPinSetState(i, JSHPINSTATE_GPIO_IN);
-  }
-  */
+
+  // Set all GPIO pins to be input with pull-up
+  jshPinSetState(0, JSHPINSTATE_GPIO_IN_PULLUP);
+  //jshPinSetState(2, JSHPINSTATE_GPIO_IN_PULLUP); // used for debug output
+  jshPinSetState(4, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(5, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(12, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(13, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(14, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(15, JSHPINSTATE_GPIO_IN_PULLUP);
   g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
   g_lastSPIRead = -1;
+
+  extern void user_uart_init(void); // in user_main.c
+  user_uart_init();
+
+  jswrap_ESP8266_wifi_reset(); // reset the wifi
+
   os_printf("< jshReset\n");
-} // End of jshReset
+}
 
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
@@ -195,7 +204,7 @@ void jshReset() {
  * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
 void jshIdle() {
-} // End of jshIdle
+}
 
 // esp8266 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
@@ -205,7 +214,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   int len = os_sprintf(buf, MACSTR, MAC2STR(mac_addr));
   strncpy((char *)data, buf, maxChars);
   return len > maxChars ? maxChars : len;
-} // End of jshSerialNumber
+}
 
 //===== Interrupts and sleeping
 

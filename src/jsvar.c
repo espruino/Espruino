@@ -536,6 +536,10 @@ static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   if (!var) return;
+  if (jsvGetLocks(var) <= 0) {
+    jsiConsolePrintf("ASSERT FAIL: unlocking unlocked variable: %q %j (%t)\n", var, var, var);
+    jsvTrace(var, 2);
+  }
   assert(jsvGetLocks(var)>0);
   var->flags -= JSV_LOCK_ONE;
   // Now see if we can properly free the data
