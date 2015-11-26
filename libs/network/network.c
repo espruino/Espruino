@@ -83,6 +83,17 @@ bool networkParseMACAddress(unsigned char *addr, const char *ip) {
   return i==5;
 }
 
+/**
+ * Convert a buffer of bytes pointed to by ip ... for a length of nBytes into a string where each
+ * byte is separated by a separator character.  The numeric base of the bytes is given by the base
+ * value.
+ *
+ * For example, to create a dotted decimal string, one would use:
+ * networkGetAddressAsString(ip, 4, 10, '.')
+ *
+ * To create a Mac address, one might use:
+ * networkGetAddressAsString(mac, 6, 16, ':')
+ */
 JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int base, char separator) {
   char data[64] = "";
   int i = 0, dir = 1, l = 0;
@@ -108,6 +119,17 @@ JsVar *networkGetAddressAsString(unsigned char *ip, int nBytes, unsigned int bas
   return jsvNewFromString(data);
 }
 
+/**
+ * Convert a buffer of bytes pointed to by ip ... for a length of nBytes into a string member of an object where each
+ * byte is separated by a separator character.  The numeric base of the bytes is given by the base
+ * value.
+ *
+ * For example, to create a dotted decimal string, one would use:
+ * networkPutAddressAsString(myObject,"ip", ip, 4, 10, '.')
+ *
+ * To create a Mac address, one might use:
+ * networkPutAddressAsString(myObject, "mac", mac, 6, 16, ':')
+ */
 void networkPutAddressAsString(JsVar *object, const char *name,  unsigned char *ip, int nBytes, unsigned int base, char separator) {
   jsvObjectSetChildAndUnLock(object, name, networkGetAddressAsString(ip, nBytes, base, separator));
 }
