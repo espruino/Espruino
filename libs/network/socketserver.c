@@ -623,11 +623,12 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
   JsVar *sendData = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
     JsVar *options = 0;
-    // Only append a header if we're doing HTTP and we haven't already connected
+    // Only append a header if we're doing HTTP AND we haven't already connected
     if ((socketType&ST_TYPE_MASK) == ST_HTTP)
       if (jsvGetIntegerAndUnLock(jsvObjectGetChild(httpClientReqVar, HTTP_NAME_SOCKET, 0))==0)
         options = jsvObjectGetChild(httpClientReqVar, HTTP_NAME_OPTIONS_VAR, 0);
     if (options) {
+      // We're an HTTP client - make a header
       JsVar *method = jsvObjectGetChild(options, "method", 0);
       JsVar *path = jsvObjectGetChild(options, "path", 0);
       sendData = jsvVarPrintf("%v %v HTTP/1.0\r\nUser-Agent: Espruino "JS_VERSION"\r\nConnection: close\r\n", method, path);
@@ -656,13 +657,16 @@ void clientRequestWrite(JsNetwork *net, JsVar *httpClientReqVar, JsVar *data) {
       }
       // finally add ending newline
       jsvAppendString(sendData, "\r\n");
-    } else {
+    } else { // !options
+      // We're not HTTP (or were already connected), so don't send any header
       sendData = jsvNewFromString("");
     }
     jsvObjectSetChild(httpClientReqVar, HTTP_NAME_SEND_DATA, sendData);
     jsvUnLock(options);
   }
+  // We have data and aren't out of memory...
   if (data && sendData) {
+    // append the data to what we want to send
     JsVar *s = jsvAsString(data, false);
     if (s) {
       if ((socketType&ST_TYPE_MASK) == ST_HTTP &&
