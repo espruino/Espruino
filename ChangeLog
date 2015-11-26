@@ -1,3 +1,5 @@
+     1v83 : Moved to size optimisation for Pico (needed to get HTTPS into 384kB)
+
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
             Add `shiftOut` function (fix #631)
