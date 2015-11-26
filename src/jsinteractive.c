@@ -1458,6 +1458,13 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
   jsvUnLock(callback);
 }
 
+void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
+  if (!callback) return;
+  jsiExecuteEventCallback(object, callback, (unsigned int)argCount, args);
+  jsvUnLock(callback);
+}
+
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1633,6 +1640,16 @@ void jsiIdle() {
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (jsvIsObject(usartClass)) {
         jsiHandleIOEventForUSART(usartClass, &event);
+      }
+      jsvUnLock(usartClass);
+    } else if (DEVICE_IS_USART_STATUS(eventType)) {
+      // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
+      if (jsvIsObject(usartClass)) {
+        if (event.flags & EV_SERIAL_STATUS_FRAMING_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
+        if (event.flags & EV_SERIAL_STATUS_PARITY_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
