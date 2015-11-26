@@ -117,12 +117,22 @@ void jshTransmit(
   unsigned char txHeadNext = (unsigned char)((txHead+1)&TXBUFFERMASK);
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
+    bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
 #endif
+    }
+    if (wasConsoleLimbo && jsiGetConsoleDevice()!=EV_LIMBO) {
+      /* It was 'Limbo', but now it's not - see jsiOneSecondAfterStartup.
+      Basically we must have printed a bunch of stuff to LIMBO and blocked
+      with our output buffer full. But then jsiOneSecondAfterStartup
+      switches to the right console device and swaps everything we wrote
+      over to that device too. Only we're now here, still writing to the
+      old device when really we should be writing to the new one. */
+      device = jsiGetConsoleDevice();
     }
     jsiSetBusy(BUSY_TRANSMIT, false);
   }
