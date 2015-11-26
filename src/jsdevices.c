@@ -269,16 +269,26 @@ void jshPushIOCharEvent(
   // Set flow control (as we're going to use more data)
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
     jshSetFlowControlXON(channel, false);
-  // Make new buffer
+
+  /* Make new buffer
+   *
+   * We're disabling IRQs for this bit because it's actually quite likely for
+   * USB and USART data to be coming in at the same time, and it can trip
+   * things up if one IRQ interrupts another. */
+  jshInterruptOff();
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
+    jshInterruptOn();
     jshIOEventOverflowed();
     return; // queue full - dump this event!
   }
-  ioBuffer[ioHead].flags = channel;
-  IOEVENTFLAGS_SETCHARS(ioBuffer[ioHead].flags, 1);
-  ioBuffer[ioHead].data.chars[0] = charData;
+  unsigned char oldHead = ioHead;
   ioHead = nextHead;
+  ioBuffer[oldHead].flags = channel;
+  // once channel is set we're safe - another IRQ won't touch this
+  jshInterruptOn();
+  IOEVENTFLAGS_SETCHARS(ioBuffer[oldHead].flags, 1);
+  ioBuffer[oldHead].data.chars[0] = charData;
 }
 
 /**
