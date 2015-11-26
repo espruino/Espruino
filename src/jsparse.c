@@ -375,6 +375,13 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     return 0;
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
+
+#ifndef SAVE_ON_FLASH
+  if (execInfo.lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(execInfo.lex), "compiled")) {
+    jsWarn("Function marked with \"compiled\" uploaded in source form");
+  }
+#endif
+
   /* If the function starts with return, treat it specially -
    * we don't want to store the 'return' part of it
    */

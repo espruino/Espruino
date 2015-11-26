@@ -1,6 +1,7 @@
      1v83 : Moved to size optimisation for Pico (needed to get HTTPS into 384kB)
             Ensure Modules.addCached doesn't reset parse state (fix #723)
             dump() in Espruino Pico now ignored the pull-down for the button (fix #731)
+            Warn when "compiled" functions gets into Espruiono (fix #707)
 
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
