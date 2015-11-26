@@ -646,6 +646,10 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
           statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
 #endif
+#if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
+      if (pin == BTN1_PININDEX &&
+          statem == BTN1_PINSTATE) continue;
+#endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
