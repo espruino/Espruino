@@ -4,6 +4,7 @@
             Warn when "compiled" functions gets into Espruiono (fix #707)
             Fix lost character on Espruino Startup (fix #704)
             Fix duplicated characters when USB+USART IRQs fire at the same time  (fix #635)
+            Fixed Serial.find(...)
 
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
