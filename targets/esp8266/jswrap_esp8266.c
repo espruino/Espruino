@@ -64,10 +64,6 @@ ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData)
     jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
     return;
   }
-  if (!jsvIsArray(jsArrayOfData) && !jsvIsArrayBuffer(jsArrayOfData)) {
-    jsExceptionHere(JSET_ERROR, "Data must be an array.");
-    return;
-  }
 
   JSV_GET_AS_CHAR_ARRAY(pixels, dataLength, jsArrayOfData);
   if (!pixels) {
@@ -83,13 +79,11 @@ ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData)
     return;
   }
 
-  uint32_t numBytes = dataLength;
-
   uint8_t *p, *end, pix, mask;
   uint32_t t, time0, time1, period, c, startTime, pinMask;
   pinMask = _BV(pin);
   p = (uint8_t *)pixels;
-  end = p + numBytes;
+  end = p + dataLength;
   pix = *p++;
   mask = 0x80;
   c=0;
