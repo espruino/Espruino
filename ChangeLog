@@ -7,6 +7,7 @@
             Fixed Serial.find(...)
             Detect UART framing and parity errors and emit them as events on the Serial object
             Fix [] instanceof Object (fix #737)
+            Fix regression in jsvCopyNameOnly (Object.getOwnPropertyNames when names are >8 characters long)
 
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
