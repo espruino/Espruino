@@ -769,10 +769,7 @@ static JsVar *getIPInfo(int interface) {
 
   uint8 macAddr[6];
   wifi_get_macaddr(interface, macAddr);
-  char macAddrString[6*2 + 1];
-  os_sprintf(macAddrString, "%2x%2x%2x%2x%2x%2x",
-    macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4], macAddr[5]);
-  jsvObjectSetChildAndUnLock(jsIpInfo, "mac", jsvNewFromString(macAddrString));
+  networkPutAddressAsString(jsIpInfo, "mac", macAddr, 6, 16, ':');
   return jsIpInfo;
 }
 
