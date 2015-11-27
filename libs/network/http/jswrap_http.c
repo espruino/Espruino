@@ -240,7 +240,7 @@ JsVar *jswrap_http_createServer(JsVar *callback) {
   "name" : "request",
     "generate_full" : "jswrap_net_connect(options, callback, ST_HTTP)",
   "params" : [
-    ["options","JsVar","An object containing host,port,path,method,headers fields"],
+    ["options","JsVar","An object containing host,port,path,method,headers,ca fields"],
     ["callback","JsVar","A function(res) that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new httpCRq object"],
@@ -267,6 +267,14 @@ require("http").request(options, function(res) {
 ```
 
 You can easily pre-populate `options` from a URL using `var options = url.parse("http://www.example.com/foo.html")`
+
+**Note:** if TLS/HTTPS is enabled, options can have a `ca` field, which should be the content of the certificate. For instance:
+
+```
+var options = url.parse("https://localhost");
+options.ca = atob("MIIFgDCC...GosQML4sc=");
+require("http").request(options, ... );
+```
 
 */
 

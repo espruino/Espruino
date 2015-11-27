@@ -308,7 +308,7 @@ int ssl_recv(void *ctx, unsigned char *buf, size_t len) {
   return r;
 }
 
-int ssl_entropy( void *data, unsigned char *output, size_t len ) {
+int ssl_entropy(void *data, unsigned char *output, size_t len ) {
   NOT_USED(data);
   size_t i;
   unsigned int r;
@@ -342,7 +342,24 @@ void ssl_freeSocketData(int sckt) {
   jsvUnLock(sslData);
 }
 
-bool ssl_newSocketData(int sckt) {
+int ssl_load_ca(SSLSocketData *sd, JsVar *options) {
+  JsVar *caVar = jsvObjectGetChild(options,"ca",0);
+  if (caVar) {
+    JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, caVar);
+    jsvUnLock(caVar);
+    if (caLen && caPtr) {
+      jsiConsolePrintf("Loading the CA root certificate... %s\n", caPtr );
+      int ret = mbedtls_x509_crt_parse( &sd->cacert, (const unsigned char *)caPtr, caLen );
+      if( ret != 0 ) {
+        jsError("HTTPS init failed! mbedtls_x509_crt_parse returned -0x%x\n", -ret );
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool ssl_newSocketData(int sckt, JsVar *options) {
   /* FIXME Warning:
    *
    * MBEDTLS_SSL_MAX_CONTENT_LEN = 16kB, so we need over double this = 32kB memory
@@ -390,16 +407,20 @@ bool ssl_newSocketData(int sckt) {
   if (( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
                              (const unsigned char *) pers,
                              strlen(pers))) != 0 ) {
-    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned %d\n", ret );
+    jsError("HTTPS init failed! mbedtls_ctr_drbg_seed returned -0x%x\n", -ret );
     ssl_freeSocketData(sckt);
     return false;
+  }
+
+  if (jsvIsObject(options)) {
+    if (!ssl_load_ca(sd, options)) return false;
   }
 
   if (( ret = mbedtls_ssl_config_defaults( &sd->conf,
                   MBEDTLS_SSL_IS_CLIENT, // or MBEDTLS_SSL_IS_SERVER
                   MBEDTLS_SSL_TRANSPORT_STREAM,
                   MBEDTLS_SSL_PRESET_DEFAULT )) != 0 ) {
-    jsError( "HTTPS init failed! mbedtls_ssl_config_defaults returned %d\n", ret );
+    jsError("HTTPS init failed! mbedtls_ssl_config_defaults returned -0x%x\n", -ret );
     ssl_freeSocketData(sckt);
     return false;
   }
@@ -411,20 +432,20 @@ bool ssl_newSocketData(int sckt) {
   mbedtls_ssl_conf_dbg( &sd->conf, ssl_debug, 0 );
 
   if (( ret = mbedtls_ssl_setup( &sd->ssl, &sd->conf )) != 0) {
-    jsError( "Failed! mbedtls_ssl_setup returned %d\n", ret );
+    jsError("Failed! mbedtls_ssl_setup returned -0x%x\n", -ret );
     ssl_freeSocketData(sckt);
     return false;
   }
 
   if (( ret = mbedtls_ssl_set_hostname( &sd->ssl, "mbed TLS Server 1" )) != 0) {
-    jsError( "HTTPS init failed! mbedtls_ssl_set_hostname returned %d\n", ret );
+    jsError("HTTPS init failed! mbedtls_ssl_set_hostname returned -0x%x\n", -ret );
     ssl_freeSocketData(sckt);
     return false;
   }
 
   mbedtls_ssl_set_bio( &sd->ssl, &sd->sckt, ssl_send, ssl_recv, NULL );
 
-  jsiConsolePrintf( "Performing the SSL/TLS handshake...\n" );
+  jsiConsolePrintf("Performing the SSL/TLS handshake...\n" );
 
   return true;
 }
@@ -479,7 +500,7 @@ bool netCheckError(JsNetwork *net) {
   return net->checkError(net);
 }
 
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags) {
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options) {
   int sckt = net->createsocket(net, host, port);
   if (sckt<0) return sckt;
 
@@ -487,7 +508,7 @@ int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreat
   assert(sckt>=0 && sckt<32);
   BITFIELD_SET(socketIsHTTPS, sckt, 0);
   if (flags & NCF_TLS) {
-    if (ssl_newSocketData(sckt)) {
+    if (ssl_newSocketData(sckt, options)) {
       BITFIELD_SET(socketIsHTTPS, sckt, 1);
     } else {
       return -1; // fail!

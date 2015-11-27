@@ -9,6 +9,7 @@
             Fix [] instanceof Object (fix #737)
             Fix regression in jsvCopyNameOnly (Object.getOwnPropertyNames when names are >8 characters long)
             HTTP requests (and sockets) can now emit 'error' event (fix #706)
+            Add optional `ca` for server public key when using HTTPS (see #736)
 
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
