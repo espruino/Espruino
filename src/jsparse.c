@@ -1525,7 +1525,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           if (!jsvIsFunction(bv)) {
             jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
           } else {
-            if (jsvIsObject(av)) {
+            if (jsvIsObject(av) || jsvIsFunction(av)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
               JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
               while (proto) {
@@ -1537,11 +1537,16 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               }
               if (jspIsConstructor(bv, "Object")) inst = true;
               jsvUnLock(bproto);
-            } else {
+            }
+            if (!inst) {
               const char *name = jswGetBasicObjectName(av);
               if (name) {
                 inst = jspIsConstructor(bv, name);
               }
+              // Hack for built-ins that should also be instances of Object
+              if (!inst && (jsvIsArray(av) || jsvIsArrayBuffer(av)) &&
+                  jspIsConstructor(bv, "Object"))
+                inst = true;
             }
           }
           jsvUnLock3(av, bv, a);
