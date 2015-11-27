@@ -135,6 +135,13 @@ The HTTP client request
 }
 An event that is fired when the buffer is empty and it can accept more data to send. 
 */
+/*JSON{
+  "type" : "event",
+  "class" : "httpCRq",
+  "name" : "error"
+}
+There was an error while making this request
+*/
 
 /*JSON{
   "type" : "class",

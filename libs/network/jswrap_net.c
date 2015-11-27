@@ -256,6 +256,13 @@ The 'data' event is called when data is received. If a handler is defined with `
 Called when the connection closes.
 */
 /*JSON{
+  "type" : "event",
+  "class" : "Socket",
+  "name" : "error"
+}
+There was an error on this socket and it closed (or wasn't opened in the first place)
+*/
+/*JSON{
   "type" : "method",
   "class" : "Socket",
   "name" : "available",

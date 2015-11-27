@@ -35,6 +35,7 @@
 #define HTTP_NAME_ON_CLOSE JS_EVENT_PREFIX"close"
 #define HTTP_NAME_ON_END JS_EVENT_PREFIX"end"
 #define HTTP_NAME_ON_DRAIN JS_EVENT_PREFIX"drain"
+#define HTTP_NAME_ON_ERROR JS_EVENT_PREFIX"error"
 
 #define HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS "HttpCC"
 #define HTTP_ARRAY_HTTP_SERVERS "HttpS"
@@ -394,12 +395,15 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     bool socketClosed = false;
     JsVar *receiveData = 0;
 
+    bool hadHeaders = false;
+    bool errored = false;
+    bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
     if (sckt>=0) {
-      bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
-      bool hadHeaders = true;
       if ((socketType&ST_TYPE_MASK)==ST_HTTP)
         hadHeaders = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_HAD_HEADERS,0));
+      else
+        hadHeaders = true;
       receiveData = jsvObjectGetChild(connection,HTTP_NAME_RECEIVE_DATA,0);
 
       /* We do this up here because we want to wait until we have been once
@@ -412,10 +416,13 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         // send data if possible
         if (sendData) {
           bool b = socketSendData(net, connection, sckt, &sendData);
-          if (!b)
+          if (!b) {
+            errored = true;
             closeConnectionNow = true;
+          }
           jsvObjectSetChild(connection, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
         } else {
+          // no data to send, do we want to close? do so.
           if (jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSE, false)))
             closeConnectionNow = true;
         }
@@ -423,8 +430,10 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         if (!receiveData || !hadHeaders) {
           int num = netRecv(net, sckt, buf, sizeof(buf));
           if (num<0) {
-            // we probably disconnected so just get rid of this
+            // we probably disconnected so just get rid of this - no error
             closeConnectionNow = true;
+            // disconnected without headers? error.
+            if (!hadHeaders) errored = true;
           } else {
             // add it to our request string
             if (num>0) {
@@ -450,23 +459,33 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         jsvUnLock(sendData);
       }
+    }
 
-      if (closeConnectionNow) {
-        socketClientPushReceiveData(connection, socket, &receiveData);
-        if (!receiveData) {
-          if ((socketType&ST_TYPE_MASK) != ST_HTTP)
-            jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
-          jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
+    if (closeConnectionNow) {
+      socketClientPushReceiveData(connection, socket, &receiveData);
+      if (!receiveData) {
+        if ((socketType&ST_TYPE_MASK) != ST_HTTP)
+          jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
-          _socketConnectionKill(net, connection);
-          JsVar *connectionName = jsvObjectIteratorGetKey(&it);
-          jsvObjectIteratorNext(&it);
-          jsvRemoveChild(arr, connectionName);
-          jsvUnLock(connectionName);
-          socketClosed = true;
+        // If we had data to send but the socket closed, this is an error
+        JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
+        if (sendData) errored = true;
+        jsvUnLock(sendData);
+
+        _socketConnectionKill(net, connection);
+        JsVar *connectionName = jsvObjectIteratorGetKey(&it);
+        jsvObjectIteratorNext(&it);
+        jsvRemoveChild(arr, connectionName);
+        jsvUnLock(connectionName);
+        socketClosed = true;
+
+        if (errored) {
+          jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, 0, 0);
         }
       }
     }
+
 
     if (!socketClosed) {
       jsvObjectIteratorNext(&it);
@@ -710,7 +729,8 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   networkGetHostByName(net, hostName, &host_addr);
 
   if(!host_addr) {
-    jsError("Unable to locate host");
+    jsError("Unable to locate host\n");
+    // As this is already in the list of connections, an error will be thrown on idle anyway
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
     jsvUnLock(options);
     netCheckError(net);
@@ -730,6 +750,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
   int sckt =  netCreateSocket(net, host_addr, port, flags);
   if (sckt<0) {
     jsError("Unable to create socket\n");
+    // As this is already in the list of connections, an error will be thrown on idle anyway
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_CLOSENOW, jsvNewFromBool(true));
   } else {
     jsvObjectSetChildAndUnLock(httpClientReqVar, HTTP_NAME_SOCKET, jsvNewFromInteger(sckt+1));
