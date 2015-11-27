@@ -426,6 +426,24 @@ This is designed to be a cut-down version of the [node.js library](http://nodejs
   "ifdef" : "USE_TLS"
 }
 Create a socket connection using TLS
+
+Options can have `ca`, `key` and `cert` fields, which should be the decoded content of the certificate.
+
+```
+var options = url.parse("https://localhost");
+options.key = atob("MIIJKQ ... OZs08C");
+options.cert = atob("MIIFi ... Uf93rN+");
+options.ca = atob("MIIFgDCC ... GosQML4sc=");
+require("http").request(options, ... );
+```
+
+If you have the certificates as `.pem` files, you need to load these files, take the
+information between the lines beginning with `----`, remove the newlines from it
+so you have raw base64, and then feed it into `atob` as above.
+
+For more information about generating and using certificates, see:
+
+https://engineering.circle.com/https-authorized-certs-with-node-js/
 */
 
 // ---------------------------------------------------------------------------------

@@ -276,6 +276,8 @@ typedef struct {
   int sckt;
   bool connecting; // are we in the process of connecting?
   mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_pk_context pkey;
+  mbedtls_x509_crt owncert;
   mbedtls_x509_crt cacert;
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -338,20 +340,55 @@ void ssl_freeSocketData(int sckt) {
     mbedtls_ssl_free( &sd->ssl );
     mbedtls_ssl_config_free( &sd->conf );
     mbedtls_ctr_drbg_free( &sd->ctr_drbg );
+    mbedtls_x509_crt_free( &sd->owncert );
+    mbedtls_x509_crt_free( &sd->cacert );
+    mbedtls_pk_free( &sd->pkey );
   }
   jsvUnLock(sslData);
 }
 
-int ssl_load_ca(SSLSocketData *sd, JsVar *options) {
+bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
+  JsVar *keyVar = jsvObjectGetChild(options,"key",0);
+  if (keyVar) {
+    JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, keyVar);
+    jsvUnLock(keyVar);
+    if (keyLen && keyPtr) {
+      jsiConsolePrintf("Loading the Client Key...\n");
+      int ret = mbedtls_pk_parse_key( &sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/ );
+      if( ret != 0 ) {
+        jsError("HTTPS init failed! mbedtls_pk_parse_key returned -0x%x\n", -ret );
+        return false;
+      }
+    }
+  }
+  return true;
+}
+bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
+  JsVar *certVar = jsvObjectGetChild(options,"cert",0);
+  if (certVar) {
+    JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, certVar);
+    jsvUnLock(certVar);
+    if (certLen && certPtr) {
+      jsiConsolePrintf("Loading the Client certificate...\n" );
+      int ret = mbedtls_x509_crt_parse( &sd->owncert, (const unsigned char *)certPtr, certLen );
+      if( ret != 0 ) {
+        jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert' returned -0x%x\n", -ret );
+        return false;
+      }
+    }
+  }
+  return true;
+}
+bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   JsVar *caVar = jsvObjectGetChild(options,"ca",0);
   if (caVar) {
     JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, caVar);
     jsvUnLock(caVar);
     if (caLen && caPtr) {
-      jsiConsolePrintf("Loading the CA root certificate... %s\n", caPtr );
+      jsiConsolePrintf("Loading the CA root certificate...\n" );
       int ret = mbedtls_x509_crt_parse( &sd->cacert, (const unsigned char *)caPtr, caLen );
       if( ret != 0 ) {
-        jsError("HTTPS init failed! mbedtls_x509_crt_parse returned -0x%x\n", -ret );
+        jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca' returned -0x%x\n", -ret );
         return false;
       }
     }
@@ -402,6 +439,8 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   const char *pers = "ssl_client1";
   mbedtls_ssl_init( &sd->ssl );
   mbedtls_ssl_config_init( &sd->conf );
+  mbedtls_pk_init( &sd->pkey );
+  mbedtls_x509_crt_init( &sd->owncert );
   mbedtls_x509_crt_init( &sd->cacert );
   mbedtls_ctr_drbg_init( &sd->ctr_drbg );
   if (( ret = mbedtls_ctr_drbg_seed( &sd->ctr_drbg, ssl_entropy, 0,
@@ -413,7 +452,12 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
   }
 
   if (jsvIsObject(options)) {
-    if (!ssl_load_ca(sd, options)) return false;
+    if (!ssl_load_cacert(sd, options) ||
+        !ssl_load_owncert(sd, options) ||
+        !ssl_load_key(sd, options)) {
+      ssl_freeSocketData(sckt);
+      return false;
+    }
   }
 
   if (( ret = mbedtls_ssl_config_defaults( &sd->conf,
@@ -425,6 +469,14 @@ bool ssl_newSocketData(int sckt, JsVar *options) {
     return false;
   }
 
+  if (sd->pkey.pk_info) {
+    // this would get set if options.key was set
+    if (( ret = mbedtls_ssl_conf_own_cert(&sd->conf, &sd->owncert, &sd->pkey)) != 0 ) {
+      jsError("HTTPS init failed! mbedtls_ssl_conf_own_cert returned -0x%x\n", -ret );
+      ssl_freeSocketData(sckt);
+      return false;
+    }
+  }
   // FIXME no cert checking!
   mbedtls_ssl_conf_authmode( &sd->conf, MBEDTLS_SSL_VERIFY_NONE );
   mbedtls_ssl_conf_ca_chain( &sd->conf, &sd->cacert, NULL );
