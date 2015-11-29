@@ -49,7 +49,7 @@
 typedef long long int64_t;
 
 #include "jswrap_esp8266_network.h"
-#include "jsinteractive.h" // Pull inn the jsiConsolePrint function
+#include "jsinteractive.h"
 #include "network.h"
 #include "network_esp8266.h"
 #include "jswrap_net.h"
@@ -59,8 +59,6 @@ typedef long long int64_t;
 // Forward declaration of functions.
 static void   scanCB(void *arg, STATUS status);
 static void   wifiEventHandler(System_Event_t *event);
-static void   ipAddrToString(struct ip_addr addr, char *string);
-static void   setupJsNetwork();
 static void   pingRecvCB();
 
 // Some common error handling
@@ -1197,147 +1195,6 @@ void jswrap_ESP8266_wifi_mdnsInit() {
 }
 #endif
 
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "reboot",
-  "generate" : "jswrap_ESP8266_reboot"
-}
-Perform a hardware reset/reboot of the esp8266.
-*/
-void jswrap_ESP8266_reboot() {
-  os_printf("Espruino resetting the esp8266\n");
-  os_delay_us(1000); // time for os_printf to drain
-  system_restart();
-}
-
-
-/**
- * Retrieve the reset information that is stored when the ESP8266 resets.
- * The result will be a JS object containing the details.
- */
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "getResetInfo",
-  "generate" : "jswrap_ESP8266_getResetInfo",
-  "return"   : ["JsVar","An object with the reset cause information"],
-  "return_object" : "RstInfo"
-}
-At boot time the esp8266's firmware captures the cause of the reset/reboot.  This function returns this information in an object with the following fields:
-
-* `reason`: "power on", "wdt reset", "exception", "soft wdt", "restart", "deep sleep", or "reset pin"
-* `exccause`: exception cause
-* `epc1`, `epc2`, `epc3`: instruction pointers
-* `excvaddr`: address being accessed
-* `depc`: (?)
-
-*/
-JsVar *jswrap_ESP8266_getResetInfo() {
-  struct rst_info* info = system_get_rst_info();
-  JsVar *restartInfo = jspNewObject(NULL, "RstInfo");
-  extern char *rst_codes[]; // in user_main.c
-
-  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromString(rst_codes[info->exccause]));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc2",     jsvNewFromInteger(info->epc2));
-  jsvObjectSetChildAndUnLock(restartInfo, "epc3",     jsvNewFromInteger(info->epc3));
-  jsvObjectSetChildAndUnLock(restartInfo, "excvaddr", jsvNewFromInteger(info->excvaddr));
-  jsvObjectSetChildAndUnLock(restartInfo, "depc",     jsvNewFromInteger(info->depc));
-  return restartInfo;
-}
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "logDebug",
-  "generate" : "jswrap_ESP8266_logDebug",
-  "params"   : [
-    ["enable", "JsVar", "Enable or disable the debug logging."]
-  ]
-}
-Enable or disable the logging of debug information.  A value of `true` enables debug logging while a value of `false` disables debug logging.  Debug output is sent to UART1 (gpio2).
- */
-void jswrap_ESP8266_logDebug(
-    JsVar *jsDebug
-  ) {
-  uint8 enable = (uint8)jsvGetBool(jsDebug);
-  DBG("> jswrap_ESP8266_logDebug, enable=%d\n", enable);
-  system_set_os_print((uint8)jsvGetBool(jsDebug));
-  DBG("< jswrap_ESP8266_logDebug\n");
-}
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "setCPUFreq",
-  "generate" : "jswrap_ESP8266_setCPUFreq",
-  "params"   : [
-    ["freq", "JsVar", "Desired frequency - either 80 or 160."]
-  ]
-}
-Set the operating frequency of the ESP8266 processor.
-*/
-void jswrap_ESP8266_setCPUFreq(
-    JsVar *jsFreq //!< Operating frequency of the processor.  Either 80 or 160.
-  ) {
-  if (!jsvIsInt(jsFreq)) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency.");
-    return;
-  }
-  int newFreq = jsvGetInteger(jsFreq);
-  if (newFreq != 80 && newFreq != 160) {
-    jsExceptionHere(JSET_ERROR, "Invalid frequency value, must be 80 or 160.");
-    return;
-  }
-  system_update_cpu_freq(newFreq);
-}
-
-
-/**
- *
- */
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "getState",
-  "generate" : "jswrap_ESP8266_getState",
-  "return"   : ["JsVar", "The state of the ESP8266"]
-}
-Returns an object that contains details about the state of the ESP8266 with the following fields:
-
-* `sdkVersion`   - Version of the SDK.
-* `cpuFrequency` - CPU operating frequency in Mhz.
-* `freeHeap`     - Amount of free heap in bytes.
-* `maxCon`       - Maximum number of concurrent connections.
-* `flashMap`     - Configured flash size&map: '512KB:256/256' .. '4MB:512/512'
-* `flashKB`      - Configured flash size in KB as integer
-* `flashChip`    - Type of flash chip as string with manufacturer & chip, ex: '0xEF 0x4016`
-
-*/
-JsVar *jswrap_ESP8266_getState() {
-  // Create a new variable and populate it with the properties of the ESP8266 that we
-  // wish to return.
-  JsVar *esp8266State = jspNewObject(NULL, "ESP8266State");
-  jsvObjectSetChildAndUnLock(esp8266State, "sdkVersion",   jsvNewFromString(system_get_sdk_version()));
-  jsvObjectSetChildAndUnLock(esp8266State, "cpuFrequency", jsvNewFromInteger(system_get_cpu_freq()));
-  jsvObjectSetChildAndUnLock(esp8266State, "freeHeap",     jsvNewFromInteger(system_get_free_heap_size()));
-  jsvObjectSetChildAndUnLock(esp8266State, "maxCon",       jsvNewFromInteger(espconn_tcp_get_max_con()));
-
-  uint32_t map = system_get_flash_size_map();
-  extern char *flash_maps[]; // in user_main.c
-  extern uint16_t flash_kb[]; // in user_main.c
-  jsvObjectSetChildAndUnLock(esp8266State, "flashMap",   jsvNewFromString(flash_maps[map]));
-  jsvObjectSetChildAndUnLock(esp8266State, "flashKB",    jsvNewFromInteger(flash_kb[map]));
-
-  uint32_t fid = spi_flash_get_id();
-  uint32_t chip = (fid&0xff00)|((fid>>16)&0xff);
-  char buff[16];
-  os_sprintf(buff, "0x%02lx 0x%04lx", fid & 0xff, chip);
-  jsvObjectSetChildAndUnLock(esp8266State, "flashChip",   jsvNewFromString(buff));
-  return esp8266State;
-}
-
 /**
  * Handle a response from espconn_gethostbyname.
  * Invoke the callback function to inform the caller that a hostname has been converted to
@@ -1512,10 +1369,8 @@ void jswrap_ESP8266_wifi_init() {
   DBGV("< Wifi.init\n");
 }
 
-/**
- * Perform a network ping request.
- * The parameter can be either a String or a numeric IP address.
- */
+//===== Ping
+
 /*JSON{
   "type"     : "staticmethod",
   "class"    : "ESP8266",
@@ -1526,6 +1381,7 @@ void jswrap_ESP8266_wifi_init() {
     ["pingCallback", "JsVar", "Optional callback function."]
   ]
 }
+Perform a network ping request. The parameter can be either a String or a numeric IP address.
 **Note:** This function should probably be removed, or should it be part of the wifi library?
 */
 void jswrap_ESP8266_ping(
@@ -1579,39 +1435,6 @@ void jswrap_ESP8266_ping(
   ping_start(&pingOpt);
 }
 
-
-/**
- * Dump the data in the socket.
- */
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "dumpSocket",
-  "generate" : "jswrap_ESP8266_dumpSocket",
-  "params"   : [
-    ["socketId","JsVar","The socket to be dumped."]
-  ]
-}
-**Note:** This is a diagnostic function to be removed.
-*/
-void jswrap_ESP8266_dumpSocket(
-    JsVar *socketId //!< The socket to be dumped.
-  ) {
-  esp8266_dumpSocket(jsvGetInteger(socketId)-1);
-}
-
-/*JSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266",
-  "name"     : "dumpAllSocketData",
-  "generate" : "jswrap_ESP8266_dumpAllSocketData"
-}
-**Note:** This is a diagnostic function to be removed.
-Write all the socket data structures to the debug log.
-*/
-void jswrap_ESP8266_dumpAllSocketData() {
-  esp8266_dumpAllSocketData();
-}
 
 /**
  * Handle receiving a response from a ping reply.
@@ -1882,7 +1705,7 @@ static void wifiEventHandler(System_Event_t *evt) {
       MAC2STR(evt->event_info.ap_probereqrecved.mac), evt->event_info.ap_probereqrecved.rssi);
     // "on" event callback
     int rssi = evt->event_info.ap_probereqrecved.rssi;
-    if (rss > 0) rssi = 0;
+    if (rssi > 0) rssi = 0;
     jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
     mac = evt->event_info.sta_connected.mac;
     os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);

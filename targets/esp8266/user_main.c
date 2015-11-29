@@ -26,6 +26,7 @@ typedef long long int64_t;
 #include <jsdevices.h>
 #include <jsinteractive.h>
 #include <jswrap_esp8266_network.h>
+#include <jswrap_esp8266.h>
 #include <ota.h>
 #include "ESP8266_board.h"
 

@@ -37,7 +37,7 @@ typedef long long int64_t;
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jspininfo.h"
-#include "jswrap_esp8266_network.h"
+#include "jswrap_esp8266.h"
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
