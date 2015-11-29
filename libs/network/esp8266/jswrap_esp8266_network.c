@@ -1740,17 +1740,16 @@ static void sendWifiEvent(
 
 static void sendWifiCompletionCB(
     JsVar **g_jsCallback, //!< Pointer to the global callback variable
-    JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
+    char *reason          //!< NULL if successful, error string otherwise
 ) {
   if (!jsvIsFunction(*g_jsCallback)) return; // we ain't got a function pointer: nothing to do
 
   JsVar *params[1];
-  params[0] = jsDetails;
+  params[0] = reason ? jsvNewFromString(reason) : jsvNewNull();
   jsiQueueEvents(NULL, *g_jsCallback, params, 1);
+  jsvUnLock(params[0]);
   // unlock and delete the global callback
-  DBGV("unlocking completion CB\n");
   jsvUnLock(*g_jsCallback);
-  DBGV("unlocked completion CB\n");
   *g_jsCallback = NULL;
 }
 
@@ -1802,7 +1801,6 @@ static void wifiEventHandler(System_Event_t *evt) {
       g_disconnecting = false;
     }
 
-    jsDetails = jspNewObject(NULL, "WifiEventDetails");
     // ssid
     os_strncpy(buf, (char *)evt->event_info.connected.ssid, 32);
     buf[evt->event_info.connected.ssid_len] = 0;
@@ -1821,7 +1819,6 @@ static void wifiEventHandler(System_Event_t *evt) {
       wifiAuth[evt->event_info.auth_change.old_mode],
       wifiAuth[evt->event_info.auth_change.new_mode]);
 
-    jsDetails = jspNewObject(NULL, "WifiEventDetails");
     jsvObjectSetChildAndUnLock(jsDetails, "oldMode",
       jsvNewFromString(wifiAuth[evt->event_info.auth_change.old_mode]));
     jsvObjectSetChildAndUnLock(jsDetails, "newMode",
@@ -1835,42 +1832,62 @@ static void wifiEventHandler(System_Event_t *evt) {
       IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
       IP2STR(&evt->event_info.got_ip.gw));
 
-    jsDetails = jspNewObject(NULL, "WifiEventDetails");
+    // Make Wifi.connected() callback
+    if (jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, NULL);
+    }
+
+    // "on" event callback
     jsvObjectSetChildAndUnLock(jsDetails, "ip",
       networkGetAddressAsString((uint8_t *)&evt->event_info.got_ip.ip, 4, 10, '.'));
     jsvObjectSetChildAndUnLock(jsDetails, "mask",
       networkGetAddressAsString((uint8_t *)&evt->event_info.got_ip.mask, 4, 10, '.'));
     jsvObjectSetChildAndUnLock(jsDetails, "gw",
       networkGetAddressAsString((uint8_t *)&evt->event_info.got_ip.gw, 4, 10, '.'));
-
-    // Make Wifi.connected() callback
-    if (jsvIsFunction(g_jsGotIpCallback))
-      sendWifiCompletionCB(&g_jsGotIpCallback, jsDetails);
-    // "on" event callback
     sendWifiEvent(evt->event, jsDetails);
     break;
 
   case EVENT_STAMODE_DHCP_TIMEOUT:
     os_printf("Wifi event: DHCP timeout");
+    // Make Wifi.connected() callback
+    if (jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, "DHCP timeout");
+    }
+
     sendWifiEvent(evt->event, jsvNewNull());
     break;
 
   case EVENT_SOFTAPMODE_STACONNECTED:
     os_printf("Wifi event: station " MACSTR " joined, AID = %d\n",
       MAC2STR(evt->event_info.sta_connected.mac), evt->event_info.sta_connected.aid);
-    sendWifiEvent(evt->event, jsvNewNull());
+    // "on" event callback
+    mac = evt->event_info.sta_connected.mac;
+    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    sendWifiEvent(evt->event, jsDetails);
     break;
 
   case EVENT_SOFTAPMODE_STADISCONNECTED:
     os_printf("Wifi event: station " MACSTR " left, AID = %d\n",
       MAC2STR(evt->event_info.sta_disconnected.mac), evt->event_info.sta_disconnected.aid);
-    sendWifiEvent(evt->event, jsvNewNull());
+    // "on" event callback
+    mac = evt->event_info.sta_disconnected.mac;
+    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    sendWifiEvent(evt->event, jsDetails);
     break;
 
   case EVENT_SOFTAPMODE_PROBEREQRECVED:
     os_printf("Wifi event: probe request from station " MACSTR ", rssi = %d\n",
       MAC2STR(evt->event_info.ap_probereqrecved.mac), evt->event_info.ap_probereqrecved.rssi);
-    sendWifiEvent(evt->event, jsvNewNull());
+    // "on" event callback
+    int rssi = evt->event_info.ap_probereqrecved.rssi;
+    if (rss > 0) rssi = 0;
+    jsvObjectSetChildAndUnLock(jsDetails, "rssi", jsvNewFromInteger(rssi));
+    mac = evt->event_info.sta_connected.mac;
+    os_sprintf(macAddrString, macFmt, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    jsvObjectSetChildAndUnLock(jsDetails, "mac", jsvNewFromString(macAddrString));
+    sendWifiEvent(evt->event, jsDetails);
     break;
 
   default:
