@@ -74,21 +74,19 @@ static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
 
-/**@brief Function for assert macro callback.
- *
- * @details This function will be called in case of an assert in the SoftDevice.
- *
- * @warning This handler is an example only and does not fit a final product. You need to analyse 
- *          how your product is supposed to react in case of Assert.
- * @warning On assert from the SoftDevice, the system can only recover on reset.
- *
- * @param[in] line_num    Line number of the failing ASSERT call.
- * @param[in] p_file_name File name of the failing ASSERT call.
- */
-void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
-{
-    app_error_handler(DEAD_BEEF, line_num, p_file_name);
+// ---------------------------------------------------------------------------
+// Error handlers...
+void app_error_handler(uint32_t error_code, uint32_t line_num, const uint8_t * p_file_name) {
+  jsiConsolePrintf("NRF ERROR 0x%x at %s:%d\n", error_code, p_file_name, line_num);
+  jsiConsolePrint("REBOOTING.\n");
+  jshTransmitFlush();
+  NVIC_SystemReset();
 }
+
+void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name) {
+  app_error_handler(0xDEADBEEF, line_num, p_file_name);
+}
+// ---------------------------------------------------------------------------
 
 
 /**@brief Function for the GAP initialization.

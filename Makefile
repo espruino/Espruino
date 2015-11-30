@@ -1311,7 +1311,6 @@ ifdef NRF5X
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
