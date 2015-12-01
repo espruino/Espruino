@@ -8,6 +8,7 @@
 *.bin
 *.pyc
 gen/*
+.vagrant/*
 boards/*.html
 boards/*.json
 zipcontents
