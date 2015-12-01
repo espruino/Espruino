@@ -50,7 +50,7 @@ of beta.  */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_ADV_INTERVAL                1600                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 1 sec). */
-#define APP_ADV_TIMEOUT_IN_SECONDS      0x3FFF                                      /**< The advertising timeout (in units of seconds). */
+#define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS            (2)                                         /**< Maximum number of simultaneously created timers. */
@@ -443,6 +443,16 @@ Data is of the form `{ UUID : data_as_byte_array }`. For example to return batte
 NRF.setAdvertising({
   0x180F : [95]
 });
+```
+
+Or you could report the current temperature:
+
+```
+setInterval(function() {
+  NRF.setAdvertising({
+    0x1809 : [0|E.getTemperature()]
+  });
+}, 30000);
 ```
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
