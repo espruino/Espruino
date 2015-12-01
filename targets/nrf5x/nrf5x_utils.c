@@ -19,7 +19,6 @@
 #include "nrf.h"
 #include "nrf_gpio.h"
 #include "nrf_delay.h"
-#include "nrf_temp.h"
 #include "app_uart.h"
 #include "nrf_error.h"
 #include "nrf_nvmc.h"
@@ -72,51 +71,6 @@ void nrf_utils_read_flash_bytes(uint8_t * buf, uint32_t addr, uint32_t len)
 void nrf_utils_write_flash_bytes(uint32_t addr, uint8_t * buf, uint32_t len)
 {
   nrf_nvmc_write_bytes(addr, buf, len);
-}
-
-void nrf_utils_gpio_pin_set_state(uint32_t pin, uint32_t state)
-{
-	switch (state)
-	{
-	  case 0 :
-	    nrf_gpio_cfg_default(pin);
-		break;
-	  case 1 :
-	    nrf_gpio_cfg_output(pin);
-	  	break;
-	  case 2 :
-        nrf_gpio_cfg_output(pin);
-		break;
-	  case 3 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_NOPULL);
-	  	break;
-	  case 4 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLUP);
-		break;
-	  case 5 :
-		nrf_gpio_cfg_input(pin, NRF_GPIO_PIN_PULLDOWN);
-		break;
-	  case 6 :
-	    break;
-	  case 7 :
-	  	break;
-	  case 8 :
-		break;
-	  case 9 :
-	  	break;
-	  case 10 :
-	    break;
-	  case 11 :
-	  	break;
-	  case 12 :
-		break;
-	  case 13 ://wrong...
-	  	break;
-	  case 14 : //wrong...
-	    break;
-	  default :
-		break;
-	}
 }
 
 uint32_t nrf_utils_gpio_pin_get_state(uint32_t pin)
@@ -189,27 +143,6 @@ uint8_t nrf_utils_get_random_number()
   NRF_RNG -> TASKS_STOP = 1;
 
   return rand_num;
-
-}
-
-uint32_t nrf_utils_read_temperature(void) {
-  
-  nrf_temp_init();
-
-  int32_t volatile nrf_temp;
-
-  NRF_TEMP->TASKS_START = 1;
-  while (NRF_TEMP->EVENTS_DATARDY == 0)
-  {
-    // Do nothing...
-  }
-  NRF_TEMP->EVENTS_DATARDY = 0;
-
-  nrf_temp = (nrf_temp_read() / 4);
-
-  NRF_TEMP->TASKS_STOP = 1;
-
-  return (uint32_t) nrf_temp;
 
 }
 
