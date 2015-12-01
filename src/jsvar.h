@@ -62,8 +62,9 @@ typedef enum {
     JSV_STRING_0    = JSV_NAME_STRING_MAX+1, // simple string value of length 0
     JSV_STRING_MAX  = JSV_STRING_0+JSVAR_DATA_STRING_LEN,
     JSV_FLAT_STRING = JSV_STRING_MAX+1, ///< Flat strings store the length (in chars) as an int, and then the subsequent JsVars (in memory) store data
-  _JSV_STRING_END = JSV_FLAT_STRING,
-    JSV_STRING_EXT_0 = JSV_FLAT_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
+    JSV_NATIVE_STRING = JSV_FLAT_STRING+1, ///< Native strings store an address and length, and reference the underlying data directly
+  _JSV_STRING_END = JSV_NATIVE_STRING,
+    JSV_STRING_EXT_0 = JSV_NATIVE_STRING+1, ///< extra character data for string (if it didn't fit in first JsVar). These use unused pointer fields for extra characters
     JSV_STRING_EXT_MAX = JSV_STRING_EXT_0+JSVAR_DATA_STRING_MAX_LEN,
     _JSV_VAR_END     = JSV_STRING_EXT_MAX, ///< End of variable types
     // _JSV_VAR_END is:
@@ -131,6 +132,12 @@ typedef struct {
   uint16_t argTypes; ///< Actually a list of JsnArgumentType
 } PACKED_FLAGS JsVarDataNative;
 
+/// Data for native strings
+typedef struct {
+  char (*ptr)(void);
+  uint16_t len;
+} PACKED_FLAGS JsVarDataNativeStr;
+
 /// References
 typedef struct {
   /* padding for data. Must be big enough for an int */
@@ -186,6 +193,7 @@ typedef union {
     JsVarFloat floating; ///< The contents of this variable if it is a double
     JsVarDataArrayBufferView arraybuffer; ///< information for array buffer views.
     JsVarDataNative native; ///< A native function
+    JsVarDataNativeStr nativeStr; ///< A native string
     JsVarDataRef ref; ///< References
 } PACKED_FLAGS JsVarData;
 
@@ -364,6 +372,7 @@ extern ALWAYS_INLINE bool jsvIsString(const JsVar *v); ///< String, or a NAME to
 extern ALWAYS_INLINE bool jsvIsBasicString(const JsVar *v); ///< Just a string (NOT a name)
 extern ALWAYS_INLINE bool jsvIsStringExt(const JsVar *v); ///< The extra bits dumped onto the end of a string to store more data
 extern ALWAYS_INLINE bool jsvIsFlatString(const JsVar *v);
+extern ALWAYS_INLINE bool jsvIsNativeString(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsNumeric(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFunction(const JsVar *v);
 extern ALWAYS_INLINE bool jsvIsFunctionReturn(const JsVar *v); ///< Is this a function with an implicit 'return' at the start?
@@ -429,6 +438,8 @@ static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
   if (f == JSV_FLAT_STRING)
     return (size_t)v->varData.integer;
+  if (f == JSV_NATIVE_STRING)
+    return (size_t)v->varData.nativeStr.len;
   assert(f >= JSV_NAME_STRING_INT_0);
   assert((JSV_NAME_STRING_INT_0 < JSV_NAME_STRING_0) &&
          (JSV_NAME_STRING_0 < JSV_STRING_0) &&
@@ -448,7 +459,7 @@ static ALWAYS_INLINE size_t jsvGetCharactersInVar(const JsVar *v) {
 /// This is the number of characters a JsVar can contain, NOT string length
 static ALWAYS_INLINE void jsvSetCharactersInVar(JsVar *v, size_t chars) {
   unsigned int f = v->flags&JSV_VARTYPEMASK;
-  assert(!jsvIsFlatString(v));
+  assert(!(jsvIsFlatString(v) || jsvIsNativeString(v)));
 
   JsVarFlags m = (JsVarFlags)(v->flags&~JSV_VARTYPEMASK);
   assert(f >= JSV_NAME_STRING_INT_0);

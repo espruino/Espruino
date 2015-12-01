@@ -26,7 +26,7 @@ JslCharPos jslCharPosClone(JslCharPos *pos) {
 
 /// Return the next character (do not move to the next character)
 static ALWAYS_INLINE char jslNextCh(JsLex *lex) {
-  return (char)(lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0);
+  return (char)(lex->it.ptr ? lex->it.ptr[lex->it.charIdx] : 0);
 }
 
 /// Move on to the next character
@@ -42,10 +42,12 @@ static void NO_INLINE jslGetNextCh(JsLex *lex) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && jsvGetLastChild(lex->it.var)) {
       lex->it.var = _jsvGetAddressOf(jsvGetLastChild(lex->it.var));
+      lex->it.ptr = &lex->it.var->varData.str[0];
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       lex->it.var = 0;
+      lex->it.ptr = 0;
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
     }
