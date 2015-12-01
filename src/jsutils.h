@@ -39,9 +39,9 @@ extern int isfinite ( double );
 
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v82"
+#define JS_VERSION "1v83"
 #else
-#define JS_VERSION "1v82." BUILDNUMBER
+#define JS_VERSION "1v83." BUILDNUMBER
 #endif
 /*
   In code:
@@ -222,10 +222,10 @@ typedef int64_t JsSysTime;
    } while(0)
  #elif defined(__STRING)
    // Normal assert with string in RAM
-   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)) } while(0)
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)); } while(0)
  #else
    // Limited assert due to compiler not being able to stringify a parameter
-   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,"") } while(0)
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,""); } while(0)
  #endif
 #else
  #define assert(X) do { } while(0)

@@ -130,6 +130,28 @@ and
 
 ----
 
+##wifi.getAPIP
+
+`wifi.getIP()`
+
+Returns an object that contains the details of the current access point IP address.  The object contains:
+
+* `ip` - The current IP address
+* `gw` - The current Gateway address
+* `netmask` - The current Netmask value
+* `mac` - The MAC Address of the access point interface.
+
+Each of these properties are 32 bit integers (4 bytes corresponding to the IP address).  To convert these
+into string dotted decimal format one can use the `ESP8266WiFi.getAddressAsString` function.
+
+For example:
+
+    var wifi = require("wifi");
+    var ipInfo = wifi.getAPIP();
+    print("Wifi AP IP info: " + JSON.stringify(ipInfo));
+
+----
+
 ##wifi.connect
 
 Connect to a named access point.
@@ -229,6 +251,7 @@ Returns an object that contains the details of the current IP address.  The obje
 * `ip` - The current IP address
 * `gw` - The current Gateway address
 * `netmask` - The current Netmask value
+* `mac` - The MAC Address of the station interface.
 
 Each of these properties are 32 bit integers (4 bytes corresponding to the IP address).  To convert these
 into string dotted decimal format one can use the `ESP8266WiFi.getAddressAsString` function.

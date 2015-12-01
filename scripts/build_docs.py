@@ -217,15 +217,15 @@ html("    var clazz = (node.name && node.name.substr(0,2) === \"t_\") ? \"bwrdbl
 html("    node.className = node.className + \" \" + clazz;")
 html("    setTimeout(function(){ node.className = node.className.replace(new RegExp(\"\\s*\" + clazz + \"\\s*\",\"g\"),\"\"); },750);")
 html("  }</script>")
-html("  <script>function gopos(nme){")
-html("    document.location = \"#\" + nme;")
+html("  <script>function place(nme){")
 html("    var ns = document.getElementsByName(nme);")
 html("    if (ns.length > 0) {")
 html("      var n = ns[0], t = 0 - Math.floor(window.innerHeight * 0.2);")
 html("      if (n.offsetParent) { do { t += n.offsetTop; } while ( n = n.offsetParent) }")
-html("      window.scroll(0,(t < 0) ? 0 : t);")
 html("      blush(ns[0]);")
+html("      setTimeout(function(){ window.scroll(0,(t < 0) ? 0 : t); },10);")
 html("    }")
+html("    return true;")
 html("  }</script>")
 html("  <script>function toppos(){")
 html("    document.location=\"#top\"")
@@ -249,23 +249,23 @@ links = {}
 jsondatas = sorted(jsondatas, key=lambda s: common.get_name_or_space(s).lower())
 
 html("  <h2><a name=\"contents\">Contents</a></h2>")
-html("  <h3><a class=\"blush\" name=\"t__global\" href=\"javascript:gopos('_global');\">Globals</A></h3>")
+html("  <h3><a class=\"blush\" name=\"t__global\" href=\"#_global\" onclick=\"place('_global');\">Globals</A></h3>")
 html("  <ul>")
 for jsondata in jsondatas:
   if "name" in jsondata and not "class" in jsondata and not jsondata["type"]=="object":
     link = get_link(jsondata)
-    html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"javascript:gopos('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
+    html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
     if not "no_create_links" in jsondata:
       links[get_prefixed_name(jsondata)] = link
     detail.append(jsondata)
 for className in sorted(classes, key=lambda s: s.lower()):
   html("  </ul>")
-  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"javascript:gopos('"+className+"');\">"+className+"</a></h3>")
+  html("  <h3><a class=\"blush\" name=\"t_"+className+"\" href=\"#"+className+"\" onclick=\"place('"+className+"');\">"+className+"</a></h3>")
   html("  <ul>")
   for jsondata in jsondatas:
     if "name" in jsondata and "class" in jsondata and jsondata["class"]==className:
       link = get_link(jsondata)
-      html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"javascript:gopos('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
+      html("    <li><a class=\"blush\" name=\"t_"+link+"\" href=\"#"+link+"\" onclick=\"place('"+link+"');\">"+get_surround(jsondata)+"</a></li>")
       if not "no_create_links" in jsondata:
         links[get_prefixed_name(jsondata)] = link
       detail.append(jsondata)
@@ -291,7 +291,7 @@ for jsondata in detail:
 
   if className!=lastClass:
     lastClass=className
-    html("<h2 class=\"class\"><a class=\"blush\" name=\""+linkName+"\" href=\"javascript:gopos('t_"+linkName+"');\">"+niceName+"</a></h2>")
+    html("<h2 class=\"class\"><a class=\"blush\" name=\""+linkName+"\" href=\"#t_"+linkName+"\" onclick=\"place('t_"+linkName+"');\">"+niceName+"</a></h2>")
     html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
     for j in jsondatas:
       if (j["type"]=="class" or j["type"]=="library") and j["class"]==className and "description" in j:
@@ -317,7 +317,7 @@ for jsondata in detail:
         html("    <li><a href=\"#"+get_link(j)+"\">"+get_surround(j)+"</a></li>")
     html("  </ul>")
   link = get_link(jsondata)
-  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"javascript:gopos('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a></h3>")
+  html("  <h3 class=\"detail\"><a class=\"blush\" name=\""+link+"\" href=\"#t_"+link+"\" onclick=\"place('t_"+link+"','"+linkName+"');\">"+get_fullname(jsondata)+"</a></h3>")
   insert_mdn_link(jsondata);      
   html("  <p class=\"top\"><a href=\"javascript:toppos();\">(top)</a></p>")
   html("  <h4>Call type:</h4>")

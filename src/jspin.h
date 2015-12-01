@@ -226,7 +226,8 @@ typedef enum {
   JSPFTS_DEVICE        = 1, ///< The device itself
   JSPFTS_DEVICE_NUMBER = 2, ///< The device's number
   JSPFTS_SPACE         = 4, ///< A space between device and pin type
-  JSPFTS_TYPE          = 8  ///< The pin type (RX/TX/etc)
+  JSPFTS_TYPE          = 8,  ///< The pin type (RX/TX/etc)
+  JSPFTS_JS_NAMES      = 16 //< Use JS names - eg. Serial, not USART
 } JshPinFunctionToStringFlags;
 
 /// Given a full pin function, return a string describing it depending of what's in the flags enum

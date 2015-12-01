@@ -282,13 +282,22 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
+<<<<<<< HEAD
 void ICACHE_RAM_ATTR jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+=======
+ICACHE_RAM_ATTR void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+>>>>>>> upstream/master
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return;
   }
+<<<<<<< HEAD
   if (!jsvIsArray(jsArrayOfData)) {
     jsExceptionHere(JSET_ERROR, "Data must be an array.");
+=======
+  if (jsArrayOfData == NULL) {
+    jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
+>>>>>>> upstream/master
     return;
   }
 
@@ -306,13 +315,11 @@ void ICACHE_RAM_ATTR jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData)
     return;
   }
 
-  uint32_t numBytes = dataLength;
-
   uint8_t *p, *end, pix, mask;
   uint32_t t, time0, time1, period, c, startTime, pinMask;
   pinMask = _BV(pin);
   p = (uint8_t *)pixels;
-  end = p + numBytes;
+  end = p + dataLength;
   pix = *p++;
   mask = 0x80;
   c=0;

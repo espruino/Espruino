@@ -136,30 +136,7 @@ BASEADDRESS=0x08000000
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 # TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
 # ---------------------------------------------------------------------------------
-ifdef ESPRUINO_1V0
-EMBEDDED=1
-#USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-BOARD=ESPRUINOBOARD_R1_0
-DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef ESPRUINO_1V1
-EMBEDDED=1
-DEFINES+=-DESPRUINO_1V1
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-BOARD=ESPRUINOBOARD_R1_1
-DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef ESPRUINO_1V3
+ifdef ESPRUINO_1V3
 EMBEDDED=1
 DEFINES+=-DESPRUINO_1V3
 USE_NET=1
@@ -171,41 +148,6 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
-
-else ifdef PICO_1V0
-EMBEDDED=1
-USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
-USE_GRAPHICS=1
-BOARD=PICO_R1_0
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef PICO_1V1
-EMBEDDED=1
-USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V1
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-BOARD=PICO_R1_1
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef PICO_1V2
-EMBEDDED=1
-#USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V2
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-USE_HASHLIB=1
-BOARD=PICO_R1_2
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
 
 else ifdef PICO_1V3
 EMBEDDED=1
@@ -222,7 +164,7 @@ USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
@@ -1369,7 +1311,6 @@ ifdef NRF5X
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
@@ -1379,7 +1320,6 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \

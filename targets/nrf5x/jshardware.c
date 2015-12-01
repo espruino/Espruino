@@ -373,10 +373,7 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
   jstSetWakeUp(timeUntilWake);
-  __WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
-  // TODO: wasn't I supposed to call into the SoftDevice for this?
-  // ... to be honest we should really use RTC1 for this so the high speed
-  // oscillator can be turned off, but app_timer uses it at the moment
+  sd_app_evt_wait(); // Go to sleep, wait to be woken up
 
   return true;
 }
