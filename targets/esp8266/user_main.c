@@ -121,7 +121,7 @@ void jshPrintBanner() {
   os_printf("Espruino "JS_VERSION"\nFlash map %s, manuf 0x%lx chip 0x%lx\n",
       flash_maps[map], fid & 0xff, chip);
   jsiConsolePrintf(
-    "WARNING: the esp8266 port is in beta, don't expect everything to work\n"
+    "WARNING: the esp8266 port is in beta!\n"
     "Flash map %s, manuf 0x%x chip 0x%x\n",
     flash_maps[map], fid & 0xff, chip);
   if ((chip == 0x4013 && map != 0) || (chip == 0x4016 && map != 4)) {
@@ -244,7 +244,7 @@ static void initDone() {
   jshInit(); // Initialize the hardware
   jsvInit(); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
-  jswrap_ESP8266_wifi_init(); // Initialize the networking subsystem
+  jswrap_ESP8266_wifi_init2();
 
   // Register the event handlers.
   system_os_task(eventHandler, TASK_APP_QUEUE, taskAppQueue, TASK_QUEUE_LENGTH);
@@ -282,7 +282,6 @@ void user_uart_init() {
  */
 void user_rf_pre_init() {
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
-  jswrap_ESP8266_wifi_pre_init(); // ensures that the wifi comes up as desired
 }
 
 /**
@@ -305,6 +304,9 @@ void user_init() {
   os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 
   espFlashKB = flash_kb[system_get_flash_size_map()];
+
+  // Time to initialize Wifi so it comes up the way we want it
+  jswrap_ESP8266_wifi_init1();
 
   // Register the ESP8266 initialization callback.
   system_init_done_cb(initDone);

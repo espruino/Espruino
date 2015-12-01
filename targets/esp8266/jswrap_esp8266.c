@@ -33,7 +33,6 @@
 typedef long long int64_t;
 
 #include <jswrap_esp8266.h>
-#include "jswrap_esp8266_network.h"
 #include "jsinteractive.h" // Pull inn the jsiConsolePrint function
 
 #define _BV(bit) (1 << (bit))
@@ -188,7 +187,87 @@ JsVar *jswrap_ESP8266_getState() {
   char buff[16];
   os_sprintf(buff, "0x%02lx 0x%04lx", fid & 0xff, chip);
   jsvObjectSetChildAndUnLock(esp8266State, "flashChip",   jsvNewFromString(buff));
+
   return esp8266State;
+}
+
+static void addFlashArea(JsVar *jsFreeFlash, uint32_t addr, uint32_t length) {
+  JsVar *jsArea = jspNewObject(NULL, "FreeFlash");
+  jsvObjectSetChildAndUnLock(jsArea, "area", jsvNewFromInteger(addr));
+  jsvObjectSetChildAndUnLock(jsArea, "length", jsvNewFromInteger(length));
+  jsvArrayPush(jsFreeFlash, jsArea);
+  jsvUnLock(jsArea);
+}
+
+//===== ESP8266.getFreeFlash
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "getFreeFlash",
+  "generate" : "jswrap_ESP8266_getFreeFlash",
+  "return"   : ["JsVar", "Array of objects with `addr` and `length` properties describing the free flash areas available"]
+}
+*/
+JsVar *jswrap_ESP8266_getFreeFlash() {
+  JsVar *jsFreeFlash = jsvNewArray(NULL, 0);
+  // Area reserved for EEPROM
+  addFlashArea(jsFreeFlash, 0x77000, 0x1000);
+
+  // need 1MB of flash to have more space...
+  extern uint16_t espFlashKB; // in user_main,c
+  if (espFlashKB > 512) {
+    addFlashArea(jsFreeFlash, 0x80000, 0x1000);
+    if (espFlashKB > 1024) {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x9000);
+    } else {
+      addFlashArea(jsFreeFlash, 0xf7000, 0x5000);
+    }
+  }
+
+  return jsFreeFlash;
+}
+
+//===== ESP8266.crc32
+
+
+/* This is the basic CRC-32 calculation with some optimization but no
+ * table lookup. The the byte reversal is avoided by shifting the crc reg
+ * right instead of left and by using a reversed 32-bit word to represent
+ * the polynomial.
+ * From: http://www.hackersdelight.org/hdcodetxt/crc.c.txt
+ */
+uint32_t crc32(uint8_t *buf, uint32_t len) {
+  uint32_t crc = 0xFFFFFFFF;
+  while (len--) {
+    uint8_t byte = *buf++;
+    crc = crc ^ byte;
+    for (int8_t j=7; j>=0; j--) {
+      uint32_t mask = -(crc & 1);
+      crc = (crc >> 1) ^ (0xEDB88320 & mask);
+    }
+  }
+  return ~crc;
+}
+
+/*JSON{
+ "type"     : "staticmethod",
+ "class"    : "ESP8266",
+ "name"     : "crc32",
+ "generate" : "jswrap_ESP8266_crc32",
+ "return"   : ["JsVar", "32-bit CRC"],
+ "params"   : [
+   ["arrayOfData", "JsVar", "Array of data to CRC"]
+ ]
+}*/
+JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
+  if (!jsvIsArray(jsData)) {
+    jsExceptionHere(JSET_ERROR, "Data must be an array.");
+    return NULL;
+  }
+  JSV_GET_AS_CHAR_ARRAY(data, len, jsData);
+  uint32_t crc = crc32((uint8_t*)data, len);
+  return jsvNewFromInteger(crc);
 }
 
 //===== ESP8266.neopixelWrite
@@ -203,13 +282,9 @@ JsVar *jswrap_ESP8266_getState() {
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
-__attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+void ICACHE_RAM_ATTR jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
-    return;
-  }
-  if (jsArrayOfData == NULL) {
-    jsExceptionHere(JSET_ERROR, "No data to send to LEDs.");
     return;
   }
   if (!jsvIsArray(jsArrayOfData)) {
@@ -227,7 +302,7 @@ __attribute__((section(".force.text"))) void jswrap_ESP8266_neopixelWrite(Pin pi
     return;
   }
   if (dataLength % 3 != 0) {
-    jsExceptionHere(JSET_ERROR, "Data length must multiples of RGB bytes (3).");
+    jsExceptionHere(JSET_ERROR, "Data length must be a multiple of 3 (RGB).");
     return;
   }
 

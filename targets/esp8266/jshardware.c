@@ -1080,7 +1080,7 @@ void jshFlashRead(
     uint32_t len   //!< Length of data to read
   ) {
   //os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
-  //    buf, len, addr, FLASH_MAX);
+  //  buf, len, addr, FLASH_MAX);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1091,8 +1091,8 @@ void jshFlashRead(
   uint8_t *dest = buf;
   uint32_t bytes = *(uint32_t*)(addr & ~3);
   while (len-- > 0) {
-    if (addr & 3 == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[(uint32)addr++ & 3];
+    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
   }
 }
 
@@ -1116,6 +1116,7 @@ void jshFlashWrite(
   if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
 
   // since things are guaranteed to be aligned we can just call the SDK :-)
+  if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK) return; // give up
   SpiFlashOpResult res;
   res = spi_flash_write(addr, buf, len);
   if (res != SPI_FLASH_RESULT_OK)

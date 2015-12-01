@@ -19,12 +19,15 @@
 #include "jsvar.h"
 
 //===== Wifi library
+void   jswrap_ESP8266_wifi_init1();
+void   jswrap_ESP8266_wifi_init2();
 void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_startAP(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_scan(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_save(JsVar *jsWhat);
+void   jswrap_ESP8266_wifi_save(JsVar *what);
+void   jswrap_ESP8266_wifi_restore(void);
 JsVar *jswrap_ESP8266_wifi_getStatus(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_setConfig(JsVar *jsOptions);
 JsVar *jswrap_ESP8266_wifi_getDetails(JsVar *jsCallback);

@@ -49,12 +49,13 @@
 typedef long long int64_t;
 
 #include "jswrap_esp8266_network.h"
+#include "jswrap_esp8266.h"
 #include "jsinteractive.h"
 #include "network.h"
 #include "network_esp8266.h"
 #include "jswrap_net.h"
 
-#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
+//#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
 
 // Forward declaration of functions.
 static void   scanCB(void *arg, STATUS status);
@@ -94,6 +95,19 @@ static bool g_disconnecting;
 
 // Global data structure for ping request
 static struct ping_option pingOpt;
+
+// Configuration save to flash
+typedef struct {
+  uint16_t    length, version;
+  uint32_t    crc;
+  uint8_t     mode, phyMode;
+  uint8_t     sleepType, ssidLen;
+  uint8_t     authMode, hidden;
+  char        staSsid[32], staPass[64];
+  char        apSsid[32], apPass[64];
+  char        dhcpHostname[64];
+} Esp8266_config;
+static Esp8266_config esp8266Config;
 
 //===== Mapping from enums to strings
 
@@ -1055,7 +1069,6 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     ["what", "JsVar", "An optional parameter to specify what to save, on the esp8266 the two supported values are `clear` and `sta+ap`. The default is `sta+ap`"]
   ]
 }
-**Not yet implemented on the esp8266**
 Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is clear such that wifi remains disabled at boot. The configuration includes whether the station and access point are enabled, the SSIDs, passwords, and phy configured.
 
 * `station` - Status of the wifi station: `off`, `connecting`, ...
@@ -1065,7 +1078,112 @@ Save the current wifi configuration (station and access point) to flash and auto
 * `savedMode` - The saved operation mode which will be applied at boot time: `off`, `sta`, `ap`, `sta+ap`.
 
 */
-void jswrap_ESP8266_wifi_save(JsVar *jsCallback) {
+void jswrap_ESP8266_wifi_save(JsVar *what) {
+  DBGV("> Wifi.save\n");
+  uint32_t flashBlock[256];
+  Esp8266_config *conf=(Esp8266_config *)flashBlock;
+  os_memset(flashBlock, 0, sizeof(flashBlock));
+
+  conf->length = 1024;
+  conf->version = 24;
+
+  if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
+    conf->mode = 0; // disable
+  } else {
+    conf->mode = wifi_get_opmode();
+  }
+
+  conf->phyMode = wifi_get_phy_mode();
+  conf->sleepType = wifi_get_sleep_type();
+  DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
+      sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
+
+  struct station_config sta_config;
+  wifi_station_get_config(&sta_config);
+  os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
+  os_strncpy(conf->staPass, (char *)sta_config.password, 64);
+
+  struct softap_config ap_config;
+  wifi_softap_get_config(&ap_config);
+  conf->authMode = ap_config.authmode;
+  conf->hidden = ap_config.ssid_hidden;
+  conf->ssidLen = ap_config.ssid_len;
+  os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
+  os_strncpy(conf->apPass, (char *)ap_config.password, 64);
+  DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
+
+  char *hostname = wifi_station_get_hostname();
+  if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
+
+  conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
+  DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
+  DBGV("< Wifi.save: write completed\n");
+}
+
+//===== Wifi.restore
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "restore",
+  "generate" : "jswrap_ESP8266_wifi_restore"
+}
+Restores the saved Wifi configuration from flash. See `Wifi.save()`.
+*/
+void jswrap_ESP8266_wifi_restore(void) {
+  DBG("Wifi.restore\n");
+  uint32_t flashBlock[256];
+  Esp8266_config *conf=(Esp8266_config *)flashBlock;
+  os_memset(flashBlock, 0, sizeof(flashBlock));
+  jshFlashRead(flashBlock, 0x7B000, sizeof(flashBlock));
+  DBG("Wifi.restore: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  uint32_t crcRd = conf->crc;
+  conf->crc = 0;
+  uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
+
+  // check that we have a good flash config
+  if (conf->length != 1024 || conf->version != 24 || crcRd != crcCalc ||
+      conf->phyMode > PHY_MODE_11N || conf->sleepType > MODEM_SLEEP_T ||
+      conf->mode > STATIONAP_MODE) {
+    DBG("Wifi.restore cannot restore: version read=%d exp=%d, crc read=0x%08lx cacl=0x%08lx\n",
+        conf->version, 24, crcRd, crcCalc);
+    wifi_set_phy_mode(PHY_MODE_11N);
+    wifi_set_opmode_current(SOFTAP_MODE);
+    return;
+  }
+
+  DBG("Wifi.restore: phy=%d sleep=%d opmode=%d\n", conf->phyMode, conf->sleepType, conf->mode);
+
+  wifi_set_phy_mode(conf->phyMode);
+  wifi_set_sleep_type(conf->sleepType);
+  wifi_set_opmode_current(conf->mode);
+
+  if (conf->mode & SOFTAP_MODE) {
+    struct softap_config ap_config;
+    os_memset(&ap_config, 0, sizeof(ap_config));
+    ap_config.authmode = conf->authMode;
+    ap_config.ssid_hidden = conf->hidden;
+    ap_config.ssid_len = conf->ssidLen;
+    os_strncpy((char *)ap_config.ssid, conf->apSsid, 32);
+    os_strncpy((char *)ap_config.password, conf->apPass, 64);
+    ap_config.channel = 1;
+    ap_config.max_connection = 4;
+    ap_config.beacon_interval = 100;
+    wifi_softap_set_config(&ap_config);
+    DBG("Wifi.restore: AP=%s\n", ap_config.ssid);
+  }
+
+  if (conf->mode & STATION_MODE) {
+    wifi_station_set_hostname(conf->dhcpHostname);
+
+    struct station_config sta_config;
+    os_memset(&sta_config, 0, sizeof(sta_config));
+    os_strncpy((char *)sta_config.ssid, conf->staSsid, 32);
+    os_strncpy((char *)sta_config.password, conf->staPass, 64);
+    wifi_station_set_config(&sta_config);
+    DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
+  }
 }
 
 
@@ -1336,28 +1454,24 @@ void jswrap_ESP8266_wifi_reset() {
   DBGV("< Wifi reset\n");
 }
 
-//===== Pre-init wifi
+//===== Wifi init1
 
-// This function is called in the user_pre_rf_init and we ensure no auto-connect happens
-// In the future, we will want to restore settings here so we can set-up the RF auto-connect
-// accordingly
-void jswrap_ESP8266_wifi_pre_init() {
-  wifi_station_set_auto_connect(false);
-}
+// This function is called in the user_main to set-up the wifi based on what was saved in flash
+void jswrap_ESP8266_wifi_init1() {
+  DBGV("> Wifi.init1\n");
 
-//===== Init wifi
-
-// This function is called at boot time to initialize the wifi
-void jswrap_ESP8266_wifi_init() {
-  DBGV("> Wifi.init\n");
-
-  wifi_set_opmode(SOFTAP_MODE);
-  wifi_set_phy_mode(PHY_MODE_11N);
-  wifi_set_sleep_type(MODEM_SLEEP_T);
+  jswrap_ESP8266_wifi_restore();
 
   // register the state change handler so we get debug printout for sure
   wifi_set_event_handler_cb(wifiEventHandler);
-  DBG("Wifi init, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
+  DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
+}
+
+//===== Wifi init2
+
+// This function is called once the initialization completes to actually hook-up the network
+void jswrap_ESP8266_wifi_init2() {
+  DBGV("> Wifi.init2\n");
 
   // initialize the network stack
   netInit_esp8266_board();
@@ -1366,7 +1480,7 @@ void jswrap_ESP8266_wifi_init() {
   networkSet(&net);
   networkState = NETWORKSTATE_ONLINE;
 
-  DBGV("< Wifi.init\n");
+  DBGV("< Wifi.init2\n");
 }
 
 //===== Ping
