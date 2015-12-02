@@ -5,8 +5,7 @@ exports.sequence = function(funcs, scope, end) {
   scope = scope||{};
   scope.next = function() {
     //console.log("SEQ: next of", funcs.length);
-    funcs.length > 0 ? funcs.shift().apply(scope, arguments) : 0;
-    funcs.length == 0 ? end.call(scope) : 0;
+    funcs.length > 0 ? funcs.shift().apply(scope, arguments) : end.call(scope);
   };
   scope.end = function() { funcs=[]; scope.next(); };
   scope.next();

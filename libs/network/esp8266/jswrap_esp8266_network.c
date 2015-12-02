@@ -50,6 +50,7 @@ typedef long long int64_t;
 
 #include "jswrap_esp8266_network.h"
 #include "jswrap_esp8266.h"
+#include "jswrap_modules.h"
 #include "jsinteractive.h"
 #include "network.h"
 #include "network_esp8266.h"
@@ -72,9 +73,6 @@ static char *expect_opt = "Expecting options object but got %t";
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
 
-// Wifi library singleton object
-static JsVar *g_jsWifi;
-
 // A callback function to be invoked when we find a new access point.
 static JsVar *g_jsScanCallback;
 
@@ -92,6 +90,10 @@ static JsVar *g_jsDisconnectCallback;
 
 // Flag to tell the wifi event handler that it should turn STA off on disconnect
 static bool g_disconnecting;
+
+// Flag to tell the wifi event handler to ignore the next disconnect event because
+// we're provoking it in order to connect to something different
+static bool g_skipDisconnect;
 
 // Global data structure for ping request
 static struct ping_option pingOpt;
@@ -160,16 +162,16 @@ static char *wifiGetReason(uint8 wifiReason) {
 }
 
 // Wifi events
-FLASH_STR(__ev0, "connected");
-FLASH_STR(__ev1, "disconnected");
-FLASH_STR(__ev2, "auth_change");
-FLASH_STR(__ev3, "connected");
-FLASH_STR(__ev4, "dhcp_timeout");
-FLASH_STR(__ev5, "sta_joined");
-FLASH_STR(__ev6, "sta_left");
-FLASH_STR(__ev7, "probe_recv");
+FLASH_STR(__ev0, "#onassociated");
+FLASH_STR(__ev1, "#ondisconnected");
+FLASH_STR(__ev2, "#onauth_change");
+FLASH_STR(__ev3, "#onconnected");
+FLASH_STR(__ev4, "#ondhcp_timeout");
+FLASH_STR(__ev5, "#onsta_joined");
+FLASH_STR(__ev6, "#onsta_left");
+FLASH_STR(__ev7, "#onprobe_recv");
 static char *wifi_events[] = { __ev0, __ev1, __ev2, __ev3, __ev4, __ev5, __ev6, __ev7 };
-static char wifiEventBuff[sizeof("disconnected")+1]; // length of longest string
+static char wifiEventBuff[sizeof("#ondisconnected")+1]; // length of longest string
 static char *wifiGetEvent(uint32 event) {
   flash_strncpy(wifiEventBuff, wifi_events[event], sizeof(wifiEventBuff));
   wifiEventBuff[sizeof(wifiEventBuff)-1] = 0;
@@ -210,6 +212,16 @@ wifi.connect("my-ssid", {password:"my-pwd"}, function(ap){ console.log("connecte
 If you want the connection to happen automatically at boot, add `wifi.save();`.
 
 */
+
+/** Get the global object for the Wifi library/module, this is used in order to send the
+ * "on event" callbacks to the handlers.
+ */
+static JsVar *getWifiModule() {
+  JsVar *moduleName = jsvNewFromString("Wifi");
+  JsVar *m = jswrap_require(moduleName);
+  jsvUnLock(moduleName);
+  return m;
+}
 
 /*JSON{
    "type": "library",
@@ -325,7 +337,7 @@ The 'probe_recv' event is called when a probe request is received from some stat
   "name"     : "disconnect",
   "generate" : "jswrap_ESP8266_wifi_disconnect",
   "params"   : [
-    ["callback", "JsVar", "An optional function to be called back on successful disconnection."]
+    ["callback", "JsVar", "An optional function to be called back on disconnection. The callback function receives no argument."]
   ]
 }
 Disconnect the wifi station from an access point and disable the station mode.
@@ -347,12 +359,18 @@ void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
   // Do the disconnect, we ignore errors 'cause we don't care if we're not currently connected
   wifi_station_disconnect();
 
-  // If we're connected we let the event handler turn off wifi so we can cleanly disconnect
   if (conn == STATION_GOT_IP) {
+    // If we're connected we let the event handler turn off wifi so we can cleanly disconnect
+    // The event handler will also make the callback
     g_disconnecting = true;
   } else {
+    // We're not really connected, so we might as well make the callback right here
     DBGV("  Wifi.disconnect turning STA off\n");
     wifi_set_opmode(wifi_get_opmode() & SOFTAP_MODE);
+    g_disconnecting = false;
+    if (jsvIsFunction(jsCallback)) {
+      jsiQueueEvents(NULL, jsCallback, NULL, 0);
+    }
   }
 
   DBG("Wifi.disconnect: opmode=%s\n", wifiMode[wifi_get_opmode()]);
@@ -367,7 +385,7 @@ void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
   "name"     : "stopAP",
   "generate" : "jswrap_ESP8266_wifi_stopAP",
   "params"   : [
-    ["callback", "JsVar", "An optional function to be called back on successful stop."]
+    ["callback", "JsVar", "An optional function to be called back on successful stop. The callback function receives no argument."]
   ]
 }
 Stop being an access point and disable the AP operation mode.
@@ -385,11 +403,7 @@ void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
   bool ok = wifi_set_opmode(wifi_get_opmode() & STATION_MODE); // keep station mode intact
 
   if (jsvIsFunction(jsCallback)) {
-    JsVar *params[1];
-    params[0] = ok ? jsvNewNull() : jsvNewFromString("Error from wifi_set_opmode");
-    // FIXME: do we need to unlock the Null/String ?
-    jsiQueueEvents(NULL, jsCallback, params, 1);
-    jsvUnLock(params[0]);
+    jsiQueueEvents(NULL, jsCallback, NULL, 0);
   }
 
   DBG("Wifi.stopAP: opmode=%s\n", wifiMode[wifi_get_opmode()]);
@@ -417,7 +431,10 @@ The options properties may contain:
 * `password` - Password string to be used to access the network.
 * `dnsServers` (array of String) - An array of up to two DNS servers in dotted decimal format string.
 
-Note: the options should include the ability to set a static IP and associated netmask and gateway, this is a future enhancement.
+Notes:
+
+* the options should include the ability to set a static IP and associated netmask and gateway, this is a future enhancement.
+* the only error reported in the callback is "Bad password", all other errors (such as access point not found or DHCP timeout) just cause connection retries. If the reporting of such temporary errors is desired, the caller must use its own timeout and the `getDetails().status` field.
 
 */
 void jswrap_ESP8266_wifi_connect(
@@ -464,6 +481,7 @@ void jswrap_ESP8266_wifi_connect(
 
   // Get the optional password
   char password[65];
+  os_memset(password, 0, sizeof(password));
   if (jsOptions != NULL) {
     JsVar *jsPassword = jsvObjectGetChild(jsOptions, "password", 0);
     if (jsPassword != NULL && !jsvIsString(jsPassword)) {
@@ -510,6 +528,9 @@ void jswrap_ESP8266_wifi_connect(
   } else {
     // we're not happily connected to the right AP, so disconnect to start over
     wifi_station_disconnect();
+    // we skip the disconnect event unless we're connected (then it's legit) and unless
+    // we're idle/off (then there is no disconnect event to start with)
+    g_skipDisconnect = wifiConnectStatus != STATION_GOT_IP && wifiConnectStatus != STATION_IDLE;
     wifi_set_opmode(wifi_get_opmode() | STATION_MODE);
   }
 
@@ -761,7 +782,7 @@ void jswrap_ESP8266_wifi_startAP(
 
   if (jsCallback != NULL) {
     // Set the return error as a function of the return code returned from the call to
-    // the ESP8266 API to disconnect from the access point.
+    // the ESP8266 API to create the AP
     JsVar *params[1];
     params[0] = ok ? jsvNewNull() : jsvNewFromString("Error from wifi_softap_set_config");
     jsiQueueEvents(NULL, jsCallback, params, 1);
@@ -1664,15 +1685,17 @@ static void sendWifiEvent(
     uint32 eventType, //!< The ESP8266 WiFi event type.
     JsVar *jsDetails  //!< The JS object to be passed as a parameter to the callback.
 ) {
-  return;
-  if (!jsvIsNull(g_jsWifi)) g_jsWifi = jsvObjectGetChild(execInfo.root, "onwifi", 0);
-  if (!jsvIsNull(g_jsWifi)) { os_printf("Oops, root.wifi doesn't exist\n"); return; }
-  DBGV("wifi.on(%s)\n", wifiGetEvent(eventType));
+  JsVar *module = getWifiModule();
+  if (!module) return; // out of memory?
 
-  // get event name as string
+  // get event name as string and compose param list
   JsVar *params[1];
-  params[1] = jsDetails;
-  jsiQueueObjectCallbacks(g_jsWifi, wifiGetEvent(eventType), params, 1);
+  params[0] = jsDetails;
+  char *eventName = wifiGetEvent(eventType);
+  DBGV("wifi.on(%s)\n", eventName);
+  jsiQueueObjectCallbacks(module, eventName, params, 1);
+  jsvUnLock(module);
+  return;
 }
 
 static void sendWifiCompletionCB(
@@ -1728,14 +1751,34 @@ static void wifiEventHandler(System_Event_t *evt) {
   // We have disconnected or been disconnected from an access point.
   case EVENT_STAMODE_DISCONNECTED:
     reason = wifiGetReason(evt->event_info.disconnected.reason);
-    DBG("Wifi event: disconnected from ssid %s, reason %s (%d)\n",
-      evt->event_info.disconnected.ssid, reason, evt->event_info.disconnected.reason);
+    int8 wifiConnectStatus = wifi_station_get_connect_status();
+    if (wifiConnectStatus < 0) wifiConnectStatus = 0;
+    DBG("Wifi event: disconnected from ssid %s, reason %s (%d) status=%s\n",
+      evt->event_info.disconnected.ssid, reason, evt->event_info.disconnected.reason,
+      wifiConn[wifiConnectStatus]);
+
+    if (g_skipDisconnect) {
+      DBGV("  Skipping disconnect\n");
+      g_skipDisconnect = false;
+      break;
+    }
+
+    // if'were connecting and we get a fatal error, then make a callback
+    if (wifiConnectStatus == STATION_WRONG_PASSWORD && jsvIsFunction(g_jsGotIpCallback)) {
+      sendWifiCompletionCB(&g_jsGotIpCallback, "bad password");
+    }
 
     // if we're in the process of disconnecting we want to turn STA mode off now
+    // at that point we may need to make a callback too
     if (g_disconnecting) {
       DBGV("  Wifi.event: turning STA mode off\n");
       wifi_set_opmode(wifi_get_opmode() & SOFTAP_MODE);
       g_disconnecting = false;
+      if (jsvIsFunction(g_jsDisconnectCallback)) {
+        jsiQueueEvents(NULL, g_jsDisconnectCallback, NULL, 0);
+        jsvUnLock(g_jsDisconnectCallback);
+        g_jsDisconnectCallback = NULL;
+      }
     }
 
     // ssid
@@ -1786,10 +1829,6 @@ static void wifiEventHandler(System_Event_t *evt) {
 
   case EVENT_STAMODE_DHCP_TIMEOUT:
     os_printf("Wifi event: DHCP timeout");
-    // Make Wifi.connected() callback
-    if (jsvIsFunction(g_jsGotIpCallback)) {
-      sendWifiCompletionCB(&g_jsGotIpCallback, "DHCP timeout");
-    }
 
     sendWifiEvent(evt->event, jsvNewNull());
     break;
