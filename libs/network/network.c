@@ -14,6 +14,10 @@
 #include "network.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
+#ifdef USE_FILESYSTEM
+  #include "jswrap_functions.h"
+  #include "jswrap_fs.h"
+#endif
 
 #if defined(USE_CC3000)
   #include "network_cc3000.h"
@@ -347,52 +351,159 @@ void ssl_freeSocketData(int sckt) {
   jsvUnLock(sslData);
 }
 
+#ifdef USE_FILESYSTEM
+/* load cert file from filesystem */
+JsVar *load_cert_file(JsVar *cert) {
+  jsiConsolePrintf("Loading certificate file: %q\n", cert);
+  JsVar *fileContents = jswrap_fs_readFile(cert);
+  if (!fileContents || jsvIsStringEqual(fileContents, "")) {
+    jsWarn("File %q not found", cert);
+    return 0;
+  }
+
+  JSV_GET_AS_CHAR_ARRAY(pPtr, pLen, fileContents);
+  bool started = false;
+  int i = 0;
+  int j = 0;
+
+  /* parse the beginning, end, and line returns from cert file */
+  for (i = 0; i < pLen; i++) {
+    if (started && pPtr[i] == '-') {
+      //jsvArrayBufferSet(fileContents, 1, '\0')
+      pPtr[j] = '\0';
+      break;  /* end of key */
+    }
+    if (!started && pPtr[i] == '\n') {
+      started = true; /* found the start of the key */
+      continue;
+    }
+    if (started && pPtr[i] != '\n' && pPtr[i] != '\r') {
+      pPtr[j++] = pPtr[i];
+    }
+  }  
+
+  JsVar *parsed = jsvNewFromString((const unsigned char *)pPtr);
+  /* convert to binary */
+  JsVar *buffer = jswrap_atob((const unsigned char *)parsed);
+  jsvUnLock2(fileContents,parsed);
+
+  if (!buffer) {
+    jsWarn("Failed to process file %q", cert);
+    return 0;
+  }
+
+  return buffer;
+}
+#endif /* USE_FILESYSTEM */
+
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
-  JsVar *keyVar = jsvObjectGetChild(options,"key",0);
-  if (keyVar) {
-    JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, keyVar);
-    jsvUnLock(keyVar);
-    if (keyLen && keyPtr) {
-      jsiConsolePrintf("Loading the Client Key...\n");
-      int ret = mbedtls_pk_parse_key( &sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/ );
-      if( ret != 0 ) {
-        jsError("HTTPS init failed! mbedtls_pk_parse_key returned -0x%x\n", -ret );
-        return false;
+  JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
+  if (!keyVar) {
+    return false;
+  }
+  int ret;
+  jsiConsolePrintf("Loading the Client Key...\n");
+
+#ifdef USE_FILESYSTEM
+  if (jsvGetStringLength(keyVar) <= 100) {
+    /* too short for cert data, so assume a file path*/
+    JsVar *buffer = load_cert_file(keyVar);
+    if (buffer){
+      JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer);
+      jsvUnLock(buffer);
+      if (keyLen && keyPtr) {
+        ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
       }
     }
   }
+#endif /* USE_FILESYSTEM */
+  /* parse from memory */
+  if (jsvGetStringLength(keyVar) > 100) {
+    JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, keyVar);
+    if (keyLen && keyPtr) {
+      ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
+    }
+  }
+
+  jsvUnLock(keyVar);
+  if (ret != 0) {
+    jsError("HTTPS init failed! mbedtls_pk_parse_key returned -0x%x\n", -ret);
+    return false;
+  }
+
   return true;
 }
 bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
-  JsVar *certVar = jsvObjectGetChild(options,"cert",0);
-  if (certVar) {
-    JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, certVar);
-    jsvUnLock(certVar);
-    if (certLen && certPtr) {
-      jsiConsolePrintf("Loading the Client certificate...\n" );
-      int ret = mbedtls_x509_crt_parse( &sd->owncert, (const unsigned char *)certPtr, certLen );
-      if( ret != 0 ) {
-        jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert' returned -0x%x\n", -ret );
-        return false;
+  JsVar *certVar = jsvObjectGetChild(options, "cert", 0);
+  if (!certVar) {
+    return false;
+  }
+  int ret;
+  jsiConsolePrintf("Loading the Client certificate...\n");
+
+#ifdef USE_FILESYSTEM
+  if (jsvGetStringLength(certVar) <= 100) {
+    /* too short for cert data, so assume a file path*/
+    JsVar *buffer = load_cert_file(certVar);
+    if (buffer){
+      JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer);
+      jsvUnLock(buffer);
+      if (certLen && certPtr) {
+        ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
       }
     }
+  }
+#endif /* USE_FILESYSTEM */
+  /* parse from memory */
+  if (jsvGetStringLength(certVar) > 100) {
+    JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, certVar);
+    if (certLen && certPtr) {
+      ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
+    }
+  }
+
+  jsvUnLock(certVar);
+  if (ret != 0) {
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'cert' returned -0x%x\n", -ret);
+    return false;
   }
   return true;
 }
 bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
-  JsVar *caVar = jsvObjectGetChild(options,"ca",0);
-  if (caVar) {
-    JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, caVar);
-    jsvUnLock(caVar);
-    if (caLen && caPtr) {
-      jsiConsolePrintf("Loading the CA root certificate...\n" );
-      int ret = mbedtls_x509_crt_parse( &sd->cacert, (const unsigned char *)caPtr, caLen );
-      if( ret != 0 ) {
-        jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca' returned -0x%x\n", -ret );
-        return false;
+  JsVar *caVar = jsvObjectGetChild(options, "ca", 0);
+  if (!caVar) {
+    return false;
+  }
+  int ret;
+  jsiConsolePrintf("Loading the CA root certificate...\n");
+
+#ifdef USE_FILESYSTEM
+  if (jsvGetStringLength(caVar) <= 100) {
+    /* too short for cert data, so assume a file path*/
+    JsVar *buffer = load_cert_file(caVar);
+    if (buffer){
+      JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer);
+      jsvUnLock(buffer);
+      if (caLen && caPtr) {
+        ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
       }
     }
   }
+#endif /* USE_FILESYSTEM */
+  /* parse from memory*/
+  if (jsvGetStringLength(caVar) > 100) {
+    JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, caVar);
+    if (caLen && caPtr) {
+      ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
+    }
+  }
+
+  jsvUnLock(caVar);
+  if (ret != 0) {
+    jsError("HTTPS init failed! mbedtls_x509_crt_parse of 'ca' returned -0x%x\n", -ret);
+    return false;
+  }
+
   return true;
 }
 
