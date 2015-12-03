@@ -35,13 +35,6 @@
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
 #endif
 
-#ifdef FLASH_STR
-// debugging...
-#define os_printf os_printf_plus
-extern void os_printf_plus(char *fmt, ...);
-#endif
-
-
 // ----------------------------------------------------------------------------
 typedef enum {
   IS_NONE,
