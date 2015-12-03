@@ -147,7 +147,7 @@ void jshInit() {
  * We have arrived in this callback function because the state of a GPIO pin has changed
  * and it is time to record that change.
  */
-static void intrHandlerCB(
+static void ICACHE_RAM_ATTR intrHandlerCB(
     uint32 interruptMask, //!< A mask indicating which GPIOs have changed.
     void *arg             //!< Optional argument.
   ) {
@@ -448,7 +448,7 @@ void jshPinSetValue(
  * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
-bool jshPinGetValue(
+bool ICACHE_RAM_ATTR jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
   //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
@@ -537,7 +537,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 /**
  * Get the state of the pin associated with the event flag.
  */
-bool jshGetWatchedPinState(IOEventFlags eventFlag) {
+bool ICACHE_RAM_ATTR jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
@@ -919,7 +919,7 @@ static void saveTime() {
 /**
  * Return the current time in microseconds.
  */
-JsSysTime jshGetSystemTime() { // in us
+JsSysTime ICACHE_RAM_ATTR jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
 } // End of jshGetSystemTime
 

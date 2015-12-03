@@ -282,7 +282,7 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
    ["arrayOfData", "JsVar", "Array of LED data."]
  ]
 }*/
-void ICACHE_RAM_ATTR jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
+void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshIsPinValid(pin)) {
     jsExceptionHere(JSET_ERROR, "Pin is not valid.");
     return;
