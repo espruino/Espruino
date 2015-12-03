@@ -37,6 +37,7 @@ typedef long long int64_t;
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jspininfo.h"
+#include "jswrap_esp8266.h"
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
@@ -146,7 +147,7 @@ void jshInit() {
  * We have arrived in this callback function because the state of a GPIO pin has changed
  * and it is time to record that change.
  */
-static void intrHandlerCB(
+static void ICACHE_RAM_ATTR intrHandlerCB(
     uint32 interruptMask, //!< A mask indicating which GPIOs have changed.
     void *arg             //!< Optional argument.
   ) {
@@ -175,19 +176,27 @@ static void intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
-  //system_restart();
   os_printf("> jshReset\n");
-  // Set all GPIO pins to be input.
-  /*
-  int i;
-  for (int i=0; i<JSH_PIN_COUNT; i++) {
-    jshPinSetState(i, JSHPINSTATE_GPIO_IN);
-  }
-  */
+
+  // Set all GPIO pins to be input with pull-up
+  jshPinSetState(0, JSHPINSTATE_GPIO_IN_PULLUP);
+  //jshPinSetState(2, JSHPINSTATE_GPIO_IN_PULLUP); // used for debug output
+  jshPinSetState(4, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(5, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(12, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(13, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(14, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(15, JSHPINSTATE_GPIO_IN_PULLUP);
   g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
   g_lastSPIRead = -1;
+
+  extern void user_uart_init(void); // in user_main.c
+  user_uart_init();
+
+  jswrap_ESP8266_wifi_reset(); // reset the wifi
+
   os_printf("< jshReset\n");
-} // End of jshReset
+}
 
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
@@ -195,7 +204,7 @@ void jshReset() {
  * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
 void jshIdle() {
-} // End of jshIdle
+}
 
 // esp8266 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
@@ -205,7 +214,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   int len = os_sprintf(buf, MACSTR, MAC2STR(mac_addr));
   strncpy((char *)data, buf, maxChars);
   return len > maxChars ? maxChars : len;
-} // End of jshSerialNumber
+}
 
 //===== Interrupts and sleeping
 
@@ -439,7 +448,7 @@ void jshPinSetValue(
  * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
-bool jshPinGetValue(
+bool ICACHE_RAM_ATTR jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
   //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
@@ -528,7 +537,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 /**
  * Get the state of the pin associated with the event flag.
  */
-bool jshGetWatchedPinState(IOEventFlags eventFlag) {
+bool ICACHE_RAM_ATTR jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
@@ -910,7 +919,7 @@ static void saveTime() {
 /**
  * Return the current time in microseconds.
  */
-JsSysTime jshGetSystemTime() { // in us
+JsSysTime ICACHE_RAM_ATTR jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
 } // End of jshGetSystemTime
 
@@ -1071,7 +1080,7 @@ void jshFlashRead(
     uint32_t len   //!< Length of data to read
   ) {
   //os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
-  //    buf, len, addr, FLASH_MAX);
+  //  buf, len, addr, FLASH_MAX);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1082,8 +1091,8 @@ void jshFlashRead(
   uint8_t *dest = buf;
   uint32_t bytes = *(uint32_t*)(addr & ~3);
   while (len-- > 0) {
-    if (addr & 3 == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[(uint32)addr++ & 3];
+    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
   }
 }
 
@@ -1107,6 +1116,7 @@ void jshFlashWrite(
   if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
 
   // since things are guaranteed to be aligned we can just call the SDK :-)
+  if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK) return; // give up
   SpiFlashOpResult res;
   res = spi_flash_write(addr, buf, len);
   if (res != SPI_FLASH_RESULT_OK)

@@ -22,6 +22,14 @@
 #include "trigger.h"
 #endif
 
+#ifdef ESP8266
+// For the esp8266 we need to add ICACHE_RAM_ATTR to all functions that may execute at
+// interrupt time so they get loaded into static RAM instead of flash. We define
+// it as a no-op for everyone else. Not pretty, but perhaps the least obscure?
+#define ICACHE_RAM_ATTR __attribute__((section(".iram1.text")))
+#else
+#define ICACHE_RAM_ATTR
+#endif
 
 
 // ----------------------------------------------------------------------------
@@ -231,7 +239,7 @@ bool jshHasTransmitData() {
 /**
  * flag that the buffer has overflowed.
  */
-void jshIOEventOverflowed() {
+void ICACHE_RAM_ATTR jshIOEventOverflowed() {
   // Error here - just set flag so we don't dump a load of data out
   jsErrorFlags |= JSERR_RX_FIFO_FULL;
 }
@@ -294,7 +302,8 @@ void jshPushIOCharEvent(
 /**
  * Signal an IO watch event as having happened.
  */
-void jshPushIOWatchEvent(
+// on the esp8266 we need this to be loaded into static RAM because it can run at interrupt time
+void ICACHE_RAM_ATTR jshPushIOWatchEvent(
     IOEventFlags channel //!< The channel on which the IO watch event has happened.
   ) {
   assert(channel >= EV_EXTI0 && channel <= EV_EXTI_MAX);
@@ -322,7 +331,7 @@ void jshPushIOWatchEvent(
 /**
  * Add this IO event to the IO event queue.
  */
-void jshPushIOEvent(
+void ICACHE_RAM_ATTR jshPushIOEvent(
     IOEventFlags channel, //!< The event to add to the queue.
     JsSysTime time        //!< The time that the event is thought to have happened.
   ) {
