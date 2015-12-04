@@ -235,14 +235,18 @@ The ESP8266WiFi library is to be removed.
 /*JSON{
   "type" : "event",
   "class" : "Wifi",
-  "name" : "connected",
+  "name" : "associated",
   "params" : [
-    ["ssid","JsVar","The SSID of the access point to which the association was established"],
-    ["bssid","JsVar","The BSSID of the access point"],
-    ["channel","JsVar","The wifi channel used (an integer, typ 1..14)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
+The details include:
+
+* ssid - The SSID of the access point to which the association was established
+* mac - The BSSID/mac address of the access point
+* channel - The wifi channel used (an integer, typ 1..14)
+
 */
 
 /*JSON{
@@ -250,12 +254,16 @@ The 'connected' event is called when an association with an access point has suc
   "class" : "Wifi",
   "name" : "disconnected",
   "params" : [
-    ["ssid","JsVar","The SSID of the access point from which the association was lost"],
-    ["bssid","JsVar","The BSSID of the access point"],
-    ["reason","JsVar","The reason for the disconnection (string)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'disconnected' event is called when an association with an access point has been lost.
+The details include:
+
+* ssid - The SSID of the access point from which the association was lost
+* mac - The BSSID/mac address of the access point
+* reason - The reason for the disconnection (string)
+
 */
 
 /*JSON{
@@ -263,11 +271,15 @@ The 'disconnected' event is called when an association with an access point has 
   "class" : "Wifi",
   "name" : "auth_change",
   "params" : [
-    ["oldMode","JsVar","The old auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)"],
-    ["newMode","JsVar","The new auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'auth_change' event is called when the authentication mode with the associated access point changes.
+The details include:
+
+* oldMode - The old auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+* newMode - The new auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+
 */
 
 /*JSON{
@@ -281,14 +293,18 @@ The 'dhcp_timeout' event is called when a DHCP request to the connected access p
 /*JSON{
   "type" : "event",
   "class" : "Wifi",
-  "name" : "got_ip",
+  "name" : "connected",
   "params" : [
-    ["ip","JsVar","The IP address obtained as string"],
-    ["netmask","JsVar","The network's IP range mask as string"],
-    ["gw","JsVar","The network's default gateway as string"]
+    ["details","JsVar","An object with event details"]
   ]
 }
-The 'got_ip' event is called when an IP address is received from the connected access point (strictly speaking, from the networks' DHCP server).
+The 'connected' event is called when the connection with an access point is ready for traffic. In the case of a dynamic IP address configuration this is when an IP address is obtained, in the case of static IP address allocation this happens when an association is formed (in that case the 'associated' and 'connected' events are fired in rapid succession).
+The details include:
+
+* ip - The IP address obtained as string
+* netmask - The network's IP range mask as string
+* gw - The network's default gateway as string
+
 */
 
 /*JSON{
@@ -296,11 +312,14 @@ The 'got_ip' event is called when an IP address is received from the connected a
   "class" : "Wifi",
   "name" : "sta_joined",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["aid","JsVar","The association ID (a small integer representing the station)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'sta_joined' event is called when a station establishes an association (i.e. connects) with the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
 */
 
 /*JSON{
@@ -308,11 +327,14 @@ The 'sta_joined' event is called when a station establishes an association (i.e.
   "class" : "Wifi",
   "name" : "sta_left",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["aid","JsVar","The association ID (a small integer representing the station)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'sta_left' event is called when a station disconnects from the esp8266's access point (or its association times out?).
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
 */
 
 /*JSON{
@@ -320,11 +342,15 @@ The 'sta_left' event is called when a station disconnects from the esp8266's acc
   "class" : "Wifi",
   "name" : "probe_recv",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["rssi","JsVar","The signal strength in dB of the probe request"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'probe_recv' event is called when a probe request is received from some station by the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+* rssi - The signal strength in dB of the probe request
+
 */
 
 //===== Functions
