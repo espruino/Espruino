@@ -1530,7 +1530,6 @@ void jswrap_ESP8266_wifi_init2() {
   netInit_esp8266_board();
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP8266_BOARD);
-  networkSet(&net);
   networkState = NETWORKSTATE_ONLINE;
 
   DBGV("< Wifi.init2\n");

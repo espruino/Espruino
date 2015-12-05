@@ -33,6 +33,7 @@
 
 #ifdef ESP8266
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
+extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
 #endif
 
 #ifdef FLASH_STR
@@ -741,6 +742,10 @@ void jsiSemiInit(bool autoLoad) {
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
+
+#ifdef ESP8266
+  jshSoftInit();
+#endif
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     if (!loadFlash) {

@@ -38,6 +38,7 @@ typedef long long int64_t;
 #include "jsinteractive.h"
 #include "jspininfo.h"
 #include "jswrap_esp8266.h"
+#include <jswrap_esp8266_network.h>
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
@@ -196,6 +197,14 @@ void jshReset() {
   jswrap_ESP8266_wifi_reset(); // reset the wifi
 
   os_printf("< jshReset\n");
+}
+
+/**
+ * Re-init the esp8266 stuff after a soft-reset
+ */
+void jshSoftInit() {
+  os_printf("jshSoftInit\n");
+  jswrap_ESP8266_wifi_init2();
 }
 
 /**
