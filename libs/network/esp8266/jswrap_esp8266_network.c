@@ -366,7 +366,7 @@ The details include:
     ["callback", "JsVar", "An optional function to be called back on disconnection. The callback function receives no argument."]
   ]
 }
-Disconnect the wifi station from an access point and disable the station mode.
+Disconnect the wifi station from an access point and disable the station mode. It is OK to call `disconnect` to turn off station mode even if no connection exists (for example, connection attempts may be failing). Station mode can be re-enabled by calling `connect` or `scan`.
 */
 void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
   DBGV("> Wifi.disconnect\n");
@@ -414,7 +414,7 @@ void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
     ["callback", "JsVar", "An optional function to be called back on successful stop. The callback function receives no argument."]
   ]
 }
-Stop being an access point and disable the AP operation mode.
+Stop being an access point and disable the AP operation mode. Ap mode can be re-enabled by calling `startAP`.
 */
 void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
   DBGV("> Wifi.stopAP\n");
@@ -461,6 +461,7 @@ Notes:
 
 * the options should include the ability to set a static IP and associated netmask and gateway, this is a future enhancement.
 * the only error reported in the callback is "Bad password", all other errors (such as access point not found or DHCP timeout) just cause connection retries. If the reporting of such temporary errors is desired, the caller must use its own timeout and the `getDetails().status` field.
+* the `connect` call automatically enabled station mode, it can be disabled again by calling `disconnect`.
 
 */
 void jswrap_ESP8266_wifi_connect(
@@ -698,7 +699,10 @@ The `options` object can contain the following properties.
 * `password` - The password for connecting stations if authMode is not open.
 * `channel` - The channel to be used for the access point in the range 1..13. If the device is also connected to an access point as a station then that access point determines the channel.
 
-Note: the options should include the ability to set the AP IP and associated netmask, this is a future enhancement.
+Notes:
+
+* the options should include the ability to set the AP IP and associated netmask, this is a future enhancement.
+* the `startAP` call automatically enables AP mode. It can be disabled again by calling `stopAP`.
 
 */
 void jswrap_ESP8266_wifi_startAP(
@@ -899,6 +903,8 @@ The settings available are:
 
 * `phy` - Modulation standard to allow: `11b`, `11g`, `11n` (the esp8266 docs are not very clear, but it is assumed that 11n means b/g/n).
 * `powersave` - Power saving mode: `none` (radio is on all the time), `ps-poll` (radio is off between beacons as determined by the access point's DTIM setting). Note that in 'ap' and 'sta+ap' modes the radio is always on, i.e., no power saving is possible.
+
+Note: esp8266 SDK programmers may be missing an "opmode" option to set the sta/ap/sta+ap operation mode. Please use connect/scan/disconnect/startAP/stopAP, which all set the esp8266 opmode indirectly.
 */
 void jswrap_ESP8266_wifi_setConfig(JsVar *jsSettings) {
   DBGV("> Wifi.setConfig\n");
@@ -1370,7 +1376,7 @@ static void dnsFoundCallback(
     ip_addr_t *ipAddr,    //!< The ip address retrieved.  This may be 0.
     void *arg             //!< Parameter passed in from espconn_gethostbyname.
   ) {
-  DBG(">> Wifi.getHostByName CB - %s %x\n", hostname, ipAddr->addr);
+  DBG(">> Wifi.getHostByName CB - %s %x\n", hostname, ipAddr ? ipAddr->addr : 0);
   if (g_jsHostByNameCallback != NULL) {
     JsVar *params[1];
     if (ipAddr == NULL) {
