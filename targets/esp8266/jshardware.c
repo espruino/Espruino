@@ -203,8 +203,7 @@ void jshReset() {
  * Re-init the esp8266 stuff after a soft-reset
  */
 void jshSoftInit() {
-  os_printf("jshSoftInit\n");
-  jswrap_ESP8266_wifi_init2();
+  jswrap_ESP8266_wifi_soft_init();
 }
 
 /**

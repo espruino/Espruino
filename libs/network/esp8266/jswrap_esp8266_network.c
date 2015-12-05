@@ -1122,13 +1122,13 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     ["what", "JsVar", "An optional parameter to specify what to save, on the esp8266 the two supported values are `clear` and `sta+ap`. The default is `sta+ap`"]
   ]
 }
-Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is clear such that wifi remains disabled at boot. The configuration includes whether the station and access point are enabled, the SSIDs, passwords, and phy configured.
+Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is cleared such that wifi remains disabled at boot. The saved configuration includes:
 
-* `station` - Status of the wifi station: `off`, `connecting`, ...
-* `ap` - Status of the wifi access point: `disabled`, `enabled`.
-* `phy` - Modulation standard configured: `11b`, `11g`, `11n` (the esp8266 docs are not very clear, but it is assumed that 11n means b/g/n). This setting limits the modulations that the radio will use, it does not indicate the current modulation used with a specific access point.
-* `mode` - The current operation mode: `off`, `sta`, `ap`, `sta+ap`.
-* `savedMode` - The saved operation mode which will be applied at boot time: `off`, `sta`, `ap`, `sta+ap`.
+* mode (off/sta/ap/sta+ap)
+* SSIDs & passwords
+* phy (11b/g/n)
+* powersave setting
+* DHCP hostname
 
 */
 void jswrap_ESP8266_wifi_save(JsVar *what) {
@@ -1142,31 +1142,35 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
 
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
     conf->mode = 0; // disable
+    conf->phyMode = PHY_MODE_11N;
+    conf->sleepType = MODEM_SLEEP_T;
+    // ssids, passwords, and hostname are set to zero thanks to memset above
+    DBG("Wifi.save(clear)\n");
+
   } else {
     conf->mode = wifi_get_opmode();
+    conf->phyMode = wifi_get_phy_mode();
+    conf->sleepType = wifi_get_sleep_type();
+    DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
+        sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
+
+    struct station_config sta_config;
+    wifi_station_get_config(&sta_config);
+    os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
+    os_strncpy(conf->staPass, (char *)sta_config.password, 64);
+
+    struct softap_config ap_config;
+    wifi_softap_get_config(&ap_config);
+    conf->authMode = ap_config.authmode;
+    conf->hidden = ap_config.ssid_hidden;
+    conf->ssidLen = ap_config.ssid_len;
+    os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
+    os_strncpy(conf->apPass, (char *)ap_config.password, 64);
+    DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
+
+    char *hostname = wifi_station_get_hostname();
+    if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
   }
-
-  conf->phyMode = wifi_get_phy_mode();
-  conf->sleepType = wifi_get_sleep_type();
-  DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
-      sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
-
-  struct station_config sta_config;
-  wifi_station_get_config(&sta_config);
-  os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
-  os_strncpy(conf->staPass, (char *)sta_config.password, 64);
-
-  struct softap_config ap_config;
-  wifi_softap_get_config(&ap_config);
-  conf->authMode = ap_config.authmode;
-  conf->hidden = ap_config.ssid_hidden;
-  conf->ssidLen = ap_config.ssid_len;
-  os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
-  os_strncpy(conf->apPass, (char *)ap_config.password, 64);
-  DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
-
-  char *hostname = wifi_station_get_hostname();
-  if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
 
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
@@ -1236,6 +1240,8 @@ void jswrap_ESP8266_wifi_restore(void) {
     os_strncpy((char *)sta_config.password, conf->staPass, 64);
     wifi_station_set_config(&sta_config);
     DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
+    wifi_station_connect(); // we're not supposed to call this from user_init but it doesn't harm
+                            // and we need it when invoked from JS
   }
 }
 
@@ -1491,9 +1497,11 @@ void jswrap_ESP8266_wifi_setDHCPHostname(
 
 //===== Reset wifi
 
-// When the Espruino environment is reset, this callback function will be invoked.
+// When the Espruino environment is reset (e.g. the reset() function), this callback function
+// will be invoked.
 // The purpose is to reset the environment by cleaning up whatever might be needed
-// to be cleaned up.
+// to be cleaned up. This does not actually touch the wifi itself: we want the IDE to remain
+// connected!
 void jswrap_ESP8266_wifi_reset() {
   DBGV("> Wifi reset\n");
 
@@ -1509,7 +1517,9 @@ void jswrap_ESP8266_wifi_reset() {
 
 //===== Wifi init1
 
-// This function is called in the user_main to set-up the wifi based on what was saved in flash
+// This function is called in the user_main's user_init() to set-up the wifi based on what
+// was saved in flash. This will restore the settings from flash into the SDK so the SDK
+// fires-up the right AP/STA modes and connections.
 void jswrap_ESP8266_wifi_init1() {
   DBGV("> Wifi.init1\n");
 
@@ -1520,11 +1530,12 @@ void jswrap_ESP8266_wifi_init1() {
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
-//===== Wifi init2
+//===== Wifi soft_init
 
-// This function is called once the initialization completes to actually hook-up the network
-void jswrap_ESP8266_wifi_init2() {
-  DBGV("> Wifi.init2\n");
+// This function is called in soft_init to hook-up the network. This happens from user_main's
+// init_done() and also from `reset()` in order to re-hook-up the network.
+void jswrap_ESP8266_wifi_soft_init() {
+  DBGV("> Wifi.soft_init\n");
 
   // initialize the network stack
   netInit_esp8266_board();
@@ -1532,7 +1543,7 @@ void jswrap_ESP8266_wifi_init2() {
   networkCreate(&net, JSNETWORKTYPE_ESP8266_BOARD);
   networkState = NETWORKSTATE_ONLINE;
 
-  DBGV("< Wifi.init2\n");
+  DBGV("< Wifi.soft_init\n");
 }
 
 //===== Ping

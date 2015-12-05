@@ -244,7 +244,7 @@ static void initDone() {
   jshInit(); // Initialize the hardware
   jsvInit(); // Initialize the variables
   jsiInit(true); // Initialize the interactive subsystem
-  jswrap_ESP8266_wifi_init2();
+  // note: the wifi gets hooked-up via wifi_soft_init called from jsiInit
 
   // Register the event handlers.
   system_os_task(eventHandler, TASK_APP_QUEUE, taskAppQueue, TASK_QUEUE_LENGTH);
