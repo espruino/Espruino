@@ -174,7 +174,7 @@ i2c_master_gpio_init(uint8 scl, uint8 sda, uint32 bitrate)
  * Parameters   : NONE
  * Returns      : NONE
 *******************************************************************************/
-void ICACHE_RAM_ATTR
+void ICACHE_FLASH_ATTR
 i2c_master_start(void)
 {
     i2c_master_setDC(1, m_nLastSCL);
@@ -191,7 +191,7 @@ i2c_master_start(void)
  * Parameters   : NONE
  * Returns      : NONE
 *******************************************************************************/
-void ICACHE_RAM_ATTR
+void ICACHE_FLASH_ATTR
 i2c_master_stop(void)
 {
     i2c_master_wait(5);
@@ -210,7 +210,7 @@ i2c_master_stop(void)
  * Parameters   : uint8 level - 0 or 1
  * Returns      : NONE
 *******************************************************************************/
-void ICACHE_RAM_ATTR
+void ICACHE_FLASH_ATTR
 i2c_master_setAck(uint8 level)
 {
     i2c_master_setDC(level, 0);
@@ -229,7 +229,7 @@ i2c_master_setAck(uint8 level)
  * Parameters   : NONE
  * Returns      : uint8 - ack value, 0 or 1
 *******************************************************************************/
-uint8 ICACHE_RAM_ATTR
+uint8 ICACHE_FLASH_ATTR
 i2c_master_getAck(void)
 {
     uint8 retVal;
@@ -250,7 +250,7 @@ i2c_master_getAck(void)
 * Parameters   : NONE
 * Returns      : true : get ack ; false : get nack
 *******************************************************************************/
-bool ICACHE_RAM_ATTR
+bool ICACHE_FLASH_ATTR
 i2c_master_checkAck(void)
 {
     if(i2c_master_getAck()){
@@ -289,7 +289,7 @@ i2c_master_send_nack(void)
  * Parameters   : NONE
  * Returns      : uint8 - readed value
 *******************************************************************************/
-uint8 ICACHE_RAM_ATTR
+uint8 ICACHE_FLASH_ATTR
 i2c_master_readByte(void)
 {
     uint8 retVal = 0;
@@ -319,7 +319,7 @@ i2c_master_readByte(void)
  * Parameters   : uint8 wrdata - write value
  * Returns      : NONE
 *******************************************************************************/
-void ICACHE_RAM_ATTR
+void ICACHE_FLASH_ATTR
 i2c_master_writeByte(uint8 wrdata)
 {
     uint8 dat;
