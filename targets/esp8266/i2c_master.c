@@ -61,7 +61,7 @@ LOCAL uint8 pinSDA, pinSCL; // actual gpio pins used
  *                uint8 SCL
  * Returns      : NONE
 *******************************************************************************/
-LOCAL void ICACHE_RAM_ATTR
+LOCAL void CALLED_FROM_INTERRUPT
 i2c_master_setDC(uint8 SDA, uint8 SCL)
 {
     SDA &= 0x01;
@@ -85,7 +85,7 @@ i2c_master_setDC(uint8 SDA, uint8 SCL)
  * Returns      : uint8 - SDA bit value
 *******************************************************************************/
 #if 0
-LOCAL uint8 ICACHE_RAM_ATTR
+LOCAL uint8 CALLED_FROM_INTERRUPT
 i2c_master_getDC(void)
 {
     return (GPIO_REG_READ(GPIO_IN_ADDRESS) >> pinSDA) & 1;
