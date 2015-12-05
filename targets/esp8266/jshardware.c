@@ -558,17 +558,45 @@ bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // ca
  * a given period and set the pin value again to be the opposite.
  */
 void jshPinPulse(
-    Pin pin,        //!< The pin to be pulsed.
-    bool value,     //!< The value to be pulsed into the pin.
-    JsVarFloat time //!< The period in milliseconds to hold the pin.
-  ) {
-  if (jshIsPinValid(pin)) {
-    //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(jshGetTimeFromMilliseconds(time));
-    jshPinSetValue(pin, !value);
-  } else
-    jsError("Invalid pin!");
+    Pin pin,              //!< The pin to be pulsed.
+    bool pulsePolarity,   //!< The value to be pulsed into the pin.
+    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
+) {
+#if 0
+  // Implementation using the utility timer. This doesn't work well on the esp8266, because the
+  // utility timer uses tasks and these are not pre-emptible. So the timer won't actually fire
+  // until the main espruino task becomes idle, which messes up timings. It also locks-up things
+  // when someone defines a pulse train that is longer than the timer queue, because then the
+  // main task busy-waits for the timer queue to drain a bit, which never happens.
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return;
+  }
+  if (pulseTime <= 0) {
+    // just wait for everything to complete [??? what does this mean ???]
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+#endif
+
+#if 1
+  // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
+  // resets, but it actually works...
+  //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, pulsePolarity);
+  jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
+  jshPinSetValue(pin, !pulsePolarity);
+#endif
 }
 
 
