@@ -336,4 +336,10 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     while (_getCycleCount()-start < 100) ;           // busy-wait, 100 cyc = 1.25us
   }
   while (_getCycleCount()-start < 100) ;             // Wait for last bit
+
+  // at some point the fact that the code above needs to be loaded from flash to cache caused the
+  // first bit's timing to be off. If this recurs, a suggestion is to run a loop iteration
+  // outputting low-low and only start with the actual first bit in the second loop iteration.
+  // This could be achieved by starting with pinMask=0 and setting the real pin mask at the end
+  // of the loop, initializing p=pixels-1, and mask=1
 }
