@@ -33,7 +33,7 @@
 typedef long long int64_t;
 
 #include <jswrap_esp8266.h>
-#include "jsinteractive.h" // Pull inn the jsiConsolePrint function
+#include "jsinteractive.h" // Pull in the jsiConsolePrint function
 
 #define _BV(bit) (1 << (bit))
 

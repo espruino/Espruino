@@ -413,7 +413,7 @@ static void resetSocketByData(
       struct socketData *pSocketData //!< The data pointer to the socket.
   ) {
   assert(pSocketData != NULL);
-  os_memset(pSocketData, 0, sizeof(pSocketData));
+  os_memset(pSocketData, 0, sizeof(struct socketData));
 }
 
 
