@@ -1174,6 +1174,7 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
 
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  jshFlashErasePage(0x7B000);
   jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
   DBGV("< Wifi.save: write completed\n");
 }

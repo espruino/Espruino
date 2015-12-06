@@ -45,9 +45,8 @@ typedef long long int64_t;
 // microseconds.
 #define MAX_SLEEP_TIME_US  3000
 
-// Save-to-flash uses the 16KB of "user params" locates right after the first firmware
-// block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
-// map details. The jshFlash functions use memory-mapped reads to access the first 1MB
+// Save-to-flash uses 12KB at 0x78000
+// The jshFlash functions use memory-mapped reads to access the first 1MB
 // of flash and refuse to go beyond that. Writing uses the SDK functions and is also
 // limited to the first MB.
 #define FLASH_MAX (1024*1024)
@@ -192,7 +191,7 @@ void jshReset() {
   g_lastSPIRead = -1;
 
   extern void user_uart_init(void); // in user_main.c
-  user_uart_init();
+  //user_uart_init(); // FIXME: commented out because it causes chars to be lost. SHould only re-init if the baud rate changed?
 
   jswrap_ESP8266_wifi_reset(); // reset the wifi
 
@@ -1051,18 +1050,18 @@ static void systemTimeInit(void) {
 os_timer_t utilTimer;
 
 static void utilTimerInit(void) {
-  os_printf("UStimer init\n");
+  //os_printf("UStimer init\n");
   os_timer_disarm(&utilTimer);
   os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
 }
 
 void jshUtilTimerDisable() {
-  os_printf("UStimer disarm\n");
+  //os_printf("UStimer disarm\n");
   os_timer_disarm(&utilTimer);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  os_printf("UStimer arm\n");
+  if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
@@ -1115,8 +1114,7 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
-  //  buf, len, addr, FLASH_MAX);
+  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1144,15 +1142,13 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  //os_printf("ESP8266: jshFlashWrite: src=%p for len=%ld into flash addr=0x%lx\n",
-  //    buf, len, addr);
+  //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
   if (addr + len > FLASH_MAX) len = FLASH_MAX - addr;
 
   // since things are guaranteed to be aligned we can just call the SDK :-)
-  if (spi_flash_erase_sector(addr>>12) != SPI_FLASH_RESULT_OK) return; // give up
   SpiFlashOpResult res;
   res = spi_flash_write(addr, buf, len);
   if (res != SPI_FLASH_RESULT_OK)
@@ -1185,7 +1181,7 @@ bool jshFlashGetPage(
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  //os_printf("ESP8266: jshFlashErasePage: addr=0x%lx\n", addr);
+  //os_printf("jshFlashErasePage: addr=0x%lx\n", addr);
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);

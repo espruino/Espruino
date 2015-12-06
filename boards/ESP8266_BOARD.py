@@ -35,10 +35,9 @@ chip = {
   'adc'     : 1,
   'dac'     : 0,
   'saved_code' : {
-    # see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes#flash-map-and-access
     'address' : 0x78000,
     'page_size' : 4096,
-    'pages' : 3, # there are really 4 pages reserved but we should only need 3
+    'pages' : 3,
     'flash_available' : 480, # firmware can be up to this size
   },
 };
