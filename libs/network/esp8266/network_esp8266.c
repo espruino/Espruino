@@ -349,6 +349,7 @@ static struct socketData *allocateNewSocket() {
       return &socketArray[i];
     }
   }
+  esp8266_dumpAllSocketData();
   return(NULL);
 }
 
