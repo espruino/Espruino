@@ -27,9 +27,6 @@ espruino_#v##_espruino_1r3_wiznet.bin
      Each image is for a different type of networking device.
      If you don't want a network device, it doesn't matter which you choose.
 
-espruino_#v##_espruino_1r1.bin  
-   - The firmware image for older, rev 1v1 and 1v2 boards
-
 espruino_#v##_hystm32_24_ve.bin 
    - 'HY'STM32F103VET6 ARM with 2.4" LCD display
      This is available from eBay

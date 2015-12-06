@@ -21,7 +21,7 @@
 
 // The linking is arranged to put all functions into IROM, so we need a special define to put
 // a function into IRAM
-#define ICACHE_RAM_ATTR __attribute__((section(".iram1.text")))
+#define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
 
 //Missing function prototypes in include folders. Gcc will warn on these if we don't define 'em anywhere.
 //MOST OF THESE ARE GUESSED! but they seem to work and shut up the compiler.

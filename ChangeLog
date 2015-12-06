@@ -1,3 +1,16 @@
+     1v83 : Moved to size optimisation for Pico (needed to get HTTPS into 384kB)
+            Ensure Modules.addCached doesn't reset parse state (fix #723)
+            dump() in Espruino Pico now ignored the pull-down for the button (fix #731)
+            Warn when "compiled" functions gets into Espruiono (fix #707)
+            Fix lost character on Espruino Startup (fix #704)
+            Fix duplicated characters when USB+USART IRQs fire at the same time  (fix #635)
+            Fixed Serial.find(...)
+            Detect UART framing and parity errors and emit them as events on the Serial object
+            Fix [] instanceof Object (fix #737)
+            Fix regression in jsvCopyNameOnly (Object.getOwnPropertyNames when names are >8 characters long)
+            HTTP requests (and sockets) can now emit 'error' event (fix #706)
+            Add optional `ca`,`key`, and `cert` for server public key when using HTTPS or TLS (fix #736)
+
      1v82 : Fix debugger regression (where quit/reset/etc don't exit properly)
             Fix wakeup when setDeepSleep used at startup (fix #645)
             Add `shiftOut` function (fix #631)

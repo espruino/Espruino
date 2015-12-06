@@ -235,7 +235,7 @@ void at_port_print(const char *str) __attribute__((alias("uart0_sendStr")));
  * Parameters   : void *para - point to ETS_UART_INTR_ATTACH's arg
  * Returns      : NONE
 *******************************************************************************/
-LOCAL ICACHE_RAM_ATTR void
+LOCAL CALLED_FROM_INTERRUPT void
 uart0_rx_intr_handler(void *para)
 {
     /* uart0 and uart1 intr combine togther, when interrupt occur, see reg 0x3ff20020, bit2, bit0 represents
@@ -643,7 +643,7 @@ void tx_start_uart_buffer(uint8 uart_no)
 #endif
 
 
-static ICACHE_RAM_ATTR void uart_rx_intr_disable(uint8 uart_no)
+static CALLED_FROM_INTERRUPT void uart_rx_intr_disable(uint8 uart_no)
 {
 #if 1
     CLEAR_PERI_REG_MASK(UART_INT_ENA(uart_no), UART_RXFIFO_FULL_INT_ENA|UART_RXFIFO_TOUT_INT_ENA);

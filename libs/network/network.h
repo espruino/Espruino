@@ -106,7 +106,7 @@ typedef enum {
 bool netCheckError(JsNetwork *net);
 
 /// Create a socket (server (host==0) or client)
-int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags);
+int netCreateSocket(JsNetwork *net, uint32_t host, unsigned short port, NetCreateFlags flags, JsVar *options);
 
 /// Ask this socket to close - it may not close immediately
 void netCloseSocket(JsNetwork *net, int sckt);

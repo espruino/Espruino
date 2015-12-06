@@ -281,25 +281,35 @@ void RTC_WKUP_IRQHandler(void)
 #endif
 
 static void USART_IRQHandler(USART_TypeDef *USART, IOEventFlags device) {
+  if (USART_GetFlagStatus(USART, USART_FLAG_FE) != RESET) {
+    // If we have a framing error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+  }
+  if (USART_GetFlagStatus(USART, USART_FLAG_PE) != RESET) {
+    // If we have a parity error, push status info onto the event queue
+    jshPushIOEvent(
+        IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(device) | EV_SERIAL_STATUS_PARITY_ERR, 0);
+  }
   if(USART_GetITStatus(USART, USART_IT_RXNE) != RESET) {
-     /* Clear the USART Receive interrupt */
-     USART_ClearITPendingBit(USART, USART_IT_RXNE);
-     /* Read one byte from the receive data register */
-     jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
-   }
-   /* If overrun condition occurs, clear the ORE flag and recover communication */
-   if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
-   {
-     (void)USART_ReceiveData(USART);
-   }
-   if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {
-     /* If we have other data to send, send it */
-     int c = jshGetCharToTransmit(device);
-     if (c >= 0) {
-       USART_SendData(USART, (uint16_t)c);
-     } else
-       USART_ITConfig(USART, USART_IT_TXE, DISABLE);
-   }
+    /* Clear the USART Receive interrupt */
+    USART_ClearITPendingBit(USART, USART_IT_RXNE);
+    /* Read one byte from the receive data register */
+    jshPushIOCharEvent(device, (char)USART_ReceiveData(USART));
+  }
+  /* If overrun condition occurs, clear the ORE flag and recover communication */
+  if (USART_GetFlagStatus(USART, USART_FLAG_ORE) != RESET)
+  {
+    (void)USART_ReceiveData(USART);
+  }
+  if(USART_GetITStatus(USART, USART_IT_TXE) != RESET) {
+    /* If we have other data to send, send it */
+    int c = jshGetCharToTransmit(device);
+    if (c >= 0) {
+      USART_SendData(USART, (uint16_t)c);
+    } else
+      USART_ITConfig(USART, USART_IT_TXE, DISABLE);
+  }
 }
 
 void USART1_IRQHandler(void) {

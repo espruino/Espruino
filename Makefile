@@ -136,30 +136,7 @@ BASEADDRESS=0x08000000
 # When adding stuff here, also remember build_pininfo, platform_config.h, jshardware.c
 # TODO: Load more of this out of the BOARDNAME.py files if at all possible (see next section)
 # ---------------------------------------------------------------------------------
-ifdef ESPRUINO_1V0
-EMBEDDED=1
-#USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-BOARD=ESPRUINOBOARD_R1_0
-DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef ESPRUINO_1V1
-EMBEDDED=1
-DEFINES+=-DESPRUINO_1V1
-USE_NET=1
-USE_GRAPHICS=1
-USE_FILESYSTEM=1
-BOARD=ESPRUINOBOARD_R1_1
-DEFINES+=-DESPRUINOBOARD
-STLIB=STM32F10X_XL
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
-OPTIMIZEFLAGS+=-Os
-
-else ifdef ESPRUINO_1V3
+ifdef ESPRUINO_1V3
 EMBEDDED=1
 DEFINES+=-DESPRUINO_1V3
 USE_NET=1
@@ -171,41 +148,6 @@ BOARD=ESPRUINOBOARD
 STLIB=STM32F10X_XL
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-Os
-
-else ifdef PICO_1V0
-EMBEDDED=1
-USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V0
-USE_GRAPHICS=1
-BOARD=PICO_R1_0
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef PICO_1V1
-EMBEDDED=1
-USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V1
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-BOARD=PICO_R1_1
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
-
-else ifdef PICO_1V2
-EMBEDDED=1
-#USE_DFU=1
-DEFINES+= -DUSE_USB_OTG_FS=1  -DPICO -DPICO_1V2
-USE_NET=1
-USE_GRAPHICS=1
-USE_TV=1
-USE_HASHLIB=1
-BOARD=PICO_R1_2
-STLIB=STM32F401xE
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
 
 else ifdef PICO_1V3
 EMBEDDED=1
@@ -222,7 +164,7 @@ USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
-OPTIMIZEFLAGS+=-O3
+OPTIMIZEFLAGS+=-Os
 
 else ifdef OLIMEXINO_STM32
 EMBEDDED=1
@@ -1369,7 +1311,6 @@ ifdef NRF5X
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
@@ -1379,7 +1320,6 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
-  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
@@ -1393,7 +1333,7 @@ ifeq ($(FAMILY),ESP8266)
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
 CFLAGS+= -fno-builtin -fno-strict-aliasing \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \
@@ -1702,11 +1642,32 @@ $(USER1_BIN): $(USER1_ELF)
 	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER1_ELF) eagle.app.v6.rodata.bin
 	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER1_ELF) eagle.app.v6.irom0text.bin
 	@ls -ls eagle*bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER1_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
 	$(Q) rm -f eagle.app.v6.*.bin
 	$(Q) mv eagle.app.flash.bin $@
 	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
 	@if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+
+# generate binary image for user2, i.e. second OTA partition
+# we make this rule dependent on user1.bin in order to serialize the two rules because they use
+# stupid static filenames (go blame the Espressif tool)
+$(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
+	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER2_ELF) eagle.app.v6.text.bin
+	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
+	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
+	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
+	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) 0 >/dev/null
+	$(Q) rm -f eagle.app.v6.*.bin
+	$(Q) mv eagle.app.flash.bin $@
+
+$(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
+	$(Q)rm -rf build/$(basename $(ESP_ZIP))
+	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
+	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
+	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
+	  build/$(basename $(ESP_ZIP))
+	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
@@ -1723,27 +1684,6 @@ topstrings: $(PARTIAL)
 	$(Q)echo "Top 20 from ./topstrings:"
 	$(Q)head -20 topstrings
 	$(Q)echo "To get details: $(OBJDUMP) -j .rodata.str1.4 -s src/FILENAME.o"
-
-# generate binary image for user2, i.e. second OTA partition
-# we make this rule dependent on user1.bin in order to serialize the two rules because they use
-# stupid static filenames (go blame the Espressif tool)
-$(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
-	$(Q)$(OBJCOPY) --only-section .text -O binary $(USER2_ELF) eagle.app.v6.text.bin
-	$(Q)$(OBJCOPY) --only-section .data -O binary $(USER2_ELF) eagle.app.v6.data.bin
-	$(Q)$(OBJCOPY) --only-section .rodata -O binary $(USER2_ELF) eagle.app.v6.rodata.bin
-	$(Q)$(OBJCOPY) --only-section .irom0.text -O binary $(USER2_ELF) eagle.app.v6.irom0text.bin
-	$(Q)COMPILE=gcc python $(APPGEN_TOOL) $(USER2_ELF) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_FLASH_SIZE) >/dev/null
-	$(Q) rm -f eagle.app.v6.*.bin
-	$(Q) mv eagle.app.flash.bin $@
-
-$(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
-	$(Q)rm -rf build/$(basename $(ESP_ZIP))
-	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
-	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
-	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
-	  build/$(basename $(ESP_ZIP))
-	$(Q)tar -C build -zcf $(ESP_ZIP) ./$(basename $(ESP_ZIP))
 
 
 flash: all $(USER1_BIN) $(USER2_BIN)

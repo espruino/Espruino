@@ -33,10 +33,10 @@
 
 #ifdef ESP8266
 extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
+extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
 #endif
 
-#ifdef FLASH_STR
-// debugging...
+#ifdef FLASH_STR // debugging...
 #define os_printf os_printf_plus
 extern void os_printf_plus(char *fmt, ...);
 #endif
@@ -653,6 +653,10 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
           statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
 #endif
+#if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
+      if (pin == BTN1_PININDEX &&
+          statem == BTN1_PINSTATE) continue;
+#endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
       if (statem == JSHPINSTATE_GPIO_IN_PULLUP) s="_pullup";
@@ -737,6 +741,10 @@ void jsiSemiInit(bool autoLoad) {
 
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
+
+#ifdef ESP8266
+  jshSoftInit();
+#endif
 
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     if (!loadFlash) {
@@ -1461,6 +1469,13 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
   jsvUnLock(callback);
 }
 
+void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
+  if (!callback) return;
+  jsiExecuteEventCallback(object, callback, (unsigned int)argCount, args);
+  jsvUnLock(callback);
+}
+
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1636,6 +1651,16 @@ void jsiIdle() {
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (jsvIsObject(usartClass)) {
         jsiHandleIOEventForUSART(usartClass, &event);
+      }
+      jsvUnLock(usartClass);
+    } else if (DEVICE_IS_USART_STATUS(eventType)) {
+      // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
+      if (jsvIsObject(usartClass)) {
+        if (event.flags & EV_SERIAL_STATUS_FRAMING_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
+        if (event.flags & EV_SERIAL_STATUS_PARITY_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
       }
       jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH

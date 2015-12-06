@@ -37,15 +37,16 @@ typedef long long int64_t;
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jspininfo.h"
+#include "jswrap_esp8266.h"
+#include <jswrap_esp8266_network.h>
 
 // The maximum time that we can safely delay/block without risking a watch dog
 // timer error or other undesirable WiFi interaction.  The time is measured in
 // microseconds.
 #define MAX_SLEEP_TIME_US  3000
 
-// Save-to-flash uses the 16KB of "user params" locates right after the first firmware
-// block, see https://github.com/espruino/Espruino/wiki/ESP8266-Design-Notes for memory
-// map details. The jshFlash functions use memory-mapped reads to access the first 1MB
+// Save-to-flash uses 12KB at 0x78000
+// The jshFlash functions use memory-mapped reads to access the first 1MB
 // of flash and refuse to go beyond that. Writing uses the SDK functions and is also
 // limited to the first MB.
 #define FLASH_MAX (1024*1024)
@@ -146,7 +147,7 @@ void jshInit() {
  * We have arrived in this callback function because the state of a GPIO pin has changed
  * and it is time to record that change.
  */
-static void intrHandlerCB(
+static void CALLED_FROM_INTERRUPT intrHandlerCB(
     uint32 interruptMask, //!< A mask indicating which GPIOs have changed.
     void *arg             //!< Optional argument.
   ) {
@@ -175,19 +176,34 @@ static void intrHandlerCB(
  * Reset the Espruino environment.
  */
 void jshReset() {
-  //system_restart();
   os_printf("> jshReset\n");
-  // Set all GPIO pins to be input.
-  /*
-  int i;
-  for (int i=0; i<JSH_PIN_COUNT; i++) {
-    jshPinSetState(i, JSHPINSTATE_GPIO_IN);
-  }
-  */
+
+  // Set all GPIO pins to be input with pull-up
+  jshPinSetState(0, JSHPINSTATE_GPIO_IN_PULLUP);
+  //jshPinSetState(2, JSHPINSTATE_GPIO_IN_PULLUP); // used for debug output
+  jshPinSetState(4, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(5, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(12, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(13, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(14, JSHPINSTATE_GPIO_IN_PULLUP);
+  jshPinSetState(15, JSHPINSTATE_GPIO_IN_PULLUP);
   g_spiInitialized = false; // Flag the hardware SPI interface as un-initialized.
   g_lastSPIRead = -1;
+
+  extern void user_uart_init(void); // in user_main.c
+  //user_uart_init(); // FIXME: commented out because it causes chars to be lost. SHould only re-init if the baud rate changed?
+
+  jswrap_ESP8266_wifi_reset(); // reset the wifi
+
   os_printf("< jshReset\n");
-} // End of jshReset
+}
+
+/**
+ * Re-init the esp8266 stuff after a soft-reset
+ */
+void jshSoftInit() {
+  jswrap_ESP8266_wifi_soft_init();
+}
 
 /**
  * Handle whatever needs to be done in the idle loop when there's nothing to do.
@@ -195,7 +211,7 @@ void jshReset() {
  * Nothing is needed on the esp8266. The watchdog timer is taken care of by the SDK.
  */
 void jshIdle() {
-} // End of jshIdle
+}
 
 // esp8266 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
@@ -205,7 +221,7 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
   int len = os_sprintf(buf, MACSTR, MAC2STR(mac_addr));
   strncpy((char *)data, buf, maxChars);
   return len > maxChars ? maxChars : len;
-} // End of jshSerialNumber
+}
 
 //===== Interrupts and sleeping
 
@@ -439,7 +455,7 @@ void jshPinSetValue(
  * Get the value of the corresponding pin.
  * \return The current value of the pin.
  */
-bool jshPinGetValue(
+bool CALLED_FROM_INTERRUPT jshPinGetValue( // can be called at interrupt time
     Pin pin //!< The pin to have its value read.
   ) {
   //os_printf("> ESP8266: jshPinGetValue pin=%d, value=%d\n", pin, GPIO_INPUT_GET(pin));
@@ -528,7 +544,7 @@ void jshEnableWatchDog(JsVarFloat timeout) {
 /**
  * Get the state of the pin associated with the event flag.
  */
-bool jshGetWatchedPinState(IOEventFlags eventFlag) {
+bool CALLED_FROM_INTERRUPT jshGetWatchedPinState(IOEventFlags eventFlag) { // can be called at interrupt time
   //os_printf("> jshGetWatchedPinState eventFlag=%d\n", eventFlag);
 
   if (eventFlag > EV_EXTI_MAX || eventFlag < EV_EXTI0) {
@@ -549,17 +565,45 @@ bool jshGetWatchedPinState(IOEventFlags eventFlag) {
  * a given period and set the pin value again to be the opposite.
  */
 void jshPinPulse(
-    Pin pin,        //!< The pin to be pulsed.
-    bool value,     //!< The value to be pulsed into the pin.
-    JsVarFloat time //!< The period in milliseconds to hold the pin.
-  ) {
-  if (jshIsPinValid(pin)) {
-    //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-    jshPinSetValue(pin, value);
-    jshDelayMicroseconds(jshGetTimeFromMilliseconds(time));
-    jshPinSetValue(pin, !value);
-  } else
-    jsError("Invalid pin!");
+    Pin pin,              //!< The pin to be pulsed.
+    bool pulsePolarity,   //!< The value to be pulsed into the pin.
+    JsVarFloat pulseTime  //!< The duration in milliseconds to hold the pin.
+) {
+#if 0
+  // Implementation using the utility timer. This doesn't work well on the esp8266, because the
+  // utility timer uses tasks and these are not pre-emptible. So the timer won't actually fire
+  // until the main espruino task becomes idle, which messes up timings. It also locks-up things
+  // when someone defines a pulse train that is longer than the timer queue, because then the
+  // main task busy-waits for the timer queue to drain a bit, which never happens.
+  if (!jshIsPinValid(pin)) {
+    jsExceptionHere(JSET_ERROR, "Invalid pin!");
+    return;
+  }
+  if (pulseTime <= 0) {
+    // just wait for everything to complete [??? what does this mean ???]
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+#endif
+
+#if 1
+  // Implementation using busy-waiting. Ugly and if the pulse train exceeds 10ms one risks WDT
+  // resets, but it actually works...
+  //jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  jshPinSetValue(pin, pulsePolarity);
+  jshDelayMicroseconds(jshGetTimeFromMilliseconds(pulseTime)-6);  // -6 adjustment is for overhead
+  jshPinSetValue(pin, !pulsePolarity);
+#endif
 }
 
 
@@ -910,7 +954,7 @@ static void saveTime() {
 /**
  * Return the current time in microseconds.
  */
-JsSysTime jshGetSystemTime() { // in us
+JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
 } // End of jshGetSystemTime
 
@@ -1006,18 +1050,18 @@ static void systemTimeInit(void) {
 os_timer_t utilTimer;
 
 static void utilTimerInit(void) {
-  os_printf("UStimer init\n");
+  //os_printf("UStimer init\n");
   os_timer_disarm(&utilTimer);
   os_timer_setfn(&utilTimer, jstUtilTimerInterruptHandler, NULL);
 }
 
 void jshUtilTimerDisable() {
-  os_printf("UStimer disarm\n");
+  //os_printf("UStimer disarm\n");
   os_timer_disarm(&utilTimer);
 }
 
 void jshUtilTimerStart(JsSysTime period) {
-  os_printf("UStimer arm\n");
+  if (period < 100.0 || period > 10000) os_printf("UStimer arm %ldus\n", (uint32_t)period);
   os_timer_arm_us(&utilTimer, (uint32_t)period, 0);
 }
 
@@ -1070,8 +1114,7 @@ void jshFlashRead(
     uint32_t addr, //!< Flash address to read from
     uint32_t len   //!< Length of data to read
   ) {
-  //os_printf("ESP8266: jshFlashRead: dest=%p for len=%ld from flash addr=0x%lx max=%ld\n",
-  //    buf, len, addr, FLASH_MAX);
+  //os_printf("jshFlashRead: dest=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1082,8 +1125,8 @@ void jshFlashRead(
   uint8_t *dest = buf;
   uint32_t bytes = *(uint32_t*)(addr & ~3);
   while (len-- > 0) {
-    if (addr & 3 == 0) bytes = *(uint32_t*)addr;
-    *dest++ = ((uint8_t*)&bytes)[(uint32)addr++ & 3];
+    if ((addr & 3) == 0) bytes = *(uint32_t*)addr;
+    *dest++ = ((uint8_t*)&bytes)[addr++ & 3];
   }
 }
 
@@ -1099,8 +1142,7 @@ void jshFlashWrite(
     uint32_t addr, //!< Flash address to write into
     uint32_t len   //!< Length of data to write
   ) {
-  //os_printf("ESP8266: jshFlashWrite: src=%p for len=%ld into flash addr=0x%lx\n",
-  //    buf, len, addr);
+  //os_printf("jshFlashWrite: src=%p, len=%ld flash=0x%lx\n", buf, len, addr);
 
   // make sure we stay with the flash address space
   if (addr >= FLASH_MAX) return;
@@ -1139,7 +1181,7 @@ bool jshFlashGetPage(
 void jshFlashErasePage(
     uint32_t addr //!<
   ) {
-  //os_printf("ESP8266: jshFlashErasePage: addr=0x%lx\n", addr);
+  //os_printf("jshFlashErasePage: addr=0x%lx\n", addr);
 
   SpiFlashOpResult res;
   res = spi_flash_erase_sector(addr >> FLASH_PAGE_SHIFT);

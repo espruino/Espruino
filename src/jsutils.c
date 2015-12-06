@@ -308,7 +308,14 @@ NO_INLINE void jsAssertFail(const char *file, int line, const char *expr) {
   while (1);
 #endif
 #else
+#ifdef ESP8266
+  jsiConsolePrint("REBOOTING.\n");
+  extern void jswrap_ESP8266_reboot(void);
+  jswrap_ESP8266_reboot();
+#else
+  jsiConsolePrint("EXITING.\n");
   exit(1);
+#endif
 #endif
   inAssertFail = false;
 }

@@ -784,7 +784,7 @@ void jshDoSysTick() {
 
   /* One second after start, call jsinteractive. This is used to swap
    * to USB (if connected), or the Serial port. */
-  if (ticksSinceStart > 3) {
+  if (ticksSinceStart == 5) {
     jsiOneSecondAfterStartup();
   }
 }

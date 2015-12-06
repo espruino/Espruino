@@ -39,9 +39,9 @@ extern int isfinite ( double );
 
 
 #ifndef BUILDNUMBER
-#define JS_VERSION "1v82"
+#define JS_VERSION "1v83"
 #else
-#define JS_VERSION "1v82." BUILDNUMBER
+#define JS_VERSION "1v83." BUILDNUMBER
 #endif
 /*
   In code:
@@ -59,7 +59,7 @@ extern int isfinite ( double );
 // Place constant strings into flash when we can in order to save RAM space. Strings in flash
 // must be accessed with word reads on aligned boundaries, so we'll have to copy them before
 // regular use.
-#define FLASH_STR(name, x) static const char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
+#define FLASH_STR(name, x) static char name[] __attribute__((section(".irom.literal"))) __attribute__((aligned(4))) = x
 
 // Get the length of a string in flash
 size_t flash_strlen(const char *str);
@@ -68,6 +68,17 @@ size_t flash_strlen(const char *str);
 char *flash_strncpy(char *dest, const char *source, size_t cap);
 
 #endif
+
+#if defined(ESP8266)
+// For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
+// interrupt time so they get loaded into static RAM instead of flash. We define
+// it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere.
+#define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
+#else
+#define CALLED_FROM_INTERRUPT
+#endif
+
+
 
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
@@ -222,10 +233,10 @@ typedef int64_t JsSysTime;
    } while(0)
  #elif defined(__STRING)
    // Normal assert with string in RAM
-   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)) } while(0)
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,__STRING(X)); } while(0)
  #else
    // Limited assert due to compiler not being able to stringify a parameter
-   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,"") } while(0)
+   #define assert(X) do { if (!(X)) jsAssertFail(__FILE__,__LINE__,""); } while(0)
  #endif
 #else
  #define assert(X) do { } while(0)

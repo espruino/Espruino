@@ -375,6 +375,13 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     return 0;
   }
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
+
+#ifndef SAVE_ON_FLASH
+  if (execInfo.lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(execInfo.lex), "compiled")) {
+    jsWarn("Function marked with \"compiled\" uploaded in source form");
+  }
+#endif
+
   /* If the function starts with return, treat it specially -
    * we don't want to store the 'return' part of it
    */
@@ -1518,7 +1525,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           if (!jsvIsFunction(bv)) {
             jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
           } else {
-            if (jsvIsObject(av)) {
+            if (jsvIsObject(av) || jsvIsFunction(av)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
               JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
               while (proto) {
@@ -1530,11 +1537,16 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               }
               if (jspIsConstructor(bv, "Object")) inst = true;
               jsvUnLock(bproto);
-            } else {
+            }
+            if (!inst) {
               const char *name = jswGetBasicObjectName(av);
               if (name) {
                 inst = jspIsConstructor(bv, name);
               }
+              // Hack for built-ins that should also be instances of Object
+              if (!inst && (jsvIsArray(av) || jsvIsArrayBuffer(av)) &&
+                  jspIsConstructor(bv, "Object"))
+                inst = true;
             }
           }
           jsvUnLock3(av, bv, a);
@@ -2524,10 +2536,12 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
+  JsExecFlags oldExecute = execInfo.execute;
   JsVar *oldThisVar = execInfo.thisVar;
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
   jsvUnLock(jspEvaluateVar(moduleContents, scope, 0));
   execInfo.thisVar = oldThisVar;
+  execInfo.execute = oldExecute; // make sure we fully restore state after parsing a module
 
   jsvUnLock(scope);
   return jsvSkipNameAndUnLock(exportsName);

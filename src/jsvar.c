@@ -536,6 +536,10 @@ static NO_INLINE void jsvUnLockFreeIfNeeded(JsVar *var) {
 /// Unlock this variable - this is SAFE for null variables
 ALWAYS_INLINE void jsvUnLock(JsVar *var) {
   if (!var) return;
+  if (jsvGetLocks(var) <= 0) {
+    jsiConsolePrintf("ASSERT FAIL: unlocking unlocked variable: %q %j (%t)\n", var, var, var);
+    jsvTrace(var, 2);
+  }
   assert(jsvGetLocks(var)>0);
   var->flags -= JSV_LOCK_ONE;
   // Now see if we can properly free the data
@@ -1845,6 +1849,7 @@ int jsvCompareInteger(JsVar *va, JsVar *vb) {
 JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
   assert(jsvIsName(src));
   JsVarFlags flags = src->flags;
+  JsVar *dst = 0;
   if (!keepAsName) {
     JsVarFlags t = src->flags & JSV_VARTYPEMASK;
     if (t>=_JSV_NAME_INT_START && t<=_JSV_NAME_INT_END) {
@@ -1854,36 +1859,48 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
           (JSV_NAME_STRING_0 < JSV_STRING_0) &&
           (JSV_STRING_0 < JSV_STRING_EXT_0)); // this relies on ordering
       assert(t>=JSV_NAME_STRING_INT_0 && t<=JSV_NAME_STRING_MAX);
-      flags = (flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_STRING_0 + jsvGetCharactersInVar(src));
+      if (jsvGetLastChild(src)) {
+        /* it's not a simple name string - it has STRING_EXT bits on the end.
+         * Because the max length of NAME and STRING is different we must just
+         * copy */
+        dst = jsvNewFromStringVar(src, 0, JSVAPPENDSTRINGVAR_MAXLENGTH);
+        if (!dst) return 0;
+      } else {
+        flags = (flags & (JsVarFlags)~JSV_VARTYPEMASK) | (JSV_STRING_0 + jsvGetCharactersInVar(src));
+      }
     }
   }
-  JsVar *dst = jsvNewWithFlags(flags & JSV_VARIABLEINFOMASK);
-  if (!dst) return 0; // out of memory
+  if (!dst) {
+    dst = jsvNewWithFlags(flags & JSV_VARIABLEINFOMASK);
+    if (!dst) return 0; // out of memory
 
-  memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_NAME_LEN);
+    memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_NAME_LEN);
 
-  jsvSetLastChild(dst, 0);
-  jsvSetFirstChild(dst, 0);
-  jsvSetPrevSibling(dst, 0);
-  jsvSetNextSibling(dst, 0);
+    jsvSetLastChild(dst, 0);
+    jsvSetFirstChild(dst, 0);
+    jsvSetPrevSibling(dst, 0);
+    jsvSetNextSibling(dst, 0);
+    // Copy extra string data if there was any
+    if (jsvHasStringExt(src)) {
+      // If it had extra string data it should have been handled above
+      assert(keepAsName || !jsvGetLastChild(src));
+      // copy extra bits of string if there were any
+      if (jsvGetLastChild(src)) {
+        JsVar *child = jsvLock(jsvGetLastChild(src));
+        JsVar *childCopy = jsvCopy(child);
+        if (childCopy) { // could be out of memory
+          jsvSetLastChild(dst, jsvGetRef(childCopy)); // no ref for stringext
+          jsvUnLock(childCopy);
+        }
+        jsvUnLock(child);
+      }
+    } else {
+      assert(jsvIsBasic(src)); // in case we missed something!
+    }
+  }
   // Copy LINK of what it points to
   if (linkChildren && jsvGetFirstChild(src)) {
     jsvSetFirstChild(dst, jsvRefRef(jsvGetFirstChild(src)));
-  }
-  // Copy extra string data if there was any
-  if (jsvHasStringExt(src)) {
-    // copy extra bits of string if there were any
-    if (jsvGetLastChild(src)) {
-      JsVar *child = jsvLock(jsvGetLastChild(src));
-      JsVar *childCopy = jsvCopy(child);
-      if (childCopy) { // could be out of memory
-        jsvSetLastChild(dst, jsvGetRef(childCopy)); // no ref for stringext
-        jsvUnLock(childCopy);
-      }
-      jsvUnLock(child);
-    }
-  } else {
-    assert(jsvIsBasic(src)); // in case we missed something!
   }
   return dst;
 }
@@ -2676,6 +2693,10 @@ bool jsvMathsOpTypeEqual(JsVar *a, JsVar *b) {
     JsVar *contents = jsvMathsOp(a,b, LEX_EQUAL);
     if (!jsvGetBool(contents)) eql = false;
     jsvUnLock(contents);
+  } else {
+    /* Make sure we don't get in the situation where we have two equal
+     * strings with a check that fails because they were stored differently */
+    assert(!(jsvIsString(a) && jsvIsString(b) && jsvIsBasicVarEqual(a,b)));
   }
   return eql;
 }

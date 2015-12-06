@@ -18,54 +18,24 @@
 #define LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_
 #include "jsvar.h"
 
-// Deprecated
-void   jswrap_ESP8266WiFi_beAccessPoint(JsVar *jsv_ssid, JsVar *jsv_password);
-// Deprecated
-void   jswrap_ESP8266WiFi_connect(JsVar *jsv_ssid, JsVar *jsv_password, JsVar *gotIpCallback);
-// Deprecated
-void   jswrap_ESP8266WiFi_disconnect();
-void   jswrap_ESP8266WiFi_getAccessPoints(JsVar *callback);
-// Deprecated
-JsVar *jswrap_ESP8266WiFi_getAddressAsString(JsVar *address);
-JsVar *jswrap_ESP8266WiFi_getAutoConnect();
-JsVar *jswrap_ESP8266WiFi_getConnectedStations();
-JsVar *jswrap_ESP8266WiFi_getConnectStatus();
-JsVar *jswrap_ESP8266WiFi_getDHCPHostname();
-// Deprecated
-JsVar *jswrap_ESP8266WiFi_getIPInfo();
-JsVar *jswrap_ESP8266WiFi_getRSSI();
-JsVar *jswrap_ESP8266WiFi_getStationConfig();
-void   jswrap_ESP8266WiFi_init();
-void   jswrap_ESP8266WiFi_kill();
-void   jswrap_ESP8266WiFi_mdnsInit();
-void   jswrap_ESP8266WiFi_onWiFiEvent(JsVar *callback);
-void   jswrap_ESP8266WiFi_setAutoConnect(JsVar *autoconnect);
-void   jswrap_ESP8266WiFi_setDHCPHostname(JsVar *jsHostname);
-JsVar *jswrap_ESP8266WiFi_socketConnect(JsVar *options, JsVar *callback);
-void   jswrap_ESP8266WiFi_socketEnd(JsVar *socket, JsVar *data);
-// Deprecated
-void   jswrap_ESP8266WiFi_stopAP();
-
-JsVar *jswrap_ESP8266_wifi_getAPIP();
-void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_createAP(JsVar *jsSsid, JsVar *jsPassword, JsVar *jsOptions, JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_disconnect(JsVar *jsOptions, JsVar *jsCallback);
-JsVar *jswrap_ESP8266_wifi_getIP();
-JsVar *jswrap_ESP8266_wifi_getStatus();
+//===== Wifi library
+void   jswrap_ESP8266_wifi_init1();
+void   jswrap_ESP8266_wifi_soft_init();
+void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_startAP(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_scan(JsVar *jsCallback);
-void   jswrap_ESP8266_wifi_stopAP(JsVar *jsOptions, JsVar *jsCallback);
-
-void   jswrap_ESP8266_dumpAllSocketData();
-void   jswrap_ESP8266_dumpSocket(JsVar *jsSocketId);
-JsVar *jswrap_ESP8266_getAddressAsString(JsVar *jsAddress);
-void   jswrap_ESP8266_getHostByName(JsVar *jsHostname, JsVar *jsCallback);
-JsVar *jswrap_ESP8266_getRstInfo();
-JsVar *jswrap_ESP8266_getState();
-void   jswrap_ESP8266_logDebug(JsVar *jsDebug);
-void   jswrap_ESP8266_ping(JsVar *jsIpAddr, JsVar *jsPingCallback);
-void   jswrap_ESP8266_restart();
-void   jswrap_ESP8266_updateCPUFreq(JsVar *jsFreq);
-
-void   jswrap_ESP8266_init();
+void   jswrap_ESP8266_wifi_save(JsVar *what);
+void   jswrap_ESP8266_wifi_restore(void);
+JsVar *jswrap_ESP8266_wifi_getStatus(JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_setConfig(JsVar *jsOptions);
+JsVar *jswrap_ESP8266_wifi_getDetails(JsVar *jsCallback);
+JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback);
+JsVar *jswrap_ESP8266_wifi_getIP(JsVar *jsCallback);
+JsVar *jswrap_ESP8266_wifi_getAPIP(JsVar *jsCallback);
+JsVar *jswrap_ESP8266_wifi_getDHCPHostname(JsVar *jsCallback);
+void   jswrap_ESP8266_wifi_setDHCPHostname(JsVar *jsHostname);
+void   jswrap_ESP8266_wifi_getHostByName(JsVar *jsHostname, JsVar *jsCallback);
 
 #endif /* LIBS_NETWORK_ESP8266_JSWRAP_ESP8266_NETWORK_H_ */
