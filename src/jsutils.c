@@ -19,12 +19,6 @@
 #include "jswrap_error.h"
 #include "jswrap_json.h"
 
-#ifdef FLASH_STR
-// debugging...
-#define os_printf os_printf_plus
-extern void os_printf_plus(char *fmt, ...);
-#endif
-
 /** Error flags for things that we don't really want to report on the console,
  * but which are good to know about */
 JsErrorFlags jsErrorFlags;
