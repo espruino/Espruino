@@ -322,15 +322,15 @@ static ALWAYS_INLINE uint8_t functionToAF(JshPinFunction func) {
 }
 #endif
 
-static long long DEVICE_INITIALISED_FLAGS = 0L;
+static uint64_t DEVICE_INITIALISED_FLAGS = 0L;
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   return (DEVICE_INITIALISED_FLAGS & mask) != 0L;
 }
 
 void jshSetDeviceInitialised(IOEventFlags device, bool isInit) {
-  long long mask = 1L << (int)device;
+  uint64_t mask = 1ULL << (int)device;
   if (isInit) {
     DEVICE_INITIALISED_FLAGS |= mask;
   } else {
