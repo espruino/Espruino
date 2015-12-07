@@ -1,4 +1,5 @@
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
+             - this fixes broken SPI when not on standard pins
 
      1v83 : Moved to size optimisation for Pico (needed to get HTTPS into 384kB)
             Ensure Modules.addCached doesn't reset parse state (fix #723)
