@@ -2,6 +2,9 @@
 //
 // Test #on events
 
+var test_ssid = "tve-home";    // <========= configure for your AP
+var test_pwd  = "XXXXXXXX";    // <========= configure for your AP
+
 var async = require("Async");
 
 var ok=true;
@@ -45,9 +48,6 @@ function testCB(msg, next, timeout) {
 
 var wifi = require("Wifi");
 var esp8266 = require("ESP8266");
-
-var test_ssid = "tve-home";
-var test_pwd  = "XXXXXXXX";
 
 var nextFun = null; // "next" function of async.sequence
 
