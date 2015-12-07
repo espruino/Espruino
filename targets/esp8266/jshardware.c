@@ -191,7 +191,7 @@ void jshReset() {
   g_lastSPIRead = -1;
 
   extern void user_uart_init(void); // in user_main.c
-  //user_uart_init(); // FIXME: commented out because it causes chars to be lost. SHould only re-init if the baud rate changed?
+  user_uart_init();
 
   jswrap_ESP8266_wifi_reset(); // reset the wifi
 
