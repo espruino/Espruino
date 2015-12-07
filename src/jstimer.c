@@ -315,7 +315,7 @@ static bool jstPinTaskChecker(UtilTimerTask *task, void *data) {
 // data = *fn
 static bool jstExecuteTaskChecker(UtilTimerTask *task, void *data) {
   if (task->type != UET_EXECUTE) return false;
-  return task->data.execute = data;
+  return (task->data.execute = data);
 }
 
 // --------------------------------------------------------------------------------------------
