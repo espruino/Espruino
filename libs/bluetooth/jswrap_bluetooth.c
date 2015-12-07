@@ -51,8 +51,6 @@ of beta.  */
 
 #define APP_ADV_INTERVAL                1600                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 1 sec). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
-#define APP_ADV_SLOW_INTERVAL           1600                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 1 sec). */
-#define APP_ADV_SLOW_TIMEOUT_IN_SECONDS 0 /* always */
 
 #define APP_TIMER_PRESCALER             0                                           /**< Value of the RTC1 PRESCALER register. */
 #define APP_TIMER_MAX_TIMERS            (2)                                         /**< Maximum number of simultaneously created timers. */
@@ -201,6 +199,24 @@ static void conn_params_init(void) {
     APP_ERROR_CHECK(err_code);
 }
 
+
+void jswrap_nrf_bluetooth_startAdvertise(void) {
+  uint32_t err_code;
+  // Actually start advertising
+  ble_gap_adv_params_t adv_params;
+  memset(&adv_params, 0, sizeof(adv_params));
+  adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
+  adv_params.p_peer_addr = NULL;
+  adv_params.fp          = BLE_GAP_ADV_FP_ANY;
+  adv_params.p_whitelist = NULL;
+  adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
+  adv_params.interval = APP_ADV_INTERVAL;
+
+  sd_ble_gap_adv_start(&adv_params);
+
+  APP_ERROR_CHECK(err_code);
+}
+
 /**@brief Function for the Application's S110 SoftDevice event handler.
  *
  * @param[in] p_ble_evt S110 SoftDevice event.
@@ -208,33 +224,37 @@ static void conn_params_init(void) {
 static void on_ble_evt(ble_evt_t * p_ble_evt) {
     uint32_t                         err_code;
     
-    switch (p_ble_evt->header.evt_id)
-    {
-        case BLE_GAP_EVT_CONNECTED:
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            jsiSetConsoleDevice( EV_BLUETOOTH );
-            break;
-            
-        case BLE_GAP_EVT_DISCONNECTED:
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
-            break;
+    switch (p_ble_evt->header.evt_id) {
+      case BLE_GAP_EVT_TIMEOUT:
+        // the timeout for sd_ble_gap_adv_start expired - kick it off again
+        jswrap_nrf_bluetooth_startAdvertise();
+        break;
 
-        case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-            // Pairing not supported
-            err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_CONNECTED:
+        m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+        jsiSetConsoleDevice( EV_BLUETOOTH );
+        break;
 
-        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
-            // No system attributes have been stored.
-            err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_DISCONNECTED:
+        m_conn_handle = BLE_CONN_HANDLE_INVALID;
+        jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+        break;
 
-        default:
-            // No implementation needed.
-            break;
+      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+        // Pairing not supported
+        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
+        APP_ERROR_CHECK(err_code);
+        break;
+
+      case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+        // No system attributes have been stored.
+        err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
+        APP_ERROR_CHECK(err_code);
+        break;
+
+      default:
+          // No implementation needed.
+          break;
     }
 }
 
@@ -367,22 +387,10 @@ void jswrap_nrf_bluetooth_sleep(void) {
     "generate" : "jswrap_nrf_bluetooth_wake"
 }*/
 void jswrap_nrf_bluetooth_wake(void) {
-    uint32_t err_code;
+
     NRF_RADIO->TASKS_DISABLE = (0UL);
 
-    // Actually start advertising
-    ble_gap_adv_params_t adv_params;
-    memset(&adv_params, 0, sizeof(adv_params));
-    adv_params.type        = BLE_GAP_ADV_TYPE_ADV_IND;
-    adv_params.p_peer_addr = NULL;
-    adv_params.fp          = BLE_GAP_ADV_FP_ANY;
-    adv_params.p_whitelist = NULL;
-    adv_params.timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
-    adv_params.interval = APP_ADV_INTERVAL;
-
-    sd_ble_gap_adv_start(&adv_params);
-
-    APP_ERROR_CHECK(err_code);
+    jswrap_nrf_bluetooth_startAdvertise();
 }
 
 /*JSON{
@@ -435,6 +443,16 @@ Data is of the form `{ UUID : data_as_byte_array }`. For example to return batte
 NRF.setAdvertising({
   0x180F : [95]
 });
+```
+
+Or you could report the current temperature:
+
+```
+setInterval(function() {
+  NRF.setAdvertising({
+    0x1809 : [0|E.getTemperature()]
+  });
+}, 30000);
 ```
 */
 void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {

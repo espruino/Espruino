@@ -50,7 +50,6 @@ something that was not possible with `onInit`.
 
 /*JSON{
   "type" : "staticmethod",
-  "ifndef" : "SAVE_ON_FLASH",
   "class" : "E",
   "name" : "getTemperature",
   "generate_full" : "jshReadTemperature()",

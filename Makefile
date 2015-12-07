@@ -64,6 +64,7 @@
 # CPPFILE=test.cpp        # Compile in the supplied C++ file
 #
 # WIZNET=1                # If compiling for a non-linux target that has internet support, use WIZnet support, not TI CC3000
+# USB_PRODUCT_ID=0x1234   # force a specific USB Product ID (default 0x5740)
 #
 ifndef SINGLETHREAD
 MAKEFLAGS=-j5 # multicore
@@ -1324,6 +1325,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
 
 endif #NRF5X
@@ -1551,7 +1553,10 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
 	$(Q)python scripts/build_platform_config.py $(BOARD)
 
-compile=$(CC) $(CFLAGS) $< -o $@
+COLERR=$(shell echo -e "\\033[31m" ERROR "\\033[0m")
+COLWARN=$(shell echo -e "\\033[33m" WARNING "\\033[0m")
+compile=$(CC) $(CFLAGS) $< -o $@ 2>&1 | sed -E -e "s/error/$(COLERR)/"  -e "s/warning/$(COLWARN)/"
+
 ifdef FIXED_OBJ_NAME
 link=$(LD) $(LDFLAGS) -o espruino $(OBJS) $(LIBS)
 else
