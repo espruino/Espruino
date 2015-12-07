@@ -1163,20 +1163,18 @@ bool jsvIsEmptyString(JsVar *v) {
 size_t jsvGetStringLength(const JsVar *v) {
   size_t strLength = 0;
   const JsVar *var = v;
-  JsVarRef ref = 0;
-
+  JsVar *newVar = 0;
   if (!jsvHasCharacterData(v)) return 0;
 
   while (var) {
-    JsVarRef refNext = jsvGetLastChild(var);
+    JsVarRef ref = jsvGetLastChild(var);
     strLength += jsvGetCharactersInVar(var);
 
     // Go to next
-    if (ref) jsvUnLock(var); // note use of if (ref), not var
-    ref = refNext;
-    var = ref ? jsvLock(ref) : 0;
+    jsvUnLock(newVar); // note use of if (ref), not var
+    var = newVar = ref ? jsvLock(ref) : 0;
   }
-  if (ref) jsvUnLock(var); // note use of if (ref), not var
+  jsvUnLock(newVar); // note use of if (ref), not var
   return strLength;
 }
 
@@ -2430,7 +2428,7 @@ JsVar *jsvGetArrayItem(const JsVar *arr, JsVarInt index) {
 
 // Get all elements from arr and put them in itemPtr (unless it'd overflow).
 // Makes sure all of itemPtr either contains a JsVar or 0
-void jsvGetArrayItems(const JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
+void jsvGetArrayItems(JsVar *arr, unsigned int itemCount, JsVar **itemPtr) {
   JsvObjectIterator it;
   jsvObjectIteratorNew(&it, arr);
   unsigned int i = 0;
@@ -3067,7 +3065,7 @@ bool jsvGarbageCollect() {
         // work backwards, so our free list is in the right order
         unsigned int count = 1 + (unsigned int)jsvGetFlatStringBlocks(var);
         while (count-- > 0) {
-          var = jsvGetAddressOf(i+count);
+          var = jsvGetAddressOf((JsVarRef)(i+count));
           var->flags = JSV_UNUSED;
           // add this to our free list
           jsvSetNextSibling(var, jsVarFirstEmpty);

@@ -115,10 +115,10 @@
 /** Allocate flat string, return pointer to its first element.
  * As we drop the pointer here, it's left locked. jsvGetFlatStringPointer
  * is also safe if 0 is passed in.  */
-#define MBEDTLS_PLATFORM_CALLOC_MACRO(X,Y) jsvGetFlatStringPointer(jsvNewFlatStringOfLength((X)*(Y)))
+#define MBEDTLS_PLATFORM_CALLOC_MACRO(X,Y) (void*)jsvGetFlatStringPointer(jsvNewFlatStringOfLength((X)*(Y)))
 
 /** Find the original flat string, and unlock it - freeing the memory. */
-#define MBEDTLS_PLATFORM_FREE_MACRO(X) jsvUnLock(jsvGetFlatStringFromPointer(X))
+#define MBEDTLS_PLATFORM_FREE_MACRO(X) jsvUnLock(jsvGetFlatStringFromPointer((char *)(X)))
 
 
 #include "mbedtls/check_config.h"
