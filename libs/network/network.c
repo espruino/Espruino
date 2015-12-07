@@ -179,6 +179,7 @@ void networkGetHostByName(
 }
 
 
+
 void networkCreate(JsNetwork *net, JsNetworkType type) {
   net->networkVar = jsvNewStringOfLength(sizeof(JsNetworkData));
   if (!net->networkVar) return;
@@ -202,18 +203,10 @@ bool networkWasCreated() {
   }
 }
 
-bool got = false;
-extern void os_printf_plus();
-
 bool networkGetFromVar(JsNetwork *net) {
   // Retrieve a reference to the JsVar that represents the network and save in the
   // JsNetwork C structure.
   net->networkVar = jsvObjectGetChild(execInfo.hiddenRoot, NETWORK_VAR_NAME, 0);
-
-  if ((!!(net->networkVar)) != got) {
-    os_printf_plus("%s network!\n", net->networkVar ? "got" : "no");
-    got = !!(net->networkVar);
-  }
 
   // Validate that we have a network variable.
   if (!net->networkVar) {
