@@ -17,7 +17,7 @@ before_install:
  - sudo apt-get update
  - sudo apt-get install libsdl1.2-dev gcc-arm-none-eabi
  - curl -Ls http://s3.voneicken.com/xtensa-lx106-elf.tgx | tar Jxf -
- - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v1.4.0.tgx | tar Jxf -
+ - curl -Ls http://s3.voneicken.com/esp_iot_sdk_v1.5.0.tgx | tar Jxf -
 
 before_script:
  - arm-none-eabi-gcc --version
@@ -41,7 +41,7 @@ env:
     - RELEASE=1
     - TRAVIS=1
     - V=0
-    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v1.4.0
+    - ESP8266_SDK_ROOT=$TRAVIS_BUILD_DIR/esp_iot_sdk_v1.5.0
     - PATH=$PATH:$TRAVIS_BUILD_DIR/xtensa-lx106-elf/bin/
   matrix:
     - ESP8266_BOARD=1

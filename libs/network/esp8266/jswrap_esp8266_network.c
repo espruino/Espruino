@@ -235,14 +235,18 @@ The ESP8266WiFi library is to be removed.
 /*JSON{
   "type" : "event",
   "class" : "Wifi",
-  "name" : "connected",
+  "name" : "associated",
   "params" : [
-    ["ssid","JsVar","The SSID of the access point to which the association was established"],
-    ["bssid","JsVar","The BSSID of the access point"],
-    ["channel","JsVar","The wifi channel used (an integer, typ 1..14)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'connected' event is called when an association with an access point has succeeded, i.e., a connection to the AP's network has been established.
+The details include:
+
+* ssid - The SSID of the access point to which the association was established
+* mac - The BSSID/mac address of the access point
+* channel - The wifi channel used (an integer, typ 1..14)
+
 */
 
 /*JSON{
@@ -250,12 +254,16 @@ The 'connected' event is called when an association with an access point has suc
   "class" : "Wifi",
   "name" : "disconnected",
   "params" : [
-    ["ssid","JsVar","The SSID of the access point from which the association was lost"],
-    ["bssid","JsVar","The BSSID of the access point"],
-    ["reason","JsVar","The reason for the disconnection (string)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'disconnected' event is called when an association with an access point has been lost.
+The details include:
+
+* ssid - The SSID of the access point from which the association was lost
+* mac - The BSSID/mac address of the access point
+* reason - The reason for the disconnection (string)
+
 */
 
 /*JSON{
@@ -263,11 +271,15 @@ The 'disconnected' event is called when an association with an access point has 
   "class" : "Wifi",
   "name" : "auth_change",
   "params" : [
-    ["oldMode","JsVar","The old auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)"],
-    ["newMode","JsVar","The new auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'auth_change' event is called when the authentication mode with the associated access point changes.
+The details include:
+
+* oldMode - The old auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+* newMode - The new auth mode (string: open, wep, wpa, wpa2, wpa_wpa2)
+
 */
 
 /*JSON{
@@ -281,14 +293,18 @@ The 'dhcp_timeout' event is called when a DHCP request to the connected access p
 /*JSON{
   "type" : "event",
   "class" : "Wifi",
-  "name" : "got_ip",
+  "name" : "connected",
   "params" : [
-    ["ip","JsVar","The IP address obtained as string"],
-    ["netmask","JsVar","The network's IP range mask as string"],
-    ["gw","JsVar","The network's default gateway as string"]
+    ["details","JsVar","An object with event details"]
   ]
 }
-The 'got_ip' event is called when an IP address is received from the connected access point (strictly speaking, from the networks' DHCP server).
+The 'connected' event is called when the connection with an access point is ready for traffic. In the case of a dynamic IP address configuration this is when an IP address is obtained, in the case of static IP address allocation this happens when an association is formed (in that case the 'associated' and 'connected' events are fired in rapid succession).
+The details include:
+
+* ip - The IP address obtained as string
+* netmask - The network's IP range mask as string
+* gw - The network's default gateway as string
+
 */
 
 /*JSON{
@@ -296,11 +312,14 @@ The 'got_ip' event is called when an IP address is received from the connected a
   "class" : "Wifi",
   "name" : "sta_joined",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["aid","JsVar","The association ID (a small integer representing the station)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'sta_joined' event is called when a station establishes an association (i.e. connects) with the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
 */
 
 /*JSON{
@@ -308,11 +327,14 @@ The 'sta_joined' event is called when a station establishes an association (i.e.
   "class" : "Wifi",
   "name" : "sta_left",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["aid","JsVar","The association ID (a small integer representing the station)"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'sta_left' event is called when a station disconnects from the esp8266's access point (or its association times out?).
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+
 */
 
 /*JSON{
@@ -320,11 +342,15 @@ The 'sta_left' event is called when a station disconnects from the esp8266's acc
   "class" : "Wifi",
   "name" : "probe_recv",
   "params" : [
-    ["mac","JsVar","The MAC address of the station in string format (00:00:00:00:00:00)"],
-    ["rssi","JsVar","The signal strength in dB of the probe request"]
+    ["details","JsVar","An object with event details"]
   ]
 }
 The 'probe_recv' event is called when a probe request is received from some station by the esp8266's access point.
+The details include:
+
+* mac - The MAC address of the station in string format (00:00:00:00:00:00)
+* rssi - The signal strength in dB of the probe request
+
 */
 
 //===== Functions
@@ -340,7 +366,7 @@ The 'probe_recv' event is called when a probe request is received from some stat
     ["callback", "JsVar", "An optional function to be called back on disconnection. The callback function receives no argument."]
   ]
 }
-Disconnect the wifi station from an access point and disable the station mode.
+Disconnect the wifi station from an access point and disable the station mode. It is OK to call `disconnect` to turn off station mode even if no connection exists (for example, connection attempts may be failing). Station mode can be re-enabled by calling `connect` or `scan`.
 */
 void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
   DBGV("> Wifi.disconnect\n");
@@ -388,7 +414,7 @@ void jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback) {
     ["callback", "JsVar", "An optional function to be called back on successful stop. The callback function receives no argument."]
   ]
 }
-Stop being an access point and disable the AP operation mode.
+Stop being an access point and disable the AP operation mode. Ap mode can be re-enabled by calling `startAP`.
 */
 void jswrap_ESP8266_wifi_stopAP(JsVar *jsCallback) {
   DBGV("> Wifi.stopAP\n");
@@ -435,6 +461,7 @@ Notes:
 
 * the options should include the ability to set a static IP and associated netmask and gateway, this is a future enhancement.
 * the only error reported in the callback is "Bad password", all other errors (such as access point not found or DHCP timeout) just cause connection retries. If the reporting of such temporary errors is desired, the caller must use its own timeout and the `getDetails().status` field.
+* the `connect` call automatically enabled station mode, it can be disabled again by calling `disconnect`.
 
 */
 void jswrap_ESP8266_wifi_connect(
@@ -672,7 +699,10 @@ The `options` object can contain the following properties.
 * `password` - The password for connecting stations if authMode is not open.
 * `channel` - The channel to be used for the access point in the range 1..13. If the device is also connected to an access point as a station then that access point determines the channel.
 
-Note: the options should include the ability to set the AP IP and associated netmask, this is a future enhancement.
+Notes:
+
+* the options should include the ability to set the AP IP and associated netmask, this is a future enhancement.
+* the `startAP` call automatically enables AP mode. It can be disabled again by calling `stopAP`.
 
 */
 void jswrap_ESP8266_wifi_startAP(
@@ -873,6 +903,8 @@ The settings available are:
 
 * `phy` - Modulation standard to allow: `11b`, `11g`, `11n` (the esp8266 docs are not very clear, but it is assumed that 11n means b/g/n).
 * `powersave` - Power saving mode: `none` (radio is on all the time), `ps-poll` (radio is off between beacons as determined by the access point's DTIM setting). Note that in 'ap' and 'sta+ap' modes the radio is always on, i.e., no power saving is possible.
+
+Note: esp8266 SDK programmers may be missing an "opmode" option to set the sta/ap/sta+ap operation mode. Please use connect/scan/disconnect/startAP/stopAP, which all set the esp8266 opmode indirectly.
 */
 void jswrap_ESP8266_wifi_setConfig(JsVar *jsSettings) {
   DBGV("> Wifi.setConfig\n");
@@ -1090,13 +1122,13 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     ["what", "JsVar", "An optional parameter to specify what to save, on the esp8266 the two supported values are `clear` and `sta+ap`. The default is `sta+ap`"]
   ]
 }
-Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is clear such that wifi remains disabled at boot. The configuration includes whether the station and access point are enabled, the SSIDs, passwords, and phy configured.
+Save the current wifi configuration (station and access point) to flash and automatically apply this configuration at boot time, unless `what=="clear"`, in which case the saved configuration is cleared such that wifi remains disabled at boot. The saved configuration includes:
 
-* `station` - Status of the wifi station: `off`, `connecting`, ...
-* `ap` - Status of the wifi access point: `disabled`, `enabled`.
-* `phy` - Modulation standard configured: `11b`, `11g`, `11n` (the esp8266 docs are not very clear, but it is assumed that 11n means b/g/n). This setting limits the modulations that the radio will use, it does not indicate the current modulation used with a specific access point.
-* `mode` - The current operation mode: `off`, `sta`, `ap`, `sta+ap`.
-* `savedMode` - The saved operation mode which will be applied at boot time: `off`, `sta`, `ap`, `sta+ap`.
+* mode (off/sta/ap/sta+ap)
+* SSIDs & passwords
+* phy (11b/g/n)
+* powersave setting
+* DHCP hostname
 
 */
 void jswrap_ESP8266_wifi_save(JsVar *what) {
@@ -1110,34 +1142,39 @@ void jswrap_ESP8266_wifi_save(JsVar *what) {
 
   if (jsvIsString(what) && jsvIsStringEqual(what, "clear")) {
     conf->mode = 0; // disable
+    conf->phyMode = PHY_MODE_11N;
+    conf->sleepType = MODEM_SLEEP_T;
+    // ssids, passwords, and hostname are set to zero thanks to memset above
+    DBG("Wifi.save(clear)\n");
+
   } else {
     conf->mode = wifi_get_opmode();
+    conf->phyMode = wifi_get_phy_mode();
+    conf->sleepType = wifi_get_sleep_type();
+    DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
+        sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
+
+    struct station_config sta_config;
+    wifi_station_get_config(&sta_config);
+    os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
+    os_strncpy(conf->staPass, (char *)sta_config.password, 64);
+
+    struct softap_config ap_config;
+    wifi_softap_get_config(&ap_config);
+    conf->authMode = ap_config.authmode;
+    conf->hidden = ap_config.ssid_hidden;
+    conf->ssidLen = ap_config.ssid_len;
+    os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
+    os_strncpy(conf->apPass, (char *)ap_config.password, 64);
+    DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
+
+    char *hostname = wifi_station_get_hostname();
+    if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
   }
-
-  conf->phyMode = wifi_get_phy_mode();
-  conf->sleepType = wifi_get_sleep_type();
-  DBG("Wifi.save: len=%d phy=%d sleep=%d opmode=%d\n",
-      sizeof(*conf), conf->phyMode, conf->sleepType, conf->mode);
-
-  struct station_config sta_config;
-  wifi_station_get_config(&sta_config);
-  os_strncpy(conf->staSsid, (char *)sta_config.ssid, 32);
-  os_strncpy(conf->staPass, (char *)sta_config.password, 64);
-
-  struct softap_config ap_config;
-  wifi_softap_get_config(&ap_config);
-  conf->authMode = ap_config.authmode;
-  conf->hidden = ap_config.ssid_hidden;
-  conf->ssidLen = ap_config.ssid_len;
-  os_strncpy(conf->apSsid, (char *)ap_config.ssid, 32);
-  os_strncpy(conf->apPass, (char *)ap_config.password, 64);
-  DBG("Wifi.save: AP=%s STA=%s\n", ap_config.ssid, sta_config.ssid);
-
-  char *hostname = wifi_station_get_hostname();
-  if (hostname) os_strncpy(conf->dhcpHostname, hostname, 64);
 
   conf->crc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
   DBG("Wifi.save: len=%d vers=%d crc=0x%08lx\n", conf->length, conf->version, conf->crc);
+  jshFlashErasePage(0x7B000);
   jshFlashWrite(conf, 0x7B000, sizeof(flashBlock));
   DBGV("< Wifi.save: write completed\n");
 }
@@ -1204,6 +1241,8 @@ void jswrap_ESP8266_wifi_restore(void) {
     os_strncpy((char *)sta_config.password, conf->staPass, 64);
     wifi_station_set_config(&sta_config);
     DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
+    wifi_station_connect(); // we're not supposed to call this from user_init but it doesn't harm
+                            // and we need it when invoked from JS
   }
 }
 
@@ -1344,7 +1383,7 @@ static void dnsFoundCallback(
     ip_addr_t *ipAddr,    //!< The ip address retrieved.  This may be 0.
     void *arg             //!< Parameter passed in from espconn_gethostbyname.
   ) {
-  DBG(">> Wifi.getHostByName CB - %s %x\n", hostname, ipAddr->addr);
+  DBG(">> Wifi.getHostByName CB - %s %x\n", hostname, ipAddr ? ipAddr->addr : 0);
   if (g_jsHostByNameCallback != NULL) {
     JsVar *params[1];
     if (ipAddr == NULL) {
@@ -1459,9 +1498,11 @@ void jswrap_ESP8266_wifi_setDHCPHostname(
 
 //===== Reset wifi
 
-// When the Espruino environment is reset, this callback function will be invoked.
+// When the Espruino environment is reset (e.g. the reset() function), this callback function
+// will be invoked.
 // The purpose is to reset the environment by cleaning up whatever might be needed
-// to be cleaned up.
+// to be cleaned up. This does not actually touch the wifi itself: we want the IDE to remain
+// connected!
 void jswrap_ESP8266_wifi_reset() {
   DBGV("> Wifi reset\n");
 
@@ -1477,7 +1518,9 @@ void jswrap_ESP8266_wifi_reset() {
 
 //===== Wifi init1
 
-// This function is called in the user_main to set-up the wifi based on what was saved in flash
+// This function is called in the user_main's user_init() to set-up the wifi based on what
+// was saved in flash. This will restore the settings from flash into the SDK so the SDK
+// fires-up the right AP/STA modes and connections.
 void jswrap_ESP8266_wifi_init1() {
   DBGV("> Wifi.init1\n");
 
@@ -1488,20 +1531,20 @@ void jswrap_ESP8266_wifi_init1() {
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
-//===== Wifi init2
+//===== Wifi soft_init
 
-// This function is called once the initialization completes to actually hook-up the network
-void jswrap_ESP8266_wifi_init2() {
-  DBGV("> Wifi.init2\n");
+// This function is called in soft_init to hook-up the network. This happens from user_main's
+// init_done() and also from `reset()` in order to re-hook-up the network.
+void jswrap_ESP8266_wifi_soft_init() {
+  DBGV("> Wifi.soft_init\n");
 
   // initialize the network stack
   netInit_esp8266_board();
   JsNetwork net;
   networkCreate(&net, JSNETWORKTYPE_ESP8266_BOARD);
-  networkSet(&net);
   networkState = NETWORKSTATE_ONLINE;
 
-  DBGV("< Wifi.init2\n");
+  DBGV("< Wifi.soft_init\n");
 }
 
 //===== Ping

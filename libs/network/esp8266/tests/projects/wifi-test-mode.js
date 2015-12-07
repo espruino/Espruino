@@ -1,5 +1,8 @@
 // Espruino esp8266 Wifi tester - Copyright 2015 by Thorsten von Eicken
 
+var test_ssid = "tve-home"; // <===== configure for your AP!
+var test_pwd  = "xxxxxxxx";
+
 var async = require("Async");
 
 var ok=true;
@@ -65,35 +68,17 @@ function checkScan(aps) {
 var wifi = require("Wifi");
 var esp8266 = require("ESP8266");
 
-var test_ssid = "tve-home";
-var test_pwd  = "XXXXXXXX";
-
-wifi.on("associated", function(ev){console.log("ASSOCIATED!", ev);});
-wifi.on("connected", function(ev){console.log("CONNECTED!", ev);});
-wifi.on("disconnected", function(ev){console.log("DISCONNECTED!", ev);});
-wifi.on("auth_change", function(ev){console.log("AUTH_CHANGE!", ev);});
-wifi.on("dhcp_timeout", function(ev){console.log("DHCP_TIMEOUT!", ev);});
-wifi.on("sta_joined", function(ev){console.log("STA_JOINED!", ev);});
-wifi.on("sta_left", function(ev){console.log("STA_LEFT!", ev);});
-wifi.on("probe_recv", function(ev){console.log("PROBE_RECV!", ev);});
-
 function testAPOnoff() {
   wifi.stopAP();
   wifi.disconnect();
   expectProps("off", wifi.getStatus(),
                    {mode:"off", station:"off", ap:"disabled",
-                    phy:"11n", powersave:"ps-poll", savedMode:"off"});
+                    phy:"11n", savedMode:"off"});
   expectProps("off STA details", wifi.getDetails(), {status:"off"});
   expectProps("off STA IP", wifi.getIP(), {ip:"0.0.0.0", netmask:"0.0.0.0"});
   expectProps("off AP details", wifi.getAPDetails(), {status:"disabled", maxConn:4});
   expectProps("off AP IP", wifi.getAPIP(), {ip:"0.0.0.0"});
 
-  wifi.setConfig({phy:"11g"});
-  expectProps("11g", wifi.getStatus(), {phy:"11g", powersave:"ps-poll"});
-  wifi.setConfig({powersave:"none"});
-  expectProps("ps-off", wifi.getStatus(), {phy:"11g", powersave:"none"});
-  wifi.setConfig({phy:"11n", powersave:"ps-poll"});
-  expectProps("11n/ps-poll", wifi.getStatus(), {phy:"11n", powersave:"ps-poll"});
 
   async.sequence([
     // start access point and check what we get
@@ -194,11 +179,11 @@ function testAPOnoff() {
     ],
     {},
     function() {
-      console.log("=== test ended:", (ok?"SUCCESS":"ERROR"),"===");
+      console.log("=== test ended:", (ok?"SUCCESS":"ERROR"));
     });
 }
 
-console.log("***** TEST START *****");
+console.log("***** TEST START");
 console.log(process.memory());
 
 // test invalid parameter exceptions
@@ -222,7 +207,8 @@ expectException(function(){wifi.setConfig({phy:"11a"});});
 expectException(function(){wifi.setConfig({powersave:"foo"});});
 
 setTimeout(function() {
-  console.log("=== real test ===");
+  console.log("=== real test");
+    wifi.setConfig({powersave:"ps-poll", phy:"11n"});
   wifi.stopAP();
   wifi.disconnect(testAPOnoff);
 }, 1000);

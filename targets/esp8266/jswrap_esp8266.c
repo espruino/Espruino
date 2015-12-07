@@ -33,7 +33,7 @@
 typedef long long int64_t;
 
 #include <jswrap_esp8266.h>
-#include "jsinteractive.h" // Pull inn the jsiConsolePrint function
+#include "jsinteractive.h" // Pull in the jsiConsolePrint function
 
 #define _BV(bit) (1 << (bit))
 
@@ -272,6 +272,13 @@ JsVar *jswrap_ESP8266_crc32(JsVar *jsData) {
 
 //===== ESP8266.neopixelWrite
 
+// Good article on timing requirements:
+// http://wp.josh.com/2014/05/13/ws2812-neo­pixels-are-not-so-finicky-once-you-get-t­o-know-them/
+// Summary:
+// zero: high typ 350ns, max 500ns; low typ 600ns, max 5us
+// one : high typ 700ns, min 500ns; low typ 600ns, max 5us
+// latch: low min 6us
+
 /*JSON{
  "type"     : "staticmethod",
  "class"    : "ESP8266",
@@ -306,45 +313,33 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     return;
   }
 
-  uint8_t *p, *end, pix, mask;
-  uint32_t t, time0, time1, period, c, startTime, pinMask;
-  pinMask = _BV(pin);
-  p = (uint8_t *)pixels;
-  end = p + dataLength;
-  pix = *p++;
-  mask = 0x80;
-  c=0;
-  startTime = 0;
-  time0 = 14; // 14 cycles = (measured)
-  //time0 = 28; // 28 cycles = 0.35us
-  //time0 = 32; // 0.4us
-  //time1 = 108; // 108 cycles = 1.36us
-  time1 = 56; // 56 cycles = 0.7us
-  //time1 = 64; // 64 cycles = 0.8us
-  // Cycles/usec = 80
-  // Period = cycles/usec * usecDuration
-  //period = 136; // 136 cycles = 1.71us
-  period = 100; // cycles = 1.25us
-  //period = 104; // 1.3us
+  uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
+  uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
+  uint8_t *end = p + dataLength;  // pointer to end of array
+  uint8_t pix = *p++;             // current byte being shifted out
+  uint8_t mask = 0x80;            // mask for current bit
+  uint32_t start;                 // start time of bit
+  // iterate through all bits
   while(1) {
-    if (pix & mask)
-      t = time1; // Bit high duration
-    else
-      t = time0;
+    uint32_t t;
+    if (pix & mask) t = 56; // one bit, high typ 800ns (56 cyc = 700ns)
+    else            t = 14; // zero bit, high typ 300ns (14 cycl = 175ns)
     GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
-    startTime = _getCycleCount();                    // Save start time
-    while (((c = _getCycleCount()) - startTime) < t)
-      ;      // Wait high duration
+    start = _getCycleCount();                        // get start time of this bit
+    while (_getCycleCount()-start < t) ;             // busy-wait
     GPIO_REG_WRITE(GPIO_OUT_W1TC_ADDRESS, pinMask);  // Set low
-    if (!(mask >>= 1)) {                             // Next bit/byte
-      if (p >= end)
-        break;
+    if (!(mask >>= 1)) {                             // Next bit/byte?
+      if (p >= end) break;                           // at end, we're done
       pix = *p++;
       mask = 0x80;
     }
-    while (((c = _getCycleCount()) - startTime) < period)
-      ; // Wait for bit start
+    while (_getCycleCount()-start < 100) ;           // busy-wait, 100 cyc = 1.25us
   }
-  while ((_getCycleCount() - startTime) < period)
-    ; // Wait for last bit
+  while (_getCycleCount()-start < 100) ;             // Wait for last bit
+
+  // at some point the fact that the code above needs to be loaded from flash to cache caused the
+  // first bit's timing to be off. If this recurs, a suggestion is to run a loop iteration
+  // outputting low-low and only start with the actual first bit in the second loop iteration.
+  // This could be achieved by starting with pinMask=0 and setting the real pin mask at the end
+  // of the loop, initializing p=pixels-1, and mask=1
 }

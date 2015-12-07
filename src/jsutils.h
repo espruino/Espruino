@@ -69,6 +69,17 @@ char *flash_strncpy(char *dest, const char *source, size_t cap);
 
 #endif
 
+#if defined(ESP8266)
+// For the esp8266 we need to add CALLED_FROM_INTERRUPT to all functions that may execute at
+// interrupt time so they get loaded into static RAM instead of flash. We define
+// it as a no-op for everyone else. This is identical the ICACHE_RAM_ATTR used elsewhere.
+#define CALLED_FROM_INTERRUPT __attribute__((section(".iram1.text")))
+#else
+#define CALLED_FROM_INTERRUPT
+#endif
+
+
+
 #if !defined(__USB_TYPE_H) && !defined(CPLUSPLUS) && !defined(__cplusplus) // it is defined in this file too!
 #undef FALSE
 #undef TRUE

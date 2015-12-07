@@ -20,7 +20,7 @@
 
 //===== Wifi library
 void   jswrap_ESP8266_wifi_init1();
-void   jswrap_ESP8266_wifi_init2();
+void   jswrap_ESP8266_wifi_soft_init();
 void   jswrap_ESP8266_wifi_connect(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_disconnect(JsVar *jsCallback);
 void   jswrap_ESP8266_wifi_startAP(JsVar *jsSsid, JsVar *jsOptions, JsVar *jsCallback);

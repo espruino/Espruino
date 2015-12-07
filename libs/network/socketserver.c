@@ -41,6 +41,14 @@
 #define HTTP_ARRAY_HTTP_SERVERS "HttpS"
 #define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS "HttpSC"
 
+// Define the size of buffers/chunks that are transmitted or received
+#ifdef ESP8266
+#define CHUNK 536
+#else
+#define CHUNK 64
+#endif
+
+
 // -----------------------------
 
 static void httpAppendHeaders(JsVar *string, JsVar *headerObject) {
@@ -216,7 +224,7 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 }
 
 bool socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
-  char buf[64];
+  char buf[CHUNK];
 
   int a=1;
   if (!jsvIsEmptyString(*sendData)) {
@@ -266,7 +274,7 @@ void socketKill(JsNetwork *net) {
 // -----------------------------
 
 bool socketServerConnectionsIdle(JsNetwork *net) {
-  char buf[64];
+  char buf[CHUNK];
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
   if (!arr) return false;
@@ -377,7 +385,7 @@ void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **recei
 }
 
 bool socketClientConnectionsIdle(JsNetwork *net) {
-  char buf[64];
+  char buf[CHUNK];
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
   if (!arr) return false;
