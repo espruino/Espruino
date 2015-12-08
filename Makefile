@@ -931,6 +931,7 @@ libs/network/js/network_js.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
+ libs/network/esp8266/pktbuf.c\
  libs/network/esp8266/ota.c
  endif
 endif
@@ -1555,7 +1556,8 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 
 COLERR=$(shell echo -e "\\033[31m" ERROR "\\033[0m")
 COLWARN=$(shell echo -e "\\033[33m" WARNING "\\033[0m")
-compile=$(CC) $(CFLAGS) $< -o $@ 2>&1 | sed -E -e "s/error/$(COLERR)/"  -e "s/warning/$(COLWARN)/"
+#compile=$(CC) $(CFLAGS) $< -o $@ 2>&1 | sed -E -e "s/error/$(COLERR)/"  -e "s/warning/$(COLWARN)/"
+compile=$(CC) $(CFLAGS) $< -o $@
 
 ifdef FIXED_OBJ_NAME
 link=$(LD) $(LDFLAGS) -o espruino $(OBJS) $(LIBS)
