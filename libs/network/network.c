@@ -358,13 +358,14 @@ JsVar *load_cert_file(JsVar *cert) {
   JsVar *fileContents = jswrap_fs_readFile(cert);
   if (!fileContents || jsvIsStringEqual(fileContents, "")) {
     jsWarn("File %q not found", cert);
+    jsvUnLock(fileContents);
     return 0;
   }
 
   JSV_GET_AS_CHAR_ARRAY(pPtr, pLen, fileContents);
   bool started = false;
-  int i = 0;
-  int j = 0;
+  unsigned int i = 0;
+  unsigned int j = 0;
 
   /* parse the beginning, end, and line returns from cert file */
   for (i = 0; i < pLen; i++) {
@@ -382,10 +383,10 @@ JsVar *load_cert_file(JsVar *cert) {
     }
   }  
 
-  JsVar *parsed = jsvNewFromString((const unsigned char *)pPtr);
+  JsVar *parsed = jsvNewFromString((const char *)pPtr);
   /* convert to binary */
-  JsVar *buffer = jswrap_atob((const unsigned char *)parsed);
-  jsvUnLock2(fileContents,parsed);
+  JsVar *buffer = jswrap_atob(parsed);
+  jsvUnLock2(fileContents, parsed);
 
   if (!buffer) {
     jsWarn("Failed to process file %q", cert);
