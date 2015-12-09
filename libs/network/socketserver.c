@@ -12,6 +12,7 @@
  * ----------------------------------------------------------------------------
  */
 #include "socketserver.h"
+#include "socketerrors.h"
 #include "jsparse.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
@@ -404,7 +405,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     JsVar *receiveData = 0;
 
     bool hadHeaders = false;
-    bool errored = false;
+    int error = 0; // error code received from netXxxx functions
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
     if (sckt>=0) {
@@ -423,11 +424,9 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
         // send data if possible
         if (sendData) {
-          bool b = socketSendData(net, connection, sckt, &sendData);
-          if (!b) {
-            errored = true;
-            closeConnectionNow = true;
-          }
+          // don't try to send if we're already in error state
+          if (error == 0) error = socketSendData(net, connection, sckt, &sendData);
+          if (error != 0) closeConnectionNow = true;
           jsvObjectSetChild(connection, HTTP_NAME_SEND_DATA, sendData); // _http_send prob updated sendData
         } else {
           // no data to send, do we want to close? do so.
@@ -438,10 +437,10 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         if (!receiveData || !hadHeaders) {
           int num = netRecv(net, sckt, buf, sizeof(buf));
           if (num<0) {
-            // we probably disconnected so just get rid of this - no error
             closeConnectionNow = true;
+            error = num;
             // disconnected without headers? error.
-            if (!hadHeaders) errored = true;
+            if (!hadHeaders && error != SOCKET_ERR_CLOSED) error = SOCKET_ERR_UNKNOWN;
           } else {
             // add it to our request string
             if (num>0) {
@@ -474,11 +473,10 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       if (!receiveData) {
         if ((socketType&ST_TYPE_MASK) != ST_HTTP)
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
-        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
 
         // If we had data to send but the socket closed, this is an error
         JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
-        if (sendData) errored = true;
+        if (sendData) error = SOCKET_ERR_UNSENT_DATA;
         jsvUnLock(sendData);
 
         _socketConnectionKill(net, connection);
@@ -488,9 +486,19 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         jsvUnLock(connectionName);
         socketClosed = true;
 
-        if (errored) {
-          jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, 0, 0);
+        // we have an error if the socket wasn't closed orderly
+        if (error < 0 && error != SOCKET_ERR_CLOSED) {
+          JsVar *params[1];
+          params[0] = jsvNewWithFlags(JSV_OBJECT);
+          jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
+          jsvObjectSetChildAndUnLock(params[0], "message",
+              jsvNewFromString(socketErrorString(error)));
+          jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, params, 1);
+          jsvUnLock(params[0]);
         }
+
+        // close callback must happen after error callback
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
       }
     }
 
@@ -766,6 +774,7 @@ void clientRequestConnect(JsNetwork *net, JsVar *httpClientReqVar) {
 
     // For HTTP we get the connection callback when we've got a header back
     // Otherwise we just call back on success
+    // FIXME: this is incorrect, we're not connected at this point!
     if ((socketType&ST_TYPE_MASK) != ST_HTTP) {
       jsiQueueObjectCallbacks(httpClientReqVar, HTTP_NAME_ON_CONNECT, &httpClientReqVar, 1);
     }

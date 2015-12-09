@@ -858,7 +858,8 @@ libs/network/jswrap_net.c \
 libs/network/http/jswrap_http.c
 SOURCES += \
 libs/network/network.c \
-libs/network/socketserver.c
+libs/network/socketserver.c \
+libs/network/socketerrors.c
 
 # 
 WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c

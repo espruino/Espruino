@@ -17,7 +17,7 @@
 
 #include "jsutils.h"
 #include "jsvar.h"
-#include "../network.h"
+#include "network.h"
 
 typedef enum {
   ST_NORMAL = 0, // standard socket client/server
