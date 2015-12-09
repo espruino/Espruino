@@ -215,12 +215,9 @@ void jshIdle() {
 
 // esp8266 chips don't have a serial number but they do have a MAC address
 int jshGetSerialNumber(unsigned char *data, int maxChars) {
-  uint8_t mac_addr[6];
-  wifi_get_macaddr(0, mac_addr); // 0->MAC of STA interface
-  char buf[16];
-  int len = os_sprintf(buf, MACSTR, MAC2STR(mac_addr));
-  strncpy((char *)data, buf, maxChars);
-  return len > maxChars ? maxChars : len;
+  assert(maxChars >= 6); // it's 32
+  wifi_get_macaddr(0, data);
+  return 6;
 }
 
 //===== Interrupts and sleeping
