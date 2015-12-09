@@ -1772,7 +1772,7 @@ static void wifiEventHandler(System_Event_t *evt) {
   uint8_t *mac;
   char *reason;
 
-  JsVar *jsDetails = jspNewObject(NULL, "WifiEventDetails");
+  JsVar *jsDetails = jsvNewWithFlags(JSV_OBJECT);
 
   switch(evt->event) {
   // We have connected to an access point.
