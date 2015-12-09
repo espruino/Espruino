@@ -633,7 +633,8 @@ JsVar *clientRequestNew(SocketType socketType, JsVar *options, JsVar *callback) 
   }
   if (req) { // out of memory?
    socketSetType(req, socketType);
-   jsvUnLock(jsvAddNamedChild(req, callback, HTTP_NAME_ON_CONNECT));
+   if (callback != NULL)
+     jsvUnLock(jsvAddNamedChild(req, callback, HTTP_NAME_ON_CONNECT));
 
    jsvArrayPush(arr, req);
    if (res)

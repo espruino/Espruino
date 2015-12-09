@@ -301,7 +301,7 @@ Pipe this to a stream (an object with a 'write' method)
   "class" : "Socket",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send. 
+An event that is fired when the buffer is empty and it can accept more data to send.
 */
 
 
@@ -374,12 +374,16 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
 #endif
 
   JsVar *skippedCallback = jsvSkipName(callback);
-  if (!jsvIsFunction(skippedCallback)) {
-    jsError("Expecting Callback Function but got %t", skippedCallback);
+  if (!jsvIsUndefined(skippedCallback)) {
+    if (!jsvIsFunction(skippedCallback)) {
+      jsError("Expecting Callback Function but got %t", skippedCallback);
+      jsvUnLock(skippedCallback);
+      return 0;
+    }
     jsvUnLock(skippedCallback);
-    return 0;
+  } else {
+    callback = NULL;
   }
-  jsvUnLock(skippedCallback);
   JsVar *rq = clientRequestNew(socketType, options, callback);
   if (unlockOptions) jsvUnLock(options);
 
