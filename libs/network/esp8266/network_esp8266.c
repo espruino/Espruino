@@ -32,13 +32,6 @@ typedef long long int64_t;
 
 #define espconn_abort espconn_disconnect
 
-/**
- * The maximum number of concurrently open sockets we support.
- * We should probably pair this with the ESP8266 concept of the maximum number of sockets
- * that an ESP8266 instance can also support.
- */
-#define MAX_SOCKETS (10)
-
 // Set NET_DBG to 0 to disable debug printf's, to 1 for important printf's
 #define NET_DBG 1
 // Normal debug
@@ -998,6 +991,7 @@ int net_ESP8266_BOARD_createSocket(
   pEspconn->state     = ESPCONN_NONE;
   pEspconn->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
   pEspconn->proto.tcp->remote_port = port;
+  pEspconn->proto.tcp->local_port = espconn_port(); // using 0 doesn't work
   pEspconn->reverse   = pSocketData;
   espconn_set_opt(pEspconn, ESPCONN_NODELAY); // disable nagle, don't need the extra delay
 
@@ -1042,6 +1036,12 @@ static int connectSocket(
     espconn_regist_recvcb(pEspconn, esp8266_callback_recvCB);
 
     // Make a call to espconn_connect.
+#if 0
+    DBG("%s: connecting socket %d/%p/%p to %d.%d.%d.%d:%d from :%d\n",
+        DBG_LIB, pSocketData->socketId, pSocketData, pEspconn,
+        IP2STR(pEspconn->proto.tcp->remote_ip), pEspconn->proto.tcp->remote_port,
+        pEspconn->proto.tcp->local_port);
+#endif
     int rc = espconn_connect(pEspconn);
     if (rc != 0) {
       DBG("%s: error %d connecting socket %d: %s\n", DBG_LIB,

@@ -1528,6 +1528,9 @@ void jswrap_ESP8266_wifi_init1() {
 
   // register the state change handler so we get debug printout for sure
   wifi_set_event_handler_cb(wifiEventHandler);
+
+  // tell the SDK to let us have 10 connections
+  espconn_tcp_set_max_con(MAX_SOCKETS);
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
