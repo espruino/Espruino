@@ -445,6 +445,11 @@ void jsiSoftInit() {
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
 
+  // Make sure we set up lastIdleTime, as this could be used
+  // when adding an interval from onInit (called below)
+  jsiLastIdleTime = jshGetSystemTime();
+  jsiTimeSinceCtrlC = 0xFFFFFFFF;
+
   // Runw wrapper initialisation stuff
   jswInit();
 
@@ -473,11 +478,6 @@ void jsiSoftInit() {
 
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
-
-  // Make sure we set up lastIdleTime, as this could be used
-  // when adding an interval from onInit (called below)
-  jsiLastIdleTime = jshGetSystemTime();
-  jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
