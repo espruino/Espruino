@@ -27,6 +27,7 @@
 typedef long long int64_t;
 
 #include "network_esp8266.h"
+#include "socketerrors.h"
 #include "esp8266_board_utils.h"
 #include "pktbuf.h"
 
@@ -50,12 +51,12 @@ static struct socketData *getSocketData(int s);
 static int g_nextSocketId = 0;
 
 static int  getServerSocketByLocalPort(unsigned short port);
-static void setSocketInError(int socketId, const char *msg, int code);
+static void setSocketInError(struct socketData *pSocketData, int code);
 static void dumpEspConn(struct espconn *pEspConn);
 static struct socketData *allocateNewSocket();
 static int connectSocket(struct socketData *pSocketData);
-static void doClose(int socketId);
-static void releaseSocket(int socketId);
+static void doClose(struct socketData *pSocketData);
+static void releaseSocket(struct socketData *pSocketData);
 static void resetSocket(struct socketData *pSocketData);
 static void esp8266_dumpSocketData(struct socketData *pSocketData);
 
@@ -128,8 +129,7 @@ struct socketData {
   uint8    *currentTx;        //!< Data currently being transmitted.
   PktBuf   *rxBufQ;           //!< Queue of received buffers
 
-  char     *errorMsg;         //!< Error message.
-  int      errorCode;         //!< Error code.
+  short    errorCode;         //!< Error code, 0=no error
 };
 
 
@@ -174,7 +174,7 @@ void esp8266_dumpSocket(
 static void esp8266_dumpSocketData(
     struct socketData *pSocketData //!< The socket data structure to be logged
   ) {
-  DBG("===== socket %d\n", pSocketData->socketId);
+  DBG("=== socket %d", pSocketData->socketId);
   char *creationTypeMsg;
   switch(pSocketData->creationType) {
   case SOCKET_CREATED_NONE:
@@ -190,7 +190,7 @@ static void esp8266_dumpSocketData(
     creationTypeMsg = "server";
     break;
   }
-  DBG("type=%s, txBuf=%p", creationTypeMsg, pSocketData->currentTx);
+  DBG(" type=%s, txBuf=%p", creationTypeMsg, pSocketData->currentTx);
   char *stateMsg;
   switch(pSocketData->state) {
   case SOCKET_STATE_CLOSED:
@@ -225,16 +225,11 @@ static void esp8266_dumpSocketData(
     break;
   }
   DBG(", state=%s, espconn=%p, err=%d", stateMsg, pSocketData->pEspconn, pSocketData->errorCode);
-  DBG("      rx:");
+  DBG(", rx:");
   for (PktBuf *b=pSocketData->rxBufQ; b; b=b->next) {
     DBG(" %d@%p", b->filled, b);
   }
   DBG("\n");
-
-  // Print the errorMsg if it has anything to say
-  if (pSocketData->errorMsg != NULL && strlen(pSocketData->errorMsg) > 0) {
-    DBG("      errorMsg=\"%s\"\n", pSocketData->errorMsg);
-  }
 }
 
 
@@ -395,14 +390,16 @@ static int getServerSocketByLocalPort(
  * The connection (espconn) must be closed and deallocated before calling releaseSocket.
  */
 static void releaseSocket(
-    int socketId //!< The socket id of the socket to be released.
+    struct socketData *pSocketData //!< The socket to release
   ) {
-  DBG("%s: freeing socket %d\n", DBG_LIB, socketId);
-
-  struct socketData *pSocketData = getSocketData(socketId);
+  assert(pSocketData != NULL);
+  DBG("%s: freeing socket %d\n", DBG_LIB, pSocketData->socketId);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
   assert(pSocketData->pEspconn == NULL);
-  assert(pSocketData->rxBufQ == NULL);
+
+  // free any unconsumed receive buffers
+  while (pSocketData->rxBufQ != NULL)
+    pSocketData->rxBufQ = PktBuf_ShiftFree(pSocketData->rxBufQ);
 
   if (pSocketData->currentTx != NULL) {
     //DBG("%s: freeing tx buf %p\n", DBG_LIB, pSocketData->currentTx);
@@ -444,9 +441,8 @@ void netInit_esp8266_board() {
  * Perform an actual closure of the socket by calling the ESP8266 disconnect API.
  */
 static void doClose(
-    int socketId //!< The socket id to be closed.
+    struct socketData *pSocketData //!< The socket to be closed.
 ) {
-  struct socketData *pSocketData = getSocketData(socketId);
   if (pSocketData == NULL) return; // just in case
 
   // if we're already closing, then don't do anything
@@ -477,7 +473,7 @@ static void doClose(
     //dumpEspConn(pSocketData->pEspconn);
     int rc = espconn_delete(pSocketData->pEspconn);
     if (rc != 0) {
-      setSocketInError(socketId, esp8266_errorToString(rc), rc);
+      setSocketInError(pSocketData, rc);
     }
     // FIXME: do we get a disconnected callback or is this it? If we don't get a callback we can
     // go straight to SOCKET_STATE_CLOSED
@@ -488,7 +484,7 @@ static void doClose(
     if (rc == 0) {
       pSocketData->state = SOCKET_STATE_DISCONNECTING;
     } else {
-      setSocketInError(socketId, esp8266_errorToString(rc), rc);
+      setSocketInError(pSocketData, rc);
       pSocketData->state = SOCKET_STATE_CLOSED; // don't expect a callback
     }
   }
@@ -496,18 +492,30 @@ static void doClose(
 
 
 /**
- * Set the given socket as being in error supplying a message and a code.
+ * Set the given socket as being in error supplying the espconn code.
+ * This translates the espconn code to an Espruino socket error code.
  */
 static void setSocketInError(
-    int socketId,      //!< The socket id that is being flagged as in error.
-    const char *msg,   //!< A message to associate with the error.
-    int code           //!< A low level error code.
+    struct socketData *pSocketData, //!< The socket that is being flagged as in error.
+    int code                        //!< The espconn error code
   ) {
-  struct socketData *pSocketData = getSocketData(socketId);
+  assert(pSocketData != NULL);
+  assert(pSocketData->state != SOCKET_STATE_UNUSED);
+
   if (pSocketData->errorCode != 0) return; // don't overwrite previous error
-  pSocketData->errorMsg  = (char *)msg;
-  pSocketData->errorCode = code;
-  DBG("%s: error %d on socket %d: %s\n", DBG_LIB, code, socketId, msg);
+  int err = code;
+  switch (code) {
+  case ESPCONN_MEM:       err = SOCKET_ERR_MEM; break;
+  case ESPCONN_ABRT:      err = SOCKET_ERR_RESET; break;
+  case ESPCONN_CLSD:      err = SOCKET_ERR_CLOSED; break;
+  case ESPCONN_IF:        err = SOCKET_ERR_UNKNOWN; break;
+  case ESPCONN_ISCONN:    err = SOCKET_ERR_BUSY; break;
+  case ESPCONN_HANDSHAKE: err = SOCKET_ERR_SSL_HAND; break;
+  case ESPCONN_SSL_INVALID_DATA: err = SOCKET_ERR_SSL_INVALID; break;
+  }
+  pSocketData->errorCode = err;
+  DBG("%s: error %d on socket %d: %s\n", DBG_LIB,
+      err, pSocketData->socketId, socketErrorString(err));
 }
 
 /**
@@ -585,7 +593,7 @@ static void esp8266_callback_disconnectCB(
   // so we can free the whole thing. Otherwise, we transition to SOCKET_STATE_CLOSED because
   // we will need to tell the socket lib about the disconnect.
   if (pSocketData->state == SOCKET_STATE_DISCONNECTING) {
-    releaseSocket(pSocketData->socketId);
+    releaseSocket(pSocketData);
   } else {
     // we can deallocate the tx buffer
     if (pSocketData->currentTx != NULL) {
@@ -617,7 +625,7 @@ static void esp8266_callback_reconnectCB(
   esp8266_callback_disconnectCB(arg);
   // Set the socket state as in error (unless it got freed by esp8266_callback_disconnectCB)
   if (pSocketData->state != SOCKET_STATE_UNUSED)
-    setSocketInError(pSocketData->socketId, esp8266_errorToString(err), err);
+    setSocketInError(pSocketData, err);
   //DBG("%s: ret from reconnectCB\n", DBG_LIB);
 }
 
@@ -686,7 +694,7 @@ static void esp8266_callback_recvCB(
     while (pSocketData->rxBufQ != NULL)
       pSocketData->rxBufQ = PktBuf_ShiftFree(pSocketData->rxBufQ);
     // save the error
-    setSocketInError(pSocketData->socketId, esp8266_errorToString(ESPCONN_MEM), ESPCONN_MEM);
+    setSocketInError(pSocketData, ESPCONN_MEM);
     // now reset the connection
     //espconn_abort(pEspconn); // can't do this: espconn crashes!
     pSocketData->state = SOCKET_STATE_TO_ABORT; // some function called from socket lib will abort
@@ -778,11 +786,15 @@ int net_ESP8266_BOARD_recv(
   if (pSocketData->rxBufQ == NULL) {
     switch (pSocketData->state) {
     case SOCKET_STATE_CLOSED:
-      return pSocketData->errorCode != 0 ? pSocketData->errorCode : ESPCONN_CLSD;
+      return pSocketData->errorCode != 0 ? pSocketData->errorCode : SOCKET_ERR_CLOSED;
     case SOCKET_STATE_DISCONNECTING:
     case SOCKET_STATE_ABORTING:
       return pSocketData->errorCode;
-    default:                         return 0; // we just have no data
+    case SOCKET_STATE_HOST_RESOLVING:
+    case SOCKET_STATE_CONNECTING:
+      return SOCKET_ERR_NO_CONN;
+    default:
+      return 0; // we just have no data
     }
   }
   PktBuf *rxBuf = pSocketData->rxBufQ;
@@ -837,7 +849,7 @@ int net_ESP8266_BOARD_send(
   switch (pSocketData->state) {
   case SOCKET_STATE_CLOSED:
   case SOCKET_STATE_DISCONNECTING:
-    return pSocketData->errorCode != 0 ? pSocketData->errorCode : ESPCONN_CLSD;
+    return pSocketData->errorCode != 0 ? pSocketData->errorCode : SOCKET_ERR_CLOSED;
   case SOCKET_STATE_ABORTING:
     return pSocketData->errorCode;
   case SOCKET_STATE_TO_ABORT:
@@ -861,17 +873,17 @@ int net_ESP8266_BOARD_send(
   pSocketData->currentTx = (uint8_t *)os_malloc(len);
   if (pSocketData->currentTx == NULL) {
     DBG("%s: Out of memory sending %d on socket %d\n", DBG_LIB, len, sckt);
-    setSocketInError(sckt, esp8266_errorToString(ESPCONN_MEM), ESPCONN_MEM);
+    setSocketInError(pSocketData, ESPCONN_MEM);
     espconn_abort(pSocketData->pEspconn);
     pSocketData->state = SOCKET_STATE_ABORTING;
-    return ESPCONN_MEM;
+    return pSocketData->errorCode;
   }
   memcpy(pSocketData->currentTx, buf, len);
 
   // Send the data over the ESP8266 SDK.
   int rc = espconn_send(pSocketData->pEspconn, pSocketData->currentTx, len);
   if (rc < 0) {
-    setSocketInError(sckt, esp8266_errorToString(rc), rc);
+    setSocketInError(pSocketData, rc);
     os_free(pSocketData->currentTx);
     pSocketData->currentTx = NULL;
     espconn_abort(pSocketData->pEspconn);
@@ -939,7 +951,8 @@ static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg)
 
   if (pSocketData->state == SOCKET_STATE_DISCONNECTING) {
     // the sockte library closed the socket while we were resolving, we now need to deallocate
-    releaseSocket(pSocketData->socketId);
+    releaseEspconn(pSocketData);
+    releaseSocket(pSocketData);
     return;
   }
   if (pSocketData->state != SOCKET_STATE_HOST_RESOLVING) return; // not sure what happened
@@ -951,7 +964,7 @@ static void dnsFoundCallback(const char *hostName, ip_addr_t *ipAddr, void *arg)
   } else {
     releaseEspconn(pSocketData);
     if (pSocketData != NULL) {
-      setSocketInError(pSocketData->socketId, "hostname not found", 1);
+      setSocketInError(pSocketData, SOCKET_ERR_NOT_FOUND);
       pSocketData->state = SOCKET_STATE_CLOSED;
     }
   }
@@ -972,7 +985,7 @@ int net_ESP8266_BOARD_createSocket(
   struct socketData *pSocketData = allocateNewSocket();
   if (pSocketData == NULL) { // No free socket
     DBG("%s: No free sockets for outbound connection\n", DBG_LIB);
-    return ESPCONN_MAXNUM;
+    return SOCKET_ERR_MAX_SOCK;
   }
 
   // allocate espconn data structure and initialize it
@@ -982,16 +995,16 @@ int net_ESP8266_BOARD_createSocket(
     DBG("%s: Out of memory for outbound connection\n", DBG_LIB);
     if (pEspconn != NULL) os_free(pEspconn);
     if (tcp != NULL) os_free(tcp);
-    releaseSocket(pSocketData->socketId);
-    return ESPCONN_MEM;
+    releaseSocket(pSocketData);
+    return SOCKET_ERR_MEM;
   }
 
   pSocketData->pEspconn = pEspconn;
   pEspconn->type      = ESPCONN_TCP;
   pEspconn->state     = ESPCONN_NONE;
-  pEspconn->proto.tcp = (esp_tcp *)os_zalloc(sizeof(esp_tcp));
-  pEspconn->proto.tcp->remote_port = port;
-  pEspconn->proto.tcp->local_port = espconn_port(); // using 0 doesn't work
+  pEspconn->proto.tcp = tcp;
+  tcp->remote_port    = port;
+  tcp->local_port     = espconn_port(); // using 0 doesn't work
   pEspconn->reverse   = pSocketData;
   espconn_set_opt(pEspconn, ESPCONN_NODELAY); // disable nagle, don't need the extra delay
 
@@ -1047,7 +1060,7 @@ static int connectSocket(
       DBG("%s: error %d connecting socket %d: %s\n", DBG_LIB,
           rc, pSocketData->socketId, esp8266_errorToString(rc));
       releaseEspconn(pSocketData);
-      releaseSocket(pSocketData->socketId);
+      releaseSocket(pSocketData);
       return rc;
     }
     DBG("%s: connecting socket %d to %d.%d.%d.%d:%d\n", DBG_LIB, pSocketData->socketId,
@@ -1070,7 +1083,7 @@ static int connectSocket(
       DBG("%s: error %d creating listening socket %d: %s\n", DBG_LIB,
           rc, pSocketData->socketId, esp8266_errorToString(rc));
       releaseEspconn(pSocketData);
-      releaseSocket(pSocketData->socketId);
+      releaseSocket(pSocketData);
       return rc;
     }
   }
@@ -1096,10 +1109,10 @@ void net_ESP8266_BOARD_closeSocket(
     // In these states we have already freed the espconn structures, so all that's left is to
     // free the socket structure
     DBG("%s: socket %d close acknowledged\n", DBG_LIB, pSocketData->socketId);
-    releaseSocket(pSocketData->socketId);
+    releaseSocket(pSocketData);
   } else {
     // Looks like this is the user telling us to close a connection, let's do it.
     DBG("%s: socket %d to be closed\n", DBG_LIB, pSocketData->socketId);
-    doClose(socketId);
+    doClose(pSocketData);
   }
 }

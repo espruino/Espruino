@@ -1,6 +1,6 @@
 // Espruino esp8266 Socket tester - Copyright 2015 by Thorsten von Eicken
 
-// Test multiple concurrent connections
+// Test error handling
 
 test_host = "h.voneicken.com";  // <======= confirgure for your local server running the test_http.rb sinatra server
 test_port = 4567;
@@ -12,10 +12,27 @@ var wifi = require("Wifi");
 var esp8266 = require("ESP8266");
 var async = require("Async");
 var http = require("http");
-//var url = require("url");
+var net = require("net");
 
 // Overall test outcome
 var ok=true;
+
+function hasProps(x, y) {
+  if (!(x instanceof Object)) { return false; }
+  if (!(y instanceof Object)) { return false; }
+  // properties equality check
+  var p = Object.keys(x);
+  return Object.keys(y).every(function(i) { return p.indexOf(i) !== -1 && x[i] == y[i]; });
+}
+
+function expectProps(what, a, b) {
+  if (hasProps(a,b)) {
+    console.log("OK for " + what);
+  } else {
+    console.log("OOPS: In " + what + " expected:\n", a, "\nto have:\n", b, "\n");
+    ok = false;
+  }
+}
 
 // barf if false
 function expect(what, outcome, value) {
@@ -27,54 +44,84 @@ function expect(what, outcome, value) {
   }
 }
 
-function testCB(msg, next, timeout) {
-  if (timeout === undefined) timeout = 1000;
-  console.log("Wait for", msg, "in", timeout/1000.0, "sec");
-  var n = 0;
-  setTimeout(function() {
-    if (n++ === 0) { console.log("OOPS: no callback for " + msg); ok = false; next(); }
-  }, timeout);
-  return function(x) { console.log("GOT CB for " + msg); if (n++ === 0) next(x); };
-}
-
-function doGet(host, path, next) {
-  var len = 0;
-  var data = "";
-  var q = { host: host, port: test_port, path: path, method: 'GET' };
-  http.get(q, function(res) {
-    res.on('data', function(d) { len += d.length; data = d; });
-    res.on('close', function() {
-      // We expect all responses to end with "END"
-      var l = data.length;
-      expect("get END", l < 3 || data.substring(l-3, l) === "END", data);
-      next(len);
-    });
-  });
-}
-
-function testSockMulti() {
+function testSockError() {
   async.sequence([
-    // make a simple HTTP request
+
+    // connection reset
     function() {
-      doGet(test_host, "/ping", this.next);
+      console.log("** reset");
+      var self = this;
+      var err = false;
+      var conn = 0;
+      var sock = net.connect({host:test_host, port:33}, function(){conn++;});
+      sock.on('close', function(hadError) {
+        expect("got error", err, err);
+        expect("hadError", hadError, hadError);
+        self.next();
+      });
+      sock.on('error', function(ev) {
+        expectProps("conn reset", ev, {code: -9, message: "connection reset"});
+        expect("no conn", conn === 0, conn);
+        err = true;
+      });
+      sock.on('connect', function(ev) {
+        expect("conn cb undefined", ev === undefined, ev);
+        conn++;
+      });
     },
-    function(len) {
-      expect("ping", len === 8, len);
-      this.next();
-    },
-    
-    // make a few concurrent requests
+
+    // connection closed
     function() {
-      wifi.getHostByName(test_host, this.next);
+      console.log("** closed");
+      var self = this;
+      var err = false;
+      var conn = 0;
+      var drain = 0;
+      var sock = net.connect({host:test_host, port:22});
+      sock.on('drain', function() { drain++; });
+      sock.on('close', function(hadError) {
+        expect("got error", err, err);
+        expect("hadError", hadError, hadError);
+        expect("1 connCB", conn === 1, conn);
+        expect("2 drainCB", drain === 2, drain);
+        self.next();
+      });
+      sock.on('error', function(e) {
+        expectProps("conn reset", e, {code: -9, message: "connection reset"});
+        err = true;
+      });
+      sock.on('connect', function() { conn++; sock.write("GARBAGE\r\n\r\n"); });
     },
-    function(ip) {
-      var cnt=5;
-      var self=this;
-      function done(len) {
-        expect("ping", len === 8, len);
-        if (--cnt === 0) self.next();
-      }
-      for (var i=cnt; i>0; i--) doGet(ip, "/ping", done);
+
+    // unsent data
+    function() {
+      console.log("** unsent");
+      var self = this;
+      var err = false;
+      var sock = net.connect({host:test_host, port:4567});
+      sock.on('drain', function() { sock.write("GARBAGE\r\n\r\n"); });
+      sock.on('close', function() {
+        expect("got error", err, err);
+        self.next();
+      });
+      sock.on('error', function(e) {
+        expectProps("unsent", e, {code: -8, message: "unsent data"});
+        err = true;
+      });
+    },
+
+    // connection refused
+    function() {
+      this.next(); return;
+      var self = this;
+      var req = http.request(url.parse("http://"+test_host+":33/"), function(res) {
+        res.on('close', function() { console.log("closed"); });
+      });
+      req.on('error', function(err) {
+        console.log("Got error:", err);
+        self.next();
+      });
+      req.end();
     },
 
     ],
@@ -92,7 +139,7 @@ if (typeof test_host === 'undefined' || typeof test_port === 'undefined') {
   console.log("then wifi.save();");
 } else {
   urlPrefix = "http://" + test_host + ":" + test_port;
-  testSockMulti();
+  testSockError();
   console.log(process.memory());
 }
 

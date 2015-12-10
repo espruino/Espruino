@@ -251,16 +251,39 @@ The 'data' event is called when data is received. If a handler is defined with `
 /*JSON{
   "type" : "event",
   "class" : "Socket",
-  "name" : "close"
+  "name" : "close",
+  "params" : [
+    ["had_error","JsVar","A boolean indicating whether the connection had an error (use an error event handler to get error details)."]
+  ]
 }
 Called when the connection closes.
 */
 /*JSON{
   "type" : "event",
   "class" : "Socket",
-  "name" : "error"
+  "name" : "error",
+  "params" : [
+    ["details","JsVar","An error object with an error code (a negative integer) and a message."]
+  ]
 }
-There was an error on this socket and it closed (or wasn't opened in the first place)
+There was an error on this socket and it is closing (or wasn't opened in the first place). If a "connected" event was issued on this socket then the error event is always followed by a close event.
+The error codes are:
+
+* -1: socket closed (this is not really an error and will not cause an error callback)
+* -2: out of memory (typically while allocating a buffer to hold data)
+* -3: timeout
+* -4: no route
+* -5: busy
+* -6: not found (DNS resolution)
+* -7: max sockets (... exceeded)
+* -8: unsent data (some data could not be sent)
+* -9: connection reset (or refused)
+* -10: unknown error
+* -11: no connection
+* -12: bad argument
+* -13: SSL handshake failed
+* -14: invalid SSL data
+
 */
 /*JSON{
   "type" : "method",
