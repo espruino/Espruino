@@ -45,12 +45,12 @@
 
 // Define the size of buffers/chunks that are transmitted or received
 #ifdef ESP8266
+// The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
 #define CHUNK (536/2)
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
 #define os_printf os_printf_plus
 #else
 #define CHUNK 64
-#define os_printf(X, ...) do { } while(0)
 #endif
 
 
@@ -298,11 +298,9 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
     if (!closeConnectionNow) {
       int num = netRecv(net, sckt, buf,sizeof(buf));
-      if (num != 0) os_printf("netRecv on socket %d returned %d\n", sckt, num);
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
-        os_printf("Error from netRecv: %d\n", num);
         error = num;
       } else {
         // add it to our request string
@@ -348,7 +346,6 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
           // down if(num>0)closeConnectionNow=false instead.
           if (sent < 0) {
             closeConnectionNow = true;
-            os_printf("Error from netSend: %d\n", sent);
             error = sent;
           }
         jsvObjectSetChild(socket, HTTP_NAME_SEND_DATA, sendData); // socketSendData prob updated sendData
@@ -482,7 +479,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
           } else if (num < 0) {
-            os_printf("Error from netRecv: %d\n", num);
             closeConnectionNow = true;
             error = num;
             // disconnected without headers? error.
@@ -493,7 +489,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
               jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
               jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
               alreadyConnected = true;
-              os_printf("connectedCB in recv, drain:%d\n", !sendData || (int)jsvGetStringLength(sendData) == 0);
               // if we do not have any data to send, issue a drain event
               if (!sendData || (int)jsvGetStringLength(sendData) == 0)
                 jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
@@ -510,7 +505,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
                   // for HTTP see whether we now have full response headers
                   JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
                   if (httpParseHeaders(&receiveData, resVar, false)) {
-                    os_printf("Got http response headers\n");
                     hadHeaders = true;
                     jsvObjectSetChildAndUnLock(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
                     jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
@@ -527,7 +521,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     }
 
     if (closeConnectionNow) {
-      os_printf("Closing socket %d due to error %d\n", sckt, error);
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
         if ((socketType&ST_TYPE_MASK) != ST_HTTP)
