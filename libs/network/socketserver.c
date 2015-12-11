@@ -27,8 +27,6 @@
 #define HTTP_NAME_OPTIONS_VAR "opt"
 #define HTTP_NAME_SERVER_VAR "svr"
 #define HTTP_NAME_CHUNKED "chunked"
-#define HTTP_NAME_CODE "code"
-#define HTTP_NAME_HEADERS "hdr"
 #define HTTP_NAME_CLOSENOW "closeNow"
 #define HTTP_NAME_CLOSE "close" // close after sending
 #define HTTP_NAME_ON_CONNECT JS_EVENT_PREFIX"connect"
@@ -540,9 +538,6 @@ bool socketIdle(JsNetwork *net) {
             jsvObjectSetChild(req, HTTP_NAME_RESPONSE_VAR, res);
             jsvObjectSetChild(req, HTTP_NAME_SERVER_VAR, server);
             jsvObjectSetChildAndUnLock(req, HTTP_NAME_SOCKET, jsvNewFromInteger(theClient+1));
-            // on response
-            jsvObjectSetChildAndUnLock(res, HTTP_NAME_CODE, jsvNewFromInteger(200));
-            jsvObjectSetChildAndUnLock(res, HTTP_NAME_HEADERS, jsvNewWithFlags(JSV_OBJECT));
           }
           jsvUnLock2(req, res);
         } else {
@@ -806,17 +801,19 @@ void serverResponseWriteHead(JsVar *httpServerResponseVar, int statusCode, JsVar
     return;
   }
 
-  jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CODE, jsvNewFromInteger(statusCode));
-  JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
-  if (sendHeaders) {
-    if (!jsvIsUndefined(headers)) {
-      jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_HEADERS, headers);
-    }
-    jsvUnLock(sendHeaders);
-  } else {
-    // headers are set to 0 when they are sent
+  JsVar *sendData = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, 0);
+  if (sendData) {
+    // If sendData!=0 then we were already called
     jsError("Headers have already been sent");
+    jsvUnLock(sendData);
+    return;
   }
+
+  sendData = jsvVarPrintf("HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", statusCode);
+  if (headers) httpAppendHeaders(sendData, headers);
+  // finally add ending newline
+  jsvAppendString(sendData, "\r\n");
+  jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
 }
 
 
@@ -824,21 +821,13 @@ void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
   // Append data to sendData
   JsVar *sendData = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, 0);
   if (!sendData) {
-    // no sendData, so no headers - add them!
-    JsVar *sendHeaders = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
-    if (sendHeaders) {
-      sendData = jsvVarPrintf("HTTP/1.0 %d OK\r\nServer: Espruino "JS_VERSION"\r\n", jsvGetIntegerAndUnLock(jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_CODE, 0)));
-      httpAppendHeaders(sendData, sendHeaders);
-      jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_HEADERS, 0);
-      jsvUnLock(sendHeaders);
-      // finally add ending newline
-      jsvAppendString(sendData, "\r\n");
-    } else if (!jsvIsUndefined(data)) {
-      // we have already sent headers, but want to send more
-      sendData = jsvNewFromEmptyString();
-    }
-    jsvObjectSetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, sendData);
+    // There was no sent data, which means we haven't written headers yet. 
+    // Do that now with default values
+    serverResponseWriteHead(httpServerResponseVar, 200, 0);
+    // sendData should now have been set
+    sendData = jsvObjectGetChild(httpServerResponseVar, HTTP_NAME_SEND_DATA, 0);
   }
+  // check, just in case!
   if (sendData && !jsvIsUndefined(data)) {
     JsVar *s = jsvAsString(data, false);
     if (s) jsvAppendStringVarComplete(sendData,s);
