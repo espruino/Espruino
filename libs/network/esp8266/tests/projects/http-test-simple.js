@@ -71,18 +71,24 @@ function testHttpSimple() {
       console.log("** 404");
       var self = this;
       var d = false;
-      var e = false;
-      http.get(host+"/foobar", function(res) {
+      var e1 = false;
+      var e2 = false;
+      var req = http.get(host+"/foobar", function(res) {
         //console.log("Got response: " + JSON.stringify(res));
         res.on('data', function(data) { d = true; }); // should get the 404 message
-        res.on('error', function(err) { e = true; console.log("error", err); });
+        res.on('error', function(err) { e1 = true; console.log("error", err); });
         res.on('close', function(hadError) {
           console.log("Closed", hadError);
           expect("data CB", d, d);
-          expect("error CB", e, e);
+          expect("error CB1", e1, e1);
+          expect("error CB2", e2, e2);
           expect("hadError", hadError, hadError);
           self.next();
         });
+      });
+      req.on('error', function(err) {
+        console.log("error", err);
+        e2 = true;
       });
     },
 

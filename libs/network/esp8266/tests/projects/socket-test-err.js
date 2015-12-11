@@ -70,6 +70,22 @@ function testSockError() {
       });
     },
 
+    // host not found
+    function() {
+      console.log("** not found");
+      var self = this;
+      var err = false;
+      var sock = net.connect({host:"i-do-not-exist.tada", port:33}, function(){conn++;});
+      sock.on('close', function(hadError) {
+        expect("got error", err, err);
+        self.next();
+      });
+      sock.on('error', function(ev) {
+        expectProps("not found", ev, {code: -6, message: "not found"});
+        err = true;
+      });
+    },
+
     // connection closed
     function() {
       console.log("** closed");

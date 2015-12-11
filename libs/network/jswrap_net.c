@@ -396,6 +396,7 @@ JsVar *jswrap_net_connect(JsVar *options, JsVar *callback, SocketType socketType
   }
 #endif
 
+  // Make sure we have a function as callback, or nothing (which is OK too)
   JsVar *skippedCallback = jsvSkipName(callback);
   if (!jsvIsUndefined(skippedCallback)) {
     if (!jsvIsFunction(skippedCallback)) {
