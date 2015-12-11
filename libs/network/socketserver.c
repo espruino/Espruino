@@ -45,9 +45,12 @@
 
 // Define the size of buffers/chunks that are transmitted or received
 #ifdef ESP8266
-#define CHUNK 536
+#define CHUNK (536/2)
+extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
+#define os_printf os_printf_plus
 #else
 #define CHUNK 64
+#define os_printf(X) do { } while(0)
 #endif
 
 
@@ -291,12 +294,16 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
     int sckt = (int)jsvGetIntegerAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_SOCKET,0))-1; // so -1 if undefined
     bool closeConnectionNow = jsvGetBoolAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_CLOSENOW, false));
+    int error = 0;
 
     if (!closeConnectionNow) {
       int num = netRecv(net, sckt, buf,sizeof(buf));
+      if (num != 0) os_printf("netRecv on socket %d returned %d\n", sckt, num);
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
+        os_printf("Error from netRecv: %d\n", num);
+        error = num;
       } else {
         // add it to our request string
         if (num>0) {
@@ -334,15 +341,23 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       JsVar *sendData = jsvObjectGetChild(socket,HTTP_NAME_SEND_DATA,0);
       if (sendData) {
           int sent = socketSendData(net, socket, sckt, &sendData);
+          // FIXME? checking for errors is a bit iffy. With the esp8266 network that returns
+          // varied error codes we'd want to skip SOCKET_ERR_CLOSED and let the recv side deal
+          // with normal closing so we don't miss the tail of what's received, but other drivers
+          // return -1 (which is the same value) for all errors. So we rely on the check ~12 lines
+          // down if(num>0)closeConnectionNow=false instead.
           if (sent < 0) {
             closeConnectionNow = true;
-            //error = sent;
+            os_printf("Error from netSend: %d\n", sent);
+            error = sent;
           }
         jsvObjectSetChild(socket, HTTP_NAME_SEND_DATA, sendData); // socketSendData prob updated sendData
       }
       // only close if we want to close, have no data to send, and aren't receiving data
       if (jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0)) && !sendData && num<=0)
         closeConnectionNow = true;
+      else if (num > 0)
+        closeConnectionNow = false; // guarantee that anything received is processed
       jsvUnLock(sendData);
     }
     if (closeConnectionNow) {
@@ -354,9 +369,25 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
         jswrap_stream_pushData(connection, receiveData, true);
       }
       jsvUnLock(receiveData);
+
+      // fire the error listeners
+      bool hadError = error < 0 && error != SOCKET_ERR_CLOSED;
+      JsVar *params[1];
+      if (hadError) {
+        params[0] = jsvNewWithFlags(JSV_OBJECT);
+        jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
+        jsvObjectSetChildAndUnLock(params[0], "message",
+            jsvNewFromString(socketErrorString(error)));
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, params, 1);
+        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_ERROR, params, 1);
+        jsvUnLock(params[0]);
+      }
+
       // fire the close listeners
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, &connection, 1);
-      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, &socket, 1);
+      params[0] = jsvNewFromBool(hadError);
+      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, params, 1);
+      jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
+      jsvUnLock(params[0]);
 
       _socketConnectionKill(net, connection);
       JsVar *connectionName = jsvObjectIteratorGetKey(&it);
@@ -476,8 +507,10 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
               if (receiveData) { // could be out of memory
                 jsvAppendStringBuf(receiveData, buf, (size_t)num);
                 if ((socketType&ST_TYPE_MASK)==ST_HTTP && !hadHeaders) {
+                  // for HTTP see whether we now have full response headers
                   JsVar *resVar = jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0);
                   if (httpParseHeaders(&receiveData, resVar, false)) {
+                    os_printf("Got http response headers\n");
                     hadHeaders = true;
                     jsvObjectSetChildAndUnLock(connection, HTTP_NAME_HAD_HEADERS, jsvNewFromBool(hadHeaders));
                     jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &resVar, 1);
@@ -494,6 +527,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     }
 
     if (closeConnectionNow) {
+      os_printf("Closing socket %d due to error %d\n", sckt, error);
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
         if ((socketType&ST_TYPE_MASK) != ST_HTTP)

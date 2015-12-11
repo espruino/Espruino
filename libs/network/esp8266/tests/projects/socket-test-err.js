@@ -2,7 +2,7 @@
 
 // Test error handling
 
-test_host = "h.voneicken.com";  // <======= confirgure for your local server running the test_http.rb sinatra server
+test_host = "h.voneicken.com";  // <======= configure for your local server running the test_http.rb sinatra server
 test_port = 4567;
 
 var test_ip = 0; // will be resolved

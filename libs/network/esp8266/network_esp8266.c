@@ -31,7 +31,7 @@ typedef long long int64_t;
 #include "esp8266_board_utils.h"
 #include "pktbuf.h"
 
-#define espconn_abort espconn_disconnect
+//#define espconn_abort espconn_disconnect
 
 // Set NET_DBG to 0 to disable debug printf's, to 1 for important printf's
 #define NET_DBG 1
@@ -417,12 +417,14 @@ static void releaseEspconn(
     struct socketData *pSocketData
 ) {
   if (pSocketData->pEspconn == NULL) return;
-  if (pSocketData->creationType == SOCKET_CREATED_INBOUND) return; // we did not allocate it
-  DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
-      pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
-  os_free(pSocketData->pEspconn->proto.tcp);
-  pSocketData->pEspconn->proto.tcp = NULL;
-  os_free(pSocketData->pEspconn);
+  // if the socket is an inbound connection then espconn will free the struct, else we do it now
+  if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
+    DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
+        pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
+    os_free(pSocketData->pEspconn->proto.tcp);
+    pSocketData->pEspconn->proto.tcp = NULL;
+    os_free(pSocketData->pEspconn);
+  }
   pSocketData->pEspconn = NULL;
 }
 
@@ -808,7 +810,7 @@ int net_ESP8266_BOARD_recv(
     // if we now have exactly one buffer enqueued we need to re-enable the flood
     if (pSocketData->rxBufQ != NULL && pSocketData->rxBufQ->next == NULL)
       espconn_recv_unhold(pSocketData->pEspconn);
-    DBG("%s: recv %d on socket %d\n", DBG_LIB, retLen, sckt);
+    DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, retLen);
     return retLen;
   }
 
@@ -823,7 +825,7 @@ int net_ESP8266_BOARD_recv(
   uint16_t newLen = rxBuf->filled - len;
   os_memmove(rxBuf->data, rxBuf->data + len, newLen);
   rxBuf->filled = newLen;
-  DBG("%s: recv %d on socket %d\n", DBG_LIB, len, sckt);
+  DBG("%s: socket %d JS recv %d\n", DBG_LIB, sckt, len);
   return len;
 }
 
@@ -892,7 +894,7 @@ int net_ESP8266_BOARD_send(
   }
 
   pSocketData->state = SOCKET_STATE_TRANSMITTING;
-  DBG("%s: socket %d sending %d\n", DBG_LIB, sckt, len);
+  DBG("%s: socket %d JS send %d\n", DBG_LIB, sckt, len);
   return len;
 }
 
@@ -1086,6 +1088,8 @@ static int connectSocket(
       releaseSocket(pSocketData);
       return rc;
     }
+    DBG("%s: listening socket %d on port %d\n", DBG_LIB,
+        pSocketData->socketId, pEspconn->proto.tcp->local_port);
   }
 
   return newSocket;
