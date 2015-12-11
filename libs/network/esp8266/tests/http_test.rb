@@ -7,6 +7,10 @@ get "/ping" do
   "pong\nEND"
 end
 
+get "/empty" do
+  ""
+end
+
 get "/data" do
   size = params[:size].to_i || 4013
   text = "This is a #{size} byte response from the friendly test server\n"

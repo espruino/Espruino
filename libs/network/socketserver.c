@@ -50,7 +50,7 @@ extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf
 #define os_printf os_printf_plus
 #else
 #define CHUNK 64
-#define os_printf(X) do { } while(0)
+#define os_printf(X, ...) do { } while(0)
 #endif
 
 
