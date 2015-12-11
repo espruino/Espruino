@@ -146,6 +146,8 @@ JsVar *jswrap_array_join(JsVar *parent, JsVar *filler) {
   "return" : ["int","The new size of the array"]
 }
 Push a new value onto the end of this array'
+
+This is the opposite of `[1,2,3].unshift(0)`, which adds one or more elements to the beginning of the array.
  */
 JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   if (!jsvIsArray(parent)) return -1;
@@ -172,7 +174,9 @@ JsVarInt jswrap_array_push(JsVar *parent, JsVar *args) {
   "generate_full" : "jsvArrayPop(parent)",
   "return" : ["JsVar","The value that is popped off"]
 }
-Pop a new value off of the end of this array
+Remove and return the value on the end of this array.
+
+This is the opposite of `[1,2,3].shift()`, which removes an element from the beginning of the array.
  */
 
 JsVar *_jswrap_array_iterate_with_callback(const char *name, JsVar *parent, JsVar *funcVar, JsVar *thisVar, bool wantArray, bool isBoolCallback, bool expectedValue) {
@@ -490,7 +494,9 @@ JsVar *jswrap_array_splice(JsVar *parent, JsVarInt index, JsVar *howManyVar, JsV
   ],
   "return" : ["JsVar","The element that was removed"]
 }
-Remove the first element of the array, and return it
+Remove and return the first element of the array.
+
+This is the opposite of `[1,2,3].pop()`, which takes an element off the end.
  */
 JsVar *jswrap_array_shift(JsVar *parent) {
   // just use splice, as this does all the hard work for us
@@ -517,7 +523,9 @@ JsVar *jswrap_array_shift(JsVar *parent) {
   ],
   "return" : ["int","The new array length"]
 }
-Remove the first element of the array, and return it
+Add one or more items to the start of the array, and return its new length.
+
+This is the opposite of `[1,2,3].push(4)`, which puts one or more elements on the end.
  */
 JsVarInt jswrap_array_unshift(JsVar *parent, JsVar *elements) {
   // just use splice, as this does all the hard work for us

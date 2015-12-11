@@ -431,8 +431,6 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
-  jswInit();
-
   jsErrorFlags = 0;
   events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromEmptyString();
@@ -446,6 +444,14 @@ void jsiSoftInit() {
   // Load timer/watch arrays
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
+
+  // Make sure we set up lastIdleTime, as this could be used
+  // when adding an interval from onInit (called below)
+  jsiLastIdleTime = jshGetSystemTime();
+  jsiTimeSinceCtrlC = 0xFFFFFFFF;
+
+  // Runw wrapper initialisation stuff
+  jswInit();
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
@@ -472,11 +478,6 @@ void jsiSoftInit() {
 
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
-
-  // Make sure we set up lastIdleTime, as this could be used
-  // when adding an interval from onInit (called below)
-  jsiLastIdleTime = jshGetSystemTime();
-  jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);

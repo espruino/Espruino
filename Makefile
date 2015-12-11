@@ -1555,9 +1555,6 @@ $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
 	@echo Generating platform configs
 	$(Q)python scripts/build_platform_config.py $(BOARD)
 
-COLERR=$(shell echo -e "\\033[31m" ERROR "\\033[0m")
-COLWARN=$(shell echo -e "\\033[33m" WARNING "\\033[0m")
-#compile=$(CC) $(CFLAGS) $< -o $@ 2>&1 | sed -E -e "s/error/$(COLERR)/"  -e "s/warning/$(COLWARN)/"
 compile=$(CC) $(CFLAGS) $< -o $@
 
 ifdef FIXED_OBJ_NAME

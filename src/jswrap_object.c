@@ -25,13 +25,6 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Hardware",
-  "check" : "jsvIsRoot(var)"
-}
-This is the built-in class for the Espruino device. It is the 'root scope', as 'Window' is for JavaScript on the desktop.
- */
-/*JSON{
-  "type" : "class",
   "class" : "Object",
   "check" : "jsvIsObject(var)"
 }
