@@ -273,6 +273,25 @@ void socketKill(JsNetwork *net) {
 #endif
 }
 
+// Fire error events on up to two objects if there is an error, returns true if there is an error
+// The error events have a code field and a message field.
+static bool fireErrorEvent(int error, JsVar *obj1, JsVar *obj2) {
+  bool hadError = error < 0 && error != SOCKET_ERR_CLOSED;
+  JsVar *params[1];
+  if (hadError) {
+    params[0] = jsvNewWithFlags(JSV_OBJECT);
+    jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
+    jsvObjectSetChildAndUnLock(params[0], "message",
+        jsvNewFromString(socketErrorString(error)));
+    if (obj1 != NULL)
+      jsiQueueObjectCallbacks(obj1, HTTP_NAME_ON_ERROR, params, 1);
+    if (obj2 != NULL)
+      jsiQueueObjectCallbacks(obj2, HTTP_NAME_ON_ERROR, params, 1);
+    jsvUnLock(params[0]);
+  }
+  return hadError;
+}
+
 // -----------------------------
 
 bool socketServerConnectionsIdle(JsNetwork *net) {
@@ -367,21 +386,11 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       }
       jsvUnLock(receiveData);
 
-      // fire the error listeners
-      bool hadError = error < 0 && error != SOCKET_ERR_CLOSED;
-      JsVar *params[1];
-      if (hadError) {
-        params[0] = jsvNewWithFlags(JSV_OBJECT);
-        jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
-        jsvObjectSetChildAndUnLock(params[0], "message",
-            jsvNewFromString(socketErrorString(error)));
-        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, params, 1);
-        jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_ERROR, params, 1);
-        jsvUnLock(params[0]);
-      }
+      // fire error events
+      bool hadError = fireErrorEvent(error, connection, socket);
 
       // fire the close listeners
-      params[0] = jsvNewFromBool(hadError);
+      JsVar *params[1] = { jsvNewFromBool(hadError) };
       jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CLOSE, params, 1);
       jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
       jsvUnLock(params[0]);
@@ -538,20 +547,11 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         jsvUnLock(connectionName);
         socketClosed = true;
 
-        // we have an error if the socket wasn't closed orderly
-        bool hadError = error < 0 && error != SOCKET_ERR_CLOSED;
-        JsVar *params[1];
-        if (hadError) {
-          params[0] = jsvNewWithFlags(JSV_OBJECT);
-          jsvObjectSetChildAndUnLock(params[0], "code", jsvNewFromInteger(error));
-          jsvObjectSetChildAndUnLock(params[0], "message",
-              jsvNewFromString(socketErrorString(error)));
-          jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_ERROR, params, 1);
-          jsvUnLock(params[0]);
-        }
+        // fire error event, if ther eis an error
+        bool hadError = fireErrorEvent(error, connection, NULL);
 
         // close callback must happen after error callback
-        params[0] = jsvNewFromBool(hadError);
+        JsVar *params[1] = { jsvNewFromBool(hadError) };
         jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_CLOSE, params, 1);
         jsvUnLock(params[0]);
       }
