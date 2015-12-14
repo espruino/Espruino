@@ -1224,16 +1224,18 @@ static void hci_tx_reschedule()
     bool     tx_exec_flag = false;
     uint32_t tx_queue_length;
     uint32_t err_code;
+    int flags_status;
 
     CRITICAL_REGION_ENTER();
     err_code = app_mailbox_get_length(tx_evt_queue_id, &tx_queue_length);
     ser_phy_hci_assert(err_code == NRF_SUCCESS);
 
 #ifndef HCI_LINK_CONTROL
-    if (m_tx_fsm_idle_flag && m_hci_global_enable_flag && tx_queue_length)
+    flags_status = (m_tx_fsm_idle_flag && m_hci_global_enable_flag && tx_queue_length);
 #else
-    if (m_tx_fsm_idle_flag && m_hci_global_enable_flag && tx_queue_length && (m_hci_mode == HCI_MODE_ACTIVE))
+    flags_status = (m_tx_fsm_idle_flag && m_hci_global_enable_flag && tx_queue_length && (m_hci_mode == HCI_MODE_ACTIVE));
 #endif /* HCI_LINK_CONTROL */
+    if(flags_status)
     {
         tx_exec_flag       = true;  // FSM should be activated
         m_tx_fsm_idle_flag = false; // FSM will be busy from now on till the queue is exhausted
@@ -1282,16 +1284,18 @@ static void hci_rx_reschedule()
     bool     rx_exec_flag = false;
     uint32_t rx_queue_length;
     uint32_t err_code;
+    int flags_status;
 
     CRITICAL_REGION_ENTER();
     err_code = app_mailbox_get_length(rx_evt_queue_id, &rx_queue_length);
     ser_phy_hci_assert(err_code == NRF_SUCCESS);
 
 #ifndef HCI_LINK_CONTROL
-    if (m_rx_fsm_idle_flag && m_hci_global_enable_flag && rx_queue_length)
+    flags_status = (m_rx_fsm_idle_flag && m_hci_global_enable_flag && rx_queue_length);
 #else
-    if (m_rx_fsm_idle_flag && m_hci_global_enable_flag && rx_queue_length && (m_hci_mode == HCI_MODE_ACTIVE))
+    flags_status = (m_rx_fsm_idle_flag && m_hci_global_enable_flag && rx_queue_length && (m_hci_mode == HCI_MODE_ACTIVE));
 #endif /* HCI_LINK_CONTROL */
+    if(flags_status)
     {
         rx_exec_flag       = true;  // FSM should be activated
         m_rx_fsm_idle_flag = false; // FSM will be busy from now on till the queue is exhausted
@@ -1337,7 +1341,7 @@ static void hci_rx_event_handler(hci_evt_t * p_event)
 #ifdef HCI_LINK_CONTROL
 /* Link control event handler - used only for Link Control packets */
 /* This handler will be called only in 2 cases:
-   - when SER_PHY_HCI_SLIP_EVT_PKT_RECEIVED event is received 
+   - when SER_PHY_HCI_SLIP_EVT_PKT_RECEIVED event is received
    - when HCI_TIMER_EVT event is reveived */
 static void hci_link_control_event_handler(hci_evt_t * p_event)
 {
@@ -1388,7 +1392,7 @@ static void hci_link_control_event_handler(hci_evt_t * p_event)
                     {
                         m_hci_mode          = HCI_MODE_ACTIVE;
                         m_hci_tx_fsm_state  = HCI_TX_STATE_SEND;
-                        m_hci_rx_fsm_state  = HCI_RX_STATE_RECEIVE;                        
+                        m_hci_rx_fsm_state  = HCI_RX_STATE_RECEIVE;
                     }
                     break;
             }
@@ -1665,5 +1669,3 @@ void ser_phy_close(void)
     uint32_t err_code = hci_timer_close();
     ser_phy_hci_assert(err_code == NRF_SUCCESS);
 }
-
-
