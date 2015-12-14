@@ -403,13 +403,11 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
-  uint32_t * startAddr;
-  uint32_t * pageSize;
-  if (!jshFlashGetPage(addr, startAddr, pageSize))
-  {
+  uint32_t startAddr;
+  uint32_t pageSize;
+  if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
-  }
-  nrf_utils_erase_flash_page(*startAddr);
+  nrf_utils_erase_flash_page(startAddr);
 }
 
 /**
