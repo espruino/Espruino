@@ -494,7 +494,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
             closeConnectionNow = true;
             error = num;
             // disconnected without headers? error.
-            if (!hadHeaders && error == SOCKET_ERR_CLOSED) error = SOCKET_ERR_UNKNOWN;
+            if (!hadHeaders && error == SOCKET_ERR_CLOSED) error = SOCKET_ERR_NO_RESP;
           } else {
             // did we just get connected?
             if (!alreadyConnected && !isHttp) {

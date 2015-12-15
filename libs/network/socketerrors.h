@@ -31,7 +31,8 @@ typedef enum {
   SOCKET_ERR_BAD_ARG      = -12,
   SOCKET_ERR_SSL_HAND     = -13,
   SOCKET_ERR_SSL_INVALID  = -14,
-  SOCKET_ERR_LAST         = -14, // not an error, just value of last error
+  SOCKET_ERR_NO_RESP      = -15,
+  SOCKET_ERR_LAST         = -15, // not an error, just value of last error
 } SocketError;
 
 /// Return a pointer to an error string given the (negative) error code

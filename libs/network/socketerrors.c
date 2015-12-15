@@ -28,6 +28,7 @@ static char *socketErrors[] = {
   "bad argument",
   "SSL handshake failed",
   "invalid SSL data",
+  "no response",
 };
 
 char *socketErrorString(int error) {
