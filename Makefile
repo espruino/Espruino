@@ -1290,9 +1290,9 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/ble_peripheral/ble_app_uart/config
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
-  INCLUDE += -I$(NRF5X_SDK_PATH)/examples/bsp
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/bsp
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart

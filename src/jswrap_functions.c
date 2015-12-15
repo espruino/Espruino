@@ -227,7 +227,7 @@ NO_INLINE static int jswrap_atob_decode(int c) {
   ],
   "return" : ["JsVar","A base64 encoded string"]
 }
-Convert the supplied string (or array) into a base64 string
+Encode the supplied string (or array) into a base64 string
  */
 JsVar *jswrap_btoa(JsVar *binaryData) {
   if (!jsvIsIterable(binaryData)) {
@@ -283,7 +283,7 @@ JsVar *jswrap_btoa(JsVar *binaryData) {
   ],
   "return" : ["JsVar","A string containing the decoded data"]
 }
-Convert the supplied base64 string into a base64 string
+Decode the supplied base64 string into a normal string
  */
 JsVar *jswrap_atob(JsVar *base64Data) {
   if (!jsvIsString(base64Data)) {

@@ -39,6 +39,14 @@ chip = {
   'i2c' : 2,
   'adc' : 1,
   'dac' : 0,
+   # If using DFU bootloader, it sits at 0x3C000 - 0x40000 (0x40000 is end of flash)
+   # Might want to change 256 -> 240 in the code below
+  'saved_code' : {
+    'address' : ((256 - 3) * 1024),
+    'page_size' : 1024,
+    'pages' : 3,
+    'flash_available' : (256 - (96 + 3)) # softdevice + saved code
+  }
 };
 
 devices = {
