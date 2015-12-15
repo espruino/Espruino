@@ -47,8 +47,9 @@
 #ifdef ESP8266
 // The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
 #define CHUNK (536/2)
+// esp8266 debugging, need to remove this eventually
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
-#define os_printf os_printf_plus
+#define printf os_printf_plus
 #else
 #define CHUNK 64
 #endif
@@ -467,6 +468,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           // don't try to send if we're already in error state
           int num = 0;
           if (error == 0) num = socketSendData(net, connection, sckt, &sendData);
+          //if (num != 0) printf("send returned %d\r\n", num);
           if (num > 0 && !alreadyConnected && !isHttp) { // whoa, we sent something, must be connected!
             jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
             jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
@@ -485,13 +487,14 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
           int num = netRecv(net, sckt, buf, sizeof(buf));
+          //if (num != 0) printf("recv returned %d\r\n", num);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
           } else if (num < 0) {
             closeConnectionNow = true;
             error = num;
             // disconnected without headers? error.
-            if (!hadHeaders && error != SOCKET_ERR_CLOSED) error = SOCKET_ERR_UNKNOWN;
+            if (!hadHeaders && error == SOCKET_ERR_CLOSED) error = SOCKET_ERR_UNKNOWN;
           } else {
             // did we just get connected?
             if (!alreadyConnected && !isHttp) {
@@ -532,6 +535,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
+        //printf("closing now error=%d\r\n", error);
         if ((socketType&ST_TYPE_MASK) != ST_HTTP)
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
 

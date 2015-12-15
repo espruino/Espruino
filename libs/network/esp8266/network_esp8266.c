@@ -516,8 +516,8 @@ static void setSocketInError(
   case ESPCONN_SSL_INVALID_DATA: err = SOCKET_ERR_SSL_INVALID; break;
   }
   pSocketData->errorCode = err;
-  DBG("%s: error %d on socket %d: %s\n", DBG_LIB,
-      err, pSocketData->socketId, socketErrorString(err));
+  DBG("%s: error %d->%d on socket %d: %s\n", DBG_LIB,
+      code, err, pSocketData->socketId, socketErrorString(err));
 }
 
 /**
