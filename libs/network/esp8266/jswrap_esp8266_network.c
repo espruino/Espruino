@@ -18,7 +18,7 @@
  */
 
 // Set WIFI_DBG to 0 to disable debug printf's, to 1 for important printf's, to 2 for verbose
-#define WIFI_DBG 2
+#define WIFI_DBG 1
 // Normal debug
 #if WIFI_DBG > 0
 #define DBG(format, ...) os_printf(format, ## __VA_ARGS__)
@@ -1528,6 +1528,9 @@ void jswrap_ESP8266_wifi_init1() {
 
   // register the state change handler so we get debug printout for sure
   wifi_set_event_handler_cb(wifiEventHandler);
+
+  // tell the SDK to let us have 10 connections
+  espconn_tcp_set_max_con(MAX_SOCKETS);
   DBG("< Wifi init1, phy=%d mode=%d\n", wifi_get_phy_mode(), wifi_get_opmode());
 }
 
@@ -1769,7 +1772,7 @@ static void wifiEventHandler(System_Event_t *evt) {
   uint8_t *mac;
   char *reason;
 
-  JsVar *jsDetails = jspNewObject(NULL, "WifiEventDetails");
+  JsVar *jsDetails = jsvNewWithFlags(JSV_OBJECT);
 
   switch(evt->event) {
   // We have connected to an access point.

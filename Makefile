@@ -858,7 +858,8 @@ libs/network/jswrap_net.c \
 libs/network/http/jswrap_http.c
 SOURCES += \
 libs/network/network.c \
-libs/network/socketserver.c
+libs/network/socketserver.c \
+libs/network/socketerrors.c
 
 # 
 WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
@@ -931,6 +932,7 @@ libs/network/js/network_js.c
  INCLUDE += -I$(ROOT)/libs/network/esp8266
  SOURCES += \
  libs/network/esp8266/network_esp8266.c\
+ libs/network/esp8266/pktbuf.c\
  libs/network/esp8266/ota.c
  endif
 endif
@@ -1335,7 +1337,7 @@ ifeq ($(FAMILY),ESP8266)
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain -lpwm -lcrypto
 CFLAGS+= -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \

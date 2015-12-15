@@ -33,6 +33,7 @@
 typedef long long int64_t;
 
 #include <jswrap_esp8266.h>
+#include <network_esp8266.h>
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
 
 #define _BV(bit) (1 << (bit))
@@ -117,6 +118,20 @@ void jswrap_ESP8266_logDebug(
   uint8 enable = (uint8)jsvGetBool(jsDebug);
   os_printf("ESP8255.logDebug, enable=%d\n", enable);
   system_set_os_print((uint8)jsvGetBool(jsDebug));
+}
+
+//===== ESP8266.dumpSocketInfo
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "dumpSocketInfo",
+  "generate" : "jswrap_ESP8266_dumpSocketInfo"
+}
+Dumps info about all sockets to the log. This is for troubleshooting the socket implementation.
+ */
+void jswrap_ESP8266_dumpSocketInfo(void) {
+  esp8266_dumpAllSocketData();
 }
 
 //===== ESP8266.setCPUFreq

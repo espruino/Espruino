@@ -19,11 +19,10 @@
 #include "jspin.h"
 
 //===== ESP8266 Library
-void   jswrap_ESP8266_dumpAllSocketData();
-void   jswrap_ESP8266_dumpSocket(JsVar *jsSocketId);
 JsVar *jswrap_ESP8266_getResetInfo();
 JsVar *jswrap_ESP8266_getState();
 void   jswrap_ESP8266_logDebug(JsVar *jsDebug);
+void   jswrap_ESP8266_dumpSocketInfo(void);
 void   jswrap_ESP8266_ping(JsVar *jsIpAddr, JsVar *jsPingCallback);
 void   jswrap_ESP8266_reboot();
 void   jswrap_ESP8266_setCPUFreq(JsVar *jsFreq);
