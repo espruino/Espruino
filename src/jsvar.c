@@ -564,6 +564,7 @@ NO_INLINE void jsvUnLockMany(unsigned int count, JsVar **vars) {
 JsVar *jsvRef(JsVar *var) {
   assert(var && jsvHasRef(var));
   jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)+1));
+  assert(jsvGetRefs(var));
   return var;
 }
 
@@ -571,8 +572,6 @@ JsVar *jsvRef(JsVar *var) {
 void jsvUnRef(JsVar *var) {
   assert(var && jsvGetRefs(var)>0 && jsvHasRef(var));
   jsvSetRefs(var, (JsVarRefCounter)(jsvGetRefs(var)-1));
-  // locks are never 0 here, so why bother checking!
-  assert(jsvGetLocks(var)>0);
 }
 
 /// Helper fn, Reference - set this variable as used by something
@@ -3073,6 +3072,35 @@ bool jsvGarbageCollect() {
         }
       } else {
         // otherwise just free 1 block
+        if (jsvHasSingleChild(var)) {
+          /* If this had a child that wasn't listed for GC then we need to
+           * unref it. Everything else is fine because it'll disappear anyway.
+           * We don't have to check if we should free this other variable
+           * here because we know the GC picked up it was referenced from
+           * somewhere else. */
+          JsVarRef ch = jsvGetFirstChild(var);
+          if (ch) {
+            JsVar *child = jsvGetAddressOf(ch); // not locked
+            if (child->flags!=JSV_UNUSED && // not already GC'd!
+                !(child->flags&JSV_GARBAGE_COLLECT)) // not marked for GC
+              jsvUnRef(child);
+          }
+        }
+        /* Sanity checks here. We're making sure that any variables that are
+         * linked from this one have either already been garbage collected or
+         * are marked for GC */
+        assert(!jsvHasChildren(var) || !jsvGetFirstChild(var) ||
+            jsvGetAddressOf(jsvGetFirstChild(var))->flags==JSV_UNUSED ||
+            (jsvGetAddressOf(jsvGetFirstChild(var))->flags&JSV_GARBAGE_COLLECT));
+        assert(!jsvHasChildren(var) || !jsvGetLastChild(var) ||
+            jsvGetAddressOf(jsvGetLastChild(var))->flags==JSV_UNUSED ||
+            (jsvGetAddressOf(jsvGetLastChild(var))->flags&JSV_GARBAGE_COLLECT));
+        assert(!jsvIsName(var) || !jsvGetPrevSibling(var) ||
+            jsvGetAddressOf(jsvGetPrevSibling(var))->flags==JSV_UNUSED ||
+            (jsvGetAddressOf(jsvGetPrevSibling(var))->flags&JSV_GARBAGE_COLLECT));
+        assert(!jsvIsName(var) || !jsvGetNextSibling(var) ||
+            jsvGetAddressOf(jsvGetNextSibling(var))->flags==JSV_UNUSED ||
+            (jsvGetAddressOf(jsvGetNextSibling(var))->flags&JSV_GARBAGE_COLLECT));
         // free!
         var->flags = JSV_UNUSED;
         // add this to our free list
