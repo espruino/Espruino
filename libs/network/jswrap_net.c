@@ -458,16 +458,16 @@ Create a socket connection using TLS
 Options can have `ca`, `key` and `cert` fields, which should be the decoded content of the certificate.
 
 ```
-var options = url.parse("https://localhost");
+var options = url.parse("localhost:1234");
 options.key = atob("MIIJKQ ... OZs08C");
 options.cert = atob("MIIFi ... Uf93rN+");
 options.ca = atob("MIIFgDCC ... GosQML4sc=");
-require("http").request(options, ... );
+require("tls").connect(options, ... );
 ```
 
-If you have the certificates as `.pem` files, you need to load these files, take the
-information between the lines beginning with `----`, remove the newlines from it
-so you have raw base64, and then feed it into `atob` as above.
+If you have the certificates as `.pem` files, you need to load these files, take the information between the lines beginning with `----`, remove the newlines from it so you have raw base64, and then feed it into `atob` as above.
+
+You can also just specify the filename and it will be loaded and parsed if you have an SD card connected. For instance `options.key = "key.pem";`.
 
 For more information about generating and using certificates, see:
 
