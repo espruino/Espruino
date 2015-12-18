@@ -1278,12 +1278,15 @@ endif #FAMILY == NRF52
 
 ifeq ($(FAMILY), EFM32GG)
 
+  ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
+
   GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
 
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
 
   ARM = 1
-  #ARM_HAS_OWN_CMSIS = 1
+  ARM_HAS_OWN_CMSIS = 1
+  INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
 
   INCLUDE += -I$(ROOT)/targets/efm32
   SOURCES +=                              \
@@ -1302,13 +1305,13 @@ ifeq ($(FAMILY), EFM32GG)
 	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
-  $(GECKO_SDK_PATH)/emlib/src/em_emu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_usart.c
 
 
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \

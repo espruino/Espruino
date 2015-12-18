@@ -25,6 +25,9 @@
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
+#include "em_chip.h"
+#include "em_cmu.h"
+#include "em_rtc.h"
 #include "em_timer.h"
 #include "em_usart.h"
 #include "em_gpio.h"
@@ -51,7 +54,7 @@ void USART1_RX_IRQHandler(void)
     USART_IntClear(uart, UART_IF_RXDATAV);
     
     /* Read one byte from the receive data register */
-    jshPushIOCharEvent(device, (char)USART_Rx(uart));
+    jshPushIOCharEvent(EV_SERIAL1, (char)USART_Rx(uart));
   }
 }
 
@@ -67,7 +70,7 @@ void USART1_TX_IRQHandler(void)
   if (uart->IF & UART_IF_TXBL)
   {
     /* If we have other data to send, send it */
-    int c = jshGetCharToTransmit(device);
+    int c = jshGetCharToTransmit(EV_SERIAL1);
     if (c >= 0) {
       USART_TxDouble(uart, (uint16_t)c);
     } else
@@ -83,7 +86,7 @@ void jshInit() {
   CHIP_Init; //Init EFM32 device  
 
   /* Start HFXO and use it as main clock */
-  CMU_OscillatorEnable( cmuOsc_HFXO, true, true);/
+  CMU_OscillatorEnable( cmuOsc_HFXO, true, true);
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
   CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
 
@@ -116,7 +119,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
     {
     	return 0;
     }
-	return nrf_utils_get_device_id(data, maxChars);
+    /* EFM32 TODO this is not the serial number */
+    return 1337;
 }
 
 // is the serial device connected?
@@ -126,7 +130,7 @@ bool jshIsUSBSERIALConnected() {
 
 /// Get the system time (in ticks)
 JsSysTime jshGetSystemTime() {
-  return (JsSysTime)RTC0->CNT;
+  return (JsSysTime)RTC->CNT;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
@@ -405,7 +409,7 @@ void jshUSARTKick(IOEventFlags device) {
   {
     
     uint8_t character = (uint8_t) check_valid_char;
-    USART_Tx(&USART1, character);
+    USART_Tx(uart, character);
   }
 
 }
@@ -460,23 +464,23 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
 bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 {
-  *pageSize = FLASH_PAGE_SIZE;
-  *startAddr = (((uint32_t) startAddress) & ^(FLASH_PAGE_SIZE - 1));
-
-  /* EFM32 TODO return false when no page */
+  /* EFM32
+  pageSize = FLASH_PAGE_SIZE;
+  startAddr = (((uint32_t) startAddress) & ^(FLASH_PAGE_SIZE - 1));
+  */
   return true;
 }
 
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
+  /* EFM32 TODO
   uint32_t startAddr;
   uint32_t pageSize;
   uint8_t pageNumber;
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
   pageNumber = startAddr / pageSize;
-  /* EFM32 TODO
   NVMHAL_PageErase(&pageNumber);
   */
 }
@@ -554,6 +558,7 @@ JsVarFloat jshReadTemperature() {
 
   return nrf_temp / 4.0;
   */
+  return 0;
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
@@ -566,6 +571,7 @@ JsVarFloat jshReadVRef() {
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
   return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
   */
+  return 0;
 }
 
 /**
