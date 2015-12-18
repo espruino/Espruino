@@ -28,7 +28,6 @@
 #include "em_timer.h"
 #include "em_usart.h"
 #include "em_gpio.h"
-#include "nvm_hal.h"
 #include "rtcdrv.h"
 
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
@@ -477,7 +476,9 @@ void jshFlashErasePage(uint32_t addr)
   if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
   pageNumber = startAddr / pageSize;
+  /* EFM32 TODO
   NVMHAL_PageErase(&pageNumber);
+  */
 }
 
 /**
@@ -485,8 +486,9 @@ void jshFlashErasePage(uint32_t addr)
  */
 void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
 {
-  /* EFM32 TODO address has to be word-aligned */
+  /* EFM32 TODO address has to be word-aligned
   NVMHAL_Read(&addr, buf, len);
+  */
 }
 
 /**
@@ -498,7 +500,9 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
   {
 	  return;
   }
+  /* EFM32 TODO
   NVMHAL_Write(&addr, buf, len);
+  */
 }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
