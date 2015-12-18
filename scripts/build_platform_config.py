@@ -185,6 +185,10 @@ elif board.chip["family"]=="NRF51":
 elif board.chip["family"]=="NRF52":
   board.chip["class"]="NRF52"
   codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
+elif board.chip["family"]=="EFM32GG":
+  board.chip["class"]="EFM32"
+  codeOut('#define EFM32GG990F1024')
+  codeOut('#include "em_device.h"')
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
 elif board.chip["family"]=="AVR":
