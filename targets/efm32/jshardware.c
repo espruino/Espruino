@@ -26,19 +26,11 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 
 #include "em_timer.h"
-#include "em_adc.h"
 #include "em_usart.h"
 #include "em_gpio.h"
 #include "nvm_hal.h"
 #include "rtcdrv.h"
-/*
-#include "nrf_gpio.h"
-#include "nrf_temp.h"
-#include "nrf_adc.h"
-#include "nrf_timer.h"
-#include "communication_interface.h"
-#include "nrf5x_utils.h"
-*/
+
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
 
 static USART_TypeDef           * uart   = USART1;
