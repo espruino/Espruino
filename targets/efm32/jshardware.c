@@ -376,7 +376,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 
   /* Prepare struct for initializing UART in asynchronous mode*/
   uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
-  uartInit.databits     = usartDatabits16;
+  uartInit.baudrate     = 9600;
 
   /* Initialize USART with uartInit struct */
   USART_InitAsync(uart, &uartInit);
