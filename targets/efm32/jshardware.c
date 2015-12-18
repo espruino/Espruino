@@ -29,7 +29,7 @@
 #include "em_adc.h"
 #include "em_usart.h"
 #include "em_gpio.h"
-#include "nvm.h"
+#include "nvm_hal.h"
 #include "rtcdrv.h"
 /*
 #include "nrf_gpio.h"
@@ -51,27 +51,16 @@ static USART_TypeDef           * uart   = USART1;
  * Note that this function handles overflows in a very simple way.
  *
  *****************************************************************************/
-void UART1_RX_IRQHandler(void)
+void USART1_RX_IRQHandler(void)
 {
   /* Check for RX data valid interrupt */
   if (uart->IF & UART_IF_RXDATAV)
   {
-       /* Read one byte from the receive data register */
-    jshPushIOCharEvent(device, (char)USART_Rx(USART1));
-
-
+    /* Clear the USART Receive interrupt */
+    USART_IntClear(uart, UART_IF_RXDATAV);
     
-    /* Copy data into RX Buffer */
-    uint8_t rxData = USART_Rx(uart);
-    rxBuf.data[rxBuf.wrI] = rxData;
-    rxBuf.wrI             = (rxBuf.wrI + 1) % BUFFERSIZE;
-    rxBuf.pendingBytes++;
-
-    /* Flag Rx overflow */
-    if (rxBuf.pendingBytes > BUFFERSIZE)
-    {
-      rxBuf.overflow = true;
-    }
+    /* Read one byte from the receive data register */
+    jshPushIOCharEvent(device, (char)USART_Rx(uart));
   }
 }
 
@@ -81,24 +70,17 @@ void UART1_RX_IRQHandler(void)
  * Set up the interrupt prior to use
  *
  *****************************************************************************/
-void UART1_TX_IRQHandler(void)
+void USART1_TX_IRQHandler(void)
 {
   /* Check TX buffer level status */
   if (uart->IF & UART_IF_TXBL)
   {
-    if (txBuf.pendingBytes > 0)
-    {
-      /* Transmit pending character */
-      USART_Tx(uart, txBuf.data[txBuf.rdI]);
-      txBuf.rdI = (txBuf.rdI + 1) % BUFFERSIZE;
-      txBuf.pendingBytes--;
-    }
-
-    /* Disable Tx interrupt if no more bytes in queue */
-    if (txBuf.pendingBytes == 0)
-    {
+    /* If we have other data to send, send it */
+    int c = jshGetCharToTransmit(device);
+    if (c >= 0) {
+      USART_TxDouble(uart, (uint16_t)c);
+    } else
       USART_IntDisable(uart, UART_IEN_TXBL);
-    }
   }
 }
 
@@ -114,7 +96,7 @@ void jshInit() {
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
   CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
 
-  
+  /* Start the RTC */
   RTCDRV_Init();
     
   JshUSARTInfo inf; // Just for show, not actually used...
@@ -399,6 +381,7 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
 
   /* Prepare struct for initializing UART in asynchronous mode*/
   uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
+  uartInit.databits     = usartDatabits16;
 
   /* Initialize USART with uartInit struct */
   USART_InitAsync(uart, &uartInit);
