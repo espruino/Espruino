@@ -1,0 +1,57 @@
+================ Revision history ============================================
+4.2.1:
+- No changes.
+
+4.2.0:
+- Fixed compiler warning in Macronix SPI flash driver.
+
+4.1.1:
+- Added driver for Macronix SPI flash.
+- Added more diagnostics output in MSD host driver.
+- Updated capsense driver interface to support APORT input channels
+- RTCC support in display driver
+
+4.1.0:
+- No changes.
+
+4.0.0:
+- Increased robustness in MSC host driver.
+- Added driver for the ksz8851snl ethernet controller.
+
+3.20.12:
+- Changes, additions and bugfixes.
+
+3.20.9:
+- General upgrade to support Happy Gecko STK.
+- Support for new sensors si114x and si7013.
+- Renamed i2cdrv to i2cspm.
+- Updated dmactrl.c to support Zero Gecko family.
+- Updated doc of udelay module (can only be used with delays < 1000 us).
+
+3.20.5:
+- Added drivers for Si1147 and Si7013 sensors.
+- Optimized write speed in microsd driver.
+- Increased SPI baudrate in microsd driver for targets with USART that
+  supports SMSDELAY (see ref. man for further description).
+- BSP_TraceSwoSetup() will no longer overwrite settings set by external debugger
+
+3.20.3:
+- Added drivers for the Si7013 and Si1147 sensors used on the sensor expansion
+  board.
+- Fixed bug in memory LCD driver when accessing unaligned framebuffers.
+
+3.20.2:
+- Added DISPLAY device driver, and specifically support for the Sharp Memory
+  LCD (model LS013B7DH03) on the EFM32ZG_STK3200.
+- Fixed bug in SWO setup.
+
+3.20.0:
+- Fixed bug in microsd driver.
+- Fixed bug in segmentlcd driver.
+- New functions SegmentLCD_LowerHex() and SegmentLCD_LowerNumber()in
+  segmentlcd driver.
+- Added MCU plugin board and board controller communication (BCC) API.
+- New function BSP_BusControlModeGet().
+
+1.0.0:
+- First release

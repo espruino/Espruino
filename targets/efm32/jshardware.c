@@ -1,0 +1,600 @@
+/**
+ * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
+ *
+ * Copyright (C) 2013 Gordon Williams <gw@pur3.co.uk>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * ----------------------------------------------------------------------------
+ * Platform Specific part of Hardware interface Layer
+ * ----------------------------------------------------------------------------
+ */
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "jshardware.h"
+#include "jstimer.h"
+#include "jsutils.h"
+#include "jsparse.h"
+#include "jsinteractive.h"
+#include "jswrap_io.h"
+#include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
+
+#include "em_timer.h"
+#include "em_adc.h"
+#include "em_usart.h"
+#include "em_gpio.h"
+#include "nvm.h"
+#include "rtcdrv.h"
+/*
+#include "nrf_gpio.h"
+#include "nrf_temp.h"
+#include "nrf_adc.h"
+#include "nrf_timer.h"
+#include "communication_interface.h"
+#include "nrf5x_utils.h"
+*/
+#define SYSCLK_FREQ 48000000 // Using standard HFXO freq
+
+static USART_TypeDef           * uart   = USART1;
+
+/**************************************************************************//**
+ * @brief UART1 RX IRQ Handler
+ *
+ * Set up the interrupt prior to use
+ *
+ * Note that this function handles overflows in a very simple way.
+ *
+ *****************************************************************************/
+void UART1_RX_IRQHandler(void)
+{
+  /* Check for RX data valid interrupt */
+  if (uart->IF & UART_IF_RXDATAV)
+  {
+       /* Read one byte from the receive data register */
+    jshPushIOCharEvent(device, (char)USART_Rx(USART1));
+
+
+    
+    /* Copy data into RX Buffer */
+    uint8_t rxData = USART_Rx(uart);
+    rxBuf.data[rxBuf.wrI] = rxData;
+    rxBuf.wrI             = (rxBuf.wrI + 1) % BUFFERSIZE;
+    rxBuf.pendingBytes++;
+
+    /* Flag Rx overflow */
+    if (rxBuf.pendingBytes > BUFFERSIZE)
+    {
+      rxBuf.overflow = true;
+    }
+  }
+}
+
+/**************************************************************************//**
+ * @brief UART1 TX IRQ Handler
+ *
+ * Set up the interrupt prior to use
+ *
+ *****************************************************************************/
+void UART1_TX_IRQHandler(void)
+{
+  /* Check TX buffer level status */
+  if (uart->IF & UART_IF_TXBL)
+  {
+    if (txBuf.pendingBytes > 0)
+    {
+      /* Transmit pending character */
+      USART_Tx(uart, txBuf.data[txBuf.rdI]);
+      txBuf.rdI = (txBuf.rdI + 1) % BUFFERSIZE;
+      txBuf.pendingBytes--;
+    }
+
+    /* Disable Tx interrupt if no more bytes in queue */
+    if (txBuf.pendingBytes == 0)
+    {
+      USART_IntDisable(uart, UART_IEN_TXBL);
+    }
+  }
+}
+
+void jshInit() {
+
+  
+  jshInitDevices(); // Initialize JS - not sure where this is located?
+
+  CHIP_Init; //Init EFM32 device  
+
+  /* Start HFXO and use it as main clock */
+  CMU_OscillatorEnable( cmuOsc_HFXO, true, true);/
+  CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
+  CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
+
+  
+  RTCDRV_Init();
+    
+  JshUSARTInfo inf; // Just for show, not actually used...
+  jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
+
+}
+
+// When 'reset' is called - we try and put peripherals back to their power-on state
+void jshReset() {
+
+}
+
+void jshKill() {
+
+}
+
+// stuff to do on idle
+void jshIdle() {
+
+  jshUSARTKick(EV_SERIAL1);
+}
+
+/// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
+int jshGetSerialNumber(unsigned char *data, int maxChars) {
+    if (maxChars <= 0)
+    {
+    	return 0;
+    }
+	return nrf_utils_get_device_id(data, maxChars);
+}
+
+// is the serial device connected?
+bool jshIsUSBSERIALConnected() {
+  return true;
+}
+
+/// Get the system time (in ticks)
+JsSysTime jshGetSystemTime() {
+  return (JsSysTime)RTC0->CNT;
+}
+
+/// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
+void jshSetSystemTime(JsSysTime time) {
+
+}
+
+/// Convert a time in Milliseconds to one in ticks.
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
+}
+
+/// Convert ticks to a time in Milliseconds.
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
+}
+
+// software IO functions...
+void jshInterruptOff() {
+  __disable_irq();
+}
+
+void jshInterruptOn() {
+  __enable_irq();
+}
+
+void jshDelayMicroseconds(int microsec) {
+  /* EFM32 TODO
+  if (microsec <= 0) {
+    return;
+  }
+  
+  nrf_utils_delay_us((uint32_t) microsec);
+  */
+}
+
+void jshPinSetValue(Pin pin, bool value) {
+  /* EFM32 TODO
+  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
+  */
+}
+
+bool jshPinGetValue(Pin pin) {
+  /* EFM32 TODO
+  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
+  */
+  return 0;
+}
+
+// Set the pin state
+void jshPinSetState(Pin pin, JshPinState state) {
+  /* EFM32 TODO
+  uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+  switch (state) {
+    case JSHPINSTATE_UNDEFINED :
+      nrf_gpio_cfg_default(ipin);
+      break;
+    case JSHPINSTATE_GPIO_OUT :
+      nrf_gpio_cfg_output(ipin);
+      break;
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
+      break;
+    case JSHPINSTATE_GPIO_IN :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      break;
+    case JSHPINSTATE_GPIO_IN_PULLUP :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      break;
+    case JSHPINSTATE_GPIO_IN_PULLDOWN :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      break;
+    case JSHPINSTATE_ADC_IN :
+      break;
+    case JSHPINSTATE_AF_OUT :
+      break;
+    case JSHPINSTATE_AF_OUT_OPENDRAIN :
+      break;
+    case JSHPINSTATE_USART_IN :
+      break;
+    case JSHPINSTATE_USART_OUT :
+      break;
+    case JSHPINSTATE_DAC_OUT :
+      break;
+    case JSHPINSTATE_I2C :
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
+      // may need to be set to GPIO_PIN_CNF_DIR_Output as well depending on I2C state?
+      break;
+    default : assert(0);
+      break;
+  }
+  */
+}
+
+/** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
+ * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
+JshPinState jshPinGetState(Pin pin) {
+  /* EFM32 TODO
+  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
+  */
+  return 0;
+}
+
+// Returns an analog value between 0 and 1
+JsVarFloat jshPinAnalog(Pin pin) {
+  /* EFM32 TODO
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+
+  const nrf_adc_config_t nrf_adc_config =  {
+      NRF_ADC_CONFIG_RES_10BIT,
+      NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+      NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  // sanity checks for nrf_adc_convert_single...
+  assert(ADC_CONFIG_PSEL_AnalogInput0 == 1);
+  assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
+  assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
+  // make reading
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+  */
+  return 0;
+}
+
+/// Returns a quickly-read analog value in the range 0-65535
+int jshPinAnalogFast(Pin pin) {
+  /* EFM32 TODO
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
+
+  const nrf_adc_config_t nrf_adc_config =  {
+        NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
+        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+        NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  // sanity checks for nrf_adc_convert_single...
+  assert(ADC_CONFIG_PSEL_AnalogInput0 == 1);
+  assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
+  assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
+  // make reading
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
+  */
+  return 0;
+}
+
+JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  /* EFM32 TODO */
+  return JSH_NOTHING;
+} // if freq<=0, the default is used
+
+void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+  /* EFM32 TODO
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
+  */
+}
+
+///< Can the given pin be watched? it may not be possible because of conflicts
+bool jshCanWatch(Pin pin) {
+  return false;
+}
+
+IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
+  /* EFM32 TODO */
+  return JSH_NOTHING;
+} // start watching pin - return the EXTI associated with it
+
+/// Given a Pin, return the current pin function associated with it
+JshPinFunction jshGetCurrentPinFunction(Pin pin) {
+  /* EFM32 TODO */
+  return JSH_NOTHING;
+}
+
+/// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
+void jshSetOutputValue(JshPinFunction func, int value) {
+  /* EFM32 TODO */
+}
+
+/// Enable watchdog with a timeout in seconds
+void jshEnableWatchDog(JsVarFloat timeout) {
+  /* EFM32 TODO */
+}
+
+/** Check the pin associated with this EXTI - return true if it is a 1 */
+bool jshGetWatchedPinState(IOEventFlags device) {
+  /* EFM32 TODO */
+  return false;
+}
+
+bool jshIsEventForPin(IOEvent *event, Pin pin) {
+  /* EFM32 TODO */
+  return false;
+}
+
+/** Is the given device initialised? */
+bool jshIsDeviceInitialised(IOEventFlags device) {
+  /* EFM32 TODO */
+  return false;
+}
+
+/** Set up a UART, if pins are -1 they will be guessed */
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
+{
+  // Initializes UART and registers a callback function defined above to read characters into the static variable character.
+
+    /* Enable clock for HF peripherals */
+  CMU_ClockEnable(cmuClock_HFPER, true);
+
+  /* Enable clock for USART module */
+  CMU_ClockEnable(cmuClock_USART1, true);
+
+  /* Enable clock for GPIO module (required for pin configuration) */
+  CMU_ClockEnable(cmuClock_GPIO, true);
+  /* Configure GPIO pins */
+  GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
+  GPIO_PinModeSet(gpioPortC, 1, gpioModeInput, 0);
+
+  static USART_InitAsync_TypeDef uartInit = USART_INITASYNC_DEFAULT;
+
+  /* Prepare struct for initializing UART in asynchronous mode*/
+  uartInit.enable       = usartDisable;   /* Don't enable UART upon intialization */
+
+  /* Initialize USART with uartInit struct */
+  USART_InitAsync(uart, &uartInit);
+
+  /* Prepare UART Rx and Tx interrupts */
+  USART_IntClear(uart, _USART_IFC_MASK);
+  USART_IntEnable(uart, USART_IEN_RXDATAV);
+  NVIC_ClearPendingIRQ(USART1_RX_IRQn);
+  NVIC_ClearPendingIRQ(USART1_TX_IRQn);
+  NVIC_EnableIRQ(USART1_RX_IRQn);
+  NVIC_EnableIRQ(USART1_TX_IRQn);
+
+  /* Enable I/O pins at UART1 location #2 */
+  uart->ROUTE = UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | UART_ROUTE_LOCATION_LOC0;
+
+  /* Enable UART */
+  USART_Enable(uart, usartEnable);
+}
+
+/** Kick a device into action (if required). For instance we may need to set up interrupts */
+void jshUSARTKick(IOEventFlags device) {
+  
+  if (device != EV_SERIAL1)
+  {
+	  return;
+  }
+
+  int check_valid_char = jshGetCharToTransmit(EV_SERIAL1);
+  if (check_valid_char >= 0)
+  {
+    
+    uint8_t character = (uint8_t) check_valid_char;
+    USART_Tx(&USART1, character);
+  }
+
+}
+
+/** Set up SPI, if pins are -1 they will be guessed */
+void jshSPISetup(IOEventFlags device, JshSPIInfo *inf) {
+  /* EFM32 TODO */
+}
+
+/** Send data through the given SPI device (if data>=0), and return the result
+ * of the previous send (or -1). If data<0, no data is sent and the function
+ * waits for data to be returned */
+int jshSPISend(IOEventFlags device, int data) {
+  /* EFM32 TODO */
+  return -1;
+}
+
+/** Send 16 bit data through the given SPI device. */
+void jshSPISend16(IOEventFlags device, int data) {
+  /* EFM32 TODO */
+}
+
+/** Set whether to send 16 bits or 8 over SPI */
+void jshSPISet16(IOEventFlags device, bool is16) {
+  /* EFM32 TODO */
+}
+
+/** Set whether to use the receive interrupt or not */
+void jshSPISetReceive(IOEventFlags device, bool isReceive) {
+  /* EFM32 TODO */
+}
+
+/** Wait until SPI send is finished, and flush all received data */
+void jshSPIWait(IOEventFlags device) {
+  /* EFM32 TODO */
+}
+
+/** Set up I2C, if pins are -1 they will be guessed */
+void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
+  /* EFM32 TODO */
+}
+
+/** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
+void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
+  /* EFM32 TODO */
+}
+
+void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
+  /* EFM32 TODO */
+}
+
+/// Return start address and size of the flash page the given address resides in. Returns false if no page.
+bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
+{
+  *pageSize = FLASH_PAGE_SIZE;
+  *startAddr = (((uint32_t) startAddress) & ^(FLASH_PAGE_SIZE - 1));
+
+  /* EFM32 TODO return false when no page */
+  return true;
+}
+
+/// Erase the flash page containing the address.
+void jshFlashErasePage(uint32_t addr)
+{
+  uint32_t startAddr;
+  uint32_t pageSize;
+  uint8_t pageNumber;
+  if (!jshFlashGetPage(addr, &startAddr, &pageSize))
+    return;
+  pageNumber = startAddr / pageSize;
+  NVMHAL_PageErase(&pageNumber);
+}
+
+/**
+ * Reads a byte from memory. Addr doesn't need to be word aligned and len doesn't need to be a multiple of 4.
+ */
+void jshFlashRead(void * buf, uint32_t addr, uint32_t len)
+{
+  /* EFM32 TODO address has to be word-aligned */
+  NVMHAL_Read(&addr, buf, len);
+}
+
+/**
+ * Writes an array of bytes to memory. Addr must be word aligned and len must be a multiple of 4.
+ */
+void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
+{
+  if ((addr & (3UL)) != 0 || (len % 4) != 0)
+  {
+	  return;
+  }
+  NVMHAL_Write(&addr, buf, len);
+}
+
+/// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
+bool jshSleep(JsSysTime timeUntilWake) {
+  jstSetWakeUp(timeUntilWake);
+  /* EFM32 TODO
+  RTCDRV_a(); // Go to sleep, wait to be woken up
+  */
+  
+  return true;
+}
+
+/// Reschedule the timer (it should already be running) to interrupt after 'period'
+void jshUtilTimerReschedule(JsSysTime period) {
+  /* EFM32 TODO
+  period = period * 1000000 / SYSCLK_FREQ;
+  if (period < 2) period=2;
+  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
+  */
+}
+
+/// Start the timer and get it to interrupt after 'period'
+void jshUtilTimerStart(JsSysTime period) {
+  /* EFM32 TODO
+  jshUtilTimerReschedule(period);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
+  */
+}
+
+/// Stop the timer
+void jshUtilTimerDisable() {
+  /* EFM32 TODO
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
+  */
+}
+
+// the temperature from the internal temperature sensor
+JsVarFloat jshReadTemperature() {
+  /* EFM32 TODO
+  nrf_temp_init();
+
+  NRF_TEMP->TASKS_START = 1;
+  while (NRF_TEMP->EVENTS_DATARDY == 0) ;// Do nothing...
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  int32_t nrf_temp = nrf_temp_read();
+  NRF_TEMP->TASKS_STOP = 1;
+
+  return nrf_temp / 4.0;
+  */
+}
+
+// The voltage that a reading of 1 from `analogRead` actually represents
+JsVarFloat jshReadVRef() {
+  /* EFM32 TODO
+  const nrf_adc_config_t nrf_adc_config =  {
+       NRF_ADC_CONFIG_RES_10BIT,
+       NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+       NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
+  */
+}
+
+/**
+ * Get a random number - either using special purpose hardware or by
+ * reading noise from an analog input. If unimplemented, this should
+ * default to `rand()`
+ */
+unsigned int jshGetRandomNumber() {
+  /* EFM32 TODO This is not random */
+  return 1337;
+}
