@@ -65,20 +65,15 @@ To program the nRF52 Development Kit with Espruino:
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 - the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
-- the Espressif SDK (version 1.4.0 as of this writing) from http://bbs.espressif.com/viewforum.php?f=46
+- the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from http://bbs.espressif.com/viewforum.php?f=46 and http://bbs.espressif.com/viewtopic.php?f=7&t=1528
 
 To run make you need to pass a couple of environment variables to `make`.  These include:
 
-* `ESP8266_BOARD = 1`
-* `FLASH_4MB` if you have an esp-12
-* `ESP8266_SDK_ROOT = <Path to the 1.4 SDK>`
-* `COMPORT = </dev/ttyUSB0|COM1|...>`
-
-Ensure that your program Path includes the folders/directories for:
-
-* Xtensa GCC compiler
-* esptool
-* Python 3.4
+* `ESP8266_BOARD=1`
+* `FLASH_4MB=1` if you have an esp-12
+* `ESP8266_SDK_ROOT=<Path to the 1.4 SDK>`
+* `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
+* `COMPORT=</dev/ttyUSB0|COM1|...>`
 
 The easiest is to place
 the following lines into a script, adapt it to your needs and then run it.
@@ -86,7 +81,7 @@ the following lines into a script, adapt it to your needs and then run it.
 #! /bin/bash
 export ESP8266_BOARD=1
 export FLASH_4MB=1
-export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.4.0
+export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
 export COMPORT=/dev/ttyUSB0
 make $*
@@ -95,7 +90,7 @@ make $*
 * If you do `make flash` it will try to flash your esp8266 module over serial
 * If you do `make wiflash` it will try to flash you esp8266 module over wifi, which assumes
   that it's already running Espruino
-* You will also get an `espruino_esp8266_1v00_*.tgz` archive, which contains everything you
+* You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
   need to flash a module (except for esptool.py), including a README_flash.txt
 
 ####Building on Eclipse

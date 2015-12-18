@@ -111,7 +111,7 @@ The HTTP server response
   "class" : "httpSRs",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send. 
+An event that is fired when the buffer is empty and it can accept more data to send.
 */
 /*JSON{
   "type" : "event",
@@ -126,21 +126,21 @@ Called when the connection closes.
   "library" : "http",
   "class" : "httpCRq"
 }
-The HTTP client request
+The HTTP client request, returned by `http.request()` and `http.get()`.
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRq",
   "name" : "drain"
 }
-An event that is fired when the buffer is empty and it can accept more data to send. 
+An event that is fired when the buffer is empty and it can accept more data to send.
 */
 /*JSON{
   "type" : "event",
   "class" : "httpCRq",
   "name" : "error"
 }
-There was an error while making this request
+An event that is fired if there is an error making the request and the response callback has not been invoked. In this case the error event concludes the request attempt. The error event function receives an error object as parameter with a `code` field and a `message` field.
 */
 
 /*JSON{
@@ -148,7 +148,7 @@ There was an error while making this request
   "library" : "http",
   "class" : "httpCRs"
 }
-The HTTP client response
+The HTTP client response, passed to the callback of `http.request()` an `http.get()`.
 */
 /*JSON{
   "type" : "event",
@@ -165,7 +165,14 @@ The 'data' event is called when data is received. If a handler is defined with `
   "class" : "httpCRs",
   "name" : "close"
 }
-Called when the connection closes.
+Called when the connection closes with one `hadError` boolean parameter, which indicates whether an error occurred.
+*/
+/*JSON{
+  "type" : "event",
+  "class" : "httpCRs",
+  "name" : "error"
+}
+An event that is fired if there is an error receiving the response. The error event function receives an error object as parameter with a `code` field and a `message` field. After the error event the close even will also be triggered to conclude the HTTP request/response.
 */
 /*JSON{
   "type" : "method",
@@ -174,7 +181,7 @@ Called when the connection closes.
   "generate" : "jswrap_stream_available",
   "return" : ["int","How many bytes are available"]
 }
-Return how many bytes are available to read. If there is already a listener for data, this will always return 0.
+Return how many bytes are available to read. If there is a 'data' event handler, this will always return 0.
 */
 /*JSON{
   "type" : "method",
