@@ -28,7 +28,7 @@
 #include "em_timer.h"
 #include "em_usart.h"
 #include "em_gpio.h"
-#include "rtcdrv.h"
+#include "rtcdriver.h"
 
 #define SYSCLK_FREQ 48000000 // Using standard HFXO freq
 
