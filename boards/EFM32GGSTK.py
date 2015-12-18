@@ -21,3 +21,12 @@ chip = {
   'adc': 1,
   'dac': 1,
 };
+
+devices = {
+
+}
+
+def get_pins():
+  pins = pinutils.scan_pin_file([], 'efm32ggstk.csv', 0, 1, 2)
+  pins = pinutils.scan_pin_af_file(pins, 'efm32ggstk_af.csv', 0, 1)
+  return pinutils.fill_gaps_in_pin_list(pins)
