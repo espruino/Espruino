@@ -365,8 +365,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
   /* Enable clock for GPIO module (required for pin configuration) */
   CMU_ClockEnable(cmuClock_GPIO, true);
   /* Configure GPIO pins */
-  GPIO_PinModeSet(gpioPortC, 0, gpioModePushPull, 1);
-  GPIO_PinModeSet(gpioPortC, 1, gpioModeInput, 0);
+  GPIO_PinModeSet(gpioPortD, 0, gpioModePushPull, 1);
+  GPIO_PinModeSet(gpioPortD, 1, gpioModeInput, 0);
 
   static USART_InitAsync_TypeDef uartInit = USART_INITASYNC_DEFAULT;
 
@@ -385,8 +385,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
   NVIC_EnableIRQ(USART1_RX_IRQn);
   NVIC_EnableIRQ(USART1_TX_IRQn);
 
-  /* Enable I/O pins at UART1 location #2 */
-  uart->ROUTE = UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | UART_ROUTE_LOCATION_LOC0;
+  /* Enable I/O pins at UART1 location #1 */
+  uart->ROUTE = UART_ROUTE_RXPEN | UART_ROUTE_TXPEN | UART_ROUTE_LOCATION_LOC1;
 
   /* Enable UART */
   USART_Enable(uart, usartEnable);
