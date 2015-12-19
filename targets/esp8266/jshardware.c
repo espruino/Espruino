@@ -222,17 +222,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 //===== Interrupts and sleeping
 
-void jshInterruptOff() {
-  //os_printf("> jshInterruptOff\n");
-  ets_intr_lock();
-  //os_printf("< jshInterruptOff\n");
-} // End of jshInterruptOff
-
-void jshInterruptOn() {
-  //os_printf("> jshInterruptOn\n");
-  ets_intr_unlock();
-  //os_printf("< jshInterruptOn\n");
-} // End of jshInterruptOn
+void jshInterruptOff() { ets_intr_lock(); }
+void jshInterruptOn()  { ets_intr_unlock(); }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
