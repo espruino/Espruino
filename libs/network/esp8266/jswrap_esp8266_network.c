@@ -1058,7 +1058,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
 
   uint8 opMode = wifi_get_opmode();
 
-  JsVar *jsDetails = jspNewObject(NULL, "WiFiAPDetails");
+  JsVar *jsDetails = jspNewObject(NULL, "WiFiAPDetails"); // FIXME: Should be anonymous allocator
 
   jsvObjectSetChildAndUnLock(jsDetails, "status",
     jsvNewFromString(opMode & SOFTAP_MODE ? "enabled" : "disabled"));
@@ -1084,7 +1084,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     JsVar *jsArray = jsvNewArray(NULL, 0);
     struct station_info *station = wifi_softap_get_station_info();
     while(station) {
-      JsVar *jsSta = jspNewObject(NULL, "WifiStation");
+      JsVar *jsSta = jspNewObject(NULL, "WifiStation"); // FIXME: Should be anonymous allocator
       jsvObjectSetChildAndUnLock(jsSta, "ip",
         networkGetAddressAsString((uint8_t *)&station->ip.addr, 4, 10, '.'));
       char macAddrString[6*3 + 1];
@@ -1682,7 +1682,7 @@ static void scanCB(void *arg, STATUS status) {
     // Add a new object to the JS array that will be passed as a parameter to
     // the callback.
     // Create, populate and add a child ...
-    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint");
+    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint"); // FIXME: Use anonymous allocator
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));

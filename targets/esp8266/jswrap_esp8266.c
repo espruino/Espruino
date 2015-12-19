@@ -35,6 +35,7 @@ typedef long long int64_t;
 #include <jswrap_esp8266.h>
 #include <network_esp8266.h>
 #include "jsinteractive.h" // Pull in the jsiConsolePrint function
+#include <log.h>
 
 #define _BV(bit) (1 << (bit))
 
@@ -117,8 +118,54 @@ void jswrap_ESP8266_logDebug(
   ) {
   uint8 enable = (uint8)jsvGetBool(jsDebug);
   os_printf("ESP8255.logDebug, enable=%d\n", enable);
-  system_set_os_print((uint8)jsvGetBool(jsDebug));
+  esp8266_logInit(jsvGetBool(jsDebug) ? LOG_MODE_ON1 : LOG_MODE_OFF);
 }
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "setLog",
+  "generate" : "jswrap_ESP8266_setLog",
+  "params"   : [
+    ["mode", "JsVar", "Debug log mode: 0=off, 1=in-memory only, 2=in-mem and uart0, 3=in-mem and uart1."]
+  ]
+}
+Set the debug logging mode. It can be disabled (which frees ~1.2KB of heap), enabled in-memory only, or in-memory and output to a UART.
+ */
+void jswrap_ESP8266_setLog(
+    JsVar *jsMode
+) {
+  uint8 mode = (uint8)jsvGetInteger(jsMode);
+  os_printf("ESP8266 setLog, mode=%d\n", mode);
+  esp8266_logInit(mode);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "printLog",
+  "generate" : "jswrap_ESP8266_printLog"
+}
+Prints the contents of the debug log to the console.
+ */
+void jswrap_ESP8266_printLog(
+) {
+  JsVar *line = esp8266_logGetLine();
+  while (jsvGetStringLength(line) > 0) {
+    jsiConsolePrintStringVar(line);
+    line = esp8266_logGetLine();
+  }
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "ESP8266",
+  "name"     : "readLog",
+  "generate" : "esp8266_logGetLine",
+  "returns"  : "String with one line from the log, up to 128 characters long"
+}
+Returns one line from the log or up to 128 characters.
+ */
 
 //===== ESP8266.dumpSocketInfo
 

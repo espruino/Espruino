@@ -28,6 +28,7 @@ typedef long long int64_t;
 #include <jswrap_esp8266_network.h>
 #include <jswrap_esp8266.h>
 #include <ota.h>
+#include <log.h>
 #include "ESP8266_board.h"
 
 // --- Constants
@@ -271,8 +272,8 @@ void user_uart_init() {
   uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
 
   os_delay_us(1000); // make sure there's a gap on uart output
-  UART_SetPrintPort(1);
-  system_set_os_print(1);
+  //UART_SetPrintPort(1);
+  esp8266_logInit(LOG_MODE_ON1);
 }
 
 /**
