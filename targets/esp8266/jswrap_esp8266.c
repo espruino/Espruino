@@ -14,10 +14,6 @@
  * ----------------------------------------------------------------------------
  */
 
-/* DO_NOT_INCLUDE_IN_DOCS - this is a special token for common.py,
- so we don't put this into espruino.com/Reference until this is out
- of beta.  */
-
 // Because the ESP8266 JS wrapper is assured to be running on an ESP8266 we
 // can assume that inclusion of ESP8266 headers will be acceptable.
 #include <c_types.h>

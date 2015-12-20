@@ -92,6 +92,14 @@ void jshTransmit(
     jshPushIOCharEvent(device==EV_LOOPBACKB ? EV_LOOPBACKA : EV_LOOPBACKB, (char)data);
     return;
   }
+#ifdef USE_TELNET
+  if (device == EV_TELNET) {
+    // gross hack to avoid deadlocking on the network here
+    extern void telnetSendChar(char c);
+    telnetSendChar(data);
+    return;
+  }
+#endif
 #ifndef LINUX
 #ifdef USB
   if (device==EV_USBSERIAL && !jshIsUSBSERIALConnected()) {
@@ -420,6 +428,9 @@ const char *jshGetDeviceString(
 #ifdef BLUETOOTH
   case EV_BLUETOOTH: return "Bluetooth";
 #endif
+#ifdef USE_TELNET
+  case EV_TELNET: return "Telnet";
+#endif
   case EV_SERIAL1: return "Serial1";
   case EV_SERIAL2: return "Serial2";
   case EV_SERIAL3: return "Serial3";
@@ -473,6 +484,11 @@ IOEventFlags jshFromDeviceString(
 #ifdef BLUETOOTH
   if (device[0]=='B') {
      if (strcmp(&device[1], "luetooth")==0) return EV_BLUETOOTH;
+  }
+#endif
+#ifdef USE_TELNET
+  if (device[0]=='T') {
+     if (strcmp(&device[1], "elnet")==0) return EV_TELNET;
   }
 #endif
   else if (device[0]=='S') {

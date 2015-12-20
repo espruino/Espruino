@@ -217,10 +217,10 @@ static void mainLoop() {
   jsiLoop();
 
 #ifdef EPS8266_BOARD_HEARTBEAT
-  if (system_get_time() - lastTime > 1000 * 1000 * 5) {
+  if (system_get_time() - lastTime > 1000 * 1000 * 60) {
     lastTime = system_get_time();
-    os_printf("tick: %ums, heap: %u\n",
-      (uint32)(jshGetSystemTime())/1000, system_get_free_heap_size());
+    os_printf("tick: %us, heap: %u\n",
+      (uint32)(jshGetSystemTime())/1000000, system_get_free_heap_size());
   }
 #endif
 

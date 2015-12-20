@@ -72,23 +72,6 @@ static uint8 g_pinState[JSH_PIN_COUNT];
 
 
 /**
- * Transmit all the characters in the transmit buffer.
- *
- */
-void esp8266_uartTransmitAll(IOEventFlags device) {
-  // Get the next character to transmit.  We will have reached the end when
-  // the value of the character to transmit is -1.
-  int c = jshGetCharToTransmit(device);
-
-  while (c >= 0) {
-    uart_tx_one_char(0, c);
-    c = jshGetCharToTransmit(device);
-  } // No more characters to transmit
-} // End of esp8266_transmitAll
-
-// ----------------------------------------------------------------------------
-
-/**
  * Convert a pin id to the corresponding Pin Event id.
  */
 static IOEventFlags pinToEV_EXTI(
@@ -683,8 +666,19 @@ bool jshIsUSBSERIALConnected() {
  */
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
-  ) {
-  esp8266_uartTransmitAll(device);
+) {
+  // transmit anything that is sitting in the uart output buffers
+  if (device == EV_SERIAL1 || device == EV_SERIAL2) {
+    // Get the next character to transmit.  We will have reached the end when
+    // the value of the character to transmit is -1.
+    int c = jshGetCharToTransmit(device);
+    uint8_t uart = device == EV_SERIAL1 ? 0 : 1;
+
+    while (c >= 0) {
+      uart_tx_one_char(uart, c);
+      c = jshGetCharToTransmit(device);
+    }
+  }
 }
 
 
@@ -1061,7 +1055,6 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("> jshIsDeviceInitialised - %d\n", device);
   bool retVal = true;
   switch(device) {
   case EV_SPI1:
@@ -1070,7 +1063,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   default:
     break;
   }
-  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  os_printf("jshIsDeviceInitialised: dev %d, ret %d\n", device, retVal);
   return retVal;
 } // End of jshIsDeviceInitialised
 

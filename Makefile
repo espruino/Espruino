@@ -472,6 +472,7 @@ OPTIMIZEFLAGS+=-Os
 else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
+USE_TELNET=1
 BOARD=ESP8266_BOARD
 # Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
 # code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
@@ -578,6 +579,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
+USE_TELNET=1
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -851,21 +853,21 @@ DEFINES += -DUSE_USB_HID
 endif
 
 ifdef USE_NET
-DEFINES += -DUSE_NET
-INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
-WRAPPERSOURCES += \
-libs/network/jswrap_net.c \
-libs/network/http/jswrap_http.c
-SOURCES += \
-libs/network/network.c \
-libs/network/socketserver.c \
-libs/network/socketerrors.c
+ DEFINES += -DUSE_NET
+ INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
+ WRAPPERSOURCES += \
+ libs/network/jswrap_net.c \
+ libs/network/http/jswrap_http.c
+ SOURCES += \
+ libs/network/network.c \
+ libs/network/socketserver.c \
+ libs/network/socketerrors.c
 
-# 
-WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
-INCLUDE += -I$(ROOT)/libs/network/js
-SOURCES += \
-libs/network/js/network_js.c
+ # 
+ WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
+ INCLUDE += -I$(ROOT)/libs/network/js
+ SOURCES += \
+ libs/network/js/network_js.c
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
@@ -935,7 +937,13 @@ libs/network/js/network_js.c
  libs/network/esp8266/pktbuf.c\
  libs/network/esp8266/ota.c
  endif
-endif
+
+ ifdef USE_TELNET
+ DEFINES += -DUSE_TELNET
+ WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
+ INCLUDE += -I$(ROOT)/libs/network/telnet
+ endif
+endif # USE_NET
 
 ifdef USE_TV
 DEFINES += -DUSE_TV

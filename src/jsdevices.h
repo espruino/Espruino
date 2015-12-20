@@ -54,6 +54,9 @@ typedef enum {
 #ifdef BLUETOOTH
   EV_BLUETOOTH,
 #endif
+#ifdef USE_TELNET
+  EV_TELNET,
+#endif
   EV_SERIAL1,
   EV_SERIAL2,
   EV_SERIAL3,

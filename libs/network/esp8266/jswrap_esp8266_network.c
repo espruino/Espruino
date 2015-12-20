@@ -223,13 +223,6 @@ static JsVar *getWifiModule() {
   return m;
 }
 
-/*JSON{
-   "type": "library",
-   "class": "ESP8266WiFi"
-}
-The ESP8266WiFi library is to be removed.
-*/
-
 //===== wifi library events
 
 /*JSON{
