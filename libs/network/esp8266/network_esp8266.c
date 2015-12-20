@@ -391,7 +391,7 @@ static void releaseSocket(
     struct socketData *pSocketData //!< The socket to release
   ) {
   assert(pSocketData != NULL);
-  DBG("%s: freeing socket %d\n", DBG_LIB, pSocketData->socketId);
+  //DBG("%s: freeing socket %d\n", DBG_LIB, pSocketData->socketId);
   assert(pSocketData->state != SOCKET_STATE_UNUSED);
   assert(pSocketData->pEspconn == NULL);
 
@@ -417,8 +417,8 @@ static void releaseEspconn(
   if (pSocketData->pEspconn == NULL) return;
   // if the socket is an inbound connection then espconn will free the struct, else we do it now
   if (pSocketData->creationType != SOCKET_CREATED_INBOUND) {
-    DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
-        pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
+    //DBG("%s: freeing espconn %p/%p for socket %d\n", DBG_LIB,
+    //    pSocketData->pEspconn, pSocketData->pEspconn->proto.tcp, pSocketData->socketId);
     os_free(pSocketData->pEspconn->proto.tcp);
     pSocketData->pEspconn->proto.tcp = NULL;
     os_free(pSocketData->pEspconn);
@@ -1111,7 +1111,7 @@ void net_ESP8266_BOARD_closeSocket(
   if (pSocketData->state == SOCKET_STATE_CLOSED) {
     // In these states we have already freed the espconn structures, so all that's left is to
     // free the socket structure
-    DBG("%s: socket %d close acknowledged\n", DBG_LIB, pSocketData->socketId);
+    //DBG("%s: socket %d close acknowledged\n", DBG_LIB, pSocketData->socketId);
     releaseSocket(pSocketData);
   } else {
     // Looks like this is the user telling us to close a connection, let's do it.

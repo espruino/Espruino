@@ -1685,7 +1685,7 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
-# IMPORTANT: this only works if DISABLE_LTO id defined, e.g. `DISABLE_LTO=1 make`
+# IMPORTANT: this only works if DISABLE_LTO is defined, e.g. `DISABLE_LTO=1 make`
 topstrings: $(PARTIAL)
 	$(Q)for f in `find . -name \*.o`; do \
 	  str=$$($(OBJDUMP) -j .rodata.str1.4 -h $$f 2>/dev/null | \

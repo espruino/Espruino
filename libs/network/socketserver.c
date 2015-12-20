@@ -45,9 +45,6 @@
 #ifdef ESP8266
 // The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
 #define CHUNK (536/2)
-// esp8266 debugging, need to remove this eventually
-extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
-#define printf os_printf_plus
 #else
 #define CHUNK 64
 #endif
