@@ -342,25 +342,37 @@ typedef enum {
   JSET_REFERENCEERROR
 } JsExceptionType;
 
-void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos);
 void jsAssertFail(const char *file, int line, const char *expr);
+
 #ifndef FLASH_STR
+// Normal functions thet place format string in ram
+void jsExceptionHere_int(JsExceptionType type, const char *fmt, ...);
+#define jsExceptionHere jsExceptionHere_int
+#define jsExceptionHerePtr jsExceptionHere_int
 void jsError(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
 #else
 // Special jsError and jsWarn functions that place the format string into flash to save RAM
+#define jsExceptionHerePtr jsExceptionHere_int
+#define jsExceptionHere(type, fmt, ...) do { \
+    FLASH_STR(flash_str, fmt); \
+    jsExceptionHere_flash(type, flash_str, ##__VA_ARGS__); \
+  } while(0)
+void jsExceptionHere_flash(JsExceptionType type, const char *fmt, ...);
+void jsExceptionHere_int(JsExceptionType type, const char *fmt, ...);
+
 #define jsError(fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
-    jsError_int(flash_str, ##__VA_ARGS__); \
+    jsError_flash(flash_str, ##__VA_ARGS__); \
   } while(0)
-void jsError_int(const char *fmt, ...);
+void jsError_flash(const char *fmt, ...);
 
 #define jsWarn(fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
-    jsWarn_int(flash_str, ##__VA_ARGS__); \
+    jsWarn_flash(flash_str, ##__VA_ARGS__); \
   } while(0)
-void jsWarn_int(const char *fmt, ...);
+void jsWarn_flash(const char *fmt, ...);
 #endif
 
 // ------------

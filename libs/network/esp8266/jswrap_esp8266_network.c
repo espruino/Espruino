@@ -65,11 +65,11 @@ static void   pingRecvCB();
 
 // Some common error handling
 
-static char *expect_cb = "Expecting callback function but got %v";
-#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere(JSET_ERROR, expect_cb, jsCB)
+FLASH_STR(expect_cb, "Expecting callback function but got %v");
+#define EXPECT_CB_EXCEPTION(jsCB) jsExceptionHere_flash(JSET_ERROR, expect_cb, jsCB)
 
-static char *expect_opt = "Expecting options object but got %t";
-#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere(JSET_ERROR, expect_opt, jsOPT)
+FLASH_STR(expect_opt, "Expecting options object but got %t");
+#define EXPECT_OPT_EXCEPTION(jsOPT) jsExceptionHere_flash(JSET_ERROR, expect_opt, jsOPT)
 
 // #NOTE: For callback functions, be sure and unlock them in the `kill` handler.
 
@@ -807,7 +807,11 @@ void jswrap_ESP8266_wifi_startAP(
     // Set the return error as a function of the return code returned from the call to
     // the ESP8266 API to create the AP
     JsVar *params[1];
-    params[0] = ok ? jsvNewNull() : jsvNewFromString("Error from wifi_softap_set_config");
+    FLASH_STR(_fstr, "Error from wifi_softap_set_config");
+    size_t len = flash_strlen(_fstr);
+    char buff[len+1];
+    flash_strncpy(buff, _fstr, len+1);
+    params[0] = ok ? jsvNewNull() : jsvNewFromString(buff);
     jsiQueueEvents(NULL, jsCallback, params, 1);
     jsvUnLock(params[0]);
   }

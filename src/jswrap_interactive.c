@@ -507,7 +507,7 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
       jsvRemoveChild(timerArrayPtr, child);
       jsvUnLock2(child, timerArrayPtr);
     } else {
-      jsExceptionHere(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
+      jsExceptionHerePtr(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
     }
   }
   jsvUnLock(timerArrayPtr);

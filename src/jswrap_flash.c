@@ -80,8 +80,10 @@ JsVar *jswrap_flash_getPage(int addr) {
 Erase a page of flash memory
  */
 void jswrap_flash_erasePage(JsVar *addr) {
-  if (!jsvIsInt(addr))
-    return jsExceptionHere(JSET_ERROR, "Address should be an integer, got %t", addr);
+  if (!jsvIsInt(addr)) {
+    jsExceptionHere(JSET_ERROR, "Address should be an integer, got %t", addr);
+    return;
+  }
   jshFlashErasePage((uint32_t)jsvGetInteger(addr));
 }
 
@@ -104,8 +106,10 @@ doesn't return all `0xFF`) you'll need to call `erasePage` to clear the
 entire page.
  */
 void jswrap_flash_write(JsVar *data, int addr) {
-  if (jsvIsUndefined(data))
-    return jsExceptionHere(JSET_ERROR, "Data is not defined");
+  if (jsvIsUndefined(data)) {
+    jsExceptionHere(JSET_ERROR, "Data is not defined");
+    return;
+  }
 
   JSV_GET_AS_CHAR_ARRAY(flashData, flashDataLen, data);
   if ((addr&3) || (flashDataLen&3)) {
@@ -265,7 +269,7 @@ void jsfSaveToFlash() {
     int j;
     for (j=0;j<jsVarCount*sizeof(JsVar);j++)
       if (decomp[j]!=comp[j])
-        jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);  
+        jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);
     free(decomp);
     jsiConsolePrint("Done!\n>");
 #endif

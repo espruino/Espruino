@@ -162,34 +162,10 @@ long long stringToInt(const char *s) {
   return stringToIntWithRadix(s,0,0);
 }
 
-
-#ifndef FLASH_STR
-NO_INLINE void jsError(const char *fmt, ...) {
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("ERROR: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
-  va_end(argp);
-  jsiConsolePrint("\n");
-}
-#else
-NO_INLINE void jsError_int(const char *fmt, ...) {
-  size_t len = flash_strlen(fmt);
-  char buff[len+1];
-  flash_strncpy(buff, fmt, len+1);
-
-  jsiConsoleRemoveInputLine();
-  jsiConsolePrint("ERROR: ");
-  va_list argp;
-  va_start(argp, fmt);
-  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
-  va_end(argp);
-  jsiConsolePrint("\n");
-}
-#endif
-
-NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
+// On most platforms jsExceptionHere is #defined to jsExceptionHere_int, but on platforms where
+// fmt should be in flash and needs to be copied to RAM first, jsExceptionHere is #defined to
+// jsExceptionHere_flash
+NO_INLINE void jsExceptionHere_int(JsExceptionType type, const char *fmt, ...) {
   // If we already had an exception, forget this
   if (jspHasError()) return;
 
@@ -229,9 +205,21 @@ NO_INLINE void jsExceptionHere(JsExceptionType type, const char *fmt, ...) {
   jsvUnLock(var);
 }
 
-
-
 #ifndef FLASH_STR
+
+// JsError, jsWarn implementations that expect the format string to be in normal
+// RAM where is can be accessed normally.
+
+NO_INLINE void jsError(const char *fmt, ...) {
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("ERROR: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, fmt, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+
 NO_INLINE void jsWarn(const char *fmt, ...) {
   jsiConsoleRemoveInputLine();
   jsiConsolePrint("WARNING: ");
@@ -241,8 +229,28 @@ NO_INLINE void jsWarn(const char *fmt, ...) {
   va_end(argp);
   jsiConsolePrint("\n");
 }
+
 #else
-NO_INLINE void jsWarn_int(const char *fmt, ...) {
+
+// JsError, jsWarn, jsExceptionHere implementations that expect the format string to be in FLASH
+// and first copy it into RAM in order to prevent issues with byte access, this is necessary on
+// platforms, like the esp8266, where data flash can only be accessed using word-aligned reads.
+
+NO_INLINE void jsError_flash(const char *fmt, ...) {
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
+  jsiConsoleRemoveInputLine();
+  jsiConsolePrint("ERROR: ");
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString,0, buff, argp);
+  va_end(argp);
+  jsiConsolePrint("\n");
+}
+
+NO_INLINE void jsWarn_flash(const char *fmt, ...) {
   size_t len = flash_strlen(fmt);
   char buff[len+1];
   flash_strncpy(buff, fmt, len+1);
@@ -255,6 +263,18 @@ NO_INLINE void jsWarn_int(const char *fmt, ...) {
   va_end(argp);
   jsiConsolePrint("\n");
 }
+
+NO_INLINE void jsExceptionHere_flash(JsExceptionType type, const char *fmt, ...) {
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+
+  va_list argp;
+  va_start(argp, fmt);
+  jsExceptionHere_flash(type, fmt, argp);
+  va_end(argp);
+}
+
 #endif
 
 NO_INLINE void jsWarnAt(const char *message, struct JsLex *lex, size_t tokenPos) {
