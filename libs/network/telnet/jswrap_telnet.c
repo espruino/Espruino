@@ -91,22 +91,9 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
   JsVar *jsMode = jsvObjectGetChild(jsOptions, "mode", 0);
   if (jsvIsString(jsMode)) {
     if (jsvIsStringEqual(jsMode, "on")) {
-      if (tnSrvMode != MODE_ON) {
-        memset(&tnSrv, 0, sizeof(TelnetServer));
-        tnSrvMode = MODE_ON;
-        JsNetwork net;
-        if (networkGetFromVarIfOnline(&net)) {
-          telnetStart(&net);
-        }
-      }
+      tnSrvMode = MODE_ON;
     } else if (jsvIsStringEqual(jsMode, "off")) {
-      if (tnSrvMode != MODE_OFF) {
-        JsNetwork net;
-        if (networkGetFromVarIfOnline(&net)) {
-          telnetStop(&net);
-        }
-        tnSrvMode = MODE_OFF;
-      }
+      tnSrvMode = MODE_OFF;
     } else {
       jsvUnLock(jsMode);
       jsExceptionHere(JSET_ERROR, "Unknown mode value");
@@ -123,7 +110,7 @@ void jswrap_telnet_setOptions(JsVar *jsOptions) {
 }
 */
 void jswrap_telnet_init(void) {
-
+  tnSrvMode = MODE_ON; // hardcoded for now
 }
 
 /*JSON{
@@ -133,7 +120,7 @@ void jswrap_telnet_init(void) {
 }
 */
 void jswrap_telnet_kill(void) {
-
+  tnSrvMode = MODE_OFF;
 }
 
 /*JSON{
@@ -143,9 +130,26 @@ void jswrap_telnet_kill(void) {
 }
 */
 bool jswrap_telnet_idle(void) {
+  // get a handle to the network, no network -> can't do anything at all
   JsNetwork net;
   if (!networkGetFromVarIfOnline(&net)) return false;
 
+  // if we're supposed to be off, then make sure we're disconnected
+  if (tnSrvMode == MODE_OFF) {
+    if (tnSrv.sock > 0) {
+      telnetStop(&net);
+    }
+    return false;
+  }
+
+  // we're supposed to be on, make sure we're listening
+  if (tnSrv.sock == 0) {
+    memset(&tnSrv, 0, sizeof(TelnetServer));
+    telnetStart(&net);
+    if (tnSrv.sock == 0) return false; // seems like there's a problem...
+  }
+
+  // looks like we are listening, now deal with actual connected sockets
   bool active = false;
   active |= telnetAccept(&net);
   active |= telnetRecv(&net);
