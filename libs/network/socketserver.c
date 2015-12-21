@@ -468,7 +468,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           if (error == 0) num = socketSendData(net, connection, sckt, &sendData);
           //if (num != 0) printf("send returned %d\r\n", num);
           if (num > 0 && !alreadyConnected && !isHttp) { // whoa, we sent something, must be connected!
-            jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
+            jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
             jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
             alreadyConnected = true;
           }
@@ -496,7 +496,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           } else {
             // did we just get connected?
             if (!alreadyConnected && !isHttp) {
-              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
               jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
               alreadyConnected = true;
               // if we do not have any data to send, issue a drain event
