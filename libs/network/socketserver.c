@@ -243,8 +243,12 @@ int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData
       // we didn't send all of it... cut out what we did send
       newSendData = jsvNewFromStringVar(*sendData, (size_t)num, JSVAPPENDSTRINGVAR_MAXLENGTH);
     } else {
-      // we sent all of it! Issue a drain event
-      jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
+      // we sent all of it! Issue a drain event, unless we want to close, then we shouldn't
+      // callback for more data
+      bool wantClose = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_CLOSE,0));
+      if (!wantClose) {
+        jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
+      }
       newSendData = jsvNewFromEmptyString();
     }
     jsvUnLock(*sendData);
@@ -371,7 +375,8 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
         jsvObjectSetChild(socket, HTTP_NAME_SEND_DATA, sendData); // socketSendData prob updated sendData
       }
       // only close if we want to close, have no data to send, and aren't receiving data
-      if (jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0)) && !sendData && num<=0)
+      bool wantClose = jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0));
+      if (wantClose && (!sendData || jsvIsEmptyString(sendData)) && num<=0)
         closeConnectionNow = true;
       else if (num > 0)
         closeConnectionNow = false; // guarantee that anything received is processed
