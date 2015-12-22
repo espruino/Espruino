@@ -347,20 +347,18 @@ void jsAssertFail(const char *file, int line, const char *expr);
 
 #ifndef FLASH_STR
 // Normal functions thet place format string in ram
-void jsExceptionHere_int(JsExceptionType type, const char *fmt, ...);
-#define jsExceptionHere jsExceptionHere_int
-#define jsExceptionHerePtr jsExceptionHere_int
+void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsError(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
+#define jsExceptionHerePtr jsExceptionHere
 #else
 // Special jsError and jsWarn functions that place the format string into flash to save RAM
-#define jsExceptionHerePtr jsExceptionHere_int
+#define jsExceptionHerePtr jsExceptionHere_flash
 #define jsExceptionHere(type, fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
     jsExceptionHere_flash(type, flash_str, ##__VA_ARGS__); \
   } while(0)
 void jsExceptionHere_flash(JsExceptionType type, const char *fmt, ...);
-void jsExceptionHere_int(JsExceptionType type, const char *fmt, ...);
 
 #define jsError(fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
