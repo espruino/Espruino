@@ -91,7 +91,7 @@ def get_jsondata(is_for_document, parseArgs = True, board = False):
         jswraps = []
         defines = []
 
-        if board and board.info["build"] and board.info["build"]["defines"]:
+        if board and ("build" in board.info)  and ("defines" in board.info["build"]):
           for i in board.info["build"]["defines"]:
             print("Got define from board: " + i);
             defines.append(i)
