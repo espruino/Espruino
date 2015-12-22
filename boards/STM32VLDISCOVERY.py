@@ -19,6 +19,10 @@ info = {
  'link' :  [ "http://www.st.com/stm32-discovery" ],
  'variables' : 500,
  'binary_name' : 'espruino_%v_stm32vldiscovery.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F100RBT6", 

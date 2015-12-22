@@ -18,6 +18,15 @@ info = {
  'name' : "Beaglebone Black",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_beaglebone',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "BEAGLEBONEBLACK",

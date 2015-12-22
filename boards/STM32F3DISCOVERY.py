@@ -20,6 +20,12 @@ info = {
  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/PF254044" ],
  'variables' : 1720,
  'binary_name' : 'espruino_%v_stm32f3discovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F303VCT6",

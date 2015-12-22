@@ -82,7 +82,7 @@ May return undefined if no device can be found.
   "type" : "object",
   "name" : "USB",
   "instanceof" : "Serial",
-  "#if" : "defined(USB)"
+  "#ifdef" : "USB"
 }
 The USB Serial port
  */

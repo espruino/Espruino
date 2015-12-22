@@ -20,6 +20,12 @@ info = {
  'default_console' : "EV_SERIAL2", # FIXME: This was S2 because of pin conflict. Not sure if it's really an issue?
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f4discovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F407VGT6",

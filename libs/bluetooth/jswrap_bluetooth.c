@@ -340,7 +340,7 @@ static void advertising_init(void) {
   "type" : "object",
   "name" : "Bluetooth",
   "instanceof" : "Serial",
-  "#if" : "defined(BLUETOOTH)"
+  "#ifdef" : "BLUETOOTH"
 }
 The USB Serial port
  */

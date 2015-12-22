@@ -20,6 +20,11 @@ info = {
  'link' :  [ "https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32/", "http://leaflabs.com/devices/maple/" ],
  'variables' : 1020,
  'binary_name' : 'espruino_%v_olimexino_stm32.bin',
+ 'build' : {
+   'defines' : [
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RBT6", 

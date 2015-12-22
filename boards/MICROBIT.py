@@ -24,6 +24,12 @@ info = {
  'default_console_baudrate' : "9600",
  'variables' : 145, 
  'binary_name' : 'espruino_%v_microbit.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_BLUETOOTH',
+   ]
+ }
 };
 chip = {
   'part' : "NRF51822",

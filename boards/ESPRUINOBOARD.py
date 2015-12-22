@@ -48,6 +48,15 @@ chip = {
     'pages' : 15, # number of pages we're using
     'flash_available' : 256-30 # 30 used for code
   },
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',

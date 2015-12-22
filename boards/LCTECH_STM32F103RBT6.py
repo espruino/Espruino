@@ -21,6 +21,10 @@ info = {
  'link' :  [ "http://www.lctech-inc.com/Hardware/Detail.aspx?id=4ae8ef7e-9bfe-48a1-9540-fa66ad4645b4"],
  'variables' : 715,
  'binary_name' : 'espruino_%v_lctech_stm32f103rbt6.bin',
+ 'build' : {
+   'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RBT6", #T6
