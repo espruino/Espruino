@@ -1197,6 +1197,8 @@ void jswrap_ESP8266_wifi_restore(void) {
   conf->crc = 0;
   uint32_t crcCalc = crc32((uint8_t*)flashBlock, sizeof(flashBlock));
 
+  wifi_set_opmode(0);
+
   // check that we have a good flash config
   if (conf->length != 1024 || conf->version != 24 || crcRd != crcCalc ||
       conf->phyMode > PHY_MODE_11N || conf->sleepType > MODEM_SLEEP_T ||
@@ -1225,18 +1227,21 @@ void jswrap_ESP8266_wifi_restore(void) {
     ap_config.channel = 1;
     ap_config.max_connection = 4;
     ap_config.beacon_interval = 100;
-    wifi_softap_set_config(&ap_config);
+    wifi_softap_set_config_current(&ap_config);
     DBG("Wifi.restore: AP=%s\n", ap_config.ssid);
   }
 
   if (conf->mode & STATION_MODE) {
-    wifi_station_set_hostname(conf->dhcpHostname);
+    if (conf->dhcpHostname[0] != 0 && os_strlen(conf->dhcpHostname) < 64) {
+      DBG("Wifi.restore: hostname=%s\n", conf->dhcpHostname);
+      wifi_station_set_hostname(conf->dhcpHostname);
+    }
 
     struct station_config sta_config;
     os_memset(&sta_config, 0, sizeof(sta_config));
     os_strncpy((char *)sta_config.ssid, conf->staSsid, 32);
     os_strncpy((char *)sta_config.password, conf->staPass, 64);
-    wifi_station_set_config(&sta_config);
+    wifi_station_set_config_current(&sta_config);
     DBG("Wifi.restore: STA=%s\n", sta_config.ssid);
     wifi_station_connect(); // we're not supposed to call this from user_init but it doesn't harm
                             // and we need it when invoked from JS
