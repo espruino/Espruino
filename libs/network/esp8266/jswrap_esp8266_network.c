@@ -59,9 +59,11 @@ typedef long long int64_t;
 //#define jsvUnLock(v) do { os_printf("Unlock %s @%d\n", __STRING(v), __LINE__); jsvUnLock(v); } while(0)
 
 // Forward declaration of functions.
-static void   scanCB(void *arg, STATUS status);
-static void   wifiEventHandler(System_Event_t *event);
-static void   pingRecvCB();
+static void scanCB(void *arg, STATUS status);
+static void wifiEventHandler(System_Event_t *event);
+static void pingRecvCB();
+static void startMDNS(char *hostname);
+static void stopMDNS();
 
 // Some common error handling
 
@@ -1347,34 +1349,6 @@ JsVar *jswrap_ESP8266_wifi_getAPIP(JsVar *jsCallback) {
   return jsIP;
 }
 
-#if 0
-// This needs more testing, so far mDNS hasn't been reliable... -TvE
-/*XXXJSON{
-  "type"     : "staticmethod",
-  "class"    : "ESP8266WiFi",
-  "name"     : "mdnsInit",
-  "generate" : "jswrap_ESP8266WiFi_mdnsInit"
-}
- * Initial testing for mDNS support
- */
-void jswrap_ESP8266_wifi_mdnsInit() {
-  os_printf("> jswrap_ESP8266WiFi_mdnsInit\n");
-  struct mdns_info mdnsInfo;
-  os_memset(&mdnsInfo, 0, sizeof(struct mdns_info));
-  // Populate the mdns structure
-
-  struct ip_info ipInfo;
-  wifi_get_ip_info(0, &ipInfo);
-
-  mdnsInfo.host_name   = "myhostname";
-  mdnsInfo.ipAddr      = ipInfo.ip.addr;
-  mdnsInfo.server_name = "myservername";
-  mdnsInfo.server_port = 80;
-  //espconn_mdns_init(&mdnsInfo);
-  os_printf("< jswrap_ESP8266WiFi_mdnsInit\n");
-}
-#endif
-
 /**
  * Handle a response from espconn_gethostbyname.
  * Invoke the callback function to inform the caller that a hostname has been converted to
@@ -1456,15 +1430,27 @@ void jswrap_ESP8266_wifi_getHostByName(
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "getDHCPHostname",
-  "generate" : "jswrap_ESP8266_wifi_getDHCPHostname",
+  "generate" : "jswrap_ESP8266_wifi_getHostname",
   "return"   : ["JsVar", "The currently configured DHCP hostname, if available immediately."],
   "params"   : [
     ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
   ]
 }
-Returns the hostname announced to the DHCP server when connecting to an access point.
+Deprecated, please use getHostname.
 */
-JsVar *jswrap_ESP8266_wifi_getDHCPHostname(JsVar *jsCallback) {
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "getHostname",
+  "generate" : "jswrap_ESP8266_wifi_getHostname",
+  "return"   : ["JsVar", "The currently configured hostname, if available immediately."],
+  "params"   : [
+    ["callback", "JsVar", "An optional function to be called back with the hostname, i.e. the same string as returned directly. The callback function is more portable than the direct return value."]
+  ]
+}
+Returns the hostname announced to the DHCP server and broadcast via mDNS when connecting to an access point.
+*/
+JsVar *jswrap_ESP8266_wifi_getHostname(JsVar *jsCallback) {
   char *hostname = wifi_station_get_hostname();
   if (hostname == NULL) {
     hostname = "";
@@ -1476,26 +1462,69 @@ JsVar *jswrap_ESP8266_wifi_getDHCPHostname(JsVar *jsCallback) {
   "type"     : "staticmethod",
   "class"    : "Wifi",
   "name"     : "setDHCPHostname",
-  "generate" : "jswrap_ESP8266_wifi_setDHCPHostname",
+  "generate" : "jswrap_ESP8266_wifi_setHostname",
   "params"   : [
     ["hostname", "JsVar", "The new DHCP hostname."]
   ]
 }
-Set the hostname sent with every DHCP request, this may be visible in the access point and may be forwarded into DNS as hostname.local.
-If a DHCP lease currently exists changing the hostname will cause a disconnect and reconnect in order to transmit the change to the DHCP server.
+Deprecated, please use setHostname instead.
 */
-void jswrap_ESP8266_wifi_setDHCPHostname(
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "setHostname",
+  "generate" : "jswrap_ESP8266_wifi_setHostname",
+  "params"   : [
+    ["hostname", "JsVar", "The new hostname."]
+  ]
+}
+Set the hostname. Depending on implemenation, the hostname is sent with every DHCP request and is broadcast via mDNS. The DHCP hostname may be visible in the access point and may be forwarded into DNS as hostname.local.
+If a DHCP lease currently exists changing the hostname will cause a disconnect and reconnect in order to transmit the change to the DHCP server.
+The mDNS announcement also includes an announcement for the "espruino" service.
+*/
+void jswrap_ESP8266_wifi_setHostname(
     JsVar *jsHostname //!< The hostname to set for device.
 ) {
   char hostname[256];
   jsvGetString(jsHostname, hostname, sizeof(hostname));
-  DBG("Wifi.setDHCPHostname: %s\n", hostname);
+  DBG("Wifi.setHostname: %s\n", hostname);
   wifi_station_set_hostname(hostname);
 
   // now start/restart DHCP for this to take effect
   if (wifi_station_dhcpc_status() == DHCP_STARTED)
     wifi_station_dhcpc_stop();
   wifi_station_dhcpc_start();
+
+  // now update mDNS
+  startMDNS(hostname);
+}
+
+//===== mDNS
+
+static bool mdns_started;
+
+void startMDNS(char *hostname) {
+  if (mdns_started) stopMDNS();
+
+  // find our IP address
+  struct ip_info info;
+  bool ok = wifi_get_ip_info(0, &info);
+  if (!ok || info.ip.addr == 0) return; // no IP address
+
+  // start mDNS
+  struct mdns_info *mdns_info = (struct mdns_info *)os_zalloc(sizeof(struct mdns_info));
+  mdns_info->host_name = hostname;
+  mdns_info->server_name = "espruino";
+  mdns_info->server_port = 23;
+  mdns_info->ipAddr = info.ip.addr;
+  espconn_mdns_init(mdns_info);
+  mdns_started = true;
+}
+
+void stopMDNS() {
+  espconn_mdns_server_unregister();
+  espconn_mdns_close();
+  mdns_started = false;
 }
 
 //===== Reset wifi
@@ -1859,6 +1888,12 @@ static void wifiEventHandler(System_Event_t *evt) {
     DBG("Wifi event: got ip:" IPSTR ", mask:" IPSTR ", gw:" IPSTR "\n",
       IP2STR(&evt->event_info.got_ip.ip), IP2STR(&evt->event_info.got_ip.mask),
       IP2STR(&evt->event_info.got_ip.gw));
+
+    // start mDNS
+    char *hostname = wifi_station_get_hostname();
+    if (hostname && hostname[0] != 0) {
+      startMDNS(hostname);
+    }
 
     // Make Wifi.connected() callback
     if (jsvIsFunction(g_jsGotIpCallback)) {
