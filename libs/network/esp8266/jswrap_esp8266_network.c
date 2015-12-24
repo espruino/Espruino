@@ -40,6 +40,7 @@
 #include <osapi.h>
 #include <ping.h>
 #include <espconn.h>
+#include <sntp.h>
 #include <espmissingincludes.h>
 #include <uart.h>
 
@@ -1525,6 +1526,63 @@ void stopMDNS() {
   espconn_mdns_server_unregister();
   espconn_mdns_close();
   mdns_started = false;
+}
+
+//===== SNTP
+
+static os_timer_t sntpTimer;
+
+static void sntpSync(void *arg) {
+  uint32_t sysTime = (uint32_t)((jshGetSystemTime() + 500000) / 1000000);
+  uint32_t ntpTime = sntp_get_current_timestamp();
+  if (ntpTime-sysTime != 0) {
+    DBG("NTP time: %ld delta=%ld %s\n", ntpTime, ntpTime-sysTime, sntp_get_real_time(ntpTime));
+  }
+  jshSetSystemTime((int64_t)ntpTime * 1000000);
+  os_timer_disarm(&sntpTimer);
+  os_timer_arm(&sntpTimer, 30*1000, 0);
+}
+
+/*JSON{
+  "type"     : "staticmethod",
+  "class"    : "Wifi",
+  "name"     : "setSNTP",
+  "generate" : "jswrap_ESP8266_wifi_setSNTP",
+  "params"   : [
+    ["server", "JsVar", "The NTP server to query, for example, `us.pool.ntp.org`"],
+    ["tz_offset", "JsVar", "Local time zone offset in the range -11..13."]
+  ]
+}
+Starts the SNTP (Simple Network Time Protocol) service to keep the clock synchronized with the specified server. Note that the time zone is really just an offset to UTC and doesn't handle daylight savings time.
+The interval determines how often the time server is queried and Espruino's time is synchronized. The initial synchronization occurs asynchronously after setSNTP returns.
+*/
+void jswrap_ESP8266_wifi_setSNTP(JsVar *jsZone, JsVar *jsServer) {
+  if (!jsvIsNumeric(jsZone)) {
+    jsExceptionHere(JSET_ERROR, "Zone is not a number");
+    return;
+  }
+  int zone = jsvGetInteger(jsZone);
+  if (zone < -11 || zone > 13) {
+    jsExceptionHere(JSET_ERROR, "Zone must be in range -11..13");
+    return;
+  }
+
+  if (!jsvIsString(jsServer)) {
+    jsExceptionHere(JSET_ERROR, "Server is not a string");
+    return;
+  }
+  char server[64];
+  jsvGetString(jsServer, server, 64);
+
+  sntp_stop();
+  if (sntp_set_timezone(zone)) {
+    sntp_setservername(0, server);
+    sntp_init();
+    os_timer_disarm(&sntpTimer);
+    os_timer_setfn(&sntpTimer, sntpSync, 0);
+    os_timer_arm(&sntpTimer, 100, 0); // 100ms
+  }
+  DBG("SNTP: %s %s%d\n", server, zone>=0?"+":"", zone);
 }
 
 //===== Reset wifi

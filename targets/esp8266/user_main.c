@@ -16,6 +16,7 @@
 
 #include <user_interface.h>
 #include <osapi.h>
+#include <sntp.h>
 #include <uart.h>
 #include <espmissingincludes.h>
 
@@ -219,8 +220,11 @@ static void mainLoop() {
 #ifdef EPS8266_BOARD_HEARTBEAT
   if (system_get_time() - lastTime > 1000 * 1000 * 60) {
     lastTime = system_get_time();
-    os_printf("tick: %us, heap: %u\n",
-      (uint32)(jshGetSystemTime())/1000000, system_get_free_heap_size());
+    // system_get_free_heap_size adds a newline !?
+    char *t = sntp_get_real_time((uint32)(jshGetSystemTime()/1000000));
+    int l = strlen(t);
+    if (l > 2) t[l-1] = 0;
+    os_printf("%s, heap: %u\n", t, system_get_free_heap_size());
   }
 #endif
 

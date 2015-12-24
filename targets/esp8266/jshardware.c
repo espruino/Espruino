@@ -877,31 +877,31 @@ error:
  *
  * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
  * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio.
- *
- * The RTC timer is preserved when the chip goes into sleep mode, including deep sleep, as
- * well when it is reset (but not if reset using the ch_pd pin).
+ * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
+ * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
+ * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
+ * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
+ * actually lost!)
  *
  * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only at start-up to initialize the system
- * timer to the best guess available for the current date-time.
+ * and related functions and to use the rtc timer only to preserve time during light sleep.
  */
 
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-//  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
+  //  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
   return (JsSysTime) (ms * 1000.0 + 0.5);
-} // End of jshGetTimeFromMilliseconds
+}
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-//  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
+  //  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
   return (JsVarFloat) time / 1000.0;
-} // End of jshGetMillisecondsFromTime
+}
 
 // Structure to hold a timestamp in us since the epoch, plus the system timer value at that time
 // stamp. The crc field is used when saving this to RTC RAM
@@ -938,7 +938,7 @@ static void saveTime() {
  */
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
-} // End of jshGetSystemTime
+}
 
 
 /**
@@ -954,7 +954,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   rtcTimeStamp.timeStamp = newTime;
   rtcTimeStamp.hwTimeStamp = rtcTime;
   saveTime(&rtcTimeStamp);
-} // End of jshSetSystemTime
+}
 
 /**
  * Periodic system timer to update the time structure and save it to RTC RAM so we don't loose
