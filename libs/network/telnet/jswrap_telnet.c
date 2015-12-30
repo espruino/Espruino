@@ -49,7 +49,7 @@ bool telnetRecv(JsNetwork *net);
 #define MODE_OFF 0    // telnet console is off
 #define MODE_ON  1    // telnet console is on
 
-#define TX_CHUNK 1024   // size of chunks read from JS, buffered, and sent on socket
+#define TX_CHUNK 1072         // size of chunks read from JS, buffered, and sent on socket
 
 // Data structure for a telnet console server
 typedef struct {
@@ -235,14 +235,20 @@ bool telnetSendBuf(JsNetwork *net) {
   return sent != 0;
 }
 
+static bool ovf;
+
 void telnetSendChar(char ch) {
   if (tnSrv.sock == 0 || tnSrv.cliSock == 0) return;
   if (tnSrv.txBufLen >= TX_CHUNK) {
     // buffer overflow :-(
-    printf("tnSrv: send overflow!\n");
-    return;
+    if (!ovf) {
+      printf("tnSrv: send overflow!\n");
+      ovf = true;
+    }
+  } else {
+    ovf = false;
+    tnSrv.txBuf[tnSrv.txBufLen++] = ch;
   }
-  tnSrv.txBuf[tnSrv.txBufLen++] = ch;
 
   // if the buffer has a bunch of chars then try to send, else it'll happen
   // at idle time.

@@ -44,7 +44,10 @@
   gpio_output_set(set, set^both, both, 0);\
 } while(0)
 
-#define i2c_master_wait    os_delay_us
+// For ~100khz:
+//#define i2c_master_wait    os_delay_us
+// For ~400khz:
+#define i2c_master_wait(x)    os_delay_us(0) // do{}while(0)
 
 #define i2c_master_getDC(void) ((GPIO_REG_READ(GPIO_IN_ADDRESS) >> pinSDA) & 1)
 

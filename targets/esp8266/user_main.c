@@ -286,6 +286,7 @@ void user_uart_init() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
+  system_update_cpu_freq(160);
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 

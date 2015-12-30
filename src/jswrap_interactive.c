@@ -15,6 +15,7 @@
  */
 #include "jswrap_interactive.h"
 #include "jswrap_json.h" // for print/console.log
+#include "jsvar.h"
 #include "jsinteractive.h"
 
 /*JSON{
@@ -507,7 +508,10 @@ void _jswrap_interface_clearTimeoutOrInterval(JsVar *idVar, bool isTimeout) {
       jsvRemoveChild(timerArrayPtr, child);
       jsvUnLock2(child, timerArrayPtr);
     } else {
-      jsExceptionHerePtr(JSET_ERROR, isTimeout ? "Unknown Timeout" : "Unknown Interval");
+      if (isTimeout)
+        jsExceptionHere(JSET_ERROR, "Unknown Timeout");
+      else
+        jsExceptionHere(JSET_ERROR, "Unknown Interval");
     }
   }
   jsvUnLock(timerArrayPtr);

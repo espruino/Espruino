@@ -1556,7 +1556,7 @@ static void sntpSync(void *arg) {
 Starts the SNTP (Simple Network Time Protocol) service to keep the clock synchronized with the specified server. Note that the time zone is really just an offset to UTC and doesn't handle daylight savings time.
 The interval determines how often the time server is queried and Espruino's time is synchronized. The initial synchronization occurs asynchronously after setSNTP returns.
 */
-void jswrap_ESP8266_wifi_setSNTP(JsVar *jsZone, JsVar *jsServer) {
+void jswrap_ESP8266_wifi_setSNTP(JsVar *jsServer, JsVar *jsZone) {
   if (!jsvIsNumeric(jsZone)) {
     jsExceptionHere(JSET_ERROR, "Zone is not a number");
     return;

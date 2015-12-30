@@ -26,7 +26,8 @@ typedef long long int64_t;
 // that can be retrieved line by line
 
 // see console.c for invariants (same here)
-#define BUF_MAX (536*2)
+//#define BUF_MAX (536*2)
+#define BUF_MAX (536/2)
 static char *log_buf = 0;               // buffer for log
 static int log_wr, log_rd;              // next position to write, next position to read
 static uint8_t log_mode = LOG_MODE_OFF; // logging mode

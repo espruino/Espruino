@@ -350,10 +350,8 @@ void jsAssertFail(const char *file, int line, const char *expr);
 void jsExceptionHere(JsExceptionType type, const char *fmt, ...);
 void jsError(const char *fmt, ...);
 void jsWarn(const char *fmt, ...);
-#define jsExceptionHerePtr jsExceptionHere
 #else
 // Special jsError and jsWarn functions that place the format string into flash to save RAM
-#define jsExceptionHerePtr jsExceptionHere_flash
 #define jsExceptionHere(type, fmt, ...) do { \
     FLASH_STR(flash_str, fmt); \
     jsExceptionHere_flash(type, flash_str, ##__VA_ARGS__); \
