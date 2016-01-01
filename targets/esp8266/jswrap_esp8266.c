@@ -116,7 +116,7 @@ void jswrap_ESP8266_logDebug(
     JsVar *jsDebug
   ) {
   uint8 enable = (uint8)jsvGetBool(jsDebug);
-  os_printf("ESP8255.logDebug, enable=%d\n", enable);
+  os_printf("ESP8266.logDebug, enable=%d\n", enable);
   system_set_os_print((uint8)jsvGetBool(jsDebug));
 }
 
