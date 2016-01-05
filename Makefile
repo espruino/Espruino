@@ -715,10 +715,19 @@ endif
 # LZ4 compression library and wrapper - needed when saving code to flash
 # - although rle can be used instead if you're not as bothered about
 # cramming stuff in.
-INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/lz4
+#INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/lz4
+#SOURCES += \
+#libs/compression/lz4/lz4.c \
+#libs/compression/compress_lz4.c
+
+# Heatshrink compression library and wrapper - needed when saving code to flash
+# - although rle can be used instead if you're not as bothered about
+# cramming stuff in.
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/heatshrink
 SOURCES += \
-libs/compression/lz4/lz4.c \
-libs/compression/compress_lz4.c
+libs/compression/heatshrink/heatshrink_encoder.c \
+libs/compression/heatshrink/heatshrink_decoder.c \
+libs/compression/compress_heatshrink.c
 
 
 ifdef BOOTLOADER

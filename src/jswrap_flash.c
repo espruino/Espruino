@@ -18,9 +18,12 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 
-#include "compress_lz4.h"
-#define COMPRESS lz4_encode
-#define DECOMPRESS lz4_decode
+//#include "compress_lz4.h"
+//#define COMPRESS lz4_encode
+//#define DECOMPRESS lz4_decode
+#include "compress_heatshrink.h"
+#define COMPRESS heatshrink_encode
+#define DECOMPRESS heatshrink_decode
 
 #ifdef LINUX
 // file IO for load/save
@@ -220,10 +223,10 @@ void jsfSaveToFlash() {
     if (jsVarCount != jsvGetMemoryTotal())
       jsiConsolePrint("Error: memory sizes different\n");
     unsigned char *decomp = (unsigned char*)malloc(jsVarCount*sizeof(JsVar));
-    DECOMPRESS(jsfLoadFromFlash_readcb, f, decomp);
+    DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t *)f, decomp);
     fclose(f);
-    unsigned char *comp = _jsvGetAddressOf(1);
-    int j;
+    unsigned char *comp = (unsigned char *)_jsvGetAddressOf(1);
+    size_t j;
     for (j=0;j<jsVarCount*sizeof(JsVar);j++)
       if (decomp[j]!=comp[j])
         jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);  
