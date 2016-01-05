@@ -3,6 +3,8 @@
             Fix issue where GC'd objects referencing non-GC'd data wouldn't unreference it
             Add E.memoryArea to allow memory addresses to be treated as variables
             Fix STM32F4 LSI clock frequency - should make the Pico's RTC a lot more accurate (fix #776)
+            Added HeatShrink compression to saved code (instead of RLE)
+            If saving fails, delete command history and try again.
 
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
              - this fixes broken SPI when not on standard pins

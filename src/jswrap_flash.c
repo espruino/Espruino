@@ -240,36 +240,57 @@ void jsfSaveToFlash() {
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
   uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
   uint32_t pageStart, pageLength;
+  bool tryAgain = true;
+  bool success = false;
+  uint32_t writtenBytes;
+  uint32_t endOfData;
+  uint32_t cbData[3];
+  uint32_t rleStart;
 
-  jsiConsolePrint("Erasing Flash...");
-  uint32_t addr = FLASH_SAVED_CODE_START;
-  if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
-    jshFlashErasePage(pageStart);
-    while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
-      jsiConsolePrint(".");
-      addr = pageStart+pageLength; // next page
-      if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
+  while (tryAgain) {
+    tryAgain = false;
+    jsiConsolePrint("Erasing Flash...");
+    uint32_t addr = FLASH_SAVED_CODE_START;
+    if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
       jshFlashErasePage(pageStart);
+      while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
+        jsiConsolePrint(".");
+        addr = pageStart+pageLength; // next page
+        if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
+        jshFlashErasePage(pageStart);
 
+      }
+    }
+    rleStart = FLASH_SAVED_CODE_START+4;
+    cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
+    cbData[1] = rleStart;
+    cbData[2] = 0; // word data (can only save a word ata a time)
+    jsiConsolePrint("\nWriting...");
+    COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
+    endOfData = cbData[1];
+    writtenBytes = endOfData - FLASH_SAVED_CODE_START;
+    // make sure we write everything in buffer
+    jsfSaveToFlash_writecb(0,cbData);
+    jsfSaveToFlash_writecb(0,cbData);
+    jsfSaveToFlash_writecb(0,cbData);
+
+    if (cbData[1]>=cbData[0]) {
+      jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
+      jsvSoftInit();
+      jspSoftInit();
+      if (jsiFreeMoreMemory()) {
+        jsiConsolePrint("Deleting command history and trying again...\n");
+        while (jsiFreeMoreMemory());
+        tryAgain = true;
+      }
+      jspSoftKill();
+      jsvSoftKill();
+    } else {
+      success = true;
     }
   }
-  uint32_t cbData[3];
-  uint32_t rleStart = FLASH_SAVED_CODE_START+4;
-  cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
-  cbData[1] = rleStart;
-  cbData[2] = 0; // word data (can only save a word ata a time)
-  jsiConsolePrint("\nWriting...");
-  COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
-  uint32_t endOfData = cbData[1];
-  uint32_t writtenBytes = endOfData - FLASH_SAVED_CODE_START;
-  // make sure we write everything in buffer
-  jsfSaveToFlash_writecb(0,cbData);
-  jsfSaveToFlash_writecb(0,cbData);
-  jsfSaveToFlash_writecb(0,cbData);
 
-  if (cbData[1]>=cbData[0]) {
-    jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
-  } else {
+  if (success) {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
     jshFlashWrite(&endOfData, FLASH_SAVED_CODE_START, 4); // write position of end of data, at start of address space
 
