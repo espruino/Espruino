@@ -18,12 +18,15 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 
-//#include "compress_lz4.h"
-//#define COMPRESS lz4_encode
-//#define DECOMPRESS lz4_decode
-#include "compress_heatshrink.h"
-#define COMPRESS heatshrink_encode
-#define DECOMPRESS heatshrink_decode
+#ifdef USE_HEATSHRINK
+  #include "compress_heatshrink.h"
+  #define COMPRESS heatshrink_encode
+  #define DECOMPRESS heatshrink_decode
+#else
+  #include "compress_rle.h"
+  #define COMPRESS rle_encode
+  #define DECOMPRESS rle_decode
+#endif
 
 #ifdef LINUX
 // file IO for load/save
