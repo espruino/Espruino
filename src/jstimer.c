@@ -93,6 +93,9 @@ void jstUtilTimerInterruptHandler() {
           jshPinSetValue(task->data.set.pins[j], (task->data.set.value >> j)&1);
         }
       } break;
+      case UET_EXECUTE:
+        executeFn = task->data.execute;
+        break;
 #ifndef SAVE_ON_FLASH
       case UET_READ_SHORT: {
         if (!task->data.buffer.var) break;
@@ -137,9 +140,6 @@ void jstUtilTimerInterruptHandler() {
         jshSetOutputValue(task->data.buffer.pinFunction, sum);
         break;
       }
-      case UET_EXECUTE:
-        executeFn = task->data.execute;
-        break;
 #endif
       case UET_WAKEUP: // we've already done our job by waking the device up
       default: break;
@@ -312,6 +312,12 @@ static bool jstPinTaskChecker(UtilTimerTask *task, void *data) {
   return false;
 }
 
+// data = *fn
+static bool jstExecuteTaskChecker(UtilTimerTask *task, void *data) {
+  if (task->type != UET_EXECUTE) return false;
+  return (task->data.execute = data);
+}
+
 // --------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------
 
@@ -380,6 +386,22 @@ bool jstPinPWM(JsVarFloat freq, JsVarFloat dutyCycle, Pin pin) {
   if (!utilTimerInsertTask(&taskon)) return false;
   WAIT_UNTIL(!utilTimerIsFull(), "Utility Timer");
   return utilTimerInsertTask(&taskoff);
+}
+
+/// Execute the given function repeatedly after the given time period
+bool jstExecuteFn(void (*fn)(JsSysTime), JsSysTime period) {
+  UtilTimerTask task;
+  task.time = jshGetSystemTime() + period;
+  task.repeatInterval = (uint32_t)period;
+  task.type = UET_EXECUTE;
+  task.data.execute = fn;
+
+  return utilTimerInsertTask(&task);
+}
+
+/// Stop executing the given function
+bool jstStopExecuteFn(void (*fn)(JsSysTime)) {
+  return utilTimerRemoveTask(jstExecuteTaskChecker, (void*)fn);
 }
 
 /// Set the utility timer so we're woken up in whatever time period
@@ -512,8 +534,8 @@ void jstDumpUtilityTimers() {
     case UET_READ_BYTE : jsiConsolePrintf("READ_BYTE\n"); break;
     case UET_WRITE_SHORT : jsiConsolePrintf("WRITE_SHORT\n"); break;
     case UET_READ_SHORT : jsiConsolePrintf("READ_SHORT\n"); break;
-    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x\n", task.data.execute); break;
 #endif
+    case UET_EXECUTE : jsiConsolePrintf("EXECUTE %x\n", task.data.execute); break;
     default : jsiConsolePrintf("Unknown type %d\n", task.type); break;
     }
 

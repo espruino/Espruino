@@ -65,41 +65,33 @@ To program the nRF52 Development Kit with Espruino:
 
 In order to compile for the esp8266 on Linux several pre-requisites have to be installed:
 - the esp-open-sdk from https://github.com/pfalcon/esp-open-sdk, use make STANDALONE=n
-- the Espressif SDK (version 1.4.0 as of this writing) from http://bbs.espressif.com/viewforum.php?f=46
-- For 512KB modules only: Esptool-ck from https://github.com/tommie/esptool-ck
+- the Espressif SDK (version 1.5.0 with lwip patch as of this writing) from http://bbs.espressif.com/viewforum.php?f=46 and http://bbs.espressif.com/viewtopic.php?f=7&t=1528
 
-To run make you need to pass a number of environment variables to `make`.  These include:
+To run make you need to pass a couple of environment variables to `make`.  These include:
 
-* `ESP8266_512KB = 1` or `ESP8266_4MB = 1` depending on your module size
-* `ESP8266_SDK_ROOT = <Path to the 1.4 SDK>`
-* `COMPORT = <COMPORT or Serial>`
-
-Ensure that your program Path includes the folders/directories for:
-
-* Xtensa GCC compiler
-* esptool
-* Python 3.4
+* `ESP8266_BOARD=1`
+* `FLASH_4MB=1` if you have an esp-12
+* `ESP8266_SDK_ROOT=<Path to the 1.4 SDK>`
+* `PATH=<Path to esp-open-sdk/xtensa-lx106-elf/bin/>`
+* `COMPORT=</dev/ttyUSB0|COM1|...>`
 
 The easiest is to place
 the following lines into a script, adapt it to your needs and then run it.
 ```
 #! /bin/bash
-export ESP8266_512KB=1
-export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.4.0
+export ESP8266_BOARD=1
+export FLASH_4MB=1
+export ESP8266_SDK_ROOT=/esp8266/esp_iot_sdk_v1.5.0
 export PATH=$PATH:/esp8266/esp-open-sdk/xtensa-lx106-elf/bin/
-export ESPTOOL_CK=/esp8266/esptool-ck/esptool
 export COMPORT=/dev/ttyUSB0
 make $*
 ```
 
-####Over-the-Air firmware update
-The firmware on the esp8266 can be upgraded over wifi as long as the esp8266 has 1MB or more flash
-and that Espruino was built with BOARD=ESP8266_1MB thru BOARD=ESP8266_4MB. To upgrade determine
-the hostname or IP address of your Espruino on the network and run:
-```
-./scripts/wiflash espruino:88 espruino_esp8266_ota_user1.bin espruino_esp8266_ota_user2.bin
-```
-where 'espruino:88' is the hostname or IP address and the OTA port 88.
+* If you do `make flash` it will try to flash your esp8266 module over serial
+* If you do `make wiflash` it will try to flash you esp8266 module over wifi, which assumes
+  that it's already running Espruino
+* You will also get an `espruino_1v00_*_esp8266.tgz` archive, which contains everything you
+  need to flash a module (except for esptool.py), including a README_flash.txt
 
 ####Building on Eclipse
 When building on Eclipse, update the Makefile properties to include the definitions show above.  The easiest way to achieve

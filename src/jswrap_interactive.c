@@ -121,7 +121,7 @@ void jswrap_interface_trace(JsVar *root) {
 /*JSON{
   "type" : "function",
   "name" : "dump",
-  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrint, 0)"
+  "generate_full" : "jsiDumpState((vcbprintf_callback)jsiConsolePrintString, 0)"
 }
 Output current interpreter state in a text form such that it can be copied to a new device
 
@@ -210,7 +210,7 @@ void jswrap_interface_print(JsVar *v) {
   jsvObjectIteratorNew(&it, v);
   while (jsvObjectIteratorHasValue(&it)) {
     JsVar *v = jsvObjectIteratorGetValue(&it);
-    if (jsvIsString(v)) 
+    if (jsvIsString(v))
       jsiConsolePrintStringVar(v);
     else
       jsfPrintJSON(v, JSON_PRETTY | JSON_NEWLINES);
@@ -535,7 +535,9 @@ Change the Interval on a callback created with setInterval, for example:
 
 ```changeInterval(id, 1500); // now runs every 1.5 seconds```
 
-This takes effect the next time the callback is called (so it is not immediate).
+This takes effect immediately and resets the timeout, so in the example above,
+regardless of when you call `changeInterval`, the next interval will occur 1500ms
+after it.
  */
 void jswrap_interface_changeInterval(JsVar *idVar, JsVarFloat interval) {
   JsVar *timerArrayPtr = jsvLock(timerArray);

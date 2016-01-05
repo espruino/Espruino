@@ -20,6 +20,12 @@ info = {
  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/PF254044" ],
  'variables' : 1720,
  'binary_name' : 'espruino_%v_stm32f3discovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F303VCT6",
@@ -34,13 +40,7 @@ chip = {
   'adc' : 4,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'left' : [ '3V','GND','C1','C3','A1','A3','F4','A5','A7','C5','B1','E7','E9','E11','E13','E15','B11','B13','B15','D9','D11','D13','D15','C6','GND' ],
-  'left2' : [ '3V','NRST','C0','C2','F2','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','B12','B14','D8','D10','D12','D14','C7','GND' ],
-  'right2' : [ '5V','F9','D0','C14','E6','E4','E2','E0','B8','BOOT0','B6','B4','D7','D5','D3','D1','C12','C10','A14','F6','A12','A10','A8','C8','GND' ],
-  'right' : [ '5V','F10','F1','C15','C13','E5','E3','E1','B9','VDD','B7','B5','B3','D6','D4','D2','D0','C11','A15','A13','A11','A9','C9','NC','GND' ],
-};
+
 devices = {
   'OSC' : { 'pin_1' : 'F0',
             'pin_2' : 'F1' },
@@ -95,8 +95,14 @@ devices = {
           },
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ '3V','GND','C1','C3','A1','A3','F4','A5','A7','C5','B1','E7','E9','E11','E13','E15','B11','B13','B15','D9','D11','D13','D15','C6','GND' ],
+  'left2' : [ '3V','NRST','C0','C2','F2','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','B12','B14','D8','D10','D12','D14','C7','GND' ],
+  'right2' : [ '5V','F9','D0','C14','E6','E4','E2','E0','B8','BOOT0','B6','B4','D7','D5','D3','D1','C12','C10','A14','F6','A12','A10','A8','C8','GND' ],
+  'right' : [ '5V','F10','F1','C15','C13','E5','E3','E1','B9','VDD','B7','B5','B3','D6','D4','D2','D0','C11','A15','A13','A11','A9','C9','NC','GND' ],
+};
+board["_css"] = """
 #board {
   width: 598px;
   height: 891px;

@@ -18,6 +18,15 @@ info = {
  'name' : "Raspberry Pi",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_raspberrypi',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "RASPBERRYPI",
@@ -32,15 +41,10 @@ chip = {
   'adc' : 0,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
   'LED1' : { 'pin' : 'D16' }
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,31)  

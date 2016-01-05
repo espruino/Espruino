@@ -21,6 +21,10 @@ info = {
  'link' :  [ "http://www.lctech-inc.com/Hardware/Detail.aspx?id=4ae8ef7e-9bfe-48a1-9540-fa66ad4645b4"],
  'variables' : 715,
  'binary_name' : 'espruino_%v_lctech_stm32f103rbt6.bin',
+ 'build' : {
+   'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RBT6", #T6
@@ -37,13 +41,6 @@ chip = {
   'dac' : 0,
 };
 
-board = {
-  'top' : [ 'GND', 'D1', 'C14', 'B9', 'B7', 'B5', 'B3', 'C12', 'C10', 'A14', 'A12', 'A10', 'A8', 'C8', 'GND'],
-  'top2' : [ '3V3', 'D0', 'C15', 'C13', 'B8', 'B6', 'B4', 'D2', 'C11', 'A15', 'A13', 'A11', 'A9', 'C9', '5V'],
-  'bottom' : [ 'GND', 'C0', 'C2', 'A0', 'A2', 'A4', 'A6', 'C4', 'B0', 'B2', 'B11', 'B13', 'B15', 'C7', 'GND'],
-  'bottom2' : [ '3V3', 'C1', 'C3', 'A1', 'A3', 'A5', 'A7', 'C5', 'B1', 'B10', 'B12', 'B14', 'C6', 'NC', '5V']
-};
-
 devices = {
   'OSC' : { 'pin_1' : 'D0',
             'pin_2' : 'D1' },
@@ -57,8 +54,15 @@ devices = {
             'pin_dm' : 'A11',
             'pin_dp' : 'A12' },
 };
+
+board = {
+  'top' : [ 'GND', 'D1', 'C14', 'B9', 'B7', 'B5', 'B3', 'C12', 'C10', 'A14', 'A12', 'A10', 'A8', 'C8', 'GND'],
+  'top2' : [ '3V3', 'D0', 'C15', 'C13', 'B8', 'B6', 'B4', 'D2', 'C11', 'A15', 'A13', 'A11', 'A9', 'C9', '5V'],
+  'bottom' : [ 'GND', 'C0', 'C2', 'A0', 'A2', 'A4', 'A6', 'C4', 'B0', 'B2', 'B11', 'B13', 'B15', 'C7', 'GND'],
+  'bottom2' : [ '3V3', 'C1', 'C3', 'A1', 'A3', 'A5', 'A7', 'C5', 'B1', 'B10', 'B12', 'B14', 'C6', 'NC', '5V']
+};
 #TODO: Calculate this numbers..
-board_css = """
+board["_css"] = """
 #board {
   width: 809px;
   height: 584px;

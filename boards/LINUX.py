@@ -18,6 +18,15 @@ info = {
  'name' : "Normal Linux Compile",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_linux',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "LINUX",
@@ -32,15 +41,10 @@ chip = {
   'adc' : 0,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
   'USB' : {} # to convince code that we have a USB port (it's used for the console ion Linux)
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,32)

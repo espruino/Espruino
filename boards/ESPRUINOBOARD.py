@@ -28,7 +28,16 @@ info = {
  'binaries' : [
   { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
   { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
- ]
+ ],
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RCT6",
@@ -48,17 +57,15 @@ chip = {
     'pages' : 15, # number of pages we're using
     'flash_available' : 256-30 # 30 used for code
   },
-};
-# left-right, or top-bottom order
-board = {
-  'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
-  'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B12', 'C12', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
-  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ],
-        
-  '_notes' : {
-    'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
-    'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
-  }
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',
@@ -80,7 +87,18 @@ devices = {
                   'pin_rx' : 'A10' },
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'right' : [ 'A15', 'A14', 'A13', 'A10', 'A9', 'A8', 'C11', 'C10', 'C9', 'C8', 'C7', 'C6', 'C5', 'C4', 'B15', 'B14', 'B13', '3.3', 'VBAT', 'GND' ],
+  'left' : [ 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B12', 'C12', 'C15', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', '3.3', 'VBAT', 'GND' ],
+  'bottom' : [ 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'B0', 'B1', 'B10', 'B11' ],
+        
+  '_notes' : {
+    'B4' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
+    'B5' : "The timers on pins B4 and B5 overlap with A6,A7,B0 and B1 (so can't be used at the same time) - to get the maximum amount of PWM outputs we'd recommend that you don't use B4 and B5 with analogWrite.",
+  }
+};
+board["_css"] = """
 #board {
   width: 431px;
   height: 585px;

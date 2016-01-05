@@ -18,6 +18,15 @@ info = {
  'name' : "Carambola",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_raspberrypi',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "CARAMBOLA",
@@ -33,13 +42,8 @@ chip = {
   'dac' : 0,
 };
 # left-right, or top-bottom order
-board = {
-};
 devices = {
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,14)  

@@ -19,7 +19,16 @@ info = {
  'name': 'Olimexino STM32 / Leaflabs Maple with STM32F103RET',
  'link': ['https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32/', 'http://leaflabs.com/devices/maple/'],
  'variables': 3250,
- 'binary_name': 'espruino_%v_olimexino_stm32_re.bin'
+ 'binary_name': 'espruino_%v_olimexino_stm32_re.bin',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_TV',
+     'USE_HASHLIB'
+   ]
+ }
 }
 chip = {
  'part': 'STM32F103RET6',
@@ -34,6 +43,20 @@ chip = {
  'adc': 3,
  'dac': 2
 }
+
+devices = {
+ 'OSC_RTC': {'pin_1': 'D22',
+             'pin_2': 'D23'},
+ 'LED1': {'pin': 'D13'},
+ 'LED2': {'pin': 'D3'},
+ 'BTN1': {'pin': 'D38'},
+ 'USB': {'pin_disc': 'D39',
+         'pin_dm': 'D40',
+         'pin_dp': 'D41'},
+ 'SD': {'pin_cs': 'D25',
+        'pin_di': 'D34',
+        'pin_do': 'D33',
+        'pin_clk': 'D32'}}
 
 # left-right, or top-bottom order
 board = {
@@ -52,21 +75,7 @@ board['left2'].reverse()
 board['right'].reverse()
 board['right2'].reverse()
 
-devices = {
- 'OSC_RTC': {'pin_1': 'D22',
-             'pin_2': 'D23'},
- 'LED1': {'pin': 'D13'},
- 'LED2': {'pin': 'D3'},
- 'BTN1': {'pin': 'D38'},
- 'USB': {'pin_disc': 'D39',
-         'pin_dm': 'D40',
-         'pin_dp': 'D41'},
- 'SD': {'pin_cs': 'D25',
-        'pin_di': 'D34',
-        'pin_do': 'D33',
-        'pin_clk': 'D32'}}
-
-board_css = """
+board["_css"] = """
 #board {
   width: 540px;
   height: 418px;

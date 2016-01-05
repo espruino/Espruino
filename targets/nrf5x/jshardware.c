@@ -26,38 +26,64 @@
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
 #include "jswrap_bluetooth.h"
 
+#include "nrf_gpio.h"
+#include "nrf_temp.h"
+#include "nrf_adc.h"
+#include "nrf_timer.h"
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
+#define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
+
+/*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
+
+  RTC0 not usable
+  RTC1 free
+  TIMER1/2 free
+  SPI0/1 free
+
+ */
+
+void TIMER1_IRQHandler(void) {
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
+  jstUtilTimerInterruptHandler();
+}
+
 static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
-void jshInit() 
-{
+void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
-  nrf_utils_rtc1_config_and_start();
     
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
 
+  // Enable and sort out the timer
+  nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
+  nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
+  nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+  // Irq setup
+  NVIC_SetPriority(TIMER1_IRQn, 15); // low - don't mess with BLE :)
+  NVIC_ClearPendingIRQ(TIMER1_IRQn);
+  NVIC_EnableIRQ(TIMER1_IRQn);
+  nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
+
   jswrap_nrf_bluetooth_init();
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
-void jshReset()
-{
+void jshReset() {
 
 }
 
-void jshKill()
-{
+void jshKill() {
 
 }
 
 // stuff to do on idle
-void jshIdle()
-{
+void jshIdle() {
   if (init == 1)
   {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
@@ -68,8 +94,7 @@ void jshIdle()
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
-int jshGetSerialNumber(unsigned char *data, int maxChars)
-{
+int jshGetSerialNumber(unsigned char *data, int maxChars) {
     if (maxChars <= 0)
     {
     	return 0;
@@ -78,110 +103,172 @@ int jshGetSerialNumber(unsigned char *data, int maxChars)
 }
 
 // is the serial device connected?
-bool jshIsUSBSERIALConnected()
-{
+bool jshIsUSBSERIALConnected() {
   return true;
 }
 
 /// Get the system time (in ticks)
-JsSysTime jshGetSystemTime()
-{
-  return (JsSysTime) nrf_utils_get_system_time();
+JsSysTime jshGetSystemTime() {
+  // Use RTC0 (also used by BLE stack) - as app_timer starts/stops RTC1
+  return (JsSysTime)NRF_RTC0->COUNTER;
 }
 
 /// Set the system time (in ticks) - this should only be called rarely as it could mess up things like jsinteractive's timers!
-void jshSetSystemTime(JsSysTime time)
-{
+void jshSetSystemTime(JsSysTime time) {
 
 }
 
 /// Convert a time in Milliseconds to one in ticks.
-JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms)
-{
-  return (JsSysTime) ((ms * 32768) / 1000);
+JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
+  return (JsSysTime) ((ms * SYSCLK_FREQ) / 1000);
 }
 
 /// Convert ticks to a time in Milliseconds.
-JsVarFloat jshGetMillisecondsFromTime(JsSysTime time)
-{
-  return (JsVarFloat) ((time * 1000) / 32768);
+JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
+  return (JsVarFloat) ((time * 1000) / SYSCLK_FREQ);
 }
 
 // software IO functions...
-void jshInterruptOff()
-{
+void jshInterruptOff() {
   __disable_irq(); // Disabling interrupts is not reasonable when using one of the SoftDevices.
 }
 
-void jshInterruptOn()
-{
+void jshInterruptOn() {
   __enable_irq(); // *** This wont be good with SoftDevice!
 }
 
-void jshDelayMicroseconds(int microsec) 
-{
-  if (microsec <= 0)
-  {
+void jshDelayMicroseconds(int microsec) {
+  if (microsec <= 0) {
     return;
   }
 
   nrf_utils_delay_us((uint32_t) microsec);
 }
 
-void jshPinSetValue(Pin pin, bool value) 
-{
-  if (value == 1)
-  {
-    nrf_utils_gpio_pin_set((uint32_t) pin);
-  }
-  else
-  {
-    nrf_utils_gpio_pin_clear((uint32_t) pin);
-  }
+void jshPinSetValue(Pin pin, bool value) {
+  nrf_gpio_pin_write((uint32_t)pinInfo[pin].pin, value);
 }
 
-bool jshPinGetValue(Pin pin)
-{
-  return (bool) nrf_utils_gpio_pin_read((uint32_t) pin);
+bool jshPinGetValue(Pin pin) {
+  return (bool)nrf_gpio_pin_read((uint32_t)pinInfo[pin].pin);
 }
 
 // Set the pin state
-void jshPinSetState(Pin pin, JshPinState state)
-{
-  nrf_utils_gpio_pin_set_state((uint32_t) pin, (uint32_t) state);
+void jshPinSetState(Pin pin, JshPinState state) {
+  uint32_t ipin = (uint32_t)pinInfo[pin].pin;
+  switch (state) {
+    case JSHPINSTATE_UNDEFINED :
+      nrf_gpio_cfg_default(ipin);
+      break;
+    case JSHPINSTATE_GPIO_OUT :
+      nrf_gpio_cfg_output(ipin);
+      break;
+    case JSHPINSTATE_GPIO_OUT_OPENDRAIN :
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos);
+      break;
+    case JSHPINSTATE_GPIO_IN :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_NOPULL);
+      break;
+    case JSHPINSTATE_GPIO_IN_PULLUP :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLUP);
+      break;
+    case JSHPINSTATE_GPIO_IN_PULLDOWN :
+      nrf_gpio_cfg_input(ipin, NRF_GPIO_PIN_PULLDOWN);
+      break;
+    /*case JSHPINSTATE_ADC_IN :
+      break;
+    case JSHPINSTATE_AF_OUT :
+      break;
+    case JSHPINSTATE_AF_OUT_OPENDRAIN :
+      break;
+    case JSHPINSTATE_USART_IN :
+      break;
+    case JSHPINSTATE_USART_OUT :
+      break;
+    case JSHPINSTATE_DAC_OUT :
+      break;*/
+    case JSHPINSTATE_I2C :
+      NRF_GPIO->PIN_CNF[ipin] = (GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos)
+                              | (GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+                              | (GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
+                              | (GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
+                              | (GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos);
+      // may need to be set to GPIO_PIN_CNF_DIR_Output as well depending on I2C state?
+      break;
+    default : assert(0);
+      break;
+  }
 }
 
 /** Get the pin state (only accurate for simple IO - won't return JSHPINSTATE_USART_OUT for instance).
  * Note that you should use JSHPINSTATE_MASK as other flags may have been added */
-JshPinState jshPinGetState(Pin pin)
-{
-  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t) pin);
+JshPinState jshPinGetState(Pin pin) {
+  return (JshPinState) nrf_utils_gpio_pin_get_state((uint32_t)pinInfo[pin].pin);
 }
 
 // Returns an analog value between 0 and 1
-JsVarFloat jshPinAnalog(Pin pin) 
-{
-  return 0.0;
+JsVarFloat jshPinAnalog(Pin pin) {
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+
+  const nrf_adc_config_t nrf_adc_config =  {
+      NRF_ADC_CONFIG_RES_10BIT,
+      NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+      NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  // sanity checks for nrf_adc_convert_single...
+  assert(ADC_CONFIG_PSEL_AnalogInput0 == 1);
+  assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
+  assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
+  // make reading
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin) {
-  return 0;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
+
+  const nrf_adc_config_t nrf_adc_config =  {
+        NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
+        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+        NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  // sanity checks for nrf_adc_convert_single...
+  assert(ADC_CONFIG_PSEL_AnalogInput0 == 1);
+  assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
+  assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
+  // make reading
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
-/**
- * Set the value of the pin to be the value specified, wait for a given period of time, then toggle the pin.
- */
-void jshPinPulse(Pin pin, bool value, JsVarFloat time)
-{
-  jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
-  jshPinSetValue(pin, value);
-  jshDelayMicroseconds(time); // Not sure about time...
-  jshPinSetValue(pin, !value);
+void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
+  // ---- USE TIMER FOR PULSE
+  if (!jshIsPinValid(pin)) {
+       jsExceptionHere(JSET_ERROR, "Invalid pin!");
+       return;
+  }
+  if (pulseTime<=0) {
+    // just wait for everything to complete
+    jstUtilTimerWaitEmpty();
+    return;
+  } else {
+    // find out if we already had a timer scheduled
+    UtilTimerTask task;
+    if (!jstGetLastPinTimerTask(pin, &task)) {
+      // no timer - just start the pulse now!
+      jshPinOutput(pin, pulsePolarity);
+      task.time = jshGetSystemTime();
+    }
+    // Now set the end of the pulse to happen on a timer
+    jstPinOutputAtTime(task.time + jshGetTimeFromMilliseconds(pulseTime), &pin, 1, !pulsePolarity);
+  }
 }
 
 ///< Can the given pin be watched? it may not be possible because of conflicts
@@ -278,14 +365,25 @@ void jshSPIWait(IOEventFlags device) {
 
 }
 
+NRF_TWI_Type *jshGetTWI(IOEventFlags device) {
+  return (device == EV_I2C2) ? NRF_TWI1_BASE : NRF_TWI0_BASE;
+}
+
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
+  NRF_TWI_Type *twi = jshGetTWI(device);
 
+  // jshPinSetState
+
+  // nrf_twi_frequency_set(twi, inf->bitrate);
+  // nrf_twi_pins_set(twi, pinInfo[inf->pinSCL].pin, pinInfo[inf->pinSDA].pin);
+  // nrf_twi_enable
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-
+  NRF_TWI_Type *twi = jshGetTWI(device);
+  // nrf_twi_address_set(twi, address);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
@@ -305,13 +403,11 @@ bool jshFlashGetPage(uint32_t addr, uint32_t * startAddr, uint32_t * pageSize)
 /// Erase the flash page containing the address.
 void jshFlashErasePage(uint32_t addr)
 {
-  uint32_t * startAddr;
-  uint32_t * pageSize;
-  if (!jshFlashGetPage(addr, startAddr, pageSize))
-  {
+  uint32_t startAddr;
+  uint32_t pageSize;
+  if (!jshFlashGetPage(addr, &startAddr, &pageSize))
     return;
-  }
-  nrf_utils_erase_flash_page(*startAddr);
+  nrf_utils_erase_flash_page(startAddr);
 }
 
 /**
@@ -338,40 +434,53 @@ void jshFlashWrite(void * buf, uint32_t addr, uint32_t len)
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
-  //__WFI(); // Wait for interrupt is a hint instruction that suspends execution until one of a number of events occurs.
+  jstSetWakeUp(timeUntilWake);
+  sd_app_evt_wait(); // Go to sleep, wait to be woken up
+
   return true;
+}
+
+/// Reschedule the timer (it should already be running) to interrupt after 'period'
+void jshUtilTimerReschedule(JsSysTime period) {
+  period = period * 1000000 / SYSCLK_FREQ;
+  if (period < 2) period=2;
+  if (period > 0xFFFFFFFF) period=0xFFFFFFFF;
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
+  nrf_timer_cc_write(NRF_TIMER1, NRF_TIMER_CC_CHANNEL0, (uint32_t)period);
 }
 
 /// Start the timer and get it to interrupt after 'period'
 void jshUtilTimerStart(JsSysTime period) {
-  //timer_init(period);
-}
-
-/// Reschedult the timer (it should already be running) to interrupt after 'period'
-void jshUtilTimerReschedule(JsSysTime period) {
-
+  jshUtilTimerReschedule(period);
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_START);
 }
 
 /// Stop the timer
 void jshUtilTimerDisable() {
-
-}
-
-// On SYSTick interrupt, call this
-void jshDoSysTick() {
-
+  nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_STOP);
 }
 
 // the temperature from the internal temperature sensor
-JsVarFloat jshReadTemperature()
-{
-  return (JsVarFloat) nrf_utils_read_temperature(); // *** This is returning an int right now..
+JsVarFloat jshReadTemperature() {
+  nrf_temp_init();
+
+  NRF_TEMP->TASKS_START = 1;
+  while (NRF_TEMP->EVENTS_DATARDY == 0) ;// Do nothing...
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  int32_t nrf_temp = nrf_temp_read();
+  NRF_TEMP->TASKS_STOP = 1;
+
+  return nrf_temp / 4.0;
 }
 
 // The voltage that a reading of 1 from `analogRead` actually represents
-JsVarFloat jshReadVRef()
-{
-  return 0.0;
+JsVarFloat jshReadVRef() {
+  const nrf_adc_config_t nrf_adc_config =  {
+       NRF_ADC_CONFIG_RES_10BIT,
+       NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
+       NRF_ADC_CONFIG_REF_VBG }; // internal reference
+  nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
+  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
 }
 
 /**
@@ -379,7 +488,6 @@ JsVarFloat jshReadVRef()
  * reading noise from an analog input. If unimplemented, this should
  * default to `rand()`
  */
-unsigned int jshGetRandomNumber()
-{
+unsigned int jshGetRandomNumber() {
   return (unsigned int) nrf_utils_get_random_number();
 }

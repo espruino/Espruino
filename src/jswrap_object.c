@@ -25,13 +25,6 @@
 
 /*JSON{
   "type" : "class",
-  "class" : "Hardware",
-  "check" : "jsvIsRoot(var)"
-}
-This is the built-in class for the Espruino device. It is the 'root scope', as 'Window' is for JavaScript on the desktop.
- */
-/*JSON{
-  "type" : "class",
   "class" : "Object",
   "check" : "jsvIsObject(var)"
 }
@@ -60,7 +53,7 @@ Creates an Object from the supplied argument
 JsVar *jswrap_object_constructor(JsVar *value) {
   if (jsvIsObject(value) || jsvIsArray(value) || jsvIsFunction(value))
     return jsvLockAgain(value);
-  char *objName = jswGetBasicObjectName(value);
+  const char *objName = jswGetBasicObjectName(value);
   JsVar *funcName = objName ? jspGetNamedVariable(objName) : 0;
   if (!funcName) return jsvNewWithFlags(JSV_OBJECT);
   JsVar *func = jsvSkipName(funcName);
@@ -478,16 +471,6 @@ void jswrap_object_addEventListener(JsVar *parent, const char *eventName, void (
   jsvUnLock2(cb, n);
 }
 
-#define EVENTNAME_SIZE 16
-bool jswrap_object_get_event_name(char *eventName, JsVar *event) {
-  strncpy(eventName, JS_EVENT_PREFIX, EVENTNAME_SIZE);
-  if (jsvGetString(event, &eventName[3], EVENTNAME_SIZE-4)==(EVENTNAME_SIZE-4)) {
-    jsExceptionHere(JSET_ERROR, "Event name too long\n");
-    return false;
-  }
-  return true;
-}
-
 /*JSON{
   "type" : "method",
   "class" : "Object",
@@ -513,10 +496,12 @@ void jswrap_object_on(JsVar *parent, JsVar *event, JsVar *listener) {
     jsWarn("Second argument to EventEmitter.on(..) must be a function or a String (containing code)");
     return;
   }
-  char eventName[16];
-  if (!jswrap_object_get_event_name(eventName, event)) return;
+  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+  if (!eventName) return; // no memory
+  jsvAppendStringVarComplete(eventName, event);
 
-  JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
+  JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
+  jsvUnLock(eventName);
   JsVar *eventListeners = jsvSkipName(eventList);
   if (jsvIsUndefined(eventListeners)) {
     // just add
@@ -568,8 +553,9 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
     jsWarn("First argument to EventEmitter.emit(..) must be a string");
     return;
   }
-  char eventName[16];
-  if (!jswrap_object_get_event_name(eventName, event)) return;
+  JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+  if (!eventName) return; // no memory
+  jsvAppendStringVarComplete(eventName, event);
 
   // extract data
   const unsigned int MAX_ARGS = 4;
@@ -588,7 +574,11 @@ void jswrap_object_emit(JsVar *parent, JsVar *event, JsVar *argArray) {
   jsvObjectIteratorFree(&it);
 
 
-  jsiQueueObjectCallbacks(parent, eventName, args, (int)n);
+  JsVar *callback = jsvSkipNameAndUnLock(jsvFindChildFromVar(parent, eventName, 0));
+  jsvUnLock(eventName);
+  if (callback) jsiQueueEvents(parent, callback, args, (int)n);
+  jsvUnLock(callback);
+
   // unlock
   jsvUnLockMany(n, args);
 }
@@ -611,9 +601,12 @@ void jswrap_object_removeAllListeners(JsVar *parent, JsVar *event) {
   }
   if (jsvIsString(event)) {
     // remove the whole child containing listeners
-    char eventName[16];
-    if (!jswrap_object_get_event_name(eventName, event)) return;
-    JsVar *eventList = jsvFindChildFromString(parent, eventName, true);
+    JsVar *eventName = jsvNewFromString(JS_EVENT_PREFIX);
+    if (!eventName) return; // no memory
+    jsvAppendStringVarComplete(eventName, event);
+
+    JsVar *eventList = jsvFindChildFromVar(parent, eventName, true);
+    jsvUnLock(eventName);
     if (eventList) {
       jsvRemoveChild(parent, eventList);
       jsvUnLock(eventList);
@@ -777,7 +770,7 @@ JsVar *jswrap_function_bind(JsVar *parent, JsVar *thisArg, JsVar *argsArray) {
   if (jsvIsNativeFunction(parent))
     fn = jsvNewNativeFunction(parent->varData.native.ptr, parent->varData.native.argTypes);
   else
-    fn = jsvNewWithFlags(JSV_FUNCTION);
+    fn = jsvNewWithFlags(jsvIsFunctionReturn(parent) ? JSV_FUNCTION_RETURN : JSV_FUNCTION);
   if (!fn) return 0;
 
   // Old function info

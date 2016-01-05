@@ -51,6 +51,8 @@ void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 bool jsiObjectHasCallbacks(JsVar *object, const char *callbackName);
 /// Queue up callbacks for other things (touchscreen? network?)
 void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
+/// Execute callbacks straight away (like jsiQueueObjectCallbacks, but without queueing)
+void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount);
 /// Execute the given function/string/array of functions and return true on success, false on failure (break during execution)
 bool jsiExecuteEventCallback(JsVar *thisVar, JsVar *callbackVar, unsigned int argCount, JsVar **argPtr);
 /// Same as above, but with a JsVarArray (this calls jsiExecuteEventCallback, so use jsiExecuteEventCallback where possible)
@@ -66,10 +68,27 @@ void jsiSetConsoleDevice(IOEventFlags device);
 IOEventFlags jsiGetConsoleDevice();
 /// Transmit a byte
 void jsiConsolePrintChar(char data);
-/// Transmit a string
-void jsiConsolePrint(const char *str);
+/// Transmit a string (may be any string)
+void jsiConsolePrintString(const char *str);
+#ifndef FLASH_STR
+#define jsiConsolePrint jsiConsolePrintString
 /// Write the formatted string to the console (see vcbprintf)
 void jsiConsolePrintf(const char *fmt, ...);
+#else
+/// Write the formatted string to the console (see vcbprintf), but place the format string into
+// into flash
+#define jsiConsolePrintf(fmt, ...) do { \
+    FLASH_STR(flash_str, fmt); \
+    jsiConsolePrintf_int(flash_str, ##__VA_ARGS__); \
+  } while(0)
+void jsiConsolePrintf_int(const char *fmt, ...);
+/// Transmit a string (must be a literal string)
+#define jsiConsolePrint(str) do { \
+    FLASH_STR(flash_str, str); \
+    jsiConsolePrintString_int(flash_str); \
+} while(0)
+void jsiConsolePrintString_int(const char *str);
+#endif
 /// Print the contents of a string var - directly
 void jsiConsolePrintStringVar(JsVar *v);
 /// Transmit a position in the lexer (for reporting errors)

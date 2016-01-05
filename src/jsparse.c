@@ -27,7 +27,8 @@ JsExecInfo execInfo;
 JsVar *jspeAssignmentExpression();
 JsVar *jspeExpression();
 JsVar *jspeUnaryExpression();
-JsVar *jspeBlock();
+void jspeBlock();
+void jspeBlockNoBrackets();
 JsVar *jspeStatement();
 JsVar *jspeFactor();
 void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName);
@@ -373,22 +374,41 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     // parse failed
     return 0;
   }
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('{',jsvUnLock(funcVar),0);
+
+#ifndef SAVE_ON_FLASH
+  if (execInfo.lex->tk==LEX_STR && !strcmp(jslGetTokenValueAsString(execInfo.lex), "compiled")) {
+    jsWarn("Function marked with \"compiled\" uploaded in source form");
+  }
+#endif
+
+  /* If the function starts with return, treat it specially -
+   * we don't want to store the 'return' part of it
+   */
+  if (funcVar && execInfo.lex->tk==LEX_R_RETURN) {
+    funcVar->flags = (funcVar->flags & ~JSV_VARTYPEMASK) | JSV_FUNCTION_RETURN;
+    JSP_ASSERT_MATCH(LEX_R_RETURN);
+  }
   // Get the line number (if needed)
   JsVarInt lineNumber = 0;
   if (actuallyCreateFunction && execInfo.lex->lineNumberOffset) {
     // jslGetLineNumber is slow, so we only do it if we have debug info
     lineNumber = (JsVarInt)jslGetLineNumber(execInfo.lex) + (JsVarInt)execInfo.lex->lineNumberOffset - 1;
   }
-  // Get the code - first parse it so we know where it stops
+  // Get the code - parse it and figure out where it stops
   JslCharPos funcBegin = jslCharPosClone(&execInfo.lex->tokenStart);
-  JSP_SAVE_EXECUTE();
-  jspSetNoExecute();
-  jsvUnLock(jspeBlock());
-  JSP_RESTORE_EXECUTE();
-  // Then create var and set
-  if (actuallyCreateFunction) {
+  int brackets = 0;
+  int lastTokenEnd = -1;
+  while (execInfo.lex->tk && (brackets || execInfo.lex->tk != '}')) {
+    if (execInfo.lex->tk == '{') brackets++;
+    if (execInfo.lex->tk == '}') brackets--;
+    lastTokenEnd = (int)jsvStringIteratorGetIndex(&execInfo.lex->it)-1;
+    JSP_ASSERT_MATCH(execInfo.lex->tk);
+  }
+  // Then create var and set (if there was any code!)
+  if (actuallyCreateFunction && lastTokenEnd>0) {
     // code var
-    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)(execInfo.lex->tokenLastStart+1));
+    JsVar *funcCodeVar = jslNewFromLexer(&funcBegin, (size_t)lastTokenEnd);
     jsvUnLock2(jsvAddNamedChild(funcVar, funcCodeVar, JSPARSE_FUNCTION_CODE_NAME), funcCodeVar);
     // scope var
     JsVar *funcScopeVar = jspeiGetScopesAsVar();
@@ -406,7 +426,9 @@ NO_INLINE JsVar *jspeFunctionDefinition(bool parseNamedFunction) {
     if (functionInternalName)
       jsvObjectSetChildAndUnLock(funcVar, JSPARSE_FUNCTION_NAME_NAME, functionInternalName);
   }
+
   jslCharPosFree(&funcBegin);
+  JSP_MATCH_WITH_CLEANUP_AND_RETURN('}',jsvUnLock(funcVar),0);
 
   return funcVar;
 }
@@ -443,9 +465,8 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
   if (JSP_SHOULD_EXECUTE) if (!jspCheckStackPosition()) return 0; // try and ensure that we won't overflow our stack
 
   if (JSP_SHOULD_EXECUTE && function) {
-    JsVar *functionRoot;
-    JsVar *returnVarName;
-    JsVar *returnVar;
+    JsVar *returnVar = 0;
+
     JsVar *thisVar = thisArg;
     if (!jsvIsFunction(function)) {
       jsExceptionHere(JSET_ERROR, "Expecting a function to call, got %t", function);
@@ -531,13 +552,13 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         execInfo.thisVar = jsvRef(thisVar);
       else {
         if (nativePtr==jswrap_eval) { // eval gets to use the current scope
-          /* Note: proper JS has some utterly insane code that depends on whether 
+          /* Note: proper JS has some utterly insane code that depends on whether
            * eval is an lvalue or not:
-           * 
+           *
            * http://stackoverflow.com/questions/9107240/1-evalthis-vs-evalthis-in-javascript
-           * 
+           *
            * Doing this in Espruino is quite an upheaval for that one
-           * slightly insane case - so it's not implemented. */          
+           * slightly insane case - so it's not implemented. */
           if (execInfo.thisVar) execInfo.thisVar = jsvRef(execInfo.thisVar);
         } else {
           execInfo.thisVar = jsvRef(execInfo.root); // 'this' should always default to root
@@ -561,11 +582,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
       execInfo.thisVar = oldThisVar;
 
     } else { // ----------------------------------------------------- NOT NATIVE
-
       // create a new symbol table entry for execution of this function
       // OPT: can we cache this function execution environment + param variables?
       // OPT: Probably when calling a function ONCE, use it, otherwise when recursing, make new?
-      functionRoot = jsvNewWithFlags(JSV_FUNCTION);
+      JsVar *functionRoot = jsvNewWithFlags(JSV_FUNCTION);
       if (!functionRoot) { // out of memory
         jspSetError(false);
         return 0;
@@ -680,10 +700,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         jsvAddName(functionRoot, name);
         jsvUnLock2(name, functionInternalName);
       }
-      // setup a return variable
-      returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
-      if (!returnVarName) // out of memory
-        jspSetError(false);
 
       if (!JSP_HAS_ERROR) {
         // save old scopes
@@ -722,7 +738,10 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
             bool hadDebuggerNextLineOnly = false;
 
             if (execInfo.execute&EXEC_DEBUGGER_STEP_INTO) {
-              jsiConsolePrintf(functionName ? "Stepping into %v\n" : "Stepping into function\n", functionName);
+	      if (functionName)
+		jsiConsolePrintf("Stepping into %v\n", functionName);
+	      else
+		jsiConsolePrintf("Stepping into function\n", functionName);
             } else {
               hadDebuggerNextLineOnly = execInfo.execute&EXEC_DEBUGGER_NEXT_LINE;
               if (hadDebuggerNextLineOnly)
@@ -744,18 +763,38 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
 #else
             execInfo.execute = EXEC_YES | (execInfo.execute&(EXEC_CTRL_C_MASK|EXEC_ERROR_MASK));
 #endif
-            jspeBlock();
+            if (jsvIsFunctionReturn(function)) {
+              #ifdef USE_DEBUGGER
+                // we didn't parse a statement so wouldn't trigger the debugger otherwise
+                if (execInfo.execute&EXEC_DEBUGGER_NEXT_LINE && JSP_SHOULD_EXECUTE) {
+                  execInfo.lex->tokenLastStart = jsvStringIteratorGetIndex(&execInfo.lex->tokenStart.it)-1;
+                  jsiDebuggerLoop();
+                }
+              #endif
+              // implicit return - we just need an expression (optional)
+              if (execInfo.lex->tk != ';' && execInfo.lex->tk != '}')
+                returnVar = jsvSkipNameAndUnLock(jspeExpression());
+            } else {
+              // setup a return variable
+              JsVar *returnVarName = jsvAddNamedChild(functionRoot, 0, JSPARSE_RETURN_VAR);
+              // parse the whole block
+              jspeBlockNoBrackets();
+              /* get the real return var before we remove it from our function.
+               * We can unlock below because returnVarName is still part of
+               * functionRoot, so won't get freed. */
+              returnVar = jsvSkipNameAndUnLock(returnVarName);
+              if (returnVarName) // could have failed with out of memory
+                jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
+            }
             JsExecFlags hasError = execInfo.execute&(EXEC_ERROR_MASK|EXEC_CTRL_C_MASK);
             JSP_RESTORE_EXECUTE(); // because return will probably have set execute to false
 
 #ifdef USE_DEBUGGER
             bool calledDebugger = false;
             if (execInfo.execute & EXEC_DEBUGGER_MASK) {
-              JsVar *v = jsvSkipName(returnVarName);
               jsiConsolePrint("Value returned is =");
-              jsfPrintJSON(v, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
+              jsfPrintJSON(returnVar, JSON_LIMIT | JSON_NEWLINES | JSON_PRETTY | JSON_SHOW_DEVICES);
               jsiConsolePrintChar('\n');
-              jsvUnLock(v);
               if (execInfo.execute & EXEC_DEBUGGER_FINISH_FUNCTION) {
                 calledDebugger = true;
                 jsiDebuggerLoop();
@@ -799,11 +838,6 @@ NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *t
         execInfo.scopeCount = oldScopeCount;
       }
       jsvUnLock(functionCode);
-
-      /* get the real return var before we remove it from our function */
-      returnVar = jsvSkipNameAndUnLock(returnVarName);
-      if (returnVarName) // could have failed with out of memory
-        jsvSetValueOfName(returnVarName, 0); // remove return value (which helps stops circular references)
       jsvUnLock(functionRoot);
     }
 
@@ -1111,7 +1145,7 @@ NO_INLINE JsVar *jspeFactorFunctionCall() {
     } else
       a = jspeFunctionCall(func, funcName, parent, true, 0, 0);
 
-    jsvUnLock3(funcName, func, parent); 
+    jsvUnLock3(funcName, func, parent);
     parent=0;
     a = jspeFactorMember(a, &parent);
   }
@@ -1166,7 +1200,8 @@ NO_INLINE JsVar *jspeFactorObject() {
     return contents;
   } else {
     // Not executing so do fast skip
-    return jspeBlock();
+    jspeBlock();
+    return 0;
   }
 }
 
@@ -1212,7 +1247,7 @@ NO_INLINE void jspEnsureIsPrototype(JsVar *instanceOf, JsVar *prototypeName) {
   JsVar *prototypeVar = jsvSkipName(prototypeName);
   if (!jsvIsObject(prototypeVar)) {
     if (!jsvIsUndefined(prototypeVar))
-      jsWarn("Prototype is not an Object, so setting it to {}");    
+      jsWarn("Prototype is not an Object, so setting it to {}");
     jsvUnLock(prototypeVar);
     prototypeVar = jsvNewWithFlags(JSV_OBJECT); // prototype is supposed to be an object
     JsVar *lastName = jsvSkipToLastName(prototypeName);
@@ -1490,7 +1525,7 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
           if (!jsvIsFunction(bv)) {
             jsExceptionHere(JSET_ERROR, "Expecting a function on RHS in instanceof check, got %t", bv);
           } else {
-            if (jsvIsObject(av)) {
+            if (jsvIsObject(av) || jsvIsFunction(av)) {
               JsVar *bproto = jspGetNamedField(bv, JSPARSE_PROTOTYPE_VAR, false);
               JsVar *proto = jsvObjectGetChild(av, JSPARSE_INHERITS_VAR, 0);
               while (proto) {
@@ -1502,11 +1537,16 @@ NO_INLINE JsVar *__jspeBinaryExpression(JsVar *a, unsigned int lastPrecedence) {
               }
               if (jspIsConstructor(bv, "Object")) inst = true;
               jsvUnLock(bproto);
-            } else {
+            }
+            if (!inst) {
               const char *name = jswGetBasicObjectName(av);
               if (name) {
                 inst = jspIsConstructor(bv, name);
               }
+              // Hack for built-ins that should also be instances of Object
+              if (!inst && (jsvIsArray(av) || jsvIsArrayBuffer(av)) &&
+                  jspIsConstructor(bv, "Object"))
+                inst = true;
             }
           }
           jsvUnLock3(av, bv, a);
@@ -1639,8 +1679,8 @@ NO_INLINE JsVar *jspeExpression() {
   return 0;
 }
 
-NO_INLINE JsVar *jspeBlock() {
-  JSP_MATCH('{');
+/** Parse a block `{ ... }` but assume brackets are already parsed */
+NO_INLINE void jspeBlockNoBrackets() {
   if (JSP_SHOULD_EXECUTE) {
     while (execInfo.lex->tk && execInfo.lex->tk!='}') {
       jsvUnLock(jspeStatement());
@@ -1656,25 +1696,33 @@ NO_INLINE JsVar *jspeBlock() {
         }
       }
       if (JSP_SHOULDNT_PARSE)
-        return 0;
+        return;
     }
-    JSP_MATCH('}');
   } else {
     // fast skip of blocks
-    int brackets = 1;
-    while (execInfo.lex->tk && brackets) {
+    int brackets = 0;
+    while (execInfo.lex->tk && (brackets || execInfo.lex->tk != '}')) {
       if (execInfo.lex->tk == '{') brackets++;
       if (execInfo.lex->tk == '}') brackets--;
       JSP_ASSERT_MATCH(execInfo.lex->tk);
     }
   }
-  return 0;
+  return;
+}
+
+/** Parse a block `{ ... }` */
+NO_INLINE void jspeBlock() {
+  JSP_MATCH_WITH_RETURN('{',);
+  jspeBlockNoBrackets();
+  if (!JSP_SHOULDNT_PARSE) JSP_MATCH_WITH_RETURN('}',);
+  return;
 }
 
 NO_INLINE JsVar *jspeBlockOrStatement() {
-  if (execInfo.lex->tk=='{')
-    return jspeBlock();
-  else {
+  if (execInfo.lex->tk=='{') {
+    jspeBlock();
+    return 0;
+  } else {
     JsVar *v = jspeStatement();
     if (execInfo.lex->tk==';') JSP_ASSERT_MATCH(';');
     return v;
@@ -1764,7 +1812,7 @@ NO_INLINE JsVar *jspeStatementIf() {
 NO_INLINE JsVar *jspeStatementSwitch() {
   JSP_ASSERT_MATCH(LEX_R_SWITCH);
   JSP_MATCH('(');
-  JsVar *switchOn = jspeAssignmentExpression();
+  JsVar *switchOn = jspeExpression();
   JSP_MATCH_WITH_CLEANUP_AND_RETURN(')', jsvUnLock(switchOn), 0);
   JSP_MATCH_WITH_CLEANUP_AND_RETURN('{', jsvUnLock(switchOn), 0);
   JSP_SAVE_EXECUTE();
@@ -1901,7 +1949,7 @@ NO_INLINE JsVar *jspeStatementFor() {
   // initialisation
   JsVar *forStatement = 0;
   // we could have 'for (;;)' - so don't munch up our semicolon if that's all we have
-  if (execInfo.lex->tk != ';') 
+  if (execInfo.lex->tk != ';')
     forStatement = jspeStatement();
   if (jspIsInterrupted()) {
     jsvUnLock(forStatement);
@@ -2250,7 +2298,8 @@ NO_INLINE JsVar *jspeStatement() {
     return jspeExpression();
   } else if (execInfo.lex->tk=='{') {
     /* A block of code */
-    return jspeBlock();
+    jspeBlock();
+    return 0;
   } else if (execInfo.lex->tk==';') {
     /* Empty statement - to allow things like ;;; */
     JSP_ASSERT_MATCH(';');
@@ -2487,10 +2536,12 @@ JsVar *jspEvaluateModule(JsVar *moduleContents) {
   JsVar *exportsName = jsvAddNamedChild(scope, scopeExports, "exports");
   jsvUnLock2(scopeExports, jsvAddNamedChild(scope, scope, "module"));
 
+  JsExecFlags oldExecute = execInfo.execute;
   JsVar *oldThisVar = execInfo.thisVar;
   execInfo.thisVar = scopeExports; // set 'this' variable to exports
   jsvUnLock(jspEvaluateVar(moduleContents, scope, 0));
   execInfo.thisVar = oldThisVar;
+  execInfo.execute = oldExecute; // make sure we fully restore state after parsing a module
 
   jsvUnLock(scope);
   return jsvSkipNameAndUnLock(exportsName);

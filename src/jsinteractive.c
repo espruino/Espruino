@@ -21,6 +21,7 @@
 #include "jswrap_stream.h"
 #include "jswrap_flash.h" // load and save to flash
 #include "jswrap_object.h" // jswrap_object_keys_or_property_names
+#include "jsnative.h" // jsnSanityTest
 
 #ifdef ARM
 #define CHAR_DELETE_SEND 0x08
@@ -29,6 +30,11 @@
 #endif
 
 #define CTRL_C_TIME_FOR_BREAK jshGetTimeFromMilliseconds(100)
+
+#ifdef ESP8266
+extern void jshPrintBanner(void); // prints a debugging banner while we're in beta
+extern void jshSoftInit(void);    // re-inits wifi after a soft-reset
+#endif
 
 // ----------------------------------------------------------------------------
 typedef enum {
@@ -171,23 +177,46 @@ NO_INLINE void jsiConsolePrintChar(char data) {
 /**
  * \breif Send a NULL terminated string to the console.
  */
-NO_INLINE void jsiConsolePrint(const char *str) {
+NO_INLINE void jsiConsolePrintString(const char *str) {
   while (*str) {
     if (*str == '\n') jsiConsolePrintChar('\r');
     jsiConsolePrintChar(*(str++));
   }
 }
 
+#ifdef FLASH_STR
+// internal version that copies str from flash to an internal buffer
+NO_INLINE void jsiConsolePrintString_int(const char *str) {
+  size_t len = flash_strlen(str);
+  char buff[len+1];
+  flash_strncpy(buff, str, len+1);
+  jsiConsolePrintString(buff);
+}
+#endif
+
 /**
  * Perform a printf to the console.
  * Execute a printf command to the current JS console.
  */
+#ifndef FLASH_STR
 void jsiConsolePrintf(const char *fmt, ...) {
   va_list argp;
   va_start(argp, fmt);
   vcbprintf((vcbprintf_callback)jsiConsolePrint,0, fmt, argp);
   va_end(argp);
 }
+#else
+void jsiConsolePrintf_int(const char *fmt, ...) {
+  // fmt is in flash and requires special aligned accesses
+  size_t len = flash_strlen(fmt);
+  char buff[len+1];
+  flash_strncpy(buff, fmt, len+1);
+  va_list argp;
+  va_start(argp, fmt);
+  vcbprintf((vcbprintf_callback)jsiConsolePrintString, 0, buff, argp);
+  va_end(argp);
+}
+#endif
 
 /// Print the contents of a string var from a character position until end of line (adding an extra ' ' to delete a character if there was one)
 void jsiConsolePrintStringVarUntilEOL(JsVar *v, size_t fromCharacter, size_t maxChars, bool andBackup) {
@@ -243,10 +272,10 @@ void jsiConsoleEraseStringVarBackwards(JsVar *v) {
     }
     for (i=0;i<chars;i++) jsiConsolePrintChar(' '); // move cursor forwards and wipe out
     for (i=0;i<chars;i++) jsiConsolePrintChar(0x08); // move cursor back
-    if (line>1) { 
+    if (line>1) {
       // clear the character before - this would have had a colon
       jsiConsolePrint("\x08 ");
-      // move cursor up      
+      // move cursor up
       jsiConsolePrint("\x1B[A"); // 27,91,65 - up
     }
   }
@@ -349,7 +378,7 @@ void jsiConsoleReturnInputLine() {
   }
 }
 void jsiConsolePrintPosition(struct JsLex *lex, size_t tokenPos) {
-  jslPrintPosition((vcbprintf_callback)jsiConsolePrint, 0, lex, tokenPos);
+  jslPrintPosition((vcbprintf_callback)jsiConsolePrintString, 0, lex, tokenPos);
 }
 
 /**
@@ -402,8 +431,6 @@ static JsVarRef _jsiInitNamedArray(const char *name) {
 // Used when recovering after being flashed
 // 'claim' anything we are using
 void jsiSoftInit() {
-  jswInit();
-
   jsErrorFlags = 0;
   events = jsvNewWithFlags(JSV_ARRAY);
   inputLine = jsvNewFromEmptyString();
@@ -417,6 +444,14 @@ void jsiSoftInit() {
   // Load timer/watch arrays
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
   watchArray = _jsiInitNamedArray(JSI_WATCHES_NAME);
+
+  // Make sure we set up lastIdleTime, as this could be used
+  // when adding an interval from onInit (called below)
+  jsiLastIdleTime = jshGetSystemTime();
+  jsiTimeSinceCtrlC = 0xFFFFFFFF;
+
+  // Runw wrapper initialisation stuff
+  jswInit();
 
   // Now run initialisation code
   JsVar *initCode = jsvObjectGetChild(execInfo.hiddenRoot, JSI_INIT_CODE_NAME, 0);
@@ -443,11 +478,6 @@ void jsiSoftInit() {
 
   // Timers are stored by time in the future now, so no need
   // to fiddle with them.
-
-  // Make sure we set up lastIdleTime, as this could be used
-  // when adding an interval from onInit (called below)
-  jsiLastIdleTime = jshGetSystemTime();
-  jsiTimeSinceCtrlC = 0xFFFFFFFF;
 
   // And look for onInit function
   JsVar *onInit = jsvObjectGetChild(execInfo.root, JSI_ONINIT_NAME, 0);
@@ -587,7 +617,7 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
   if (pinBusyIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setBusyIndicator(%p);\n", pinBusyIndicator);
   }
-  if (pinSleepIndicator != DEFAULT_BUSY_PIN_INDICATOR) {
+  if (pinSleepIndicator != DEFAULT_SLEEP_PIN_INDICATOR) {
     cbprintf(user_callback, user_data, "setSleepIndicator(%p);\n", pinSleepIndicator);
   }
   if (jsiStatus&JSIS_ALLOW_DEEP_SLEEP) {
@@ -617,6 +647,10 @@ void jsiDumpHardwareInitialisation(vcbprintf_callback user_callback, void *user_
       // the console input pin is always a pullup now - which is expected
       if (pin == DEFAULT_CONSOLE_RX_PIN &&
           statem == JSHPINSTATE_GPIO_IN_PULLUP) continue;
+#endif
+#if defined(BTN1_PININDEX) && defined(BTN1_PINSTATE)
+      if (pin == BTN1_PININDEX &&
+          statem == BTN1_PINSTATE) continue;
 #endif
       // don't bother with normal inputs, as they come up in this state (ish) anyway
       const char *s = "";
@@ -703,6 +737,10 @@ void jsiSemiInit(bool autoLoad) {
   // Softinit may run initialisation code that will overwrite defaults
   jsiSoftInit();
 
+#ifdef ESP8266
+  jshSoftInit();
+#endif
+
   if (jsiEcho()) { // intentionally not using jsiShowInputLine()
     if (!loadFlash) {
       jsiConsolePrint(
@@ -718,6 +756,9 @@ void jsiSemiInit(bool autoLoad) {
           "|_____|___|  _|_| |___|_|_|_|___|\n"
           "          |_| http://espruino.com\n"
           " "JS_VERSION" Copyright 2015 G.Williams\n");
+#ifdef ESP8266
+	  jshPrintBanner();
+#endif
     }
     jsiConsolePrint("\n"); // output new line
     inputLineRemoved = true; // we need to put the input line back...
@@ -730,6 +771,10 @@ void jsiInit(bool autoLoad) {
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
   consoleDevice = EV_LIMBO;
+#endif
+
+#ifndef RELEASE
+  jsnSanityTest();
 #endif
 
   jsiSemiInit(autoLoad);
@@ -784,7 +829,7 @@ int jsiCountBracketsInInput() {
   jslKill(&lex);
 
   return brackets;
-} 
+}
 
 /// Tries to get rid of some memory (by clearing command history). Returns true if it got rid of something, false if it didn't.
 bool jsiFreeMoreMemory() {
@@ -1041,7 +1086,7 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   }
   inputCursorPos += strSize; // no need for jsiInputLineCursorMoved(); as we just appended
   if (jsiShowInputLine()) {
-    jsiConsolePrint(strToAppend);
+    jsiConsolePrintString(strToAppend);
   }
 }
 
@@ -1072,7 +1117,10 @@ void jsiTabComplete() {
     jslGetNextToken(&lex);
   }
   jslKill(&lex);
-  if (!partial) return;
+  if (!partial) {
+    jsvUnLock(object);
+    return;
+  }
   size_t partialLen = jsvGetStringLength(partial);
   size_t actualPartialLen = inputCursorPos + 1 - partialStart;
   if (actualPartialLen > partialLen) {
@@ -1361,13 +1409,13 @@ void jsiHandleChar(char ch) {
     Espruino uses DLE on the start of a line to signal that just the line in
     question should be executed without echo */
     jsiStatus  |= JSIS_ECHO_OFF_FOR_LINE;
-  } else {  
+  } else {
     inputState = IS_NONE;
     if (ch == 0x08 || ch == 0x7F /*delete*/) {
       jsiHandleDelete(true /*backspace*/);
     } else if (ch == '\n' && inputState == IS_HAD_R) {
       inputState = IS_NONE; //  ignore \ r\n - we already handled it all on \r
-    } else if (ch == '\r' || ch == '\n') { 
+    } else if (ch == '\r' || ch == '\n') {
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
 #ifndef SAVE_ON_FLASH
@@ -1416,6 +1464,13 @@ void jsiQueueObjectCallbacks(JsVar *object, const char *callbackName, JsVar **ar
   jsvUnLock(callback);
 }
 
+void jsiExecuteObjectCallbacks(JsVar *object, const char *callbackName, JsVar **args, int argCount) {
+  JsVar *callback = jsvObjectGetChild(object, callbackName, 0);
+  if (!callback) return;
+  jsiExecuteEventCallback(object, callback, (unsigned int)argCount, args);
+  jsvUnLock(callback);
+}
+
 void jsiExecuteEvents() {
   bool hasEvents = !jsvArrayIsEmpty(events);
   if (hasEvents) jsiSetBusy(BUSY_INTERACTIVE, true);
@@ -1441,12 +1496,16 @@ void jsiExecuteEvents() {
 }
 
 NO_INLINE bool jsiExecuteEventCallbackArgsArray(JsVar *thisVar, JsVar *callbackVar, JsVar *argsArray) { // array of functions or single function
-  unsigned int l = (unsigned int)jsvGetArrayLength(argsArray);
+  unsigned int l = 0;
   JsVar **args = 0;
-  if (l) {
-    args = alloca(sizeof(JsVar*) * l);
-    if (!args) return false;
-    jsvGetArrayItems(argsArray, l, args); // not very fast
+  if (argsArray) {
+    assert(jsvIsArray(argsArray));
+    l = (unsigned int)jsvGetArrayLength(argsArray);
+    if (l) {
+      args = alloca(sizeof(JsVar*) * l);
+      if (!args) return false;
+      jsvGetArrayItems(argsArray, l, args); // not very fast
+    }
   }
   bool r = jsiExecuteEventCallback(thisVar, callbackVar, l, args);
   jsvUnLockMany(l, args);
@@ -1589,6 +1648,16 @@ void jsiIdle() {
         jsiHandleIOEventForUSART(usartClass, &event);
       }
       jsvUnLock(usartClass);
+    } else if (DEVICE_IS_USART_STATUS(eventType)) {
+      // ------------------------------------------------------------------------ SERIAL STATUS CALLBACK
+      JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(IOEVENTFLAGS_SERIAL_STATUS_TO_SERIAL(event.flags))));
+      if (jsvIsObject(usartClass)) {
+        if (event.flags & EV_SERIAL_STATUS_FRAMING_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"framing", 0, 0);
+        if (event.flags & EV_SERIAL_STATUS_PARITY_ERR)
+          jsiExecuteObjectCallbacks(usartClass, JS_EVENT_PREFIX"parity", 0, 0);
+      }
+      jsvUnLock(usartClass);
     } else if (DEVICE_IS_EXTI(eventType)) { // ---------------------------------------------------------------- PIN WATCH
       // we have an event... find out what it was for...
       // Check everything in our Watch array
@@ -1698,7 +1767,7 @@ void jsiIdle() {
   }
 
   // Reset Flow control if it was set...
-  if (jshGetEventsUsed() < IOBUFFER_XON) { 
+  if (jshGetEventsUsed() < IOBUFFER_XON) {
     jshSetFlowControlXON(EV_USBSERIAL, true);
     int i;
     for (i=0;i<USART_COUNT;i++)
@@ -1820,7 +1889,7 @@ void jsiIdle() {
    * changed. It's not a big deal because it could only have changed because a timer
    * got executed - so `wasBusy` got set and we know we're going to go around the
    * loop again before sleeping.
-   */ 
+   */
 
   // Check for events that might need to be processed from other libraries
   if (jswIdle()) wasBusy = true;
@@ -2073,7 +2142,7 @@ void jsiDebuggerLoop() {
     while (lineLen < sizeof(lineStr)-1) lineStr[lineLen++]=' ';
     lineStr[lineLen] = 0;
     // print the line of code, prefixed by the line number, and with a pointer to the exact character in question
-    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrint, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
+    jslPrintTokenLineMarker((vcbprintf_callback)jsiConsolePrintString, 0, execInfo.lex, execInfo.lex->tokenLastStart, lineStr);
   }
 
   while (!(jsiStatus & JSIS_EXIT_DEBUGGER) &&

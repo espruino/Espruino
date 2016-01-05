@@ -184,7 +184,7 @@ void jshGetPinString(char *result, Pin pin) {
 #endif
 #endif
     } else {
-      strncpy(result, "UNKNOWN", 8);
+      strncpy(result, "undefined", 8);
     }
   }
 
@@ -338,7 +338,7 @@ void jshPinFunctionToString(JshPinFunction pinFunc, JshPinFunctionToStringFlags 
   const char *infoStr = 0;
   buf[0]=0;
   if (JSH_PINFUNCTION_IS_USART(pinFunc)) {
-    devStr="USART";
+    devStr=(flags&JSPFTS_JS_NAMES)?"Serial":"USART";
     firstDevice=JSH_USART1;
     if (info==JSH_USART_RX) infoStr="RX";
     else if (info==JSH_USART_TX) infoStr="TX";
@@ -447,7 +447,7 @@ JsVar *jshGetDeviceObjectFor(JshPinFunction deviceMin, JshPinFunction deviceMax,
   JshPinFunction dev = jshGetDeviceFor(deviceMin, deviceMax, pin);
   if (dev==JSH_NOTHING) return 0;
   char devName[16];
-  jshPinFunctionToString(dev, JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER, devName, sizeof(devName));
+  jshPinFunctionToString(dev, JSPFTS_DEVICE|JSPFTS_DEVICE_NUMBER|JSPFTS_JS_NAMES, devName, sizeof(devName));
   JsVar *devVar = jsvObjectGetChild(execInfo.root, devName, 0);
   if (devVar) return devVar;
   return jswFindBuiltInFunction(0, devName);

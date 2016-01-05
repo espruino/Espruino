@@ -20,7 +20,7 @@ int main() {
 
   jshInit();
   jsvInit();
-  jsiInit(false);
+  jsiInit(true /* load from flash by default */);
 
   while (1) 
   {

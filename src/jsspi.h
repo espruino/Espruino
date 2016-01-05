@@ -17,7 +17,7 @@
 typedef JshSPIInfo spi_sender_data; // the larger of JshSPIInfo or IOEventFlags
 typedef int (*spi_sender)(int data, spi_sender_data *info);
 
-void jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options);
+bool jsspiPopulateSPIInfo(JshSPIInfo *inf, JsVar *options);
 
 // Get the correct SPI send function (and the data to send to it)
 bool jsspiGetSendFunction(JsVar *spiDevice, spi_sender *spiSend, spi_sender_data *spiSendData);

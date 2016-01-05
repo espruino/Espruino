@@ -19,6 +19,14 @@ info = {
  'variables' : 2800,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_strive_mini_stm32.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VE", #T6
@@ -33,19 +41,7 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ 'A5', 'B7', 'A7', 'A6', 'B6', '', '', '', '', 'D8', 'E15', 'GND', 'E14', 'E13', 'E12', 'D9', 'E11', 'GND', 'D13', 'D10' ],
-  'top2' : [ '3V3', 'GND', 'E1', 'D4', 'D5', 'D7', 'D11', 'E10', 'E9', 'D1', 'E8', 'E7', '3V3', 'D0', 'D15', 'D14', 'GND', 'GND', '5V', '5V' ],
-  'bottom2' : [ '3V3', 'E2', 'E4', 'E6', 'C1', 'C3', 'A1', 'A3', 'C5', 'E0', 'B1', 'C7', 'A0', 'B10', 'A8', 'C6', 'B13', 'B15', '5V', '5V' ],
-  'bottom' : [ 'GND', 'E3', 'E5', 'GND', 'B0', 'C2', 'A2', 'C4', 'C0', 'B9', 'B11', 'D12', 'D6', 'D3', 'B8', 'B14', 'B12', '3V3', 'GND', 'GND' ],
-  'left' : [ '3V3', 'B4', 'A15', 'A13', 'A14', '', 'B3', 'RESET', '', '' ],
-};
-board["left"].reverse()
-board["top"].reverse()
-board["top2"].reverse()
-board["bottom"].reverse()
-board["bottom2"].reverse()
+
 devices = {
   'OSC' : { 'pin_1' : 'D0',
             'pin_2' : 'D1' },
@@ -104,8 +100,20 @@ devices = {
           }
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'top' : [ 'A5', 'B7', 'A7', 'A6', 'B6', '', '', '', '', 'D8', 'E15', 'GND', 'E14', 'E13', 'E12', 'D9', 'E11', 'GND', 'D13', 'D10' ],
+  'top2' : [ '3V3', 'GND', 'E1', 'D4', 'D5', 'D7', 'D11', 'E10', 'E9', 'D1', 'E8', 'E7', '3V3', 'D0', 'D15', 'D14', 'GND', 'GND', '5V', '5V' ],
+  'bottom2' : [ '3V3', 'E2', 'E4', 'E6', 'C1', 'C3', 'A1', 'A3', 'C5', 'E0', 'B1', 'C7', 'A0', 'B10', 'A8', 'C6', 'B13', 'B15', '5V', '5V' ],
+  'bottom' : [ 'GND', 'E3', 'E5', 'GND', 'B0', 'C2', 'A2', 'C4', 'C0', 'B9', 'B11', 'D12', 'D6', 'D3', 'B8', 'B14', 'B12', '3V3', 'GND', 'GND' ],
+  'left' : [ '3V3', 'B4', 'A15', 'A13', 'A14', '', 'B3', 'RESET', '', '' ],
+};
+board["left"].reverse()
+board["top"].reverse()
+board["top2"].reverse()
+board["bottom"].reverse()
+board["bottom2"].reverse()
+board["_css"] = """
 #board {
   width: 960px;
   height: 739px;

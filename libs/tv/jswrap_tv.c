@@ -26,7 +26,7 @@
 /*JSON{
   "type" : "library",
   "class" : "tv",
-  "#if" : "STM32"
+  "#ifdef" : "STM32"
 }
 This library provides TV out capability on the Espruino and Espruino Pico.
 

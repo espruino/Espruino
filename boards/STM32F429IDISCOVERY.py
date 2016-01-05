@@ -20,6 +20,12 @@ info = {
  'default_console' : "EV_SERIAL1",
  'variables' : 5450,
  'binary_name' : 'espruino_%v_stm32f429idiscovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F429ZIT6",
@@ -34,13 +40,7 @@ chip = {
   'adc' : 3,
   'dac' : 2,
 };
-# left-right, or top-bottom order
-board = {
-  'left' : [ ], # fixme
-  'left2' : [ ],
-  'right2' : [ ],
-  'right' : [ ],
-};
+
 devices = {
   'OSC' : { 'pin_1' : 'H0',
             'pin_2' : 'H1' },
@@ -150,8 +150,14 @@ devices = {
           },
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ ], # fixme
+  'left2' : [ ],
+  'right2' : [ ],
+  'right' : [ ],
+};
+board["_css"] = """
 #board {
   width: 680px;
   height: 1020px;

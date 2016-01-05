@@ -103,15 +103,15 @@ JsVar *jswrap_process_env() {
 }
 Run a Garbage Collection pass, and return an object containing information on memory usage.
 
-free : Memory that is available to be used
-
-usage : Memory that has been used
-
-total : Total memory
-
-history : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
-
-stackEndAddress : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+* `free` : Memory that is available to be used (in blocks)
+* `usage` : Memory that has been used (in blocks)
+* `total` : Total memory (in blocks)
+* `history` : Memory used for command history - that is freed if memory is low. Note that this is INCLUDED in the figure for 'free'
+* `stackEndAddress` : (on ARM) the address (that can be used with peek/poke/etc) of the END of the stack. The stack grows down, so unless you do a lot of recursion the bytes above this can be used.
+* `flash_start` : (on ARM) the address of the start of flash memory (usually `0x8000000`)
+* `flash_binary_end` : (on ARM) the address in flash memory of the end of Espruino's firmware.
+* `flash_code_start` : (on ARM) the address in flash memory of pages that store any code that you save with `save()`.
+* `flash_length` : (on ARM) the amount of flash memory this firmware was built for (in bytes). **Note:** Some STM32 chips actually have more memory than is advertised.
 
 Memory units are specified in 'blocks', which are around 16 bytes each (depending on your device). See http://www.espruino.com/Performance for more information.
  */

@@ -18,6 +18,13 @@ info = {
  'name' : "DPT-Board",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_dpt_board',
+ 'build' : {
+  'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "DPTBOARD",
@@ -33,13 +40,8 @@ chip = {
   'dac' : 0,
 };
 # left-right, or top-bottom order
-board = {
-};
 devices = {
 };
-
-board_css = """
-""";
 
 def get_pins():
   pins = pinutils.generate_pins(0,27)  

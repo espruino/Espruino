@@ -185,7 +185,9 @@ void jsfGetJSONForFunctionWithCallback(JsVar *var, JSONFlags flags, vcbprintf_ca
       if (flags & JSON_LIMIT) {
         cbprintf(user_callback, user_data, "{%s}", JSON_LIMIT_TEXT);
       } else {
-        cbprintf(user_callback, user_data, "%v", codeVar);
+        const char *prefix = jsvIsFunctionReturn(var) ? "return " : "";
+        bool hadNewLine = jsvGetStringIndexOf(codeVar,'\n')>0;
+        cbprintf(user_callback, user_data, hadNewLine?"{\n  %s%v\n}":"{%s%v}", prefix, codeVar);
       }
     } else cbprintf(user_callback, user_data, "{}");
   }
@@ -370,8 +372,8 @@ void jsfGetJSON(JsVar *var, JsVar *result, JSONFlags flags) {
 }
 
 void jsfPrintJSON(JsVar *var, JSONFlags flags) {
-  jsfGetJSONWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrint, 0);
+  jsfGetJSONWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrintString, 0);
 }
 void jsfPrintJSONForFunction(JsVar *var, JSONFlags flags) {
-  jsfGetJSONForFunctionWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrint, 0);
+  jsfGetJSONForFunctionWithCallback(var, flags, (vcbprintf_callback)jsiConsolePrintString, 0);
 }

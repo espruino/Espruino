@@ -24,6 +24,12 @@ info = {
  'variables' : 5450,
  'util_timer_tasks' : 64,
  'binary_name' : 'espruino_%v_ecu.bin',
+ 'build' : {
+  'defines' : [
+     'USE_TRIGGER',
+     'USE_FILESYSTEM',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F407VGT6",
@@ -37,13 +43,6 @@ chip = {
   'i2c' : 3,
   'adc' : 3,
   'dac' : 2,
-};
-# left-right, or top-bottom order
-board = {
-  'left' : [ 'GND', 'VDD', 'GND', 'C1','C3','A1','A3','A5','A7','C5','B1','GND','E7','E9','E11','E13','E15','B11','B13','B15','D9','D11','D13','D15','GND'],
-  'left2' : [ 'GND', 'VDD', 'NRST', 'C0','C2','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','B12','B14','D8','D10','D12','D14','NC','GND'],
-  'right2' : [ 'GND', '5V', '3V3', 'H0', 'C14','E6','E4','E2','E0','B8','BOOT0','B6','B4','D7','D5','D3','D1','C12','C10','A14','A10','A8','C8','C6','GND'],
-  'right' : [ 'GND', '5V', '3V3', 'H1', 'C15','C13','E5','E3','E1','B9','VDD','B7','B5','B3','D6','D4','D2','D0','C11','A15','A13','A9','C9','C7','GND'],
 };
 devices = {
   'OSC' : { 'pin_1' : 'H0',
@@ -85,8 +84,14 @@ devices = {
             'pin_clk' :  'B13' },
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ 'GND', 'VDD', 'GND', 'C1','C3','A1','A3','A5','A7','C5','B1','GND','E7','E9','E11','E13','E15','B11','B13','B15','D9','D11','D13','D15','GND'],
+  'left2' : [ 'GND', 'VDD', 'NRST', 'C0','C2','A0','A2','A4','A6','C4','B0','B2','E8','E10','E12','E14','B10','B12','B14','D8','D10','D12','D14','NC','GND'],
+  'right2' : [ 'GND', '5V', '3V3', 'H0', 'C14','E6','E4','E2','E0','B8','BOOT0','B6','B4','D7','D5','D3','D1','C12','C10','A14','A10','A8','C8','C6','GND'],
+  'right' : [ 'GND', '5V', '3V3', 'H1', 'C15','C13','E5','E3','E1','B9','VDD','B7','B5','B3','D6','D4','D2','D0','C11','A15','A13','A9','C9','C7','GND'],
+};
+board["_css"] = """
 #board {
   width: 680px;
   height: 1020px;

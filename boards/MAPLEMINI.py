@@ -21,6 +21,8 @@ info = {
  'link' :  [ "http://leaflabs.com/docs/hardware/maple-mini.html" ],
  'variables' : 715,
  'binary_name' : 'espruino_%v_maplemini.bin',
+ 'build' : {
+ }
 };
 chip = {
   'part' : "STM32F103CB", #T6
@@ -35,12 +37,6 @@ chip = {
   'adc' : 3,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ 'AV+', 'AV-', 'VBAT', 'D14', 'D13', 'D12', 'RST', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'D2', 'D1', 'D0', 'VIN' ],
-  'bottom' : [ 'VCC', 'GND', 'BUT', 'D15', 'D16', 'D17', 'D18', 'D19', 'D20', 'D21', 'D22', 'D23', 'D24', 'D25', 'D26', 'D27', 'D28', 'D29', 'D30', 'D31'],
-  '_pinmap' : { 'A0':'D11', 'A1':'D10', 'A2':'D9', 'A3':'D8', 'A4':'D7', 'A5':'D6', 'A6':'D5', 'A7':'D4', 'A8':'D3'}
-};
 
 devices = {
 #  'OSC' : { 'pin_1' :  'D0',
@@ -53,6 +49,12 @@ devices = {
           },
 };
 
+# left-right, or top-bottom order
+board = {
+  'top' : [ 'AV+', 'AV-', 'VBAT', 'D14', 'D13', 'D12', 'RST', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'D2', 'D1', 'D0', 'VIN' ],
+  'bottom' : [ 'VCC', 'GND', 'BUT', 'D15', 'D16', 'D17', 'D18', 'D19', 'D20', 'D21', 'D22', 'D23', 'D24', 'D25', 'D26', 'D27', 'D28', 'D29', 'D30', 'D31'],
+  '_pinmap' : { 'A0':'D11', 'A1':'D10', 'A2':'D9', 'A3':'D8', 'A4':'D7', 'A5':'D6', 'A6':'D5', 'A7':'D4', 'A8':'D3'}
+};
 
 def get_pins():
   pins = pinutils.scan_pin_file([], 'stm32f103xb.csv', 6, 10, 11)

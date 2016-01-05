@@ -26,7 +26,7 @@ JslCharPos jslCharPosClone(JslCharPos *pos) {
 
 /// Return the next character (do not move to the next character)
 static ALWAYS_INLINE char jslNextCh(JsLex *lex) {
-  return (char)(lex->it.var ? lex->it.var->varData.str[lex->it.charIdx] : 0);
+  return (char)(lex->it.ptr ? lex->it.ptr[lex->it.charIdx] : 0);
 }
 
 /// Move on to the next character
@@ -42,10 +42,12 @@ static void NO_INLINE jslGetNextCh(JsLex *lex) {
     lex->it.charIdx -= lex->it.charsInVar;
     if (lex->it.var && jsvGetLastChild(lex->it.var)) {
       lex->it.var = _jsvGetAddressOf(jsvGetLastChild(lex->it.var));
+      lex->it.ptr = &lex->it.var->varData.str[0];
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = jsvGetCharactersInVar(lex->it.var);
     } else {
       lex->it.var = 0;
+      lex->it.ptr = 0;
       lex->it.varIndex += lex->it.charsInVar;
       lex->it.charsInVar = 0;
     }
@@ -743,21 +745,40 @@ bool jslMatch(JsLex *lex, int expected_tk) {
 }
 
 JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
-  // Create a var
-  JsVar *var = jsvNewFromEmptyString();
+  size_t maxLength = charTo + 1 - jsvStringIteratorGetIndex(&charFrom->it);
+  assert(maxLength>0); // will fail if 0
+  // Try and create a flat string first
+  JsVar *var = 0;
+  if (maxLength > JSV_FLAT_STRING_BREAK_EVEN) {
+    var = jsvNewFlatStringOfLength((unsigned int)maxLength);
+    if (var) {
+      // Flat string
+      char *flatPtr = jsvGetFlatStringPointer(var);
+      *(flatPtr++) = charFrom->currCh;
+      JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
+      while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
+        *(flatPtr++) = jsvStringIteratorGetChar(&it);
+        jsvStringIteratorNext(&it);
+      }
+      jsvStringIteratorFree(&it);
+      return var;
+    }
+  }
+  // Non-flat string...
+  var = jsvNewFromEmptyString();
   if (!var) { // out of memory
     return 0;
   }
 
   //jsvAppendStringVar(var, lex->sourceVar, charFrom->it->index, (int)(charTo-charFrom));
-  size_t maxLength = charTo - jsvStringIteratorGetIndex(&charFrom->it);
   JsVar *block = jsvLockAgain(var);
   block->varData.str[0] = charFrom->currCh;
   size_t blockChars = 1;
 
+  size_t l = maxLength;
   // now start appending
   JsvStringIterator it = jsvStringIteratorClone(&charFrom->it);
-  while (jsvStringIteratorHasChar(&it) && (maxLength-->0)) {
+  while (jsvStringIteratorHasChar(&it) && (--maxLength>0)) {
     char ch = jsvStringIteratorGetChar(&it);
     if (blockChars >= jsvGetMaxCharactersInVar(block)) {
       jsvSetCharactersInVar(block, blockChars);
@@ -775,6 +796,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
   jsvStringIteratorFree(&it);
   jsvSetCharactersInVar(block, blockChars);
   jsvUnLock(block);
+  assert(l == jsvGetStringLength(var));
 
   return var;
 }
@@ -783,7 +805,7 @@ JsVar *jslNewFromLexer(JslCharPos *charFrom, size_t charTo) {
 unsigned int jslGetLineNumber(struct JsLex *lex) {
   size_t line;
   size_t col;
-  jsvGetLineAndCol(lex->sourceVar, lex->tokenLastStart, &line, &col);
+  jsvGetLineAndCol(lex->sourceVar, jsvStringIteratorGetIndex(&lex->tokenStart.it)-1, &line, &col);
   return (unsigned int)line;
 }
 
@@ -791,7 +813,7 @@ void jslPrintPosition(vcbprintf_callback user_callback, void *user_data, struct 
   size_t line,col;
   jsvGetLineAndCol(lex->sourceVar, tokenPos, &line, &col);
   if (lex->lineNumberOffset)
-    line += lex->lineNumberOffset - 1;
+    line += (size_t)lex->lineNumberOffset - 1;
   cbprintf(user_callback, user_data, "line %d col %d\n", line, col);
 }
 

@@ -22,8 +22,6 @@
 #include "trigger.h"
 #endif
 
-
-
 // ----------------------------------------------------------------------------
 //                                                              WATCH CALLBACKS
 JshEventCallbackCallback jshEventCallbacks[EV_EXTI_MAX+1-EV_EXTI0];
@@ -56,7 +54,8 @@ typedef enum {
   SDS_XOFF_SENT = 4, // sending XON clears this
   SDS_FLOW_CONTROL_XON_XOFF = 8, // flow control enabled
 } PACKED_FLAGS JshSerialDeviceState;
-JshSerialDeviceState jshSerialDeviceStates[USART_COUNT+1];
+JshSerialDeviceState jshSerialDeviceStates[EV_SERIAL1+USART_COUNT-EV_SERIAL_START];
+#define TO_SERIAL_DEVICE_STATE(X) ((X)-EV_SERIAL_START)
 
 // ----------------------------------------------------------------------------
 //                                                              IO EVENT BUFFER
@@ -70,11 +69,11 @@ volatile unsigned char ioHead=0, ioTail=0;
  * Initialize all the devices.
  */
 void jshInitDevices() { // called from jshInit
-  int i;
+  unsigned int i;
   // setup flow control
-  jshSerialDeviceStates[0] = SDS_FLOW_CONTROL_XON_XOFF; // USB
-  for (i=1;i<=USART_COUNT;i++)
+  for (i=0;i<sizeof(jshSerialDeviceStates) / sizeof(JshSerialDeviceState);i++)
     jshSerialDeviceStates[i] = SDS_NONE;
+  jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(EV_USBSERIAL)] = SDS_FLOW_CONTROL_XON_XOFF;
   // set up callbacks for events
   for (i=EV_EXTI0;i<=EV_EXTI_MAX;i++)
     jshEventCallbacks[i-EV_EXTI0] = 0;
@@ -116,12 +115,22 @@ void jshTransmit(
   unsigned char txHeadNext = (unsigned char)((txHead+1)&TXBUFFERMASK);
   if (txHeadNext==txTail) {
     jsiSetBusy(BUSY_TRANSMIT, true);
+    bool wasConsoleLimbo = device==EV_LIMBO && jsiGetConsoleDevice()==EV_LIMBO;
     while (txHeadNext==txTail) {
       // wait for send to finish as buffer is about to overflow
 #ifdef USB
       // just in case USB was unplugged while we were waiting!
       if (!jshIsUSBSERIALConnected()) jshTransmitClearDevice(EV_USBSERIAL);
 #endif
+    }
+    if (wasConsoleLimbo && jsiGetConsoleDevice()!=EV_LIMBO) {
+      /* It was 'Limbo', but now it's not - see jsiOneSecondAfterStartup.
+      Basically we must have printed a bunch of stuff to LIMBO and blocked
+      with our output buffer full. But then jsiOneSecondAfterStartup
+      switches to the right console device and swaps everything we wrote
+      over to that device too. Only we're now here, still writing to the
+      old device when really we should be writing to the new one. */
+      device = jsiGetConsoleDevice();
     }
     jsiSetBusy(BUSY_TRANSMIT, false);
   }
@@ -147,7 +156,7 @@ int jshGetCharToTransmit(
     IOEventFlags device // The device being looked at for a transmission.
   ) {
   if (DEVICE_IS_USART(device)) {
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[device-EV_USBSERIAL];
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState)&SDS_XOFF_PENDING) {
       (*deviceState) = ((*deviceState)&(~SDS_XOFF_PENDING)) | SDS_XOFF_SENT;
       return 19/*XOFF*/;
@@ -220,7 +229,7 @@ bool jshHasTransmitData() {
 /**
  * flag that the buffer has overflowed.
  */
-void jshIOEventOverflowed() {
+void CALLED_FROM_INTERRUPT jshIOEventOverflowed() {
   // Error here - just set flag so we don't dump a load of data out
   jsErrorFlags |= JSERR_RX_FIFO_FULL;
 }
@@ -258,22 +267,33 @@ void jshPushIOCharEvent(
   // Set flow control (as we're going to use more data)
   if (DEVICE_IS_USART(channel) && jshGetEventsUsed() > IOBUFFER_XOFF)
     jshSetFlowControlXON(channel, false);
-  // Make new buffer
+
+  /* Make new buffer
+   *
+   * We're disabling IRQs for this bit because it's actually quite likely for
+   * USB and USART data to be coming in at the same time, and it can trip
+   * things up if one IRQ interrupts another. */
+  jshInterruptOff();
   unsigned char nextHead = (unsigned char)((ioHead+1) & IOBUFFERMASK);
   if (ioTail == nextHead) {
+    jshInterruptOn();
     jshIOEventOverflowed();
     return; // queue full - dump this event!
   }
-  ioBuffer[ioHead].flags = channel;
-  IOEVENTFLAGS_SETCHARS(ioBuffer[ioHead].flags, 1);
-  ioBuffer[ioHead].data.chars[0] = charData;
+  unsigned char oldHead = ioHead;
   ioHead = nextHead;
+  ioBuffer[oldHead].flags = channel;
+  // once channel is set we're safe - another IRQ won't touch this
+  jshInterruptOn();
+  IOEVENTFLAGS_SETCHARS(ioBuffer[oldHead].flags, 1);
+  ioBuffer[oldHead].data.chars[0] = charData;
 }
 
 /**
  * Signal an IO watch event as having happened.
  */
-void jshPushIOWatchEvent(
+// on the esp8266 we need this to be loaded into static RAM because it can run at interrupt time
+void CALLED_FROM_INTERRUPT jshPushIOWatchEvent(
     IOEventFlags channel //!< The channel on which the IO watch event has happened.
   ) {
   assert(channel >= EV_EXTI0 && channel <= EV_EXTI_MAX);
@@ -301,7 +321,7 @@ void jshPushIOWatchEvent(
 /**
  * Add this IO event to the IO event queue.
  */
-void jshPushIOEvent(
+void CALLED_FROM_INTERRUPT jshPushIOEvent(
     IOEventFlags channel, //!< The event to add to the queue.
     JsSysTime time        //!< The time that the event is thought to have happened.
   ) {
@@ -499,7 +519,7 @@ IOEventFlags jshFromDeviceString(
 /// Set whether the host should transmit or not
 void jshSetFlowControlXON(IOEventFlags device, bool hostShouldTransmit) {
   if (DEVICE_IS_USART(device)) {
-    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[device-EV_USBSERIAL];
+    JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
     if ((*deviceState) & SDS_FLOW_CONTROL_XON_XOFF) {
       if (hostShouldTransmit) {
         if (((*deviceState)&(SDS_XOFF_SENT|SDS_XON_PENDING)) == SDS_XOFF_SENT) {
@@ -530,7 +550,7 @@ JsVar *jshGetDeviceObject(IOEventFlags device) {
 /// Set whether to use flow control on the given device or not
 void jshSetFlowControlEnabled(IOEventFlags device, bool xOnXOff) {
   if (!DEVICE_IS_USART(device)) return;
-  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[device-EV_USBSERIAL];
+  JshSerialDeviceState *deviceState = &jshSerialDeviceStates[TO_SERIAL_DEVICE_STATE(device)];
   if (xOnXOff)
     (*deviceState) |= SDS_FLOW_CONTROL_XON_XOFF;
   else

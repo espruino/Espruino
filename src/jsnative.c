@@ -24,6 +24,23 @@
     #define USE_X86_CDECL // cdecl on x86 puts FP args elsewhere!
 #endif
 
+#if defined(__WORDSIZE) && __WORDSIZE == 64
+  #define USE_64BIT
+#else // 32 bit
+  #if defined(__gnu_linux__) && !defined(USE_X86_CDECL)
+/* This is nuts. On rasbperry pi Linux:
+ *
+ * `uint32_t a, uint32_t b, uint64_t c` -> a,b,c - awesome
+ * `uint64_t a, uint32_t b, uint32_t c` -> a,b,c - awesome
+ * `uint32_t a, uint64_t b, uint32_t c` -> a,c,b - NOT awesome
+ *
+ * 64 bits are aligned, but 32 bits fill in the gaps inbetween!
+ */
+    #define USE_ARG_REORDERING
+    #define USE_FLOAT_RETURN_FIX
+  #endif
+#endif
+
 /** Call a function with the given argument specifiers */
 JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar *thisParam, JsVar **paramData, int paramCount) {
   JsnArgumentType returnType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
@@ -41,6 +58,10 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     argData[argCount++] = (size_t)thisParam;
   argumentSpecifier = (argumentSpecifier & JSWAT_ARGUMENTS_MASK) >> JSWAT_BITS;
 
+#ifdef USE_ARG_REORDERING
+  size_t alignedLongsAfter = 0;
+#endif
+
 
   // run through all arguments
   while (argumentSpecifier & JSWAT_MASK) {
@@ -50,16 +71,17 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     // try and pack it:
     JsnArgumentType argType = (JsnArgumentType)(argumentSpecifier&JSWAT_MASK);
 
-#ifndef USE_X86_CDECL
-    if (JSWAT_IS_64BIT(argType))
-      argCount = (argCount+1)&~1;
+#ifdef USE_ARG_REORDERING
+    if (!JSWAT_IS_64BIT(argType) && !(argCount&1)) {
+      argCount += alignedLongsAfter*2;
+      alignedLongsAfter = 0;
+    }
 #endif
 
     if (argCount > MAX_ARGS - (JSWAT_IS_64BIT(argType)?2:1)) {
+      // TODO: can we ever hit this because of JsnArgumentType's restrictions?
       jsError("INTERNAL: too many arguments for jsnCallFunction");
     }
-
-
 
     switch (argType) {
     case JSWAT_JSVAR: { // standard variable
@@ -95,11 +117,24 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
       doubleData[doubleCount++] = f;
 #else
       uint64_t i = *(uint64_t*)&f;
-#if defined(__WORDSIZE) &&__WORDSIZE == 64
+#if USE_64BIT
       argData[argCount++] = (size_t)i;
-#else
+#else // 32 bit...
+ #ifdef USE_ARG_REORDERING
+      if (argCount&1) {
+        size_t argC = argCount+1;
+        argData[argC++] = (size_t)((i) & 0xFFFFFFFF);
+        argData[argC++] = (size_t)((i>>32) & 0xFFFFFFFF);
+        alignedLongsAfter++;
+      } else {
+        argData[argCount++] = (size_t)((i) & 0xFFFFFFFF);
+        argData[argCount++] = (size_t)((i>>32) & 0xFFFFFFFF);
+      }
+ #else // no reordering
+      if (argCount&1) argCount++;
       argData[argCount++] = (size_t)((i) & 0xFFFFFFFF);
       argData[argCount++] = (size_t)((i>>32) & 0xFFFFFFFF);
+ #endif
 #endif
 #endif
       break;
@@ -136,9 +171,15 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     } else
 #endif
     {
-      if (JSWAT_IS_64BIT(returnType))
+      if (JSWAT_IS_64BIT(returnType)) {
+#ifdef USE_FLOAT_RETURN_FIX
+        assert(returnType==JSWAT_JSVARFLOAT);
+        JsVarFloat f = ((JsVarFloat (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
+        result = *(uint64_t*)&f;
+#else
         result = ((uint64_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
-      else
+#endif
+    } else
         result = ((uint32_t (*)(size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3]);
     }
   } else { // else it gets tricky...
@@ -151,9 +192,15 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     } else
 #endif
     {
-      if (JSWAT_IS_64BIT(returnType))
+      if (JSWAT_IS_64BIT(returnType)) {
+#ifdef USE_FLOAT_RETURN_FIX
+        assert(returnType==JSWAT_JSVARFLOAT);
+        JsVarFloat f = ((JsVarFloat (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
+        result = *(uint64_t*)&f;
+#else
         result = ((uint64_t (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
-      else
+#endif
+      } else
         result = ((uint32_t (*)(size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t,size_t))function)(argData[0],argData[1],argData[2],argData[3],argData[4],argData[5],argData[6],argData[7],argData[8],argData[9],argData[10],argData[11]);
     }
   }
@@ -179,3 +226,31 @@ JsVar *jsnCallFunction(void *function, JsnArgumentType argumentSpecifier, JsVar 
     return 0;
   }
 }
+
+// -----------------------------------------------------------------------------------------
+
+JsVarFloat sanity_pi() { return 3.141592; }
+int32_t sanity_int_pass(int32_t hello) { return (hello*10)+5; }
+int32_t sanity_int_flt_int(int32_t a, JsVarFloat b, int32_t c) {
+  return a + (int32_t)(b*100) + c*10000;
+}
+
+/** Perform sanity tests to ensure that  jsnCallFunction is working as expected */
+void jsnSanityTest() {
+  JsVar *args[4];
+  if (jsvGetFloatAndUnLock(jsnCallFunction(sanity_pi, JSWAT_JSVARFLOAT, 0, 0, 0)) != 3.141592)
+    jsiConsolePrint("WARNING: jsnative.c sanity check failed (returning double values)");
+
+  args[0] = jsvNewFromInteger(1234);
+  if (jsvGetIntegerAndUnLock(jsnCallFunction(sanity_int_pass, JSWAT_INT32|(JSWAT_INT32<<JSWAT_BITS), 0, args, 1)) != 12345)
+      jsiConsolePrint("WARNING: jsnative.c sanity check failed (simple integer passing)");
+  jsvUnLock(args[0]);
+
+  args[0] = jsvNewFromInteger(56);
+  args[1] = jsvNewFromFloat(34);
+  args[2] = jsvNewFromInteger(12);
+  if (jsvGetIntegerAndUnLock(jsnCallFunction(sanity_int_flt_int, JSWAT_INT32|(JSWAT_INT32<<(JSWAT_BITS*1))|(JSWAT_JSVARFLOAT<<(JSWAT_BITS*2))|(JSWAT_INT32<<(JSWAT_BITS*3)), 0, args, 3)) != 123456)
+      jsiConsolePrint("WARNING: jsnative.c sanity check failed (int-float-int passing)");
+  jsvUnLockMany(3, args);
+}
+

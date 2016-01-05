@@ -19,6 +19,10 @@ info = {
  'link' :  [ "http://www.st.com/stm32-discovery" ],
  'variables' : 500,
  'binary_name' : 'espruino_%v_stm32vldiscovery.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F100RBT6", 
@@ -33,13 +37,6 @@ chip = {
   'adc' : 3,
   'dac' : 0,
 };
-# left-right, or top-bottom order
-board = {
-  'left' : [ 'GND', 'NC', '3.3', 'VBAT', 'C13', 'C14', 'C15', 'D0', 'D1', 'RST', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'C4', 'C5', 'B0', 'B1', 'B2', 'GND' ],
-  'right' : [ 'GND', 'NC', '5V', 'B9', 'B8', 'BOOT', 'B7', 'B6', 'B5', 'B4', 'B3', 'D2', 'C12', 'C11', 'C10', 'A15', 'A14', 'A13', 'A12', 'A11', 'A10', 'A9', 'A8', 'C9', 'C8', 'C7', 'C6', 'GND' ],
-  'bottom' : [ 'B10','B11','B12','B13','B14','B15' ],
-};
-
 devices = {
   'OSC' : { 'pin_1' :  'D0',
             'pin_2' : 'D1' },
@@ -55,7 +52,13 @@ devices = {
           },
 };
 
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'left' : [ 'GND', 'NC', '3.3', 'VBAT', 'C13', 'C14', 'C15', 'D0', 'D1', 'RST', 'C0', 'C1', 'C2', 'C3', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'C4', 'C5', 'B0', 'B1', 'B2', 'GND' ],
+  'right' : [ 'GND', 'NC', '5V', 'B9', 'B8', 'BOOT', 'B7', 'B6', 'B5', 'B4', 'B3', 'D2', 'C12', 'C11', 'C10', 'A15', 'A14', 'A13', 'A12', 'A11', 'A10', 'A9', 'A8', 'C9', 'C8', 'C7', 'C6', 'GND' ],
+  'bottom' : [ 'B10','B11','B12','B13','B14','B15' ],
+};
+board["_css"] = """
 #board {
   width: 376px;
   height: 750px;
@@ -77,8 +80,6 @@ board_css = """
   top: 710px;
   left: 125px;
 }
-
-
 """;
 
 def get_pins():

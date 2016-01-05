@@ -19,6 +19,9 @@ Vagrant.configure(2) do |config|
   ## VIRTUALBOX ##
 
   config.vm.provider "virtualbox" do |v|
+    # Give some pessimistic default values, fix errors on Windows
+	mem = 512
+	cpus = 2
     # Give VM 1/4 system memory & access to all cpu cores on the host
     if host =~ /darwin/
       cpus = `sysctl -n hw.ncpu`.to_i

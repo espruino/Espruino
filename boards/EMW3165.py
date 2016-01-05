@@ -27,6 +27,10 @@ info = {
   'default_console_rx' : "A3", # USART2_RX on PA3
   'variables' :  2048, # was 7423: (128-12)*1024/16-1
   'binary_name' : 'espruino_%v_emw3165.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F411CE",
@@ -52,6 +56,10 @@ chip = {
   },
   #'place_text_section' : 0x08010000, # note flash_available above # TODO USELESS
 };
+devices = {
+  'LED1' : {'pin': 'A4'},
+};
+
 # left-right, or top-bottom order
 board = {
   'bottom' :   [ 'ANT', 'GND', 'NC', 'NC', 'NC', 'A14', 'A13', 'A12', 'NC', 'A10', 'B6', 'B8', 'NC',
@@ -60,12 +68,7 @@ board = {
       'NRST', 'A0', 'NC', 'C13', 'B10', 'B9', 'B12', 'GND'],
 };
 board["top"].reverse()
-devices = {
-  'LED1' : {'pin': 'A4'},
-};
-
-
-board_css = """
+board["_css"] = """
 #board {
   width:  830px;
   height: 850px;

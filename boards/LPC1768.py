@@ -20,6 +20,10 @@ info = {
  'link' : [ "http://www.espruino.com/kick" ],
  'variables' : 2000, #?
  'binary_name' : 'espruino_%v_lpc1768.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "LPC1768",
@@ -34,14 +38,10 @@ chip = {
   'adc' : 6,
   'dac' : 0
 };
-# left-right, or top-bottom order
-board = {
-};
+
 devices = {
 };
 
-board_css = """
-""";
 
 def get_pins():
   return []

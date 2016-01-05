@@ -19,6 +19,12 @@ info = {
  'variables' : 700,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_hystm32_28_rb.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RB", #T6
@@ -39,16 +45,6 @@ chip = {
     'flash_available' : 128-4 # 6 used for code
   },
 };
-# left-right, or top-bottom order
-board = {
-  'top' : [ '5V','A8','A10','A12','A14','B0','B2','B4','B6','C8','C10','C12','C14','3V3', ],
-  'top2' : [ 'GND','A9','A11','A13','A15','B1','B3','B5','B7','C9','C11','C13','C15','GND' ],
-  'bottom2' : [ 'GND','C1','C3','C5','C7','A1','A3','A5','A7','B9','B11','B13','B15','GND' ],
-  'bottom' : [ '5V','C0','C2','C4','C6','A0','A2','A4','A6','B8','B10','B12','B14','3V3' ],
-  'right' : [ '3V3','B4','A15','A13','A14','RTCK','B3','NRST','NC','5V' ],
-};
-board["top"].reverse()
-board["top2"].reverse()
 
 devices = {
   'OSC' : { 'pin_1' : 'D0',
@@ -106,8 +102,17 @@ devices = {
           }
 };
 
-
-board_css = """
+# left-right, or top-bottom order
+board = {
+  'top' : [ '5V','A8','A10','A12','A14','B0','B2','B4','B6','C8','C10','C12','C14','3V3', ],
+  'top2' : [ 'GND','A9','A11','A13','A15','B1','B3','B5','B7','C9','C11','C13','C15','GND' ],
+  'bottom2' : [ 'GND','C1','C3','C5','C7','A1','A3','A5','A7','B9','B11','B13','B15','GND' ],
+  'bottom' : [ '5V','C0','C2','C4','C6','A0','A2','A4','A6','B8','B10','B12','B14','3V3' ],
+  'right' : [ '3V3','B4','A15','A13','A14','RTCK','B3','NRST','NC','5V' ],
+};
+board["top"].reverse()
+board["top2"].reverse()
+board["_css"] = """
 #board {
   width: 980px;
   height: 770px;
