@@ -440,6 +440,8 @@ void jsiSoftInit() {
   inputLineIterator.var = 0;
 
   jsiStatus &= ~JSIS_ALLOW_DEEP_SLEEP;
+  pinBusyIndicator = DEFAULT_BUSY_PIN_INDICATOR;
+  pinSleepIndicator = DEFAULT_SLEEP_PIN_INDICATOR;
 
   // Load timer/watch arrays
   timerArray = _jsiInitNamedArray(JSI_TIMERS_NAME);
