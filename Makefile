@@ -474,12 +474,13 @@ EMBEDDED=1
 USE_NET=1
 USE_TELNET=1
 BOARD=ESP8266_BOARD
-# Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
-# code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
+# Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
+# too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+#OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
-# DISABLE_LTO is necessary in order to analyze static string sizes (topstring makefile target)
+# DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
 ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
