@@ -700,33 +700,21 @@ void jshUSARTKick(
 void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
-  ) {
-  // The device should be one of EV_SPI1, EV_SPI2 or EV_SPI3.
-  os_printf("> jshSPISetup - jshSPISetup: device=%d\n", device);
-  switch(device) {
-  case EV_SPI1:
-    os_printf(" - Device is SPI1\n");
-    // EV_SPI1 is the ESP8266 hardware SPI ...
-    spi_init(HSPI); // Initialize the hardware SPI components.
-    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
-    g_spiInitialized = true;
-    g_lastSPIRead = -1;
-    break;
-  case EV_SPI2:
-    os_printf(" - Device is SPI2\n");
-    break;
-  case EV_SPI3:
-    os_printf(" - Device is SPI3\n");
-    break;
-  default:
-    os_printf(" - Device is Unknown!!\n");
-    break;
+) {
+  if (device != EV_SPI1) {
+    jsExceptionHere(JSET_ERROR, "Only SPI1 supported");
+    return;
   }
+
+  //os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
+  spi_init(HSPI, inf->baudRate); // Initialize the hardware SPI components.
+  g_spiInitialized = true;
+  g_lastSPIRead = -1;
+
   if (inf != NULL) {
     os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
         inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
   }
-  os_printf("< jshSPISetup\n");
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
@@ -735,14 +723,14 @@ void jshSPISetup(
 int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
-  ) {
+) {
   if (device != EV_SPI1) {
     return -1;
   }
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = g_lastSPIRead;
   if (data >=0) {
-    g_lastSPIRead = spi_tx8(HSPI, data);
+    g_lastSPIRead = spi_transaction(HSPI, 8, (uint32)data);
   } else {
     g_lastSPIRead = -1;
   }
@@ -757,7 +745,7 @@ int jshSPISend(
 void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
   //jshSPISend(device, data >> 8);
   //jshSPISend(device, data & 255);
@@ -765,7 +753,7 @@ void jshSPISend16(
     return;
   }
 
-  spi_tx16(HSPI, data);
+  spi_transaction(HSPI, 16, (uint32)data);
   //os_printf("< jshSPISend16\n");
 }
 
@@ -776,7 +764,7 @@ void jshSPISend16(
 void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
   //os_printf("< jshSPISet16\n");
 }
@@ -787,7 +775,7 @@ void jshSPISet16(
  */
 void jshSPIWait(
     IOEventFlags device //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPIWait - device=%d\n", device);
   while(spi_busy(HSPI)) ;
   //os_printf("< jshSPIWait\n");
@@ -795,8 +783,8 @@ void jshSPIWait(
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
-  os_printf("< jshSPISetReceive\n");
+  //os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  //os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -807,10 +795,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
   //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported");
-    return;
-  }
-
+    jsError("Only I2C1 supported"); return; }
   Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
   Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
