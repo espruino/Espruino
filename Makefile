@@ -1697,7 +1697,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
 	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
 	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
