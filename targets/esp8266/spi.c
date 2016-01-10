@@ -53,7 +53,7 @@ spi_init(uint8 spi_no, uint32 baud_rate)
   uint32_t freq = system_get_cpu_freq(); // returns 80 or 160
 
   spi_init_gpio(spi_no, 0);
-  spi_clock(spi_no, 10, 8000000/baud_rate); // the base clock is always 80Mhz
+  spi_clock(spi_no, 20000000/baud_rate, 4); // the base clock is always 80Mhz
   spi_tx_byte_order(spi_no, SPI_BYTE_ORDER_HIGH_TO_LOW);
   spi_rx_byte_order(spi_no, SPI_BYTE_ORDER_HIGH_TO_LOW);
 
@@ -106,7 +106,7 @@ spi_clock(uint8 spi_no, uint16 prediv, uint8 cntdiv)
   if ((prediv==0)||(cntdiv==0)) {
     WRITE_PERI_REG(SPI_CLOCK(spi_no), SPI_CLK_EQU_SYSCLK);
   } else {
-    //os_printf("clk: %d %d -> %d, %d %d %d\n", prediv, cntdiv, prediv-1, cntdiv<<1, cntdiv, cntdiv<<1);
+    //os_printf("SPI clk: %d %d -> %d, %d %d %d\n", prediv, cntdiv, prediv-1, cntdiv<<1, cntdiv, cntdiv<<1);
     WRITE_PERI_REG(SPI_CLOCK(spi_no),
           (((prediv-1)&SPI_CLKDIV_PRE)<<SPI_CLKDIV_PRE_S)|
           (((cntdiv-1)&SPI_CLKCNT_N)<<SPI_CLKCNT_N_S)|

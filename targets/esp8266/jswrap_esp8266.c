@@ -88,7 +88,7 @@ JsVar *jswrap_ESP8266_getResetInfo() {
   extern char *rst_codes[]; // in user_main.c
 
   jsvObjectSetChildAndUnLock(restartInfo, "reason",   jsvNewFromString(rst_codes[info->reason]));
-  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromString(info->exccause));
+  jsvObjectSetChildAndUnLock(restartInfo, "exccause", jsvNewFromInteger(info->exccause));
   jsvObjectSetChildAndUnLock(restartInfo, "epc1",     jsvNewFromInteger(info->epc1));
   jsvObjectSetChildAndUnLock(restartInfo, "epc2",     jsvNewFromInteger(info->epc2));
   jsvObjectSetChildAndUnLock(restartInfo, "epc3",     jsvNewFromInteger(info->epc3));
