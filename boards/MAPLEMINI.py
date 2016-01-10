@@ -21,6 +21,8 @@ info = {
  'link' :  [ "http://leaflabs.com/docs/hardware/maple-mini.html" ],
  'variables' : 715,
  'binary_name' : 'espruino_%v_maplemini.bin',
+ 'build' : {
+ }
 };
 chip = {
   'part' : "STM32F103CB", #T6

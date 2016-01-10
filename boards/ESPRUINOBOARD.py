@@ -28,7 +28,16 @@ info = {
  'binaries' : [
   { 'filename' : 'espruino_%v_espruino_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
   { 'filename' : 'espruino_%v_espruino_1r3.bin', 'description' : "TI CC3000 WiFi Networking"},
- ]
+ ],
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RCT6",
@@ -48,6 +57,15 @@ chip = {
     'pages' : 15, # number of pages we're using
     'flash_available' : 256-30 # 30 used for code
   },
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 devices = {
   'OSC' : { 'pin_in' :  'D0',

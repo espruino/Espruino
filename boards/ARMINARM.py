@@ -20,6 +20,13 @@ info = {
  'link' : [ "https://www.onandoffables.com/" ],
  'variables' : 3250,
  'binary_name' : 'espruino_%v_ARMinARM.bin',
+ 'build' : {
+  'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103RET6",

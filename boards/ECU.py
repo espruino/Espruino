@@ -24,6 +24,12 @@ info = {
  'variables' : 5450,
  'util_timer_tasks' : 64,
  'binary_name' : 'espruino_%v_ecu.bin',
+ 'build' : {
+  'defines' : [
+     'USE_TRIGGER',
+     'USE_FILESYSTEM',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F407VGT6",

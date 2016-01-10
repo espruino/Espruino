@@ -66,6 +66,14 @@ espruino_#v##_raspberrypi
    however there is no Serial, SPI, OneWire or I2C support at the moment so
    you're pretty limited!
 
+espruino_esp8266_user*.bin
+   - ESP8266 port - see http://www.espruino.com/EspruinoESP8266 for more info
+
+espruino_#v##_microbit.hex
+   - Espruino for the BBC micro:bit - just copy this file onto the
+   flash drive that appears when you plug the micro:bit in.
+
+
 For information on devices, and on how to flash these binary files on to 
 each device, please see our website, http://www.espruino.com
 

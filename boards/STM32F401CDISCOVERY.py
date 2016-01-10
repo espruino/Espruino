@@ -15,11 +15,17 @@
 
 import pinutils;
 info = {
-  'name' : "STM32F401C Discovery",
-  'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1848/PF259098" ],
-  'default_console' : "EV_SERIAL2",
-  'variables' : 3040,
-  'binary_name' : 'espruino_%v_stm32f401cdiscovery.bin',
+ 'name' : "STM32F401C Discovery",
+ 'link' :  [ "http://www.st.com/web/catalog/tools/FM116/SC959/SS1532/LN1848/PF259098" ],
+ 'default_console' : "EV_SERIAL2",
+ 'variables' : 3040,
+ 'binary_name' : 'espruino_%v_stm32f401cdiscovery.bin',
+ 'build' : {
+  'defines' : [
+     'USE_GRAPHICS',
+     'USE_NET',
+   ]
+ }
 };
 chip = {
   'part' : "STM32F401VCT6",

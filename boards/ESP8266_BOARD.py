@@ -21,6 +21,11 @@ info = {
  'default_console_baudrate' : "115200",
  'variables'       : 1400,
  'binary_name'     : 'espruino_%v_esp8266',
+ 'build' : {
+   'defines' : [
+     'USE_NET'
+   ]
+ }
 };
 chip = {
   'part'    : "ESP8266",

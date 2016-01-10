@@ -50,7 +50,7 @@
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
 # ESP8266_BOARD=1         # ESP8266
-# EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
+# EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
 # Also:
@@ -441,6 +441,14 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -449,6 +457,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else ifdef DPTBOARD
 EMBEDDED=1
@@ -461,13 +471,6 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
 
-else ifdef LCTECH_STM32F103RBT6
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
 
 else ifdef ESP8266_BOARD
 EMBEDDED=1
@@ -712,6 +715,7 @@ ifdef CPPFILE
 CPPSOURCES += $(CPPFILE)
 endif
 
+
 ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
@@ -745,9 +749,24 @@ endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
+
+# Smaller, RLE compression for code
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression
+SOURCES += \
+libs/compression/compress_rle.c
+
 else
 # If we have enough flash, include the debugger
 DEFINES+=-DUSE_DEBUGGER
+
+# Heatshrink compression library and wrapper - better compression when saving code to flash
+DEFINES+=-DUSE_HEATSHRINK
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/heatshrink
+SOURCES += \
+libs/compression/heatshrink/heatshrink_encoder.c \
+libs/compression/heatshrink/heatshrink_decoder.c \
+libs/compression/compress_heatshrink.c
+
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER

@@ -369,7 +369,7 @@ JsVar *jswrap_net_createServer(JsVar *callback) {
   "generate_full" : "jswrap_net_connect(options, callback, ST_NORMAL)",
   "params" : [
     ["options","JsVar","An object containing host,port fields"],
-    ["callback","JsVar","A `function(socket)` that will be called when a connection is made. You can then call `res.on('data', function(data) { ... })` and `res.on('close', function() { ... })` to deal with the response."]
+    ["callback","JsVar","A `function(sckt)` that will be called  with the socket when a connection is made. You can then call `sckt.write(...)` to send data, and `sckt.on('data', function(data) { ... })` and `sckt.on('close', function() { ... })` to deal with the response."]
   ],
   "return" : ["JsVar","Returns a new net.Socket object"],
   "return_object" : "Socket"
