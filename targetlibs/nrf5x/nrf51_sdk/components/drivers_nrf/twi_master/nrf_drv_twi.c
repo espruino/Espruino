@@ -236,8 +236,8 @@ static void state_machine(volatile nrf_drv_twi_t const * const p_instance, sm_ev
     bool                 evt_found = false;
     substate_t           substate  = m_cb[p_instance->instance_id].substate;
     transition_t const * p_state   = mp_states[substate];
-
-    for (uint32_t i = 0; i < m_states_len[substate]; i++)
+    uint32_t i;
+    for ( i = 0; i < m_states_len[substate]; i++)
     {
         if (evt == p_state[i].evt)
         {
@@ -442,7 +442,8 @@ static void twi_clear_bus(nrf_drv_twi_t const * const p_instance, nrf_drv_twi_co
 
     nrf_delay_us(4);
 
-    for(int i = 0; i < 9; i++)
+    int i;
+    for(i = 0; i < 9; i++)
     {
         if (nrf_gpio_pin_read(p_config->sda))
         {

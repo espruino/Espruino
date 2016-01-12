@@ -87,8 +87,10 @@ def get_pins():
    { "name":"PD14", "sortingname":"D14", "port":"D", "num":"22", "functions":{ "SPI1_MISO":0 }, "csv":{} },
    { "name":"PD15", "sortingname":"D15", "port":"D", "num":"21", "functions":{ "SPI1_MOSI":0 }, "csv":{} },
    { "name":"PD16", "sortingname":"D16", "port":"D", "num":"16", "functions":{}, "csv":{} },
-   { "name":"PD17", "sortingname":"D17", "port":"D", "num":"0", "functions":{ "I2C1_SCL":0, "ADC1_IN0":0 }, "csv":{} },
-   { "name":"PD18", "sortingname":"D18", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} },
+   { "name":"PD17", "sortingname":"D17", "port":"D", "num":"31", "functions":{}, "csv":{} }, # FIXME 3.3v 
+   { "name":"PD18", "sortingname":"D18", "port":"D", "num":"31", "functions":{}, "csv":{} }, # FIXME 3.3v 
+   { "name":"PD19", "sortingname":"D19", "port":"D", "num":"0", "functions":{ "I2C1_SCL":0, "ADC1_IN0":0 }, "csv":{} },
+   { "name":"PD20", "sortingname":"D20", "port":"D", "num":"30", "functions":{ "I2C1_SDA":0 }, "csv":{} },
    { "name":"PH0", "sortingname":"H0", "port":"D", "num":"24", "functions":{}, "csv":{} },
    { "name":"PH1", "sortingname":"H1", "port":"D", "num":"25", "functions":{}, "csv":{} }
   ];

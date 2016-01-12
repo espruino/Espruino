@@ -1315,6 +1315,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # Not nRF51?
@@ -1341,6 +1342,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \

@@ -27,9 +27,13 @@
 #include "jswrap_bluetooth.h"
 
 #include "nrf_gpio.h"
+#include "nrf_gpiote.h"
+#include "nrf_drv_twi.h"
+#include "nrf_drv_gpiote.h"
 #include "nrf_temp.h"
 #include "nrf_adc.h"
 #include "nrf_timer.h"
+
 #include "communication_interface.h"
 #include "nrf5x_utils.h"
 
@@ -69,6 +73,8 @@ void jshInit() {
   NVIC_ClearPendingIRQ(TIMER1_IRQn);
   NVIC_EnableIRQ(TIMER1_IRQn);
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
+  // Pin change
+  nrf_drv_gpiote_init();
 
   jswrap_nrf_bluetooth_init();
 }
@@ -271,13 +277,43 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   }
 }
 
+
+static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
+  uint32_t addr = nrf_drv_gpiote_in_event_addr_get(pin);
+
+  // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
+  int i;
+  for (i=0;i<NUMBER_OF_GPIO_TE;i++)
+    if (addr == nrf_gpiote_event_addr_get((nrf_gpiote_events_t)((uint32_t)NRF_GPIOTE_EVENTS_IN_0+(sizeof(uint32_t)*i))))
+      return EV_EXTI0+i;
+  return EV_NONE;
+}
+
+bool lastHandledPinState; ///< bit of a hack, this... Ideally get rid of WatchedPinState completely and add to jshPushIOWatchEvent
+static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
+  lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
+  IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
+  jshPushIOWatchEvent(evt);
+}
+
+
 ///< Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin) {
-  return false;
+  return true;
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
-  return EV_SERIAL2;
+  if (!jshIsPinValid(pin)) return EV_NONE;
+  uint32_t p = (uint32_t)pinInfo[pin].pin;
+  if (shouldWatch) {
+    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+    nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
+    nrf_drv_gpiote_in_event_enable(p, true);
+    return jshGetEventFlagsForWatchedPin(p);
+  } else {
+    nrf_drv_gpiote_in_event_disable(p);
+    return EV_NONE;
+  }
 } // start watching pin - return the EXTI associated with it
 
 /// Given a Pin, return the current pin function associated with it
@@ -287,21 +323,19 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 
 /// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
-
 }
 
 /// Enable watchdog with a timeout in seconds
 void jshEnableWatchDog(JsVarFloat timeout) {
-
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device) {
-  return false;
+  return lastHandledPinState;
 }
 
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  return false;
+  return IOEVENTFLAGS_GETTYPE(event->flags) == jshGetEventFlagsForWatchedPin((uint32_t)pinInfo[pin].pin);
 }
 
 /** Is the given device initialised? */
@@ -373,28 +407,49 @@ void jshSPIWait(IOEventFlags device) {
 
 }
 
-NRF_TWI_Type *jshGetTWI(IOEventFlags device) {
-  return (device == EV_I2C2) ? NRF_TWI1_BASE : NRF_TWI0_BASE;
+const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+
+nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+  if (device == EV_I2C1) return &TWI1;
+  return 0;
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
-  NRF_TWI_Type *twi = jshGetTWI(device);
-
-  // jshPinSetState
-
-  // nrf_twi_frequency_set(twi, inf->bitrate);
-  // nrf_twi_pins_set(twi, pinInfo[inf->pinSCL].pin, pinInfo[inf->pinSDA].pin);
-  // nrf_twi_enable
+  if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
+    jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
+    return;
+  }
+  nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
+  nrf_drv_twi_config_t    p_twi_config;
+  p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
+  p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
+  p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
+  p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
+  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
+  else
+    nrf_drv_twi_enable(twi);
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  NRF_TWI_Type *twi = jshGetTWI(device);
-  // nrf_twi_address_set(twi, address);
+  nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
+  nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
 
 }
 
