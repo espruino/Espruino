@@ -11,21 +11,35 @@
  * Platform Specific entry point
  * ----------------------------------------------------------------------------
  */
- 
+/* APM comment
 #include "platform_config.h"
 #include "jsinteractive.h"
 #include "jshardware.h"
+*/
+#include "em_gpio.h"
+#include "em_cmu.h"
 
 int main() {
 
+  CMU_ClockEnable(cmuClock_HFPER, true);
+  CMU_ClockEnable(cmuClock_GPIO, true);
+  GPIO_PinModeSet(gpioPortE, 2, gpioModePushPull, 1);
+  GPIO_PinModeSet(gpioPortE, 3, gpioModePushPull, 1);
+  GPIO_PinOutSet(gpioPortE, 2);
+  GPIO_PinOutClear(gpioPortE, 3);
+  while(1);
+  /* APM comment
   jshInit();
+  GPIO_PinOutSet(gpioPortE, 3);
   jsvInit();
-  jsiInit(true /* load from flash by default */);
-
+  GPIO_PinOutClear(gpioPortE, 2);
+  jsiInit(true); // load from flash by default
+  GPIO_PinOutClear(gpioPortE, 3);
   while (1) 
   {
     jsiLoop();
   }
+*/
   //jsiKill();
   //jsvKill();
   //jshKill();

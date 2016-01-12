@@ -171,7 +171,7 @@ OPTIMIZEFLAGS+=-Os
 else ifdef EFM32GGSTK
 EMBEDDED=1
 #USE_DFU=1
-DEFINES+= -DEFM32GG990F1024
+DEFINES+= -DEFM32GG990F1024=1
 BOARD=EFM32GGSTK
 OPTIMIZEFLAGS+=-Os
 
@@ -651,11 +651,14 @@ endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
-ifeq ($(FAMILY),ESP8266)
-OPTIMIZEFLAGS=-g -Os
-else
-OPTIMIZEFLAGS=-g
-endif
+ ifeq ($(FAMILY),ESP8266)
+  OPTIMIZEFLAGS=-g -Os
+ else
+  OPTIMIZEFLAGS=-g
+ endif
+ ifdef EFM32
+  DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
+ endif
 DEFINES+=-DDEBUG
 endif
 
@@ -1278,15 +1281,17 @@ endif #FAMILY == NRF52
 
 ifeq ($(FAMILY), EFM32GG)
 
-  ARCHFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3  -mfix-cortex-m3-ldrd -mfloat-abi=soft
+  EFM32=1
+
+  ARCHFLAGS += -mcpu=cortex-m3  -mthumb
 
   GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
-
-  CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
 
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1
   INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
+
+  LINKER_FILE = $(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/efm32gg.ld
 
   INCLUDE += -I$(ROOT)/targets/efm32
   SOURCES +=                              \
@@ -1302,17 +1307,17 @@ ifeq ($(FAMILY), EFM32GG)
   SOURCES += \
 	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
 	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
-	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_int.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
 	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
-	$(GECKO_SDK_PATH)/emlib/src/em_usart.c
-
+	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
+	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c
 
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
 	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
@@ -1329,7 +1334,6 @@ ifeq ($(FAMILY), EFM32GG)
 	# $(GECKO_SDK_PATH)/emlib/src/em_ebi.c \
 	# $(GECKO_SDK_PATH)/emlib/src/em_i2c.c \
 	# $(GECKO_SDK_PATH)/emlib/src/em_idac.c \
-	# $(GECKO_SDK_PATH)/emlib/src/em_int.c \
 	# $(GECKO_SDK_PATH)/emlib/src/em_lcd.c \
 	# $(GECKO_SDK_PATH)/emlib/src/em_ldma.c \
 	# $(GECKO_SDK_PATH)/emlib/src/em_lesense.c \
@@ -1535,12 +1539,15 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-ifndef NRF5X
- LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-else ifdef NRF5X
+ifdef NRF5X
  LDFLAGS += $(ARCHFLAGS)
  LDFLAGS += --specs=nano.specs -lc -lnosys
-endif # NRF5X
+else ifdef EFM32
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ LDFLAGS += --specs=nano.specs -lc -lnosys
+else
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) 
+endif
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1624,9 +1631,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
+ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py

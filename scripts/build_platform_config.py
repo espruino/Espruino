@@ -88,8 +88,10 @@ if not LINUX:
   if board.chip["family"]=="STM32F4":
     flash_page_size = 128*1024
   if board.chip["family"]=="NRF51":
-    flash_page_size = 1024;
+    flash_page_size = 1024
   if board.chip["family"]=="NRF52":
+    flash_page_size = 4*1024
+  if board.chip["family"]=="EFM32GG":
     flash_page_size = 4*1024
   # F4 has different page sizes in different places
   flash_saved_code_pages = (flash_needed+flash_page_size-1)/flash_page_size
@@ -187,7 +189,6 @@ elif board.chip["family"]=="NRF52":
   codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
 elif board.chip["family"]=="EFM32GG":
   board.chip["class"]="EFM32"
-  codeOut('#define EFM32GG990F1024')
   codeOut('#include "em_device.h"')
 elif board.chip["family"]=="LPC1768":
   board.chip["class"]="MBED"
@@ -265,7 +266,10 @@ if LINUX:
 else:
   codeOut("#define JSVAR_CACHE_SIZE                "+str(variables)+" // Number of JavaScript variables in RAM")
   codeOut("#define FLASH_AVAILABLE_FOR_CODE        "+str(flash_available_for_code))
-  codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
+  if board.chip["class"]=="EFM32":
+    codeOut("// FLASH_PAGE_SIZE defined in em_device.h");
+  else:
+    codeOut("#define FLASH_PAGE_SIZE                 "+str(flash_page_size))
   if board.chip["family"]=="ESP8266":
     codeOut("#define FLASH_START                     "+hex(0x0))
   elif board.chip["family"]=="NRF52" or board.chip["family"]=="NRF51":
