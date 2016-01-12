@@ -133,6 +133,10 @@ static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t lengt
 }
 
 bool jswrap_nrf_transmit_string() {
+  if (m_conn_handle == BLE_CONN_HANDLE_INVALID) {
+    // If no connection, drain the output buffer
+    while (jshGetCharToTransmit(EV_BLUETOOTH)>=0);
+  }
   if (ble_is_sending) return false;
   static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
   int idx = 0;
