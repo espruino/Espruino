@@ -70,6 +70,8 @@ static ble_nus_t                        m_nus;                                  
 static uint16_t                         m_conn_handle = BLE_CONN_HANDLE_INVALID;    /**< Handle of the current connection. */
 
 static ble_uuid_t                       m_adv_uuids[] = {{BLE_UUID_NUS_SERVICE, NUS_SERVICE_UUID_TYPE}};  /**< Universally unique service identifier. */
+static bool                             ble_is_sending;
+
 
 // ---------------------------------------------------------------------------
 // Error handlers...
@@ -127,7 +129,24 @@ static void gap_params_init(void) {
 static void nus_data_handler(ble_nus_t * p_nus, uint8_t * p_data, uint16_t length) {
 	uint32_t i;
     for (i = 0; i < length; i++)
-        jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
+      jshPushIOCharEvent(EV_BLUETOOTH, (char) p_data[i]);
+}
+
+bool jswrap_nrf_transmit_string() {
+  if (ble_is_sending) return false;
+  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
+  int idx = 0;
+  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  while (ch>=0) {
+    buf[idx++] = ch;
+    if (idx>=BLE_NUS_MAX_DATA_LEN) break;
+    ch = jshGetCharToTransmit(EV_BLUETOOTH);
+  }
+  if (idx>0) {
+    if (ble_nus_string_send(&m_nus, buf, idx) == NRF_SUCCESS)
+      ble_is_sending = true;
+  }
+  return idx>0;
 }
 
 /**@snippet [Handling the data received over BLE] */
@@ -159,13 +178,12 @@ static void services_init(void) {
  * @param[in] p_evt  Event received from the Connection Parameters Module.
  */
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
-    uint32_t err_code;
-    
-    if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)
-    {
-        err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
-        APP_ERROR_CHECK(err_code);
-    }
+  uint32_t err_code;
+
+  if(p_evt->evt_type == BLE_CONN_PARAMS_EVT_FAILED)  {
+    err_code = sd_ble_gap_disconnect(m_conn_handle, BLE_HCI_CONN_INTERVAL_UNACCEPTABLE);
+    APP_ERROR_CHECK(err_code);
+  }
 }
 
 
@@ -174,29 +192,29 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt) {
  * @param[in] nrf_error  Error code containing information about what went wrong.
  */
 static void conn_params_error_handler(uint32_t nrf_error) {
-    APP_ERROR_HANDLER(nrf_error);
+  APP_ERROR_HANDLER(nrf_error);
 }
 
 
 /**@brief Function for initializing the Connection Parameters module.
  */
 static void conn_params_init(void) {
-    uint32_t               err_code;
-    ble_conn_params_init_t cp_init;
-    
-    memset(&cp_init, 0, sizeof(cp_init));
+  uint32_t               err_code;
+  ble_conn_params_init_t cp_init;
 
-    cp_init.p_conn_params                  = NULL;
-    cp_init.first_conn_params_update_delay = FIRST_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.next_conn_params_update_delay  = NEXT_CONN_PARAMS_UPDATE_DELAY;
-    cp_init.max_conn_params_update_count   = MAX_CONN_PARAMS_UPDATE_COUNT;
-    cp_init.start_on_notify_cccd_handle    = BLE_GATT_HANDLE_INVALID;
-    cp_init.disconnect_on_fail             = false;
-    cp_init.evt_handler                    = on_conn_params_evt;
-    cp_init.error_handler                  = conn_params_error_handler;
-    
-    err_code = ble_conn_params_init(&cp_init);
-    APP_ERROR_CHECK(err_code);
+  memset(&cp_init, 0, sizeof(cp_init));
+
+  cp_init.p_conn_params                  = NULL;
+  cp_init.first_conn_params_update_delay = FIRST_CONN_PARAMS_UPDATE_DELAY;
+  cp_init.next_conn_params_update_delay  = NEXT_CONN_PARAMS_UPDATE_DELAY;
+  cp_init.max_conn_params_update_count   = MAX_CONN_PARAMS_UPDATE_COUNT;
+  cp_init.start_on_notify_cccd_handle    = BLE_GATT_HANDLE_INVALID;
+  cp_init.disconnect_on_fail             = false;
+  cp_init.evt_handler                    = on_conn_params_evt;
+  cp_init.error_handler                  = conn_params_error_handler;
+
+  err_code = ble_conn_params_init(&cp_init);
+  APP_ERROR_CHECK(err_code);
 }
 
 
@@ -232,6 +250,7 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
 
       case BLE_GAP_EVT_CONNECTED:
         m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+        ble_is_sending = false; // reset state - just in case
         jsiSetConsoleDevice( EV_BLUETOOTH );
         break;
 
@@ -250,6 +269,12 @@ static void on_ble_evt(ble_evt_t * p_ble_evt) {
         // No system attributes have been stored.
         err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
         APP_ERROR_CHECK(err_code);
+        break;
+
+      case BLE_EVT_TX_COMPLETE:
+        // UART Transmit finished - we can try and send more data
+        ble_is_sending = false;
+        jswrap_nrf_transmit_string();
         break;
 
       default:
@@ -493,15 +518,7 @@ void jswrap_nrf_bluetooth_setAdvertising(JsVar *data) {
   "generate" : "jswrap_nrf_idle"
 }*/
 bool jswrap_nrf_idle() {
-  static uint8_t buf[BLE_NUS_MAX_DATA_LEN];
-  int idx = 0;
-  int ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  while (ch>=0 && idx<BLE_NUS_MAX_DATA_LEN) {
-    buf[idx++] = ch;
-    ch = jshGetCharToTransmit(EV_BLUETOOTH);
-  }
-  if (idx>0) ble_nus_string_send(&m_nus, buf, idx);
-  return idx>0;
+  jswrap_nrf_transmit_string();
 }
 
 
