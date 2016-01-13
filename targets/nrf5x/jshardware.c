@@ -24,7 +24,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
-#include "jswrap_bluetooth.h"
+//#include "jswrap_bluetooth.h"
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
@@ -108,7 +108,7 @@ void jshInit() {
   // Pin change
   nrf_drv_gpiote_init();
 
-  jswrap_nrf_bluetooth_init();
+  //jswrap_nrf_bluetooth_init();
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
@@ -439,13 +439,13 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
 
-  if (device == EV_BLUETOOTH) {
+  //if (device == EV_BLUETOOTH) {
     /* For bluetooth, start transmit after one character.
       The BLE_EVT_TX_COMPLETE event will get triggered and
       will auto-reload whatever needs sending. */
-    bool jswrap_nrf_transmit_string();
-    jswrap_nrf_transmit_string();
-  }
+    //bool jswrap_nrf_transmit_string();
+    //jswrap_nrf_transmit_string();
+  //}
   
   if (device == EV_SERIAL1 && !uartIsSending) {
     jshInterruptOff();
