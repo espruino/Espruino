@@ -49,6 +49,10 @@
 
  */
 
+static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
@@ -79,11 +83,11 @@ unsigned int getNRFBaud(int baud) {
 }
 
 
-static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
-
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
+
+  BITFIELD_CLEAR(jshPinSoftPWM);
     
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
@@ -97,7 +101,7 @@ void jshInit() {
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
   // Irq setup
-  NVIC_SetPriority(TIMER1_IRQn, 15); // low - don't mess with BLE :)
+  NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
   NVIC_ClearPendingIRQ(TIMER1_IRQn);
   NVIC_EnableIRQ(TIMER1_IRQn);
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
@@ -186,6 +190,13 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
@@ -276,6 +287,15 @@ int jshPinAnalogFast(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  /* we set the bit field here so that if the user changes the pin state
+   * later on, we can get rid of the IRQs */
+  if (!jshGetPinStateIsManual(pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  }
+  BITFIELD_SET(jshPinSoftPWM, pin, 1);
+  if (freq<=0) freq=50;
+  jstPinPWM(freq, value, pin);
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 

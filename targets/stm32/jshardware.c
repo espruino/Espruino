@@ -69,7 +69,7 @@ static JsSysTime jshGetTimeForSecond();
 Pin watchedPins[16];
 
 // Whether a pin is being used for soft PWM or not
-BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT); // TODO: This should be set to all 0
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
 // simple 4 byte buffers for SPI
 #define JSH_SPIBUF_MASK 3 // 4 bytes
@@ -984,6 +984,7 @@ void jshInit() {
   // reset some vars
   for (i=0;i<16;i++)
     watchedPins[i] = PIN_UNDEFINED;
+  BITFIELD_CLEAR(jshPinSoftPWM);
 
   // enable clocks
  #if defined(STM32F3)
