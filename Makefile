@@ -170,7 +170,6 @@ OPTIMIZEFLAGS+=-Os
 
 else ifdef EFM32GGSTK
 EMBEDDED=1
-#USE_DFU=1
 DEFINES+= -DEFM32GG990F1024=1
 BOARD=EFM32GGSTK
 OPTIMIZEFLAGS+=-Os
@@ -1544,7 +1543,7 @@ ifdef NRF5X
  LDFLAGS += --specs=nano.specs -lc -lnosys
 else ifdef EFM32
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
- LDFLAGS += --specs=nano.specs -lc -lnosys
+ LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
 else
  LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) 
 endif

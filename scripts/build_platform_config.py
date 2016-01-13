@@ -188,6 +188,7 @@ elif board.chip["family"]=="NRF52":
   board.chip["class"]="NRF52"
   codeOut('#include "nrf.h"') # TRY THIS BUT NOT SURE~!
 elif board.chip["family"]=="EFM32GG":
+  linker_etext_var = "__etext";
   board.chip["class"]="EFM32"
   codeOut('#include "em_device.h"')
 elif board.chip["family"]=="LPC1768":
