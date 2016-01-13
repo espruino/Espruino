@@ -131,7 +131,8 @@ uint32_t ble_advertising_init(ble_advdata_t const                 * p_advdata,
         p_advdata->p_manuf_specific_data->company_identifier;
         m_advdata.p_manuf_specific_data->data.size = p_advdata->p_manuf_specific_data->data.size;
         
-        for(uint32_t i = 0; i < m_advdata.p_manuf_specific_data->data.size; i++)
+        uint32_t i;
+        for(i = 0; i < m_advdata.p_manuf_specific_data->data.size; i++)
         {
             m_manuf_data_array[i] = p_advdata->p_manuf_specific_data->data.p_data[i];
         }
@@ -145,7 +146,8 @@ uint32_t ble_advertising_init(ble_advdata_t const                 * p_advdata,
         m_advdata.p_service_data_array->data.size    = p_advdata->p_service_data_array->data.size;
         m_advdata.p_service_data_array->service_uuid = p_advdata->p_service_data_array->service_uuid;
 
-        for(uint32_t i = 0; i < m_advdata.p_service_data_array->data.size; i++)
+        uint32_t i;
+        for(i = 0; i < m_advdata.p_service_data_array->data.size; i++)
         {
             m_service_data_array[i] = p_advdata->p_service_data_array->data.p_data[i];
         }
@@ -477,7 +479,8 @@ uint32_t ble_advertising_peer_addr_reply(ble_gap_addr_t * p_peer_address)
 
     m_peer_address.addr_type = p_peer_address->addr_type;
 
-    for (int i = 0; i < BLE_GAP_ADDR_LEN; i++)
+    int i;
+    for (i = 0; i < BLE_GAP_ADDR_LEN; i++)
     {
         m_peer_address.addr[i] = p_peer_address->addr[i];
     }

@@ -254,7 +254,7 @@ JshPinState jshPinGetState(Pin pin) {
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
-  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+  /*if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
 
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -266,12 +266,13 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
-  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;*/
+  return 0.0;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin) {
-  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
+  /*if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
 
   const nrf_adc_config_t nrf_adc_config =  {
         NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
@@ -283,7 +284,8 @@ int jshPinAnalogFast(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
-  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;*/
+  return 0;
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
@@ -489,16 +491,16 @@ void jshSPIWait(IOEventFlags device) {
 
 }
 
-const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+/*const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 
 nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
-}
+}*/
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
-  if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
+  /*if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
@@ -514,24 +516,24 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
   else
-    nrf_drv_twi_enable(twi);
+    nrf_drv_twi_enable(twi);*/
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  /*nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);*/
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  /*nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);*/
 
 }
 

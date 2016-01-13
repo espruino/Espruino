@@ -1241,7 +1241,7 @@ endif #USB
 ifeq ($(FAMILY), NRF51)
   
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
   
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
@@ -1251,6 +1251,7 @@ ifeq ($(FAMILY), NRF51)
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart.c
   # nRF51 specific.
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf51
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
@@ -1268,7 +1269,7 @@ endif # FAMILY == NRF51
 ifeq ($(FAMILY), NRF52)
   
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
@@ -1308,7 +1309,7 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
   # INCLUDE += -I$(NRF5X_SDK_PATH)/components/bsp # ??? Doesn't exist...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
@@ -1338,7 +1339,6 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-  $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
@@ -1352,10 +1352,11 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
+  # $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
+  # $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c
+
+  # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c \
 
 endif #NRF5X
 
