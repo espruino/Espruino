@@ -84,6 +84,7 @@ unsigned int getNRFBaud(int baud) {
 
 
 void jshInit() {
+  nrf_gpio_cfg_output(21);
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
 
