@@ -82,6 +82,7 @@ unsigned int getNRFBaud(int baud) {
 static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() {
+  nrf_gpio_cfg_output(21);
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
     
