@@ -1255,7 +1255,7 @@ ifeq ($(FAMILY), NRF51)
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
 
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
 
