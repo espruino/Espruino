@@ -379,7 +379,7 @@ void jswrap_nrf_bluetooth_init(void) {
     bool erase_bonds;
     
     // Initialize.
-    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_MAX_TIMERS, APP_TIMER_OP_QUEUE_SIZE, false);
+    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
     // FIXME: APP_TIMER_INIT stops RTC1!
     ble_stack_init();
     gap_params_init();

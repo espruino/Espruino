@@ -74,7 +74,7 @@ INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
-LDFLAGS=-Winline
+#LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
@@ -402,7 +402,7 @@ EMBEDDED=1
 SAVE_ON_FLASH=1
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
-USE_BLUETOOTH=1
+#USE_BLUETOOTH=1
 DEFINES += -DBOARD_PCA10028
 
 else ifdef NRF52832DK
@@ -1253,10 +1253,10 @@ ifeq ($(FAMILY), NRF51)
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default. Add NRF_LOG_USES_RTT=1?
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART=1 # SoftDevice included by default. Add NRF_LOG_USES_RTT=1?
 
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
-  LINKER_FILE = $(NRF5X_SDK_PATH)/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
 
@@ -1332,6 +1332,7 @@ ifdef NRF5X
 
   SOURCES += \
   $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
