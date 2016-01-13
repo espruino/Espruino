@@ -1917,8 +1917,9 @@ void jsiIdle() {
   // check for TODOs
   if (jsiStatus&JSIS_TODO_MASK) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_RESET) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    JsiStatus s = jsiStatus;
+    if ((s&JSIS_TODO_RESET) == JSIS_TODO_RESET) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_RESET;
       // shut down everything and start up again
       jsiKill();
       jsvKill();
@@ -1926,8 +1927,8 @@ void jsiIdle() {
       jsvInit();
       jsiSemiInit(false); // don't autoload
     }
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_SAVE) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    if ((s&JSIS_TODO_FLASH_SAVE) == JSIS_TODO_FLASH_SAVE) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_SAVE;
 
       jsvGarbageCollect(); // nice to have everything all tidy!
       jsiSoftKill();
@@ -1939,8 +1940,8 @@ void jsiIdle() {
       jspSoftInit();
       jsiSoftInit();
     }
-    if ((jsiStatus&JSIS_TODO_MASK) == JSIS_TODO_FLASH_LOAD) {
-      jsiStatus &= (JsiStatus)~JSIS_TODO_MASK;
+    if ((s&JSIS_TODO_FLASH_LOAD) == JSIS_TODO_FLASH_LOAD) {
+      jsiStatus &= (JsiStatus)~JSIS_TODO_FLASH_LOAD;
 
       jsiSoftKill();
       jspSoftKill();

@@ -1302,7 +1302,6 @@ ifdef NRF5X
   SOURCES +=                              \
   targets/nrf5x/main.c                    \
   targets/nrf5x/jshardware.c              \
-  targets/nrf5x/communication_interface.c \
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
