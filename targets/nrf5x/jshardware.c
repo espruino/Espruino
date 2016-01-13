@@ -33,8 +33,8 @@
 #include "nrf_temp.h"
 #include "nrf_adc.h"
 #include "nrf_timer.h"
+#include "app_uart.h"
 
-#include "communication_interface.h"
 #include "nrf5x_utils.h"
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
@@ -42,8 +42,9 @@
 /*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
 
   RTC0 not usable
-  RTC1 free
-  TIMER1/2 free
+  RTC1 used by app_timer.c
+  TIMER1 used by jshardware util timer
+  TIMER2 free
   SPI0/1 free
 
  */
@@ -54,16 +55,43 @@ void TIMER1_IRQHandler(void) {
   jstUtilTimerInterruptHandler();
 }
 
+
+unsigned int getNRFBaud(int baud) {
+  switch (baud) {
+    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
+    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
+    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
+    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
+    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
+    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
+    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
+    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
+    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
+    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
+    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
+    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
+    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
+    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
+    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
+    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
+    default: return 0; // error
+  }
+}
+
+
 static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
 
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
     
-  JshUSARTInfo inf; // Just for show, not actually used...
+  JshUSARTInfo inf;
+  jshUSARTInitInfo(&inf);
+  inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+  inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
-
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
@@ -90,13 +118,10 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
-  if (init == 1)
-  {
+  if (init == 1) {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
     init = 0;
   }
-
-  jshUSARTKick(EV_SERIAL1);
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
@@ -343,10 +368,50 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   return false;
 }
 
+bool uartIsSending = false;
+
+void uart0_event_handle(app_uart_evt_t * p_event) {
+  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
+    jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+  } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
+    int ch = jshGetCharToTransmit(EV_SERIAL1);
+    if (ch >= 0) {
+      uartIsSending = true;
+      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+    } else
+      uartIsSending = false;
+  } else if (p_event->evt_type == APP_UART_DATA) {
+    uint8_t character;
+    while (app_uart_get(&character) != NRF_SUCCESS);
+    jshPushIOCharEvent(EV_SERIAL1, (char) character);
+  }
+}
+
 /** Set up a UART, if pins are -1 they will be guessed */
-void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
-{
-  uart_init(); // Initializes UART and registers a callback function defined above to read characters into the static variable character.
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+
+  int baud = getNRFBaud(inf->baudRate);
+  if (baud==0)
+    return jsError("Invalid baud rate %d", inf->baudRate);
+  if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
+    return jsError("Invalid RX or TX pins");
+
+  uint32_t err_code;
+  const app_uart_comm_params_t comm_params = {
+      pinInfo[inf->pinRX].pin,
+      pinInfo[inf->pinTX].pin,
+      UART_PIN_DISCONNECTED,
+      UART_PIN_DISCONNECTED,
+      APP_UART_FLOW_CONTROL_DISABLED,
+      inf->parity!=0, // TODO: ODD or EVEN parity?
+      baud
+  };
+
+  APP_UART_INIT(&comm_params,
+                uart0_event_handle,
+                APP_IRQ_PRIORITY_HIGH,
+                err_code);
+  APP_ERROR_CHECK(err_code);
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
@@ -360,19 +425,16 @@ void jshUSARTKick(IOEventFlags device) {
     jswrap_nrf_transmit_string();
   }
   
-  if (device != EV_SERIAL1)
-  {
-	  return;
+  if (device == EV_SERIAL1 && !uartIsSending) {
+    jshInterruptOff();
+    int ch = jshGetCharToTransmit(EV_SERIAL1);
+    if (ch >= 0) {
+      // put data - this will kick off the USART
+      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+      uartIsSending = true;
+    }
+    jshInterruptOn();
   }
-
-  int check_valid_char = jshGetCharToTransmit(EV_SERIAL1);
-  if (check_valid_char >= 0)
-  {
-    
-    uint8_t character = (uint8_t) check_valid_char;
-    nrf_utils_app_uart_put(character);
-  }
-
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */

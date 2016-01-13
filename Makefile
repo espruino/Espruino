@@ -1248,7 +1248,7 @@ ifeq ($(FAMILY), NRF51)
   # nRF51 specific. Main differences in SDK structure are softdevice, uart, delay...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart.c
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
@@ -1276,7 +1276,7 @@ ifeq ($(FAMILY), NRF52)
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
+  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1305,7 +1305,6 @@ ifdef NRF5X
   SOURCES +=                              \
   targets/nrf5x/main.c                    \
   targets/nrf5x/jshardware.c              \
-  targets/nrf5x/communication_interface.c \
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
