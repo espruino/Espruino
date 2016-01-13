@@ -18,24 +18,16 @@
 #include "nrf_delay.h"
 #include "nrf.h"
 
-void uart_event_handle(app_uart_evt_t * p_event)
-{
-
-  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR)
-  {
-    APP_ERROR_HANDLER(p_event->data.error_communication);
-  }
-  else if (p_event->evt_type == APP_UART_FIFO_ERROR)
-  {
-    APP_ERROR_HANDLER(p_event->data.error_code);
-  }
-  else if (p_event->evt_type == APP_UART_DATA_READY) // There is one byte in the RX FIFO.
-  {
+void uart_event_handle(app_uart_evt_t * p_event) {
+  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
+    //APP_ERROR_HANDLER(p_event->data.error_communication);
+  } else if (p_event->evt_type == APP_UART_FIFO_ERROR) {
+    //APP_ERROR_HANDLER(p_event->data.error_code);
+  } else if (p_event->evt_type == APP_UART_DATA_READY) { // There is one byte in the RX FIFO.
     uint8_t character;
     while(app_uart_get(&character) != NRF_SUCCESS); // Non blocking.
     jshPushIOCharEvent(EV_SERIAL1, (char) character);
   }
-
 }
 
 unsigned int getNRFBaud(int baud) {
