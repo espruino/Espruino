@@ -404,20 +404,19 @@ static void advertising_init(void)
 The USB Serial port
  */
 
-void jswrap_nrf_bluetooth_init(void)
-{
-    uint32_t err_code;
-    bool erase_bonds;
-    
-    // Initialize.
-    APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
-    ble_stack_init();
-    gap_params_init();
-    services_init();
-    advertising_init();
-    conn_params_init();
+void jswrap_nrf_bluetooth_init(void) {
+  uint32_t err_code;
+  bool erase_bonds;
+  
+  // Initialize.
+  APP_TIMER_INIT(APP_TIMER_PRESCALER, APP_TIMER_OP_QUEUE_SIZE, false);
+  ble_stack_init();
+  gap_params_init();
+  services_init();
+  advertising_init();
+  conn_params_init();
 
-    jswrap_nrf_bluetooth_wake();
+  jswrap_nrf_bluetooth_wake();
 }
 
 /*JSON{
@@ -427,16 +426,16 @@ void jswrap_nrf_bluetooth_init(void)
     "generate" : "jswrap_nrf_bluetooth_sleep"
 }*/
 void jswrap_nrf_bluetooth_sleep(void) {
-    uint32_t err_code;
+  uint32_t err_code;
 
-    // If connected, disconnect.
-    if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
-        err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-    }
+  // If connected, disconnect.
+  if (m_conn_handle != BLE_CONN_HANDLE_INVALID) {
+      err_code = sd_ble_gap_disconnect(m_conn_handle,  BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+  }
 
-    // Stop advertising
-    err_code = sd_ble_gap_adv_stop();
-    NRF_RADIO->TASKS_DISABLE = (1UL);
+  // Stop advertising
+  err_code = sd_ble_gap_adv_stop();
+  NRF_RADIO->TASKS_DISABLE = (1UL);
 }
 
 /*JSON{
@@ -446,10 +445,8 @@ void jswrap_nrf_bluetooth_sleep(void) {
     "generate" : "jswrap_nrf_bluetooth_wake"
 }*/
 void jswrap_nrf_bluetooth_wake(void) {
-
-    NRF_RADIO->TASKS_DISABLE = (0UL);
-
-    jswrap_nrf_bluetooth_startAdvertise();
+  NRF_RADIO->TASKS_DISABLE = (0UL);
+  jswrap_nrf_bluetooth_startAdvertise();
 }
 
 /*JSON{
@@ -462,29 +459,29 @@ void jswrap_nrf_bluetooth_wake(void) {
 Get the battery level in volts
 */
 JsVarFloat jswrap_nrf_bluetooth_getBattery(void) {
-    // Configure ADC
-    /*NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
-                          (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
-                          (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
-                          (ADC_CONFIG_PSEL_Disabled                   << ADC_CONFIG_PSEL_Pos)    |
-                          (ADC_CONFIG_EXTREFSEL_None                  << ADC_CONFIG_EXTREFSEL_Pos);
-    NRF_ADC->EVENTS_END = 0;
-    NRF_ADC->ENABLE     = ADC_ENABLE_ENABLE_Enabled;
+  // Configure ADC
+  /*NRF_ADC->CONFIG     = (ADC_CONFIG_RES_8bit                        << ADC_CONFIG_RES_Pos)     |
+                        (ADC_CONFIG_INPSEL_SupplyOneThirdPrescaling << ADC_CONFIG_INPSEL_Pos)  |
+                        (ADC_CONFIG_REFSEL_VBG                      << ADC_CONFIG_REFSEL_Pos)  |
+                        (ADC_CONFIG_PSEL_Disabled                   << ADC_CONFIG_PSEL_Pos)    |
+                        (ADC_CONFIG_EXTREFSEL_None                  << ADC_CONFIG_EXTREFSEL_Pos);
+  NRF_ADC->EVENTS_END = 0;
+  NRF_ADC->ENABLE     = ADC_ENABLE_ENABLE_Enabled;
 
-    NRF_ADC->EVENTS_END  = 0;    // Stop any running conversions.
-    NRF_ADC->TASKS_START = 1;
+  NRF_ADC->EVENTS_END  = 0;    // Stop any running conversions.
+  NRF_ADC->TASKS_START = 1;
 
-    while (!NRF_ADC->EVENTS_END);
+  while (!NRF_ADC->EVENTS_END);
 
-    uint16_t vbg_in_mv = 1200;
-    uint8_t adc_max = 255;
-    uint16_t vbat_current_in_mv = (NRF_ADC->RESULT * 3 * vbg_in_mv) / adc_max;
+  uint16_t vbg_in_mv = 1200;
+  uint8_t adc_max = 255;
+  uint16_t vbat_current_in_mv = (NRF_ADC->RESULT * 3 * vbg_in_mv) / adc_max;
 
-    NRF_ADC->EVENTS_END     = 0;
-    NRF_ADC->TASKS_STOP     = 1;
+  NRF_ADC->EVENTS_END     = 0;
+  NRF_ADC->TASKS_STOP     = 1;
 
-    return vbat_current_in_mv / 1000.0;*/
-    return 0.0;
+  return vbat_current_in_mv / 1000.0;*/
+  return 0.0;
 }
 
 /*JSON{
