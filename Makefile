@@ -1247,7 +1247,7 @@ ifeq ($(FAMILY), NRF51)
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
 
   # nRF51 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf51
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf51_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
@@ -1270,17 +1270,17 @@ ifeq ($(FAMILY), NRF52)
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
  
-  # nRF52 specific... Different structure from nRF51 SDK for both delay and uart.
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+  # nRF52 specific.
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf52_config
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
+  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10040 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../linker_nrf52_ble_espruino.ld
 
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_ble_espruino.ld
-
-  SOFTDEVICE = targetlibs/nrf5x/softdevice/s132_nrf52_1.0.0-3.alpha_softdevice.hex
+  SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
 
 endif #FAMILY == NRF52
 
