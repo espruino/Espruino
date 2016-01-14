@@ -389,6 +389,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 }
 
 bool uartIsSending = false;
+bool uartInitialised = false;
 
 void uart0_event_handle(app_uart_evt_t * p_event) {
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
@@ -490,6 +491,7 @@ void jshSPIWait(IOEventFlags device) {
 }
 
 const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
 
 const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
@@ -510,6 +512,8 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
   p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
   p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
+  if (twi1Initialised) nrf_drv_twi_uninit(twi);
+  twi1Initialised = true;
   uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
