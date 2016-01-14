@@ -103,11 +103,11 @@ void jswrap_microbit_stopDisplay() {
 }*/
 void jswrap_microbit_init() {
   // enable I2C (for accelerometers, etc)
-  /*JshI2CInfo inf;
+  JshI2CInfo inf;
   jshI2CInitInfo(&inf);
-  inf.pinSCL = jshGetPinFromString('D19');
-  inf.pinSDA = jshGetPinFromString('D20');
-  jshI2CSetup(EV_I2C1, &inf);*/
+  inf.pinSCL = JSH_PORTD_OFFSET+19; // 'D19'
+  inf.pinSDA = JSH_PORTD_OFFSET+20; // 'D20'
+  jshI2CSetup(EV_I2C1, &inf);
 }
 
 /*JSON{
@@ -172,15 +172,15 @@ void jswrap_microbit_show(JsVar *image) {
 Get the current acceleration of the micro:bit
 */
 JsVar *jswrap_microbit_acceleration() {
-  char d[6];
+  unsigned char d[6];
   d[0] = 1;
-  jshI2CWrite(EV_I2C1, 0x1D, 1, &d, true);
-  jshI2CRead(EV_I2C1, 0x1D, 6, &d, true);
+  jshI2CWrite(EV_I2C1, 0x1D, 1, d, true);
+  jshI2CRead(EV_I2C1, 0x1D, 6, d, true);
   JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
   if (xyz) {
-    int16_t x = (int16_t)(d[0]<<8 | d[1]);
-    int16_t y = (int16_t)(d[2]<<8 | d[3]);
-    int16_t z = (int16_t)(d[4]<<8 | d[5]);
+    int16_t x = (int16_t)((d[0]<<8) | d[1]);
+    int16_t y = (int16_t)((d[2]<<8) | d[3]);
+    int16_t z = (int16_t)((d[4]<<8) | d[5]);
     jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(x / 16384.0));
     jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(y / 16384.0));
     jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(z / 16384.0));

@@ -420,8 +420,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   const app_uart_comm_params_t comm_params = {
       pinInfo[inf->pinRX].pin,
       pinInfo[inf->pinTX].pin,
-      UART_PIN_DISCONNECTED,
-      UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
       APP_UART_FLOW_CONTROL_DISABLED,
       inf->parity!=0, // TODO: ODD or EVEN parity?
       baud
@@ -491,7 +491,7 @@ void jshSPIWait(IOEventFlags device) {
 
 const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 
-nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
@@ -502,7 +502,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
   nrf_drv_twi_config_t    p_twi_config;
@@ -519,15 +519,15 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const  nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
