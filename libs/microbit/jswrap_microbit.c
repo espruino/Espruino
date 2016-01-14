@@ -28,6 +28,8 @@ show((new Uint32Array(g.buffer))[0])
 
 */
 
+
+
 uint32_t microbitLEDState = 0;
 uint8_t microbitRow = 0;
 
@@ -47,11 +49,14 @@ static const int MB_LED_ROW2 = 14;
 static const int MB_LED_ROW3 = 15;
 
 // 32 means not used
-const uint8_t MB_LED_MAPPING[] = {
+static const uint8_t MB_LED_MAPPING[] = {
     0,  2,  4, 19, 18, 17, 16, 15, 11,
    14, 10, 12,  1,  3, 23, 21, 32, 32,
    22, 24, 20,  5,  6,  7,  8,  9, 13,
 };
+
+const int MMA8652_ADDR = 0x1D;
+const int MAG3110_ADDR = 0x0E;
 
 // called on a timer to scan rows out
 void jswrap_microbit_display_callback() {
@@ -108,6 +113,16 @@ void jswrap_microbit_init() {
   inf.pinSCL = JSH_PORTD_OFFSET+19; // 'D19'
   inf.pinSDA = JSH_PORTD_OFFSET+20; // 'D20'
   jshI2CSetup(EV_I2C1, &inf);
+
+  unsigned char d[2];
+  // Enable MMA8652 Accelerometer
+  d[0] = 0x2A; d[1] = 0x19; // CTRL_REG1, 100Hz, turn on
+  jshI2CWrite(EV_I2C1, MMA8652_ADDR, 2, d, true);
+  // Enable MAG3110 magnetometer, 80Hz
+  d[0] = 0x11; d[1] = 0x80; // CTRL_REG2, AUTO_MRST_EN
+  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
+  d[0] = 0x10; d[1] = 0x01; // CTRL_REG1, active mode 80 Hz ODR with OSR = 1 
+  jshI2CWrite(EV_I2C1, MAG3110_ADDR, 2, d, true);
 }
 
 /*JSON{
@@ -174,16 +189,46 @@ Get the current acceleration of the micro:bit
 JsVar *jswrap_microbit_acceleration() {
   unsigned char d[6];
   d[0] = 1;
-  jshI2CWrite(EV_I2C1, 0x1D, 1, d, true);
-  jshI2CRead(EV_I2C1, 0x1D, 6, d, true);
+  jshI2CRead(EV_I2C1, MMA8652_ADDR, 7, d, true);
   JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
   if (xyz) {
-    int16_t x = (int16_t)((d[0]<<8) | d[1]);
-    int16_t y = (int16_t)((d[2]<<8) | d[3]);
-    int16_t z = (int16_t)((d[4]<<8) | d[5]);
-    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(x / 16384.0));
-    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(y / 16384.0));
-    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(z / 16384.0));
+    int x = (d[1]<<8) | d[2];
+    if (x>>15) x-=65536;
+    int y = (d[3]<<8) | d[4];
+    if (y>>15) y-=65536;
+    int z = (d[5]<<8) | d[6];
+    if (z>>15) z-=65536;
+  // something is very broken here - why doesn't this work?
+    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromFloat(((JsVarFloat)x) / (JsVarFloat)16384.0));
+    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromFloat(((JsVarFloat)y) / (JsVarFloat)16384.0));
+    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromFloat(((JsVarFloat)z) / (JsVarFloat)16384.0));
+  }
+  return xyz;
+}
+
+/*JSON{
+  "type" : "function",
+  "name" : "compass",
+  "generate" : "jswrap_microbit_compass",
+  "return" : ["JsVar", "An object with x, y, and z fields in it"]
+}
+Get the current compass position for the micro:bit
+*/
+JsVar *jswrap_microbit_compass() {
+  unsigned char d[7];
+  d[0] = 1;
+  jshI2CRead(EV_I2C1, MAG3110_ADDR, 6, d, true);
+  JsVar *xyz = jsvNewWithFlags(JSV_OBJECT);
+  if (xyz) {
+    int x = (d[1]<<8) | d[2];
+    if (x>>15) x-=65536;
+    int y = (d[3]<<8) | d[4];
+    if (y>>15) y-=65536;
+    int z = (d[5]<<8) | d[6];
+    if (z>>15) z-=65536;
+    jsvObjectSetChildAndUnLock(xyz, "x", jsvNewFromInteger(x));
+    jsvObjectSetChildAndUnLock(xyz, "y", jsvNewFromInteger(y));
+    jsvObjectSetChildAndUnLock(xyz, "z", jsvNewFromInteger(z));
   }
   return xyz;
 }
