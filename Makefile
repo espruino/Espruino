@@ -1247,7 +1247,7 @@ ifeq ($(FAMILY), NRF51)
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
 
   # nRF51 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf51_config
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf51_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
@@ -1256,7 +1256,7 @@ ifeq ($(FAMILY), NRF51)
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
 
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
 
@@ -1271,14 +1271,14 @@ ifeq ($(FAMILY), NRF52)
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
  
   # nRF52 specific.
-  INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf52_config
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
   DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10040 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
-  LINKER_FILE = $(NRF5X_SDK_PATH)/../linker_nrf52_ble_espruino.ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
 
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
 
@@ -1294,7 +1294,7 @@ ifdef NRF5X
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
   INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
   
-  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x # This is where the common linker for both nRF51 & nRF52 is stored.
+  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
   LDFLAGS += -L$(TEMPLATE_PATH)
 
   # These files are the Espruino HAL implementation.
