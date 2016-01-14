@@ -1308,7 +1308,6 @@ ifdef NRF5X
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
-  # INCLUDE += -I$(NRF5X_SDK_PATH)/components/bsp # ??? Doesn't exist...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
@@ -1330,12 +1329,10 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
 
   SOURCES += \
-  $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
   $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
