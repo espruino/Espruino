@@ -122,7 +122,8 @@ static void twi_clear_bus(nrf_drv_twi_t const * const p_instance,
 
     nrf_delay_us(4);
 
-    for(int i = 0; i < 9; i++)
+    int i;
+    for(i = 0; i < 9; i++)
     {
         if (nrf_gpio_pin_read(p_config->sda))
         {

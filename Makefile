@@ -1346,9 +1346,9 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c
   # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
   # $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  # $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c
 
 endif #NRF5X
 

@@ -493,16 +493,16 @@ void jshSPIWait(IOEventFlags device) {
 
 }
 
-/*const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
 
 nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
-}*/
+}
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
-  /*if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
+  if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
@@ -514,28 +514,28 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
   p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
   p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
-  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL);
+  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
   else
-    nrf_drv_twi_enable(twi);*/
+    nrf_drv_twi_enable(twi);
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  /*nrf_drv_twi_t *twi = jshGetTWI(device);
+  nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);*/
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-  /*nrf_drv_twi_t *twi = jshGetTWI(device);
+  nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
-    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);*/
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
 
 }
 
