@@ -525,7 +525,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
   nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
+  uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
@@ -536,7 +536,6 @@ void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
-
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
