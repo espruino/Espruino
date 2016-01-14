@@ -148,7 +148,7 @@ typedef struct {
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
-#ifndef JSVARREF_PACKED_BITS
+#if JSVARREF_SIZE!=1
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
@@ -171,12 +171,12 @@ typedef struct {
    */
   JsVarRef lastChild;
 
-#else // JSVARREF_PACKED_BITS
+#else // JSVARREF_SIZE==1
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
   uint8_t firstChild;
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS - otherwise unused except when needed for data
   uint8_t refs;
   uint8_t lastChild;
 #endif
