@@ -107,7 +107,7 @@ void jshInit() {
   //NVIC_ClearPendingIRQ(TIMER1_IRQn);
   //NVIC_EnableIRQ(TIMER1_IRQn);
   //nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
-  
+
   // Pin change
   //nrf_drv_gpiote_init();
   //jswrap_nrf_bluetooth_init();
@@ -624,12 +624,13 @@ JsVarFloat jshReadTemperature() {
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
-  const nrf_adc_config_t nrf_adc_config =  {
+  /*const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
        NRF_ADC_CONFIG_REF_VBG }; // internal reference
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
-  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
+  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);*/
+  return 0.0;
 }
 
 /**
