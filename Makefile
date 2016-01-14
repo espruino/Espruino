@@ -1245,11 +1245,7 @@ ifeq ($(FAMILY), NRF51)
   
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
- 
-  # nRF51 specific. Main differences in SDK structure are softdevice, uart, delay...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
-  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart.c
+
   # nRF51 specific.
   INCLUDE          += -I$(NRF5X_SDK_PATH)/nrf51
   INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers

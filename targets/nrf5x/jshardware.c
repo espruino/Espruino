@@ -101,10 +101,13 @@ void jshInit() {
   //nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
   //nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   //nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+
+  // Irq setup
   //NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
   //NVIC_ClearPendingIRQ(TIMER1_IRQn);
   //NVIC_EnableIRQ(TIMER1_IRQn);
   //nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
+  
   // Pin change
   //nrf_drv_gpiote_init();
   //jswrap_nrf_bluetooth_init();
