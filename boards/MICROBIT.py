@@ -18,6 +18,7 @@ import pinutils;
 info = {
  'name' : "BBC micro:bit",
  'link' : [ "https://en.wikipedia.org/wiki/Micro_Bit" ],
+ 'espruino_page_link' : 'MicroBit',
  'default_console' : "EV_SERIAL1",
  'default_console_tx' : "H0", # pin 24
  'default_console_rx' : "H1", # pin 25
@@ -34,7 +35,7 @@ info = {
 chip = {
   'part' : "NRF51822",
   'family' : "NRF51",
-#  'package' : "LQFP64",
+  'package' : "QFN48",
   'ram' : 16,
   'flash' : 256,
   'speed' : 96,
@@ -56,12 +57,42 @@ chip = {
 devices = {
   'BTN1' : { 'pin' : 'D4' }, # 'P0_17'
   'BTN2' : { 'pin' : 'D11' }, # 'P0_26'
+  'LED_COL1' : { 'pin': 'D4'  },
+  'LED_COL2' : { 'pin': 'D5'  },
+  'LED_COL3' : { 'pin': 'D6'  },
+  'LED_COL4' : { 'pin': 'D7'  },
+  'LED_COL5' : { 'pin': 'D8'  },
+  'LED_COL6' : { 'pin': 'D9'  },
+  'LED_COL7' : { 'pin': 'D10' },
+  'LED_COL8' : { 'pin': 'D11' },
+  'LED_COL9' : { 'pin': 'D12' },
+  'LED_ROW1' : { 'pin': 'D13' },
+  'LED_ROW2' : { 'pin': 'D14' },
+  'LED_ROW3' : { 'pin': 'D15' },
 };
 
 # left-right, or top-bottom order
 board = {
+  'bottom' : [ 'D3', '','D0','','D4','D5','D6','D7','','D1','','D8','D9','D10','D11','D12','','D2','','D13','D14','D15','D16','3.3','','3.3','','3.3','D19','D20','GND','','GND','','GND' ],
 };
 board["_css"] = """
+#board {
+  width: 659px;
+  height: 562px;
+  top: 0px;
+  left : 0px;
+  background-image: url(img/MICROBIT.jpg);
+}
+#boardcontainer {
+  height: 700px;
+}
+
+#bottom {
+  top: 490px;
+  left: 52px;
+}
+
+.bottompin { width: 10px; }
 """;
 
 # Display is on:
