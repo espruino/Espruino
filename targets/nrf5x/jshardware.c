@@ -24,7 +24,7 @@
 #include "jsinteractive.h"
 #include "jswrap_io.h"
 #include "jswrap_date.h" // for non-F1 calendar -> days since 1970 conversion.
-//#include "jswrap_bluetooth.h"
+#include "jswrap_bluetooth.h"
 
 #include "nrf_gpio.h"
 #include "nrf_gpiote.h"
@@ -110,7 +110,7 @@ void jshInit() {
 
   // Pin change
   //nrf_drv_gpiote_init();
-  //jswrap_nrf_bluetooth_init();
+  jswrap_nrf_bluetooth_init();
 }
 
 // When 'reset' is called - we try and put peripherals back to their power-on state
