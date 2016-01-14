@@ -73,7 +73,23 @@ devices = {
 
 # left-right, or top-bottom order
 board = {
-  'bottom' : [ 'D3', '','D0','','D4','D5','D6','D7','','D1','','D8','D9','D10','D11','D12','','D2','','D13','D14','D15','D16','3.3','','3.3','','3.3','D19','D20','GND','','GND','','GND' ],
+  'bottom' : [ 'D3', '','D0','','D4','D5','D6','D7','','D1','','D8','D9','D10','D11','D12','','D2','',
+               'D13','D14','D15','D16','3.3','','3.3','','3.3','D19','D20','GND','','GND','','GND' ],
+  '_hide_not_on_connectors' : True,
+  '_notes' : {
+    'D4' : "LED Matrix Column 1",
+    'D5' : "LED Matrix Column 2",
+    'D6' : "LED Matrix Column 3",
+    'D7' : "LED Matrix Column 4",
+    'D8' : "LED Matrix Column 5",
+    'D9' : "LED Matrix Column 6",
+    'D10' : "LED Matrix Column 7",
+    'D11' : "LED Matrix Column 8",
+    'D12' : "LED Matrix Column 9",
+    'D13' : "LED Matrix Row 1",
+    'D14' : "LED Matrix Row 2",
+    'D15' : "LED Matrix Row 3"
+  }
 };
 board["_css"] = """
 #board {
