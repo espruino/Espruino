@@ -269,47 +269,46 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
 {
     uint32_t                         err_code;
     
-    switch (p_ble_evt->header.evt_id)
-    {
-        case BLE_GAP_EVT_TIMEOUT:
-            // the timeout for sd_ble_gap_adv_start expired - kick it off again
-            jswrap_nrf_bluetooth_startAdvertise();
-            break;
+    switch (p_ble_evt->header.evt_id) {
+      case BLE_GAP_EVT_TIMEOUT:
+        // the timeout for sd_ble_gap_adv_start expired - kick it off again
+        jswrap_nrf_bluetooth_startAdvertise();
+        break;
 
-        case BLE_GAP_EVT_CONNECTED:
-            m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
-            ble_is_sending = false; // reset state - just in case
-            jsiSetConsoleDevice( EV_BLUETOOTH );
-            break;
-            
-        case BLE_GAP_EVT_DISCONNECTED:
-            m_conn_handle = BLE_CONN_HANDLE_INVALID;
-            jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
-            // restart advertising after disconnection
-            jswrap_nrf_bluetooth_startAdvertise();
-            break;
+      case BLE_GAP_EVT_CONNECTED:
+        m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
+        ble_is_sending = false; // reset state - just in case
+        jsiSetConsoleDevice( EV_BLUETOOTH );
+        break;
 
-        case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
-            // Pairing not supported
-            err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_DISCONNECTED:
+        m_conn_handle = BLE_CONN_HANDLE_INVALID;
+        jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+        // restart advertising after disconnection
+        jswrap_nrf_bluetooth_startAdvertise();
+        break;
 
-        case BLE_GATTS_EVT_SYS_ATTR_MISSING:
-            // No system attributes have been stored.
-            err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
-            APP_ERROR_CHECK(err_code);
-            break;
+      case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
+        // Pairing not supported
+        err_code = sd_ble_gap_sec_params_reply(m_conn_handle, BLE_GAP_SEC_STATUS_PAIRING_NOT_SUPP, NULL, NULL);
+        APP_ERROR_CHECK(err_code);
+        break;
 
-        case BLE_EVT_TX_COMPLETE:
-            // UART Transmit finished - we can try and send more data
-            ble_is_sending = false;
-            jswrap_nrf_transmit_string();
-            break;
+      case BLE_GATTS_EVT_SYS_ATTR_MISSING:
+        // No system attributes have been stored.
+        err_code = sd_ble_gatts_sys_attr_set(m_conn_handle, NULL, 0, 0);
+        APP_ERROR_CHECK(err_code);
+        break;
 
-        default:
-            // No implementation needed.
-            break;
+      case BLE_EVT_TX_COMPLETE:
+        // UART Transmit finished - we can try and send more data
+        ble_is_sending = false;
+        jswrap_nrf_transmit_string();
+        break;
+
+      default:
+          // No implementation needed.
+          break;
     }
 }
 

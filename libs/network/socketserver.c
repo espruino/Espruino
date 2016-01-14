@@ -92,6 +92,7 @@ bool httpParseHeaders(JsVar **receiveData, JsVar *objectForData, bool isServer) 
       if (newlineIdx==1) newlineIdx=2;
       else if (newlineIdx==3) {
         headerEnd = strIdx+1;
+        break;
       }
     } else newlineIdx=0;
     jsvStringIteratorNext(&it);

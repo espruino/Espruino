@@ -757,7 +757,7 @@ void jsiSemiInit(bool autoLoad) {
           "|   __|_ -| . |  _| | | |   | . |\n"
           "|_____|___|  _|_| |___|_|_|_|___|\n"
           "          |_| http://espruino.com\n"
-          " "JS_VERSION" Copyright 2015 G.Williams\n");
+          " "JS_VERSION" Copyright 2016 G.Williams\n");
 #ifdef ESP8266
 	  jshPrintBanner();
 #endif
