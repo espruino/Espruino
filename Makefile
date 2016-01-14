@@ -74,7 +74,7 @@ INCLUDE=-I$(ROOT) -I$(ROOT)/targets -I$(ROOT)/src -I$(ROOT)/gen
 LIBS=
 DEFINES=
 CFLAGS=-Wall -Wextra -Wconversion -Werror=implicit-function-declaration -fno-strict-aliasing
-#LDFLAGS=-Winline
+LDFLAGS=-Winline
 OPTIMIZEFLAGS=
 #-fdiagnostics-show-option - shows which flags can be used with -Werror
 DEFINES+=-DGIT_COMMIT=$(shell git log -1 --format="%H")
@@ -410,6 +410,7 @@ EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
+DEFINES += -DBOARD_PCA10040
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -1277,7 +1278,7 @@ ifeq ($(FAMILY), NRF52)
   SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
   PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10040 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
 
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
