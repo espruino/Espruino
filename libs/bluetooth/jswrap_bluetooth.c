@@ -285,6 +285,8 @@ static void on_ble_evt(ble_evt_t * p_ble_evt)
         case BLE_GAP_EVT_DISCONNECTED:
             m_conn_handle = BLE_CONN_HANDLE_INVALID;
             jsiSetConsoleDevice( DEFAULT_CONSOLE_DEVICE );
+            // restart advertising after disconnection
+            jswrap_nrf_bluetooth_startAdvertise();
             break;
 
         case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
@@ -375,10 +377,7 @@ static void advertising_init(void)
     ble_advdata_t scanrsp;
 
     // Build advertising data struct to pass into @ref ble_advertising_init.
-    memset(&advdata, 0, sizeof(advdata));
-    advdata.name_type          = BLE_ADVDATA_FULL_NAME;
-    advdata.include_appearance = false;
-    advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
+    setup_advdata(&advdata);
 
     memset(&scanrsp, 0, sizeof(scanrsp));
     scanrsp.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
