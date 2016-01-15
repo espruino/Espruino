@@ -16,6 +16,7 @@
             Added Tab complete and Debug to low-end Nordic uCs
             Limit the number of events processed each time around the idle loop to the number that were in it at the start
              - helps to fix issues with out of memory when receiving big files over ESP8266 serial connection
+            Allow different types of network to have different buffer sizes - enlarge JS, Linux and WIZnet buffers
 
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
              - this fixes broken SPI when not on standard pins

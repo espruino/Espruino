@@ -181,5 +181,6 @@ void netSetCallbacks_wiznet(JsNetwork *net) {
   net->gethostbyname = net_wiznet_gethostbyname;
   net->recv = net_wiznet_recv;
   net->send = net_wiznet_send;
+  net->chunkSize = 536;
 }
 

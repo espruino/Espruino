@@ -43,15 +43,10 @@
 
 // Define the size of buffers/chunks that are transmitted or received
 #ifdef ESP8266
-// The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
-#define CHUNK (536/2)
 // esp8266 debugging, need to remove this eventually
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
 #define printf os_printf_plus
-#else
-#define CHUNK 64
 #endif
-
 
 // -----------------------------
 
@@ -230,11 +225,11 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 
 // returns 0 on success and a (negative) error number on failure
 int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
-  char buf[CHUNK];
+  char *buf = alloca(net->chunkSize); // allocate on stack
 
   assert(!jsvIsEmptyString(*sendData));
 
-  size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
+  size_t bufLen = httpStringGet(*sendData, buf, net->chunkSize);
   int num = netSend(net, sckt, buf, bufLen);
   if (num < 0) return num; // an error occurred
   // Now cut what we managed to send off the beginning of sendData
@@ -301,7 +296,7 @@ static bool fireErrorEvent(int error, JsVar *obj1, JsVar *obj2) {
 // -----------------------------
 
 bool socketServerConnectionsIdle(JsNetwork *net) {
-  char buf[CHUNK];
+  char *buf = alloca(net->chunkSize); // allocate on stack
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_SERVER_CONNECTIONS,false);
   if (!arr) return false;
@@ -322,7 +317,7 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
     int error = 0;
 
     if (!closeConnectionNow) {
-      int num = netRecv(net, sckt, buf,sizeof(buf));
+      int num = netRecv(net, sckt, buf, net->chunkSize);
       if (num<0) {
         // we probably disconnected so just get rid of this
         closeConnectionNow = true;
@@ -431,7 +426,7 @@ void socketClientPushReceiveData(JsVar *connection, JsVar *socket, JsVar **recei
 }
 
 bool socketClientConnectionsIdle(JsNetwork *net) {
-  char buf[CHUNK];
+  char *buf = alloca(net->chunkSize); // allocate on stack
 
   JsVar *arr = socketGetArray(HTTP_ARRAY_HTTP_CLIENT_CONNECTIONS,false);
   if (!arr) return false;
@@ -492,7 +487,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = netRecv(net, sckt, buf, sizeof(buf));
+          int num = netRecv(net, sckt, buf, net->chunkSize);
           //if (num != 0) printf("recv returned %d\r\n", num);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
@@ -908,6 +903,7 @@ void serverResponseWrite(JsVar *httpServerResponseVar, JsVar *data) {
 
 void serverResponseEnd(JsVar *httpServerResponseVar) {
   serverResponseWrite(httpServerResponseVar, 0); // force connection->sendData to be created even if data not called
+  // TODO: This should only close the connection once the received data length == contentLength header
   jsvObjectSetChildAndUnLock(httpServerResponseVar, HTTP_NAME_CLOSE, jsvNewFromBool(true));
 }
 
