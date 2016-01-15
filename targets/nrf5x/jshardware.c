@@ -442,13 +442,13 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
 
-  //if (device == EV_BLUETOOTH) {
+  if (device == EV_BLUETOOTH) {
     /* For bluetooth, start transmit after one character.
       The BLE_EVT_TX_COMPLETE event will get triggered and
       will auto-reload whatever needs sending. */
-    //bool jswrap_nrf_transmit_string();
-    //jswrap_nrf_transmit_string();
-  //}
+    bool jswrap_nrf_transmit_string();
+    jswrap_nrf_transmit_string();
+  }
   
   if (device == EV_SERIAL1 && !uartIsSending) {
     jshInterruptOff();
