@@ -256,7 +256,7 @@ JshPinState jshPinGetState(Pin pin) {
 
 // Returns an analog value between 0 and 1
 JsVarFloat jshPinAnalog(Pin pin) {
-  /*if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return NAN;
 
   const nrf_adc_config_t nrf_adc_config =  {
       NRF_ADC_CONFIG_RES_10BIT,
@@ -268,13 +268,13 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
-  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;*/
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
   return 0.0;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
 int jshPinAnalogFast(Pin pin) {
-  /*if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
+  if (pinInfo[pin].analog == JSH_ANALOG_NONE) return 0;
 
   const nrf_adc_config_t nrf_adc_config =  {
         NRF_ADC_CONFIG_RES_8BIT, // 8 bit for speed (hopefully!)
@@ -286,7 +286,7 @@ int jshPinAnalogFast(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput1 == 2);
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
-  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;*/
+  return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
   return 0;
 }
 
@@ -627,12 +627,12 @@ JsVarFloat jshReadTemperature() {
 
 // The voltage that a reading of 1 from `analogRead` actually represents
 JsVarFloat jshReadVRef() {
-  /*const nrf_adc_config_t nrf_adc_config =  {
+  const nrf_adc_config_t nrf_adc_config =  {
        NRF_ADC_CONFIG_RES_10BIT,
        NRF_ADC_CONFIG_SCALING_INPUT_FULL_SCALE,
        NRF_ADC_CONFIG_REF_VBG }; // internal reference
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
-  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);*/
+  return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
   return 0.0;
 }
 
