@@ -1756,8 +1756,7 @@ $(PROJ_NAME).hex: $(PROJ_NAME).elf
 	@$(call obj_to_bin,ihex,hex)
 ifdef SOFTDEVICE
 	echo Merging SoftDevice
-	@echo "    (use 'pip install IntelHex' if you don't have hexmerge.py)"
-	hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
+	scripts/hexmerge.py $(SOFTDEVICE) $(PROJ_NAME).hex -o tmp.hex
 	mv tmp.hex $(PROJ_NAME).hex
 endif
 

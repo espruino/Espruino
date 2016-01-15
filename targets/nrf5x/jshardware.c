@@ -393,6 +393,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 }
 
 bool uartIsSending = false;
+bool uartInitialised = false;
 
 void uart0_event_handle(app_uart_evt_t * p_event) {
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
@@ -424,8 +425,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   const app_uart_comm_params_t comm_params = {
       pinInfo[inf->pinRX].pin,
       pinInfo[inf->pinTX].pin,
-      UART_PIN_DISCONNECTED,
-      UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
       APP_UART_FLOW_CONTROL_DISABLED,
       inf->parity!=0, // TODO: ODD or EVEN parity?
       baud
@@ -494,8 +495,9 @@ void jshSPIWait(IOEventFlags device) {
 }
 
 const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
 
-nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
@@ -506,7 +508,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
   nrf_drv_twi_config_t    p_twi_config;
@@ -514,6 +516,8 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
   p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
   p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
+  if (twi1Initialised) nrf_drv_twi_uninit(twi);
+  twi1Initialised = true;
   uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
@@ -523,7 +527,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const  nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
@@ -531,7 +535,7 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
