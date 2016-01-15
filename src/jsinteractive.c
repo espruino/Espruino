@@ -1902,7 +1902,6 @@ void jsiIdle() {
    */
 
   // Check for events that might need to be processed from other libraries
-  if (wasBusy) jsiConsolePrint("#\n");
   if (jswIdle()) wasBusy = true;
 
   // Just in case we got any events to do and didn't clear loopsIdling before
