@@ -403,12 +403,14 @@ SAVE_ON_FLASH=1
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
+DEFINES += -DBOARD_PCA10028
 
 else ifdef NRF52832DK
 EMBEDDED=1
 BOARD=NRF52832DK
 OPTIMIZEFLAGS+=-O3
 USE_BLUETOOTH=1
+DEFINES += -DBOARD_PCA10040
 
 else ifdef LPC1768
 EMBEDDED=1
@@ -1240,56 +1242,52 @@ endif #USB
 ifeq ($(FAMILY), NRF51)
   
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf51_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
   
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m0 -mthumb -mabi=aapcs -mfloat-abi=soft # Use nRF51 makefiles provided in SDK as reference.
- 
-  # nRF51 specific. Main differences in SDK structure are softdevice, uart, delay...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
-  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart.c
 
-  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
+  # nRF51 specific.
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf51_config
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s130/headers/nrf51
+  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c
+  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
-  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS110 -DBLE_STACK_SUPPORT_REQD # SoftDevice included by default.
+  DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
 
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
-  SOFTDEVICE = targetlibs/nrf5x/softdevice/s110_nrf51_8.0.0_softdevice.hex
+  SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
 
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
   
   NRF5X=1
-  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf52_sdk
+  NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
 
   # ARCHFLAGS are shared by both CFLAGS and LDFLAGS.
   ARCHFLAGS = -mcpu=cortex-m4 -mthumb -mabi=aapcs -mfloat-abi=hard -mfpu=fpv4-sp-d16 # Use nRF52 makefiles provided in SDK as reference.
  
-  # nRF52 specific... Different structure from nRF51 SDK for both delay and uart.
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay # this directory doesnt exist in nRF51 SDK.
-  SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c
+  # nRF52 specific.
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/../nrf52_config
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers
+  INCLUDE          += -I$(NRF5X_SDK_PATH)/components/softdevice/s132/headers/nrf52
+  SOURCES          += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c
+  PRECOMPILED_OBJS += $(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
-  PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
+  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART
+  LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf52_ble_espruino.ld
 
-  DEFINES += -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DNRF52 -DBOARD_PCA10036 -DCONFIG_GPIO_AS_PINRESET -DS132 -DBLE_STACK_SUPPORT_REQD
-  LINKER_FILE = $(NRF5X_SDK_PATH)/components/toolchain/gcc/linker_nrf52_ble_espruino.ld
-
-  SOFTDEVICE = targetlibs/nrf5x/softdevice/s132_nrf52_1.0.0-3.alpha_softdevice.hex
+  SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s132/hex/s132_nrf52_2.0.0-7.alpha_softdevice.hex
 
 endif #FAMILY == NRF52
 
 ifdef NRF5X
 
-  # Just try and get rid of the compile warnings
+  # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
   DEFINES += -DBLUETOOTH
   
@@ -1297,7 +1295,7 @@ ifdef NRF5X
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
   INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
   
-  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x # This is where common linker for both nRF51 & nRF52 is stored.
+  TEMPLATE_PATH = $(ROOT)/targetlibs/nrf5x/nrf5x_linkers # This is where the common linker for both nRF51 & nRF52 is stored.
   LDFLAGS += -L$(TEMPLATE_PATH)
 
   # These files are the Espruino HAL implementation.
@@ -1308,16 +1306,14 @@ ifdef NRF5X
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/config
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/bsp
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/delay
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
-  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # Not nRF51?
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/device
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/button
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/timer
@@ -1330,25 +1326,29 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/ble_advertising
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/trace
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
 
   SOURCES += \
-  $(NRF5X_SDK_PATH)/components/libraries/button/app_button.c \
-  $(NRF5X_SDK_PATH)/components/libraries/fifo/app_fifo.c \
+  $(NRF5X_SDK_PATH)/components/libraries/util/app_error.c \
   $(NRF5X_SDK_PATH)/components/libraries/timer/app_timer.c \
   $(NRF5X_SDK_PATH)/components/libraries/trace/app_trace.c \
   $(NRF5X_SDK_PATH)/components/libraries/util/nrf_assert.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/retarget.c \
+  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
+  $(NRF5X_SDK_PATH)/components/ble/ble_advertising/ble_advertising.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_srv_common.c \
   $(NRF5X_SDK_PATH)/components/softdevice/common/softdevice_handler/softdevice_handler.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_nvmc.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/hal/nrf_adc.c
+  # $(NRF5X_SDK_PATH)/components/libraries/util/nrf_log.c
 
 endif #NRF5X
 

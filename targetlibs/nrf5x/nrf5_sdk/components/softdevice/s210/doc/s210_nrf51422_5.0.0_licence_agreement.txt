@@ -1,0 +1,110 @@
+S210/S310 license agreement
+
+S210 AND S310 LICENSE AGREEMENT
+
+License Agreement for the Nordic Semiconductor ASA (“Nordic”) S210 ANT Softdevice software package (“S210”) and the Nordic Semiconductor
+ASA S310 ANT and BLE Softdevice software package (“S310”).
+
+You (“You” or “Licensee”) must carefully and thoroughly read this License Agreement (“Agreement”), and accept to adhere to this Agreement
+before downloading, installing and/or using any software or content in the S210 or S310 provided herewith.
+
+YOU ACCEPT THIS LICENSE AGREEMENT BY (A) CLICKING ACCEPT OR AGREE TO THIS LICENSE AGREEMENT, WHERE THIS
+OPTION IS MADE AVAILABLE TO YOU; OR (B) BY ACTUALLY USING THE S210 OR S310, IN THIS CASE YOU AGREE THAT THE USE OF
+THE S210 OR S310 CONSTITUTES ACCEPTANCE OF THE LICENSING AGREEMENT FROM THAT POINT ONWARDS.
+
+IF YOU DO NOT AGREE TO BE BOUND BY THE TERMS OF THIS AGREEMENT, THEN DO NOT DOWNLOAD, INSTALL/COMPLETE
+INSTALLATION OF, OR IN ANY OTHER WAY MAKE USE OF THE S210 OR S310 OR ANY DOCUMENTATION RELATED TO THE S210 OR
+S310.
+
+1. Grant of License
+Subject to the terms in this Agreement Nordic grants Licensee a limited, non-exclusive, non-transferable, non-sub licensable, revocable license
+(“License”): (a) to use the S210 and S310 solely in connection with the nRF51422 Nordic Integrated Circuit (“nRF51422 IC”), and (b) to distribute
+the S210 or S310 solely as implemented in Licensee products. Licensee shall not use the S210 or S310 for any purpose other than specifically
+authorized herein. It is a material breach of this agreement to use or modify the S210 or S310 for use on any wireless connectivity integrated
+circuit other than the nRF51422 IC.
+
+2. Title
+Nordic or its licensors (as applicable) retain full rights, title, and ownership to the S210 and S310 and any and all patents, copyrights, trade
+secrets, trade names, trademarks, and other intellectual property rights in and to the S210 and S310. Nordic licenses portions of the S210 and
+S310 from third party licensors, and such licensors retain their respective full rights, title, and ownership in and of the S210 and S310 and any and
+all patents, copyrights, trade secrets, trade names, trademarks, and other intellectual property rights in and to the S210 and S310.
+
+3. No Modifications or Reverse Engineering
+Licensee shall not, modify, reverse engineer, disassemble, decompile or otherwise attempt to discover the source code of any non-source code
+parts of the S210 and S310 including, but not limited to pre-compiled hex files, binaries and object code.
+
+4. Distribution Restrictions
+Except as set forward in Section 1 above, the Licensee may not disclose or distribute any or all parts of the S210 and S310 to any third party.
+Licensee agrees to provide reasonable security precautions to prevent unauthorized access to or use of the S210 and S310 as proscribed herein.
+Licensee also agrees that use of and access to the S210 and S310 will be strictly limited to the employees and subcontractors of the Licensee
+necessary for the performance of development, verification and production tasks under this Agreement. The Licensee is responsible for making
+such employees and subcontractors agree on complying with the obligations concerning use and non-disclosure of the S210 and S310.
+
+5. End Use Restrictions
+Licensee agrees that the S210 and S310 may not be sold, resold, transferred, diverted, exported, re-exported or disposed of (i) for use in
+activities involving the development, production, handling, use, operation, maintenance, storage, detection, identification or dissemination of
+nuclear, chemical, or biological weapons (including missiles and weapons of mass destruction), nor for use in any facilities engaged in activities
+related to such weapons, including where there are reasonable grounds to suspect any such use; (ii) for a military end-use in China or in any
+other country subject to any applicable arms embargo or for an item designed, modified, configured, or adapted for a military application in China
+or any other country subject to an applicable arms embargo; (iii) to or for the benefit of individuals or entities listed on any applicable restricted or
+prohibited party lists; or (iv) to the following countries: Cuba, Iran, North Korea, Sudan, and Syria. Licensee further agree to abide by all other
+applicable export controls, trade sanctions and embargo laws, regulations, rules and licenses ("Export Controls and Sanctions Rules") in force
+from time to time as they relate to the S210 and S310. You acknowledge that your obligation to comply with applicable Export Controls and
+Sanctions Rules is independent of these terms and conditions and you agree to indemnify and hold Nordic and its licensors harmless from and
+against any third-party claim, including fines, losses, liabilities or legal fees that arise as a result of the breach by you of these terms and
+conditions or any applicable export controls, trade sanctions and embargo laws, regulations, rules and licenses.
+
+6. No Other Rights
+Licensee shall use the S210 and S310 only in compliance with this Agreement and shall refrain from using the S210 and S310 in any way that
+may be contrary to this Agreement.
+
+7. Fees
+Nordic grants the License to the Licensee free of charge provided that the Licensee undertakes the obligations in the Agreement and warrants to
+comply with the Agreement.
+
+8. DISCLAIMER OF WARRANTY
+THE S210 AND S310 ARE PROVIDED “AS IS" WITHOUT WARRANTY OF ANY KIND EXPRESS OR IMPLIED AND NEITHER NORDIC, ITS
+LICENSORS OR AFFILIATES NOR THE COPYRIGHT HOLDERS MAKE ANY REPRESENTATIONS OR WARRANTIES, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE OR
+THAT THE S210 AND S310 WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
+THERE IS NO WARRANTY BY NORDIC OR BY ANY OTHER PARTY THAT THE FUNCTIONS CONTAINED IN THE S210 AND S310 WILL
+MEET THE REQUIREMENTS OF LICENSEE OR THAT THE OPERATION OF THE S210 AND S310 WILL BE UNINTERRUPTED OR
+ERROR-FREE. LICENSEE ASSUMES ALL RESPONSIBILITY AND RISK FOR THE SELECTION OF THE S210 AND S310 TO ACHIEVE
+LICENSEE’S INTENDED RESULTS AND FOR THE INSTALLATION, USE AND RESULTS OBTAINED FROM IT.
+
+9. No Support
+Nordic is not obligated to furnish or make available to Licensee any further information, software, technical information, know-how, show-how,
+bug-fixes or support. Nordic reserves the right to make changes to the S210 and S310 without further notice.
+
+10. Limitation of Liability
+In no event shall Nordic, its employees or suppliers, licensors or affiliates be liable for any lost profits, revenue, sales, data or costs of
+procurement of substitute goods or services, property damage, personal injury, interruption of business, loss of business information or for any
+special, direct, indirect, incidental, economic, punitive, special or consequential damages, however caused and whether arising under contract,
+tort, negligence, or other theory of liability arising out of the use of or inability to use the S210 and S310, even if Nordic or its employees or
+suppliers, licensors or affiliates are advised of the possibility of such damages. Because some countries/states/jurisdictions do not allow the
+exclusion or limitation of liability, but may allow liability to be limited, in such cases, Nordic, its employees or licensors or affiliates’ liability shall be
+limited to USD 50.
+
+11. Breach of Contract
+Upon a breach of contract by the Licensee, Nordic and its licensor are entitled to damages in respect of any direct loss which can be reasonably
+attributed to the breach by the Licensee. If the Licensee has acted with gross negligence or willful misconduct, the Licensee shall cover both
+direct and indirect costs for Nordic and its licensors.
+
+12. Indemnity
+Licensee undertakes to indemnify, hold harmless and defend Nordic and its directors, officers, affiliates, shareholders, licensors, employees and
+agents from and against any claims or lawsuits, including attorney's fees, that arise or result of the Licensee’s execution of the License and which
+is not due to causes for which Nordic is responsible.
+
+13. Governing Law
+This Agreement shall be construed according to the laws of Norway, and hereby submits to the exclusive jurisdiction of the Oslo tingrett.
+
+14. Assignment
+Licensee shall not assign this Agreement or any rights or obligations hereunder without the prior written consent of Nordic.
+
+15. Termination
+Without prejudice to any other rights, Nordic may cancel this Agreement if Licensee does not abide by the terms and conditions of this
+Agreement. Upon termination Licensee must promptly cease the use of the License and destroy all copies of the Licensed Technology and any
+other material provided by Nordic or its affiliate, or produced by the Licensee in connection with the Agreement or the Licensed Technology.
+
+16. Third party beneficiaries
+Nordic’s licensors are intended third party beneficiaries under this Agreement.

@@ -96,18 +96,20 @@ void jshInit() {
   inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
+
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+
   // Irq setup
   NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
   NVIC_ClearPendingIRQ(TIMER1_IRQn);
   NVIC_EnableIRQ(TIMER1_IRQn);
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
+
   // Pin change
   nrf_drv_gpiote_init();
-
   jswrap_nrf_bluetooth_init();
 }
 
@@ -267,6 +269,7 @@ JsVarFloat jshPinAnalog(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) / 1024.0;
+  return 0.0;
 }
 
 /// Returns a quickly-read analog value in the range 0-65535
@@ -284,6 +287,7 @@ int jshPinAnalogFast(Pin pin) {
   assert(ADC_CONFIG_PSEL_AnalogInput2 == 4);
   // make reading
   return nrf_adc_convert_single(1 << (pinInfo[pin].analog & JSH_MASK_ANALOG_CH)) << 8;
+  return 0;
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
@@ -438,13 +442,13 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
 
-  if (device == EV_BLUETOOTH) {
+  //if (device == EV_BLUETOOTH) {
     /* For bluetooth, start transmit after one character.
       The BLE_EVT_TX_COMPLETE event will get triggered and
       will auto-reload whatever needs sending. */
-    bool jswrap_nrf_transmit_string();
-    jswrap_nrf_transmit_string();
-  }
+    //bool jswrap_nrf_transmit_string();
+    //jswrap_nrf_transmit_string();
+  //}
   
   if (device == EV_SERIAL1 && !uartIsSending) {
     jshInterruptOff();
@@ -514,7 +518,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
   if (twi1Initialised) nrf_drv_twi_uninit(twi);
   twi1Initialised = true;
-  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL);
+  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
   else
@@ -533,10 +537,9 @@ void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const u
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
   const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
-
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
@@ -630,6 +633,7 @@ JsVarFloat jshReadVRef() {
        NRF_ADC_CONFIG_REF_VBG }; // internal reference
   nrf_adc_configure( (nrf_adc_config_t *)&nrf_adc_config);
   return 1.2 / nrf_adc_convert_single(ADC_CONFIG_PSEL_AnalogInput0);
+  return 0.0;
 }
 
 /**
