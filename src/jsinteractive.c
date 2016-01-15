@@ -1092,11 +1092,53 @@ void jsiAppendStringToInputLine(const char *strToAppend) {
   }
 }
 
-#ifndef SAVE_ON_FLASH
+#ifdef USE_TAB_COMPLETE
+
+typedef struct {
+  size_t partialLen;
+  JsVar *partial;
+  JsVar *possible;
+  int matches;
+  size_t lineLength;
+} JsiTabCompleteData;
+
+void jsiTabComplete_findCommon(void *cbdata, JsVar *key) {
+  JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+    data->matches++;
+    if (data->possible) {
+      JsVar *v = jsvGetCommonCharacters(data->possible, key);
+      jsvUnLock(data->possible);
+      data->possible = v;
+    } else {
+      data->possible = jsvLockAgain(key);
+    }
+  }
+}
+
+void jsiTabComplete_printCommon(void *cbdata, JsVar *key) {
+  JsiTabCompleteData *data = (JsiTabCompleteData*)cbdata;
+  if (jsvGetStringLength(key)>data->partialLen && jsvCompareString(data->partial, key, 0, 0, true)==0) {
+    // Print, but do as 2 columns
+    if (data->lineLength==0 || data->lineLength>18) {
+      jsiConsolePrintf("%v",key);
+      data->lineLength = jsvGetStringLength(key);
+    } else {
+      while (data->lineLength<20) {
+        jsiConsolePrintChar(' ');
+        data->lineLength++;
+      }
+      jsiConsolePrintf("%v\n",key);
+      data->lineLength = 0;
+    }
+  }
+}
+
 void jsiTabComplete() {
   if (!jsvIsString(inputLine)) return;
   JsVar *object = 0;
-  JsVar *partial = 0;
+  JsiTabCompleteData data;
+  data.partial = 0;
   size_t partialStart = 0;
 
   JsLex lex;
@@ -1104,37 +1146,37 @@ void jsiTabComplete() {
   while (lex.tk!=LEX_EOF && jsvStringIteratorGetIndex(&lex.tokenStart.it)<=inputCursorPos) {
     if (lex.tk=='.') {
       jsvUnLock(object);
-      object = partial;
-      partial = 0;
+      object = data.partial;
+      data.partial = 0;
     } else if (lex.tk==LEX_ID) {
-      jsvUnLock(partial);
-      partial = jslGetTokenValueAsVar(&lex);
+      jsvUnLock(data.partial);
+      data.partial = jslGetTokenValueAsVar(&lex);
       partialStart = jsvStringIteratorGetIndex(&lex.tokenStart.it);
     } else {
       jsvUnLock(object);
       object = 0;
-      jsvUnLock(partial);
-      partial = 0;
+      jsvUnLock(data.partial);
+      data.partial = 0;
     }
     jslGetNextToken(&lex);
   }
   jslKill(&lex);
-  if (!partial) {
+  if (!data.partial) {
     jsvUnLock(object);
     return;
   }
-  size_t partialLen = jsvGetStringLength(partial);
+  data.partialLen = jsvGetStringLength(data.partial);
   size_t actualPartialLen = inputCursorPos + 1 - partialStart;
-  if (actualPartialLen > partialLen) {
+  if (actualPartialLen > data.partialLen) {
     // we had a token but were past the end of it when asked
     // to autocomplete ---> no token
-    jsvUnLock(partial);
+    jsvUnLock(data.partial);
     return;
-  } else if (actualPartialLen < partialLen) {
-    JsVar *v = jsvNewFromStringVar(partial, 0, actualPartialLen);
-    jsvUnLock(partial);
-    partial = v;
-    partialLen = actualPartialLen;
+  } else if (actualPartialLen < data.partialLen) {
+    JsVar *v = jsvNewFromStringVar(data.partial, 0, actualPartialLen);
+    jsvUnLock(data.partial);
+    data.partial = v;
+    data.partialLen = actualPartialLen;
   }
 
   // If we had the name of an object here, try and look it up
@@ -1152,7 +1194,7 @@ void jsiTabComplete() {
     object = v;
     // If we couldn't look it up, don't offer any suggestions
     if (!v) {
-      jsvUnLock(partial);
+      jsvUnLock(data.partial);
       return;
     }
   }
@@ -1161,77 +1203,34 @@ void jsiTabComplete() {
     object = jsvLockAgain(execInfo.root);
   }
   // Now try and autocomplete
-  JsVar *possible = 0;
-  JsVar *keys = jswrap_object_keys_or_property_names(object, true, true);
-  //jsiConsolePrintf("\n%v\n", keys);
-  jsvUnLock(object);
-  if (!keys) return;
-  int matches = 0;
-  JsvObjectIterator it;
-  jsvObjectIteratorNew(&it, keys);
-  while (jsvObjectIteratorHasValue(&it)) {
-    JsVar *key = jsvObjectIteratorGetValue(&it);
-    if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
-      matches++;
-      if (possible) {
-        JsVar *v = jsvGetCommonCharacters(possible, key);
-        jsvUnLock(possible);
-        possible = v;
-      } else {
-        possible = jsvLockAgain(key);
-      }
-    }
-    jsvUnLock(key);
-    jsvObjectIteratorNext(&it);
-  }
-  jsvObjectIteratorFree(&it);
+  data.possible = 0;
+  data.matches = 0;
+  jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_findCommon, &data);
   // If we've got >1 match and are at the end of a line, print hints
-  if (matches>1) {
+  if (data.matches>1) {
     // Remove the current line and add a newline
     jsiMoveCursorChar(inputLine, inputCursorPos, (size_t)inputLineLength);
     inputLineRemoved = true;
     jsiConsolePrint("\n\n");
-    size_t lineLength = 0;
+    data.lineLength = 0;
     // Output hints
-    JsvObjectIterator it;
-      jsvObjectIteratorNew(&it, keys);
-      while (jsvObjectIteratorHasValue(&it)) {
-        JsVar *key = jsvObjectIteratorGetValue(&it);
-        if (jsvGetStringLength(key)>partialLen && jsvCompareString(partial, key, 0, 0, true)==0) {
-          // Print, but do as 2 columns
-          if (lineLength==0 || lineLength>18) {
-            jsiConsolePrintf("%v",key);
-            lineLength = jsvGetStringLength(key);
-          } else {
-            while (lineLength<20) {
-              jsiConsolePrintChar(' ');
-              lineLength++;
-            }
-            jsiConsolePrintf("%v\n",key);
-            lineLength = 0;
-          }
-        }
-        jsvUnLock(key);
-        jsvObjectIteratorNext(&it);
-      }
-      jsvObjectIteratorFree(&it);
-      if (lineLength) jsiConsolePrint("\n");
-      jsiConsolePrint("\n");
+    jswrap_object_keys_or_property_names_cb(object, true, true, jsiTabComplete_printCommon, &data);
+    if (data.lineLength) jsiConsolePrint("\n");
+    jsiConsolePrint("\n");
     // Return the input line
     jsiConsoleReturnInputLine();
   }
-
-  jsvUnLock(keys);
+  jsvUnLock(object);
   // apply the completion
-  if (possible) {
+  if (data.possible) {
     char buf[JSLEX_MAX_TOKEN_LENGTH];
-    jsvGetString(possible, buf, sizeof(buf));
-    if (partialLen < strlen(buf))
-      jsiAppendStringToInputLine(&buf[partialLen]);
-    jsvUnLock(possible);
+    jsvGetString(data.possible, buf, sizeof(buf));
+    if (data.partialLen < strlen(buf))
+      jsiAppendStringToInputLine(&buf[data.partialLen]);
+    jsvUnLock(data.possible);
   }
 }
-#endif
+#endif // USE_TAB_COMPLETE
 
 void jsiHandleNewLine(bool execute) {
   if (jsiAtEndOfInputLine()) { // at EOL so we need to figure out if we can execute or not
@@ -1420,7 +1419,7 @@ void jsiHandleChar(char ch) {
     } else if (ch == '\r' || ch == '\n') {
       if (ch == '\r') inputState = IS_HAD_R;
       jsiHandleNewLine(true);
-#ifndef SAVE_ON_FLASH
+#ifdef USE_TAB_COMPLETE
     } else if (ch=='\t' && jsiEcho()) {
       jsiTabComplete();
 #endif

@@ -412,6 +412,8 @@ void uart0_event_handle(app_uart_evt_t * p_event) {
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  if (device != EV_SERIAL1)
+    return;
 
   int baud = getNRFBaud(inf->baudRate);
   if (baud==0)

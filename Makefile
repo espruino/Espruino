@@ -385,6 +385,8 @@ OPTIMIZEFLAGS+=-Os # short on program memory
 else ifdef MICROBIT
 EMBEDDED=1
 SAVE_ON_FLASH=1
+# Save on flash, but we still want the debugger and tab complete
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=MICROBIT
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
@@ -393,6 +395,8 @@ USE_GRAPHICS=1
 else ifdef NRF51TAG
 EMBEDDED=1
 SAVE_ON_FLASH=1
+# Save on flash, but we still want the debugger and tab complete
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=NRF51TAG
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
@@ -400,6 +404,8 @@ USE_BLUETOOTH=1
 else ifdef NRF51822DK
 EMBEDDED=1
 SAVE_ON_FLASH=1
+# Save on flash, but we still want the debugger and tab complete
+DEFINES+=-DUSE_DEBUGGER -DUSE_TAB_COMPLETE
 BOARD=NRF51822DK
 OPTIMIZEFLAGS+=-Os
 USE_BLUETOOTH=1
@@ -757,6 +763,8 @@ libs/compression/compress_rle.c
 else
 # If we have enough flash, include the debugger
 DEFINES+=-DUSE_DEBUGGER
+# Use use tab complete
+DEFINES+=-DUSE_TAB_COMPLETE
 
 # Heatshrink compression library and wrapper - better compression when saving code to flash
 DEFINES+=-DUSE_HEATSHRINK
