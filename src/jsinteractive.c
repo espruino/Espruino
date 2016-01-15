@@ -1577,7 +1577,11 @@ bool jsiIsWatchingPin(Pin pin) {
   return isWatched;
 }
 
-void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+/** Take an event for a UART and handle the chareacters we're getting, potentially
+ * grabbing more characters as well if it's easy. If more character events are
+ * grabbed, the number of extra events (not characters) is returned */
+int jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
+  int eventsHandled = 0;
   /* work out byteSize. On STM32 we fake 7 bit, and it's easier to
    * check the options and work out the masking here than it is to
    * do it in the IRQ */
@@ -1603,6 +1607,7 @@ void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
       // look down the stack and see if there is more data
       if (jshIsTopEvent(IOEVENTFLAGS_GETTYPE(event->flags))) {
         jshPopIOEvent(event);
+        eventsHandled++;
         chars = IOEVENTFLAGS_GETCHARS(event->flags);
       } else
         chars = 0;
@@ -1613,6 +1618,7 @@ void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event) {
     jswrap_stream_pushData(usartClass, stringData, true);
     jsvUnLock(stringData);
   }
+  return eventsHandled;
 }
 
 void jsiHandleIOEventForConsole(IOEvent *event) {
@@ -1630,8 +1636,11 @@ void jsiIdle() {
   // Handle hardware-related idle stuff (like checking for pin events)
   bool wasBusy = false;
   IOEvent event;
-  int maxEvents = IOBUFFERMASK+1; // ensure we can't get totally swamped by having more events than we can process
-  while (maxEvents-- && jshPopIOEvent(&event)) {
+  // ensure we can't get totally swamped by having more events than we can process.
+  // Just process what was in the event queue at the start
+  int maxEvents = jshGetEventsUsed();
+
+  while ((maxEvents--)>0 && jshPopIOEvent(&event)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     wasBusy = true;
 
@@ -1646,7 +1655,7 @@ void jsiIdle() {
       // ------------------------------------------------------------------------ SERIAL CALLBACK
       JsVar *usartClass = jsvSkipNameAndUnLock(jsiGetClassNameFromDevice(IOEVENTFLAGS_GETTYPE(event.flags)));
       if (jsvIsObject(usartClass)) {
-        jsiHandleIOEventForUSART(usartClass, &event);
+        maxEvents -= jsiHandleIOEventForUSART(usartClass, &event);
       }
       jsvUnLock(usartClass);
     } else if (DEVICE_IS_USART_STATUS(eventType)) {
@@ -1893,6 +1902,7 @@ void jsiIdle() {
    */
 
   // Check for events that might need to be processed from other libraries
+  if (wasBusy) jsiConsolePrint("#\n");
   if (jswIdle()) wasBusy = true;
 
   // Just in case we got any events to do and didn't clear loopsIdling before
