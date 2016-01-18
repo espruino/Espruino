@@ -861,7 +861,7 @@ JsVar *jswrap_ESP8266_wifi_getStatus(JsVar *jsCallback) {
   int8 conn = wifi_station_get_connect_status();
   if (conn < 0) conn = 0;
 
-  JsVar *jsWiFiStatus = jspNewObject(NULL, "WiFiStatus");
+  JsVar *jsWiFiStatus = jsvNewWithFlags(JSV_OBJECT);
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "mode",
     jsvNewFromString(wifiMode[opMode]));
   jsvObjectSetChildAndUnLock(jsWiFiStatus, "station",
@@ -983,7 +983,7 @@ JsVar *jswrap_ESP8266_wifi_getDetails(JsVar *jsCallback) {{
 
   uint8 opMode = wifi_get_opmode();
 
-  JsVar *jsDetails = jspNewObject(NULL, "WiFiDetails");
+  JsVar *jsDetails = jsvNewWithFlags(JSV_OBJECT);
 
   int8 conn = wifi_station_get_connect_status();
   if (conn < 0) conn = 0;
@@ -1058,7 +1058,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
 
   uint8 opMode = wifi_get_opmode();
 
-  JsVar *jsDetails = jspNewObject(NULL, "WiFiAPDetails"); // FIXME: Should be anonymous allocator
+  JsVar *jsDetails = jsvNewWithFlags(JSV_OBJECT);
 
   jsvObjectSetChildAndUnLock(jsDetails, "status",
     jsvNewFromString(opMode & SOFTAP_MODE ? "enabled" : "disabled"));
@@ -1084,7 +1084,7 @@ JsVar *jswrap_ESP8266_wifi_getAPDetails(JsVar *jsCallback) {
     JsVar *jsArray = jsvNewArray(NULL, 0);
     struct station_info *station = wifi_softap_get_station_info();
     while(station) {
-      JsVar *jsSta = jspNewObject(NULL, "WifiStation"); // FIXME: Should be anonymous allocator
+      JsVar *jsSta = jsvNewWithFlags(JSV_OBJECT);
       jsvObjectSetChildAndUnLock(jsSta, "ip",
         networkGetAddressAsString((uint8_t *)&station->ip.addr, 4, 10, '.'));
       char macAddrString[6*3 + 1];
@@ -1267,7 +1267,7 @@ static JsVar *getIPInfo(JsVar *jsCallback, int interface) {
   // first get IP address info, this may fail if we're not connected
   struct ip_info info;
   bool ok = wifi_get_ip_info(interface, &info);
-  JsVar *jsIpInfo = jspNewObject(NULL, "IPInfo");
+  JsVar *jsIpInfo = jsvNewWithFlags(JSV_OBJECT);
   if (ok) {
     jsvObjectSetChildAndUnLock(jsIpInfo, "ip",
       networkGetAddressAsString((uint8_t *)&info.ip.addr, 4, 10, '.'));
@@ -1723,7 +1723,7 @@ static void pingRecvCB(void *pingOpt, void *pingResponse) {
   struct ping_resp *pingResp = (struct ping_resp *)pingResponse;
   os_printf("Received a ping response!\n");
   if (g_jsPingCallback != NULL) {
-    JsVar *jsPingResponse = jspNewObject(NULL, "PingResponse");
+    JsVar *jsPingResponse = jsvNewWithFlags(JSV_OBJECT);
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalCount",   jsvNewFromInteger(pingResp->total_count));
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalBytes",   jsvNewFromInteger(pingResp->total_bytes));
     jsvObjectSetChildAndUnLock(jsPingResponse, "totalTime",    jsvNewFromInteger(pingResp->total_time));
@@ -1771,7 +1771,7 @@ static void scanCB(void *arg, STATUS status) {
     // Add a new object to the JS array that will be passed as a parameter to
     // the callback.
     // Create, populate and add a child ...
-    JsVar *jsCurrentAccessPoint = jspNewObject(NULL, "AccessPoint"); // FIXME: Use anonymous allocator
+    JsVar *jsCurrentAccessPoint = jsvNewWithFlags(JSV_OBJECT);
     if (bssInfo->rssi > 0) bssInfo->rssi = 0;
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "rssi", jsvNewFromInteger(bssInfo->rssi));
     jsvObjectSetChildAndUnLock(jsCurrentAccessPoint, "channel", jsvNewFromInteger(bssInfo->channel));
