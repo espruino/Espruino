@@ -21,21 +21,11 @@
 
 int main() {
 
-  CMU_ClockEnable(cmuClock_HFPER, true);
-  CMU_ClockEnable(cmuClock_GPIO, true);
-  GPIO_PinModeSet(gpioPortE, 2, gpioModePushPull, 1);
-  GPIO_PinModeSet(gpioPortE, 3, gpioModePushPull, 1);
-  GPIO_PinOutSet(gpioPortE, 2);
-  GPIO_PinOutClear(gpioPortE, 3);
-
   jshInit();
-  GPIO_PinOutSet(gpioPortE, 3);
   
   jsvInit();
-  GPIO_PinOutClear(gpioPortE, 2);
   
   jsiInit(true); // load from flash by default
-  GPIO_PinOutClear(gpioPortE, 3);
   
   while (1) 
   {

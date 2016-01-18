@@ -767,7 +767,7 @@ void jsiSemiInit(bool autoLoad) {
 
 // The 'proper' init function - this should be called only once at bootup
 void jsiInit(bool autoLoad) {
-#if defined(LINUX) || !defined(USB)
+#if defined(LINUX) || !defined(USB_CONSOLE)
   consoleDevice = DEFAULT_CONSOLE_DEVICE;
 #else
   consoleDevice = EV_LIMBO;
@@ -790,7 +790,7 @@ void jsiOneSecondAfterStartup() {
      that but if we start transmitting on Serial right away, the first
      char or two can get corrupted.
    */
-#ifdef USB
+#ifdef USB_CONSOLE
   if (consoleDevice == EV_LIMBO) {
     consoleDevice = DEFAULT_CONSOLE_DEVICE;
     if (jshIsUSBSERIALConnected())

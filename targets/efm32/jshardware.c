@@ -72,18 +72,16 @@ void USART1_TX_IRQHandler(void)
     /* If we have other data to send, send it */
     int c = jshGetCharToTransmit(EV_SERIAL1);
     if (c >= 0) {
-      USART_TxDouble(uart, (uint16_t)c);
+      USART_Tx(uart, (uint8_t)c);
     } else
       USART_IntDisable(uart, UART_IEN_TXBL);
   }
 }
 
 void jshInit() {
-
   
-  jshInitDevices(); // Initialize JS - not sure where this is located?
-
-  CHIP_Init; //Init EFM32 device  
+  CHIP_Init; //Init EFM32 device
+  jshInitDevices(); // Initialize jshSerialDevices in jsdevice.c
 
   /* Start HFXO and use it as main clock */
   CMU_OscillatorEnable( cmuOsc_HFXO, true, true);
