@@ -99,8 +99,8 @@ _estack = """+hex(STACK_START)+""";
 
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = """+hex(FLASH_BASE)+""", LENGTH = """+str(FLASH_SIZE/1024)+"""K
-  RAM (xrw)       : ORIGIN = """+hex(RAM_BASE)+""", LENGTH = """+str(RAM_SIZE/1024)+"""K
+  FLASH (rx)      : ORIGIN = """+hex(FLASH_BASE)+""", LENGTH = """+str(int(FLASH_SIZE/1024))+"""K
+  RAM (xrw)       : ORIGIN = """+hex(RAM_BASE)+""", LENGTH = """+str(int(RAM_SIZE/1024))+"""K
 }
 
 SECTIONS

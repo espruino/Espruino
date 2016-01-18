@@ -37,7 +37,7 @@
 # NRF51822DK=1
 # NRF52832DK=1            # Ultra low power BLE (bluetooth low energy) enabled SoC. Arm Cortex-M4f processor. With NFC (near field communication).
 # CARAMBOLA=1
-# DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.	
+# DPTBOARD=1              # DPTechnics IoT development board with BlueCherry.io IoT platform integration and DPT-WEB IDE.
 # RASPBERRYPI=1
 # BEAGLEBONE=1
 # ARIETTA=1
@@ -50,6 +50,7 @@
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
 # ESP8266_BOARD=1         # ESP8266
+# EFM32GGSTK=1            # Currently only works with DEBUG=1
 # EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # Or nothing for standard linux compile
 #
@@ -165,6 +166,12 @@ USE_TLS=1
 BOARD=PICO_R1_3
 STLIB=STM32F401xE
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f4/lib/startup_stm32f401xx.o
+OPTIMIZEFLAGS+=-Os
+
+else ifdef EFM32GGSTK
+EMBEDDED=1
+DEFINES+= -DEFM32GG890F1024=1 # This should be EFM32GG990F1024, temporary hack to avoid the #USB on line 772 in jsinteractive.c
+BOARD=EFM32GGSTK
 OPTIMIZEFLAGS+=-Os
 
 else ifdef OLIMEXINO_STM32
@@ -543,7 +550,7 @@ endif
 ifdef RASPBERRYPI
 EMBEDDED=1
 BOARD=RASPBERRYPI
-DEFINES += -DRASPBERRYPI 
+DEFINES += -DRASPBERRYPI
 LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
@@ -658,11 +665,14 @@ endif
 
 ifdef DEBUG
 #OPTIMIZEFLAGS=-Os -g
-ifeq ($(FAMILY),ESP8266)
-OPTIMIZEFLAGS=-g -Os
-else
-OPTIMIZEFLAGS=-g
-endif
+ ifeq ($(FAMILY),ESP8266)
+  OPTIMIZEFLAGS=-g -Os
+ else
+  OPTIMIZEFLAGS=-g
+ endif
+ ifdef EFM32
+  DEFINES += -DDEBUG_EFM=1 -DDEBUG=1
+ endif
 DEFINES+=-DDEBUG
 endif
 
@@ -894,7 +904,6 @@ ifdef USE_NET
  libs/network/socketserver.c \
  libs/network/socketerrors.c
 
- # 
  WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
  INCLUDE += -I$(ROOT)/libs/network/js
  SOURCES += \
@@ -1003,7 +1012,7 @@ endif
 ifdef USE_WIRINGPI
 DEFINES += -DUSE_WIRINGPI
 LIBS += -lwiringPi
-INCLUDE += -I/usr/local/include -L/usr/local/lib 
+INCLUDE += -I/usr/local/include -L/usr/local/lib
 endif
 
 ifdef USE_BLUETOOTH
@@ -1104,11 +1113,11 @@ targetlibs/stm32f1/lib/stm32f10x_tim.c     \
 targetlibs/stm32f1/lib/stm32f10x_usart.c   \
 targetlibs/stm32f1/lib/stm32f10x_wwdg.c    \
 targetlibs/stm32f1/lib/system_stm32f10x.c
-    
-#targetlibs/stm32f1/lib/stm32f10x_cec.c     
-#targetlibs/stm32f1/lib/stm32f10x_crc.c     
-#targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c  
-#targetlibs/stm32f1/lib/stm32f10x_fsmc.c    
+
+#targetlibs/stm32f1/lib/stm32f10x_cec.c
+#targetlibs/stm32f1/lib/stm32f10x_crc.c
+#targetlibs/stm32f1/lib/stm32f10x_dbgmcu.c
+#targetlibs/stm32f1/lib/stm32f10x_fsmc.c
 
 ifdef USB
 STM32_LEGACY_USB=1
@@ -1166,7 +1175,7 @@ ifdef WICED_XXX
   DEFINES += -DNETWORK_LwIP=1 -DLwIP_VERSION=\"v1.4.0.rc1\"
   DEFINES += -DRTOS_FreeRTOS=1 -DconfigUSE_MUTEXES -DconfigUSE_RECURSIVE_MUTEXES
   DEFINES += -DFreeRTOS_VERSION=\"v7.5.2\" -DWWD_DIRECT_RESOURCES -DHSE_VALUE=26000000
-  INCLUDE += 
+  INCLUDE +=
 endif
 STM32=1
 INCLUDE += -I$(ROOT)/targetlibs/stm32f4 -I$(ROOT)/targetlibs/stm32f4/lib
@@ -1192,19 +1201,19 @@ targetlibs/stm32f4/lib/stm32f4xx_tim.c        \
 targetlibs/stm32f4/lib/stm32f4xx_usart.c      \
 targetlibs/stm32f4/lib/stm32f4xx_wwdg.c       \
 targetlibs/stm32f4/lib/system_stm32f4xx.c
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c  
-#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c       
-#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c      
-#targetlibs/stm32f4/lib/stm32f4xx_can.c        
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c  
-#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c  
-#targetlibs/stm32f4/lib/stm32f4xx_cryp.c       
-#targetlibs/stm32f4/lib/stm32f4xx_hash.c       
-#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c   
-#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c  
-#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c       
-#targetlibs/stm32f4/lib/stm32f4xx_rng.c        
-#targetlibs/stm32f4/lib/stm32f4xx_sai.c        
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_aes.c
+#targetlibs/stm32f4/lib/stm32f4xx_dcmi.c
+#targetlibs/stm32f4/lib/stm32f4xx_dma2d.c
+#targetlibs/stm32f4/lib/stm32f4xx_can.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_des.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp_tdes.c
+#targetlibs/stm32f4/lib/stm32f4xx_cryp.c
+#targetlibs/stm32f4/lib/stm32f4xx_hash.c
+#targetlibs/stm32f4/lib/stm32f4xx_hash_md5.c
+#targetlibs/stm32f4/lib/stm32f4xx_hash_sha1.c
+#targetlibs/stm32f4/lib/stm32f4xx_ltdc.c
+#targetlibs/stm32f4/lib/stm32f4xx_rng.c
+#targetlibs/stm32f4/lib/stm32f4xx_sai.c
 #targetlibs/stm32f4/lib/stm324xx_fsmc.c
 ifdef USB
 STM32_USB=1
@@ -1218,7 +1227,7 @@ ifdef STM32_USB
 SOURCES +=                                 \
 targetlibs/stm32usb/Src/stm32f4xx_ll_usb.c \
 targetlibs/stm32usb/Src/stm32f4xx_hal_pcd.c \
-targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c 
+targetlibs/stm32usb/Src/stm32f4xx_hal_pcd_ex.c
 
 INCLUDE += -I$(ROOT)/targetlibs/stm32usb -I$(ROOT)/targetlibs/stm32usb/Inc
 SOURCES +=                                 \
@@ -1258,7 +1267,7 @@ targetlibs/stm32legacyusb/legacy_usb.c
 endif #USB
 
 ifeq ($(FAMILY), NRF51)
-  
+
   NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
   
@@ -1275,6 +1284,7 @@ ifeq ($(FAMILY), NRF51)
   DEFINES += -DNRF51 -DSWI_DISABLE0 -DSOFTDEVICE_PRESENT -DS130 -DBLE_STACK_SUPPORT_REQD -DNRF_LOG_USES_UART # SoftDevice included by default.
 
   LINKER_RAM:=$(shell python scripts/get_board_info.py $(BOARD) "board.chip['ram']")
+
   LINKER_FILE = $(NRF5X_SDK_PATH)/../nrf5x_linkers/linker_nrf51_ble_espruino_$(LINKER_RAM).ld
   
   SOFTDEVICE = $(NRF5X_SDK_PATH)/components/softdevice/s130/hex/s130_nrf51_2.0.0-7.alpha_softdevice.hex
@@ -1282,7 +1292,7 @@ ifeq ($(FAMILY), NRF51)
 endif # FAMILY == NRF51
 
 ifeq ($(FAMILY), NRF52)
-  
+
   NRF5X=1
   NRF5X_SDK_PATH=$(ROOT)/targetlibs/nrf5x/nrf5_sdk
 
@@ -1303,12 +1313,83 @@ ifeq ($(FAMILY), NRF52)
 
 endif #FAMILY == NRF52
 
+ifeq ($(FAMILY), EFM32GG)
+
+  EFM32=1
+
+  ARCHFLAGS += -mcpu=cortex-m3  -mthumb
+
+  GECKO_SDK_PATH=$(ROOT)/targetlibs/Gecko_SDK
+
+  ARM = 1
+  ARM_HAS_OWN_CMSIS = 1
+  INCLUDE += -I$(GECKO_SDK_PATH)/cmsis/Include
+
+  LINKER_FILE = $(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/efm32gg.ld
+
+  INCLUDE += -I$(ROOT)/targets/efm32
+  SOURCES +=                              \
+  targets/efm32/main.c                    \
+  targets/efm32/jshardware.c
+
+  INCLUDE += -I$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Include
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/nvm/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/rtcdrv/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emdrv/common/inc
+  INCLUDE += -I$(GECKO_SDK_PATH)/emlib/inc
+
+  SOURCES += \
+	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/GCC/startup_efm32gg.c \
+	$(GECKO_SDK_PATH)/Device/SiliconLabs/EFM32GG/Source/system_efm32gg.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_gpio.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_cmu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_assert.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_emu.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_msc.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_rtc.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_int.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_system.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_timer.c \
+	$(GECKO_SDK_PATH)/emlib/src/em_usart.c \
+	$(GECKO_SDK_PATH)/emdrv/rtcdrv/src/rtcdriver.c
+
+	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm.c \
+	# $(GECKO_SDK_PATH)/emdrv/nvm/src/nvm_hal.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_acmp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_adc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_aes.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_burtc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_crc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_cryotimer.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_crypto.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dac.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dbg.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_dma.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_ebi.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_i2c.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_idac.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_lcd.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_ldma.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_lesense.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_letimer.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_leuart.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_mpu.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_opamp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_pcnt.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_prs.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_rmu.c \
+  # $(GECKO_SDK_PATH)/emlib/src/em_rtcc.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_vcmp.c \
+	# $(GECKO_SDK_PATH)/emlib/src/em_wdog.c
+
+endif #FAMILY == EFM32
+
 ifdef NRF5X
 
   # Just try and get rid of the compile warnings.
   CFLAGS += -Wno-sign-conversion -Wno-conversion -Wno-unused-parameter
   DEFINES += -DBLUETOOTH
-  
+
   ARM = 1
   ARM_HAS_OWN_CMSIS = 1 # Nordic uses its own CMSIS files in its SDK, these are up-to-date.
   INCLUDE += -I$(ROOT)/targetlibs/nrf5x -I$(NRF5X_SDK_PATH)
@@ -1495,12 +1576,15 @@ CFLAGS += $(OPTIMIZEFLAGS) -c $(ARCHFLAGS) $(DEFINES) $(INCLUDE)
 
 # -Wl,--gc-sections helps remove unused code
 # -Wl,--whole-archive checks for duplicates
-ifndef NRF5X
- LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
-else ifdef NRF5X
+ifdef NRF5X
  LDFLAGS += $(ARCHFLAGS)
  LDFLAGS += --specs=nano.specs -lc -lnosys
-endif # NRF5X
+else ifdef EFM32
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS)
+ LDFLAGS += -Wl,--start-group -lgcc -lc -lnosys -Wl,--end-group
+else
+ LDFLAGS += $(OPTIMIZEFLAGS) $(ARCHFLAGS) 
+endif
 
 ifdef EMBEDDED
 DEFINES += -DEMBEDDED
@@ -1585,9 +1669,11 @@ $(PININFOFILE).c $(PININFOFILE).h: scripts/build_pininfo.py
 endif
 
 ifndef NRF5X # nRF5x devices use their own linker files that aren't automatically generated.
+ifndef EFM32
 $(LINKER_FILE): scripts/build_linker.py
 	@echo Generating linker scripts
 	$(Q)python scripts/build_linker.py $(BOARD) $(LINKER_FILE) $(BUILD_LINKER_FLAGS)
+endif # EFM32
 endif # NRF5X
 
 $(PLATFORM_CONFIG_FILE): boards/$(BOARD).py scripts/build_platform_config.py
