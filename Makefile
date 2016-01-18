@@ -50,12 +50,9 @@
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
 # ESP8266_BOARD=1         # ESP8266
-<<<<<<< HEAD
 # EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # EFM32GGSTK=1
-=======
 # EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
->>>>>>> refs/remotes/espruino/master
 # Or nothing for standard linux compile
 #
 # Also:
