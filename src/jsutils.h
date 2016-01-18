@@ -292,6 +292,7 @@ typedef int64_t JsSysTime;
 #define BITFIELD_DECL(BITFIELD, N) uint32_t BITFIELD[(N+31)/32]
 #define BITFIELD_GET(BITFIELD, N) ((BITFIELD[(N)>>5] >> ((N)&31))&1)
 #define BITFIELD_SET(BITFIELD, N, VALUE) (BITFIELD[(N)>>5] = (BITFIELD[(N)>>5]& (uint32_t)~(1 << ((N)&31))) | (uint32_t)((VALUE)?(1 << ((N)&31)):0)  )
+#define BITFIELD_CLEAR(BITFIELD) memset(BITFIELD, 0, sizeof(BITFIELD)) ///< Clear all elements
 
 
 static inline bool isWhitespace(char ch) {

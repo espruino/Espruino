@@ -222,4 +222,8 @@ void netSetCallbacks_cc3000(JsNetwork *net) {
   net->gethostbyname = net_cc3000_gethostbyname;
   net->recv = net_cc3000_recv;
   net->send = net_cc3000_send;
+  /* we're limited by CC3k buffer sizes - see CC3000_RX_BUFFER_SIZE/CC3000_TX_BUFFER_SIZE
+   * We could however allocate RAM on the stack (since we now don't use IRQs)
+   * and could then alloc more, increasing this. */
+  net->chunkSize = 64;
 }

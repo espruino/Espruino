@@ -148,7 +148,7 @@ typedef struct {
    * For STRING_EXT - extra characters
    * Not used for other stuff
    */
-#ifndef JSVARREF_PACKED_BITS
+#if JSVARREF_SIZE!=1
   JsVarRef nextSibling;
   JsVarRef prevSibling;
 
@@ -171,12 +171,12 @@ typedef struct {
    */
   JsVarRef lastChild;
 
-#else // JSVARREF_PACKED_BITS
+#else // JSVARREF_SIZE==1
   // see declaration of JSVARREF_PACKED_BITS in jsutils.h for more info
   uint8_t nextSibling;
   uint8_t prevSibling;
   uint8_t firstChild;
-  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS
+  uint8_t pack; // extra packed bits if JSVARREF_PACKED_BITS - otherwise unused except when needed for data
   uint8_t refs;
   uint8_t lastChild;
 #endif
@@ -672,7 +672,7 @@ JsVarInt jsvArrayPush(JsVar *arr, JsVar *value); ///< Adds a new element to the 
 JsVarInt jsvArrayPushAndUnLock(JsVar *arr, JsVar *value); ///< Adds a new element to the end of an array, unlocks it, and returns the new length
 JsVar *jsvArrayPop(JsVar *arr); ///< Removes the last element of an array, and returns that element (or 0 if empty). includes the NAME
 JsVar *jsvArrayPopFirst(JsVar *arr); ///< Removes the first element of an array, and returns that element (or 0 if empty) includes the NAME. DOES NOT RENUMBER.
-void jsvArrayAddString(JsVar *arr, const char *text); ///< Adds a new String element to the end of an array (IF it was not already there)
+void jsvArrayAddUnique(JsVar *arr, JsVar *v); ///< Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
 JsVar *jsvArrayJoin(JsVar *arr, JsVar *filler); ///< Join all elements of an array together into a string
 void jsvArrayInsertBefore(JsVar *arr, JsVar *beforeIndex, JsVar *element); ///< Insert a new element before beforeIndex, DOES NOT UPDATE INDICES
 static ALWAYS_INLINE bool jsvArrayIsEmpty(JsVar *arr) { assert(jsvIsArray(arr)); return !jsvGetFirstChild(arr); } ///< Return true is array is empty

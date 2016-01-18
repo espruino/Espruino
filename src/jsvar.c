@@ -2566,16 +2566,14 @@ JsVar *jsvArrayPopFirst(JsVar *arr) {
   }
 }
 
-/// Adds a new String element to the end of an array (IF it was not already there)
-void jsvArrayAddString(JsVar *arr, const char *text) {
-  JsVar *v = jsvNewFromString(text);
+/// Adds a new variable element to the end of an array (IF it was not already there). Return true if successful
+void jsvArrayAddUnique(JsVar *arr, JsVar *v) {
   JsVar *idx = jsvGetArrayIndexOf(arr, v, false); // did it already exist?
   if (!idx) {
-    jsvArrayPush(arr, v);
+    jsvArrayPush(arr, v); // if 0, it failed
   } else {
     jsvUnLock(idx);
   }
-  jsvUnLock(v);
 }
 
 /// Join all elements of an array together into a string

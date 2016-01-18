@@ -117,8 +117,9 @@ int net_js_recv(JsNetwork *net, int sckt, void *buf, size_t len) {
   int r = -1; // fail
   if (jsvIsString(res)) {
     r = (int)jsvGetStringLength(res);
-    if (r>(int)len) r=(int)len;
+    if (r>(int)len) { r=(int)len; assert(0); }
     jsvGetStringChars(res, 0, (char*)buf, (size_t)r);
+    // FIXME: jsvGetStringChars adds a 0 - does that actually write past the end of the array, or clip the data we get?
   }
   jsvUnLock(res);
   return r;
@@ -148,5 +149,6 @@ void netSetCallbacks_js(JsNetwork *net) {
   net->gethostbyname = net_js_gethostbyname;
   net->recv = net_js_recv;
   net->send = net_js_send;
+  net->chunkSize = 536;
 }
 

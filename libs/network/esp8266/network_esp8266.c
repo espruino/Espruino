@@ -726,6 +726,8 @@ void netSetCallbacks_esp8266_board(
     net->gethostbyname = net_ESP8266_BOARD_gethostbyname;
     net->recv          = net_ESP8266_BOARD_recv;
     net->send          = net_ESP8266_BOARD_send;
+    // The TCP MSS is 536, we use half that 'cause otherwise we easily run out of JSvars memory
+    net->chunkSize     = 536/2;
 }
 
 /**

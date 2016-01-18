@@ -42,9 +42,6 @@ bool jsiFreeMoreMemory();
 bool jsiHasTimers(); // are there timers still left to run?
 bool jsiIsWatchingPin(Pin pin); // are there any watches for the given pin?
 
-
-void jsiHandleIOEventForUSART(JsVar *usartClass, IOEvent *event); ///< Called from idle loop
-
 /// Queue a function, string, or array (of funcs/strings) to be executed next time around the idle loop
 void jsiQueueEvents(JsVar *object, JsVar *callback, JsVar **args, int argCount);
 /// Return true if the object has callbacks...
@@ -136,7 +133,7 @@ typedef enum {
 #endif
   JSIS_TODO_FLASH_SAVE = 64, // save to flash
   JSIS_TODO_FLASH_LOAD = 128, // load from flash
-  JSIS_TODO_RESET = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD, // reset the board, don't load anything
+  JSIS_TODO_RESET = 256, // reset the board, don't load anything
   JSIS_TODO_MASK = JSIS_TODO_FLASH_SAVE|JSIS_TODO_FLASH_LOAD|JSIS_TODO_RESET,
 
 

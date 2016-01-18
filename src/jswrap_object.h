@@ -19,6 +19,14 @@ JsVar *jswrap_object_length(JsVar *parent);
 JsVar *jswrap_object_valueOf(JsVar *parent);
 JsVar *jswrap_object_toString(JsVar *parent, JsVar *arg0);
 JsVar *jswrap_object_clone(JsVar *parent);
+/** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
+void jswrap_object_keys_or_property_names_cb(
+    JsVar *obj,
+    bool includeNonEnumerable,  ///< include 'hidden' items
+    bool includePrototype, ///< include items for the prototype too (for autocomplete)
+    void (*callback)(void *data, JsVar *name),
+    void *data
+);
 JsVar *jswrap_object_keys_or_property_names(
     JsVar *obj,
     bool includeNonEnumerable,

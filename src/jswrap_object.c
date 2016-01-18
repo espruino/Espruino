@@ -172,15 +172,14 @@ Returns an array of all properties (enumerable or not) found directly on a given
  **Note:** This doesn't currently work as it should for built-in objects and their prototypes. See bug #380
  */
 
-/** This is for Object.keys and Object. */
-JsVar *jswrap_object_keys_or_property_names(
+/** This is for Object.keys and Object. However it uses a callback so doesn't allocate anything */
+void jswrap_object_keys_or_property_names_cb(
     JsVar *obj,
     bool includeNonEnumerable,  ///< include 'hidden' items
-    bool includePrototype) { ///< include items for the prototype too (for autocomplete)
-
-  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
-  if (!arr) return 0;
-
+    bool includePrototype, ///< include items for the prototype too (for autocomplete)
+    void (*callback)(void *data, JsVar *name),
+    void *data
+) {
   // strings are iterable, but we shouldn't try and show keys for them
   if (jsvIsIterable(obj)) {
     JsvIsInternalChecker checkerFunction = jsvGetInternalFunctionCheckerFor(obj);
@@ -195,7 +194,8 @@ JsVar *jswrap_object_keys_or_property_names(
          * check in jsvIsInternalObjectKey! */
         JsVar *name = jsvAsArrayIndexAndUnLock(jsvCopyNameOnly(key, false, false));
         if (name) {
-          jsvArrayPushAndUnLock(arr, name);
+          callback(data, name);
+          jsvUnLock(name);
         }
       }
       jsvUnLock(key);
@@ -220,25 +220,38 @@ JsVar *jswrap_object_keys_or_property_names(
       symbols = jswGetSymbolListForObject(obj);
     }
 
-    if (symbols) {
+    while (symbols) {
       unsigned int i;
-      for (i=0;i<symbols->symbolCount;i++)
-        jsvArrayAddString(arr, &symbols->symbolChars[symbols->symbols[i].strOffset]);
-    }
+      for (i=0;i<symbols->symbolCount;i++) {
+        JsVar *name = jsvNewFromString(&symbols->symbolChars[symbols->symbols[i].strOffset]);
+        callback(data, name);
+        jsvUnLock(name);
+      }
 
-    if (includePrototype) {
-      symbols = jswGetSymbolListForObjectProto(obj);
-      if (symbols) {
-        unsigned int i;
-        for (i=0;i<symbols->symbolCount;i++)
-          jsvArrayAddString(arr, &symbols->symbolChars[symbols->symbols[i].strOffset]);
+      symbols = 0;
+      if (includePrototype) {
+        includePrototype = false;
+        symbols = jswGetSymbolListForObjectProto(obj);
       }
     }
 
     if (jsvIsArray(obj) || jsvIsString(obj)) {
-      jsvArrayAddString(arr, "length");
+      JsVar *name = jsvNewFromString("length");
+      callback(data, name);
+      jsvUnLock(name);
     }
   }
+}
+
+JsVar *jswrap_object_keys_or_property_names(
+    JsVar *obj,
+    bool includeNonEnumerable,  ///< include 'hidden' items
+    bool includePrototype ///< include items for the prototype too (for autocomplete)
+    ) {
+  JsVar *arr = jsvNewWithFlags(JSV_ARRAY);
+  if (!arr) return 0;
+
+  jswrap_object_keys_or_property_names_cb(obj, includeNonEnumerable, includePrototype, (void (*)(void *, JsVar *))jsvArrayAddUnique, arr);
 
   return arr;
 }

@@ -27,10 +27,14 @@
 #include "jswrap_bluetooth.h"
 
 #include "nrf_gpio.h"
+#include "nrf_gpiote.h"
+#include "nrf_drv_twi.h"
+#include "nrf_drv_gpiote.h"
 #include "nrf_temp.h"
 #include "nrf_adc.h"
 #include "nrf_timer.h"
-#include "communication_interface.h"
+#include "app_uart.h"
+
 #include "nrf5x_utils.h"
 
 #define SYSCLK_FREQ 32768 // this really needs to be a bit higher :)
@@ -38,11 +42,16 @@
 /*  file:///home/gw/Downloads/S110_SoftDevice_Specification_2.0.pdf
 
   RTC0 not usable
-  RTC1 free
-  TIMER1/2 free
+  RTC1 used by app_timer.c
+  TIMER1 used by jshardware util timer
+  TIMER2 free
   SPI0/1 free
 
  */
+
+static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
 
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
@@ -50,13 +59,41 @@ void TIMER1_IRQHandler(void) {
   jstUtilTimerInterruptHandler();
 }
 
-static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
+
+unsigned int getNRFBaud(int baud) {
+  switch (baud) {
+    case 1200: return UART_BAUDRATE_BAUDRATE_Baud1200;
+    case 2400: return UART_BAUDRATE_BAUDRATE_Baud2400;
+    case 4800: return UART_BAUDRATE_BAUDRATE_Baud4800;
+    case 9600: return UART_BAUDRATE_BAUDRATE_Baud9600;
+    case 14400: return UART_BAUDRATE_BAUDRATE_Baud14400;
+    case 19200: return UART_BAUDRATE_BAUDRATE_Baud19200;
+    case 28800: return UART_BAUDRATE_BAUDRATE_Baud28800;
+    case 38400: return UART_BAUDRATE_BAUDRATE_Baud38400;
+    case 57600: return UART_BAUDRATE_BAUDRATE_Baud57600;
+    case 76800: return UART_BAUDRATE_BAUDRATE_Baud76800;
+    case 115200: return UART_BAUDRATE_BAUDRATE_Baud115200;
+    case 230400: return UART_BAUDRATE_BAUDRATE_Baud230400;
+    case 250000: return UART_BAUDRATE_BAUDRATE_Baud250000;
+    case 460800: return UART_BAUDRATE_BAUDRATE_Baud460800;
+    case 921600: return UART_BAUDRATE_BAUDRATE_Baud921600;
+    case 1000000: return UART_BAUDRATE_BAUDRATE_Baud1M;
+    default: return 0; // error
+  }
+}
+
 
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
+
+  BITFIELD_CLEAR(jshPinSoftPWM);
     
-  JshUSARTInfo inf; // Just for show, not actually used...
+  JshUSARTInfo inf;
+  jshUSARTInitInfo(&inf);
+  inf.pinRX = DEFAULT_CONSOLE_RX_PIN;
+  inf.pinTX = DEFAULT_CONSOLE_TX_PIN;
+  inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
 
@@ -64,12 +101,15 @@ void jshInit() {
   nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+
   // Irq setup
-  NVIC_SetPriority(TIMER1_IRQn, 15); // low - don't mess with BLE :)
+  NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
   NVIC_ClearPendingIRQ(TIMER1_IRQn);
   NVIC_EnableIRQ(TIMER1_IRQn);
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
 
+  // Pin change
+  nrf_drv_gpiote_init();
   jswrap_nrf_bluetooth_init();
 }
 
@@ -84,13 +124,10 @@ void jshKill() {
 
 // stuff to do on idle
 void jshIdle() {
-  if (init == 1)
-  {
+  if (init == 1) {
     jsiOneSecondAfterStartup(); // Do this the first time we enter jshIdle() after we have called jshInit() and never again.
     init = 0;
   }
-
-  jshUSARTKick(EV_SERIAL1);
 }
 
 /// Get this IC's serial number. Passed max # of chars and a pointer to write to. Returns # of chars
@@ -155,6 +192,13 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
@@ -245,6 +289,15 @@ int jshPinAnalogFast(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  /* we set the bit field here so that if the user changes the pin state
+   * later on, we can get rid of the IRQs */
+  if (!jshGetPinStateIsManual(pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  }
+  BITFIELD_SET(jshPinSoftPWM, pin, 1);
+  if (freq<=0) freq=50;
+  jstPinPWM(freq, value, pin);
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
@@ -271,13 +324,43 @@ void jshPinPulse(Pin pin, bool pulsePolarity, JsVarFloat pulseTime) {
   }
 }
 
+
+static IOEventFlags jshGetEventFlagsForWatchedPin(nrf_drv_gpiote_pin_t pin) {
+  uint32_t addr = nrf_drv_gpiote_in_event_addr_get(pin);
+
+  // sigh. all because the right stuff isn't exported. All we wanted was channel_port_get
+  int i;
+  for (i=0;i<NUMBER_OF_GPIO_TE;i++)
+    if (addr == nrf_gpiote_event_addr_get((nrf_gpiote_events_t)((uint32_t)NRF_GPIOTE_EVENTS_IN_0+(sizeof(uint32_t)*i))))
+      return EV_EXTI0+i;
+  return EV_NONE;
+}
+
+bool lastHandledPinState; ///< bit of a hack, this... Ideally get rid of WatchedPinState completely and add to jshPushIOWatchEvent
+static void jsvPinWatchHandler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
+  lastHandledPinState = (bool)nrf_gpio_pin_read(pin);
+  IOEventFlags evt = jshGetEventFlagsForWatchedPin(pin);
+  jshPushIOWatchEvent(evt);
+}
+
+
 ///< Can the given pin be watched? it may not be possible because of conflicts
 bool jshCanWatch(Pin pin) {
-  return false;
+  return true;
 }
 
 IOEventFlags jshPinWatch(Pin pin, bool shouldWatch) {
-  return EV_SERIAL2;
+  if (!jshIsPinValid(pin)) return EV_NONE;
+  uint32_t p = (uint32_t)pinInfo[pin].pin;
+  if (shouldWatch) {
+    nrf_drv_gpiote_in_config_t cls_1_config = GPIOTE_CONFIG_IN_SENSE_TOGGLE(true);
+    nrf_drv_gpiote_in_init(p, &cls_1_config, jsvPinWatchHandler);
+    nrf_drv_gpiote_in_event_enable(p, true);
+    return jshGetEventFlagsForWatchedPin(p);
+  } else {
+    nrf_drv_gpiote_in_event_disable(p);
+    return EV_NONE;
+  }
 } // start watching pin - return the EXTI associated with it
 
 /// Given a Pin, return the current pin function associated with it
@@ -287,21 +370,19 @@ JshPinFunction jshGetCurrentPinFunction(Pin pin) {
 
 /// Given a pin function, set that pin to the 16 bit value (used mainly for DACs and PWM)
 void jshSetOutputValue(JshPinFunction func, int value) {
-
 }
 
 /// Enable watchdog with a timeout in seconds
 void jshEnableWatchDog(JsVarFloat timeout) {
-
 }
 
 /** Check the pin associated with this EXTI - return true if it is a 1 */
 bool jshGetWatchedPinState(IOEventFlags device) {
-  return false;
+  return lastHandledPinState;
 }
 
 bool jshIsEventForPin(IOEvent *event, Pin pin) {
-  return false;
+  return IOEVENTFLAGS_GETTYPE(event->flags) == jshGetEventFlagsForWatchedPin((uint32_t)pinInfo[pin].pin);
 }
 
 /** Is the given device initialised? */
@@ -309,28 +390,76 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   return false;
 }
 
+bool uartIsSending = false;
+bool uartInitialised = false;
+
+void uart0_event_handle(app_uart_evt_t * p_event) {
+  if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
+    jshPushIOEvent(IOEVENTFLAGS_SERIAL_TO_SERIAL_STATUS(EV_SERIAL1) | EV_SERIAL_STATUS_FRAMING_ERR, 0);
+  } else if (p_event->evt_type == APP_UART_TX_EMPTY) {
+    int ch = jshGetCharToTransmit(EV_SERIAL1);
+    if (ch >= 0) {
+      uartIsSending = true;
+      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+    } else
+      uartIsSending = false;
+  } else if (p_event->evt_type == APP_UART_DATA) {
+    uint8_t character;
+    while (app_uart_get(&character) != NRF_SUCCESS);
+    jshPushIOCharEvent(EV_SERIAL1, (char) character);
+  }
+}
+
 /** Set up a UART, if pins are -1 they will be guessed */
-void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf)
-{
-  uart_init(); // Initializes UART and registers a callback function defined above to read characters into the static variable character.
+void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  if (device != EV_SERIAL1)
+    return;
+
+  int baud = getNRFBaud(inf->baudRate);
+  if (baud==0)
+    return jsError("Invalid baud rate %d", inf->baudRate);
+  if (!jshIsPinValid(inf->pinRX) || !jshIsPinValid(inf->pinTX))
+    return jsError("Invalid RX or TX pins");
+
+  uint32_t err_code;
+  const app_uart_comm_params_t comm_params = {
+      pinInfo[inf->pinRX].pin,
+      pinInfo[inf->pinTX].pin,
+      (uint8_t)UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
+      APP_UART_FLOW_CONTROL_DISABLED,
+      inf->parity!=0, // TODO: ODD or EVEN parity?
+      baud
+  };
+
+  APP_UART_INIT(&comm_params,
+                uart0_event_handle,
+                APP_IRQ_PRIORITY_HIGH,
+                err_code);
+  APP_ERROR_CHECK(err_code);
 }
 
 /** Kick a device into action (if required). For instance we may need to set up interrupts */
 void jshUSARTKick(IOEventFlags device) {
+
+  if (device == EV_BLUETOOTH) {
+    /* For bluetooth, start transmit after one character.
+      The BLE_EVT_TX_COMPLETE event will get triggered and
+      will auto-reload whatever needs sending. */
+    bool jswrap_nrf_transmit_string();
+    jswrap_nrf_transmit_string();
+  }
   
-  if (device != EV_SERIAL1)
-  {
-	  return;
+  if (device == EV_SERIAL1 && !uartIsSending) {
+    jshInterruptOff();
+    int ch = jshGetCharToTransmit(EV_SERIAL1);
+    if (ch >= 0) {
+      // put data - this will kick off the USART
+      while (app_uart_put((uint8_t)ch) != NRF_SUCCESS);
+      uartIsSending = true;
+    }
+    jshInterruptOn();
   }
-
-  int check_valid_char = jshGetCharToTransmit(EV_SERIAL1);
-  if (check_valid_char >= 0)
-  {
-    
-    uint8_t character = (uint8_t) check_valid_char;
-    nrf_utils_app_uart_put(character);
-  }
-
 }
 
 /** Set up SPI, if pins are -1 they will be guessed */
@@ -365,29 +494,52 @@ void jshSPIWait(IOEventFlags device) {
 
 }
 
-NRF_TWI_Type *jshGetTWI(IOEventFlags device) {
-  return (device == EV_I2C2) ? NRF_TWI1_BASE : NRF_TWI0_BASE;
+const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
+
+const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+  if (device == EV_I2C1) return &TWI1;
+  return 0;
 }
 
 /** Set up I2C, if pins are -1 they will be guessed */
 void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
-  NRF_TWI_Type *twi = jshGetTWI(device);
-
-  // jshPinSetState
-
-  // nrf_twi_frequency_set(twi, inf->bitrate);
-  // nrf_twi_pins_set(twi, pinInfo[inf->pinSCL].pin, pinInfo[inf->pinSDA].pin);
-  // nrf_twi_enable
+  if (!jshIsPinValid(inf->pinSCL) || !jshIsPinValid(inf->pinSDA)) {
+    jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
+    return;
+  }
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
+  nrf_drv_twi_config_t    p_twi_config;
+  p_twi_config.scl = (uint32_t)pinInfo[inf->pinSCL].pin;
+  p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
+  p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
+  p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
+  if (twi1Initialised) nrf_drv_twi_uninit(twi);
+  twi1Initialised = true;
+  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
+  else
+    nrf_drv_twi_enable(twi);
 }
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  NRF_TWI_Type *twi = jshGetTWI(device);
-  // nrf_twi_address_set(twi, address);
+  const  nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
+  if (!twi) return;
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
+  if (err_code != NRF_SUCCESS)
+    jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
