@@ -251,7 +251,7 @@ typedef int64_t JsSysTime;
 /// Put before functions that we always want inlined
 #if defined(LINK_TIME_OPTIMISATION) && !defined(SAVE_ON_FLASH) && !defined(DEBUG)
 #define ALWAYS_INLINE inline __attribute__((always_inline))
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
 // By inlining in GCC we avoid shedloads of warnings
 #define ALWAYS_INLINE inline
 #else

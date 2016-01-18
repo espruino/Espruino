@@ -18,6 +18,16 @@
 #include "jsvariterator.h"
 #include "jsinteractive.h"
 
+#ifdef USE_HEATSHRINK
+  #include "compress_heatshrink.h"
+  #define COMPRESS heatshrink_encode
+  #define DECOMPRESS heatshrink_decode
+#else
+  #include "compress_rle.h"
+  #define COMPRESS rle_encode
+  #define DECOMPRESS rle_decode
+#endif
+
 #ifdef LINUX
 // file IO for load/save
 #include <stdlib.h>
@@ -148,49 +158,6 @@ JsVar *jswrap_flash_read(int length, int addr) {
 }
 
 
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-//                                                Simple RLE EncoderDecoder
-// ------------------------------------------------------------------------
-// ------------------------------------------------------------------------
-
-// gets data from array, writes to callback
-void rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata) {
-  int lastCh = -1; // not a valid char
-  while (dataLen) {
-    unsigned char ch = *(data++);
-    dataLen--;
-    callback(ch, cbdata);
-    if (ch==lastCh) {
-      int cnt = 0;
-      while (dataLen && lastCh==*data && cnt<255) {
-        data++;
-        dataLen--;
-        cnt++;
-      }
-      callback((unsigned char)cnt, cbdata);
-    }
-    lastCh = ch;
-  }
-}
-
-// gets data from callback, writes it into array
-void rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data) {
-  int lastCh = -256; // not a valid char
-  while (true) {
-    int ch = callback(cbdata);
-    if (ch<0) return;
-    *(data++) = (unsigned char)ch;
-    if (ch==lastCh) {
-      int cnt = callback(cbdata);
-      while (cnt-->0) {
-        *(data++) = (unsigned char)ch;
-      }
-    }
-    lastCh = ch;
-  }
-}
-
 #ifndef LINUX
 // cbdata = uint32_t[end_address, address, data]
 void jsfSaveToFlash_writecb(unsigned char ch, uint32_t *cbdata) {
@@ -248,7 +215,7 @@ void jsfSaveToFlash() {
     for (i=1;i<=jsVarCount;i++) {
       fwrite(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_encode((unsigned char*)_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, (uint32_t*)f);
+    COMPRESS((unsigned char*)_jsvGetAddressOf(1), jsVarCount*sizeof(JsVar), jsfSaveToFlash_writecb, (uint32_t*)f);
     fclose(f);
     jsiConsolePrint("\nDone!\n");
 
@@ -259,10 +226,10 @@ void jsfSaveToFlash() {
     if (jsVarCount != jsvGetMemoryTotal())
       jsiConsolePrint("Error: memory sizes different\n");
     unsigned char *decomp = (unsigned char*)malloc(jsVarCount*sizeof(JsVar));
-    rle_decode(jsfLoadFromFlash_readcb, f, decomp);
+    DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t *)f, decomp);
     fclose(f);
-    unsigned char *comp = _jsvGetAddressOf(1);
-    int j;
+    unsigned char *comp = (unsigned char *)_jsvGetAddressOf(1);
+    size_t j;
     for (j=0;j<jsVarCount*sizeof(JsVar);j++)
       if (decomp[j]!=comp[j])
         jsiConsolePrintf("Error at %d: original %d, decompressed %d\n", j, comp[j], decomp[j]);  
@@ -276,36 +243,57 @@ void jsfSaveToFlash() {
   unsigned int dataSize = jsvGetMemoryTotal() * sizeof(JsVar);
   uint32_t *basePtr = (uint32_t *)_jsvGetAddressOf(1);
   uint32_t pageStart, pageLength;
+  bool tryAgain = true;
+  bool success = false;
+  uint32_t writtenBytes;
+  uint32_t endOfData;
+  uint32_t cbData[3];
+  uint32_t rleStart;
 
-  jsiConsolePrint("Erasing Flash...");
-  uint32_t addr = FLASH_SAVED_CODE_START;
-  if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
-    jshFlashErasePage(pageStart);
-    while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
-      jsiConsolePrint(".");
-      addr = pageStart+pageLength; // next page
-      if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
+  while (tryAgain) {
+    tryAgain = false;
+    jsiConsolePrint("Erasing Flash...");
+    uint32_t addr = FLASH_SAVED_CODE_START;
+    if (jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) {
       jshFlashErasePage(pageStart);
+      while (pageStart+pageLength < FLASH_MAGIC_LOCATION) { // until end address
+        jsiConsolePrint(".");
+        addr = pageStart+pageLength; // next page
+        if (!jshFlashGetPage((uint32_t)addr, &pageStart, &pageLength)) break;
+        jshFlashErasePage(pageStart);
 
+      }
+    }
+    rleStart = FLASH_SAVED_CODE_START+4;
+    cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
+    cbData[1] = rleStart;
+    cbData[2] = 0; // word data (can only save a word ata a time)
+    jsiConsolePrint("\nWriting...");
+    COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
+    endOfData = cbData[1];
+    writtenBytes = endOfData - FLASH_SAVED_CODE_START;
+    // make sure we write everything in buffer
+    jsfSaveToFlash_writecb(0,cbData);
+    jsfSaveToFlash_writecb(0,cbData);
+    jsfSaveToFlash_writecb(0,cbData);
+
+    if (cbData[1]>=cbData[0]) {
+      jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
+      jsvSoftInit();
+      jspSoftInit();
+      if (jsiFreeMoreMemory()) {
+        jsiConsolePrint("Deleting command history and trying again...\n");
+        while (jsiFreeMoreMemory());
+        tryAgain = true;
+      }
+      jspSoftKill();
+      jsvSoftKill();
+    } else {
+      success = true;
     }
   }
-  uint32_t cbData[3];
-  uint32_t rleStart = FLASH_SAVED_CODE_START+4;
-  cbData[0] = FLASH_MAGIC_LOCATION; // end of available flash
-  cbData[1] = rleStart;
-  cbData[2] = 0; // word data (can only save a word ata a time)
-  jsiConsolePrint("\nWriting...");
-  rle_encode((unsigned char*)basePtr, dataSize, jsfSaveToFlash_writecb, cbData);
-  uint32_t endOfData = cbData[1];
-  uint32_t writtenBytes = endOfData - FLASH_SAVED_CODE_START;
-  // make sure we write everything in buffer
-  jsfSaveToFlash_writecb(0,cbData);
-  jsfSaveToFlash_writecb(0,cbData);
-  jsfSaveToFlash_writecb(0,cbData);
 
-  if (cbData[1]>=cbData[0]) {
-    jsiConsolePrintf("\nERROR: Too big to save to flash (%d vs %d bytes)\n", writtenBytes, FLASH_MAGIC_LOCATION-FLASH_SAVED_CODE_START);
-  } else {
+  if (success) {
     jsiConsolePrintf("\nCompressed %d bytes to %d", dataSize, writtenBytes);
     jshFlashWrite(&endOfData, FLASH_SAVED_CODE_START, 4); // write position of end of data, at start of address space
 
@@ -315,7 +303,7 @@ void jsfSaveToFlash() {
     jsiConsolePrint("\nChecking...");
     cbData[0] = rleStart;
     cbData[1] = 0; // increment if fails
-    rle_encode((unsigned char*)basePtr, dataSize, jsfSaveToFlash_checkcb, cbData);
+    COMPRESS((unsigned char*)basePtr, dataSize, jsfSaveToFlash_checkcb, cbData);
     uint32_t errors = cbData[1];
 
     if (!jsfFlashContainsCode()) {
@@ -344,7 +332,7 @@ void jsfLoadFromFlash() {
     for (i=1;i<=jsVarCount;i++) {
       fread(_jsvGetAddressOf(i),1,sizeof(JsVar),f);
     }*/
-    rle_decode(jsfLoadFromFlash_readcb, (uint32_t*)f, (unsigned char*)_jsvGetAddressOf(1));
+    DECOMPRESS(jsfLoadFromFlash_readcb, (uint32_t*)f, (unsigned char*)_jsvGetAddressOf(1));
     fclose(f);
   } else {
     jsiConsolePrint("\nFile Open Failed... \n");
@@ -362,7 +350,7 @@ void jsfLoadFromFlash() {
   jshFlashRead(&cbData[0], FLASH_SAVED_CODE_START, 4); // end address
   cbData[1] = FLASH_SAVED_CODE_START+4; // start address
   jsiConsolePrintf("Loading %d bytes from flash...\n", cbData[0]-FLASH_SAVED_CODE_START);
-  rle_decode(jsfLoadFromFlash_readcb, cbData, (unsigned char*)basePtr);
+  DECOMPRESS(jsfLoadFromFlash_readcb, cbData, (unsigned char*)basePtr);
 #endif
 }
 

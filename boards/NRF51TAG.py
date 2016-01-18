@@ -24,6 +24,11 @@ info = {
  'default_console_baudrate' : "9600",
  'variables' : 95, # How many variables are allocated for Espruino to use. RAM will be overflowed if this number is too high and code won't compile.
  'binary_name' : 'espruino_%v_nrf51tag.bin',
+ 'build' : {
+  'defines' : [
+     'USE_BLUETOOTH'
+   ]
+ }
 };
 
 chip = {

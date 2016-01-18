@@ -19,7 +19,15 @@ info = {
  'link' : [ "http://www.hotmcu.com/hyministm32v-dev-board-32-tft-lcd-module-p-5.html" ],
  'variables' : 2000,
  'serial_bootloader' : True,
-  'binary_name' : 'espruino_%v_hystm32_32_vc.bin',
+ 'binary_name' : 'espruino_%v_hystm32_32_vc.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VC",

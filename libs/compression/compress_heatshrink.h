@@ -8,20 +8,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript methods and functions in the global namespace
+ *  Wrapper for heatshrink encode/decode
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
 
-JsVar *jswrap_arguments();
-JsVar *jswrap_function_constructor(JsVar *code);
-JsVar *jswrap_eval(JsVar *v);
-JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar);
-JsVarFloat jswrap_parseFloat(JsVar *v);
-bool jswrap_isNaN(JsVar *v);
+/** gets data from array, writes to callback */
+void heatshrink_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata);
 
-
-JsVar *jswrap_btoa(JsVar *binaryData);
-JsVar *jswrap_atob(JsVar *base64Data);
-JsVar *jswrap_encodeURIComponent(JsVar *arg);
-JsVar *jswrap_decodeURIComponent(JsVar *arg);
+/** gets data from callback, writes it into array */
+void heatshrink_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data);

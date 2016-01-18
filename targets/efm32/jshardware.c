@@ -88,9 +88,6 @@ void jshInit() {
   CMU_ClockSelectSet(cmuClock_HF, cmuSelect_HFXO );
   CMU_OscillatorEnable( cmuOsc_HFRCO, false, false );
 
-  /* Start the RTC */
-  RTCDRV_Init();
-    
   JshUSARTInfo inf; // Just for show, not actually used...
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
 

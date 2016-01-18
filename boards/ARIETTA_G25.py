@@ -18,6 +18,15 @@ info = {
  'name' : "Arietta G25",
  'default_console' : "EV_USBSERIAL",
  'binary_name' : 'espruino_%v_arietta',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "ARMV5TEJL",

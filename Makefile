@@ -50,8 +50,12 @@
 # MINISTM32_ANGLED_VE=1
 # MINISTM32_ANGLED_VG=1
 # ESP8266_BOARD=1         # ESP8266
+<<<<<<< HEAD
 # EMW3165                 # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
 # EFM32GGSTK=1
+=======
+# EMW3165=1               # MXCHIP EMW3165: STM32F411CE, BCM43362, 512KB flash 128KB RAM
+>>>>>>> refs/remotes/espruino/master
 # Or nothing for standard linux compile
 #
 # Also:
@@ -448,6 +452,14 @@ STLIB=STM32F10X_HD
 PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_hd.o
 OPTIMIZEFLAGS+=-O3
 
+else ifdef LCTECH_STM32F103RBT6
+EMBEDDED=1
+SAVE_ON_FLASH=1
+BOARD=LCTECH_STM32F103RBT6
+STLIB=STM32F10X_MD
+PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
+OPTIMIZEFLAGS+=-Os
+
 else ifdef CARAMBOLA
 EMBEDDED=1
 BOARD=CARAMBOLA
@@ -456,6 +468,8 @@ LINUX=1
 USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
+USE_CRYPTO=1
+USE_TLS=1
 
 else ifdef DPTBOARD
 EMBEDDED=1
@@ -468,13 +482,6 @@ USE_FILESYSTEM=1
 USE_GRAPHICS=1
 USE_NET=1
 
-else ifdef LCTECH_STM32F103RBT6
-EMBEDDED=1
-SAVE_ON_FLASH=1
-BOARD=LCTECH_STM32F103RBT6
-STLIB=STM32F10X_MD
-PRECOMPILED_OBJS+=$(ROOT)/targetlibs/stm32f1/lib/startup_stm32f10x_md.o
-OPTIMIZEFLAGS+=-Os
 
 else ifdef ESP8266_BOARD
 EMBEDDED=1
@@ -719,6 +726,7 @@ ifdef CPPFILE
 CPPSOURCES += $(CPPFILE)
 endif
 
+
 ifdef BOOTLOADER
 ifndef USE_BOOTLOADER
 $(error Using bootloader on device that is not expecting one)
@@ -752,9 +760,24 @@ endif
 
 ifdef SAVE_ON_FLASH
 DEFINES+=-DSAVE_ON_FLASH
+
+# Smaller, RLE compression for code
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression
+SOURCES += \
+libs/compression/compress_rle.c
+
 else
 # If we have enough flash, include the debugger
 DEFINES+=-DUSE_DEBUGGER
+
+# Heatshrink compression library and wrapper - better compression when saving code to flash
+DEFINES+=-DUSE_HEATSHRINK
+INCLUDE += -I$(ROOT)/libs/compression -I$(ROOT)/libs/compression/heatshrink
+SOURCES += \
+libs/compression/heatshrink/heatshrink_encoder.c \
+libs/compression/heatshrink/heatshrink_decoder.c \
+libs/compression/compress_heatshrink.c
+
 endif
 
 ifndef BOOTLOADER # ------------------------------------------------------------------------------ DON'T USE IN BOOTLOADER
@@ -1239,7 +1262,7 @@ ifeq ($(FAMILY), NRF51)
   # nRF51 specific. Main differences in SDK structure are softdevice, uart, delay...
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/softdevice/s110/headers
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf51.c \
-  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart_fifo.c
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/app_uart.c
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf51.o
 
@@ -1267,7 +1290,7 @@ ifeq ($(FAMILY), NRF52)
   SOURCES += $(NRF5X_SDK_PATH)/components/toolchain/system_nrf52.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/delay/nrf_delay.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/uart/nrf_drv_uart.c \
-  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart_fifo.c
+  $(NRF5X_SDK_PATH)/components/libraries/uart/app_uart.c
 
   PRECOMPILED_OBJS+=$(NRF5X_SDK_PATH)/components/toolchain/gcc/gcc_startup_nrf52.o
 
@@ -1367,7 +1390,6 @@ ifdef NRF5X
   SOURCES +=                              \
   targets/nrf5x/main.c                    \
   targets/nrf5x/jshardware.c              \
-  targets/nrf5x/communication_interface.c \
   targets/nrf5x/nrf5x_utils.c
 
   # Careful here.. All these includes and sources assume a SoftDevice. Not efficeint/clean if softdevice (ble) is not enabled...
@@ -1377,6 +1399,7 @@ ifdef NRF5X
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/fifo
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/util
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/uart
+  INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/ble/common
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage
   INCLUDE += -I$(NRF5X_SDK_PATH)/components/libraries/uart  # Not nRF51?
@@ -1403,6 +1426,7 @@ ifdef NRF5X
   $(NRF5X_SDK_PATH)/components/drivers_nrf/common/nrf_drv_common.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/gpiote/nrf_drv_gpiote.c \
   $(NRF5X_SDK_PATH)/components/drivers_nrf/pstorage/pstorage.c \
+  $(NRF5X_SDK_PATH)/components/drivers_nrf/twi_master/nrf_drv_twi.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_advdata.c \
   $(NRF5X_SDK_PATH)/components/ble/common/ble_conn_params.c \
   $(NRF5X_SDK_PATH)/components/ble/ble_services/ble_nus/ble_nus.c \
@@ -1418,7 +1442,7 @@ ifeq ($(FAMILY),ESP8266)
 DEFINES += -DUSE_OPTIMIZE_PRINTF
 DEFINES += -D__ETS__ -DICACHE_FLASH -DXTENSA -DUSE_US_TIMER
 ESP8266=1
-LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lmain -lpwm -lcrypto
+LIBS += -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip_536 -lwpa -lmain -lpwm -lcrypto
 CFLAGS+= -fno-builtin \
 -Wno-maybe-uninitialized -Wno-old-style-declaration -Wno-conversion -Wno-unused-variable \
 -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-discarded-qualifiers -Wno-float-conversion \

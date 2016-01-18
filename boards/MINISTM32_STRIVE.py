@@ -19,6 +19,14 @@ info = {
  'variables' : 2800,
  'serial_bootloader' : True,
  'binary_name' : 'espruino_%v_strive_mini_stm32.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS',
+     'USE_LCD_FSMC',
+     'USE_FILESYSTEM',
+     'USE_FILESYSTEM_SDIO'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103VE", #T6

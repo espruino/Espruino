@@ -20,6 +20,11 @@ info = {
  'link' :  [ "http://www.hotmcu.com/stm32f103tb-arm-cortex-m3-development-board-p-222.html" ],
  'variables' : 1020,
  'binary_name' : 'espruino_%v_hytiny_stm103t.bin',
+ 'build' : {
+   'defines' : [
+     'USE_GRAPHICS'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F103TBT6", 

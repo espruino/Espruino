@@ -27,6 +27,10 @@ info = {
   'default_console_rx' : "A3", # USART2_RX on PA3
   'variables' :  2048, # was 7423: (128-12)*1024/16-1
   'binary_name' : 'espruino_%v_emw3165.bin',
+ 'build' : {
+  'defines' : [
+   ]
+ }
 };
 chip = {
   'part' : "STM32F411CE",

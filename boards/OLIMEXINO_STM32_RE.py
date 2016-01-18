@@ -19,7 +19,16 @@ info = {
  'name': 'Olimexino STM32 / Leaflabs Maple with STM32F103RET',
  'link': ['https://www.olimex.com/Products/Duino/STM32/OLIMEXINO-STM32/', 'http://leaflabs.com/devices/maple/'],
  'variables': 3250,
- 'binary_name': 'espruino_%v_olimexino_stm32_re.bin'
+ 'binary_name': 'espruino_%v_olimexino_stm32_re.bin',
+ 'build' : {
+   'defines' : [
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_FILESYSTEM',
+     'USE_TV',
+     'USE_HASHLIB'
+   ]
+ }
 }
 chip = {
  'part': 'STM32F103RET6',

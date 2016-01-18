@@ -83,13 +83,18 @@ if "check_output" not in dir( subprocess ):
 #
 
 
-def get_jsondata(is_for_document, parseArgs = True):
+def get_jsondata(is_for_document, parseArgs = True, board = False):
         scriptdir = os.path.dirname	(os.path.realpath(__file__))
         print("Script location "+scriptdir)
         os.chdir(scriptdir+"/..")
 
         jswraps = []
         defines = []
+
+        if board and ("build" in board.info)  and ("defines" in board.info["build"]):
+          for i in board.info["build"]["defines"]:
+            print("Got define from board: " + i);
+            defines.append(i)
 
         if parseArgs and len(sys.argv)>1:
           print("Using files from command line")

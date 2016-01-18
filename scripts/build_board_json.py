@@ -47,7 +47,7 @@ pins = board.get_pins()
 pins = pinutils.append_devices_to_pin_list(pins, board)
 # -----------------------------------------------------------------------------------------
 # Documentation/functions
-jsondatas = common.get_jsondata(False, False)
+jsondatas = common.get_jsondata(False, False, board)
 # -----------------------------------------------------------------------------------------
 board.info["image_url"] = "http://www.espruino.com/img/"+boardname+".jpg"
 board.info["thumb_url"] = "http://www.espruino.com/img/"+boardname+"_thumb.jpg"

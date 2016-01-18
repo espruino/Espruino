@@ -27,7 +27,19 @@ info = {
  'binaries' : [
   { 'filename' : 'espruino_%v_pico_1r3_wiznet.bin', 'description' : "WIZNet W5500 Ethernet Networking"},
   { 'filename' : 'espruino_%v_pico_1r3_cc3000.bin', 'description' : "TI CC3000 WiFi Networking"},
- ]
+ ],
+ 'build' : {
+   'defines' : [
+     'USE_USB_HID',
+     'USE_NET',
+     'USE_GRAPHICS',
+     'USE_TV',
+     'USE_HASHLIB',
+     'USE_FILESYSTEM',
+     'USE_CRYPTO',
+     'USE_TLS'
+   ]
+ }
 };
 chip = {
   'part' : "STM32F401CDU6",

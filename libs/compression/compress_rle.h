@@ -8,20 +8,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * JavaScript methods and functions in the global namespace
+ *  Simple RLE EncoderDecoder
  * ----------------------------------------------------------------------------
  */
-#include "jsvar.h"
 
-JsVar *jswrap_arguments();
-JsVar *jswrap_function_constructor(JsVar *code);
-JsVar *jswrap_eval(JsVar *v);
-JsVar *jswrap_parseInt(JsVar *v, JsVar *radixVar);
-JsVarFloat jswrap_parseFloat(JsVar *v);
-bool jswrap_isNaN(JsVar *v);
+#include "jsutils.h"
 
+/** gets data from array, writes to callback */
+void rle_encode(unsigned char *data, size_t dataLen, void (*callback)(unsigned char ch, uint32_t *cbdata), uint32_t *cbdata);
 
-JsVar *jswrap_btoa(JsVar *binaryData);
-JsVar *jswrap_atob(JsVar *base64Data);
-JsVar *jswrap_encodeURIComponent(JsVar *arg);
-JsVar *jswrap_decodeURIComponent(JsVar *arg);
+/** gets data from callback, writes it into array */
+void rle_decode(int (*callback)(uint32_t *cbdata), uint32_t *cbdata, unsigned char *data);

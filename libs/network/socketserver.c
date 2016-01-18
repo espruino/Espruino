@@ -231,24 +231,30 @@ NO_INLINE static void _socketCloseAllConnections(JsNetwork *net) {
 int socketSendData(JsNetwork *net, JsVar *connection, int sckt, JsVar **sendData) {
   char buf[CHUNK];
 
-  if (!jsvIsEmptyString(*sendData)) {
-    size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
-    int num = netSend(net, sckt, buf, bufLen);
-    if (num < 0) return num; // an error occurred
-    // Now cut what we managed to send off the beginning of sendData
-    if (num > 0) {
-      JsVar *newSendData = 0;
-      if (num < (int)jsvGetStringLength(*sendData)) {
-        // we didn't send all of it... cut out what we did send
-        newSendData = jsvNewFromStringVar(*sendData, (size_t)num, JSVAPPENDSTRINGVAR_MAXLENGTH);
-      } else {
-        // we sent all of it! Issue a drain event
+  assert(!jsvIsEmptyString(*sendData));
+
+  size_t bufLen = httpStringGet(*sendData, buf, sizeof(buf));
+  int num = netSend(net, sckt, buf, bufLen);
+  if (num < 0) return num; // an error occurred
+  // Now cut what we managed to send off the beginning of sendData
+  if (num > 0) {
+    JsVar *newSendData = 0;
+    if (num < (int)jsvGetStringLength(*sendData)) {
+      // we didn't send all of it... cut out what we did send
+      newSendData = jsvNewFromStringVar(*sendData, (size_t)num, JSVAPPENDSTRINGVAR_MAXLENGTH);
+    } else {
+      // we sent all of it! Issue a drain event, unless we want to close, then we shouldn't
+      // callback for more data
+      bool wantClose = jsvGetBoolAndUnLock(jsvObjectGetChild(connection,HTTP_NAME_CLOSE,0));
+      if (!wantClose) {
         jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_DRAIN, &connection, 1);
       }
-      jsvUnLock(*sendData);
-      *sendData = newSendData;
+      newSendData = jsvNewFromEmptyString();
     }
+    jsvUnLock(*sendData);
+    *sendData = newSendData;
   }
+
   return 0;
 }
 
@@ -355,21 +361,22 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
 
       // send data if possible
       JsVar *sendData = jsvObjectGetChild(socket,HTTP_NAME_SEND_DATA,0);
-      if (sendData) {
-          int sent = socketSendData(net, socket, sckt, &sendData);
-          // FIXME? checking for errors is a bit iffy. With the esp8266 network that returns
-          // varied error codes we'd want to skip SOCKET_ERR_CLOSED and let the recv side deal
-          // with normal closing so we don't miss the tail of what's received, but other drivers
-          // return -1 (which is the same value) for all errors. So we rely on the check ~12 lines
-          // down if(num>0)closeConnectionNow=false instead.
-          if (sent < 0) {
-            closeConnectionNow = true;
-            error = sent;
-          }
+      if (sendData && !jsvIsEmptyString(sendData)) {
+        int sent = socketSendData(net, socket, sckt, &sendData);
+        // FIXME? checking for errors is a bit iffy. With the esp8266 network that returns
+        // varied error codes we'd want to skip SOCKET_ERR_CLOSED and let the recv side deal
+        // with normal closing so we don't miss the tail of what's received, but other drivers
+        // return -1 (which is the same value) for all errors. So we rely on the check ~12 lines
+        // down if(num>0)closeConnectionNow=false instead.
+        if (sent < 0) {
+          closeConnectionNow = true;
+          error = sent;
+        }
         jsvObjectSetChild(socket, HTTP_NAME_SEND_DATA, sendData); // socketSendData prob updated sendData
       }
       // only close if we want to close, have no data to send, and aren't receiving data
-      if (jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0)) && !sendData && num<=0)
+      bool wantClose = jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0));
+      if (wantClose && (!sendData || jsvIsEmptyString(sendData)) && num<=0)
         closeConnectionNow = true;
       else if (num > 0)
         closeConnectionNow = false; // guarantee that anything received is processed
@@ -462,13 +469,13 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
       JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
       if (!closeConnectionNow) {
         // send data if possible
-        if (sendData) {
+        if (sendData && !jsvIsEmptyString(sendData)) {
           // don't try to send if we're already in error state
           int num = 0;
           if (error == 0) num = socketSendData(net, connection, sckt, &sendData);
           //if (num != 0) printf("send returned %d\r\n", num);
           if (num > 0 && !alreadyConnected && !isHttp) { // whoa, we sent something, must be connected!
-            jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
+            jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
             jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
             alreadyConnected = true;
           }
@@ -496,7 +503,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           } else {
             // did we just get connected?
             if (!alreadyConnected && !isHttp) {
-              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, NULL, 0);
+              jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
               jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
               alreadyConnected = true;
               // if we do not have any data to send, issue a drain event
