@@ -485,7 +485,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = netRecv(net, sckt, buf, sizeof(buf));
+          int num = netRecv(net, sckt, buf, net->chunkSize);
           //if (num != 0) printf("recv returned %d\r\n", num);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
