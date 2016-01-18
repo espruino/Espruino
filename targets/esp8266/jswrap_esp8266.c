@@ -378,7 +378,18 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   if (!jshGetPinStateIsManual(pin))
     jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
 
+  // values for 160Mhz clock
+  uint8_t tOne =  90;  // one bit, high typ 800ns
+  uint8_t tZero = 40;  // zero bit, high typ 300ns
+  uint8_t tLow = 170;  // total cycle, typ 1.2us
+  if (system_get_cpu_freq() < 100) {
+    tOne = 56;  // 56 cyc = 700ns
+    tZero = 14; // 14 cycl = 175ns
+    tLow = 100;
+  }
+
 #if 1
+
   // the loop over the RGB pixel bits below is loaded into the instruction cache from flash
   // with the result that dependeing on the cache line alignment the first loop iteration
   // takes too long and thereby messes up the first LED.
@@ -400,8 +411,8 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
   ets_intr_lock();                // disable most interrupts
   while(1) {
     uint32_t t;
-    if (pix & mask) t = 56; // one bit, high typ 800ns (56 cyc = 700ns)
-    else            t = 14; // zero bit, high typ 300ns (14 cycl = 175ns)
+    if (pix & mask) t = tOne;
+    else            t = tZero;
     GPIO_REG_WRITE(GPIO_OUT_W1TS_ADDRESS, pinMask);  // Set high
     start = _getCycleCount();                        // get start time of this bit
     while (_getCycleCount()-start < t) ;             // busy-wait
@@ -412,11 +423,13 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
       mask = 0x80;
       pinMask = _BV(pin);
     }
-    while (_getCycleCount()-start < 100) ;           // busy-wait, 100 cyc = 1.25us
+    while (_getCycleCount()-start < tLow) ;          // busy-wait
   }
-  while (_getCycleCount()-start < 100) ;             // Wait for last bit
+  while (_getCycleCount()-start < tLow) ;            // wait for last bit
   ets_intr_unlock();
+
 #else
+
   // this is the code without preloading the first bit
   uint32_t pinMask = _BV(pin);    // bit mask for GPIO pin to write to reg
   uint8_t *p = (uint8_t *)pixels; // pointer to walk through pixel array
@@ -441,11 +454,6 @@ void jswrap_ESP8266_neopixelWrite(Pin pin, JsVar *jsArrayOfData) {
     while (_getCycleCount()-start < 100) ;           // busy-wait, 100 cyc = 1.25us
   }
   while (_getCycleCount()-start < 100) ;             // Wait for last bit
-#endif
 
-  // at some point the fact that the code above needs to be loaded from flash to cache caused the
-  // first bit's timing to be off. If this recurs, a suggestion is to run a loop iteration
-  // outputting low-low and only start with the actual first bit in the second loop iteration.
-  // This could be achieved by starting with pinMask=0 and setting the real pin mask at the end
-  // of the loop, initializing p=pixels-1, and mask=1
+#endif
 }
