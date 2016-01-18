@@ -115,7 +115,9 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
     	return 0;
     }
     /* EFM32 TODO this is not the serial number */
-    return 1337;
+    data[0] = 0x13;
+    data[1] = 0x37;
+    return 2;
 }
 
 // is the serial device connected?
