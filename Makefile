@@ -483,13 +483,16 @@ USE_NET=1
 else ifdef ESP8266_BOARD
 EMBEDDED=1
 USE_NET=1
+USE_TELNET=1
+#USE_GRAPHICS=1
 BOARD=ESP8266_BOARD
-# Enable link-time optimisations (inlining across files) but don't go beyond -O2 'cause of
-# code size explosion, also -DLINK_TIME_OPTIMISATION leads to too big a firmware
+# Enable link-time optimisations (inlining across files), use -Os 'cause else we end up with
+# too large a firmware (-Os is -O2 without optimizations that increase code size)
 ifndef DISABLE_LTO
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -flto -fno-fat-lto-objects -Wl,--allow-multiple-definition
+#OPTIMIZEFLAGS+=-DLINK_TIME_OPTIMISATION # this actually slows things down!
 else
-# DISABLE_LTO is necessary in order to analyze static string sizes (topstring makefile target)
+# DISABLE_LTO is necessary in order to analyze static string sizes (see: topstring makefile target)
 OPTIMIZEFLAGS+=-Os -std=gnu11 -fgnu89-inline -Wl,--allow-multiple-definition
 endif
 ESP_FLASH_MAX       ?= 491520   # max bin file: 480KB
@@ -589,6 +592,7 @@ USE_HASHLIB=1
 USE_GRAPHICS=1
 USE_CRYPTO=1
 USE_TLS=1
+#USE_TELNET=1  # enable telnet to have it listen on port 2323 as JS console
 #USE_LCD_SDL=1
 
 ifdef MACOSX
@@ -880,21 +884,21 @@ DEFINES += -DUSE_USB_HID
 endif
 
 ifdef USE_NET
-DEFINES += -DUSE_NET
-INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
-WRAPPERSOURCES += \
-libs/network/jswrap_net.c \
-libs/network/http/jswrap_http.c
-SOURCES += \
-libs/network/network.c \
-libs/network/socketserver.c \
-libs/network/socketerrors.c
+ DEFINES += -DUSE_NET
+ INCLUDE += -I$(ROOT)/libs/network -I$(ROOT)/libs/network -I$(ROOT)/libs/network/http
+ WRAPPERSOURCES += \
+ libs/network/jswrap_net.c \
+ libs/network/http/jswrap_http.c
+ SOURCES += \
+ libs/network/network.c \
+ libs/network/socketserver.c \
+ libs/network/socketerrors.c
 
-# 
-WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
-INCLUDE += -I$(ROOT)/libs/network/js
-SOURCES += \
-libs/network/js/network_js.c
+ # 
+ WRAPPERSOURCES += libs/network/js/jswrap_jsnetwork.c
+ INCLUDE += -I$(ROOT)/libs/network/js
+ SOURCES += \
+ libs/network/js/network_js.c
 
  ifdef LINUX
  INCLUDE += -I$(ROOT)/libs/network/linux
@@ -964,7 +968,13 @@ libs/network/js/network_js.c
  libs/network/esp8266/pktbuf.c\
  libs/network/esp8266/ota.c
  endif
-endif
+
+ ifdef USE_TELNET
+ DEFINES += -DUSE_TELNET
+ WRAPPERSOURCES += libs/network/telnet/jswrap_telnet.c
+ INCLUDE += -I$(ROOT)/libs/network/telnet
+ endif
+endif # USE_NET
 
 ifdef USE_TV
 DEFINES += -DUSE_TV
@@ -1526,6 +1536,7 @@ LDFLAGS += -L$(ESP8266_SDK_ROOT)/lib \
 SOURCES += targets/esp8266/uart.c \
 	targets/esp8266/spi.c \
 	targets/esp8266/user_main.c \
+	targets/esp8266/log.c \
 	targets/esp8266/jshardware.c \
 	targets/esp8266/i2c_master.c \
 	targets/esp8266/esp8266_board_utils.c \
@@ -1696,7 +1707,7 @@ $(USER2_BIN): $(USER2_ELF) $(USER1_BIN)
 $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 	$(Q)rm -rf build/$(basename $(ESP_ZIP))
 	$(Q)mkdir -p build/$(basename $(ESP_ZIP))
-	$(Q)cp $(USER1_BIN) $(USER2_BIN) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
+	$(Q)cp $(USER1_BIN) $(USER2_BIN) $(USER1_ELF) scripts/wiflash $(ESP8266_SDK_ROOT)/bin/blank.bin \
 	  $(ESP8266_SDK_ROOT)/bin/esp_init_data_default.bin \
 	  "$(ESP8266_SDK_ROOT)/bin/boot_v1.4(b1).bin" targets/esp8266/README_flash.txt \
 	  build/$(basename $(ESP_ZIP))
@@ -1704,7 +1715,7 @@ $(ESP_ZIP): $(USER1_BIN) $(USER2_BIN)
 
 # Analyze all the .o files and rank them by the amount of static string area used, useful to figure
 # out where to optimize and move strings to flash
-# IMPORTANT: this only works if DISABLE_LTO id defined, e.g. `DISABLE_LTO=1 make`
+# IMPORTANT: this only works if DISABLE_LTO is defined, e.g. `DISABLE_LTO=1 make`
 topstrings: $(PARTIAL)
 	$(Q)for f in `find . -name \*.o`; do \
 	  str=$$($(OBJDUMP) -j .rodata.str1.4 -h $$f 2>/dev/null | \

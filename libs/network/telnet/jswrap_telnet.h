@@ -1,30 +1,28 @@
 /*
  * This file is part of Espruino, a JavaScript interpreter for Microcontrollers
  *
+ * Copyright (C) 2013 Thorsten von Eicken
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
  * ----------------------------------------------------------------------------
- * Contains ESP8266 board specific functions.
+ * Contains JavaScript HTTP Functions
  * ----------------------------------------------------------------------------
  */
+#ifndef LIBS_NETWORK_TELNET_H_
+#define LIBS_NETWORK_TELNET_H_
 
-#ifndef SPI_H
-#define SPI_H
+#include "jsvar.h"
 
-#include "spi_register.h"
-#include "ets_sys.h"
-#include "osapi.h"
-#include "os_type.h"
+void jswrap_telnet_setOptions(JsVar *options);
 
-// Define SPI hardware modules
-#define SPI 0
-#define HSPI 1
+void jswrap_telnet_init(void);
+void jswrap_telnet_kill(void);
 
-void spi_init(uint8 spi_no, uint32 baud_rate);
-uint32 spi_transaction(uint8 spi_no, uint32 bits, uint32 dout_data);
-
-#define spi_busy(spi_no) READ_PERI_REG(SPI_CMD(spi_no))&SPI_USR
+// Listen, accept, send, and recv on telnet console connections. Returns true if something
+// was done.
+bool jswrap_telnet_idle(void);
 
 #endif

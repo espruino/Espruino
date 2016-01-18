@@ -72,23 +72,6 @@ static uint8 g_pinState[JSH_PIN_COUNT];
 
 
 /**
- * Transmit all the characters in the transmit buffer.
- *
- */
-void esp8266_uartTransmitAll(IOEventFlags device) {
-  // Get the next character to transmit.  We will have reached the end when
-  // the value of the character to transmit is -1.
-  int c = jshGetCharToTransmit(device);
-
-  while (c >= 0) {
-    uart_tx_one_char(0, c);
-    c = jshGetCharToTransmit(device);
-  } // No more characters to transmit
-} // End of esp8266_transmitAll
-
-// ----------------------------------------------------------------------------
-
-/**
  * Convert a pin id to the corresponding Pin Event id.
  */
 static IOEventFlags pinToEV_EXTI(
@@ -222,17 +205,8 @@ int jshGetSerialNumber(unsigned char *data, int maxChars) {
 
 //===== Interrupts and sleeping
 
-void jshInterruptOff() {
-  //os_printf("> jshInterruptOff\n");
-  ets_intr_lock();
-  //os_printf("< jshInterruptOff\n");
-} // End of jshInterruptOff
-
-void jshInterruptOn() {
-  //os_printf("> jshInterruptOn\n");
-  ets_intr_unlock();
-  //os_printf("< jshInterruptOn\n");
-} // End of jshInterruptOn
+void jshInterruptOff() { ets_intr_lock(); }
+void jshInterruptOn()  { ets_intr_unlock(); }
 
 /// Enter simple sleep mode (can be woken up by interrupts). Returns true on success
 bool jshSleep(JsSysTime timeUntilWake) {
@@ -692,8 +666,19 @@ bool jshIsUSBSERIALConnected() {
  */
 void jshUSARTKick(
     IOEventFlags device //!< The device to be kicked.
-  ) {
-  esp8266_uartTransmitAll(device);
+) {
+  // transmit anything that is sitting in the uart output buffers
+  if (device == EV_SERIAL1 || device == EV_SERIAL2) {
+    // Get the next character to transmit.  We will have reached the end when
+    // the value of the character to transmit is -1.
+    int c = jshGetCharToTransmit(device);
+    uint8_t uart = device == EV_SERIAL1 ? 0 : 1;
+
+    while (c >= 0) {
+      uart_tx_one_char(uart, c);
+      c = jshGetCharToTransmit(device);
+    }
+  }
 }
 
 
@@ -715,33 +700,21 @@ void jshUSARTKick(
 void jshSPISetup(
     IOEventFlags device, //!< The identity of the SPI device being initialized.
     JshSPIInfo *inf      //!< Flags for the SPI device.
-  ) {
-  // The device should be one of EV_SPI1, EV_SPI2 or EV_SPI3.
-  os_printf("> jshSPISetup - jshSPISetup: device=%d\n", device);
-  switch(device) {
-  case EV_SPI1:
-    os_printf(" - Device is SPI1\n");
-    // EV_SPI1 is the ESP8266 hardware SPI ...
-    spi_init(HSPI); // Initialize the hardware SPI components.
-    spi_clock(HSPI, CPU_CLK_FREQ / (inf->baudRate * 2), 2);
-    g_spiInitialized = true;
-    g_lastSPIRead = -1;
-    break;
-  case EV_SPI2:
-    os_printf(" - Device is SPI2\n");
-    break;
-  case EV_SPI3:
-    os_printf(" - Device is SPI3\n");
-    break;
-  default:
-    os_printf(" - Device is Unknown!!\n");
-    break;
+) {
+  if (device != EV_SPI1) {
+    jsExceptionHere(JSET_ERROR, "Only SPI1 supported");
+    return;
   }
+
+  //os_printf("jshSPISetup - jshSPISetup: device=%d\n", device);
+  spi_init(HSPI, inf->baudRate); // Initialize the hardware SPI components.
+  g_spiInitialized = true;
+  g_lastSPIRead = -1;
+
   if (inf != NULL) {
     os_printf("baudRate=%d, baudRateSpec=%d, pinSCK=%d, pinMISO=%d, pinMOSI=%d, spiMode=%d, spiMSB=%d\n",
         inf->baudRate, inf->baudRateSpec, inf->pinSCK, inf->pinMISO, inf->pinMOSI, inf->spiMode, inf->spiMSB);
   }
-  os_printf("< jshSPISetup\n");
 }
 
 /** Send data through the given SPI device (if data>=0), and return the result
@@ -750,14 +723,14 @@ void jshSPISetup(
 int jshSPISend(
     IOEventFlags device, //!< The identity of the SPI device through which data is being sent.
     int data             //!< The data to be sent or an indication that no data is to be sent.
-  ) {
+) {
   if (device != EV_SPI1) {
     return -1;
   }
   //os_printf("> jshSPISend - device=%d, data=%x\n", device, data);
   int retData = g_lastSPIRead;
   if (data >=0) {
-    g_lastSPIRead = spi_tx8(HSPI, data);
+    g_lastSPIRead = spi_transaction(HSPI, 8, (uint32)data);
   } else {
     g_lastSPIRead = -1;
   }
@@ -772,7 +745,7 @@ int jshSPISend(
 void jshSPISend16(
     IOEventFlags device, //!< Unknown
     int data             //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISend16 - device=%d, data=%x\n", device, data);
   //jshSPISend(device, data >> 8);
   //jshSPISend(device, data & 255);
@@ -780,7 +753,7 @@ void jshSPISend16(
     return;
   }
 
-  spi_tx16(HSPI, data);
+  spi_transaction(HSPI, 16, (uint32)data);
   //os_printf("< jshSPISend16\n");
 }
 
@@ -791,7 +764,7 @@ void jshSPISend16(
 void jshSPISet16(
     IOEventFlags device, //!< Unknown
     bool is16            //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPISet16 - device=%d, is16=%d\n", device, is16);
   //os_printf("< jshSPISet16\n");
 }
@@ -802,7 +775,7 @@ void jshSPISet16(
  */
 void jshSPIWait(
     IOEventFlags device //!< Unknown
-  ) {
+) {
   //os_printf("> jshSPIWait - device=%d\n", device);
   while(spi_busy(HSPI)) ;
   //os_printf("< jshSPIWait\n");
@@ -810,8 +783,8 @@ void jshSPIWait(
 
 /** Set whether to use the receive interrupt or not */
 void jshSPISetReceive(IOEventFlags device, bool isReceive) {
-  os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
-  os_printf("< jshSPISetReceive\n");
+  //os_printf("> jshSPISetReceive - device=%d, isReceive=%d\n", device, isReceive);
+  //os_printf("< jshSPISetReceive\n");
 }
 
 //===== I2C =====
@@ -822,10 +795,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *info) {
   //os_printf("> jshI2CSetup: SCL=%d SDA=%d bitrate=%d\n",
   //    info->pinSCL, info->pinSDA, info->bitrate);
   if (device != EV_I2C1) {
-    jsError("Only I2C1 supported");
-    return;
-  }
-
+    jsError("Only I2C1 supported"); return; }
   Pin scl = info->pinSCL !=PIN_UNDEFINED ? info->pinSCL : 14;
   Pin sda = info->pinSDA !=PIN_UNDEFINED ? info->pinSDA : 2;
 
@@ -892,31 +862,31 @@ error:
  *
  * It seems pretty clear from the API and the calibration concepts that the RTC runs off an
  * internal RC oscillator or something similar and the SDK provides functions to calibrate
- * it WRT the crystal oscillator, i.e., to get the current clock ratio.
- *
- * The RTC timer is preserved when the chip goes into sleep mode, including deep sleep, as
- * well when it is reset (but not if reset using the ch_pd pin).
+ * it WRT the crystal oscillator, i.e., to get the current clock ratio. The only benefit of
+ * RTC timer is that it keeps running when in light sleep mode. (It also keeps running in
+ * deep sleep mode since it can be used to exit deep sleep but some brilliant engineer at
+ * espressif decided to reset the RTC timer when coming out of deep sleep so the time is
+ * actually lost!)
  *
  * It seems that the best course of action is to use the system timer for jshGetSystemTime()
- * and related functions and to use the rtc timer only at start-up to initialize the system
- * timer to the best guess available for the current date-time.
+ * and related functions and to use the rtc timer only to preserve time during light sleep.
  */
 
 /**
  * Given a time in milliseconds as float, get us the value in microsecond
  */
 JsSysTime jshGetTimeFromMilliseconds(JsVarFloat ms) {
-//  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
+  //  os_printf("jshGetTimeFromMilliseconds %d, %f\n", (JsSysTime)(ms * 1000.0), ms);
   return (JsSysTime) (ms * 1000.0 + 0.5);
-} // End of jshGetTimeFromMilliseconds
+}
 
 /**
  * Given a time in microseconds, get us the value in milliseconds (float)
  */
 JsVarFloat jshGetMillisecondsFromTime(JsSysTime time) {
-//  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
+  //  os_printf("jshGetMillisecondsFromTime %d, %f\n", time, (JsVarFloat)time / 1000.0);
   return (JsVarFloat) time / 1000.0;
-} // End of jshGetMillisecondsFromTime
+}
 
 // Structure to hold a timestamp in us since the epoch, plus the system timer value at that time
 // stamp. The crc field is used when saving this to RTC RAM
@@ -953,7 +923,7 @@ static void saveTime() {
  */
 JsSysTime CALLED_FROM_INTERRUPT jshGetSystemTime() { // in us -- can be called at interrupt time
   return sysTimeStamp.timeStamp + (JsSysTime)(system_get_time() - sysTimeStamp.hwTimeStamp);
-} // End of jshGetSystemTime
+}
 
 
 /**
@@ -969,7 +939,7 @@ void jshSetSystemTime(JsSysTime newTime) {
   rtcTimeStamp.timeStamp = newTime;
   rtcTimeStamp.hwTimeStamp = rtcTime;
   saveTime(&rtcTimeStamp);
-} // End of jshSetSystemTime
+}
 
 /**
  * Periodic system timer to update the time structure and save it to RTC RAM so we don't loose
@@ -1070,7 +1040,6 @@ void jshUtilTimerReschedule(JsSysTime period) {
 //===== Miscellaneous =====
 
 bool jshIsDeviceInitialised(IOEventFlags device) {
-  os_printf("> jshIsDeviceInitialised - %d\n", device);
   bool retVal = true;
   switch(device) {
   case EV_SPI1:
@@ -1079,7 +1048,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
   default:
     break;
   }
-  os_printf("< jshIsDeviceInitialised - %d\n", retVal);
+  os_printf("jshIsDeviceInitialised: dev %d, ret %d\n", device, retVal);
   return retVal;
 } // End of jshIsDeviceInitialised
 

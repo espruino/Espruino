@@ -163,7 +163,7 @@ typedef struct {
 
 
 /**
- * Send a single byte to the SPI device, used ad callback.
+ * Send a single byte to the SPI device, used as callback.
  */
 void jswrap_spi_send_cb(
     int c,                     //!< The byte to send through SPI.
@@ -296,7 +296,7 @@ void jswrap_spi_write(
   if (len > 0) {
     JsVar *last = jsvGetArrayItem(args, len-1); // look at the last value
     if (jsvIsPin(last)) {
-      nss_pin = jshGetPinFromVar(last);    
+      nss_pin = jshGetPinFromVar(last);
       jsvUnLock(jsvArrayPop(args));
     }
     jsvUnLock(last);

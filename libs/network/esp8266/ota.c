@@ -62,8 +62,7 @@ static void abortConn(OtaConn *oc) {
  * \brief: sendResponse sends an HTTP response with a given status code and null-terminated text
  *
  * This function is very naive because it assumes that the full response can be sent just like
- * that in one go. This is OK because we only send very tiny responses and we ask espconn to
- * do the write buffering, so we can send up to about 2900 bytes without problem.
+ * that in one go. This is OK because we only send very tiny responses.
  */
 static void sendResponse(OtaConn *oc, uint16_t code, char *text) {
   char *status = code < 400 ? "OK" : "ERROR"; // hacky but it works

@@ -44,7 +44,10 @@
   gpio_output_set(set, set^both, both, 0);\
 } while(0)
 
-#define i2c_master_wait    os_delay_us
+// For ~100khz at 80Mhz or 160Mhz:
+//#define i2c_master_wait    os_delay_us
+// For ~250khz at 160Mhz:
+#define i2c_master_wait(x)    os_delay_us(x/4) // do{}while(0)
 
 #define i2c_master_getDC(void) ((GPIO_REG_READ(GPIO_IN_ADDRESS) >> pinSDA) & 1)
 
@@ -332,10 +335,10 @@ i2c_master_writeByte(uint8 wrdata)
     for (i = 7; i >= 0; i--) {
         dat = wrdata >> i;
         i2c_master_setDC(dat, 0);
-        i2c_master_wait(2);
-        i2c_master_setDC(dat, 1);
-        i2c_master_wait(4);
-        i2c_master_setDC(dat, 0);
         i2c_master_wait(1);
+        i2c_master_setDC(dat, 1);
+        i2c_master_wait(5);
+        i2c_master_setDC(dat, 0);
+        i2c_master_wait(2);
     }
 }

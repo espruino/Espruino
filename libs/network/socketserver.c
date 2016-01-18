@@ -41,7 +41,6 @@
 #define HTTP_ARRAY_HTTP_SERVERS "HttpS"
 #define HTTP_ARRAY_HTTP_SERVER_CONNECTIONS "HttpSC"
 
-// Define the size of buffers/chunks that are transmitted or received
 #ifdef ESP8266
 // esp8266 debugging, need to remove this eventually
 extern int os_printf_plus(const char *format, ...)  __attribute__((format(printf, 1, 2)));
@@ -437,7 +436,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
   while (jsvObjectIteratorHasValue(&it)) {
     hadSockets = true;
     // Get connection, socket, and socket type
-    // For normal sockets, socket==connection, but for HTTP we split it into a request and a response
+    // For normal sockets, socket==connection, but for HTTP connection is httpCRq and socket is httpCRs
     JsVar *connection = jsvObjectIteratorGetValue(&it);
     SocketType socketType = socketGetType(connection);
     JsVar *socket = ((socketType&ST_TYPE_MASK)==ST_HTTP) ? jsvObjectGetChild(connection,HTTP_NAME_RESPONSE_VAR,0) : jsvLockAgain(connection);
@@ -469,7 +468,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
           // don't try to send if we're already in error state
           int num = 0;
           if (error == 0) num = socketSendData(net, connection, sckt, &sendData);
-          //if (num != 0) printf("send returned %d\r\n", num);
           if (num > 0 && !alreadyConnected && !isHttp) { // whoa, we sent something, must be connected!
             jsiQueueObjectCallbacks(connection, HTTP_NAME_ON_CONNECT, &connection, 1);
             jsvObjectSetChildAndUnLock(connection, HTTP_NAME_CONNECTED, jsvNewFromBool(true));
@@ -487,7 +485,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         }
         // Now read data if possible (and we have space for it)
         if (!receiveData || !hadHeaders) {
-          int num = netRecv(net, sckt, buf, net->chunkSize);
+          int num = netRecv(net, sckt, buf, sizeof(buf));
           //if (num != 0) printf("recv returned %d\r\n", num);
           if (!alreadyConnected && num == SOCKET_ERR_NO_CONN) {
             ; // ignore... it's just telling us we're not connected yet
@@ -536,7 +534,6 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
     if (closeConnectionNow) {
       socketClientPushReceiveData(connection, socket, &receiveData);
       if (!receiveData) {
-        //printf("closing now error=%d\r\n", error);
         if ((socketType&ST_TYPE_MASK) != ST_HTTP)
           jsiQueueObjectCallbacks(socket, HTTP_NAME_ON_END, &socket, 1);
 
@@ -552,7 +549,7 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
         jsvUnLock(connectionName);
         socketClosed = true;
 
-        // fire error event, if ther eis an error
+        // fire error event, if there is an error
         bool hadError = fireErrorEvent(error, connection, NULL);
 
         // close callback must happen after error callback

@@ -28,3 +28,13 @@ post "/data" do
   body = request.body.read
   body.length.to_s
 end
+
+post "/temp" do
+  temp = params["temp"]
+  if params["temp"]
+    puts "Got temperature: #{params["temp"]}C"
+    "OK"
+  else
+    halt 400
+  end
+end

@@ -16,6 +16,7 @@
 
 #include <user_interface.h>
 #include <osapi.h>
+#include <sntp.h>
 #include <uart.h>
 #include <espmissingincludes.h>
 
@@ -28,6 +29,7 @@ typedef long long int64_t;
 #include <jswrap_esp8266_network.h>
 #include <jswrap_esp8266.h>
 #include <ota.h>
+#include <log.h>
 #include "ESP8266_board.h"
 
 // --- Constants
@@ -216,10 +218,13 @@ static void mainLoop() {
   jsiLoop();
 
 #ifdef EPS8266_BOARD_HEARTBEAT
-  if (system_get_time() - lastTime > 1000 * 1000 * 5) {
+  if (system_get_time() - lastTime > 1000 * 1000 * 60) {
     lastTime = system_get_time();
-    os_printf("tick: %ums, heap: %u\n",
-      (uint32)(jshGetSystemTime())/1000, system_get_free_heap_size());
+    // system_get_free_heap_size adds a newline !?
+    char *t = sntp_get_real_time((uint32)(jshGetSystemTime()/1000000));
+    int l = strlen(t);
+    if (l > 2) t[l-1] = 0;
+    os_printf("%s, heap: %u\n", t, system_get_free_heap_size());
   }
 #endif
 
@@ -271,8 +276,8 @@ void user_uart_init() {
   uart_init(defaultBaudRate, 115200); // keep debug uart at fixed baud rate
 
   os_delay_us(1000); // make sure there's a gap on uart output
-  UART_SetPrintPort(1);
-  system_set_os_print(1);
+  //UART_SetPrintPort(1);
+  esp8266_logInit(LOG_MODE_ON1);
 }
 
 /**
@@ -281,6 +286,7 @@ void user_uart_init() {
  * before user_init() is called.
  */
 void user_rf_pre_init() {
+  system_update_cpu_freq(160);
   //os_printf("Time sys=%u rtc=%u\n", system_get_time(), system_get_rtc_time());
 }
 

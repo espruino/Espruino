@@ -458,7 +458,10 @@ NO_INLINE bool jspeParseFunctionCallBrackets() {
  */
 NO_INLINE JsVar *jspeFunctionCall(JsVar *function, JsVar *functionName, JsVar *thisArg, bool isParsing, int argCount, JsVar **argPtr) {
   if (JSP_SHOULD_EXECUTE && !function) {
-    jsExceptionHere(JSET_ERROR, functionName ? "Function %q not found!" : "Function not found!", functionName);
+    if (functionName)
+      jsExceptionHere(JSET_ERROR, "Function %q not found!", functionName);
+    else
+      jsExceptionHere(JSET_ERROR, "Function not found!", functionName);
     return 0;
   }
 
