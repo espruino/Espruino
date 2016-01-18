@@ -19,3 +19,4 @@ void jswrap_microbit_kill();
 void jswrap_microbit_show(JsVar *image);
 
 JsVar *jswrap_microbit_acceleration();
+JsVar *jswrap_microbit_compass();

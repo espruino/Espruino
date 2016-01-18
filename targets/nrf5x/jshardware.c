@@ -49,6 +49,10 @@
 
  */
 
+static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
+// Whether a pin is being used for soft PWM or not
+BITFIELD_DECL(jshPinSoftPWM, JSH_PIN_COUNT);
+
 void TIMER1_IRQHandler(void) {
   nrf_timer_task_trigger(NRF_TIMER1, NRF_TIMER_TASK_CLEAR);
   nrf_timer_event_clear(NRF_TIMER1, NRF_TIMER_EVENT_COMPARE0);
@@ -79,11 +83,11 @@ unsigned int getNRFBaud(int baud) {
 }
 
 
-static int init = 0; // Temporary hack to get jsiOneSecAfterStartup() going.
-
 void jshInit() {
   jshInitDevices();
   nrf_utils_lfclk_config_and_start();
+
+  BITFIELD_CLEAR(jshPinSoftPWM);
     
   JshUSARTInfo inf;
   jshUSARTInitInfo(&inf);
@@ -92,18 +96,20 @@ void jshInit() {
   inf.baudRate = DEFAULT_CONSOLE_BAUDRATE;
   jshUSARTSetup(EV_SERIAL1, &inf); // Initialize UART for communication with Espruino/terminal.
   init = 1;
+
   // Enable and sort out the timer
   nrf_timer_mode_set(NRF_TIMER1,NRF_TIMER_MODE_TIMER);
   nrf_timer_bit_width_set(NRF_TIMER1, NRF_TIMER_BIT_WIDTH_32);
   nrf_timer_frequency_set(NRF_TIMER1, NRF_TIMER_FREQ_1MHz); // hmm = only a few options here
+
   // Irq setup
-  NVIC_SetPriority(TIMER1_IRQn, 15); // low - don't mess with BLE :)
+  NVIC_SetPriority(TIMER1_IRQn, 3); // low - don't mess with BLE :)
   NVIC_ClearPendingIRQ(TIMER1_IRQn);
   NVIC_EnableIRQ(TIMER1_IRQn);
   nrf_timer_int_enable(NRF_TIMER1, NRF_TIMER_INT_COMPARE0_MASK );
+
   // Pin change
   nrf_drv_gpiote_init();
-
   jswrap_nrf_bluetooth_init();
 }
 
@@ -186,6 +192,13 @@ bool jshPinGetValue(Pin pin) {
 
 // Set the pin state
 void jshPinSetState(Pin pin, JshPinState state) {
+  /* Make sure we kill software PWM if we set the pin state
+   * after we've started it */
+  if (BITFIELD_GET(jshPinSoftPWM, pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jstPinPWM(0,0,pin);
+  }
+
   uint32_t ipin = (uint32_t)pinInfo[pin].pin;
   switch (state) {
     case JSHPINSTATE_UNDEFINED :
@@ -276,6 +289,15 @@ int jshPinAnalogFast(Pin pin) {
 }
 
 JshPinFunction jshPinAnalogOutput(Pin pin, JsVarFloat value, JsVarFloat freq, JshAnalogOutputFlags flags) {
+  /* we set the bit field here so that if the user changes the pin state
+   * later on, we can get rid of the IRQs */
+  if (!jshGetPinStateIsManual(pin)) {
+    BITFIELD_SET(jshPinSoftPWM, pin, 0);
+    jshPinSetState(pin, JSHPINSTATE_GPIO_OUT);
+  }
+  BITFIELD_SET(jshPinSoftPWM, pin, 1);
+  if (freq<=0) freq=50;
+  jstPinPWM(freq, value, pin);
   return JSH_NOTHING;
 } // if freq<=0, the default is used
 
@@ -369,6 +391,7 @@ bool jshIsDeviceInitialised(IOEventFlags device) {
 }
 
 bool uartIsSending = false;
+bool uartInitialised = false;
 
 void uart0_event_handle(app_uart_evt_t * p_event) {
   if (p_event->evt_type == APP_UART_COMMUNICATION_ERROR) {
@@ -389,6 +412,8 @@ void uart0_event_handle(app_uart_evt_t * p_event) {
 
 /** Set up a UART, if pins are -1 they will be guessed */
 void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
+  if (device != EV_SERIAL1)
+    return;
 
   int baud = getNRFBaud(inf->baudRate);
   if (baud==0)
@@ -400,8 +425,8 @@ void jshUSARTSetup(IOEventFlags device, JshUSARTInfo *inf) {
   const app_uart_comm_params_t comm_params = {
       pinInfo[inf->pinRX].pin,
       pinInfo[inf->pinTX].pin,
-      UART_PIN_DISCONNECTED,
-      UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
+      (uint8_t)UART_PIN_DISCONNECTED,
       APP_UART_FLOW_CONTROL_DISABLED,
       inf->parity!=0, // TODO: ODD or EVEN parity?
       baud
@@ -470,8 +495,9 @@ void jshSPIWait(IOEventFlags device) {
 }
 
 const nrf_drv_twi_t TWI1 = NRF_DRV_TWI_INSTANCE(1);
+bool twi1Initialised = false;
 
-nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
+const nrf_drv_twi_t *jshGetTWI(IOEventFlags device) {
   if (device == EV_I2C1) return &TWI1;
   return 0;
 }
@@ -482,7 +508,7 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
     jsError("SDA and SCL pins must be valid, got %d and %d\n", inf->pinSDA, inf->pinSCL);
     return;
   }
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
   // http://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk51.v9.0.0%2Fhardware_driver_twi.html&cp=4_1_0_2_10
   nrf_drv_twi_config_t    p_twi_config;
@@ -490,7 +516,9 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
   p_twi_config.sda = (uint32_t)pinInfo[inf->pinSDA].pin;
   p_twi_config.frequency = (inf->bitrate<175000) ? NRF_TWI_FREQ_100K : ((inf->bitrate<325000) ? NRF_TWI_FREQ_250K : NRF_TWI_FREQ_400K);
   p_twi_config.interrupt_priority = APP_IRQ_PRIORITY_LOW;
-  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL);
+  if (twi1Initialised) nrf_drv_twi_uninit(twi);
+  twi1Initialised = true;
+  uint32_t err_code = nrf_drv_twi_init(twi, &p_twi_config, NULL, NULL);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Initialisation Error %d\n", err_code);
   else
@@ -499,20 +527,19 @@ void jshI2CSetup(IOEventFlags device, JshI2CInfo *inf) {
 
 /** Addresses are 7 bit - that is, between 0 and 0x7F. sendStop is whether to send a stop bit or not */
 void jshI2CWrite(IOEventFlags device, unsigned char address, int nBytes, const unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const  nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_tx(twi, address, data, nBytes, !sendStop);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Write Error %d\n", err_code);
 }
 
 void jshI2CRead(IOEventFlags device, unsigned char address, int nBytes, unsigned char *data, bool sendStop) {
-  nrf_drv_twi_t *twi = jshGetTWI(device);
+  const nrf_drv_twi_t *twi = jshGetTWI(device);
   if (!twi) return;
-  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes, !sendStop);
+  uint32_t err_code = nrf_drv_twi_rx(twi, address, data, nBytes);
   if (err_code != NRF_SUCCESS)
     jsExceptionHere(JSET_INTERNALERROR, "I2C Read Error %d\n", err_code);
-
 }
 
 /// Return start address and size of the flash page the given address resides in. Returns false if no page.
