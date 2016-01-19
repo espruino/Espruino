@@ -539,7 +539,8 @@ bool socketClientConnectionsIdle(JsNetwork *net) {
 
         // If we had data to send but the socket closed, this is an error
         JsVar *sendData = jsvObjectGetChild(connection,HTTP_NAME_SEND_DATA,0);
-        if (sendData && error == SOCKET_ERR_CLOSED) error = SOCKET_ERR_UNSENT_DATA;
+        if (sendData && jsvGetStringLength(sendData) > 0 && error == SOCKET_ERR_CLOSED)
+          error = SOCKET_ERR_UNSENT_DATA;
         jsvUnLock(sendData);
 
         _socketConnectionKill(net, connection);

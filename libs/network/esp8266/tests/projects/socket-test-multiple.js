@@ -4,6 +4,7 @@
 
 test_host = "h.voneicken.com";  // <======= configure for your local server running the test_http.rb sinatra server
 test_port = 4567;
+require("ESP8266").setLog(0);
 
 var test_ip = 0; // will be resolved
 
@@ -62,13 +63,13 @@ function testSockMulti() {
       expect("ping", len === 8, len);
       this.next();
     },
-    
+
     // make a few concurrent requests
     function() {
       wifi.getHostByName(test_host, this.next);
     },
     function(ip) {
-      var cnt=5;
+      var cnt=3;
       var self=this;
       function done(len) {
         expect("ping", len === 8, len);

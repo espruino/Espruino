@@ -3,6 +3,7 @@
 
 test_host = "h.voneicken.com";
 test_port = 4567;
+require("ESP8266").setLog(2);
 
 var async = require("Async");
 var http = require("http");
@@ -80,9 +81,10 @@ function testHttpSimple() {
         res.on('close', function(hadError) {
           console.log("Closed", hadError);
           expect("data CB", d, d);
-          expect("error CB1", e1, e1);
-          expect("error CB2", e2, e2);
-          expect("hadError", hadError, hadError);
+          expect("error CB1", !e1, e1);
+          expect("error CB2", !e2, e2);
+          expect("hadError", !hadError, hadError);
+          expect("code 404", res.statusCode == 404, res);
           self.next();
         });
       });

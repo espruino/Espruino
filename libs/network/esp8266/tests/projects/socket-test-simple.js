@@ -2,6 +2,7 @@
 
 test_host = "h.voneicken.com";
 test_port = 4567;
+require("ESP8266").setLog(2);
 
 // Test misc
 var wifi = require("Wifi");
@@ -74,7 +75,7 @@ function testSock1() {
       expect("ping", len === 8, len);
       this.next();
     },
-    
+
     // make a simple HTTP request with explicit DNS lookup
     function() {
       wifi.getHostByName(test_host, this.next);
@@ -88,7 +89,7 @@ function testSock1() {
       expect("ping", len === 8, len);
       this.next();
     },
-    
+
     // make an HTTP request with a long response
     function() {
       doGet("/data?size=3048", this.next);
@@ -97,7 +98,7 @@ function testSock1() {
       expect("data 3048", len == 3048, len);
       this.next();
     },
-    
+
     // make an HTTP request with a long request
     function() {
       var data = "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
