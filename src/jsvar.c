@@ -341,17 +341,13 @@ bool jsvHasSingleChild(const JsVar *v) {
 void jsvResetVariable(JsVar *v, JsVarFlags flags) {
   assert((v->flags&JSV_VARTYPEMASK) == JSV_UNUSED);
   // make sure we clear all data...
-  ((unsigned int*)&v->varData.integer)[0] = 0;
-  ((unsigned int*)&v->varData.integer)[1] = 0;
-  // and the rest...
-  jsvSetNextSibling(v, 0);
-  jsvSetPrevSibling(v, 0);
-  jsvSetRefs(v, 0);
-  jsvSetFirstChild(v, 0);
-  jsvSetLastChild(v, 0);
-#ifdef JSVARREF_PACKED_BITS
-  v->varData.ref.pack = 0;
-#endif
+  /* Force a proper zeroing of all data. We don't use
+   * memset because that'd create a function call. This
+   * should just generate a bunch of STR instructions */
+  unsigned int i;
+  assert((sizeof(JsVar)&3) == 0); // must be a multiple of 4 in size
+  for (i=0;i<sizeof(JsVar)/sizeof(uint32_t);i++)
+    ((uint32_t*)v)[i] = 0;
   // set flags
   assert(!(flags & JSV_LOCK_MASK));
   v->flags = flags | JSV_LOCK_ONE;
@@ -361,7 +357,7 @@ JsVar *jsvNewWithFlags(JsVarFlags flags) {
   if (jsVarFirstEmpty!=0) {
     assert(jsvGetAddressOf(jsVarFirstEmpty)->flags == JSV_UNUSED);
     jshInterruptOff(); // to allow this to be used from an IRQ
-    JsVar *v = jsvLock(jsVarFirstEmpty);
+    JsVar *v = jsvGetAddressOf(jsVarFirstEmpty); // jsvResetVariable will lock
     jsVarFirstEmpty = jsvGetNextSibling(v); // move our reference to the next in the free list
     jshInterruptOn();
     jsvResetVariable(v, flags); // setup variable, and add one lock
@@ -700,8 +696,6 @@ JsVar *jsvNewFromString(const char *str) {
   // over the end
   JsVar *var = jsvLockAgain(first);
   while (*str) {
-    // quickly set contents to 0
-    var->varData.integer = 0;
     // copy data in
     size_t i, l = jsvGetMaxCharactersInVar(var);
     for (i=0;i<l && *str;i++)
@@ -738,27 +732,24 @@ JsVar *jsvNewStringOfLength(unsigned int byteLength) {
     jsWarn("Unable to create string as not enough memory");
     return 0;
   }
-  // Now zero the string, but keep creating new jsVars if we go
-  // over the end
+  // Now keep creating enough new jsVars
   JsVar *var = jsvLockAgain(first);
-  while (byteLength>0) {
+  while (true) {
     // copy data in
-    size_t i, l = jsvGetMaxCharactersInVar(var);
-    for (i=0;i<l && byteLength>0;i++,byteLength--)
-      var->varData.str[i] = 0;
-    // might as well shove a zero terminator on it if we can
-    if (i<l) var->varData.str[i]=0;
-    // we've stopped if the string was empty
-    jsvSetCharactersInVar(var, i);
-
-    // if there is still some left, it's because we filled up our var...
-    // make a new one, link it in, and unlock the old one.
-    if (byteLength>0) {
+    unsigned int l = (unsigned int)jsvGetMaxCharactersInVar(var);
+    if (l>=byteLength) {
+      // we've got enough
+      jsvSetCharactersInVar(var, byteLength);
+      break;
+    } else {
+      // We need more
+      jsvSetCharactersInVar(var, l);
+      byteLength -= l;
+      // Make a new one, link it in, and unlock the old one.
       JsVar *next = jsvNewWithFlags(JSV_STRING_EXT_0);
       if (!next) {
         jsWarn("Truncating string as not enough memory");
-        jsvUnLock(var);
-        return first;
+        break;
       }
       // we don't ref, because  StringExts are never reffed as they only have one owner (and ALWAYS have an owner)
       jsvSetLastChild(var, jsvGetRef(next));
@@ -918,7 +909,7 @@ JsVar *jsvNewArrayBufferFromString(JsVar *str, unsigned int lengthOrZero) {
   if (!arr) return 0;
   jsvSetFirstChild(arr, jsvGetRef(jsvRef(str)));
   arr->varData.arraybuffer.type = ARRAYBUFFERVIEW_ARRAYBUFFER;
-  arr->varData.arraybuffer.byteOffset = 0;
+  assert(arr->varData.arraybuffer.byteOffset == 0);
   if (lengthOrZero==0) lengthOrZero = (unsigned int)jsvGetStringLength(str);
   arr->varData.arraybuffer.length = (unsigned short)lengthOrZero;
   return arr;
@@ -1921,10 +1912,10 @@ JsVar *jsvCopyNameOnly(JsVar *src, bool linkChildren, bool keepAsName) {
 
     memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_NAME_LEN);
 
-    jsvSetLastChild(dst, 0);
-    jsvSetFirstChild(dst, 0);
-    jsvSetPrevSibling(dst, 0);
-    jsvSetNextSibling(dst, 0);
+    assert(jsvGetLastChild(dst) == 0);
+    assert(jsvGetFirstChild(dst) == 0);
+    assert(jsvGetPrevSibling(dst) == 0);
+    assert(jsvGetNextSibling(dst) == 0);
     // Copy extra string data if there was any
     if (jsvHasStringExt(src)) {
       // If it had extra string data it should have been handled above
@@ -1958,18 +1949,18 @@ JsVar *jsvCopy(JsVar *src) {
   JsVar *dst = jsvNewWithFlags(src->flags & JSV_VARIABLEINFOMASK);
   if (!dst) return 0; // out of memory
   if (!jsvIsStringExt(src)) {
-      memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_LEN);
+      memcpy(&dst->varData, &src->varData, jsvIsBasicString(src) ? JSVAR_DATA_STRING_LEN : JSVAR_DATA_STRING_NAME_LEN);
       if (!jsvIsBasicString(src)) {
-        jsvSetPrevSibling(dst, 0);
-        jsvSetNextSibling(dst, 0);
-        jsvSetFirstChild(dst, 0);
+        assert(jsvGetPrevSibling(dst) == 0);
+        assert(jsvGetNextSibling(dst) == 0);
+        assert(jsvGetFirstChild(dst) == 0);
       }
-      jsvSetLastChild(dst, 0);
+      assert(jsvGetLastChild(dst) == 0);
   } else {
     // stringexts use the extra pointers after varData to store characters
     // see jsvGetMaxCharactersInVar
     memcpy(&dst->varData, &src->varData, JSVAR_DATA_STRING_MAX_LEN);
-    jsvSetLastChild(dst, 0);
+    assert(jsvGetLastChild(dst) == 0);
   }
 
   // Copy what names point to
