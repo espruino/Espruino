@@ -23,6 +23,7 @@
 #define HTTP_NAME_SOCKET "sckt"
 #define HTTP_NAME_HAD_HEADERS "hdrs"
 #define HTTP_NAME_RECEIVE_DATA "dRcv"
+#define HTTP_NAME_RECEIVE_COUNT "cRcv"
 #define HTTP_NAME_SEND_DATA "dSnd"
 #define HTTP_NAME_RESPONSE_VAR "res"
 #define HTTP_NAME_OPTIONS_VAR "opt"
@@ -339,6 +340,14 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
               jsvUnLock(server);
             }
             if (hadHeaders && !jsvIsEmptyString(receiveData)) {
+              // Keep track of how much we received (so we can close once we have it)
+              if ((socketType&ST_TYPE_MASK)==ST_HTTP) {
+                jsvObjectSetChildAndUnLock(connection, HTTP_NAME_RECEIVE_COUNT,
+                    jsvNewFromInteger(
+                      jsvGetIntegerAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_RECEIVE_COUNT, JSV_INTEGER)) +
+                      jsvGetStringLength(receiveData)
+                    ));
+              }
               // execute 'data' callback or save data
               if (jswrap_stream_pushData(connection, receiveData, false)) {
                 // clear received data
@@ -371,9 +380,23 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
       }
       // only close if we want to close, have no data to send, and aren't receiving data
       bool wantClose = jsvGetBoolAndUnLock(jsvObjectGetChild(socket,HTTP_NAME_CLOSE,0));
-      if (wantClose && (!sendData || jsvIsEmptyString(sendData)) && num<=0)
-        closeConnectionNow = true;
-      else if (num > 0)
+      if (wantClose && (!sendData || jsvIsEmptyString(sendData)) && num<=0) {
+        bool reallyCloseNow = true;
+        if ((socketType&ST_TYPE_MASK)==ST_HTTP) {
+          // Check if we had a Content-Length header - if so, we need to wait until we have received that amount
+          JsVar *headers = jsvObjectGetChild(connection,"headers",0);
+          if (headers) {
+            JsVarInt contentLength = jsvGetIntegerAndUnLock(jsvObjectGetChild(headers,"Content-Length",0));
+            JsVarInt contentReceived = jsvGetIntegerAndUnLock(jsvObjectGetChild(connection, HTTP_NAME_RECEIVE_COUNT, 0));
+            if (contentLength > contentReceived) {
+              reallyCloseNow = false;
+            }
+            jsvUnLock(headers);
+          }
+        }
+        if (reallyCloseNow) jsiConsolePrintf("Closing now\n");
+        closeConnectionNow = reallyCloseNow;
+      } else if (num > 0)
         closeConnectionNow = false; // guarantee that anything received is processed
       jsvUnLock(sendData);
     }
