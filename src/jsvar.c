@@ -21,6 +21,13 @@
 #include "jswrap_object.h" // for jswrap_object_toString
 #include "jswrap_arraybuffer.h" // for jsvNewTypedArray
 
+#ifdef DEBUG
+  /** When freeing, clear the references (nextChild/etc) in the JsVar.
+   * This means we can assert at the end of jsvFreePtr to make sure
+   * everything really is free. */
+  #define CLEAR_MEMORY_ON_FREE
+#endif
+
 /** Basically, JsVars are stored in one big array, so save the need for
  * lots of memory allocation. On Linux, the arrays are in blocks, so that
  * more blocks can be allocated. We can't use realloc on one big block as
@@ -402,11 +409,16 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
 
   // Names that Link to other things
   if (jsvIsNameWithValue(var)) {
+#ifdef CLEAR_MEMORY_ON_FREE
     jsvSetFirstChild(var, 0); // it just contained random data - zero it
+#endif // CLEAR_MEMORY_ON_FREE
   } else if (jsvHasSingleChild(var)) {
     if (jsvGetFirstChild(var)) {
       JsVar *child = jsvLock(jsvGetFirstChild(var));
-      jsvUnRef(child); jsvSetFirstChild(var, 0); // unlink the child
+      jsvUnRef(child);
+#ifdef CLEAR_MEMORY_ON_FREE
+      jsvSetFirstChild(var, 0); // unlink the child
+#endif // CLEAR_MEMORY_ON_FREE
       jsvUnLock(child); // unlock should trigger a free
     }
   }
@@ -417,7 +429,9 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
   if (jsvHasStringExt(var)) {
     // Free the string without recursing
     JsVarRef stringDataRef = jsvGetLastChild(var);
+#ifdef CLEAR_MEMORY_ON_FREE
     jsvSetLastChild(var, 0);
+#endif // CLEAR_MEMORY_ON_FREE
     while (stringDataRef) {
       JsVar *child = jsvGetAddressOf(stringDataRef);
       assert(jsvIsStringExt(child));
@@ -432,11 +446,13 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       // do it in reverse, so the free list ends up in kind of the right order
       while (count--) {
         JsVar *p = jsvGetAddressOf(i--);
-        p->flags = JSV_UNUSED; // just so the assert in jsvFreePtrInternal doesn't get fed up
+        p->flags = JSV_UNUSED; // set locks to 0 so the assert in jsvFreePtrInternal doesn't get fed up
         jsvFreePtrInternal(p);
       }
     } else if (jsvIsBasicString(var)) {
+#ifdef CLEAR_MEMORY_ON_FREE
       jsvSetFirstChild(var, 0); // firstchild could have had string data in
+#endif // CLEAR_MEMORY_ON_FREE
     }
 
   }
@@ -445,8 +461,10 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
 
   if (jsvHasChildren(var)) {
     JsVarRef childref = jsvGetFirstChild(var);
+#ifdef CLEAR_MEMORY_ON_FREE
     jsvSetFirstChild(var, 0);
     jsvSetLastChild(var, 0);
+#endif // CLEAR_MEMORY_ON_FREE
     while (childref) {
       JsVar *child = jsvLock(childref);
       assert(jsvIsName(child));
@@ -457,6 +475,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
       jsvUnLock(child);
     }
   } else {
+#ifdef CLEAR_MEMORY_ON_FREE
 #if JSVARREF_SIZE==1
     assert(jsvIsFloat(var) || !jsvGetFirstChild(var));
     assert(jsvIsFloat(var) || !jsvGetLastChild(var));
@@ -464,6 +483,7 @@ ALWAYS_INLINE void jsvFreePtr(JsVar *var) {
     assert(!jsvGetFirstChild(var)); // strings use firstchild now as well
     assert(!jsvGetLastChild(var));
 #endif
+#endif // CLEAR_MEMORY_ON_FREE
     if (jsvIsName(var)) {
       assert(jsvGetNextSibling(var)==jsvGetPrevSibling(var)); // the case for jsvIsNewChild
       if (jsvGetNextSibling(var)) {

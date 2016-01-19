@@ -27,7 +27,7 @@ typedef JsVarRef JsVarRefCounter;
  * well as how many Locks it has. Everything is packed in as much as possible to allow us to
  * get down to within 2 bytes. */
 typedef enum {
-    JSV_UNUSED      = 0, ///< Variable not used for anything
+    JSV_UNUSED      = 0, ///< Variable not used for anything - THIS ENUM MUST BE ZERO
     JSV_ROOT        = JSV_UNUSED+1, ///< The root of everything - there is only one of these
     // UNDEFINED is now just stored using '0' as the variable Ref
     JSV_NULL        = JSV_ROOT+1, ///< it seems null is its own data type

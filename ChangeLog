@@ -21,7 +21,7 @@
             Make HTTP server only close connection after Content-Length bytes received
             Speed up jsvNewFlatStringOfLength by combining it with updating the free var list
             Update the free var list when garbage collecting (makes allocation at the start of memory more likely)
- 
+            Don't zero the contents of memory when freeing - speeds up deallocation
 
      1v84 : Fix device initialisation flags not working when the device number is above 32 (fix #751, #748)
              - this fixes broken SPI when not on standard pins
