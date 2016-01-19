@@ -304,6 +304,19 @@ void jsvSetMemoryTotal(unsigned int jsNewVarCount) {
 #endif
 }
 
+bool jsvMoreFreeVariablesThan(unsigned int vars) {
+  if (!vars) return false;
+  JsVarRef r = jsVarFirstEmpty;
+  while (r) {
+    if (!vars) return true;
+    vars--;
+
+    JsVar *v = jsvGetAddressOf(r);
+    r = jsvGetNextSibling(v);
+  }
+  return false;
+}
+
 /// Get whether memory is full or not
 bool jsvIsMemoryFull() {
   return !jsVarFirstEmpty;

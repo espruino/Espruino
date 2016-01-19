@@ -191,15 +191,14 @@ typedef double JsVarFloat;
 typedef int64_t JsSysTime;
 #define JSSYSTIME_INVALID ((JsSysTime)-1)
 
-#define JSLEX_MAX_TOKEN_LENGTH  64
-#define JS_ERROR_BUF_SIZE 64 // size of buffer error messages are written into
-#define JS_ERROR_TOKEN_BUF_SIZE 16 // see jslTokenAsString
+#define JSLEX_MAX_TOKEN_LENGTH  64 ///< Maximum length we allow tokens (eg. variable names) to be
+#define JS_ERROR_TOKEN_BUF_SIZE 16 ///< see jslTokenAsString
 
-#define JS_NUMBER_BUFFER_SIZE 66 // 64 bit base 2 + minus + terminating 0
+#define JS_NUMBER_BUFFER_SIZE 66 ///< 64 bit base 2 + minus + terminating 0
+
+#define JS_VARS_BEFORE_IDLE_GC 32 ///< If we have less free variables than this, do a garbage collect on Idle
 
 #define JSPARSE_MAX_SCOPES  8
-// Don't restrict number of iterations now
-//#define JSPARSE_MAX_LOOP_ITERATIONS 8192
 
 #define STRINGIFY_HELPER(x) #x
 #define STRINGIFY(x) STRINGIFY_HELPER(x)

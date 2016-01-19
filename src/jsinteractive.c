@@ -1965,9 +1965,10 @@ void jsiIdle() {
 
   /* if we've been around this loop, there is nothing to do, and
    * we have a spare 10ms then let's do some Garbage Collection
-   * just in case. */
+   * if we think we need to */
   if (loopsIdling==1 &&
-      minTimeUntilNext > jshGetTimeFromMilliseconds(10)) {
+      minTimeUntilNext > jshGetTimeFromMilliseconds(10) &&
+      jsvMoreFreeVariablesThan(JS_VARS_BEFORE_IDLE_GC)) {
     jsiSetBusy(BUSY_INTERACTIVE, true);
     jsvGarbageCollect();
     jsiSetBusy(BUSY_INTERACTIVE, false);
