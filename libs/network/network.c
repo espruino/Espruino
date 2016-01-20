@@ -417,10 +417,6 @@ bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   if (jsvGetStringLength(keyVar) > 100) {
     JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer ? buffer : keyVar);
     if (keyLen && keyPtr) {
-      int c = 0,i;
-      for (i=0;i<keyLen;i++) c=(c<<1)^keyPtr[i]^(c>>31);
-      jsiConsolePrintf("Got %d %d\n", keyLen, c);
-
       ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
     }
   }

@@ -22,8 +22,11 @@
 #include "mbedtls/include/mbedtls/sha256.h"
 #include "mbedtls/include/mbedtls/sha512.h"
 #include "mbedtls/include/mbedtls/pkcs5.h"
+#ifdef USE_TLS
 #include "mbedtls/include/mbedtls/pk.h"
 #include "mbedtls/include/mbedtls/x509.h"
+#include "mbedtls/include/mbedtls/ssl.h"
+#endif
 
 
 /*JSON{
@@ -61,13 +64,16 @@ Class containing AES encryption/decryption
 
 const char *jswrap_crypto_error_to_str(int err) {
   switch(err) {
-    case MBEDTLS_ERR_MD_ALLOC_FAILED:
+#ifdef USE_TLS
+    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT: return "Invalid format";
     case MBEDTLS_ERR_X509_ALLOC_FAILED:
-    case MBEDTLS_ERR_PK_ALLOC_FAILED: return "Not enough memory";
+    case MBEDTLS_ERR_SSL_ALLOC_FAILED:
+    case MBEDTLS_ERR_PK_ALLOC_FAILED:
+#endif
+    case MBEDTLS_ERR_MD_ALLOC_FAILED: return "Not enough memory";
     case MBEDTLS_ERR_MD_FEATURE_UNAVAILABLE: return "Feature unavailable";
     case MBEDTLS_ERR_MD_BAD_INPUT_DATA: return "Bad input data";
     case MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH: return "Invalid input length";
-    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT: return "Invalid format";
   }
   return 0;
 }
