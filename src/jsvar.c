@@ -3331,11 +3331,18 @@ void *jsvMalloc(size_t size) {
     // Try again
     flatStr = jsvNewFlatStringOfLength(size);
   }
-
-  return (void*)jsvGetFlatStringPointer(flatStr);
+  // intentionally no jsvUnLock - see above
+  void *p = (void*)jsvGetFlatStringPointer(flatStr);
+  if (p) {
+    //jsiConsolePrintf("jsvMalloc var %d-%d at %d (%d bytes)\n", jsvGetRef(flatStr), jsvGetRef(flatStr)+jsvGetFlatStringBlocks(flatStr), p, size);
+    memset(p,0,size);
+  }
+  return p;
 }
 
 void jsvFree(void *ptr) {
   JsVar *flatStr = jsvGetFlatStringFromPointer((char *)ptr);
+  //jsiConsolePrintf("jsvFree var %d at %d (%d bytes)\n", jsvGetRef(flatStr), ptr, jsvGetLength(flatStr));
+
   jsvUnLock(flatStr);
 }

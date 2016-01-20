@@ -508,7 +508,7 @@ JsVar *jsvAsString(JsVar *var, bool unlockVar); ///< If var is a string, lock an
 JsVar *jsvAsFlatString(JsVar *var); ///< Create a flat string from the given variable (or return it if it is already a flat string). NOTE: THIS CONVERTS VIA A STRING
 bool jsvIsEmptyString(JsVar *v); ///< Returns true if the string is empty - faster than jsvGetStringLength(v)==0
 size_t jsvGetStringLength(const JsVar *v); ///< Get the length of this string, IF it is a string
-size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string
+size_t jsvGetFlatStringBlocks(const JsVar *v); ///< return the number of blocks used by the given flat string - EXCLUDING the first data block
 char *jsvGetFlatStringPointer(JsVar *v); ///< Get a pointer to the data in this flat string
 JsVar *jsvGetFlatStringFromPointer(char *v); ///< Given a pointer to the first element of a flat string, return the flat string itself (DANGEROUS!)
 size_t jsvGetLinesInString(JsVar *v); ///<  IN A STRING get the number of lines in the string (min=1)
