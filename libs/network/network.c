@@ -398,27 +398,39 @@ JsVar *load_cert_file(JsVar *cert) {
 }
 #endif /* USE_FILESYSTEM */
 
+
+/** Given a variable:
+ *
+ * if it's a string <=100 chars long use it as a filename (if filesystem is enabled)
+ * if it's a function, run it and return the result
+ */
+JsVar *decode_certificate_var(JsVar *var) {
+  JsVar *decoded = 0;
+  if (jsvIsFunction(var)) {
+    decoded = jspExecuteFunction(var, 0, 0, 0);
+  }
+#ifdef USE_FILESYSTEM
+  if (jsvIsString(var) && jsvGetStringLength(var) <= 100) {
+    /* too short for cert data, so assume a file path*/
+    decoded = load_cert_file(var);
+  }
+#endif /* USE_FILESYSTEM */
+  if (!decoded) decoded = jsvLockAgain(var);
+  return decoded;
+}
+
 bool ssl_load_key(SSLSocketData *sd, JsVar *options) {
   JsVar *keyVar = jsvObjectGetChild(options, "key", 0);
   if (!keyVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the Client Key...\n");
 
-  JsVar *buffer = 0;
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(keyVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    buffer = load_cert_file(keyVar);
-  }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory */
-  if (jsvGetStringLength(keyVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer ? buffer : keyVar);
-    if (keyLen && keyPtr) {
-      ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
-    }
+  JsVar *buffer = decode_certificate_var(keyVar);
+  JSV_GET_AS_CHAR_ARRAY(keyPtr, keyLen, buffer);
+  if (keyLen && keyPtr) {
+    ret = mbedtls_pk_parse_key(&sd->pkey, (const unsigned char *)keyPtr, keyLen, NULL, 0 /*no password*/);
   }
   jsvUnLock(buffer);
 
@@ -437,22 +449,13 @@ bool ssl_load_owncert(SSLSocketData *sd, JsVar *options) {
   if (!certVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the Client certificate...\n");
 
-  JsVar *buffer = 0;
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(certVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    buffer = load_cert_file(certVar);
-  }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory */
-  if (jsvGetStringLength(certVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer?buffer:certVar);
-    if (certLen && certPtr) {
-      ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
-    }
+  JsVar *buffer = decode_certificate_var(certVar);
+  JSV_GET_AS_CHAR_ARRAY(certPtr, certLen, buffer);
+  if (certLen && certPtr) {
+    ret = mbedtls_x509_crt_parse(&sd->owncert, (const unsigned char *)certPtr, certLen);
   }
   jsvUnLock(buffer);
 
@@ -470,22 +473,13 @@ bool ssl_load_cacert(SSLSocketData *sd, JsVar *options) {
   if (!caVar) {
     return false;
   }
-  int ret;
+  int ret = -1;
   jsiConsolePrintf("Loading the CA root certificate...\n");
 
-  JsVar *buffer = 0;
-#ifdef USE_FILESYSTEM
-  if (jsvGetStringLength(caVar) <= 100) {
-    /* too short for cert data, so assume a file path*/
-    buffer = load_cert_file(caVar);
-  }
-#endif /* USE_FILESYSTEM */
-  /* parse from memory*/
-  if (jsvGetStringLength(caVar) > 100) {
-    JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer?buffer:caVar);
-    if (caLen && caPtr) {
-      ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
-    }
+  JsVar *buffer = decode_certificate_var(caVar);
+  JSV_GET_AS_CHAR_ARRAY(caPtr, caLen, buffer);
+  if (caLen && caPtr) {
+    ret = mbedtls_x509_crt_parse(&sd->cacert, (const unsigned char *)caPtr, caLen);
   }
   jsvUnLock(buffer);
 

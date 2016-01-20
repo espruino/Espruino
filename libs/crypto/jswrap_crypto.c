@@ -65,7 +65,9 @@ Class containing AES encryption/decryption
 const char *jswrap_crypto_error_to_str(int err) {
   switch(err) {
 #ifdef USE_TLS
-    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT: return "Invalid format";
+    case MBEDTLS_ERR_X509_INVALID_FORMAT:
+    case MBEDTLS_ERR_PK_KEY_INVALID_FORMAT:
+      return "Invalid format";
     case MBEDTLS_ERR_X509_ALLOC_FAILED:
     case MBEDTLS_ERR_SSL_ALLOC_FAILED:
     case MBEDTLS_ERR_PK_ALLOC_FAILED:
