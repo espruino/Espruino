@@ -632,6 +632,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   size_t blocks = 1 + ((byteLength+sizeof(JsVar)-1) / sizeof(JsVar));
   // Now try and find them
   unsigned int blockCount = 0;
+
 #ifdef RESIZABLE_JSVARS
   JsVar *lastVar = 0;
 #endif
@@ -662,8 +663,8 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
         flatString->varData.integer = (JsVarInt)byteLength;
         // clear data
         memset((char*)&flatString[1], 0, sizeof(JsVar)*(blocks-1));
-        // break out of the loop, and we'll return
-        i = (JsVarRef)(i+blocks);
+        // break out of the loop, and we'll return 'flatString'
+        i++; // we are already at the final block
         break;
       }
     } else {
@@ -694,6 +695,7 @@ JsVar *jsvNewFlatStringOfLength(unsigned int byteLength) {
   }
   jsvSetNextSibling(lastEmpty, 0);
   jsVarFirstEmpty = jsvGetNextSibling(&firstVar);
+
   // Return whatever we had (0 if we couldn't manage it)
   return flatString;
 }
