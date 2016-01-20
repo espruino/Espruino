@@ -394,7 +394,6 @@ bool socketServerConnectionsIdle(JsNetwork *net) {
             jsvUnLock(headers);
           }
         }
-        if (reallyCloseNow) jsiConsolePrintf("Closing now\n");
         closeConnectionNow = reallyCloseNow;
       } else if (num > 0)
         closeConnectionNow = false; // guarantee that anything received is processed
