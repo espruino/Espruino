@@ -3027,7 +3027,7 @@ void _jsvTrace(JsVar *var, int indent, JsVar *baseVar, int level) {
     JsvIterator it;
     jsvIteratorNew(&it, var);
     bool first = true;
-    while (jsvIteratorHasElement(&it)) {
+    while (jsvIteratorHasElement(&it) && !jspIsInterrupted()) {
       if (first) jsiConsolePrintf("\n");
       first = false;
       JsVar *child = jsvIteratorGetKey(&it);
